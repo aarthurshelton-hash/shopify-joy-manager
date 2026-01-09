@@ -64,77 +64,77 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
   }, [handleFileUpload]);
   
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Famous Games Showcase */}
-      <Card className="border-2 border-dashed border-primary/30 bg-gradient-to-br from-primary/5 to-transparent">
-        <CardHeader className="pb-4">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Crown className="h-5 w-5 text-amber-500" />
+      <div className="rounded-lg border border-border/50 bg-card/50 overflow-hidden">
+        <div className="px-6 py-5 border-b border-border/50">
+          <h3 className="flex items-center gap-2 font-display text-lg font-semibold">
+            <Crown className="h-5 w-5 text-primary" />
             Legendary Games
-          </CardTitle>
-          <CardDescription>
+          </h3>
+          <p className="text-sm text-muted-foreground mt-1 font-serif">
             Start with an iconic game from chess history
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </p>
+        </div>
+        <div className="p-5">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {famousGames.map((game) => (
               <button
                 key={game.id}
                 onClick={() => handleLoadGame(game)}
-                className={`text-left p-3 rounded-lg border transition-all hover:shadow-md hover:border-primary/50 ${
+                className={`text-left p-4 rounded-lg border transition-all duration-300 ${
                   selectedGame?.id === game.id 
-                    ? 'border-primary bg-primary/10 shadow-md' 
-                    : 'border-border bg-card hover:bg-accent/50'
+                    ? 'border-primary bg-primary/10 glow-gold' 
+                    : 'border-border/50 bg-card hover:border-primary/30 hover:bg-card/80'
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
-                    <h4 className="font-semibold text-sm truncate">{game.title}</h4>
-                    <p className="text-xs text-muted-foreground mt-0.5">
+                    <h4 className="font-display font-semibold text-sm">{game.title}</h4>
+                    <p className="text-xs text-muted-foreground mt-1 font-serif">
                       {game.white} vs {game.black}
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground/70 font-sans">
                       {game.event}, {game.year}
                     </p>
                   </div>
-                  <Sparkles className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                  <Sparkles className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
                 </div>
               </button>
             ))}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Upload Card */}
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <div className="rounded-lg border border-border/50 bg-card/50 overflow-hidden">
+        <div className="px-6 py-5 border-b border-border/50">
+          <h3 className="flex items-center gap-2 font-display text-lg font-semibold">
             <FileText className="h-5 w-5" />
             Upload Your Game
-          </CardTitle>
-          <CardDescription>
+          </h3>
+          <p className="text-sm text-muted-foreground mt-1 font-serif">
             Paste PGN notation or upload a .pgn file to create your unique visualization
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+          </p>
+        </div>
+        <div className="p-5 space-y-5">
           {/* Drop zone */}
           <div
-            className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+            className={`border-2 border-dashed rounded-lg p-8 text-center transition-all duration-300 ${
               isDragging 
-                ? 'border-primary bg-primary/5' 
-                : 'border-muted-foreground/25 hover:border-muted-foreground/50'
+                ? 'border-primary bg-primary/10 glow-gold' 
+                : 'border-border hover:border-primary/30'
             }`}
             onDrop={handleDrop}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
           >
-            <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground mb-2">
+            <Upload className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground mb-2 font-serif">
               Drag & drop a .pgn file here, or
             </p>
             <label className="cursor-pointer">
-              <span className="text-primary hover:underline text-sm font-medium">browse files</span>
+              <span className="text-primary hover:text-primary/80 text-sm font-medium transition-colors">browse files</span>
               <input
                 type="file"
                 accept=".pgn"
@@ -153,15 +153,15 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
                 setPgn(e.target.value);
                 setSelectedGame(null);
               }}
-              className="min-h-[150px] font-mono text-sm"
+              className="min-h-[150px] font-mono text-sm bg-background/50 border-border/50 focus:border-primary/50"
             />
           </div>
           
           {/* Selected game info */}
           {selectedGame && (
-            <div className="p-3 rounded-lg bg-accent/50 border">
-              <p className="text-sm font-medium">{selectedGame.title}</p>
-              <p className="text-xs text-muted-foreground mt-1">{selectedGame.description}</p>
+            <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
+              <p className="text-sm font-display font-semibold">{selectedGame.title}</p>
+              <p className="text-xs text-muted-foreground mt-1 font-serif">{selectedGame.description}</p>
             </div>
           )}
           
@@ -169,14 +169,14 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
           <Button 
             onClick={handleSubmit} 
             disabled={!pgn.trim()}
-            className="w-full gap-2"
+            className="w-full gap-2 btn-luxury py-6 text-base font-medium"
             size="lg"
           >
-            <Sparkles className="h-4 w-4" />
+            <Sparkles className="h-5 w-5" />
             Generate Visualization
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 };

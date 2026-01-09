@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import ChessBoardVisualization from './ChessBoardVisualization';
 import GameInfoDisplay from './GameInfoDisplay';
 import { SimulationResult } from '@/lib/chess/gameSimulator';
@@ -13,27 +13,48 @@ interface PrintPreviewProps {
 
 const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn }) => {
   const printRef = useRef<HTMLDivElement>(null);
-  const [isDownloading, setIsDownloading] = React.useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [boardSize, setBoardSize] = useState(320);
+  
+  // Calculate appropriate board size based on container
+  useEffect(() => {
+    const updateSize = () => {
+      const maxWidth = Math.min(window.innerWidth - 80, 450);
+      setBoardSize(Math.max(280, maxWidth));
+    };
+    updateSize();
+    window.addEventListener('resize', updateSize);
+    return () => window.removeEventListener('resize', updateSize);
+  }, []);
   
   const handleDownload = async () => {
     if (!printRef.current) return;
     
     setIsDownloading(true);
     try {
-      // Use html2canvas for high-quality export
       const html2canvas = (await import('html2canvas')).default;
+      
+      // Capture the full content with proper settings
       const canvas = await html2canvas(printRef.current, {
-        scale: 2,
-        backgroundColor: '#ffffff',
+        scale: 3, // Higher resolution for print quality
+        backgroundColor: '#FDFCFB',
         useCORS: true,
+        allowTaint: true,
+        logging: false,
+        width: printRef.current.scrollWidth,
+        height: printRef.current.scrollHeight,
+        windowWidth: printRef.current.scrollWidth,
+        windowHeight: printRef.current.scrollHeight,
       });
       
       const link = document.createElement('a');
-      link.download = `${simulation.gameData.white || 'chess'}-vs-${simulation.gameData.black || 'game'}.png`;
-      link.href = canvas.toDataURL('image/png');
+      const whiteName = simulation.gameData.white?.replace(/\s+/g, '-') || 'chess';
+      const blackName = simulation.gameData.black?.replace(/\s+/g, '-') || 'game';
+      link.download = `EnPensent-${whiteName}-vs-${blackName}.png`;
+      link.href = canvas.toDataURL('image/png', 1.0);
       link.click();
       
-      toast.success('Image downloaded!');
+      toast.success('High-resolution image downloaded!');
     } catch (error) {
       console.error('Download failed:', error);
       toast.error('Download failed. Please try again.');
@@ -42,49 +63,49 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn }) => {
     }
   };
 
-  const gameTitle = simulation.gameData.white && simulation.gameData.black
-    ? `${simulation.gameData.white} vs ${simulation.gameData.black}`
-    : simulation.gameData.event || 'Chess Game';
-  
   return (
     <div className="space-y-6">
-      {/* The actual print preview */}
+      {/* Print Preview - The actual artwork */}
       <div 
         ref={printRef}
-        className="bg-white p-8 md:p-12 shadow-lg mx-auto max-w-2xl rounded-lg"
-        style={{ aspectRatio: '3/4' }}
+        className="bg-[#FDFCFB] p-6 md:p-10 shadow-2xl mx-auto max-w-lg rounded-sm border border-stone-200"
+        style={{ 
+          minHeight: 'auto',
+          width: 'fit-content',
+        }}
       >
-        <div className="flex flex-col items-center justify-center h-full gap-8">
-          {/* Chess board visualization */}
+        <div className="flex flex-col items-center gap-6">
+          {/* Chess board visualization - fixed size for consistency */}
           <ChessBoardVisualization 
             board={simulation.board} 
-            size={Math.min(400, window.innerWidth - 100)}
+            size={boardSize}
           />
           
-          {/* Copyright notice */}
-          <p className="text-xs text-muted-foreground self-end">
-            © En Pensent
-          </p>
+          {/* Game information - proper spacing */}
+          <div className="w-full pt-4 border-t border-stone-200">
+            <GameInfoDisplay gameData={simulation.gameData} />
+          </div>
           
-          {/* Game information */}
-          <GameInfoDisplay gameData={simulation.gameData} />
+          {/* Subtle branding */}
+          <p className="text-[10px] tracking-[0.2em] uppercase text-stone-400 font-sans">
+            En Pensent
+          </p>
         </div>
       </div>
       
-      {/* Action buttons */}
+      {/* Download button */}
       <div className="flex justify-center">
         <Button 
-          variant="outline" 
-          className="gap-2"
           onClick={handleDownload}
           disabled={isDownloading}
+          className="gap-2 btn-luxury px-6"
         >
           {isDownloading ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             <Download className="h-4 w-4" />
           )}
-          Download Image
+          Download Free Preview
         </Button>
       </div>
     </div>
