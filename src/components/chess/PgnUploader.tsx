@@ -1,8 +1,8 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Upload, FileText, Crown, Sparkles, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { Upload, FileText, Crown, Sparkles, CheckCircle, XCircle, Loader2, Lightbulb } from 'lucide-react';
 import { famousGames, FamousGame } from '@/lib/chess/famousGames';
 import { validatePgn, cleanPgn, PgnValidationResult } from '@/lib/chess/pgnValidator';
 import { toast } from 'sonner';
@@ -17,6 +17,14 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
   const [selectedGame, setSelectedGame] = useState<FamousGame | null>(null);
   const [validation, setValidation] = useState<PgnValidationResult | null>(null);
   const [isValidating, setIsValidating] = useState(false);
+  const [showRecommendations, setShowRecommendations] = useState(false);
+  const [recommendationSeed, setRecommendationSeed] = useState(0);
+
+  // Get 3 random recommended games for when validation fails
+  const recommendedGames = useMemo(() => {
+    const shuffled = [...famousGames].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, 3);
+  }, [recommendationSeed]);
   
   const handleValidate = useCallback(() => {
     if (!pgn.trim()) {
@@ -27,6 +35,7 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
     }
 
     setIsValidating(true);
+    setShowRecommendations(false);
     
     // Use setTimeout to allow UI to update
     setTimeout(() => {
@@ -39,11 +48,14 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
         toast.success('PGN is valid!', {
           description: `${result.moveCount} moves detected.`,
         });
+        setShowRecommendations(false);
       } else {
         toast.error('Invalid PGN', {
           description: result.error,
           duration: 6000,
         });
+        setShowRecommendations(true);
+        setRecommendationSeed(prev => prev + 1);
       }
     }, 50);
   }, [pgn]);
@@ -57,7 +69,8 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
   const handleLoadGame = useCallback((game: FamousGame) => {
     setPgn(game.pgn);
     setSelectedGame(game);
-    setValidation(null); // Reset validation when loading a new game
+    setValidation(null);
+    setShowRecommendations(false);
   }, []);
   
   const handleFileUpload = useCallback((file: File) => {
@@ -187,7 +200,8 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
               onChange={(e) => {
                 setPgn(e.target.value);
                 setSelectedGame(null);
-                setValidation(null); // Reset validation when text changes
+                setValidation(null);
+                setShowRecommendations(false);
               }}
               className="min-h-[150px] font-mono text-sm bg-background/50 border-border/50 focus:border-primary/50"
             />
@@ -215,9 +229,35 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
               </div>
             </div>
           )}
+
+          {/* Recommended games when validation fails */}
+          {showRecommendations && !validation?.isValid && (
+            <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
+              <div className="flex items-center gap-2 mb-3">
+                <Lightbulb className="h-5 w-5 text-amber-500" />
+                <p className="text-sm font-medium text-amber-500">
+                  Try one of these verified games instead
+                </p>
+              </div>
+              <div className="space-y-2">
+                {recommendedGames.map((game) => (
+                  <button
+                    key={game.id}
+                    onClick={() => handleLoadGame(game)}
+                    className="w-full text-left p-3 rounded-lg bg-background/50 border border-border/50 hover:border-primary/50 hover:bg-primary/5 transition-all duration-200"
+                  >
+                    <p className="text-sm font-display font-semibold">{game.title}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {game.white} vs {game.black} • {game.year}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           
           {/* Selected game info */}
-          {selectedGame && !validation && (
+          {selectedGame && !validation && !showRecommendations && (
             <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
               <p className="text-sm font-display font-semibold">{selectedGame.title}</p>
               <p className="text-xs text-muted-foreground mt-1 font-serif">{selectedGame.description}</p>
