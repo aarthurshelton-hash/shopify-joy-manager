@@ -33,6 +33,48 @@ const pieceSymbols: Record<PieceType, { white: string; black: string }> = {
   p: { white: '♙', black: '♟' },
 };
 
+// Generate a random hex color
+const generateRandomColor = (): string => {
+  const hue = Math.floor(Math.random() * 360);
+  const saturation = 50 + Math.floor(Math.random() * 40); // 50-90%
+  const lightness = 35 + Math.floor(Math.random() * 30); // 35-65%
+  
+  // Convert HSL to Hex
+  const h = hue / 360;
+  const s = saturation / 100;
+  const l = lightness / 100;
+  
+  const hue2rgb = (p: number, q: number, t: number) => {
+    if (t < 0) t += 1;
+    if (t > 1) t -= 1;
+    if (t < 1/6) return p + (q - p) * 6 * t;
+    if (t < 1/2) return q;
+    if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+    return p;
+  };
+  
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+  const p = 2 * l - q;
+  const r = Math.round(hue2rgb(p, q, h + 1/3) * 255);
+  const g = Math.round(hue2rgb(p, q, h) * 255);
+  const b = Math.round(hue2rgb(p, q, h - 1/3) * 255);
+  
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`.toUpperCase();
+};
+
+const generateRandomPalette = () => {
+  const pieces: PieceType[] = ['k', 'q', 'r', 'b', 'n', 'p'];
+  const white: Record<PieceType, string> = {} as Record<PieceType, string>;
+  const black: Record<PieceType, string> = {} as Record<PieceType, string>;
+  
+  pieces.forEach(piece => {
+    white[piece] = generateRandomColor();
+    black[piece] = generateRandomColor();
+  });
+  
+  return { white, black };
+};
+
 const PaletteSelector: React.FC<PaletteSelectorProps> = ({ onPaletteChange }) => {
   const [activePaletteId, setActivePaletteId] = useState<PaletteId>(getActivePalette().id);
   const [customColors, setCustomColors] = useState(() => {
@@ -43,10 +85,23 @@ const PaletteSelector: React.FC<PaletteSelectorProps> = ({ onPaletteChange }) =>
   const pieces: PieceType[] = ['k', 'q', 'r', 'b', 'n', 'p'];
   
   const handleSelect = useCallback((paletteId: PaletteId) => {
+    // If selecting custom, generate random colors
+    if (paletteId === 'custom' && activePaletteId !== 'custom') {
+      const randomPalette = generateRandomPalette();
+      
+      // Update the custom palette with random colors
+      pieces.forEach(piece => {
+        setCustomColor('w', piece, randomPalette.white[piece]);
+        setCustomColor('b', piece, randomPalette.black[piece]);
+      });
+      
+      setCustomColors(randomPalette);
+    }
+    
     setActivePalette(paletteId);
     setActivePaletteId(paletteId);
     onPaletteChange?.(paletteId);
-  }, [onPaletteChange]);
+  }, [onPaletteChange, activePaletteId]);
   
   const handleCustomColorChange = useCallback((pieceColor: PieceColor, pieceType: PieceType, hexColor: string) => {
     setCustomColor(pieceColor, pieceType, hexColor);
