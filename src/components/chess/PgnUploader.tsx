@@ -22,28 +22,8 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
   const [fixResult, setFixResult] = useState<PgnFixResult | null>(null);
   const [isFixing, setIsFixing] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
-  const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('right');
-  const [isAnimating, setIsAnimating] = useState(false);
   
   const totalPages = useMemo(() => Math.ceil(famousGames.length / GAMES_PER_PAGE), []);
-  
-  const displayedGames = useMemo(() => {
-    const start = currentPage * GAMES_PER_PAGE;
-    return famousGames.slice(start, start + GAMES_PER_PAGE);
-  }, [currentPage]);
-  
-  const handlePageChange = useCallback((newPage: number) => {
-    if (newPage === currentPage || isAnimating) return;
-    
-    setSlideDirection(newPage > currentPage ? 'right' : 'left');
-    setIsAnimating(true);
-    
-    // Small delay to allow exit animation
-    setTimeout(() => {
-      setCurrentPage(newPage);
-      setTimeout(() => setIsAnimating(false), 300);
-    }, 150);
-  }, [currentPage, isAnimating]);
   
   const handleValidate = useCallback(() => {
     if (!pgn.trim()) {
@@ -170,37 +150,39 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
         </div>
         <div className="p-5 overflow-hidden">
           <div 
-            className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 transition-all duration-300 ease-out ${
-              isAnimating 
-                ? slideDirection === 'right' 
-                  ? 'opacity-0 translate-x-8' 
-                  : 'opacity-0 -translate-x-8'
-                : 'opacity-100 translate-x-0'
-            }`}
+            className="flex transition-transform duration-300 ease-out"
+            style={{ transform: `translateX(-${currentPage * 100}%)` }}
           >
-            {displayedGames.map((game) => (
-              <button
-                key={game.id}
-                onClick={() => handleLoadGame(game)}
-                className={`text-left p-4 rounded-lg border transition-all duration-300 ${
-                  selectedGame?.id === game.id 
-                    ? 'border-primary bg-primary/10 glow-gold' 
-                    : 'border-border/50 bg-card hover:border-primary/30 hover:bg-card/80'
-                }`}
+            {Array.from({ length: totalPages }).map((_, pageIndex) => (
+              <div 
+                key={pageIndex}
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 min-w-full flex-shrink-0"
               >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-display font-semibold text-sm">{game.title}</h4>
-                    <p className="text-xs text-muted-foreground mt-1 font-serif">
-                      {game.white} vs {game.black}
-                    </p>
-                    <p className="text-xs text-muted-foreground/70 font-sans">
-                      {game.event}, {game.year}
-                    </p>
-                  </div>
-                  <Sparkles className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
-                </div>
-              </button>
+                {famousGames.slice(pageIndex * GAMES_PER_PAGE, (pageIndex + 1) * GAMES_PER_PAGE).map((game) => (
+                  <button
+                    key={game.id}
+                    onClick={() => handleLoadGame(game)}
+                    className={`text-left p-4 rounded-lg border transition-all duration-300 ${
+                      selectedGame?.id === game.id 
+                        ? 'border-primary bg-primary/10 glow-gold' 
+                        : 'border-border/50 bg-card hover:border-primary/30 hover:bg-card/80'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-display font-semibold text-sm">{game.title}</h4>
+                        <p className="text-xs text-muted-foreground mt-1 font-serif">
+                          {game.white} vs {game.black}
+                        </p>
+                        <p className="text-xs text-muted-foreground/70 font-sans">
+                          {game.event}, {game.year}
+                        </p>
+                      </div>
+                      <Sparkles className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                    </div>
+                  </button>
+                ))}
+              </div>
             ))}
           </div>
           
@@ -209,13 +191,12 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
             {Array.from({ length: totalPages }).map((_, index) => (
               <button
                 key={index}
-                onClick={() => handlePageChange(index)}
-                disabled={isAnimating}
+                onClick={() => setCurrentPage(index)}
                 className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
                   currentPage === index 
                     ? 'bg-primary w-6' 
                     : 'bg-border hover:bg-primary/50'
-                } ${isAnimating ? 'cursor-not-allowed' : ''}`}
+                }`}
                 aria-label={`Go to page ${index + 1}`}
               />
             ))}
