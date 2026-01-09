@@ -7,6 +7,8 @@ import { Header } from '@/components/shop/Header';
 import { ProductSelector } from '@/components/shop/ProductSelector';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Palette, Crown, Sparkles, Award } from 'lucide-react';
+import { toast } from 'sonner';
+import { validatePgn, cleanPgn } from '@/lib/chess/pgnValidator';
 
 const Index = () => {
   const [simulation, setSimulation] = useState<SimulationResult | null>(null);
@@ -15,13 +17,36 @@ const Index = () => {
   const [gameTitle, setGameTitle] = useState<string>('');
   
   const handlePgnSubmit = (pgn: string) => {
-    const result = simulateGame(pgn);
-    setSimulation(result);
-    setCurrentPgn(pgn);
+    // Clean and validate the PGN first
+    const cleanedPgn = cleanPgn(pgn);
+    const validation = validatePgn(cleanedPgn);
     
-    const whiteMatch = pgn.match(/\[White\s+"([^"]+)"\]/);
-    const blackMatch = pgn.match(/\[Black\s+"([^"]+)"\]/);
-    const eventMatch = pgn.match(/\[Event\s+"([^"]+)"\]/);
+    if (!validation.isValid) {
+      toast.error('Invalid PGN', {
+        description: validation.error,
+        duration: 6000,
+      });
+      return;
+    }
+
+    // Now simulate the game
+    const result = simulateGame(cleanedPgn);
+    
+    // Check if simulation produced valid results
+    if (result.totalMoves === 0) {
+      toast.error('Unable to process game', {
+        description: 'The PGN could not be processed. Please check the notation and try again.',
+        duration: 6000,
+      });
+      return;
+    }
+
+    setSimulation(result);
+    setCurrentPgn(cleanedPgn);
+    
+    const whiteMatch = cleanedPgn.match(/\[White\s+"([^"]+)"\]/);
+    const blackMatch = cleanedPgn.match(/\[Black\s+"([^"]+)"\]/);
+    const eventMatch = cleanedPgn.match(/\[Event\s+"([^"]+)"\]/);
     
     if (whiteMatch && blackMatch) {
       setGameTitle(`${whiteMatch[1]} vs ${blackMatch[1]}`);
@@ -30,6 +55,10 @@ const Index = () => {
     } else {
       setGameTitle('Chess Visualization');
     }
+
+    toast.success('Visualization generated!', {
+      description: `${validation.moveCount} moves processed successfully.`,
+    });
   };
   
   const handleBack = () => {
