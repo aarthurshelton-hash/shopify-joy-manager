@@ -1,5 +1,5 @@
 // Famous historical chess games for testing and showcase
-// These iconic games demonstrate the visualization across different play styles
+// All PGNs verified from chessgames.com to ensure proper parsing
 
 export interface FamousGame {
   id: string;
@@ -32,40 +32,40 @@ export const famousGames: FamousGame[] = [
 1. e4 d6 2. d4 Nf6 3. Nc3 g6 4. Be3 Bg7 5. Qd2 c6 6. f3 b5 7. Nge2 Nbd7 8. Bh6 Bxh6 9. Qxh6 Bb7 10. a3 e5 11. O-O-O Qe7 12. Kb1 a6 13. Nc1 O-O-O 14. Nb3 exd4 15. Rxd4 c5 16. Rd1 Nb6 17. g3 Kb8 18. Na5 Ba8 19. Bh3 d5 20. Qf4+ Ka7 21. Rhe1 d4 22. Nd5 Nbxd5 23. exd5 Qd6 24. Rxd4 cxd4 25. Re7+ Kb6 26. Qxd4+ Kxa5 27. b4+ Ka4 28. Qc3 Qxd5 29. Ra7 Bb7 30. Rxb7 Qc4 31. Qxf6 Kxa3 32. Qxa6+ Kxb4 33. c3+ Kxc3 34. Qa1+ Kd2 35. Qb2+ Kd1 36. Bf1 Rd2 37. Rd7 Rxd7 38. Bxc4 bxc4 39. Qxh8 Rd3 40. Qa8 c3 41. Qa4+ Ke1 42. f4 f5 43. Kc1 Rd2 44. Qa7 1-0`
   },
   {
-    id: 'fischer-spassky-1972-g6',
-    title: 'Game of the Century',
-    event: 'World Championship Match, Game 6',
+    id: 'spassky-fischer-1972-g5',
+    title: 'Fischer Strikes Back',
+    event: 'World Championship Match, Game 5',
     year: 1972,
-    white: 'Bobby Fischer',
-    black: 'Boris Spassky',
-    description: 'Fischer\'s masterpiece against Spassky. A brilliant positional game that showcased Fischer\'s deep understanding of chess.',
+    white: 'Boris Spassky',
+    black: 'Bobby Fischer',
+    description: 'Fischer\'s brilliant victory over Spassky featuring a powerful knight sacrifice and dominant positional play.',
     pgn: `[Event "World Championship Match"]
 [Site "Reykjavik ISL"]
-[Date "1972.07.23"]
-[Round "6"]
-[White "Robert James Fischer"]
-[Black "Boris Spassky"]
-[Result "1-0"]
+[Date "1972.07.20"]
+[Round "5"]
+[White "Boris Spassky"]
+[Black "Bobby Fischer"]
+[Result "0-1"]
 
-1. c4 e6 2. Nf3 d5 3. d4 Nf6 4. Nc3 Be7 5. Bg5 O-O 6. e3 h6 7. Bh4 b6 8. cxd5 Nxd5 9. Bxe7 Qxe7 10. Nxd5 exd5 11. Rc1 Be6 12. Qa4 c5 13. Qa3 Rc8 14. Bb5 a6 15. dxc5 bxc5 16. O-O Ra7 17. Be2 Nd7 18. Nd4 Qf8 19. Nxe6 fxe6 20. e4 d4 21. f4 Qe7 22. e5 Rb8 23. Bc4 Kh8 24. Qh3 Nf8 25. b3 a5 26. f5 exf5 27. Rxf5 Nh7 28. Rcf1 Qd8 29. Qg3 Re7 30. h4 Rbb7 31. e6 Rbc7 32. Qe5 Qe8 33. a4 Qd8 34. R1f2 Qe8 35. R2f3 Qd8 36. Bd3 Qe8 37. Qe4 Nf6 38. Rxf6 gxf6 39. Rxf6 Kg8 40. Bc4 Kh8 41. Qf4 1-0`
+1. d4 Nf6 2. c4 e6 3. Nc3 Bb4 4. Nf3 c5 5. e3 Nc6 6. Bd3 Bxc3+ 7. bxc3 d6 8. e4 e5 9. d5 Ne7 10. Nh4 h6 11. f4 Ng6 12. Nxg6 fxg6 13. fxe5 dxe5 14. Be3 b6 15. O-O O-O 16. a4 a5 17. Rb1 Bd7 18. Rb2 Rb8 19. Rbf2 Qe7 20. Bc2 g5 21. Bd2 Qe8 22. Be1 Qg6 23. Qd3 Nh5 24. Rxf8+ Rxf8 25. Rxf8+ Kxf8 26. Bd1 Nf4 27. Qc2 Bxa4 0-1`
   },
   {
-    id: 'kasparov-deepblue-1997-g2',
-    title: 'Deep Blue Shocks the World',
-    event: 'Man vs Machine, Game 2',
+    id: 'deep-blue-kasparov-1997-g6',
+    title: 'Deep Blue\'s Final Blow',
+    event: 'Man vs Machine, Game 6',
     year: 1997,
     white: 'Deep Blue (IBM)',
     black: 'Garry Kasparov',
-    description: 'The historic game where Deep Blue defeated the world champion, marking a turning point in AI history.',
+    description: 'The decisive final game where Deep Blue clinched the historic match against the world champion.',
     pgn: `[Event "IBM Man-Machine"]
 [Site "New York USA"]
-[Date "1997.05.04"]
-[Round "2"]
-[White "Deep Blue (Computer)"]
+[Date "1997.05.11"]
+[Round "6"]
+[White "Deep Blue"]
 [Black "Garry Kasparov"]
 [Result "1-0"]
 
-1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 6. Re1 b5 7. Bb3 d6 8. c3 O-O 9. h3 h6 10. d4 Re8 11. Nbd2 Bf8 12. Nf1 Bd7 13. Ng3 Na5 14. Bc2 c5 15. b3 Nc6 16. d5 Ne7 17. Be3 Ng6 18. Qd2 Nh7 19. a4 Nh4 20. Nxh4 Qxh4 21. Qe2 Qd8 22. b4 Qc7 23. Rec1 c4 24. Ra3 Rec8 25. Rca1 Qd8 26. f4 Nf6 27. fxe5 dxe5 28. Qf1 Ne8 29. Qf2 Nd6 30. Bb6 Qe8 31. R3a2 Be7 32. Bc5 Bf8 33. Nf5 Bxf5 34. exf5 f6 35. Bxd6 Bxd6 36. axb5 axb5 37. Be4 Rxa2 38. Qxa2 Qd7 39. Qa7 Rc7 40. Qb6 Rb7 41. Ra8+ Kf7 42. Qa6 Qc7 43. Qc6 Qb6+ 44. Kf1 Rb8 45. Ra6 1-0`
+1. e4 c6 2. d4 d5 3. Nc3 dxe4 4. Nxe4 Nd7 5. Ng5 Ngf6 6. Bd3 e6 7. N1f3 h6 8. Nxe6 Qe7 9. O-O fxe6 10. Bg6+ Kd8 11. Bf4 b5 12. a4 Bb7 13. Re1 Nd5 14. Bg3 Kc8 15. axb5 cxb5 16. Qd3 Bc6 17. Bf5 exf5 18. Rxe7 Bxe7 19. c4 1-0`
   },
   {
     id: 'morphy-opera-1858',
@@ -119,22 +119,22 @@ export const famousGames: FamousGame[] = [
 1. e4 e5 2. f4 exf4 3. Bc4 Qh4+ 4. Kf1 b5 5. Bxb5 Nf6 6. Nf3 Qh6 7. d3 Nh5 8. Nh4 Qg5 9. Nf5 c6 10. g4 Nf6 11. Rg1 cxb5 12. h4 Qg6 13. h5 Qg5 14. Qf3 Ng8 15. Bxf4 Qf6 16. Nc3 Bc5 17. Nd5 Qxb2 18. Bd6 Bxg1 19. e5 Qxa1+ 20. Ke2 Na6 21. Nxg7+ Kd8 22. Qf6+ Nxf6 23. Be7# 1-0`
   },
   {
-    id: 'capablanca-alekhine-1927',
-    title: 'World Championship Marathon (82 Moves)',
+    id: 'carlsen-anand-2013-g5',
+    title: 'Carlsen Becomes Champion',
     event: 'World Championship',
-    year: 1927,
-    white: 'Jose Raul Capablanca',
-    black: 'Alexander Alekhine',
-    description: 'An epic 82-move struggle from the legendary 1927 World Championship match. Perfect for testing long game visualizations.',
+    year: 2013,
+    white: 'Magnus Carlsen',
+    black: 'Viswanathan Anand',
+    description: 'A pivotal game from the 2013 World Championship where Carlsen outplayed Anand in a complex middlegame.',
     pgn: `[Event "World Championship"]
-[Site "Buenos Aires ARG"]
-[Date "1927.11.09"]
-[Round "27"]
-[White "Jose Raul Capablanca"]
-[Black "Alexander Alekhine"]
-[Result "1/2-1/2"]
+[Site "Chennai IND"]
+[Date "2013.11.15"]
+[Round "5"]
+[White "Magnus Carlsen"]
+[Black "Viswanathan Anand"]
+[Result "1-0"]
 
-1. d4 d5 2. c4 e6 3. Nc3 Nf6 4. Bg5 Nbd7 5. e3 Be7 6. Nf3 O-O 7. Rc1 a6 8. cxd5 exd5 9. Bd3 c6 10. Qc2 h6 11. Bh4 Re8 12. O-O Ne4 13. Bxe7 Qxe7 14. Bxe4 dxe4 15. Nd2 f5 16. f3 e3 17. Nb3 Nf6 18. Nc5 Nd5 19. Nxd5 cxd5 20. Nb3 Be6 21. Nc5 Rac8 22. Qd3 Bf7 23. Rxc8 Rxc8 24. Rc1 Rxc1+ 25. Qxc1 Qd6 26. Qc3 b6 27. Na4 Qb4 28. Qxb4 axb4 29. Nc3 bxc3 30. bxc3 Kf8 31. Kf1 Ke7 32. Ke2 Kd6 33. Kd3 b5 34. a3 g5 35. g3 h5 36. h3 Be6 37. g4 hxg4 38. hxg4 fxg4 39. fxg4 Bf7 40. Ke2 Kc6 41. Kf3 Kb6 42. Ke2 Ka5 43. Kd3 Ka4 44. Ke2 b4 45. axb4 Kxb4 46. Kd3 Kxc3 47. Ke2 Kxd4 48. Kf3 Ke5 49. Ke2 Kf4 50. Kf2 d4 51. exd4 Kxg4 52. d5 Bxd5 53. Kxe3 Kf5 54. Kd4 Bf3 55. Ke3 Bd1 56. Kd4 g4 57. Ke3 Ke5 58. Kf2 Kf4 59. Kg1 Kf3 60. Kf1 g3 61. Kg1 Ke2 62. Kh1 Kf2 63. Kh3 Bb3 64. Kh4 Bd5 65. Kg5 Bf7 66. Kf4 Be6 67. Ke4 Bd5+ 68. Kd4 Bf3 69. Ke3 Be4 70. Kd4 Kf1 71. Ke3 Kg2 72. Ke2 Bd5 73. Kd2 Kf3 74. Kd3 Kf2 75. Kd4 Bf3 76. Ke3 Bb7 77. Kf4 Bd5 78. Ke5 Be6 79. Kf4 Bf7 80. Ke4 Bb3 81. Kf4 Bd5 82. Ke3 1/2-1/2`
+1. c4 e6 2. d4 d5 3. Nc3 c6 4. e4 dxe4 5. Nxe4 Bb4+ 6. Nc3 c5 7. a3 Ba5 8. Nf3 Nf6 9. Be3 Nc6 10. Qd3 cxd4 11. Nxd4 Ng4 12. O-O-O Nxe3 13. fxe3 Bc7 14. Nxc6 bxc6 15. Qxd8+ Bxd8 16. Be2 Ke7 17. Bf3 Bd7 18. Ne4 Bb6 19. c5 f5 20. cxb6 fxe4 21. b7 Rab8 22. Bxe4 Rxb7 23. Rhf1 Rb5 24. Rf4 g5 25. Rf3 h5 26. Rdf1 Be8 27. Bc2 Rc5 28. Rf6 h4 29. e4 a5 30. Kd2 Rb5 31. b3 Bh5 32. Kc3 Rc5+ 33. Kb2 Rd8 34. R1f2 Rd4 35. Rh6 Bd1 36. Bb1 Rb5 37. Kc3 c5 38. Rb2 e5 39. Rg6 a4 40. Rxg5 Rxb3+ 41. Rxb3 Bxb3 42. Rxe5+ Kd6 43. Rh5 Rd1 44. e5+ Kd5 45. Bh7 Rc1+ 46. Kb2 Rg1 47. Bg8+ Kc6 48. Rh6+ Kd7 49. Bxb3 axb3 50. Kxb3 Rxg2 51. Rxh4 Ke6 52. a4 Kxe5 53. a5 Kd6 54. Rh7 Kd5 55. a6 c4+ 56. Kc3 Ra2 57. a7 Kc5 58. h4 1-0`
   }
 ];
 
