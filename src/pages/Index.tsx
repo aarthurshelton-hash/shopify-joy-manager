@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import PgnUploader from '@/components/chess/PgnUploader';
 import PrintPreview from '@/components/chess/PrintPreview';
 import ColorLegend from '@/components/chess/ColorLegend';
+import ChessLoadingAnimation from '@/components/chess/ChessLoadingAnimation';
 import { simulateGame, SimulationResult } from '@/lib/chess/gameSimulator';
 import { Header } from '@/components/shop/Header';
 import { ProductSelector } from '@/components/shop/ProductSelector';
@@ -12,6 +13,12 @@ import { cleanPgn } from '@/lib/chess/pgnValidator';
 
 const Index = () => {
   const [simulation, setSimulation] = useState<SimulationResult | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [pendingResult, setPendingResult] = useState<{
+    result: SimulationResult;
+    pgn: string;
+    title: string;
+  } | null>(null);
   const [showLegend, setShowLegend] = useState(false);
   const [currentPgn, setCurrentPgn] = useState<string>('');
   const [gameTitle, setGameTitle] = useState<string>('');
@@ -23,37 +30,49 @@ const Index = () => {
     // Simulate the game - the simulator will process whatever it can
     const result = simulateGame(cleanedPgn);
     
-    // Always show the visualization, even if partial
-    setSimulation(result);
-    setCurrentPgn(cleanedPgn);
-    
+    // Extract title
     const whiteMatch = cleanedPgn.match(/\[White\s+"([^"]+)"\]/);
     const blackMatch = cleanedPgn.match(/\[Black\s+"([^"]+)"\]/);
     const eventMatch = cleanedPgn.match(/\[Event\s+"([^"]+)"\]/);
     
+    let title = 'Chess Visualization';
     if (whiteMatch && blackMatch) {
-      setGameTitle(`${whiteMatch[1]} vs ${blackMatch[1]}`);
+      title = `${whiteMatch[1]} vs ${blackMatch[1]}`;
     } else if (eventMatch) {
-      setGameTitle(eventMatch[1]);
-    } else {
-      setGameTitle('Chess Visualization');
+      title = eventMatch[1];
     }
-
-    if (result.totalMoves > 0) {
-      toast.success('Visualization generated!', {
-        description: `${result.totalMoves} moves processed.`,
-      });
-    } else {
-      toast.info('Visualization created', {
-        description: 'No moves could be parsed, but showing the board layout.',
-      });
-    }
+    
+    // Store the result and show loading animation
+    setPendingResult({ result, pgn: cleanedPgn, title });
+    setIsLoading(true);
   };
+  
+  const handleLoadingComplete = useCallback(() => {
+    if (pendingResult) {
+      setSimulation(pendingResult.result);
+      setCurrentPgn(pendingResult.pgn);
+      setGameTitle(pendingResult.title);
+      setIsLoading(false);
+      setPendingResult(null);
+      
+      if (pendingResult.result.totalMoves > 0) {
+        toast.success('Visualization generated!', {
+          description: `${pendingResult.result.totalMoves} moves processed.`,
+        });
+      } else {
+        toast.info('Visualization created', {
+          description: 'No moves could be parsed, but showing the board layout.',
+        });
+      }
+    }
+  }, [pendingResult]);
   
   const handleBack = () => {
     setSimulation(null);
     setCurrentPgn('');
     setGameTitle('');
+    setIsLoading(false);
+    setPendingResult(null);
   };
   
   return (
@@ -89,7 +108,11 @@ const Index = () => {
       
       {/* Main content */}
       <main className="container mx-auto px-4 py-12">
-        {!simulation ? (
+        {isLoading ? (
+          <div className="max-w-4xl mx-auto">
+            <ChessLoadingAnimation onComplete={handleLoadingComplete} />
+          </div>
+        ) : !simulation ? (
           <div className="max-w-4xl mx-auto space-y-16">
             {/* Hero section - Premium and bold */}
             <div className="text-center space-y-8 py-8">
