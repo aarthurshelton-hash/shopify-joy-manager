@@ -3,7 +3,7 @@
 
 export type PieceType = 'k' | 'q' | 'r' | 'b' | 'n' | 'p';
 export type PieceColor = 'w' | 'b';
-export type PaletteId = 'hotCold' | 'medieval' | 'egyptian' | 'roman' | 'modern' | 'greyscale';
+export type PaletteId = 'hotCold' | 'medieval' | 'egyptian' | 'roman' | 'modern' | 'greyscale' | 'custom';
 
 export interface PieceColorMapping {
   piece: PieceType;
@@ -159,6 +159,29 @@ const greyscalePalette: ColorPalette = {
   },
 };
 
+// === CUSTOM (User-defined) ===
+const customPalette: ColorPalette = {
+  id: 'custom',
+  name: 'Custom',
+  description: 'Create your own color palette',
+  white: {
+    k: '#3B82F6',
+    q: '#10B981',
+    r: '#6366F1',
+    b: '#06B6D4',
+    n: '#EC4899',
+    p: '#94A3B8',
+  },
+  black: {
+    k: '#DC2626',
+    q: '#9333EA',
+    r: '#EA580C',
+    b: '#F59E0B',
+    n: '#BE185D',
+    p: '#57534E',
+  },
+};
+
 // All available palettes
 export const colorPalettes: ColorPalette[] = [
   hotColdPalette,
@@ -167,6 +190,7 @@ export const colorPalettes: ColorPalette[] = [
   romanPalette,
   modernPalette,
   greyscalePalette,
+  customPalette,
 ];
 
 // Current active palette (default to hot/cold)
@@ -181,6 +205,26 @@ export function setActivePalette(paletteId: PaletteId): void {
 
 export function getActivePalette(): ColorPalette {
   return activePalette;
+}
+
+// Update custom palette colors
+export function setCustomColor(pieceColor: PieceColor, pieceType: PieceType, hexColor: string): void {
+  const customIdx = colorPalettes.findIndex(p => p.id === 'custom');
+  if (customIdx !== -1) {
+    if (pieceColor === 'w') {
+      colorPalettes[customIdx].white[pieceType] = hexColor;
+    } else {
+      colorPalettes[customIdx].black[pieceType] = hexColor;
+    }
+    // If custom is active, update the active palette reference
+    if (activePalette.id === 'custom') {
+      activePalette = colorPalettes[customIdx];
+    }
+  }
+}
+
+export function getCustomPalette(): ColorPalette {
+  return colorPalettes.find(p => p.id === 'custom') || customPalette;
 }
 
 // Legacy exports for backwards compatibility
