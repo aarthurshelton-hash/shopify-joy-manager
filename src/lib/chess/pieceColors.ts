@@ -1,5 +1,6 @@
 // Color palette for each chess piece type
-// Based on the En Pensent visualization style
+// HOT vs COLD opposition: Black pieces are warm/hot, White pieces are cool/cold
+// This creates instant visual distinction between the two armies
 
 export type PieceType = 'k' | 'q' | 'r' | 'b' | 'n' | 'p';
 export type PieceColor = 'w' | 'b';
@@ -9,26 +10,29 @@ export interface PieceColorMapping {
   color: PieceColor;
   hex: string;
   name: string;
+  symbol: string;
 }
 
-// White pieces colors (COLD theme)
+// White pieces colors (COLD theme - Blues, Greens, Cool tones)
+// Pure cold spectrum - no warm undertones for maximum distinction
 export const whitePieceColors: Record<PieceType, string> = {
-  k: '#4A90D9', // Cold Blue - King
-  q: '#22C55E', // Bright Green - Queen
-  r: '#1E3A8A', // Dark Blue - Rook
-  b: '#7DD3FC', // Baby Blue - Bishop
-  n: '#F9A8D4', // Pastel Pink - Knight
-  p: '#D1D5DB', // Light Gray - Pawn
+  k: '#0EA5E9', // Sky Blue - King (bright, commanding)
+  q: '#10B981', // Emerald Green - Queen (powerful, vibrant)
+  r: '#1D4ED8', // Royal Blue - Rook (deep, stable)
+  b: '#06B6D4', // Cyan - Bishop (diagonal energy)
+  n: '#8B5CF6', // Violet - Knight (unique movement)
+  p: '#94A3B8', // Cool Gray - Pawn (subtle, numerous)
 };
 
-// Black pieces colors (HOT theme)
+// Black pieces colors (HOT theme - Reds, Oranges, Warm tones)
+// Pure warm spectrum - no cool undertones for maximum distinction
 export const blackPieceColors: Record<PieceType, string> = {
-  k: '#EF4444', // Bright Red - King
-  q: '#A855F7', // Purple - Queen
-  r: '#F97316', // Orange - Rook
-  b: '#FACC15', // Yellow - Bishop
-  n: '#EC4899', // Pink - Knight
-  p: '#4B5563', // Dark Gray - Pawn
+  k: '#DC2626', // Crimson Red - King (intense, vital)
+  q: '#9333EA', // Deep Purple - Queen (regal, warm-leaning)
+  r: '#EA580C', // Burnt Orange - Rook (fiery, solid)
+  b: '#F59E0B', // Amber Gold - Bishop (warm, angular)
+  n: '#E11D48', // Rose Red - Knight (dynamic, warm pink)
+  p: '#57534E', // Warm Gray - Pawn (earthy, grounded)
 };
 
 // Get color for a specific piece
@@ -36,11 +40,21 @@ export function getPieceColor(piece: PieceType, color: PieceColor): string {
   return color === 'w' ? whitePieceColors[piece] : blackPieceColors[piece];
 }
 
-// Board square colors
+// Board square colors - neutral to let piece colors shine
 export const boardColors = {
-  light: '#F5F5DC', // Beige/Cream
-  dark: '#C9C9C9',  // Light gray (subtle contrast)
-  border: '#000000', // Black border
+  light: '#FAFAF9', // Off-white (warm neutral)
+  dark: '#E7E5E4',  // Light stone gray
+  border: '#1C1917', // Near-black border
+};
+
+// Chess piece symbols for display
+const pieceSymbols: Record<PieceType, { white: string; black: string }> = {
+  k: { white: '♔', black: '♚' },
+  q: { white: '♕', black: '♛' },
+  r: { white: '♖', black: '♜' },
+  b: { white: '♗', black: '♝' },
+  n: { white: '♘', black: '♞' },
+  p: { white: '♙', black: '♟' },
 };
 
 // Get all piece color mappings for legend
@@ -63,12 +77,14 @@ export function getPieceColorLegend(): PieceColorMapping[] {
       color: 'w',
       hex: whitePieceColors[piece],
       name: `White ${names[piece]}`,
+      symbol: pieceSymbols[piece].white,
     });
     legend.push({
       piece,
       color: 'b',
       hex: blackPieceColors[piece],
       name: `Black ${names[piece]}`,
+      symbol: pieceSymbols[piece].black,
     });
   }
 
