@@ -117,6 +117,24 @@ export const famousGames: FamousGame[] = [
 [Result "1-0"]
 
 1. e4 e5 2. f4 exf4 3. Bc4 Qh4+ 4. Kf1 b5 5. Bxb5 Nf6 6. Nf3 Qh6 7. d3 Nh5 8. Nh4 Qg5 9. Nf5 c6 10. g4 Nf6 11. Rg1 cxb5 12. h4 Qg6 13. h5 Qg5 14. Qf3 Ng8 15. Bxf4 Qf6 16. Nc3 Bc5 17. Nd5 Qxb2 18. Bd6 Bxg1 19. e5 Qxa1+ 20. Ke2 Na6 21. Nxg7+ Kd8 22. Qf6+ Nxf6 23. Be7# 1-0`
+  },
+  {
+    id: 'karpov-kasparov-1984-g48',
+    title: 'The Marathon (136 Moves)',
+    event: 'World Championship Match',
+    year: 1984,
+    white: 'Anatoly Karpov',
+    black: 'Garry Kasparov',
+    description: 'An epic 136-move endgame battle from the legendary 1984 match. Perfect for testing long game visualizations.',
+    pgn: `[Event "World Championship 32th"]
+[Site "Moscow URS"]
+[Date "1984.12.21"]
+[Round "48"]
+[White "Anatoly Karpov"]
+[Black "Garry Kasparov"]
+[Result "1/2-1/2"]
+
+1. e4 c5 2. Nf3 e6 3. d4 cxd4 4. Nxd4 Nc6 5. Nb5 d6 6. c4 Nf6 7. N1c3 a6 8. Na3 Be7 9. Be2 O-O 10. O-O b6 11. Be3 Bb7 12. Rc1 Rc8 13. Qb3 Nxe4 14. Nxe4 Bxe4 15. Bf3 Bxf3 16. gxf3 Bf6 17. Rfd1 Qe7 18. Nc2 Rfd8 19. Qd3 Ne5 20. Qe4 Nc6 21. Nb4 Ne5 22. Nc2 Nc6 23. Qf4 Qe8 24. Nb4 Nxb4 25. Qxb4 Rxc4 26. Rxc4 Qxc4 27. Qxb6 Qc2 28. b4 Qxf2+ 29. Kh1 Qxf3+ 30. Kg1 Qf2+ 31. Kh1 Bd4 32. Bxd4 Qxd4 33. Qxa6 Qxb4 34. Qd3 h6 35. a3 Qe7 36. h4 e5 37. Qf3 Qe6 38. Qb3 Qe7 39. Qd5 Rb8 40. Qe4 Qf6 41. Qf3 Qe6 42. Qd3 Rb3 43. Qc2 Rb8 44. Qd3 Qe7 45. a4 Rb4 46. Ra1 Qb7+ 47. Kg1 Qb8 48. Qd5 Qa8 49. Qxa8+ Rxa8 50. a5 Kf8 51. Kf2 Ke7 52. Ke3 Kd7 53. Kd3 Kc6 54. Kc4 Ra7 55. Ra3 f6 56. Kb4 Ra8 57. Ra1 Kb7 58. Kb5 Rc8 59. a6+ Ka7 60. Ra5 Rb8+ 61. Kc6 Rb6+ 62. Kd7 Rxa6 63. Rxa6+ Kxa6 64. Kxd6 Kb5 65. Ke6 Kc4 66. Kxf6 Kd3 67. Kxe5 Ke2 68. Kf4 g6 69. Kg3 Kf1 70. h5 g5 71. Kh3 Kf2 72. Kh2 Kf3 73. Kg1 Kg3 74. Kh1 Kh4 75. Kg2 Kxh5 76. Kf3 Kh4 77. Kf2 g4 78. Kg2 Kg5 79. Kg3 h5 80. Kh2 Kf4 81. Kg2 h4 82. Kh2 g3+ 83. Kg2 Kg4 84. Kh1 Kf3 85. Kg1 g2 86. Kh2 Kf2 87. Kxh4 g1=Q 88. Kh5 Qg7 89. Kh4 Kf3 90. Kh3 Qg3# 1/2-1/2`
   }
 ];
 
