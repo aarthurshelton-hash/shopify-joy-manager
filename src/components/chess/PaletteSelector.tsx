@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Palette, Check, Pencil } from 'lucide-react';
+import { Palette, Check, Pencil, Save, Loader2 } from 'lucide-react';
 import { 
   colorPalettes, 
   getActivePalette, 
@@ -10,6 +10,18 @@ import {
   PieceType,
   PieceColor
 } from '@/lib/chess/pieceColors';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 
 interface PaletteSelectorProps {
   onPaletteChange?: (paletteId: PaletteId) => void;
@@ -76,11 +88,15 @@ const generateRandomPalette = () => {
 };
 
 const PaletteSelector: React.FC<PaletteSelectorProps> = ({ onPaletteChange }) => {
+  const { user } = useAuth();
   const [activePaletteId, setActivePaletteId] = useState<PaletteId>(getActivePalette().id);
   const [customColors, setCustomColors] = useState(() => {
     const custom = getCustomPalette();
     return { white: { ...custom.white }, black: { ...custom.black } };
   });
+  const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
+  const [paletteName, setPaletteName] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
   
   const pieces: PieceType[] = ['k', 'q', 'r', 'b', 'n', 'p'];
   
@@ -117,6 +133,33 @@ const PaletteSelector: React.FC<PaletteSelectorProps> = ({ onPaletteChange }) =>
       onPaletteChange?.('custom');
     }
   }, [activePaletteId, onPaletteChange]);
+
+  const handleSavePalette = async () => {
+    if (!user || !paletteName.trim()) return;
+    
+    setIsSaving(true);
+    try {
+      const { error } = await supabase.from('saved_palettes').insert({
+        user_id: user.id,
+        name: paletteName.trim(),
+        white_colors: customColors.white,
+        black_colors: customColors.black,
+      });
+      
+      if (error) throw error;
+      
+      toast.success('Palette saved!', {
+        description: `"${paletteName}" has been saved to your account.`,
+      });
+      setIsSaveDialogOpen(false);
+      setPaletteName('');
+    } catch (error) {
+      console.error('Error saving palette:', error);
+      toast.error('Failed to save palette');
+    } finally {
+      setIsSaving(false);
+    }
+  };
   
   const isCustomActive = activePaletteId === 'custom';
   
@@ -275,9 +318,83 @@ const PaletteSelector: React.FC<PaletteSelectorProps> = ({ onPaletteChange }) =>
                 </div>
               </div>
             </div>
+            
+            {/* Save Palette Button - only for logged in users */}
+            {user && (
+              <div className="mt-6 pt-4 border-t border-primary/20">
+                <Button
+                  onClick={() => setIsSaveDialogOpen(true)}
+                  className="w-full gap-2"
+                  variant="outline"
+                >
+                  <Save className="h-4 w-4" />
+                  Save This Palette
+                </Button>
+              </div>
+            )}
+            
+            {!user && (
+              <p className="mt-4 text-xs text-center text-muted-foreground">
+                Sign in to save your custom palettes
+              </p>
+            )}
           </div>
         )}
       </div>
+      
+      {/* Save Palette Dialog */}
+      <Dialog open={isSaveDialogOpen} onOpenChange={setIsSaveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-display">Save Custom Palette</DialogTitle>
+            <DialogDescription>
+              Give your palette a name to save it to your account.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 pt-2">
+            <Input
+              placeholder="My Awesome Palette"
+              value={paletteName}
+              onChange={(e) => setPaletteName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && paletteName.trim()) {
+                  handleSavePalette();
+                }
+              }}
+            />
+            
+            {/* Preview of colors being saved */}
+            <div className="flex items-center gap-2 justify-center p-3 rounded-lg bg-muted/50">
+              {pieces.map((piece) => (
+                <div key={`preview-${piece}`} className="flex flex-col gap-1">
+                  <div
+                    className="w-6 h-6 rounded-sm ring-1 ring-black/10"
+                    style={{ backgroundColor: customColors.white[piece] }}
+                  />
+                  <div
+                    className="w-6 h-6 rounded-sm ring-1 ring-black/10"
+                    style={{ backgroundColor: customColors.black[piece] }}
+                  />
+                </div>
+              ))}
+            </div>
+            
+            <Button
+              onClick={handleSavePalette}
+              disabled={!paletteName.trim() || isSaving}
+              className="w-full gap-2"
+            >
+              {isSaving ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              Save Palette
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
