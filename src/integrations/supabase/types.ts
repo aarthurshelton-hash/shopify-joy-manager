@@ -14,7 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      saved_palettes: {
+        Row: {
+          black_colors: Json
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+          white_colors: Json
+        }
+        Insert: {
+          black_colors: Json
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+          white_colors: Json
+        }
+        Update: {
+          black_colors?: Json
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+          white_colors?: Json
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
