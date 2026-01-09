@@ -89,7 +89,7 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
           
           {/* Subtle branding */}
           <p className="text-[10px] tracking-[0.2em] uppercase text-stone-400 font-sans">
-            En Pensent
+            ♔ En Pensent ♚
           </p>
         </div>
       </div>
