@@ -9,49 +9,49 @@ const ColorLegend: React.FC = () => {
   const blackPieces = legend.filter(p => p.color === 'b');
   
   return (
-    <div className="flex flex-col gap-4 p-5 bg-card rounded-xl border shadow-sm">
-      <h3 className="text-sm font-bold text-center uppercase tracking-widest">
-        Piece Colors
+    <div className="flex flex-col gap-5 p-6 bg-card rounded-lg border border-border/50">
+      <h3 className="font-display text-sm font-semibold text-center tracking-wide">
+        Color Legend
       </h3>
       
-      <div className="space-y-4">
+      <div className="space-y-5">
         {/* White pieces - Cold theme */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 pb-1 border-b">
-            <span className="text-xs font-semibold text-blue-600 uppercase tracking-wide">
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 pb-2 border-b border-border/50">
+            <span className="text-[10px] font-sans font-medium text-sky-400 uppercase tracking-widest">
               ❄️ White — Cold
             </span>
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2">
             {whitePieces.map((item) => (
-              <div key={item.name} className="flex items-center gap-2">
+              <div key={item.name} className="flex items-center gap-3">
                 <div
-                  className="w-5 h-5 rounded-md shadow-sm border border-white/20"
+                  className="w-5 h-5 rounded shadow-sm"
                   style={{ backgroundColor: item.hex }}
                 />
-                <span className="text-sm">{item.symbol}</span>
-                <span className="text-xs text-muted-foreground">{item.name.replace('White ', '')}</span>
+                <span className="text-lg">{item.symbol}</span>
+                <span className="text-xs text-muted-foreground font-serif">{item.name.replace('White ', '')}</span>
               </div>
             ))}
           </div>
         </div>
         
         {/* Black pieces - Hot theme */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 pb-1 border-b">
-            <span className="text-xs font-semibold text-red-600 uppercase tracking-wide">
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 pb-2 border-b border-border/50">
+            <span className="text-[10px] font-sans font-medium text-rose-400 uppercase tracking-widest">
               🔥 Black — Hot
             </span>
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2">
             {blackPieces.map((item) => (
-              <div key={item.name} className="flex items-center gap-2">
+              <div key={item.name} className="flex items-center gap-3">
                 <div
-                  className="w-5 h-5 rounded-md shadow-sm border border-white/20"
+                  className="w-5 h-5 rounded shadow-sm"
                   style={{ backgroundColor: item.hex }}
                 />
-                <span className="text-sm">{item.symbol}</span>
-                <span className="text-xs text-muted-foreground">{item.name.replace('Black ', '')}</span>
+                <span className="text-lg">{item.symbol}</span>
+                <span className="text-xs text-muted-foreground font-serif">{item.name.replace('Black ', '')}</span>
               </div>
             ))}
           </div>

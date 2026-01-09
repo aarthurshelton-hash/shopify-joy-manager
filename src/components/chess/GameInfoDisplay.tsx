@@ -42,28 +42,31 @@ const GameInfoDisplay: React.FC<GameInfoDisplayProps> = ({ gameData }) => {
   const formattedMoves = formatMoves(gameData.moves);
   
   return (
-    <div className="text-center font-serif max-w-2xl mx-auto">
-      {/* Player Names */}
-      <h1 className="text-2xl md:text-3xl font-bold tracking-wide uppercase mb-2">
-        <span className="small-caps">{gameData.white}</span>
-        <span className="mx-3 text-muted-foreground">vs</span>
-        <span className="small-caps">{gameData.black}</span>
+    <div className="text-center max-w-md mx-auto space-y-3" style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}>
+      {/* Player Names - Bold, elegant */}
+      <h1 className="text-xl md:text-2xl font-semibold tracking-wide text-stone-800">
+        <span>{gameData.white}</span>
+        <span className="mx-2 text-stone-400 font-normal italic text-lg">vs</span>
+        <span>{gameData.black}</span>
       </h1>
       
       {/* Event Name */}
       {gameData.event && gameData.event !== 'Unknown' && (
-        <h2 className="text-lg md:text-xl italic text-muted-foreground mb-1">
-          "{gameData.event}"
+        <h2 className="text-sm md:text-base italic text-stone-500">
+          {gameData.event}
         </h2>
       )}
       
       {/* Date */}
-      <p className="text-sm uppercase tracking-widest text-muted-foreground mb-4">
+      <p className="text-xs uppercase tracking-[0.15em] text-stone-400" style={{ fontFamily: "'Inter', sans-serif" }}>
         {formatDate(gameData.date)}
       </p>
       
-      {/* Move Notation */}
-      <div className="text-xs text-muted-foreground leading-relaxed px-4 max-h-24 overflow-y-auto">
+      {/* Move Notation - Subtle, readable */}
+      <div 
+        className="text-[10px] text-stone-400 leading-relaxed px-2 max-h-20 overflow-y-auto"
+        style={{ fontFamily: "'Inter', sans-serif" }}
+      >
         {formattedMoves}
       </div>
     </div>
