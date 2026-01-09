@@ -4,6 +4,7 @@ import PrintPreview from '@/components/chess/PrintPreview';
 import ColorLegend from '@/components/chess/ColorLegend';
 import ChessLoadingAnimation from '@/components/chess/ChessLoadingAnimation';
 import PaletteSelector from '@/components/chess/PaletteSelector';
+import ChessParticles from '@/components/chess/ChessParticles';
 import { simulateGame, SimulationResult } from '@/lib/chess/gameSimulator';
 import { Header } from '@/components/shop/Header';
 import { ProductSelector } from '@/components/shop/ProductSelector';
@@ -13,6 +14,7 @@ import { toast } from 'sonner';
 import { cleanPgn } from '@/lib/chess/pgnValidator';
 import { PaletteId } from '@/lib/chess/pieceColors';
 import { useParallax } from '@/hooks/useParallax';
+import { useScrollAnimation, scrollAnimationClasses } from '@/hooks/useScrollAnimation';
 
 // Import AI-generated art
 import heroChessArt from '@/assets/hero-chess-art.jpg';
@@ -41,6 +43,15 @@ const Index = () => {
   const heroOffset = useParallax(heroRef, { speed: 0.15, direction: 'up' });
   const featureOffset = useParallax(featureRef, { speed: 0.2, direction: 'up' });
   const kingOffset = useParallax(kingRef, { speed: 0.1, direction: 'down' });
+  
+  // Scroll animations
+  const [heroContentRef, heroContentVisible] = useScrollAnimation<HTMLDivElement>();
+  const [uploadRef, uploadVisible] = useScrollAnimation<HTMLDivElement>();
+  const [featureTitleRef, featureTitleVisible] = useScrollAnimation<HTMLHeadingElement>();
+  const [featureCard1Ref, featureCard1Visible] = useScrollAnimation<HTMLDivElement>();
+  const [featureCard2Ref, featureCard2Visible] = useScrollAnimation<HTMLDivElement>();
+  const [featureCard3Ref, featureCard3Visible] = useScrollAnimation<HTMLDivElement>();
+  const [kingContentRef, kingContentVisible] = useScrollAnimation<HTMLDivElement>();
   
   const handlePaletteChange = useCallback((paletteId: PaletteId) => {
     // Force re-render of components that use the palette
@@ -145,7 +156,17 @@ const Index = () => {
               />
               <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/60 to-background" />
               
-              <div className="relative container mx-auto px-4 py-20 md:py-28">
+              {/* Floating Chess Particles */}
+              <ChessParticles />
+              
+              <div 
+                ref={heroContentRef}
+                className={`relative container mx-auto px-4 py-20 md:py-28 transition-all duration-700 ease-out ${
+                  heroContentVisible 
+                    ? scrollAnimationClasses.fadeUp.visible 
+                    : scrollAnimationClasses.fadeUp.hidden
+                }`}
+              >
                 <div className="max-w-4xl mx-auto text-center space-y-8">
                   {/* Premium badge */}
                   <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium tracking-wide backdrop-blur-sm">
@@ -172,7 +193,14 @@ const Index = () => {
 
             {/* Palette & Upload Section */}
             <section className="container mx-auto px-4 py-12 space-y-12">
-              <div className="max-w-4xl mx-auto space-y-12">
+              <div 
+                ref={uploadRef}
+                className={`max-w-4xl mx-auto space-y-12 transition-all duration-700 delay-100 ease-out ${
+                  uploadVisible 
+                    ? scrollAnimationClasses.fadeUp.visible 
+                    : scrollAnimationClasses.fadeUp.hidden
+                }`}
+              >
                 {/* Palette selector */}
                 <PaletteSelector onPaletteChange={handlePaletteChange} />
                 
@@ -195,12 +223,26 @@ const Index = () => {
               
               <div className="relative container mx-auto px-4">
                 <div className="max-w-4xl mx-auto">
-                  <h3 className="text-2xl md:text-3xl font-display font-bold text-center mb-12">
+                  <h3 
+                    ref={featureTitleRef}
+                    className={`text-2xl md:text-3xl font-display font-bold text-center mb-12 transition-all duration-700 ease-out ${
+                      featureTitleVisible 
+                        ? scrollAnimationClasses.fadeUp.visible 
+                        : scrollAnimationClasses.fadeUp.hidden
+                    }`}
+                  >
                     Why <span className="text-gold-gradient">En Pensent</span>?
                   </h3>
                   
                   <div className="grid md:grid-cols-3 gap-6">
-                    <div className="text-center space-y-4 p-8 rounded-lg bg-card/80 backdrop-blur-sm border border-border/50 hover:border-primary/30 transition-all duration-300 group">
+                    <div 
+                      ref={featureCard1Ref}
+                      className={`text-center space-y-4 p-8 rounded-lg bg-card/80 backdrop-blur-sm border border-border/50 hover:border-primary/30 transition-all duration-500 ease-out group ${
+                        featureCard1Visible 
+                          ? scrollAnimationClasses.scaleUp.visible 
+                          : scrollAnimationClasses.scaleUp.hidden
+                      }`}
+                    >
                       <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto group-hover:bg-primary/20 transition-colors">
                         <Award className="h-8 w-8 text-primary" />
                       </div>
@@ -210,7 +252,14 @@ const Index = () => {
                       </p>
                     </div>
                     
-                    <div className="text-center space-y-4 p-8 rounded-lg bg-card/80 backdrop-blur-sm border border-border/50 hover:border-primary/30 transition-all duration-300 group">
+                    <div 
+                      ref={featureCard2Ref}
+                      className={`text-center space-y-4 p-8 rounded-lg bg-card/80 backdrop-blur-sm border border-border/50 hover:border-primary/30 transition-all duration-500 delay-100 ease-out group ${
+                        featureCard2Visible 
+                          ? scrollAnimationClasses.scaleUp.visible 
+                          : scrollAnimationClasses.scaleUp.hidden
+                      }`}
+                    >
                       <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto group-hover:bg-primary/20 transition-colors">
                         <Palette className="h-8 w-8 text-primary" />
                       </div>
@@ -220,7 +269,14 @@ const Index = () => {
                       </p>
                     </div>
                     
-                    <div className="text-center space-y-4 p-8 rounded-lg bg-card/80 backdrop-blur-sm border border-border/50 hover:border-primary/30 transition-all duration-300 group">
+                    <div 
+                      ref={featureCard3Ref}
+                      className={`text-center space-y-4 p-8 rounded-lg bg-card/80 backdrop-blur-sm border border-border/50 hover:border-primary/30 transition-all duration-500 delay-200 ease-out group ${
+                        featureCard3Visible 
+                          ? scrollAnimationClasses.scaleUp.visible 
+                          : scrollAnimationClasses.scaleUp.hidden
+                      }`}
+                    >
                       <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto group-hover:bg-primary/20 transition-colors">
                         <Sparkles className="h-8 w-8 text-primary" />
                       </div>
@@ -237,7 +293,14 @@ const Index = () => {
             {/* Decorative King Art Section */}
             <section ref={kingRef} className="py-16">
               <div className="container mx-auto px-4">
-                <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center gap-8 md:gap-12">
+                <div 
+                  ref={kingContentRef}
+                  className={`max-w-4xl mx-auto flex flex-col md:flex-row items-center gap-8 md:gap-12 transition-all duration-700 ease-out ${
+                    kingContentVisible 
+                      ? scrollAnimationClasses.fadeUp.visible 
+                      : scrollAnimationClasses.fadeUp.hidden
+                  }`}
+                >
                   {/* King Art with Parallax */}
                   <div 
                     className="w-48 h-48 md:w-64 md:h-64 rounded-2xl overflow-hidden shadow-2xl ring-1 ring-primary/20 flex-shrink-0 transition-transform duration-100 ease-out will-change-transform"
