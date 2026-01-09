@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import PgnUploader from '@/components/chess/PgnUploader';
 import PrintPreview from '@/components/chess/PrintPreview';
 import ColorLegend from '@/components/chess/ColorLegend';
@@ -12,6 +12,7 @@ import { ArrowLeft, Palette, Crown, Sparkles, Award } from 'lucide-react';
 import { toast } from 'sonner';
 import { cleanPgn } from '@/lib/chess/pgnValidator';
 import { PaletteId } from '@/lib/chess/pieceColors';
+import { useParallax } from '@/hooks/useParallax';
 
 // Import AI-generated art
 import heroChessArt from '@/assets/hero-chess-art.jpg';
@@ -30,6 +31,16 @@ const Index = () => {
   const [currentPgn, setCurrentPgn] = useState<string>('');
   const [gameTitle, setGameTitle] = useState<string>('');
   const [paletteKey, setPaletteKey] = useState(0);
+  
+  // Refs for parallax sections
+  const heroRef = useRef<HTMLDivElement>(null);
+  const featureRef = useRef<HTMLDivElement>(null);
+  const kingRef = useRef<HTMLDivElement>(null);
+  
+  // Parallax offsets for each section
+  const heroOffset = useParallax(heroRef, { speed: 0.15, direction: 'up' });
+  const featureOffset = useParallax(featureRef, { speed: 0.2, direction: 'up' });
+  const kingOffset = useParallax(kingRef, { speed: 0.1, direction: 'down' });
   
   const handlePaletteChange = useCallback((paletteId: PaletteId) => {
     // Force re-render of components that use the palette
@@ -123,11 +134,14 @@ const Index = () => {
         ) : !simulation ? (
           <>
             {/* Hero Section with Background Art */}
-            <section className="relative overflow-hidden">
-              {/* Background Image */}
+            <section ref={heroRef} className="relative overflow-hidden">
+              {/* Background Image with Parallax */}
               <div 
-                className="absolute inset-0 bg-cover bg-center opacity-20"
-                style={{ backgroundImage: `url(${heroChessArt})` }}
+                className="absolute inset-0 bg-cover bg-center opacity-20 transition-transform duration-75 ease-out will-change-transform"
+                style={{ 
+                  backgroundImage: `url(${heroChessArt})`,
+                  transform: `translateY(${heroOffset}px) scale(1.1)`,
+                }}
               />
               <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/60 to-background" />
               
@@ -168,11 +182,14 @@ const Index = () => {
             </section>
             
             {/* Feature highlights with art backgrounds */}
-            <section className="relative py-20 overflow-hidden">
-              {/* Background Art */}
+            <section ref={featureRef} className="relative py-20 overflow-hidden">
+              {/* Background Art with Parallax */}
               <div 
-                className="absolute inset-0 bg-cover bg-center opacity-10"
-                style={{ backgroundImage: `url(${chessMovementArt})` }}
+                className="absolute inset-0 bg-cover bg-center opacity-10 transition-transform duration-75 ease-out will-change-transform"
+                style={{ 
+                  backgroundImage: `url(${chessMovementArt})`,
+                  transform: `translateY(${featureOffset}px) scale(1.15)`,
+                }}
               />
               <div className="absolute inset-0 bg-gradient-to-r from-background via-background/90 to-background" />
               
@@ -218,11 +235,14 @@ const Index = () => {
             </section>
 
             {/* Decorative King Art Section */}
-            <section className="py-16">
+            <section ref={kingRef} className="py-16">
               <div className="container mx-auto px-4">
                 <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center gap-8 md:gap-12">
-                  {/* King Art */}
-                  <div className="w-48 h-48 md:w-64 md:h-64 rounded-2xl overflow-hidden shadow-2xl ring-1 ring-primary/20 flex-shrink-0">
+                  {/* King Art with Parallax */}
+                  <div 
+                    className="w-48 h-48 md:w-64 md:h-64 rounded-2xl overflow-hidden shadow-2xl ring-1 ring-primary/20 flex-shrink-0 transition-transform duration-100 ease-out will-change-transform"
+                    style={{ transform: `translateY(${kingOffset}px)` }}
+                  >
                     <img 
                       src={chessKingArt} 
                       alt="Golden chess king" 
