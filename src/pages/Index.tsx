@@ -4,31 +4,39 @@ import PrintPreview from '@/components/chess/PrintPreview';
 import ColorLegend from '@/components/chess/ColorLegend';
 import { simulateGame, SimulationResult } from '@/lib/chess/gameSimulator';
 import { Header } from '@/components/shop/Header';
+import { ProductSelector } from '@/components/shop/ProductSelector';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Palette, Trophy, Zap, Heart } from 'lucide-react';
-import { toast } from 'sonner';
 
 const Index = () => {
   const [simulation, setSimulation] = useState<SimulationResult | null>(null);
   const [showLegend, setShowLegend] = useState(false);
   const [currentPgn, setCurrentPgn] = useState<string>('');
+  const [gameTitle, setGameTitle] = useState<string>('');
   
   const handlePgnSubmit = (pgn: string) => {
     const result = simulateGame(pgn);
     setSimulation(result);
     setCurrentPgn(pgn);
+    
+    // Extract game title from PGN headers
+    const whiteMatch = pgn.match(/\[White\s+"([^"]+)"\]/);
+    const blackMatch = pgn.match(/\[Black\s+"([^"]+)"\]/);
+    const eventMatch = pgn.match(/\[Event\s+"([^"]+)"\]/);
+    
+    if (whiteMatch && blackMatch) {
+      setGameTitle(`${whiteMatch[1]} vs ${blackMatch[1]}`);
+    } else if (eventMatch) {
+      setGameTitle(eventMatch[1]);
+    } else {
+      setGameTitle('Chess Visualization');
+    }
   };
   
   const handleBack = () => {
     setSimulation(null);
     setCurrentPgn('');
-  };
-  
-  const handleOrderPrint = () => {
-    // This will be connected to Shopify + Printify
-    toast.info("Print ordering coming soon!", {
-      description: "We're setting up the print-on-demand system. Check back shortly!",
-    });
+    setGameTitle('');
   };
   
   return (
@@ -118,11 +126,18 @@ const Index = () => {
         ) : (
           <div className="flex flex-col lg:flex-row gap-8 justify-center">
             {/* Print preview */}
-            <div className="flex-1 max-w-2xl">
+            <div className="flex-1 max-w-2xl space-y-6">
               <PrintPreview 
                 simulation={simulation} 
-                onOrderPrint={handleOrderPrint}
                 pgn={currentPgn}
+              />
+              
+              {/* Product selector for ordering */}
+              <ProductSelector 
+                customPrintData={{
+                  pgn: currentPgn,
+                  gameTitle: gameTitle,
+                }}
               />
             </div>
             

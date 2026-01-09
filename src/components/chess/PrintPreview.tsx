@@ -3,16 +3,15 @@ import ChessBoardVisualization from './ChessBoardVisualization';
 import GameInfoDisplay from './GameInfoDisplay';
 import { SimulationResult } from '@/lib/chess/gameSimulator';
 import { Button } from '@/components/ui/button';
-import { Download, ShoppingCart, Loader2 } from 'lucide-react';
+import { Download, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface PrintPreviewProps {
   simulation: SimulationResult;
-  onOrderPrint?: () => void;
   pgn?: string;
 }
 
-const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, onOrderPrint, pgn }) => {
+const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn }) => {
   const printRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = React.useState(false);
   
@@ -73,7 +72,7 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, onOrderPrint, p
       </div>
       
       {/* Action buttons */}
-      <div className="flex justify-center gap-4">
+      <div className="flex justify-center">
         <Button 
           variant="outline" 
           className="gap-2"
@@ -87,18 +86,6 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, onOrderPrint, p
           )}
           Download Image
         </Button>
-        <Button onClick={onOrderPrint} className="gap-2">
-          <ShoppingCart className="h-4 w-4" />
-          Order Print
-        </Button>
-      </div>
-      
-      {/* Info about the process */}
-      <div className="text-center text-sm text-muted-foreground max-w-md mx-auto">
-        <p>
-          Your unique chess visualization will be printed on museum-quality paper 
-          and shipped directly to your door.
-        </p>
       </div>
     </div>
   );
