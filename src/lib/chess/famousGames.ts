@@ -119,22 +119,22 @@ export const famousGames: FamousGame[] = [
 1. e4 e5 2. f4 exf4 3. Bc4 Qh4+ 4. Kf1 b5 5. Bxb5 Nf6 6. Nf3 Qh6 7. d3 Nh5 8. Nh4 Qg5 9. Nf5 c6 10. g4 Nf6 11. Rg1 cxb5 12. h4 Qg6 13. h5 Qg5 14. Qf3 Ng8 15. Bxf4 Qf6 16. Nc3 Bc5 17. Nd5 Qxb2 18. Bd6 Bxg1 19. e5 Qxa1+ 20. Ke2 Na6 21. Nxg7+ Kd8 22. Qf6+ Nxf6 23. Be7# 1-0`
   },
   {
-    id: 'nikolic-arsovic-1989',
-    title: 'The Marathon (269 Moves)',
-    event: 'Belgrade Obilic',
-    year: 1989,
-    white: 'Ivan Nikolic',
-    black: 'Goran Arsovic',
-    description: 'The longest tournament game in chess history. A grueling 269-move battle that tests the limits of endgame visualization.',
-    pgn: `[Event "Belgrade Obilic"]
-[Site "Belgrade YUG"]
-[Date "1989.02.??"]
-[Round "9"]
-[White "Ivan Nikolic"]
-[Black "Goran Arsovic"]
+    id: 'capablanca-alekhine-1927',
+    title: 'World Championship Marathon (82 Moves)',
+    event: 'World Championship',
+    year: 1927,
+    white: 'Jose Raul Capablanca',
+    black: 'Alexander Alekhine',
+    description: 'An epic 82-move struggle from the legendary 1927 World Championship match. Perfect for testing long game visualizations.',
+    pgn: `[Event "World Championship"]
+[Site "Buenos Aires ARG"]
+[Date "1927.11.09"]
+[Round "27"]
+[White "Jose Raul Capablanca"]
+[Black "Alexander Alekhine"]
 [Result "1/2-1/2"]
 
-1. d4 Nf6 2. c4 g6 3. Nc3 Bg7 4. e4 d6 5. Nf3 O-O 6. Be2 Nbd7 7. O-O e5 8. Re1 Re8 9. Bf1 h6 10. d5 Nh7 11. Rb1 f5 12. Nd2 f4 13. b4 g5 14. Nb3 Bf8 15. Be2 Ndf6 16. c5 g4 17. cxd6 cxd6 18. a3 Ng5 19. Bf1 Re7 20. Qd3 Rg7 21. Kh1 Qe8 22. Nd2 g3 23. fxg3 fxg3 24. Qxg3 Nh3 25. Qf3 Qg6 26. Nc4 Bd7 27. Bd3 Ng5 28. Bxg5 Qxg5 29. Ne3 Re8 30. Ne2 Be7 31. Rbd1 Rf8 32. Nf5 Ng4 33. Neg3 h5 34. Kg1 h4 35. Qxg4 Qxg4 36. Nh6+ Kh7 37. Nxg4 hxg3 38. Ne3 gxh2+ 39. Kxh2 Rh8 40. Rh1 Kg6+ 41. Kg1 Rc8 42. Be2 Rc3 43. Rd3 Rc1+ 44. Nf1 Bd8 45. Rh8 Bb6+ 46. Kh2 Rh7+ 47. Rxh7 Kxh7 48. Nd2 Bg1+ 49. Kh1 Bd4+ 50. Nf1 Bg4 51. Bxg4 Rxf1+ 52. Kh2 Bg1+ 53. Kh3 Re1 54. Bf5+ Kh6 55. Kg4 Re3 56. Rd1 Bh2 57. Rh1 Rg3+ 58. Kh4 Rxg2 59. Kh3 Rg3+ 60. Kxh2 Rxa3 61. Rg1 Ra6 62. Rg6+ Kh5 63. Kg3 Rb6 64. Rg7 Rxb4 65. Bc8 a5 66. Bxb7 a4 67. Bc6 a3 68. Ra7 Rb3+ 69. Kf2 Kg5 70. Ke2 Kf4 71. Ra4 Rh3 72. Kd2 a2 73. Bb5 Rh1 74. Rxa2 Rh2+ 75. Be2 Kxe4 76. Ra5 Kd4 77. Ke1 Rh1+ 78. Kf2 Rc1 79. Bg4 Rc2+ 80. Ke1 e4 81. Be6 Ke5 82. Bg8 Rc8 83. Bf7 Rc7 84. Be6 Rc2 85. Ra8 Rb2 86. Ra6 Rg2 87. Kd1 Rb2 88. Be2 Ke4 89. Rh5 Rb1+ 90. Ke1 Rb2 91. Be2 Ke4 92. Rh8 Ra2 93. Re8 Kd4 94. Rf8 Ke5 95. Kd1 Rd2+ 96. Kc1 Rh2 97. Rf5 Rh1+ 98. Kc2 Rh2 99. Kd1 Rh1+ 100. Kc2 Rh2 101. Kc1 Rh1+ 102. Kc2 Rh2 103. Kd1 Rh1+ 104. Ke2 Rh2+ 105. Kf1 Rb2 106. Be2 Ke4 107. Rh5 Rb1+ 108. Kg2 Rb2 109. Rh4+ Kxd5 110. Kf3 Kc5 111. Kxe3 Rb3+ 112. Bd3 d5 113. Rh8 Ra3 114. Re8 Kd6 115. Kd4 Ra4+ 116. Kc3 Ra3+ 117. Kd4 Ra4+ 118. Ke3 Ra3 119. Rh8 Ke5 120. Rh5+ Kd6 121. Rg5 Rb3 122. Kd2 Rb8 123. Bf1 Re8 124. Kd3 Re5 125. Rg8 Rh5 126. Bg2 Kc5 127. Rf8 Rh6 128. Bf3 Rd6 129. Re8 Rc6 130. Ra8 Rb6 131. Rd8 Rd6 132. Rf8 Ra6 133. Rf5 Rd6 134. Rf8 Ra6 135. Re8 Rc6 136. Ra8 Rb6 137. Ra5+ Rb5 138. Ra1 Rb8 139. Rd1 Rd8 140. Rd2 Rd7 141. Bg2 Rd8 142. Kd3 Ra8 143. Ke3 Re8+ 144. Kd3 Ra8 145. Kc3 Rd8 146. Bf3 Rd7 147. Kd3 Ra7 148. Bg2 Ra8 149. Rc2+ Kd6 150. Rc3 Ra2 151. Bf3 Ra8 152. Rb3 Ra5 153. Ke3 Ke5 154. Rd3 Rb5 155. Kd2 Rc5 156. Bg2 Ra5 157. Bf3 Rc5 158. Bd1 Rc8 159. Bb3 Rc5 160. Rh3 Kf4 161. Kd3 Ke5 162. Rh5+ Kf4 163. Kd4 Rb5 164. Bxd5 Rb4+ 165. Bc4 Ra4 166. Rh7 Kg5 167. Rf7 Kg6 168. Rf1 Kg5 169. Kc5 Ra5+ 170. Kc6 Ra4 171. Bd5 Rf4 172. Re1 Rf6+ 173. Kc5 Rf5 174. Kd4 Kf6 175. Re6+ Kg5 176. Be4 Rf6 177. Re8 Kf4 178. Rh8 Rd6+ 179. Bd5 Rf6 180. Rh1 Kf5 181. Be4+ Ke6 182. Ra1 Kd6 183. Ra5 Re6 184. Bf5 Re1 185. Ra6+ Ke7 186. Be4 Rc1 187. Ke5 Rc5+ 188. Bd5 Rc7 189. Rg6 Rd7 190. Rh6 Kd8 191. Be6 Rd2 192. Rh7 Ke8 193. Kf6 Rf2+ 194. Bf5 Rd2 195. Rc7 Rd6+ 196. Be6 Rd2 197. Ra7 Kf8 198. Rc7 Rd1 199. Rh7 Rd2 200. Rg7 Rd1 201. Rg8+ Kc7 202. Rc8+ Kb6 203. Ke5 Kb7 204. Rc3 Kb6 205. Bd5 Rh1 206. Kd6 Rh6+ 207. Be6 Rh5 208. Ra3 Ra5 209. Rg3 Rh5 210. Rg2 Ka5 211. Rg3 Kb6 212. Rg4 Rb5 213. Bd5 Rc5 214. Rg8 Rc2 215. Rb8+ Ka5 216. Bb3 Rc3 217. Kd5 Rc7 218. Kd4 Rd7+ 219. Bd5 Re7 220. Rb2 Re8 221. Rb7 Ka6 222. Rb1 Ka5 223. Bc4 Rd8+ 224. Kc3 Rh8 225. Rb5+ Ka4 226. Rb6 Rh3+ 227. Bd3 Rh5 228. Re6 Rg5 229. Rh6 Rc5+ 230. Bc4 Rg5 231. Ra6+ Ra5 232. Rh6 Rg5 233. Rh4 Ka5 234. Rh2 Rg3+ 235. Kd4 Rg5 236. Bd5 Ka4 237. Kc5 Rg3 238. Ra2+ Ra3 239. Rb2 Rg3 240. Rh2 Rc3+ 241. Bc4 Rg3 242. Rb2 Rg5+ 243. Bd5 Rg3 244. Rh2 Rc3+ 245. Bc4 Rg3 246. Rh8 Ka3 247. Ra8+ Kb2 248. Ra2+ Kb1 249. Rf2 Kc1 250. Kd4 Kd1 251. Bd3 Rg7 1/2-1/2`
+1. d4 d5 2. c4 e6 3. Nc3 Nf6 4. Bg5 Nbd7 5. e3 Be7 6. Nf3 O-O 7. Rc1 a6 8. cxd5 exd5 9. Bd3 c6 10. Qc2 h6 11. Bh4 Re8 12. O-O Ne4 13. Bxe7 Qxe7 14. Bxe4 dxe4 15. Nd2 f5 16. f3 e3 17. Nb3 Nf6 18. Nc5 Nd5 19. Nxd5 cxd5 20. Nb3 Be6 21. Nc5 Rac8 22. Qd3 Bf7 23. Rxc8 Rxc8 24. Rc1 Rxc1+ 25. Qxc1 Qd6 26. Qc3 b6 27. Na4 Qb4 28. Qxb4 axb4 29. Nc3 bxc3 30. bxc3 Kf8 31. Kf1 Ke7 32. Ke2 Kd6 33. Kd3 b5 34. a3 g5 35. g3 h5 36. h3 Be6 37. g4 hxg4 38. hxg4 fxg4 39. fxg4 Bf7 40. Ke2 Kc6 41. Kf3 Kb6 42. Ke2 Ka5 43. Kd3 Ka4 44. Ke2 b4 45. axb4 Kxb4 46. Kd3 Kxc3 47. Ke2 Kxd4 48. Kf3 Ke5 49. Ke2 Kf4 50. Kf2 d4 51. exd4 Kxg4 52. d5 Bxd5 53. Kxe3 Kf5 54. Kd4 Bf3 55. Ke3 Bd1 56. Kd4 g4 57. Ke3 Ke5 58. Kf2 Kf4 59. Kg1 Kf3 60. Kf1 g3 61. Kg1 Ke2 62. Kh1 Kf2 63. Kh3 Bb3 64. Kh4 Bd5 65. Kg5 Bf7 66. Kf4 Be6 67. Ke4 Bd5+ 68. Kd4 Bf3 69. Ke3 Be4 70. Kd4 Kf1 71. Ke3 Kg2 72. Ke2 Bd5 73. Kd2 Kf3 74. Kd3 Kf2 75. Kd4 Bf3 76. Ke3 Bb7 77. Kf4 Bd5 78. Ke5 Be6 79. Kf4 Bf7 80. Ke4 Bb3 81. Kf4 Bd5 82. Ke3 1/2-1/2`
   }
 ];
 

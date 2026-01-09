@@ -2,8 +2,10 @@ import React, { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Upload, FileText, Crown, Sparkles } from 'lucide-react';
+import { Upload, FileText, Crown, Sparkles, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { famousGames, FamousGame } from '@/lib/chess/famousGames';
+import { validatePgn, cleanPgn, PgnValidationResult } from '@/lib/chess/pgnValidator';
+import { toast } from 'sonner';
 
 interface PgnUploaderProps {
   onPgnSubmit: (pgn: string) => void;
@@ -13,7 +15,39 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
   const [pgn, setPgn] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [selectedGame, setSelectedGame] = useState<FamousGame | null>(null);
+  const [validation, setValidation] = useState<PgnValidationResult | null>(null);
+  const [isValidating, setIsValidating] = useState(false);
   
+  const handleValidate = useCallback(() => {
+    if (!pgn.trim()) {
+      toast.error('No PGN to validate', {
+        description: 'Please enter or upload a PGN first.',
+      });
+      return;
+    }
+
+    setIsValidating(true);
+    
+    // Use setTimeout to allow UI to update
+    setTimeout(() => {
+      const cleanedPgn = cleanPgn(pgn);
+      const result = validatePgn(cleanedPgn);
+      setValidation(result);
+      setIsValidating(false);
+
+      if (result.isValid) {
+        toast.success('PGN is valid!', {
+          description: `${result.moveCount} moves detected.`,
+        });
+      } else {
+        toast.error('Invalid PGN', {
+          description: result.error,
+          duration: 6000,
+        });
+      }
+    }, 50);
+  }, [pgn]);
+
   const handleSubmit = useCallback(() => {
     if (pgn.trim()) {
       onPgnSubmit(pgn.trim());
@@ -23,6 +57,7 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
   const handleLoadGame = useCallback((game: FamousGame) => {
     setPgn(game.pgn);
     setSelectedGame(game);
+    setValidation(null); // Reset validation when loading a new game
   }, []);
   
   const handleFileUpload = useCallback((file: File) => {
@@ -152,29 +187,69 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
               onChange={(e) => {
                 setPgn(e.target.value);
                 setSelectedGame(null);
+                setValidation(null); // Reset validation when text changes
               }}
               className="min-h-[150px] font-mono text-sm bg-background/50 border-border/50 focus:border-primary/50"
             />
           </div>
           
+          {/* Validation status */}
+          {validation && (
+            <div className={`p-4 rounded-lg flex items-start gap-3 ${
+              validation.isValid 
+                ? 'bg-green-500/10 border border-green-500/30' 
+                : 'bg-destructive/10 border border-destructive/30'
+            }`}>
+              {validation.isValid ? (
+                <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
+              ) : (
+                <XCircle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+              )}
+              <div>
+                <p className={`text-sm font-medium ${validation.isValid ? 'text-green-500' : 'text-destructive'}`}>
+                  {validation.isValid ? `Valid PGN — ${validation.moveCount} moves` : 'Invalid PGN'}
+                </p>
+                {!validation.isValid && validation.error && (
+                  <p className="text-xs text-muted-foreground mt-1">{validation.error}</p>
+                )}
+              </div>
+            </div>
+          )}
+          
           {/* Selected game info */}
-          {selectedGame && (
+          {selectedGame && !validation && (
             <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
               <p className="text-sm font-display font-semibold">{selectedGame.title}</p>
               <p className="text-xs text-muted-foreground mt-1 font-serif">{selectedGame.description}</p>
             </div>
           )}
           
-          {/* Action button */}
-          <Button 
-            onClick={handleSubmit} 
-            disabled={!pgn.trim()}
-            className="w-full gap-2 btn-luxury py-6 text-base font-medium"
-            size="lg"
-          >
-            <Sparkles className="h-5 w-5" />
-            Generate Visualization
-          </Button>
+          {/* Action buttons */}
+          <div className="flex gap-3">
+            <Button 
+              onClick={handleValidate} 
+              disabled={!pgn.trim() || isValidating}
+              variant="outline"
+              className="gap-2 flex-1"
+              size="lg"
+            >
+              {isValidating ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <CheckCircle className="h-4 w-4" />
+              )}
+              Validate PGN
+            </Button>
+            <Button 
+              onClick={handleSubmit} 
+              disabled={!pgn.trim()}
+              className="gap-2 flex-[2] btn-luxury py-6 text-base font-medium"
+              size="lg"
+            >
+              <Sparkles className="h-5 w-5" />
+              Generate Visualization
+            </Button>
+          </div>
         </div>
       </div>
     </div>
