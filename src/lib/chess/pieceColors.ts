@@ -40,10 +40,10 @@ export function getPieceColor(piece: PieceType, color: PieceColor): string {
   return color === 'w' ? whitePieceColors[piece] : blackPieceColors[piece];
 }
 
-// Board square colors - neutral to let piece colors shine
+// Board square colors - off-white and gunmetal grey for premium look
 export const boardColors = {
-  light: '#FAFAF9', // Off-white (warm neutral)
-  dark: '#E7E5E4',  // Light stone gray
+  light: '#FAFAF9', // Off-white
+  dark: '#2C2C2C',  // Gunmetal dark grey (almost black)
   border: '#1C1917', // Near-black border
 };
 
