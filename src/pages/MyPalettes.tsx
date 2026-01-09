@@ -11,6 +11,8 @@ import {
   Loader2, 
   PlayCircle,
   Calendar,
+  Globe,
+  Lock,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { setCustomColor, setActivePalette, PieceType } from '@/lib/chess/pieceColors';
@@ -24,6 +26,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Switch } from '@/components/ui/switch';
 
 interface SavedPalette {
   id: string;
@@ -32,6 +35,7 @@ interface SavedPalette {
   white_colors: Record<string, string>;
   black_colors: Record<string, string>;
   created_at: string;
+  is_public: boolean;
 }
 
 const MyPalettes: React.FC = () => {
@@ -120,6 +124,26 @@ const MyPalettes: React.FC = () => {
     }
   };
 
+  const handleTogglePublic = async (paletteId: string, currentValue: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('saved_palettes')
+        .update({ is_public: !currentValue })
+        .eq('id', paletteId);
+
+      if (error) throw error;
+      
+      setPalettes(prev => prev.map(p => 
+        p.id === paletteId ? { ...p, is_public: !currentValue } : p
+      ));
+      
+      toast.success(!currentValue ? 'Palette is now public!' : 'Palette is now private');
+    } catch (error) {
+      console.error('Error updating palette:', error);
+      toast.error('Failed to update palette visibility');
+    }
+  };
+
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('en-US', {
       month: 'short',
@@ -197,11 +221,29 @@ const MyPalettes: React.FC = () => {
                   {/* Palette name and date */}
                   <div className="flex items-start justify-between mb-4">
                     <div>
-                      <h3 className="font-display font-semibold text-lg">{palette.name}</h3>
+                      <h3 className="font-display font-semibold text-lg flex items-center gap-2">
+                        {palette.name}
+                        {palette.is_public ? (
+                          <Globe className="h-4 w-4 text-primary" />
+                        ) : (
+                          <Lock className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </h3>
                       <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
                         <Calendar className="h-3 w-3" />
                         {formatDate(palette.created_at)}
                       </p>
+                    </div>
+                    
+                    {/* Public toggle */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">
+                        {palette.is_public ? 'Public' : 'Private'}
+                      </span>
+                      <Switch
+                        checked={palette.is_public}
+                        onCheckedChange={() => handleTogglePublic(palette.id, palette.is_public)}
+                      />
                     </div>
                   </div>
 

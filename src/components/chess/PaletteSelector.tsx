@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { Palette, Check, Pencil, Save, Loader2 } from 'lucide-react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { Palette, Check, Pencil, Save, Loader2, ChevronDown, Globe, User } from 'lucide-react';
 import { 
   colorPalettes, 
   getActivePalette, 
@@ -22,6 +22,23 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  DropdownMenuLabel,
+} from '@/components/ui/dropdown-menu';
+
+interface SavedPaletteItem {
+  id: string;
+  name: string;
+  white_colors: Record<string, string>;
+  black_colors: Record<string, string>;
+  is_public: boolean;
+  user_id: string;
+}
 
 interface PaletteSelectorProps {
   onPaletteChange?: (paletteId: PaletteId) => void;
@@ -97,8 +114,72 @@ const PaletteSelector: React.FC<PaletteSelectorProps> = ({ onPaletteChange }) =>
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
   const [paletteName, setPaletteName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [savedPalettes, setSavedPalettes] = useState<SavedPaletteItem[]>([]);
+  const [publicPalettes, setPublicPalettes] = useState<SavedPaletteItem[]>([]);
+  const [isLoadingPalettes, setIsLoadingPalettes] = useState(false);
   
   const pieces: PieceType[] = ['k', 'q', 'r', 'b', 'n', 'p'];
+
+  // Fetch saved and public palettes
+  useEffect(() => {
+    const fetchPalettes = async () => {
+      setIsLoadingPalettes(true);
+      try {
+        // Fetch public palettes (available to everyone)
+        const { data: publicData } = await supabase
+          .from('saved_palettes')
+          .select('id, name, white_colors, black_colors, is_public, user_id')
+          .eq('is_public', true)
+          .order('created_at', { ascending: false })
+          .limit(20);
+        
+        setPublicPalettes((publicData || []).map(p => ({
+          ...p,
+          white_colors: p.white_colors as Record<string, string>,
+          black_colors: p.black_colors as Record<string, string>,
+        })));
+
+        // Fetch user's own palettes if logged in
+        if (user) {
+          const { data: userData } = await supabase
+            .from('saved_palettes')
+            .select('id, name, white_colors, black_colors, is_public, user_id')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false });
+          
+          setSavedPalettes((userData || []).map(p => ({
+            ...p,
+            white_colors: p.white_colors as Record<string, string>,
+            black_colors: p.black_colors as Record<string, string>,
+          })));
+        }
+      } catch (error) {
+        console.error('Error fetching palettes:', error);
+      } finally {
+        setIsLoadingPalettes(false);
+      }
+    };
+
+    fetchPalettes();
+  }, [user]);
+
+  const handleLoadSavedPalette = (palette: SavedPaletteItem) => {
+    pieces.forEach(piece => {
+      setCustomColor('w', piece, palette.white_colors[piece]);
+      setCustomColor('b', piece, palette.black_colors[piece]);
+    });
+    
+    setCustomColors({
+      white: palette.white_colors as Record<PieceType, string>,
+      black: palette.black_colors as Record<PieceType, string>,
+    });
+    
+    setActivePalette('custom');
+    setActivePaletteId('custom');
+    onPaletteChange?.('custom');
+    
+    toast.success(`"${palette.name}" loaded!`);
+  };
   
   const handleSelect = useCallback((paletteId: PaletteId) => {
     // If selecting custom, generate random colors
@@ -165,14 +246,103 @@ const PaletteSelector: React.FC<PaletteSelectorProps> = ({ onPaletteChange }) =>
   
   return (
     <div className="rounded-lg border border-border/50 bg-card/50 overflow-hidden">
-      <div className="px-6 py-5 border-b border-border/50">
-        <h3 className="flex items-center gap-2 font-display text-lg font-semibold">
-          <Palette className="h-5 w-5 text-primary" />
-          Color Palette
-        </h3>
-        <p className="text-sm text-muted-foreground mt-1 font-serif">
-          Choose a theme for your visualization
-        </p>
+      <div className="px-6 py-5 border-b border-border/50 flex items-center justify-between">
+        <div>
+          <h3 className="flex items-center gap-2 font-display text-lg font-semibold">
+            <Palette className="h-5 w-5 text-primary" />
+            Color Palette
+          </h3>
+          <p className="text-sm text-muted-foreground mt-1 font-serif">
+            Choose a theme for your visualization
+          </p>
+        </div>
+        
+        {/* Quick Load Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-2" disabled={isLoadingPalettes}>
+              {isLoadingPalettes ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+              Load Saved
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-64 max-h-80 overflow-y-auto bg-card border-border z-50">
+            {/* User's palettes */}
+            {user && savedPalettes.length > 0 && (
+              <>
+                <DropdownMenuLabel className="flex items-center gap-2 text-xs">
+                  <User className="h-3 w-3" />
+                  My Palettes
+                </DropdownMenuLabel>
+                {savedPalettes.map((palette) => (
+                  <DropdownMenuItem
+                    key={palette.id}
+                    onClick={() => handleLoadSavedPalette(palette)}
+                    className="cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2 w-full">
+                      <div className="flex gap-0.5">
+                        {pieces.slice(0, 3).map((piece) => (
+                          <div
+                            key={piece}
+                            className="w-3 h-3 rounded-sm"
+                            style={{ backgroundColor: palette.white_colors[piece] }}
+                          />
+                        ))}
+                      </div>
+                      <span className="flex-1 truncate">{palette.name}</span>
+                      {palette.is_public && <Globe className="h-3 w-3 text-muted-foreground" />}
+                    </div>
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator />
+              </>
+            )}
+            
+            {/* Public palettes */}
+            {publicPalettes.length > 0 && (
+              <>
+                <DropdownMenuLabel className="flex items-center gap-2 text-xs">
+                  <Globe className="h-3 w-3" />
+                  Community Palettes
+                </DropdownMenuLabel>
+                {publicPalettes
+                  .filter(p => !user || p.user_id !== user.id) // Don't show own palettes again
+                  .slice(0, 10)
+                  .map((palette) => (
+                    <DropdownMenuItem
+                      key={palette.id}
+                      onClick={() => handleLoadSavedPalette(palette)}
+                      className="cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2 w-full">
+                        <div className="flex gap-0.5">
+                          {pieces.slice(0, 3).map((piece) => (
+                            <div
+                              key={piece}
+                              className="w-3 h-3 rounded-sm"
+                              style={{ backgroundColor: palette.white_colors[piece] }}
+                            />
+                          ))}
+                        </div>
+                        <span className="flex-1 truncate">{palette.name}</span>
+                      </div>
+                    </DropdownMenuItem>
+                  ))}
+              </>
+            )}
+            
+            {/* Empty state */}
+            {savedPalettes.length === 0 && publicPalettes.length === 0 && (
+              <div className="px-3 py-4 text-center text-sm text-muted-foreground">
+                No saved palettes yet
+              </div>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
       
       <div className="p-5 space-y-5">
