@@ -7,7 +7,7 @@ import { validatePgn, cleanPgn, PgnValidationResult } from '@/lib/chess/pgnValid
 import { fixPgn, PgnFixResult } from '@/lib/chess/pgnFixer';
 import { toast } from 'sonner';
 
-const GAMES_PER_PAGE = 6;
+const GAMES_PER_PAGE = 10;
 
 interface PgnUploaderProps {
   onPgnSubmit: (pgn: string, gameTitle?: string) => void;
