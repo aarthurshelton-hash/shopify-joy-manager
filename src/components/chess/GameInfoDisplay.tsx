@@ -72,7 +72,7 @@ const GameInfoDisplay: React.FC<GameInfoDisplayProps> = ({ gameData, title }) =>
       <div 
         className="text-stone-400 leading-relaxed px-2 text-[8px]"
         style={{ 
-          fontFamily: "'Inter', sans-serif",
+          fontFamily: "'Times New Roman', Times, serif",
         }}
       >
         {formattedMoves}
