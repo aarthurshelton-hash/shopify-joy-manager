@@ -3,48 +3,47 @@ import PgnUploader from '@/components/chess/PgnUploader';
 import PrintPreview from '@/components/chess/PrintPreview';
 import ColorLegend from '@/components/chess/ColorLegend';
 import { simulateGame, SimulationResult } from '@/lib/chess/gameSimulator';
+import { Header } from '@/components/shop/Header';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Palette, Trophy, Zap, Heart } from 'lucide-react';
+import { toast } from 'sonner';
 
 const Index = () => {
   const [simulation, setSimulation] = useState<SimulationResult | null>(null);
   const [showLegend, setShowLegend] = useState(false);
+  const [currentPgn, setCurrentPgn] = useState<string>('');
   
   const handlePgnSubmit = (pgn: string) => {
     const result = simulateGame(pgn);
     setSimulation(result);
+    setCurrentPgn(pgn);
   };
   
   const handleBack = () => {
     setSimulation(null);
+    setCurrentPgn('');
   };
   
   const handleOrderPrint = () => {
-    // TODO: Integrate with Shopify/Printify
-    console.log('Order print clicked');
+    // This will be connected to Shopify + Printify
+    toast.info("Print ordering coming soon!", {
+      description: "We're setting up the print-on-demand system. Check back shortly!",
+    });
   };
   
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-background to-accent/20">
-      {/* Header */}
-      <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            {simulation && (
-              <Button variant="ghost" size="sm" onClick={handleBack}>
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                New Game
-              </Button>
-            )}
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">♔</span>
-              <h1 className="text-xl font-serif font-bold tracking-wide">
-                En Pensent
-              </h1>
-            </div>
-          </div>
-          
-          {simulation && (
+      <Header />
+      
+      {/* Secondary navigation for visualization mode */}
+      {simulation && (
+        <div className="border-b bg-muted/30">
+          <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+            <Button variant="ghost" size="sm" onClick={handleBack}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Create Another
+            </Button>
+            
             <Button 
               variant="outline" 
               size="sm"
@@ -54,9 +53,9 @@ const Index = () => {
               <Palette className="h-4 w-4" />
               {showLegend ? 'Hide' : 'Show'} Legend
             </Button>
-          )}
+          </div>
         </div>
-      </header>
+      )}
       
       {/* Main content */}
       <main className="container mx-auto px-4 py-8">
@@ -123,6 +122,7 @@ const Index = () => {
               <PrintPreview 
                 simulation={simulation} 
                 onOrderPrint={handleOrderPrint}
+                pgn={currentPgn}
               />
             </div>
             
