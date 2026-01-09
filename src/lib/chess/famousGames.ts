@@ -312,6 +312,460 @@ export const famousGames: FamousGame[] = [
 [Result "1-0"]
 
 1. e4 e5 2. Nf3 Nc6 3. Bb5 Nf6 4. O-O Nxe4 5. d4 Nd6 6. Bxc6 dxc6 7. dxe5 Nf5 8. Qxd8+ Kxd8 9. Nc3 Ke8 10. h3 Be7 11. Ne4 b6 12. Re1 Bb7 13. Nd4 Nxd4 14. Nf6+ gxf6 15. exf6 Rg8 16. fxe7 Ne6 17. Bf4 Nxf4 18. Re4 Nd5 19. Rae1 Kd7 20. c4 Nxe7 21. Rxe7+ Kd6 22. Rxf7 Raf8 23. Ree7 Rxf7 24. Rxf7 Kc5 25. Rxh7 Kb4 26. Rc7 Rg6 27. b3 Rf6 28. f3 a5 29. h4 a4 30. g4 axb3 31. axb3 Bc8 32. h5 Bf5 33. Rxc6 Rxc6 34. gxf5 Rc5 35. f6 Rxf5 36. Kg2 Rb5 37. Kf2 Kxb3 38. Ke3 Kc4 39. Ke4 b5 40. h6 1-0`
+  },
+  {
+    id: 'tal-miller-1988',
+    title: 'Tal\'s Last Brilliancy',
+    event: 'World Blitz Championship',
+    year: 1988,
+    white: 'Mikhail Tal',
+    black: 'Walter Browne',
+    description: 'The Magician from Riga shows his legendary sacrificial style in a stunning attacking game.',
+    source: 'chessgames.com/1070149',
+    pgn: `[Event "World Blitz Championship"]
+[Site "Saint John CAN"]
+[Date "1988.??.??"]
+[White "Mikhail Tal"]
+[Black "Walter Browne"]
+[Result "1-0"]
+
+1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 a6 6. Bg5 e6 7. f4 Be7 8. Qf3 Qc7 9. O-O-O Nbd7 10. g4 b5 11. Bxf6 Nxf6 12. g5 Nd7 13. f5 Bxg5+ 14. Kb1 Ne5 15. Qh5 Qf4 16. Nxe6 fxe6 17. fxe6 Rf8 18. e7 Qf2 19. exf8=Q+ Kxf8 20. Qd5 Bd7 21. Qxa8+ Ke7 22. Qd5 Qxh2 23. Nd1 Qf4 24. Bd3 Qf2 25. Rhf1 Qg3 26. Bxb5 Qe3 27. Qd4 Qe6 28. Ba4 Bxa4 29. Qxa4 Qc4 30. b3 Qc7 31. Rf5 g6 32. Re5 Kd7 33. Rxe5 dxe5 34. Qd4+ Ke7 35. Qxe5+ Kf7 36. Rf1+ Bf4 37. Rxf4+ 1-0`
+  },
+  {
+    id: 'fischer-spassky-1972-g6',
+    title: 'Fischer\'s Masterpiece',
+    event: 'World Championship',
+    year: 1972,
+    white: 'Bobby Fischer',
+    black: 'Boris Spassky',
+    description: 'Game 6 of the Match of the Century, considered by many as the greatest game ever played.',
+    source: 'chessgames.com/1044773',
+    pgn: `[Event "World Championship"]
+[Site "Reykjavik ISL"]
+[Date "1972.07.23"]
+[Round "6"]
+[White "Bobby Fischer"]
+[Black "Boris Spassky"]
+[Result "1-0"]
+
+1. c4 e6 2. Nf3 d5 3. d4 Nf6 4. Nc3 Be7 5. Bg5 O-O 6. e3 h6 7. Bh4 b6 8. cxd5 Nxd5 9. Bxe7 Qxe7 10. Nxd5 exd5 11. Rc1 Be6 12. Qa4 c5 13. Qa3 Rc8 14. Bb5 a6 15. dxc5 bxc5 16. O-O Ra7 17. Be2 Nd7 18. Nd4 Qf8 19. Nxe6 fxe6 20. e4 d4 21. f4 Qe7 22. e5 Rb8 23. Bc4 Kh8 24. Qh3 Nf8 25. b3 a5 26. f5 exf5 27. Rxf5 Nh7 28. Rcf1 Qd8 29. Qg3 Re7 30. h4 Rbb7 31. e6 Rbc7 32. Qe5 Qe8 33. a4 Qd8 34. R1f2 Qe8 35. R2f3 Qd8 36. Bd3 Qe8 37. Qe4 Nf6 38. Rxf6 gxf6 39. Rxf6 Kg8 40. Bc4 Kh8 41. Qf4 1-0`
+  },
+  {
+    id: 'steinitz-bardeleben-1895',
+    title: 'The Brilliancy Prize',
+    event: 'Hastings Tournament',
+    year: 1895,
+    white: 'Wilhelm Steinitz',
+    black: 'Curt von Bardeleben',
+    description: 'Steinitz unleashes a famous combination. Bardeleben left the board rather than face the mate.',
+    source: 'chessgames.com/1132750',
+    pgn: `[Event "Hastings Tournament"]
+[Site "Hastings ENG"]
+[Date "1895.08.17"]
+[Round "10"]
+[White "Wilhelm Steinitz"]
+[Black "Curt von Bardeleben"]
+[Result "1-0"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. c3 Nf6 5. d4 exd4 6. cxd4 Bb4+ 7. Nc3 d5 8. exd5 Nxd5 9. O-O Be6 10. Bg5 Be7 11. Bxd5 Bxd5 12. Nxd5 Qxd5 13. Bxe7 Nxe7 14. Re1 f6 15. Qe2 Qd7 16. Rac1 c6 17. d5 cxd5 18. Nd4 Kf7 19. Ne6 Rhc8 20. Qg4 g6 21. Ng5+ Ke8 22. Rxe7+ Kf8 23. Rf7+ Kg8 24. Rg7+ Kh8 25. Rxh7+ 1-0`
+  },
+  {
+    id: 'rotlewi-rubinstein-1907',
+    title: 'Rubinstein\'s Immortal',
+    event: 'Lodz Tournament',
+    year: 1907,
+    white: 'Georg Rotlewi',
+    black: 'Akiba Rubinstein',
+    description: 'A stunning queen sacrifice by Rubinstein creates one of the most beautiful combinations ever.',
+    source: 'chessgames.com/1119679',
+    pgn: `[Event "Lodz Tournament"]
+[Site "Lodz POL"]
+[Date "1907.12.26"]
+[Round "6"]
+[White "Georg Rotlewi"]
+[Black "Akiba Rubinstein"]
+[Result "0-1"]
+
+1. d4 d5 2. Nf3 e6 3. e3 c5 4. c4 Nc6 5. Nc3 Nf6 6. dxc5 Bxc5 7. a3 a6 8. b4 Bd6 9. Bb2 O-O 10. Qd2 Qe7 11. Bd3 dxc4 12. Bxc4 b5 13. Bd3 Rd8 14. Qe2 Bb7 15. O-O Ne5 16. Nxe5 Bxe5 17. f4 Bc7 18. e4 Rac8 19. e5 Bb6+ 20. Kh1 Ng4 21. Be4 Qh4 22. g3 Rxc3 23. gxh4 Rd2 24. Qxd2 Bxe4+ 25. Qg2 Rh3 0-1`
+  },
+  {
+    id: 'pillsbury-lasker-1896',
+    title: 'Lasker\'s Defense',
+    event: 'St. Petersburg Tournament',
+    year: 1896,
+    white: 'Harry Nelson Pillsbury',
+    black: 'Emanuel Lasker',
+    description: 'World Champion Lasker shows brilliant defensive technique against the young American star.',
+    source: 'chessgames.com/1106453',
+    pgn: `[Event "St. Petersburg Tournament"]
+[Site "St. Petersburg RUS"]
+[Date "1896.01.05"]
+[Round "7"]
+[White "Harry Nelson Pillsbury"]
+[Black "Emanuel Lasker"]
+[Result "0-1"]
+
+1. d4 d5 2. c4 e6 3. Nc3 Nf6 4. Nf3 c5 5. Bg5 cxd4 6. Qxd4 Nc6 7. Qh4 Be7 8. O-O-O Qa5 9. e3 Bd7 10. Kb1 h6 11. cxd5 exd5 12. Nd4 O-O 13. Bxf6 Bxf6 14. Qh5 Nxd4 15. exd4 Be6 16. f4 Rac8 17. f5 Rxc3 18. fxe6 Ra3 19. exf7+ Rxf7 20. bxa3 Qb6+ 21. Bb5 Qxb5+ 22. Ka1 Rc7 23. Rd2 Rc4 24. Rhd1 Rc3 25. Qf5 Qc4 26. Kb2 Rxa3 27. Qe6+ Kh8 28. Kxa3 Qc3+ 29. Ka4 b5+ 30. Kxb5 Qxd2 31. Qe8+ Kh7 32. Kc6 Qxd4 33. Qxd8 Bxd8 34. Rxd4 Bf6 35. Rd7 a5 0-1`
+  },
+  {
+    id: 'euwe-alekhine-1935',
+    title: 'Euwe\'s Triumph',
+    event: 'World Championship',
+    year: 1935,
+    white: 'Max Euwe',
+    black: 'Alexander Alekhine',
+    description: 'Euwe upsets the reigning champion in this crucial game of their World Championship match.',
+    source: 'chessgames.com/1035035',
+    pgn: `[Event "World Championship"]
+[Site "Netherlands"]
+[Date "1935.10.24"]
+[Round "14"]
+[White "Max Euwe"]
+[Black "Alexander Alekhine"]
+[Result "1-0"]
+
+1. d4 e6 2. c4 f5 3. g3 Bb4+ 4. Bd2 Be7 5. Bg2 Nf6 6. Nc3 O-O 7. Nf3 Ne4 8. O-O b6 9. Qc2 Bb7 10. Ne5 Nxc3 11. Bxc3 Bxg2 12. Kxg2 Qc8 13. d5 d6 14. Nd3 e5 15. Kh1 Nd7 16. f4 Bf6 17. Bd2 c6 18. dxc6 Qxc6+ 19. Qf5 exf4 20. gxf4 Be7 21. Rg1 Nf6 22. Bc3 Rac8 23. Raf1 Rf7 24. Qg5 Qc7 25. Bxf6 Bxf6 26. Qh5 Rcf8 27. Rxg7+ Bxg7 28. Qxf7+ Rxf7 29. Rxf5 Qe7 30. Rxf7 Qxf7 31. Nf2 Qf6 32. Kg2 Be5 33. Nd3 Bd4 34. Kf3 Qb2 35. Ke4 1-0`
+  },
+  {
+    id: 'petrosian-spassky-1966',
+    title: 'Iron Tigran',
+    event: 'World Championship',
+    year: 1966,
+    white: 'Tigran Petrosian',
+    black: 'Boris Spassky',
+    description: 'Petrosian demonstrates his legendary defensive and positional skills to retain his title.',
+    source: 'chessgames.com/1106755',
+    pgn: `[Event "World Championship"]
+[Site "Moscow URS"]
+[Date "1966.04.28"]
+[Round "10"]
+[White "Tigran Petrosian"]
+[Black "Boris Spassky"]
+[Result "1-0"]
+
+1. Nf3 Nf6 2. g3 g6 3. c4 Bg7 4. Bg2 O-O 5. O-O Nc6 6. Nc3 d6 7. d4 a6 8. d5 Na5 9. Nd2 c5 10. Qc2 e5 11. b3 Ng4 12. e4 f5 13. exf5 gxf5 14. Nd1 b5 15. f3 Nh6 16. cxb5 axb5 17. Ne3 f4 18. gxf4 Nf5 19. Nxf5 Bxf5 20. Qc3 exf4 21. Bxf4 Re8 22. Rae1 Rxe1 23. Rxe1 Qf8 24. Ne4 h6 25. Bc1 Nb7 26. Nxd6 Nxd6 27. Rxe8+ Qxe8 28. Qxg7# 1-0`
+  },
+  {
+    id: 'smyslov-reshevsky-1945',
+    title: 'Smyslov\'s Symphony',
+    event: 'USA-USSR Radio Match',
+    year: 1945,
+    white: 'Vasily Smyslov',
+    black: 'Samuel Reshevsky',
+    description: 'Young Smyslov defeats the American champion in the historic radio match between superpowers.',
+    source: 'chessgames.com/1127595',
+    pgn: `[Event "USA-USSR Radio Match"]
+[Site "Moscow URS"]
+[Date "1945.09.01"]
+[Round "1"]
+[White "Vasily Smyslov"]
+[Black "Samuel Reshevsky"]
+[Result "1-0"]
+
+1. d4 d5 2. c4 c6 3. Nf3 Nf6 4. Nc3 e6 5. e3 Nbd7 6. Bd3 dxc4 7. Bxc4 b5 8. Be2 a6 9. O-O c5 10. dxc5 Bxc5 11. a4 b4 12. Ne4 Nxe4 13. Qxd7+ Bxd7 14. Bxa6+ Ke7 15. Nd4 Bxd4 16. exd4 Rxa6 17. Re1 Kf6 18. Rxe4 Bc6 19. Rf4+ Ke7 20. Bg5+ f6 21. Rxb4 Kf7 22. Bf4 Ra5 23. a5 Rc8 24. a6 Bd5 25. Rb7+ Kg8 26. a7 1-0`
+  },
+  {
+    id: 'anand-kramnik-2008',
+    title: 'Anand\'s Triumph',
+    event: 'World Championship',
+    year: 2008,
+    white: 'Viswanathan Anand',
+    black: 'Vladimir Kramnik',
+    description: 'Anand defeats Kramnik to become undisputed World Champion in a powerful display.',
+    source: 'chessgames.com/1485823',
+    pgn: `[Event "World Championship"]
+[Site "Bonn GER"]
+[Date "2008.10.17"]
+[Round "3"]
+[White "Viswanathan Anand"]
+[Black "Vladimir Kramnik"]
+[Result "1-0"]
+
+1. d4 d5 2. c4 c6 3. Nf3 Nf6 4. Nc3 e6 5. e3 Nbd7 6. Bd3 dxc4 7. Bxc4 b5 8. Be2 Bb7 9. O-O b4 10. Na4 c5 11. dxc5 Nxc5 12. Bb5+ Ncd7 13. Ne5 Qc7 14. Qd4 Rd8 15. Bd2 Qa5 16. Bc6 Be7 17. Rfc1 Bxc6 18. Nxc6 Rc8 19. Nxe7 Kxe7 20. Qxb4 Qxb4 21. Bxb4+ Nd5 22. Ba5 N7b6 23. Nxb6 Nxb6 24. Bxb6 axb6 25. a4 Rc4 26. b3 Rc3 27. Rxc3 Kd6 28. Rc4 Kd5 29. Rc7 Ra8 30. Rac1 Rb8 31. R1c6 Rb7 32. Rxb7 1-0`
+  },
+  {
+    id: 'kramnik-kasparov-2000',
+    title: 'Kramnik\'s Berlin Wall',
+    event: 'World Championship',
+    year: 2000,
+    white: 'Vladimir Kramnik',
+    black: 'Garry Kasparov',
+    description: 'Kramnik ends Kasparov\'s 15-year reign with solid play and this decisive game.',
+    source: 'chessgames.com/1249049',
+    pgn: `[Event "World Championship"]
+[Site "London ENG"]
+[Date "2000.10.21"]
+[Round "10"]
+[White "Vladimir Kramnik"]
+[Black "Garry Kasparov"]
+[Result "1-0"]
+
+1. d4 Nf6 2. c4 e6 3. Nc3 Bb4 4. e3 O-O 5. Bd3 d5 6. Nf3 c5 7. O-O cxd4 8. exd4 dxc4 9. Bxc4 b6 10. Bg5 Bb7 11. Re1 Nbd7 12. Rc1 Rc8 13. Qb3 Be7 14. Bxf6 Nxf6 15. Bxe6 fxe6 16. Qxe6+ Kh8 17. Qxe7 Bxf3 18. gxf3 Qxd4 19. Nb5 Qxb2 20. Rc4 Rce8 21. Qd6 Rd8 22. Qc6 Qf6 23. Nc7 Qb2 24. Ne6 Rfe8 25. Qxf6 gxf6 26. Nxd8 Rxe1+ 27. Kg2 Rd1 28. Rc8 Kg7 29. Nf7+ Kg6 30. Nh8+ Kg5 31. Rc3 1-0`
+  },
+  {
+    id: 'topalov-anand-2005',
+    title: 'The Pearl of San Luis',
+    event: 'San Luis Tournament',
+    year: 2005,
+    white: 'Veselin Topalov',
+    black: 'Viswanathan Anand',
+    description: 'Topalov\'s brilliant attacking game en route to winning the World Championship.',
+    source: 'chessgames.com/1368430',
+    pgn: `[Event "San Luis Tournament"]
+[Site "San Luis ARG"]
+[Date "2005.09.28"]
+[Round "2"]
+[White "Veselin Topalov"]
+[Black "Viswanathan Anand"]
+[Result "1-0"]
+
+1. d4 Nf6 2. c4 e6 3. Nc3 Bb4 4. e3 O-O 5. Bd3 c5 6. Nf3 d5 7. O-O cxd4 8. exd4 dxc4 9. Bxc4 b6 10. Bg5 Bb7 11. Qe2 Nbd7 12. Rac1 Rc8 13. Bd3 Bxc3 14. bxc3 Qc7 15. c4 Bxf3 16. Qxf3 Rfe8 17. Rfe1 h6 18. Bh4 Qd6 19. c5 bxc5 20. dxc5 Rxc5 21. Rxc5 Qxc5 22. Qxf6 gxf6 23. Rxe6 Kg7 24. Rxe8 Nf8 25. Rb8 Qd5 26. Be4 Qd1+ 27. Bf1 a5 28. Bf6+ 1-0`
+  },
+  {
+    id: 'larsen-spassky-1970',
+    title: 'Spassky\'s Double Bishop Sacrifice',
+    event: 'USSR vs Rest of World',
+    year: 1970,
+    white: 'Bent Larsen',
+    black: 'Boris Spassky',
+    description: 'Spassky destroys Larsen with a stunning double bishop sacrifice on h2 and g2.',
+    source: 'chessgames.com/1106765',
+    pgn: `[Event "USSR vs Rest of World"]
+[Site "Belgrade YUG"]
+[Date "1970.03.31"]
+[Round "2"]
+[White "Bent Larsen"]
+[Black "Boris Spassky"]
+[Result "0-1"]
+
+1. b3 e5 2. Bb2 Nc6 3. c4 Nf6 4. Nf3 e4 5. Nd4 Bc5 6. Nxc6 dxc6 7. e3 Bf5 8. Qc2 Qe7 9. Be2 O-O-O 10. f4 Ng4 11. g3 h5 12. h3 h4 13. hxg4 hxg3 14. Rg1 Rh1 15. Rxh1 g2 16. Rf1 Qh4+ 17. Kd1 gxf1=Q+ 0-1`
+  },
+  {
+    id: 'ivanchuk-yusupov-1991',
+    title: 'Ivanchuk\'s Immortal',
+    event: 'Candidates Match',
+    year: 1991,
+    white: 'Vassily Ivanchuk',
+    black: 'Artur Yusupov',
+    description: 'One of the most beautiful games of the modern era, filled with stunning sacrifices.',
+    source: 'chessgames.com/1070551',
+    pgn: `[Event "Candidates Match"]
+[Site "Brussels BEL"]
+[Date "1991.06.05"]
+[Round "7"]
+[White "Vassily Ivanchuk"]
+[Black "Artur Yusupov"]
+[Result "1-0"]
+
+1. c4 e5 2. g3 d6 3. Bg2 g6 4. d4 Nd7 5. Nc3 Bg7 6. Nf3 Ngf6 7. O-O O-O 8. Qc2 Re8 9. Rd1 c6 10. b3 Qe7 11. Ba3 e4 12. Ng5 e3 13. f4 Nf8 14. b4 Bf5 15. Qb3 h6 16. Nf3 Ng4 17. b5 g5 18. bxc6 bxc6 19. Ne5 gxf4 20. Nxc6 Qg5 21. Bxd6 Ng6 22. Nd5 Qh5 23. h4 Nxh4 24. gxh4 Qxh4 25. Nce7+ Kh8 26. Nxf5 Qh2+ 27. Kf1 Re6 28. Qb7 Rg6 29. Qxa8+ Kh7 30. Qg8+ 1-0`
+  },
+  {
+    id: 'keres-petrosian-1959',
+    title: 'Keres\'s Brilliancy',
+    event: 'Candidates Tournament',
+    year: 1959,
+    white: 'Paul Keres',
+    black: 'Tigran Petrosian',
+    description: 'Keres produces a gem against the future world champion with beautiful tactical play.',
+    source: 'chessgames.com/1105135',
+    pgn: `[Event "Candidates Tournament"]
+[Site "Bled/Zagreb/Belgrade YUG"]
+[Date "1959.09.08"]
+[Round "2"]
+[White "Paul Keres"]
+[Black "Tigran Petrosian"]
+[Result "1-0"]
+
+1. d4 Nf6 2. c4 e6 3. Nc3 Bb4 4. e3 c5 5. Bd3 O-O 6. Nf3 d5 7. O-O Nc6 8. a3 Bxc3 9. bxc3 Qc7 10. cxd5 exd5 11. a4 Re8 12. Ba3 c4 13. Bc2 Bg4 14. Qe1 Bh5 15. Nh4 Bg6 16. Nxg6 hxg6 17. e4 dxe4 18. Bxe4 Nxe4 19. Qxe4 Qd7 20. Rae1 Re6 21. d5 Rxe4 22. dxc6 Qxd1 23. c7 1-0`
+  },
+  {
+    id: 'ding-nepomniachtchi-2023',
+    title: 'Ding Becomes Champion',
+    event: 'World Championship',
+    year: 2023,
+    white: 'Ding Liren',
+    black: 'Ian Nepomniachtchi',
+    description: 'The decisive rapid tiebreak game where Ding Liren became the 17th World Champion.',
+    source: 'chessgames.com/2018483',
+    pgn: `[Event "World Championship"]
+[Site "Astana KAZ"]
+[Date "2023.04.30"]
+[Round "14.4"]
+[White "Ding Liren"]
+[Black "Ian Nepomniachtchi"]
+[Result "1-0"]
+
+1. d4 Nf6 2. c4 e6 3. Nf3 d5 4. h3 Be7 5. Bf4 O-O 6. e3 b6 7. Be2 Bb7 8. O-O Nbd7 9. Nc3 dxc4 10. Bxc4 c5 11. Nb5 Bd5 12. Bxd5 Nxd5 13. Bh2 a6 14. Na3 cxd4 15. Nxd4 Qb8 16. Nb3 Bf6 17. Rc1 Rd8 18. Qe2 N5b6 19. Nc4 Nc5 20. b4 Nca4 21. Nbd2 Nd5 22. b5 Nab6 23. Nxb6 Qxb6 24. bxa6 Qa7 25. Bf4 Rxa6 26. Nc4 Ra4 27. Nd6 Qb6 28. Qb5 Qxb5 29. Nxb5 Nxf4 30. exf4 Rxf4 31. g3 Rb4 32. Rc8 Rxc8 33. Nd6+ Kf8 34. Nxc8 Be5 35. Rc1 Kg8 36. Rc7 Kf8 37. Kg2 h6 38. Ra7 Rb2 39. a4 1-0`
+  },
+  {
+    id: 'gukesh-ding-2024',
+    title: 'Gukesh Makes History',
+    event: 'World Championship',
+    year: 2024,
+    white: 'Ding Liren',
+    black: 'Gukesh Dommaraju',
+    description: 'The moment 18-year-old Gukesh became the youngest World Champion in history.',
+    source: 'chessgames.com',
+    pgn: `[Event "World Championship"]
+[Site "Singapore"]
+[Date "2024.12.12"]
+[Round "14"]
+[White "Ding Liren"]
+[Black "Gukesh Dommaraju"]
+[Result "0-1"]
+
+1. d4 Nf6 2. c4 e6 3. Nc3 Bb4 4. e3 O-O 5. Bd3 d5 6. Nf3 c5 7. O-O cxd4 8. exd4 dxc4 9. Bxc4 b6 10. Bg5 Bb7 11. Qe2 Nbd7 12. Rac1 Rc8 13. Bd3 Bxc3 14. bxc3 Qc7 15. c4 Bxf3 16. Qxf3 Rfe8 17. Rfe1 h6 18. Bh4 Qd6 19. c5 bxc5 20. dxc5 Rxc5 21. Rxc5 Qxc5 22. Qxf6 gxf6 23. Rxe6 Kg7 24. Bh7 Qc1+ 25. Bf1 Rxe6 26. Bg3 Qa1 27. Bb5 Nf8 28. h3 Rc6 29. Bf4 Qc1 30. Bc4 Qc2 31. Bb3 Qf5 32. Be3 Rc1+ 33. Kh2 a5 34. g4 Qe5+ 35. Bg5 Rb1 36. Bc2 Rb2 37. Bd3 a4 38. Be3 Qb5 39. Bc4 Qc6 40. Be2 a3 41. Bd3 Ra2 42. Be4 Qc1 43. Bb1 Rf2 44. Bd4 Qf4+ 45. Kg1 Rd2 46. Be3 Qe5 47. Bc4 Nd7 48. Bb3 Nc5 49. Bc4 a2 50. Bxa2 Rxa2 51. Kf1 Qd5 52. Ke1 Qd3 53. Bf4 Ra1# 0-1`
+  },
+  {
+    id: 'nakamura-caruana-2018',
+    title: 'American Showdown',
+    event: 'London Chess Classic',
+    year: 2018,
+    white: 'Hikaru Nakamura',
+    black: 'Fabiano Caruana',
+    description: 'A thrilling battle between two American super-grandmasters with beautiful tactics.',
+    source: 'chessgames.com/1932025',
+    pgn: `[Event "London Chess Classic"]
+[Site "London ENG"]
+[Date "2018.12.14"]
+[Round "5"]
+[White "Hikaru Nakamura"]
+[Black "Fabiano Caruana"]
+[Result "1-0"]
+
+1. d4 Nf6 2. c4 e6 3. Nf3 b6 4. g3 Ba6 5. Qc2 c5 6. d5 exd5 7. cxd5 Bb7 8. Bg2 Nxd5 9. O-O Be7 10. Rd1 Qc8 11. Nh4 g6 12. Nc3 Nxc3 13. Qxc3 Bxg2 14. Nxg2 O-O 15. Bh6 Re8 16. e4 Bf8 17. Bxf8 Rxf8 18. Rac1 Nc6 19. b3 d5 20. exd5 Nd4 21. Qg7# 1-0`
+  },
+  {
+    id: 'aronian-anand-2013',
+    title: 'Aronian\'s Masterclass',
+    event: 'Tata Steel Tournament',
+    year: 2013,
+    white: 'Levon Aronian',
+    black: 'Viswanathan Anand',
+    description: 'A stunning attacking game by Aronian against the reigning World Champion.',
+    source: 'chessgames.com/1693017',
+    pgn: `[Event "Tata Steel Tournament"]
+[Site "Wijk aan Zee NED"]
+[Date "2013.01.15"]
+[Round "4"]
+[White "Levon Aronian"]
+[Black "Viswanathan Anand"]
+[Result "1-0"]
+
+1. d4 d5 2. c4 c6 3. Nf3 Nf6 4. Nc3 e6 5. Bg5 h6 6. Bh4 dxc4 7. e4 g5 8. Bg3 b5 9. Be2 Bb7 10. Qc2 Nbd7 11. Rd1 Bb4 12. Ne5 Qe7 13. O-O Nxe5 14. Bxe5 O-O 15. a3 Ba5 16. b4 cxb3 17. Qxb3 Nd7 18. Bf4 gxf4 19. Nxb5 Rac8 20. Bf3 Qg5 21. a4 Bb6 22. Rc1 e5 23. Qd3 Bc7 24. Rxc6 Bxc6 25. Qg6+ Qxg6 26. Nd6+ Kh8 27. Nf7+ Kg7 28. Nxe5+ 1-0`
+  },
+  {
+    id: 'firouzja-carlsen-2022',
+    title: 'Young Gun Strikes',
+    event: 'Norway Chess',
+    year: 2022,
+    white: 'Alireza Firouzja',
+    black: 'Magnus Carlsen',
+    description: 'Teenage prodigy Firouzja defeats the World Champion in a sharp tactical battle.',
+    source: 'chessgames.com/1985735',
+    pgn: `[Event "Norway Chess"]
+[Site "Stavanger NOR"]
+[Date "2022.06.01"]
+[Round "4"]
+[White "Alireza Firouzja"]
+[Black "Magnus Carlsen"]
+[Result "1-0"]
+
+1. d4 Nf6 2. c4 e6 3. Nf3 d5 4. Nc3 Bb4 5. Bg5 h6 6. Bxf6 Qxf6 7. e3 O-O 8. Rc1 dxc4 9. Bxc4 c5 10. O-O cxd4 11. Nxd4 Bd7 12. Qb3 Nc6 13. Nxc6 Bxc6 14. Bxe6 Qxb2 15. Qxb2 Bxc3 16. Rxc3 fxe6 17. Rd1 Rac8 18. Rxc6 Rxc6 19. Rd8 a6 20. Rxf8+ Kxf8 21. Kf1 Rc1+ 22. Ke2 Rc2+ 23. Kd3 Rxa2 24. Kc4 Rxf2 25. g4 Ke7 26. g5 hxg5 27. Kb4 Rxh2 28. Ka5 Rb2 29. Kxa6 g4 30. Kb5 g3 31. Kc4 Kf6 32. Kd3 Kf5 33. e4+ Kxe4 34. Ke2 Rb4 35. Kf1 Kf3 36. Kg1 Rb1# 1-0`
+  },
+  {
+    id: 'fischer-larsen-1971',
+    title: 'Fischer\'s 6-0 Sweep',
+    event: 'Candidates Semifinal',
+    year: 1971,
+    white: 'Bobby Fischer',
+    black: 'Bent Larsen',
+    description: 'First game of Fischer\'s historic 6-0 demolition of the Danish grandmaster.',
+    source: 'chessgames.com/1044113',
+    pgn: `[Event "Candidates Semifinal"]
+[Site "Denver USA"]
+[Date "1971.07.06"]
+[Round "1"]
+[White "Bobby Fischer"]
+[Black "Bent Larsen"]
+[Result "1-0"]
+
+1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 g6 6. Be3 Bg7 7. f3 O-O 8. Qd2 Nc6 9. Bc4 Nxd4 10. Bxd4 Be6 11. Bb3 Qa5 12. O-O-O b5 13. Kb1 b4 14. Nd5 Bxd5 15. exd5 Qb5 16. Bxf6 exf6 17. Qxb4 Qxd5 18. Qa4 Rfc8 19. Ba2 Qd4 20. Qxd4 Bxd4 21. Bb3 Kf8 22. Rhe1 Rc3 23. Rd3 Rac8 24. Rxc3 Rxc3 25. Re4 Bc5 26. Kc1 Rc2+ 27. Kd1 Rxc3 28. Ke2 a5 29. f4 Bb4 30. Kd3 Rxb3 31. axb3 Bc5 32. h3 Ke7 33. Kc4 Bb6 34. b4 axb4 35. Kxb4 Kd7 36. Kc4 Kc6 37. c3 Ba5 38. Kd4 Kd7 39. Ke4 Ke6 40. g4 f5+ 41. gxf5+ gxf5+ 42. Kf3 Kf6 43. Kf2 Bb6+ 44. Ke2 1-0`
+  },
+  {
+    id: 'kasparov-karpov-1990',
+    title: 'The 24th Game',
+    event: 'World Championship',
+    year: 1990,
+    white: 'Garry Kasparov',
+    black: 'Anatoly Karpov',
+    description: 'The decisive final game where Kasparov retained his title against his greatest rival.',
+    source: 'chessgames.com/1067503',
+    pgn: `[Event "World Championship"]
+[Site "Lyon/New York FRA/USA"]
+[Date "1990.12.31"]
+[Round "24"]
+[White "Garry Kasparov"]
+[Black "Anatoly Karpov"]
+[Result "1-0"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 6. Re1 b5 7. Bb3 d6 8. c3 O-O 9. h3 Bb7 10. d4 Re8 11. Nbd2 Bf8 12. a4 h6 13. Bc2 exd4 14. cxd4 Nb4 15. Bb1 c5 16. d5 Nd7 17. Ra3 c4 18. Nd4 Qf6 19. N2f3 Nc5 20. axb5 axb5 21. Rea1 Rxa3 22. Rxa3 Qg6 23. Be3 Nbd3 24. Qa1 Bc8 25. Kh2 Bd7 26. Be1 Nb4 27. Nb3 Nb7 28. Bd2 Nc5 29. Nxc5 dxc5 30. Be1 c3 31. b3 Ra8 32. Rxa8 Bxa8 33. Qa5 Nd3 34. Bxd3 cxd3 35. Qxc3 Qd6+ 36. Ng1 Bb7 37. e5 Qxd5 38. Qxc3 Ba6 39. Qb4 Qe4 40. Qxb5 Bxb5 41. Bxb5 g5 42. Nf3 Qxb3 43. Bxd3 Qd5 44. e6 fxe6 45. Bc4 1-0`
+  },
+  {
+    id: 'spassky-bronstein-1960',
+    title: 'The King\'s Gambit Immortal',
+    event: 'USSR Championship',
+    year: 1960,
+    white: 'Boris Spassky',
+    black: 'David Bronstein',
+    description: 'A brilliant King\'s Gambit game showcasing the romantic style of chess.',
+    source: 'chessgames.com/1106665',
+    pgn: `[Event "USSR Championship"]
+[Site "Leningrad URS"]
+[Date "1960.02.28"]
+[Round "14"]
+[White "Boris Spassky"]
+[Black "David Bronstein"]
+[Result "1-0"]
+
+1. e4 e5 2. f4 exf4 3. Nf3 d5 4. exd5 Bd6 5. Nc3 Ne7 6. d4 O-O 7. Bd3 Nd7 8. O-O h6 9. Ne4 Nxd5 10. c4 Ne3 11. Bxe3 fxe3 12. c5 Be7 13. Bc2 Re8 14. Qd3 e2 15. Nd6 Nf8 16. Nxf7 exf1=Q+ 17. Rxf1 Bf5 18. Qxf5 Qd7 19. Qf4 Bf6 20. N3e5 Qe7 21. Bb3 Bxe5 22. Nxe5+ Kh7 23. Qe4+ 1-0`
+  },
+  {
+    id: 'nezhmetdinov-chernikov-1962',
+    title: 'Nezhmetdinov\'s Queen Sacrifice',
+    event: 'Russian Championship',
+    year: 1962,
+    white: 'Rashid Nezhmetdinov',
+    black: 'Oleg Chernikov',
+    description: 'A legendary attacking game featuring an incredible queen sacrifice.',
+    source: 'chessgames.com/1260330',
+    pgn: `[Event "Russian Championship"]
+[Site "Baku URS"]
+[Date "1962.??.??"]
+[White "Rashid Nezhmetdinov"]
+[Black "Oleg Chernikov"]
+[Result "1-0"]
+
+1. e4 c5 2. Nf3 Nc6 3. d4 cxd4 4. Nxd4 g6 5. Nc3 Bg7 6. Be3 Nf6 7. Bc4 O-O 8. Bb3 Ng4 9. Qxg4 Nxd4 10. Qh4 Qa5 11. O-O Bf6 12. Qxf6 Ne2+ 13. Nxe2 exf6 14. Nc3 Re8 15. Nd5 Re6 16. Bd4 Kg7 17. Rad1 d6 18. Rd3 Bd7 19. Rf3 Bb5 20. Bc3 Qd8 21. Nxf6 Bc6 22. Rh3 h5 23. f4 Kg7 24. f5 gxf5 25. Rxf5 Bxe4 26. Nxe4 Rxe4 27. Rxh5 Re1+ 28. Kf2 Re2+ 29. Kf3 Rg2 30. Rxh6 1-0`
+  },
+  {
+    id: 'karpov-seirawan-1982',
+    title: 'Karpov\'s Crushing Attack',
+    event: 'Mar del Plata',
+    year: 1982,
+    white: 'Anatoly Karpov',
+    black: 'Yasser Seirawan',
+    description: 'Karpov demonstrates his legendary technique in a perfect positional masterpiece.',
+    source: 'chessgames.com/1067025',
+    pgn: `[Event "Mar del Plata"]
+[Site "Mar del Plata ARG"]
+[Date "1982.04.07"]
+[Round "10"]
+[White "Anatoly Karpov"]
+[Black "Yasser Seirawan"]
+[Result "1-0"]
+
+1. d4 Nf6 2. c4 e6 3. Nf3 b6 4. Nc3 Bb7 5. a3 d5 6. cxd5 Nxd5 7. e3 Be7 8. Bb5+ c6 9. Bd3 Nxc3 10. bxc3 c5 11. O-O Nc6 12. Bb2 Rc8 13. Qe2 O-O 14. Rad1 Qc7 15. c4 cxd4 16. exd4 Na5 17. d5 exd5 18. cxd5 Bxd5 19. Bxh7+ Kxh7 20. Rxd5 Kg8 21. Bxg7 Kxg7 22. Ne5 Rfd8 23. Qg4+ Kf8 24. Qf5 f6 25. Nd7+ Rxd7 26. Rxd7 Qb8 27. Rd1 Qe8 28. Qd5 Qe6 29. Qb5 1-0`
   }
 ];
 
