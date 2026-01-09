@@ -27,11 +27,11 @@ const hotColdPalette: ColorPalette = {
   name: 'Hot & Cold',
   description: 'Warm reds vs cool blues for maximum contrast',
   white: {
-    k: '#0EA5E9', // Sky Blue
+    k: '#1E3A5F', // Navy Deep Blue - King
     q: '#10B981', // Emerald Green
     r: '#1D4ED8', // Royal Blue
     b: '#06B6D4', // Cyan
-    n: '#8B5CF6', // Violet
+    n: '#EC4899', // Hot Pink - Knight
     p: '#94A3B8', // Cool Gray
   },
   black: {
