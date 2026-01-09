@@ -4,7 +4,7 @@ import PrintPreview from '@/components/chess/PrintPreview';
 import ColorLegend from '@/components/chess/ColorLegend';
 import { simulateGame, SimulationResult } from '@/lib/chess/gameSimulator';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Palette } from 'lucide-react';
+import { ArrowLeft, Palette, Trophy, Zap, Heart } from 'lucide-react';
 
 const Index = () => {
   const [simulation, setSimulation] = useState<SimulationResult | null>(null);
@@ -25,9 +25,9 @@ const Index = () => {
   };
   
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-b from-background via-background to-accent/20">
       {/* Header */}
-      <header className="border-b">
+      <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             {simulation && (
@@ -36,18 +36,22 @@ const Index = () => {
                 New Game
               </Button>
             )}
-            <h1 className="text-xl font-serif font-bold tracking-wide">
-              En Pensent
-            </h1>
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">♔</span>
+              <h1 className="text-xl font-serif font-bold tracking-wide">
+                En Pensent
+              </h1>
+            </div>
           </div>
           
           {simulation && (
             <Button 
-              variant="ghost" 
+              variant="outline" 
               size="sm"
               onClick={() => setShowLegend(!showLegend)}
+              className="gap-2"
             >
-              <Palette className="h-4 w-4 mr-2" />
+              <Palette className="h-4 w-4" />
               {showLegend ? 'Hide' : 'Show'} Legend
             </Button>
           )}
@@ -57,15 +61,24 @@ const Index = () => {
       {/* Main content */}
       <main className="container mx-auto px-4 py-8">
         {!simulation ? (
-          <div className="max-w-2xl mx-auto space-y-8">
+          <div className="max-w-4xl mx-auto space-y-10">
             {/* Hero section */}
-            <div className="text-center space-y-4">
-              <h2 className="text-3xl md:text-4xl font-serif font-bold">
-                Transform Chess Games Into Art
+            <div className="text-center space-y-6 py-8">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium">
+                <Zap className="h-4 w-4" />
+                Transform any chess game into unique art
+              </div>
+              
+              <h2 className="text-4xl md:text-5xl lg:text-6xl font-serif font-bold leading-tight">
+                Your Favorite Games,<br />
+                <span className="bg-gradient-to-r from-primary via-primary to-accent-foreground bg-clip-text text-transparent">
+                  Forever Immortalized
+                </span>
               </h2>
-              <p className="text-muted-foreground text-lg max-w-lg mx-auto">
-                Upload any chess game and create a beautiful visualization of the entire match. 
-                Each piece leaves its unique color signature as it moves across the board.
+              
+              <p className="text-muted-foreground text-lg max-w-2xl mx-auto leading-relaxed">
+                Upload any chess game — from legendary grandmaster battles to your own personal victories — 
+                and watch it transform into a stunning visualization where every piece tells its story through color.
               </p>
             </div>
             
@@ -73,32 +86,32 @@ const Index = () => {
             <PgnUploader onPgnSubmit={handlePgnSubmit} />
             
             {/* Feature highlights */}
-            <div className="grid md:grid-cols-3 gap-6 pt-8">
-              <div className="text-center space-y-2">
-                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-                  <span className="text-2xl">♞</span>
+            <div className="grid md:grid-cols-3 gap-8 pt-8">
+              <div className="text-center space-y-3 p-6 rounded-xl bg-card border hover:shadow-lg transition-shadow">
+                <div className="w-14 h-14 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto">
+                  <Trophy className="h-7 w-7 text-amber-500" />
                 </div>
-                <h3 className="font-semibold">Any Game</h3>
-                <p className="text-sm text-muted-foreground">
-                  Famous matches, personal games, or tournament highlights
+                <h3 className="font-bold text-lg">Historic Moments</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Immortalize Fischer vs Spassky, Kasparov vs Deep Blue, or any legendary game in history
                 </p>
               </div>
-              <div className="text-center space-y-2">
-                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-                  <span className="text-2xl">🎨</span>
+              <div className="text-center space-y-3 p-6 rounded-xl bg-card border hover:shadow-lg transition-shadow">
+                <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+                  <Palette className="h-7 w-7 text-primary" />
                 </div>
-                <h3 className="font-semibold">Unique Art</h3>
-                <p className="text-sm text-muted-foreground">
-                  Every game creates a one-of-a-kind abstract visualization
+                <h3 className="font-bold text-lg">Unique Art</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Every game creates a one-of-a-kind masterpiece — no two visualizations are ever the same
                 </p>
               </div>
-              <div className="text-center space-y-2">
-                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-                  <span className="text-2xl">🖼️</span>
+              <div className="text-center space-y-3 p-6 rounded-xl bg-card border hover:shadow-lg transition-shadow">
+                <div className="w-14 h-14 rounded-full bg-red-500/10 flex items-center justify-center mx-auto">
+                  <Heart className="h-7 w-7 text-red-500" />
                 </div>
-                <h3 className="font-semibold">Print Ready</h3>
-                <p className="text-sm text-muted-foreground">
-                  Order high-quality prints to display your favorite games
+                <h3 className="font-bold text-lg">Personal Memories</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Commemorate your own games — victories, lessons learned, or matches played with loved ones
                 </p>
               </div>
             </div>
@@ -115,7 +128,7 @@ const Index = () => {
             
             {/* Legend sidebar */}
             {showLegend && (
-              <div className="lg:w-48">
+              <div className="lg:w-64">
                 <ColorLegend />
               </div>
             )}
@@ -124,9 +137,12 @@ const Index = () => {
       </main>
       
       {/* Footer */}
-      <footer className="border-t mt-12">
-        <div className="container mx-auto px-4 py-6 text-center text-sm text-muted-foreground">
-          <p>© En Pensent — Chess Visualization Art</p>
+      <footer className="border-t mt-16 bg-card/50">
+        <div className="container mx-auto px-4 py-8 text-center space-y-2">
+          <p className="text-sm font-medium">♔ En Pensent — Chess Visualization Art ♚</p>
+          <p className="text-xs text-muted-foreground">
+            Turn every move into a masterpiece
+          </p>
         </div>
       </footer>
     </div>
