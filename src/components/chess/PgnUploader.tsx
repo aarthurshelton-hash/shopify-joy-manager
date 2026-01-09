@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Upload, FileText, Crown, Sparkles, CheckCircle, XCircle, Loader2, Wrench, ArrowRight } from 'lucide-react';
@@ -6,6 +6,8 @@ import { famousGames, FamousGame } from '@/lib/chess/famousGames';
 import { validatePgn, cleanPgn, PgnValidationResult } from '@/lib/chess/pgnValidator';
 import { fixPgn, PgnFixResult } from '@/lib/chess/pgnFixer';
 import { toast } from 'sonner';
+
+const GAMES_PER_PAGE = 6;
 
 interface PgnUploaderProps {
   onPgnSubmit: (pgn: string, gameTitle?: string) => void;
@@ -19,6 +21,14 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
   const [isValidating, setIsValidating] = useState(false);
   const [fixResult, setFixResult] = useState<PgnFixResult | null>(null);
   const [isFixing, setIsFixing] = useState(false);
+  const [currentPage, setCurrentPage] = useState(0);
+  
+  const totalPages = useMemo(() => Math.ceil(famousGames.length / GAMES_PER_PAGE), []);
+  
+  const displayedGames = useMemo(() => {
+    const start = currentPage * GAMES_PER_PAGE;
+    return famousGames.slice(start, start + GAMES_PER_PAGE);
+  }, [currentPage]);
   
   const handleValidate = useCallback(() => {
     if (!pgn.trim()) {
@@ -145,7 +155,7 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
         </div>
         <div className="p-5">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {famousGames.map((game) => (
+            {displayedGames.map((game) => (
               <button
                 key={game.id}
                 onClick={() => handleLoadGame(game)}
@@ -168,6 +178,22 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
                   <Sparkles className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
                 </div>
               </button>
+            ))}
+          </div>
+          
+          {/* Pagination dots */}
+          <div className="flex justify-center gap-2 mt-5">
+            {Array.from({ length: totalPages }).map((_, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentPage(index)}
+                className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
+                  currentPage === index 
+                    ? 'bg-primary w-6' 
+                    : 'bg-border hover:bg-primary/50'
+                }`}
+                aria-label={`Go to page ${index + 1}`}
+              />
             ))}
           </div>
         </div>
