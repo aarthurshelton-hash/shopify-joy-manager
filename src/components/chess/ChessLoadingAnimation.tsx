@@ -3,6 +3,7 @@ import { whitePieceColors, blackPieceColors, PieceType } from '@/lib/chess/piece
 
 interface ChessLoadingAnimationProps {
   onComplete?: () => void;
+  totalMoves?: number;
 }
 
 // Simulated move sequence for the animation
@@ -41,7 +42,8 @@ const ANIMATION_SEQUENCE: Array<{ square: string; piece: PieceType; isWhite: boo
 ];
 
 const ChessLoadingAnimation: React.FC<ChessLoadingAnimationProps> = ({ 
-  onComplete 
+  onComplete,
+  totalMoves = ANIMATION_SEQUENCE.length
 }) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [visitedSquares, setVisitedSquares] = useState<Map<string, Array<{ color: string; piece: PieceType }>>>(new Map());
@@ -149,7 +151,7 @@ const ChessLoadingAnimation: React.FC<ChessLoadingAnimationProps> = ({
         </div>
         
         <p className="text-xs text-muted-foreground font-serif">
-          Move {Math.min(currentStep, ANIMATION_SEQUENCE.length)} of {ANIMATION_SEQUENCE.length}
+          Move {Math.min(currentStep, ANIMATION_SEQUENCE.length)} of {totalMoves}
         </p>
       </div>
     </div>
