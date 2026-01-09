@@ -8,7 +8,7 @@ import { ProductSelector } from '@/components/shop/ProductSelector';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Palette, Crown, Sparkles, Award } from 'lucide-react';
 import { toast } from 'sonner';
-import { validatePgn, cleanPgn } from '@/lib/chess/pgnValidator';
+import { cleanPgn } from '@/lib/chess/pgnValidator';
 
 const Index = () => {
   const [simulation, setSimulation] = useState<SimulationResult | null>(null);
@@ -17,30 +17,13 @@ const Index = () => {
   const [gameTitle, setGameTitle] = useState<string>('');
   
   const handlePgnSubmit = (pgn: string) => {
-    // Clean and validate the PGN first
+    // Clean the PGN but don't validate - just process what we can
     const cleanedPgn = cleanPgn(pgn);
-    const validation = validatePgn(cleanedPgn);
-    
-    if (!validation.isValid) {
-      toast.error('Invalid PGN', {
-        description: validation.error,
-        duration: 6000,
-      });
-      return;
-    }
 
-    // Now simulate the game
+    // Simulate the game - the simulator will process whatever it can
     const result = simulateGame(cleanedPgn);
     
-    // Check if simulation produced valid results
-    if (result.totalMoves === 0) {
-      toast.error('Unable to process game', {
-        description: 'The PGN could not be processed. Please check the notation and try again.',
-        duration: 6000,
-      });
-      return;
-    }
-
+    // Always show the visualization, even if partial
     setSimulation(result);
     setCurrentPgn(cleanedPgn);
     
@@ -56,9 +39,15 @@ const Index = () => {
       setGameTitle('Chess Visualization');
     }
 
-    toast.success('Visualization generated!', {
-      description: `${validation.moveCount} moves processed successfully.`,
-    });
+    if (result.totalMoves > 0) {
+      toast.success('Visualization generated!', {
+        description: `${result.totalMoves} moves processed.`,
+      });
+    } else {
+      toast.info('Visualization created', {
+        description: 'No moves could be parsed, but showing the board layout.',
+      });
+    }
   };
   
   const handleBack = () => {

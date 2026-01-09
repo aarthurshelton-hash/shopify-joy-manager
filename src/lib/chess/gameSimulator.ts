@@ -1,4 +1,4 @@
-import { Chess, Square } from 'chess.js';
+import { Chess, Square, Move } from 'chess.js';
 import { PieceType, PieceColor, getPieceColor } from './pieceColors';
 
 export interface SquareVisit {
@@ -91,6 +91,7 @@ function getPathSquares(from: Square, to: Square, pieceType: string): Square[] {
 }
 
 // Simulate the entire game and track piece visits to each square
+// This function is PERMISSIVE - it processes whatever moves it can without strict validation
 export function simulateGame(pgn: string): SimulationResult {
   const chess = new Chess();
   
@@ -109,31 +110,53 @@ export function simulateGame(pgn: string): SimulationResult {
     }
   }
   
-  // Try to load the PGN
+  // Parse game metadata first
+  const gameHeaders = parseGameData(pgn);
+  
+  // Try to load the PGN directly first
+  let history: Move[] = [];
+  
   try {
     chess.loadPgn(pgn);
+    history = chess.history({ verbose: true });
   } catch (e) {
-    console.error('Failed to load PGN:', e);
-    // Return empty board if PGN is invalid
-    return {
-      board,
-      gameData: {
-        white: 'Unknown',
-        black: 'Unknown',
-        event: 'Unknown',
-        date: 'Unknown',
-        result: '*',
-        pgn: pgn,
-        moves: [],
-      },
-      totalMoves: 0,
-    };
+    // If direct loading fails, try to parse moves manually
+    console.log('Direct PGN load failed, attempting manual parsing...');
+    
+    // Extract just the moves section (after headers)
+    const movesSection = pgn.replace(/\[[^\]]*\]/g, '').trim();
+    
+    // Parse individual move tokens
+    const moveTokens = movesSection
+      .replace(/\{[^}]*\}/g, '') // Remove comments
+      .replace(/\([^)]*\)/g, '') // Remove variations
+      .replace(/\$\d+/g, '') // Remove NAG annotations
+      .replace(/1-0|0-1|1\/2-1\/2|\*/g, '') // Remove results
+      .split(/\s+/)
+      .filter(token => token && !token.match(/^\d+\.+$/) && token !== '...');
+    
+    chess.reset();
+    
+    for (const moveToken of moveTokens) {
+      try {
+        // Try common notation fixes
+        let fixedMove = moveToken
+          .replace(/0-0-0/gi, 'O-O-O')
+          .replace(/0-0/gi, 'O-O')
+          .replace(/[+#!?]+$/, ''); // Remove check/mate/annotation symbols for parsing
+        
+        const result = chess.move(fixedMove);
+        if (result) {
+          history.push(result);
+        }
+      } catch {
+        // Skip moves that can't be parsed - continue with what we have
+        console.log(`Skipping unparseable move: ${moveToken}`);
+      }
+    }
   }
   
-  // Get the move history
-  const history = chess.history({ verbose: true });
-  
-  // Reset and replay the game to track movements
+  // Reset and replay to track movements
   chess.reset();
   
   let moveNumber = 0;
@@ -162,11 +185,12 @@ export function simulateGame(pgn: string): SimulationResult {
     }
     
     // Make the move on our tracking board
-    chess.move(move.san);
+    try {
+      chess.move(move.san);
+    } catch {
+      // If replay fails, just continue - we already have the data
+    }
   }
-  
-  // Parse game metadata
-  const gameHeaders = parseGameData(pgn);
   
   return {
     board,
