@@ -9,9 +9,10 @@ import { toast } from 'sonner';
 interface PrintPreviewProps {
   simulation: SimulationResult;
   pgn?: string;
+  title?: string;
 }
 
-const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn }) => {
+const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) => {
   const printRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [boardSize, setBoardSize] = useState(320);
@@ -83,7 +84,7 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn }) => {
           
           {/* Game information - proper spacing */}
           <div className="w-full pt-4 border-t border-stone-200">
-            <GameInfoDisplay gameData={simulation.gameData} />
+            <GameInfoDisplay gameData={simulation.gameData} title={title} />
           </div>
           
           {/* Subtle branding */}
