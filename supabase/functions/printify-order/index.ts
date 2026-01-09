@@ -6,13 +6,8 @@ const corsHeaders = {
 };
 
 const PRINTIFY_API_KEY = Deno.env.get('PRINTIFY_API_KEY');
+const PRINTIFY_SHOP_ID = Deno.env.get('PRINTIFY_SHOP_ID');
 const PRINTIFY_BASE_URL = 'https://api.printify.com/v1';
-
-interface PrintifyShop {
-  id: number;
-  title: string;
-  sales_channel: string;
-}
 
 interface OrderLineItem {
   title: string;
@@ -59,11 +54,7 @@ async function printifyRequest(endpoint: string, options: RequestInit = {}) {
   return response.json();
 }
 
-async function getShops(): Promise<PrintifyShop[]> {
-  return printifyRequest('/shops.json');
-}
-
-async function uploadImage(shopId: number, imageUrl: string, fileName: string) {
+async function uploadImage(imageUrl: string, fileName: string) {
   const response = await printifyRequest(`/uploads/images.json`, {
     method: 'POST',
     body: JSON.stringify({
@@ -85,7 +76,6 @@ const SIZE_TO_BLUEPRINT: Record<string, { blueprint_id: number; variant_id: numb
 };
 
 async function createPrintifyOrder(
-  shopId: number,
   shopifyOrderId: string,
   lineItems: OrderLineItem[],
   shippingAddress: ShippingAddress
@@ -101,7 +91,6 @@ async function createPrintifyOrder(
 
     // Upload the custom image
     const uploadResult = await uploadImage(
-      shopId,
       item.customImageUrl,
       `chess-visualization-${shopifyOrderId}-${Date.now()}.png`
     );
@@ -118,7 +107,7 @@ async function createPrintifyOrder(
     });
   }
 
-  const order = await printifyRequest(`/shops/${shopId}/orders.json`, {
+  const order = await printifyRequest(`/shops/${PRINTIFY_SHOP_ID}/orders.json`, {
     method: 'POST',
     body: JSON.stringify({
       external_id: shopifyOrderId,
@@ -155,30 +144,18 @@ serve(async (req) => {
       throw new Error('PRINTIFY_API_KEY not configured');
     }
 
+    if (!PRINTIFY_SHOP_ID) {
+      throw new Error('PRINTIFY_SHOP_ID not configured');
+    }
+
     const url = new URL(req.url);
     const path = url.pathname.replace('/printify-order', '');
-
-    // GET /shops - List available shops
-    if (req.method === 'GET' && path === '/shops') {
-      const shops = await getShops();
-      return new Response(JSON.stringify({ shops }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
 
     // POST /create - Create an order
     if (req.method === 'POST' && path === '/create') {
       const body: CreateOrderRequest = await req.json();
-      
-      // Get the first shop
-      const shops = await getShops();
-      if (shops.length === 0) {
-        throw new Error('No Printify shops found. Please create a shop in Printify first.');
-      }
-      const shopId = shops[0].id;
 
       const order = await createPrintifyOrder(
-        shopId,
         body.shopifyOrderId,
         body.lineItems,
         body.shippingAddress
@@ -193,12 +170,7 @@ serve(async (req) => {
     if (req.method === 'POST' && path === '/upload-image') {
       const { imageUrl, fileName } = await req.json();
       
-      const shops = await getShops();
-      if (shops.length === 0) {
-        throw new Error('No Printify shops found');
-      }
-      
-      const result = await uploadImage(shops[0].id, imageUrl, fileName);
+      const result = await uploadImage(imageUrl, fileName);
       return new Response(JSON.stringify({ success: true, image: result }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
