@@ -3,6 +3,7 @@ import PgnUploader from '@/components/chess/PgnUploader';
 import PrintPreview from '@/components/chess/PrintPreview';
 import ColorLegend from '@/components/chess/ColorLegend';
 import ChessLoadingAnimation from '@/components/chess/ChessLoadingAnimation';
+import PaletteSelector from '@/components/chess/PaletteSelector';
 import { simulateGame, SimulationResult } from '@/lib/chess/gameSimulator';
 import { Header } from '@/components/shop/Header';
 import { ProductSelector } from '@/components/shop/ProductSelector';
@@ -10,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Palette, Crown, Sparkles, Award } from 'lucide-react';
 import { toast } from 'sonner';
 import { cleanPgn } from '@/lib/chess/pgnValidator';
+import { PaletteId } from '@/lib/chess/pieceColors';
 
 const Index = () => {
   const [simulation, setSimulation] = useState<SimulationResult | null>(null);
@@ -22,6 +24,13 @@ const Index = () => {
   const [showLegend, setShowLegend] = useState(false);
   const [currentPgn, setCurrentPgn] = useState<string>('');
   const [gameTitle, setGameTitle] = useState<string>('');
+  const [paletteKey, setPaletteKey] = useState(0);
+  
+  const handlePaletteChange = useCallback((paletteId: PaletteId) => {
+    // Force re-render of components that use the palette
+    setPaletteKey(prev => prev + 1);
+    toast.success(`Palette changed to ${paletteId.charAt(0).toUpperCase() + paletteId.slice(1)}`);
+  }, []);
   
   const handlePgnSubmit = (pgn: string) => {
     // Clean the PGN but don't validate - just process what we can
@@ -137,6 +146,9 @@ const Index = () => {
               </p>
             </div>
             
+            {/* Palette selector */}
+            <PaletteSelector onPaletteChange={handlePaletteChange} />
+            
             {/* Upload form */}
             <PgnUploader onPgnSubmit={handlePgnSubmit} />
             
@@ -178,6 +190,7 @@ const Index = () => {
             {/* Print preview */}
             <div className="flex-1 max-w-2xl space-y-8">
               <PrintPreview 
+                key={paletteKey}
                 simulation={simulation} 
                 pgn={currentPgn}
               />
@@ -194,7 +207,7 @@ const Index = () => {
             {/* Legend sidebar */}
             {showLegend && (
               <div className="lg:w-72">
-                <ColorLegend />
+                <ColorLegend key={`legend-${paletteKey}`} />
               </div>
             )}
           </div>

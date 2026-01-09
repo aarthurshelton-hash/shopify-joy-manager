@@ -1,6 +1,6 @@
 import React from 'react';
-import { SquareData } from '@/lib/chess/gameSimulator';
-import { boardColors } from '@/lib/chess/pieceColors';
+import { SquareData, SquareVisit } from '@/lib/chess/gameSimulator';
+import { boardColors, getPieceColor } from '@/lib/chess/pieceColors';
 
 interface ChessBoardVisualizationProps {
   board: SquareData[][];
@@ -8,9 +8,14 @@ interface ChessBoardVisualizationProps {
 }
 
 interface NestedSquareProps {
-  visits: { hexColor: string }[];
+  visits: SquareVisit[];
   baseColor: string;
   size: number;
+}
+
+// Get the current color for a visit using the active palette
+function getVisitColor(visit: SquareVisit): string {
+  return getPieceColor(visit.piece, visit.color);
 }
 
 // Renders nested squares for a single board square
@@ -30,11 +35,12 @@ const NestedSquare: React.FC<NestedSquareProps> = ({ visits, baseColor, size }) 
     );
   }
   
-  // Get unique colors in order of first appearance
+  // Get unique colors in order of first appearance (using current palette)
   const uniqueColors: string[] = [];
   for (const visit of visits) {
-    if (!uniqueColors.includes(visit.hexColor)) {
-      uniqueColors.push(visit.hexColor);
+    const color = getVisitColor(visit);
+    if (!uniqueColors.includes(color)) {
+      uniqueColors.push(color);
     }
   }
   
