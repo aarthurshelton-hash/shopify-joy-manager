@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { GameData, formatMoves } from '@/lib/chess/gameSimulator';
 
 interface GameInfoDisplayProps {
@@ -40,9 +40,43 @@ function formatDate(dateStr: string): string {
 
 const GameInfoDisplay: React.FC<GameInfoDisplayProps> = ({ gameData }) => {
   const formattedMoves = formatMoves(gameData.moves);
+  const movesRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [fontSize, setFontSize] = useState(10);
+  
+  // Dynamically adjust font size to fit all moves without scrolling
+  useEffect(() => {
+    const adjustFontSize = () => {
+      const container = containerRef.current;
+      const movesEl = movesRef.current;
+      if (!container || !movesEl) return;
+      
+      // Start with a reasonable font size and decrease until it fits
+      let currentSize = 11; // Start slightly larger
+      const minSize = 5; // Minimum readable size
+      const maxHeight = 80; // Max height for moves section
+      
+      movesEl.style.fontSize = `${currentSize}px`;
+      
+      while (movesEl.scrollHeight > maxHeight && currentSize > minSize) {
+        currentSize -= 0.5;
+        movesEl.style.fontSize = `${currentSize}px`;
+      }
+      
+      setFontSize(currentSize);
+    };
+    
+    // Run after render
+    const timer = setTimeout(adjustFontSize, 10);
+    return () => clearTimeout(timer);
+  }, [formattedMoves]);
   
   return (
-    <div className="text-center max-w-md mx-auto space-y-3" style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}>
+    <div 
+      ref={containerRef}
+      className="text-center max-w-md mx-auto space-y-3" 
+      style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
+    >
       {/* Player Names - Bold, elegant */}
       <h1 className="text-xl md:text-2xl font-semibold tracking-wide text-stone-800">
         <span>{gameData.white}</span>
@@ -62,10 +96,16 @@ const GameInfoDisplay: React.FC<GameInfoDisplayProps> = ({ gameData }) => {
         {formatDate(gameData.date)}
       </p>
       
-      {/* Move Notation - Subtle, readable */}
+      {/* Move Notation - Auto-scaling font to fit without scroll */}
       <div 
-        className="text-[10px] text-stone-400 leading-relaxed px-2 max-h-20 overflow-y-auto"
-        style={{ fontFamily: "'Inter', sans-serif" }}
+        ref={movesRef}
+        className="text-stone-400 leading-relaxed px-2"
+        style={{ 
+          fontFamily: "'Inter', sans-serif",
+          fontSize: `${fontSize}px`,
+          maxHeight: '80px',
+          overflow: 'hidden',
+        }}
       >
         {formattedMoves}
       </div>
