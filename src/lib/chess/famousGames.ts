@@ -182,23 +182,136 @@ export const famousGames: FamousGame[] = [
 1. c4 e6 2. d4 d5 3. Nc3 c6 4. e4 dxe4 5. Nxe4 Bb4+ 6. Nc3 c5 7. a3 Ba5 8. Nf3 Nf6 9. Be3 Nc6 10. Qd3 cxd4 11. Nxd4 Ng4 12. O-O-O Nxe3 13. fxe3 Bc7 14. Nxc6 bxc6 15. Qxd8+ Bxd8 16. Be2 Ke7 17. Bf3 Bd7 18. Ne4 Bb6 19. c5 f5 20. cxb6 fxe4 21. b7 Rab8 22. Bxe4 Rxb7 23. Rhf1 Rb5 24. Rf4 g5 25. Rf3 h5 26. Rdf1 Be8 27. Bc2 Rc5 28. Rf6 h4 29. e4 a5 30. Kd2 Rb5 31. b3 Bh5 32. Kc3 Rc5+ 33. Kb2 Rd8 34. R1f2 Rd4 35. Rh6 Bd1 36. Bb1 Rb5 37. Kc3 c5 38. Rb2 e5 39. Rg6 a4 40. Rxg5 Rxb3+ 41. Rxb3 Bxb3 42. Rxe5+ Kd6 43. Rh5 Rd1 44. e5+ Kd5 45. Bh7 Rc1+ 46. Kb2 Rg1 47. Bg8+ Kc6 48. Rh6+ Kd7 49. Bxb3 axb3 50. Kxb3 Rxg2 51. Rxh4 Ke6 52. a4 Kxe5 53. a5 Kd6 54. Rh7 Kd5 55. a6 c4+ 56. Kc3 Ra2 57. a7 Kc5 58. h4 1-0`
   },
   {
-    id: 'tal-larsen-1965',
-    title: "Tal's Magic",
-    event: 'Candidates Tournament',
-    year: 1965,
-    white: 'Mikhail Tal',
-    black: 'Bent Larsen',
-    description: 'The Magician from Riga at his finest - a dazzling attack with brilliant sacrificial play.',
-    source: 'chessgames.com/1122097',
-    pgn: `[Event "Candidates Tournament"]
-[Site "Bled YUG"]
-[Date "1965.10.08"]
-[Round "10"]
-[White "Mikhail Tal"]
-[Black "Bent Larsen"]
+    id: 'botvinnik-capablanca-1938',
+    title: 'Botvinnik Brilliance',
+    event: 'AVRO Tournament',
+    year: 1938,
+    white: 'Mikhail Botvinnik',
+    black: 'Jose Raul Capablanca',
+    description: 'A stunning victory by Botvinnik against the former world champion, featuring a beautiful queen sacrifice.',
+    source: 'chessgames.com/1031957',
+    pgn: `[Event "AVRO Tournament"]
+[Site "Netherlands"]
+[Date "1938.11.22"]
+[Round "11"]
+[White "Mikhail Botvinnik"]
+[Black "Jose Raul Capablanca"]
 [Result "1-0"]
 
-1. e4 c5 2. Nf3 Nc6 3. d4 cxd4 4. Nxd4 e6 5. Nc3 d6 6. Be3 Nf6 7. f4 Be7 8. Qf3 O-O 9. O-O-O Qc7 10. Ndb5 Qb8 11. g4 a6 12. Nd4 Nxd4 13. Bxd4 b5 14. g5 Nd7 15. Bd3 b4 16. Nd5 exd5 17. exd5 f5 18. Rde1 Rf7 19. h4 Bb7 20. Bxf5 Rxf5 21. Rxe7 Qf8 22. Qe4 Rf7 23. Re1 Qxe7 24. Qxe7 Rxe7 25. Rxe7 Nf8 26. Be3 a5 27. Kd2 Ba6 28. Bd4 Kf7 29. Ra7 Bb5 30. Rxa8 1-0`
+1. d4 Nf6 2. c4 e6 3. Nc3 Bb4 4. e3 d5 5. a3 Bxc3+ 6. bxc3 c5 7. cxd5 exd5 8. Bd3 O-O 9. Ne2 b6 10. O-O Ba6 11. Bxa6 Nxa6 12. Bb2 Qd7 13. a4 Rfe8 14. Qd3 c4 15. Qc2 Nb8 16. Rae1 Nc6 17. Ng3 Na5 18. f3 Nb3 19. e4 Qxa4 20. e5 Nd7 21. Qf2 g6 22. f4 f5 23. exf6 Nxf6 24. f5 Rxe1 25. Rxe1 Re8 26. Re6 Rxe6 27. fxe6 Kg7 28. Qf4 Qe8 29. Qe5 Qe7 30. Ba3 Qxa3 31. Nh5+ gxh5 32. Qg5+ Kf8 33. Qxf6+ Kg8 34. e7 Qc1+ 35. Kf2 Qc2+ 36. Kg3 Qd3+ 37. Kh4 Qe4+ 38. Kxh5 Qe2+ 39. Kh4 Qe4+ 40. g4 Qe1+ 41. Kh5 1-0`
+  },
+  {
+    id: 'alekhine-capablanca-1927',
+    title: 'The Marathon Match',
+    event: 'World Championship',
+    year: 1927,
+    white: 'Alexander Alekhine',
+    black: 'Jose Raul Capablanca',
+    description: 'The decisive 34th game of their epic World Championship match, ending Capablanca\'s reign.',
+    source: 'chessgames.com/1012518',
+    pgn: `[Event "World Championship"]
+[Site "Buenos Aires ARG"]
+[Date "1927.11.26"]
+[Round "34"]
+[White "Alexander Alekhine"]
+[Black "Jose Raul Capablanca"]
+[Result "1-0"]
+
+1. d4 d5 2. c4 e6 3. Nc3 Nf6 4. Bg5 Nbd7 5. e3 c6 6. a3 Be7 7. Nf3 O-O 8. Bd3 dxc4 9. Bxc4 Nd5 10. Bxe7 Qxe7 11. Ne4 N5f6 12. Ng3 c5 13. O-O Nb6 14. Ba2 cxd4 15. Nxd4 g6 16. Rc1 Bd7 17. Qe2 Rac8 18. e4 e5 19. Nf3 Kg7 20. h3 h6 21. Qd2 Be6 22. Bxe6 Qxe6 23. Qa5 Nc4 24. Qxa7 Nxb2 25. Rxc8 Rxc8 26. Qxb7 Nc4 27. Qb4 Ra8 28. Ra1 Qc6 29. a4 Nxe4 30. Nxe5 Qd6 31. Qxc4 Qxe5 32. Re1 Nd6 33. Qc1 Qf6 34. Qc7 Qa6 35. Re2 Ra7 36. Qc5 Rf7 37. Ra2 Qa8 38. Qc1 Qa5 39. Qc7 Qa8 40. Rd2 Qa6 41. Rd5 Rf6 42. Qd4 Qb6 43. Rd2 Ra6 44. Ra2 Ra8 45. Qb6 Qd4 46. Qb4 Qd3 47. Ra3 Qe4 48. Qb2+ Kh7 49. Rd3 Qe6 50. Qd4 Rc8 51. Ra3 Rf8 52. Rd3 Rf6 53. Qd5 Rf7 54. Ra3 Rc7 55. Qd4 Qb6 56. Rd3 Ra7 57. Qe5 Re7 58. Qf4 Qe6 59. Rd5 Rf7 60. Qd4 Ra7 61. Ra5 Rxa5 62. Qxa5 Qe4 63. Qb6 Qe8 64. f3 Kg8 65. Kg7 Nf5 66. Kh6 Rf5 67. f4 Rc5 68. Ra3 Rc6 69. Kg7 Rd7 70. f5 gxf5 71. Kh6 Rf7 72. Kg5 Re7 73. Ra4 Kb5 74. Re4 Ka6 75. Kh6 Rg5 76. Rg5 Rh1 77. Rf5 Kb6 78. Rxf7 Kc6 79. Re7 1-0`
+  },
+  {
+    id: 'marshall-capablanca-1909',
+    title: "Capablanca's Debut",
+    event: 'Capablanca vs Marshall Match',
+    year: 1909,
+    white: 'Frank Marshall',
+    black: 'Jose Raul Capablanca',
+    description: 'A young Capablanca defeats the US Champion in a masterful display of endgame technique.',
+    source: 'chessgames.com/1094814',
+    pgn: `[Event "Capablanca - Marshall Match"]
+[Site "New York USA"]
+[Date "1909.04.27"]
+[Round "5"]
+[White "Frank Marshall"]
+[Black "Jose Raul Capablanca"]
+[Result "0-1"]
+
+1. d4 d5 2. c4 e6 3. Nc3 Nf6 4. Bg5 Be7 5. e3 Ne4 6. Bxe7 Qxe7 7. Bd3 Nxc3 8. bxc3 Nd7 9. Nf3 O-O 10. Qc2 h6 11. O-O c5 12. Rfe1 dxc4 13. Bxc4 b6 14. Qe4 Rb8 15. Bd3 Nf6 16. Qf4 Bb7 17. e4 Rfd8 18. Rad1 Rbc8 19. Re3 cxd4 20. cxd4 Rc3 21. Bb1 g5 22. Nxg5 Rxe3 23. Qxe3 Ng4 24. Qg3 Qxg5 25. h4 Qg6 26. Qc7 Rxd4 27. Qb8+ Kh7 28. e5+ Be4 29. Rxd4 Bxb1 30. Qxa7 Nxe5 31. Rf4 Be4 32. g3 Nf3+ 33. Kg2 f5 34. Qxb6 Nxh4+ 35. Kh2 Nf3+ 36. Rxf3 Bxf3 37. Qxe6 Be4 38. f3 Bd3 39. Qd5 Qb1 40. a4 Qa2 41. Qb7+ Kg6 42. Qb6+ Kh5 43. Kh2 Ba2 44. a5 Qd4 45. Qc6+ Qf6 46. Qe8+ Qf7 47. Qa4 Qe6 48. a6 Qe2+ 49. Kh3 Bd5 50. a7 Bxf3 51. Qa5 Kg6 52. a8=Q Qf1+ 0-1`
+  },
+  {
+    id: 'anderssen-dufresne-1852',
+    title: 'The Evergreen Game',
+    event: 'Berlin Casual',
+    year: 1852,
+    white: 'Adolf Anderssen',
+    black: 'Jean Dufresne',
+    description: 'Another Anderssen masterpiece with a stunning queen sacrifice leading to an elegant checkmate.',
+    source: 'chessgames.com/1018865',
+    pgn: `[Event "Berlin Casual"]
+[Site "Berlin GER"]
+[Date "1852.??.??"]
+[White "Adolf Anderssen"]
+[Black "Jean Dufresne"]
+[Result "1-0"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. b4 Bxb4 5. c3 Ba5 6. d4 exd4 7. O-O d3 8. Qb3 Qf6 9. e5 Qg6 10. Re1 Nge7 11. Ba3 b5 12. Qxb5 Rb8 13. Qa4 Bb6 14. Nbd2 Bb7 15. Ne4 Qf5 16. Bxd3 Qh5 17. Nf6+ gxf6 18. exf6 Rg8 19. Rad1 Qxf3 20. Rxe7+ Nxe7 21. Qxd7+ Kxd7 22. Bf5+ Ke8 23. Bd7+ Kf8 24. Bxe7# 1-0`
+  },
+  {
+    id: 'karpov-kasparov-1985',
+    title: 'The Octopus Knight',
+    event: 'World Championship',
+    year: 1985,
+    white: 'Anatoly Karpov',
+    black: 'Garry Kasparov',
+    description: 'Game 16 of their legendary 1985 match, where Kasparov\'s knight dominated from d3.',
+    source: 'chessgames.com/1067175',
+    pgn: `[Event "World Championship"]
+[Site "Moscow URS"]
+[Date "1985.10.15"]
+[Round "16"]
+[White "Anatoly Karpov"]
+[Black "Garry Kasparov"]
+[Result "0-1"]
+
+1. e4 c5 2. Nf3 e6 3. d4 cxd4 4. Nxd4 Nc6 5. Nb5 d6 6. c4 Nf6 7. N1c3 a6 8. Na3 d5 9. cxd5 exd5 10. exd5 Nb4 11. Be2 Bc5 12. O-O O-O 13. Bf3 Bf5 14. Bg5 Re8 15. Qd2 b5 16. Rad1 Nd3 17. Nab1 h6 18. Bh4 b4 19. Na4 Bd6 20. Bg3 Rc8 21. b3 g5 22. Bxd6 Qxd6 23. g3 Nd7 24. Bg2 Qf6 25. a3 a5 26. axb4 axb4 27. Qa2 Bg6 28. d6 g4 29. Qd2 Kg7 30. f3 Qxd6 31. fxg4 Qd4+ 32. Kh1 Nf6 33. Rf4 Ne4 34. Qxd3 Nf2+ 35. Rxf2 Bxd3 36. Rfd2 Qe3 37. Rxd3 Rc1 38. Nb2 Qf2 39. Nd2 Rxd1+ 40. Nxd1 Re1+ 0-1`
+  },
+  {
+    id: 'short-timman-1991',
+    title: "Short's King Walk",
+    event: 'Tilburg Tournament',
+    year: 1991,
+    white: 'Nigel Short',
+    black: 'Jan Timman',
+    description: 'Famous for Short marching his king up the board in a daring attack that won brilliantly.',
+    source: 'chessgames.com/1076029',
+    pgn: `[Event "Tilburg Tournament"]
+[Site "Tilburg NED"]
+[Date "1991.10.17"]
+[Round "4"]
+[White "Nigel Short"]
+[Black "Jan Timman"]
+[Result "1-0"]
+
+1. e4 Nf6 2. e5 Nd5 3. d4 d6 4. Nf3 g6 5. Bc4 Nb6 6. Bb3 Bg7 7. Qe2 Nc6 8. O-O O-O 9. h3 a5 10. a4 dxe5 11. dxe5 Nd4 12. Nxd4 Qxd4 13. Re1 e6 14. Nd2 Nd5 15. Nf3 Qc5 16. Qe4 Qb4 17. Bc4 Nb6 18. b3 Nxc4 19. bxc4 Re8 20. Rd1 Qc5 21. Qh4 b6 22. Be3 Qc6 23. Bh6 Bh8 24. Rd8 Bb7 25. Rad1 Bg7 26. R8d7 Rf8 27. Bxg7 Kxg7 28. R1d4 Rae8 29. Qf6+ Kg8 30. h4 h5 31. Kh2 Rc8 32. Kg3 Rce8 33. Kf4 Bc8 34. R7d6 Bxd6 35. Rxd6 Kg7 36. Rd7 Rc8 37. Ke5 Rc7 38. Rxc7 Qxc7 39. Nd4 Qc5+ 40. Kf4 Qc7 41. Ke4 Qc5 42. Kd3 Qc7 43. Nc6 Rd8+ 44. Kc3 Rd6 45. Qe7 Qxe7 46. Nxe7 Rd7 47. Nc6 1-0`
+  },
+  {
+    id: 'polgar-kasparov-2002',
+    title: 'Polgar Beats the King',
+    event: 'Russia vs Rest of World',
+    year: 2002,
+    white: 'Judit Polgar',
+    black: 'Garry Kasparov',
+    description: 'Judit Polgar becomes the first woman to defeat Kasparov in competitive play.',
+    source: 'chessgames.com/1260377',
+    pgn: `[Event "Russia vs Rest of World"]
+[Site "Moscow RUS"]
+[Date "2002.09.09"]
+[Round "5"]
+[White "Judit Polgar"]
+[Black "Garry Kasparov"]
+[Result "1-0"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bb5 Nf6 4. O-O Nxe4 5. d4 Nd6 6. Bxc6 dxc6 7. dxe5 Nf5 8. Qxd8+ Kxd8 9. Nc3 Ke8 10. h3 Be7 11. Ne4 b6 12. Re1 Bb7 13. Nd4 Nxd4 14. Nf6+ gxf6 15. exf6 Rg8 16. fxe7 Ne6 17. Bf4 Nxf4 18. Re4 Nd5 19. Rae1 Kd7 20. c4 Nxe7 21. Rxe7+ Kd6 22. Rxf7 Raf8 23. Ree7 Rxf7 24. Rxf7 Kc5 25. Rxh7 Kb4 26. Rc7 Rg6 27. b3 Rf6 28. f3 a5 29. h4 a4 30. g4 axb3 31. axb3 Bc8 32. h5 Bf5 33. Rxc6 Rxc6 34. gxf5 Rc5 35. f6 Rxf5 36. Kg2 Rb5 37. Kf2 Kxb3 38. Ke3 Kc4 39. Ke4 b5 40. h6 1-0`
   }
 ];
 
