@@ -1,10 +1,10 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Upload, FileText, Crown, Sparkles, CheckCircle, XCircle, Loader2, Lightbulb } from 'lucide-react';
+import { Upload, FileText, Crown, Sparkles, CheckCircle, XCircle, Loader2, Wrench, ArrowRight } from 'lucide-react';
 import { famousGames, FamousGame } from '@/lib/chess/famousGames';
 import { validatePgn, cleanPgn, PgnValidationResult } from '@/lib/chess/pgnValidator';
+import { fixPgn, PgnFixResult } from '@/lib/chess/pgnFixer';
 import { toast } from 'sonner';
 
 interface PgnUploaderProps {
@@ -17,14 +17,8 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
   const [selectedGame, setSelectedGame] = useState<FamousGame | null>(null);
   const [validation, setValidation] = useState<PgnValidationResult | null>(null);
   const [isValidating, setIsValidating] = useState(false);
-  const [showRecommendations, setShowRecommendations] = useState(false);
-  const [recommendationSeed, setRecommendationSeed] = useState(0);
-
-  // Get 3 random recommended games for when validation fails
-  const recommendedGames = useMemo(() => {
-    const shuffled = [...famousGames].sort(() => Math.random() - 0.5);
-    return shuffled.slice(0, 3);
-  }, [recommendationSeed]);
+  const [fixResult, setFixResult] = useState<PgnFixResult | null>(null);
+  const [isFixing, setIsFixing] = useState(false);
   
   const handleValidate = useCallback(() => {
     if (!pgn.trim()) {
@@ -35,9 +29,8 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
     }
 
     setIsValidating(true);
-    setShowRecommendations(false);
+    setFixResult(null);
     
-    // Use setTimeout to allow UI to update
     setTimeout(() => {
       const cleanedPgn = cleanPgn(pgn);
       const result = validatePgn(cleanedPgn);
@@ -48,17 +41,41 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
         toast.success('PGN is valid!', {
           description: `${result.moveCount} moves detected.`,
         });
-        setShowRecommendations(false);
       } else {
-        toast.error('Invalid PGN', {
-          description: result.error,
-          duration: 6000,
-        });
-        setShowRecommendations(true);
-        setRecommendationSeed(prev => prev + 1);
+        // Automatically try to fix the PGN
+        setIsFixing(true);
+        setTimeout(() => {
+          const fix = fixPgn(cleanedPgn);
+          setFixResult(fix);
+          setIsFixing(false);
+          
+          if (fix.canFix && fix.suggestions.length > 0) {
+            toast.info('Fix suggestions available', {
+              description: `Found ${fix.suggestions.length} issue(s) that can be corrected.`,
+              duration: 5000,
+            });
+          } else if (!fix.canFix) {
+            toast.error('Cannot auto-fix this PGN', {
+              description: fix.originalError,
+              duration: 6000,
+            });
+          }
+        }, 50);
       }
     }, 50);
   }, [pgn]);
+
+  const handleApplyFix = useCallback(() => {
+    if (fixResult?.fixedPgn) {
+      setPgn(fixResult.fixedPgn);
+      setValidation(null);
+      setFixResult(null);
+      setSelectedGame(null);
+      toast.success('Fixes applied!', {
+        description: 'The corrected PGN has been loaded. Click Validate to verify.',
+      });
+    }
+  }, [fixResult]);
 
   const handleSubmit = useCallback(() => {
     if (pgn.trim()) {
@@ -70,7 +87,7 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
     setPgn(game.pgn);
     setSelectedGame(game);
     setValidation(null);
-    setShowRecommendations(false);
+    setFixResult(null);
   }, []);
   
   const handleFileUpload = useCallback((file: File) => {
@@ -80,6 +97,8 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
       if (text) {
         setPgn(text);
         setSelectedGame(null);
+        setValidation(null);
+        setFixResult(null);
       }
     };
     reader.readAsText(file);
@@ -201,7 +220,7 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
                 setPgn(e.target.value);
                 setSelectedGame(null);
                 setValidation(null);
-                setShowRecommendations(false);
+                setFixResult(null);
               }}
               className="min-h-[150px] font-mono text-sm bg-background/50 border-border/50 focus:border-primary/50"
             />
@@ -219,7 +238,7 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
               ) : (
                 <XCircle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
               )}
-              <div>
+              <div className="flex-1">
                 <p className={`text-sm font-medium ${validation.isValid ? 'text-green-500' : 'text-destructive'}`}>
                   {validation.isValid ? `Valid PGN — ${validation.moveCount} moves` : 'Invalid PGN'}
                 </p>
@@ -230,34 +249,81 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
             </div>
           )}
 
-          {/* Recommended games when validation fails */}
-          {showRecommendations && !validation?.isValid && (
-            <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
+          {/* PGN Fix Suggestions */}
+          {fixResult && !validation?.isValid && (
+            <div className={`p-4 rounded-lg border ${
+              fixResult.canFix 
+                ? 'bg-amber-500/10 border-amber-500/30' 
+                : 'bg-destructive/10 border-destructive/30'
+            }`}>
               <div className="flex items-center gap-2 mb-3">
-                <Lightbulb className="h-5 w-5 text-amber-500" />
-                <p className="text-sm font-medium text-amber-500">
-                  Try one of these verified games instead
+                <Wrench className={`h-5 w-5 ${fixResult.canFix ? 'text-amber-500' : 'text-destructive'}`} />
+                <p className={`text-sm font-medium ${fixResult.canFix ? 'text-amber-500' : 'text-destructive'}`}>
+                  {fixResult.canFix 
+                    ? `Found ${fixResult.suggestions.length} issue(s) - suggested corrections:` 
+                    : 'Unable to automatically fix this PGN'}
                 </p>
               </div>
-              <div className="space-y-2">
-                {recommendedGames.map((game) => (
-                  <button
-                    key={game.id}
-                    onClick={() => handleLoadGame(game)}
-                    className="w-full text-left p-3 rounded-lg bg-background/50 border border-border/50 hover:border-primary/50 hover:bg-primary/5 transition-all duration-200"
-                  >
-                    <p className="text-sm font-display font-semibold">{game.title}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {game.white} vs {game.black} • {game.year}
-                    </p>
-                  </button>
-                ))}
-              </div>
+              
+              {fixResult.canFix && fixResult.suggestions.length > 0 && (
+                <div className="space-y-2 mb-4">
+                  {fixResult.suggestions.map((suggestion, index) => (
+                    <div 
+                      key={index}
+                      className="p-3 rounded-lg bg-background/50 border border-border/50"
+                    >
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="text-muted-foreground">Move {suggestion.moveNumber}:</span>
+                        <code className="px-1.5 py-0.5 rounded bg-destructive/20 text-destructive font-mono text-xs">
+                          {suggestion.originalMove}
+                        </code>
+                        <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                        <code className="px-1.5 py-0.5 rounded bg-green-500/20 text-green-600 font-mono text-xs">
+                          {suggestion.suggestedMove}
+                        </code>
+                        <span className={`ml-auto text-xs px-2 py-0.5 rounded ${
+                          suggestion.confidence === 'high' 
+                            ? 'bg-green-500/20 text-green-600' 
+                            : suggestion.confidence === 'medium'
+                            ? 'bg-amber-500/20 text-amber-600'
+                            : 'bg-muted text-muted-foreground'
+                        }`}>
+                          {suggestion.confidence} confidence
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1.5">{suggestion.reason}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {!fixResult.canFix && (
+                <p className="text-xs text-muted-foreground mb-3">{fixResult.originalError}</p>
+              )}
+              
+              {fixResult.canFix && fixResult.suggestions.length > 0 && (
+                <Button
+                  onClick={handleApplyFix}
+                  className="w-full gap-2"
+                  variant="outline"
+                >
+                  <CheckCircle className="h-4 w-4" />
+                  Apply {fixResult.suggestions.length} Correction{fixResult.suggestions.length > 1 ? 's' : ''}
+                </Button>
+              )}
+            </div>
+          )}
+
+          {/* Loading state for fixing */}
+          {isFixing && (
+            <div className="p-4 rounded-lg bg-muted/50 border border-border/50 flex items-center gap-3">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Analyzing PGN for possible fixes...</p>
             </div>
           )}
           
           {/* Selected game info */}
-          {selectedGame && !validation && !showRecommendations && (
+          {selectedGame && !validation && !fixResult && (
             <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
               <p className="text-sm font-display font-semibold">{selectedGame.title}</p>
               <p className="text-xs text-muted-foreground mt-1 font-serif">{selectedGame.description}</p>
