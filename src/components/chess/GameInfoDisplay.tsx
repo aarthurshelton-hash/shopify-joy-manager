@@ -3,6 +3,7 @@ import { GameData, formatMoves } from '@/lib/chess/gameSimulator';
 
 interface GameInfoDisplayProps {
   gameData: GameData;
+  title?: string;
 }
 
 // Format date from PGN format (YYYY.MM.DD) to display format
@@ -38,7 +39,7 @@ function formatDate(dateStr: string): string {
   return `${months[monthIndex]} ${day}${getDaySuffix(day)}, ${year}`;
 }
 
-const GameInfoDisplay: React.FC<GameInfoDisplayProps> = ({ gameData }) => {
+const GameInfoDisplay: React.FC<GameInfoDisplayProps> = ({ gameData, title }) => {
   const formattedMoves = formatMoves(gameData.moves);
   
   return (
@@ -60,9 +61,11 @@ const GameInfoDisplay: React.FC<GameInfoDisplayProps> = ({ gameData }) => {
         </h2>
       )}
       
-      {/* Date */}
-      <p className="text-xs uppercase tracking-[0.15em] text-stone-400" style={{ fontFamily: "'Inter', sans-serif" }}>
-        {formatDate(gameData.date)}
+      {/* Title and Date - side by side */}
+      <p className="text-xs uppercase tracking-[0.15em] text-stone-400 flex items-center justify-center gap-3" style={{ fontFamily: "'Inter', sans-serif" }}>
+        {title && <span className="font-medium">{title}</span>}
+        {title && <span className="text-stone-300">•</span>}
+        <span>{formatDate(gameData.date)}</span>
       </p>
       
       {/* Move Notation - Full display, no truncation */}

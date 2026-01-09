@@ -32,24 +32,15 @@ const Index = () => {
     toast.success(`Palette changed to ${paletteId.charAt(0).toUpperCase() + paletteId.slice(1)}`);
   }, []);
   
-  const handlePgnSubmit = (pgn: string) => {
+  const handlePgnSubmit = (pgn: string, famousGameTitle?: string) => {
     // Clean the PGN but don't validate - just process what we can
     const cleanedPgn = cleanPgn(pgn);
 
     // Simulate the game - the simulator will process whatever it can
     const result = simulateGame(cleanedPgn);
     
-    // Extract title
-    const whiteMatch = cleanedPgn.match(/\[White\s+"([^"]+)"\]/);
-    const blackMatch = cleanedPgn.match(/\[Black\s+"([^"]+)"\]/);
-    const eventMatch = cleanedPgn.match(/\[Event\s+"([^"]+)"\]/);
-    
-    let title = 'Chess Visualization';
-    if (whiteMatch && blackMatch) {
-      title = `${whiteMatch[1]} vs ${blackMatch[1]}`;
-    } else if (eventMatch) {
-      title = eventMatch[1];
-    }
+    // Use famous game title if provided, otherwise leave empty (just show date)
+    const title = famousGameTitle || '';
     
     // Store the result and show loading animation
     setPendingResult({ result, pgn: cleanedPgn, title });
@@ -196,6 +187,7 @@ const Index = () => {
                 key={paletteKey}
                 simulation={simulation} 
                 pgn={currentPgn}
+                title={gameTitle}
               />
               
               {/* Product selector for ordering */}

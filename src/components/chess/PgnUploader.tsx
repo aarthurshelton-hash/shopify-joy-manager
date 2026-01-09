@@ -8,7 +8,7 @@ import { fixPgn, PgnFixResult } from '@/lib/chess/pgnFixer';
 import { toast } from 'sonner';
 
 interface PgnUploaderProps {
-  onPgnSubmit: (pgn: string) => void;
+  onPgnSubmit: (pgn: string, gameTitle?: string) => void;
 }
 
 const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
@@ -79,9 +79,9 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
 
   const handleSubmit = useCallback(() => {
     if (pgn.trim()) {
-      onPgnSubmit(pgn.trim());
+      onPgnSubmit(pgn.trim(), selectedGame?.title);
     }
-  }, [pgn, onPgnSubmit]);
+  }, [pgn, onPgnSubmit, selectedGame]);
   
   const handleLoadGame = useCallback((game: FamousGame) => {
     setPgn(game.pgn);
