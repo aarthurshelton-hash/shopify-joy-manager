@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React from 'react';
 import { GameData, formatMoves } from '@/lib/chess/gameSimulator';
 
 interface GameInfoDisplayProps {
@@ -40,40 +40,9 @@ function formatDate(dateStr: string): string {
 
 const GameInfoDisplay: React.FC<GameInfoDisplayProps> = ({ gameData }) => {
   const formattedMoves = formatMoves(gameData.moves);
-  const movesRef = useRef<HTMLDivElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [fontSize, setFontSize] = useState(10);
-  
-  // Dynamically adjust font size to fit all moves without scrolling
-  useEffect(() => {
-    const adjustFontSize = () => {
-      const container = containerRef.current;
-      const movesEl = movesRef.current;
-      if (!container || !movesEl) return;
-      
-      // Start with a reasonable font size and decrease until it fits
-      let currentSize = 11; // Start slightly larger
-      const minSize = 5; // Minimum readable size
-      const maxHeight = 80; // Max height for moves section
-      
-      movesEl.style.fontSize = `${currentSize}px`;
-      
-      while (movesEl.scrollHeight > maxHeight && currentSize > minSize) {
-        currentSize -= 0.5;
-        movesEl.style.fontSize = `${currentSize}px`;
-      }
-      
-      setFontSize(currentSize);
-    };
-    
-    // Run after render
-    const timer = setTimeout(adjustFontSize, 10);
-    return () => clearTimeout(timer);
-  }, [formattedMoves]);
   
   return (
     <div 
-      ref={containerRef}
       className="text-center max-w-md mx-auto space-y-3" 
       style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
     >
@@ -96,15 +65,11 @@ const GameInfoDisplay: React.FC<GameInfoDisplayProps> = ({ gameData }) => {
         {formatDate(gameData.date)}
       </p>
       
-      {/* Move Notation - Auto-scaling font to fit without scroll */}
+      {/* Move Notation - Full display, no truncation */}
       <div 
-        ref={movesRef}
-        className="text-stone-400 leading-relaxed px-2"
+        className="text-stone-400 leading-relaxed px-2 text-[8px]"
         style={{ 
           fontFamily: "'Inter', sans-serif",
-          fontSize: `${fontSize}px`,
-          maxHeight: '80px',
-          overflow: 'hidden',
         }}
       >
         {formattedMoves}
