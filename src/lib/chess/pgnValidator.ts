@@ -9,8 +9,9 @@ export interface PgnValidationResult {
 }
 
 /**
- * Validates a PGN string by attempting to parse and replay all moves.
- * Returns detailed information about any validation errors.
+ * Validates a PGN string - now PERMISSIVE.
+ * We count moves that can be parsed but don't reject PGNs with some invalid moves.
+ * The simulator will handle whatever it can.
  */
 export function validatePgn(pgn: string): PgnValidationResult {
   if (!pgn || !pgn.trim()) {
@@ -21,78 +22,60 @@ export function validatePgn(pgn: string): PgnValidationResult {
   }
 
   const chess = new Chess();
-
-  // First, try to load the PGN directly
+  
+  // Try to load the PGN directly first
   try {
     chess.loadPgn(pgn);
     const history = chess.history();
     
-    if (history.length === 0) {
-      return {
-        isValid: false,
-        error: 'No valid moves found in the PGN. Please check the notation format.',
-      };
-    }
-
     return {
       isValid: true,
       moveCount: history.length,
     };
   } catch (e) {
-    // If direct loading fails, try to find the specific invalid move
-    const errorMessage = e instanceof Error ? e.message : String(e);
-    
-    // Extract the move that failed from the error message
-    const moveMatch = errorMessage.match(/Invalid move in PGN: (\S+)/);
-    const invalidMove = moveMatch ? moveMatch[1] : undefined;
-
-    // Try to replay moves one by one to find the exact problem
+    // If direct loading fails, try manual parsing to count playable moves
     chess.reset();
     
-    // Extract just the moves part (after the headers)
     const movesSection = pgn.replace(/\[[^\]]*\]/g, '').trim();
     
-    // Parse individual moves - handle move numbers and annotations
     const moveTokens = movesSection
-      .replace(/\{[^}]*\}/g, '') // Remove comments
-      .replace(/\([^)]*\)/g, '') // Remove variations
-      .replace(/\$\d+/g, '') // Remove NAG annotations
-      .replace(/1-0|0-1|1\/2-1\/2|\*/g, '') // Remove results
+      .replace(/\{[^}]*\}/g, '')
+      .replace(/\([^)]*\)/g, '')
+      .replace(/\$\d+/g, '')
+      .replace(/1-0|0-1|1\/2-1\/2|\*/g, '')
       .split(/\s+/)
-      .filter(token => {
-        // Filter out move numbers and empty tokens
-        return token && !token.match(/^\d+\.+$/) && token !== '...';
-      });
+      .filter(token => token && !token.match(/^\d+\.+$/) && token !== '...');
 
-    let moveNumber = 0;
+    let validMoves = 0;
+    
     for (const moveToken of moveTokens) {
-      moveNumber++;
       try {
-        const result = chess.move(moveToken);
-        if (!result) {
-          return {
-            isValid: false,
-            error: `Invalid move "${moveToken}" at move ${Math.ceil(moveNumber / 2)}. The move is not legal in this position.`,
-            invalidMove: moveToken,
-            invalidMoveNumber: Math.ceil(moveNumber / 2),
-          };
+        const fixedMove = moveToken
+          .replace(/0-0-0/gi, 'O-O-O')
+          .replace(/0-0/gi, 'O-O')
+          .replace(/[+#!?]+$/, '');
+        
+        const result = chess.move(fixedMove);
+        if (result) {
+          validMoves++;
         }
-      } catch (moveError) {
-        return {
-          isValid: false,
-          error: `Invalid move "${moveToken}" at move ${Math.ceil(moveNumber / 2)}. Please check the notation.`,
-          invalidMove: moveToken,
-          invalidMoveNumber: Math.ceil(moveNumber / 2),
-        };
+      } catch {
+        // Skip invalid moves - continue parsing
       }
     }
-
-    // If we got here but the original load failed, there's a header issue
+    
+    // Be permissive: if we got ANY moves, consider it valid
+    if (validMoves > 0) {
+      return {
+        isValid: true,
+        moveCount: validMoves,
+      };
+    }
+    
+    // Only fail if we couldn't parse ANY moves at all
     return {
       isValid: false,
-      error: invalidMove 
-        ? `Invalid move: ${invalidMove}. Please verify all moves are in standard algebraic notation.`
-        : 'Unable to parse PGN. Please check the format and notation.',
+      error: 'Could not parse any moves from the PGN. Please check the notation format.',
     };
   }
 }
@@ -102,9 +85,9 @@ export function validatePgn(pgn: string): PgnValidationResult {
  */
 export function cleanPgn(pgn: string): string {
   return pgn
-    .replace(/\r\n/g, '\n') // Normalize line endings
+    .replace(/\r\n/g, '\n')
     .replace(/\r/g, '\n')
-    .replace(/\t/g, ' ') // Replace tabs with spaces
-    .replace(/\s+/g, ' ') // Collapse multiple spaces
+    .replace(/\t/g, ' ')
+    .replace(/\s+/g, ' ')
     .trim();
 }
