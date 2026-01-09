@@ -1,5 +1,6 @@
 import { CartDrawer } from './CartDrawer';
 import { Crown } from 'lucide-react';
+import UserMenu from '@/components/auth/UserMenu';
 
 export const Header = () => {
   return (
@@ -24,7 +25,11 @@ export const Header = () => {
           </div>
         </div>
         
-        <CartDrawer />
+        {/* Right side - User menu and cart */}
+        <div className="flex items-center gap-3">
+          <UserMenu />
+          <CartDrawer />
+        </div>
       </div>
     </header>
   );
