@@ -22,6 +22,8 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
   const [fixResult, setFixResult] = useState<PgnFixResult | null>(null);
   const [isFixing, setIsFixing] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
+  const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('right');
+  const [isAnimating, setIsAnimating] = useState(false);
   
   const totalPages = useMemo(() => Math.ceil(famousGames.length / GAMES_PER_PAGE), []);
   
@@ -29,6 +31,19 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
     const start = currentPage * GAMES_PER_PAGE;
     return famousGames.slice(start, start + GAMES_PER_PAGE);
   }, [currentPage]);
+  
+  const handlePageChange = useCallback((newPage: number) => {
+    if (newPage === currentPage || isAnimating) return;
+    
+    setSlideDirection(newPage > currentPage ? 'right' : 'left');
+    setIsAnimating(true);
+    
+    // Small delay to allow exit animation
+    setTimeout(() => {
+      setCurrentPage(newPage);
+      setTimeout(() => setIsAnimating(false), 300);
+    }, 150);
+  }, [currentPage, isAnimating]);
   
   const handleValidate = useCallback(() => {
     if (!pgn.trim()) {
@@ -153,8 +168,16 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
             Start with an iconic game from chess history
           </p>
         </div>
-        <div className="p-5">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="p-5 overflow-hidden">
+          <div 
+            className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 transition-all duration-300 ease-out ${
+              isAnimating 
+                ? slideDirection === 'right' 
+                  ? 'opacity-0 translate-x-8' 
+                  : 'opacity-0 -translate-x-8'
+                : 'opacity-100 translate-x-0'
+            }`}
+          >
             {displayedGames.map((game) => (
               <button
                 key={game.id}
@@ -186,12 +209,13 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
             {Array.from({ length: totalPages }).map((_, index) => (
               <button
                 key={index}
-                onClick={() => setCurrentPage(index)}
+                onClick={() => handlePageChange(index)}
+                disabled={isAnimating}
                 className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
                   currentPage === index 
                     ? 'bg-primary w-6' 
                     : 'bg-border hover:bg-primary/50'
-                }`}
+                } ${isAnimating ? 'cursor-not-allowed' : ''}`}
                 aria-label={`Go to page ${index + 1}`}
               />
             ))}
