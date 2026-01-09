@@ -119,22 +119,21 @@ export const famousGames: FamousGame[] = [
 1. e4 e5 2. f4 exf4 3. Bc4 Qh4+ 4. Kf1 b5 5. Bxb5 Nf6 6. Nf3 Qh6 7. d3 Nh5 8. Nh4 Qg5 9. Nf5 c6 10. g4 Nf6 11. Rg1 cxb5 12. h4 Qg6 13. h5 Qg5 14. Qf3 Ng8 15. Bxf4 Qf6 16. Nc3 Bc5 17. Nd5 Qxb2 18. Bd6 Bxg1 19. e5 Qxa1+ 20. Ke2 Na6 21. Nxg7+ Kd8 22. Qf6+ Nxf6 23. Be7# 1-0`
   },
   {
-    id: 'korchnoi-karpov-1978',
-    title: 'Epic Endgame (124 Moves)',
-    event: 'World Championship',
-    year: 1978,
-    white: 'Viktor Korchnoi',
-    black: 'Anatoly Karpov',
-    description: 'A grueling 124-move marathon from their legendary 1978 World Championship battle. Tests long game visualization.',
-    pgn: `[Event "World Championship"]
-[Site "Baguio City"]
-[Date "1978.08.18"]
-[Round "5"]
-[White "Viktor Korchnoi"]
-[Black "Anatoly Karpov"]
-[Result "1/2-1/2"]
+    id: 'long-game-test',
+    title: 'Long Endgame (75 Moves)',
+    event: 'Font Scaling Test',
+    year: 2024,
+    white: 'White Player',
+    black: 'Black Player',
+    description: 'A long game to test visualization with many moves and auto-scaling move notation.',
+    pgn: `[Event "Font Scaling Test"]
+[Site "Test"]
+[Date "2024.01.01"]
+[White "White Player"]
+[Black "Black Player"]
+[Result "1-0"]
 
-1. c4 e6 2. Nc3 d5 3. d4 Be7 4. Nf3 Nf6 5. Bf4 O-O 6. e3 c5 7. dxc5 Bxc5 8. Qc2 Nc6 9. a3 Qa5 10. Rd1 Be7 11. Be2 dxc4 12. Bxc4 Nh5 13. Be5 f6 14. Bg3 Nxg3 15. hxg3 e5 16. O-O Be6 17. Bxe6+ Qxe6 18. Nd5 Bd6 19. b4 Rad8 20. Qc4 Qxc4 21. Rxc4 Kf7 22. Rfc1 Rc8 23. Kf1 Ne7 24. Rxc8 Rxc8 25. Rxc8 Nxc8 26. Nc3 Nb6 27. Ke2 Ke6 28. Kd3 Kd7 29. Ne4 Be7 30. g4 f5 31. gxf5 Nd5 32. Nc3 Nxc3 33. Kxc3 Kc6 34. Nd2 Kb5 35. Ne4 Bd8 36. Nd6+ Kc6 37. Ne8 g6 38. fxg6 hxg6 39. Nf6 Bf6 40. Ng4 Bd8 41. Kd3 Kd5 42. f3 a6 43. e4+ Kc6 44. Ne3 Bg5 45. Nc4 b5 46. Nd2 Kd6 47. Ke2 Ke6 48. Kf2 Kf6 49. Kg2 Ke6 50. Kh3 Kf6 51. g4 Bd8 52. Nf1 Bg5 53. Ne3 Bd8 54. Nd5+ Ke6 55. Nc7+ Kd7 56. Nxa6 Bc7 57. Nc5+ Kc6 58. Kg3 Bd8 59. Kf2 Bg5 60. Ke2 Bd8 61. Kd3 Bg5 62. Ne6 Bd8 63. Nc5 Bg5 64. Ke2 Bd8 65. Kf2 Bg5 66. Kg3 Bd8 67. Kh4 Bc7 68. g5 Bd8 69. Kg4 Bc7 70. Kf5 Bd8 71. Ne6 Bc7 72. Nc5 Bd8 73. Nd3 Kd6 74. Nf2 Bc7 75. Nh3 Bd8 76. Ng1 Bc7 77. Ne2 Bd8 78. Nc3 Bc7 79. Nd5 Bd8 80. Nb6 Kc6 81. Nc8 Kd7 82. Na7 Bc7 83. Nc6 Bd6 84. a4 bxa4 85. Nxe5+ Bxe5 86. Kxe5 Ke7 87. b5 a3 88. b6 a2 89. b7 a1=Q 90. b8=Q Qa5+ 91. Kf4 Qd2+ 92. Kg3 Qe1+ 93. Kh2 Qxe4 94. Qb4 Qe5+ 95. Kh3 Qf5+ 96. Kh4 Qf6+ 97. Kg4 Qe6+ 98. Kf4 Qf6+ 99. Ke4 Qe6+ 100. Kd4 Qd6+ 101. Kc4 Qc6+ 102. Kd3 Qd5+ 103. Ke2 Qe5+ 104. Kf1 Qf5 105. Qe4 Qc2 106. Kg1 Qc5+ 107. Kh2 Qf2+ 108. Kh3 Qf1+ 109. Kh4 Qf2+ 110. Kh3 Qf1+ 111. Kh2 Qf2+ 112. Kh3 Qf1+ 113. Kg4 Qd1+ 114. Kf4 Qd2+ 115. Ke5 Qc3+ 116. Kf5 Qf3 117. Qe6+ Kf8 118. Qd6+ Kg8 119. Qe6+ Kh7 120. Qe7+ Kh8 121. Qe8+ Kg7 122. Qe7+ Kh8 123. Qe8+ Kg7 124. Qe7+ 1/2-1/2`
+1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 6. Re1 b5 7. Bb3 d6 8. c3 O-O 9. h3 Nb8 10. d4 Nbd7 11. Nbd2 Bb7 12. Bc2 Re8 13. Nf1 Bf8 14. Ng3 g6 15. b3 Bg7 16. d5 c6 17. c4 cxd5 18. cxd5 Nc5 19. Be3 Rc8 20. Rc1 Nfd7 21. Bb1 Qe7 22. Qd2 f6 23. Nh2 Nf8 24. f4 exf4 25. Bxf4 Ne5 26. Rxc8 Bxc8 27. Rc1 Bd7 28. Be3 Rc8 29. Rxc8 Bxc8 30. Qc2 Bd7 31. Qc7 Qxc7 32. Bxc5 dxc5 33. d6 Bf8 34. Nf3 Nxf3+ 35. gxf3 Kf7 36. Ne2 Ke6 37. Nc3 Kxd6 38. Kf2 Be6 39. Ke3 f5 40. exf5 gxf5 41. Nd5 Bd7 42. Kd3 Ke5 43. Nc3 c4+ 44. bxc4 bxc4+ 45. Kc2 Be6 46. Ne2 Kd5 47. Nd4 Bd7 48. Kb2 a5 49. Ka3 a4 50. Kb4 Bc5+ 51. Ka5 Bxd4 52. Bc2 Kc5 53. Bxa4 Bxa4 54. Kxa4 Kd4 55. Kb4 Ke3 56. a4 Kxf3 57. a5 Kg4 58. a6 f4 59. a7 Bxa7 60. h4 Kxh4 61. Ka5 Kg3 62. Kb5 f3 63. Kc5 f2 64. Kd5 f1=Q 65. Ke4 Qf4+ 66. Kd3 Bb8 67. Kc2 Qe3 68. Kb1 Qd2 69. Ka1 Qc1+ 70. Ka2 Ba7 71. Ka3 Qb2+ 72. Ka4 Bc5 73. Ka5 Qa3+ 74. Kb6 Qb4+ 75. Kc7 Qa5+ 1-0`
   }
 ];
 
