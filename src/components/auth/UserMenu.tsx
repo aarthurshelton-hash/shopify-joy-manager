@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,6 +14,7 @@ import AuthModal from './AuthModal';
 
 const UserMenu: React.FC = () => {
   const { user, profile, isLoading, signOut } = useAuth();
+  const navigate = useNavigate();
   const [showAuthModal, setShowAuthModal] = useState(false);
 
   if (isLoading) {
@@ -61,7 +63,10 @@ const UserMenu: React.FC = () => {
           <p className="text-xs text-muted-foreground truncate">{user.email}</p>
         </div>
         <DropdownMenuSeparator />
-        <DropdownMenuItem className="gap-2 cursor-pointer">
+        <DropdownMenuItem 
+          onClick={() => navigate('/my-palettes')}
+          className="gap-2 cursor-pointer"
+        >
           <Palette className="h-4 w-4" />
           My Palettes
         </DropdownMenuItem>
