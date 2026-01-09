@@ -2,53 +2,53 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { toast } from 'sonner';
 
-// Types inline to avoid import chains
-export interface ShopifyProduct {
-  node: {
-    id: string;
-    title: string;
-    description: string;
-    handle: string;
-    priceRange: {
-      minVariantPrice: {
-        amount: string;
-        currencyCode: string;
-      };
-    };
-    images: {
-      edges: Array<{
-        node: {
-          url: string;
-          altText: string | null;
-        };
-      }>;
-    };
-    variants: {
-      edges: Array<{
-        node: {
-          id: string;
-          title: string;
-          price: {
-            amount: string;
-            currencyCode: string;
-          };
-          availableForSale: boolean;
-          selectedOptions: Array<{
-            name: string;
-            value: string;
-          }>;
-        };
-      }>;
-    };
-    options: Array<{
-      name: string;
-      values: string[];
-    }>;
-  };
-}
+// Re-export types from API
+export type { ShopifyProduct } from '@/lib/shopify/api';
 
 export interface CartItem {
-  product: ShopifyProduct;
+  product: {
+    node: {
+      id: string;
+      title: string;
+      description: string;
+      handle: string;
+      priceRange: {
+        minVariantPrice: {
+          amount: string;
+          currencyCode: string;
+        };
+      };
+      images: {
+        edges: Array<{
+          node: {
+            url: string;
+            altText: string | null;
+          };
+        }>;
+      };
+      variants: {
+        edges: Array<{
+          node: {
+            id: string;
+            title: string;
+            price: {
+              amount: string;
+              currencyCode: string;
+            };
+            availableForSale: boolean;
+            selectedOptions: Array<{
+              name: string;
+              value: string;
+            }>;
+          };
+        }>;
+      };
+      options: Array<{
+        name: string;
+        values: string[];
+      }>;
+    };
+  };
   variantId: string;
   variantTitle: string;
   price: {
@@ -167,7 +167,10 @@ export const useCartStore = create<CartStore>()(
           set({ items: [...items, item] });
         }
         
-        toast.success('Added to cart!', { duration: 2000 });
+        toast.success('Added to cart!', { 
+          duration: 2000,
+          position: 'top-center'
+        });
       },
 
       updateQuantity: (variantId, quantity) => {
