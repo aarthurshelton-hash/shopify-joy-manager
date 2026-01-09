@@ -88,7 +88,7 @@ const ChessLoadingAnimation: React.FC<ChessLoadingAnimationProps> = ({
             key={squareName}
             className="relative aspect-square"
             style={{
-              backgroundColor: isLight ? '#f0d9b5' : '#b58863',
+              backgroundColor: isLight ? '#FAFAF9' : '#2C2C2C',
             }}
           >
             {visits.map((visit, index) => (
