@@ -11,24 +11,24 @@ export interface PieceColorMapping {
   name: string;
 }
 
-// White pieces colors
+// White pieces colors (COLD theme)
 export const whitePieceColors: Record<PieceType, string> = {
-  k: '#C9A227', // Gold - King
-  q: '#8B0000', // Dark Red - Queen
-  r: '#1E3A5F', // Navy Blue - Rook
-  b: '#4A5D23', // Olive Green - Bishop
-  n: '#FF6B35', // Orange - Knight
-  p: '#8B8B8B', // Gray - Pawn
+  k: '#4A90D9', // Cold Blue - King
+  q: '#22C55E', // Bright Green - Queen
+  r: '#1E3A8A', // Dark Blue - Rook
+  b: '#7DD3FC', // Baby Blue - Bishop
+  n: '#F9A8D4', // Pastel Pink - Knight
+  p: '#D1D5DB', // Light Gray - Pawn
 };
 
-// Black pieces colors
+// Black pieces colors (HOT theme)
 export const blackPieceColors: Record<PieceType, string> = {
-  k: '#2D2D2D', // Charcoal - King
-  q: '#800020', // Burgundy - Queen
-  r: '#000080', // Dark Blue - Rook
-  b: '#355E3B', // Hunter Green - Bishop
-  n: '#CC5500', // Burnt Orange - Knight
-  p: '#4A4A4A', // Dark Gray - Pawn
+  k: '#EF4444', // Bright Red - King
+  q: '#A855F7', // Purple - Queen
+  r: '#F97316', // Orange - Rook
+  b: '#FACC15', // Yellow - Bishop
+  n: '#EC4899', // Pink - Knight
+  p: '#4B5563', // Dark Gray - Pawn
 };
 
 // Get color for a specific piece
