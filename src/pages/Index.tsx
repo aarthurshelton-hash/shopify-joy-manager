@@ -201,11 +201,11 @@ const Index = () => {
                     : scrollAnimationClasses.fadeUp.hidden
                 }`}
               >
+                {/* Upload form (contains Upload Your Game + Legendary Games) */}
+                <PgnUploader onPgnSubmit={handlePgnSubmit} />
+                
                 {/* Palette selector */}
                 <PaletteSelector onPaletteChange={handlePaletteChange} />
-                
-                {/* Upload form */}
-                <PgnUploader onPgnSubmit={handlePgnSubmit} />
               </div>
             </section>
             
