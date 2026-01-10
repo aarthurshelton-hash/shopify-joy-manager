@@ -3,10 +3,13 @@ import ChessBoardVisualization from './ChessBoardVisualization';
 import GameInfoDisplay from './GameInfoDisplay';
 import { SimulationResult } from '@/lib/chess/gameSimulator';
 import { Button } from '@/components/ui/button';
-import { Download, Loader2, Sun, Moon } from 'lucide-react';
+import { Download, Loader2, Sun, Moon, Crown } from 'lucide-react';
 import { toast } from 'sonner';
 import QRCode from 'qrcode';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
+import { useAuth } from '@/hooks/useAuth';
+import { PremiumUpgradeModal } from '@/components/premium';
+import AuthModal from '@/components/auth/AuthModal';
 
 interface PrintPreviewProps {
   simulation: SimulationResult;
@@ -21,6 +24,10 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
   const [boardSize, setBoardSize] = useState(320);
   const [darkMode, setDarkMode] = useState(false);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  
+  const { isPremium, user } = useAuth();
   
   // Generate QR code on mount
   useEffect(() => {
@@ -54,15 +61,15 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
     return () => window.removeEventListener('resize', updateSize);
   }, []);
   
-  const handleDownload = async () => {
+  const handleDownload = async (withWatermark: boolean) => {
     if (!printRef.current) return;
     
     setIsDownloading(true);
     try {
       const html2canvas = (await import('html2canvas')).default;
       
-      // Show watermark for capture
-      if (watermarkRef.current) {
+      // Show watermark for capture only if downloading with watermark
+      if (watermarkRef.current && withWatermark) {
         watermarkRef.current.style.display = 'block';
       }
       
@@ -91,11 +98,12 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
       const whiteName = simulation.gameData.white?.replace(/\s+/g, '-') || 'chess';
       const blackName = simulation.gameData.black?.replace(/\s+/g, '-') || 'game';
       const modeLabel = darkMode ? 'dark' : 'light';
-      link.download = `EnPensent-${whiteName}-vs-${blackName}-${modeLabel}.png`;
+      const qualityLabel = withWatermark ? 'preview' : 'HD';
+      link.download = `EnPensent-${whiteName}-vs-${blackName}-${modeLabel}-${qualityLabel}.png`;
       link.href = canvas.toDataURL('image/png', 1.0);
       link.click();
       
-      toast.success('High-resolution image downloaded!');
+      toast.success(withWatermark ? 'Preview image downloaded!' : 'HD image downloaded without watermark!');
     } catch (error) {
       console.error('Download failed:', error);
       toast.error('Download failed. Please try again.');
@@ -106,6 +114,20 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
     } finally {
       setIsDownloading(false);
     }
+  };
+
+  const handleHDDownload = () => {
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
+    
+    if (!isPremium) {
+      setShowPremiumModal(true);
+      return;
+    }
+    
+    handleDownload(false);
   };
 
   return (
@@ -167,7 +189,7 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
             ♔ En Pensent ♚
           </p>
           
-          {/* Watermark - hidden in preview, shown only in downloads */}
+          {/* Watermark - hidden in preview, shown only in free downloads */}
           <div 
             ref={watermarkRef}
             className={`w-full pt-4 border-t ${darkMode ? 'border-stone-800' : 'border-stone-200'}`}
@@ -226,12 +248,13 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
         </div>
       </div>
       
-      {/* Download button */}
-      <div className="flex justify-center">
+      {/* Download buttons */}
+      <div className="flex flex-col sm:flex-row justify-center gap-3">
         <Button 
-          onClick={handleDownload}
+          onClick={() => handleDownload(true)}
           disabled={isDownloading}
-          className="gap-2 btn-luxury px-6"
+          variant="outline"
+          className="gap-2 px-6"
         >
           {isDownloading ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -240,7 +263,42 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
           )}
           Download Free Preview
         </Button>
+        
+        <Button 
+          onClick={handleHDDownload}
+          disabled={isDownloading}
+          className="gap-2 btn-luxury px-6"
+        >
+          {isDownloading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : isPremium ? (
+            <Download className="h-4 w-4" />
+          ) : (
+            <Crown className="h-4 w-4" />
+          )}
+          {isPremium ? 'Download HD (No Watermark)' : 'HD Download'}
+          {!isPremium && (
+            <span className="text-xs opacity-75 ml-1">Premium</span>
+          )}
+        </Button>
       </div>
+      
+      {/* Premium Upgrade Modal */}
+      <PremiumUpgradeModal
+        isOpen={showPremiumModal}
+        onClose={() => setShowPremiumModal(false)}
+        onAuthRequired={() => {
+          setShowPremiumModal(false);
+          setShowAuthModal(true);
+        }}
+        trigger="download"
+      />
+      
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+      />
     </div>
   );
 };
