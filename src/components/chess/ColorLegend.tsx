@@ -31,7 +31,7 @@ const ColorLegend: React.FC = () => {
                   className="w-5 h-5 rounded shadow-sm"
                   style={{ backgroundColor: item.hex }}
                 />
-                <span className="text-lg text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">{item.symbol}</span>
+                <span className="text-lg" style={{ filter: 'invert(1) brightness(2)' }}>{item.symbol}</span>
                 <span className="text-xs text-muted-foreground font-serif">{item.name.replace('White ', '')}</span>
               </div>
             ))}
@@ -52,7 +52,7 @@ const ColorLegend: React.FC = () => {
                   className="w-5 h-5 rounded shadow-sm"
                   style={{ backgroundColor: item.hex }}
                 />
-                <span className="text-lg text-black drop-shadow-[0_1px_1px_rgba(255,255,255,0.5)]">{item.symbol}</span>
+                <span className="text-lg">{item.symbol}</span>
                 <span className="text-xs text-muted-foreground font-serif">{item.name.replace('Black ', '')}</span>
               </div>
             ))}
