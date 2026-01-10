@@ -18,9 +18,9 @@ function getVisitColor(visit: SquareVisit): string {
   return getPieceColor(visit.piece, visit.color);
 }
 
-// Renders nested squares for a single board square
+// Renders nested squares for a single board square - using nested divs instead of absolute positioning
 const NestedSquare: React.FC<NestedSquareProps> = ({ visits, baseColor, size }) => {
-  const padding = size * 0.08; // Padding between nested squares
+  const padding = size * 0.08;
   
   // If no visits, just render the base square
   if (visits.length === 0) {
@@ -30,13 +30,12 @@ const NestedSquare: React.FC<NestedSquareProps> = ({ visits, baseColor, size }) 
           width: size,
           height: size,
           backgroundColor: baseColor,
-          boxSizing: 'border-box',
         }}
       />
     );
   }
   
-  // Get unique colors in order of first appearance (using current palette)
+  // Get unique colors in order of first appearance
   const uniqueColors: string[] = [];
   for (const visit of visits) {
     const color = getVisitColor(visit);
@@ -46,7 +45,7 @@ const NestedSquare: React.FC<NestedSquareProps> = ({ visits, baseColor, size }) 
   }
   
   // Calculate sizes for nested squares
-  const maxNesting = Math.min(uniqueColors.length, 6); // Limit nesting depth
+  const maxNesting = Math.min(uniqueColors.length, 6);
   const layers: { color: string; size: number }[] = [];
   
   let currentSize = size - padding * 2;
@@ -58,46 +57,47 @@ const NestedSquare: React.FC<NestedSquareProps> = ({ visits, baseColor, size }) 
       size: currentSize,
     });
     currentSize -= sizeReduction;
-    if (currentSize < size * 0.1) break; // Stop if too small
+    if (currentSize < size * 0.1) break;
   }
   
+  // Build nested structure from outside in (base -> innermost)
+  // Start with the innermost layer and wrap outwards
+  let innerContent: React.ReactNode = null;
+  
+  for (let i = layers.length - 1; i >= 0; i--) {
+    const layer = layers[i];
+    const nextLayer = layers[i + 1];
+    const innerPadding = nextLayer ? (layer.size - nextLayer.size) / 2 : 0;
+    
+    innerContent = (
+      <div
+        style={{
+          width: layer.size,
+          height: layer.size,
+          backgroundColor: layer.color,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {innerContent}
+      </div>
+    );
+  }
+  
+  // Wrap with the base square color
   return (
     <div
       style={{
         width: size,
         height: size,
-        position: 'relative',
-        overflow: 'hidden',
+        backgroundColor: baseColor,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
       }}
     >
-      {/* Explicit base layer - full size background */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: baseColor,
-        }}
-      />
-      {/* Piece color layers - centered using explicit positioning */}
-      {layers.map((layer, index) => {
-        const offset = (size - layer.size) / 2;
-        return (
-          <div
-            key={index}
-            style={{
-              position: 'absolute',
-              top: offset,
-              left: offset,
-              width: layer.size,
-              height: layer.size,
-              backgroundColor: layer.color,
-            }}
-          />
-        );
-      })}
+      {innerContent}
     </div>
   );
 };
