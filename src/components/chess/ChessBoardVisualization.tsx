@@ -7,32 +7,36 @@ interface ChessBoardVisualizationProps {
   size?: number;
 }
 
-interface NestedSquareProps {
-  visits: SquareVisit[];
-  baseColor: string;
-  size: number;
-}
-
 // Get the current color for a visit using the active palette
 function getVisitColor(visit: SquareVisit): string {
   return getPieceColor(visit.piece, visit.color);
 }
 
-// Renders nested squares for a single board square - using nested divs instead of absolute positioning
-const NestedSquare: React.FC<NestedSquareProps> = ({ visits, baseColor, size }) => {
-  const padding = size * 0.08;
+// Renders nested squares for a single board square as SVG rects
+const renderNestedSquares = (
+  visits: SquareVisit[],
+  x: number,
+  y: number,
+  squareSize: number,
+  baseColor: string
+): React.ReactNode[] => {
+  const elements: React.ReactNode[] = [];
+  const padding = squareSize * 0.08;
   
-  // If no visits, just render the base square
+  // Draw base square
+  elements.push(
+    <rect
+      key={`base-${x}-${y}`}
+      x={x}
+      y={y}
+      width={squareSize}
+      height={squareSize}
+      fill={baseColor}
+    />
+  );
+  
   if (visits.length === 0) {
-    return (
-      <div
-        style={{
-          width: size,
-          height: size,
-          backgroundColor: baseColor,
-        }}
-      />
-    );
+    return elements;
   }
   
   // Get unique colors in order of first appearance
@@ -46,60 +50,37 @@ const NestedSquare: React.FC<NestedSquareProps> = ({ visits, baseColor, size }) 
   
   // Calculate sizes for nested squares
   const maxNesting = Math.min(uniqueColors.length, 6);
-  const layers: { color: string; size: number }[] = [];
+  const layers: { color: string; layerSize: number }[] = [];
   
-  let currentSize = size - padding * 2;
+  let currentSize = squareSize - padding * 2;
   const sizeReduction = (currentSize * 0.7) / maxNesting;
   
   for (let i = 0; i < maxNesting; i++) {
     layers.push({
       color: uniqueColors[i],
-      size: currentSize,
+      layerSize: currentSize,
     });
     currentSize -= sizeReduction;
-    if (currentSize < size * 0.1) break;
+    if (currentSize < squareSize * 0.1) break;
   }
   
-  // Build nested structure from outside in (base -> innermost)
-  // Start with the innermost layer and wrap outwards
-  let innerContent: React.ReactNode = null;
-  
-  for (let i = layers.length - 1; i >= 0; i--) {
+  // Draw layers from outside in (largest first)
+  for (let i = 0; i < layers.length; i++) {
     const layer = layers[i];
-    const nextLayer = layers[i + 1];
-    const innerPadding = nextLayer ? (layer.size - nextLayer.size) / 2 : 0;
-    
-    innerContent = (
-      <div
-        style={{
-          width: layer.size,
-          height: layer.size,
-          backgroundColor: layer.color,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        {innerContent}
-      </div>
+    const offset = (squareSize - layer.layerSize) / 2;
+    elements.push(
+      <rect
+        key={`layer-${x}-${y}-${i}`}
+        x={x + offset}
+        y={y + offset}
+        width={layer.layerSize}
+        height={layer.layerSize}
+        fill={layer.color}
+      />
     );
   }
   
-  // Wrap with the base square color
-  return (
-    <div
-      style={{
-        width: size,
-        height: size,
-        backgroundColor: baseColor,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      {innerContent}
-    </div>
-  );
+  return elements;
 };
 
 const ChessBoardVisualization: React.FC<ChessBoardVisualizationProps> = ({
@@ -108,44 +89,44 @@ const ChessBoardVisualization: React.FC<ChessBoardVisualizationProps> = ({
 }) => {
   const squareSize = size / 8;
   const borderWidth = size * 0.02;
+  const totalSize = size + borderWidth * 2;
   
   return (
-    <div
-      style={{
-        display: 'inline-block',
-        padding: borderWidth,
-        backgroundColor: boardColors.border,
-      }}
+    <svg
+      width={totalSize}
+      height={totalSize}
+      viewBox={`0 0 ${totalSize} ${totalSize}`}
+      xmlns="http://www.w3.org/2000/svg"
+      style={{ display: 'block' }}
     >
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: `repeat(8, ${squareSize}px)`,
-          gridTemplateRows: `repeat(8, ${squareSize}px)`,
-          width: squareSize * 8,
-          height: squareSize * 8,
-          gap: 0,
-        }}
-      >
-        {/* Render from rank 8 (top) to rank 1 (bottom) */}
-        {[...Array(8)].map((_, rowIndex) => {
-          const rank = 7 - rowIndex; // Flip to show rank 8 at top
-          return [...Array(8)].map((_, file) => {
-            const square = board[rank][file];
-            const baseColor = square.isLight ? boardColors.light : boardColors.dark;
-            
-            return (
-              <NestedSquare
-                key={`${file}-${rank}`}
-                visits={square.visits}
-                baseColor={baseColor}
-                size={squareSize}
-              />
-            );
-          });
-        })}
-      </div>
-    </div>
+      {/* Border */}
+      <rect
+        x={0}
+        y={0}
+        width={totalSize}
+        height={totalSize}
+        fill={boardColors.border}
+      />
+      
+      {/* Board squares */}
+      {[...Array(8)].map((_, rowIndex) => {
+        const rank = 7 - rowIndex; // Flip to show rank 8 at top
+        return [...Array(8)].map((_, file) => {
+          const square = board[rank][file];
+          const baseColor = square.isLight ? boardColors.light : boardColors.dark;
+          const x = borderWidth + file * squareSize;
+          const y = borderWidth + rowIndex * squareSize;
+          
+          return renderNestedSquares(
+            square.visits,
+            x,
+            y,
+            squareSize,
+            baseColor
+          );
+        });
+      })}
+    </svg>
   );
 };
 
