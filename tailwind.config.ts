@@ -104,12 +104,42 @@ export default {
             transform: "translateY(-10px)",
           },
         },
+        "drift": {
+          "0%": {
+            transform: "translate(0, 0) rotate(0deg)",
+          },
+          "25%": {
+            transform: "translate(15px, -20px) rotate(5deg)",
+          },
+          "50%": {
+            transform: "translate(-10px, -10px) rotate(-3deg)",
+          },
+          "75%": {
+            transform: "translate(20px, 10px) rotate(8deg)",
+          },
+          "100%": {
+            transform: "translate(0, 0) rotate(0deg)",
+          },
+        },
+        "sway": {
+          "0%, 100%": {
+            transform: "translateX(0) rotate(0deg)",
+          },
+          "25%": {
+            transform: "translateX(25px) rotate(3deg)",
+          },
+          "75%": {
+            transform: "translateX(-25px) rotate(-3deg)",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "float-up": "float-up linear infinite",
-        "float-subtle": "float-subtle 3s ease-in-out infinite",
+        "float-subtle": "float-subtle 4s ease-in-out infinite",
+        "drift": "drift ease-in-out infinite",
+        "sway": "sway ease-in-out infinite",
       },
     },
   },

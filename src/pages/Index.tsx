@@ -5,6 +5,7 @@ import ColorLegend from '@/components/chess/ColorLegend';
 import ChessLoadingAnimation from '@/components/chess/ChessLoadingAnimation';
 import PaletteSelector from '@/components/chess/PaletteSelector';
 import ChessParticles from '@/components/chess/ChessParticles';
+import FloatingChessPieces from '@/components/chess/FloatingChessPieces';
 import { simulateGame, SimulationResult } from '@/lib/chess/gameSimulator';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
@@ -191,6 +192,11 @@ const Index = () => {
                 </div>
               </div>
             </section>
+
+            {/* Floating Gold & Silver Chess Pieces - decorative area */}
+            <div className="relative h-32 md:h-48 overflow-hidden">
+              <FloatingChessPieces />
+            </div>
 
             {/* Palette & Upload Section */}
             <section className="container mx-auto px-4 py-12 space-y-12">
