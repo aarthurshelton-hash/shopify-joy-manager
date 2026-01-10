@@ -72,56 +72,68 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
   
   // Capture the preview element directly using html2canvas
   const capturePreview = async (withWatermark: boolean): Promise<HTMLCanvasElement | null> => {
-    if (!printRef.current) return null;
-    
-    // Ensure fonts are loaded
-    if (document.fonts && document.fonts.ready) {
-      await document.fonts.ready;
-    }
-    // Extra time for rendering to settle
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Capture at 5x resolution for max quality
-    const canvas = await html2canvas(printRef.current, {
-      scale: 5,
-      useCORS: true,
-      allowTaint: true,
-      backgroundColor: darkMode ? '#0A0A0A' : '#FDFCFB',
-      logging: false,
-      imageTimeout: 30000,
-      onclone: (clonedDoc, clonedElement) => {
-        // Ensure SVG elements have proper namespace for html2canvas
-        const svgs = clonedElement.querySelectorAll('svg');
-        svgs.forEach(svg => {
-          svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-          // Force explicit dimensions
-          const computedStyle = window.getComputedStyle(svg);
-          if (!svg.getAttribute('width')) {
-            svg.setAttribute('width', computedStyle.width);
-          }
-          if (!svg.getAttribute('height')) {
-            svg.setAttribute('height', computedStyle.height);
-          }
-        });
-        
-        // Force font rendering in cloned document
-        const allText = clonedElement.querySelectorAll('*');
-        allText.forEach((el) => {
-          const htmlEl = el as HTMLElement;
-          const computedStyle = window.getComputedStyle(htmlEl);
-          if (computedStyle.fontFamily) {
-            htmlEl.style.fontFamily = computedStyle.fontFamily;
-          }
-        });
-      },
-    });
-    
-    // Add watermark if needed
-    if (withWatermark) {
-      await addWatermark(canvas);
+    if (!printRef.current) {
+      console.error('Print ref not available');
+      return null;
     }
     
-    return canvas;
+    try {
+      // Ensure fonts are loaded
+      if (document.fonts && document.fonts.ready) {
+        await document.fonts.ready;
+      }
+      // Extra time for rendering to settle
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      console.log('Starting html2canvas capture...');
+      
+      // Capture at 5x resolution for max quality
+      const canvas = await html2canvas(printRef.current, {
+        scale: 5,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: darkMode ? '#0A0A0A' : '#FDFCFB',
+        logging: false,
+        imageTimeout: 30000,
+        onclone: (clonedDoc, clonedElement) => {
+          // Ensure SVG elements have proper namespace for html2canvas
+          const svgs = clonedElement.querySelectorAll('svg');
+          svgs.forEach(svg => {
+            svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+            // Force explicit dimensions
+            const computedStyle = window.getComputedStyle(svg);
+            if (!svg.getAttribute('width')) {
+              svg.setAttribute('width', computedStyle.width);
+            }
+            if (!svg.getAttribute('height')) {
+              svg.setAttribute('height', computedStyle.height);
+            }
+          });
+          
+          // Force font rendering in cloned document
+          const allText = clonedElement.querySelectorAll('*');
+          allText.forEach((el) => {
+            const htmlEl = el as HTMLElement;
+            const computedStyle = window.getComputedStyle(htmlEl);
+            if (computedStyle.fontFamily) {
+              htmlEl.style.fontFamily = computedStyle.fontFamily;
+            }
+          });
+        },
+      });
+      
+      console.log('Canvas captured, size:', canvas.width, 'x', canvas.height);
+      
+      // Add watermark if needed
+      if (withWatermark) {
+        await addWatermark(canvas);
+      }
+      
+      return canvas;
+    } catch (error) {
+      console.error('html2canvas capture failed:', error);
+      throw error;
+    }
   };
   
   // Add watermark to canvas - matching reference design exactly
@@ -243,19 +255,37 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
   // Download handler
   const handleDownload = async (withWatermark: boolean) => {
     setIsDownloading(true);
+    console.log('Starting download, withWatermark:', withWatermark);
+    
     try {
       const canvas = await capturePreview(withWatermark);
-      if (!canvas) throw new Error('Failed to capture preview');
+      if (!canvas) {
+        throw new Error('Failed to capture preview - canvas is null');
+      }
       
-      const link = document.createElement('a');
+      console.log('Canvas ready, creating download...');
+      
+      // Create data URL
+      const dataUrl = canvas.toDataURL('image/png', 1.0);
+      console.log('Data URL created, length:', dataUrl.length);
+      
+      // Create filename
       const whiteName = simulation.gameData.white?.replace(/\s+/g, '-') || 'chess';
       const blackName = simulation.gameData.black?.replace(/\s+/g, '-') || 'game';
       const modeLabel = darkMode ? 'dark' : 'light';
       const qualityLabel = withWatermark ? 'preview' : 'HD';
-      link.download = `EnPensent-${whiteName}-vs-${blackName}-${modeLabel}-${qualityLabel}.png`;
-      link.href = canvas.toDataURL('image/png', 1.0);
-      link.click();
+      const filename = `EnPensent-${whiteName}-vs-${blackName}-${modeLabel}-${qualityLabel}.png`;
       
+      // Use more reliable download method
+      const link = document.createElement('a');
+      link.href = dataUrl;
+      link.download = filename;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      console.log('Download triggered:', filename);
       toast.success(withWatermark ? 'Preview downloaded!' : 'HD image downloaded!');
     } catch (error) {
       console.error('Download failed:', error);
