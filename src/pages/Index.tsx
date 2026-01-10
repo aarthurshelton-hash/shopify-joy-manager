@@ -197,7 +197,7 @@ const Index = () => {
             <div className="relative h-40 md:h-56 overflow-hidden flex items-center justify-center">
               <FloatingChessPieces />
               <h2 
-                className="relative z-10 text-2xl md:text-4xl lg:text-5xl font-display tracking-widest text-gold-gradient"
+                className="relative z-10 text-2xl md:text-4xl lg:text-5xl font-display tracking-widest text-gold-gradient animate-gentle-glow"
                 style={{ fontFamily: "'Cinzel', serif" }}
               >
                 Make Chess Yours...
