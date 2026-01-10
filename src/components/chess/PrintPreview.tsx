@@ -1,8 +1,8 @@
 import React, { useRef, useEffect, useState } from 'react';
-import html2canvas from 'html2canvas';
 import ChessBoardVisualization from './ChessBoardVisualization';
 import GameInfoDisplay from './GameInfoDisplay';
 import { SimulationResult } from '@/lib/chess/gameSimulator';
+import { generatePrintCanvas } from '@/lib/chess/canvasRenderer';
 import { Button } from '@/components/ui/button';
 import { Download, Loader2, Sun, Moon, Crown, Bookmark, Check } from 'lucide-react';
 import { toast } from 'sonner';
@@ -71,69 +71,55 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
     setIsSaved(false);
   }, [simulation]);
   
+  // Generate image using pure canvas rendering (no DOM capture)
   const captureImage = async (withWatermark: boolean): Promise<Blob | null> => {
-    if (!printRef.current) return null;
-    
     try {
-      // Show/hide watermark based on parameter
-      if (watermarkRef.current) {
-        watermarkRef.current.style.display = withWatermark ? 'block' : 'none';
-      }
-      
-      // Wait for DOM to update
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      const canvas = await html2canvas(printRef.current, {
-        scale: 3,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: darkMode ? '#0A0A0A' : '#FDFCFB',
-        logging: false,
-      });
-      
-      // Hide watermark again after capture
-      if (watermarkRef.current) {
-        watermarkRef.current.style.display = 'none';
-      }
+      const canvas = await generatePrintCanvas(
+        simulation.board,
+        {
+          white: simulation.gameData.white,
+          black: simulation.gameData.black,
+          event: simulation.gameData.event,
+          date: simulation.gameData.date,
+          moves: simulation.gameData.moves,
+        },
+        {
+          boardSize: 500, // Higher resolution for quality
+          darkMode,
+          withWatermark,
+          title,
+        }
+      );
       
       return new Promise((resolve) => {
         canvas.toBlob((blob) => resolve(blob), 'image/png', 1.0);
       });
     } catch (error) {
-      // Ensure watermark is hidden even on error
-      if (watermarkRef.current) {
-        watermarkRef.current.style.display = 'none';
-      }
       console.error('Capture failed:', error);
       throw error;
     }
   };
   
+  // Download using pure canvas rendering
   const handleDownload = async (withWatermark: boolean) => {
-    if (!printRef.current) return;
-    
     setIsDownloading(true);
     try {
-      // Show/hide watermark based on parameter
-      if (watermarkRef.current) {
-        watermarkRef.current.style.display = withWatermark ? 'block' : 'none';
-      }
-      
-      // Wait for DOM to update
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      const canvas = await html2canvas(printRef.current, {
-        scale: 3,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: darkMode ? '#0A0A0A' : '#FDFCFB',
-        logging: false,
-      });
-      
-      // Hide watermark again after capture
-      if (watermarkRef.current) {
-        watermarkRef.current.style.display = 'none';
-      }
+      const canvas = await generatePrintCanvas(
+        simulation.board,
+        {
+          white: simulation.gameData.white,
+          black: simulation.gameData.black,
+          event: simulation.gameData.event,
+          date: simulation.gameData.date,
+          moves: simulation.gameData.moves,
+        },
+        {
+          boardSize: 500, // Higher resolution
+          darkMode,
+          withWatermark,
+          title,
+        }
+      );
       
       const link = document.createElement('a');
       const whiteName = simulation.gameData.white?.replace(/\s+/g, '-') || 'chess';
@@ -146,10 +132,6 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
       
       toast.success(withWatermark ? 'Preview image downloaded!' : 'HD image downloaded without watermark!');
     } catch (error) {
-      // Ensure watermark is hidden even on error
-      if (watermarkRef.current) {
-        watermarkRef.current.style.display = 'none';
-      }
       console.error('Download failed:', error);
       toast.error('Download failed. Please try again.');
     } finally {
