@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
-import { Crown, TrendingUp, Globe, Zap, Target, Download, ChevronRight, FileText, Presentation } from 'lucide-react';
+import { Crown, TrendingUp, Globe, Zap, Target, Download, ChevronRight, FileText, Presentation, Repeat } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 type ModalType = 'market' | 'technology' | 'vision' | 'brand' | null;
@@ -299,6 +299,49 @@ const Investors = () => {
                     <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
                       <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
                       Library of legendary games for showcase
+                    </li>
+                    <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
+                      <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                      <span><strong className="text-foreground">Visionary Premium Membership</strong> — $7/month recurring subscription</span>
+                    </li>
+                  </ul>
+                </div>
+
+                {/* Subscription Revenue Model */}
+                <div className="p-4 rounded-lg bg-primary/5 border border-primary/20 space-y-3">
+                  <h3 className="font-display font-bold uppercase tracking-wide text-primary flex items-center gap-2">
+                    <Crown className="h-4 w-4" />
+                    Recurring Revenue Stream
+                  </h3>
+                  <p className="text-sm text-muted-foreground font-serif">
+                    The Visionary Premium Membership provides predictable monthly recurring revenue (MRR) with high-margin digital benefits.
+                  </p>
+                  <div className="grid grid-cols-3 gap-3 mt-3">
+                    <div className="text-center">
+                      <p className="text-lg font-display text-foreground">$7</p>
+                      <p className="text-xs text-muted-foreground font-serif">Per Month</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-lg font-display text-foreground">$84</p>
+                      <p className="text-xs text-muted-foreground font-serif">Annual LTV</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-lg font-display text-foreground">95%+</p>
+                      <p className="text-xs text-muted-foreground font-serif">Gross Margin</p>
+                    </div>
+                  </div>
+                  <ul className="space-y-1 mt-3">
+                    <li className="flex items-start gap-2 text-xs text-muted-foreground font-serif">
+                      <ChevronRight className="h-3 w-3 text-primary mt-0.5 shrink-0" />
+                      Watermark-free HD downloads
+                    </li>
+                    <li className="flex items-start gap-2 text-xs text-muted-foreground font-serif">
+                      <ChevronRight className="h-3 w-3 text-primary mt-0.5 shrink-0" />
+                      Personal "My Vision" gallery storage
+                    </li>
+                    <li className="flex items-start gap-2 text-xs text-muted-foreground font-serif">
+                      <ChevronRight className="h-3 w-3 text-primary mt-0.5 shrink-0" />
+                      Priority access to limited edition prints
                     </li>
                   </ul>
                 </div>
