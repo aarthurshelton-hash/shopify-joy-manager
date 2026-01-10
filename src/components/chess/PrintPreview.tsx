@@ -81,19 +81,25 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
     }
     
     // Longer delay to ensure DOM fully updates
-    await new Promise(resolve => setTimeout(resolve, 150));
+    await new Promise(resolve => setTimeout(resolve, 300));
     
-    // Capture the full content with proper settings
+    // Capture with onclone to ensure backgrounds are captured
     const canvas = await html2canvas(printRef.current, {
       scale: 3,
-      backgroundColor: darkMode ? '#0A0A0A' : '#FDFCFB',
+      backgroundColor: null,
       useCORS: true,
       allowTaint: true,
       logging: false,
-      scrollX: 0,
-      scrollY: 0,
-      x: 0,
-      y: 0,
+      onclone: (clonedDoc, element) => {
+        const allDivs = element.querySelectorAll('div');
+        allDivs.forEach((div: Element) => {
+          const htmlDiv = div as HTMLElement;
+          const computed = clonedDoc.defaultView?.getComputedStyle(htmlDiv);
+          if (computed?.backgroundColor && computed.backgroundColor !== 'rgba(0, 0, 0, 0)') {
+            htmlDiv.style.backgroundColor = computed.backgroundColor;
+          }
+        });
+      },
     });
     
     // Hide watermark after capture
@@ -119,22 +125,26 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
       }
       
       // Longer delay to ensure DOM fully updates
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise(resolve => setTimeout(resolve, 300));
       
-      console.log('[PrintPreview] Capturing with darkMode:', darkMode);
-      console.log('[PrintPreview] printRef dimensions:', printRef.current.scrollWidth, printRef.current.scrollHeight);
-      
-      // Capture the full content with proper settings
+      // Capture the full content with onclone to ensure backgrounds are captured
       const canvas = await html2canvas(printRef.current, {
         scale: 3,
-        backgroundColor: darkMode ? '#0A0A0A' : '#FDFCFB',
+        backgroundColor: null, // Let elements define their own backgrounds
         useCORS: true,
         allowTaint: true,
         logging: false,
-        scrollX: 0,
-        scrollY: 0,
-        x: 0,
-        y: 0,
+        onclone: (clonedDoc, element) => {
+          // Force all backgrounds to be computed and set as inline styles
+          const allDivs = element.querySelectorAll('div');
+          allDivs.forEach((div: Element) => {
+            const htmlDiv = div as HTMLElement;
+            const computed = clonedDoc.defaultView?.getComputedStyle(htmlDiv);
+            if (computed?.backgroundColor && computed.backgroundColor !== 'rgba(0, 0, 0, 0)') {
+              htmlDiv.style.backgroundColor = computed.backgroundColor;
+            }
+          });
+        },
       });
       
       // Hide watermark after capture
