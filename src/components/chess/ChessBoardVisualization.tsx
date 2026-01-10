@@ -66,25 +66,33 @@ const NestedSquare: React.FC<NestedSquareProps> = ({ visits, baseColor, size }) 
       style={{
         width: size,
         height: size,
-        backgroundColor: baseColor,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
         position: 'relative',
         boxSizing: 'border-box',
       }}
     >
+      {/* Explicit base layer for html2canvas compatibility */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: size,
+          height: size,
+          backgroundColor: baseColor,
+        }}
+      />
+      {/* Piece color layers */}
       {layers.map((layer, index) => (
         <div
           key={index}
           style={{
             position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
             width: layer.size,
             height: layer.size,
             backgroundColor: layer.color,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
           }}
         />
       ))}
