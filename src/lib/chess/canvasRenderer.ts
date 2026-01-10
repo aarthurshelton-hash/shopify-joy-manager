@@ -1,5 +1,5 @@
 import { SquareData, SquareVisit } from './gameSimulator';
-import { boardColors, getPieceColor } from './pieceColors';
+import { boardColors, getPieceColor, getActivePalette } from './pieceColors';
 
 /**
  * Renders a chess visualization directly to a Canvas element
@@ -91,6 +91,7 @@ function drawNestedSquares(
 
 /**
  * Generates a complete print-ready image with board and game info
+ * Renders everything directly to canvas - no DOM capture needed
  */
 export async function generatePrintCanvas(
   board: SquareData[][],
@@ -120,11 +121,11 @@ export async function generatePrintCanvas(
   
   // Calculate final canvas size
   const padding = 40;
-  const infoHeight = 200; // Space for game info
-  const watermarkHeight = withWatermark ? 60 : 0;
+  const infoHeight = 180;
+  const brandingHeight = 40;
   
   const totalWidth = boardCanvas.width + padding * 2;
-  const totalHeight = boardCanvas.height + infoHeight + watermarkHeight + padding * 2;
+  const totalHeight = boardCanvas.height + infoHeight + brandingHeight + padding * 2;
   
   const canvas = document.createElement('canvas');
   canvas.width = totalWidth;
@@ -151,42 +152,74 @@ export async function generatePrintCanvas(
   // Draw game info
   const textColor = darkMode ? '#FAFAFA' : '#1A1A1A';
   const mutedColor = darkMode ? '#A8A29E' : '#78716C';
+  const accentColor = darkMode ? '#D4AF37' : '#B8860B';
   
-  let textY = separatorY + 35;
+  let textY = separatorY + 40;
   
-  // Player names
-  ctx.fillStyle = textColor;
-  ctx.font = 'bold 18px "Playfair Display", serif';
+  // Player names with "vs" styling
   ctx.textAlign = 'center';
+  const centerX = totalWidth / 2;
   
   const whiteName = gameData.white || 'White';
   const blackName = gameData.black || 'Black';
-  ctx.fillText(`${whiteName}  vs  ${blackName}`, totalWidth / 2, textY);
   
-  textY += 25;
+  // Measure text widths for proper spacing
+  ctx.font = 'bold 18px Georgia, serif';
+  const whiteWidth = ctx.measureText(whiteName).width;
+  const blackWidth = ctx.measureText(blackName).width;
+  
+  ctx.font = 'italic 14px Georgia, serif';
+  const vsWidth = ctx.measureText(' vs ').width;
+  
+  const totalTextWidth = whiteWidth + vsWidth + blackWidth;
+  const startX = centerX - totalTextWidth / 2;
+  
+  // Draw white name
+  ctx.font = 'bold 18px Georgia, serif';
+  ctx.fillStyle = textColor;
+  ctx.textAlign = 'left';
+  ctx.fillText(whiteName, startX, textY);
+  
+  // Draw "vs"
+  ctx.font = 'italic 14px Georgia, serif';
+  ctx.fillStyle = accentColor;
+  ctx.fillText(' vs ', startX + whiteWidth, textY);
+  
+  // Draw black name
+  ctx.font = 'bold 18px Georgia, serif';
+  ctx.fillStyle = textColor;
+  ctx.fillText(blackName, startX + whiteWidth + vsWidth, textY);
+  
+  textY += 30;
   
   // Event
   if (gameData.event) {
     ctx.fillStyle = mutedColor;
-    ctx.font = 'italic 14px "Playfair Display", serif';
-    ctx.fillText(gameData.event, totalWidth / 2, textY);
-    textY += 22;
+    ctx.font = 'italic 14px Georgia, serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(gameData.event, centerX, textY);
+    textY += 24;
   }
   
   // Title and date
   const displayTitle = title;
   if (displayTitle || gameData.date) {
     ctx.fillStyle = mutedColor;
-    ctx.font = '12px "Inter", sans-serif';
-    const titleDateText = [displayTitle?.toUpperCase(), gameData.date].filter(Boolean).join('  •  ');
-    ctx.fillText(titleDateText, totalWidth / 2, textY);
+    ctx.font = '11px Arial, sans-serif';
+    ctx.letterSpacing = '2px';
+    ctx.textAlign = 'center';
+    const parts = [];
+    if (displayTitle) parts.push(displayTitle.toUpperCase());
+    if (gameData.date) parts.push(gameData.date);
+    ctx.fillText(parts.join('  •  '), centerX, textY);
     textY += 22;
   }
   
   // Moves (truncated)
   if (gameData.moves && gameData.moves.length > 0) {
     ctx.fillStyle = mutedColor;
-    ctx.font = '8px "Inter", sans-serif';
+    ctx.font = '8px Arial, sans-serif';
+    ctx.textAlign = 'center';
     const movesText = gameData.moves.join(' ');
     const truncatedMoves = movesText.length > 300 
       ? movesText.substring(0, 300) + '...' 
@@ -202,7 +235,7 @@ export async function generatePrintCanvas(
       const testLine = line + (line ? ' ' : '') + word;
       const metrics = ctx.measureText(testLine);
       if (metrics.width > maxWidth && line) {
-        ctx.fillText(line, totalWidth / 2, lineY);
+        ctx.fillText(line, centerX, lineY);
         line = word;
         lineY += 12;
         if (lineY > textY + 48) break; // Max 4 lines
@@ -211,37 +244,54 @@ export async function generatePrintCanvas(
       }
     }
     if (line && lineY <= textY + 48) {
-      ctx.fillText(line, totalWidth / 2, lineY);
+      ctx.fillText(line, centerX, lineY);
     }
-    textY = lineY + 20;
   }
   
-  // En Pensent branding
+  // En Pensent branding at bottom
   ctx.fillStyle = mutedColor;
-  ctx.font = '10px "Inter", sans-serif';
-  ctx.fillText('♔ EN PENSENT ♚', totalWidth / 2, totalHeight - padding - (withWatermark ? 50 : 10));
+  ctx.font = '10px Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('♔ EN PENSENT ♚', centerX, totalHeight - padding - 10);
   
   // Watermark for free downloads
   if (withWatermark) {
-    const wmX = totalWidth - padding - 100;
-    const wmY = padding + boardCanvas.height - 50;
+    const wmWidth = 140;
+    const wmHeight = 50;
+    const wmX = totalWidth - padding - wmWidth - 10;
+    const wmY = padding + boardCanvas.height - wmHeight - 10;
     
-    // Watermark background
-    ctx.fillStyle = darkMode ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.9)';
-    ctx.fillRect(wmX - 10, wmY - 10, 120, 50);
+    // Watermark background with rounded corners
+    ctx.fillStyle = darkMode ? 'rgba(0,0,0,0.85)' : 'rgba(255,255,255,0.92)';
+    ctx.beginPath();
+    ctx.roundRect(wmX, wmY, wmWidth, wmHeight, 4);
+    ctx.fill();
     
     // Border
     ctx.strokeStyle = darkMode ? '#57534e' : '#d6d3d1';
     ctx.lineWidth = 1;
-    ctx.strokeRect(wmX - 10, wmY - 10, 120, 50);
+    ctx.stroke();
     
-    // Text
-    ctx.fillStyle = darkMode ? '#e7e5e4' : '#44403c';
-    ctx.font = 'bold 9px "Inter", sans-serif';
+    // Gold logo circle
+    ctx.fillStyle = '#D4AF37';
+    ctx.beginPath();
+    ctx.arc(wmX + 22, wmY + wmHeight / 2, 14, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Crown symbol in logo
+    ctx.fillStyle = darkMode ? '#0A0A0A' : '#FFFFFF';
+    ctx.font = 'bold 14px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('♔', wmX + 22, wmY + wmHeight / 2 + 5);
+    
+    // Brand text
     ctx.textAlign = 'left';
-    ctx.fillText('EN PENSENT', wmX + 5, wmY + 8);
-    ctx.font = '7px "Inter", sans-serif';
-    ctx.fillText('enpensent.com', wmX + 5, wmY + 20);
+    ctx.fillStyle = darkMode ? '#e7e5e4' : '#44403c';
+    ctx.font = 'bold 10px Arial, sans-serif';
+    ctx.fillText('EN PENSENT', wmX + 44, wmY + 20);
+    ctx.font = '8px Arial, sans-serif';
+    ctx.fillStyle = darkMode ? '#a8a29e' : '#78716c';
+    ctx.fillText('enpensent.com', wmX + 44, wmY + 33);
   }
   
   return canvas;
