@@ -131,7 +131,7 @@ const FloatingChessPieces: React.FC = () => {
               </span>
             ))}
             
-            {/* Main piece */}
+            {/* Main piece - using GPU-accelerated transform */}
             <span
               style={{
                 position: 'absolute',
@@ -140,10 +140,11 @@ const FloatingChessPieces: React.FC = () => {
                 fontSize: piece.size,
                 color: `${colors[0]}${baseOpacity})`,
                 textShadow: `0 0 ${10 + piece.depth * 10}px ${colors[0]}${baseOpacity * 0.6})`,
-                transform: 'translate(-50%, -50%)',
+                transform: 'translate3d(-50%, -50%, 0)',
                 filter: `drop-shadow(0 0 ${4 + piece.depth * 6}px ${colors[0]}0.3))`,
                 zIndex: Math.floor(piece.depth * 10) + 1,
-                transition: 'left 80ms linear, top 80ms linear',
+                willChange: 'left, top',
+                backfaceVisibility: 'hidden',
               }}
             >
               {piece.piece}
