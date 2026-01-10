@@ -75,10 +75,10 @@ export const WallMockup: React.FC<WallMockupProps> = ({
   const matWidth = 3;
   
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative group ${className}`}>
       {/* Room scene - 10ft wide x 8ft tall wall */}
       <div 
-        className="relative w-[320px] h-[220px] rounded-lg overflow-hidden"
+        className="relative w-[320px] h-[220px] rounded-lg overflow-hidden transition-transform duration-300 ease-out group-hover:scale-[1.03] group-hover:shadow-xl cursor-pointer"
         style={{ background: room.wallGradient }}
       >
         {/* Subtle wall texture */}
