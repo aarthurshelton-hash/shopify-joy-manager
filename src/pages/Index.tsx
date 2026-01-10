@@ -194,8 +194,14 @@ const Index = () => {
             </section>
 
             {/* Floating Gold & Silver Chess Pieces - decorative area */}
-            <div className="relative h-32 md:h-48 overflow-hidden">
+            <div className="relative h-40 md:h-56 overflow-hidden flex items-center justify-center">
               <FloatingChessPieces />
+              <h2 
+                className="relative z-10 text-2xl md:text-4xl lg:text-5xl font-display tracking-widest text-gold-gradient"
+                style={{ fontFamily: "'Cinzel', serif" }}
+              >
+                Make Chess Yours...
+              </h2>
             </div>
 
             {/* Palette & Upload Section */}
