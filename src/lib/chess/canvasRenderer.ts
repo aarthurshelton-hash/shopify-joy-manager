@@ -1,6 +1,52 @@
 import { SquareData, SquareVisit } from './gameSimulator';
 import { boardColors, getPieceColor, getActivePalette } from './pieceColors';
 
+// High DPI scaling for crisp downloads
+const DPI_SCALE = 3;
+
+// Format date from PGN format (YYYY.MM.DD) to display format
+function formatDate(dateStr: string): string {
+  if (!dateStr || dateStr === 'Unknown' || dateStr === '????.??.??') {
+    return 'Date Unknown';
+  }
+  
+  const parts = dateStr.split('.');
+  if (parts.length !== 3) return dateStr;
+  
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+  
+  const year = parts[0];
+  const monthIndex = parseInt(parts[1]) - 1;
+  const day = parseInt(parts[2]);
+  
+  if (isNaN(monthIndex) || monthIndex < 0 || monthIndex > 11) return dateStr;
+  
+  const getDaySuffix = (d: number) => {
+    if (d > 3 && d < 21) return 'th';
+    switch (d % 10) {
+      case 1: return 'st';
+      case 2: return 'nd';
+      case 3: return 'rd';
+      default: return 'th';
+    }
+  };
+  
+  return `${months[monthIndex]} ${day}${getDaySuffix(day)}, ${year}`;
+}
+
+// Wait for fonts to be loaded
+async function ensureFontsLoaded(): Promise<void> {
+  // The fonts are loaded via CSS @import, ensure they're ready
+  if (document.fonts && document.fonts.ready) {
+    await document.fonts.ready;
+  }
+  // Small delay to ensure font rendering is complete
+  await new Promise(resolve => setTimeout(resolve, 100));
+}
+
 /**
  * Renders a chess visualization directly to a Canvas element
  * This bypasses DOM capture issues entirely
@@ -14,10 +60,14 @@ export function renderBoardToCanvas(
   const borderWidth = size * 0.02;
   const totalSize = size + borderWidth * 2;
   
-  canvas.width = totalSize;
-  canvas.height = totalSize;
+  // Apply DPI scaling for crisp output
+  canvas.width = totalSize * DPI_SCALE;
+  canvas.height = totalSize * DPI_SCALE;
+  canvas.style.width = `${totalSize}px`;
+  canvas.style.height = `${totalSize}px`;
   
   const ctx = canvas.getContext('2d')!;
+  ctx.scale(DPI_SCALE, DPI_SCALE);
   
   // Draw border
   ctx.fillStyle = boardColors.border;
@@ -92,6 +142,7 @@ function drawNestedSquares(
 /**
  * Generates a complete print-ready image with board and game info
  * Renders everything directly to canvas - no DOM capture needed
+ * Matches the preview styling exactly with proper fonts
  */
 export async function generatePrintCanvas(
   board: SquareData[][],
@@ -109,8 +160,11 @@ export async function generatePrintCanvas(
     title?: string;
   } = {}
 ): Promise<HTMLCanvasElement> {
+  // Ensure fonts are loaded before rendering
+  await ensureFontsLoaded();
+  
   const {
-    boardSize = 400,
+    boardSize = 500,
     darkMode = false,
     withWatermark = false,
     title,
@@ -119,29 +173,41 @@ export async function generatePrintCanvas(
   // Render the board
   const boardCanvas = renderBoardToCanvas(board, boardSize);
   
-  // Calculate final canvas size
-  const padding = 40;
-  const infoHeight = 180;
-  const brandingHeight = 40;
+  // Calculate final canvas size (in CSS pixels, will be scaled by DPI)
+  const padding = 50;
+  const infoHeight = 200;
+  const brandingHeight = 50;
   
-  const totalWidth = boardCanvas.width + padding * 2;
-  const totalHeight = boardCanvas.height + infoHeight + brandingHeight + padding * 2;
+  const boardDisplaySize = boardSize + boardSize * 0.04; // Account for border
+  const totalWidth = boardDisplaySize + padding * 2;
+  const totalHeight = boardDisplaySize + infoHeight + brandingHeight + padding * 2;
   
   const canvas = document.createElement('canvas');
-  canvas.width = totalWidth;
-  canvas.height = totalHeight;
+  // Apply DPI scaling for crisp output
+  canvas.width = totalWidth * DPI_SCALE;
+  canvas.height = totalHeight * DPI_SCALE;
   
   const ctx = canvas.getContext('2d')!;
+  ctx.scale(DPI_SCALE, DPI_SCALE);
   
-  // Fill background
+  // Enable better text rendering
+  ctx.textRendering = 'optimizeLegibility';
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  
+  // Fill background - match preview exactly
   ctx.fillStyle = darkMode ? '#0A0A0A' : '#FDFCFB';
   ctx.fillRect(0, 0, totalWidth, totalHeight);
   
-  // Draw the board
-  ctx.drawImage(boardCanvas, padding, padding);
+  // Draw the board (accounting for DPI scaling in source)
+  ctx.drawImage(
+    boardCanvas, 
+    0, 0, boardCanvas.width, boardCanvas.height,
+    padding, padding, boardDisplaySize, boardDisplaySize
+  );
   
   // Draw separator line
-  const separatorY = padding + boardCanvas.height + 20;
+  const separatorY = padding + boardDisplaySize + 24;
   ctx.strokeStyle = darkMode ? '#292524' : '#e7e5e4';
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -149,80 +215,98 @@ export async function generatePrintCanvas(
   ctx.lineTo(totalWidth - padding, separatorY);
   ctx.stroke();
   
-  // Draw game info
-  const textColor = darkMode ? '#FAFAFA' : '#1A1A1A';
-  const mutedColor = darkMode ? '#A8A29E' : '#78716C';
-  const accentColor = darkMode ? '#D4AF37' : '#B8860B';
+  // Colors matching the preview exactly
+  const primaryText = darkMode ? '#fafaf9' : '#292524';
+  const secondaryText = darkMode ? '#a8a29e' : '#78716c';
+  const mutedText = darkMode ? '#78716c' : '#a8a29e';
+  const vsColor = darkMode ? '#78716c' : '#a8a29e';
+  const dotColor = darkMode ? '#44403c' : '#d6d3d1';
   
-  let textY = separatorY + 40;
-  
-  // Player names with "vs" styling
-  ctx.textAlign = 'center';
+  let textY = separatorY + 50;
   const centerX = totalWidth / 2;
   
+  // Player names - using Cinzel font to match preview
   const whiteName = gameData.white || 'White';
   const blackName = gameData.black || 'Black';
   
-  // Measure text widths for proper spacing
-  ctx.font = 'bold 18px Georgia, serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  
+  // Measure with actual fonts
+  ctx.font = "600 22px 'Cinzel', 'Times New Roman', serif";
   const whiteWidth = ctx.measureText(whiteName).width;
   const blackWidth = ctx.measureText(blackName).width;
   
-  ctx.font = 'italic 14px Georgia, serif';
+  ctx.font = "italic 500 18px 'Cormorant', Georgia, serif";
   const vsWidth = ctx.measureText(' vs ').width;
   
   const totalTextWidth = whiteWidth + vsWidth + blackWidth;
   const startX = centerX - totalTextWidth / 2;
   
   // Draw white name
-  ctx.font = 'bold 18px Georgia, serif';
-  ctx.fillStyle = textColor;
+  ctx.font = "600 22px 'Cinzel', 'Times New Roman', serif";
+  ctx.fillStyle = primaryText;
   ctx.textAlign = 'left';
   ctx.fillText(whiteName, startX, textY);
   
-  // Draw "vs"
-  ctx.font = 'italic 14px Georgia, serif';
-  ctx.fillStyle = accentColor;
+  // Draw "vs" - italic Cormorant
+  ctx.font = "italic 500 18px 'Cormorant', Georgia, serif";
+  ctx.fillStyle = vsColor;
   ctx.fillText(' vs ', startX + whiteWidth, textY);
   
   // Draw black name
-  ctx.font = 'bold 18px Georgia, serif';
-  ctx.fillStyle = textColor;
+  ctx.font = "600 22px 'Cinzel', 'Times New Roman', serif";
+  ctx.fillStyle = primaryText;
   ctx.fillText(blackName, startX + whiteWidth + vsWidth, textY);
   
-  textY += 30;
+  textY += 32;
   
-  // Event
-  if (gameData.event) {
-    ctx.fillStyle = mutedColor;
-    ctx.font = 'italic 14px Georgia, serif';
+  // Event - using Cormorant italic to match preview
+  if (gameData.event && gameData.event !== 'Unknown') {
+    ctx.fillStyle = secondaryText;
+    ctx.font = "italic 500 16px 'Cormorant', Georgia, serif";
     ctx.textAlign = 'center';
     ctx.fillText(gameData.event, centerX, textY);
+    textY += 28;
+  }
+  
+  // Title and date - using Inter to match preview
+  const displayTitle = title;
+  const formattedDate = formatDate(gameData.date || '');
+  if (displayTitle || formattedDate) {
+    ctx.fillStyle = mutedText;
+    ctx.font = "500 11px 'Inter', sans-serif";
+    ctx.textAlign = 'center';
+    
+    let labelText = '';
+    if (displayTitle) {
+      labelText = displayTitle.toUpperCase();
+      if (formattedDate && formattedDate !== 'Date Unknown') {
+        labelText += '  •  ' + formattedDate;
+      }
+    } else if (formattedDate) {
+      labelText = formattedDate;
+    }
+    
+    // Apply letter spacing by drawing characters individually
+    const letterSpacing = 1.5;
+    const chars = labelText.split('');
+    let charX = centerX - (ctx.measureText(labelText).width + (chars.length - 1) * letterSpacing) / 2;
+    for (const char of chars) {
+      ctx.fillText(char, charX, textY);
+      charX += ctx.measureText(char).width + letterSpacing;
+    }
     textY += 24;
   }
   
-  // Title and date
-  const displayTitle = title;
-  if (displayTitle || gameData.date) {
-    ctx.fillStyle = mutedColor;
-    ctx.font = '11px Arial, sans-serif';
-    ctx.letterSpacing = '2px';
-    ctx.textAlign = 'center';
-    const parts = [];
-    if (displayTitle) parts.push(displayTitle.toUpperCase());
-    if (gameData.date) parts.push(gameData.date);
-    ctx.fillText(parts.join('  •  '), centerX, textY);
-    textY += 22;
-  }
-  
-  // Moves (truncated)
+  // Moves - using Times New Roman to match preview
   if (gameData.moves && gameData.moves.length > 0) {
-    ctx.fillStyle = mutedColor;
-    ctx.font = '8px Arial, sans-serif';
+    ctx.fillStyle = mutedText;
+    ctx.font = "400 9px 'Times New Roman', Times, serif";
     ctx.textAlign = 'center';
     const movesText = gameData.moves.join(' ');
-    const truncatedMoves = movesText.length > 300 
-      ? movesText.substring(0, 300) + '...' 
+    const truncatedMoves = movesText.length > 350 
+      ? movesText.substring(0, 350) + '...' 
       : movesText;
     
     // Word wrap moves
@@ -237,34 +321,44 @@ export async function generatePrintCanvas(
       if (metrics.width > maxWidth && line) {
         ctx.fillText(line, centerX, lineY);
         line = word;
-        lineY += 12;
-        if (lineY > textY + 48) break; // Max 4 lines
+        lineY += 14;
+        if (lineY > textY + 56) break; // Max 4 lines
       } else {
         line = testLine;
       }
     }
-    if (line && lineY <= textY + 48) {
+    if (line && lineY <= textY + 56) {
       ctx.fillText(line, centerX, lineY);
     }
   }
   
-  // En Pensent branding at bottom
-  ctx.fillStyle = mutedColor;
-  ctx.font = '10px Arial, sans-serif';
+  // En Pensent branding at bottom - matching preview
+  ctx.fillStyle = mutedText;
+  ctx.font = "500 10px 'Inter', sans-serif";
   ctx.textAlign = 'center';
-  ctx.fillText('♔ EN PENSENT ♚', centerX, totalHeight - padding - 10);
+  
+  // Apply letter spacing for branding
+  const brandingText = '♔ EN PENSENT ♚';
+  const brandLetterSpacing = 3;
+  const brandChars = brandingText.split('');
+  let brandCharX = centerX - (ctx.measureText(brandingText).width + (brandChars.length - 1) * brandLetterSpacing) / 2;
+  const brandingY = totalHeight - padding - 15;
+  for (const char of brandChars) {
+    ctx.fillText(char, brandCharX, brandingY);
+    brandCharX += ctx.measureText(char).width + brandLetterSpacing;
+  }
   
   // Watermark for free downloads
   if (withWatermark) {
-    const wmWidth = 140;
-    const wmHeight = 50;
-    const wmX = totalWidth - padding - wmWidth - 10;
-    const wmY = padding + boardCanvas.height - wmHeight - 10;
+    const wmWidth = 150;
+    const wmHeight = 55;
+    const wmX = padding + boardDisplaySize - wmWidth - 12;
+    const wmY = padding + boardDisplaySize - wmHeight - 12;
     
     // Watermark background with rounded corners
-    ctx.fillStyle = darkMode ? 'rgba(0,0,0,0.85)' : 'rgba(255,255,255,0.92)';
+    ctx.fillStyle = darkMode ? 'rgba(0,0,0,0.88)' : 'rgba(255,255,255,0.94)';
     ctx.beginPath();
-    ctx.roundRect(wmX, wmY, wmWidth, wmHeight, 4);
+    ctx.roundRect(wmX, wmY, wmWidth, wmHeight, 6);
     ctx.fill();
     
     // Border
@@ -275,23 +369,25 @@ export async function generatePrintCanvas(
     // Gold logo circle
     ctx.fillStyle = '#D4AF37';
     ctx.beginPath();
-    ctx.arc(wmX + 22, wmY + wmHeight / 2, 14, 0, Math.PI * 2);
+    ctx.arc(wmX + 24, wmY + wmHeight / 2, 16, 0, Math.PI * 2);
     ctx.fill();
     
     // Crown symbol in logo
     ctx.fillStyle = darkMode ? '#0A0A0A' : '#FFFFFF';
-    ctx.font = 'bold 14px Arial';
+    ctx.font = "bold 16px 'Cinzel', serif";
     ctx.textAlign = 'center';
-    ctx.fillText('♔', wmX + 22, wmY + wmHeight / 2 + 5);
+    ctx.textBaseline = 'middle';
+    ctx.fillText('♔', wmX + 24, wmY + wmHeight / 2 + 1);
     
     // Brand text
     ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
     ctx.fillStyle = darkMode ? '#e7e5e4' : '#44403c';
-    ctx.font = 'bold 10px Arial, sans-serif';
-    ctx.fillText('EN PENSENT', wmX + 44, wmY + 20);
-    ctx.font = '8px Arial, sans-serif';
+    ctx.font = "600 11px 'Inter', sans-serif";
+    ctx.fillText('EN PENSENT', wmX + 48, wmY + 22);
+    ctx.font = "400 9px 'Inter', sans-serif";
     ctx.fillStyle = darkMode ? '#a8a29e' : '#78716c';
-    ctx.fillText('enpensent.com', wmX + 44, wmY + 33);
+    ctx.fillText('enpensent.com', wmX + 48, wmY + 38);
   }
   
   return canvas;
