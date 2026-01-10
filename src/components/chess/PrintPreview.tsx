@@ -162,14 +162,14 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
       {/* Text */}
       <div className="flex flex-col">
         <span
-          className="text-xs font-bold text-gray-800 leading-tight"
-          style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
+          className="text-xs font-semibold text-gray-800 leading-tight tracking-wide"
+          style={{ fontFamily: "'Cinzel', 'Times New Roman', serif" }}
         >
           EN PENSENT
         </span>
         <span
-          className="text-[10px] text-gray-500 leading-tight"
-          style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
+          className="text-[10px] text-gray-500 leading-tight italic"
+          style={{ fontFamily: "'Cormorant', Georgia, serif" }}
         >
           enpensent.com
         </span>
