@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ShoppingCart, Loader2, Check, Frame } from 'lucide-react';
+import { ShoppingCart, Loader2, Check, Frame, Sofa, Briefcase, Image } from 'lucide-react';
 import { fetchProducts, type ShopifyProduct } from '@/lib/shopify/api';
 import { useCartStore, type CartItem } from '@/stores/cartStore';
-import WallMockup from './WallMockup';
+import WallMockup, { RoomSetting } from './WallMockup';
+import ChessBoardVisualization from '@/components/chess/ChessBoardVisualization';
+import { SimulationResult } from '@/lib/chess/gameSimulator';
 
 interface ProductSelectorProps {
   customPrintData: {
@@ -12,11 +14,13 @@ interface ProductSelectorProps {
     gameTitle: string;
     previewImageBase64?: string;
   };
+  simulation?: SimulationResult;
   onAddedToCart?: () => void;
 }
 
 export const ProductSelector: React.FC<ProductSelectorProps> = ({ 
   customPrintData,
+  simulation,
   onAddedToCart 
 }) => {
   const [products, setProducts] = useState<ShopifyProduct[]>([]);
@@ -24,6 +28,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
   const [selectedProduct, setSelectedProduct] = useState<ShopifyProduct | null>(null);
   const [selectedVariantId, setSelectedVariantId] = useState<string>('');
   const [hoveredVariantId, setHoveredVariantId] = useState<string | null>(null);
+  const [roomSetting, setRoomSetting] = useState<RoomSetting>('living');
   const [added, setAdded] = useState(false);
   
   const addItem = useCartStore(state => state.addItem);
@@ -37,7 +42,6 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
       const data = await fetchProducts(10);
       setProducts(data);
       
-      // Auto-select the chess print product if available
       const chessProduct = data.find(p => 
         p.node.handle.includes('chess') || p.node.title.toLowerCase().includes('chess')
       );
@@ -60,10 +64,20 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
     v => v.node.id === selectedVariantId
   )?.node;
 
-  // Get the variant to show in mockup (hovered or selected)
   const displayVariant = selectedProduct?.node.variants.edges.find(
     v => v.node.id === (hoveredVariantId || selectedVariantId)
   )?.node;
+
+  // Create mini visualization for mockup
+  const miniVisualization = useMemo(() => {
+    if (!simulation) return null;
+    return (
+      <ChessBoardVisualization 
+        board={simulation.board} 
+        size={80}
+      />
+    );
+  }, [simulation]);
 
   const handleAddToCart = () => {
     if (!selectedProduct || !selectedVariant) return;
@@ -82,7 +96,6 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
     setAdded(true);
     onAddedToCart?.();
     
-    // Reset the added state after a moment
     setTimeout(() => setAdded(false), 3000);
   };
 
@@ -92,6 +105,12 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
       currency,
     }).format(parseFloat(amount));
   };
+
+  const roomOptions: { id: RoomSetting; label: string; icon: typeof Sofa }[] = [
+    { id: 'living', label: 'Living Room', icon: Sofa },
+    { id: 'office', label: 'Office', icon: Briefcase },
+    { id: 'gallery', label: 'Gallery', icon: Image },
+  ];
 
   if (loading) {
     return (
@@ -122,10 +141,41 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Room Setting Toggle */}
+        <div className="space-y-2">
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Preview Setting</label>
+          <div className="flex gap-2">
+            {roomOptions.map((room) => {
+              const Icon = room.icon;
+              const isActive = roomSetting === room.id;
+              return (
+                <button
+                  key={room.id}
+                  onClick={() => setRoomSetting(room.id)}
+                  className={`
+                    flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all
+                    ${isActive 
+                      ? 'bg-primary text-primary-foreground' 
+                      : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground'
+                    }
+                  `}
+                >
+                  <Icon className="h-3 w-3" />
+                  {room.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Wall Mockup Preview */}
         {displayVariant && (
-          <div className="flex justify-center py-4 bg-muted/30 rounded-lg">
-            <WallMockup sizeLabel={displayVariant.title} />
+          <div className="flex justify-center py-6 bg-muted/20 rounded-xl">
+            <WallMockup 
+              sizeLabel={displayVariant.title} 
+              roomSetting={roomSetting}
+              visualizationElement={miniVisualization}
+            />
           </div>
         )}
 

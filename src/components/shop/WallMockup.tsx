@@ -1,7 +1,11 @@
 import React from 'react';
 
+export type RoomSetting = 'living' | 'office' | 'gallery';
+
 interface WallMockupProps {
   sizeLabel: string;
+  roomSetting: RoomSetting;
+  visualizationElement?: React.ReactNode;
   className?: string;
 }
 
@@ -15,6 +19,37 @@ const sizeConfigs: Record<string, { width: number; height: number; label: string
   '24" x 36"': { width: 120, height: 180, label: '24×36"' },
 };
 
+// Room setting configurations
+const roomConfigs: Record<RoomSetting, {
+  wallColor: string;
+  wallTexture: string;
+  shadowIntensity: number;
+  furniture: 'couch' | 'desk' | 'bench';
+  accent: string;
+}> = {
+  living: {
+    wallColor: 'linear-gradient(180deg, #E8E4DF 0%, #DDD8D2 50%, #D4CFC8 100%)',
+    wallTexture: '0.2',
+    shadowIntensity: 0.2,
+    furniture: 'couch',
+    accent: '#8B7355',
+  },
+  office: {
+    wallColor: 'linear-gradient(180deg, #E5E7EB 0%, #D1D5DB 50%, #C8CCD2 100%)',
+    wallTexture: '0.15',
+    shadowIntensity: 0.25,
+    furniture: 'desk',
+    accent: '#4A5568',
+  },
+  gallery: {
+    wallColor: 'linear-gradient(180deg, #FAFAFA 0%, #F5F5F5 50%, #EFEFEF 100%)',
+    wallTexture: '0.05',
+    shadowIntensity: 0.15,
+    furniture: 'bench',
+    accent: '#1A1A1A',
+  },
+};
+
 // Find matching size config
 const findSizeConfig = (label: string) => {
   const normalized = label.toLowerCase().replace(/\s/g, '');
@@ -24,120 +59,239 @@ const findSizeConfig = (label: string) => {
       return value;
     }
   }
-  // Default to medium size
   return { width: 60, height: 80, label: label };
 };
 
-export const WallMockup: React.FC<WallMockupProps> = ({ sizeLabel, className = '' }) => {
+export const WallMockup: React.FC<WallMockupProps> = ({ 
+  sizeLabel, 
+  roomSetting,
+  visualizationElement,
+  className = '' 
+}) => {
   const config = findSizeConfig(sizeLabel);
+  const room = roomConfigs[roomSetting];
   
-  // Scale factor for the mockup (max frame height ~100px for the popup)
-  const scale = 100 / 180; // Normalize to largest size
+  // Scale factor for the mockup
+  const scale = 100 / 180;
   const frameWidth = config.width * scale;
   const frameHeight = config.height * scale;
   
   return (
     <div className={`relative ${className}`}>
-      {/* Wall background */}
+      {/* Room scene */}
       <div 
-        className="relative w-[200px] h-[140px] rounded-lg overflow-hidden"
-        style={{
-          background: 'linear-gradient(180deg, #E8E4DF 0%, #D4CFC8 50%, #C8C2BA 100%)',
-        }}
+        className="relative w-[280px] h-[180px] rounded-lg overflow-hidden shadow-lg"
+        style={{ background: room.wallColor }}
       >
-        {/* Subtle wall texture */}
+        {/* Wall texture overlay */}
         <div 
-          className="absolute inset-0 opacity-30"
+          className="absolute inset-0"
           style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
+            opacity: parseFloat(room.wallTexture),
+            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
           }}
         />
         
-        {/* Shadow on wall */}
+        {/* Ambient lighting effect */}
         <div 
-          className="absolute rounded-sm"
+          className="absolute inset-0"
           style={{
-            width: frameWidth + 8,
-            height: frameHeight + 8,
-            left: '50%',
-            top: '50%',
-            transform: 'translate(-50%, -50%)',
-            boxShadow: '4px 6px 12px rgba(0,0,0,0.25), 2px 3px 6px rgba(0,0,0,0.15)',
-            background: 'transparent',
+            background: 'radial-gradient(ellipse at 50% 30%, rgba(255,255,255,0.1) 0%, transparent 60%)',
           }}
         />
         
-        {/* Frame */}
+        {/* Frame shadow on wall */}
         <div 
-          className="absolute bg-stone-800 rounded-sm"
+          className="absolute rounded-sm blur-sm"
           style={{
-            width: frameWidth + 8,
-            height: frameHeight + 8,
+            width: frameWidth + 12,
+            height: frameHeight + 12,
             left: '50%',
-            top: '50%',
+            top: '42%',
+            transform: 'translate(-48%, -48%)',
+            background: `rgba(0,0,0,${room.shadowIntensity})`,
+          }}
+        />
+        
+        {/* Frame with depth */}
+        <div 
+          className="absolute rounded-[2px]"
+          style={{
+            width: frameWidth + 10,
+            height: frameHeight + 10,
+            left: '50%',
+            top: '40%',
             transform: 'translate(-50%, -50%)',
-            boxShadow: 'inset 0 0 0 2px #3d3d3d, inset 0 0 0 4px #2a2a2a',
+            background: 'linear-gradient(135deg, #2D2D2D 0%, #1A1A1A 50%, #0D0D0D 100%)',
+            boxShadow: `
+              inset 1px 1px 0 rgba(255,255,255,0.1),
+              inset -1px -1px 0 rgba(0,0,0,0.3),
+              3px 4px 8px rgba(0,0,0,0.3),
+              1px 2px 4px rgba(0,0,0,0.2)
+            `,
           }}
         >
-          {/* Inner mat */}
+          {/* Inner mat/border */}
           <div 
-            className="absolute bg-[#F5F3F0] rounded-[1px]"
+            className="absolute"
             style={{
-              width: frameWidth,
-              height: frameHeight,
+              width: frameWidth + 4,
+              height: frameHeight + 4,
               left: '50%',
               top: '50%',
               transform: 'translate(-50%, -50%)',
+              background: '#F8F6F3',
+              boxShadow: 'inset 0 0 2px rgba(0,0,0,0.1)',
             }}
           >
-            {/* Art placeholder */}
+            {/* Artwork area */}
             <div 
-              className="absolute rounded-[1px] overflow-hidden"
+              className="absolute overflow-hidden"
               style={{
-                width: frameWidth - 8,
-                height: frameHeight - 8,
+                width: frameWidth - 2,
+                height: frameHeight - 2,
                 left: '50%',
                 top: '50%',
                 transform: 'translate(-50%, -50%)',
-                background: 'linear-gradient(135deg, #FAFAF9 0%, #F0EFED 100%)',
+                background: '#FAFAF9',
               }}
             >
-              {/* Mini chess board representation */}
-              <div className="absolute inset-1 grid grid-cols-4 grid-rows-4 opacity-40">
-                {Array.from({ length: 16 }).map((_, i) => (
-                  <div 
-                    key={i} 
-                    className={`${(Math.floor(i / 4) + i) % 2 === 0 ? 'bg-stone-200' : 'bg-stone-400'}`}
-                  />
-                ))}
-              </div>
-              {/* Color dots to represent piece movements */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="flex gap-0.5">
-                  <div className="w-1 h-1 rounded-full bg-amber-500" />
-                  <div className="w-1 h-1 rounded-full bg-rose-500" />
-                  <div className="w-1 h-1 rounded-full bg-emerald-500" />
-                  <div className="w-1 h-1 rounded-full bg-blue-500" />
+              {visualizationElement ? (
+                <div className="w-full h-full flex items-center justify-center">
+                  {visualizationElement}
                 </div>
-              </div>
+              ) : (
+                /* Placeholder chess pattern */
+                <div className="absolute inset-0 grid grid-cols-4 grid-rows-4 opacity-30">
+                  {Array.from({ length: 16 }).map((_, i) => (
+                    <div 
+                      key={i} 
+                      className={`${(Math.floor(i / 4) + i) % 2 === 0 ? 'bg-stone-200' : 'bg-stone-400'}`}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
         
-        {/* Decorative elements */}
-        {/* Small plant */}
-        <div className="absolute bottom-2 right-4">
-          <div className="w-3 h-4 bg-emerald-700/60 rounded-full" />
-          <div className="w-2 h-2 bg-stone-500/60 rounded-sm mx-auto -mt-0.5" />
-        </div>
+        {/* Furniture based on room type */}
+        {room.furniture === 'couch' && (
+          <>
+            {/* Modern couch */}
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[180px]">
+              {/* Back cushions */}
+              <div className="flex justify-center gap-1 mb-[-2px]">
+                <div 
+                  className="w-[55px] h-[18px] rounded-t-lg"
+                  style={{ background: `linear-gradient(180deg, ${room.accent} 0%, #6B5344 100%)` }}
+                />
+                <div 
+                  className="w-[55px] h-[18px] rounded-t-lg"
+                  style={{ background: `linear-gradient(180deg, ${room.accent} 0%, #6B5344 100%)` }}
+                />
+                <div 
+                  className="w-[55px] h-[18px] rounded-t-lg"
+                  style={{ background: `linear-gradient(180deg, ${room.accent} 0%, #6B5344 100%)` }}
+                />
+              </div>
+              {/* Seat */}
+              <div 
+                className="w-full h-[12px] rounded-t-sm"
+                style={{ background: `linear-gradient(180deg, #7A6349 0%, ${room.accent} 100%)` }}
+              />
+              {/* Base/legs hint */}
+              <div className="flex justify-between px-4">
+                <div className="w-2 h-2 bg-stone-900 rounded-sm" />
+                <div className="w-2 h-2 bg-stone-900 rounded-sm" />
+              </div>
+            </div>
+            {/* Side table */}
+            <div className="absolute bottom-[28px] right-8">
+              <div className="w-[20px] h-[2px] bg-stone-700 rounded-full" />
+              <div className="w-[2px] h-[14px] bg-stone-800 mx-auto" />
+            </div>
+            {/* Plant */}
+            <div className="absolute bottom-[28px] left-10">
+              <div className="w-[14px] h-[18px] bg-emerald-700/80 rounded-full" />
+              <div className="w-[8px] h-[6px] bg-stone-600 mx-auto rounded-sm -mt-1" />
+            </div>
+          </>
+        )}
         
-        {/* Furniture line */}
-        <div className="absolute bottom-0 left-0 right-0 h-3 bg-stone-600/20" />
+        {room.furniture === 'desk' && (
+          <>
+            {/* Modern desk */}
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[160px]">
+              {/* Desktop */}
+              <div 
+                className="w-full h-[6px] rounded-t-sm"
+                style={{ background: 'linear-gradient(180deg, #5C4A3A 0%, #4A3C30 100%)' }}
+              />
+              {/* Legs */}
+              <div className="flex justify-between px-2">
+                <div className="w-[4px] h-[16px] bg-stone-800" />
+                <div className="w-[4px] h-[16px] bg-stone-800" />
+              </div>
+            </div>
+            {/* Monitor */}
+            <div className="absolute bottom-[22px] left-1/2 -translate-x-1/2">
+              <div className="w-[40px] h-[26px] bg-stone-900 rounded-sm border border-stone-700" />
+              <div className="w-[8px] h-[4px] bg-stone-800 mx-auto" />
+              <div className="w-[16px] h-[2px] bg-stone-700 mx-auto rounded-full" />
+            </div>
+            {/* Chair hint */}
+            <div className="absolute bottom-[8px] left-1/2 -translate-x-1/2">
+              <div className="w-[30px] h-[3px] bg-stone-700/50 rounded-full" />
+            </div>
+            {/* Lamp */}
+            <div className="absolute bottom-[22px] right-12">
+              <div className="w-[10px] h-[2px] bg-amber-200/80 rounded-full" />
+              <div className="w-[2px] h-[12px] bg-stone-700 mx-auto" />
+            </div>
+          </>
+        )}
+        
+        {room.furniture === 'bench' && (
+          <>
+            {/* Gallery bench */}
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
+              <div 
+                className="w-[80px] h-[8px] rounded-sm"
+                style={{ background: 'linear-gradient(180deg, #3D3D3D 0%, #2A2A2A 100%)' }}
+              />
+              {/* Legs */}
+              <div className="flex justify-between px-2">
+                <div className="w-[3px] h-[8px] bg-stone-900" />
+                <div className="w-[3px] h-[8px] bg-stone-900" />
+              </div>
+            </div>
+            {/* Spot light effect */}
+            <div 
+              className="absolute top-0 left-1/2 -translate-x-1/2 w-[100px] h-[60px]"
+              style={{
+                background: 'linear-gradient(180deg, rgba(255,250,240,0.15) 0%, transparent 100%)',
+              }}
+            />
+            {/* Gallery track lighting hint */}
+            <div className="absolute top-0 left-0 right-0 h-[3px] bg-stone-300/30" />
+          </>
+        )}
+        
+        {/* Floor line */}
+        <div 
+          className="absolute bottom-0 left-0 right-0 h-[2px]"
+          style={{ 
+            background: roomSetting === 'gallery' 
+              ? 'linear-gradient(90deg, #E0E0E0, #D0D0D0, #E0E0E0)'
+              : 'linear-gradient(90deg, #B8A898, #A89888, #B8A898)'
+          }}
+        />
       </div>
       
       {/* Size label */}
-      <div className="absolute -bottom-5 left-0 right-0 text-center">
-        <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+      <div className="absolute -bottom-6 left-0 right-0 text-center">
+        <span className="text-xs font-display font-medium text-foreground uppercase tracking-wider">
           {config.label}
         </span>
       </div>
