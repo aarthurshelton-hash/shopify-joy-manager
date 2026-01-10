@@ -30,6 +30,7 @@ const NestedSquare: React.FC<NestedSquareProps> = ({ visits, baseColor, size }) 
           width: size,
           height: size,
           backgroundColor: baseColor,
+          boxSizing: 'border-box',
         }}
       />
     );
@@ -70,6 +71,7 @@ const NestedSquare: React.FC<NestedSquareProps> = ({ visits, baseColor, size }) 
         alignItems: 'center',
         justifyContent: 'center',
         position: 'relative',
+        boxSizing: 'border-box',
       }}
     >
       {layers.map((layer, index) => (
@@ -112,7 +114,7 @@ const ChessBoardVisualization: React.FC<ChessBoardVisualizationProps> = ({
           gridTemplateRows: `repeat(8, ${squareSize}px)`,
           width: squareSize * 8,
           height: squareSize * 8,
-          backgroundColor: boardColors.light, // Fallback for html2canvas
+          gap: 0,
         }}
       >
         {/* Render from rank 8 (top) to rank 1 (bottom) */}
