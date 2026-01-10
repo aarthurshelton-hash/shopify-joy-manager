@@ -29,13 +29,11 @@ export const Header = () => {
           {/* Logo link to homepage */}
           <Link to="/" className="flex items-center gap-4 group">
             {/* Premium logo mark */}
-            <div className="relative">
-              <img 
-                src={enPensentLogo} 
-                alt="En Pensent Logo" 
-                className="h-16 w-auto object-contain glow-gold group-hover:scale-105 transition-transform"
-              />
-            </div>
+            <img 
+              src={enPensentLogo} 
+              alt="En Pensent Logo" 
+              className="w-14 h-14 rounded-full object-cover glow-gold group-hover:scale-105 transition-transform"
+            />
             
             {/* Brand name with royal typography */}
             <div className="hidden sm:block">
