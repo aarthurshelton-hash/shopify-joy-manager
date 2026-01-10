@@ -8,7 +8,7 @@ import { validatePgn, cleanPgn, PgnValidationResult } from '@/lib/chess/pgnValid
 import { fixPgn, PgnFixResult } from '@/lib/chess/pgnFixer';
 import { toast } from 'sonner';
 
-const GAMES_PER_PAGE = 20;
+const GAMES_PER_PAGE = 10;
 
 interface PgnUploaderProps {
   onPgnSubmit: (pgn: string, gameTitle?: string) => void;
@@ -157,7 +157,7 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
             {Array.from({ length: totalPages }).map((_, pageIndex) => (
               <div 
                 key={pageIndex}
-                className="grid grid-cols-10 grid-rows-2 gap-1.5 min-w-full flex-shrink-0"
+                className="grid grid-cols-5 gap-3 min-w-full flex-shrink-0"
               >
                 {famousGames.slice(pageIndex * GAMES_PER_PAGE, (pageIndex + 1) * GAMES_PER_PAGE).map((game) => {
                   const gameImage = gameImageImports[game.id];
@@ -165,14 +165,14 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
                     <button
                       key={game.id}
                       onClick={() => handleLoadGame(game)}
-                      className={`text-left rounded border transition-all duration-200 overflow-hidden flex flex-col ${
+                      className={`text-left rounded-lg border transition-all duration-200 overflow-hidden flex flex-col hover:scale-105 ${
                         selectedGame?.id === game.id 
-                          ? 'border-primary ring-1 ring-primary/30 glow-gold' 
-                          : 'border-border/30 bg-card hover:border-primary/30 hover:bg-card/80'
+                          ? 'border-primary ring-2 ring-primary/30 glow-gold' 
+                          : 'border-border/40 bg-card hover:border-primary/50'
                       }`}
                     >
-                      {/* Image section */}
-                      <div className="relative h-8 w-full overflow-hidden bg-muted">
+                      {/* Image section - square aspect ratio */}
+                      <div className="relative aspect-square w-full overflow-hidden bg-muted">
                         {gameImage ? (
                           <img 
                             src={gameImage} 
@@ -181,19 +181,14 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
-                            <Crown className="h-3 w-3 text-primary/50" />
+                            <Crown className="h-6 w-6 text-primary/40" />
                           </div>
                         )}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                      </div>
-                      {/* Info section */}
-                      <div className="px-1 py-0.5 bg-card">
-                        <p className="text-[6px] font-medium text-foreground truncate leading-tight">
-                          {game.title}
-                        </p>
-                        <p className="text-[5px] text-muted-foreground truncate">
-                          {game.year}
-                        </p>
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+                        <div className="absolute bottom-1.5 left-2 right-2">
+                          <p className="text-[10px] font-semibold text-white drop-shadow-lg line-clamp-1">{game.title}</p>
+                          <p className="text-[8px] text-white/80">{game.year}</p>
+                        </div>
                       </div>
                     </button>
                   );
