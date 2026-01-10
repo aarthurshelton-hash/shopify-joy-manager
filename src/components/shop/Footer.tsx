@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
+import { toast } from 'sonner';
 
 export const Footer = () => {
   const location = useLocation();
@@ -8,7 +9,8 @@ export const Footer = () => {
   const handleLogoClick = (e: React.MouseEvent) => {
     if (isHomepage) {
       e.preventDefault();
-      window.location.reload();
+      toast('Refreshing...', { icon: '♔', duration: 1000 });
+      setTimeout(() => window.location.reload(), 300);
     }
   };
   return (
