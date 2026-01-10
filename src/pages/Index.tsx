@@ -7,6 +7,7 @@ import PaletteSelector from '@/components/chess/PaletteSelector';
 import ChessParticles from '@/components/chess/ChessParticles';
 import { simulateGame, SimulationResult } from '@/lib/chess/gameSimulator';
 import { Header } from '@/components/shop/Header';
+import { Footer } from '@/components/shop/Footer';
 import { ProductSelector } from '@/components/shop/ProductSelector';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Palette, Crown, Sparkles, Award } from 'lucide-react';
@@ -360,17 +361,7 @@ const Index = () => {
         )}
       </main>
       
-      {/* Footer - Premium and minimal */}
-      <footer className="border-t border-border/50 mt-20 bg-card/30">
-        <div className="container mx-auto px-4 py-10 text-center space-y-3">
-          <p className="text-lg font-royal font-bold tracking-widest uppercase text-gold-gradient">
-            ♔ En Pensent ♚
-          </p>
-          <p className="text-xs text-muted-foreground tracking-widest uppercase font-sans">
-            Turn every move into a masterpiece
-          </p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 };
