@@ -11,6 +11,7 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
+import { toast } from 'sonner';
 
 const navLinks = [
   { to: '/about', label: 'About Us' },
@@ -26,7 +27,8 @@ export const Header = () => {
   const handleLogoClick = (e: React.MouseEvent) => {
     if (isHomepage) {
       e.preventDefault();
-      window.location.reload();
+      toast('Refreshing...', { icon: '♔', duration: 1000 });
+      setTimeout(() => window.location.reload(), 300);
     }
   };
   return (
@@ -93,7 +95,8 @@ export const Header = () => {
                     setMobileMenuOpen(false);
                     if (isHomepage) {
                       e.preventDefault();
-                      window.location.reload();
+                      toast('Refreshing...', { icon: '♔', duration: 1000 });
+                      setTimeout(() => window.location.reload(), 300);
                     }
                   }}
                   className="flex items-center gap-3"
