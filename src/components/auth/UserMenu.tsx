@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { User, LogOut, Palette, Settings, Crown, CreditCard } from 'lucide-react';
+import { User, LogOut, Palette, Settings, Crown, CreditCard, Image } from 'lucide-react';
 import AuthModal from './AuthModal';
 import PremiumBadge from '@/components/premium/PremiumBadge';
 
@@ -101,6 +101,16 @@ const UserMenu: React.FC = () => {
           <Palette className="h-4 w-4" />
           My Palettes
         </DropdownMenuItem>
+        
+        {isPremium && (
+          <DropdownMenuItem 
+            onClick={() => navigate('/my-vision')}
+            className="gap-2 cursor-pointer"
+          >
+            <Image className="h-4 w-4" />
+            My Vision Gallery
+          </DropdownMenuItem>
+        )}
         
         {isPremium && (
           <DropdownMenuItem 

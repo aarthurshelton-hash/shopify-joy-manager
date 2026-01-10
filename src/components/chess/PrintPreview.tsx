@@ -3,13 +3,14 @@ import ChessBoardVisualization from './ChessBoardVisualization';
 import GameInfoDisplay from './GameInfoDisplay';
 import { SimulationResult } from '@/lib/chess/gameSimulator';
 import { Button } from '@/components/ui/button';
-import { Download, Loader2, Sun, Moon, Crown } from 'lucide-react';
+import { Download, Loader2, Sun, Moon, Crown, Bookmark, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import QRCode from 'qrcode';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 import { useAuth } from '@/hooks/useAuth';
 import { PremiumUpgradeModal } from '@/components/premium';
 import AuthModal from '@/components/auth/AuthModal';
+import { saveVisualization } from '@/lib/visualizations/visualizationStorage';
 
 interface PrintPreviewProps {
   simulation: SimulationResult;
@@ -21,10 +22,13 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
   const printRef = useRef<HTMLDivElement>(null);
   const watermarkRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
   const [boardSize, setBoardSize] = useState(320);
   const [darkMode, setDarkMode] = useState(false);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
   const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [premiumModalTrigger, setPremiumModalTrigger] = useState<'download' | 'save'>('download');
   const [showAuthModal, setShowAuthModal] = useState(false);
   
   const { isPremium, user } = useAuth();
@@ -60,6 +64,47 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
     window.addEventListener('resize', updateSize);
     return () => window.removeEventListener('resize', updateSize);
   }, []);
+
+  // Reset saved state when simulation changes
+  useEffect(() => {
+    setIsSaved(false);
+  }, [simulation]);
+  
+  const captureImage = async (withWatermark: boolean): Promise<Blob | null> => {
+    if (!printRef.current) return null;
+    
+    const html2canvas = (await import('html2canvas')).default;
+    
+    // Show watermark for capture only if downloading with watermark
+    if (watermarkRef.current && withWatermark) {
+      watermarkRef.current.style.display = 'block';
+    }
+    
+    // Small delay to ensure DOM updates
+    await new Promise(resolve => setTimeout(resolve, 50));
+    
+    // Capture the full content with proper settings
+    const canvas = await html2canvas(printRef.current, {
+      scale: 3, // Higher resolution for print quality
+      backgroundColor: darkMode ? '#0A0A0A' : '#FDFCFB',
+      useCORS: true,
+      allowTaint: true,
+      logging: false,
+      width: printRef.current.scrollWidth,
+      height: printRef.current.scrollHeight,
+      windowWidth: printRef.current.scrollWidth,
+      windowHeight: printRef.current.scrollHeight,
+    });
+    
+    // Hide watermark after capture
+    if (watermarkRef.current) {
+      watermarkRef.current.style.display = 'none';
+    }
+    
+    return new Promise((resolve) => {
+      canvas.toBlob((blob) => resolve(blob), 'image/png', 1.0);
+    });
+  };
   
   const handleDownload = async (withWatermark: boolean) => {
     if (!printRef.current) return;
@@ -123,11 +168,62 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
     }
     
     if (!isPremium) {
+      setPremiumModalTrigger('download');
       setShowPremiumModal(true);
       return;
     }
     
     handleDownload(false);
+  };
+
+  const handleSaveToGallery = async () => {
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
+    
+    if (!isPremium) {
+      setPremiumModalTrigger('save');
+      setShowPremiumModal(true);
+      return;
+    }
+    
+    setIsSaving(true);
+    try {
+      // Capture clean image (no watermark) for gallery
+      const imageBlob = await captureImage(false);
+      
+      if (!imageBlob) {
+        throw new Error('Failed to capture image');
+      }
+      
+      const visualizationTitle = title || 
+        `${simulation.gameData.white} vs ${simulation.gameData.black}`;
+      
+      const { error } = await saveVisualization(
+        user.id,
+        visualizationTitle,
+        simulation,
+        imageBlob,
+        pgn
+      );
+      
+      if (error) {
+        throw error;
+      }
+      
+      setIsSaved(true);
+      toast.success('Saved to your gallery!', {
+        description: 'View it anytime in My Vision',
+      });
+    } catch (error) {
+      console.error('Save failed:', error);
+      toast.error('Failed to save', {
+        description: error instanceof Error ? error.message : 'Please try again',
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -248,39 +344,66 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
         </div>
       </div>
       
-      {/* Download buttons */}
-      <div className="flex flex-col sm:flex-row justify-center gap-3">
-        <Button 
-          onClick={() => handleDownload(true)}
-          disabled={isDownloading}
-          variant="outline"
-          className="gap-2 px-6"
-        >
-          {isDownloading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Download className="h-4 w-4" />
-          )}
-          Download Free Preview
-        </Button>
+      {/* Action buttons */}
+      <div className="flex flex-col gap-3">
+        {/* Download buttons row */}
+        <div className="flex flex-col sm:flex-row justify-center gap-3">
+          <Button 
+            onClick={() => handleDownload(true)}
+            disabled={isDownloading || isSaving}
+            variant="outline"
+            className="gap-2 px-6"
+          >
+            {isDownloading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+            Download Free Preview
+          </Button>
+          
+          <Button 
+            onClick={handleHDDownload}
+            disabled={isDownloading || isSaving}
+            className="gap-2 btn-luxury px-6"
+          >
+            {isDownloading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : isPremium ? (
+              <Download className="h-4 w-4" />
+            ) : (
+              <Crown className="h-4 w-4" />
+            )}
+            {isPremium ? 'Download HD (No Watermark)' : 'HD Download'}
+            {!isPremium && (
+              <span className="text-xs opacity-75 ml-1">Premium</span>
+            )}
+          </Button>
+        </div>
         
-        <Button 
-          onClick={handleHDDownload}
-          disabled={isDownloading}
-          className="gap-2 btn-luxury px-6"
-        >
-          {isDownloading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : isPremium ? (
-            <Download className="h-4 w-4" />
-          ) : (
-            <Crown className="h-4 w-4" />
-          )}
-          {isPremium ? 'Download HD (No Watermark)' : 'HD Download'}
-          {!isPremium && (
-            <span className="text-xs opacity-75 ml-1">Premium</span>
-          )}
-        </Button>
+        {/* Save to Gallery button */}
+        <div className="flex justify-center">
+          <Button 
+            onClick={handleSaveToGallery}
+            disabled={isDownloading || isSaving || isSaved}
+            variant={isSaved ? "secondary" : "outline"}
+            className={`gap-2 px-6 ${isSaved ? 'bg-green-500/10 text-green-600 border-green-500/30' : ''}`}
+          >
+            {isSaving ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : isSaved ? (
+              <Check className="h-4 w-4" />
+            ) : isPremium ? (
+              <Bookmark className="h-4 w-4" />
+            ) : (
+              <Crown className="h-4 w-4" />
+            )}
+            {isSaved ? 'Saved to Gallery' : 'Save to My Vision'}
+            {!isPremium && !isSaved && (
+              <span className="text-xs opacity-75 ml-1">Premium</span>
+            )}
+          </Button>
+        </div>
       </div>
       
       {/* Premium Upgrade Modal */}
@@ -291,7 +414,7 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
           setShowPremiumModal(false);
           setShowAuthModal(true);
         }}
-        trigger="download"
+        trigger={premiumModalTrigger}
       />
       
       {/* Auth Modal */}
