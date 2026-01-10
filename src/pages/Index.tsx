@@ -148,7 +148,7 @@ const Index = () => {
             <section ref={heroRef} className="relative overflow-hidden">
               {/* Background Image with Parallax */}
               <div 
-                className="absolute inset-0 bg-cover bg-center opacity-20 transition-transform duration-75 ease-out will-change-transform"
+                className="absolute inset-0 bg-cover bg-center opacity-35 transition-transform duration-75 ease-out will-change-transform"
                 style={{ 
                   backgroundImage: `url(${heroChessArt})`,
                   transform: `translateY(${heroOffset}px) scale(1.1)`,
