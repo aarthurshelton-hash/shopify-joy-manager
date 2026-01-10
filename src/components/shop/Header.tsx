@@ -1,9 +1,24 @@
+import { useState } from 'react';
 import { CartDrawer } from './CartDrawer';
-import { Crown } from 'lucide-react';
+import { Crown, Menu, X } from 'lucide-react';
 import UserMenu from '@/components/auth/UserMenu';
 import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+} from '@/components/ui/sheet';
+
+const navLinks = [
+  { to: '/about', label: 'About Us' },
+  { to: '/news', label: 'News' },
+  { to: '/investors', label: 'Investors' },
+];
 
 export const Header = () => {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/80">
       <div className="container flex h-20 items-center justify-between">
@@ -19,7 +34,7 @@ export const Header = () => {
             </div>
             
             {/* Brand name with royal typography */}
-            <div>
+            <div className="hidden sm:block">
               <h1 className="text-2xl font-royal font-bold tracking-wider text-gold-gradient uppercase">
                 En Pensent
               </h1>
@@ -29,27 +44,65 @@ export const Header = () => {
             </div>
           </Link>
           
-          {/* Navigation links */}
+          {/* Desktop navigation links */}
           <nav className="hidden md:flex items-center gap-6">
-            <Link 
-              to="/about" 
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wider"
-            >
-              About Us
-            </Link>
-            <Link 
-              to="/investors" 
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wider"
-            >
-              Investors
-            </Link>
+            {navLinks.map((link) => (
+              <Link 
+                key={link.to}
+                to={link.to} 
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wider"
+              >
+                {link.label}
+              </Link>
+            ))}
           </nav>
         </div>
         
-        {/* Right side - User menu and cart */}
+        {/* Right side - User menu, cart, and mobile menu */}
         <div className="flex items-center gap-3">
           <UserMenu />
           <CartDrawer />
+          
+          {/* Mobile menu trigger */}
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <SheetTrigger asChild className="md:hidden">
+              <Button variant="ghost" size="icon" className="h-10 w-10">
+                <Menu className="h-5 w-5" />
+                <span className="sr-only">Open menu</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-72 bg-background border-border">
+              <div className="flex flex-col gap-6 mt-8">
+                {/* Mobile brand */}
+                <Link 
+                  to="/" 
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-3"
+                >
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary via-primary to-primary/80 flex items-center justify-center">
+                    <Crown className="h-5 w-5 text-primary-foreground" />
+                  </div>
+                  <span className="text-xl font-royal font-bold tracking-wider text-gold-gradient uppercase">
+                    En Pensent
+                  </span>
+                </Link>
+                
+                {/* Mobile nav links */}
+                <nav className="flex flex-col gap-4 mt-4">
+                  {navLinks.map((link) => (
+                    <Link 
+                      key={link.to}
+                      to={link.to}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="text-lg font-medium text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wider py-2 border-b border-border/50"
+                    >
+                      {link.label}
+                    </Link>
+                  ))}
+                </nav>
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
     </header>
