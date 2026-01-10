@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Upload, FileText, Crown, Sparkles, CheckCircle, XCircle, Loader2, Wrench, ArrowRight } from 'lucide-react';
 import { famousGames, FamousGame } from '@/lib/chess/famousGames';
+import { gameImageImports } from '@/lib/chess/gameImages';
 import { validatePgn, cleanPgn, PgnValidationResult } from '@/lib/chess/pgnValidator';
 import { fixPgn, PgnFixResult } from '@/lib/chess/pgnFixer';
 import { toast } from 'sonner';
@@ -156,29 +157,50 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
             {Array.from({ length: totalPages }).map((_, pageIndex) => (
               <div 
                 key={pageIndex}
-                className="grid grid-cols-5 grid-rows-2 gap-2 min-w-full flex-shrink-0"
+                className="grid grid-cols-5 grid-rows-2 gap-3 min-w-full flex-shrink-0"
               >
-                {famousGames.slice(pageIndex * GAMES_PER_PAGE, (pageIndex + 1) * GAMES_PER_PAGE).map((game) => (
-                  <button
-                    key={game.id}
-                    onClick={() => handleLoadGame(game)}
-                    className={`text-left p-2.5 rounded-lg border transition-all duration-300 aspect-[4/3] flex flex-col ${
-                      selectedGame?.id === game.id 
-                        ? 'border-primary bg-primary/10 glow-gold' 
-                        : 'border-border/50 bg-card hover:border-primary/30 hover:bg-card/80'
-                    }`}
-                  >
-                    <h4 className="font-display font-semibold text-[11px] leading-tight line-clamp-2 flex-1">{game.title}</h4>
-                    <div className="mt-auto">
-                      <p className="text-[9px] text-muted-foreground font-serif truncate">
-                        {game.white} vs {game.black}
-                      </p>
-                      <p className="text-[9px] text-muted-foreground/70 font-sans truncate">
-                        {game.year}
-                      </p>
-                    </div>
-                  </button>
-                ))}
+                {famousGames.slice(pageIndex * GAMES_PER_PAGE, (pageIndex + 1) * GAMES_PER_PAGE).map((game) => {
+                  const gameImage = gameImageImports[game.id];
+                  return (
+                    <button
+                      key={game.id}
+                      onClick={() => handleLoadGame(game)}
+                      className={`text-left rounded-lg border transition-all duration-300 overflow-hidden flex flex-col ${
+                        selectedGame?.id === game.id 
+                          ? 'border-primary ring-2 ring-primary/30 glow-gold' 
+                          : 'border-border/50 bg-card hover:border-primary/30 hover:bg-card/80'
+                      }`}
+                    >
+                      {/* Image section */}
+                      <div className="relative h-20 w-full overflow-hidden bg-muted">
+                        {gameImage ? (
+                          <img 
+                            src={gameImage} 
+                            alt={game.title}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
+                            <Crown className="h-6 w-6 text-primary/50" />
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                        <div className="absolute bottom-1 left-2 right-2">
+                          <h4 className="font-display font-semibold text-xs leading-tight text-white drop-shadow-lg line-clamp-1">{game.title}</h4>
+                        </div>
+                      </div>
+                      {/* Info section */}
+                      <div className="p-2 flex-1 flex flex-col">
+                        <p className="text-[11px] text-muted-foreground font-serif truncate">
+                          {game.white} vs {game.black}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground/70 font-sans">
+                          {game.year}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             ))}
           </div>
