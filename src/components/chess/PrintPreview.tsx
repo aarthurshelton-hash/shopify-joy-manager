@@ -77,11 +77,11 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
     
     // Show watermark for capture only if downloading with watermark
     if (watermarkRef.current && withWatermark) {
-      watermarkRef.current.style.display = 'block';
+      watermarkRef.current.style.display = 'flex';
     }
     
-    // Small delay to ensure DOM updates
-    await new Promise(resolve => setTimeout(resolve, 50));
+    // Longer delay to ensure DOM fully updates
+    await new Promise(resolve => setTimeout(resolve, 150));
     
     // Capture the full content with proper settings
     const canvas = await html2canvas(printRef.current, {
@@ -115,11 +115,11 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
       
       // Show watermark for capture only if downloading with watermark
       if (watermarkRef.current && withWatermark) {
-        watermarkRef.current.style.display = 'block';
+        watermarkRef.current.style.display = 'flex';
       }
       
-      // Small delay to ensure DOM updates
-      await new Promise(resolve => setTimeout(resolve, 50));
+      // Longer delay to ensure DOM fully updates
+      await new Promise(resolve => setTimeout(resolve, 150));
       
       // Capture the full content with proper settings
       const canvas = await html2canvas(printRef.current, {
@@ -128,6 +128,8 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
         useCORS: true,
         allowTaint: true,
         logging: false,
+        removeContainer: false,
+        foreignObjectRendering: false, // Use traditional rendering for better compatibility
         width: printRef.current.scrollWidth,
         height: printRef.current.scrollHeight,
         windowWidth: printRef.current.scrollWidth,
@@ -271,17 +273,17 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
               size={boardSize}
             />
             
-            {/* Central watermark overlay - hidden in preview, shown only in free downloads */}
+            {/* Corner watermark - hidden in preview, shown only in free downloads */}
             <div 
               ref={watermarkRef}
-              className="absolute inset-0 flex items-center justify-center pointer-events-none"
+              className="absolute bottom-2 right-2 pointer-events-none"
               style={{ display: 'none' }}
             >
               <div 
-                className={`flex flex-col items-center gap-2 p-4 rounded-lg ${
+                className={`flex items-center gap-2 px-3 py-2 rounded ${
                   darkMode 
-                    ? 'bg-black/70 border border-stone-700' 
-                    : 'bg-white/80 border border-stone-300'
+                    ? 'bg-black/80 border border-stone-600' 
+                    : 'bg-white/90 border border-stone-300'
                 }`}
                 style={{ backdropFilter: 'blur(4px)' }}
               >
@@ -289,38 +291,39 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
                 <img 
                   src={enPensentLogo} 
                   alt="En Pensent" 
-                  className="w-14 h-14 object-contain"
+                  className="w-8 h-8 object-contain"
                   crossOrigin="anonymous"
                 />
                 
-                {/* Brand text */}
-                <span 
-                  className={`text-[11px] tracking-[0.25em] uppercase font-bold ${
-                    darkMode ? 'text-stone-200' : 'text-stone-700'
-                  }`}
-                  style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
-                >
-                  En Pensent
-                </span>
+                {/* Brand text and QR */}
+                <div className="flex flex-col items-start">
+                  <span 
+                    className={`text-[9px] tracking-[0.15em] uppercase font-bold ${
+                      darkMode ? 'text-stone-200' : 'text-stone-700'
+                    }`}
+                    style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
+                  >
+                    En Pensent
+                  </span>
+                  <span 
+                    className={`text-[7px] tracking-wide ${
+                      darkMode ? 'text-stone-400' : 'text-stone-500'
+                    }`}
+                    style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
+                  >
+                    enpensent.com
+                  </span>
+                </div>
                 
                 {/* QR Code */}
                 {qrCodeDataUrl && (
                   <img 
                     src={qrCodeDataUrl} 
                     alt="Scan to visit" 
-                    className="w-16 h-16"
+                    className="w-10 h-10"
                     crossOrigin="anonymous"
                   />
                 )}
-                
-                <span 
-                  className={`text-[8px] tracking-wider ${
-                    darkMode ? 'text-stone-400' : 'text-stone-500'
-                  }`}
-                  style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
-                >
-                  enpensent.com
-                </span>
               </div>
             </div>
           </div>
