@@ -9,7 +9,7 @@ import { fixPgn, PgnFixResult } from '@/lib/chess/pgnFixer';
 import { toast } from 'sonner';
 
 const GAMES_PER_MOBILE_PAGE = 4;
-const GAMES_PER_DESKTOP_PAGE = 8;
+const GAMES_PER_DESKTOP_PAGE = 16;
 
 interface PgnUploaderProps {
   onPgnSubmit: (pgn: string, gameTitle?: string) => void;
