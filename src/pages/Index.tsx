@@ -340,6 +340,54 @@ const Index = () => {
                 </div>
               </div>
             </section>
+
+            {/* Premium Subscription CTA */}
+            <section className="py-12">
+              <div className="container mx-auto px-4">
+                <div className="max-w-4xl mx-auto">
+                  <div className="relative overflow-hidden rounded-2xl border border-primary/30 bg-gradient-to-br from-card via-card to-primary/5 p-8 md:p-12">
+                    {/* Decorative elements */}
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+                    <div className="absolute bottom-0 left-0 w-48 h-48 bg-primary/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+                    
+                    <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
+                      {/* Crown Icon */}
+                      <div className="w-20 h-20 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center flex-shrink-0 animate-gentle-glow">
+                        <Crown className="h-10 w-10 text-primary" />
+                      </div>
+                      
+                      {/* Content */}
+                      <div className="flex-1 text-center md:text-left space-y-3">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-xs font-display uppercase tracking-widest text-primary">
+                          <Sparkles className="h-3 w-3" />
+                          Visionary Membership
+                        </div>
+                        <h3 className="text-2xl md:text-3xl font-display font-bold uppercase tracking-wide">
+                          Unlock <span className="text-gold-gradient">Premium</span> Features
+                        </h3>
+                        <p className="text-muted-foreground font-serif leading-relaxed">
+                          Get watermark-free HD downloads, save unlimited visualizations to your personal gallery, 
+                          and enjoy first access to limited edition gold & silver prints.
+                        </p>
+                        <div className="flex flex-col sm:flex-row items-center gap-4 pt-2">
+                          <div className="text-center sm:text-left">
+                            <span className="text-3xl font-display font-bold text-foreground">$7</span>
+                            <span className="text-muted-foreground font-serif">/month</span>
+                          </div>
+                          <a 
+                            href="/my-vision" 
+                            className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-primary text-primary-foreground font-display uppercase tracking-wide text-sm hover:opacity-90 transition-opacity"
+                          >
+                            <Crown className="h-4 w-4" />
+                            Become a Visionary
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
           </>
         ) : (
           <div className="container mx-auto px-4 py-12">
