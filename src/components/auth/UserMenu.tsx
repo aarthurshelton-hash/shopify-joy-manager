@@ -9,11 +9,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { User, LogOut, Palette, Settings } from 'lucide-react';
+import { User, LogOut, Palette, Settings, Crown, CreditCard } from 'lucide-react';
 import AuthModal from './AuthModal';
+import PremiumBadge from '@/components/premium/PremiumBadge';
 
 const UserMenu: React.FC = () => {
-  const { user, profile, isLoading, signOut } = useAuth();
+  const { user, profile, isLoading, isPremium, signOut, openCheckout, openCustomerPortal } = useAuth();
   const navigate = useNavigate();
   const [showAuthModal, setShowAuthModal] = useState(false);
 
@@ -43,6 +44,18 @@ const UserMenu: React.FC = () => {
   const displayName = profile?.display_name || user.email?.split('@')[0] || 'User';
   const initials = displayName.slice(0, 2).toUpperCase();
 
+  const handleSubscriptionAction = async () => {
+    try {
+      if (isPremium) {
+        await openCustomerPortal();
+      } else {
+        await openCheckout();
+      }
+    } catch (error) {
+      console.error('Subscription action error:', error);
+    }
+  };
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -55,14 +68,32 @@ const UserMenu: React.FC = () => {
             {initials}
           </div>
           <span className="hidden sm:inline text-sm font-medium">{displayName}</span>
+          <PremiumBadge showText={false} />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48 bg-card border-border z-50">
+      <DropdownMenuContent align="end" className="w-56 bg-card border-border z-50">
         <div className="px-3 py-2">
-          <p className="text-sm font-medium">{displayName}</p>
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-medium">{displayName}</p>
+            <PremiumBadge />
+          </div>
           <p className="text-xs text-muted-foreground truncate">{user.email}</p>
         </div>
         <DropdownMenuSeparator />
+        
+        {!isPremium && (
+          <>
+            <DropdownMenuItem 
+              onClick={handleSubscriptionAction}
+              className="gap-2 cursor-pointer bg-primary/5 text-primary focus:bg-primary/10 focus:text-primary"
+            >
+              <Crown className="h-4 w-4" />
+              Upgrade to Premium
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
+        
         <DropdownMenuItem 
           onClick={() => navigate('/my-palettes')}
           className="gap-2 cursor-pointer"
@@ -70,6 +101,17 @@ const UserMenu: React.FC = () => {
           <Palette className="h-4 w-4" />
           My Palettes
         </DropdownMenuItem>
+        
+        {isPremium && (
+          <DropdownMenuItem 
+            onClick={handleSubscriptionAction}
+            className="gap-2 cursor-pointer"
+          >
+            <CreditCard className="h-4 w-4" />
+            Manage Subscription
+          </DropdownMenuItem>
+        )}
+        
         <DropdownMenuItem className="gap-2 cursor-pointer">
           <Settings className="h-4 w-4" />
           Settings
