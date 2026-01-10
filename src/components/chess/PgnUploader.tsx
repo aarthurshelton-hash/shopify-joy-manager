@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Upload, FileText, Crown, Sparkles, CheckCircle, XCircle, Loader2, Wrench, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Upload, FileText, Crown, Sparkles, CheckCircle, XCircle, Loader2, Wrench, ArrowRight, ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
 import { famousGames, FamousGame } from '@/lib/chess/famousGames';
 import { gameImageImports } from '@/lib/chess/gameImages';
 import { validatePgn, cleanPgn, PgnValidationResult } from '@/lib/chess/pgnValidator';
@@ -60,7 +60,9 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
   const [isFixing, setIsFixing] = useState(false);
   const [pageIndex, setPageIndex] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const gamesContainerRef = useRef<HTMLDivElement>(null);
   
   // Check if mobile on mount and resize
   useEffect(() => {
@@ -69,9 +71,6 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
     window.addEventListener('resize', checkMobile, { passive: true });
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
-  
-  const gamesPerPage = isMobile ? GAMES_PER_MOBILE_PAGE : GAMES_PER_DESKTOP_PAGE;
-  const totalPages = useMemo(() => Math.ceil(famousGames.length / gamesPerPage), [gamesPerPage]);
   
   // Sort games by year (oldest to newest), then alphabetically by title within same year
   const sortedGames = useMemo(() => {
@@ -82,6 +81,19 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
       return a.title.localeCompare(b.title);
     });
   }, []);
+  
+  // Filter games by search query
+  const filteredGames = useMemo(() => {
+    if (!searchQuery.trim()) return sortedGames;
+    const query = searchQuery.toLowerCase();
+    return sortedGames.filter(game => 
+      game.title.toLowerCase().includes(query) || 
+      game.year.toString().includes(query)
+    );
+  }, [sortedGames, searchQuery]);
+  
+  const gamesPerPage = isMobile ? GAMES_PER_MOBILE_PAGE : GAMES_PER_DESKTOP_PAGE;
+  const totalPages = useMemo(() => Math.ceil(filteredGames.length / gamesPerPage), [filteredGames.length, gamesPerPage]);
   
   const handleValidate = useCallback(() => {
     if (!pgn.trim()) {
@@ -193,10 +205,10 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
     }
   }, [handleFileUpload]);
   
-  // Reset page when switching between mobile/desktop to avoid out-of-bounds
+  // Reset page when switching between mobile/desktop or when search changes
   useEffect(() => {
     setPageIndex(0);
-  }, [isMobile]);
+  }, [isMobile, searchQuery]);
   
   const goToNextPage = useCallback(() => {
     setPageIndex(prev => Math.min(prev + 1, totalPages - 1));
@@ -206,80 +218,151 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
     setPageIndex(prev => Math.max(prev - 1, 0));
   }, []);
   
+  // Keyboard navigation for desktop
+  useEffect(() => {
+    if (isMobile) return;
+    
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only respond if games container is in view or focused
+      const container = gamesContainerRef.current;
+      if (!container) return;
+      
+      const rect = container.getBoundingClientRect();
+      const isInView = rect.top < window.innerHeight && rect.bottom > 0;
+      
+      // Don't interfere with input fields
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      
+      if (isInView) {
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          goToPrevPage();
+        } else if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          goToNextPage();
+        }
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isMobile, goToNextPage, goToPrevPage]);
+  
   const swipeHandlers = useSwipe(goToNextPage, goToPrevPage);
   
   const visibleGames = useMemo(() => {
     const start = pageIndex * gamesPerPage;
-    return sortedGames.slice(start, start + gamesPerPage);
-  }, [sortedGames, pageIndex, gamesPerPage]);
+    return filteredGames.slice(start, start + gamesPerPage);
+  }, [filteredGames, pageIndex, gamesPerPage]);
 
   return (
     <div className="space-y-8">
       {/* Famous Games Showcase */}
-      <div className="rounded-lg border border-border/50 bg-card/50 overflow-hidden">
+      <div ref={gamesContainerRef} className="rounded-lg border border-border/50 bg-card/50 overflow-hidden">
         <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-border/50">
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+            <div className="flex-1">
               <h3 className="flex items-center gap-2 font-display text-base sm:text-lg font-semibold">
                 <Crown className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                 Legendary Games
               </h3>
               <p className="text-xs sm:text-sm text-muted-foreground mt-1 font-serif">
-                {isMobile ? 'Swipe to explore' : `Showing ${pageIndex * gamesPerPage + 1}–${Math.min((pageIndex + 1) * gamesPerPage, sortedGames.length)} of ${sortedGames.length} legendary games`}
+                {searchQuery 
+                  ? `Found ${filteredGames.length} game${filteredGames.length !== 1 ? 's' : ''}`
+                  : isMobile 
+                    ? 'Swipe to explore' 
+                    : `Showing ${filteredGames.length > 0 ? pageIndex * gamesPerPage + 1 : 0}–${Math.min((pageIndex + 1) * gamesPerPage, filteredGames.length)} of ${filteredGames.length} legendary games`
+                }
+                {!isMobile && !searchQuery && <span className="ml-2 text-muted-foreground/60">• Use ← → arrow keys</span>}
               </p>
             </div>
-            {/* Pagination controls */}
-            <div className="flex items-center gap-2">
-              <button 
-                onClick={goToPrevPage}
-                disabled={pageIndex === 0}
-                className="p-1.5 sm:p-2 rounded-full bg-card border border-border/50 disabled:opacity-30 hover:border-primary/50 transition-all"
-                aria-label="Previous games"
-              >
-                <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
-              </button>
-              <span className="text-xs sm:text-sm text-muted-foreground tabular-nums min-w-[3rem] text-center">
-                {pageIndex + 1}/{totalPages}
-              </span>
-              <button 
-                onClick={goToNextPage}
-                disabled={pageIndex === totalPages - 1}
-                className="p-1.5 sm:p-2 rounded-full bg-card border border-border/50 disabled:opacity-30 hover:border-primary/50 transition-all"
-                aria-label="Next games"
-              >
-                <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
-              </button>
+            
+            {/* Search input */}
+            <div className="relative flex-shrink-0 w-full sm:w-48">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Search games..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-8 pr-8 py-1.5 text-xs bg-background/50 border border-border/50 rounded-md focus:outline-none focus:border-primary/50 transition-colors"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-muted transition-colors"
+                  aria-label="Clear search"
+                >
+                  <X className="h-3 w-3 text-muted-foreground" />
+                </button>
+              )}
             </div>
+            
+            {/* Pagination controls */}
+            {totalPages > 1 && (
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button 
+                  onClick={goToPrevPage}
+                  disabled={pageIndex === 0}
+                  className="p-1.5 sm:p-2 rounded-full bg-card border border-border/50 disabled:opacity-30 hover:border-primary/50 transition-all"
+                  aria-label="Previous games"
+                >
+                  <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
+                </button>
+                <span className="text-xs sm:text-sm text-muted-foreground tabular-nums min-w-[3rem] text-center">
+                  {pageIndex + 1}/{totalPages}
+                </span>
+                <button 
+                  onClick={goToNextPage}
+                  disabled={pageIndex === totalPages - 1}
+                  className="p-1.5 sm:p-2 rounded-full bg-card border border-border/50 disabled:opacity-30 hover:border-primary/50 transition-all"
+                  aria-label="Next games"
+                >
+                  <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
         
         <div className="p-3 sm:p-4">
-          {/* Mobile: Swipeable cards */}
-          <div 
-            ref={scrollContainerRef}
-            className={isMobile ? "touch-pan-x" : ""}
-            {...(isMobile ? swipeHandlers : {})}
-          >
+          {filteredGames.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <Search className="h-8 w-8 text-muted-foreground/40 mb-2" />
+              <p className="text-sm text-muted-foreground">No games found for "{searchQuery}"</p>
+              <button 
+                onClick={() => setSearchQuery('')}
+                className="mt-2 text-xs text-primary hover:underline"
+              >
+                Clear search
+              </button>
+            </div>
+          ) : (
             <div 
-              className={`grid gap-2 sm:gap-3 transition-opacity duration-200 ${
-                isMobile ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4'
-              }`}
-              style={{ minHeight: isMobile ? '180px' : '200px' }}
+              ref={scrollContainerRef}
+              className={isMobile ? "touch-pan-x" : ""}
+              {...(isMobile ? swipeHandlers : {})}
             >
-              {visibleGames.map((game) => {
-                const gameImage = gameImageImports[game.id];
-                return (
-                  <button
-                    key={game.id}
-                    onClick={() => handleLoadGame(game)}
-                    className={`group text-left rounded-lg border transition-all duration-200 overflow-hidden ${
-                      isMobile ? 'flex flex-col' : 'flex gap-3 p-2 hover:scale-[1.02]'
-                    } ${
-                      selectedGame?.id === game.id 
-                        ? 'border-primary ring-1 ring-primary/30 bg-primary/5' 
-                        : 'border-border/40 bg-card/50 hover:border-primary/50 hover:bg-card active:scale-[0.98]'
-                    }`}
-                  >
+              <div 
+                className={`grid gap-2 sm:gap-3 transition-opacity duration-200 ${
+                  isMobile ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4'
+                }`}
+                style={{ minHeight: isMobile ? '180px' : '200px' }}
+              >
+                {visibleGames.map((game) => {
+                  const gameImage = gameImageImports[game.id];
+                  return (
+                    <button
+                      key={game.id}
+                      onClick={() => handleLoadGame(game)}
+                      className={`group text-left rounded-lg border transition-all duration-200 overflow-hidden ${
+                        isMobile ? 'flex flex-col' : 'flex gap-3 p-2 hover:scale-[1.02]'
+                      } ${
+                        selectedGame?.id === game.id 
+                          ? 'border-primary ring-1 ring-primary/30 bg-primary/5' 
+                          : 'border-border/40 bg-card/50 hover:border-primary/50 hover:bg-card active:scale-[0.98]'
+                      }`}
+                    >
                     {/* Thumbnail */}
                     <div className={`relative overflow-hidden bg-muted ${
                       isMobile ? 'w-full aspect-[4/3]' : 'w-14 h-14 flex-shrink-0 rounded-md'
@@ -322,6 +405,7 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
               ))}
             </div>
           </div>
+          )}
         </div>
       </div>
 
