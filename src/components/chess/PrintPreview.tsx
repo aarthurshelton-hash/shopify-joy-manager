@@ -16,6 +16,7 @@ interface PrintPreviewProps {
 
 const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) => {
   const printRef = useRef<HTMLDivElement>(null);
+  const watermarkRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [boardSize, setBoardSize] = useState(320);
   const [darkMode, setDarkMode] = useState(false);
@@ -60,6 +61,14 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
     try {
       const html2canvas = (await import('html2canvas')).default;
       
+      // Show watermark for capture
+      if (watermarkRef.current) {
+        watermarkRef.current.style.display = 'block';
+      }
+      
+      // Small delay to ensure DOM updates
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
       // Capture the full content with proper settings
       const canvas = await html2canvas(printRef.current, {
         scale: 3, // Higher resolution for print quality
@@ -73,6 +82,11 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
         windowHeight: printRef.current.scrollHeight,
       });
       
+      // Hide watermark after capture
+      if (watermarkRef.current) {
+        watermarkRef.current.style.display = 'none';
+      }
+      
       const link = document.createElement('a');
       const whiteName = simulation.gameData.white?.replace(/\s+/g, '-') || 'chess';
       const blackName = simulation.gameData.black?.replace(/\s+/g, '-') || 'game';
@@ -85,6 +99,10 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
     } catch (error) {
       console.error('Download failed:', error);
       toast.error('Download failed. Please try again.');
+      // Make sure watermark is hidden on error too
+      if (watermarkRef.current) {
+        watermarkRef.current.style.display = 'none';
+      }
     } finally {
       setIsDownloading(false);
     }
@@ -139,8 +157,22 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
             <GameInfoDisplay gameData={simulation.gameData} title={title} darkMode={darkMode} />
           </div>
           
-          {/* Branding footer with logo and QR code */}
-          <div className={`w-full pt-4 border-t ${darkMode ? 'border-stone-800' : 'border-stone-200'}`}>
+          {/* Subtle branding - visible in preview */}
+          <p 
+            className={`text-[10px] tracking-[0.3em] uppercase font-medium ${
+              darkMode ? 'text-stone-500' : 'text-stone-400'
+            }`}
+            style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
+          >
+            ♔ En Pensent ♚
+          </p>
+          
+          {/* Watermark - hidden in preview, shown only in downloads */}
+          <div 
+            ref={watermarkRef}
+            className={`w-full pt-4 border-t ${darkMode ? 'border-stone-800' : 'border-stone-200'}`}
+            style={{ display: 'none' }}
+          >
             <div className="flex items-center justify-between px-2">
               {/* Logo on the left */}
               <div className="flex items-center gap-2">
