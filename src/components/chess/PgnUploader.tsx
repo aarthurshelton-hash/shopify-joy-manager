@@ -149,68 +149,42 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
             Start with an iconic game from chess history
           </p>
         </div>
-        <div className="p-5 overflow-hidden">
-          <div 
-            className="flex transition-transform duration-300 ease-out"
-            style={{ transform: `translateX(-${currentPage * 100}%)` }}
-          >
-            {Array.from({ length: totalPages }).map((_, pageIndex) => (
-              <div 
-                key={pageIndex}
-                className="grid grid-cols-5 grid-rows-2 gap-2 min-w-full flex-shrink-0"
-              >
-                {famousGames.slice(pageIndex * GAMES_PER_PAGE, (pageIndex + 1) * GAMES_PER_PAGE).map((game) => {
-                  const gameImage = gameImageImports[game.id];
-                  return (
-                    <button
-                      key={game.id}
-                      onClick={() => handleLoadGame(game)}
-                      className={`text-left rounded border transition-all duration-200 overflow-hidden flex items-center gap-1.5 p-1 ${
-                        selectedGame?.id === game.id 
-                          ? 'border-primary ring-1 ring-primary/30 bg-primary/10' 
-                          : 'border-border/40 bg-card/50 hover:border-primary/40 hover:bg-card'
-                      }`}
-                    >
-                      {/* Tiny square thumbnail */}
-                      <div className="relative w-8 h-8 flex-shrink-0 rounded overflow-hidden bg-muted">
-                        {gameImage ? (
-                          <img 
-                            src={gameImage} 
-                            alt={game.title}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
-                            <Crown className="h-3 w-3 text-primary/40" />
-                          </div>
-                        )}
+        <div className="p-4">
+          <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2">
+            {famousGames.map((game) => {
+              const gameImage = gameImageImports[game.id];
+              return (
+                <button
+                  key={game.id}
+                  onClick={() => handleLoadGame(game)}
+                  className={`text-left rounded border transition-all duration-200 overflow-hidden flex items-center gap-1.5 p-1.5 ${
+                    selectedGame?.id === game.id 
+                      ? 'border-primary ring-1 ring-primary/30 bg-primary/10' 
+                      : 'border-border/40 bg-card/50 hover:border-primary/40 hover:bg-card'
+                  }`}
+                >
+                  {/* Tiny square thumbnail */}
+                  <div className="relative w-6 h-6 flex-shrink-0 rounded overflow-hidden bg-muted">
+                    {gameImage ? (
+                      <img 
+                        src={gameImage} 
+                        alt={game.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
+                        <Crown className="h-2.5 w-2.5 text-primary/40" />
                       </div>
-                      {/* Text info */}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[9px] font-medium text-foreground truncate leading-tight">{game.title}</p>
-                        <p className="text-[7px] text-muted-foreground truncate">{game.year}</p>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            ))}
-          </div>
-          
-          {/* Pagination dots */}
-          <div className="flex justify-center gap-2 mt-5">
-            {Array.from({ length: totalPages }).map((_, index) => (
-              <button
-                key={index}
-                onClick={() => setCurrentPage(index)}
-                className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
-                  currentPage === index 
-                    ? 'bg-primary w-6' 
-                    : 'bg-border hover:bg-primary/50'
-                }`}
-                aria-label={`Go to page ${index + 1}`}
-              />
-            ))}
+                    )}
+                  </div>
+                  {/* Text info */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[8px] font-medium text-foreground truncate leading-tight">{game.title}</p>
+                    <p className="text-[6px] text-muted-foreground truncate">{game.year}</p>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
