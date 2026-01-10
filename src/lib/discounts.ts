@@ -17,6 +17,10 @@ export const DISCOUNT_TIERS: DiscountTier[] = [
   { minQuantity: 10, discountPercent: 35, label: '35% off' },
 ];
 
+// Free shipping threshold (in USD)
+export const FREE_SHIPPING_THRESHOLD = 100;
+export const STANDARD_SHIPPING_COST = 9.99;
+
 export function getDiscountTier(quantity: number): DiscountTier {
   // Find the highest applicable discount tier
   let applicableTier = DISCOUNT_TIERS[0];
@@ -41,6 +45,27 @@ export function getNextDiscountTier(quantity: number): DiscountTier | null {
   return null;
 }
 
+export interface ShippingInfo {
+  isFreeShipping: boolean;
+  shippingCost: number;
+  amountUntilFreeShipping: number;
+  progressPercent: number;
+}
+
+export function calculateShipping(subtotalAfterDiscount: number): ShippingInfo {
+  const isFreeShipping = subtotalAfterDiscount >= FREE_SHIPPING_THRESHOLD;
+  const shippingCost = isFreeShipping ? 0 : STANDARD_SHIPPING_COST;
+  const amountUntilFreeShipping = isFreeShipping ? 0 : FREE_SHIPPING_THRESHOLD - subtotalAfterDiscount;
+  const progressPercent = Math.min((subtotalAfterDiscount / FREE_SHIPPING_THRESHOLD) * 100, 100);
+  
+  return {
+    isFreeShipping,
+    shippingCost,
+    amountUntilFreeShipping,
+    progressPercent,
+  };
+}
+
 export function calculateDiscount(subtotal: number, quantity: number): {
   discountPercent: number;
   discountAmount: number;
@@ -48,12 +73,16 @@ export function calculateDiscount(subtotal: number, quantity: number): {
   tier: DiscountTier;
   nextTier: DiscountTier | null;
   itemsUntilNextTier: number;
+  shipping: ShippingInfo;
+  grandTotal: number;
 } {
   const tier = getDiscountTier(quantity);
   const nextTier = getNextDiscountTier(quantity);
   const discountAmount = subtotal * (tier.discountPercent / 100);
   const finalTotal = subtotal - discountAmount;
   const itemsUntilNextTier = nextTier ? nextTier.minQuantity - quantity : 0;
+  const shipping = calculateShipping(finalTotal);
+  const grandTotal = finalTotal + shipping.shippingCost;
   
   return {
     discountPercent: tier.discountPercent,
@@ -62,5 +91,7 @@ export function calculateDiscount(subtotal: number, quantity: number): {
     tier,
     nextTier,
     itemsUntilNextTier,
+    shipping,
+    grandTotal,
   };
 }
