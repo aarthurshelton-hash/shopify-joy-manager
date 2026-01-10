@@ -12,15 +12,28 @@ interface WallMockupProps {
 // Size configurations - dimensions in inches, scaled to mockup proportions
 // Base wall is ~10 feet wide (120 inches), mockup is 320px wide
 // Scale: 320px / 120in = 2.67px per inch
-const SCALE = 2.67;
+const BASE_SCALE = 2.67;
 
-const sizeConfigs: Record<string, { width: number; height: number; label: string }> = {
-  '8" x 10"': { width: 8 * SCALE, height: 10 * SCALE, label: '8×10"' },
-  '11" x 14"': { width: 11 * SCALE, height: 14 * SCALE, label: '11×14"' },
-  '12" x 16"': { width: 12 * SCALE, height: 16 * SCALE, label: '12×16"' },
-  '16" x 20"': { width: 16 * SCALE, height: 20 * SCALE, label: '16×20"' },
-  '18" x 24"': { width: 18 * SCALE, height: 24 * SCALE, label: '18×24"' },
-  '24" x 36"': { width: 24 * SCALE, height: 36 * SCALE, label: '24×36"' },
+// Room scale factors - smaller scale = larger room feel (print appears smaller)
+// Living room: cozy, intimate (larger print relative to room)
+// Office: professional, medium space
+// Gallery: expansive, museum-like (print appears smaller relative to space)
+const roomScaleFactors: Record<RoomSetting, number> = {
+  living: 1.1,   // Print appears ~10% larger (cozy room)
+  office: 1.0,   // Standard scale
+  gallery: 0.75, // Print appears ~25% smaller (large gallery space)
+};
+
+const getSizeConfigs = (roomSetting: RoomSetting) => {
+  const scale = BASE_SCALE * roomScaleFactors[roomSetting];
+  return {
+    '8" x 10"': { width: 8 * scale, height: 10 * scale, label: '8×10"' },
+    '11" x 14"': { width: 11 * scale, height: 14 * scale, label: '11×14"' },
+    '12" x 16"': { width: 12 * scale, height: 16 * scale, label: '12×16"' },
+    '16" x 20"': { width: 16 * scale, height: 20 * scale, label: '16×20"' },
+    '18" x 24"': { width: 18 * scale, height: 24 * scale, label: '18×24"' },
+    '24" x 36"': { width: 24 * scale, height: 36 * scale, label: '24×36"' },
+  };
 };
 
 const roomConfigs: Record<RoomSetting, {
@@ -49,7 +62,9 @@ const roomConfigs: Record<RoomSetting, {
   },
 };
 
-const findSizeConfig = (label: string) => {
+const findSizeConfig = (label: string, roomSetting: RoomSetting) => {
+  const sizeConfigs = getSizeConfigs(roomSetting);
+  const scale = BASE_SCALE * roomScaleFactors[roomSetting];
   const normalized = label.toLowerCase().replace(/\s/g, '');
   for (const [key, value] of Object.entries(sizeConfigs)) {
     if (normalized.includes(key.toLowerCase().replace(/\s/g, '')) || 
@@ -57,7 +72,7 @@ const findSizeConfig = (label: string) => {
       return value;
     }
   }
-  return { width: 12 * SCALE, height: 16 * SCALE, label: label };
+  return { width: 12 * scale, height: 16 * scale, label: label };
 };
 
 export const WallMockup: React.FC<WallMockupProps> = ({ 
@@ -66,7 +81,7 @@ export const WallMockup: React.FC<WallMockupProps> = ({
   visualizationElement,
   className = '' 
 }) => {
-  const config = findSizeConfig(sizeLabel);
+  const config = findSizeConfig(sizeLabel, roomSetting);
   const room = roomConfigs[roomSetting];
   
   const frameWidth = config.width;
