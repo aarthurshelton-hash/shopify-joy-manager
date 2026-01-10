@@ -136,84 +136,62 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
     }
   };
   
-  // Add watermark to canvas - matching reference design exactly
+  // Add watermark to canvas - simple and reliable
   const addWatermark = async (canvas: HTMLCanvasElement): Promise<void> => {
     const ctx = canvas.getContext('2d');
-    if (!ctx) {
-      console.error('Failed to get canvas context');
-      return;
-    }
+    if (!ctx) return;
     
-    console.log('Adding watermark to canvas:', canvas.width, 'x', canvas.height);
+    // Simple fixed-size watermark relative to canvas
+    const canvasWidth = canvas.width;
+    const canvasHeight = canvas.height;
     
+    // Watermark dimensions (proportional to canvas)
+    const wmWidth = Math.round(canvasWidth * 0.22);
+    const wmHeight = Math.round(wmWidth * 0.28);
+    const margin = Math.round(canvasWidth * 0.025);
+    
+    // Position: bottom-right of the board area (board is roughly top 55% of canvas)
+    const boardBottom = Math.round(canvasHeight * 0.52);
+    const wmX = canvasWidth - wmWidth - margin - Math.round(canvasWidth * 0.06);
+    const wmY = boardBottom - wmHeight - margin;
+    
+    // Draw white background with rounded corners
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.94)';
+    ctx.beginPath();
+    const radius = Math.round(wmHeight * 0.12);
+    ctx.moveTo(wmX + radius, wmY);
+    ctx.lineTo(wmX + wmWidth - radius, wmY);
+    ctx.quadraticCurveTo(wmX + wmWidth, wmY, wmX + wmWidth, wmY + radius);
+    ctx.lineTo(wmX + wmWidth, wmY + wmHeight - radius);
+    ctx.quadraticCurveTo(wmX + wmWidth, wmY + wmHeight, wmX + wmWidth - radius, wmY + wmHeight);
+    ctx.lineTo(wmX + radius, wmY + wmHeight);
+    ctx.quadraticCurveTo(wmX, wmY + wmHeight, wmX, wmY + wmHeight - radius);
+    ctx.lineTo(wmX, wmY + radius);
+    ctx.quadraticCurveTo(wmX, wmY, wmX + radius, wmY);
+    ctx.closePath();
+    ctx.fill();
+    
+    // Draw border
+    ctx.strokeStyle = 'rgba(180, 180, 180, 0.8)';
+    ctx.lineWidth = Math.max(1, Math.round(wmHeight * 0.02));
+    ctx.stroke();
+    
+    // Load and draw logo
     try {
-      // Load logo image with timeout
-      const logoImg = await Promise.race([
-        new Promise<HTMLImageElement>((resolve, reject) => {
-          const img = new Image();
-          img.crossOrigin = 'anonymous';
-          img.onload = () => resolve(img);
-          img.onerror = () => reject(new Error('Logo load failed'));
-          img.src = enPensentLogo;
-        }),
-        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Logo timeout')), 5000))
-      ]);
+      const logoImg = new Image();
+      logoImg.crossOrigin = 'anonymous';
+      await new Promise<void>((resolve, reject) => {
+        logoImg.onload = () => resolve();
+        logoImg.onerror = () => reject();
+        logoImg.src = enPensentLogo;
+      });
       
-      console.log('Logo loaded successfully');
-      
-      // Load QR image with timeout (skip if not ready)
-      let qrImg: HTMLImageElement | null = null;
-      if (qrCodeDataUrl) {
-        try {
-          qrImg = await Promise.race([
-            new Promise<HTMLImageElement>((resolve, reject) => {
-              const img = new Image();
-              img.crossOrigin = 'anonymous';
-              img.onload = () => resolve(img);
-              img.onerror = () => reject(new Error('QR load failed'));
-              img.src = qrCodeDataUrl;
-            }),
-            new Promise<never>((_, reject) => setTimeout(() => reject(new Error('QR timeout')), 5000))
-          ]);
-          console.log('QR code loaded successfully');
-        } catch (e) {
-          console.warn('QR code failed to load, continuing without it:', e);
-        }
-      } else {
-        console.warn('QR code data URL not available');
-      }
-      
-      // Calculate watermark size based on canvas dimensions
-      // The watermark should be proportional to the canvas size
-      const wmWidth = canvas.width * 0.25; // 25% of canvas width
-      const wmHeight = wmWidth * 0.28; // Maintain aspect ratio
-      const margin = canvas.width * 0.02; // 2% margin
-      
-      // Position in bottom-right of the canvas (within the board area)
-      // The board takes up roughly the top 60% of the canvas
-      const boardBottomY = canvas.height * 0.58;
-      const wmX = canvas.width - wmWidth - margin - (canvas.width * 0.08); // Account for padding
-      const wmY = boardBottomY - wmHeight - margin;
-      
-      console.log('Watermark position:', { wmX, wmY, wmWidth, wmHeight });
-      
-      // Background with rounded corners - white with high opacity
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-      ctx.beginPath();
-      ctx.roundRect(wmX, wmY, wmWidth, wmHeight, wmHeight * 0.1);
-      ctx.fill();
-      
-      // Subtle border
-      ctx.strokeStyle = 'rgba(180, 180, 180, 0.9)';
-      ctx.lineWidth = wmHeight * 0.02;
-      ctx.stroke();
-      
-      // Draw logo (circular) - left side
-      const logoSize = wmHeight * 0.72;
-      const logoPadding = wmHeight * 0.14;
-      const logoX = wmX + logoPadding;
+      const logoSize = Math.round(wmHeight * 0.7);
+      const logoPad = Math.round(wmHeight * 0.15);
+      const logoX = wmX + logoPad;
       const logoY = wmY + (wmHeight - logoSize) / 2;
       
+      // Clip to circle and draw logo
       ctx.save();
       ctx.beginPath();
       ctx.arc(logoX + logoSize/2, logoY + logoSize/2, logoSize/2, 0, Math.PI * 2);
@@ -221,38 +199,46 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
       ctx.drawImage(logoImg, logoX, logoY, logoSize, logoSize);
       ctx.restore();
       
-      console.log('Logo drawn at:', { logoX, logoY, logoSize });
-      
-      // Brand text - center
-      const textX = logoX + logoSize + logoPadding;
-      const fontSize1 = wmHeight * 0.22;
-      const fontSize2 = wmHeight * 0.18;
+      // Draw text
+      const textX = logoX + logoSize + logoPad;
+      const fontSize1 = Math.round(wmHeight * 0.22);
+      const fontSize2 = Math.round(wmHeight * 0.17);
       
       ctx.textAlign = 'left';
       ctx.textBaseline = 'middle';
       ctx.fillStyle = '#333333';
-      ctx.font = `700 ${fontSize1}px 'Inter', system-ui, sans-serif`;
+      ctx.font = `bold ${fontSize1}px Inter, system-ui, sans-serif`;
       ctx.fillText('EN PENSENT', textX, wmY + wmHeight * 0.38);
       
       ctx.fillStyle = '#666666';
-      ctx.font = `400 ${fontSize2}px 'Inter', system-ui, sans-serif`;
-      ctx.fillText('enpensent.com', textX, wmY + wmHeight * 0.65);
+      ctx.font = `${fontSize2}px Inter, system-ui, sans-serif`;
+      ctx.fillText('enpensent.com', textX, wmY + wmHeight * 0.66);
       
-      console.log('Text drawn');
-      
-      // QR Code - right side (if loaded)
-      if (qrImg) {
-        const qrSize = wmHeight * 0.75;
-        const qrX = wmX + wmWidth - qrSize - logoPadding;
-        const qrY = wmY + (wmHeight - qrSize) / 2;
-        ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
-        console.log('QR code drawn at:', { qrX, qrY, qrSize });
+      // Draw QR code if available
+      if (qrCodeDataUrl) {
+        const qrImg = new Image();
+        qrImg.crossOrigin = 'anonymous';
+        await new Promise<void>((resolve) => {
+          qrImg.onload = () => resolve();
+          qrImg.onerror = () => resolve(); // Continue even if QR fails
+          qrImg.src = qrCodeDataUrl;
+        });
+        
+        if (qrImg.complete && qrImg.naturalWidth > 0) {
+          const qrSize = Math.round(wmHeight * 0.72);
+          const qrX = wmX + wmWidth - qrSize - logoPad;
+          const qrY = wmY + (wmHeight - qrSize) / 2;
+          ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
+        }
       }
-      
-      console.log('Watermark added successfully');
-    } catch (error) {
-      console.error('Watermark failed:', error);
-      // Continue without watermark rather than failing the download
+    } catch (e) {
+      // If logo fails, just draw text watermark
+      const fontSize = Math.round(wmHeight * 0.3);
+      ctx.fillStyle = '#333333';
+      ctx.font = `bold ${fontSize}px Inter, system-ui, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('EN PENSENT', wmX + wmWidth/2, wmY + wmHeight/2);
     }
   };
   
