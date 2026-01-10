@@ -9,12 +9,12 @@ export interface DiscountTier {
 
 export const DISCOUNT_TIERS: DiscountTier[] = [
   { minQuantity: 1, discountPercent: 0, label: 'No discount' },
-  { minQuantity: 2, discountPercent: 5, label: '5% off' },
-  { minQuantity: 3, discountPercent: 10, label: '10% off' },
-  { minQuantity: 4, discountPercent: 15, label: '15% off' },
-  { minQuantity: 5, discountPercent: 20, label: '20% off' },
-  { minQuantity: 8, discountPercent: 25, label: '25% off' },
-  { minQuantity: 10, discountPercent: 30, label: '30% off' },
+  { minQuantity: 2, discountPercent: 10, label: '10% off' },
+  { minQuantity: 3, discountPercent: 15, label: '15% off' },
+  { minQuantity: 4, discountPercent: 20, label: '20% off' },
+  { minQuantity: 5, discountPercent: 25, label: '25% off' },
+  { minQuantity: 8, discountPercent: 30, label: '30% off' },
+  { minQuantity: 10, discountPercent: 35, label: '35% off' },
 ];
 
 export function getDiscountTier(quantity: number): DiscountTier {
