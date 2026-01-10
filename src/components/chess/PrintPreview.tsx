@@ -21,6 +21,7 @@ interface PrintPreviewProps {
 
 const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) => {
   const printRef = useRef<HTMLDivElement>(null);
+  const watermarkRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
@@ -30,6 +31,7 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [premiumModalTrigger, setPremiumModalTrigger] = useState<'download' | 'save'>('download');
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showWatermark, setShowWatermark] = useState(false);
   
   const { isPremium, user } = useAuth();
   
@@ -78,14 +80,19 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
     }
     
     try {
+      // Show watermark for free downloads
+      if (withWatermark) {
+        setShowWatermark(true);
+        // Wait for React to render the watermark
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      
       // Ensure fonts are loaded
       if (document.fonts && document.fonts.ready) {
         await document.fonts.ready;
       }
       // Extra time for rendering to settle
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      console.log('Starting html2canvas capture...');
+      await new Promise(resolve => setTimeout(resolve, 400));
       
       // Capture at 5x resolution for max quality
       const canvas = await html2canvas(printRef.current, {
@@ -100,7 +107,6 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
           const svgs = clonedElement.querySelectorAll('svg');
           svgs.forEach(svg => {
             svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-            // Force explicit dimensions
             const computedStyle = window.getComputedStyle(svg);
             if (!svg.getAttribute('width')) {
               svg.setAttribute('width', computedStyle.width);
@@ -122,157 +128,63 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
         },
       });
       
-      console.log('Canvas captured, size:', canvas.width, 'x', canvas.height);
-      
-      // Add watermark if needed
+      // Hide watermark after capture
       if (withWatermark) {
-        await addWatermark(canvas);
+        setShowWatermark(false);
       }
       
       return canvas;
     } catch (error) {
       console.error('html2canvas capture failed:', error);
+      setShowWatermark(false);
       throw error;
     }
   };
   
-  // Add watermark to canvas - simple and reliable
-  const addWatermark = async (canvas: HTMLCanvasElement): Promise<void> => {
-    const ctx = canvas.getContext('2d');
-    if (!ctx) {
-      console.error('WATERMARK: Failed to get canvas context');
-      return;
-    }
-    
-    console.log('WATERMARK: Starting watermark, canvas size:', canvas.width, 'x', canvas.height);
-    
-    // Simple fixed-size watermark relative to canvas
-    const canvasWidth = canvas.width;
-    const canvasHeight = canvas.height;
-    
-    // Watermark dimensions (proportional to canvas)
-    const wmWidth = Math.round(canvasWidth * 0.22);
-    const wmHeight = Math.round(wmWidth * 0.28);
-    const margin = Math.round(canvasWidth * 0.025);
-    
-    // Position: bottom-right of the board area (board is roughly top 55% of canvas)
-    const boardBottom = Math.round(canvasHeight * 0.52);
-    const wmX = canvasWidth - wmWidth - margin - Math.round(canvasWidth * 0.06);
-    const wmY = boardBottom - wmHeight - margin;
-    
-    console.log('WATERMARK: Position calculated:', { wmX, wmY, wmWidth, wmHeight, boardBottom });
-    
-    // Draw white background with rounded corners
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.94)';
-    ctx.beginPath();
-    const radius = Math.round(wmHeight * 0.12);
-    ctx.moveTo(wmX + radius, wmY);
-    ctx.lineTo(wmX + wmWidth - radius, wmY);
-    ctx.quadraticCurveTo(wmX + wmWidth, wmY, wmX + wmWidth, wmY + radius);
-    ctx.lineTo(wmX + wmWidth, wmY + wmHeight - radius);
-    ctx.quadraticCurveTo(wmX + wmWidth, wmY + wmHeight, wmX + wmWidth - radius, wmY + wmHeight);
-    ctx.lineTo(wmX + radius, wmY + wmHeight);
-    ctx.quadraticCurveTo(wmX, wmY + wmHeight, wmX, wmY + wmHeight - radius);
-    ctx.lineTo(wmX, wmY + radius);
-    ctx.quadraticCurveTo(wmX, wmY, wmX + radius, wmY);
-    ctx.closePath();
-    ctx.fill();
-    
-    console.log('WATERMARK: Background drawn');
-    
-    // Draw border
-    ctx.strokeStyle = 'rgba(180, 180, 180, 0.8)';
-    ctx.lineWidth = Math.max(1, Math.round(wmHeight * 0.02));
-    ctx.stroke();
-    
-    // Load and draw logo
-    try {
-      const logoImg = new Image();
-      logoImg.crossOrigin = 'anonymous';
+  // Watermark component for free downloads
+  const WatermarkOverlay = () => (
+    <div
+      ref={watermarkRef}
+      className="absolute bottom-2 right-2 flex items-center gap-2 px-2 py-1.5 rounded-md"
+      style={{
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        border: '1px solid rgba(180, 180, 180, 0.8)',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+      }}
+    >
+      {/* Logo */}
+      <img
+        src={enPensentLogo}
+        alt="En Pensent"
+        className="w-8 h-8 rounded-full object-cover"
+      />
       
-      const logoLoaded = await new Promise<boolean>((resolve) => {
-        logoImg.onload = () => {
-          console.log('WATERMARK: Logo loaded successfully');
-          resolve(true);
-        };
-        logoImg.onerror = (e) => {
-          console.error('WATERMARK: Logo failed to load', e);
-          resolve(false);
-        };
-        logoImg.src = enPensentLogo;
-      });
+      {/* Text */}
+      <div className="flex flex-col">
+        <span
+          className="text-xs font-bold text-gray-800 leading-tight"
+          style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
+        >
+          EN PENSENT
+        </span>
+        <span
+          className="text-[10px] text-gray-500 leading-tight"
+          style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
+        >
+          enpensent.com
+        </span>
+      </div>
       
-      const logoSize = Math.round(wmHeight * 0.7);
-      const logoPad = Math.round(wmHeight * 0.15);
-      const logoX = wmX + logoPad;
-      const logoY = wmY + (wmHeight - logoSize) / 2;
-      
-      if (logoLoaded) {
-        // Clip to circle and draw logo
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(logoX + logoSize/2, logoY + logoSize/2, logoSize/2, 0, Math.PI * 2);
-        ctx.clip();
-        ctx.drawImage(logoImg, logoX, logoY, logoSize, logoSize);
-        ctx.restore();
-        console.log('WATERMARK: Logo drawn');
-      }
-      
-      // Draw text
-      const textX = logoX + logoSize + logoPad;
-      const fontSize1 = Math.round(wmHeight * 0.22);
-      const fontSize2 = Math.round(wmHeight * 0.17);
-      
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = '#333333';
-      ctx.font = `bold ${fontSize1}px Inter, system-ui, sans-serif`;
-      ctx.fillText('EN PENSENT', textX, wmY + wmHeight * 0.38);
-      
-      ctx.fillStyle = '#666666';
-      ctx.font = `${fontSize2}px Inter, system-ui, sans-serif`;
-      ctx.fillText('enpensent.com', textX, wmY + wmHeight * 0.66);
-      
-      console.log('WATERMARK: Text drawn');
-      
-      // Draw QR code if available
-      if (qrCodeDataUrl) {
-        const qrImg = new Image();
-        qrImg.crossOrigin = 'anonymous';
-        
-        const qrLoaded = await new Promise<boolean>((resolve) => {
-          qrImg.onload = () => {
-            console.log('WATERMARK: QR loaded');
-            resolve(true);
-          };
-          qrImg.onerror = () => {
-            console.log('WATERMARK: QR failed');
-            resolve(false);
-          };
-          qrImg.src = qrCodeDataUrl;
-        });
-        
-        if (qrLoaded && qrImg.complete && qrImg.naturalWidth > 0) {
-          const qrSize = Math.round(wmHeight * 0.72);
-          const qrX = wmX + wmWidth - qrSize - logoPad;
-          const qrY = wmY + (wmHeight - qrSize) / 2;
-          ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
-          console.log('WATERMARK: QR drawn');
-        }
-      }
-      
-      console.log('WATERMARK: Complete!');
-    } catch (e) {
-      console.error('WATERMARK: Error in watermark:', e);
-      // If logo fails, just draw text watermark
-      const fontSize = Math.round(wmHeight * 0.3);
-      ctx.fillStyle = '#333333';
-      ctx.font = `bold ${fontSize}px Inter, system-ui, sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('EN PENSENT', wmX + wmWidth/2, wmY + wmHeight/2);
-    }
-  };
+      {/* QR Code */}
+      {qrCodeDataUrl && (
+        <img
+          src={qrCodeDataUrl}
+          alt="QR Code"
+          className="w-8 h-8"
+        />
+      )}
+    </div>
+  );
   
   // Download handler
   const handleDownload = async (withWatermark: boolean) => {
@@ -425,11 +337,16 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
         }}
       >
         <div className="flex flex-col items-center gap-6">
-          {/* Chess board visualization */}
-          <ChessBoardVisualization 
-            board={simulation.board} 
-            size={boardSize}
-          />
+          {/* Chess board visualization with watermark overlay */}
+          <div className="relative">
+            <ChessBoardVisualization 
+              board={simulation.board} 
+              size={boardSize}
+            />
+            
+            {/* Watermark - only visible during free download capture */}
+            {showWatermark && <WatermarkOverlay />}
+          </div>
           
           {/* Game information - proper spacing */}
           <div className={`w-full pt-4 border-t ${darkMode ? 'border-stone-800' : 'border-stone-200'}`}>
