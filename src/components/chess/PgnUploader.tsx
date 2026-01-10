@@ -189,8 +189,8 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
                   </div>
                   {/* Text info */}
                   <div className="flex-1 min-w-0 flex flex-col justify-center">
-                    <p className="text-xs font-semibold text-foreground truncate leading-tight">{game.title}</p>
-                    <p className="text-[10px] text-muted-foreground truncate mt-0.5">{game.year}</p>
+                    <p className="text-xs font-semibold text-foreground leading-tight line-clamp-2">{game.title}</p>
+                    <p className="text-[10px] text-muted-foreground mt-1">{game.year}</p>
                   </div>
                 </button>
               );
