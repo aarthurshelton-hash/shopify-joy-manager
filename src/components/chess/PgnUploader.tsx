@@ -157,7 +157,7 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
             {Array.from({ length: totalPages }).map((_, pageIndex) => (
               <div 
                 key={pageIndex}
-                className="grid grid-cols-5 gap-3 min-w-full flex-shrink-0"
+                className="grid grid-cols-5 grid-rows-2 gap-2 min-w-full flex-shrink-0"
               >
                 {famousGames.slice(pageIndex * GAMES_PER_PAGE, (pageIndex + 1) * GAMES_PER_PAGE).map((game) => {
                   const gameImage = gameImageImports[game.id];
@@ -165,14 +165,14 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
                     <button
                       key={game.id}
                       onClick={() => handleLoadGame(game)}
-                      className={`text-left rounded-lg border transition-all duration-200 overflow-hidden flex flex-col hover:scale-105 ${
+                      className={`text-left rounded border transition-all duration-200 overflow-hidden flex items-center gap-1.5 p-1 ${
                         selectedGame?.id === game.id 
-                          ? 'border-primary ring-2 ring-primary/30 glow-gold' 
-                          : 'border-border/40 bg-card hover:border-primary/50'
+                          ? 'border-primary ring-1 ring-primary/30 bg-primary/10' 
+                          : 'border-border/40 bg-card/50 hover:border-primary/40 hover:bg-card'
                       }`}
                     >
-                      {/* Image section - square aspect ratio */}
-                      <div className="relative aspect-square w-full overflow-hidden bg-muted">
+                      {/* Tiny square thumbnail */}
+                      <div className="relative w-8 h-8 flex-shrink-0 rounded overflow-hidden bg-muted">
                         {gameImage ? (
                           <img 
                             src={gameImage} 
@@ -181,14 +181,14 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
-                            <Crown className="h-6 w-6 text-primary/40" />
+                            <Crown className="h-3 w-3 text-primary/40" />
                           </div>
                         )}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-                        <div className="absolute bottom-1.5 left-2 right-2">
-                          <p className="text-[10px] font-semibold text-white drop-shadow-lg line-clamp-1">{game.title}</p>
-                          <p className="text-[8px] text-white/80">{game.year}</p>
-                        </div>
+                      </div>
+                      {/* Text info */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[9px] font-medium text-foreground truncate leading-tight">{game.title}</p>
+                        <p className="text-[7px] text-muted-foreground truncate">{game.year}</p>
                       </div>
                     </button>
                   );
