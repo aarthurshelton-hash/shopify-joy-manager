@@ -139,7 +139,12 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
   // Add watermark to canvas - matching reference design exactly
   const addWatermark = async (canvas: HTMLCanvasElement): Promise<void> => {
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) {
+      console.error('Failed to get canvas context');
+      return;
+    }
+    
+    console.log('Adding watermark to canvas:', canvas.width, 'x', canvas.height);
     
     try {
       // Load logo image with timeout
@@ -153,6 +158,8 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
         }),
         new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Logo timeout')), 5000))
       ]);
+      
+      console.log('Logo loaded successfully');
       
       // Load QR image with timeout (skip if not ready)
       let qrImg: HTMLImageElement | null = null;
@@ -168,53 +175,43 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
             }),
             new Promise<never>((_, reject) => setTimeout(() => reject(new Error('QR timeout')), 5000))
           ]);
-        } catch {
-          console.warn('QR code failed to load, continuing without it');
+          console.log('QR code loaded successfully');
+        } catch (e) {
+          console.warn('QR code failed to load, continuing without it:', e);
         }
+      } else {
+        console.warn('QR code data URL not available');
       }
       
-      // Calculate scale factor based on canvas vs original size
-      const scaleFactor = canvas.width / printRef.current!.offsetWidth;
+      // Calculate watermark size based on canvas dimensions
+      // The watermark should be proportional to the canvas size
+      const wmWidth = canvas.width * 0.25; // 25% of canvas width
+      const wmHeight = wmWidth * 0.28; // Maintain aspect ratio
+      const margin = canvas.width * 0.02; // 2% margin
       
-      // Get the actual board element to find its exact position
-      const boardElement = printRef.current!.querySelector('svg');
-      if (!boardElement) {
-        console.warn('Board element not found');
-        return;
-      }
+      // Position in bottom-right of the canvas (within the board area)
+      // The board takes up roughly the top 60% of the canvas
+      const boardBottomY = canvas.height * 0.58;
+      const wmX = canvas.width - wmWidth - margin - (canvas.width * 0.08); // Account for padding
+      const wmY = boardBottomY - wmHeight - margin;
       
-      const previewRect = printRef.current!.getBoundingClientRect();
-      const boardRect = boardElement.getBoundingClientRect();
-      
-      // Calculate board position relative to preview
-      const boardOffsetX = (boardRect.left - previewRect.left) * scaleFactor;
-      const boardOffsetY = (boardRect.top - previewRect.top) * scaleFactor;
-      const boardWidth = boardRect.width * scaleFactor;
-      const boardHeight = boardRect.height * scaleFactor;
-      
-      // Watermark dimensions - matching reference image proportions
-      const wmWidth = 200 * scaleFactor;
-      const wmHeight = 56 * scaleFactor;
-      const margin = 10 * scaleFactor;
-      
-      // Position in bottom-right of the chess board
-      const wmX = boardOffsetX + boardWidth - wmWidth - margin;
-      const wmY = boardOffsetY + boardHeight - wmHeight - margin;
+      console.log('Watermark position:', { wmX, wmY, wmWidth, wmHeight });
       
       // Background with rounded corners - white with high opacity
       ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
       ctx.beginPath();
-      ctx.roundRect(wmX, wmY, wmWidth, wmHeight, 6 * scaleFactor);
+      ctx.roundRect(wmX, wmY, wmWidth, wmHeight, wmHeight * 0.1);
       ctx.fill();
       
       // Subtle border
-      ctx.strokeStyle = 'rgba(200, 200, 200, 0.8)';
-      ctx.lineWidth = 1 * scaleFactor;
+      ctx.strokeStyle = 'rgba(180, 180, 180, 0.9)';
+      ctx.lineWidth = wmHeight * 0.02;
       ctx.stroke();
       
       // Draw logo (circular) - left side
-      const logoSize = 40 * scaleFactor;
-      const logoX = wmX + 10 * scaleFactor;
+      const logoSize = wmHeight * 0.72;
+      const logoPadding = wmHeight * 0.14;
+      const logoX = wmX + logoPadding;
       const logoY = wmY + (wmHeight - logoSize) / 2;
       
       ctx.save();
@@ -224,10 +221,12 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
       ctx.drawImage(logoImg, logoX, logoY, logoSize, logoSize);
       ctx.restore();
       
+      console.log('Logo drawn at:', { logoX, logoY, logoSize });
+      
       // Brand text - center
-      const textX = logoX + logoSize + 10 * scaleFactor;
-      const fontSize1 = 12 * scaleFactor;
-      const fontSize2 = 10 * scaleFactor;
+      const textX = logoX + logoSize + logoPadding;
+      const fontSize1 = wmHeight * 0.22;
+      const fontSize2 = wmHeight * 0.18;
       
       ctx.textAlign = 'left';
       ctx.textBaseline = 'middle';
@@ -239,13 +238,18 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
       ctx.font = `400 ${fontSize2}px 'Inter', system-ui, sans-serif`;
       ctx.fillText('enpensent.com', textX, wmY + wmHeight * 0.65);
       
+      console.log('Text drawn');
+      
       // QR Code - right side (if loaded)
       if (qrImg) {
-        const qrSize = 42 * scaleFactor;
-        const qrX = wmX + wmWidth - qrSize - 8 * scaleFactor;
+        const qrSize = wmHeight * 0.75;
+        const qrX = wmX + wmWidth - qrSize - logoPadding;
         const qrY = wmY + (wmHeight - qrSize) / 2;
         ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
+        console.log('QR code drawn at:', { qrX, qrY, qrSize });
       }
+      
+      console.log('Watermark added successfully');
     } catch (error) {
       console.error('Watermark failed:', error);
       // Continue without watermark rather than failing the download
