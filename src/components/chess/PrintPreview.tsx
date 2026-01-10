@@ -126,94 +126,118 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
   
   // Add watermark to canvas - matching reference design exactly
   const addWatermark = async (canvas: HTMLCanvasElement): Promise<void> => {
-    const ctx = canvas.getContext('2d')!;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
     
-    // Load logo image
-    const logoImg = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = () => resolve(img);
-      img.onerror = reject;
-      img.src = enPensentLogo;
-    });
-    
-    // Load QR image
-    const qrImg = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = () => resolve(img);
-      img.onerror = reject;
-      img.src = qrCodeDataUrl;
-    });
-    
-    // Calculate scale factor based on canvas vs original size
-    const scaleFactor = canvas.width / printRef.current!.offsetWidth;
-    
-    // Get the actual board element to find its exact position
-    const boardElement = printRef.current!.querySelector('svg');
-    if (!boardElement) return;
-    
-    const previewRect = printRef.current!.getBoundingClientRect();
-    const boardRect = boardElement.getBoundingClientRect();
-    
-    // Calculate board position relative to preview
-    const boardOffsetX = (boardRect.left - previewRect.left) * scaleFactor;
-    const boardOffsetY = (boardRect.top - previewRect.top) * scaleFactor;
-    const boardWidth = boardRect.width * scaleFactor;
-    const boardHeight = boardRect.height * scaleFactor;
-    
-    // Watermark dimensions - matching reference image proportions
-    const wmWidth = 200 * scaleFactor;
-    const wmHeight = 56 * scaleFactor;
-    const margin = 10 * scaleFactor;
-    
-    // Position in bottom-right of the chess board
-    const wmX = boardOffsetX + boardWidth - wmWidth - margin;
-    const wmY = boardOffsetY + boardHeight - wmHeight - margin;
-    
-    // Background with rounded corners - white with high opacity
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-    ctx.beginPath();
-    ctx.roundRect(wmX, wmY, wmWidth, wmHeight, 6 * scaleFactor);
-    ctx.fill();
-    
-    // Subtle border
-    ctx.strokeStyle = 'rgba(200, 200, 200, 0.8)';
-    ctx.lineWidth = 1 * scaleFactor;
-    ctx.stroke();
-    
-    // Draw logo (circular) - left side
-    const logoSize = 40 * scaleFactor;
-    const logoX = wmX + 10 * scaleFactor;
-    const logoY = wmY + (wmHeight - logoSize) / 2;
-    
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(logoX + logoSize/2, logoY + logoSize/2, logoSize/2, 0, Math.PI * 2);
-    ctx.clip();
-    ctx.drawImage(logoImg, logoX, logoY, logoSize, logoSize);
-    ctx.restore();
-    
-    // Brand text - center
-    const textX = logoX + logoSize + 10 * scaleFactor;
-    const fontSize1 = 12 * scaleFactor;
-    const fontSize2 = 10 * scaleFactor;
-    
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#333333';
-    ctx.font = `700 ${fontSize1}px 'Inter', system-ui, sans-serif`;
-    ctx.fillText('EN PENSENT', textX, wmY + wmHeight * 0.38);
-    
-    ctx.fillStyle = '#666666';
-    ctx.font = `400 ${fontSize2}px 'Inter', system-ui, sans-serif`;
-    ctx.fillText('enpensent.com', textX, wmY + wmHeight * 0.65);
-    
-    // QR Code - right side
-    const qrSize = 42 * scaleFactor;
-    const qrX = wmX + wmWidth - qrSize - 8 * scaleFactor;
-    const qrY = wmY + (wmHeight - qrSize) / 2;
-    ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
+    try {
+      // Load logo image with timeout
+      const logoImg = await Promise.race([
+        new Promise<HTMLImageElement>((resolve, reject) => {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = () => resolve(img);
+          img.onerror = () => reject(new Error('Logo load failed'));
+          img.src = enPensentLogo;
+        }),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Logo timeout')), 5000))
+      ]);
+      
+      // Load QR image with timeout (skip if not ready)
+      let qrImg: HTMLImageElement | null = null;
+      if (qrCodeDataUrl) {
+        try {
+          qrImg = await Promise.race([
+            new Promise<HTMLImageElement>((resolve, reject) => {
+              const img = new Image();
+              img.crossOrigin = 'anonymous';
+              img.onload = () => resolve(img);
+              img.onerror = () => reject(new Error('QR load failed'));
+              img.src = qrCodeDataUrl;
+            }),
+            new Promise<never>((_, reject) => setTimeout(() => reject(new Error('QR timeout')), 5000))
+          ]);
+        } catch {
+          console.warn('QR code failed to load, continuing without it');
+        }
+      }
+      
+      // Calculate scale factor based on canvas vs original size
+      const scaleFactor = canvas.width / printRef.current!.offsetWidth;
+      
+      // Get the actual board element to find its exact position
+      const boardElement = printRef.current!.querySelector('svg');
+      if (!boardElement) {
+        console.warn('Board element not found');
+        return;
+      }
+      
+      const previewRect = printRef.current!.getBoundingClientRect();
+      const boardRect = boardElement.getBoundingClientRect();
+      
+      // Calculate board position relative to preview
+      const boardOffsetX = (boardRect.left - previewRect.left) * scaleFactor;
+      const boardOffsetY = (boardRect.top - previewRect.top) * scaleFactor;
+      const boardWidth = boardRect.width * scaleFactor;
+      const boardHeight = boardRect.height * scaleFactor;
+      
+      // Watermark dimensions - matching reference image proportions
+      const wmWidth = 200 * scaleFactor;
+      const wmHeight = 56 * scaleFactor;
+      const margin = 10 * scaleFactor;
+      
+      // Position in bottom-right of the chess board
+      const wmX = boardOffsetX + boardWidth - wmWidth - margin;
+      const wmY = boardOffsetY + boardHeight - wmHeight - margin;
+      
+      // Background with rounded corners - white with high opacity
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+      ctx.beginPath();
+      ctx.roundRect(wmX, wmY, wmWidth, wmHeight, 6 * scaleFactor);
+      ctx.fill();
+      
+      // Subtle border
+      ctx.strokeStyle = 'rgba(200, 200, 200, 0.8)';
+      ctx.lineWidth = 1 * scaleFactor;
+      ctx.stroke();
+      
+      // Draw logo (circular) - left side
+      const logoSize = 40 * scaleFactor;
+      const logoX = wmX + 10 * scaleFactor;
+      const logoY = wmY + (wmHeight - logoSize) / 2;
+      
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(logoX + logoSize/2, logoY + logoSize/2, logoSize/2, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.drawImage(logoImg, logoX, logoY, logoSize, logoSize);
+      ctx.restore();
+      
+      // Brand text - center
+      const textX = logoX + logoSize + 10 * scaleFactor;
+      const fontSize1 = 12 * scaleFactor;
+      const fontSize2 = 10 * scaleFactor;
+      
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#333333';
+      ctx.font = `700 ${fontSize1}px 'Inter', system-ui, sans-serif`;
+      ctx.fillText('EN PENSENT', textX, wmY + wmHeight * 0.38);
+      
+      ctx.fillStyle = '#666666';
+      ctx.font = `400 ${fontSize2}px 'Inter', system-ui, sans-serif`;
+      ctx.fillText('enpensent.com', textX, wmY + wmHeight * 0.65);
+      
+      // QR Code - right side (if loaded)
+      if (qrImg) {
+        const qrSize = 42 * scaleFactor;
+        const qrX = wmX + wmWidth - qrSize - 8 * scaleFactor;
+        const qrY = wmY + (wmHeight - qrSize) / 2;
+        ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
+      }
+    } catch (error) {
+      console.error('Watermark failed:', error);
+      // Continue without watermark rather than failing the download
+    }
   };
   
   // Download handler
