@@ -11,29 +11,26 @@ interface WallMockupProps {
 
 // Size configurations - dimensions in inches, scaled to mockup proportions
 // Base wall is ~10 feet wide (120 inches), mockup is 320px wide
-// Scale: 320px / 120in = 2.67px per inch
+// Scale factor ensures accurate proportional representation
 const BASE_SCALE = 2.67;
 
-// Room scale factors - smaller scale = larger room feel (print appears smaller)
-// Living room: cozy, intimate (larger print relative to room)
-// Office: professional, medium space
-// Gallery: expansive, museum-like (print appears smaller relative to space)
+// Room context affects how the wall/space is perceived, keeping frame sizes accurate
+// Each room has the same proportional sizing - just different aesthetics
 const roomScaleFactors: Record<RoomSetting, number> = {
-  living: 1.1,   // Print appears ~10% larger (cozy room)
+  living: 1.0,   // Standard scale
   office: 1.0,   // Standard scale
-  gallery: 0.75, // Print appears ~25% smaller (large gallery space)
+  gallery: 1.0,  // Standard scale
 };
 
-const getSizeConfigs = (roomSetting: RoomSetting) => {
-  const scale = BASE_SCALE * roomScaleFactors[roomSetting];
-  return {
-    '8" x 10"': { width: 8 * scale, height: 10 * scale, label: '8×10"' },
-    '11" x 14"': { width: 11 * scale, height: 14 * scale, label: '11×14"' },
-    '12" x 16"': { width: 12 * scale, height: 16 * scale, label: '12×16"' },
-    '16" x 20"': { width: 16 * scale, height: 20 * scale, label: '16×20"' },
-    '18" x 24"': { width: 18 * scale, height: 24 * scale, label: '18×24"' },
-    '24" x 36"': { width: 24 * scale, height: 36 * scale, label: '24×36"' },
-  };
+// Size configurations with accurate proportional scaling
+// These values directly map inches to pixels for true-to-size representation
+const sizeConfigs: Record<string, { width: number; height: number; label: string }> = {
+  '8x10': { width: 8 * BASE_SCALE, height: 10 * BASE_SCALE, label: '8×10"' },
+  '11x14': { width: 11 * BASE_SCALE, height: 14 * BASE_SCALE, label: '11×14"' },
+  '12x16': { width: 12 * BASE_SCALE, height: 16 * BASE_SCALE, label: '12×16"' },
+  '16x20': { width: 16 * BASE_SCALE, height: 20 * BASE_SCALE, label: '16×20"' },
+  '18x24': { width: 18 * BASE_SCALE, height: 24 * BASE_SCALE, label: '18×24"' },
+  '24x36': { width: 24 * BASE_SCALE, height: 36 * BASE_SCALE, label: '24×36"' },
 };
 
 const roomConfigs: Record<RoomSetting, {
@@ -62,17 +59,33 @@ const roomConfigs: Record<RoomSetting, {
   },
 };
 
-const findSizeConfig = (label: string, roomSetting: RoomSetting) => {
-  const sizeConfigs = getSizeConfigs(roomSetting);
-  const scale = BASE_SCALE * roomScaleFactors[roomSetting];
-  const normalized = label.toLowerCase().replace(/\s/g, '');
+// Parse size label and return accurate dimensions
+const findSizeConfig = (label: string): { width: number; height: number; label: string } => {
+  // Normalize the label: remove spaces, quotes, and convert to lowercase
+  const normalized = label.toLowerCase().replace(/[\s"'×x]/g, '').replace(/inch(es)?/g, '');
+  
+  // Try to match against known sizes
   for (const [key, value] of Object.entries(sizeConfigs)) {
-    if (normalized.includes(key.toLowerCase().replace(/\s/g, '')) || 
-        normalized.includes(key.replace(/"/g, '').replace(/\s/g, ''))) {
+    const normalizedKey = key.replace(/[\s"'×x]/g, '').toLowerCase();
+    if (normalized.includes(normalizedKey) || normalizedKey.includes(normalized)) {
       return value;
     }
   }
-  return { width: 12 * scale, height: 16 * scale, label: label };
+  
+  // Try to extract dimensions from the label (e.g., "8 x 10" or "8x10" or "8\" x 10\"")
+  const match = label.match(/(\d+)\s*[×x"'\s]+\s*(\d+)/i);
+  if (match) {
+    const width = parseInt(match[1], 10);
+    const height = parseInt(match[2], 10);
+    return { 
+      width: width * BASE_SCALE, 
+      height: height * BASE_SCALE, 
+      label: `${width}×${height}"` 
+    };
+  }
+  
+  // Default fallback to 12x16
+  return { width: 12 * BASE_SCALE, height: 16 * BASE_SCALE, label: label };
 };
 
 export const WallMockup: React.FC<WallMockupProps> = ({ 
@@ -81,7 +94,7 @@ export const WallMockup: React.FC<WallMockupProps> = ({
   visualizationElement,
   className = '' 
 }) => {
-  const config = findSizeConfig(sizeLabel, roomSetting);
+  const config = findSizeConfig(sizeLabel);
   const room = roomConfigs[roomSetting];
   
   const frameWidth = config.width;
