@@ -1,8 +1,8 @@
 import React, { useRef, useEffect, useState } from 'react';
+import html2canvas from 'html2canvas';
 import ChessBoardVisualization from './ChessBoardVisualization';
 import GameInfoDisplay from './GameInfoDisplay';
 import { SimulationResult } from '@/lib/chess/gameSimulator';
-import { generatePrintCanvas } from '@/lib/chess/canvasRenderer';
 import { Button } from '@/components/ui/button';
 import { Download, Loader2, Sun, Moon, Crown, Bookmark, Check } from 'lucide-react';
 import { toast } from 'sonner';
@@ -72,52 +72,68 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
   }, [simulation]);
   
   const captureImage = async (withWatermark: boolean): Promise<Blob | null> => {
+    if (!printRef.current) return null;
+    
     try {
-      const canvas = await generatePrintCanvas(
-        simulation.board,
-        {
-          white: simulation.gameData.white,
-          black: simulation.gameData.black,
-          event: simulation.gameData.event,
-          date: simulation.gameData.date,
-          moves: simulation.gameData.moves,
-        },
-        {
-          boardSize: 400,
-          darkMode,
-          withWatermark,
-          title,
-        }
-      );
+      // Show/hide watermark based on parameter
+      if (watermarkRef.current) {
+        watermarkRef.current.style.display = withWatermark ? 'block' : 'none';
+      }
+      
+      // Wait for DOM to update
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const canvas = await html2canvas(printRef.current, {
+        scale: 3,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: darkMode ? '#0A0A0A' : '#FDFCFB',
+        logging: false,
+      });
+      
+      // Hide watermark again after capture
+      if (watermarkRef.current) {
+        watermarkRef.current.style.display = 'none';
+      }
       
       return new Promise((resolve) => {
         canvas.toBlob((blob) => resolve(blob), 'image/png', 1.0);
       });
     } catch (error) {
+      // Ensure watermark is hidden even on error
+      if (watermarkRef.current) {
+        watermarkRef.current.style.display = 'none';
+      }
       console.error('Capture failed:', error);
       throw error;
     }
   };
   
   const handleDownload = async (withWatermark: boolean) => {
+    if (!printRef.current) return;
+    
     setIsDownloading(true);
     try {
-      const canvas = await generatePrintCanvas(
-        simulation.board,
-        {
-          white: simulation.gameData.white,
-          black: simulation.gameData.black,
-          event: simulation.gameData.event,
-          date: simulation.gameData.date,
-          moves: simulation.gameData.moves,
-        },
-        {
-          boardSize: 400,
-          darkMode,
-          withWatermark,
-          title,
-        }
-      );
+      // Show/hide watermark based on parameter
+      if (watermarkRef.current) {
+        watermarkRef.current.style.display = withWatermark ? 'block' : 'none';
+      }
+      
+      // Wait for DOM to update
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const canvas = await html2canvas(printRef.current, {
+        scale: 3,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: darkMode ? '#0A0A0A' : '#FDFCFB',
+        logging: false,
+      });
+      
+      // Hide watermark again after capture
+      if (watermarkRef.current) {
+        watermarkRef.current.style.display = 'none';
+      }
       
       const link = document.createElement('a');
       const whiteName = simulation.gameData.white?.replace(/\s+/g, '-') || 'chess';
@@ -130,6 +146,10 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
       
       toast.success(withWatermark ? 'Preview image downloaded!' : 'HD image downloaded without watermark!');
     } catch (error) {
+      // Ensure watermark is hidden even on error
+      if (watermarkRef.current) {
+        watermarkRef.current.style.display = 'none';
+      }
       console.error('Download failed:', error);
       toast.error('Download failed. Please try again.');
     } finally {
