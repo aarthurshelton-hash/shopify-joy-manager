@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ShoppingCart, Loader2, Check } from 'lucide-react';
+import { ShoppingCart, Loader2, Check, Frame } from 'lucide-react';
 import { fetchProducts, type ShopifyProduct } from '@/lib/shopify/api';
 import { useCartStore, type CartItem } from '@/stores/cartStore';
+import WallMockup from './WallMockup';
 
 interface ProductSelectorProps {
   customPrintData: {
@@ -23,6 +23,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState<ShopifyProduct | null>(null);
   const [selectedVariantId, setSelectedVariantId] = useState<string>('');
+  const [hoveredVariantId, setHoveredVariantId] = useState<string | null>(null);
   const [added, setAdded] = useState(false);
   
   const addItem = useCartStore(state => state.addItem);
@@ -57,6 +58,11 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
 
   const selectedVariant = selectedProduct?.node.variants.edges.find(
     v => v.node.id === selectedVariantId
+  )?.node;
+
+  // Get the variant to show in mockup (hovered or selected)
+  const displayVariant = selectedProduct?.node.variants.edges.find(
+    v => v.node.id === (hoveredVariantId || selectedVariantId)
   )?.node;
 
   const handleAddToCart = () => {
@@ -115,33 +121,66 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
           Order Your Print
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Size selector */}
+      <CardContent className="space-y-6">
+        {/* Wall Mockup Preview */}
+        {displayVariant && (
+          <div className="flex justify-center py-4 bg-muted/30 rounded-lg">
+            <WallMockup sizeLabel={displayVariant.title} />
+          </div>
+        )}
+
+        {/* Size selector - Grid of buttons */}
         {selectedProduct && selectedProduct.node.variants.edges.length > 1 && (
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Select Size</label>
-            <Select value={selectedVariantId} onValueChange={setSelectedVariantId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Choose a size" />
-              </SelectTrigger>
-              <SelectContent>
-                {selectedProduct.node.variants.edges.map(({ node: variant }) => (
-                  <SelectItem key={variant.id} value={variant.id}>
-                    {variant.title} — {formatPrice(variant.price.amount, variant.price.currencyCode)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="space-y-3">
+            <label className="text-sm font-medium flex items-center gap-2">
+              <Frame className="h-4 w-4 text-muted-foreground" />
+              Select Size
+            </label>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {selectedProduct.node.variants.edges.map(({ node: variant }) => {
+                const isSelected = variant.id === selectedVariantId;
+                return (
+                  <button
+                    key={variant.id}
+                    onClick={() => setSelectedVariantId(variant.id)}
+                    onMouseEnter={() => setHoveredVariantId(variant.id)}
+                    onMouseLeave={() => setHoveredVariantId(null)}
+                    className={`
+                      relative p-3 rounded-lg border-2 transition-all duration-200 text-left
+                      ${isSelected 
+                        ? 'border-primary bg-primary/5' 
+                        : 'border-border hover:border-primary/50 hover:bg-muted/50'
+                      }
+                    `}
+                  >
+                    <div className="font-medium text-sm">{variant.title}</div>
+                    <div className={`text-xs ${isSelected ? 'text-primary' : 'text-muted-foreground'}`}>
+                      {formatPrice(variant.price.amount, variant.price.currencyCode)}
+                    </div>
+                    {isSelected && (
+                      <div className="absolute top-1 right-1">
+                        <Check className="h-3 w-3 text-primary" />
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
 
         {/* Price and Add to Cart */}
-        <div className="flex items-center justify-between pt-2">
+        <div className="flex items-center justify-between pt-2 border-t border-border/50">
           <div>
             {selectedVariant && (
-              <span className="text-2xl font-bold">
-                {formatPrice(selectedVariant.price.amount, selectedVariant.price.currencyCode)}
-              </span>
+              <div>
+                <span className="text-2xl font-bold">
+                  {formatPrice(selectedVariant.price.amount, selectedVariant.price.currencyCode)}
+                </span>
+                <span className="text-sm text-muted-foreground ml-2">
+                  {selectedVariant.title}
+                </span>
+              </div>
             )}
           </div>
           <Button 
@@ -164,7 +203,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
           </Button>
         </div>
 
-        <p className="text-xs text-muted-foreground pt-2">
+        <p className="text-xs text-muted-foreground">
           Museum-quality archival paper • Vibrant fade-resistant inks • Ships worldwide
         </p>
       </CardContent>
