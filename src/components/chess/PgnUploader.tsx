@@ -157,7 +157,7 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
             {Array.from({ length: totalPages }).map((_, pageIndex) => (
               <div 
                 key={pageIndex}
-                className="grid grid-cols-5 grid-rows-2 gap-3 min-w-full flex-shrink-0"
+                className="grid grid-cols-5 grid-rows-2 gap-2 min-w-full flex-shrink-0"
               >
                 {famousGames.slice(pageIndex * GAMES_PER_PAGE, (pageIndex + 1) * GAMES_PER_PAGE).map((game) => {
                   const gameImage = gameImageImports[game.id];
@@ -165,14 +165,14 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
                     <button
                       key={game.id}
                       onClick={() => handleLoadGame(game)}
-                      className={`text-left rounded-lg border transition-all duration-300 overflow-hidden flex flex-col ${
+                      className={`text-left rounded-md border transition-all duration-300 overflow-hidden flex flex-col ${
                         selectedGame?.id === game.id 
-                          ? 'border-primary ring-2 ring-primary/30 glow-gold' 
+                          ? 'border-primary ring-1 ring-primary/30 glow-gold' 
                           : 'border-border/50 bg-card hover:border-primary/30 hover:bg-card/80'
                       }`}
                     >
                       {/* Image section */}
-                      <div className="relative h-20 w-full overflow-hidden bg-muted">
+                      <div className="relative h-12 w-full overflow-hidden bg-muted">
                         {gameImage ? (
                           <img 
                             src={gameImage} 
@@ -181,20 +181,20 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
-                            <Crown className="h-6 w-6 text-primary/50" />
+                            <Crown className="h-4 w-4 text-primary/50" />
                           </div>
                         )}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                        <div className="absolute bottom-1 left-2 right-2">
-                          <h4 className="font-display font-semibold text-xs leading-tight text-white drop-shadow-lg line-clamp-1">{game.title}</h4>
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                        <div className="absolute bottom-0.5 left-1.5 right-1.5">
+                          <h4 className="font-display font-semibold text-[9px] leading-tight text-white drop-shadow-lg line-clamp-1">{game.title}</h4>
                         </div>
                       </div>
                       {/* Info section */}
-                      <div className="p-2 flex-1 flex flex-col">
-                        <p className="text-[11px] text-muted-foreground font-serif truncate">
+                      <div className="px-1.5 py-1">
+                        <p className="text-[8px] text-muted-foreground font-serif truncate leading-tight">
                           {game.white} vs {game.black}
                         </p>
-                        <p className="text-[10px] text-muted-foreground/70 font-sans">
+                        <p className="text-[7px] text-muted-foreground/70 font-sans">
                           {game.year}
                         </p>
                       </div>
