@@ -78,16 +78,42 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
     if (document.fonts && document.fonts.ready) {
       await document.fonts.ready;
     }
-    await new Promise(resolve => setTimeout(resolve, 300));
+    // Extra time for rendering to settle
+    await new Promise(resolve => setTimeout(resolve, 500));
     
-    // Capture at 4x resolution for high quality
+    // Capture at 5x resolution for max quality
     const canvas = await html2canvas(printRef.current, {
-      scale: 4,
+      scale: 5,
       useCORS: true,
       allowTaint: true,
       backgroundColor: darkMode ? '#0A0A0A' : '#FDFCFB',
       logging: false,
-      imageTimeout: 15000,
+      imageTimeout: 30000,
+      onclone: (clonedDoc, clonedElement) => {
+        // Ensure SVG elements have proper namespace for html2canvas
+        const svgs = clonedElement.querySelectorAll('svg');
+        svgs.forEach(svg => {
+          svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+          // Force explicit dimensions
+          const computedStyle = window.getComputedStyle(svg);
+          if (!svg.getAttribute('width')) {
+            svg.setAttribute('width', computedStyle.width);
+          }
+          if (!svg.getAttribute('height')) {
+            svg.setAttribute('height', computedStyle.height);
+          }
+        });
+        
+        // Force font rendering in cloned document
+        const allText = clonedElement.querySelectorAll('*');
+        allText.forEach((el) => {
+          const htmlEl = el as HTMLElement;
+          const computedStyle = window.getComputedStyle(htmlEl);
+          if (computedStyle.fontFamily) {
+            htmlEl.style.fontFamily = computedStyle.fontFamily;
+          }
+        });
+      },
     });
     
     // Add watermark if needed
