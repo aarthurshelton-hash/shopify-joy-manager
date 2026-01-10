@@ -150,19 +150,19 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
     <div className="space-y-8">
       {/* Upload Card */}
       <div className="rounded-lg border border-border/50 bg-card/50 overflow-hidden">
-        <div className="px-6 py-5 border-b border-border/50">
-          <h3 className="flex items-center gap-2 font-display text-lg font-semibold">
-            <FileText className="h-5 w-5" />
+        <div className="px-5 py-4 border-b border-border/50">
+          <h3 className="flex items-center gap-2 font-display text-base font-semibold">
+            <FileText className="h-4 w-4" />
             Upload Your Game
           </h3>
-          <p className="text-sm text-muted-foreground mt-1 font-serif">
-            Paste PGN notation or upload a .pgn file to create your unique visualization
+          <p className="text-xs text-muted-foreground mt-0.5 font-serif">
+            Paste PGN notation or upload a .pgn file
           </p>
         </div>
-        <div className="p-5 space-y-5">
+        <div className="p-4 space-y-4">
           {/* Drop zone */}
           <div
-            className={`border-2 border-dashed rounded-lg p-8 text-center transition-all duration-300 ${
+            className={`border-2 border-dashed rounded-lg p-5 text-center transition-all duration-300 ${
               isDragging 
                 ? 'border-primary bg-primary/10 glow-gold' 
                 : 'border-border hover:border-primary/30'
@@ -171,12 +171,12 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
           >
-            <Upload className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground mb-2 font-serif">
+            <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+            <p className="text-xs text-muted-foreground mb-1 font-serif">
               Drag & drop a .pgn file here, or
             </p>
             <label className="cursor-pointer">
-              <span className="text-primary hover:text-primary/80 text-sm font-medium transition-colors">browse files</span>
+              <span className="text-primary hover:text-primary/80 text-xs font-medium transition-colors">browse files</span>
               <input
                 type="file"
                 accept=".pgn"
@@ -197,7 +197,7 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
                 setValidation(null);
                 setFixResult(null);
               }}
-              className="min-h-[150px] font-mono text-sm bg-background/50 border-border/50 focus:border-primary/50"
+              className="min-h-[100px] font-mono text-xs bg-background/50 border-border/50 focus:border-primary/50"
             />
           </div>
           
