@@ -124,7 +124,7 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
     return canvas;
   };
   
-  // Add watermark to canvas - matching reference design
+  // Add watermark to canvas - matching reference design exactly
   const addWatermark = async (canvas: HTMLCanvasElement): Promise<void> => {
     const ctx = canvas.getContext('2d')!;
     
@@ -146,34 +146,45 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
       img.src = qrCodeDataUrl;
     });
     
-    // Calculate board area (approximately top portion of canvas)
-    // The board with border is roughly in the top-left of the preview content
+    // Calculate scale factor based on canvas vs original size
     const scaleFactor = canvas.width / printRef.current!.offsetWidth;
-    const padding = 40 * scaleFactor; // Preview padding
-    const boardVisualSize = boardSize * scaleFactor;
-    const borderWidth = boardVisualSize * 0.02;
-    const boardTotalSize = boardVisualSize + borderWidth * 2;
     
-    // Watermark dimensions scaled to canvas
-    const wmWidth = 220 * scaleFactor;
-    const wmHeight = 65 * scaleFactor;
-    const wmX = padding + boardTotalSize - wmWidth - 12 * scaleFactor;
-    const wmY = padding + boardTotalSize - wmHeight - 12 * scaleFactor;
+    // Get the actual board element to find its exact position
+    const boardElement = printRef.current!.querySelector('svg');
+    if (!boardElement) return;
     
-    // Background with rounded corners
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.96)';
+    const previewRect = printRef.current!.getBoundingClientRect();
+    const boardRect = boardElement.getBoundingClientRect();
+    
+    // Calculate board position relative to preview
+    const boardOffsetX = (boardRect.left - previewRect.left) * scaleFactor;
+    const boardOffsetY = (boardRect.top - previewRect.top) * scaleFactor;
+    const boardWidth = boardRect.width * scaleFactor;
+    const boardHeight = boardRect.height * scaleFactor;
+    
+    // Watermark dimensions - matching reference image proportions
+    const wmWidth = 200 * scaleFactor;
+    const wmHeight = 56 * scaleFactor;
+    const margin = 10 * scaleFactor;
+    
+    // Position in bottom-right of the chess board
+    const wmX = boardOffsetX + boardWidth - wmWidth - margin;
+    const wmY = boardOffsetY + boardHeight - wmHeight - margin;
+    
+    // Background with rounded corners - white with high opacity
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
     ctx.beginPath();
-    ctx.roundRect(wmX, wmY, wmWidth, wmHeight, 8 * scaleFactor);
+    ctx.roundRect(wmX, wmY, wmWidth, wmHeight, 6 * scaleFactor);
     ctx.fill();
     
     // Subtle border
-    ctx.strokeStyle = '#e7e5e4';
-    ctx.lineWidth = 1.5 * scaleFactor;
+    ctx.strokeStyle = 'rgba(200, 200, 200, 0.8)';
+    ctx.lineWidth = 1 * scaleFactor;
     ctx.stroke();
     
-    // Draw logo (circular)
-    const logoSize = 48 * scaleFactor;
-    const logoX = wmX + 12 * scaleFactor;
+    // Draw logo (circular) - left side
+    const logoSize = 40 * scaleFactor;
+    const logoX = wmX + 10 * scaleFactor;
     const logoY = wmY + (wmHeight - logoSize) / 2;
     
     ctx.save();
@@ -183,24 +194,24 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
     ctx.drawImage(logoImg, logoX, logoY, logoSize, logoSize);
     ctx.restore();
     
-    // Brand text
-    const textX = logoX + logoSize + 12 * scaleFactor;
-    const fontSize1 = 13 * scaleFactor;
-    const fontSize2 = 11 * scaleFactor;
+    // Brand text - center
+    const textX = logoX + logoSize + 10 * scaleFactor;
+    const fontSize1 = 12 * scaleFactor;
+    const fontSize2 = 10 * scaleFactor;
     
     ctx.textAlign = 'left';
-    ctx.textBaseline = 'alphabetic';
-    ctx.fillStyle = '#44403c';
-    ctx.font = `600 ${fontSize1}px 'Inter', sans-serif`;
-    ctx.fillText('EN PENSENT', textX, wmY + wmHeight * 0.42);
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#333333';
+    ctx.font = `700 ${fontSize1}px 'Inter', system-ui, sans-serif`;
+    ctx.fillText('EN PENSENT', textX, wmY + wmHeight * 0.38);
     
-    ctx.fillStyle = '#78716c';
-    ctx.font = `400 ${fontSize2}px 'Inter', sans-serif`;
-    ctx.fillText('enpensent.com', textX, wmY + wmHeight * 0.70);
+    ctx.fillStyle = '#666666';
+    ctx.font = `400 ${fontSize2}px 'Inter', system-ui, sans-serif`;
+    ctx.fillText('enpensent.com', textX, wmY + wmHeight * 0.65);
     
-    // QR Code
-    const qrSize = 50 * scaleFactor;
-    const qrX = wmX + wmWidth - qrSize - 10 * scaleFactor;
+    // QR Code - right side
+    const qrSize = 42 * scaleFactor;
+    const qrX = wmX + wmWidth - qrSize - 8 * scaleFactor;
     const qrY = wmY + (wmHeight - qrSize) / 2;
     ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
   };
