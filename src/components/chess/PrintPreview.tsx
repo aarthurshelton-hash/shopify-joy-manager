@@ -264,11 +264,66 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
         }}
       >
         <div className="flex flex-col items-center gap-6">
-          {/* Chess board visualization - fixed size for consistency */}
-          <ChessBoardVisualization 
-            board={simulation.board} 
-            size={boardSize}
-          />
+          {/* Chess board visualization with central watermark overlay */}
+          <div className="relative">
+            <ChessBoardVisualization 
+              board={simulation.board} 
+              size={boardSize}
+            />
+            
+            {/* Central watermark overlay - hidden in preview, shown only in free downloads */}
+            <div 
+              ref={watermarkRef}
+              className="absolute inset-0 flex items-center justify-center pointer-events-none"
+              style={{ display: 'none' }}
+            >
+              <div 
+                className={`flex flex-col items-center gap-2 p-4 rounded-lg ${
+                  darkMode 
+                    ? 'bg-black/70 border border-stone-700' 
+                    : 'bg-white/80 border border-stone-300'
+                }`}
+                style={{ backdropFilter: 'blur(4px)' }}
+              >
+                {/* Logo */}
+                <img 
+                  src={enPensentLogo} 
+                  alt="En Pensent" 
+                  className="w-14 h-14 object-contain"
+                  crossOrigin="anonymous"
+                />
+                
+                {/* Brand text */}
+                <span 
+                  className={`text-[11px] tracking-[0.25em] uppercase font-bold ${
+                    darkMode ? 'text-stone-200' : 'text-stone-700'
+                  }`}
+                  style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
+                >
+                  En Pensent
+                </span>
+                
+                {/* QR Code */}
+                {qrCodeDataUrl && (
+                  <img 
+                    src={qrCodeDataUrl} 
+                    alt="Scan to visit" 
+                    className="w-16 h-16"
+                    crossOrigin="anonymous"
+                  />
+                )}
+                
+                <span 
+                  className={`text-[8px] tracking-wider ${
+                    darkMode ? 'text-stone-400' : 'text-stone-500'
+                  }`}
+                  style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
+                >
+                  enpensent.com
+                </span>
+              </div>
+            </div>
+          </div>
           
           {/* Game information - proper spacing */}
           <div className={`w-full pt-4 border-t ${darkMode ? 'border-stone-800' : 'border-stone-200'}`}>
@@ -285,62 +340,6 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
             ♔ En Pensent ♚
           </p>
           
-          {/* Watermark - hidden in preview, shown only in free downloads */}
-          <div 
-            ref={watermarkRef}
-            className={`w-full pt-4 border-t ${darkMode ? 'border-stone-800' : 'border-stone-200'}`}
-            style={{ display: 'none' }}
-          >
-            <div className="flex items-center justify-between px-2">
-              {/* Logo on the left */}
-              <div className="flex items-center gap-2">
-                <img 
-                  src={enPensentLogo} 
-                  alt="En Pensent" 
-                  className="w-10 h-10 object-contain"
-                  crossOrigin="anonymous"
-                />
-                <div className="flex flex-col">
-                  <span 
-                    className={`text-[9px] tracking-[0.2em] uppercase font-semibold ${
-                      darkMode ? 'text-stone-300' : 'text-stone-600'
-                    }`}
-                    style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
-                  >
-                    En Pensent
-                  </span>
-                  <span 
-                    className={`text-[7px] tracking-wider ${
-                      darkMode ? 'text-stone-500' : 'text-stone-400'
-                    }`}
-                    style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
-                  >
-                    Chess Art Visualizations
-                  </span>
-                </div>
-              </div>
-              
-              {/* QR Code on the right */}
-              <div className="flex flex-col items-center gap-1">
-                {qrCodeDataUrl && (
-                  <img 
-                    src={qrCodeDataUrl} 
-                    alt="Scan to visit" 
-                    className="w-12 h-12"
-                    crossOrigin="anonymous"
-                  />
-                )}
-                <span 
-                  className={`text-[6px] tracking-wide ${
-                    darkMode ? 'text-stone-500' : 'text-stone-400'
-                  }`}
-                  style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
-                >
-                  enpensent.com
-                </span>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
       
