@@ -14,7 +14,7 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
 
 // Founder/Visionary members with permanent premium access (no charge)
 const VISIONARY_EMAILS = [
-  "alec@enpensent.com", // CEO Alec Arthur Shelton
+  "a.arthur.shelton@gmail.com", // CEO Alec Arthur Shelton
 ];
 
 // Premium product ID
