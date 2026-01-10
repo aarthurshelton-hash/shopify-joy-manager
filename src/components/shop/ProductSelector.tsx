@@ -263,9 +263,15 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
           </Button>
         </div>
 
-        <p className="text-xs text-muted-foreground">
-          Museum-quality archival paper • Vibrant fade-resistant inks • Ships worldwide
-        </p>
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">
+            Museum-quality archival paper • Vibrant fade-resistant inks • Ships worldwide
+          </p>
+          <div className="flex items-center gap-1.5 text-xs text-primary">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+            <span>Buy more, save more — up to 30% off bulk orders!</span>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );
