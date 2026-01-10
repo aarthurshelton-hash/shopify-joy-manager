@@ -293,14 +293,14 @@ export const boardColors = {
   border: '#1C1917',
 };
 
-// Chess piece symbols
+// Chess piece symbols (reversed for visual contrast)
 const pieceSymbols: Record<PieceType, { white: string; black: string }> = {
-  k: { white: '♔', black: '♚' },
-  q: { white: '♕', black: '♛' },
-  r: { white: '♖', black: '♜' },
-  b: { white: '♗', black: '♝' },
-  n: { white: '♘', black: '♞' },
-  p: { white: '♙', black: '♟' },
+  k: { white: '♚', black: '♔' },
+  q: { white: '♛', black: '♕' },
+  r: { white: '♜', black: '♖' },
+  b: { white: '♝', black: '♗' },
+  n: { white: '♞', black: '♘' },
+  p: { white: '♟', black: '♙' },
 };
 
 // Get all piece color mappings for legend using active palette
