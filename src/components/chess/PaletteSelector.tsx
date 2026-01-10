@@ -369,7 +369,7 @@ const PaletteSelector: React.FC<PaletteSelectorProps> = ({ onPaletteChange }) =>
                     {isCustom && <Pencil className="h-3.5 w-3.5 text-primary" />}
                     <div>
                       <h4 className="font-display font-semibold text-sm">{palette.name}</h4>
-                      <p className="text-xs text-muted-foreground mt-0.5 font-serif line-clamp-1">
+                      <p className="text-xs text-muted-foreground mt-0.5 font-serif">
                         {palette.description}
                       </p>
                     </div>
