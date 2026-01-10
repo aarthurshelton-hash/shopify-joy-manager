@@ -13,12 +13,20 @@ export interface PieceColorMapping {
   symbol: string;
 }
 
+export interface PaletteLegendTheme {
+  whiteName: string;
+  whiteEmoji: string;
+  blackName: string;
+  blackEmoji: string;
+}
+
 export interface ColorPalette {
   id: PaletteId;
   name: string;
   description: string;
   white: Record<PieceType, string>;
   black: Record<PieceType, string>;
+  legendTheme: PaletteLegendTheme;
 }
 
 // === HOT vs COLD (Default) ===
@@ -41,6 +49,12 @@ const hotColdPalette: ColorPalette = {
     b: '#F59E0B', // Amber Gold
     n: '#7F1D1D', // Dark Maroon
     p: '#57534E', // Warm Gray
+  },
+  legendTheme: {
+    whiteName: 'Cold',
+    whiteEmoji: '❄️',
+    blackName: 'Hot',
+    blackEmoji: '🔥',
   },
 };
 
@@ -65,6 +79,12 @@ const medievalPalette: ColorPalette = {
     n: '#3F3F46', // Dark Steel
     p: '#44403C', // Charcoal
   },
+  legendTheme: {
+    whiteName: 'Kings',
+    whiteEmoji: '👑',
+    blackName: 'Wizards',
+    blackEmoji: '🧙',
+  },
 };
 
 // === EGYPTIAN ===
@@ -87,6 +107,12 @@ const egyptianPalette: ColorPalette = {
     b: '#059669', // Malachite
     n: '#78350F', // Copper
     p: '#451A03', // Dark Earth
+  },
+  legendTheme: {
+    whiteName: 'Pharaohs',
+    whiteEmoji: '☀️',
+    blackName: 'Anubis',
+    blackEmoji: '🐺',
   },
 };
 
@@ -111,6 +137,12 @@ const romanPalette: ColorPalette = {
     n: '#713F12', // Dark Bronze
     p: '#44403C', // Ash Grey
   },
+  legendTheme: {
+    whiteName: 'Emperors',
+    whiteEmoji: '🏛️',
+    blackName: 'Gladiators',
+    blackEmoji: '⚔️',
+  },
 };
 
 // === MODERN ===
@@ -133,6 +165,12 @@ const modernPalette: ColorPalette = {
     b: '#7C3AED', // Violet
     n: '#C2410C', // Burnt Orange
     p: '#334155', // Dark Slate
+  },
+  legendTheme: {
+    whiteName: 'Digital',
+    whiteEmoji: '💎',
+    blackName: 'Neon',
+    blackEmoji: '⚡',
   },
 };
 
@@ -157,6 +195,12 @@ const greyscalePalette: ColorPalette = {
     n: '#44403C', // Warm Grey 700
     p: '#292524', // Warm Grey 800
   },
+  legendTheme: {
+    whiteName: 'Cool',
+    whiteEmoji: '🌙',
+    blackName: 'Warm',
+    blackEmoji: '🌅',
+  },
 };
 
 // === CUSTOM (User-defined) ===
@@ -179,6 +223,12 @@ const customPalette: ColorPalette = {
     b: '#F59E0B',
     n: '#BE185D',
     p: '#57534E',
+  },
+  legendTheme: {
+    whiteName: 'Light',
+    whiteEmoji: '✨',
+    blackName: 'Dark',
+    blackEmoji: '🌑',
   },
 };
 
