@@ -26,6 +26,16 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
   
   const totalPages = useMemo(() => Math.ceil(famousGames.length / GAMES_PER_PAGE), []);
   
+  // Sort games by year (oldest to newest), then alphabetically by title within same year
+  const sortedGames = useMemo(() => {
+    return [...famousGames].sort((a, b) => {
+      if (a.year !== b.year) {
+        return a.year - b.year;
+      }
+      return a.title.localeCompare(b.title);
+    });
+  }, []);
+  
   const handleValidate = useCallback(() => {
     if (!pgn.trim()) {
       toast.error('No PGN to validate', {
@@ -151,7 +161,7 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
         </div>
         <div className="p-4">
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-            {famousGames.map((game) => {
+            {sortedGames.map((game) => {
               const gameImage = gameImageImports[game.id];
               return (
                 <button
