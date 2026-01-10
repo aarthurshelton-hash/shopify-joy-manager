@@ -110,6 +110,7 @@ const ChessBoardVisualization: React.FC<ChessBoardVisualizationProps> = ({
           display: 'grid',
           gridTemplateColumns: `repeat(8, ${squareSize}px)`,
           gridTemplateRows: `repeat(8, ${squareSize}px)`,
+          backgroundColor: boardColors.light, // Explicit fallback background
         }}
       >
         {/* Render from rank 8 (top) to rank 1 (bottom) */}
