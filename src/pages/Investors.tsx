@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
-import { Crown, TrendingUp, Globe, Zap, Target, Download, ChevronRight, FileText, Presentation, Repeat } from 'lucide-react';
+import { Crown, TrendingUp, Globe, Zap, Target, Download, ChevronRight, FileText, Presentation, Repeat, Users, Quote } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 type ModalType = 'market' | 'technology' | 'vision' | 'brand' | null;
@@ -346,6 +346,62 @@ const Investors = () => {
                   </ul>
                 </div>
 
+                {/* Subscriber Projections */}
+                <div className="p-4 rounded-lg bg-card border border-border/50 space-y-3">
+                  <h3 className="font-display font-bold uppercase tracking-wide text-primary flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    Subscriber Projections
+                  </h3>
+                  <p className="text-sm text-muted-foreground font-serif">
+                    Conservative growth projections based on addressable market of 50M engaged chess players.
+                  </p>
+                  <div className="space-y-3 mt-3">
+                    <div className="flex items-center justify-between p-2 rounded bg-primary/5">
+                      <div>
+                        <p className="text-sm font-display text-foreground">1,000 Subscribers</p>
+                        <p className="text-xs text-muted-foreground font-serif">Year 1 Target</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-display text-primary">$84K ARR</p>
+                        <p className="text-xs text-muted-foreground font-serif">$7K MRR</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between p-2 rounded bg-primary/5">
+                      <div>
+                        <p className="text-sm font-display text-foreground">5,000 Subscribers</p>
+                        <p className="text-xs text-muted-foreground font-serif">Year 2 Target</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-display text-primary">$420K ARR</p>
+                        <p className="text-xs text-muted-foreground font-serif">$35K MRR</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between p-2 rounded bg-primary/10 border border-primary/20">
+                      <div>
+                        <p className="text-sm font-display text-foreground font-bold">10,000 Subscribers</p>
+                        <p className="text-xs text-muted-foreground font-serif">Year 3 Target</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-display text-primary font-bold">$840K ARR</p>
+                        <p className="text-xs text-muted-foreground font-serif">$70K MRR</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between p-2 rounded bg-primary/5">
+                      <div>
+                        <p className="text-sm font-display text-foreground">50,000 Subscribers</p>
+                        <p className="text-xs text-muted-foreground font-serif">Long-term Vision</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-display text-primary">$4.2M ARR</p>
+                        <p className="text-xs text-muted-foreground font-serif">$350K MRR</p>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground font-serif italic mt-2">
+                    * Projections assume 0.02% to 0.1% conversion of addressable market
+                  </p>
+                </div>
+
                 <div className="space-y-3">
                   <h3 className="font-display font-bold uppercase tracking-wide text-primary">Near-Term (6-12 months)</h3>
                   <ul className="space-y-2">
@@ -469,6 +525,83 @@ const Investors = () => {
             </DialogContent>
           </Dialog>
           
+          {/* Premium Member Testimonials */}
+          <div className="space-y-6">
+            <h2 className="text-2xl font-display font-bold uppercase tracking-wider flex items-center gap-3">
+              <Quote className="h-6 w-6 text-primary" />
+              What Premium Members Say
+            </h2>
+            <div className="grid gap-6">
+              <div className="p-6 rounded-lg border border-border/50 bg-card/50 space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <Crown className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground font-serif italic leading-relaxed">
+                      "I've been playing chess for 20 years and this is the first time I've been able to truly visualize the beauty of my games. The HD downloads are stunning—I have three prints framed in my office now."
+                    </p>
+                    <div>
+                      <p className="font-display text-sm font-bold text-foreground">Marcus T.</p>
+                      <p className="text-xs text-muted-foreground">FIDE Rated Player, Premium Member since 2024</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6 rounded-lg border border-border/50 bg-card/50 space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <Crown className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground font-serif italic leading-relaxed">
+                      "The personal gallery feature is a game-changer. I can save every tournament game and revisit them as art. It's like having a visual diary of my chess journey."
+                    </p>
+                    <div>
+                      <p className="font-display text-sm font-bold text-foreground">Elena K.</p>
+                      <p className="text-xs text-muted-foreground">Tournament Director, Premium Member since 2024</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6 rounded-lg border border-border/50 bg-card/50 space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <Crown className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground font-serif italic leading-relaxed">
+                      "Worth every penny. The watermark-free exports look professional enough to gift. I created visualizations of my grandfather's recorded games—priceless family heirlooms now."
+                    </p>
+                    <div>
+                      <p className="font-display text-sm font-bold text-foreground">David R.</p>
+                      <p className="text-xs text-muted-foreground">Chess Coach, Premium Member since 2024</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6 rounded-lg border border-primary/30 bg-primary/5 space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                    <Crown className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground font-serif italic leading-relaxed">
+                      "I run a chess club with 200 members. We now offer En Pensent visualizations as prizes for our monthly tournaments. The kids absolutely love seeing their games transformed into art."
+                    </p>
+                    <div>
+                      <p className="font-display text-sm font-bold text-foreground">Sarah M.</p>
+                      <p className="text-xs text-muted-foreground">Chess Club President, Premium Member since 2024</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Contact CTA */}
           <div className="text-center p-8 rounded-lg border border-primary/30 bg-primary/5 space-y-4">
             <h2 className="text-xl font-display font-bold uppercase tracking-wider">Let's Connect</h2>
