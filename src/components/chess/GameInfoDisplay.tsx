@@ -4,6 +4,7 @@ import { GameData, formatMoves } from '@/lib/chess/gameSimulator';
 interface GameInfoDisplayProps {
   gameData: GameData;
   title?: string;
+  darkMode?: boolean;
 }
 
 // Format date from PGN format (YYYY.MM.DD) to display format
@@ -39,40 +40,54 @@ function formatDate(dateStr: string): string {
   return `${months[monthIndex]} ${day}${getDaySuffix(day)}, ${year}`;
 }
 
-const GameInfoDisplay: React.FC<GameInfoDisplayProps> = ({ gameData, title }) => {
+const GameInfoDisplay: React.FC<GameInfoDisplayProps> = ({ gameData, title, darkMode = false }) => {
   const formattedMoves = formatMoves(gameData.moves);
   
+  // Color classes based on mode
+  const primaryText = darkMode ? 'text-stone-100' : 'text-stone-800';
+  const secondaryText = darkMode ? 'text-stone-400' : 'text-stone-500';
+  const mutedText = darkMode ? 'text-stone-500' : 'text-stone-400';
+  const vsText = darkMode ? 'text-stone-600' : 'text-stone-400';
+  const dotText = darkMode ? 'text-stone-700' : 'text-stone-300';
+  
   return (
-    <div 
-      className="text-center max-w-md mx-auto space-y-3" 
-      style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
-    >
-      {/* Player Names - Bold, elegant */}
-      <h1 className="text-xl md:text-2xl font-semibold tracking-wide text-stone-800">
+    <div className="text-center max-w-md mx-auto space-y-3">
+      {/* Player Names - Clean, modern, edgy */}
+      <h1 
+        className={`text-xl md:text-2xl font-bold tracking-wider uppercase ${primaryText}`}
+        style={{ fontFamily: "'Inter', system-ui, sans-serif", letterSpacing: '0.08em' }}
+      >
         <span>{gameData.white}</span>
-        <span className="mx-2 text-stone-400 font-normal italic text-lg">vs</span>
+        <span className={`mx-3 font-light lowercase text-base ${vsText}`}>vs</span>
         <span>{gameData.black}</span>
       </h1>
       
-      {/* Event Name */}
+      {/* Event Name - Subtle, refined */}
       {gameData.event && gameData.event !== 'Unknown' && (
-        <h2 className="text-sm md:text-base italic text-stone-500">
+        <h2 
+          className={`text-sm md:text-base font-light tracking-wide ${secondaryText}`}
+          style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
+        >
           {gameData.event}
         </h2>
       )}
       
-      {/* Title and Date - side by side */}
-      <p className="text-xs uppercase tracking-[0.15em] text-stone-400 flex items-center justify-center gap-3" style={{ fontFamily: "'Inter', sans-serif" }}>
-        {title && <span className="font-medium">{title}</span>}
-        {title && <span className="text-stone-300">•</span>}
+      {/* Title and Date - Minimal, sharp */}
+      <p 
+        className={`text-[10px] uppercase tracking-[0.2em] font-medium flex items-center justify-center gap-3 ${mutedText}`}
+        style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
+      >
+        {title && <span>{title}</span>}
+        {title && <span className={dotText}>•</span>}
         <span>{formatDate(gameData.date)}</span>
       </p>
       
-      {/* Move Notation - Full display, no truncation */}
+      {/* Move Notation - Monospace for that technical edge */}
       <div 
-        className="text-stone-400 leading-relaxed px-2 text-[8px]"
+        className={`leading-relaxed px-2 text-[8px] font-light ${mutedText}`}
         style={{ 
-          fontFamily: "'Times New Roman', Times, serif",
+          fontFamily: "'SF Mono', 'Fira Code', 'Consolas', monospace",
+          letterSpacing: '0.02em',
         }}
       >
         {formattedMoves}
