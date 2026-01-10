@@ -1,8 +1,9 @@
 import { SquareData, SquareVisit } from './gameSimulator';
 import { boardColors, getPieceColor } from './pieceColors';
+import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 
-// High DPI scaling for crisp downloads - 4x for max quality
-const DPI_SCALE = 4;
+// High DPI scaling for maximum quality downloads - 5x
+const DPI_SCALE = 5;
 
 // Format date from PGN format (YYYY.MM.DD) to display format
 function formatDate(dateStr: string): string {
@@ -109,13 +110,12 @@ async function svgToCanvas(svgString: string, width: number, height: number): Pr
 }
 
 /**
- * Generates QR code as SVG (simple version)
+ * Generates QR code data URL
  */
 async function generateQRCodeDataUrl(darkMode: boolean): Promise<string> {
-  // Import QRCode dynamically
   const QRCode = (await import('qrcode')).default;
   return QRCode.toDataURL('https://enpensent.com', {
-    width: 100,
+    width: 200,
     margin: 1,
     color: {
       dark: darkMode ? '#FAFAFA' : '#1A1A1A',
@@ -126,23 +126,15 @@ async function generateQRCodeDataUrl(darkMode: boolean): Promise<string> {
 }
 
 /**
- * Load logo as base64
+ * Load the logo image
  */
-async function loadLogoAsBase64(): Promise<string> {
+async function loadLogoImage(): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext('2d')!;
-      ctx.drawImage(img, 0, 0);
-      resolve(canvas.toDataURL('image/png'));
-    };
+    img.onload = () => resolve(img);
     img.onerror = reject;
-    // Use the logo from assets
-    img.src = new URL('@/assets/en-pensent-logo-new.png', import.meta.url).href;
+    img.src = enPensentLogo;
   });
 }
 
@@ -363,56 +355,56 @@ export async function generatePrintCanvas(
   
   // Watermark for free downloads - matching reference image exactly
   if (withWatermark) {
-    const qrDataUrl = await generateQRCodeDataUrl(darkMode);
+    // Load assets in parallel
+    const [qrDataUrl, logoImg] = await Promise.all([
+      generateQRCodeDataUrl(false), // Always use dark QR for visibility
+      loadLogoImage(),
+    ]);
     
-    const wmWidth = 200;
-    const wmHeight = 60;
-    const wmX = padding + boardTotalSize - wmWidth - 15;
-    const wmY = padding + boardTotalSize - wmHeight - 15;
+    const wmWidth = 220;
+    const wmHeight = 65;
+    const wmX = padding + boardTotalSize - wmWidth - 12;
+    const wmY = padding + boardTotalSize - wmHeight - 12;
     
-    // Background with rounded corners
-    ctx.fillStyle = darkMode ? 'rgba(10,10,10,0.92)' : 'rgba(255,255,255,0.95)';
+    // Background with rounded corners - semi-transparent white
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
     ctx.beginPath();
-    ctx.roundRect(wmX, wmY, wmWidth, wmHeight, 8);
+    ctx.roundRect(wmX, wmY, wmWidth, wmHeight, 6);
     ctx.fill();
     
     // Subtle border
-    ctx.strokeStyle = darkMode ? '#44403c' : '#e7e5e4';
+    ctx.strokeStyle = '#e7e5e4';
     ctx.lineWidth = 1;
     ctx.stroke();
     
-    // Gold logo circle
-    const logoSize = 40;
-    const logoX = wmX + 15;
+    // Draw the actual logo image (circular, gold-rimmed)
+    const logoSize = 48;
+    const logoX = wmX + 12;
     const logoY = wmY + (wmHeight - logoSize) / 2;
     
-    ctx.fillStyle = '#D4AF37';
+    // Draw logo with circular clip
+    ctx.save();
     ctx.beginPath();
     ctx.arc(logoX + logoSize/2, logoY + logoSize/2, logoSize/2, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.clip();
+    ctx.drawImage(logoImg, logoX, logoY, logoSize, logoSize);
+    ctx.restore();
     
-    // Crown in logo
-    ctx.fillStyle = darkMode ? '#0A0A0A' : '#FFFFFF';
-    ctx.font = "bold 20px 'Cinzel', serif";
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('♔', logoX + logoSize/2, logoY + logoSize/2 + 1);
+    // Brand text - positioned to the right of logo
+    const textX = logoX + logoSize + 10;
     
-    // Brand text
     ctx.textAlign = 'left';
     ctx.textBaseline = 'alphabetic';
-    const textX = logoX + logoSize + 12;
+    ctx.fillStyle = '#44403c';
+    ctx.font = "600 13px 'Inter', sans-serif";
+    ctx.fillText('EN PENSENT', textX, wmY + 28);
     
-    ctx.fillStyle = darkMode ? '#e7e5e4' : '#44403c';
-    ctx.font = "600 12px 'Inter', sans-serif";
-    ctx.fillText('EN PENSENT', textX, wmY + 26);
+    ctx.fillStyle = '#78716c';
+    ctx.font = "400 11px 'Inter', sans-serif";
+    ctx.fillText('enpensent.com', textX, wmY + 46);
     
-    ctx.fillStyle = darkMode ? '#a8a29e' : '#78716c';
-    ctx.font = "400 10px 'Inter', sans-serif";
-    ctx.fillText('enpensent.com', textX, wmY + 42);
-    
-    // QR Code
-    const qrSize = 44;
+    // QR Code - positioned on the right
+    const qrSize = 50;
     const qrX = wmX + wmWidth - qrSize - 10;
     const qrY = wmY + (wmHeight - qrSize) / 2;
     
