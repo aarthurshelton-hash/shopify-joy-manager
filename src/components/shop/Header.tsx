@@ -32,7 +32,7 @@ export const Header = () => {
               <img 
                 src={enPensentLogo} 
                 alt="En Pensent Logo" 
-                className="w-12 h-12 rounded-full object-cover glow-gold group-hover:scale-105 transition-transform"
+                className="w-14 h-14 rounded-full object-cover glow-gold group-hover:scale-105 transition-transform"
               />
             </div>
             
@@ -85,7 +85,7 @@ export const Header = () => {
                   <img 
                     src={enPensentLogo} 
                     alt="En Pensent Logo" 
-                    className="w-10 h-10 rounded-full object-cover"
+                    className="w-12 h-12 rounded-full object-cover"
                   />
                   <span className="text-xl font-royal font-bold tracking-wider text-gold-gradient uppercase">
                     En Pensent
