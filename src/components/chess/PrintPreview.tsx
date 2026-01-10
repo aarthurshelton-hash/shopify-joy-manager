@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Download, Loader2, Sun, Moon, Crown, Bookmark, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import QRCode from 'qrcode';
+import domtoimage from 'dom-to-image-more';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 import { useAuth } from '@/hooks/useAuth';
 import { PremiumUpgradeModal } from '@/components/premium';
@@ -73,26 +74,30 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
   const captureImage = async (withWatermark: boolean): Promise<Blob | null> => {
     if (!printRef.current) return null;
     
-    const html2canvas = (await import('html2canvas')).default;
-    
     if (watermarkRef.current && withWatermark) {
       watermarkRef.current.style.display = 'flex';
     }
     
     await new Promise(resolve => setTimeout(resolve, 100));
     
-    const canvas = await html2canvas(printRef.current, {
-      scale: 3,
-      useCORS: true,
-    });
-    
-    if (watermarkRef.current) {
-      watermarkRef.current.style.display = 'none';
+    try {
+      const blob = await domtoimage.toBlob(printRef.current, {
+        quality: 1,
+        scale: 3,
+        bgcolor: darkMode ? '#0A0A0A' : '#FDFCFB',
+      });
+      
+      if (watermarkRef.current) {
+        watermarkRef.current.style.display = 'none';
+      }
+      
+      return blob;
+    } catch (error) {
+      if (watermarkRef.current) {
+        watermarkRef.current.style.display = 'none';
+      }
+      throw error;
     }
-    
-    return new Promise((resolve) => {
-      canvas.toBlob((blob) => resolve(blob), 'image/png', 1.0);
-    });
   };
   
   const handleDownload = async (withWatermark: boolean) => {
@@ -100,17 +105,16 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
     
     setIsDownloading(true);
     try {
-      const html2canvas = (await import('html2canvas')).default;
-      
       if (watermarkRef.current && withWatermark) {
         watermarkRef.current.style.display = 'flex';
       }
       
       await new Promise(resolve => setTimeout(resolve, 100));
       
-      const canvas = await html2canvas(printRef.current, {
+      const dataUrl = await domtoimage.toPng(printRef.current, {
+        quality: 1,
         scale: 3,
-        useCORS: true,
+        bgcolor: darkMode ? '#0A0A0A' : '#FDFCFB',
       });
       
       if (watermarkRef.current) {
@@ -123,7 +127,7 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
       const modeLabel = darkMode ? 'dark' : 'light';
       const qualityLabel = withWatermark ? 'preview' : 'HD';
       link.download = `EnPensent-${whiteName}-vs-${blackName}-${modeLabel}-${qualityLabel}.png`;
-      link.href = canvas.toDataURL('image/png', 1.0);
+      link.href = dataUrl;
       link.click();
       
       toast.success(withWatermark ? 'Preview image downloaded!' : 'HD image downloaded without watermark!');
