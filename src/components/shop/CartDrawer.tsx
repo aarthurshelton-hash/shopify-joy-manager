@@ -9,10 +9,11 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { ShoppingCart, Minus, Plus, Trash2, ExternalLink, Loader2 } from "lucide-react";
+import { ShoppingCart, Minus, Plus, Trash2, ExternalLink, Loader2, Sparkles, Gift } from "lucide-react";
 import { useCartStore } from "@/stores/cartStore";
 import { useCurrencyStore } from "@/stores/currencyStore";
 import { CurrencySelector } from "./CurrencySelector";
+import { calculateDiscount, DISCOUNT_TIERS } from "@/lib/discounts";
 
 export const CartDrawer = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -27,7 +28,10 @@ export const CartDrawer = () => {
   const { formatPrice, selectedCurrency } = useCurrencyStore();
   
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
-  const totalPriceUSD = items.reduce((sum, item) => sum + (parseFloat(item.price.amount) * item.quantity), 0);
+  const subtotalUSD = items.reduce((sum, item) => sum + (parseFloat(item.price.amount) * item.quantity), 0);
+  
+  // Calculate discount based on total quantity
+  const discountInfo = calculateDiscount(subtotalUSD, totalItems);
 
   const handleCheckout = async () => {
     // Open window immediately to avoid popup blocker
@@ -146,23 +150,72 @@ export const CartDrawer = () => {
                 </div>
               </div>
               
-              <div className="flex-shrink-0 space-y-4 pt-4 border-t bg-background">
-                <div className="flex items-center justify-between mb-2">
+              <div className="flex-shrink-0 space-y-3 pt-4 border-t bg-background">
+                {/* Discount progress indicator */}
+                {discountInfo.nextTier && (
+                  <div className="bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg p-3 border border-primary/20">
+                    <div className="flex items-center gap-2 text-sm">
+                      <Gift className="h-4 w-4 text-primary" />
+                      <span className="text-foreground">
+                        Add <span className="font-bold text-primary">{discountInfo.itemsUntilNextTier} more</span> for{' '}
+                        <span className="font-bold text-primary">{discountInfo.nextTier.label}</span>!
+                      </span>
+                    </div>
+                    {/* Progress bar */}
+                    <div className="mt-2 h-1.5 bg-muted rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-gradient-to-r from-primary to-primary/70 rounded-full transition-all duration-300"
+                        style={{ 
+                          width: `${(totalItems / discountInfo.nextTier.minQuantity) * 100}%` 
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+                
+                {/* Current discount badge */}
+                {discountInfo.discountPercent > 0 && (
+                  <div className="flex items-center justify-center gap-2 py-2 bg-green-500/10 rounded-lg border border-green-500/20">
+                    <Sparkles className="h-4 w-4 text-green-500" />
+                    <span className="text-sm font-medium text-green-600 dark:text-green-400">
+                      {discountInfo.tier.label} applied — You save {formatPrice(discountInfo.discountAmount)}!
+                    </span>
+                  </div>
+                )}
+                
+                <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">Display currency:</span>
                   <CurrencySelector compact />
                 </div>
                 
-                <div className="flex justify-between items-center">
-                  <span className="text-lg font-semibold">Total</span>
-                  <div className="text-right">
-                    <span className="text-xl font-bold">
-                      {formatPrice(totalPriceUSD)}
+                {/* Pricing breakdown */}
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span className={discountInfo.discountPercent > 0 ? 'line-through text-muted-foreground' : ''}>
+                      {formatPrice(subtotalUSD)}
                     </span>
-                    {selectedCurrency.code !== 'USD' && (
-                      <p className="text-xs text-muted-foreground">
-                        ≈ ${totalPriceUSD.toFixed(2)} USD
-                      </p>
-                    )}
+                  </div>
+                  
+                  {discountInfo.discountPercent > 0 && (
+                    <div className="flex justify-between items-center text-sm text-green-600 dark:text-green-400">
+                      <span>Bulk discount ({discountInfo.discountPercent}%)</span>
+                      <span>-{formatPrice(discountInfo.discountAmount)}</span>
+                    </div>
+                  )}
+                  
+                  <div className="flex justify-between items-center pt-2 border-t">
+                    <span className="text-lg font-semibold">Total</span>
+                    <div className="text-right">
+                      <span className="text-xl font-bold">
+                        {formatPrice(discountInfo.finalTotal)}
+                      </span>
+                      {selectedCurrency.code !== 'USD' && (
+                        <p className="text-xs text-muted-foreground">
+                          ≈ ${discountInfo.finalTotal.toFixed(2)} USD
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
                 
@@ -188,6 +241,24 @@ export const CartDrawer = () => {
                     </>
                   )}
                 </Button>
+                
+                {/* Discount tiers info */}
+                <details className="text-xs text-muted-foreground">
+                  <summary className="cursor-pointer hover:text-foreground transition-colors">
+                    View bulk discount tiers
+                  </summary>
+                  <div className="mt-2 space-y-1 pl-2 border-l-2 border-muted">
+                    {DISCOUNT_TIERS.slice(1).map((tier) => (
+                      <div 
+                        key={tier.minQuantity} 
+                        className={`flex justify-between ${totalItems >= tier.minQuantity ? 'text-green-600 dark:text-green-400 font-medium' : ''}`}
+                      >
+                        <span>{tier.minQuantity}+ prints</span>
+                        <span>{tier.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </details>
               </div>
             </>
           )}
