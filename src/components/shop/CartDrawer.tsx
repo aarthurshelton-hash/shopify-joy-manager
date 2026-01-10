@@ -11,6 +11,8 @@ import {
 } from "@/components/ui/sheet";
 import { ShoppingCart, Minus, Plus, Trash2, ExternalLink, Loader2 } from "lucide-react";
 import { useCartStore } from "@/stores/cartStore";
+import { useCurrencyStore } from "@/stores/currencyStore";
+import { CurrencySelector } from "./CurrencySelector";
 
 export const CartDrawer = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -22,8 +24,10 @@ export const CartDrawer = () => {
     createCheckout 
   } = useCartStore();
   
+  const { formatPrice, selectedCurrency } = useCurrencyStore();
+  
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
-  const totalPrice = items.reduce((sum, item) => sum + (parseFloat(item.price.amount) * item.quantity), 0);
+  const totalPriceUSD = items.reduce((sum, item) => sum + (parseFloat(item.price.amount) * item.quantity), 0);
 
   const handleCheckout = async () => {
     // Open window immediately to avoid popup blocker
@@ -103,7 +107,7 @@ export const CartDrawer = () => {
                           </p>
                         )}
                         <p className="font-semibold mt-1">
-                          {item.price.currencyCode} {parseFloat(item.price.amount).toFixed(2)}
+                          {formatPrice(parseFloat(item.price.amount))}
                         </p>
                       </div>
                       
@@ -143,12 +147,28 @@ export const CartDrawer = () => {
               </div>
               
               <div className="flex-shrink-0 space-y-4 pt-4 border-t bg-background">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs text-muted-foreground">Display currency:</span>
+                  <CurrencySelector compact />
+                </div>
+                
                 <div className="flex justify-between items-center">
                   <span className="text-lg font-semibold">Total</span>
-                  <span className="text-xl font-bold">
-                    {items[0]?.price.currencyCode || 'CAD'} {totalPrice.toFixed(2)}
-                  </span>
+                  <div className="text-right">
+                    <span className="text-xl font-bold">
+                      {formatPrice(totalPriceUSD)}
+                    </span>
+                    {selectedCurrency.code !== 'USD' && (
+                      <p className="text-xs text-muted-foreground">
+                        ≈ ${totalPriceUSD.toFixed(2)} USD
+                      </p>
+                    )}
+                  </div>
                 </div>
+                
+                <p className="text-xs text-muted-foreground text-center">
+                  Checkout will be processed in USD. Your bank will convert to {selectedCurrency.code}.
+                </p>
                 
                 <Button 
                   onClick={handleCheckout}

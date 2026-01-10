@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { CartDrawer } from './CartDrawer';
+import { CurrencySelector } from './CurrencySelector';
 import { Menu } from 'lucide-react';
 import UserMenu from '@/components/auth/UserMenu';
 import { Link } from 'react-router-dom';
@@ -63,6 +64,9 @@ export const Header = () => {
         
         {/* Right side - User menu, cart, and mobile menu */}
         <div className="flex items-center gap-3">
+          <div className="hidden sm:block">
+            <CurrencySelector compact />
+          </div>
           <UserMenu />
           <CartDrawer />
           
@@ -105,6 +109,12 @@ export const Header = () => {
                     </Link>
                   ))}
                 </nav>
+                
+                {/* Mobile currency selector */}
+                <div className="mt-4 pt-4 border-t border-border/50">
+                  <p className="text-xs text-muted-foreground mb-2 uppercase tracking-wide">Currency</p>
+                  <CurrencySelector />
+                </div>
               </div>
             </SheetContent>
           </Sheet>

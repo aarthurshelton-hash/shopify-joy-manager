@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ShoppingCart, Loader2, Check, Frame, Sofa, Briefcase, Image } from 'lucide-react';
 import { fetchProducts, type ShopifyProduct } from '@/lib/shopify/api';
 import { useCartStore, type CartItem } from '@/stores/cartStore';
+import { useCurrencyStore } from '@/stores/currencyStore';
+import { CurrencySelector } from './CurrencySelector';
 import WallMockup, { RoomSetting } from './WallMockup';
 import ChessBoardVisualization from '@/components/chess/ChessBoardVisualization';
 import { SimulationResult } from '@/lib/chess/gameSimulator';
@@ -32,6 +34,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
   const [added, setAdded] = useState(false);
   
   const addItem = useCartStore(state => state.addItem);
+  const { formatPrice: formatWithCurrency, selectedCurrency } = useCurrencyStore();
 
   useEffect(() => {
     loadProducts();
@@ -99,11 +102,10 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
     setTimeout(() => setAdded(false), 3000);
   };
 
-  const formatPrice = (amount: string, currency: string) => {
-    return new Intl.NumberFormat('en-CA', {
-      style: 'currency',
-      currency,
-    }).format(parseFloat(amount));
+  // Format price with currency conversion
+  const formatPrice = (amount: string) => {
+    const usdAmount = parseFloat(amount);
+    return formatWithCurrency(usdAmount);
   };
 
   const roomOptions: { id: RoomSetting; label: string; icon: typeof Sofa }[] = [
@@ -135,10 +137,13 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg flex items-center gap-2">
-          <ShoppingCart className="h-5 w-5" />
-          Order Your Print
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <ShoppingCart className="h-5 w-5" />
+            Order Your Print
+          </CardTitle>
+          <CurrencySelector compact />
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Room Setting Toggle */}
@@ -205,7 +210,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
                   >
                     <div className="font-medium text-sm">{variant.title}</div>
                     <div className={`text-xs ${isSelected ? 'text-primary' : 'text-muted-foreground'}`}>
-                      {formatPrice(variant.price.amount, variant.price.currencyCode)}
+                      {formatPrice(variant.price.amount)}
                     </div>
                     {isSelected && (
                       <div className="absolute top-1 right-1">
@@ -225,11 +230,16 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
             {selectedVariant && (
               <div>
                 <span className="text-2xl font-bold">
-                  {formatPrice(selectedVariant.price.amount, selectedVariant.price.currencyCode)}
+                  {formatPrice(selectedVariant.price.amount)}
                 </span>
                 <span className="text-sm text-muted-foreground ml-2">
                   {selectedVariant.title}
                 </span>
+                {selectedCurrency.code !== 'USD' && (
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    ≈ ${parseFloat(selectedVariant.price.amount).toFixed(2)} USD
+                  </div>
+                )}
               </div>
             )}
           </div>
