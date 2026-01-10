@@ -15,7 +15,6 @@ import { ArrowLeft, Palette, Crown, Sparkles, Award } from 'lucide-react';
 import { toast } from 'sonner';
 import { cleanPgn } from '@/lib/chess/pgnValidator';
 import { PaletteId } from '@/lib/chess/pieceColors';
-import { useParallax } from '@/hooks/useParallax';
 import { useScrollAnimation, scrollAnimationClasses } from '@/hooks/useScrollAnimation';
 
 // Import AI-generated art
@@ -36,15 +35,64 @@ const Index = () => {
   const [gameTitle, setGameTitle] = useState<string>('');
   const [paletteKey, setPaletteKey] = useState(0);
   
-  // Refs for parallax sections
+  // Refs for parallax sections (used for scroll-based CSS transforms)
   const heroRef = useRef<HTMLDivElement>(null);
   const featureRef = useRef<HTMLDivElement>(null);
   const kingRef = useRef<HTMLDivElement>(null);
+  const heroImageRef = useRef<HTMLDivElement>(null);
+  const featureImageRef = useRef<HTMLDivElement>(null);
+  const kingImageRef = useRef<HTMLDivElement>(null);
   
-  // Parallax offsets for each section
-  const heroOffset = useParallax(heroRef, { speed: 0.15, direction: 'up' });
-  const featureOffset = useParallax(featureRef, { speed: 0.2, direction: 'up' });
-  const kingOffset = useParallax(kingRef, { speed: 0.1, direction: 'down' });
+  // Use refs for parallax to avoid state updates (prevents jitter)
+  React.useEffect(() => {
+    let rafId: number;
+    let ticking = false;
+    
+    const updateParallax = () => {
+      const scrollY = window.scrollY;
+      
+      // Hero image parallax
+      if (heroImageRef.current) {
+        const offset = scrollY * 0.15;
+        heroImageRef.current.style.transform = `translate3d(0, ${offset}px, 0) scale(1.1)`;
+      }
+      
+      // Feature image parallax
+      if (featureImageRef.current && featureRef.current) {
+        const rect = featureRef.current.getBoundingClientRect();
+        const elementTop = rect.top + scrollY;
+        const relativeScroll = scrollY - elementTop + window.innerHeight;
+        const offset = relativeScroll * 0.1;
+        featureImageRef.current.style.transform = `translate3d(0, ${offset}px, 0) scale(1.15)`;
+      }
+      
+      // King image parallax
+      if (kingImageRef.current && kingRef.current) {
+        const rect = kingRef.current.getBoundingClientRect();
+        const center = rect.top + rect.height / 2;
+        const viewportCenter = window.innerHeight / 2;
+        const offset = (center - viewportCenter) * -0.08;
+        kingImageRef.current.style.transform = `translate3d(0, ${offset}px, 0)`;
+      }
+      
+      ticking = false;
+    };
+    
+    const onScroll = () => {
+      if (!ticking) {
+        rafId = requestAnimationFrame(updateParallax);
+        ticking = true;
+      }
+    };
+    
+    window.addEventListener('scroll', onScroll, { passive: true });
+    updateParallax(); // Initial position
+    
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      cancelAnimationFrame(rafId);
+    };
+  }, []);
   
   // Scroll animations
   const [heroContentRef, heroContentVisible] = useScrollAnimation<HTMLDivElement>();
@@ -148,12 +196,14 @@ const Index = () => {
           <>
             {/* Hero Section with Background Art */}
             <section ref={heroRef} className="relative overflow-hidden">
-              {/* Background Image with Parallax */}
+              {/* Background Image with Parallax - ref-based transform */}
               <div 
-                className="absolute inset-0 bg-cover bg-center opacity-35 transition-transform duration-75 ease-out will-change-transform"
+                ref={heroImageRef}
+                className="absolute inset-0 bg-cover bg-center opacity-35 will-change-transform"
                 style={{ 
                   backgroundImage: `url(${heroChessArt})`,
-                  transform: `translateY(${heroOffset}px) scale(1.1)`,
+                  transform: 'translate3d(0, 0, 0) scale(1.1)',
+                  backfaceVisibility: 'hidden',
                 }}
               />
               <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/60 to-background" />
@@ -224,12 +274,14 @@ const Index = () => {
             
             {/* Feature highlights with art backgrounds */}
             <section ref={featureRef} className="relative py-20 overflow-hidden">
-              {/* Background Art with Parallax */}
+              {/* Background Art with Parallax - ref-based transform */}
               <div 
-                className="absolute inset-0 bg-cover bg-center opacity-10 transition-transform duration-75 ease-out will-change-transform"
+                ref={featureImageRef}
+                className="absolute inset-0 bg-cover bg-center opacity-10 will-change-transform"
                 style={{ 
                   backgroundImage: `url(${chessMovementArt})`,
-                  transform: `translateY(${featureOffset}px) scale(1.15)`,
+                  transform: 'translate3d(0, 0, 0) scale(1.15)',
+                  backfaceVisibility: 'hidden',
                 }}
               />
               <div className="absolute inset-0 bg-gradient-to-r from-background via-background/90 to-background" />
@@ -314,10 +366,14 @@ const Index = () => {
                       : scrollAnimationClasses.fadeUp.hidden
                   }`}
                 >
-                  {/* King Art with Parallax */}
+                  {/* King Art with Parallax - ref-based transform */}
                   <div 
-                    className="w-48 h-48 md:w-64 md:h-64 rounded-2xl overflow-hidden shadow-2xl ring-1 ring-primary/20 flex-shrink-0 transition-transform duration-100 ease-out will-change-transform"
-                    style={{ transform: `translateY(${kingOffset}px)` }}
+                    ref={kingImageRef}
+                    className="w-48 h-48 md:w-64 md:h-64 rounded-2xl overflow-hidden shadow-2xl ring-1 ring-primary/20 flex-shrink-0 will-change-transform"
+                    style={{ 
+                      transform: 'translate3d(0, 0, 0)',
+                      backfaceVisibility: 'hidden',
+                    }}
                   >
                     <img 
                       src={chessKingArt} 
