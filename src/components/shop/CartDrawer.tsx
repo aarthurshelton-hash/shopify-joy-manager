@@ -9,11 +9,11 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { ShoppingCart, Minus, Plus, Trash2, ExternalLink, Loader2, Sparkles, Gift, Truck, Check } from "lucide-react";
+import { ShoppingCart, Minus, Plus, Trash2, ExternalLink, Loader2, Sparkles, Gift, Truck } from "lucide-react";
 import { useCartStore } from "@/stores/cartStore";
 import { useCurrencyStore } from "@/stores/currencyStore";
 import { CurrencySelector } from "./CurrencySelector";
-import { calculateDiscount, DISCOUNT_TIERS, FREE_SHIPPING_THRESHOLD } from "@/lib/discounts";
+import { calculateDiscount, DISCOUNT_TIERS, ShippingRegion } from "@/lib/discounts";
 
 export const CartDrawer = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -30,8 +30,11 @@ export const CartDrawer = () => {
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
   const subtotalUSD = items.reduce((sum, item) => sum + (parseFloat(item.price.amount) * item.quantity), 0);
   
-  // Calculate discount based on total quantity
-  const discountInfo = calculateDiscount(subtotalUSD, totalItems);
+  // Default to US region for now - shipping region determined at Shopify checkout
+  const shippingRegion: ShippingRegion = 'US';
+  
+  // Calculate discount based on total quantity and shipping region
+  const discountInfo = calculateDiscount(subtotalUSD, totalItems, shippingRegion);
 
   const handleCheckout = async () => {
     // Open window immediately to avoid popup blocker
@@ -151,37 +154,13 @@ export const CartDrawer = () => {
               </div>
               
               <div className="flex-shrink-0 space-y-3 pt-4 border-t bg-background">
-                {/* Free shipping progress indicator */}
-                {!discountInfo.shipping.isFreeShipping && (
-                  <div className="bg-gradient-to-r from-blue-500/10 to-blue-500/5 rounded-lg p-3 border border-blue-500/20">
-                    <div className="flex items-center gap-2 text-sm">
-                      <Truck className="h-4 w-4 text-blue-500" />
-                      <span className="text-foreground">
-                        Add <span className="font-bold text-blue-500">{formatPrice(discountInfo.shipping.amountUntilFreeShipping)}</span> more for{' '}
-                        <span className="font-bold text-blue-500">FREE shipping</span>!
-                      </span>
-                    </div>
-                    {/* Progress bar */}
-                    <div className="mt-2 h-1.5 bg-muted rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-gradient-to-r from-blue-500 to-blue-400 rounded-full transition-all duration-300"
-                        style={{ 
-                          width: `${discountInfo.shipping.progressPercent}%` 
-                        }}
-                      />
-                    </div>
-                  </div>
-                )}
-                
-                {/* Free shipping achieved badge */}
-                {discountInfo.shipping.isFreeShipping && (
-                  <div className="flex items-center justify-center gap-2 py-2 bg-blue-500/10 rounded-lg border border-blue-500/20">
-                    <Check className="h-4 w-4 text-blue-500" />
-                    <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
-                      🎉 You've unlocked FREE shipping!
-                    </span>
-                  </div>
-                )}
+                {/* Free shipping badge for US/Canada */}
+                <div className="flex items-center justify-center gap-2 py-2 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                  <Truck className="h-4 w-4 text-blue-500" />
+                  <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                    🇺🇸 🇨🇦 FREE shipping to USA & Canada
+                  </span>
+                </div>
 
                 {/* Discount progress indicator */}
                 {discountInfo.nextTier && (
@@ -239,13 +218,9 @@ export const CartDrawer = () => {
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-muted-foreground flex items-center gap-1">
                       <Truck className="h-3 w-3" />
-                      Shipping
+                      Shipping (US/Canada)
                     </span>
-                    {discountInfo.shipping.isFreeShipping ? (
-                      <span className="text-blue-600 dark:text-blue-400 font-medium">FREE</span>
-                    ) : (
-                      <span>{formatPrice(discountInfo.shipping.shippingCost)}</span>
-                    )}
+                    <span className="text-blue-600 dark:text-blue-400 font-medium">FREE</span>
                   </div>
                   
                   <div className="flex justify-between items-center pt-2 border-t">
@@ -264,9 +239,7 @@ export const CartDrawer = () => {
                 </div>
                 
                 <p className="text-xs text-muted-foreground text-center">
-                  {!discountInfo.shipping.isFreeShipping && (
-                    <span className="block mb-1">Free shipping on orders over {formatPrice(FREE_SHIPPING_THRESHOLD)}!</span>
-                  )}
+                  <span className="block mb-1">International orders: shipping calculated at checkout</span>
                   Checkout will be processed in USD. Your bank will convert to {selectedCurrency.code}.
                 </p>
                 

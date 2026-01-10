@@ -17,9 +17,21 @@ export const DISCOUNT_TIERS: DiscountTier[] = [
   { minQuantity: 10, discountPercent: 35, label: '35% off' },
 ];
 
-// Free shipping threshold (in USD)
-export const FREE_SHIPPING_THRESHOLD = 100;
-export const STANDARD_SHIPPING_COST = 9.99;
+// Shipping costs by region
+export const SHIPPING_CONFIG = {
+  freeRegions: ['US', 'CA'], // Free shipping for USA and Canada
+  internationalCost: 14.99, // Flat rate for international orders
+};
+
+export type ShippingRegion = 'US' | 'CA' | 'international';
+
+export function getShippingRegion(countryCode?: string): ShippingRegion {
+  if (!countryCode) return 'US'; // Default to US
+  const code = countryCode.toUpperCase();
+  if (code === 'US' || code === 'USA') return 'US';
+  if (code === 'CA' || code === 'CAN') return 'CA';
+  return 'international';
+}
 
 export function getDiscountTier(quantity: number): DiscountTier {
   // Find the highest applicable discount tier
@@ -48,25 +60,29 @@ export function getNextDiscountTier(quantity: number): DiscountTier | null {
 export interface ShippingInfo {
   isFreeShipping: boolean;
   shippingCost: number;
-  amountUntilFreeShipping: number;
-  progressPercent: number;
+  region: ShippingRegion;
+  regionLabel: string;
 }
 
-export function calculateShipping(subtotalAfterDiscount: number): ShippingInfo {
-  const isFreeShipping = subtotalAfterDiscount >= FREE_SHIPPING_THRESHOLD;
-  const shippingCost = isFreeShipping ? 0 : STANDARD_SHIPPING_COST;
-  const amountUntilFreeShipping = isFreeShipping ? 0 : FREE_SHIPPING_THRESHOLD - subtotalAfterDiscount;
-  const progressPercent = Math.min((subtotalAfterDiscount / FREE_SHIPPING_THRESHOLD) * 100, 100);
+export function calculateShipping(region: ShippingRegion = 'US'): ShippingInfo {
+  const isFreeShipping = SHIPPING_CONFIG.freeRegions.includes(region);
+  const shippingCost = isFreeShipping ? 0 : SHIPPING_CONFIG.internationalCost;
+  
+  const regionLabels: Record<ShippingRegion, string> = {
+    'US': 'United States',
+    'CA': 'Canada',
+    'international': 'International',
+  };
   
   return {
     isFreeShipping,
     shippingCost,
-    amountUntilFreeShipping,
-    progressPercent,
+    region,
+    regionLabel: regionLabels[region],
   };
 }
 
-export function calculateDiscount(subtotal: number, quantity: number): {
+export function calculateDiscount(subtotal: number, quantity: number, region: ShippingRegion = 'US'): {
   discountPercent: number;
   discountAmount: number;
   finalTotal: number;
@@ -81,7 +97,7 @@ export function calculateDiscount(subtotal: number, quantity: number): {
   const discountAmount = subtotal * (tier.discountPercent / 100);
   const finalTotal = subtotal - discountAmount;
   const itemsUntilNextTier = nextTier ? nextTier.minQuantity - quantity : 0;
-  const shipping = calculateShipping(finalTotal);
+  const shipping = calculateShipping(region);
   const grandTotal = finalTotal + shipping.shippingCost;
   
   return {
