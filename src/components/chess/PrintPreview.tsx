@@ -85,15 +85,15 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
     
     // Capture the full content with proper settings
     const canvas = await html2canvas(printRef.current, {
-      scale: 3, // Higher resolution for print quality
+      scale: 3,
       backgroundColor: darkMode ? '#0A0A0A' : '#FDFCFB',
       useCORS: true,
       allowTaint: true,
       logging: false,
-      width: printRef.current.scrollWidth,
-      height: printRef.current.scrollHeight,
-      windowWidth: printRef.current.scrollWidth,
-      windowHeight: printRef.current.scrollHeight,
+      scrollX: 0,
+      scrollY: 0,
+      x: 0,
+      y: 0,
     });
     
     // Hide watermark after capture
@@ -119,21 +119,22 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
       }
       
       // Longer delay to ensure DOM fully updates
-      await new Promise(resolve => setTimeout(resolve, 150));
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      console.log('[PrintPreview] Capturing with darkMode:', darkMode);
+      console.log('[PrintPreview] printRef dimensions:', printRef.current.scrollWidth, printRef.current.scrollHeight);
       
       // Capture the full content with proper settings
       const canvas = await html2canvas(printRef.current, {
-        scale: 3, // Higher resolution for print quality
+        scale: 3,
         backgroundColor: darkMode ? '#0A0A0A' : '#FDFCFB',
         useCORS: true,
         allowTaint: true,
         logging: false,
-        removeContainer: false,
-        foreignObjectRendering: false, // Use traditional rendering for better compatibility
-        width: printRef.current.scrollWidth,
-        height: printRef.current.scrollHeight,
-        windowWidth: printRef.current.scrollWidth,
-        windowHeight: printRef.current.scrollHeight,
+        scrollX: 0,
+        scrollY: 0,
+        x: 0,
+        y: 0,
       });
       
       // Hide watermark after capture
