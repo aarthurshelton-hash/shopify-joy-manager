@@ -39,8 +39,21 @@ interface AnimatedPiece {
 }
 
 const FloatingChessPieces: React.FC = () => {
+  // Reduce piece count on mobile for better performance
+  const [isMobile, setIsMobile] = useState(() => 
+    typeof window !== 'undefined' && window.innerWidth < 768
+  );
+  
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', checkMobile, { passive: true });
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+  
+  const pieceCount = isMobile ? 6 : 12; // Fewer pieces on mobile
+  
   const initialPieces = useMemo<AnimatedPiece[]>(() => 
-    Array.from({ length: 12 }, (_, i) => {
+    Array.from({ length: pieceCount }, (_, i) => {
       const depth = Math.random(); // 0 = far, 1 = close
       return {
         id: i,
@@ -48,16 +61,21 @@ const FloatingChessPieces: React.FC = () => {
         x: Math.random() * 120 - 10,
         y: 15 + Math.random() * 70,
         depth,
-        size: 14 + depth * 22, // Far: 14px, Close: 36px
+        size: isMobile ? 12 + depth * 16 : 14 + depth * 22, // Smaller on mobile
         color: Math.random() > 0.5 ? 'gold' : 'silver',
         trails: [],
         phase: Math.random() * Math.PI * 2,
-        speed: 0.08 + depth * 0.18, // Far: slow, Close: faster
+        speed: isMobile ? 0.06 + depth * 0.12 : 0.08 + depth * 0.18, // Slower on mobile
       };
-    }), []
+    }), [pieceCount, isMobile]
   );
 
   const [pieces, setPieces] = useState(initialPieces);
+  
+  // Reset pieces when mobile state changes
+  useEffect(() => {
+    setPieces(initialPieces);
+  }, [initialPieces]);
 
   useEffect(() => {
     let frameId: number;

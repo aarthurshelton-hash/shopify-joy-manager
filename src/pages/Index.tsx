@@ -44,52 +44,81 @@ const Index = () => {
   const kingImageRef = useRef<HTMLDivElement>(null);
   
   // Use refs for parallax to avoid state updates (prevents jitter)
+  // Disable parallax on mobile for better performance
   React.useEffect(() => {
     let rafId: number;
     let ticking = false;
     
+    // Check if mobile (< 768px) - disable parallax for performance
+    const isMobile = () => window.innerWidth < 768;
+    
     const updateParallax = () => {
       const scrollY = window.scrollY;
+      const mobile = isMobile();
       
-      // Hero image parallax
+      // Hero image parallax - reduced on mobile, off completely for very small screens
       if (heroImageRef.current) {
-        const offset = scrollY * 0.15;
-        heroImageRef.current.style.transform = `translate3d(0, ${offset}px, 0) scale(1.1)`;
+        if (mobile) {
+          // Static position on mobile - no parallax
+          heroImageRef.current.style.transform = 'translate3d(0, 0, 0) scale(1.05)';
+        } else {
+          const offset = scrollY * 0.12; // Slightly reduced from 0.15
+          heroImageRef.current.style.transform = `translate3d(0, ${offset}px, 0) scale(1.1)`;
+        }
       }
       
-      // Feature image parallax
+      // Feature image parallax - disabled on mobile
       if (featureImageRef.current && featureRef.current) {
-        const rect = featureRef.current.getBoundingClientRect();
-        const elementTop = rect.top + scrollY;
-        const relativeScroll = scrollY - elementTop + window.innerHeight;
-        const offset = relativeScroll * 0.1;
-        featureImageRef.current.style.transform = `translate3d(0, ${offset}px, 0) scale(1.15)`;
+        if (mobile) {
+          featureImageRef.current.style.transform = 'translate3d(0, 0, 0) scale(1.08)';
+        } else {
+          const rect = featureRef.current.getBoundingClientRect();
+          const elementTop = rect.top + scrollY;
+          const relativeScroll = scrollY - elementTop + window.innerHeight;
+          const offset = relativeScroll * 0.08; // Reduced from 0.1
+          featureImageRef.current.style.transform = `translate3d(0, ${offset}px, 0) scale(1.15)`;
+        }
       }
       
-      // King image parallax
+      // King image parallax - disabled on mobile
       if (kingImageRef.current && kingRef.current) {
-        const rect = kingRef.current.getBoundingClientRect();
-        const center = rect.top + rect.height / 2;
-        const viewportCenter = window.innerHeight / 2;
-        const offset = (center - viewportCenter) * -0.08;
-        kingImageRef.current.style.transform = `translate3d(0, ${offset}px, 0)`;
+        if (mobile) {
+          kingImageRef.current.style.transform = 'translate3d(0, 0, 0)';
+        } else {
+          const rect = kingRef.current.getBoundingClientRect();
+          const center = rect.top + rect.height / 2;
+          const viewportCenter = window.innerHeight / 2;
+          const offset = (center - viewportCenter) * -0.06; // Reduced from 0.08
+          kingImageRef.current.style.transform = `translate3d(0, ${offset}px, 0)`;
+        }
       }
       
       ticking = false;
     };
     
     const onScroll = () => {
+      // Skip scroll handler entirely on mobile for best performance
+      if (isMobile()) {
+        return;
+      }
       if (!ticking) {
         rafId = requestAnimationFrame(updateParallax);
         ticking = true;
       }
     };
     
+    // Handle resize to update mobile state
+    const onResize = () => {
+      updateParallax();
+    };
+    
     window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onResize, { passive: true });
     updateParallax(); // Initial position
     
     return () => {
       window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onResize);
       cancelAnimationFrame(rafId);
     };
   }, []);
@@ -213,21 +242,21 @@ const Index = () => {
               
               <div 
                 ref={heroContentRef}
-                className={`relative container mx-auto px-4 py-20 md:py-28 transition-all duration-700 ease-out ${
+                className={`relative container mx-auto px-4 py-14 md:py-28 transition-all duration-700 ease-out ${
                   heroContentVisible 
                     ? scrollAnimationClasses.fadeUp.visible 
                     : scrollAnimationClasses.fadeUp.hidden
                 }`}
               >
-                <div className="max-w-4xl mx-auto text-center space-y-8">
+                <div className="max-w-4xl mx-auto text-center space-y-5 md:space-y-8">
                   {/* Premium badge */}
-                  <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-display uppercase tracking-widest backdrop-blur-sm">
-                    <Crown className="h-4 w-4" />
+                  <div className="inline-flex items-center gap-1.5 md:gap-2 px-4 md:px-5 py-2 md:py-2.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs md:text-sm font-display uppercase tracking-widest backdrop-blur-sm">
+                    <Crown className="h-3.5 w-3.5 md:h-4 md:w-4" />
                     Transform Chess Into Art
                   </div>
                   
                   {/* Main headline - Royal and powerful */}
-                  <h2 className="text-4xl md:text-5xl lg:text-6xl font-royal font-bold leading-tight tracking-wide uppercase">
+                  <h2 className="text-3xl md:text-5xl lg:text-6xl font-royal font-bold leading-tight tracking-wide uppercase">
                     Your Masterpieces,<br />
                     <span className="text-gold-gradient">
                       Forever Immortalized
@@ -235,7 +264,7 @@ const Index = () => {
                   </h2>
                   
                   {/* Subheadline */}
-                  <p className="text-muted-foreground text-lg md:text-xl max-w-2xl mx-auto leading-relaxed font-serif">
+                  <p className="text-muted-foreground text-base md:text-xl max-w-2xl mx-auto leading-relaxed font-serif px-2">
                     Upload any chess game and transform it into a stunning visualization — 
                     where every piece tells its story through color and movement.
                   </p>
@@ -244,10 +273,10 @@ const Index = () => {
             </section>
 
             {/* Floating Gold & Silver Chess Pieces - decorative area */}
-            <div className="relative h-40 md:h-56 overflow-hidden flex items-center justify-center">
+            <div className="relative h-28 md:h-56 overflow-hidden flex items-center justify-center">
               <FloatingChessPieces />
               <h2 
-                className="relative z-10 text-2xl md:text-4xl lg:text-5xl font-display tracking-widest text-gold-gradient animate-gentle-glow"
+                className="relative z-10 text-xl md:text-4xl lg:text-5xl font-display tracking-widest text-gold-gradient animate-gentle-glow px-4 text-center"
                 style={{ fontFamily: "'Cinzel', serif" }}
               >
                 Make Chess Yours...
@@ -356,11 +385,11 @@ const Index = () => {
             </section>
 
             {/* Decorative King Art Section */}
-            <section ref={kingRef} className="py-16">
+            <section ref={kingRef} className="py-10 md:py-16">
               <div className="container mx-auto px-4">
                 <div 
                   ref={kingContentRef}
-                  className={`max-w-4xl mx-auto flex flex-col md:flex-row items-center gap-8 md:gap-12 transition-all duration-700 ease-out ${
+                  className={`max-w-4xl mx-auto flex flex-col md:flex-row items-center gap-6 md:gap-12 transition-all duration-700 ease-out ${
                     kingContentVisible 
                       ? scrollAnimationClasses.fadeUp.visible 
                       : scrollAnimationClasses.fadeUp.hidden
@@ -369,7 +398,7 @@ const Index = () => {
                   {/* King Art with Parallax - ref-based transform */}
                   <div 
                     ref={kingImageRef}
-                    className="w-48 h-48 md:w-64 md:h-64 rounded-2xl overflow-hidden shadow-2xl ring-1 ring-primary/20 flex-shrink-0 will-change-transform"
+                    className="w-36 h-36 md:w-64 md:h-64 rounded-xl md:rounded-2xl overflow-hidden shadow-xl md:shadow-2xl ring-1 ring-primary/20 flex-shrink-0 will-change-transform"
                     style={{ 
                       transform: 'translate3d(0, 0, 0)',
                       backfaceVisibility: 'hidden',
@@ -383,11 +412,11 @@ const Index = () => {
                   </div>
                   
                   {/* Text */}
-                  <div className="text-center md:text-left space-y-4">
-                    <h3 className="text-2xl md:text-3xl font-royal font-bold uppercase tracking-wide">
+                  <div className="text-center md:text-left space-y-3 md:space-y-4 px-2">
+                    <h3 className="text-xl md:text-3xl font-royal font-bold uppercase tracking-wide">
                       Every King Has a <span className="text-gold-gradient">Story</span>
                     </h3>
-                    <p className="text-muted-foreground font-serif leading-relaxed text-lg">
+                    <p className="text-muted-foreground font-serif leading-relaxed text-base md:text-lg">
                       From the opening move to the final checkmate, each chess game weaves a unique narrative. 
                       Our visualizations capture this journey — transforming strategic brilliance into 
                       museum-quality art you can display with pride.
