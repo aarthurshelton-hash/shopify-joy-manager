@@ -42,7 +42,7 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
           margin: 1,
           color: {
             dark: darkMode ? '#FAFAFA' : '#1A1A1A',
-            light: 'transparent',
+            light: darkMode ? '#0A0A0A' : '#FFFFFF',
           },
           errorCorrectionLevel: 'M',
         });
