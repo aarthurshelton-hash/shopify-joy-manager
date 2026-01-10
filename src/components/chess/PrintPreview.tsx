@@ -2,11 +2,11 @@ import React, { useRef, useEffect, useState } from 'react';
 import ChessBoardVisualization from './ChessBoardVisualization';
 import GameInfoDisplay from './GameInfoDisplay';
 import { SimulationResult } from '@/lib/chess/gameSimulator';
+import { generatePrintCanvas } from '@/lib/chess/canvasRenderer';
 import { Button } from '@/components/ui/button';
 import { Download, Loader2, Sun, Moon, Crown, Bookmark, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import QRCode from 'qrcode';
-import domtoimage from 'dom-to-image-more';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 import { useAuth } from '@/hooks/useAuth';
 import { PremiumUpgradeModal } from '@/components/premium';
@@ -72,54 +72,52 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
   }, [simulation]);
   
   const captureImage = async (withWatermark: boolean): Promise<Blob | null> => {
-    if (!printRef.current) return null;
-    
-    if (watermarkRef.current && withWatermark) {
-      watermarkRef.current.style.display = 'flex';
-    }
-    
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
     try {
-      const blob = await domtoimage.toBlob(printRef.current, {
-        quality: 1,
-        scale: 3,
-        bgcolor: darkMode ? '#0A0A0A' : '#FDFCFB',
+      const canvas = await generatePrintCanvas(
+        simulation.board,
+        {
+          white: simulation.gameData.white,
+          black: simulation.gameData.black,
+          event: simulation.gameData.event,
+          date: simulation.gameData.date,
+          moves: simulation.gameData.moves,
+        },
+        {
+          boardSize: 400,
+          darkMode,
+          withWatermark,
+          title,
+        }
+      );
+      
+      return new Promise((resolve) => {
+        canvas.toBlob((blob) => resolve(blob), 'image/png', 1.0);
       });
-      
-      if (watermarkRef.current) {
-        watermarkRef.current.style.display = 'none';
-      }
-      
-      return blob;
     } catch (error) {
-      if (watermarkRef.current) {
-        watermarkRef.current.style.display = 'none';
-      }
+      console.error('Capture failed:', error);
       throw error;
     }
   };
   
   const handleDownload = async (withWatermark: boolean) => {
-    if (!printRef.current) return;
-    
     setIsDownloading(true);
     try {
-      if (watermarkRef.current && withWatermark) {
-        watermarkRef.current.style.display = 'flex';
-      }
-      
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      const dataUrl = await domtoimage.toPng(printRef.current, {
-        quality: 1,
-        scale: 3,
-        bgcolor: darkMode ? '#0A0A0A' : '#FDFCFB',
-      });
-      
-      if (watermarkRef.current) {
-        watermarkRef.current.style.display = 'none';
-      }
+      const canvas = await generatePrintCanvas(
+        simulation.board,
+        {
+          white: simulation.gameData.white,
+          black: simulation.gameData.black,
+          event: simulation.gameData.event,
+          date: simulation.gameData.date,
+          moves: simulation.gameData.moves,
+        },
+        {
+          boardSize: 400,
+          darkMode,
+          withWatermark,
+          title,
+        }
+      );
       
       const link = document.createElement('a');
       const whiteName = simulation.gameData.white?.replace(/\s+/g, '-') || 'chess';
@@ -127,16 +125,13 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
       const modeLabel = darkMode ? 'dark' : 'light';
       const qualityLabel = withWatermark ? 'preview' : 'HD';
       link.download = `EnPensent-${whiteName}-vs-${blackName}-${modeLabel}-${qualityLabel}.png`;
-      link.href = dataUrl;
+      link.href = canvas.toDataURL('image/png', 1.0);
       link.click();
       
       toast.success(withWatermark ? 'Preview image downloaded!' : 'HD image downloaded without watermark!');
     } catch (error) {
       console.error('Download failed:', error);
       toast.error('Download failed. Please try again.');
-      if (watermarkRef.current) {
-        watermarkRef.current.style.display = 'none';
-      }
     } finally {
       setIsDownloading(false);
     }
