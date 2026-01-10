@@ -132,6 +132,16 @@ export default {
             transform: "translateX(-25px) rotate(-3deg)",
           },
         },
+        "gentle-glow": {
+          "0%, 100%": {
+            opacity: "0.85",
+            filter: "drop-shadow(0 0 8px rgba(212, 175, 55, 0.3))",
+          },
+          "50%": {
+            opacity: "1",
+            filter: "drop-shadow(0 0 20px rgba(212, 175, 55, 0.5))",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -140,6 +150,7 @@ export default {
         "float-subtle": "float-subtle 4s ease-in-out infinite",
         "drift": "drift ease-in-out infinite",
         "sway": "sway ease-in-out infinite",
+        "gentle-glow": "gentle-glow 3s ease-in-out infinite",
       },
     },
   },
