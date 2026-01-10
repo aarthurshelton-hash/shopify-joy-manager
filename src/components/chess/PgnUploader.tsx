@@ -150,21 +150,21 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
           </p>
         </div>
         <div className="p-4">
-          <div className="grid grid-cols-5 sm:grid-cols-7 md:grid-cols-8 lg:grid-cols-10 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
             {famousGames.map((game) => {
               const gameImage = gameImageImports[game.id];
               return (
                 <button
                   key={game.id}
                   onClick={() => handleLoadGame(game)}
-                  className={`group text-left rounded-md border transition-all duration-200 overflow-hidden hover:scale-[1.02] flex gap-1.5 p-1 ${
+                  className={`group text-left rounded-lg border transition-all duration-200 overflow-hidden hover:scale-[1.02] flex gap-3 p-2 ${
                     selectedGame?.id === game.id 
                       ? 'border-primary ring-1 ring-primary/30 bg-primary/5' 
                       : 'border-border/40 bg-card/50 hover:border-primary/50 hover:bg-card'
                   }`}
                 >
                   {/* Square thumbnail */}
-                  <div className="relative w-8 h-8 flex-shrink-0 rounded overflow-hidden bg-muted">
+                  <div className="relative w-14 h-14 flex-shrink-0 rounded-md overflow-hidden bg-muted">
                     {gameImage ? (
                       <img 
                         src={gameImage} 
@@ -173,14 +173,14 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
-                        <Crown className="h-3 w-3 text-primary/40" />
+                        <Crown className="h-5 w-5 text-primary/40" />
                       </div>
                     )}
                   </div>
                   {/* Text info */}
                   <div className="flex-1 min-w-0 flex flex-col justify-center">
-                    <p className="text-[8px] font-semibold text-foreground truncate leading-tight">{game.title}</p>
-                    <p className="text-[6px] text-muted-foreground truncate">{game.year}</p>
+                    <p className="text-xs font-semibold text-foreground truncate leading-tight">{game.title}</p>
+                    <p className="text-[10px] text-muted-foreground truncate mt-0.5">{game.year}</p>
                   </div>
                 </button>
               );
