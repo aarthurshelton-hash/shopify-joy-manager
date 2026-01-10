@@ -1,7 +1,7 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Upload, FileText, Crown, Sparkles, CheckCircle, XCircle, Loader2, Wrench, ArrowRight } from 'lucide-react';
+import { Upload, FileText, Crown, Sparkles, CheckCircle, XCircle, Loader2, Wrench, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { famousGames, FamousGame } from '@/lib/chess/famousGames';
 import { gameImageImports } from '@/lib/chess/gameImages';
 import { validatePgn, cleanPgn, PgnValidationResult } from '@/lib/chess/pgnValidator';
@@ -14,6 +14,41 @@ interface PgnUploaderProps {
   onPgnSubmit: (pgn: string, gameTitle?: string) => void;
 }
 
+// Custom hook for touch swipe detection
+const useSwipe = (onSwipeLeft: () => void, onSwipeRight: () => void) => {
+  const touchStartX = useRef<number | null>(null);
+  const touchEndX = useRef<number | null>(null);
+  const minSwipeDistance = 50;
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchEndX.current = null;
+    touchStartX.current = e.targetTouches[0].clientX;
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    touchEndX.current = e.targetTouches[0].clientX;
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStartX.current || !touchEndX.current) return;
+    
+    const distance = touchStartX.current - touchEndX.current;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+    
+    if (isLeftSwipe) {
+      onSwipeLeft();
+    } else if (isRightSwipe) {
+      onSwipeRight();
+    }
+    
+    touchStartX.current = null;
+    touchEndX.current = null;
+  };
+
+  return { onTouchStart, onTouchMove, onTouchEnd };
+};
+
 const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
   const [pgn, setPgn] = useState('');
   const [isDragging, setIsDragging] = useState(false);
@@ -23,6 +58,16 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
   const [fixResult, setFixResult] = useState<PgnFixResult | null>(null);
   const [isFixing, setIsFixing] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  
+  // Check if mobile on mount and resize
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 640);
+    checkMobile();
+    window.addEventListener('resize', checkMobile, { passive: true });
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
   
   const totalPages = useMemo(() => Math.ceil(famousGames.length / GAMES_PER_PAGE), []);
   
@@ -146,56 +191,171 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
     }
   }, [handleFileUpload]);
   
+  // Pagination for mobile swipe
+  const gamesPerMobilePage = 4;
+  const totalMobilePages = Math.ceil(sortedGames.length / gamesPerMobilePage);
+  const [mobilePageIndex, setMobilePageIndex] = useState(0);
+  
+  const goToNextPage = useCallback(() => {
+    setMobilePageIndex(prev => Math.min(prev + 1, totalMobilePages - 1));
+  }, [totalMobilePages]);
+  
+  const goToPrevPage = useCallback(() => {
+    setMobilePageIndex(prev => Math.max(prev - 1, 0));
+  }, []);
+  
+  const swipeHandlers = useSwipe(goToNextPage, goToPrevPage);
+  
+  const visibleMobileGames = useMemo(() => {
+    const start = mobilePageIndex * gamesPerMobilePage;
+    return sortedGames.slice(start, start + gamesPerMobilePage);
+  }, [sortedGames, mobilePageIndex]);
+
   return (
     <div className="space-y-8">
       {/* Famous Games Showcase */}
       <div className="rounded-lg border border-border/50 bg-card/50 overflow-hidden">
-        <div className="px-6 py-5 border-b border-border/50">
-          <h3 className="flex items-center gap-2 font-display text-lg font-semibold">
-            <Crown className="h-5 w-5 text-primary" />
-            Legendary Games
-          </h3>
-          <p className="text-sm text-muted-foreground mt-1 font-serif">
-            Start with an iconic game from chess history
-          </p>
-        </div>
-        <div className="p-4">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-            {sortedGames.map((game) => {
-              const gameImage = gameImageImports[game.id];
-              return (
-                <button
-                  key={game.id}
-                  onClick={() => handleLoadGame(game)}
-                  className={`group text-left rounded-lg border transition-all duration-200 overflow-hidden hover:scale-[1.02] flex gap-3 p-2 ${
-                    selectedGame?.id === game.id 
-                      ? 'border-primary ring-1 ring-primary/30 bg-primary/5' 
-                      : 'border-border/40 bg-card/50 hover:border-primary/50 hover:bg-card'
-                  }`}
+        <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-border/50">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="flex items-center gap-2 font-display text-base sm:text-lg font-semibold">
+                <Crown className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+                Legendary Games
+              </h3>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1 font-serif">
+                {isMobile ? 'Swipe to explore' : 'Start with an iconic game from chess history'}
+              </p>
+            </div>
+            {/* Mobile pagination indicator */}
+            {isMobile && (
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={goToPrevPage}
+                  disabled={mobilePageIndex === 0}
+                  className="p-1.5 rounded-full bg-card border border-border/50 disabled:opacity-30 transition-opacity"
+                  aria-label="Previous games"
                 >
-                  {/* Square thumbnail */}
-                  <div className="relative w-14 h-14 flex-shrink-0 rounded-md overflow-hidden bg-muted">
-                    {gameImage ? (
-                      <img 
-                        src={gameImage} 
-                        alt={game.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
-                        <Crown className="h-5 w-5 text-primary/40" />
-                      </div>
-                    )}
-                  </div>
-                  {/* Text info */}
-                  <div className="flex-1 min-w-0 flex flex-col justify-center">
-                    <p className="text-xs font-semibold text-foreground leading-tight line-clamp-2">{game.title}</p>
-                    <p className="text-[10px] text-muted-foreground mt-1">{game.year}</p>
-                  </div>
+                  <ChevronLeft className="h-4 w-4" />
                 </button>
-              );
-            })}
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  {mobilePageIndex + 1}/{totalMobilePages}
+                </span>
+                <button 
+                  onClick={goToNextPage}
+                  disabled={mobilePageIndex === totalMobilePages - 1}
+                  className="p-1.5 rounded-full bg-card border border-border/50 disabled:opacity-30 transition-opacity"
+                  aria-label="Next games"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            )}
           </div>
+        </div>
+        
+        <div className="p-3 sm:p-4">
+          {/* Mobile: Swipeable cards */}
+          {isMobile ? (
+            <div 
+              ref={scrollContainerRef}
+              className="touch-pan-x"
+              {...swipeHandlers}
+            >
+              <div 
+                className="grid grid-cols-2 gap-2 transition-opacity duration-200"
+                style={{ minHeight: '180px' }}
+              >
+                {visibleMobileGames.map((game) => {
+                  const gameImage = gameImageImports[game.id];
+                  return (
+                    <button
+                      key={game.id}
+                      onClick={() => handleLoadGame(game)}
+                      className={`group text-left rounded-lg border transition-all duration-200 overflow-hidden flex flex-col ${
+                        selectedGame?.id === game.id 
+                          ? 'border-primary ring-1 ring-primary/30 bg-primary/5' 
+                          : 'border-border/40 bg-card/50 active:scale-[0.98]'
+                      }`}
+                    >
+                      {/* Thumbnail */}
+                      <div className="relative w-full aspect-[4/3] overflow-hidden bg-muted">
+                        {gameImage ? (
+                          <img 
+                            src={gameImage} 
+                            alt={game.title}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
+                            <Crown className="h-6 w-6 text-primary/40" />
+                          </div>
+                        )}
+                      </div>
+                      {/* Text info */}
+                      <div className="p-2 flex-1 flex flex-col justify-center">
+                        <p className="text-xs font-semibold text-foreground leading-tight line-clamp-2">{game.title}</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">{game.year}</p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              
+              {/* Swipe hint dots */}
+              <div className="flex justify-center gap-1.5 mt-3">
+                {Array.from({ length: totalMobilePages }).map((_, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setMobilePageIndex(idx)}
+                    className={`w-1.5 h-1.5 rounded-full transition-all ${
+                      idx === mobilePageIndex 
+                        ? 'bg-primary w-4' 
+                        : 'bg-muted-foreground/30'
+                    }`}
+                    aria-label={`Go to page ${idx + 1}`}
+                  />
+                ))}
+              </div>
+            </div>
+          ) : (
+            /* Desktop: Grid layout */
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {sortedGames.map((game) => {
+                const gameImage = gameImageImports[game.id];
+                return (
+                  <button
+                    key={game.id}
+                    onClick={() => handleLoadGame(game)}
+                    className={`group text-left rounded-lg border transition-all duration-200 overflow-hidden hover:scale-[1.02] flex gap-3 p-2 ${
+                      selectedGame?.id === game.id 
+                        ? 'border-primary ring-1 ring-primary/30 bg-primary/5' 
+                        : 'border-border/40 bg-card/50 hover:border-primary/50 hover:bg-card'
+                    }`}
+                  >
+                    {/* Square thumbnail */}
+                    <div className="relative w-14 h-14 flex-shrink-0 rounded-md overflow-hidden bg-muted">
+                      {gameImage ? (
+                        <img 
+                          src={gameImage} 
+                          alt={game.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
+                          <Crown className="h-5 w-5 text-primary/40" />
+                        </div>
+                      )}
+                    </div>
+                    {/* Text info */}
+                    <div className="flex-1 min-w-0 flex flex-col justify-center">
+                      <p className="text-xs font-semibold text-foreground leading-tight line-clamp-2">{game.title}</p>
+                      <p className="text-[10px] text-muted-foreground mt-1">{game.year}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
