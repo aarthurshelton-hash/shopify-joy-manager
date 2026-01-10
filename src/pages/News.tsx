@@ -1,4 +1,5 @@
 import { Header } from '@/components/shop/Header';
+import { Footer } from '@/components/shop/Footer';
 import { Crown, Quote, Star, Newspaper } from 'lucide-react';
 
 const testimonials = [
@@ -139,17 +140,7 @@ const News = () => {
         </div>
       </main>
       
-      {/* Footer */}
-      <footer className="border-t border-border/50 mt-20 bg-card/30">
-        <div className="container mx-auto px-4 py-10 text-center space-y-3">
-          <p className="text-lg font-royal font-bold tracking-widest uppercase text-gold-gradient">
-            ♔ En Pensent ♚
-          </p>
-          <p className="text-xs text-muted-foreground tracking-widest uppercase font-sans">
-            Turn every move into a masterpiece
-          </p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 };
