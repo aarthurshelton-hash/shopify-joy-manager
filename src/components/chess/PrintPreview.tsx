@@ -5,6 +5,8 @@ import { SimulationResult } from '@/lib/chess/gameSimulator';
 import { Button } from '@/components/ui/button';
 import { Download, Loader2, Sun, Moon } from 'lucide-react';
 import { toast } from 'sonner';
+import QRCode from 'qrcode';
+import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 
 interface PrintPreviewProps {
   simulation: SimulationResult;
@@ -17,6 +19,28 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
   const [isDownloading, setIsDownloading] = useState(false);
   const [boardSize, setBoardSize] = useState(320);
   const [darkMode, setDarkMode] = useState(false);
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
+  
+  // Generate QR code on mount
+  useEffect(() => {
+    const generateQR = async () => {
+      try {
+        const url = await QRCode.toDataURL('https://enpensent.com', {
+          width: 80,
+          margin: 1,
+          color: {
+            dark: darkMode ? '#FAFAFA' : '#1A1A1A',
+            light: 'transparent',
+          },
+          errorCorrectionLevel: 'M',
+        });
+        setQrCodeDataUrl(url);
+      } catch (err) {
+        console.error('QR generation failed:', err);
+      }
+    };
+    generateQR();
+  }, [darkMode]);
   
   // Calculate appropriate board size based on container
   useEffect(() => {
@@ -115,15 +139,58 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
             <GameInfoDisplay gameData={simulation.gameData} title={title} darkMode={darkMode} />
           </div>
           
-          {/* Subtle branding */}
-          <p 
-            className={`text-[10px] tracking-[0.3em] uppercase font-medium ${
-              darkMode ? 'text-stone-500' : 'text-stone-400'
-            }`}
-            style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
-          >
-            ♔ En Pensent ♚
-          </p>
+          {/* Branding footer with logo and QR code */}
+          <div className={`w-full pt-4 border-t ${darkMode ? 'border-stone-800' : 'border-stone-200'}`}>
+            <div className="flex items-center justify-between px-2">
+              {/* Logo on the left */}
+              <div className="flex items-center gap-2">
+                <img 
+                  src={enPensentLogo} 
+                  alt="En Pensent" 
+                  className="w-10 h-10 object-contain"
+                  crossOrigin="anonymous"
+                />
+                <div className="flex flex-col">
+                  <span 
+                    className={`text-[9px] tracking-[0.2em] uppercase font-semibold ${
+                      darkMode ? 'text-stone-300' : 'text-stone-600'
+                    }`}
+                    style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
+                  >
+                    En Pensent
+                  </span>
+                  <span 
+                    className={`text-[7px] tracking-wider ${
+                      darkMode ? 'text-stone-500' : 'text-stone-400'
+                    }`}
+                    style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
+                  >
+                    Chess Art Visualizations
+                  </span>
+                </div>
+              </div>
+              
+              {/* QR Code on the right */}
+              <div className="flex flex-col items-center gap-1">
+                {qrCodeDataUrl && (
+                  <img 
+                    src={qrCodeDataUrl} 
+                    alt="Scan to visit" 
+                    className="w-12 h-12"
+                    crossOrigin="anonymous"
+                  />
+                )}
+                <span 
+                  className={`text-[6px] tracking-wide ${
+                    darkMode ? 'text-stone-500' : 'text-stone-400'
+                  }`}
+                  style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
+                >
+                  enpensent.com
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       
