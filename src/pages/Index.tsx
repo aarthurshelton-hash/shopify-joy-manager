@@ -347,6 +347,7 @@ const Index = () => {
                     pgn: currentPgn,
                     gameTitle: gameTitle,
                   }}
+                  simulation={simulation}
                 />
               </div>
               
