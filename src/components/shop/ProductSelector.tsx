@@ -9,6 +9,8 @@ import { CurrencySelector } from './CurrencySelector';
 import WallMockup, { RoomSetting } from './WallMockup';
 import ChessBoardVisualization from '@/components/chess/ChessBoardVisualization';
 import { SimulationResult } from '@/lib/chess/gameSimulator';
+import { generateCleanPrintImage } from '@/lib/chess/printImageGenerator';
+import { toast } from 'sonner';
 
 interface ProductSelectorProps {
   customPrintData: {
@@ -32,7 +34,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
   const [hoveredVariantId, setHoveredVariantId] = useState<string | null>(null);
   const [roomSetting, setRoomSetting] = useState<RoomSetting>('living');
   const [added, setAdded] = useState(false);
-  
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const addItem = useCartStore(state => state.addItem);
   const { formatPrice: formatWithCurrency, selectedCurrency } = useCurrencyStore();
 
@@ -82,24 +84,45 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
     );
   }, [simulation]);
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (!selectedProduct || !selectedVariant) return;
-
-    const cartItem: CartItem = {
-      product: selectedProduct,
-      variantId: selectedVariant.id,
-      variantTitle: selectedVariant.title,
-      price: selectedVariant.price,
-      quantity: 1,
-      selectedOptions: selectedVariant.selectedOptions,
-      customPrintData,
-    };
-
-    addItem(cartItem);
-    setAdded(true);
-    onAddedToCart?.();
     
-    setTimeout(() => setAdded(false), 3000);
+    setIsGeneratingImage(true);
+    
+    try {
+      // Generate clean print image for Printify (no watermark - same as preview)
+      let previewImageBase64: string | undefined;
+      
+      if (simulation) {
+        try {
+          previewImageBase64 = await generateCleanPrintImage(simulation, false);
+        } catch (error) {
+          console.error('Failed to generate print image:', error);
+          toast.error('Failed to generate print image. Adding to cart without image.');
+        }
+      }
+
+      const cartItem: CartItem = {
+        product: selectedProduct,
+        variantId: selectedVariant.id,
+        variantTitle: selectedVariant.title,
+        price: selectedVariant.price,
+        quantity: 1,
+        selectedOptions: selectedVariant.selectedOptions,
+        customPrintData: {
+          ...customPrintData,
+          previewImageBase64,
+        },
+      };
+
+      addItem(cartItem);
+      setAdded(true);
+      onAddedToCart?.();
+      
+      setTimeout(() => setAdded(false), 3000);
+    } finally {
+      setIsGeneratingImage(false);
+    }
   };
 
   // Format price with currency conversion
@@ -245,11 +268,16 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
           </div>
           <Button 
             onClick={handleAddToCart} 
-            disabled={!selectedVariant || added}
+            disabled={!selectedVariant || added || isGeneratingImage}
             className="gap-2"
             size="lg"
           >
-            {added ? (
+            {isGeneratingImage ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Preparing...
+              </>
+            ) : added ? (
               <>
                 <Check className="h-4 w-4" />
                 Added!
