@@ -14,12 +14,12 @@ export const Header = () => {
             </div>
           </div>
           
-          {/* Brand name with premium typography */}
+          {/* Brand name with royal typography */}
           <div>
-            <h1 className="text-2xl font-display font-semibold tracking-tight text-gold-gradient">
+            <h1 className="text-2xl font-royal font-bold tracking-wider text-gold-gradient uppercase">
               En Pensent
             </h1>
-            <p className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground font-sans">
+            <p className="text-[9px] uppercase tracking-[0.3em] text-muted-foreground font-sans">
               Chess Art Prints
             </p>
           </div>

@@ -169,13 +169,13 @@ const Index = () => {
               >
                 <div className="max-w-4xl mx-auto text-center space-y-8">
                   {/* Premium badge */}
-                  <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium tracking-wide backdrop-blur-sm">
+                  <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-display uppercase tracking-widest backdrop-blur-sm">
                     <Crown className="h-4 w-4" />
                     Transform Chess Into Art
                   </div>
                   
-                  {/* Main headline */}
-                  <h2 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold leading-tight tracking-tight">
+                  {/* Main headline - Royal and powerful */}
+                  <h2 className="text-4xl md:text-5xl lg:text-6xl font-royal font-bold leading-tight tracking-wide uppercase">
                     Your Masterpieces,<br />
                     <span className="text-gold-gradient">
                       Forever Immortalized
@@ -225,7 +225,7 @@ const Index = () => {
                 <div className="max-w-4xl mx-auto">
                   <h3 
                     ref={featureTitleRef}
-                    className={`text-2xl md:text-3xl font-display font-bold text-center mb-12 transition-all duration-700 ease-out ${
+                    className={`text-2xl md:text-3xl font-royal font-bold text-center mb-12 uppercase tracking-wider transition-all duration-700 ease-out ${
                       featureTitleVisible 
                         ? scrollAnimationClasses.fadeUp.visible 
                         : scrollAnimationClasses.fadeUp.hidden
@@ -246,7 +246,7 @@ const Index = () => {
                       <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto group-hover:bg-primary/20 transition-colors">
                         <Award className="h-8 w-8 text-primary" />
                       </div>
-                      <h3 className="font-display font-semibold text-xl">Historic Moments</h3>
+                      <h3 className="font-display font-bold text-xl uppercase tracking-wide">Historic Moments</h3>
                       <p className="text-sm text-muted-foreground leading-relaxed font-serif">
                         Immortalize Fischer vs Spassky, Kasparov vs Deep Blue, or any legendary game in history
                       </p>
@@ -263,7 +263,7 @@ const Index = () => {
                       <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto group-hover:bg-primary/20 transition-colors">
                         <Palette className="h-8 w-8 text-primary" />
                       </div>
-                      <h3 className="font-display font-semibold text-xl">Unique Artwork</h3>
+                      <h3 className="font-display font-bold text-xl uppercase tracking-wide">Unique Artwork</h3>
                       <p className="text-sm text-muted-foreground leading-relaxed font-serif">
                         Every game creates a one-of-a-kind masterpiece — no two visualizations are ever the same
                       </p>
@@ -280,7 +280,7 @@ const Index = () => {
                       <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto group-hover:bg-primary/20 transition-colors">
                         <Sparkles className="h-8 w-8 text-primary" />
                       </div>
-                      <h3 className="font-display font-semibold text-xl">Personal Legacy</h3>
+                      <h3 className="font-display font-bold text-xl uppercase tracking-wide">Personal Legacy</h3>
                       <p className="text-sm text-muted-foreground leading-relaxed font-serif">
                         Commemorate your own victories, lessons learned, or matches played with loved ones
                       </p>
@@ -315,10 +315,10 @@ const Index = () => {
                   
                   {/* Text */}
                   <div className="text-center md:text-left space-y-4">
-                    <h3 className="text-2xl md:text-3xl font-display font-bold">
+                    <h3 className="text-2xl md:text-3xl font-royal font-bold uppercase tracking-wide">
                       Every King Has a <span className="text-gold-gradient">Story</span>
                     </h3>
-                    <p className="text-muted-foreground font-serif leading-relaxed">
+                    <p className="text-muted-foreground font-serif leading-relaxed text-lg">
                       From the opening move to the final checkmate, each chess game weaves a unique narrative. 
                       Our visualizations capture this journey — transforming strategic brilliance into 
                       museum-quality art you can display with pride.
@@ -363,10 +363,10 @@ const Index = () => {
       {/* Footer - Premium and minimal */}
       <footer className="border-t border-border/50 mt-20 bg-card/30">
         <div className="container mx-auto px-4 py-10 text-center space-y-3">
-          <p className="text-sm font-display font-medium tracking-wide text-gold-gradient">
+          <p className="text-lg font-royal font-bold tracking-widest uppercase text-gold-gradient">
             ♔ En Pensent ♚
           </p>
-          <p className="text-xs text-muted-foreground tracking-wide">
+          <p className="text-xs text-muted-foreground tracking-widest uppercase font-sans">
             Turn every move into a masterpiece
           </p>
         </div>
