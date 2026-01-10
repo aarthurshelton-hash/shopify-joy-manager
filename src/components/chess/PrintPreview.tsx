@@ -79,16 +79,11 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
       watermarkRef.current.style.display = 'flex';
     }
     
-    await new Promise(resolve => setTimeout(resolve, 200));
+    await new Promise(resolve => setTimeout(resolve, 100));
     
     const canvas = await html2canvas(printRef.current, {
       scale: 3,
-      backgroundColor: darkMode ? '#0A0A0A' : '#FDFCFB',
       useCORS: true,
-      allowTaint: true,
-      logging: false,
-      imageTimeout: 0,
-      foreignObjectRendering: true,
     });
     
     if (watermarkRef.current) {
@@ -111,16 +106,11 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
         watermarkRef.current.style.display = 'flex';
       }
       
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise(resolve => setTimeout(resolve, 100));
       
       const canvas = await html2canvas(printRef.current, {
         scale: 3,
-        backgroundColor: darkMode ? '#0A0A0A' : '#FDFCFB',
         useCORS: true,
-        allowTaint: true,
-        logging: false,
-        imageTimeout: 0,
-        foreignObjectRendering: true,
       });
       
       if (watermarkRef.current) {
