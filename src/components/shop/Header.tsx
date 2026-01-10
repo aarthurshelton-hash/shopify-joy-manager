@@ -33,7 +33,7 @@ export const Header = () => {
               <img 
                 src={enPensentLogo} 
                 alt="En Pensent Logo" 
-                className="w-14 h-14 rounded-full object-cover glow-gold group-hover:scale-105 transition-transform"
+                className="h-16 w-auto object-contain glow-gold group-hover:scale-105 transition-transform"
               />
             </div>
             
