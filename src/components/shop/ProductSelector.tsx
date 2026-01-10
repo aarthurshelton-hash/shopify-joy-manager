@@ -68,13 +68,13 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
     v => v.node.id === (hoveredVariantId || selectedVariantId)
   )?.node;
 
-  // Create mini visualization for mockup
+  // Create mini visualization for mockup - size will be set by WallMockup
   const miniVisualization = useMemo(() => {
     if (!simulation) return null;
     return (
       <ChessBoardVisualization 
         board={simulation.board} 
-        size={80}
+        size={100} // Base size, will be overridden by WallMockup
       />
     );
   }, [simulation]);
