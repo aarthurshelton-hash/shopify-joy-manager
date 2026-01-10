@@ -156,29 +156,29 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
             {Array.from({ length: totalPages }).map((_, pageIndex) => (
               <div 
                 key={pageIndex}
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 min-w-full flex-shrink-0"
+                className="grid grid-cols-2 md:grid-cols-5 gap-3 min-w-full flex-shrink-0 px-1"
               >
                 {famousGames.slice(pageIndex * GAMES_PER_PAGE, (pageIndex + 1) * GAMES_PER_PAGE).map((game) => (
                   <button
                     key={game.id}
                     onClick={() => handleLoadGame(game)}
-                    className={`text-left p-4 rounded-lg border transition-all duration-300 ${
+                    className={`text-left p-3 rounded-lg border transition-all duration-300 h-24 flex flex-col ${
                       selectedGame?.id === game.id 
                         ? 'border-primary bg-primary/10 glow-gold' 
                         : 'border-border/50 bg-card hover:border-primary/30 hover:bg-card/80'
                     }`}
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-display font-semibold text-sm">{game.title}</h4>
-                        <p className="text-xs text-muted-foreground mt-1 font-serif">
+                    <div className="flex items-start justify-between gap-1 flex-1 min-h-0">
+                      <div className="flex-1 min-w-0 flex flex-col">
+                        <h4 className="font-display font-semibold text-xs leading-tight line-clamp-2">{game.title}</h4>
+                        <p className="text-[10px] text-muted-foreground mt-auto font-serif truncate">
                           {game.white} vs {game.black}
                         </p>
-                        <p className="text-xs text-muted-foreground/70 font-sans">
-                          {game.event}, {game.year}
+                        <p className="text-[10px] text-muted-foreground/70 font-sans truncate">
+                          {game.year}
                         </p>
                       </div>
-                      <Sparkles className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                      <Sparkles className="h-3 w-3 text-primary flex-shrink-0" />
                     </div>
                   </button>
                 ))}
