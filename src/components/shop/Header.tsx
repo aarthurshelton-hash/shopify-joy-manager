@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { CartDrawer } from './CartDrawer';
-import { Crown, Menu, X } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import UserMenu from '@/components/auth/UserMenu';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import {
   SheetContent,
   SheetTrigger,
 } from '@/components/ui/sheet';
+import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 
 const navLinks = [
   { to: '/about', label: 'About Us' },
@@ -28,9 +29,11 @@ export const Header = () => {
           <Link to="/" className="flex items-center gap-4 group">
             {/* Premium logo mark */}
             <div className="relative">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary via-primary to-primary/80 flex items-center justify-center glow-gold group-hover:scale-105 transition-transform">
-                <Crown className="h-6 w-6 text-primary-foreground" />
-              </div>
+              <img 
+                src={enPensentLogo} 
+                alt="En Pensent Logo" 
+                className="w-12 h-12 rounded-full object-cover glow-gold group-hover:scale-105 transition-transform"
+              />
             </div>
             
             {/* Brand name with royal typography */}
@@ -79,9 +82,11 @@ export const Header = () => {
                   onClick={() => setMobileMenuOpen(false)}
                   className="flex items-center gap-3"
                 >
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary via-primary to-primary/80 flex items-center justify-center">
-                    <Crown className="h-5 w-5 text-primary-foreground" />
-                  </div>
+                  <img 
+                    src={enPensentLogo} 
+                    alt="En Pensent Logo" 
+                    className="w-10 h-10 rounded-full object-cover"
+                  />
                   <span className="text-xl font-royal font-bold tracking-wider text-gold-gradient uppercase">
                     En Pensent
                   </span>
