@@ -12,6 +12,14 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[CHECK-SUBSCRIPTION] ${step}${detailsStr}`);
 };
 
+// Founder/Visionary members with permanent premium access (no charge)
+const VISIONARY_EMAILS = [
+  "alec@enpensent.com", // CEO Alec Arthur Shelton
+];
+
+// Premium product ID
+const PREMIUM_PRODUCT_ID = "prod_TldXgoRfEQn0lX";
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -19,10 +27,6 @@ serve(async (req) => {
 
   try {
     logStep("Function started");
-
-    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
-    logStep("Stripe key verified");
 
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -40,6 +44,25 @@ serve(async (req) => {
     const user = userData.user;
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
+
+    // Check if user is a Visionary member (permanent premium)
+    const userEmailLower = user.email.toLowerCase();
+    if (VISIONARY_EMAILS.some(email => email.toLowerCase() === userEmailLower)) {
+      logStep("Visionary member detected - granting permanent premium", { email: user.email });
+      return new Response(JSON.stringify({
+        subscribed: true,
+        product_id: PREMIUM_PRODUCT_ID,
+        subscription_end: null, // Permanent - no end date
+        visionary: true
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
+    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
+    logStep("Stripe key verified");
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     
