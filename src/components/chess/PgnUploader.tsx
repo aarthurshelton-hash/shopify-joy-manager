@@ -148,57 +148,6 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
   
   return (
     <div className="space-y-8">
-      {/* Famous Games Showcase */}
-      <div className="rounded-lg border border-border/50 bg-card/50 overflow-hidden">
-        <div className="px-6 py-5 border-b border-border/50">
-          <h3 className="flex items-center gap-2 font-display text-lg font-semibold">
-            <Crown className="h-5 w-5 text-primary" />
-            Legendary Games
-          </h3>
-          <p className="text-sm text-muted-foreground mt-1 font-serif">
-            Start with an iconic game from chess history
-          </p>
-        </div>
-        <div className="p-4">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-            {sortedGames.map((game) => {
-              const gameImage = gameImageImports[game.id];
-              return (
-                <button
-                  key={game.id}
-                  onClick={() => handleLoadGame(game)}
-                  className={`group text-left rounded-lg border transition-all duration-200 overflow-hidden hover:scale-[1.02] flex gap-3 p-2 ${
-                    selectedGame?.id === game.id 
-                      ? 'border-primary ring-1 ring-primary/30 bg-primary/5' 
-                      : 'border-border/40 bg-card/50 hover:border-primary/50 hover:bg-card'
-                  }`}
-                >
-                  {/* Square thumbnail */}
-                  <div className="relative w-14 h-14 flex-shrink-0 rounded-md overflow-hidden bg-muted">
-                    {gameImage ? (
-                      <img 
-                        src={gameImage} 
-                        alt={game.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
-                        <Crown className="h-5 w-5 text-primary/40" />
-                      </div>
-                    )}
-                  </div>
-                  {/* Text info */}
-                  <div className="flex-1 min-w-0 flex flex-col justify-center">
-                    <p className="text-xs font-semibold text-foreground leading-tight line-clamp-2">{game.title}</p>
-                    <p className="text-[10px] text-muted-foreground mt-1">{game.year}</p>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
       {/* Upload Card */}
       <div className="rounded-lg border border-border/50 bg-card/50 overflow-hidden">
         <div className="px-6 py-5 border-b border-border/50">
@@ -381,6 +330,57 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
               <Sparkles className="h-5 w-5" />
               Generate Visualization
             </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Famous Games Showcase */}
+      <div className="rounded-lg border border-border/50 bg-card/50 overflow-hidden">
+        <div className="px-6 py-5 border-b border-border/50">
+          <h3 className="flex items-center gap-2 font-display text-lg font-semibold">
+            <Crown className="h-5 w-5 text-primary" />
+            Legendary Games
+          </h3>
+          <p className="text-sm text-muted-foreground mt-1 font-serif">
+            Start with an iconic game from chess history
+          </p>
+        </div>
+        <div className="p-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            {sortedGames.map((game) => {
+              const gameImage = gameImageImports[game.id];
+              return (
+                <button
+                  key={game.id}
+                  onClick={() => handleLoadGame(game)}
+                  className={`group text-left rounded-lg border transition-all duration-200 overflow-hidden hover:scale-[1.02] flex gap-3 p-2 ${
+                    selectedGame?.id === game.id 
+                      ? 'border-primary ring-1 ring-primary/30 bg-primary/5' 
+                      : 'border-border/40 bg-card/50 hover:border-primary/50 hover:bg-card'
+                  }`}
+                >
+                  {/* Square thumbnail */}
+                  <div className="relative w-14 h-14 flex-shrink-0 rounded-md overflow-hidden bg-muted">
+                    {gameImage ? (
+                      <img 
+                        src={gameImage} 
+                        alt={game.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
+                        <Crown className="h-5 w-5 text-primary/40" />
+                      </div>
+                    )}
+                  </div>
+                  {/* Text info */}
+                  <div className="flex-1 min-w-0 flex flex-col justify-center">
+                    <p className="text-xs font-semibold text-foreground leading-tight line-clamp-2">{game.title}</p>
+                    <p className="text-[10px] text-muted-foreground mt-1">{game.year}</p>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
