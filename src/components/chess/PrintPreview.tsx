@@ -84,7 +84,7 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
           moves: simulation.gameData.moves,
         },
         {
-          boardSize: 500, // Higher resolution for quality
+          boardSize: 800, // Max resolution for quality
           darkMode,
           withWatermark,
           title,
@@ -114,7 +114,7 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
           moves: simulation.gameData.moves,
         },
         {
-          boardSize: 500, // Higher resolution
+          boardSize: 800, // Max resolution for quality
           darkMode,
           withWatermark,
           title,
