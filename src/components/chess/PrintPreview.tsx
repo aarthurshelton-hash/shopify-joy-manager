@@ -1,8 +1,8 @@
 import React, { useRef, useEffect, useState } from 'react';
+import html2canvas from 'html2canvas';
 import ChessBoardVisualization from './ChessBoardVisualization';
 import GameInfoDisplay from './GameInfoDisplay';
 import { SimulationResult } from '@/lib/chess/gameSimulator';
-import { generatePrintCanvas } from '@/lib/chess/canvasRenderer';
 import { Button } from '@/components/ui/button';
 import { Download, Loader2, Sun, Moon, Crown, Bookmark, Check } from 'lucide-react';
 import { toast } from 'sonner';
@@ -21,7 +21,6 @@ interface PrintPreviewProps {
 
 const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) => {
   const printRef = useRef<HTMLDivElement>(null);
-  const watermarkRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
@@ -39,11 +38,11 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
     const generateQR = async () => {
       try {
         const url = await QRCode.toDataURL('https://enpensent.com', {
-          width: 80,
+          width: 100,
           margin: 1,
           color: {
-            dark: darkMode ? '#FAFAFA' : '#1A1A1A',
-            light: darkMode ? '#0A0A0A' : '#FFFFFF',
+            dark: '#1A1A1A',
+            light: 'transparent',
           },
           errorCorrectionLevel: 'M',
         });
@@ -53,7 +52,7 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
       }
     };
     generateQR();
-  }, [darkMode]);
+  }, []);
   
   // Calculate appropriate board size based on container
   useEffect(() => {
@@ -71,55 +70,121 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
     setIsSaved(false);
   }, [simulation]);
   
-  // Generate image using pure canvas rendering (no DOM capture)
-  const captureImage = async (withWatermark: boolean): Promise<Blob | null> => {
-    try {
-      const canvas = await generatePrintCanvas(
-        simulation.board,
-        {
-          white: simulation.gameData.white,
-          black: simulation.gameData.black,
-          event: simulation.gameData.event,
-          date: simulation.gameData.date,
-          moves: simulation.gameData.moves,
-        },
-        {
-          boardSize: 1000, // Maximum resolution
-          darkMode,
-          withWatermark,
-          title,
-        }
-      );
-      
-      return new Promise((resolve) => {
-        canvas.toBlob((blob) => resolve(blob), 'image/png', 1.0);
-      });
-    } catch (error) {
-      console.error('Capture failed:', error);
-      throw error;
+  // Capture the preview element directly using html2canvas
+  const capturePreview = async (withWatermark: boolean): Promise<HTMLCanvasElement | null> => {
+    if (!printRef.current) return null;
+    
+    // Ensure fonts are loaded
+    if (document.fonts && document.fonts.ready) {
+      await document.fonts.ready;
     }
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    // Capture at 4x resolution for high quality
+    const canvas = await html2canvas(printRef.current, {
+      scale: 4,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: darkMode ? '#0A0A0A' : '#FDFCFB',
+      logging: false,
+      imageTimeout: 15000,
+    });
+    
+    // Add watermark if needed
+    if (withWatermark) {
+      await addWatermark(canvas);
+    }
+    
+    return canvas;
   };
   
-  // Download using pure canvas rendering
+  // Add watermark to canvas - matching reference design
+  const addWatermark = async (canvas: HTMLCanvasElement): Promise<void> => {
+    const ctx = canvas.getContext('2d')!;
+    
+    // Load logo image
+    const logoImg = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = enPensentLogo;
+    });
+    
+    // Load QR image
+    const qrImg = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = qrCodeDataUrl;
+    });
+    
+    // Calculate board area (approximately top portion of canvas)
+    // The board with border is roughly in the top-left of the preview content
+    const scaleFactor = canvas.width / printRef.current!.offsetWidth;
+    const padding = 40 * scaleFactor; // Preview padding
+    const boardVisualSize = boardSize * scaleFactor;
+    const borderWidth = boardVisualSize * 0.02;
+    const boardTotalSize = boardVisualSize + borderWidth * 2;
+    
+    // Watermark dimensions scaled to canvas
+    const wmWidth = 220 * scaleFactor;
+    const wmHeight = 65 * scaleFactor;
+    const wmX = padding + boardTotalSize - wmWidth - 12 * scaleFactor;
+    const wmY = padding + boardTotalSize - wmHeight - 12 * scaleFactor;
+    
+    // Background with rounded corners
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.96)';
+    ctx.beginPath();
+    ctx.roundRect(wmX, wmY, wmWidth, wmHeight, 8 * scaleFactor);
+    ctx.fill();
+    
+    // Subtle border
+    ctx.strokeStyle = '#e7e5e4';
+    ctx.lineWidth = 1.5 * scaleFactor;
+    ctx.stroke();
+    
+    // Draw logo (circular)
+    const logoSize = 48 * scaleFactor;
+    const logoX = wmX + 12 * scaleFactor;
+    const logoY = wmY + (wmHeight - logoSize) / 2;
+    
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(logoX + logoSize/2, logoY + logoSize/2, logoSize/2, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.drawImage(logoImg, logoX, logoY, logoSize, logoSize);
+    ctx.restore();
+    
+    // Brand text
+    const textX = logoX + logoSize + 12 * scaleFactor;
+    const fontSize1 = 13 * scaleFactor;
+    const fontSize2 = 11 * scaleFactor;
+    
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = '#44403c';
+    ctx.font = `600 ${fontSize1}px 'Inter', sans-serif`;
+    ctx.fillText('EN PENSENT', textX, wmY + wmHeight * 0.42);
+    
+    ctx.fillStyle = '#78716c';
+    ctx.font = `400 ${fontSize2}px 'Inter', sans-serif`;
+    ctx.fillText('enpensent.com', textX, wmY + wmHeight * 0.70);
+    
+    // QR Code
+    const qrSize = 50 * scaleFactor;
+    const qrX = wmX + wmWidth - qrSize - 10 * scaleFactor;
+    const qrY = wmY + (wmHeight - qrSize) / 2;
+    ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
+  };
+  
+  // Download handler
   const handleDownload = async (withWatermark: boolean) => {
     setIsDownloading(true);
     try {
-      const canvas = await generatePrintCanvas(
-        simulation.board,
-        {
-          white: simulation.gameData.white,
-          black: simulation.gameData.black,
-          event: simulation.gameData.event,
-          date: simulation.gameData.date,
-          moves: simulation.gameData.moves,
-        },
-        {
-          boardSize: 1000, // Maximum resolution
-          darkMode,
-          withWatermark,
-          title,
-        }
-      );
+      const canvas = await capturePreview(withWatermark);
+      if (!canvas) throw new Error('Failed to capture preview');
       
       const link = document.createElement('a');
       const whiteName = simulation.gameData.white?.replace(/\s+/g, '-') || 'chess';
@@ -130,7 +195,7 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
       link.href = canvas.toDataURL('image/png', 1.0);
       link.click();
       
-      toast.success(withWatermark ? 'Preview image downloaded!' : 'HD image downloaded without watermark!');
+      toast.success(withWatermark ? 'Preview downloaded!' : 'HD image downloaded!');
     } catch (error) {
       console.error('Download failed:', error);
       toast.error('Download failed. Please try again.');
@@ -169,10 +234,15 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
     setIsSaving(true);
     try {
       // Capture clean image (no watermark) for gallery
-      const imageBlob = await captureImage(false);
+      const canvas = await capturePreview(false);
+      if (!canvas) throw new Error('Failed to capture preview');
+      
+      const imageBlob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob((blob) => resolve(blob), 'image/png', 1.0);
+      });
       
       if (!imageBlob) {
-        throw new Error('Failed to capture image');
+        throw new Error('Failed to create image blob');
       }
       
       const visualizationTitle = title || 
@@ -242,67 +312,11 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
         }}
       >
         <div className="flex flex-col items-center gap-6">
-          {/* Chess board visualization with central watermark overlay */}
-          <div className="relative">
-            <ChessBoardVisualization 
-              board={simulation.board} 
-              size={boardSize}
-            />
-            
-            {/* Corner watermark - hidden in preview, shown only in free downloads */}
-            <div 
-              ref={watermarkRef}
-              className="absolute bottom-2 right-2 pointer-events-none"
-              style={{ display: 'none' }}
-            >
-              <div 
-                className={`flex items-center gap-2 px-3 py-2 rounded ${
-                  darkMode 
-                    ? 'bg-black/80 border border-stone-600' 
-                    : 'bg-white/90 border border-stone-300'
-                }`}
-                style={{ backdropFilter: 'blur(4px)' }}
-              >
-                {/* Logo */}
-                <img 
-                  src={enPensentLogo} 
-                  alt="En Pensent" 
-                  className="w-8 h-8 object-contain"
-                  crossOrigin="anonymous"
-                />
-                
-                {/* Brand text and QR */}
-                <div className="flex flex-col items-start">
-                  <span 
-                    className={`text-[9px] tracking-[0.15em] uppercase font-bold ${
-                      darkMode ? 'text-stone-200' : 'text-stone-700'
-                    }`}
-                    style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
-                  >
-                    En Pensent
-                  </span>
-                  <span 
-                    className={`text-[7px] tracking-wide ${
-                      darkMode ? 'text-stone-400' : 'text-stone-500'
-                    }`}
-                    style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
-                  >
-                    enpensent.com
-                  </span>
-                </div>
-                
-                {/* QR Code */}
-                {qrCodeDataUrl && (
-                  <img 
-                    src={qrCodeDataUrl} 
-                    alt="Scan to visit" 
-                    className="w-10 h-10"
-                    crossOrigin="anonymous"
-                  />
-                )}
-              </div>
-            </div>
-          </div>
+          {/* Chess board visualization */}
+          <ChessBoardVisualization 
+            board={simulation.board} 
+            size={boardSize}
+          />
           
           {/* Game information - proper spacing */}
           <div className={`w-full pt-4 border-t ${darkMode ? 'border-stone-800' : 'border-stone-200'}`}>
@@ -318,7 +332,6 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
           >
             ♔ En Pensent ♚
           </p>
-          
         </div>
       </div>
       
