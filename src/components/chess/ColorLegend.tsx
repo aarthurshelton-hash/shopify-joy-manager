@@ -1,8 +1,10 @@
 import React from 'react';
-import { getPieceColorLegend } from '@/lib/chess/pieceColors';
+import { getPieceColorLegend, getActivePalette } from '@/lib/chess/pieceColors';
 
 const ColorLegend: React.FC = () => {
   const legend = getPieceColorLegend();
+  const palette = getActivePalette();
+  const theme = palette.legendTheme;
   
   // Group by piece color
   const whitePieces = legend.filter(p => p.color === 'w');
@@ -15,11 +17,11 @@ const ColorLegend: React.FC = () => {
       </h3>
       
       <div className="space-y-5">
-        {/* White pieces - Cold theme */}
+        {/* White pieces */}
         <div className="space-y-3">
           <div className="flex items-center gap-2 pb-2 border-b border-border/50">
             <span className="text-[10px] font-sans font-medium text-sky-400 uppercase tracking-widest">
-              ❄️ White — Cold
+              {theme.whiteEmoji} White — {theme.whiteName}
             </span>
           </div>
           <div className="grid grid-cols-1 gap-2">
@@ -36,11 +38,11 @@ const ColorLegend: React.FC = () => {
           </div>
         </div>
         
-        {/* Black pieces - Hot theme */}
+        {/* Black pieces */}
         <div className="space-y-3">
           <div className="flex items-center gap-2 pb-2 border-b border-border/50">
             <span className="text-[10px] font-sans font-medium text-rose-400 uppercase tracking-widest">
-              🔥 Black — Hot
+              {theme.blackEmoji} Black — {theme.blackName}
             </span>
           </div>
           <div className="grid grid-cols-1 gap-2">
