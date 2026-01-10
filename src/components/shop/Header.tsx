@@ -3,7 +3,7 @@ import { CartDrawer } from './CartDrawer';
 import { CurrencySelector } from './CurrencySelector';
 import { Menu } from 'lucide-react';
 import UserMenu from '@/components/auth/UserMenu';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -20,14 +20,22 @@ const navLinks = [
 
 export const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const location = useLocation();
+  const isHomepage = location.pathname === '/';
 
+  const handleLogoClick = (e: React.MouseEvent) => {
+    if (isHomepage) {
+      e.preventDefault();
+      window.location.reload();
+    }
+  };
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/80">
       <div className="container flex h-20 items-center justify-between">
         {/* Left side - Logo and navigation */}
         <div className="flex items-center gap-8">
           {/* Logo link to homepage */}
-          <Link to="/" className="flex items-center gap-4 group">
+          <Link to="/" onClick={handleLogoClick} className="flex items-center gap-4 group">
             {/* Premium logo mark */}
             <img 
               src={enPensentLogo} 
@@ -81,7 +89,13 @@ export const Header = () => {
                 {/* Mobile brand */}
                 <Link 
                   to="/" 
-                  onClick={() => setMobileMenuOpen(false)}
+                  onClick={(e) => {
+                    setMobileMenuOpen(false);
+                    if (isHomepage) {
+                      e.preventDefault();
+                      window.location.reload();
+                    }
+                  }}
                   className="flex items-center gap-3"
                 >
                   <img 

@@ -1,13 +1,22 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 
 export const Footer = () => {
+  const location = useLocation();
+  const isHomepage = location.pathname === '/';
+
+  const handleLogoClick = (e: React.MouseEvent) => {
+    if (isHomepage) {
+      e.preventDefault();
+      window.location.reload();
+    }
+  };
   return (
     <footer className="border-t border-border/50 mt-20 bg-card/30">
       <div className="container mx-auto px-4 py-10">
         <div className="flex flex-col items-center space-y-4">
           {/* Logo */}
-          <Link to="/" className="group">
+          <Link to="/" onClick={handleLogoClick} className="group">
             <img 
               src={enPensentLogo} 
               alt="En Pensent Logo" 
