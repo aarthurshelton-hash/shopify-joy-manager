@@ -8,7 +8,8 @@ import { validatePgn, cleanPgn, PgnValidationResult } from '@/lib/chess/pgnValid
 import { fixPgn, PgnFixResult } from '@/lib/chess/pgnFixer';
 import { toast } from 'sonner';
 
-const GAMES_PER_PAGE = 10;
+const GAMES_PER_MOBILE_PAGE = 4;
+const GAMES_PER_DESKTOP_PAGE = 8;
 
 interface PgnUploaderProps {
   onPgnSubmit: (pgn: string, gameTitle?: string) => void;
@@ -57,7 +58,7 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
   const [isValidating, setIsValidating] = useState(false);
   const [fixResult, setFixResult] = useState<PgnFixResult | null>(null);
   const [isFixing, setIsFixing] = useState(false);
-  const [currentPage, setCurrentPage] = useState(0);
+  const [pageIndex, setPageIndex] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   
@@ -69,7 +70,8 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
   
-  const totalPages = useMemo(() => Math.ceil(famousGames.length / GAMES_PER_PAGE), []);
+  const gamesPerPage = isMobile ? GAMES_PER_MOBILE_PAGE : GAMES_PER_DESKTOP_PAGE;
+  const totalPages = useMemo(() => Math.ceil(famousGames.length / gamesPerPage), [gamesPerPage]);
   
   // Sort games by year (oldest to newest), then alphabetically by title within same year
   const sortedGames = useMemo(() => {
@@ -191,25 +193,25 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
     }
   }, [handleFileUpload]);
   
-  // Pagination for mobile swipe
-  const gamesPerMobilePage = 4;
-  const totalMobilePages = Math.ceil(sortedGames.length / gamesPerMobilePage);
-  const [mobilePageIndex, setMobilePageIndex] = useState(0);
+  // Reset page when switching between mobile/desktop to avoid out-of-bounds
+  useEffect(() => {
+    setPageIndex(0);
+  }, [isMobile]);
   
   const goToNextPage = useCallback(() => {
-    setMobilePageIndex(prev => Math.min(prev + 1, totalMobilePages - 1));
-  }, [totalMobilePages]);
+    setPageIndex(prev => Math.min(prev + 1, totalPages - 1));
+  }, [totalPages]);
   
   const goToPrevPage = useCallback(() => {
-    setMobilePageIndex(prev => Math.max(prev - 1, 0));
+    setPageIndex(prev => Math.max(prev - 1, 0));
   }, []);
   
   const swipeHandlers = useSwipe(goToNextPage, goToPrevPage);
   
-  const visibleMobileGames = useMemo(() => {
-    const start = mobilePageIndex * gamesPerMobilePage;
-    return sortedGames.slice(start, start + gamesPerMobilePage);
-  }, [sortedGames, mobilePageIndex]);
+  const visibleGames = useMemo(() => {
+    const start = pageIndex * gamesPerPage;
+    return sortedGames.slice(start, start + gamesPerPage);
+  }, [sortedGames, pageIndex, gamesPerPage]);
 
   return (
     <div className="space-y-8">
@@ -223,117 +225,65 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
                 Legendary Games
               </h3>
               <p className="text-xs sm:text-sm text-muted-foreground mt-1 font-serif">
-                {isMobile ? 'Swipe to explore' : 'Start with an iconic game from chess history'}
+                {isMobile ? 'Swipe to explore' : `Showing ${pageIndex * gamesPerPage + 1}–${Math.min((pageIndex + 1) * gamesPerPage, sortedGames.length)} of ${sortedGames.length} legendary games`}
               </p>
             </div>
-            {/* Mobile pagination indicator */}
-            {isMobile && (
-              <div className="flex items-center gap-2">
-                <button 
-                  onClick={goToPrevPage}
-                  disabled={mobilePageIndex === 0}
-                  className="p-1.5 rounded-full bg-card border border-border/50 disabled:opacity-30 transition-opacity"
-                  aria-label="Previous games"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
-                <span className="text-xs text-muted-foreground tabular-nums">
-                  {mobilePageIndex + 1}/{totalMobilePages}
-                </span>
-                <button 
-                  onClick={goToNextPage}
-                  disabled={mobilePageIndex === totalMobilePages - 1}
-                  className="p-1.5 rounded-full bg-card border border-border/50 disabled:opacity-30 transition-opacity"
-                  aria-label="Next games"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
-            )}
+            {/* Pagination controls */}
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={goToPrevPage}
+                disabled={pageIndex === 0}
+                className="p-1.5 sm:p-2 rounded-full bg-card border border-border/50 disabled:opacity-30 hover:border-primary/50 transition-all"
+                aria-label="Previous games"
+              >
+                <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
+              </button>
+              <span className="text-xs sm:text-sm text-muted-foreground tabular-nums min-w-[3rem] text-center">
+                {pageIndex + 1}/{totalPages}
+              </span>
+              <button 
+                onClick={goToNextPage}
+                disabled={pageIndex === totalPages - 1}
+                className="p-1.5 sm:p-2 rounded-full bg-card border border-border/50 disabled:opacity-30 hover:border-primary/50 transition-all"
+                aria-label="Next games"
+              >
+                <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
+              </button>
+            </div>
           </div>
         </div>
         
         <div className="p-3 sm:p-4">
           {/* Mobile: Swipeable cards */}
-          {isMobile ? (
+          <div 
+            ref={scrollContainerRef}
+            className={isMobile ? "touch-pan-x" : ""}
+            {...(isMobile ? swipeHandlers : {})}
+          >
             <div 
-              ref={scrollContainerRef}
-              className="touch-pan-x"
-              {...swipeHandlers}
+              className={`grid gap-2 sm:gap-3 transition-opacity duration-200 ${
+                isMobile ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4'
+              }`}
+              style={{ minHeight: isMobile ? '180px' : '200px' }}
             >
-              <div 
-                className="grid grid-cols-2 gap-2 transition-opacity duration-200"
-                style={{ minHeight: '180px' }}
-              >
-                {visibleMobileGames.map((game) => {
-                  const gameImage = gameImageImports[game.id];
-                  return (
-                    <button
-                      key={game.id}
-                      onClick={() => handleLoadGame(game)}
-                      className={`group text-left rounded-lg border transition-all duration-200 overflow-hidden flex flex-col ${
-                        selectedGame?.id === game.id 
-                          ? 'border-primary ring-1 ring-primary/30 bg-primary/5' 
-                          : 'border-border/40 bg-card/50 active:scale-[0.98]'
-                      }`}
-                    >
-                      {/* Thumbnail */}
-                      <div className="relative w-full aspect-[4/3] overflow-hidden bg-muted">
-                        {gameImage ? (
-                          <img 
-                            src={gameImage} 
-                            alt={game.title}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
-                            <Crown className="h-6 w-6 text-primary/40" />
-                          </div>
-                        )}
-                      </div>
-                      {/* Text info */}
-                      <div className="p-2 flex-1 flex flex-col justify-center">
-                        <p className="text-xs font-semibold text-foreground leading-tight line-clamp-2">{game.title}</p>
-                        <p className="text-[10px] text-muted-foreground mt-0.5">{game.year}</p>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-              
-              {/* Swipe hint dots */}
-              <div className="flex justify-center gap-1.5 mt-3">
-                {Array.from({ length: totalMobilePages }).map((_, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setMobilePageIndex(idx)}
-                    className={`w-1.5 h-1.5 rounded-full transition-all ${
-                      idx === mobilePageIndex 
-                        ? 'bg-primary w-4' 
-                        : 'bg-muted-foreground/30'
-                    }`}
-                    aria-label={`Go to page ${idx + 1}`}
-                  />
-                ))}
-              </div>
-            </div>
-          ) : (
-            /* Desktop: Grid layout */
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-              {sortedGames.map((game) => {
+              {visibleGames.map((game) => {
                 const gameImage = gameImageImports[game.id];
                 return (
                   <button
                     key={game.id}
                     onClick={() => handleLoadGame(game)}
-                    className={`group text-left rounded-lg border transition-all duration-200 overflow-hidden hover:scale-[1.02] flex gap-3 p-2 ${
+                    className={`group text-left rounded-lg border transition-all duration-200 overflow-hidden ${
+                      isMobile ? 'flex flex-col' : 'flex gap-3 p-2 hover:scale-[1.02]'
+                    } ${
                       selectedGame?.id === game.id 
                         ? 'border-primary ring-1 ring-primary/30 bg-primary/5' 
-                        : 'border-border/40 bg-card/50 hover:border-primary/50 hover:bg-card'
+                        : 'border-border/40 bg-card/50 hover:border-primary/50 hover:bg-card active:scale-[0.98]'
                     }`}
                   >
-                    {/* Square thumbnail */}
-                    <div className="relative w-14 h-14 flex-shrink-0 rounded-md overflow-hidden bg-muted">
+                    {/* Thumbnail */}
+                    <div className={`relative overflow-hidden bg-muted ${
+                      isMobile ? 'w-full aspect-[4/3]' : 'w-14 h-14 flex-shrink-0 rounded-md'
+                    }`}>
                       {gameImage ? (
                         <img 
                           src={gameImage} 
@@ -342,20 +292,36 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
-                          <Crown className="h-5 w-5 text-primary/40" />
+                          <Crown className={isMobile ? "h-6 w-6 text-primary/40" : "h-5 w-5 text-primary/40"} />
                         </div>
                       )}
                     </div>
                     {/* Text info */}
-                    <div className="flex-1 min-w-0 flex flex-col justify-center">
+                    <div className={`flex flex-col justify-center ${isMobile ? 'p-2 flex-1' : 'flex-1 min-w-0'}`}>
                       <p className="text-xs font-semibold text-foreground leading-tight line-clamp-2">{game.title}</p>
-                      <p className="text-[10px] text-muted-foreground mt-1">{game.year}</p>
+                      <p className={`text-muted-foreground ${isMobile ? 'text-[10px] mt-0.5' : 'text-[10px] mt-1'}`}>{game.year}</p>
                     </div>
                   </button>
                 );
               })}
             </div>
-          )}
+            
+            {/* Pagination dots */}
+            <div className="flex justify-center gap-1.5 mt-3 sm:mt-4">
+              {Array.from({ length: totalPages }).map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setPageIndex(idx)}
+                  className={`h-1.5 sm:h-2 rounded-full transition-all ${
+                    idx === pageIndex 
+                      ? 'bg-primary w-4 sm:w-6' 
+                      : 'bg-muted-foreground/30 w-1.5 sm:w-2 hover:bg-muted-foreground/50'
+                  }`}
+                  aria-label={`Go to page ${idx + 1}`}
+                />
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
