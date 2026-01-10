@@ -139,7 +139,12 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
   // Add watermark to canvas - simple and reliable
   const addWatermark = async (canvas: HTMLCanvasElement): Promise<void> => {
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) {
+      console.error('WATERMARK: Failed to get canvas context');
+      return;
+    }
+    
+    console.log('WATERMARK: Starting watermark, canvas size:', canvas.width, 'x', canvas.height);
     
     // Simple fixed-size watermark relative to canvas
     const canvasWidth = canvas.width;
@@ -154,6 +159,8 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
     const boardBottom = Math.round(canvasHeight * 0.52);
     const wmX = canvasWidth - wmWidth - margin - Math.round(canvasWidth * 0.06);
     const wmY = boardBottom - wmHeight - margin;
+    
+    console.log('WATERMARK: Position calculated:', { wmX, wmY, wmWidth, wmHeight, boardBottom });
     
     // Draw white background with rounded corners
     ctx.fillStyle = 'rgba(255, 255, 255, 0.94)';
@@ -171,6 +178,8 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
     ctx.closePath();
     ctx.fill();
     
+    console.log('WATERMARK: Background drawn');
+    
     // Draw border
     ctx.strokeStyle = 'rgba(180, 180, 180, 0.8)';
     ctx.lineWidth = Math.max(1, Math.round(wmHeight * 0.02));
@@ -180,9 +189,16 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
     try {
       const logoImg = new Image();
       logoImg.crossOrigin = 'anonymous';
-      await new Promise<void>((resolve, reject) => {
-        logoImg.onload = () => resolve();
-        logoImg.onerror = () => reject();
+      
+      const logoLoaded = await new Promise<boolean>((resolve) => {
+        logoImg.onload = () => {
+          console.log('WATERMARK: Logo loaded successfully');
+          resolve(true);
+        };
+        logoImg.onerror = (e) => {
+          console.error('WATERMARK: Logo failed to load', e);
+          resolve(false);
+        };
         logoImg.src = enPensentLogo;
       });
       
@@ -191,13 +207,16 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
       const logoX = wmX + logoPad;
       const logoY = wmY + (wmHeight - logoSize) / 2;
       
-      // Clip to circle and draw logo
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(logoX + logoSize/2, logoY + logoSize/2, logoSize/2, 0, Math.PI * 2);
-      ctx.clip();
-      ctx.drawImage(logoImg, logoX, logoY, logoSize, logoSize);
-      ctx.restore();
+      if (logoLoaded) {
+        // Clip to circle and draw logo
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(logoX + logoSize/2, logoY + logoSize/2, logoSize/2, 0, Math.PI * 2);
+        ctx.clip();
+        ctx.drawImage(logoImg, logoX, logoY, logoSize, logoSize);
+        ctx.restore();
+        console.log('WATERMARK: Logo drawn');
+      }
       
       // Draw text
       const textX = logoX + logoSize + logoPad;
@@ -214,24 +233,37 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
       ctx.font = `${fontSize2}px Inter, system-ui, sans-serif`;
       ctx.fillText('enpensent.com', textX, wmY + wmHeight * 0.66);
       
+      console.log('WATERMARK: Text drawn');
+      
       // Draw QR code if available
       if (qrCodeDataUrl) {
         const qrImg = new Image();
         qrImg.crossOrigin = 'anonymous';
-        await new Promise<void>((resolve) => {
-          qrImg.onload = () => resolve();
-          qrImg.onerror = () => resolve(); // Continue even if QR fails
+        
+        const qrLoaded = await new Promise<boolean>((resolve) => {
+          qrImg.onload = () => {
+            console.log('WATERMARK: QR loaded');
+            resolve(true);
+          };
+          qrImg.onerror = () => {
+            console.log('WATERMARK: QR failed');
+            resolve(false);
+          };
           qrImg.src = qrCodeDataUrl;
         });
         
-        if (qrImg.complete && qrImg.naturalWidth > 0) {
+        if (qrLoaded && qrImg.complete && qrImg.naturalWidth > 0) {
           const qrSize = Math.round(wmHeight * 0.72);
           const qrX = wmX + wmWidth - qrSize - logoPad;
           const qrY = wmY + (wmHeight - qrSize) / 2;
           ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
+          console.log('WATERMARK: QR drawn');
         }
       }
+      
+      console.log('WATERMARK: Complete!');
     } catch (e) {
+      console.error('WATERMARK: Error in watermark:', e);
       // If logo fails, just draw text watermark
       const fontSize = Math.round(wmHeight * 0.3);
       ctx.fillStyle = '#333333';
