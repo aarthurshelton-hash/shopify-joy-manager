@@ -75,34 +75,22 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
     
     const html2canvas = (await import('html2canvas')).default;
     
-    // Show watermark for capture only if downloading with watermark
     if (watermarkRef.current && withWatermark) {
       watermarkRef.current.style.display = 'flex';
     }
     
-    // Longer delay to ensure DOM fully updates
-    await new Promise(resolve => setTimeout(resolve, 300));
+    await new Promise(resolve => setTimeout(resolve, 200));
     
-    // Capture with onclone to ensure backgrounds are captured
     const canvas = await html2canvas(printRef.current, {
       scale: 3,
-      backgroundColor: null,
+      backgroundColor: darkMode ? '#0A0A0A' : '#FDFCFB',
       useCORS: true,
       allowTaint: true,
       logging: false,
-      onclone: (clonedDoc, element) => {
-        const allDivs = element.querySelectorAll('div');
-        allDivs.forEach((div: Element) => {
-          const htmlDiv = div as HTMLElement;
-          const computed = clonedDoc.defaultView?.getComputedStyle(htmlDiv);
-          if (computed?.backgroundColor && computed.backgroundColor !== 'rgba(0, 0, 0, 0)') {
-            htmlDiv.style.backgroundColor = computed.backgroundColor;
-          }
-        });
-      },
+      imageTimeout: 0,
+      foreignObjectRendering: true,
     });
     
-    // Hide watermark after capture
     if (watermarkRef.current) {
       watermarkRef.current.style.display = 'none';
     }
@@ -119,35 +107,22 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
     try {
       const html2canvas = (await import('html2canvas')).default;
       
-      // Show watermark for capture only if downloading with watermark
       if (watermarkRef.current && withWatermark) {
         watermarkRef.current.style.display = 'flex';
       }
       
-      // Longer delay to ensure DOM fully updates
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise(resolve => setTimeout(resolve, 200));
       
-      // Capture the full content with onclone to ensure backgrounds are captured
       const canvas = await html2canvas(printRef.current, {
         scale: 3,
-        backgroundColor: null, // Let elements define their own backgrounds
+        backgroundColor: darkMode ? '#0A0A0A' : '#FDFCFB',
         useCORS: true,
         allowTaint: true,
         logging: false,
-        onclone: (clonedDoc, element) => {
-          // Force all backgrounds to be computed and set as inline styles
-          const allDivs = element.querySelectorAll('div');
-          allDivs.forEach((div: Element) => {
-            const htmlDiv = div as HTMLElement;
-            const computed = clonedDoc.defaultView?.getComputedStyle(htmlDiv);
-            if (computed?.backgroundColor && computed.backgroundColor !== 'rgba(0, 0, 0, 0)') {
-              htmlDiv.style.backgroundColor = computed.backgroundColor;
-            }
-          });
-        },
+        imageTimeout: 0,
+        foreignObjectRendering: true,
       });
       
-      // Hide watermark after capture
       if (watermarkRef.current) {
         watermarkRef.current.style.display = 'none';
       }
@@ -165,7 +140,6 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
     } catch (error) {
       console.error('Download failed:', error);
       toast.error('Download failed. Please try again.');
-      // Make sure watermark is hidden on error too
       if (watermarkRef.current) {
         watermarkRef.current.style.display = 'none';
       }
