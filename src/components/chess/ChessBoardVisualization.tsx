@@ -1,16 +1,11 @@
 import React, { useMemo } from 'react';
 import { SquareData, SquareVisit } from '@/lib/chess/gameSimulator';
 import { boardColors, getPieceColor, PieceType, PieceColor } from '@/lib/chess/pieceColors';
-import { useLegendHighlight } from '@/contexts/LegendHighlightContext';
+import { useLegendHighlight, HighlightedPiece } from '@/contexts/LegendHighlightContext';
 
 interface ChessBoardVisualizationProps {
   board: SquareData[][];
   size?: number;
-}
-
-interface HighlightedPiece {
-  pieceType: PieceType;
-  pieceColor: PieceColor;
 }
 
 // Get the current color for a visit using the active palette
@@ -18,10 +13,15 @@ function getVisitColor(visit: SquareVisit): string {
   return getPieceColor(visit.piece, visit.color);
 }
 
-// Check if a visit matches the highlighted piece
-function visitMatchesHighlight(visit: SquareVisit, highlight: HighlightedPiece | null): boolean {
-  if (!highlight) return true;
-  return visit.piece === highlight.pieceType && visit.color === highlight.pieceColor;
+// Check if a visit matches any of the highlighted pieces
+function visitMatchesAnyHighlight(visit: SquareVisit, highlights: HighlightedPiece[]): boolean {
+  if (highlights.length === 0) return true;
+  return highlights.some(h => visit.piece === h.pieceType && visit.color === h.pieceColor);
+}
+
+// Check which highlight index a visit matches (for compare mode coloring)
+function getMatchingHighlightIndex(visit: SquareVisit, highlights: HighlightedPiece[]): number {
+  return highlights.findIndex(h => visit.piece === h.pieceType && visit.color === h.pieceColor);
 }
 
 // Renders nested squares for a single board square as SVG rects
@@ -31,18 +31,32 @@ const renderNestedSquares = (
   y: number,
   squareSize: number,
   baseColor: string,
-  highlightedPiece: HighlightedPiece | null
+  highlightedPieces: HighlightedPiece[],
+  compareMode: boolean
 ): React.ReactNode[] => {
   const elements: React.ReactNode[] = [];
   const padding = squareSize * 0.08;
   
+  const hasHighlight = highlightedPieces.length > 0;
+  
   // Determine if this square has any matching visits
-  const hasMatchingVisit = highlightedPiece 
-    ? visits.some(v => visitMatchesHighlight(v, highlightedPiece))
-    : false;
+  const matchingVisits = hasHighlight 
+    ? visits.filter(v => visitMatchesAnyHighlight(v, highlightedPieces))
+    : visits;
+  
+  const hasMatchingVisit = matchingVisits.length > 0;
+  
+  // In compare mode, check which pieces are present
+  const piece1Present = highlightedPieces.length > 0 && visits.some(
+    v => v.piece === highlightedPieces[0].pieceType && v.color === highlightedPieces[0].pieceColor
+  );
+  const piece2Present = highlightedPieces.length > 1 && visits.some(
+    v => v.piece === highlightedPieces[1].pieceType && v.color === highlightedPieces[1].pieceColor
+  );
+  const isOverlap = piece1Present && piece2Present;
   
   // Base dimming when highlight is active but this square doesn't match
-  const shouldDim = highlightedPiece && !hasMatchingVisit;
+  const shouldDim = hasHighlight && !hasMatchingVisit;
   
   // Draw base square
   elements.push(
@@ -65,22 +79,25 @@ const renderNestedSquares = (
   }
   
   // Get unique colors in order of first appearance
-  const uniqueColors: { color: string; matches: boolean }[] = [];
+  const uniqueColors: { color: string; matches: boolean; highlightIndex: number }[] = [];
   for (const visit of visits) {
     const color = getVisitColor(visit);
-    const matches = visitMatchesHighlight(visit, highlightedPiece);
+    const highlightIndex = getMatchingHighlightIndex(visit, highlightedPieces);
+    const matches = !hasHighlight || highlightIndex !== -1;
     const existingIndex = uniqueColors.findIndex(uc => uc.color === color);
     if (existingIndex === -1) {
-      uniqueColors.push({ color, matches });
+      uniqueColors.push({ color, matches, highlightIndex });
     } else if (matches) {
-      // If any visit with this color matches, mark it as matching
       uniqueColors[existingIndex].matches = true;
+      if (highlightIndex !== -1) {
+        uniqueColors[existingIndex].highlightIndex = highlightIndex;
+      }
     }
   }
   
   // Calculate sizes for nested squares
   const maxNesting = Math.min(uniqueColors.length, 6);
-  const layers: { color: string; layerSize: number; matches: boolean }[] = [];
+  const layers: { color: string; layerSize: number; matches: boolean; highlightIndex: number }[] = [];
   
   let currentSize = squareSize - padding * 2;
   const sizeReduction = (currentSize * 0.7) / maxNesting;
@@ -90,6 +107,7 @@ const renderNestedSquares = (
       color: uniqueColors[i].color,
       layerSize: currentSize,
       matches: uniqueColors[i].matches,
+      highlightIndex: uniqueColors[i].highlightIndex,
     });
     currentSize -= sizeReduction;
     if (currentSize < squareSize * 0.1) break;
@@ -102,7 +120,7 @@ const renderNestedSquares = (
     
     // Determine opacity based on highlight state
     let opacity = 1;
-    if (highlightedPiece) {
+    if (hasHighlight) {
       opacity = layer.matches ? 1 : 0.15;
     }
     
@@ -122,24 +140,74 @@ const renderNestedSquares = (
     );
   }
   
-  // Add a subtle glow effect for highlighted squares
-  if (highlightedPiece && hasMatchingVisit) {
+  // Add visual effects for highlighted squares
+  if (hasHighlight && hasMatchingVisit) {
     const glowSize = squareSize * 0.02;
-    elements.push(
-      <rect
-        key={`glow-${x}-${y}`}
-        x={x + glowSize}
-        y={y + glowSize}
-        width={squareSize - glowSize * 2}
-        height={squareSize - glowSize * 2}
-        fill="none"
-        stroke="rgba(255,255,255,0.6)"
-        strokeWidth={glowSize}
-        style={{
-          transition: 'all 0.2s ease-out',
-        }}
-      />
-    );
+    
+    if (compareMode && highlightedPieces.length === 2) {
+      // In compare mode, show different effects based on overlap
+      if (isOverlap) {
+        // Overlap: purple glow
+        elements.push(
+          <rect
+            key={`glow-overlap-${x}-${y}`}
+            x={x + glowSize}
+            y={y + glowSize}
+            width={squareSize - glowSize * 2}
+            height={squareSize - glowSize * 2}
+            fill="none"
+            stroke="rgba(168, 85, 247, 0.8)"
+            strokeWidth={glowSize * 2}
+            style={{ transition: 'all 0.2s ease-out' }}
+          />
+        );
+      } else if (piece1Present) {
+        // Only piece 1: sky blue glow
+        elements.push(
+          <rect
+            key={`glow-p1-${x}-${y}`}
+            x={x + glowSize}
+            y={y + glowSize}
+            width={squareSize - glowSize * 2}
+            height={squareSize - glowSize * 2}
+            fill="none"
+            stroke="rgba(56, 189, 248, 0.6)"
+            strokeWidth={glowSize * 1.5}
+            style={{ transition: 'all 0.2s ease-out' }}
+          />
+        );
+      } else if (piece2Present) {
+        // Only piece 2: rose glow
+        elements.push(
+          <rect
+            key={`glow-p2-${x}-${y}`}
+            x={x + glowSize}
+            y={y + glowSize}
+            width={squareSize - glowSize * 2}
+            height={squareSize - glowSize * 2}
+            fill="none"
+            stroke="rgba(251, 113, 133, 0.6)"
+            strokeWidth={glowSize * 1.5}
+            style={{ transition: 'all 0.2s ease-out' }}
+          />
+        );
+      }
+    } else {
+      // Single selection mode: white glow
+      elements.push(
+        <rect
+          key={`glow-${x}-${y}`}
+          x={x + glowSize}
+          y={y + glowSize}
+          width={squareSize - glowSize * 2}
+          height={squareSize - glowSize * 2}
+          fill="none"
+          stroke="rgba(255,255,255,0.6)"
+          strokeWidth={glowSize}
+          style={{ transition: 'all 0.2s ease-out' }}
+        />
+      );
+    }
   }
   
   return elements;
@@ -150,10 +218,17 @@ const ChessBoardVisualization: React.FC<ChessBoardVisualizationProps> = ({
   size = 500,
 }) => {
   // Try to use highlight context if available
-  let highlightedPiece: HighlightedPiece | null = null;
+  let highlightedPieces: HighlightedPiece[] = [];
+  let compareMode = false;
   try {
     const context = useLegendHighlight();
-    highlightedPiece = context.highlightedPiece;
+    // Combine locked pieces and hover highlight
+    if (context.lockedPieces.length > 0) {
+      highlightedPieces = context.lockedPieces;
+    } else if (context.highlightedPiece) {
+      highlightedPieces = [context.highlightedPiece];
+    }
+    compareMode = context.compareMode;
   } catch {
     // Context not available, no highlighting
   }
@@ -178,11 +253,12 @@ const ChessBoardVisualization: React.FC<ChessBoardVisualizationProps> = ({
           y,
           squareSize,
           baseColor,
-          highlightedPiece
+          highlightedPieces,
+          compareMode
         );
       });
     });
-  }, [board, borderWidth, squareSize, highlightedPiece]);
+  }, [board, borderWidth, squareSize, highlightedPieces, compareMode]);
   
   return (
     <svg
