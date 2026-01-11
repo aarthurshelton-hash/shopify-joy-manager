@@ -9,7 +9,6 @@ import {
   Package,
   Crown,
   Image as ImageIcon,
-  Palette
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -18,7 +17,7 @@ import { Footer } from '@/components/shop/Footer';
 import { ProductSelector } from '@/components/shop/ProductSelector';
 import { usePrintOrderStore } from '@/stores/printOrderStore';
 import { EnPensentOverlay } from '@/components/chess/EnPensentOverlay';
-import ChessBoardVisualization from '@/components/chess/ChessBoardVisualization';
+import PrintReadyVisualization from '@/components/chess/PrintReadyVisualization';
 import { SquareData } from '@/lib/chess/gameSimulator';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 
@@ -138,27 +137,55 @@ const OrderPrint: React.FC = () => {
                   </div>
                 )}
 
-                {/* Visualization Preview */}
+                {/* Visualization Preview - using unified PrintReadyVisualization */}
                 <div className="flex justify-center">
-                  <div 
-                    className={`p-4 sm:p-6 rounded-lg border shadow-xl transition-colors ${
-                      darkMode 
-                        ? 'bg-[#0A0A0A] border-stone-800' 
-                        : 'bg-[#FDFCFB] border-stone-200'
-                    }`}
-                  >
-                    {/* Show different visualizations based on data type */}
-                    {hasImagePath && !hasEnPensentData && !hasSimulation ? (
-                      // Saved visualization from gallery
-                      <div className="relative">
-                        <img 
-                          src={orderData.imagePath} 
-                          alt={orderData.title}
-                          className="w-64 h-64 sm:w-80 sm:h-80 object-contain rounded"
-                        />
+                  {/* Show different visualizations based on data type */}
+                  {hasImagePath && !hasEnPensentData && !hasSimulation ? (
+                    // Saved visualization from gallery - wrap in trademark frame
+                    <div 
+                      className={`p-4 sm:p-6 rounded-lg border shadow-xl transition-colors ${
+                        darkMode 
+                          ? 'bg-[#0A0A0A] border-stone-800' 
+                          : 'bg-[#FDFCFB] border-stone-200'
+                      }`}
+                    >
+                      <img 
+                        src={orderData.imagePath} 
+                        alt={orderData.title}
+                        className="w-64 h-64 sm:w-80 sm:h-80 object-contain rounded"
+                      />
+                      {/* Game Info */}
+                      <div className={`mt-4 pt-4 border-t ${darkMode ? 'border-stone-800' : 'border-stone-200'}`}>
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <p className={`text-sm font-display font-medium ${darkMode ? 'text-stone-300' : 'text-stone-700'}`}>
+                              {orderData.gameData.white} vs {orderData.gameData.black}
+                            </p>
+                            <p className={`text-xs ${darkMode ? 'text-stone-500' : 'text-stone-400'}`}>
+                              {orderData.gameData.event || 'Chess Game'}
+                              {orderData.gameData.result && ` • ${orderData.gameData.result}`}
+                            </p>
+                          </div>
+                          <img src={enPensentLogo} alt="En Pensent" className="w-6 h-6 rounded-full" />
+                        </div>
                       </div>
-                    ) : hasEnPensentData ? (
-                      // En Pensent live game visualization
+                      <p 
+                        className={`text-center text-[8px] tracking-[0.3em] uppercase mt-3 ${
+                          darkMode ? 'text-stone-600' : 'text-stone-400'
+                        }`}
+                      >
+                        ♔ En Pensent ♚
+                      </p>
+                    </div>
+                  ) : hasEnPensentData ? (
+                    // En Pensent live game visualization - wrap in trademark frame
+                    <div 
+                      className={`p-4 sm:p-6 rounded-lg border shadow-xl transition-colors ${
+                        darkMode 
+                          ? 'bg-[#0A0A0A] border-stone-800' 
+                          : 'bg-[#FDFCFB] border-stone-200'
+                      }`}
+                    >
                       <div className="relative w-64 h-64 sm:w-80 sm:h-80">
                         {/* Chess board grid */}
                         <div className="absolute inset-0 grid grid-cols-8 grid-rows-8">
@@ -185,44 +212,44 @@ const OrderPrint: React.FC = () => {
                           flipped={false}
                         />
                       </div>
-                    ) : hasSimulation && displayBoard ? (
-                      // Full simulation visualization - using filtered board from captured state
-                      <ChessBoardVisualization 
-                        board={displayBoard} 
-                        size={320}
-                      />
-                    ) : (
-                      // Fallback placeholder
-                      <div className="w-64 h-64 sm:w-80 sm:h-80 flex items-center justify-center bg-muted/20 rounded">
-                        <ImageIcon className="h-12 w-12 text-muted-foreground" />
-                      </div>
-                    )}
-
-                    {/* Game Info */}
-                    <div className={`mt-4 pt-4 border-t ${darkMode ? 'border-stone-800' : 'border-stone-200'}`}>
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className={`text-sm font-display font-medium ${darkMode ? 'text-stone-300' : 'text-stone-700'}`}>
-                            {orderData.gameData.white} vs {orderData.gameData.black}
-                          </p>
-                          <p className={`text-xs ${darkMode ? 'text-stone-500' : 'text-stone-400'}`}>
-                            {orderData.gameData.event || 'Chess Game'}
-                            {orderData.gameData.result && ` • ${orderData.gameData.result}`}
-                          </p>
+                      {/* Game Info */}
+                      <div className={`mt-4 pt-4 border-t ${darkMode ? 'border-stone-800' : 'border-stone-200'}`}>
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <p className={`text-sm font-display font-medium ${darkMode ? 'text-stone-300' : 'text-stone-700'}`}>
+                              {orderData.gameData.white} vs {orderData.gameData.black}
+                            </p>
+                            <p className={`text-xs ${darkMode ? 'text-stone-500' : 'text-stone-400'}`}>
+                              {orderData.gameData.event || 'Chess Game'}
+                              {orderData.gameData.result && ` • ${orderData.gameData.result}`}
+                            </p>
+                          </div>
+                          <img src={enPensentLogo} alt="En Pensent" className="w-6 h-6 rounded-full" />
                         </div>
-                        <img src={enPensentLogo} alt="En Pensent" className="w-6 h-6 rounded-full" />
                       </div>
+                      <p 
+                        className={`text-center text-[8px] tracking-[0.3em] uppercase mt-3 ${
+                          darkMode ? 'text-stone-600' : 'text-stone-400'
+                        }`}
+                      >
+                        ♔ En Pensent ♚
+                      </p>
                     </div>
-
-                    {/* Branding */}
-                    <p 
-                      className={`text-center text-[8px] tracking-[0.3em] uppercase mt-3 ${
-                        darkMode ? 'text-stone-600' : 'text-stone-400'
-                      }`}
-                    >
-                      ♔ En Pensent ♚
-                    </p>
-                  </div>
+                  ) : hasSimulation && displayBoard ? (
+                    // Full simulation visualization - use unified PrintReadyVisualization
+                    <PrintReadyVisualization 
+                      board={displayBoard}
+                      gameData={orderData.simulation!.gameData}
+                      size={360}
+                      darkMode={darkMode}
+                      compact={false}
+                    />
+                  ) : (
+                    // Fallback placeholder
+                    <div className="w-64 h-64 sm:w-80 sm:h-80 flex items-center justify-center bg-muted/20 rounded">
+                      <ImageIcon className="h-12 w-12 text-muted-foreground" />
+                    </div>
+                  )}
                 </div>
 
                 {/* Game Title */}
