@@ -7,12 +7,13 @@ import PaletteSelector from '@/components/chess/PaletteSelector';
 import ChessParticles from '@/components/chess/ChessParticles';
 import FloatingChessPieces from '@/components/chess/FloatingChessPieces';
 import TrendingWidget from '@/components/homepage/TrendingWidget';
+import CreativeModeShowcase from '@/components/homepage/CreativeModeShowcase';
 import { simulateGame, SimulationResult } from '@/lib/chess/gameSimulator';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
 import { ProductSelector } from '@/components/shop/ProductSelector';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Palette, Crown, Sparkles, Award } from 'lucide-react';
+import { ArrowLeft, Palette, Crown, Sparkles, Award, Paintbrush } from 'lucide-react';
 import { toast } from 'sonner';
 import { cleanPgn } from '@/lib/chess/pgnValidator';
 import { PaletteId } from '@/lib/chess/pieceColors';
@@ -464,6 +465,9 @@ const Index = () => {
                 </div>
               </div>
             </section>
+
+            {/* Creative Mode Showcase */}
+            <CreativeModeShowcase />
 
             {/* Community Trending Widget */}
             <TrendingWidget />
