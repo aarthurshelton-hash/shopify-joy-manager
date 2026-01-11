@@ -306,7 +306,16 @@ const OrderPrint: React.FC = () => {
               }}
               simulation={simulationForCart}
               shareId={orderData.shareId}
-              capturedState={orderData.capturedState}
+              capturedState={{
+                ...orderData.capturedState,
+                darkMode, // Use current page dark mode setting
+              }}
+              enPensentData={hasEnPensentData ? {
+                moveHistory: orderData.moveHistory!,
+                whitePalette: orderData.whitePalette!,
+                blackPalette: orderData.blackPalette!,
+                gameInfo: orderData.gameData,
+              } : undefined}
               onAddedToCart={() => {
                 // Optional: could navigate to cart or show success
               }}
