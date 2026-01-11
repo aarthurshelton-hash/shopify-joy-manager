@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Play, Pause, SkipBack, SkipForward, RotateCcw, Gauge, 
-  Flag, Sword, Crown, Zap, Target, Castle, Info, ChevronUp, ChevronDown, Keyboard
+  Flag, Sword, Crown, Zap, Target, Castle, Info, ChevronUp, ChevronDown, Keyboard,
+  Navigation, ChevronRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -11,6 +12,11 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import {
   Tooltip,
@@ -255,6 +261,27 @@ export const UniversalTimeline: React.FC<UniversalTimelineProps> = ({
     return counts;
   }, [keyMoments]);
 
+  // Group moments by type for jump menu
+  const momentsByType = useMemo(() => {
+    const grouped: Record<string, KeyMoment[]> = {
+      capture: [],
+      check: [],
+      checkmate: [],
+      castling: [],
+      promotion: [],
+    };
+    keyMoments.forEach(m => grouped[m.type].push(m));
+    return grouped;
+  }, [keyMoments]);
+
+  // Format move for display
+  const formatMoveDisplay = (moment: KeyMoment) => {
+    const moveIndex = moment.moveNumber - 1;
+    const moveNum = Math.floor(moveIndex / 2) + 1;
+    const isWhite = moveIndex % 2 === 0;
+    return `${moveNum}.${isWhite ? '' : '..'} ${moment.move}`;
+  };
+
   if (totalMoves === 0) return null;
 
   if (isCollapsed) {
@@ -480,7 +507,7 @@ export const UniversalTimeline: React.FC<UniversalTimelineProps> = ({
                 <p className="text-xs">Playback speed</p>
               </TooltipContent>
             </Tooltip>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="bg-popover">
               {speedOptions.map((option) => (
                 <DropdownMenuItem
                   key={option.value}
@@ -492,6 +519,149 @@ export const UniversalTimeline: React.FC<UniversalTimelineProps> = ({
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {/* Jump to Key Moment */}
+          {keyMoments.length > 0 && (
+            <DropdownMenu>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-8 px-2 gap-1 text-xs">
+                      <Navigation className="h-3 w-3" />
+                      <span className="hidden sm:inline">Jump</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-xs">Jump to key moment</p>
+                </TooltipContent>
+              </Tooltip>
+              <DropdownMenuContent align="end" className="w-56 bg-popover max-h-80 overflow-y-auto">
+                <DropdownMenuLabel className="text-xs text-muted-foreground">
+                  Jump to Key Moment
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                
+                {/* Captures */}
+                {momentsByType.capture.length > 0 && (
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger className="flex items-center gap-2">
+                      <Target className="h-3.5 w-3.5 text-orange-400" />
+                      <span>Captures</span>
+                      <span className="ml-auto text-xs text-muted-foreground">
+                        {momentsByType.capture.length}
+                      </span>
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent className="bg-popover max-h-60 overflow-y-auto">
+                      {momentsByType.capture.map((moment, idx) => (
+                        <DropdownMenuItem
+                          key={`capture-${idx}`}
+                          onClick={() => onMoveChange(moment.moveNumber)}
+                          className="flex items-center gap-2"
+                        >
+                          <div className={`w-2 h-2 rounded-full ${moment.player === 'white' ? 'bg-sky-400' : 'bg-rose-400'}`} />
+                          <span className="font-mono text-xs">{formatMoveDisplay(moment)}</span>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                )}
+
+                {/* Checks */}
+                {momentsByType.check.length > 0 && (
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger className="flex items-center gap-2">
+                      <Zap className="h-3.5 w-3.5 text-yellow-400" />
+                      <span>Checks</span>
+                      <span className="ml-auto text-xs text-muted-foreground">
+                        {momentsByType.check.length}
+                      </span>
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent className="bg-popover max-h-60 overflow-y-auto">
+                      {momentsByType.check.map((moment, idx) => (
+                        <DropdownMenuItem
+                          key={`check-${idx}`}
+                          onClick={() => onMoveChange(moment.moveNumber)}
+                          className="flex items-center gap-2"
+                        >
+                          <div className={`w-2 h-2 rounded-full ${moment.player === 'white' ? 'bg-sky-400' : 'bg-rose-400'}`} />
+                          <span className="font-mono text-xs">{formatMoveDisplay(moment)}</span>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                )}
+
+                {/* Castling */}
+                {momentsByType.castling.length > 0 && (
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger className="flex items-center gap-2">
+                      <Castle className="h-3.5 w-3.5 text-blue-400" />
+                      <span>Castling</span>
+                      <span className="ml-auto text-xs text-muted-foreground">
+                        {momentsByType.castling.length}
+                      </span>
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent className="bg-popover max-h-60 overflow-y-auto">
+                      {momentsByType.castling.map((moment, idx) => (
+                        <DropdownMenuItem
+                          key={`castling-${idx}`}
+                          onClick={() => onMoveChange(moment.moveNumber)}
+                          className="flex items-center gap-2"
+                        >
+                          <div className={`w-2 h-2 rounded-full ${moment.player === 'white' ? 'bg-sky-400' : 'bg-rose-400'}`} />
+                          <span className="font-mono text-xs">{formatMoveDisplay(moment)}</span>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                )}
+
+                {/* Promotions */}
+                {momentsByType.promotion.length > 0 && (
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger className="flex items-center gap-2">
+                      <Crown className="h-3.5 w-3.5 text-purple-400" />
+                      <span>Promotions</span>
+                      <span className="ml-auto text-xs text-muted-foreground">
+                        {momentsByType.promotion.length}
+                      </span>
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent className="bg-popover max-h-60 overflow-y-auto">
+                      {momentsByType.promotion.map((moment, idx) => (
+                        <DropdownMenuItem
+                          key={`promotion-${idx}`}
+                          onClick={() => onMoveChange(moment.moveNumber)}
+                          className="flex items-center gap-2"
+                        >
+                          <div className={`w-2 h-2 rounded-full ${moment.player === 'white' ? 'bg-sky-400' : 'bg-rose-400'}`} />
+                          <span className="font-mono text-xs">{formatMoveDisplay(moment)}</span>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                )}
+
+                {/* Checkmates */}
+                {momentsByType.checkmate.length > 0 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    {momentsByType.checkmate.map((moment, idx) => (
+                      <DropdownMenuItem
+                        key={`checkmate-${idx}`}
+                        onClick={() => onMoveChange(moment.moveNumber)}
+                        className="flex items-center gap-2 text-red-400"
+                      >
+                        <Crown className="h-3.5 w-3.5" />
+                        <span className="font-semibold">Checkmate!</span>
+                        <span className="font-mono text-xs ml-auto">{formatMoveDisplay(moment)}</span>
+                      </DropdownMenuItem>
+                    ))}
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
 
         {/* Keyboard shortcut hint */}
