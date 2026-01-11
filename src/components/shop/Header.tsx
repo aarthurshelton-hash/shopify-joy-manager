@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { CartDrawer } from './CartDrawer';
 import { CurrencySelector } from './CurrencySelector';
-import { Menu } from 'lucide-react';
+import { Menu, Swords, Gamepad2 } from 'lucide-react';
 import UserMenu from '@/components/auth/UserMenu';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 import { toast } from 'sonner';
 
 const navLinks = [
+  { to: '/play', label: 'Play', icon: Gamepad2, highlight: true },
   { to: '/about', label: 'About Us' },
   { to: '/news', label: 'News' },
   { to: '/investors', label: 'Investors' },
@@ -62,8 +63,13 @@ export const Header = () => {
               <Link 
                 key={link.to}
                 to={link.to} 
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wider"
+                className={`text-sm font-medium transition-colors uppercase tracking-wider flex items-center gap-1.5 ${
+                  link.highlight 
+                    ? 'text-primary hover:text-primary/80' 
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
               >
+                {link.icon && <link.icon className="h-4 w-4" />}
                 {link.label}
               </Link>
             ))}
@@ -118,8 +124,13 @@ export const Header = () => {
                       key={link.to}
                       to={link.to}
                       onClick={() => setMobileMenuOpen(false)}
-                      className="text-lg font-medium text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wider py-2 border-b border-border/50"
+                      className={`text-lg font-medium transition-colors uppercase tracking-wider py-2 border-b border-border/50 flex items-center gap-2 ${
+                        link.highlight 
+                          ? 'text-primary' 
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
                     >
+                      {link.icon && <link.icon className="h-5 w-5" />}
                       {link.label}
                     </Link>
                   ))}

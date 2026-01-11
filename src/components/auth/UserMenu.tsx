@@ -8,8 +8,9 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
-import { User, LogOut, Palette, Settings, Crown, CreditCard, Image } from 'lucide-react';
+import { User, LogOut, Palette, Settings, Crown, CreditCard, Image, Gamepad2, BarChart3, History } from 'lucide-react';
 import AuthModal from './AuthModal';
 import PremiumBadge from '@/components/premium/PremiumBadge';
 
@@ -94,6 +95,28 @@ const UserMenu: React.FC = () => {
           </>
         )}
         
+        <DropdownMenuLabel className="text-xs text-muted-foreground uppercase tracking-wider">
+          Play
+        </DropdownMenuLabel>
+        <DropdownMenuItem 
+          onClick={() => navigate('/play')}
+          className="gap-2 cursor-pointer"
+        >
+          <Gamepad2 className="h-4 w-4" />
+          Play En Pensent
+        </DropdownMenuItem>
+        <DropdownMenuItem 
+          onClick={() => navigate('/game-history')}
+          className="gap-2 cursor-pointer"
+        >
+          <History className="h-4 w-4" />
+          Game History
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        
+        <DropdownMenuLabel className="text-xs text-muted-foreground uppercase tracking-wider">
+          Studio
+        </DropdownMenuLabel>
         <DropdownMenuItem 
           onClick={() => navigate('/my-palettes')}
           className="gap-2 cursor-pointer"
@@ -102,15 +125,23 @@ const UserMenu: React.FC = () => {
           My Palettes
         </DropdownMenuItem>
         
-        {isPremium && (
-          <DropdownMenuItem 
-            onClick={() => navigate('/my-vision')}
-            className="gap-2 cursor-pointer"
-          >
-            <Image className="h-4 w-4" />
-            My Vision Gallery
-          </DropdownMenuItem>
-        )}
+        <DropdownMenuItem 
+          onClick={() => navigate('/my-vision')}
+          className="gap-2 cursor-pointer"
+        >
+          <Image className="h-4 w-4" />
+          My Vision Gallery
+          {!isPremium && <Crown className="h-3 w-3 text-primary ml-auto" />}
+        </DropdownMenuItem>
+        
+        <DropdownMenuItem 
+          onClick={() => navigate('/analytics')}
+          className="gap-2 cursor-pointer"
+        >
+          <BarChart3 className="h-4 w-4" />
+          Analytics
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
         
         {isPremium && (
           <DropdownMenuItem 
