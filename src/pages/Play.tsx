@@ -486,25 +486,24 @@ const Play = () => {
     <div className="min-h-screen bg-background">
       <Header />
       
-      <main className="container mx-auto px-4 py-16">
+      <main className="container mx-auto px-3 sm:px-4 py-8 sm:py-16">
         <div className="max-w-5xl mx-auto">
-          {/* Hero */}
-          <div className="text-center space-y-6 mb-12 relative">
+          {/* Hero - more compact on mobile */}
+          <div className="text-center space-y-3 sm:space-y-6 mb-6 sm:mb-12 relative">
             {/* Sound Settings - positioned top right */}
             <div className="absolute right-0 top-0">
               <SoundSettings />
             </div>
             
-            <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-display uppercase tracking-widest">
-              <Swords className="h-4 w-4" />
+            <div className="inline-flex items-center gap-2 px-3 sm:px-5 py-1.5 sm:py-2.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs sm:text-sm font-display uppercase tracking-widest">
+              <Swords className="h-3 w-3 sm:h-4 sm:w-4" />
               Visionary Exclusive
             </div>
-            <h1 className="text-4xl md:text-5xl font-royal font-bold uppercase tracking-wide">
+            <h1 className="text-2xl sm:text-4xl md:text-5xl font-royal font-bold uppercase tracking-wide">
               Play <span className="text-gold-gradient">En Pensent</span>
             </h1>
-            <p className="text-lg text-muted-foreground font-serif leading-relaxed max-w-2xl mx-auto">
-              Experience chess as art. Watch your visualization come alive as you play — 
-              each move reveals more of your unique color palette.
+            <p className="text-sm sm:text-lg text-muted-foreground font-serif leading-relaxed max-w-2xl mx-auto px-2">
+              Experience chess as art. Watch your visualization come alive as you play.
             </p>
           </div>
 
@@ -516,36 +515,39 @@ const Play = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className="space-y-8"
+                className="space-y-4 sm:space-y-8"
               >
-                {/* Play vs Bot - Available to everyone! */}
-                <div className="p-6 rounded-lg border border-green-500/30 bg-gradient-to-r from-green-500/10 via-green-500/5 to-transparent space-y-4">
-                  <div className="flex items-center justify-between flex-wrap gap-4">
-                    <div className="flex items-center gap-4">
-                      <Bot className="h-8 w-8 text-green-500" />
+                {/* Play vs Bot - Mobile optimized */}
+                <div className="p-4 sm:p-6 rounded-lg border border-green-500/30 bg-gradient-to-r from-green-500/10 via-green-500/5 to-transparent space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex items-center gap-3 sm:gap-4">
+                      <Bot className="h-6 w-6 sm:h-8 sm:w-8 text-green-500 flex-shrink-0" />
                       <div>
-                        <h3 className="font-display font-bold uppercase tracking-wider">Practice vs Bot</h3>
-                        <p className="text-sm text-muted-foreground font-serif">Free for everyone! No account required.</p>
+                        <h3 className="font-display font-bold uppercase tracking-wider text-sm sm:text-base">Practice vs Bot</h3>
+                        <p className="text-xs sm:text-sm text-muted-foreground font-serif">Free for everyone!</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                      {/* Difficulty selector - full width on mobile */}
+                      <div className="grid grid-cols-3 gap-2 sm:flex sm:gap-2">
                         {BOT_DIFFICULTIES.map(diff => (
                           <button
                             key={diff.id}
                             onClick={() => setBotDifficulty(diff.id)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-display transition-all ${
+                            className={`px-3 py-2.5 sm:py-1.5 rounded-lg text-xs font-display transition-all touch-manipulation ${
                               botDifficulty === diff.id
                                 ? 'bg-green-500 text-white'
-                                : 'bg-card/50 border border-border/50 text-muted-foreground hover:border-green-500/30'
+                                : 'bg-card/50 border border-border/50 text-muted-foreground active:bg-green-500/20'
                             }`}
-                            title={`${diff.description} (~${diff.rating})`}
                           >
                             {diff.label}
                           </button>
                         ))}
                       </div>
-                      <Button onClick={startBotGame} className="gap-2 bg-green-600 hover:bg-green-700">
+                      <Button 
+                        onClick={startBotGame} 
+                        className="gap-2 bg-green-600 hover:bg-green-700 active:bg-green-800 h-11 sm:h-10 text-sm touch-manipulation"
+                      >
                         <Bot className="h-4 w-4" />
                         Play Bot
                       </Button>
@@ -554,83 +556,83 @@ const Play = () => {
                 </div>
 
                 {!isPremium && (
-                  <div className="p-6 rounded-lg border border-primary/30 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <Crown className="h-8 w-8 text-primary" />
+                  <div className="p-4 sm:p-6 rounded-lg border border-primary/30 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 sm:gap-4">
+                      <Crown className="h-6 w-6 sm:h-8 sm:w-8 text-primary flex-shrink-0" />
                       <div>
-                        <h3 className="font-display font-bold uppercase tracking-wider">Visionary Exclusive</h3>
-                        <p className="text-sm text-muted-foreground font-serif">Upgrade to play online chess with live visualization</p>
+                        <h3 className="font-display font-bold uppercase tracking-wider text-sm sm:text-base">Visionary Exclusive</h3>
+                        <p className="text-xs sm:text-sm text-muted-foreground font-serif">Upgrade to play online with visualization</p>
                       </div>
                     </div>
-                    <Button onClick={() => setShowUpgradeModal(true)} className="gap-2">
+                    <Button onClick={() => setShowUpgradeModal(true)} className="gap-2 w-full sm:w-auto h-11 sm:h-10 touch-manipulation">
                       <Sparkles className="h-4 w-4" />
                       Upgrade Now
                     </Button>
                   </div>
                 )}
 
-                {/* ELO Rating & Quick Match */}
+                {/* ELO Rating & Quick Match - Mobile optimized */}
                 {user && isPremium && (
-                  <div className="p-6 rounded-lg border border-primary/30 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 space-y-4">
-                    <div className="flex items-center justify-between flex-wrap gap-4">
-                      <div className="flex items-center gap-4">
+                  <div className="p-4 sm:p-6 rounded-lg border border-primary/30 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <div className="flex items-center gap-3 sm:gap-4">
                         <div className="text-center">
-                          <span className={`inline-block px-3 py-1 rounded-full bg-gradient-to-r ${getRatingTier(myEloRating).color} text-white font-display text-lg`}>
+                          <span className={`inline-block px-3 py-1 rounded-full bg-gradient-to-r ${getRatingTier(myEloRating).color} text-white font-display text-base sm:text-lg`}>
                             {myEloRating}
                           </span>
-                          <p className="text-xs text-muted-foreground mt-1 font-display uppercase">{getRatingTier(myEloRating).name}</p>
+                          <p className="text-[10px] sm:text-xs text-muted-foreground mt-1 font-display uppercase">{getRatingTier(myEloRating).name}</p>
                         </div>
                         <div>
-                          <h3 className="font-display font-bold uppercase tracking-wider flex items-center gap-2">
+                          <h3 className="font-display font-bold uppercase tracking-wider flex items-center gap-2 text-sm sm:text-base">
                             <TrendingUp className="h-4 w-4 text-primary" />
                             Your Rating
                           </h3>
-                          <p className="text-sm text-muted-foreground font-serif">
-                            Matchmaking range: ±{matchmakingRange} ELO
+                          <p className="text-xs sm:text-sm text-muted-foreground font-serif">
+                            Range: ±{matchmakingRange} ELO
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <div className="flex gap-2">
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                        <div className="grid grid-cols-3 gap-2 sm:flex sm:gap-2">
                           {[100, 200, 400].map(range => (
                             <button
                               key={range}
                               onClick={() => setMatchmakingRange(range)}
-                              className={`px-3 py-1 rounded-lg text-xs font-display transition-all ${
+                              className={`px-3 py-2.5 sm:py-1 rounded-lg text-xs font-display transition-all touch-manipulation ${
                                 matchmakingRange === range
                                   ? 'bg-primary text-primary-foreground'
-                                  : 'bg-card/50 border border-border/50 text-muted-foreground hover:border-primary/30'
+                                  : 'bg-card/50 border border-border/50 text-muted-foreground active:bg-primary/20'
                               }`}
                             >
                               ±{range}
                             </button>
                           ))}
                         </div>
-                        <Button onClick={handleQuickMatch} className="gap-2" disabled={isLoading}>
+                        <Button onClick={handleQuickMatch} className="gap-2 h-11 sm:h-10 touch-manipulation" disabled={isLoading}>
                           <Zap className="h-4 w-4" />
                           Quick Match
                         </Button>
                       </div>
                     </div>
                     {getMatchedGames().length > 0 && (
-                      <p className="text-sm text-muted-foreground font-serif">
+                      <p className="text-xs sm:text-sm text-muted-foreground font-serif">
                         {getMatchedGames().filter(g => g.white_player_id !== user?.id).length} opponent{getMatchedGames().filter(g => g.white_player_id !== user?.id).length !== 1 ? 's' : ''} in your skill range
                       </p>
                     )}
                   </div>
                 )}
 
-                <div className="grid lg:grid-cols-2 gap-8">
+                <div className="grid lg:grid-cols-2 gap-4 sm:gap-8">
                   {/* Create Game */}
-                  <div className="p-6 rounded-lg border border-border/50 bg-card/50 space-y-6">
-                    <h2 className="text-xl font-display font-bold uppercase tracking-wider flex items-center gap-2">
-                      <Swords className="h-5 w-5 text-primary" />
+                  <div className="p-4 sm:p-6 rounded-lg border border-border/50 bg-card/50 space-y-4 sm:space-y-6">
+                    <h2 className="text-lg sm:text-xl font-display font-bold uppercase tracking-wider flex items-center gap-2">
+                      <Swords className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                       Create Game
                     </h2>
 
                     {/* Time Control */}
-                    <div className="space-y-3">
-                      <label className="text-sm font-display uppercase tracking-wider text-muted-foreground">
+                    <div className="space-y-2 sm:space-y-3">
+                      <label className="text-xs sm:text-sm font-display uppercase tracking-wider text-muted-foreground">
                         Time Control
                       </label>
                       <div className="grid grid-cols-3 gap-2">
@@ -638,72 +640,72 @@ const Play = () => {
                           <button
                             key={tc.id}
                             onClick={() => setSelectedTimeControl(tc.id)}
-                            className={`p-3 rounded-lg border text-center transition-all ${
+                            className={`p-2.5 sm:p-3 rounded-lg border text-center transition-all touch-manipulation ${
                               selectedTimeControl === tc.id
                                 ? 'border-primary bg-primary/10'
-                                : 'border-border/50 hover:border-primary/30'
+                                : 'border-border/50 active:bg-primary/5'
                             }`}
                           >
-                            <tc.icon className="h-5 w-5 mx-auto mb-1 text-primary" />
-                            <p className="font-display text-sm">{tc.label}</p>
-                            <p className="text-xs text-muted-foreground">{tc.description}</p>
+                            <tc.icon className="h-4 w-4 sm:h-5 sm:w-5 mx-auto mb-1 text-primary" />
+                            <p className="font-display text-xs sm:text-sm">{tc.label}</p>
+                            <p className="text-[10px] sm:text-xs text-muted-foreground">{tc.description}</p>
                           </button>
                         ))}
                       </div>
                     </div>
 
-                    {/* Palette */}
-                    <div className="space-y-3">
-                      <label className="text-sm font-display uppercase tracking-wider text-muted-foreground">
-                        Your Palette (White Pieces)
+                    {/* Palette - scrollable on mobile */}
+                    <div className="space-y-2 sm:space-y-3">
+                      <label className="text-xs sm:text-sm font-display uppercase tracking-wider text-muted-foreground">
+                        Your Palette
                       </label>
-                      <div className="grid grid-cols-4 gap-2">
+                      <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
                         {colorPalettes.slice(0, 8).map(palette => (
                           <button
                             key={palette.id}
                             onClick={() => setSelectedPalette(palette.id)}
-                            className={`p-2 rounded-lg border transition-all ${
+                            className={`p-1.5 sm:p-2 rounded-lg border transition-all touch-manipulation ${
                               selectedPalette === palette.id
                                 ? 'border-primary bg-primary/10'
-                                : 'border-border/50 hover:border-primary/30'
+                                : 'border-border/50 active:bg-primary/5'
                             }`}
                           >
-                            <div className="flex gap-0.5 mb-1">
+                            <div className="flex gap-0.5 mb-1 justify-center">
                               {Object.values(palette.white).slice(0, 4).map((color, i) => (
-                                <div key={i} className="w-3 h-3 rounded-sm" style={{ backgroundColor: color }} />
+                                <div key={i} className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm" style={{ backgroundColor: color }} />
                               ))}
                             </div>
-                            <p className="text-[10px] font-display truncate">{palette.name}</p>
+                            <p className="text-[8px] sm:text-[10px] font-display truncate">{palette.name}</p>
                           </button>
                         ))}
                       </div>
                     </div>
 
                     {/* Public/Private */}
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 sm:gap-4">
                       <button
                         onClick={() => setIsPublicGame(true)}
-                        className={`flex-1 p-3 rounded-lg border text-center transition-all ${
+                        className={`flex-1 p-2.5 sm:p-3 rounded-lg border text-center transition-all touch-manipulation ${
                           isPublicGame ? 'border-primary bg-primary/10' : 'border-border/50'
                         }`}
                       >
-                        <Users className="h-5 w-5 mx-auto mb-1" />
-                        <p className="text-sm font-display">Quick Match</p>
+                        <Users className="h-4 w-4 sm:h-5 sm:w-5 mx-auto mb-1" />
+                        <p className="text-xs sm:text-sm font-display">Quick Match</p>
                       </button>
                       <button
                         onClick={() => setIsPublicGame(false)}
-                        className={`flex-1 p-3 rounded-lg border text-center transition-all ${
+                        className={`flex-1 p-2.5 sm:p-3 rounded-lg border text-center transition-all touch-manipulation ${
                           !isPublicGame ? 'border-primary bg-primary/10' : 'border-border/50'
                         }`}
                       >
-                        <Share2 className="h-5 w-5 mx-auto mb-1" />
-                        <p className="text-sm font-display">Challenge Friend</p>
+                        <Share2 className="h-4 w-4 sm:h-5 sm:w-5 mx-auto mb-1" />
+                        <p className="text-xs sm:text-sm font-display">Challenge</p>
                       </button>
                     </div>
 
                     <Button 
                       onClick={handleCreateGame} 
-                      className="w-full gap-2"
+                      className="w-full gap-2 h-11 sm:h-10 touch-manipulation"
                       disabled={isLoading || !isPremium}
                     >
                       {!isPremium && <Lock className="h-4 w-4" />}
@@ -713,42 +715,45 @@ const Play = () => {
                   </div>
 
                   {/* Join Game */}
-                  <div className="space-y-6">
+                  <div className="space-y-4 sm:space-y-6">
                     {/* Join by Code */}
-                    <div className="p-6 rounded-lg border border-border/50 bg-card/50 space-y-4">
-                      <h2 className="text-xl font-display font-bold uppercase tracking-wider flex items-center gap-2">
-                        <Share2 className="h-5 w-5 text-primary" />
+                    <div className="p-4 sm:p-6 rounded-lg border border-border/50 bg-card/50 space-y-3 sm:space-y-4">
+                      <h2 className="text-lg sm:text-xl font-display font-bold uppercase tracking-wider flex items-center gap-2">
+                        <Share2 className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                         Join by Code
                       </h2>
                       <div className="flex gap-2">
                         <Input
                           value={challengeCode}
                           onChange={(e) => setChallengeCode(e.target.value.toUpperCase())}
-                          placeholder="Enter 6-digit code"
-                          className="font-mono text-lg tracking-widest"
+                          placeholder="6-digit code"
+                          className="font-mono text-base sm:text-lg tracking-widest h-11 sm:h-10"
                           maxLength={6}
+                          inputMode="text"
+                          autoComplete="off"
+                          autoCorrect="off"
                         />
-                        <Button onClick={handleJoinByCode} disabled={isLoading || !isPremium}>
+                        <Button onClick={handleJoinByCode} disabled={isLoading || !isPremium} className="h-11 sm:h-10 px-4 sm:px-6 touch-manipulation">
                           Join
                         </Button>
                       </div>
                     </div>
 
                     {/* Waiting Games */}
-                    <div className="p-6 rounded-lg border border-border/50 bg-card/50 space-y-4">
-                      <h2 className="text-xl font-display font-bold uppercase tracking-wider flex items-center gap-2">
-                        <Users className="h-5 w-5 text-primary" />
+                    <div className="p-4 sm:p-6 rounded-lg border border-border/50 bg-card/50 space-y-3 sm:space-y-4">
+                      <h2 className="text-lg sm:text-xl font-display font-bold uppercase tracking-wider flex items-center gap-2">
+                        <Users className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                         Open Games
                       </h2>
                       
                       {isLoadingGames ? (
                         <p className="text-muted-foreground text-sm font-serif">Loading...</p>
                       ) : waitingGames.length === 0 ? (
-                        <p className="text-muted-foreground text-sm font-serif italic">
+                        <p className="text-muted-foreground text-xs sm:text-sm font-serif italic">
                           No games waiting. Create one!
                         </p>
                       ) : (
-                        <div className="space-y-2 max-h-48 overflow-y-auto">
+                        <div className="space-y-2 max-h-48 overflow-y-auto -mx-1 px-1">
                           {waitingGames.map(g => {
                             const opponentElo = g.white_elo || 1200;
                             const isMatched = user && Math.abs(opponentElo - myEloRating) <= matchmakingRange;
@@ -758,41 +763,41 @@ const Play = () => {
                             return (
                               <div
                                 key={g.id}
-                                className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
+                                className={`flex items-center justify-between p-2.5 sm:p-3 rounded-lg border transition-all ${
                                   isMatched && !isOwnGame
                                     ? 'bg-primary/10 border-primary/30'
                                     : 'bg-card/50 border-border/30'
                                 }`}
                               >
-                                <div className="flex items-center gap-3">
-                                  <div>
-                                    <div className="flex items-center gap-2">
-                                      <p className="font-display text-sm">
+                                <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                                      <p className="font-display text-xs sm:text-sm">
                                         {TIME_CONTROLS.find(tc => tc.id === g.time_control)?.label || 'Blitz'}
                                       </p>
                                       {isMatched && !isOwnGame && (
-                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/20 text-primary font-display uppercase">
-                                          Good Match
+                                        <span className="text-[8px] sm:text-[10px] px-1 sm:px-1.5 py-0.5 rounded bg-primary/20 text-primary font-display uppercase">
+                                          Match
                                         </span>
                                       )}
                                     </div>
-                                    <p className="text-xs text-muted-foreground">
-                                      {new Date(g.created_at).toLocaleTimeString()}
+                                    <p className="text-[10px] sm:text-xs text-muted-foreground">
+                                      {new Date(g.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     </p>
                                   </div>
                                   {opponentElo && (
-                                    <span className={`text-xs px-2 py-0.5 rounded-full bg-gradient-to-r ${getRatingTier(opponentElo).color} text-white font-display`}>
+                                    <span className={`text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded-full bg-gradient-to-r ${getRatingTier(opponentElo).color} text-white font-display flex-shrink-0`}>
                                       {opponentElo}
                                     </span>
                                   )}
                                 </div>
-                                <div className="flex items-center gap-2">
-                                  {/* ELO Preview */}
+                                <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+                                  {/* ELO Preview - hidden on mobile, visible on larger screens */}
                                   {eloPreview && !isOwnGame && (
                                     <TooltipProvider>
                                       <Tooltip>
                                         <TooltipTrigger asChild>
-                                          <div className="flex items-center gap-1.5 text-[10px] font-mono px-2 py-1 rounded bg-card border border-border/50 cursor-help">
+                                          <div className="hidden sm:flex items-center gap-1.5 text-[10px] font-mono px-2 py-1 rounded bg-card border border-border/50 cursor-help">
                                             <span className="text-green-500">+{eloPreview.win}</span>
                                             <span className="text-muted-foreground">/</span>
                                             <span className={eloPreview.draw >= 0 ? "text-blue-400" : "text-orange-400"}>
@@ -825,6 +830,7 @@ const Play = () => {
                                     onClick={() => handleJoinGame(g.id)}
                                     disabled={isLoading || !isPremium || isOwnGame}
                                     variant={isMatched && !isOwnGame ? 'default' : 'outline'}
+                                    className="h-9 sm:h-8 px-3 sm:px-4 text-xs touch-manipulation"
                                   >
                                     Join
                                   </Button>
@@ -896,12 +902,14 @@ const Play = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className="space-y-6"
+                className="space-y-4 sm:space-y-6"
               >
-                {/* Game Header */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground font-display uppercase tracking-wider">
+                {/* Game Header - stacked on mobile */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="text-center sm:text-left">
+                    <p className={`text-sm sm:text-base font-display uppercase tracking-wider ${
+                      isMyTurn && gameState.status === 'active' ? 'text-primary' : 'text-muted-foreground'
+                    }`}>
                       {gameState.status === 'active' 
                         ? isMyTurn ? "Your Turn" : "Opponent's Turn"
                         : gameState.result === 'draw' ? 'Draw'
@@ -913,12 +921,12 @@ const Play = () => {
                   </div>
                   
                   {gameState.status === 'active' && (
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={offerDraw} className="gap-1">
+                    <div className="flex gap-2 justify-center sm:justify-end">
+                      <Button variant="outline" size="sm" onClick={offerDraw} className="gap-1.5 h-10 sm:h-9 px-4 touch-manipulation">
                         <Handshake className="h-4 w-4" />
-                        Draw
+                        <span className="hidden sm:inline">Offer </span>Draw
                       </Button>
-                      <Button variant="outline" size="sm" onClick={resignGame} className="gap-1 text-destructive">
+                      <Button variant="outline" size="sm" onClick={resignGame} className="gap-1.5 h-10 sm:h-9 px-4 text-destructive touch-manipulation">
                         <Flag className="h-4 w-4" />
                         Resign
                       </Button>
@@ -939,12 +947,12 @@ const Play = () => {
                   disabled={gameState.status !== 'active'}
                 />
 
-                {/* Move count / PGN display */}
-                <div className="p-4 rounded-lg border border-border/50 bg-card/30">
-                  <p className="text-sm text-muted-foreground font-display uppercase tracking-wider mb-2">
+                {/* Move count / PGN display - collapsible on mobile */}
+                <div className="p-3 sm:p-4 rounded-lg border border-border/50 bg-card/30">
+                  <p className="text-xs sm:text-sm text-muted-foreground font-display uppercase tracking-wider mb-1 sm:mb-2">
                     Moves: {gameState.moveCount}
                   </p>
-                  <p className="text-xs text-muted-foreground font-mono break-all">
+                  <p className="text-[10px] sm:text-xs text-muted-foreground font-mono break-all line-clamp-2 sm:line-clamp-none">
                     {gameState.pgn || 'Game started...'}
                   </p>
                 </div>
@@ -962,11 +970,11 @@ const Play = () => {
 
                 {/* Post-game actions */}
                 {gameState.status === 'completed' && (
-                  <div className="flex gap-4 justify-center">
-                    <Button onClick={handleBackToLobby}>
+                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
+                    <Button onClick={handleBackToLobby} className="h-11 sm:h-10 touch-manipulation">
                       Back to Lobby
                     </Button>
-                    <Button variant="outline" onClick={shareGame} className="gap-2">
+                    <Button variant="outline" onClick={shareGame} className="gap-2 h-11 sm:h-10 touch-manipulation">
                       <Share2 className="h-4 w-4" />
                       Share Game
                     </Button>
@@ -982,18 +990,20 @@ const Play = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className="space-y-6"
+                className="space-y-4 sm:space-y-6"
               >
-                {/* Game Header */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground font-display uppercase tracking-wider flex items-center gap-2">
+                {/* Game Header - stacked on mobile */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="text-center sm:text-left">
+                    <p className={`text-sm sm:text-base font-display uppercase tracking-wider flex items-center justify-center sm:justify-start gap-2 ${
+                      !isBotThinking && !botGameResult ? 'text-primary' : 'text-muted-foreground'
+                    }`}>
                       <Bot className="h-4 w-4" />
                       {botGameResult 
                         ? botGameResult === 'win' ? 'You Won!' 
                           : botGameResult === 'loss' ? 'You Lost' 
                           : 'Draw'
-                        : isBotThinking ? "Bot is thinking..." : "Your Turn"}
+                        : isBotThinking ? "Bot thinking..." : "Your Turn"}
                     </p>
                     <p className="text-xs text-muted-foreground font-serif">
                       vs {BOT_DIFFICULTIES.find(d => d.id === botDifficulty)?.label} Bot ({BOT_DIFFICULTIES.find(d => d.id === botDifficulty)?.rating})
@@ -1001,10 +1011,12 @@ const Play = () => {
                   </div>
                   
                   {!botGameResult && (
-                    <Button variant="outline" size="sm" onClick={resignBotGame} className="gap-1 text-destructive">
-                      <Flag className="h-4 w-4" />
-                      Resign
-                    </Button>
+                    <div className="flex justify-center sm:justify-end">
+                      <Button variant="outline" size="sm" onClick={resignBotGame} className="gap-1.5 h-10 sm:h-9 px-4 text-destructive touch-manipulation">
+                        <Flag className="h-4 w-4" />
+                        Resign
+                      </Button>
+                    </div>
                   )}
                 </div>
 
@@ -1022,22 +1034,22 @@ const Play = () => {
                 />
 
                 {/* Move display */}
-                <div className="p-4 rounded-lg border border-border/50 bg-card/30">
-                  <p className="text-sm text-muted-foreground font-display uppercase tracking-wider mb-2">
+                <div className="p-3 sm:p-4 rounded-lg border border-border/50 bg-card/30">
+                  <p className="text-xs sm:text-sm text-muted-foreground font-display uppercase tracking-wider mb-1 sm:mb-2">
                     Moves: {botGame.history().length}
                   </p>
-                  <p className="text-xs text-muted-foreground font-mono break-all">
+                  <p className="text-[10px] sm:text-xs text-muted-foreground font-mono break-all line-clamp-2 sm:line-clamp-none">
                     {botGame.pgn() || 'Game started...'}
                   </p>
                 </div>
 
                 {/* Post-game actions */}
                 {botGameResult && (
-                  <div className="flex gap-4 justify-center">
-                    <Button onClick={handleBackToLobby}>
+                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
+                    <Button onClick={handleBackToLobby} className="h-11 sm:h-10 touch-manipulation">
                       Back to Lobby
                     </Button>
-                    <Button variant="outline" onClick={startBotGame} className="gap-2">
+                    <Button variant="outline" onClick={startBotGame} className="gap-2 h-11 sm:h-10 touch-manipulation">
                       <Bot className="h-4 w-4" />
                       Play Again
                     </Button>
