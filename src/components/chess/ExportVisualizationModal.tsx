@@ -25,6 +25,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { MoveHistoryEntry, EnPensentOverlay } from './EnPensentOverlay';
 import { PieceType } from '@/lib/chess/pieceColors';
+import { usePrintOrderStore } from '@/stores/printOrderStore';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 import QRCode from 'qrcode';
 
@@ -55,6 +56,7 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
 }) => {
   const navigate = useNavigate();
   const { user, isPremium } = useAuth();
+  const { setOrderData } = usePrintOrderStore();
   const exportRef = useRef<HTMLDivElement>(null);
   const [darkMode, setDarkMode] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -116,9 +118,21 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
   };
 
   const handleOrderPrint = () => {
+    // Set order data with En Pensent visualization
+    setOrderData({
+      title: `${gameInfo.white} vs ${gameInfo.black}`,
+      gameData: {
+        white: gameInfo.white,
+        black: gameInfo.black,
+        result: gameInfo.result,
+      },
+      moveHistory,
+      whitePalette,
+      blackPalette,
+    });
+    
     onClose();
-    navigate('/');
-    toast.info('Create a visualization on the homepage to order prints!');
+    navigate('/order-print');
   };
 
   return (

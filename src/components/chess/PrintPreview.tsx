@@ -624,7 +624,22 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
           </Button>
 
           {/* Order Print Button - Stylish but not obnoxious */}
-          <OrderPrintButton variant="default" size="md" />
+          <OrderPrintButton 
+            variant="default" 
+            size="md" 
+            orderData={{
+              title: title || `${simulation.gameData.white} vs ${simulation.gameData.black}`,
+              pgn: pgn,
+              gameData: {
+                white: simulation.gameData.white,
+                black: simulation.gameData.black,
+                event: simulation.gameData.event,
+                date: simulation.gameData.date,
+                result: simulation.gameData.result,
+              },
+              simulation,
+            }}
+          />
         </div>
       </div>
       
