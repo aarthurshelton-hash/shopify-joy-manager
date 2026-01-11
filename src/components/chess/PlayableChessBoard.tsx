@@ -181,6 +181,9 @@ export const PlayableChessBoard = ({
     const pieces = squarePieceMap.get(square);
     if (pieces && pieces.length > 0) {
       legendContext.setHoveredSquare({ square, pieces });
+    } else {
+      // Clear hover when moving to a square with no history
+      legendContext.setHoveredSquare(null);
     }
   }, [legendContext, squarePieceMap]);
 
@@ -189,6 +192,32 @@ export const PlayableChessBoard = ({
       legendContext.setHoveredSquare(null);
     }
   }, [legendContext]);
+
+  // Check if this square should be highlighted based on legend selection
+  const isSquareHighlighted = useCallback((square: string) => {
+    if (!legendContext) return false;
+    
+    const { highlightedPiece, lockedPieces } = legendContext;
+    const piecesToCheck = lockedPieces.length > 0 ? lockedPieces : (highlightedPiece ? [highlightedPiece] : []);
+    
+    if (piecesToCheck.length === 0) return false;
+    
+    // Check if any of the highlighted pieces visited this square
+    for (const move of moveHistory) {
+      for (const piece of piecesToCheck) {
+        if (move.square === square && move.piece === piece.pieceType && move.color === piece.pieceColor) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }, [legendContext, moveHistory]);
+
+  // Check if filtering is active (any piece highlighted in legend)
+  const hasActiveFilter = legendContext && (
+    legendContext.highlightedPiece !== null || 
+    legendContext.lockedPieces.length > 0
+  );
 
   const renderSquare = (row: number, col: number) => {
     const actualRow = flipped ? 7 - row : row;
@@ -201,6 +230,11 @@ export const PlayableChessBoard = ({
     const hasBeenMoved = movedSquares.has(square);
     const isTouched = touchFeedback === square;
     const hasPieceHistory = squarePieceMap.has(square);
+    const isHighlightedByLegend = isSquareHighlighted(square);
+    
+    // Dim squares that don't match when legend filter is active
+    const shouldDimSquare = hasActiveFilter && hasPieceHistory && !isHighlightedByLegend;
+    const shouldHighlightSquare = hasActiveFilter && isHighlightedByLegend;
 
     return (
       <motion.div
@@ -208,6 +242,15 @@ export const PlayableChessBoard = ({
         onClick={() => handleSquareInteraction(row, col)}
         onMouseEnter={() => handleSquareHover(square)}
         onMouseLeave={handleSquareLeave}
+        onTouchEnd={(e) => {
+          // Mobile: long-press or double-tap to show legend info
+          if (enPensentEnabled && hasPieceHistory) {
+            e.stopPropagation();
+            handleSquareHover(square);
+            // Clear after a short delay so user can see the legend highlight
+            setTimeout(() => handleSquareLeave(), 2000);
+          }
+        }}
         onTouchStart={(e) => {
           // Prevent default to avoid double-tap zoom on mobile
           e.stopPropagation();
@@ -219,11 +262,14 @@ export const PlayableChessBoard = ({
           ${isTouched ? 'brightness-125' : ''}
           ${!isMyTurn || disabled ? 'cursor-default' : ''}
           ${hasPieceHistory && enPensentEnabled ? 'hover:ring-2 hover:ring-amber-400/50' : ''}
+          ${shouldDimSquare ? 'opacity-30' : ''}
+          ${shouldHighlightSquare ? 'ring-2 ring-sky-400/70 z-5' : ''}
           touch-manipulation select-none
         `}
         style={{
           // Larger touch target with invisible padding
           WebkitTapHighlightColor: 'transparent',
+          transition: 'opacity 0.2s ease-out',
         }}
         whileTap={isMyTurn && !disabled ? { scale: 0.95 } : {}}
       >
