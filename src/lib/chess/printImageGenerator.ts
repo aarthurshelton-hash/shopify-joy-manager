@@ -1,11 +1,38 @@
-import { SimulationResult } from './gameSimulator';
+import { SimulationResult, SquareData } from './gameSimulator';
 import { generateQRDataUrl } from '@/lib/qr/generateVisualizationQR';
 import logo from '@/assets/en-pensent-logo-new.png';
+
+interface CapturedState {
+  currentMove: number;
+  selectedPhase: string;
+  lockedPieces: Array<{ pieceType: string; pieceColor: string }>;
+  compareMode: boolean;
+  displayMode: string;
+  darkMode: boolean;
+  showTerritory: boolean;
+  showHeatmaps: boolean;
+  capturedAt: Date;
+}
 
 interface PrintOptions {
   darkMode?: boolean;
   includeQR?: boolean;
   shareId?: string;
+  capturedState?: CapturedState;
+}
+
+/**
+ * Filter board data to match a specific move in the timeline
+ */
+function filterBoardToMove(board: SquareData[][], currentMove: number): SquareData[][] {
+  if (currentMove === Infinity || currentMove <= 0) return board;
+  
+  return board.map(row => 
+    row.map(square => ({
+      ...square,
+      visits: square.visits.filter(visit => visit.moveNumber <= currentMove)
+    }))
+  );
 }
 
 /**
@@ -17,7 +44,7 @@ export async function generateCleanPrintImage(
   simulation: SimulationResult,
   options: PrintOptions = {}
 ): Promise<string> {
-  const { darkMode = false, includeQR = false, shareId } = options;
+  const { darkMode = false, includeQR = false, shareId, capturedState } = options;
   const html2canvas = (await import('html2canvas')).default;
   
   // Create a temporary container for rendering
@@ -54,12 +81,17 @@ export async function generateCleanPrintImage(
     const boardContainer = document.createElement('div');
     boardWrapper.appendChild(boardContainer);
     
-    // Render the chess board
+    // Apply captured state filtering if available
+    const filteredBoard = capturedState && capturedState.currentMove !== Infinity
+      ? filterBoardToMove(simulation.board, capturedState.currentMove)
+      : simulation.board;
+    
+    // Render the chess board with filtered data
     const boardRoot = ReactDOM.createRoot(boardContainer);
     await new Promise<void>((resolve) => {
       boardRoot.render(
         React.createElement(ChessBoardVisualization, {
-          board: simulation.board,
+          board: filteredBoard,
           size: 400, // High-res for print
         })
       );

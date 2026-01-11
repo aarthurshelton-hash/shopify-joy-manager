@@ -19,7 +19,22 @@ import { ProductSelector } from '@/components/shop/ProductSelector';
 import { usePrintOrderStore } from '@/stores/printOrderStore';
 import { EnPensentOverlay } from '@/components/chess/EnPensentOverlay';
 import ChessBoardVisualization from '@/components/chess/ChessBoardVisualization';
+import { SquareData } from '@/lib/chess/gameSimulator';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
+
+/**
+ * Filter board data to match a specific move in the timeline
+ */
+function filterBoardToMove(board: SquareData[][], currentMove: number): SquareData[][] {
+  if (currentMove === Infinity || currentMove <= 0) return board;
+  
+  return board.map(row => 
+    row.map(square => ({
+      ...square,
+      visits: square.visits.filter(visit => visit.moveNumber <= currentMove)
+    }))
+  );
+}
 
 const OrderPrint: React.FC = () => {
   const navigate = useNavigate();
@@ -44,8 +59,19 @@ const OrderPrint: React.FC = () => {
   const hasSimulation = !!orderData.simulation;
   const hasImagePath = !!orderData.imagePath;
 
-  // Prepare simulation for ProductSelector - only use actual simulation data
+  // Prepare simulation for ProductSelector - apply captured state filtering
   const simulationForCart = orderData.simulation;
+  
+  // Apply captured state filtering to the display board
+  const displayBoard = useMemo(() => {
+    if (!orderData.simulation) return null;
+    
+    const capturedState = orderData.capturedState;
+    if (capturedState && capturedState.currentMove !== Infinity && capturedState.currentMove > 0) {
+      return filterBoardToMove(orderData.simulation.board, capturedState.currentMove);
+    }
+    return orderData.simulation.board;
+  }, [orderData.simulation, orderData.capturedState]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -159,10 +185,10 @@ const OrderPrint: React.FC = () => {
                           flipped={false}
                         />
                       </div>
-                    ) : hasSimulation ? (
-                      // Full simulation visualization
+                    ) : hasSimulation && displayBoard ? (
+                      // Full simulation visualization - using filtered board from captured state
                       <ChessBoardVisualization 
-                        board={orderData.simulation!.board} 
+                        board={displayBoard} 
                         size={320}
                       />
                     ) : (
@@ -253,6 +279,7 @@ const OrderPrint: React.FC = () => {
               }}
               simulation={simulationForCart}
               shareId={orderData.shareId}
+              capturedState={orderData.capturedState}
               onAddedToCart={() => {
                 // Optional: could navigate to cart or show success
               }}

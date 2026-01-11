@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
 import html2canvas from 'html2canvas';
 import GIF from 'gif.js';
 import ChessBoardVisualization from './ChessBoardVisualization';
@@ -20,6 +20,7 @@ import AuthModal from '@/components/auth/AuthModal';
 import { saveVisualization } from '@/lib/visualizations/visualizationStorage';
 import { useTimeline } from '@/contexts/TimelineContext';
 import { Progress } from '@/components/ui/progress';
+import { useLegendHighlight } from '@/contexts/LegendHighlightContext';
 
 interface PrintPreviewProps {
   simulation: SimulationResult;
@@ -59,6 +60,17 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
   
   const { isPremium, user } = useAuth();
 
+  // Get locked pieces from legend context if available
+  let lockedPieces: Array<{ pieceType: string; pieceColor: string }> = [];
+  let compareMode = false;
+  try {
+    const legendContext = useLegendHighlight();
+    lockedPieces = legendContext.lockedPieces;
+    compareMode = legendContext.compareMode;
+  } catch {
+    // Legend context not available
+  }
+
   // Timeline context for filtering board by move
   let timelineBoard: SquareData[][] = simulation.board;
   let currentMove = Infinity;
@@ -78,6 +90,19 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
   } catch {
     // Timeline context not available
   }
+
+  // Capture current state for Order Print button
+  const capturedState = useMemo(() => ({
+    currentMove,
+    selectedPhase: 'all',
+    lockedPieces,
+    compareMode,
+    displayMode: 'standard',
+    darkMode,
+    showTerritory: false,
+    showHeatmaps: false,
+    capturedAt: new Date(),
+  }), [currentMove, lockedPieces, compareMode, darkMode]);
 
   // Board for GIF generation (separate from main display)
   const gifBoard = gifPreviewMove !== null 
@@ -670,6 +695,7 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
                 result: simulation.gameData.result,
               },
               simulation,
+              capturedState,
             }}
           />
         </div>
