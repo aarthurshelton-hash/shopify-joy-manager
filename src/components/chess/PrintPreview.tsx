@@ -2,7 +2,8 @@ import React, { useRef, useEffect, useState } from 'react';
 import html2canvas from 'html2canvas';
 import ChessBoardVisualization from './ChessBoardVisualization';
 import GameInfoDisplay from './GameInfoDisplay';
-import { SimulationResult } from '@/lib/chess/gameSimulator';
+import TimelineSlider from './TimelineSlider';
+import { SimulationResult, SquareData } from '@/lib/chess/gameSimulator';
 import { Button } from '@/components/ui/button';
 import { Download, Loader2, Sun, Moon, Crown, Bookmark, Check } from 'lucide-react';
 import { toast } from 'sonner';
@@ -12,6 +13,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { PremiumUpgradeModal } from '@/components/premium';
 import AuthModal from '@/components/auth/AuthModal';
 import { saveVisualization } from '@/lib/visualizations/visualizationStorage';
+import { useTimeline } from '@/contexts/TimelineContext';
 
 interface PrintPreviewProps {
   simulation: SimulationResult;
@@ -34,6 +36,26 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
   const [showWatermark, setShowWatermark] = useState(false);
   
   const { isPremium, user } = useAuth();
+
+  // Timeline context for filtering board by move
+  let timelineBoard: SquareData[][] = simulation.board;
+  let currentMove = Infinity;
+  try {
+    const timeline = useTimeline();
+    currentMove = timeline.currentMove;
+    
+    // Filter board based on current timeline position
+    if (currentMove !== Infinity && currentMove < simulation.totalMoves) {
+      timelineBoard = simulation.board.map(rank => 
+        rank.map(square => ({
+          ...square,
+          visits: square.visits.filter(visit => visit.moveNumber <= currentMove)
+        }))
+      );
+    }
+  } catch {
+    // Timeline context not available
+  }
   
   // Generate QR code on mount
   useEffect(() => {
@@ -340,7 +362,7 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
           {/* Chess board visualization with watermark overlay */}
           <div className="relative">
             <ChessBoardVisualization 
-              board={simulation.board} 
+              board={timelineBoard} 
               size={boardSize}
             />
             
@@ -364,6 +386,12 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
           </p>
         </div>
       </div>
+
+      {/* Timeline Slider */}
+      <TimelineSlider 
+        totalMoves={simulation.totalMoves} 
+        moves={simulation.gameData.moves}
+      />
       
       {/* Action buttons */}
       <div className="flex flex-col gap-3">
