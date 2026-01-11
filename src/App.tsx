@@ -11,6 +11,8 @@ import About from "./pages/About";
 import Investors from "./pages/Investors";
 import Analytics from "./pages/Analytics";
 import Leaderboard from "./pages/Leaderboard";
+import Play from "./pages/Play";
+import CreativeMode from "./pages/CreativeMode";
 import News from "./pages/News";
 import QRMockup from "./pages/QRMockup";
 import VisualizationView from "./pages/VisualizationView";
@@ -33,6 +35,8 @@ const App = () => (
             <Route path="/investors" element={<Investors />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
+            <Route path="/play" element={<Play />} />
+            <Route path="/creative" element={<CreativeMode />} />
             <Route path="/news" element={<News />} />
             <Route path="/qr-preview" element={<QRMockup />} />
             <Route path="/v/:shareId" element={<VisualizationView />} />

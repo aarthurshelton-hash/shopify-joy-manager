@@ -14,6 +14,161 @@ export type Database = {
   }
   public: {
     Tables: {
+      chess_games: {
+        Row: {
+          black_palette: Json | null
+          black_player_id: string | null
+          black_time_remaining: number | null
+          challenge_code: string | null
+          completed_at: string | null
+          created_at: string
+          current_fen: string | null
+          id: string
+          is_public: boolean | null
+          last_move_at: string | null
+          move_count: number | null
+          pgn: string | null
+          result: Database["public"]["Enums"]["chess_game_result"] | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["chess_game_status"]
+          time_control: Database["public"]["Enums"]["time_control"]
+          updated_at: string
+          white_palette: Json | null
+          white_player_id: string | null
+          white_time_remaining: number | null
+          winner_id: string | null
+        }
+        Insert: {
+          black_palette?: Json | null
+          black_player_id?: string | null
+          black_time_remaining?: number | null
+          challenge_code?: string | null
+          completed_at?: string | null
+          created_at?: string
+          current_fen?: string | null
+          id?: string
+          is_public?: boolean | null
+          last_move_at?: string | null
+          move_count?: number | null
+          pgn?: string | null
+          result?: Database["public"]["Enums"]["chess_game_result"] | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["chess_game_status"]
+          time_control?: Database["public"]["Enums"]["time_control"]
+          updated_at?: string
+          white_palette?: Json | null
+          white_player_id?: string | null
+          white_time_remaining?: number | null
+          winner_id?: string | null
+        }
+        Update: {
+          black_palette?: Json | null
+          black_player_id?: string | null
+          black_time_remaining?: number | null
+          challenge_code?: string | null
+          completed_at?: string | null
+          created_at?: string
+          current_fen?: string | null
+          id?: string
+          is_public?: boolean | null
+          last_move_at?: string | null
+          move_count?: number | null
+          pgn?: string | null
+          result?: Database["public"]["Enums"]["chess_game_result"] | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["chess_game_status"]
+          time_control?: Database["public"]["Enums"]["time_control"]
+          updated_at?: string
+          white_palette?: Json | null
+          white_player_id?: string | null
+          white_time_remaining?: number | null
+          winner_id?: string | null
+        }
+        Relationships: []
+      }
+      chess_moves: {
+        Row: {
+          created_at: string
+          fen_after: string
+          game_id: string
+          id: string
+          move_number: number
+          move_san: string
+          move_uci: string
+          player_id: string
+          time_spent: number | null
+        }
+        Insert: {
+          created_at?: string
+          fen_after: string
+          game_id: string
+          id?: string
+          move_number: number
+          move_san: string
+          move_uci: string
+          player_id: string
+          time_spent?: number | null
+        }
+        Update: {
+          created_at?: string
+          fen_after?: string
+          game_id?: string
+          id?: string
+          move_number?: number
+          move_san?: string
+          move_uci?: string
+          player_id?: string
+          time_spent?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chess_moves_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "chess_games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      creative_designs: {
+        Row: {
+          created_at: string
+          description: string | null
+          fen: string
+          id: string
+          image_path: string | null
+          is_public: boolean | null
+          palette: Json
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          fen: string
+          id?: string
+          image_path?: string | null
+          is_public?: boolean | null
+          palette: Json
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          fen?: string
+          id?: string
+          image_path?: string | null
+          is_public?: boolean | null
+          palette?: Json
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       favorite_games: {
         Row: {
           created_at: string
@@ -178,10 +333,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_challenge_code: { Args: never; Returns: string }
       generate_share_id: { Args: never; Returns: string }
     }
     Enums: {
+      chess_game_result: "white_wins" | "black_wins" | "draw" | "abandoned"
+      chess_game_status: "waiting" | "active" | "completed" | "abandoned"
       testimonial_status: "pending" | "approved" | "rejected"
+      time_control: "bullet_1" | "blitz_5" | "rapid_15" | "untimed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -309,7 +468,10 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      chess_game_result: ["white_wins", "black_wins", "draw", "abandoned"],
+      chess_game_status: ["waiting", "active", "completed", "abandoned"],
       testimonial_status: ["pending", "approved", "rejected"],
+      time_control: ["bullet_1", "blitz_5", "rapid_15", "untimed"],
     },
   },
 } as const
