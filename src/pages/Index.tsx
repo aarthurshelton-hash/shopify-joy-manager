@@ -17,11 +17,39 @@ import { cleanPgn } from '@/lib/chess/pgnValidator';
 import { PaletteId } from '@/lib/chess/pieceColors';
 import { useScrollAnimation, scrollAnimationClasses } from '@/hooks/useScrollAnimation';
 import { LegendHighlightProvider } from '@/contexts/LegendHighlightContext';
+import { TimelineProvider } from '@/contexts/TimelineContext';
 
 // Import AI-generated art
 import heroChessArt from '@/assets/hero-chess-art.jpg';
 import chessMovementArt from '@/assets/chess-movement-art.jpg';
 import chessKingArt from '@/assets/chess-king-art.jpg';
+
+import { useTimeline } from '@/contexts/TimelineContext';
+import { SquareData } from '@/lib/chess/gameSimulator';
+
+// Timeline-aware wrapper for ColorLegend
+const TimelineAwareColorLegend: React.FC<{ 
+  paletteKey: number; 
+  fullBoard: SquareData[][]; 
+  totalMoves: number;
+}> = ({ paletteKey, fullBoard, totalMoves }) => {
+  const { currentMove } = useTimeline();
+  
+  // Filter board based on timeline
+  const timelineBoard = React.useMemo(() => {
+    if (currentMove === Infinity || currentMove >= totalMoves) {
+      return fullBoard;
+    }
+    return fullBoard.map(rank => 
+      rank.map(square => ({
+        ...square,
+        visits: square.visits.filter(visit => visit.moveNumber <= currentMove)
+      }))
+    );
+  }, [fullBoard, currentMove, totalMoves]);
+  
+  return <ColorLegend key={`legend-${paletteKey}`} board={timelineBoard} />;
+};
 
 const Index = () => {
   const [simulation, setSimulation] = useState<SimulationResult | null>(null);
@@ -476,37 +504,43 @@ const Index = () => {
             </section>
           </>
         ) : (
-          <LegendHighlightProvider>
-            <div className="container mx-auto px-4 py-12">
-              <div className="flex flex-col lg:flex-row gap-10 justify-center">
-                {/* Print preview */}
-                <div className="flex-1 max-w-2xl space-y-8">
-                  <PrintPreview 
-                    key={paletteKey}
-                    simulation={simulation} 
-                    pgn={currentPgn}
-                    title={gameTitle}
-                  />
-                  
-                  {/* Product selector for ordering */}
-                  <ProductSelector 
-                    customPrintData={{
-                      pgn: currentPgn,
-                      gameTitle: gameTitle,
-                    }}
-                    simulation={simulation}
-                  />
-                </div>
-                
-                {/* Legend sidebar */}
-                {showLegend && (
-                  <div className="lg:w-72">
-                    <ColorLegend key={`legend-${paletteKey}`} board={simulation.board} />
+          <TimelineProvider>
+            <LegendHighlightProvider>
+              <div className="container mx-auto px-4 py-12">
+                <div className="flex flex-col lg:flex-row gap-10 justify-center">
+                  {/* Print preview */}
+                  <div className="flex-1 max-w-2xl space-y-8">
+                    <PrintPreview 
+                      key={paletteKey}
+                      simulation={simulation} 
+                      pgn={currentPgn}
+                      title={gameTitle}
+                    />
+                    
+                    {/* Product selector for ordering */}
+                    <ProductSelector 
+                      customPrintData={{
+                        pgn: currentPgn,
+                        gameTitle: gameTitle,
+                      }}
+                      simulation={simulation}
+                    />
                   </div>
-                )}
+                  
+                  {/* Legend sidebar */}
+                  {showLegend && (
+                    <div className="lg:w-72">
+                      <TimelineAwareColorLegend 
+                        paletteKey={paletteKey} 
+                        fullBoard={simulation.board}
+                        totalMoves={simulation.totalMoves}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          </LegendHighlightProvider>
+            </LegendHighlightProvider>
+          </TimelineProvider>
         )}
       </main>
       
