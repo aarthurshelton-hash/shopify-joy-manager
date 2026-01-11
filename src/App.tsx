@@ -13,6 +13,7 @@ import Analytics from "./pages/Analytics";
 import Leaderboard from "./pages/Leaderboard";
 import Play from "./pages/Play";
 import CreativeMode from "./pages/CreativeMode";
+import GameHistory from "./pages/GameHistory";
 import News from "./pages/News";
 import QRMockup from "./pages/QRMockup";
 import VisualizationView from "./pages/VisualizationView";
@@ -37,6 +38,7 @@ const App = () => (
             <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/play" element={<Play />} />
             <Route path="/creative" element={<CreativeMode />} />
+            <Route path="/game-history" element={<GameHistory />} />
             <Route path="/news" element={<News />} />
             <Route path="/qr-preview" element={<QRMockup />} />
             <Route path="/v/:shareId" element={<VisualizationView />} />
