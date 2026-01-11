@@ -6,7 +6,7 @@ import { Footer } from '@/components/shop/Footer';
 import { 
   Swords, Users, Zap, Clock, Crown, Copy, Share2, 
   Flag, Handshake, ChevronRight, Palette, Sparkles, Lock, TrendingUp,
-  Bot, User, ChevronLeft
+  Bot, User, ChevronLeft, Image
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
@@ -30,6 +30,7 @@ import { EloChangeAnimation } from '@/components/chess/EloChangeAnimation';
 import { SoundSettings } from '@/components/chess/SoundSettings';
 import { EnPensentControls } from '@/components/chess/EnPensentControls';
 import { MoveHistoryEntry } from '@/components/chess/EnPensentOverlay';
+import { ExportVisualizationModal } from '@/components/chess/ExportVisualizationModal';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { getBotMove, getBotThinkingDelay, BOT_DIFFICULTIES, BotDifficulty } from '@/lib/chess/chessBot';
 import { useChessSounds } from '@/hooks/useChessSounds';
@@ -112,6 +113,9 @@ const Play = () => {
   const [eloAfterGame, setEloAfterGame] = useState<number | null>(null);
   const [showEloAnimation, setShowEloAnimation] = useState(false);
   
+  // Export visualization modal state
+  const [showExportModal, setShowExportModal] = useState(false);
+
   // Swipe navigation for lobby sections (mobile)
   const navigateToSection = useCallback((direction: 'left' | 'right') => {
     const currentIndex = LOBBY_SECTIONS.indexOf(lobbySection);
@@ -1113,7 +1117,7 @@ const Play = () => {
 
                 {/* Post-game actions */}
                 {gameState.status === 'completed' && (
-                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
+                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center flex-wrap">
                     <Button onClick={handleBackToLobby} className="h-11 sm:h-10 touch-manipulation">
                       Back to Lobby
                     </Button>
@@ -1121,6 +1125,16 @@ const Play = () => {
                       <Share2 className="h-4 w-4" />
                       Share Game
                     </Button>
+                    {enPensentEnabled && multiplayerMoveHistory.length > 0 && (
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setShowExportModal(true)} 
+                        className="gap-2 h-11 sm:h-10 touch-manipulation border-primary/30 bg-primary/5 hover:bg-primary/10"
+                      >
+                        <Image className="h-4 w-4" />
+                        Export Art
+                      </Button>
+                    )}
                   </div>
                 )}
               </motion.div>
@@ -1200,7 +1214,7 @@ const Play = () => {
 
                 {/* Post-game actions */}
                 {botGameResult && (
-                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
+                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center flex-wrap">
                     <Button onClick={handleBackToLobby} className="h-11 sm:h-10 touch-manipulation">
                       Back to Lobby
                     </Button>
@@ -1208,6 +1222,16 @@ const Play = () => {
                       <Bot className="h-4 w-4" />
                       Play Again
                     </Button>
+                    {enPensentEnabled && botMoveHistory.length > 0 && (
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setShowExportModal(true)} 
+                        className="gap-2 h-11 sm:h-10 touch-manipulation border-primary/30 bg-primary/5 hover:bg-primary/10"
+                      >
+                        <Image className="h-4 w-4" />
+                        Export Art
+                      </Button>
+                    )}
                   </div>
                 )}
               </motion.div>
@@ -1226,6 +1250,33 @@ const Play = () => {
       <PremiumUpgradeModal
         isOpen={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
+      />
+
+      {/* Export Visualization Modal for post-game En Pensent art */}
+      <ExportVisualizationModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        moveHistory={viewMode === 'bot-game' ? botMoveHistory : multiplayerMoveHistory}
+        whitePalette={
+          viewMode === 'bot-game' 
+            ? colorPalettes.find(p => p.id === selectedPalette)?.white || colorPalettes[0].white
+            : gameState?.whitePalette || colorPalettes[0].white
+        }
+        blackPalette={
+          viewMode === 'bot-game'
+            ? colorPalettes.find(p => p.id === selectedPalette)?.black || colorPalettes[0].black
+            : gameState?.blackPalette || colorPalettes[0].black
+        }
+        gameInfo={{
+          white: viewMode === 'bot-game' ? 'You' : (myColor === 'w' ? 'You' : 'Opponent'),
+          black: viewMode === 'bot-game' 
+            ? `${BOT_DIFFICULTIES.find(d => d.id === botDifficulty)?.label} Bot`
+            : (myColor === 'b' ? 'You' : 'Opponent'),
+          result: viewMode === 'bot-game'
+            ? (botGameResult === 'win' ? 'You Won!' : botGameResult === 'loss' ? 'You Lost' : 'Draw')
+            : (gameState?.result || 'Game Finished'),
+          totalMoves: viewMode === 'bot-game' ? botMoveHistory.length : multiplayerMoveHistory.length,
+        }}
       />
     </div>
   );

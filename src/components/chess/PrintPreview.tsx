@@ -7,6 +7,7 @@ import VerticalTimelineSlider from './VerticalTimelineSlider';
 import TimelineSlider from './TimelineSlider';
 import { SimulationResult, SquareData } from '@/lib/chess/gameSimulator';
 import { Button } from '@/components/ui/button';
+import { OrderPrintButton } from '@/components/shop/OrderPrintButton';
 import { Download, Loader2, Sun, Moon, Crown, Bookmark, Check, Film } from 'lucide-react';
 import { toast } from 'sonner';
 import QRCode from 'qrcode';
@@ -599,8 +600,8 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
           )}
         </div>
         
-        {/* Save to Gallery button */}
-        <div className="flex justify-center">
+        {/* Save to Gallery + Order Print row */}
+        <div className="flex flex-col sm:flex-row justify-center gap-3">
           <Button 
             onClick={handleSaveToGallery}
             disabled={isDownloading || isSaving || isSaved || isGeneratingGif}
@@ -621,6 +622,9 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
               <span className="text-xs opacity-75 ml-1">Premium</span>
             )}
           </Button>
+
+          {/* Order Print Button - Stylish but not obnoxious */}
+          <OrderPrintButton variant="default" size="md" />
         </div>
       </div>
       
