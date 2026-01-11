@@ -3,7 +3,10 @@
 
 export type PieceType = 'k' | 'q' | 'r' | 'b' | 'n' | 'p';
 export type PieceColor = 'w' | 'b';
-export type PaletteId = 'hotCold' | 'medieval' | 'egyptian' | 'roman' | 'modern' | 'greyscale' | 'custom';
+export type PaletteId = 
+  | 'hotCold' | 'medieval' | 'egyptian' | 'roman' | 'modern' | 'greyscale'
+  | 'japanese' | 'nordic' | 'artdeco' | 'tropical' | 'cyberpunk' 
+  | 'autumn' | 'ocean' | 'desert' | 'cosmic' | 'vintage' | 'custom';
 
 export interface PieceColorMapping {
   piece: PieceType;
@@ -27,6 +30,7 @@ export interface ColorPalette {
   white: Record<PieceType, string>;
   black: Record<PieceType, string>;
   legendTheme: PaletteLegendTheme;
+  backgroundImage?: string;
 }
 
 // === HOT vs COLD (Default) ===
@@ -34,6 +38,7 @@ const hotColdPalette: ColorPalette = {
   id: 'hotCold',
   name: 'Hot & Cold',
   description: 'Warm reds vs cool blues for maximum contrast',
+  backgroundImage: 'hotcold',
   white: {
     k: '#1E3A5F', // Navy Deep Blue - King
     q: '#10B981', // Emerald Green
@@ -63,6 +68,7 @@ const medievalPalette: ColorPalette = {
   id: 'medieval',
   name: 'Medieval',
   description: 'Rich jewel tones of castle halls and royal courts',
+  backgroundImage: 'medieval',
   white: {
     k: '#C9A227', // Gold Crown
     q: '#1E3A5F', // Noble Navy
@@ -92,6 +98,7 @@ const egyptianPalette: ColorPalette = {
   id: 'egyptian',
   name: 'Egyptian',
   description: 'Golden sands and lapis lazuli of ancient temples',
+  backgroundImage: 'egyptian',
   white: {
     k: '#FFD700', // Pharaoh Gold
     q: '#1E40AF', // Lapis Lazuli
@@ -121,6 +128,7 @@ const romanPalette: ColorPalette = {
   id: 'roman',
   name: 'Roman',
   description: 'Imperial marble and terracotta of the Empire',
+  backgroundImage: 'roman',
   white: {
     k: '#7C3AED', // Imperial Purple
     q: '#DC2626', // Roman Red
@@ -150,6 +158,7 @@ const modernPalette: ColorPalette = {
   id: 'modern',
   name: 'Modern',
   description: 'Clean, vibrant colors for contemporary aesthetics',
+  backgroundImage: 'modern',
   white: {
     k: '#3B82F6', // Electric Blue
     q: '#EC4899', // Hot Pink
@@ -179,6 +188,7 @@ const greyscalePalette: ColorPalette = {
   id: 'greyscale',
   name: 'Greyscale',
   description: 'Warm vs cold greys for elegant monochrome prints',
+  backgroundImage: 'greyscale',
   white: {
     k: '#94A3B8', // Cool Grey 400
     q: '#CBD5E1', // Cool Grey 300
@@ -200,6 +210,306 @@ const greyscalePalette: ColorPalette = {
     whiteEmoji: '🌙',
     blackName: 'Warm',
     blackEmoji: '🌅',
+  },
+};
+
+// === JAPANESE ===
+const japanesePalette: ColorPalette = {
+  id: 'japanese',
+  name: 'Japanese',
+  description: 'Sakura blossoms and zen garden tranquility',
+  backgroundImage: 'japanese',
+  white: {
+    k: '#F472B6', // Sakura Pink
+    q: '#22C55E', // Bamboo Green
+    r: '#FECDD3', // Soft Blossom
+    b: '#A3E635', // Spring Leaf
+    n: '#FB923C', // Koi Orange
+    p: '#F5F5F4', // Rice Paper
+  },
+  black: {
+    k: '#BE123C', // Deep Rose
+    q: '#166534', // Forest Moss
+    r: '#991B1B', // Torii Red
+    b: '#15803D', // Jade
+    n: '#78350F', // Autumn Maple
+    p: '#44403C', // Ink Stone
+  },
+  legendTheme: {
+    whiteName: 'Sakura',
+    whiteEmoji: '🌸',
+    blackName: 'Samurai',
+    blackEmoji: '⚔️',
+  },
+};
+
+// === NORDIC ===
+const nordicPalette: ColorPalette = {
+  id: 'nordic',
+  name: 'Nordic',
+  description: 'Aurora borealis over frozen Scandinavian nights',
+  backgroundImage: 'nordic',
+  white: {
+    k: '#22D3EE', // Aurora Cyan
+    q: '#A78BFA', // Northern Violet
+    r: '#2DD4BF', // Glacial Teal
+    b: '#67E8F9', // Ice Blue
+    n: '#86EFAC', // Aurora Green
+    p: '#E0F2FE', // Snow White
+  },
+  black: {
+    k: '#0E7490', // Deep Fjord
+    q: '#5B21B6', // Twilight Purple
+    r: '#0F766E', // Pine Dark
+    b: '#0369A1', // Nordic Sea
+    n: '#14532D', // Forest Night
+    p: '#1E293B', // Polar Night
+  },
+  legendTheme: {
+    whiteName: 'Aurora',
+    whiteEmoji: '✨',
+    blackName: 'Frost',
+    blackEmoji: '❄️',
+  },
+};
+
+// === ART DECO ===
+const artdecoPalette: ColorPalette = {
+  id: 'artdeco',
+  name: 'Art Deco',
+  description: '1920s glamour with gold and geometric elegance',
+  backgroundImage: 'artdeco',
+  white: {
+    k: '#FFD700', // Gold
+    q: '#F5F5F4', // Ivory
+    r: '#FCD34D', // Champagne
+    b: '#FBBF24', // Amber
+    n: '#FDE68A', // Pale Gold
+    p: '#FFFBEB', // Cream
+  },
+  black: {
+    k: '#0C0A09', // Jet Black
+    q: '#1C1917', // Ebony
+    r: '#292524', // Onyx
+    b: '#44403C', // Charcoal
+    n: '#57534E', // Graphite
+    p: '#1E1B4B', // Midnight
+  },
+  legendTheme: {
+    whiteName: 'Gold',
+    whiteEmoji: '✨',
+    blackName: 'Noir',
+    blackEmoji: '🎭',
+  },
+};
+
+// === TROPICAL ===
+const tropicalPalette: ColorPalette = {
+  id: 'tropical',
+  name: 'Tropical',
+  description: 'Vibrant jungle paradise with exotic colors',
+  backgroundImage: 'tropical',
+  white: {
+    k: '#22C55E', // Jungle Green
+    q: '#F97316', // Toucan Orange
+    r: '#84CC16', // Palm Leaf
+    b: '#FACC15', // Tropical Sun
+    n: '#FB923C', // Mango
+    p: '#4ADE80', // Parrot Green
+  },
+  black: {
+    k: '#166534', // Deep Rainforest
+    q: '#C2410C', // Hibiscus Red
+    r: '#3F6212', // Canopy Dark
+    b: '#B45309', // Tiger Orange
+    n: '#7C2D12', // Volcanic Soil
+    p: '#14532D', // Shadow Green
+  },
+  legendTheme: {
+    whiteName: 'Paradise',
+    whiteEmoji: '🌴',
+    blackName: 'Jungle',
+    blackEmoji: '🦜',
+  },
+};
+
+// === CYBERPUNK ===
+const cyberpunkPalette: ColorPalette = {
+  id: 'cyberpunk',
+  name: 'Cyberpunk',
+  description: 'Neon-lit dystopian future cityscapes',
+  backgroundImage: 'cyberpunk',
+  white: {
+    k: '#F472B6', // Neon Pink
+    q: '#22D3EE', // Cyber Cyan
+    r: '#E879F9', // Electric Magenta
+    b: '#818CF8', // Hologram Purple
+    n: '#67E8F9', // Laser Blue
+    p: '#A78BFA', // Soft Neon
+  },
+  black: {
+    k: '#BE185D', // Deep Magenta
+    q: '#0E7490', // Dark Cyan
+    r: '#7C3AED', // Violet Dark
+    b: '#4338CA', // Indigo
+    n: '#1D4ED8', // Electric Blue
+    p: '#1E1B4B', // Cyber Dark
+  },
+  legendTheme: {
+    whiteName: 'Neon',
+    whiteEmoji: '💜',
+    blackName: 'Shadow',
+    blackEmoji: '🌆',
+  },
+};
+
+// === AUTUMN ===
+const autumnPalette: ColorPalette = {
+  id: 'autumn',
+  name: 'Autumn',
+  description: 'Golden harvest and falling maple leaves',
+  backgroundImage: 'autumn',
+  white: {
+    k: '#F59E0B', // Golden Amber
+    q: '#DC2626', // Maple Red
+    r: '#FBBF24', // Harvest Yellow
+    b: '#EA580C', // Pumpkin Orange
+    n: '#F97316', // Autumn Orange
+    p: '#FEF3C7', // Wheat
+  },
+  black: {
+    k: '#92400E', // Deep Amber
+    q: '#991B1B', // Burgundy
+    r: '#78350F', // Chestnut
+    b: '#7C2D12', // Rust
+    n: '#713F12', // Walnut
+    p: '#451A03', // Dark Earth
+  },
+  legendTheme: {
+    whiteName: 'Harvest',
+    whiteEmoji: '🍂',
+    blackName: 'Forest',
+    blackEmoji: '🍁',
+  },
+};
+
+// === OCEAN ===
+const oceanPalette: ColorPalette = {
+  id: 'ocean',
+  name: 'Ocean',
+  description: 'Deep sea mysteries and coral reef wonders',
+  backgroundImage: 'ocean',
+  white: {
+    k: '#0EA5E9', // Ocean Blue
+    q: '#06B6D4', // Coral Cyan
+    r: '#22D3EE', // Shallow Water
+    b: '#2DD4BF', // Sea Foam
+    n: '#38BDF8', // Wave Blue
+    p: '#E0F2FE', // Sea Spray
+  },
+  black: {
+    k: '#0C4A6E', // Abyss Blue
+    q: '#0E7490', // Deep Teal
+    r: '#164E63', // Ocean Deep
+    b: '#115E59', // Sea Dark
+    n: '#1E3A5F', // Navy Depths
+    p: '#0F172A', // Midnight Sea
+  },
+  legendTheme: {
+    whiteName: 'Surface',
+    whiteEmoji: '🌊',
+    blackName: 'Depths',
+    blackEmoji: '🐋',
+  },
+};
+
+// === DESERT ===
+const desertPalette: ColorPalette = {
+  id: 'desert',
+  name: 'Desert',
+  description: 'Sunset canyons and red rock formations',
+  backgroundImage: 'desert',
+  white: {
+    k: '#DC2626', // Canyon Red
+    q: '#F97316', // Sunset Orange
+    r: '#D4A574', // Sandstone
+    b: '#FBBF24', // Desert Sun
+    n: '#EA580C', // Mesa Orange
+    p: '#FEF3C7', // Sand
+  },
+  black: {
+    k: '#7C2D12', // Rust Rock
+    q: '#9A3412', // Terracotta
+    r: '#78350F', // Adobe
+    b: '#92400E', // Burnt Sienna
+    n: '#451A03', // Shadow Canyon
+    p: '#1C1917', // Desert Night
+  },
+  legendTheme: {
+    whiteName: 'Dawn',
+    whiteEmoji: '🌅',
+    blackName: 'Dusk',
+    blackEmoji: '🏜️',
+  },
+};
+
+// === COSMIC ===
+const cosmicPalette: ColorPalette = {
+  id: 'cosmic',
+  name: 'Cosmic',
+  description: 'Nebulae and stardust across the galaxy',
+  backgroundImage: 'cosmic',
+  white: {
+    k: '#E879F9', // Nebula Pink
+    q: '#A78BFA', // Stardust Purple
+    r: '#F0ABFC', // Cosmic Rose
+    b: '#C4B5FD', // Galaxy Lavender
+    n: '#818CF8', // Star Blue
+    p: '#F5D0FE', // Plasma Pink
+  },
+  black: {
+    k: '#7C3AED', // Deep Violet
+    q: '#6D28D9', // Dark Nebula
+    r: '#5B21B6', // Space Purple
+    b: '#4C1D95', // Void Purple
+    n: '#3730A3', // Dark Cosmos
+    p: '#1E1B4B', // Black Hole
+  },
+  legendTheme: {
+    whiteName: 'Stars',
+    whiteEmoji: '⭐',
+    blackName: 'Void',
+    blackEmoji: '🌌',
+  },
+};
+
+// === VINTAGE ===
+const vintagePalette: ColorPalette = {
+  id: 'vintage',
+  name: 'Vintage',
+  description: 'Sepia-toned nostalgia and timeless elegance',
+  backgroundImage: 'vintage',
+  white: {
+    k: '#A8A29E', // Antique Silver
+    q: '#D6D3D1', // Old Lace
+    r: '#D4A574', // Aged Paper
+    b: '#C9A227', // Brass
+    n: '#A16207', // Aged Gold
+    p: '#FEFCE8', // Ivory
+  },
+  black: {
+    k: '#57534E', // Patina
+    q: '#78716C', // Tarnished Silver
+    r: '#6B4423', // Leather Brown
+    b: '#713F12', // Antique Bronze
+    n: '#44403C', // Faded Ink
+    p: '#292524', // Old Photo
+  },
+  legendTheme: {
+    whiteName: 'Light',
+    whiteEmoji: '📜',
+    blackName: 'Shadow',
+    blackEmoji: '🕰️',
   },
 };
 
@@ -240,6 +550,16 @@ export const colorPalettes: ColorPalette[] = [
   romanPalette,
   modernPalette,
   greyscalePalette,
+  japanesePalette,
+  nordicPalette,
+  artdecoPalette,
+  tropicalPalette,
+  cyberpunkPalette,
+  autumnPalette,
+  oceanPalette,
+  desertPalette,
+  cosmicPalette,
+  vintagePalette,
   customPalette,
 ];
 
