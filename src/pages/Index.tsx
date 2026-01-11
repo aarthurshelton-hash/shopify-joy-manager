@@ -6,6 +6,7 @@ import ChessLoadingAnimation from '@/components/chess/ChessLoadingAnimation';
 import PaletteSelector from '@/components/chess/PaletteSelector';
 import ChessParticles from '@/components/chess/ChessParticles';
 import FloatingChessPieces from '@/components/chess/FloatingChessPieces';
+import TrendingWidget from '@/components/homepage/TrendingWidget';
 import { simulateGame, SimulationResult } from '@/lib/chess/gameSimulator';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
@@ -463,6 +464,9 @@ const Index = () => {
                 </div>
               </div>
             </section>
+
+            {/* Community Trending Widget */}
+            <TrendingWidget />
 
             {/* Premium Subscription CTA */}
             <section className="py-12">
