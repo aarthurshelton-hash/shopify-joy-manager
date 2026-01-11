@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { cleanPgn } from '@/lib/chess/pgnValidator';
 import { PaletteId } from '@/lib/chess/pieceColors';
 import { useScrollAnimation, scrollAnimationClasses } from '@/hooks/useScrollAnimation';
+import { LegendHighlightProvider } from '@/contexts/LegendHighlightContext';
 
 // Import AI-generated art
 import heroChessArt from '@/assets/hero-chess-art.jpg';
@@ -475,35 +476,37 @@ const Index = () => {
             </section>
           </>
         ) : (
-          <div className="container mx-auto px-4 py-12">
-            <div className="flex flex-col lg:flex-row gap-10 justify-center">
-              {/* Print preview */}
-              <div className="flex-1 max-w-2xl space-y-8">
-                <PrintPreview 
-                  key={paletteKey}
-                  simulation={simulation} 
-                  pgn={currentPgn}
-                  title={gameTitle}
-                />
-                
-                {/* Product selector for ordering */}
-                <ProductSelector 
-                  customPrintData={{
-                    pgn: currentPgn,
-                    gameTitle: gameTitle,
-                  }}
-                  simulation={simulation}
-                />
-              </div>
-              
-              {/* Legend sidebar */}
-              {showLegend && (
-                <div className="lg:w-72">
-                  <ColorLegend key={`legend-${paletteKey}`} />
+          <LegendHighlightProvider>
+            <div className="container mx-auto px-4 py-12">
+              <div className="flex flex-col lg:flex-row gap-10 justify-center">
+                {/* Print preview */}
+                <div className="flex-1 max-w-2xl space-y-8">
+                  <PrintPreview 
+                    key={paletteKey}
+                    simulation={simulation} 
+                    pgn={currentPgn}
+                    title={gameTitle}
+                  />
+                  
+                  {/* Product selector for ordering */}
+                  <ProductSelector 
+                    customPrintData={{
+                      pgn: currentPgn,
+                      gameTitle: gameTitle,
+                    }}
+                    simulation={simulation}
+                  />
                 </div>
-              )}
+                
+                {/* Legend sidebar */}
+                {showLegend && (
+                  <div className="lg:w-72">
+                    <ColorLegend key={`legend-${paletteKey}`} />
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          </LegendHighlightProvider>
         )}
       </main>
       
