@@ -91,3 +91,11 @@ export const KEYBOARD_SHORTCUTS = [
   { key: 'Esc', action: 'Return to lobby' },
   { key: '?', action: 'Show keyboard shortcuts' },
 ];
+
+export const TIMELINE_SHORTCUTS = [
+  { key: 'Space', action: 'Play/Pause timeline' },
+  { key: '←', action: 'Previous move' },
+  { key: '→', action: 'Next move' },
+  { key: 'Home', action: 'Go to start' },
+  { key: 'End', action: 'Go to end (show all)' },
+];
