@@ -2,8 +2,14 @@ import React, { useMemo, useState } from 'react';
 import { getPieceColorLegend, getActivePalette, PieceType, PieceColor } from '@/lib/chess/pieceColors';
 import { useLegendHighlight } from '@/contexts/LegendHighlightContext';
 import { SquareData } from '@/lib/chess/gameSimulator';
-import { GitCompare, X, Swords, ChevronDown, ChevronUp } from 'lucide-react';
+import { GitCompare, X, Swords, Grid3X3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface ColorLegendProps {
   interactive?: boolean;
@@ -14,6 +20,11 @@ interface PieceStats {
   squareCount: number;
   visitCount: number;
   percentage: number;
+}
+
+interface PieceHeatmap {
+  grid: number[][]; // 8x8 grid of visit counts
+  maxVisits: number;
 }
 
 interface BattleStats {
@@ -44,11 +55,95 @@ interface BattleStats {
   } | null;
 }
 
+// Mini heatmap component
+const MiniHeatmap: React.FC<{ heatmap: PieceHeatmap; color: string; pieceName: string }> = ({ 
+  heatmap, 
+  color,
+  pieceName 
+}) => {
+  const squareSize = 4; // pixels per square
+  
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div 
+          className="rounded overflow-hidden shadow-inner border border-border/30 cursor-help shrink-0"
+          style={{ width: squareSize * 8, height: squareSize * 8 }}
+        >
+          <svg width={squareSize * 8} height={squareSize * 8} viewBox="0 0 8 8">
+            {heatmap.grid.map((rank, rankIdx) =>
+              rank.map((visits, fileIdx) => {
+                const intensity = heatmap.maxVisits > 0 ? visits / heatmap.maxVisits : 0;
+                return (
+                  <rect
+                    key={`${rankIdx}-${fileIdx}`}
+                    x={fileIdx}
+                    y={rankIdx}
+                    width={1}
+                    height={1}
+                    fill={visits > 0 ? color : 'transparent'}
+                    opacity={intensity * 0.9 + 0.1}
+                  />
+                );
+              })
+            )}
+          </svg>
+        </div>
+      </TooltipTrigger>
+      <TooltipContent side="left" className="p-2">
+        <div className="text-xs font-medium mb-1">{pieceName} Heatmap</div>
+        <div 
+          className="rounded overflow-hidden border border-border/50"
+          style={{ width: 64, height: 64 }}
+        >
+          <svg width={64} height={64} viewBox="0 0 8 8">
+            {/* Board pattern */}
+            {Array.from({ length: 8 }).map((_, rankIdx) =>
+              Array.from({ length: 8 }).map((_, fileIdx) => (
+                <rect
+                  key={`bg-${rankIdx}-${fileIdx}`}
+                  x={fileIdx}
+                  y={rankIdx}
+                  width={1}
+                  height={1}
+                  fill={(rankIdx + fileIdx) % 2 === 0 ? '#e8e8e8' : '#b8b8b8'}
+                  opacity={0.3}
+                />
+              ))
+            )}
+            {/* Heatmap overlay */}
+            {heatmap.grid.map((rank, rankIdx) =>
+              rank.map((visits, fileIdx) => {
+                const intensity = heatmap.maxVisits > 0 ? visits / heatmap.maxVisits : 0;
+                return visits > 0 ? (
+                  <rect
+                    key={`heat-${rankIdx}-${fileIdx}`}
+                    x={fileIdx}
+                    y={rankIdx}
+                    width={1}
+                    height={1}
+                    fill={color}
+                    opacity={intensity * 0.85 + 0.15}
+                  />
+                ) : null;
+              })
+            )}
+          </svg>
+        </div>
+        <div className="text-[10px] text-muted-foreground mt-1 text-center">
+          Darker = more visits
+        </div>
+      </TooltipContent>
+    </Tooltip>
+  );
+};
+
 const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board }) => {
   const legend = getPieceColorLegend();
   const palette = getActivePalette();
   const theme = palette.legendTheme;
   const [showBattleAnalysis, setShowBattleAnalysis] = useState(false);
+  const [showHeatmaps, setShowHeatmaps] = useState(false);
   
   // Try to use highlight context if available (wrapped in provider)
   let highlightContext: ReturnType<typeof useLegendHighlight> | null = null;
@@ -119,6 +214,42 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board }) 
     }
     
     return stats;
+  }, [board]);
+
+  // Calculate heatmaps for each piece
+  const pieceHeatmaps = useMemo(() => {
+    if (!board) return new Map<string, PieceHeatmap>();
+    
+    const heatmaps = new Map<string, PieceHeatmap>();
+    const pieceTypes: PieceType[] = ['k', 'q', 'r', 'b', 'n', 'p'];
+    const colors: PieceColor[] = ['w', 'b'];
+    
+    // Initialize heatmaps
+    for (const color of colors) {
+      for (const piece of pieceTypes) {
+        heatmaps.set(`${color}-${piece}`, {
+          grid: Array.from({ length: 8 }, () => Array(8).fill(0)),
+          maxVisits: 0
+        });
+      }
+    }
+    
+    // Populate heatmaps
+    for (let rank = 0; rank < 8; rank++) {
+      for (let file = 0; file < 8; file++) {
+        const square = board[rank][file];
+        
+        for (const visit of square.visits) {
+          const key = `${visit.color}-${visit.piece}`;
+          const heatmap = heatmaps.get(key)!;
+          // Note: rank 0 is a8, so we need to flip for display
+          heatmap.grid[7 - rank][file]++;
+          heatmap.maxVisits = Math.max(heatmap.maxVisits, heatmap.grid[7 - rank][file]);
+        }
+      }
+    }
+    
+    return heatmaps;
   }, [board]);
 
   // Calculate battle analysis stats
@@ -264,17 +395,22 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board }) 
     return pieceStats.get(`${pieceColor}-${pieceType}`) || null;
   };
 
+  const getHeatmap = (pieceType: PieceType, pieceColor: PieceColor): PieceHeatmap | null => {
+    return pieceHeatmaps.get(`${pieceColor}-${pieceType}`) || null;
+  };
+
   const renderPieceItem = (item: typeof legend[0]) => {
     const highlighted = isHighlighted(item.piece, item.color);
     const locked = isLocked(item.piece, item.color);
     const lockedIndex = getLockedIndex(item.piece, item.color);
     const stats = getStats(item.piece, item.color);
+    const heatmap = getHeatmap(item.piece, item.color);
     const showStats = (highlighted || locked) && stats;
 
     return (
       <div 
         key={item.name} 
-        className={`flex items-center gap-3 p-2 -m-2 rounded-md transition-all duration-200 ${
+        className={`flex items-center gap-2 p-2 -m-2 rounded-md transition-all duration-200 ${
           interactive && highlightContext ? 'cursor-pointer hover:bg-accent/50' : ''
         } ${highlighted ? 'bg-accent ring-2 ring-primary/50' : ''} ${
           locked ? (lockedIndex === 0 ? 'bg-sky-500/20 ring-2 ring-sky-500' : 'bg-rose-500/20 ring-2 ring-rose-500') : ''
@@ -283,20 +419,29 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board }) 
         onMouseLeave={handlePieceLeave}
         onClick={() => handlePieceClick(item.piece, item.color)}
       >
+        {/* Mini heatmap */}
+        {showHeatmaps && heatmap && (
+          <MiniHeatmap 
+            heatmap={heatmap} 
+            color={item.hex} 
+            pieceName={item.name}
+          />
+        )}
+        
         <div
-          className={`w-5 h-5 rounded shadow-sm transition-transform duration-200 ${
+          className={`w-5 h-5 rounded shadow-sm transition-transform duration-200 shrink-0 ${
             highlighted || locked ? 'scale-125 ring-2 ring-white/50' : ''
           }`}
           style={{ backgroundColor: item.hex }}
         />
-        <span className="text-lg">{item.symbol}</span>
-        <span className="text-xs text-muted-foreground font-serif flex-1">
+        <span className="text-lg shrink-0">{item.symbol}</span>
+        <span className="text-xs text-muted-foreground font-serif flex-1 truncate">
           {item.name.replace('White ', '').replace('Black ', '')}
         </span>
         
         {/* Lock indicator with compare badge */}
         {locked && (
-          <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${
+          <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 ${
             lockedIndex === 0 ? 'bg-sky-500' : 'bg-rose-500'
           }`}>
             {lockedIndex + 1}
@@ -305,7 +450,7 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board }) 
         
         {/* Stats on hover/lock */}
         {showStats && (
-          <div className="flex flex-col items-end text-[10px] leading-tight animate-fade-in">
+          <div className="flex flex-col items-end text-[10px] leading-tight animate-fade-in shrink-0">
             <span className="text-foreground font-semibold">{stats.percentage}%</span>
             <span className="text-muted-foreground">{stats.squareCount} sq</span>
           </div>
@@ -427,24 +572,39 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board }) 
   };
   
   return (
-    <div className="flex flex-col gap-5 p-6 bg-card rounded-lg border border-border/50">
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="font-display text-sm font-semibold tracking-wide">
-          Color Legend
-        </h3>
-        <div className="flex items-center gap-2">
-          {/* Battle Analysis toggle */}
-          {board && (
-            <Button
-              variant={showBattleAnalysis ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setShowBattleAnalysis(!showBattleAnalysis)}
-              className={`h-6 px-2 text-[10px] gap-1 ${showBattleAnalysis ? 'bg-amber-500 hover:bg-amber-600' : ''}`}
-            >
-              <Swords className="w-3 h-3" />
-              Battle
-            </Button>
-          )}
+    <TooltipProvider>
+      <div className="flex flex-col gap-5 p-6 bg-card rounded-lg border border-border/50">
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="font-display text-sm font-semibold tracking-wide">
+            Color Legend
+          </h3>
+          <div className="flex items-center gap-1">
+            {/* Heatmap toggle */}
+            {board && !showBattleAnalysis && (
+              <Button
+                variant={showHeatmaps ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setShowHeatmaps(!showHeatmaps)}
+                className={`h-6 px-2 text-[10px] gap-1 ${showHeatmaps ? 'bg-violet-500 hover:bg-violet-600' : ''}`}
+                title="Toggle mini heatmaps"
+              >
+                <Grid3X3 className="w-3 h-3" />
+                Maps
+              </Button>
+            )}
+            
+            {/* Battle Analysis toggle */}
+            {board && (
+              <Button
+                variant={showBattleAnalysis ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setShowBattleAnalysis(!showBattleAnalysis)}
+                className={`h-6 px-2 text-[10px] gap-1 ${showBattleAnalysis ? 'bg-amber-500 hover:bg-amber-600' : ''}`}
+              >
+                <Swords className="w-3 h-3" />
+                Battle
+              </Button>
+            )}
           
           {/* Compare mode toggle */}
           {interactive && highlightContext && !showBattleAnalysis && (
@@ -536,7 +696,8 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board }) 
           </div>
         </>
       )}
-    </div>
+      </div>
+    </TooltipProvider>
   );
 };
 
