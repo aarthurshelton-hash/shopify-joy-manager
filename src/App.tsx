@@ -10,6 +10,7 @@ import MyVision from "./pages/MyVision";
 import About from "./pages/About";
 import Investors from "./pages/Investors";
 import News from "./pages/News";
+import QRMockup from "./pages/QRMockup";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/about" element={<About />} />
             <Route path="/investors" element={<Investors />} />
             <Route path="/news" element={<News />} />
+            <Route path="/qr-preview" element={<QRMockup />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
