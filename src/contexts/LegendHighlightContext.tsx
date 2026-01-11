@@ -6,14 +6,22 @@ export interface HighlightedPiece {
   pieceColor: PieceColor;
 }
 
+// For reverse highlighting: hovering a square highlights relevant pieces
+export interface HoveredSquareInfo {
+  square: string;
+  pieces: HighlightedPiece[]; // All pieces that have visited this square
+}
+
 interface LegendHighlightContextValue {
   highlightedPiece: HighlightedPiece | null;
   lockedPieces: HighlightedPiece[];
   compareMode: boolean;
+  hoveredSquare: HoveredSquareInfo | null;
   setHighlightedPiece: (piece: HighlightedPiece | null) => void;
   toggleLockedPiece: (piece: HighlightedPiece) => void;
   toggleCompareMode: () => void;
   clearLock: () => void;
+  setHoveredSquare: (info: HoveredSquareInfo | null) => void;
 }
 
 const LegendHighlightContext = createContext<LegendHighlightContextValue | undefined>(undefined);
@@ -22,9 +30,14 @@ export function LegendHighlightProvider({ children }: { children: ReactNode }) {
   const [highlightedPiece, setHighlightedPieceState] = useState<HighlightedPiece | null>(null);
   const [lockedPieces, setLockedPieces] = useState<HighlightedPiece[]>([]);
   const [compareMode, setCompareMode] = useState(false);
+  const [hoveredSquare, setHoveredSquareState] = useState<HoveredSquareInfo | null>(null);
 
   const setHighlightedPiece = useCallback((piece: HighlightedPiece | null) => {
     setHighlightedPieceState(piece);
+  }, []);
+
+  const setHoveredSquare = useCallback((info: HoveredSquareInfo | null) => {
+    setHoveredSquareState(info);
   }, []);
 
   const toggleLockedPiece = useCallback((piece: HighlightedPiece) => {
@@ -71,10 +84,12 @@ export function LegendHighlightProvider({ children }: { children: ReactNode }) {
       highlightedPiece: lockedPieces.length > 0 ? null : highlightedPiece, 
       lockedPieces,
       compareMode,
+      hoveredSquare,
       setHighlightedPiece, 
       toggleLockedPiece,
       toggleCompareMode,
-      clearLock 
+      clearLock,
+      setHoveredSquare,
     }}>
       {children}
     </LegendHighlightContext.Provider>

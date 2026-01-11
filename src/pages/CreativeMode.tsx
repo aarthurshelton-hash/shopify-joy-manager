@@ -14,6 +14,8 @@ import { Input } from '@/components/ui/input';
 import { colorPalettes, PaletteId, PieceType } from '@/lib/chess/pieceColors';
 import AuthModal from '@/components/auth/AuthModal';
 import PremiumUpgradeModal from '@/components/premium/PremiumUpgradeModal';
+import { LiveColorLegend } from '@/components/chess/LiveColorLegend';
+import { LegendHighlightProvider } from '@/contexts/LegendHighlightContext';
 
 type PieceKey = 'K' | 'Q' | 'R' | 'B' | 'N' | 'P' | 'k' | 'q' | 'r' | 'b' | 'n' | 'p' | null;
 
@@ -389,8 +391,17 @@ const CreativeMode = () => {
               </div>
             </div>
 
-            {/* Sidebar */}
+            {/* Sidebar with Legend */}
             <div className="space-y-6">
+              {/* Live Color Legend for Creative Mode */}
+              <LegendHighlightProvider>
+                <LiveColorLegend
+                  whitePalette={whitePalette}
+                  blackPalette={blackPalette}
+                  title="Your Palette"
+                />
+              </LegendHighlightProvider>
+              
               {renderPiecePalette()}
               {renderColorPickers()}
 
