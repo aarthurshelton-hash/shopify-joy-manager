@@ -2,13 +2,15 @@ import React, { useRef, useEffect, useState } from 'react';
 import html2canvas from 'html2canvas';
 import GIF from 'gif.js';
 import ChessBoardVisualization from './ChessBoardVisualization';
+import InteractiveVisualizationBoard from './InteractiveVisualizationBoard';
+import ColorLegend from './ColorLegend';
 import GameInfoDisplay from './GameInfoDisplay';
 import VerticalTimelineSlider from './VerticalTimelineSlider';
 import TimelineSlider from './TimelineSlider';
 import { SimulationResult, SquareData } from '@/lib/chess/gameSimulator';
 import { Button } from '@/components/ui/button';
 import { OrderPrintButton } from '@/components/shop/OrderPrintButton';
-import { Download, Loader2, Sun, Moon, Crown, Bookmark, Check, Film } from 'lucide-react';
+import { Download, Loader2, Sun, Moon, Crown, Bookmark, Check, Film, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import QRCode from 'qrcode';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
@@ -53,6 +55,7 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showWatermark, setShowWatermark] = useState(false);
   const [gifPreviewMove, setGifPreviewMove] = useState<number | null>(null);
+  const [showLegend, setShowLegend] = useState(true);
   
   const { isPremium, user } = useAuth();
 
@@ -456,7 +459,7 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
   return (
     <div className="space-y-6">
       {/* Mode Toggle */}
-      <div className="flex justify-center gap-2">
+      <div className="flex justify-center gap-2 flex-wrap">
         <Button
           variant={darkMode ? "outline" : "default"}
           size="sm"
@@ -475,10 +478,19 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
           <Moon className="h-3 w-3" />
           Dark
         </Button>
+        <Button
+          variant={showLegend ? "default" : "outline"}
+          size="sm"
+          onClick={() => setShowLegend(!showLegend)}
+          className="gap-2 text-xs"
+        >
+          {showLegend ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+          Legend
+        </Button>
       </div>
 
       {/* Main content area with timeline on left */}
-      <div className="flex gap-4 justify-center">
+      <div className="flex gap-4 justify-center items-start flex-wrap">
         {/* Vertical Timeline on the left */}
         <div className="hidden md:flex">
           <VerticalTimelineSlider 
@@ -501,9 +513,9 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
           }}
         >
           <div className="flex flex-col items-center gap-6">
-            {/* Chess board visualization with watermark overlay */}
+            {/* Chess board visualization with watermark overlay - Interactive for bidirectional legend highlighting */}
             <div className="relative">
-              <ChessBoardVisualization 
+              <InteractiveVisualizationBoard 
                 board={gifPreviewMove !== null ? filterBoardToMove(simulation.board, gifPreviewMove) : timelineBoard} 
                 size={boardSize}
               />
@@ -528,6 +540,16 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
             </p>
           </div>
         </div>
+
+        {/* Color Legend on the right - Interactive */}
+        {showLegend && (
+          <div className="hidden lg:block w-72">
+            <ColorLegend 
+              interactive={true} 
+              board={gifPreviewMove !== null ? filterBoardToMove(simulation.board, gifPreviewMove) : timelineBoard}
+            />
+          </div>
+        )}
       </div>
 
       {/* Mobile Timeline - shown below on small screens */}
@@ -537,6 +559,16 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
           moves={simulation.gameData.moves}
         />
       </div>
+
+      {/* Mobile Legend - shown below timeline on small screens */}
+      {showLegend && (
+        <div className="lg:hidden">
+          <ColorLegend 
+            interactive={true} 
+            board={gifPreviewMove !== null ? filterBoardToMove(simulation.board, gifPreviewMove) : timelineBoard}
+          />
+        </div>
+      )}
       
       {/* Action buttons */}
       <div className="flex flex-col gap-3">

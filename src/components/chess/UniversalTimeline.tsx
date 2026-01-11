@@ -1,8 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Play, Pause, SkipBack, SkipForward, RotateCcw, Gauge, 
-  Flag, Sword, Crown, Zap, Target, Castle, Info, ChevronUp, ChevronDown
+  Flag, Sword, Crown, Zap, Target, Castle, Info, ChevronUp, ChevronDown, Keyboard
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -120,9 +120,62 @@ export const UniversalTimeline: React.FC<UniversalTimelineProps> = ({
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(500);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [showShortcutHint, setShowShortcutHint] = useState(true);
 
   // Find key moments
   const keyMoments = useMemo(() => findKeyMoments(moves, moveHistory), [moves, moveHistory]);
+
+  // Keyboard shortcuts for timeline control
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    // Don't trigger shortcuts when typing in inputs
+    if (
+      e.target instanceof HTMLInputElement ||
+      e.target instanceof HTMLTextAreaElement ||
+      (e.target as HTMLElement).isContentEditable
+    ) {
+      return;
+    }
+
+    switch (e.key) {
+      case ' ': // Space - play/pause
+        e.preventDefault();
+        if (currentMove >= totalMoves) {
+          onMoveChange(0);
+        }
+        setIsPlaying(prev => !prev);
+        setShowShortcutHint(false);
+        break;
+      case 'ArrowRight': // Step forward
+        e.preventDefault();
+        if (currentMove < totalMoves) {
+          onMoveChange(currentMove + 1);
+        }
+        setShowShortcutHint(false);
+        break;
+      case 'ArrowLeft': // Step backward
+        e.preventDefault();
+        if (currentMove > 0) {
+          onMoveChange(currentMove - 1);
+        }
+        setShowShortcutHint(false);
+        break;
+      case 'Home': // Go to start
+        e.preventDefault();
+        setIsPlaying(false);
+        onMoveChange(0);
+        break;
+      case 'End': // Go to end (show all)
+        e.preventDefault();
+        setIsPlaying(false);
+        onMoveChange(totalMoves);
+        break;
+    }
+  }, [currentMove, totalMoves, onMoveChange]);
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
   
   // Playback animation
   useEffect(() => {
@@ -355,7 +408,7 @@ export const UniversalTimeline: React.FC<UniversalTimelineProps> = ({
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              <p className="text-xs">Reset to show all moves</p>
+              <p className="text-xs">Reset to show all moves (End)</p>
             </TooltipContent>
           </Tooltip>
 
@@ -381,7 +434,10 @@ export const UniversalTimeline: React.FC<UniversalTimelineProps> = ({
               <Button
                 variant={isPlaying ? "secondary" : "default"}
                 size="sm"
-                onClick={togglePlayback}
+                onClick={() => {
+                  togglePlayback();
+                  setShowShortcutHint(false);
+                }}
                 className="h-10 w-10 p-0 rounded-full"
               >
                 {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 ml-0.5" />}
@@ -437,6 +493,21 @@ export const UniversalTimeline: React.FC<UniversalTimelineProps> = ({
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+
+        {/* Keyboard shortcut hint */}
+        <AnimatePresence>
+          {showShortcutHint && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="flex items-center justify-center gap-2 text-[10px] text-muted-foreground"
+            >
+              <Keyboard className="w-3 h-3" />
+              <span>Space: Play/Pause • ←/→: Step • Home/End: Jump</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Progress bar during playback */}
         <AnimatePresence>
