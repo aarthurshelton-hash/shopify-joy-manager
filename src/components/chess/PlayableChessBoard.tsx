@@ -1,8 +1,9 @@
 import { useState, useCallback, useMemo, useRef } from 'react';
 import { Square } from 'chess.js';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PieceType } from '@/lib/chess/pieceColors';
+import { PieceType, PieceColor } from '@/lib/chess/pieceColors';
 import { useHapticFeedback } from '@/hooks/useHapticFeedback';
+import { EnPensentOverlay, MoveHistoryEntry } from './EnPensentOverlay';
 
 interface PlayableChessBoardProps {
   fen: string;
@@ -15,6 +16,10 @@ interface PlayableChessBoardProps {
   movedSquares: Set<string>;
   disabled?: boolean;
   onMoveResult?: (result: { isCapture: boolean; isCheck: boolean; isCheckmate: boolean; isCastle: boolean }) => void;
+  // En Pensent mode props
+  enPensentEnabled?: boolean;
+  enPensentOpacity?: number;
+  moveHistory?: MoveHistoryEntry[];
 }
 
 const PIECE_SYMBOLS: Record<string, string> = {
@@ -58,6 +63,9 @@ export const PlayableChessBoard = ({
   movedSquares,
   disabled = false,
   onMoveResult,
+  enPensentEnabled = false,
+  enPensentOpacity = 0.7,
+  moveHistory = [],
 }: PlayableChessBoardProps) => {
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
   const [availableMoves, setAvailableMoves] = useState<Square[]>([]);
@@ -236,7 +244,7 @@ export const PlayableChessBoard = ({
       
       <div 
         ref={boardRef}
-        className="grid grid-cols-8 border-2 sm:border-4 border-amber-900 rounded-lg overflow-hidden shadow-2xl touch-manipulation"
+        className="relative grid grid-cols-8 border-2 sm:border-4 border-amber-900 rounded-lg overflow-hidden shadow-2xl touch-manipulation"
         style={{
           // Prevent any scrolling while interacting with the board
           touchAction: 'none',
@@ -247,6 +255,16 @@ export const PlayableChessBoard = ({
           const col = i % 8;
           return renderSquare(row, col);
         })}
+        
+        {/* En Pensent Visualization Overlay */}
+        <EnPensentOverlay
+          moveHistory={moveHistory}
+          whitePalette={whitePalette}
+          blackPalette={blackPalette}
+          opacity={enPensentOpacity}
+          isEnabled={enPensentEnabled}
+          flipped={flipped}
+        />
       </div>
 
       {/* Selected piece indicator for mobile */}

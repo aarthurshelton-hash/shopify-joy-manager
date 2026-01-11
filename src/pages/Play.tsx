@@ -28,12 +28,15 @@ import {
 } from '@/components/ui/tooltip';
 import { EloChangeAnimation } from '@/components/chess/EloChangeAnimation';
 import { SoundSettings } from '@/components/chess/SoundSettings';
+import { EnPensentControls } from '@/components/chess/EnPensentControls';
+import { MoveHistoryEntry } from '@/components/chess/EnPensentOverlay';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { getBotMove, getBotThinkingDelay, BOT_DIFFICULTIES, BotDifficulty } from '@/lib/chess/chessBot';
 import { useChessSounds } from '@/hooks/useChessSounds';
 import { useSoundStore } from '@/stores/soundStore';
 import { useHapticFeedback } from '@/hooks/useHapticFeedback';
 import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
+import { PieceType, PieceColor } from '@/lib/chess/pieceColors';
 
 type ViewMode = 'lobby' | 'game' | 'waiting' | 'bot-game';
 type GameType = 'human' | 'bot';
@@ -85,6 +88,14 @@ const Play = () => {
   const [botMovedSquares, setBotMovedSquares] = useState<Set<string>>(new Set());
   const [isBotThinking, setIsBotThinking] = useState(false);
   const [botGameResult, setBotGameResult] = useState<'win' | 'loss' | 'draw' | null>(null);
+  const [botMoveHistory, setBotMoveHistory] = useState<MoveHistoryEntry[]>([]);
+  
+  // En Pensent mode state
+  const [enPensentEnabled, setEnPensentEnabled] = useState(true);
+  const [enPensentOpacity, setEnPensentOpacity] = useState(0.7);
+  
+  // Multiplayer move history for En Pensent
+  const [multiplayerMoveHistory, setMultiplayerMoveHistory] = useState<MoveHistoryEntry[]>([]);
   
   // Sound effects for bot game
   const { enabled: soundEnabled, volume: soundVolume } = useSoundStore();
@@ -150,7 +161,9 @@ const Play = () => {
     setEloAfterGame(null);
     setBotGame(null);
     setBotMovedSquares(new Set());
+    setBotMoveHistory([]);
     setBotGameResult(null);
+    setMultiplayerMoveHistory([]);
     setViewMode('lobby');
   };
 
@@ -409,6 +422,7 @@ const Play = () => {
     const newGame = new Chess();
     setBotGame(newGame);
     setBotMovedSquares(new Set());
+    setBotMoveHistory([]);
     setBotGameResult(null);
     setViewMode('bot-game');
     playSound('gameStart');
@@ -416,15 +430,39 @@ const Play = () => {
     toast.success(`Starting game vs ${BOT_DIFFICULTIES.find(d => d.id === botDifficulty)?.label} bot`);
   };
 
+  // Helper to extract piece info from a move for En Pensent tracking
+  const extractMoveInfo = (game: Chess, from: Square, to: Square): { piece: PieceType; color: PieceColor } | null => {
+    const pieceAt = game.get(from);
+    if (!pieceAt) return null;
+    return {
+      piece: pieceAt.type as PieceType,
+      color: pieceAt.color as PieceColor,
+    };
+  };
+
   const makeBotGameMove = useCallback(async (from: Square, to: Square, promotion?: string): Promise<boolean> => {
     if (!botGame || isBotThinking) return false;
     
     try {
+      // Extract piece info BEFORE the move
+      const pieceInfo = extractMoveInfo(botGame, from, to);
+      
       const move = botGame.move({ from, to, promotion });
       if (!move) {
         playSound('illegal');
         haptics.error();
         return false;
+      }
+
+      // Track move for En Pensent visualization
+      if (pieceInfo) {
+        const newEntry: MoveHistoryEntry = {
+          square: to,
+          piece: pieceInfo.piece,
+          color: pieceInfo.color,
+          moveNumber: botGame.history().length,
+        };
+        setBotMoveHistory(prev => [...prev, newEntry]);
       }
 
       // Play sound and haptic for player's move
@@ -471,7 +509,21 @@ const Play = () => {
       
       const botMoveResult = getBotMove(botGame, botDifficulty);
       if (botMoveResult) {
+        // Track bot's move for En Pensent visualization
+        const botPieceInfo = extractMoveInfo(botGame, botMoveResult.from as Square, botMoveResult.to as Square);
+        
         botGame.move(botMoveResult);
+        
+        // Add to move history
+        if (botPieceInfo) {
+          const botEntry: MoveHistoryEntry = {
+            square: botMoveResult.to,
+            piece: botPieceInfo.piece,
+            color: botPieceInfo.color,
+            moveNumber: botGame.history().length,
+          };
+          setBotMoveHistory(prev => [...prev, botEntry]);
+        }
         
         // Play sound and haptic for bot's move
         if (botGame.isCheckmate()) {
@@ -552,8 +604,12 @@ const Play = () => {
               Play <span className="text-gold-gradient">En Pensent</span>
             </h1>
             <p className="text-sm sm:text-lg text-muted-foreground font-serif leading-relaxed max-w-2xl mx-auto px-2">
-              Experience chess as art. Watch your visualization come alive as you play.
+              Experience chess as art. Watch your visualization come alive <span className="text-primary font-medium">as you play</span>.
             </p>
+            <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground font-display">
+              <Sparkles className="h-3 w-3 text-primary" />
+              <span>Toggle "En Pensent" mode during any game to see colors fill the board live</span>
+            </div>
           </div>
 
           <AnimatePresence mode="wait">
@@ -993,18 +1049,29 @@ const Play = () => {
                     </p>
                   </div>
                   
-                  {gameState.status === 'active' && (
-                    <div className="flex gap-2 justify-center sm:justify-end">
-                      <Button variant="outline" size="sm" onClick={offerDraw} className="gap-1.5 h-10 sm:h-9 px-4 touch-manipulation">
-                        <Handshake className="h-4 w-4" />
-                        <span className="hidden sm:inline">Offer </span>Draw
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={resignGame} className="gap-1.5 h-10 sm:h-9 px-4 text-destructive touch-manipulation">
-                        <Flag className="h-4 w-4" />
-                        Resign
-                      </Button>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2 justify-center sm:justify-end flex-wrap">
+                    {/* En Pensent Toggle - The Revolutionary Feature */}
+                    <EnPensentControls
+                      isEnabled={enPensentEnabled}
+                      opacity={enPensentOpacity}
+                      onToggle={() => setEnPensentEnabled(!enPensentEnabled)}
+                      onOpacityChange={setEnPensentOpacity}
+                      totalMoves={multiplayerMoveHistory.length}
+                    />
+                    
+                    {gameState.status === 'active' && (
+                      <>
+                        <Button variant="outline" size="sm" onClick={offerDraw} className="gap-1.5 h-10 sm:h-9 px-4 touch-manipulation">
+                          <Handshake className="h-4 w-4" />
+                          <span className="hidden sm:inline">Offer </span>Draw
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={resignGame} className="gap-1.5 h-10 sm:h-9 px-4 text-destructive touch-manipulation">
+                          <Flag className="h-4 w-4" />
+                          Resign
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 {/* Chess Board */}
@@ -1018,6 +1085,9 @@ const Play = () => {
                   blackPalette={gameState.blackPalette || colorPalettes[0].black}
                   movedSquares={movedSquares}
                   disabled={gameState.status !== 'active'}
+                  enPensentEnabled={enPensentEnabled}
+                  enPensentOpacity={enPensentOpacity}
+                  moveHistory={multiplayerMoveHistory}
                 />
 
                 {/* Move count / PGN display - collapsible on mobile */}
@@ -1083,14 +1153,23 @@ const Play = () => {
                     </p>
                   </div>
                   
-                  {!botGameResult && (
-                    <div className="flex justify-center sm:justify-end">
+                  <div className="flex items-center gap-2 justify-center sm:justify-end flex-wrap">
+                    {/* En Pensent Toggle - The Revolutionary Feature */}
+                    <EnPensentControls
+                      isEnabled={enPensentEnabled}
+                      opacity={enPensentOpacity}
+                      onToggle={() => setEnPensentEnabled(!enPensentEnabled)}
+                      onOpacityChange={setEnPensentOpacity}
+                      totalMoves={botMoveHistory.length}
+                    />
+                    
+                    {!botGameResult && (
                       <Button variant="outline" size="sm" onClick={resignBotGame} className="gap-1.5 h-10 sm:h-9 px-4 text-destructive touch-manipulation">
                         <Flag className="h-4 w-4" />
                         Resign
                       </Button>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
 
                 {/* Chess Board */}
@@ -1104,6 +1183,9 @@ const Play = () => {
                   blackPalette={colorPalettes.find(p => p.id === selectedPalette)?.black || colorPalettes[0].black}
                   movedSquares={botMovedSquares}
                   disabled={isBotThinking || !!botGameResult}
+                  enPensentEnabled={enPensentEnabled}
+                  enPensentOpacity={enPensentOpacity}
+                  moveHistory={botMoveHistory}
                 />
 
                 {/* Move display */}
