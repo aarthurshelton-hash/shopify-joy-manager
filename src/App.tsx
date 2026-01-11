@@ -11,6 +11,7 @@ import About from "./pages/About";
 import Investors from "./pages/Investors";
 import News from "./pages/News";
 import QRMockup from "./pages/QRMockup";
+import VisualizationView from "./pages/VisualizationView";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/investors" element={<Investors />} />
             <Route path="/news" element={<News />} />
             <Route path="/qr-preview" element={<QRMockup />} />
+            <Route path="/v/:shareId" element={<VisualizationView />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

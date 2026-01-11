@@ -95,7 +95,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
       
       if (simulation) {
         try {
-          previewImageBase64 = await generateCleanPrintImage(simulation, false);
+          previewImageBase64 = await generateCleanPrintImage(simulation, { darkMode: false });
         } catch (error) {
           console.error('Failed to generate print image:', error);
           toast.error('Failed to generate print image. Adding to cart without image.');
