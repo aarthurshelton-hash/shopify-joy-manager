@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { calculateGameRatingChanges } from '@/lib/chess/eloCalculator';
 import { useChessSounds } from '@/hooks/useChessSounds';
+import { useSoundStore } from '@/stores/soundStore';
 
 export type TimeControl = 'bullet_1' | 'blitz_5' | 'rapid_15' | 'untimed';
 export type GameStatus = 'waiting' | 'active' | 'completed' | 'abandoned';
@@ -63,8 +64,9 @@ export const useChessGame = (): UseChessGameReturn => {
   const [error, setError] = useState<string | null>(null);
   const [movedSquares, setMovedSquares] = useState<Set<string>>(new Set());
   
-  // Sound effects
-  const { playSound } = useChessSounds(true, 0.5);
+  // Sound effects - read from global store
+  const { enabled: soundEnabled, volume: soundVolume } = useSoundStore();
+  const { playSound } = useChessSounds(soundEnabled, soundVolume);
   const previousFenRef = useRef<string>('');
 
   const myColor: 'w' | 'b' | null = gameState

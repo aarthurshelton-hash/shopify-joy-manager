@@ -25,6 +25,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { EloChangeAnimation } from '@/components/chess/EloChangeAnimation';
+import { SoundSettings } from '@/components/chess/SoundSettings';
 
 type ViewMode = 'lobby' | 'game' | 'waiting';
 
@@ -341,7 +342,12 @@ const Play = () => {
       <main className="container mx-auto px-4 py-16">
         <div className="max-w-5xl mx-auto">
           {/* Hero */}
-          <div className="text-center space-y-6 mb-12">
+          <div className="text-center space-y-6 mb-12 relative">
+            {/* Sound Settings - positioned top right */}
+            <div className="absolute right-0 top-0">
+              <SoundSettings />
+            </div>
+            
             <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-display uppercase tracking-widest">
               <Swords className="h-4 w-4" />
               Visionary Exclusive
