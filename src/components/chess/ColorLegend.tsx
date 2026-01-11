@@ -1,8 +1,8 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { getPieceColorLegend, getActivePalette, PieceType, PieceColor } from '@/lib/chess/pieceColors';
-import { useLegendHighlight, HighlightedPiece } from '@/contexts/LegendHighlightContext';
+import { useLegendHighlight } from '@/contexts/LegendHighlightContext';
 import { SquareData } from '@/lib/chess/gameSimulator';
-import { Lock, Unlock, GitCompare, X } from 'lucide-react';
+import { GitCompare, X, Swords, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface ColorLegendProps {
@@ -16,10 +16,39 @@ interface PieceStats {
   percentage: number;
 }
 
+interface BattleStats {
+  whiteTotalSquares: number;
+  blackTotalSquares: number;
+  whiteTotalVisits: number;
+  blackTotalVisits: number;
+  whitePercentage: number;
+  blackPercentage: number;
+  pieceBattles: {
+    pieceType: PieceType;
+    pieceName: string;
+    pieceSymbol: string;
+    whiteSquares: number;
+    blackSquares: number;
+    whiteVisits: number;
+    blackVisits: number;
+    whiteHex: string;
+    blackHex: string;
+  }[];
+  mvpPiece: {
+    color: PieceColor;
+    type: PieceType;
+    name: string;
+    symbol: string;
+    hex: string;
+    squareCount: number;
+  } | null;
+}
+
 const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board }) => {
   const legend = getPieceColorLegend();
   const palette = getActivePalette();
   const theme = palette.legendTheme;
+  const [showBattleAnalysis, setShowBattleAnalysis] = useState(false);
   
   // Try to use highlight context if available (wrapped in provider)
   let highlightContext: ReturnType<typeof useLegendHighlight> | null = null;
@@ -91,6 +120,83 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board }) 
     
     return stats;
   }, [board]);
+
+  // Calculate battle analysis stats
+  const battleStats = useMemo((): BattleStats | null => {
+    if (!board || pieceStats.size === 0) return null;
+    
+    const pieceTypes: PieceType[] = ['k', 'q', 'r', 'b', 'n', 'p'];
+    const pieceNames: Record<PieceType, string> = {
+      k: 'King', q: 'Queen', r: 'Rook', b: 'Bishop', n: 'Knight', p: 'Pawn'
+    };
+    const pieceSymbols: Record<PieceType, { w: string; b: string }> = {
+      k: { w: '♚', b: '♔' }, q: { w: '♛', b: '♕' }, r: { w: '♜', b: '♖' },
+      b: { w: '♝', b: '♗' }, n: { w: '♞', b: '♘' }, p: { w: '♟', b: '♙' }
+    };
+    
+    let whiteTotalSquares = 0;
+    let blackTotalSquares = 0;
+    let whiteTotalVisits = 0;
+    let blackTotalVisits = 0;
+    
+    const pieceBattles = pieceTypes.map(pt => {
+      const whiteStats = pieceStats.get(`w-${pt}`)!;
+      const blackStats = pieceStats.get(`b-${pt}`)!;
+      
+      whiteTotalSquares += whiteStats.squareCount;
+      blackTotalSquares += blackStats.squareCount;
+      whiteTotalVisits += whiteStats.visitCount;
+      blackTotalVisits += blackStats.visitCount;
+      
+      const whiteLegend = legend.find(l => l.piece === pt && l.color === 'w');
+      const blackLegend = legend.find(l => l.piece === pt && l.color === 'b');
+      
+      return {
+        pieceType: pt,
+        pieceName: pieceNames[pt],
+        pieceSymbol: pieceSymbols[pt].w,
+        whiteSquares: whiteStats.squareCount,
+        blackSquares: blackStats.squareCount,
+        whiteVisits: whiteStats.visitCount,
+        blackVisits: blackStats.visitCount,
+        whiteHex: whiteLegend?.hex || '#3B82F6',
+        blackHex: blackLegend?.hex || '#EF4444',
+      };
+    });
+    
+    // Find MVP (most active piece)
+    let mvpPiece: BattleStats['mvpPiece'] = null;
+    let maxSquares = 0;
+    
+    for (const [key, stat] of pieceStats) {
+      if (stat.squareCount > maxSquares) {
+        maxSquares = stat.squareCount;
+        const [color, piece] = key.split('-') as [PieceColor, PieceType];
+        const legendItem = legend.find(l => l.piece === piece && l.color === color);
+        mvpPiece = {
+          color,
+          type: piece,
+          name: pieceNames[piece],
+          symbol: pieceSymbols[piece][color],
+          hex: legendItem?.hex || '#888',
+          squareCount: stat.squareCount,
+        };
+      }
+    }
+    
+    const totalSquaresVisited = whiteTotalSquares + blackTotalSquares;
+    
+    return {
+      whiteTotalSquares,
+      blackTotalSquares,
+      whiteTotalVisits,
+      blackTotalVisits,
+      whitePercentage: totalSquaresVisited > 0 ? Math.round((whiteTotalSquares / totalSquaresVisited) * 100) : 50,
+      blackPercentage: totalSquaresVisited > 0 ? Math.round((blackTotalSquares / totalSquaresVisited) * 100) : 50,
+      pieceBattles,
+      mvpPiece,
+    };
+  }, [board, pieceStats, legend]);
 
   // Calculate overlap stats for compare mode
   const overlapStats = useMemo(() => {
@@ -207,6 +313,118 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board }) 
       </div>
     );
   };
+
+  const renderBattleAnalysis = () => {
+    if (!battleStats) return null;
+
+    return (
+      <div className="space-y-4 animate-fade-in">
+        {/* Overall territory control */}
+        <div className="space-y-2">
+          <div className="flex justify-between text-[10px] font-semibold">
+            <span className="text-sky-400">{theme.whiteName}</span>
+            <span className="text-rose-400">{theme.blackName}</span>
+          </div>
+          
+          {/* Main battle bar */}
+          <div className="relative h-6 rounded-full overflow-hidden bg-muted/30">
+            <div 
+              className="absolute left-0 top-0 h-full bg-gradient-to-r from-sky-500 to-sky-400 transition-all duration-500"
+              style={{ width: `${battleStats.whitePercentage}%` }}
+            />
+            <div 
+              className="absolute right-0 top-0 h-full bg-gradient-to-l from-rose-500 to-rose-400 transition-all duration-500"
+              style={{ width: `${battleStats.blackPercentage}%` }}
+            />
+            {/* Center divider indicator */}
+            <div className="absolute left-1/2 top-0 h-full w-0.5 bg-white/20 -translate-x-1/2" />
+            {/* Percentage labels */}
+            <div className="absolute inset-0 flex items-center justify-between px-3">
+              <span className="text-xs font-bold text-white drop-shadow-md">{battleStats.whitePercentage}%</span>
+              <span className="text-xs font-bold text-white drop-shadow-md">{battleStats.blackPercentage}%</span>
+            </div>
+          </div>
+          
+          <div className="flex justify-between text-[9px] text-muted-foreground">
+            <span>{battleStats.whiteTotalSquares} squares</span>
+            <span>{battleStats.blackTotalSquares} squares</span>
+          </div>
+        </div>
+
+        {/* MVP Piece */}
+        {battleStats.mvpPiece && (
+          <div className="bg-gradient-to-r from-amber-500/10 via-yellow-500/20 to-amber-500/10 rounded-lg p-3 border border-amber-500/30">
+            <div className="text-[10px] font-semibold text-center mb-1 uppercase tracking-widest text-amber-400">
+              ⭐ Most Active Piece
+            </div>
+            <div className="flex items-center justify-center gap-2">
+              <div 
+                className="w-6 h-6 rounded shadow-md ring-2 ring-amber-400/50"
+                style={{ backgroundColor: battleStats.mvpPiece.hex }}
+              />
+              <span className="text-xl">{battleStats.mvpPiece.symbol}</span>
+              <span className="text-sm font-medium">
+                {battleStats.mvpPiece.color === 'w' ? 'White' : 'Black'} {battleStats.mvpPiece.name}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                ({battleStats.mvpPiece.squareCount} sq)
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Piece-by-piece battles */}
+        <div className="space-y-2">
+          <div className="text-[10px] font-semibold text-center uppercase tracking-widest text-muted-foreground">
+            Piece Battles
+          </div>
+          {battleStats.pieceBattles.map((battle) => {
+            const total = battle.whiteSquares + battle.blackSquares;
+            const whitePercent = total > 0 ? (battle.whiteSquares / total) * 100 : 50;
+            const blackPercent = total > 0 ? (battle.blackSquares / total) * 100 : 50;
+            const winner = battle.whiteSquares > battle.blackSquares ? 'white' : 
+                          battle.blackSquares > battle.whiteSquares ? 'black' : 'tie';
+            
+            return (
+              <div key={battle.pieceType} className="space-y-1">
+                <div className="flex items-center justify-between text-[10px]">
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 rounded" style={{ backgroundColor: battle.whiteHex }} />
+                    <span className={winner === 'white' ? 'font-bold text-sky-400' : 'text-muted-foreground'}>
+                      {battle.whiteSquares}
+                    </span>
+                  </div>
+                  <span className="text-sm font-medium">{battle.pieceSymbol} {battle.pieceName}</span>
+                  <div className="flex items-center gap-1">
+                    <span className={winner === 'black' ? 'font-bold text-rose-400' : 'text-muted-foreground'}>
+                      {battle.blackSquares}
+                    </span>
+                    <div className="w-3 h-3 rounded" style={{ backgroundColor: battle.blackHex }} />
+                  </div>
+                </div>
+                <div className="relative h-2 rounded-full overflow-hidden bg-muted/30">
+                  <div 
+                    className="absolute left-0 top-0 h-full rounded-l-full transition-all duration-300"
+                    style={{ 
+                      width: `${whitePercent}%`,
+                      backgroundColor: battle.whiteHex,
+                    }}
+                  />
+                  <div 
+                    className="absolute right-0 top-0 h-full rounded-r-full transition-all duration-300"
+                    style={{ 
+                      width: `${blackPercent}%`,
+                      backgroundColor: battle.blackHex,
+                    }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
   
   return (
     <div className="flex flex-col gap-5 p-6 bg-card rounded-lg border border-border/50">
@@ -215,8 +433,21 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board }) 
           Color Legend
         </h3>
         <div className="flex items-center gap-2">
+          {/* Battle Analysis toggle */}
+          {board && (
+            <Button
+              variant={showBattleAnalysis ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setShowBattleAnalysis(!showBattleAnalysis)}
+              className={`h-6 px-2 text-[10px] gap-1 ${showBattleAnalysis ? 'bg-amber-500 hover:bg-amber-600' : ''}`}
+            >
+              <Swords className="w-3 h-3" />
+              Battle
+            </Button>
+          )}
+          
           {/* Compare mode toggle */}
-          {interactive && highlightContext && (
+          {interactive && highlightContext && !showBattleAnalysis && (
             <Button
               variant={compareMode ? "default" : "ghost"}
               size="sm"
@@ -229,7 +460,7 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board }) 
           )}
           
           {/* Clear button */}
-          {lockedPieces.length > 0 && (
+          {lockedPieces.length > 0 && !showBattleAnalysis && (
             <button 
               onClick={clearLock}
               className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
@@ -241,63 +472,70 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board }) 
         </div>
       </div>
       
-      {interactive && highlightContext && (
-        <p className="text-[10px] text-muted-foreground text-center -mt-2">
-          {compareMode 
-            ? `Select 2 pieces to compare • ${lockedPieces.length}/2 selected`
-            : 'Hover to preview • Click to lock'
-          }
-        </p>
-      )}
+      {/* Battle Analysis View */}
+      {showBattleAnalysis ? (
+        renderBattleAnalysis()
+      ) : (
+        <>
+          {interactive && highlightContext && (
+            <p className="text-[10px] text-muted-foreground text-center -mt-2">
+              {compareMode 
+                ? `Select 2 pieces to compare • ${lockedPieces.length}/2 selected`
+                : 'Hover to preview • Click to lock'
+              }
+            </p>
+          )}
 
-      {/* Overlap stats in compare mode */}
-      {compareMode && overlapStats && lockedPieces.length === 2 && (
-        <div className="bg-gradient-to-r from-sky-500/10 via-purple-500/20 to-rose-500/10 rounded-lg p-3 border border-border/50 animate-fade-in">
-          <div className="text-[10px] font-semibold text-center mb-2 uppercase tracking-widest text-muted-foreground">
-            Overlap Analysis
+          {/* Overlap stats in compare mode */}
+          {compareMode && overlapStats && lockedPieces.length === 2 && (
+            <div className="bg-gradient-to-r from-sky-500/10 via-purple-500/20 to-rose-500/10 rounded-lg p-3 border border-border/50 animate-fade-in">
+              <div className="text-[10px] font-semibold text-center mb-2 uppercase tracking-widest text-muted-foreground">
+                Overlap Analysis
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div>
+                  <div className="text-sky-400 font-bold text-lg">{overlapStats.piece1Only}</div>
+                  <div className="text-[9px] text-muted-foreground">Only ①</div>
+                </div>
+                <div>
+                  <div className="text-purple-400 font-bold text-lg">{overlapStats.overlapCount}</div>
+                  <div className="text-[9px] text-muted-foreground">Shared</div>
+                </div>
+                <div>
+                  <div className="text-rose-400 font-bold text-lg">{overlapStats.piece2Only}</div>
+                  <div className="text-[9px] text-muted-foreground">Only ②</div>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <div className="space-y-5">
+            {/* White pieces */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 pb-2 border-b border-border/50">
+                <span className="text-[10px] font-sans font-medium text-sky-400 uppercase tracking-widest">
+                  {theme.whiteEmoji} White — {theme.whiteName}
+                </span>
+              </div>
+              <div className="grid grid-cols-1 gap-2">
+                {whitePieces.map(renderPieceItem)}
+              </div>
+            </div>
+            
+            {/* Black pieces */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 pb-2 border-b border-border/50">
+                <span className="text-[10px] font-sans font-medium text-rose-400 uppercase tracking-widest">
+                  {theme.blackEmoji} Black — {theme.blackName}
+                </span>
+              </div>
+              <div className="grid grid-cols-1 gap-2">
+                {blackPieces.map(renderPieceItem)}
+              </div>
+            </div>
           </div>
-          <div className="grid grid-cols-3 gap-2 text-center">
-            <div>
-              <div className="text-sky-400 font-bold text-lg">{overlapStats.piece1Only}</div>
-              <div className="text-[9px] text-muted-foreground">Only ①</div>
-            </div>
-            <div>
-              <div className="text-purple-400 font-bold text-lg">{overlapStats.overlapCount}</div>
-              <div className="text-[9px] text-muted-foreground">Shared</div>
-            </div>
-            <div>
-              <div className="text-rose-400 font-bold text-lg">{overlapStats.piece2Only}</div>
-              <div className="text-[9px] text-muted-foreground">Only ②</div>
-            </div>
-          </div>
-        </div>
+        </>
       )}
-      
-      <div className="space-y-5">
-        {/* White pieces */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 pb-2 border-b border-border/50">
-            <span className="text-[10px] font-sans font-medium text-sky-400 uppercase tracking-widest">
-              {theme.whiteEmoji} White — {theme.whiteName}
-            </span>
-          </div>
-          <div className="grid grid-cols-1 gap-2">
-            {whitePieces.map(renderPieceItem)}
-          </div>
-        </div>
-        
-        {/* Black pieces */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 pb-2 border-b border-border/50">
-            <span className="text-[10px] font-sans font-medium text-rose-400 uppercase tracking-widest">
-              {theme.blackEmoji} Black — {theme.blackName}
-            </span>
-          </div>
-          <div className="grid grid-cols-1 gap-2">
-            {blackPieces.map(renderPieceItem)}
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
