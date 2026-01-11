@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
 import { 
@@ -11,11 +11,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { colorPalettes, PaletteId, PieceType } from '@/lib/chess/pieceColors';
+import { colorPalettes, PaletteId, PieceType, PieceColor } from '@/lib/chess/pieceColors';
 import AuthModal from '@/components/auth/AuthModal';
 import PremiumUpgradeModal from '@/components/premium/PremiumUpgradeModal';
 import { LiveColorLegend } from '@/components/chess/LiveColorLegend';
-import { LegendHighlightProvider } from '@/contexts/LegendHighlightContext';
+import { LegendHighlightProvider, useLegendHighlight, HighlightedPiece } from '@/contexts/LegendHighlightContext';
 
 type PieceKey = 'K' | 'Q' | 'R' | 'B' | 'N' | 'P' | 'k' | 'q' | 'r' | 'b' | 'n' | 'p' | null;
 
@@ -59,6 +59,130 @@ const boardToFen = (board: (string | null)[][]): string => {
     if (emptyCount > 0) fenRow += emptyCount;
     return fenRow;
   }).join('/') + ' w KQkq - 0 1';
+};
+
+// Creative Mode Board with Legend Highlight integration
+interface CreativeChessBoardProps {
+  board: (string | null)[][];
+  onSquareClick: (row: number, col: number) => void;
+  selectedPiece: PieceKey;
+  whitePalette: Record<PieceType, string>;
+  blackPalette: Record<PieceType, string>;
+  isPremium: boolean;
+  getPieceColor: (piece: string) => string;
+}
+
+const CreativeChessBoard: React.FC<CreativeChessBoardProps> = ({
+  board,
+  onSquareClick,
+  selectedPiece,
+  whitePalette,
+  blackPalette,
+  isPremium,
+  getPieceColor,
+}) => {
+  // Access legend highlight context
+  let legendContext: ReturnType<typeof useLegendHighlight> | null = null;
+  try {
+    legendContext = useLegendHighlight();
+  } catch {
+    // Context not available
+  }
+
+  const { highlightedPiece, lockedPieces = [], setHoveredSquare } = legendContext || {
+    highlightedPiece: null,
+    lockedPieces: [],
+    setHoveredSquare: () => {},
+  };
+
+  // Determine if filtering is active
+  const piecesToHighlight = lockedPieces.length > 0 ? lockedPieces : (highlightedPiece ? [highlightedPiece] : []);
+  const hasActiveFilter = piecesToHighlight.length > 0;
+
+  // Check if a square's piece matches the highlighted pieces
+  const isSquareHighlighted = (piece: string | null) => {
+    if (!piece || !hasActiveFilter) return false;
+    
+    const isWhite = piece === piece.toUpperCase();
+    const pieceType = piece.toLowerCase() as PieceType;
+    const pieceColor: PieceColor = isWhite ? 'w' : 'b';
+    
+    return piecesToHighlight.some(p => p.pieceType === pieceType && p.pieceColor === pieceColor);
+  };
+
+  // Handle square hover to update legend
+  const handleSquareHover = (piece: string | null, square: string) => {
+    if (!piece || !setHoveredSquare) return;
+    
+    const isWhite = piece === piece.toUpperCase();
+    const pieceType = piece.toLowerCase() as PieceType;
+    const pieceColor: PieceColor = isWhite ? 'w' : 'b';
+    
+    setHoveredSquare({
+      square,
+      pieces: [{ pieceType, pieceColor }],
+    });
+  };
+
+  const handleSquareLeave = () => {
+    if (setHoveredSquare) {
+      setHoveredSquare(null);
+    }
+  };
+
+  return (
+    <div className="relative">
+      {!isPremium && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80 backdrop-blur-sm rounded-lg">
+          <div className="text-center">
+            <Lock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <p className="font-display uppercase tracking-wider">Premium Feature</p>
+          </div>
+        </div>
+      )}
+      
+      <div className="grid grid-cols-8 border-4 border-amber-900 rounded-lg overflow-hidden shadow-2xl">
+        {board.map((row, rowIdx) =>
+          row.map((piece, colIdx) => {
+            const isLight = (rowIdx + colIdx) % 2 === 0;
+            const square = `${String.fromCharCode(97 + colIdx)}${8 - rowIdx}`;
+            const highlighted = isSquareHighlighted(piece);
+            const shouldDim = hasActiveFilter && piece && !highlighted;
+            
+            return (
+              <motion.div
+                key={`${rowIdx}-${colIdx}`}
+                onClick={() => onSquareClick(rowIdx, colIdx)}
+                onMouseEnter={() => handleSquareHover(piece, square)}
+                onMouseLeave={handleSquareLeave}
+                className={`
+                  aspect-square cursor-pointer transition-all flex items-center justify-center
+                  ${isLight ? 'bg-amber-100' : 'bg-amber-700'}
+                  hover:brightness-110 touch-manipulation select-none
+                  ${highlighted ? 'ring-2 ring-sky-400 z-5' : ''}
+                `}
+                style={{
+                  opacity: shouldDim ? 0.25 : 1,
+                  transition: 'opacity 0.2s ease-out',
+                }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                {piece && (
+                  <span
+                    className="text-3xl md:text-4xl lg:text-5xl select-none drop-shadow-md"
+                    style={{ color: getPieceColor(piece) }}
+                  >
+                    {PIECE_SYMBOLS[piece]}
+                  </span>
+                )}
+              </motion.div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
 };
 
 const CreativeMode = () => {
@@ -320,113 +444,83 @@ const CreativeMode = () => {
             </motion.div>
           )}
 
-          <div className="grid lg:grid-cols-3 gap-8">
-            {/* Board */}
-            <div className="lg:col-span-2 space-y-4">
-              <div className="flex items-center justify-between">
-                <Input
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="max-w-xs font-display"
-                  placeholder="Design title..."
-                />
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={resetBoard} className="gap-1">
-                    <RotateCcw className="h-4 w-4" />
-                    Reset
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={clearBoard} className="gap-1">
-                    <Grid3X3 className="h-4 w-4" />
-                    Clear
-                  </Button>
-                </div>
-              </div>
-
-              {/* Chess Board */}
-              <div className="relative">
-                {!isPremium && (
-                  <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80 backdrop-blur-sm rounded-lg">
-                    <div className="text-center">
-                      <Lock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                      <p className="font-display uppercase tracking-wider">Premium Feature</p>
-                    </div>
+          {/* Wrap both board and legend in the SAME provider for shared state */}
+          <LegendHighlightProvider>
+            <div className="grid lg:grid-cols-3 gap-8">
+              {/* Board */}
+              <div className="lg:col-span-2 space-y-4">
+                <div className="flex items-center justify-between">
+                  <Input
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    className="max-w-xs font-display"
+                    placeholder="Design title..."
+                  />
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={resetBoard} className="gap-1">
+                      <RotateCcw className="h-4 w-4" />
+                      Reset
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={clearBoard} className="gap-1">
+                      <Grid3X3 className="h-4 w-4" />
+                      Clear
+                    </Button>
                   </div>
-                )}
-                
-                <div className="grid grid-cols-8 border-4 border-amber-900 rounded-lg overflow-hidden shadow-2xl">
-                  {board.map((row, rowIdx) =>
-                    row.map((piece, colIdx) => {
-                      const isLight = (rowIdx + colIdx) % 2 === 0;
-                      return (
-                        <motion.div
-                          key={`${rowIdx}-${colIdx}`}
-                          onClick={() => handleSquareClick(rowIdx, colIdx)}
-                          className={`
-                            aspect-square cursor-pointer transition-all flex items-center justify-center
-                            ${isLight ? 'bg-amber-100' : 'bg-amber-700'}
-                            hover:brightness-110
-                          `}
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                        >
-                          {piece && (
-                            <span
-                              className="text-3xl md:text-4xl lg:text-5xl select-none drop-shadow-md"
-                              style={{ color: getPieceColor(piece) }}
-                            >
-                              {PIECE_SYMBOLS[piece]}
-                            </span>
-                          )}
-                        </motion.div>
-                      );
-                    })
-                  )}
+                </div>
+
+                {/* Chess Board */}
+                <CreativeChessBoard
+                  board={board}
+                  onSquareClick={handleSquareClick}
+                  selectedPiece={selectedPiece}
+                  whitePalette={whitePalette}
+                  blackPalette={blackPalette}
+                  isPremium={isPremium}
+                  getPieceColor={getPieceColor}
+                />
+
+                {/* FEN Display */}
+                <div className="p-3 rounded-lg bg-card/50 border border-border/50">
+                  <p className="text-xs text-muted-foreground font-display uppercase tracking-wider mb-1">Position (FEN)</p>
+                  <p className="text-xs font-mono break-all">{fen}</p>
                 </div>
               </div>
 
-              {/* FEN Display */}
-              <div className="p-3 rounded-lg bg-card/50 border border-border/50">
-                <p className="text-xs text-muted-foreground font-display uppercase tracking-wider mb-1">Position (FEN)</p>
-                <p className="text-xs font-mono break-all">{fen}</p>
-              </div>
-            </div>
-
-            {/* Sidebar with Legend */}
-            <div className="space-y-6">
-              {/* Live Color Legend for Creative Mode */}
-              <LegendHighlightProvider>
+              {/* Sidebar with Legend */}
+              <div className="space-y-6">
+                {/* Live Color Legend for Creative Mode - shares context with board */}
                 <LiveColorLegend
                   whitePalette={whitePalette}
                   blackPalette={blackPalette}
                   title="Your Palette"
                 />
-              </LegendHighlightProvider>
               
-              {renderPiecePalette()}
-              {renderColorPickers()}
+                {renderPiecePalette()}
+                {renderColorPickers()}
 
-              {/* Actions */}
-              <div className="space-y-3 pt-4 border-t border-border/50">
-                <Button 
-                  onClick={saveDesign} 
-                  className="w-full gap-2"
-                  disabled={isSaving || !isPremium}
-                >
-                  {!isPremium && <Lock className="h-4 w-4" />}
-                  <Save className="h-4 w-4" />
-                  Save Design
-                </Button>
-                <Button variant="outline" className="w-full gap-2" disabled={!isPremium}>
-                  <Eye className="h-4 w-4" />
-                  Preview Visualization
-                </Button>
-                <Button variant="outline" className="w-full gap-2" disabled={!isPremium}>
-                  <Download className="h-4 w-4" />
-                  Download
-                </Button>
+                {/* Actions */}
+                <div className="space-y-3 pt-4 border-t border-border/50">
+                  <Button 
+                    onClick={saveDesign} 
+                    className="w-full gap-2"
+                    disabled={isSaving || !isPremium}
+                  >
+                    {!isPremium && <Lock className="h-4 w-4" />}
+                    <Save className="h-4 w-4" />
+                    Save Design
+                  </Button>
+                  <Button variant="outline" className="w-full gap-2" disabled={!isPremium}>
+                    <Eye className="h-4 w-4" />
+                    Preview Visualization
+                  </Button>
+                  <Button variant="outline" className="w-full gap-2" disabled={!isPremium}>
+                    <Download className="h-4 w-4" />
+                    Download
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
+          </LegendHighlightProvider>
         </div>
       </main>
 
