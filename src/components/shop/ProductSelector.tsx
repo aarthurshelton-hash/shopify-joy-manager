@@ -8,9 +8,12 @@ import { useCurrencyStore } from '@/stores/currencyStore';
 import { CurrencySelector } from './CurrencySelector';
 import WallMockup, { RoomSetting } from './WallMockup';
 import PrintReadyVisualization from '@/components/chess/PrintReadyVisualization';
+import { EnPensentOverlay, MoveHistoryEntry } from '@/components/chess/EnPensentOverlay';
 import { SimulationResult, SquareData } from '@/lib/chess/gameSimulator';
 import { generateCleanPrintImage } from '@/lib/chess/printImageGenerator';
+import { PieceType } from '@/lib/chess/pieceColors';
 import { toast } from 'sonner';
+import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 
 interface CapturedState {
   currentMove: number;
@@ -24,6 +27,17 @@ interface CapturedState {
   capturedAt: Date;
 }
 
+interface EnPensentData {
+  moveHistory: MoveHistoryEntry[];
+  whitePalette: Record<PieceType, string>;
+  blackPalette: Record<PieceType, string>;
+  gameInfo: {
+    white: string;
+    black: string;
+    result?: string;
+  };
+}
+
 interface ProductSelectorProps {
   customPrintData: {
     pgn: string;
@@ -33,6 +47,7 @@ interface ProductSelectorProps {
   simulation?: SimulationResult;
   shareId?: string | null;
   capturedState?: CapturedState;
+  enPensentData?: EnPensentData;
   onAddedToCart?: () => void;
 }
 
@@ -55,6 +70,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
   simulation,
   shareId,
   capturedState,
+  enPensentData,
   onAddedToCart 
 }) => {
   const [products, setProducts] = useState<ShopifyProduct[]>([]);
@@ -114,19 +130,95 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
     return simulation.board;
   }, [simulation, capturedState]);
 
-  // Create mini visualization for mockup using the trademark print-ready style
+  // Create mini visualization for mockup - supports both simulation and EnPensent data
   const miniVisualization = useMemo(() => {
+    // If we have EnPensent data (from live games), use that
+    if (enPensentData) {
+      const darkMode = capturedState?.darkMode || false;
+      return (
+        <div 
+          style={{
+            backgroundColor: darkMode ? '#0A0A0A' : '#FDFCFB',
+            padding: 4,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 2,
+            width: 'fit-content',
+          }}
+        >
+          {/* Chess board with EnPensent overlay */}
+          <div style={{ position: 'relative', width: 80, height: 80 }}>
+            {/* Base chess grid */}
+            <div style={{ 
+              position: 'absolute', 
+              inset: 0, 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(8, 1fr)',
+              gridTemplateRows: 'repeat(8, 1fr)',
+            }}>
+              {Array.from({ length: 64 }).map((_, i) => {
+                const row = Math.floor(i / 8);
+                const col = i % 8;
+                const isLight = (row + col) % 2 === 0;
+                return (
+                  <div
+                    key={i}
+                    style={{ backgroundColor: isLight ? '#e7e5e4' : '#78716c' }}
+                  />
+                );
+              })}
+            </div>
+            {/* EnPensent Overlay */}
+            <EnPensentOverlay
+              moveHistory={enPensentData.moveHistory}
+              whitePalette={enPensentData.whitePalette}
+              blackPalette={enPensentData.blackPalette}
+              opacity={0.85}
+              isEnabled={true}
+              flipped={false}
+            />
+          </div>
+          {/* Compact game info */}
+          <div style={{ 
+            width: '100%', 
+            paddingTop: 2,
+            borderTop: `1px solid ${darkMode ? '#292524' : '#e7e5e4'}`,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}>
+            <div style={{ maxWidth: 60 }}>
+              <p style={{ 
+                fontSize: 4, 
+                fontWeight: 600, 
+                color: darkMode ? '#d6d3d1' : '#44403c',
+                margin: 0,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}>
+                {enPensentData.gameInfo.white} vs {enPensentData.gameInfo.black}
+              </p>
+            </div>
+            <img src={enPensentLogo} alt="" style={{ width: 8, height: 8, borderRadius: '50%' }} />
+          </div>
+        </div>
+      );
+    }
+    
+    // Fall back to simulation-based rendering
     if (!displayBoard || !simulation) return null;
     return (
       <PrintReadyVisualization 
         board={displayBoard}
         gameData={simulation.gameData}
-        size={100} // Base size, will be overridden by WallMockup
+        size={100}
         darkMode={capturedState?.darkMode || false}
-        compact={true} // Use compact mode for wall mockup
+        compact={true}
       />
     );
-  }, [displayBoard, simulation, capturedState?.darkMode]);
+  }, [displayBoard, simulation, capturedState?.darkMode, enPensentData]);
 
   const handleAddToCart = async () => {
     if (!selectedProduct || !selectedVariant) return;
