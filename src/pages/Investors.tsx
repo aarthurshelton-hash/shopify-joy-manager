@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
 import { Crown, TrendingUp, Globe, Zap, Target, Download, ChevronRight, FileText, Presentation, Repeat, Users, Quote } from 'lucide-react';
@@ -6,8 +6,104 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 
 type ModalType = 'market' | 'technology' | 'vision' | 'brand' | null;
 
+interface Testimonial {
+  quote: string;
+  name: string;
+  role: string;
+  featured?: boolean;
+}
+
+const allTestimonials: Testimonial[] = [
+  // Original 4 testimonials
+  {
+    quote: "I've been playing chess for 20 years and this is the first time I've been able to truly visualize the beauty of my games. The HD downloads are stunning—I have three prints framed in my office now.",
+    name: "Marcus T.",
+    role: "FIDE Rated Player, Premium Member since 2024"
+  },
+  {
+    quote: "The personal gallery feature is a game-changer. I can save every tournament game and revisit them as art. It's like having a visual diary of my chess journey.",
+    name: "Elena K.",
+    role: "Tournament Director, Premium Member since 2024"
+  },
+  {
+    quote: "Worth every penny. The watermark-free exports look professional enough to gift. I created visualizations of my grandfather's recorded games—priceless family heirlooms now.",
+    name: "David R.",
+    role: "Chess Coach, Premium Member since 2024"
+  },
+  {
+    quote: "I run a chess club with 200 members. We now offer En Pensent visualizations as prizes for our monthly tournaments. The kids absolutely love seeing their games transformed into art.",
+    name: "Sarah M.",
+    role: "Chess Club President, Premium Member since 2024",
+    featured: true
+  },
+  // Second set of 4 testimonials
+  {
+    quote: "As a grandmaster, I've analyzed thousands of games. En Pensent gives me a completely new perspective—seeing the flow and rhythm of a game as visual art is genuinely profound.",
+    name: "Viktor A.",
+    role: "International Grandmaster, Premium Member since 2024"
+  },
+  {
+    quote: "Bought premium specifically for the GIF exports. Now I can share animated replays of my best games on social media. The engagement has been incredible.",
+    name: "James L.",
+    role: "Chess Content Creator, Premium Member since 2024"
+  },
+  {
+    quote: "My students are so much more engaged when they can see their games as art. It makes losing feel less painful and winning even more memorable.",
+    name: "Patricia H.",
+    role: "Chess Instructor, Premium Member since 2024",
+    featured: true
+  },
+  {
+    quote: "The quality of the prints exceeded my expectations. Museum-quality framing on my first tournament win—it's the centerpiece of my game room.",
+    name: "Robert K.",
+    role: "Amateur Tournament Player, Premium Member since 2024"
+  },
+  // Third set of 4 testimonials
+  {
+    quote: "I gift En Pensent visualizations to every friend who beats me in a memorable game. It's become my signature move. They love it more than any trophy.",
+    name: "Michelle W.",
+    role: "Casual Player, Premium Member since 2024"
+  },
+  {
+    quote: "The custom palette feature lets me match my club's colors. Every visualization feels uniquely ours. Absolute attention to detail.",
+    name: "Thomas B.",
+    role: "College Chess Team Captain, Premium Member since 2024"
+  },
+  {
+    quote: "At 72, I've been playing chess my whole life. Seeing my favorite games visualized this way—it's like seeing old friends in a new light. Beautiful work.",
+    name: "Harold J.",
+    role: "Lifelong Chess Enthusiast, Premium Member since 2024",
+    featured: true
+  },
+  {
+    quote: "The subscription pays for itself. I've ordered six prints in the last two months alone. The priority shipping for premium members is a nice touch too.",
+    name: "Amanda C.",
+    role: "Art Collector & Chess Fan, Premium Member since 2024"
+  }
+];
+
+// Fisher-Yates shuffle algorithm
+const shuffleArray = <T,>(array: T[]): T[] => {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+};
+
 const Investors = () => {
   const [activeModal, setActiveModal] = useState<ModalType>(null);
+  
+  // Shuffle testimonials once on component mount, select 4 to display
+  const displayedTestimonials = useMemo(() => {
+    const shuffled = shuffleArray(allTestimonials);
+    // Ensure at least one featured testimonial is included
+    const featured = shuffled.find(t => t.featured);
+    const nonFeatured = shuffled.filter(t => !t.featured).slice(0, 3);
+    const selected = featured ? [...nonFeatured, featured] : shuffled.slice(0, 4);
+    return shuffleArray(selected); // Shuffle the final selection for variety
+  }, []);
 
   const MetricCard = ({ 
     icon: Icon, 
@@ -532,73 +628,33 @@ const Investors = () => {
               What Premium Members Say
             </h2>
             <div className="grid gap-6">
-              <div className="p-6 rounded-lg border border-border/50 bg-card/50 space-y-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <Crown className="h-5 w-5 text-primary" />
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-sm text-muted-foreground font-serif italic leading-relaxed">
-                      "I've been playing chess for 20 years and this is the first time I've been able to truly visualize the beauty of my games. The HD downloads are stunning—I have three prints framed in my office now."
-                    </p>
-                    <div>
-                      <p className="font-display text-sm font-bold text-foreground">Marcus T.</p>
-                      <p className="text-xs text-muted-foreground">FIDE Rated Player, Premium Member since 2024</p>
+              {displayedTestimonials.map((testimonial, index) => (
+                <div 
+                  key={index}
+                  className={`p-6 rounded-lg space-y-4 ${
+                    testimonial.featured 
+                      ? 'border border-primary/30 bg-primary/5' 
+                      : 'border border-border/50 bg-card/50'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                      testimonial.featured ? 'bg-primary/20' : 'bg-primary/10'
+                    }`}>
+                      <Crown className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-sm text-muted-foreground font-serif italic leading-relaxed">
+                        "{testimonial.quote}"
+                      </p>
+                      <div>
+                        <p className="font-display text-sm font-bold text-foreground">{testimonial.name}</p>
+                        <p className="text-xs text-muted-foreground">{testimonial.role}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-
-              <div className="p-6 rounded-lg border border-border/50 bg-card/50 space-y-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <Crown className="h-5 w-5 text-primary" />
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-sm text-muted-foreground font-serif italic leading-relaxed">
-                      "The personal gallery feature is a game-changer. I can save every tournament game and revisit them as art. It's like having a visual diary of my chess journey."
-                    </p>
-                    <div>
-                      <p className="font-display text-sm font-bold text-foreground">Elena K.</p>
-                      <p className="text-xs text-muted-foreground">Tournament Director, Premium Member since 2024</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-6 rounded-lg border border-border/50 bg-card/50 space-y-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <Crown className="h-5 w-5 text-primary" />
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-sm text-muted-foreground font-serif italic leading-relaxed">
-                      "Worth every penny. The watermark-free exports look professional enough to gift. I created visualizations of my grandfather's recorded games—priceless family heirlooms now."
-                    </p>
-                    <div>
-                      <p className="font-display text-sm font-bold text-foreground">David R.</p>
-                      <p className="text-xs text-muted-foreground">Chess Coach, Premium Member since 2024</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-6 rounded-lg border border-primary/30 bg-primary/5 space-y-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-                    <Crown className="h-5 w-5 text-primary" />
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-sm text-muted-foreground font-serif italic leading-relaxed">
-                      "I run a chess club with 200 members. We now offer En Pensent visualizations as prizes for our monthly tournaments. The kids absolutely love seeing their games transformed into art."
-                    </p>
-                    <div>
-                      <p className="font-display text-sm font-bold text-foreground">Sarah M.</p>
-                      <p className="text-xs text-muted-foreground">Chess Club President, Premium Member since 2024</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
 
