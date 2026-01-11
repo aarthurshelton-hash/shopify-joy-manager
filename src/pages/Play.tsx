@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/tooltip';
 import { EloChangeAnimation } from '@/components/chess/EloChangeAnimation';
 import { SoundSettings } from '@/components/chess/SoundSettings';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 
 type ViewMode = 'lobby' | 'game' | 'waiting';
 
@@ -87,6 +88,23 @@ const Play = () => {
     getAvailableMoves,
     movedSquares,
   } = useChessGame();
+
+  // Reset ELO animation state when returning to lobby
+  const handleBackToLobby = () => {
+    setShowEloAnimation(false);
+    setEloBeforeGame(null);
+    setEloAfterGame(null);
+    setViewMode('lobby');
+  };
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    onResign: gameState?.status === 'active' ? resignGame : undefined,
+    onOfferDraw: gameState?.status === 'active' && isMyTurn ? offerDraw : undefined,
+    onBackToLobby: viewMode !== 'lobby' ? handleBackToLobby : undefined,
+    isGameActive: gameState?.status === 'active',
+    isMyTurn,
+  });
 
   // Check for game ID in URL
   useEffect(() => {
@@ -199,14 +217,6 @@ const Play = () => {
       fetchNewRating();
     }
   }, [gameState?.status, eloBeforeGame, showEloAnimation, user]);
-
-  // Reset ELO animation state when returning to lobby
-  const handleBackToLobby = () => {
-    setShowEloAnimation(false);
-    setEloBeforeGame(null);
-    setEloAfterGame(null);
-    setViewMode('lobby');
-  };
 
   const handleCreateGame = async () => {
     if (!user) {
