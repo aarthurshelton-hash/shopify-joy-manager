@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createHmac } from "https://deno.land/std@0.168.0/node/crypto.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -6,6 +7,7 @@ const corsHeaders = {
 };
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+const SHOPIFY_WEBHOOK_SECRET = Deno.env.get('SHOPIFY_WEBHOOK_SECRET');
 
 interface ShopifyOrder {
   id: number;
@@ -33,6 +35,31 @@ interface ShopifyOrder {
   note_attributes: Array<{ name: string; value: string }>;
 }
 
+/**
+ * Verify Shopify webhook HMAC signature
+ */
+function verifyShopifyHmac(rawBody: string, hmacHeader: string): boolean {
+  if (!SHOPIFY_WEBHOOK_SECRET || !hmacHeader) {
+    return false;
+  }
+  
+  const hash = createHmac('sha256', SHOPIFY_WEBHOOK_SECRET)
+    .update(rawBody)
+    .digest('base64');
+  
+  // Use timing-safe comparison
+  if (hash.length !== hmacHeader.length) {
+    return false;
+  }
+  
+  let mismatch = 0;
+  for (let i = 0; i < hash.length; i++) {
+    mismatch |= hash.charCodeAt(i) ^ hmacHeader.charCodeAt(i);
+  }
+  
+  return mismatch === 0;
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -40,8 +67,39 @@ serve(async (req) => {
   }
 
   try {
+    // Get raw body for HMAC verification
+    const rawBody = await req.text();
+    const hmacHeader = req.headers.get('x-shopify-hmac-sha256');
     const topic = req.headers.get('x-shopify-topic');
+    
     console.log('Received Shopify webhook:', topic);
+
+    // Verify HMAC signature
+    if (!hmacHeader) {
+      console.error('Missing HMAC header');
+      return new Response(JSON.stringify({ error: 'Missing HMAC signature' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!SHOPIFY_WEBHOOK_SECRET) {
+      console.error('SHOPIFY_WEBHOOK_SECRET not configured');
+      return new Response(JSON.stringify({ error: 'Webhook secret not configured' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!verifyShopifyHmac(rawBody, hmacHeader)) {
+      console.error('HMAC validation failed - potential forged webhook');
+      return new Response(JSON.stringify({ error: 'Invalid signature' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    console.log('HMAC validation passed');
 
     // Only process order creation webhooks
     if (topic !== 'orders/create' && topic !== 'orders/paid') {
@@ -50,8 +108,18 @@ serve(async (req) => {
       });
     }
 
-    const order: ShopifyOrder = await req.json();
+    // Parse the validated body
+    const order: ShopifyOrder = JSON.parse(rawBody);
     console.log('Processing order:', order.name);
+
+    // Validate required fields
+    if (!order.email) {
+      console.error('Missing required order email');
+      return new Response(JSON.stringify({ error: 'Invalid order data: missing email' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     // Extract chess visualization orders (by SKU pattern)
     const chessOrders = order.line_items.filter(item => 
