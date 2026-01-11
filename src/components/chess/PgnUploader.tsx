@@ -1,8 +1,8 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Upload, FileText, Crown, Sparkles, CheckCircle, XCircle, Loader2, Wrench, ArrowRight, ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
-import { famousGames, FamousGame } from '@/lib/chess/famousGames';
+import { Upload, FileText, Crown, Sparkles, CheckCircle, XCircle, Loader2, Wrench, ArrowRight, ChevronLeft, ChevronRight, Search, X, Shuffle } from 'lucide-react';
+import { famousGames, FamousGame, getRandomFamousGame } from '@/lib/chess/famousGames';
 import { gameImageImports } from '@/lib/chess/gameImages';
 import { validatePgn, cleanPgn, PgnValidationResult } from '@/lib/chess/pgnValidator';
 import { fixPgn, PgnFixResult } from '@/lib/chess/pgnFixer';
@@ -276,6 +276,22 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
                 {!isMobile && !searchQuery && <span className="ml-2 text-muted-foreground/60">• Use ← → arrow keys</span>}
               </p>
             </div>
+            
+            {/* Random game button */}
+            <button
+              onClick={() => {
+                const randomGame = getRandomFamousGame();
+                handleLoadGame(randomGame);
+                toast.success('Random game loaded!', {
+                  description: `${randomGame.title} (${randomGame.year})`,
+                });
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 rounded-md transition-colors flex-shrink-0"
+              aria-label="Load random game"
+            >
+              <Shuffle className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Random</span>
+            </button>
             
             {/* Search input */}
             <div className="relative flex-shrink-0 w-full sm:w-48">
