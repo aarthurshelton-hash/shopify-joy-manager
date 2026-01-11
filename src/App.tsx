@@ -9,6 +9,7 @@ import MyPalettes from "./pages/MyPalettes";
 import MyVision from "./pages/MyVision";
 import About from "./pages/About";
 import Investors from "./pages/Investors";
+import Analytics from "./pages/Analytics";
 import News from "./pages/News";
 import QRMockup from "./pages/QRMockup";
 import VisualizationView from "./pages/VisualizationView";
@@ -29,6 +30,7 @@ const App = () => (
             <Route path="/my-vision" element={<MyVision />} />
             <Route path="/about" element={<About />} />
             <Route path="/investors" element={<Investors />} />
+            <Route path="/analytics" element={<Analytics />} />
             <Route path="/news" element={<News />} />
             <Route path="/qr-preview" element={<QRMockup />} />
             <Route path="/v/:shareId" element={<VisualizationView />} />
