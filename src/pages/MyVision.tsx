@@ -22,10 +22,12 @@ import { PremiumUpgradeCard } from '@/components/premium';
 import AuthModal from '@/components/auth/AuthModal';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
+import { usePrintOrderStore } from '@/stores/printOrderStore';
 
 const MyVision: React.FC = () => {
   const navigate = useNavigate();
   const { user, isPremium, isLoading: authLoading } = useAuth();
+  const { setOrderData } = usePrintOrderStore();
   const [visualizations, setVisualizations] = useState<SavedVisualization[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<SavedVisualization | null>(null);
@@ -108,6 +110,24 @@ const MyVision: React.FC = () => {
   const handleViewPublicPage = (shareId: string | null) => {
     if (!shareId) return;
     window.open(`/v/${shareId}`, '_blank');
+  };
+
+  const handleOrderPrint = (viz: SavedVisualization) => {
+    setOrderData({
+      visualizationId: viz.id,
+      imagePath: viz.image_path,
+      title: viz.title,
+      pgn: viz.pgn || undefined,
+      gameData: {
+        white: viz.game_data.white,
+        black: viz.game_data.black,
+        event: viz.game_data.event,
+        date: viz.game_data.date,
+        result: viz.game_data.result,
+      },
+      shareId: viz.public_share_id,
+    });
+    navigate('/order-print');
   };
 
   // Loading state
@@ -283,8 +303,7 @@ const MyVision: React.FC = () => {
                       size="sm"
                       onClick={(e) => {
                         e.stopPropagation();
-                        navigate('/');
-                        toast.info('Create a visualization on the homepage to order prints!');
+                        handleOrderPrint(viz);
                       }}
                       className="gap-1 bg-gradient-to-r from-amber-500/80 to-amber-600/80 hover:from-amber-500 hover:to-amber-600 text-stone-900"
                     >

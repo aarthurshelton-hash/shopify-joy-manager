@@ -9,6 +9,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { usePrintOrderStore, PrintOrderData } from '@/stores/printOrderStore';
 
 interface OrderPrintButtonProps {
   /** Visual variant of the button */
@@ -21,6 +22,8 @@ interface OrderPrintButtonProps {
   animated?: boolean;
   /** Optional onClick handler (defaults to navigation) */
   onClick?: () => void;
+  /** Optional order data to pre-fill the order page */
+  orderData?: PrintOrderData;
 }
 
 /**
@@ -33,14 +36,19 @@ export const OrderPrintButton: React.FC<OrderPrintButtonProps> = ({
   className = '',
   animated = true,
   onClick,
+  orderData,
 }) => {
   const navigate = useNavigate();
+  const { setOrderData } = usePrintOrderStore();
 
   const handleClick = () => {
     if (onClick) {
       onClick();
+    } else if (orderData) {
+      setOrderData(orderData);
+      navigate('/order-print');
     } else {
-      // Navigate to home page where product ordering happens
+      // Fallback to home if no data
       navigate('/');
     }
   };
