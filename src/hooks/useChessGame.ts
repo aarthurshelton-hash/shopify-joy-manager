@@ -3,6 +3,7 @@ import { Chess, Square, Move } from 'chess.js';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { calculateGameRatingChanges } from '@/lib/chess/eloCalculator';
 
 export type TimeControl = 'bullet_1' | 'blitz_5' | 'rapid_15' | 'untimed';
 export type GameStatus = 'waiting' | 'active' | 'completed' | 'abandoned';
@@ -380,7 +381,10 @@ export const useChessGame = (): UseChessGameReturn => {
         })
         .eq('id', gameState.id);
 
-      if (status === 'completed') {
+      if (status === 'completed' && result) {
+        // Update ELO ratings
+        await updateEloRatings(gameState.whitePlayerId, gameState.blackPlayerId, result);
+        
         if (result === 'white_wins') {
           toast.success(myColor === 'w' ? 'You won!' : 'White wins!');
         } else if (result === 'black_wins') {
@@ -396,6 +400,60 @@ export const useChessGame = (): UseChessGameReturn => {
       return false;
     }
   }, [game, gameState, user, isMyTurn, myColor]);
+
+  // Update ELO ratings for both players after a game completes
+  const updateEloRatings = useCallback(async (
+    whitePlayerId: string | null,
+    blackPlayerId: string | null,
+    result: GameResult
+  ) => {
+    if (!whitePlayerId || !blackPlayerId || result === 'abandoned') return;
+    
+    try {
+      // Fetch current ratings for both players
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, elo_rating')
+        .in('user_id', [whitePlayerId, blackPlayerId]);
+      
+      if (!profiles || profiles.length !== 2) return;
+      
+      const whiteProfile = profiles.find(p => p.user_id === whitePlayerId);
+      const blackProfile = profiles.find(p => p.user_id === blackPlayerId);
+      
+      if (!whiteProfile || !blackProfile) return;
+      
+      const whiteRating = whiteProfile.elo_rating || 1200;
+      const blackRating = blackProfile.elo_rating || 1200;
+      
+      // Calculate new ratings
+      const ratingResult = result === 'draw' ? 'draw' : result;
+      const changes = calculateGameRatingChanges(whiteRating, blackRating, ratingResult);
+      
+      // Update both players' ratings
+      await Promise.all([
+        supabase
+          .from('profiles')
+          .update({ elo_rating: changes.white.newRating })
+          .eq('user_id', whitePlayerId),
+        supabase
+          .from('profiles')
+          .update({ elo_rating: changes.black.newRating })
+          .eq('user_id', blackPlayerId)
+      ]);
+      
+      // Show rating change to current user
+      if (user?.id === whitePlayerId) {
+        const change = changes.white.change;
+        toast.info(`Rating: ${changes.white.newRating} (${change >= 0 ? '+' : ''}${change})`);
+      } else if (user?.id === blackPlayerId) {
+        const change = changes.black.change;
+        toast.info(`Rating: ${changes.black.newRating} (${change >= 0 ? '+' : ''}${change})`);
+      }
+    } catch (error) {
+      console.error('Failed to update ELO ratings:', error);
+    }
+  }, [user]);
 
   const resignGame = useCallback(async () => {
     if (!gameState || !user || !myColor) return;
@@ -413,8 +471,11 @@ export const useChessGame = (): UseChessGameReturn => {
       })
       .eq('id', gameState.id);
 
+    // Update ELO ratings
+    await updateEloRatings(gameState.whitePlayerId, gameState.blackPlayerId, result);
+
     toast.info('You resigned');
-  }, [gameState, user, myColor]);
+  }, [gameState, user, myColor, updateEloRatings]);
 
   const offerDraw = useCallback(async () => {
     toast.info('Draw offer sent (opponent auto-accepts in this version)');
@@ -429,7 +490,10 @@ export const useChessGame = (): UseChessGameReturn => {
         completed_at: new Date().toISOString(),
       })
       .eq('id', gameState.id);
-  }, [gameState]);
+
+    // Update ELO ratings
+    await updateEloRatings(gameState.whitePlayerId, gameState.blackPlayerId, 'draw');
+  }, [gameState, updateEloRatings]);
 
   const getAvailableMoves = useCallback((square: Square): Square[] => {
     const moves = game.moves({ square, verbose: true });

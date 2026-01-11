@@ -10,6 +10,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { getRatingTier } from '@/lib/chess/eloCalculator';
 
 interface CreatorStats {
   userId: string;
@@ -20,6 +21,7 @@ interface CreatorStats {
   chessWins: number;
   chessLosses: number;
   chessDraws: number;
+  eloRating: number;
   totalScore: number;
   rank: number;
   rankChange: number;
@@ -136,6 +138,7 @@ const PROJECTED_CREATORS: Omit<CreatorStats, 'rank'>[] = [
     chessWins: 15,
     chessLosses: 3,
     chessDraws: 2,
+    eloRating: 1842,
     totalScore: 257,
     rankChange: 0,
     badges: [BADGE_DEFINITIONS.top_creator, BADGE_DEFINITIONS.chess_champion, BADGE_DEFINITIONS.palette_master]
@@ -149,6 +152,7 @@ const PROJECTED_CREATORS: Omit<CreatorStats, 'rank'>[] = [
     chessWins: 12,
     chessLosses: 5,
     chessDraws: 1,
+    eloRating: 1756,
     totalScore: 224,
     rankChange: 2,
     badges: [BADGE_DEFINITIONS.rising_star, BADGE_DEFINITIONS.chess_champion]
@@ -162,6 +166,7 @@ const PROJECTED_CREATORS: Omit<CreatorStats, 'rank'>[] = [
     chessWins: 8,
     chessLosses: 2,
     chessDraws: 3,
+    eloRating: 1698,
     totalScore: 192,
     rankChange: -1,
     badges: [BADGE_DEFINITIONS.palette_master, BADGE_DEFINITIONS.prolific_artist]
@@ -175,6 +180,7 @@ const PROJECTED_CREATORS: Omit<CreatorStats, 'rank'>[] = [
     chessWins: 10,
     chessLosses: 4,
     chessDraws: 2,
+    eloRating: 1623,
     totalScore: 180,
     rankChange: 1,
     badges: [BADGE_DEFINITIONS.on_fire, BADGE_DEFINITIONS.chess_champion]
@@ -188,6 +194,7 @@ const PROJECTED_CREATORS: Omit<CreatorStats, 'rank'>[] = [
     chessWins: 7,
     chessLosses: 0,
     chessDraws: 1,
+    eloRating: 1587,
     totalScore: 153,
     rankChange: -2,
     badges: [BADGE_DEFINITIONS.undefeated, BADGE_DEFINITIONS.top_10]
@@ -201,6 +208,7 @@ const PROJECTED_CREATORS: Omit<CreatorStats, 'rank'>[] = [
     chessWins: 5,
     chessLosses: 3,
     chessDraws: 2,
+    eloRating: 1445,
     totalScore: 131,
     rankChange: 3,
     badges: [BADGE_DEFINITIONS.rising_star, BADGE_DEFINITIONS.top_10]
@@ -214,6 +222,7 @@ const PROJECTED_CREATORS: Omit<CreatorStats, 'rank'>[] = [
     chessWins: 4,
     chessLosses: 2,
     chessDraws: 1,
+    eloRating: 1378,
     totalScore: 120,
     rankChange: 0,
     badges: [BADGE_DEFINITIONS.consistent, BADGE_DEFINITIONS.top_10]
@@ -227,6 +236,7 @@ const PROJECTED_CREATORS: Omit<CreatorStats, 'rank'>[] = [
     chessWins: 3,
     chessLosses: 1,
     chessDraws: 0,
+    eloRating: 1312,
     totalScore: 107,
     rankChange: 1,
     badges: [BADGE_DEFINITIONS.palette_master]
@@ -240,6 +250,7 @@ const PROJECTED_CREATORS: Omit<CreatorStats, 'rank'>[] = [
     chessWins: 2,
     chessLosses: 3,
     chessDraws: 1,
+    eloRating: 1256,
     totalScore: 92,
     rankChange: -1,
     badges: [BADGE_DEFINITIONS.consistent]
@@ -253,6 +264,7 @@ const PROJECTED_CREATORS: Omit<CreatorStats, 'rank'>[] = [
     chessWins: 1,
     chessLosses: 2,
     chessDraws: 0,
+    eloRating: 1200,
     totalScore: 77,
     rankChange: 2,
     badges: [BADGE_DEFINITIONS.rising_star, BADGE_DEFINITIONS.top_10]
@@ -386,7 +398,7 @@ const Leaderboard = () => {
           supabase.from('saved_visualizations').select('user_id'),
           supabase.from('favorite_games').select('user_id'),
           supabase.from('saved_palettes').select('user_id'),
-          supabase.from('profiles').select('user_id, display_name'),
+          supabase.from('profiles').select('user_id, display_name, elo_rating'),
           supabase.from('chess_games').select('white_player_id, black_player_id, result, winner_id').eq('status', 'completed')
         ]);
 
@@ -447,9 +459,12 @@ const Leaderboard = () => {
           }
         });
 
-        const profilesMap: Record<string, string> = {};
+        const profilesMap: Record<string, { displayName: string; eloRating: number }> = {};
         profilesResult.data?.forEach(p => {
-          profilesMap[p.user_id] = p.display_name || 'Anonymous Artist';
+          profilesMap[p.user_id] = { 
+            displayName: p.display_name || 'Anonymous Artist',
+            eloRating: p.elo_rating || 1200
+          };
         });
 
         // Calculate scores: visualizations (3pts), favorites (2pts), palettes (2pts), wins (5pts), draws (1pt)
@@ -463,16 +478,18 @@ const Leaderboard = () => {
               (stats.chessDraws * 1);
             // Simulate rank change based on activity (in production, compare with previous week's data)
             const rankChange = Math.floor(Math.random() * 7) - 3; // -3 to +3
+            const profile = profilesMap[userId];
             
             return {
               userId,
-              displayName: profilesMap[userId] || 'Anonymous Artist',
+              displayName: profile?.displayName || 'Anonymous Artist',
               visualizations: stats.visualizations,
               favorites: stats.favorites,
               palettes: stats.palettes,
               chessWins: stats.chessWins,
               chessLosses: stats.chessLosses,
               chessDraws: stats.chessDraws,
+              eloRating: profile?.eloRating || 1200,
               totalScore,
               rank: 0,
               rankChange,
@@ -624,6 +641,13 @@ const Leaderboard = () => {
                 <BadgeDisplay badges={userRank.badges} />
                 <div className="flex gap-6 flex-wrap">
                   <div className="text-center">
+                    <div className={`inline-block px-2 py-0.5 rounded-full bg-gradient-to-r ${getRatingTier(userRank.eloRating).color} text-white text-xs font-display mb-1`}>
+                      {getRatingTier(userRank.eloRating).name}
+                    </div>
+                    <p className="text-2xl font-display font-bold">{userRank.eloRating}</p>
+                    <p className="text-xs text-muted-foreground font-display uppercase">ELO</p>
+                  </div>
+                  <div className="text-center">
                     <p className="text-2xl font-display font-bold">{userRank.visualizations}</p>
                     <p className="text-xs text-muted-foreground font-display uppercase">Artworks</p>
                   </div>
@@ -669,7 +693,12 @@ const Leaderboard = () => {
                     </div>
                     <div>
                       <p className="font-display font-bold text-lg">{actualCreator.displayName}</p>
-                      <p className="text-sm text-muted-foreground font-serif">Rank #{actualCreator.rank}</p>
+                      <div className="flex items-center justify-center gap-2">
+                        <span className={`text-xs px-2 py-0.5 rounded-full bg-gradient-to-r ${getRatingTier(actualCreator.eloRating).color} text-white font-display`}>
+                          {actualCreator.eloRating}
+                        </span>
+                        <p className="text-sm text-muted-foreground font-serif">Rank #{actualCreator.rank}</p>
+                      </div>
                     </div>
                     <BadgeDisplay badges={actualCreator.badges} compact />
                     <div className="flex justify-center gap-4 text-sm">
@@ -705,9 +734,10 @@ const Leaderboard = () => {
             
             <div className="rounded-lg border border-border/50 overflow-hidden">
               {/* Header */}
-              <div className="grid grid-cols-14 gap-4 p-4 bg-card/80 border-b border-border/30 text-xs font-display uppercase tracking-wider text-muted-foreground">
+              <div className="grid grid-cols-16 gap-4 p-4 bg-card/80 border-b border-border/30 text-xs font-display uppercase tracking-wider text-muted-foreground">
                 <div className="col-span-1">Rank</div>
                 <div className="col-span-4">Creator</div>
+                <div className="col-span-2 text-center">ELO</div>
                 <div className="col-span-3">Badges</div>
                 <div className="col-span-2 text-center">Artworks</div>
                 <div className="col-span-2 text-center">Wins</div>
@@ -728,7 +758,7 @@ const Leaderboard = () => {
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: 10 }}
                       transition={{ delay: index * 0.03 }}
-                      className={`grid grid-cols-14 gap-4 p-4 items-center border-b border-border/20 hover:bg-card/50 transition-colors ${
+                      className={`grid grid-cols-16 gap-4 p-4 items-center border-b border-border/20 hover:bg-card/50 transition-colors ${
                         user && creator.userId === user.id ? 'bg-primary/5' : ''
                       }`}
                     >
@@ -744,6 +774,11 @@ const Leaderboard = () => {
                         {creator.rank <= 3 && (
                           <Sparkles className="h-3.5 w-3.5 text-primary flex-shrink-0" />
                         )}
+                      </div>
+                      <div className="col-span-2 text-center">
+                        <span className={`text-xs px-2 py-0.5 rounded-full bg-gradient-to-r ${getRatingTier(creator.eloRating).color} text-white font-display`}>
+                          {creator.eloRating}
+                        </span>
                       </div>
                       <div className="col-span-3">
                         <BadgeDisplay badges={creator.badges} compact />

@@ -4,7 +4,7 @@ import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
 import { 
   Swords, Users, Zap, Clock, Crown, Copy, Share2, 
-  Flag, Handshake, ChevronRight, Palette, Sparkles, Lock
+  Flag, Handshake, ChevronRight, Palette, Sparkles, Lock, TrendingUp
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input';
 import { colorPalettes, PaletteId } from '@/lib/chess/pieceColors';
 import AuthModal from '@/components/auth/AuthModal';
 import PremiumUpgradeModal from '@/components/premium/PremiumUpgradeModal';
+import { getRatingTier } from '@/lib/chess/eloCalculator';
 
 type ViewMode = 'lobby' | 'game' | 'waiting';
 
@@ -31,7 +32,8 @@ interface WaitingGame {
   white_player_id: string;
   time_control: TimeControl;
   created_at: string;
-  profiles?: { display_name: string | null };
+  white_elo?: number;
+  profiles?: { display_name: string | null; elo_rating: number };
 }
 
 const Play = () => {
@@ -85,7 +87,7 @@ const Play = () => {
     
     const fetchWaitingGames = async () => {
       setIsLoadingGames(true);
-      const { data } = await supabase
+      const { data: games } = await supabase
         .from('chess_games')
         .select('id, white_player_id, time_control, created_at')
         .eq('status', 'waiting')
@@ -93,7 +95,25 @@ const Play = () => {
         .order('created_at', { ascending: false })
         .limit(10);
       
-      setWaitingGames((data as WaitingGame[]) || []);
+      // Fetch ELO ratings for game creators
+      if (games && games.length > 0) {
+        const userIds = games.map(g => g.white_player_id).filter(Boolean);
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('user_id, elo_rating')
+          .in('user_id', userIds);
+        
+        const eloMap: Record<string, number> = {};
+        profiles?.forEach(p => { eloMap[p.user_id] = p.elo_rating || 1200; });
+        
+        const gamesWithElo = games.map(g => ({
+          ...g,
+          white_elo: eloMap[g.white_player_id] || 1200
+        }));
+        setWaitingGames(gamesWithElo as WaitingGame[]);
+      } else {
+        setWaitingGames([]);
+      }
       setIsLoadingGames(false);
     };
 
@@ -386,13 +406,20 @@ const Play = () => {
                               key={g.id}
                               className="flex items-center justify-between p-3 rounded-lg bg-card/50 border border-border/30"
                             >
-                              <div>
-                                <p className="font-display text-sm">
-                                  {TIME_CONTROLS.find(tc => tc.id === g.time_control)?.label || 'Blitz'}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  {new Date(g.created_at).toLocaleTimeString()}
-                                </p>
+                              <div className="flex items-center gap-3">
+                                <div>
+                                  <p className="font-display text-sm">
+                                    {TIME_CONTROLS.find(tc => tc.id === g.time_control)?.label || 'Blitz'}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {new Date(g.created_at).toLocaleTimeString()}
+                                  </p>
+                                </div>
+                                {g.white_elo && (
+                                  <span className={`text-xs px-2 py-0.5 rounded-full bg-gradient-to-r ${getRatingTier(g.white_elo).color} text-white font-display`}>
+                                    {g.white_elo}
+                                  </span>
+                                )}
                               </div>
                               <Button
                                 size="sm"
