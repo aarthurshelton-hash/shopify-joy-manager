@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
-import { User, LogOut, Palette, Settings, Crown, CreditCard, Image, Gamepad2, BarChart3, History } from 'lucide-react';
+import { User, LogOut, Palette, Settings, Crown, CreditCard, Image, Gamepad2, BarChart3, History, Paintbrush } from 'lucide-react';
 import AuthModal from './AuthModal';
 import PremiumBadge from '@/components/premium/PremiumBadge';
 
@@ -111,6 +111,14 @@ const UserMenu: React.FC = () => {
         >
           <History className="h-4 w-4" />
           Game History
+        </DropdownMenuItem>
+        <DropdownMenuItem 
+          onClick={() => navigate('/creative-mode')}
+          className="gap-2 cursor-pointer"
+        >
+          <Paintbrush className="h-4 w-4" />
+          Creative Mode
+          {!isPremium && <Crown className="h-3 w-3 text-primary ml-auto" />}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         
