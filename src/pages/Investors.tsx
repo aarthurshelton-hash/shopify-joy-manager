@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
-import { Crown, TrendingUp, Globe, Zap, Target, Download, ChevronRight, FileText, Presentation, Repeat, Users, Quote } from 'lucide-react';
+import { Crown, TrendingUp, Globe, Zap, Target, Download, ChevronRight, FileText, Presentation, Repeat, Users, Quote, Sparkles, ChevronDown, Star } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { motion, AnimatePresence } from 'framer-motion';
 
 type ModalType = 'market' | 'technology' | 'vision' | 'brand' | null;
 
@@ -11,74 +12,85 @@ interface Testimonial {
   name: string;
   role: string;
   featured?: boolean;
+  rating?: number;
 }
 
 const allTestimonials: Testimonial[] = [
-  // Original 4 testimonials
+  // Original testimonials with ratings
   {
     quote: "I've been playing chess for 20 years and this is the first time I've been able to truly visualize the beauty of my games. The HD downloads are stunning—I have three prints framed in my office now.",
     name: "Marcus T.",
-    role: "FIDE Rated Player, Premium Member since 2024"
+    role: "FIDE Rated Player, Premium Member since 2024",
+    rating: 5
   },
   {
     quote: "The personal gallery feature is a game-changer. I can save every tournament game and revisit them as art. It's like having a visual diary of my chess journey.",
     name: "Elena K.",
-    role: "Tournament Director, Premium Member since 2024"
+    role: "Tournament Director, Premium Member since 2024",
+    rating: 5
   },
   {
     quote: "Worth every penny. The watermark-free exports look professional enough to gift. I created visualizations of my grandfather's recorded games—priceless family heirlooms now.",
     name: "David R.",
-    role: "Chess Coach, Premium Member since 2024"
+    role: "Chess Coach, Premium Member since 2024",
+    rating: 5
   },
   {
     quote: "I run a chess club with 200 members. We now offer En Pensent visualizations as prizes for our monthly tournaments. The kids absolutely love seeing their games transformed into art.",
     name: "Sarah M.",
     role: "Chess Club President, Premium Member since 2024",
-    featured: true
+    featured: true,
+    rating: 5
   },
-  // Second set of 4 testimonials
   {
     quote: "As a grandmaster, I've analyzed thousands of games. En Pensent gives me a completely new perspective—seeing the flow and rhythm of a game as visual art is genuinely profound.",
     name: "Viktor A.",
-    role: "International Grandmaster, Premium Member since 2024"
+    role: "International Grandmaster, Premium Member since 2024",
+    rating: 5
   },
   {
     quote: "Bought premium specifically for the GIF exports. Now I can share animated replays of my best games on social media. The engagement has been incredible.",
     name: "James L.",
-    role: "Chess Content Creator, Premium Member since 2024"
+    role: "Chess Content Creator, Premium Member since 2024",
+    rating: 5
   },
   {
     quote: "My students are so much more engaged when they can see their games as art. It makes losing feel less painful and winning even more memorable.",
     name: "Patricia H.",
     role: "Chess Instructor, Premium Member since 2024",
-    featured: true
+    featured: true,
+    rating: 5
   },
   {
     quote: "The quality of the prints exceeded my expectations. Museum-quality framing on my first tournament win—it's the centerpiece of my game room.",
     name: "Robert K.",
-    role: "Amateur Tournament Player, Premium Member since 2024"
+    role: "Amateur Tournament Player, Premium Member since 2024",
+    rating: 5
   },
-  // Third set of 4 testimonials
   {
     quote: "I gift En Pensent visualizations to every friend who beats me in a memorable game. It's become my signature move. They love it more than any trophy.",
     name: "Michelle W.",
-    role: "Casual Player, Premium Member since 2024"
+    role: "Casual Player, Premium Member since 2024",
+    rating: 5
   },
   {
     quote: "The custom palette feature lets me match my club's colors. Every visualization feels uniquely ours. Absolute attention to detail.",
     name: "Thomas B.",
-    role: "College Chess Team Captain, Premium Member since 2024"
+    role: "College Chess Team Captain, Premium Member since 2024",
+    rating: 5
   },
   {
     quote: "At 72, I've been playing chess my whole life. Seeing my favorite games visualized this way—it's like seeing old friends in a new light. Beautiful work.",
     name: "Harold J.",
     role: "Lifelong Chess Enthusiast, Premium Member since 2024",
-    featured: true
+    featured: true,
+    rating: 5
   },
   {
     quote: "The subscription pays for itself. I've ordered six prints in the last two months alone. The priority shipping for premium members is a nice touch too.",
     name: "Amanda C.",
-    role: "Art Collector & Chess Fan, Premium Member since 2024"
+    role: "Art Collector & Chess Fan, Premium Member since 2024",
+    rating: 5
   }
 ];
 
@@ -92,18 +104,164 @@ const shuffleArray = <T,>(array: T[]): T[] => {
   return shuffled;
 };
 
+// Testimonial card component with animations
+const TestimonialCard = ({ 
+  testimonial, 
+  index 
+}: { 
+  testimonial: Testimonial; 
+  index: number;
+}) => {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 30, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -20, scale: 0.95 }}
+      transition={{ 
+        duration: 0.5, 
+        delay: index * 0.1,
+        ease: [0.22, 1, 0.36, 1]
+      }}
+      whileHover={{ 
+        scale: 1.02, 
+        y: -4,
+        transition: { duration: 0.2 }
+      }}
+      className={`group relative p-6 rounded-xl overflow-hidden ${
+        testimonial.featured 
+          ? 'border-2 border-primary/40 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent shadow-lg shadow-primary/10' 
+          : 'border border-border/50 bg-gradient-to-br from-card/80 to-card/40 hover:border-primary/30'
+      }`}
+    >
+      {/* Animated background glow for featured */}
+      {testimonial.featured && (
+        <motion.div 
+          className="absolute inset-0 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5"
+          animate={{ 
+            backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+          }}
+          transition={{ 
+            duration: 5, 
+            repeat: Infinity, 
+            ease: 'linear' 
+          }}
+          style={{ backgroundSize: '200% 100%' }}
+        />
+      )}
+      
+      {/* Sparkle effect on hover */}
+      <motion.div
+        className="absolute top-3 right-3 text-primary/0 group-hover:text-primary/60"
+        initial={{ rotate: 0 }}
+        whileHover={{ rotate: 180 }}
+        transition={{ duration: 0.5 }}
+      >
+        <Sparkles className="h-4 w-4" />
+      </motion.div>
+
+      <div className="relative flex items-start gap-4">
+        {/* Avatar with animated ring */}
+        <motion.div 
+          className={`relative w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${
+            testimonial.featured 
+              ? 'bg-gradient-to-br from-primary/30 to-primary/10' 
+              : 'bg-primary/10'
+          }`}
+          whileHover={{ scale: 1.1 }}
+          transition={{ type: 'spring', stiffness: 400 }}
+        >
+          {testimonial.featured && (
+            <motion.div 
+              className="absolute inset-0 rounded-full border-2 border-primary/40"
+              animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0, 0.5] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            />
+          )}
+          <Crown className={`h-5 w-5 ${testimonial.featured ? 'text-primary' : 'text-primary/70'}`} />
+        </motion.div>
+
+        <div className="flex-1 space-y-3">
+          {/* Star rating */}
+          {testimonial.rating && (
+            <div className="flex gap-0.5">
+              {Array.from({ length: testimonial.rating }).map((_, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, scale: 0 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: index * 0.1 + i * 0.05 + 0.2 }}
+                >
+                  <Star className="h-3.5 w-3.5 fill-primary text-primary" />
+                </motion.div>
+              ))}
+            </div>
+          )}
+
+          {/* Quote with animated quotation mark */}
+          <div className="relative">
+            <motion.span 
+              className="absolute -left-2 -top-2 text-4xl text-primary/20 font-serif"
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: index * 0.1 + 0.3 }}
+            >
+              "
+            </motion.span>
+            <p className="text-sm text-muted-foreground font-serif italic leading-relaxed pl-4">
+              {testimonial.quote}
+            </p>
+          </div>
+
+          {/* Author info with animated underline */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: index * 0.1 + 0.4 }}
+            className="pt-2 border-t border-border/30"
+          >
+            <p className="font-display text-sm font-bold text-foreground">{testimonial.name}</p>
+            <p className="text-xs text-muted-foreground">{testimonial.role}</p>
+          </motion.div>
+        </div>
+      </div>
+
+      {/* Featured badge */}
+      {testimonial.featured && (
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: index * 0.1 + 0.5 }}
+          className="absolute top-0 right-0 px-3 py-1 bg-primary text-primary-foreground text-xs font-display uppercase tracking-wider rounded-bl-lg"
+        >
+          Featured
+        </motion.div>
+      )}
+    </motion.div>
+  );
+};
+
 const Investors = () => {
   const [activeModal, setActiveModal] = useState<ModalType>(null);
+  const [visibleCount, setVisibleCount] = useState(4);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   
-  // Shuffle testimonials once on component mount, select 4 to display
-  const displayedTestimonials = useMemo(() => {
-    const shuffled = shuffleArray(allTestimonials);
-    // Ensure at least one featured testimonial is included
-    const featured = shuffled.find(t => t.featured);
-    const nonFeatured = shuffled.filter(t => !t.featured).slice(0, 3);
-    const selected = featured ? [...nonFeatured, featured] : shuffled.slice(0, 4);
-    return shuffleArray(selected); // Shuffle the final selection for variety
+  // Shuffle testimonials once on component mount
+  const shuffledTestimonials = useMemo(() => {
+    return shuffleArray(allTestimonials);
   }, []);
+
+  const visibleTestimonials = shuffledTestimonials.slice(0, visibleCount);
+  const hasMoreTestimonials = visibleCount < shuffledTestimonials.length;
+  const remainingCount = shuffledTestimonials.length - visibleCount;
+
+  const handleLoadMore = () => {
+    setIsLoadingMore(true);
+    // Small delay for visual effect
+    setTimeout(() => {
+      setVisibleCount(prev => Math.min(prev + 4, shuffledTestimonials.length));
+      setIsLoadingMore(false);
+    }, 300);
+  };
 
   const MetricCard = ({ 
     icon: Icon, 
@@ -622,40 +780,116 @@ const Investors = () => {
           </Dialog>
           
           {/* Premium Member Testimonials */}
-          <div className="space-y-6">
-            <h2 className="text-2xl font-display font-bold uppercase tracking-wider flex items-center gap-3">
-              <Quote className="h-6 w-6 text-primary" />
-              What Premium Members Say
-            </h2>
-            <div className="grid gap-6">
-              {displayedTestimonials.map((testimonial, index) => (
-                <div 
-                  key={index}
-                  className={`p-6 rounded-lg space-y-4 ${
-                    testimonial.featured 
-                      ? 'border border-primary/30 bg-primary/5' 
-                      : 'border border-border/50 bg-card/50'
-                  }`}
+          <div className="space-y-8">
+            {/* Section header with animated elements */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+              className="text-center space-y-3"
+            >
+              <div className="flex items-center justify-center gap-3">
+                <motion.div
+                  animate={{ rotate: [0, 10, -10, 0] }}
+                  transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
                 >
-                  <div className="flex items-start gap-3">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                      testimonial.featured ? 'bg-primary/20' : 'bg-primary/10'
-                    }`}>
-                      <Crown className="h-5 w-5 text-primary" />
-                    </div>
-                    <div className="space-y-2">
-                      <p className="text-sm text-muted-foreground font-serif italic leading-relaxed">
-                        "{testimonial.quote}"
-                      </p>
-                      <div>
-                        <p className="font-display text-sm font-bold text-foreground">{testimonial.name}</p>
-                        <p className="text-xs text-muted-foreground">{testimonial.role}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                  <Quote className="h-6 w-6 text-primary" />
+                </motion.div>
+                <h2 className="text-2xl font-display font-bold uppercase tracking-wider">
+                  What Premium Members Say
+                </h2>
+                <motion.div
+                  animate={{ rotate: [0, -10, 10, 0] }}
+                  transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+                >
+                  <Quote className="h-6 w-6 text-primary transform scale-x-[-1]" />
+                </motion.div>
+              </div>
+              <p className="text-sm text-muted-foreground font-serif">
+                Join {allTestimonials.length}+ visionaries who've transformed their chess journey
+              </p>
+            </motion.div>
+
+            {/* Testimonials grid with staggered animation */}
+            <div className="grid gap-4 md:gap-6">
+              <AnimatePresence mode="popLayout">
+                {visibleTestimonials.map((testimonial, index) => (
+                  <TestimonialCard 
+                    key={`${testimonial.name}-${index}`}
+                    testimonial={testimonial} 
+                    index={index % 4} // Reset index for each batch for animation timing
+                  />
+                ))}
+              </AnimatePresence>
             </div>
+
+            {/* Load More Button */}
+            {hasMoreTestimonials && (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex justify-center pt-4"
+              >
+                <motion.button
+                  onClick={handleLoadMore}
+                  disabled={isLoadingMore}
+                  className="group relative px-8 py-4 rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 border border-primary/30 hover:border-primary/50 transition-all duration-300 overflow-hidden"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  {/* Animated background */}
+                  <motion.div
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/10 to-transparent"
+                    animate={{ x: ['-100%', '100%'] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+                  />
+                  
+                  <div className="relative flex items-center gap-3">
+                    {isLoadingMore ? (
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                      >
+                        <Sparkles className="h-5 w-5 text-primary" />
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        animate={{ y: [0, 3, 0] }}
+                        transition={{ duration: 1.5, repeat: Infinity }}
+                      >
+                        <ChevronDown className="h-5 w-5 text-primary" />
+                      </motion.div>
+                    )}
+                    <span className="font-display text-sm uppercase tracking-wider text-foreground">
+                      {isLoadingMore ? 'Loading...' : `Show ${Math.min(remainingCount, 4)} More Stories`}
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-primary/20 text-xs text-primary font-medium">
+                      {remainingCount} left
+                    </span>
+                  </div>
+                </motion.button>
+              </motion.div>
+            )}
+
+            {/* All loaded message */}
+            {!hasMoreTestimonials && visibleCount > 4 && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="text-center py-6"
+              >
+                <motion.div
+                  animate={{ rotate: [0, 360] }}
+                  transition={{ duration: 2, ease: 'easeOut' }}
+                >
+                  <Crown className="h-8 w-8 text-primary mx-auto mb-3" />
+                </motion.div>
+                <p className="text-sm text-muted-foreground font-serif">
+                  You've seen all our amazing member stories!
+                </p>
+              </motion.div>
+            )}
           </div>
 
           {/* Contact CTA */}
