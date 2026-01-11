@@ -15,7 +15,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Crown, Trash2, Download, ArrowLeft, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { Crown, Trash2, Download, ArrowLeft, Image as ImageIcon, Loader2, Link2, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { PremiumUpgradeCard } from '@/components/premium';
 import AuthModal from '@/components/auth/AuthModal';
@@ -85,6 +85,26 @@ const MyVision: React.FC = () => {
     } catch (error) {
       toast.error('Failed to download image');
     }
+  };
+
+  const handleCopyShareLink = async (shareId: string | null) => {
+    if (!shareId) {
+      toast.error('Share link not available');
+      return;
+    }
+    
+    const url = `${window.location.origin}/v/${shareId}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success('Share link copied!', { description: url });
+    } catch {
+      toast.error('Failed to copy link');
+    }
+  };
+
+  const handleViewPublicPage = (shareId: string | null) => {
+    if (!shareId) return;
+    window.open(`/v/${shareId}`, '_blank');
   };
 
   // Loading state
@@ -245,14 +265,38 @@ const MyVision: React.FC = () => {
                     </Button>
                   </div>
                 </div>
-                <CardContent className="p-4">
+                <CardContent className="p-4 space-y-2">
                   <h3 className="font-medium truncate">{viz.title}</h3>
                   <p className="text-sm text-muted-foreground">
                     {viz.game_data.white} vs {viz.game_data.black}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {new Date(viz.created_at).toLocaleDateString()}
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(viz.created_at).toLocaleDateString()}
+                    </p>
+                    {viz.public_share_id && (
+                      <div className="flex gap-1">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6"
+                          onClick={() => handleCopyShareLink(viz.public_share_id)}
+                          title="Copy share link"
+                        >
+                          <Link2 className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6"
+                          onClick={() => handleViewPublicPage(viz.public_share_id)}
+                          title="View public page"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             ))}

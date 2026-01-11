@@ -63,6 +63,7 @@ const Index = () => {
   const [currentPgn, setCurrentPgn] = useState<string>('');
   const [gameTitle, setGameTitle] = useState<string>('');
   const [paletteKey, setPaletteKey] = useState(0);
+  const [savedShareId, setSavedShareId] = useState<string | null>(null);
   
   // Refs for parallax sections (used for scroll-based CSS transforms)
   const heroRef = useRef<HTMLDivElement>(null);
@@ -208,6 +209,14 @@ const Index = () => {
     setGameTitle('');
     setIsLoading(false);
     setPendingResult(null);
+    setSavedShareId(null);
+  };
+  
+  const handleShareIdCreated = (shareId: string) => {
+    setSavedShareId(shareId);
+    toast.success('QR code will now appear on your prints!', {
+      description: 'Add to cart to get a print with your unique share link.',
+    });
   };
   
   return (
@@ -515,6 +524,7 @@ const Index = () => {
                       simulation={simulation} 
                       pgn={currentPgn}
                       title={gameTitle}
+                      onShareIdCreated={handleShareIdCreated}
                     />
                     
                     {/* Product selector for ordering */}
@@ -524,6 +534,7 @@ const Index = () => {
                         gameTitle: gameTitle,
                       }}
                       simulation={simulation}
+                      shareId={savedShareId}
                     />
                   </div>
                   
