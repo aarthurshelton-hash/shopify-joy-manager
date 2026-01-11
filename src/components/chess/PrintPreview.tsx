@@ -3,6 +3,7 @@ import html2canvas from 'html2canvas';
 import GIF from 'gif.js';
 import ChessBoardVisualization from './ChessBoardVisualization';
 import GameInfoDisplay from './GameInfoDisplay';
+import VerticalTimelineSlider from './VerticalTimelineSlider';
 import TimelineSlider from './TimelineSlider';
 import { SimulationResult, SquareData } from '@/lib/chess/gameSimulator';
 import { Button } from '@/components/ui/button';
@@ -475,53 +476,66 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
         </Button>
       </div>
 
-      {/* Print Preview - The actual artwork */}
-      <div 
-        ref={printRef}
-        className={`p-6 md:p-10 shadow-2xl mx-auto max-w-lg rounded-sm border transition-colors duration-300 ${
-          darkMode 
-            ? 'bg-[#0A0A0A] border-stone-800' 
-            : 'bg-[#FDFCFB] border-stone-200'
-        }`}
-        style={{ 
-          minHeight: 'auto',
-          width: 'fit-content',
-        }}
-      >
-        <div className="flex flex-col items-center gap-6">
-          {/* Chess board visualization with watermark overlay */}
-          <div className="relative">
-            <ChessBoardVisualization 
-              board={gifPreviewMove !== null ? filterBoardToMove(simulation.board, gifPreviewMove) : timelineBoard} 
-              size={boardSize}
-            />
+      {/* Main content area with timeline on left */}
+      <div className="flex gap-4 justify-center">
+        {/* Vertical Timeline on the left */}
+        <div className="hidden md:flex">
+          <VerticalTimelineSlider 
+            totalMoves={simulation.totalMoves} 
+            moves={simulation.gameData.moves}
+          />
+        </div>
+
+        {/* Print Preview - The actual artwork */}
+        <div 
+          ref={printRef}
+          className={`p-6 md:p-10 shadow-2xl max-w-lg rounded-sm border transition-colors duration-300 ${
+            darkMode 
+              ? 'bg-[#0A0A0A] border-stone-800' 
+              : 'bg-[#FDFCFB] border-stone-200'
+          }`}
+          style={{ 
+            minHeight: 'auto',
+            width: 'fit-content',
+          }}
+        >
+          <div className="flex flex-col items-center gap-6">
+            {/* Chess board visualization with watermark overlay */}
+            <div className="relative">
+              <ChessBoardVisualization 
+                board={gifPreviewMove !== null ? filterBoardToMove(simulation.board, gifPreviewMove) : timelineBoard} 
+                size={boardSize}
+              />
+              
+              {/* Watermark - visible during free download and GIF capture */}
+              {showWatermark && <WatermarkOverlay />}
+            </div>
             
-            {/* Watermark - visible during free download and GIF capture */}
-            {showWatermark && <WatermarkOverlay />}
+            {/* Game information - proper spacing */}
+            <div className={`w-full pt-4 border-t ${darkMode ? 'border-stone-800' : 'border-stone-200'}`}>
+              <GameInfoDisplay gameData={simulation.gameData} title={title} darkMode={darkMode} />
+            </div>
+            
+            {/* Subtle branding - visible in preview */}
+            <p 
+              className={`text-[10px] tracking-[0.3em] uppercase font-medium ${
+                darkMode ? 'text-stone-500' : 'text-stone-400'
+              }`}
+              style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
+            >
+              ♔ En Pensent ♚
+            </p>
           </div>
-          
-          {/* Game information - proper spacing */}
-          <div className={`w-full pt-4 border-t ${darkMode ? 'border-stone-800' : 'border-stone-200'}`}>
-            <GameInfoDisplay gameData={simulation.gameData} title={title} darkMode={darkMode} />
-          </div>
-          
-          {/* Subtle branding - visible in preview */}
-          <p 
-            className={`text-[10px] tracking-[0.3em] uppercase font-medium ${
-              darkMode ? 'text-stone-500' : 'text-stone-400'
-            }`}
-            style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
-          >
-            ♔ En Pensent ♚
-          </p>
         </div>
       </div>
 
-      {/* Timeline Slider */}
-      <TimelineSlider 
-        totalMoves={simulation.totalMoves} 
-        moves={simulation.gameData.moves}
-      />
+      {/* Mobile Timeline - shown below on small screens */}
+      <div className="md:hidden">
+        <TimelineSlider 
+          totalMoves={simulation.totalMoves} 
+          moves={simulation.gameData.moves}
+        />
+      </div>
       
       {/* Action buttons */}
       <div className="flex flex-col gap-3">
