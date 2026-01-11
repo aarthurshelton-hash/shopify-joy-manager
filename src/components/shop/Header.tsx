@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { CartDrawer } from './CartDrawer';
 import { CurrencySelector } from './CurrencySelector';
-import { Menu, Swords, Gamepad2 } from 'lucide-react';
+import { Menu, Gamepad2, Paintbrush } from 'lucide-react';
 import UserMenu from '@/components/auth/UserMenu';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 
 const navLinks = [
   { to: '/play', label: 'Play', icon: Gamepad2, highlight: true },
+  { to: '/creative-mode', label: 'Create', icon: Paintbrush, highlight: true },
   { to: '/about', label: 'About Us' },
   { to: '/news', label: 'News' },
   { to: '/investors', label: 'Investors' },
