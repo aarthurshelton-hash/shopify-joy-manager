@@ -15,10 +15,12 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Crown, Trash2, Download, ArrowLeft, Image as ImageIcon, Loader2, Link2, ExternalLink } from 'lucide-react';
+import { Crown, Trash2, Download, ArrowLeft, Image as ImageIcon, Loader2, Link2, ExternalLink, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { PremiumUpgradeCard } from '@/components/premium';
 import AuthModal from '@/components/auth/AuthModal';
+import { Header } from '@/components/shop/Header';
+import { Footer } from '@/components/shop/Footer';
 
 const MyVision: React.FC = () => {
   const navigate = useNavigate();
@@ -111,11 +113,13 @@ const MyVision: React.FC = () => {
   if (authLoading) {
     return (
       <div className="min-h-screen bg-background">
+        <Header />
         <div className="container mx-auto px-4 py-8">
           <div className="flex items-center justify-center h-64">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         </div>
+        <Footer />
       </div>
     );
   }
@@ -124,16 +128,8 @@ const MyVision: React.FC = () => {
   if (!user) {
     return (
       <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-8">
-          <Button
-            variant="ghost"
-            onClick={() => navigate('/')}
-            className="mb-6 gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Home
-          </Button>
-          
+        <Header />
+        <div className="container mx-auto px-4 py-16">
           <div className="max-w-md mx-auto text-center space-y-6">
             <div className="flex justify-center">
               <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
@@ -151,53 +147,62 @@ const MyVision: React.FC = () => {
           
           <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
         </div>
+        <Footer />
       </div>
     );
   }
 
-  // Not premium
+  // Not premium - show gallery preview with upgrade prompt
   if (!isPremium) {
     return (
       <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-8">
-          <Button
-            variant="ghost"
-            onClick={() => navigate('/')}
-            className="mb-6 gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Home
-          </Button>
-          
-          <div className="max-w-md mx-auto text-center space-y-6">
+        <Header />
+        <div className="container mx-auto px-4 py-16">
+          <div className="max-w-2xl mx-auto text-center space-y-8">
             <div className="flex justify-center">
-              <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
-                <Crown className="h-8 w-8 text-primary" />
+              <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center">
+                <Sparkles className="h-10 w-10 text-primary" />
               </div>
             </div>
-            <h1 className="text-2xl font-display font-bold">My Vision Gallery</h1>
-            <p className="text-muted-foreground">
-              Save and store your chess visualizations with a Premium membership.
-            </p>
+            <div className="space-y-4">
+              <h1 className="text-3xl font-display font-bold">Unlock My Vision Gallery</h1>
+              <p className="text-lg text-muted-foreground leading-relaxed">
+                Save your chess visualizations to a personal gallery. Download them anytime, 
+                share with unique QR codes, and build your collection of chess art.
+              </p>
+            </div>
+            
+            {/* Feature highlights */}
+            <div className="grid sm:grid-cols-3 gap-4 text-left">
+              <div className="p-4 rounded-lg bg-card border border-border/50">
+                <Download className="h-6 w-6 text-primary mb-2" />
+                <h3 className="font-medium text-sm">Unlimited Downloads</h3>
+                <p className="text-xs text-muted-foreground">HD images, no watermarks</p>
+              </div>
+              <div className="p-4 rounded-lg bg-card border border-border/50">
+                <Link2 className="h-6 w-6 text-primary mb-2" />
+                <h3 className="font-medium text-sm">Shareable Links</h3>
+                <p className="text-xs text-muted-foreground">Unique QR codes for prints</p>
+              </div>
+              <div className="p-4 rounded-lg bg-card border border-border/50">
+                <ImageIcon className="h-6 w-6 text-primary mb-2" />
+                <h3 className="font-medium text-sm">Personal Gallery</h3>
+                <p className="text-xs text-muted-foreground">All your art in one place</p>
+              </div>
+            </div>
+            
             <PremiumUpgradeCard />
           </div>
         </div>
+        <Footer />
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-background">
+      <Header />
       <div className="container mx-auto px-4 py-8">
-        <Button
-          variant="ghost"
-          onClick={() => navigate('/')}
-          className="mb-6 gap-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Home
-        </Button>
-        
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
             <Crown className="h-6 w-6 text-primary" />
@@ -330,6 +335,7 @@ const MyVision: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <Footer />
     </div>
   );
 };
