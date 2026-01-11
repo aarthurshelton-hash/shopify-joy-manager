@@ -1,14 +1,14 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
-import { Crown, TrendingUp, Globe, Zap, Target, Download, ChevronRight, FileText, Presentation, Repeat, Users, Quote, Sparkles, ChevronDown, Star } from 'lucide-react';
+import { Crown, TrendingUp, Globe, Zap, Target, Download, ChevronRight, FileText, Presentation, Repeat, Users, Quote, Sparkles, ChevronDown, Star, Database, BarChart3 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TestimonialSubmissionForm } from '@/components/testimonials/TestimonialSubmissionForm';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 
-type ModalType = 'market' | 'technology' | 'vision' | 'brand' | null;
+type ModalType = 'market' | 'technology' | 'vision' | 'brand' | 'data' | null;
 
 interface Testimonial {
   quote: string;
@@ -396,6 +396,14 @@ const Investors = () => {
               description="Positioned as the definitive chess art brand with museum-quality products."
               cta="Brand Strategy"
               onClick={() => setActiveModal('brand')}
+            />
+            
+            <MetricCard
+              icon={Database}
+              title="Data Insights"
+              description="Premium analytics and community insights as an exclusive membership benefit."
+              cta="View Data Strategy"
+              onClick={() => setActiveModal('data')}
             />
           </div>
 
@@ -811,6 +819,109 @@ const Investors = () => {
                   <p className="text-sm text-muted-foreground font-serif italic">
                     "We're turning chess games into permanent cultural artifacts."
                   </p>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Data Insights Modal */}
+          <Dialog open={activeModal === 'data'} onOpenChange={(open) => !open && setActiveModal(null)}>
+            <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto bg-card border-border">
+              <DialogHeader>
+                <DialogTitle className="text-2xl font-display uppercase tracking-wider text-gold-gradient">
+                  Data Insights Revenue Model
+                </DialogTitle>
+              </DialogHeader>
+              
+              <div className="space-y-6 py-4">
+                <div className="space-y-3">
+                  <h3 className="font-display font-bold uppercase tracking-wide text-primary">The Data Opportunity</h3>
+                  <p className="text-sm text-muted-foreground font-serif">
+                    Every visualization created, game favorited, and palette customized generates valuable behavioral data. 
+                    We're uniquely positioned to transform this into an exclusive premium benefit—offering members 
+                    investor-grade analytics about platform trends and community activity.
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-lg bg-primary/5 border border-primary/20 space-y-2">
+                  <h3 className="font-display font-bold uppercase tracking-wide text-primary flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4" />
+                    Premium Analytics Dashboard
+                  </h3>
+                  <p className="text-sm text-muted-foreground font-serif">
+                    Exclusive access to real-time platform insights available only to Visionary Premium members.
+                  </p>
+                  <div className="grid grid-cols-2 gap-3 mt-3">
+                    <div className="text-center p-2 rounded bg-card/50 border border-border/30">
+                      <p className="text-lg font-display text-foreground">Community</p>
+                      <p className="text-xs text-muted-foreground font-serif">Trends & Activity</p>
+                    </div>
+                    <div className="text-center p-2 rounded bg-card/50 border border-border/30">
+                      <p className="text-lg font-display text-foreground">Personal</p>
+                      <p className="text-xs text-muted-foreground font-serif">Stats & Rankings</p>
+                    </div>
+                    <div className="text-center p-2 rounded bg-card/50 border border-border/30">
+                      <p className="text-lg font-display text-foreground">Trending</p>
+                      <p className="text-xs text-muted-foreground font-serif">Games & Palettes</p>
+                    </div>
+                    <div className="text-center p-2 rounded bg-card/50 border border-border/30">
+                      <p className="text-lg font-display text-foreground">Leaderboards</p>
+                      <p className="text-xs text-muted-foreground font-serif">Top Creators</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <h3 className="font-display font-bold uppercase tracking-wide text-primary">Revenue Impact</h3>
+                  <ul className="space-y-2">
+                    <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
+                      <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                      <span><strong className="text-foreground">Increased Premium Conversion</strong> — Analytics as an additional value driver for subscription</span>
+                    </li>
+                    <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
+                      <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                      <span><strong className="text-foreground">Reduced Churn</strong> — Exclusive insights encourage long-term retention</span>
+                    </li>
+                    <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
+                      <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                      <span><strong className="text-foreground">Community Engagement</strong> — Leaderboards and rankings drive activity</span>
+                    </li>
+                    <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
+                      <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                      <span><strong className="text-foreground">Zero Marginal Cost</strong> — 100% margin on data-driven features</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <div className="p-4 rounded-lg bg-card border border-border/50 space-y-3">
+                  <h3 className="font-display font-bold uppercase tracking-wide text-primary flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4" />
+                    Projected Impact on LTV
+                  </h3>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="text-center">
+                      <p className="text-lg font-display text-foreground">+15%</p>
+                      <p className="text-xs text-muted-foreground font-serif">Conversion Lift</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-lg font-display text-foreground">+20%</p>
+                      <p className="text-xs text-muted-foreground font-serif">Retention Boost</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-lg font-display text-primary font-bold">$100+</p>
+                      <p className="text-xs text-muted-foreground font-serif">Enhanced LTV</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-border">
+                  <a 
+                    href="/analytics"
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-primary text-primary-foreground font-display uppercase tracking-wide text-sm hover:opacity-90 transition-opacity"
+                  >
+                    <BarChart3 className="h-4 w-4" />
+                    View Live Analytics Dashboard
+                  </a>
                 </div>
               </div>
             </DialogContent>

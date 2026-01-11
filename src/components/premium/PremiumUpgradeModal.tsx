@@ -15,7 +15,7 @@ interface PremiumUpgradeModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAuthRequired?: () => void;
-  trigger?: 'download' | 'save' | 'general' | 'gif';
+  trigger?: 'download' | 'save' | 'general' | 'gif' | 'analytics';
 }
 
 const PremiumUpgradeModal: React.FC<PremiumUpgradeModalProps> = ({
@@ -60,6 +60,10 @@ const PremiumUpgradeModal: React.FC<PremiumUpgradeModalProps> = ({
     gif: {
       title: 'Unlock Animated GIFs',
       description: 'Export your game journey as a stunning animation',
+    },
+    analytics: {
+      title: 'Unlock Premium Analytics',
+      description: 'Access exclusive platform insights and data',
     },
     general: {
       title: 'Upgrade to Premium',
