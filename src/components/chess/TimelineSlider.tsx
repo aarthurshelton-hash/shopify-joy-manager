@@ -29,10 +29,30 @@ interface KeyMoment {
 }
 
 const momentConfig = {
-  capture: { icon: Target, color: 'bg-orange-500', label: 'Capture' },
-  check: { icon: Zap, color: 'bg-yellow-500', label: 'Check' },
-  checkmate: { icon: Crown, color: 'bg-red-500', label: 'Checkmate' },
-  castling: { icon: Castle, color: 'bg-blue-500', label: 'Castle' },
+  capture: { 
+    icon: Target, 
+    color: 'bg-orange-500', 
+    label: 'Capture',
+    description: 'A piece was captured. Captures shift material balance and open tactical opportunities.'
+  },
+  check: { 
+    icon: Zap, 
+    color: 'bg-yellow-500', 
+    label: 'Check',
+    description: 'The king is under attack! The opponent must respond to escape the threat.'
+  },
+  checkmate: { 
+    icon: Crown, 
+    color: 'bg-red-500', 
+    label: 'Checkmate',
+    description: 'Game over! The king cannot escape and the game ends in victory.'
+  },
+  castling: { 
+    icon: Castle, 
+    color: 'bg-blue-500', 
+    label: 'Castle',
+    description: 'The king moves to safety while activating the rook. A crucial defensive move.'
+  },
 };
 
 const phaseConfig: Record<GamePhase, { label: string; icon: React.ReactNode; color: string }> = {
@@ -217,34 +237,74 @@ const TimelineSlider: React.FC<TimelineSliderProps> = ({ totalMoves, moves = [] 
           </div>
         </div>
 
-        {/* Key moments summary */}
+        {/* Key moments summary with tooltips */}
         {visibleMoments.length > 0 && (
           <div className="flex items-center gap-3 text-[10px]">
             <span className="text-muted-foreground">Key moments:</span>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               {momentCounts.capture > 0 && (
-                <div className="flex items-center gap-1 text-orange-400">
-                  <Target className="w-3 h-3" />
-                  <span>{momentCounts.capture}</span>
-                </div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button className="flex items-center gap-1 text-orange-400 hover:scale-110 transition-transform cursor-help">
+                      <Target className="w-3 h-3" />
+                      <span>{momentCounts.capture}</span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-[180px] p-2">
+                    <div className="space-y-1">
+                      <div className="font-semibold">Captures</div>
+                      <p className="text-xs text-muted-foreground">{momentConfig.capture.description}</p>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
               )}
               {momentCounts.check > 0 && (
-                <div className="flex items-center gap-1 text-yellow-400">
-                  <Zap className="w-3 h-3" />
-                  <span>{momentCounts.check}</span>
-                </div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button className="flex items-center gap-1 text-yellow-400 hover:scale-110 transition-transform cursor-help">
+                      <Zap className="w-3 h-3" />
+                      <span>{momentCounts.check}</span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-[180px] p-2">
+                    <div className="space-y-1">
+                      <div className="font-semibold">Checks</div>
+                      <p className="text-xs text-muted-foreground">{momentConfig.check.description}</p>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
               )}
               {momentCounts.checkmate > 0 && (
-                <div className="flex items-center gap-1 text-red-400">
-                  <Crown className="w-3 h-3" />
-                  <span>{momentCounts.checkmate}</span>
-                </div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button className="flex items-center gap-1 text-red-400 hover:scale-110 transition-transform cursor-help">
+                      <Crown className="w-3 h-3" />
+                      <span>{momentCounts.checkmate}</span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-[180px] p-2">
+                    <div className="space-y-1">
+                      <div className="font-semibold">Checkmate</div>
+                      <p className="text-xs text-muted-foreground">{momentConfig.checkmate.description}</p>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
               )}
               {momentCounts.castling > 0 && (
-                <div className="flex items-center gap-1 text-blue-400">
-                  <Castle className="w-3 h-3" />
-                  <span>{momentCounts.castling}</span>
-                </div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button className="flex items-center gap-1 text-blue-400 hover:scale-110 transition-transform cursor-help">
+                      <Castle className="w-3 h-3" />
+                      <span>{momentCounts.castling}</span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-[180px] p-2">
+                    <div className="space-y-1">
+                      <div className="font-semibold">Castling</div>
+                      <p className="text-xs text-muted-foreground">{momentConfig.castling.description}</p>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
               )}
             </div>
           </div>
@@ -288,10 +348,18 @@ const TimelineSlider: React.FC<TimelineSliderProps> = ({ totalMoves, moves = [] 
                       <Icon className="w-2.5 h-2.5 text-white" />
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent side="top" className="text-xs">
-                    <div className="font-medium">{config.label}</div>
-                    <div className="text-muted-foreground">
-                      {moveNum}.{isWhiteMove ? '' : '..'} {moment.move}
+                  <TooltipContent side="top" className="max-w-[200px] p-2">
+                    <div className="space-y-1">
+                      <div className="font-semibold flex items-center gap-1">
+                        <Icon className={`w-3 h-3`} />
+                        {config.label}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {moveNum}.{isWhiteMove ? '' : '..'} {moment.move}
+                      </div>
+                      <p className="text-[9px] text-muted-foreground/80 leading-snug">
+                        {config.description}
+                      </p>
                     </div>
                   </TooltipContent>
                 </Tooltip>
