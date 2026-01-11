@@ -18,6 +18,7 @@ import { ProductSelector } from '@/components/shop/ProductSelector';
 import { usePrintOrderStore } from '@/stores/printOrderStore';
 import { EnPensentOverlay } from '@/components/chess/EnPensentOverlay';
 import PrintReadyVisualization from '@/components/chess/PrintReadyVisualization';
+import GameInfoDisplay from '@/components/chess/GameInfoDisplay';
 import { SquareData } from '@/lib/chess/gameSimulator';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 
@@ -141,52 +142,38 @@ const OrderPrint: React.FC = () => {
                 <div className="flex justify-center">
                   {/* Show different visualizations based on data type */}
                   {hasImagePath && !hasEnPensentData && !hasSimulation ? (
-                    // Saved visualization from gallery - wrap in trademark frame
-                    <div 
-                      className={`p-4 sm:p-6 rounded-lg border shadow-xl transition-colors ${
-                        darkMode 
-                          ? 'bg-[#0A0A0A] border-stone-800' 
-                          : 'bg-[#FDFCFB] border-stone-200'
-                      }`}
-                    >
-                      <img 
-                        src={orderData.imagePath} 
-                        alt={orderData.title}
-                        className="w-64 h-64 sm:w-80 sm:h-80 object-contain rounded"
-                      />
-                      {/* Game Info */}
-                      <div className={`mt-4 pt-4 border-t ${darkMode ? 'border-stone-800' : 'border-stone-200'}`}>
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <p className={`text-sm font-display font-medium ${darkMode ? 'text-stone-300' : 'text-stone-700'}`}>
-                              {orderData.gameData.white} vs {orderData.gameData.black}
-                            </p>
-                            <p className={`text-xs ${darkMode ? 'text-stone-500' : 'text-stone-400'}`}>
-                              {orderData.gameData.event || 'Chess Game'}
-                              {orderData.gameData.result && ` • ${orderData.gameData.result}`}
-                            </p>
-                          </div>
-                          <img src={enPensentLogo} alt="En Pensent" className="w-6 h-6 rounded-full" />
-                        </div>
-                      </div>
-                      <p 
-                        className={`text-center text-[8px] tracking-[0.3em] uppercase mt-3 ${
-                          darkMode ? 'text-stone-600' : 'text-stone-400'
-                        }`}
-                      >
-                        ♔ En Pensent ♚
-                      </p>
-                    </div>
+                    // Saved visualization from gallery - show image
+                    <PrintReadyVisualization 
+                      board={[]} // Will show image instead
+                      gameData={orderData.gameData}
+                      size={400}
+                      darkMode={darkMode}
+                      title={orderData.title}
+                      compact={false}
+                    />
+                  ) : hasSimulation && displayBoard ? (
+                    // Full simulation visualization - use unified PrintReadyVisualization
+                    <PrintReadyVisualization 
+                      board={displayBoard}
+                      gameData={{
+                        ...orderData.simulation!.gameData,
+                        moves: orderData.simulation!.gameData.moves,
+                      }}
+                      size={400}
+                      darkMode={darkMode}
+                      title={orderData.title}
+                      compact={false}
+                    />
                   ) : hasEnPensentData ? (
                     // En Pensent live game visualization - wrap in trademark frame
                     <div 
-                      className={`p-4 sm:p-6 rounded-lg border shadow-xl transition-colors ${
+                      className={`p-6 rounded-lg border shadow-xl transition-colors ${
                         darkMode 
                           ? 'bg-[#0A0A0A] border-stone-800' 
                           : 'bg-[#FDFCFB] border-stone-200'
                       }`}
                     >
-                      <div className="relative w-64 h-64 sm:w-80 sm:h-80">
+                      <div className="relative w-72 h-72 sm:w-80 sm:h-80">
                         {/* Chess board grid */}
                         <div className="absolute inset-0 grid grid-cols-8 grid-rows-8">
                           {Array.from({ length: 64 }).map((_, i) => {
@@ -212,38 +199,29 @@ const OrderPrint: React.FC = () => {
                           flipped={false}
                         />
                       </div>
-                      {/* Game Info */}
-                      <div className={`mt-4 pt-4 border-t ${darkMode ? 'border-stone-800' : 'border-stone-200'}`}>
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <p className={`text-sm font-display font-medium ${darkMode ? 'text-stone-300' : 'text-stone-700'}`}>
-                              {orderData.gameData.white} vs {orderData.gameData.black}
-                            </p>
-                            <p className={`text-xs ${darkMode ? 'text-stone-500' : 'text-stone-400'}`}>
-                              {orderData.gameData.event || 'Chess Game'}
-                              {orderData.gameData.result && ` • ${orderData.gameData.result}`}
-                            </p>
-                          </div>
-                          <img src={enPensentLogo} alt="En Pensent" className="w-6 h-6 rounded-full" />
-                        </div>
+                      {/* Game Info - using GameInfoDisplay for consistency */}
+                      <div className={`mt-6 pt-4 border-t ${darkMode ? 'border-stone-800' : 'border-stone-200'}`}>
+                        <GameInfoDisplay 
+                          gameData={{
+                            white: orderData.gameData.white,
+                            black: orderData.gameData.black,
+                            event: orderData.gameData.event || 'Chess Game',
+                            date: orderData.gameData.date || '',
+                            result: orderData.gameData.result || '',
+                            moves: [],
+                            pgn: '',
+                          }}
+                          darkMode={darkMode}
+                        />
                       </div>
                       <p 
-                        className={`text-center text-[8px] tracking-[0.3em] uppercase mt-3 ${
+                        className={`text-center text-[10px] tracking-[0.3em] uppercase mt-4 ${
                           darkMode ? 'text-stone-600' : 'text-stone-400'
                         }`}
                       >
                         ♔ En Pensent ♚
                       </p>
                     </div>
-                  ) : hasSimulation && displayBoard ? (
-                    // Full simulation visualization - use unified PrintReadyVisualization
-                    <PrintReadyVisualization 
-                      board={displayBoard}
-                      gameData={orderData.simulation!.gameData}
-                      size={360}
-                      darkMode={darkMode}
-                      compact={false}
-                    />
                   ) : (
                     // Fallback placeholder
                     <div className="w-64 h-64 sm:w-80 sm:h-80 flex items-center justify-center bg-muted/20 rounded">
