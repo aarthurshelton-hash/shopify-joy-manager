@@ -15,8 +15,9 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Crown, Trash2, Download, ArrowLeft, Image as ImageIcon, Loader2, Link2, ExternalLink, Sparkles } from 'lucide-react';
+import { Crown, Trash2, Download, ArrowLeft, Image as ImageIcon, Loader2, Link2, ExternalLink, Sparkles, Printer } from 'lucide-react';
 import { toast } from 'sonner';
+import { OrderPrintButton } from '@/components/shop/OrderPrintButton';
 import { PremiumUpgradeCard } from '@/components/premium';
 import AuthModal from '@/components/auth/AuthModal';
 import { Header } from '@/components/shop/Header';
@@ -254,7 +255,7 @@ const MyVision: React.FC = () => {
                     alt={viz.title}
                     className="w-full h-full object-cover"
                   />
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 flex-wrap p-2">
                     <Button
                       size="sm"
                       variant="secondary"
@@ -277,6 +278,18 @@ const MyVision: React.FC = () => {
                       className="gap-1"
                     >
                       <Download className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate('/');
+                        toast.info('Create a visualization on the homepage to order prints!');
+                      }}
+                      className="gap-1 bg-gradient-to-r from-amber-500/80 to-amber-600/80 hover:from-amber-500 hover:to-amber-600 text-stone-900"
+                    >
+                      <Printer className="h-4 w-4" />
+                      Print
                     </Button>
                     <Button
                       size="sm"
