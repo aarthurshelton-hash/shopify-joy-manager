@@ -5,7 +5,7 @@ import { Footer } from '@/components/shop/Footer';
 import { 
   Trophy, Crown, Medal, Star, Eye, Heart, Palette, 
   TrendingUp, TrendingDown, Minus, Sparkles, ChevronRight, 
-  User, Flame, Zap, Target, Award, Rocket
+  User, Flame, Zap, Target, Award, Rocket, Swords, Shield
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
@@ -17,16 +17,19 @@ interface CreatorStats {
   visualizations: number;
   favorites: number;
   palettes: number;
+  chessWins: number;
+  chessLosses: number;
+  chessDraws: number;
   totalScore: number;
   rank: number;
-  rankChange: number; // positive = moved up, negative = moved down, 0 = no change
+  rankChange: number;
   badges: Badge[];
 }
 
 interface Badge {
   id: string;
   name: string;
-  icon: 'trophy' | 'star' | 'zap' | 'target' | 'award' | 'rocket' | 'flame' | 'crown';
+  icon: 'trophy' | 'star' | 'zap' | 'target' | 'award' | 'rocket' | 'flame' | 'crown' | 'swords' | 'shield';
   color: string;
   description: string;
 }
@@ -88,6 +91,20 @@ const BADGE_DEFINITIONS: Record<string, Badge> = {
     icon: 'trophy',
     color: 'from-teal-500 to-cyan-500',
     description: 'Active for 4+ weeks'
+  },
+  chess_champion: {
+    id: 'chess_champion',
+    name: 'Chess Champion',
+    icon: 'swords',
+    color: 'from-yellow-600 to-amber-600',
+    description: '10+ chess victories'
+  },
+  undefeated: {
+    id: 'undefeated',
+    name: 'Undefeated',
+    icon: 'shield',
+    color: 'from-emerald-500 to-teal-500',
+    description: '5+ wins with no losses'
   }
 };
 
@@ -100,7 +117,9 @@ const BadgeIcon = ({ badge }: { badge: Badge }) => {
     award: Award,
     rocket: Rocket,
     flame: Flame,
-    crown: Crown
+    crown: Crown,
+    swords: Swords,
+    shield: Shield
   };
   const Icon = icons[badge.icon];
   return <Icon className="h-3 w-3" />;
@@ -114,9 +133,12 @@ const PROJECTED_CREATORS: Omit<CreatorStats, 'rank'>[] = [
     visualizations: 47, 
     favorites: 28, 
     palettes: 12, 
-    totalScore: 182,
+    chessWins: 15,
+    chessLosses: 3,
+    chessDraws: 2,
+    totalScore: 257,
     rankChange: 0,
-    badges: [BADGE_DEFINITIONS.top_creator, BADGE_DEFINITIONS.prolific_artist, BADGE_DEFINITIONS.palette_master]
+    badges: [BADGE_DEFINITIONS.top_creator, BADGE_DEFINITIONS.chess_champion, BADGE_DEFINITIONS.palette_master]
   },
   { 
     userId: 'proj-2', 
@@ -124,9 +146,12 @@ const PROJECTED_CREATORS: Omit<CreatorStats, 'rank'>[] = [
     visualizations: 39, 
     favorites: 34, 
     palettes: 8, 
-    totalScore: 164,
+    chessWins: 12,
+    chessLosses: 5,
+    chessDraws: 1,
+    totalScore: 224,
     rankChange: 2,
-    badges: [BADGE_DEFINITIONS.rising_star, BADGE_DEFINITIONS.curator]
+    badges: [BADGE_DEFINITIONS.rising_star, BADGE_DEFINITIONS.chess_champion]
   },
   { 
     userId: 'proj-3', 
@@ -134,7 +159,10 @@ const PROJECTED_CREATORS: Omit<CreatorStats, 'rank'>[] = [
     visualizations: 35, 
     favorites: 22, 
     palettes: 15, 
-    totalScore: 152,
+    chessWins: 8,
+    chessLosses: 2,
+    chessDraws: 3,
+    totalScore: 192,
     rankChange: -1,
     badges: [BADGE_DEFINITIONS.palette_master, BADGE_DEFINITIONS.prolific_artist]
   },
@@ -144,9 +172,12 @@ const PROJECTED_CREATORS: Omit<CreatorStats, 'rank'>[] = [
     visualizations: 31, 
     favorites: 19, 
     palettes: 11, 
-    totalScore: 130,
+    chessWins: 10,
+    chessLosses: 4,
+    chessDraws: 2,
+    totalScore: 180,
     rankChange: 1,
-    badges: [BADGE_DEFINITIONS.on_fire, BADGE_DEFINITIONS.top_10]
+    badges: [BADGE_DEFINITIONS.on_fire, BADGE_DEFINITIONS.chess_champion]
   },
   { 
     userId: 'proj-5', 
@@ -154,9 +185,12 @@ const PROJECTED_CREATORS: Omit<CreatorStats, 'rank'>[] = [
     visualizations: 28, 
     favorites: 25, 
     palettes: 6, 
-    totalScore: 118,
+    chessWins: 7,
+    chessLosses: 0,
+    chessDraws: 1,
+    totalScore: 153,
     rankChange: -2,
-    badges: [BADGE_DEFINITIONS.curator, BADGE_DEFINITIONS.top_10]
+    badges: [BADGE_DEFINITIONS.undefeated, BADGE_DEFINITIONS.top_10]
   },
   { 
     userId: 'proj-6', 
@@ -164,7 +198,10 @@ const PROJECTED_CREATORS: Omit<CreatorStats, 'rank'>[] = [
     visualizations: 26, 
     favorites: 18, 
     palettes: 9, 
-    totalScore: 106,
+    chessWins: 5,
+    chessLosses: 3,
+    chessDraws: 2,
+    totalScore: 131,
     rankChange: 3,
     badges: [BADGE_DEFINITIONS.rising_star, BADGE_DEFINITIONS.top_10]
   },
@@ -174,7 +211,10 @@ const PROJECTED_CREATORS: Omit<CreatorStats, 'rank'>[] = [
     visualizations: 24, 
     favorites: 21, 
     palettes: 5, 
-    totalScore: 100,
+    chessWins: 4,
+    chessLosses: 2,
+    chessDraws: 1,
+    totalScore: 120,
     rankChange: 0,
     badges: [BADGE_DEFINITIONS.consistent, BADGE_DEFINITIONS.top_10]
   },
@@ -184,7 +224,10 @@ const PROJECTED_CREATORS: Omit<CreatorStats, 'rank'>[] = [
     visualizations: 22, 
     favorites: 16, 
     palettes: 8, 
-    totalScore: 92,
+    chessWins: 3,
+    chessLosses: 1,
+    chessDraws: 0,
+    totalScore: 107,
     rankChange: 1,
     badges: [BADGE_DEFINITIONS.palette_master]
   },
@@ -194,7 +237,10 @@ const PROJECTED_CREATORS: Omit<CreatorStats, 'rank'>[] = [
     visualizations: 20, 
     favorites: 14, 
     palettes: 7, 
-    totalScore: 82,
+    chessWins: 2,
+    chessLosses: 3,
+    chessDraws: 1,
+    totalScore: 92,
     rankChange: -1,
     badges: [BADGE_DEFINITIONS.consistent]
   },
@@ -204,14 +250,21 @@ const PROJECTED_CREATORS: Omit<CreatorStats, 'rank'>[] = [
     visualizations: 18, 
     favorites: 12, 
     palettes: 6, 
-    totalScore: 72,
+    chessWins: 1,
+    chessLosses: 2,
+    chessDraws: 0,
+    totalScore: 77,
     rankChange: 2,
     badges: [BADGE_DEFINITIONS.rising_star, BADGE_DEFINITIONS.top_10]
   },
 ];
 
 // Calculate badges based on stats
-const calculateBadges = (stats: { visualizations: number; favorites: number; palettes: number }, rank: number, rankChange: number): Badge[] => {
+const calculateBadges = (
+  stats: { visualizations: number; favorites: number; palettes: number; chessWins: number; chessLosses: number }, 
+  rank: number, 
+  rankChange: number
+): Badge[] => {
   const badges: Badge[] = [];
   
   if (rank === 1) badges.push(BADGE_DEFINITIONS.top_creator);
@@ -220,6 +273,8 @@ const calculateBadges = (stats: { visualizations: number; favorites: number; pal
   if (stats.visualizations >= 10) badges.push(BADGE_DEFINITIONS.prolific_artist);
   if (stats.favorites >= 20) badges.push(BADGE_DEFINITIONS.curator);
   if (stats.palettes >= 5) badges.push(BADGE_DEFINITIONS.palette_master);
+  if (stats.chessWins >= 10) badges.push(BADGE_DEFINITIONS.chess_champion);
+  if (stats.chessWins >= 5 && stats.chessLosses === 0) badges.push(BADGE_DEFINITIONS.undefeated);
   
   return badges.slice(0, 3); // Max 3 badges
 };
@@ -327,34 +382,69 @@ const Leaderboard = () => {
       setIsLoading(true);
       
       try {
-        const [vizResult, favResult, paletteResult, profilesResult] = await Promise.all([
+        const [vizResult, favResult, paletteResult, profilesResult, chessGamesResult] = await Promise.all([
           supabase.from('saved_visualizations').select('user_id'),
           supabase.from('favorite_games').select('user_id'),
           supabase.from('saved_palettes').select('user_id'),
-          supabase.from('profiles').select('user_id, display_name')
+          supabase.from('profiles').select('user_id, display_name'),
+          supabase.from('chess_games').select('white_player_id, black_player_id, result, winner_id').eq('status', 'completed')
         ]);
 
-        const userStats: Record<string, { visualizations: number; favorites: number; palettes: number }> = {};
+        const userStats: Record<string, { 
+          visualizations: number; 
+          favorites: number; 
+          palettes: number;
+          chessWins: number;
+          chessLosses: number;
+          chessDraws: number;
+        }> = {};
+        
+        const initUser = (userId: string) => {
+          if (!userStats[userId]) {
+            userStats[userId] = { 
+              visualizations: 0, 
+              favorites: 0, 
+              palettes: 0,
+              chessWins: 0,
+              chessLosses: 0,
+              chessDraws: 0
+            };
+          }
+        };
         
         vizResult.data?.forEach(v => {
-          if (!userStats[v.user_id]) {
-            userStats[v.user_id] = { visualizations: 0, favorites: 0, palettes: 0 };
-          }
+          initUser(v.user_id);
           userStats[v.user_id].visualizations++;
         });
 
         favResult.data?.forEach(f => {
-          if (!userStats[f.user_id]) {
-            userStats[f.user_id] = { visualizations: 0, favorites: 0, palettes: 0 };
-          }
+          initUser(f.user_id);
           userStats[f.user_id].favorites++;
         });
 
         paletteResult.data?.forEach(p => {
-          if (!userStats[p.user_id]) {
-            userStats[p.user_id] = { visualizations: 0, favorites: 0, palettes: 0 };
-          }
+          initUser(p.user_id);
           userStats[p.user_id].palettes++;
+        });
+
+        // Process chess games
+        chessGamesResult.data?.forEach(game => {
+          const whiteId = game.white_player_id;
+          const blackId = game.black_player_id;
+          
+          if (whiteId) initUser(whiteId);
+          if (blackId) initUser(blackId);
+          
+          if (game.result === 'draw') {
+            if (whiteId) userStats[whiteId].chessDraws++;
+            if (blackId) userStats[blackId].chessDraws++;
+          } else if (game.result === 'white_wins') {
+            if (whiteId) userStats[whiteId].chessWins++;
+            if (blackId) userStats[blackId].chessLosses++;
+          } else if (game.result === 'black_wins') {
+            if (blackId) userStats[blackId].chessWins++;
+            if (whiteId) userStats[whiteId].chessLosses++;
+          }
         });
 
         const profilesMap: Record<string, string> = {};
@@ -362,10 +452,15 @@ const Leaderboard = () => {
           profilesMap[p.user_id] = p.display_name || 'Anonymous Artist';
         });
 
-        // Calculate scores and create sorted list with simulated rank changes
+        // Calculate scores: visualizations (3pts), favorites (2pts), palettes (2pts), wins (5pts), draws (1pt)
         const realCreators: CreatorStats[] = Object.entries(userStats)
           .map(([userId, stats]) => {
-            const totalScore = (stats.visualizations * 3) + (stats.favorites * 2) + (stats.palettes * 2);
+            const totalScore = 
+              (stats.visualizations * 3) + 
+              (stats.favorites * 2) + 
+              (stats.palettes * 2) + 
+              (stats.chessWins * 5) + 
+              (stats.chessDraws * 1);
             // Simulate rank change based on activity (in production, compare with previous week's data)
             const rankChange = Math.floor(Math.random() * 7) - 3; // -3 to +3
             
@@ -375,6 +470,9 @@ const Leaderboard = () => {
               visualizations: stats.visualizations,
               favorites: stats.favorites,
               palettes: stats.palettes,
+              chessWins: stats.chessWins,
+              chessLosses: stats.chessLosses,
+              chessDraws: stats.chessDraws,
               totalScore,
               rank: 0,
               rankChange,
@@ -401,7 +499,13 @@ const Leaderboard = () => {
           const badges = creator.badges.length > 0 
             ? creator.badges 
             : calculateBadges(
-                { visualizations: creator.visualizations, favorites: creator.favorites, palettes: creator.palettes },
+                { 
+                  visualizations: creator.visualizations, 
+                  favorites: creator.favorites, 
+                  palettes: creator.palettes,
+                  chessWins: creator.chessWins,
+                  chessLosses: creator.chessLosses
+                },
                 rank,
                 creator.rankChange
               );
@@ -518,14 +622,14 @@ const Leaderboard = () => {
                   </div>
                 </div>
                 <BadgeDisplay badges={userRank.badges} />
-                <div className="flex gap-6">
+                <div className="flex gap-6 flex-wrap">
                   <div className="text-center">
                     <p className="text-2xl font-display font-bold">{userRank.visualizations}</p>
                     <p className="text-xs text-muted-foreground font-display uppercase">Artworks</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-2xl font-display font-bold">{userRank.favorites}</p>
-                    <p className="text-xs text-muted-foreground font-display uppercase">Favorites</p>
+                    <p className="text-2xl font-display font-bold">{userRank.chessWins}</p>
+                    <p className="text-xs text-muted-foreground font-display uppercase">Wins</p>
                   </div>
                   <div className="text-center">
                     <p className="text-2xl font-display font-bold">{userRank.totalScore}</p>
@@ -574,8 +678,8 @@ const Leaderboard = () => {
                         <span>{actualCreator.visualizations}</span>
                       </div>
                       <div className="flex items-center gap-1 text-muted-foreground">
-                        <Heart className="h-3.5 w-3.5" />
-                        <span>{actualCreator.favorites}</span>
+                        <Swords className="h-3.5 w-3.5" />
+                        <span>{actualCreator.chessWins}W</span>
                       </div>
                       <div className="flex items-center gap-1 text-muted-foreground">
                         <Palette className="h-3.5 w-3.5" />
@@ -601,11 +705,12 @@ const Leaderboard = () => {
             
             <div className="rounded-lg border border-border/50 overflow-hidden">
               {/* Header */}
-              <div className="grid grid-cols-12 gap-4 p-4 bg-card/80 border-b border-border/30 text-xs font-display uppercase tracking-wider text-muted-foreground">
+              <div className="grid grid-cols-14 gap-4 p-4 bg-card/80 border-b border-border/30 text-xs font-display uppercase tracking-wider text-muted-foreground">
                 <div className="col-span-1">Rank</div>
                 <div className="col-span-4">Creator</div>
                 <div className="col-span-3">Badges</div>
                 <div className="col-span-2 text-center">Artworks</div>
+                <div className="col-span-2 text-center">Wins</div>
                 <div className="col-span-2 text-center">Score</div>
               </div>
               
@@ -623,7 +728,7 @@ const Leaderboard = () => {
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: 10 }}
                       transition={{ delay: index * 0.03 }}
-                      className={`grid grid-cols-12 gap-4 p-4 items-center border-b border-border/20 hover:bg-card/50 transition-colors ${
+                      className={`grid grid-cols-14 gap-4 p-4 items-center border-b border-border/20 hover:bg-card/50 transition-colors ${
                         user && creator.userId === user.id ? 'bg-primary/5' : ''
                       }`}
                     >
@@ -645,6 +750,9 @@ const Leaderboard = () => {
                       </div>
                       <div className="col-span-2 text-center">
                         <span className="font-display">{creator.visualizations}</span>
+                      </div>
+                      <div className="col-span-2 text-center">
+                        <span className="font-display text-green-500">{creator.chessWins}</span>
                       </div>
                       <div className="col-span-2 text-center">
                         <span className="font-display font-bold text-primary">{creator.totalScore}</span>
@@ -691,7 +799,14 @@ const Leaderboard = () => {
               <Target className="h-4 w-4 text-primary" />
               How Scoring Works
             </h3>
-            <div className="grid md:grid-cols-3 gap-4 text-sm">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-card/50 border border-border/30">
+                <Swords className="h-5 w-5 text-green-500" />
+                <div>
+                  <p className="font-display font-medium">Chess Wins</p>
+                  <p className="text-xs text-muted-foreground">5 points each</p>
+                </div>
+              </div>
               <div className="flex items-center gap-3 p-3 rounded-lg bg-card/50 border border-border/30">
                 <Eye className="h-5 w-5 text-primary/70" />
                 <div>
@@ -711,6 +826,13 @@ const Leaderboard = () => {
                 <div>
                   <p className="font-display font-medium">Custom Palettes</p>
                   <p className="text-xs text-muted-foreground">2 points each</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-card/50 border border-border/30">
+                <Shield className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="font-display font-medium">Chess Draws</p>
+                  <p className="text-xs text-muted-foreground">1 point each</p>
                 </div>
               </div>
             </div>
