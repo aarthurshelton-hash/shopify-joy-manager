@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import { Square } from 'chess.js';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PieceType } from '@/lib/chess/pieceColors';
@@ -58,7 +58,8 @@ export const PlayableChessBoard = ({
 }: PlayableChessBoardProps) => {
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
   const [availableMoves, setAvailableMoves] = useState<Square[]>([]);
-  const [isDragging, setIsDragging] = useState(false);
+  const [touchFeedback, setTouchFeedback] = useState<Square | null>(null);
+  const boardRef = useRef<HTMLDivElement>(null);
 
   const board = useMemo(() => parseFen(fen), [fen]);
   const flipped = myColor === 'b';
@@ -79,11 +80,15 @@ export const PlayableChessBoard = ({
     return palette[pieceType] || '#888888';
   };
 
-  const handleSquareClick = useCallback(async (row: number, col: number) => {
+  const handleSquareInteraction = useCallback(async (row: number, col: number) => {
     if (disabled || !isMyTurn) return;
 
     const square = indexToSquare(flipped ? 7 - row : row, flipped ? 7 - col : col);
     const piece = board[flipped ? 7 - row : row]?.[flipped ? 7 - col : col];
+
+    // Touch feedback
+    setTouchFeedback(square);
+    setTimeout(() => setTouchFeedback(null), 150);
 
     // If we have a selected piece and click on an available move
     if (selectedSquare && availableMoves.includes(square)) {
@@ -122,39 +127,46 @@ export const PlayableChessBoard = ({
     const isSelected = selectedSquare === square;
     const isAvailableMove = availableMoves.includes(square);
     const hasBeenMoved = movedSquares.has(square);
+    const isTouched = touchFeedback === square;
 
     return (
       <motion.div
         key={square}
-        onClick={() => handleSquareClick(row, col)}
+        onClick={() => handleSquareInteraction(row, col)}
+        onTouchStart={(e) => {
+          // Prevent default to avoid double-tap zoom on mobile
+          e.stopPropagation();
+        }}
         className={`
           relative aspect-square cursor-pointer transition-all
           ${isLight ? 'bg-amber-100' : 'bg-amber-700'}
-          ${isSelected ? 'ring-4 ring-primary ring-inset' : ''}
-          ${!isMyTurn || disabled ? 'cursor-default' : 'hover:brightness-110'}
+          ${isSelected ? 'ring-4 ring-primary ring-inset z-10' : ''}
+          ${isTouched ? 'brightness-125' : ''}
+          ${!isMyTurn || disabled ? 'cursor-default' : ''}
+          touch-manipulation select-none
         `}
-        whileHover={isMyTurn && !disabled ? { scale: 1.02 } : {}}
-        whileTap={isMyTurn && !disabled ? { scale: 0.98 } : {}}
+        style={{
+          // Larger touch target with invisible padding
+          WebkitTapHighlightColor: 'transparent',
+        }}
+        whileTap={isMyTurn && !disabled ? { scale: 0.95 } : {}}
       >
-        {/* Available move indicator */}
+        {/* Available move indicator - larger on mobile */}
         {isAvailableMove && (
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            className={`
-              absolute inset-0 flex items-center justify-center z-10
-              ${piece ? '' : ''}
-            `}
+            className="absolute inset-0 flex items-center justify-center z-10"
           >
             {piece ? (
-              <div className="absolute inset-1 rounded-full border-4 border-primary/50" />
+              <div className="absolute inset-1 sm:inset-1.5 rounded-full border-4 sm:border-[5px] border-primary/60" />
             ) : (
-              <div className="w-1/3 h-1/3 rounded-full bg-primary/40" />
+              <div className="w-1/3 h-1/3 sm:w-[30%] sm:h-[30%] rounded-full bg-primary/50" />
             )}
           </motion.div>
         )}
 
-        {/* Piece */}
+        {/* Piece - larger text for mobile touch targets */}
         {piece && (
           <motion.div
             layout
@@ -169,20 +181,20 @@ export const PlayableChessBoard = ({
               filter: hasBeenMoved || movedSquares.size === 0 ? 'none' : 'grayscale(100%)',
             }}
           >
-            <span className="text-4xl md:text-5xl lg:text-6xl select-none drop-shadow-md">
+            <span className="text-[2.5rem] sm:text-4xl md:text-5xl lg:text-6xl select-none drop-shadow-md leading-none">
               {PIECE_SYMBOLS[piece]}
             </span>
           </motion.div>
         )}
 
-        {/* Coordinate labels */}
+        {/* Coordinate labels - hidden on very small screens */}
         {col === 0 && (
-          <span className="absolute top-0.5 left-1 text-xs font-display opacity-50">
+          <span className="absolute top-0.5 left-0.5 sm:left-1 text-[10px] sm:text-xs font-display opacity-50 select-none">
             {8 - actualRow}
           </span>
         )}
         {row === 7 && (
-          <span className="absolute bottom-0.5 right-1 text-xs font-display opacity-50">
+          <span className="absolute bottom-0.5 right-0.5 sm:right-1 text-[10px] sm:text-xs font-display opacity-50 select-none">
             {String.fromCharCode(97 + actualCol)}
           </span>
         )}
@@ -191,14 +203,41 @@ export const PlayableChessBoard = ({
   };
 
   return (
-    <div className="w-full max-w-lg mx-auto">
-      <div className="grid grid-cols-8 border-4 border-amber-900 rounded-lg overflow-hidden shadow-2xl">
+    <div className="w-full max-w-lg mx-auto px-1 sm:px-0">
+      {/* Turn indicator for mobile - shows clearly whose turn */}
+      <div className="sm:hidden mb-2 text-center">
+        <span className={`inline-block px-3 py-1 rounded-full text-xs font-display uppercase tracking-wider ${
+          isMyTurn && !disabled
+            ? 'bg-primary/20 text-primary animate-pulse'
+            : 'bg-muted text-muted-foreground'
+        }`}>
+          {disabled ? 'Game Over' : isMyTurn ? 'Your Turn - Tap to Move' : "Opponent's Turn"}
+        </span>
+      </div>
+      
+      <div 
+        ref={boardRef}
+        className="grid grid-cols-8 border-2 sm:border-4 border-amber-900 rounded-lg overflow-hidden shadow-2xl touch-manipulation"
+        style={{
+          // Prevent any scrolling while interacting with the board
+          touchAction: 'none',
+        }}
+      >
         {Array.from({ length: 64 }).map((_, i) => {
           const row = Math.floor(i / 8);
           const col = i % 8;
           return renderSquare(row, col);
         })}
       </div>
+
+      {/* Selected piece indicator for mobile */}
+      {selectedSquare && (
+        <div className="sm:hidden mt-2 text-center">
+          <span className="inline-block px-3 py-1 rounded-full bg-primary/20 text-primary text-xs font-display uppercase tracking-wider">
+            {availableMoves.length} move{availableMoves.length !== 1 ? 's' : ''} available
+          </span>
+        </div>
+      )}
     </div>
   );
 };
