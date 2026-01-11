@@ -6,12 +6,14 @@ import { Footer } from '@/components/shop/Footer';
 import { 
   Swords, Users, Zap, Clock, Crown, Copy, Share2, 
   Flag, Handshake, ChevronRight, Palette, Sparkles, Lock, TrendingUp,
-  Bot, User, ChevronLeft, Image
+  Bot, User, ChevronLeft, Image, Eye
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
 import { useChessGame, TimeControl } from '@/hooks/useChessGame';
 import { PlayableChessBoard } from '@/components/chess/PlayableChessBoard';
+import { LiveColorLegend } from '@/components/chess/LiveColorLegend';
+import { LegendHighlightProvider } from '@/contexts/LegendHighlightContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -1078,21 +1080,50 @@ const Play = () => {
                   </div>
                 </div>
 
-                {/* Chess Board */}
-                <PlayableChessBoard
-                  fen={gameState.currentFen}
-                  onMove={makeMove}
-                  getAvailableMoves={getAvailableMoves}
-                  isMyTurn={isMyTurn}
-                  myColor={myColor}
-                  whitePalette={gameState.whitePalette || colorPalettes[0].white}
-                  blackPalette={gameState.blackPalette || colorPalettes[0].black}
-                  movedSquares={movedSquares}
-                  disabled={gameState.status !== 'active'}
-                  enPensentEnabled={enPensentEnabled}
-                  enPensentOpacity={enPensentOpacity}
-                  moveHistory={multiplayerMoveHistory}
-                />
+                {/* Chess Board with Legend */}
+                <LegendHighlightProvider>
+                  <div className="grid lg:grid-cols-[1fr,280px] gap-4">
+                    <PlayableChessBoard
+                      fen={gameState.currentFen}
+                      onMove={makeMove}
+                      getAvailableMoves={getAvailableMoves}
+                      isMyTurn={isMyTurn}
+                      myColor={myColor}
+                      whitePalette={gameState.whitePalette || colorPalettes[0].white}
+                      blackPalette={gameState.blackPalette || colorPalettes[0].black}
+                      movedSquares={movedSquares}
+                      disabled={gameState.status !== 'active'}
+                      enPensentEnabled={enPensentEnabled}
+                      enPensentOpacity={enPensentOpacity}
+                      moveHistory={multiplayerMoveHistory}
+                    />
+                    
+                    {/* Live Color Legend - The Legendary System */}
+                    {enPensentEnabled && (
+                      <div className="hidden lg:block">
+                        <LiveColorLegend
+                          whitePalette={gameState.whitePalette || colorPalettes[0].white}
+                          blackPalette={gameState.blackPalette || colorPalettes[0].black}
+                          moveHistory={multiplayerMoveHistory}
+                          title="Live Legend"
+                        />
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Mobile Legend - collapsible */}
+                  {enPensentEnabled && (
+                    <div className="lg:hidden">
+                      <LiveColorLegend
+                        whitePalette={gameState.whitePalette || colorPalettes[0].white}
+                        blackPalette={gameState.blackPalette || colorPalettes[0].black}
+                        moveHistory={multiplayerMoveHistory}
+                        compact
+                        title="Legend"
+                      />
+                    </div>
+                  )}
+                </LegendHighlightProvider>
 
                 {/* Move count / PGN display - collapsible on mobile */}
                 <div className="p-3 sm:p-4 rounded-lg border border-border/50 bg-card/30">
@@ -1186,21 +1217,50 @@ const Play = () => {
                   </div>
                 </div>
 
-                {/* Chess Board */}
-                <PlayableChessBoard
-                  fen={botGame.fen()}
-                  onMove={makeBotGameMove}
-                  getAvailableMoves={getBotGameAvailableMoves}
-                  isMyTurn={!isBotThinking && !botGameResult && botGame.turn() === 'w'}
-                  myColor="w"
-                  whitePalette={colorPalettes.find(p => p.id === selectedPalette)?.white || colorPalettes[0].white}
-                  blackPalette={colorPalettes.find(p => p.id === selectedPalette)?.black || colorPalettes[0].black}
-                  movedSquares={botMovedSquares}
-                  disabled={isBotThinking || !!botGameResult}
-                  enPensentEnabled={enPensentEnabled}
-                  enPensentOpacity={enPensentOpacity}
-                  moveHistory={botMoveHistory}
-                />
+                {/* Chess Board with Legend */}
+                <LegendHighlightProvider>
+                  <div className="grid lg:grid-cols-[1fr,280px] gap-4">
+                    <PlayableChessBoard
+                      fen={botGame.fen()}
+                      onMove={makeBotGameMove}
+                      getAvailableMoves={getBotGameAvailableMoves}
+                      isMyTurn={!isBotThinking && !botGameResult && botGame.turn() === 'w'}
+                      myColor="w"
+                      whitePalette={colorPalettes.find(p => p.id === selectedPalette)?.white || colorPalettes[0].white}
+                      blackPalette={colorPalettes.find(p => p.id === selectedPalette)?.black || colorPalettes[0].black}
+                      movedSquares={botMovedSquares}
+                      disabled={isBotThinking || !!botGameResult}
+                      enPensentEnabled={enPensentEnabled}
+                      enPensentOpacity={enPensentOpacity}
+                      moveHistory={botMoveHistory}
+                    />
+                    
+                    {/* Live Color Legend - The Legendary System */}
+                    {enPensentEnabled && (
+                      <div className="hidden lg:block">
+                        <LiveColorLegend
+                          whitePalette={colorPalettes.find(p => p.id === selectedPalette)?.white || colorPalettes[0].white}
+                          blackPalette={colorPalettes.find(p => p.id === selectedPalette)?.black || colorPalettes[0].black}
+                          moveHistory={botMoveHistory}
+                          title="Live Legend"
+                        />
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Mobile Legend - compact */}
+                  {enPensentEnabled && (
+                    <div className="lg:hidden">
+                      <LiveColorLegend
+                        whitePalette={colorPalettes.find(p => p.id === selectedPalette)?.white || colorPalettes[0].white}
+                        blackPalette={colorPalettes.find(p => p.id === selectedPalette)?.black || colorPalettes[0].black}
+                        moveHistory={botMoveHistory}
+                        compact
+                        title="Legend"
+                      />
+                    </div>
+                  )}
+                </LegendHighlightProvider>
 
                 {/* Move display */}
                 <div className="p-3 sm:p-4 rounded-lg border border-border/50 bg-card/30">

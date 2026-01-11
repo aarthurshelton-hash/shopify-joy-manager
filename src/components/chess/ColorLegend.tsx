@@ -157,6 +157,7 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board }) 
     highlightedPiece, 
     lockedPieces = [], 
     compareMode = false,
+    hoveredSquare = null,
     setHighlightedPiece, 
     toggleLockedPiece, 
     toggleCompareMode,
@@ -165,10 +166,19 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board }) 
     highlightedPiece: null,
     lockedPieces: [],
     compareMode: false,
+    hoveredSquare: null,
     setHighlightedPiece: () => {},
     toggleLockedPiece: () => {},
     toggleCompareMode: () => {},
     clearLock: () => {}
+  };
+
+  // Check if a piece is highlighted via square hover (reverse highlight)
+  const isHighlightedFromSquare = (pieceType: PieceType, pieceColor: PieceColor) => {
+    if (!hoveredSquare) return false;
+    return hoveredSquare.pieces.some(
+      p => p.pieceType === pieceType && p.pieceColor === pieceColor
+    );
   };
   
   // Calculate stats for each piece type
@@ -407,6 +417,8 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board }) 
     const heatmap = getHeatmap(item.piece, item.color);
     const showStats = (highlighted || locked) && stats;
 
+    const fromSquare = isHighlightedFromSquare(item.piece, item.color);
+
     return (
       <div 
         key={item.name} 
@@ -414,7 +426,7 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board }) 
           interactive && highlightContext ? 'cursor-pointer hover:bg-accent/50' : ''
         } ${highlighted ? 'bg-accent ring-2 ring-primary/50' : ''} ${
           locked ? (lockedIndex === 0 ? 'bg-sky-500/20 ring-2 ring-sky-500' : 'bg-rose-500/20 ring-2 ring-rose-500') : ''
-        }`}
+        } ${fromSquare ? 'bg-amber-400/20 ring-2 ring-amber-400 scale-[1.02]' : ''}`}
         onMouseEnter={() => handlePieceHover(item.piece, item.color)}
         onMouseLeave={handlePieceLeave}
         onClick={() => handlePieceClick(item.piece, item.color)}

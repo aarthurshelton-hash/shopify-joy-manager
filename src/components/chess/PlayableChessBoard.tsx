@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { PieceType, PieceColor } from '@/lib/chess/pieceColors';
 import { useHapticFeedback } from '@/hooks/useHapticFeedback';
 import { EnPensentOverlay, MoveHistoryEntry } from './EnPensentOverlay';
+import { useLegendHighlight, HighlightedPiece } from '@/contexts/LegendHighlightContext';
 
 interface PlayableChessBoardProps {
   fen: string;
@@ -73,8 +74,35 @@ export const PlayableChessBoard = ({
   const boardRef = useRef<HTMLDivElement>(null);
   const { haptics } = useHapticFeedback();
 
+  // Try to use legend highlight context for reverse highlighting
+  let legendContext: ReturnType<typeof useLegendHighlight> | null = null;
+  try {
+    legendContext = useLegendHighlight();
+  } catch {
+    // Context not available
+  }
+
   const board = useMemo(() => parseFen(fen), [fen]);
   const flipped = myColor === 'b';
+
+  // Build a map of square -> pieces that visited it (for hover highlighting)
+  const squarePieceMap = useMemo(() => {
+    const map = new Map<string, HighlightedPiece[]>();
+    
+    for (const move of moveHistory) {
+      const existing = map.get(move.square) || [];
+      // Check if this piece is already in the list
+      const alreadyExists = existing.some(
+        p => p.pieceType === move.piece && p.pieceColor === move.color
+      );
+      if (!alreadyExists) {
+        existing.push({ pieceType: move.piece, pieceColor: move.color });
+        map.set(move.square, existing);
+      }
+    }
+    
+    return map;
+  }, [moveHistory]);
 
   const getPieceColor = (piece: string, row: number, col: number): string => {
     const square = indexToSquare(row, col);
@@ -145,6 +173,23 @@ export const PlayableChessBoard = ({
     setAvailableMoves([]);
   }, [board, selectedSquare, availableMoves, isMyTurn, myColor, flipped, disabled, onMove, getAvailableMoves, haptics]);
 
+
+  // Handle square hover for legend highlighting
+  const handleSquareHover = useCallback((square: string) => {
+    if (!legendContext?.setHoveredSquare) return;
+    
+    const pieces = squarePieceMap.get(square);
+    if (pieces && pieces.length > 0) {
+      legendContext.setHoveredSquare({ square, pieces });
+    }
+  }, [legendContext, squarePieceMap]);
+
+  const handleSquareLeave = useCallback(() => {
+    if (legendContext?.setHoveredSquare) {
+      legendContext.setHoveredSquare(null);
+    }
+  }, [legendContext]);
+
   const renderSquare = (row: number, col: number) => {
     const actualRow = flipped ? 7 - row : row;
     const actualCol = flipped ? 7 - col : col;
@@ -155,11 +200,14 @@ export const PlayableChessBoard = ({
     const isAvailableMove = availableMoves.includes(square);
     const hasBeenMoved = movedSquares.has(square);
     const isTouched = touchFeedback === square;
+    const hasPieceHistory = squarePieceMap.has(square);
 
     return (
       <motion.div
         key={square}
         onClick={() => handleSquareInteraction(row, col)}
+        onMouseEnter={() => handleSquareHover(square)}
+        onMouseLeave={handleSquareLeave}
         onTouchStart={(e) => {
           // Prevent default to avoid double-tap zoom on mobile
           e.stopPropagation();
@@ -170,6 +218,7 @@ export const PlayableChessBoard = ({
           ${isSelected ? 'ring-4 ring-primary ring-inset z-10' : ''}
           ${isTouched ? 'brightness-125' : ''}
           ${!isMyTurn || disabled ? 'cursor-default' : ''}
+          ${hasPieceHistory && enPensentEnabled ? 'hover:ring-2 hover:ring-amber-400/50' : ''}
           touch-manipulation select-none
         `}
         style={{
