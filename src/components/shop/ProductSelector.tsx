@@ -8,9 +8,21 @@ import { useCurrencyStore } from '@/stores/currencyStore';
 import { CurrencySelector } from './CurrencySelector';
 import WallMockup, { RoomSetting } from './WallMockup';
 import ChessBoardVisualization from '@/components/chess/ChessBoardVisualization';
-import { SimulationResult } from '@/lib/chess/gameSimulator';
+import { SimulationResult, SquareData } from '@/lib/chess/gameSimulator';
 import { generateCleanPrintImage } from '@/lib/chess/printImageGenerator';
 import { toast } from 'sonner';
+
+interface CapturedState {
+  currentMove: number;
+  selectedPhase: string;
+  lockedPieces: Array<{ pieceType: string; pieceColor: string }>;
+  compareMode: boolean;
+  displayMode: string;
+  darkMode: boolean;
+  showTerritory: boolean;
+  showHeatmaps: boolean;
+  capturedAt: Date;
+}
 
 interface ProductSelectorProps {
   customPrintData: {
@@ -20,13 +32,29 @@ interface ProductSelectorProps {
   };
   simulation?: SimulationResult;
   shareId?: string | null;
+  capturedState?: CapturedState;
   onAddedToCart?: () => void;
+}
+
+/**
+ * Filter board data to match a specific move in the timeline
+ */
+function filterBoardToMove(board: SquareData[][], currentMove: number): SquareData[][] {
+  if (currentMove === Infinity || currentMove <= 0) return board;
+  
+  return board.map(row => 
+    row.map(square => ({
+      ...square,
+      visits: square.visits.filter(visit => visit.moveNumber <= currentMove)
+    }))
+  );
 }
 
 export const ProductSelector: React.FC<ProductSelectorProps> = ({ 
   customPrintData,
   simulation,
   shareId,
+  capturedState,
   onAddedToCart 
 }) => {
   const [products, setProducts] = useState<ShopifyProduct[]>([]);
@@ -75,16 +103,27 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
     v => v.node.id === (hoveredVariantId || selectedVariantId)
   )?.node;
 
+  // Create mini visualization for mockup - applies captured state filtering
+  const displayBoard = useMemo(() => {
+    if (!simulation) return null;
+    
+    // Apply captured state filtering if available
+    if (capturedState && capturedState.currentMove !== Infinity && capturedState.currentMove > 0) {
+      return filterBoardToMove(simulation.board, capturedState.currentMove);
+    }
+    return simulation.board;
+  }, [simulation, capturedState]);
+
   // Create mini visualization for mockup - size will be set by WallMockup
   const miniVisualization = useMemo(() => {
-    if (!simulation) return null;
+    if (!displayBoard) return null;
     return (
       <ChessBoardVisualization 
-        board={simulation.board} 
+        board={displayBoard} 
         size={100} // Base size, will be overridden by WallMockup
       />
     );
-  }, [simulation]);
+  }, [displayBoard]);
 
   const handleAddToCart = async () => {
     if (!selectedProduct || !selectedVariant) return;
@@ -98,10 +137,12 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
       if (simulation) {
         try {
           // Include QR code on premium prints when shareId is available
+          // Pass capturedState to ensure print matches exact visualization state
           previewImageBase64 = await generateCleanPrintImage(simulation, { 
-            darkMode: false,
+            darkMode: capturedState?.darkMode || false,
             includeQR: !!shareId,
             shareId: shareId || undefined,
+            capturedState,
           });
         } catch (error) {
           console.error('Failed to generate print image:', error);
