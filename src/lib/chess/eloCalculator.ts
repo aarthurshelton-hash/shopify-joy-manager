@@ -115,3 +115,30 @@ export const getRatingTier = (rating: number): { name: string; color: string } =
   if (rating >= 1200) return { name: 'Class D', color: 'from-gray-400 to-slate-500' };
   return { name: 'Beginner', color: 'from-gray-300 to-gray-400' };
 };
+
+/**
+ * Preview potential ELO changes before accepting a match
+ * @param myRating - Your current rating
+ * @param opponentRating - Opponent's current rating
+ * @param myGamesPlayed - Your total games played (for K-factor)
+ * @returns Object with potential changes for win, draw, and loss
+ */
+export const previewEloChanges = (
+  myRating: number,
+  opponentRating: number,
+  myGamesPlayed: number = 30
+): {
+  win: number;
+  draw: number;
+  loss: number;
+} => {
+  const winChange = calculateNewRating(myRating, opponentRating, 1, myGamesPlayed) - myRating;
+  const drawChange = calculateNewRating(myRating, opponentRating, 0.5, myGamesPlayed) - myRating;
+  const lossChange = calculateNewRating(myRating, opponentRating, 0, myGamesPlayed) - myRating;
+  
+  return {
+    win: winChange,
+    draw: drawChange,
+    loss: lossChange,
+  };
+};

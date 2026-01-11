@@ -17,7 +17,13 @@ import { Input } from '@/components/ui/input';
 import { colorPalettes, PaletteId } from '@/lib/chess/pieceColors';
 import AuthModal from '@/components/auth/AuthModal';
 import PremiumUpgradeModal from '@/components/premium/PremiumUpgradeModal';
-import { getRatingTier } from '@/lib/chess/eloCalculator';
+import { getRatingTier, previewEloChanges } from '@/lib/chess/eloCalculator';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 type ViewMode = 'lobby' | 'game' | 'waiting';
 
@@ -515,8 +521,10 @@ const Play = () => {
                       ) : (
                         <div className="space-y-2 max-h-48 overflow-y-auto">
                           {waitingGames.map(g => {
-                            const isMatched = user && g.white_elo && Math.abs((g.white_elo || 1200) - myEloRating) <= matchmakingRange;
+                            const opponentElo = g.white_elo || 1200;
+                            const isMatched = user && Math.abs(opponentElo - myEloRating) <= matchmakingRange;
                             const isOwnGame = g.white_player_id === user?.id;
+                            const eloPreview = user ? previewEloChanges(myEloRating, opponentElo) : null;
                             
                             return (
                               <div
@@ -543,20 +551,55 @@ const Play = () => {
                                       {new Date(g.created_at).toLocaleTimeString()}
                                     </p>
                                   </div>
-                                  {g.white_elo && (
-                                    <span className={`text-xs px-2 py-0.5 rounded-full bg-gradient-to-r ${getRatingTier(g.white_elo).color} text-white font-display`}>
-                                      {g.white_elo}
+                                  {opponentElo && (
+                                    <span className={`text-xs px-2 py-0.5 rounded-full bg-gradient-to-r ${getRatingTier(opponentElo).color} text-white font-display`}>
+                                      {opponentElo}
                                     </span>
                                   )}
                                 </div>
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleJoinGame(g.id)}
-                                  disabled={isLoading || !isPremium || isOwnGame}
-                                  variant={isMatched && !isOwnGame ? 'default' : 'outline'}
-                                >
-                                  Join
-                                </Button>
+                                <div className="flex items-center gap-2">
+                                  {/* ELO Preview */}
+                                  {eloPreview && !isOwnGame && (
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <div className="flex items-center gap-1.5 text-[10px] font-mono px-2 py-1 rounded bg-card border border-border/50 cursor-help">
+                                            <span className="text-green-500">+{eloPreview.win}</span>
+                                            <span className="text-muted-foreground">/</span>
+                                            <span className={eloPreview.draw >= 0 ? "text-blue-400" : "text-orange-400"}>
+                                              {eloPreview.draw >= 0 ? `+${eloPreview.draw}` : eloPreview.draw}
+                                            </span>
+                                            <span className="text-muted-foreground">/</span>
+                                            <span className="text-red-500">{eloPreview.loss}</span>
+                                          </div>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="left" className="space-y-1">
+                                          <p className="font-display text-xs uppercase tracking-wider mb-1">ELO Change Preview</p>
+                                          <div className="flex items-center gap-2 text-xs">
+                                            <span className="text-green-500 font-bold">Win:</span>
+                                            <span>+{eloPreview.win} → {myEloRating + eloPreview.win}</span>
+                                          </div>
+                                          <div className="flex items-center gap-2 text-xs">
+                                            <span className="text-blue-400 font-bold">Draw:</span>
+                                            <span>{eloPreview.draw >= 0 ? `+${eloPreview.draw}` : eloPreview.draw} → {myEloRating + eloPreview.draw}</span>
+                                          </div>
+                                          <div className="flex items-center gap-2 text-xs">
+                                            <span className="text-red-500 font-bold">Loss:</span>
+                                            <span>{eloPreview.loss} → {myEloRating + eloPreview.loss}</span>
+                                          </div>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                  )}
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleJoinGame(g.id)}
+                                    disabled={isLoading || !isPremium || isOwnGame}
+                                    variant={isMatched && !isOwnGame ? 'default' : 'outline'}
+                                  >
+                                    Join
+                                  </Button>
+                                </div>
                               </div>
                             );
                           })}
