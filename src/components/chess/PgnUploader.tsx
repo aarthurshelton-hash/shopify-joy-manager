@@ -1,12 +1,14 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Upload, FileText, Crown, Sparkles, CheckCircle, XCircle, Loader2, Wrench, ArrowRight, ChevronLeft, ChevronRight, Search, X, Shuffle } from 'lucide-react';
+import { Upload, FileText, Crown, Sparkles, CheckCircle, XCircle, Loader2, Wrench, ArrowRight, ChevronLeft, ChevronRight, Search, X, Shuffle, Heart } from 'lucide-react';
 import { famousGames, FamousGame, getRandomFamousGame } from '@/lib/chess/famousGames';
 import { gameImageImports } from '@/lib/chess/gameImages';
 import { validatePgn, cleanPgn, PgnValidationResult } from '@/lib/chess/pgnValidator';
 import { fixPgn, PgnFixResult } from '@/lib/chess/pgnFixer';
 import { toast } from 'sonner';
+import { useFavoriteGames } from '@/hooks/useFavoriteGames';
+import { useAuth } from '@/hooks/useAuth';
 
 const GAMES_PER_MOBILE_PAGE = 4;
 const GAMES_PER_DESKTOP_PAGE = 16;
@@ -61,8 +63,11 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
   const [pageIndex, setPageIndex] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const gamesContainerRef = useRef<HTMLDivElement>(null);
+  
+  const { isFavorite, toggleFavorite, isAuthenticated } = useFavoriteGames();
   
   // Check if mobile on mount and resize
   useEffect(() => {
@@ -82,15 +87,26 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
     });
   }, []);
   
-  // Filter games by search query
+  // Filter games by search query and favorites
   const filteredGames = useMemo(() => {
-    if (!searchQuery.trim()) return sortedGames;
-    const query = searchQuery.toLowerCase();
-    return sortedGames.filter(game => 
-      game.title.toLowerCase().includes(query) || 
-      game.year.toString().includes(query)
-    );
-  }, [sortedGames, searchQuery]);
+    let games = sortedGames;
+    
+    // Filter by favorites first if enabled
+    if (showFavoritesOnly) {
+      games = games.filter(game => isFavorite(game.id));
+    }
+    
+    // Then filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      games = games.filter(game => 
+        game.title.toLowerCase().includes(query) || 
+        game.year.toString().includes(query)
+      );
+    }
+    
+    return games;
+  }, [sortedGames, searchQuery, showFavoritesOnly, isFavorite]);
   
   const gamesPerPage = isMobile ? GAMES_PER_MOBILE_PAGE : GAMES_PER_DESKTOP_PAGE;
   const totalPages = useMemo(() => Math.ceil(filteredGames.length / gamesPerPage), [filteredGames.length, gamesPerPage]);
@@ -205,10 +221,28 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
     }
   }, [handleFileUpload]);
   
-  // Reset page when switching between mobile/desktop or when search changes
+  // Reset page when switching between mobile/desktop, search changes, or favorites filter changes
   useEffect(() => {
     setPageIndex(0);
-  }, [isMobile, searchQuery]);
+  }, [isMobile, searchQuery, showFavoritesOnly]);
+  
+  // Handle favorite toggle
+  const handleToggleFavorite = useCallback(async (e: React.MouseEvent, gameId: string) => {
+    e.stopPropagation(); // Prevent game selection
+    
+    if (!isAuthenticated) {
+      toast.error('Sign in required', {
+        description: 'Please sign in to save favorites.',
+      });
+      return;
+    }
+    
+    const success = await toggleFavorite(gameId);
+    if (success) {
+      const isNowFavorite = !isFavorite(gameId);
+      toast.success(isNowFavorite ? 'Added to favorites' : 'Removed from favorites');
+    }
+  }, [isAuthenticated, toggleFavorite, isFavorite]);
   
   const goToNextPage = useCallback(() => {
     setPageIndex(prev => Math.min(prev + 1, totalPages - 1));
@@ -277,6 +311,22 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
               </p>
             </div>
             
+            {/* Favorites filter button */}
+            {isAuthenticated && (
+              <button
+                onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border rounded-md transition-colors flex-shrink-0 ${
+                  showFavoritesOnly 
+                    ? 'bg-red-500/10 hover:bg-red-500/20 text-red-500 border-red-500/30' 
+                    : 'bg-muted/50 hover:bg-muted text-muted-foreground border-border/50'
+                }`}
+                aria-label={showFavoritesOnly ? 'Show all games' : 'Show favorites only'}
+              >
+                <Heart className={`h-3.5 w-3.5 ${showFavoritesOnly ? 'fill-current' : ''}`} />
+                <span className="hidden sm:inline">Favorites</span>
+              </button>
+            )}
+            
             {/* Random game button */}
             <button
               onClick={() => {
@@ -344,14 +394,29 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
         <div className="p-3 sm:p-4">
           {filteredGames.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-center">
-              <Search className="h-8 w-8 text-muted-foreground/40 mb-2" />
-              <p className="text-sm text-muted-foreground">No games found for "{searchQuery}"</p>
-              <button 
-                onClick={() => setSearchQuery('')}
-                className="mt-2 text-xs text-primary hover:underline"
-              >
-                Clear search
-              </button>
+              {showFavoritesOnly ? (
+                <>
+                  <Heart className="h-8 w-8 text-muted-foreground/40 mb-2" />
+                  <p className="text-sm text-muted-foreground">No favorite games yet</p>
+                  <button 
+                    onClick={() => setShowFavoritesOnly(false)}
+                    className="mt-2 text-xs text-primary hover:underline"
+                  >
+                    Browse all games
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Search className="h-8 w-8 text-muted-foreground/40 mb-2" />
+                  <p className="text-sm text-muted-foreground">No games found for "{searchQuery}"</p>
+                  <button 
+                    onClick={() => setSearchQuery('')}
+                    className="mt-2 text-xs text-primary hover:underline"
+                  >
+                    Clear search
+                  </button>
+                </>
+              )}
             </div>
           ) : (
             <div 
@@ -394,6 +459,18 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
                           <Crown className={isMobile ? "h-6 w-6 text-primary/40" : "h-5 w-5 text-primary/40"} />
                         </div>
                       )}
+                      {/* Favorite button */}
+                      <button
+                        onClick={(e) => handleToggleFavorite(e, game.id)}
+                        className={`absolute ${isMobile ? 'top-1.5 right-1.5' : 'top-0.5 right-0.5'} p-1 rounded-full transition-all ${
+                          isFavorite(game.id)
+                            ? 'bg-red-500/90 text-white'
+                            : 'bg-black/40 text-white/70 opacity-0 group-hover:opacity-100'
+                        }`}
+                        aria-label={isFavorite(game.id) ? 'Remove from favorites' : 'Add to favorites'}
+                      >
+                        <Heart className={`${isMobile ? 'h-3.5 w-3.5' : 'h-3 w-3'} ${isFavorite(game.id) ? 'fill-current' : ''}`} />
+                      </button>
                     </div>
                     {/* Text info */}
                     <div className={`flex flex-col justify-center ${isMobile ? 'p-2 flex-1' : 'flex-1 min-w-0'}`}>
