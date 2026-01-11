@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Chess, Square } from 'chess.js';
 import { Header } from '@/components/shop/Header';
@@ -6,7 +6,7 @@ import { Footer } from '@/components/shop/Footer';
 import { 
   Swords, Users, Zap, Clock, Crown, Copy, Share2, 
   Flag, Handshake, ChevronRight, Palette, Sparkles, Lock, TrendingUp,
-  Bot, User
+  Bot, User, ChevronLeft
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
@@ -32,6 +32,8 @@ import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { getBotMove, getBotThinkingDelay, BOT_DIFFICULTIES, BotDifficulty } from '@/lib/chess/chessBot';
 import { useChessSounds } from '@/hooks/useChessSounds';
 import { useSoundStore } from '@/stores/soundStore';
+import { useHapticFeedback } from '@/hooks/useHapticFeedback';
+import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
 
 type ViewMode = 'lobby' | 'game' | 'waiting' | 'bot-game';
 type GameType = 'human' | 'bot';
@@ -51,14 +53,22 @@ interface WaitingGame {
   profiles?: { display_name: string | null; elo_rating: number };
 }
 
+// Lobby section tabs for swipe navigation
+type LobbySection = 'bot' | 'create' | 'join';
+const LOBBY_SECTIONS: LobbySection[] = ['bot', 'create', 'join'];
+
 const Play = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user, isPremium } = useAuth();
+  const { haptics } = useHapticFeedback();
   
   const [viewMode, setViewMode] = useState<ViewMode>('lobby');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  
+  // Lobby section for mobile swipe navigation
+  const [lobbySection, setLobbySection] = useState<LobbySection>('bot');
   
   // Game type selection
   const [gameType, setGameType] = useState<GameType>('human');
@@ -90,6 +100,30 @@ const Play = () => {
   const [eloBeforeGame, setEloBeforeGame] = useState<number | null>(null);
   const [eloAfterGame, setEloAfterGame] = useState<number | null>(null);
   const [showEloAnimation, setShowEloAnimation] = useState(false);
+  
+  // Swipe navigation for lobby sections (mobile)
+  const navigateToSection = useCallback((direction: 'left' | 'right') => {
+    const currentIndex = LOBBY_SECTIONS.indexOf(lobbySection);
+    let newIndex: number;
+    
+    if (direction === 'left') {
+      newIndex = Math.min(currentIndex + 1, LOBBY_SECTIONS.length - 1);
+    } else {
+      newIndex = Math.max(currentIndex - 1, 0);
+    }
+    
+    if (newIndex !== currentIndex) {
+      haptics.select();
+      setLobbySection(LOBBY_SECTIONS[newIndex]);
+    }
+  }, [lobbySection, haptics]);
+
+  const { swipeOffset, isSwiping, handlers: swipeHandlers } = useSwipeNavigation({
+    threshold: 50,
+    allowMouse: false, // Only touch on mobile
+    onSwipeLeft: () => navigateToSection('left'),
+    onSwipeRight: () => navigateToSection('right'),
+  });
   
   // Chess game hook (for multiplayer)
   const {
@@ -378,6 +412,7 @@ const Play = () => {
     setBotGameResult(null);
     setViewMode('bot-game');
     playSound('gameStart');
+    haptics.gameStart();
     toast.success(`Starting game vs ${BOT_DIFFICULTIES.find(d => d.id === botDifficulty)?.label} bot`);
   };
 
@@ -388,20 +423,26 @@ const Play = () => {
       const move = botGame.move({ from, to, promotion });
       if (!move) {
         playSound('illegal');
+        haptics.error();
         return false;
       }
 
-      // Play sound for player's move
+      // Play sound and haptic for player's move
       if (botGame.isCheckmate()) {
         playSound('checkmate');
+        haptics.victory();
       } else if (botGame.isCheck()) {
         playSound('check');
+        haptics.check();
       } else if (move.captured) {
         playSound('capture');
+        haptics.capture();
       } else if (move.san === 'O-O' || move.san === 'O-O-O') {
         playSound('castle');
+        haptics.castle();
       } else {
         playSound('move');
+        haptics.move();
       }
 
       setBotGame(new Chess(botGame.fen()));
@@ -412,6 +453,7 @@ const Play = () => {
         if (botGame.isCheckmate()) {
           setBotGameResult('win');
           playSound('victory');
+          haptics.victory();
           toast.success('Checkmate! You won!');
         } else {
           setBotGameResult('draw');
@@ -427,31 +469,36 @@ const Play = () => {
       
       await new Promise(resolve => setTimeout(resolve, thinkingTime));
       
-      const botMove = getBotMove(botGame, botDifficulty);
-      if (botMove) {
-        botGame.move(botMove);
+      const botMoveResult = getBotMove(botGame, botDifficulty);
+      if (botMoveResult) {
+        botGame.move(botMoveResult);
         
-        // Play sound for bot's move
+        // Play sound and haptic for bot's move
         if (botGame.isCheckmate()) {
           playSound('checkmate');
+          haptics.error();
         } else if (botGame.isCheck()) {
           playSound('check');
-        } else if (botMove.captured) {
+          haptics.check();
+        } else if (botMoveResult.captured) {
           playSound('capture');
-        } else if (botMove.san === 'O-O' || botMove.san === 'O-O-O') {
+          haptics.capture();
+        } else if (botMoveResult.san === 'O-O' || botMoveResult.san === 'O-O-O') {
           playSound('castle');
         } else {
           playSound('move');
+          haptics.move();
         }
 
         setBotGame(new Chess(botGame.fen()));
-        setBotMovedSquares(prev => new Set([...prev, botMove.to]));
+        setBotMovedSquares(prev => new Set([...prev, botMoveResult.to]));
 
         // Check if game is over after bot's move
         if (botGame.isGameOver()) {
           if (botGame.isCheckmate()) {
             setBotGameResult('loss');
             playSound('defeat');
+            haptics.error();
             toast.error('Checkmate! You lost.');
           } else {
             setBotGameResult('draw');
@@ -466,9 +513,10 @@ const Play = () => {
     } catch (e) {
       console.error('Bot game move error:', e);
       setIsBotThinking(false);
+      haptics.error();
       return false;
     }
-  }, [botGame, isBotThinking, botDifficulty, playSound]);
+  }, [botGame, isBotThinking, botDifficulty, playSound, haptics]);
 
   const getBotGameAvailableMoves = useCallback((square: Square): Square[] => {
     if (!botGame) return [];
@@ -479,6 +527,7 @@ const Play = () => {
   const resignBotGame = () => {
     setBotGameResult('loss');
     playSound('defeat');
+    haptics.error();
     toast.info('You resigned.');
   };
 
@@ -517,6 +566,30 @@ const Play = () => {
                 exit={{ opacity: 0, y: -20 }}
                 className="space-y-4 sm:space-y-8"
               >
+                {/* Mobile Section Tabs */}
+                <div className="sm:hidden">
+                  <div className="flex justify-center gap-1 mb-4">
+                    {LOBBY_SECTIONS.map((section) => (
+                      <button
+                        key={section}
+                        onClick={() => {
+                          haptics.select();
+                          setLobbySection(section);
+                        }}
+                        className={`px-4 py-2 rounded-full text-xs font-display uppercase tracking-wider transition-all touch-manipulation ${
+                          lobbySection === section
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted/50 text-muted-foreground'
+                        }`}
+                      >
+                        {section === 'bot' ? 'Bot' : section === 'create' ? 'Create' : 'Join'}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-center text-[10px] text-muted-foreground mb-2">
+                    Swipe left/right to navigate
+                  </p>
+                </div>
                 {/* Play vs Bot - Mobile optimized */}
                 <div className="p-4 sm:p-6 rounded-lg border border-green-500/30 bg-gradient-to-r from-green-500/10 via-green-500/5 to-transparent space-y-4">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo, useRef } from 'react';
 import { Square } from 'chess.js';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PieceType } from '@/lib/chess/pieceColors';
+import { useHapticFeedback } from '@/hooks/useHapticFeedback';
 
 interface PlayableChessBoardProps {
   fen: string;
@@ -13,6 +14,7 @@ interface PlayableChessBoardProps {
   blackPalette: Record<string, string>;
   movedSquares: Set<string>;
   disabled?: boolean;
+  onMoveResult?: (result: { isCapture: boolean; isCheck: boolean; isCheckmate: boolean; isCastle: boolean }) => void;
 }
 
 const PIECE_SYMBOLS: Record<string, string> = {
@@ -55,11 +57,13 @@ export const PlayableChessBoard = ({
   blackPalette,
   movedSquares,
   disabled = false,
+  onMoveResult,
 }: PlayableChessBoardProps) => {
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
   const [availableMoves, setAvailableMoves] = useState<Square[]>([]);
   const [touchFeedback, setTouchFeedback] = useState<Square | null>(null);
   const boardRef = useRef<HTMLDivElement>(null);
+  const { haptics } = useHapticFeedback();
 
   const board = useMemo(() => parseFen(fen), [fen]);
   const flipped = myColor === 'b';
@@ -92,10 +96,24 @@ export const PlayableChessBoard = ({
 
     // If we have a selected piece and click on an available move
     if (selectedSquare && availableMoves.includes(square)) {
+      // Check if this is a capture (target square has opponent piece)
+      const targetPiece = board[flipped ? 7 - row : row]?.[flipped ? 7 - col : col];
+      const isCapture = !!targetPiece;
+      
+      // Haptic feedback for the move attempt
+      if (isCapture) {
+        haptics.capture();
+      } else {
+        haptics.move();
+      }
+      
       const success = await onMove(selectedSquare, square);
       if (success) {
         setSelectedSquare(null);
         setAvailableMoves([]);
+      } else {
+        // Illegal move
+        haptics.error();
       }
       return;
     }
@@ -107,6 +125,7 @@ export const PlayableChessBoard = ({
         : piece === piece.toLowerCase();
       
       if (isOwnPiece) {
+        haptics.select();
         setSelectedSquare(square);
         setAvailableMoves(getAvailableMoves(square));
         return;
@@ -116,7 +135,7 @@ export const PlayableChessBoard = ({
     // Deselect
     setSelectedSquare(null);
     setAvailableMoves([]);
-  }, [board, selectedSquare, availableMoves, isMyTurn, myColor, flipped, disabled, onMove, getAvailableMoves]);
+  }, [board, selectedSquare, availableMoves, isMyTurn, myColor, flipped, disabled, onMove, getAvailableMoves, haptics]);
 
   const renderSquare = (row: number, col: number) => {
     const actualRow = flipped ? 7 - row : row;
