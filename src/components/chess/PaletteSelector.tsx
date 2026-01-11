@@ -31,6 +31,44 @@ import {
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 
+// Import palette background images
+import hotcoldBg from '@/assets/palettes/hotcold.jpg';
+import medievalBg from '@/assets/palettes/medieval.jpg';
+import egyptianBg from '@/assets/palettes/egyptian.jpg';
+import romanBg from '@/assets/palettes/roman.jpg';
+import modernBg from '@/assets/palettes/modern.jpg';
+import greyscaleBg from '@/assets/palettes/greyscale.jpg';
+import japaneseBg from '@/assets/palettes/japanese.jpg';
+import nordicBg from '@/assets/palettes/nordic.jpg';
+import artdecoBg from '@/assets/palettes/artdeco.jpg';
+import tropicalBg from '@/assets/palettes/tropical.jpg';
+import cyberpunkBg from '@/assets/palettes/cyberpunk.jpg';
+import autumnBg from '@/assets/palettes/autumn.jpg';
+import oceanBg from '@/assets/palettes/ocean.jpg';
+import desertBg from '@/assets/palettes/desert.jpg';
+import cosmicBg from '@/assets/palettes/cosmic.jpg';
+import vintageBg from '@/assets/palettes/vintage.jpg';
+
+// Map palette IDs to background images
+const paletteBackgrounds: Record<string, string> = {
+  hotCold: hotcoldBg,
+  medieval: medievalBg,
+  egyptian: egyptianBg,
+  roman: romanBg,
+  modern: modernBg,
+  greyscale: greyscaleBg,
+  japanese: japaneseBg,
+  nordic: nordicBg,
+  artdeco: artdecoBg,
+  tropical: tropicalBg,
+  cyberpunk: cyberpunkBg,
+  autumn: autumnBg,
+  ocean: oceanBg,
+  desert: desertBg,
+  cosmic: cosmicBg,
+  vintage: vintageBg,
+};
+
 interface SavedPaletteItem {
   id: string;
   name: string;
@@ -352,75 +390,91 @@ const PaletteSelector: React.FC<PaletteSelectorProps> = ({ onPaletteChange }) =>
             const isActive = palette.id === activePaletteId;
             const isCustom = palette.id === 'custom';
             const displayColors = isCustom ? customColors : { white: palette.white, black: palette.black };
+            const bgImage = paletteBackgrounds[palette.id];
             
             return (
               <button
                 key={palette.id}
                 onClick={() => handleSelect(palette.id)}
-                className={`text-left p-4 rounded-lg border transition-all duration-300 ${
+                className={`relative text-left p-4 rounded-lg border transition-all duration-300 overflow-hidden ${
                   isActive 
-                    ? 'border-primary bg-primary/10 glow-gold' 
-                    : 'border-border/50 bg-card hover:border-primary/30 hover:bg-card/80'
+                    ? 'border-primary glow-gold' 
+                    : 'border-border/50 hover:border-primary/30'
                 }`}
               >
-                {/* Header with title and check */}
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    {isCustom && <Pencil className="h-3.5 w-3.5 text-primary" />}
-                    <div>
-                      <h4 className="font-display font-semibold text-sm">{palette.name}</h4>
-                      <p className="text-xs text-muted-foreground mt-0.5 font-serif">
-                        {palette.description}
-                      </p>
-                    </div>
-                  </div>
-                  {isActive && (
-                    <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-                      <Check className="h-3 w-3 text-primary-foreground" />
-                    </div>
-                  )}
-                </div>
+                {/* Background image */}
+                {bgImage && (
+                  <div 
+                    className="absolute inset-0 bg-cover bg-center opacity-15 pointer-events-none"
+                    style={{ backgroundImage: `url(${bgImage})` }}
+                  />
+                )}
+                {/* Overlay for better text readability */}
+                <div className={`absolute inset-0 pointer-events-none ${
+                  isActive ? 'bg-primary/10' : 'bg-card/80'
+                }`} />
                 
-                {/* Color swatches preview */}
-                <div className="space-y-2">
-                  {/* White pieces row */}
-                  <div className="flex items-center gap-1">
-                    <span className="text-[10px] text-muted-foreground w-8 flex-shrink-0">White</span>
-                    <div className="flex gap-1 flex-1">
-                      {pieces.map((piece) => (
-                        <div
-                          key={`w-${piece}`}
-                          className="w-5 h-5 rounded-sm shadow-sm ring-1 ring-black/10"
-                          style={{ backgroundColor: displayColors.white[piece] }}
-                          title={`White ${piece.toUpperCase()}`}
-                        />
-                      ))}
+                {/* Content */}
+                <div className="relative z-10">
+                  {/* Header with title and check */}
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      {isCustom && <Pencil className="h-3.5 w-3.5 text-primary" />}
+                      <div>
+                        <h4 className="font-display font-semibold text-sm">{palette.name}</h4>
+                        <p className="text-xs text-muted-foreground mt-0.5 font-serif">
+                          {palette.description}
+                        </p>
+                      </div>
+                    </div>
+                    {isActive && (
+                      <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+                        <Check className="h-3 w-3 text-primary-foreground" />
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Color swatches preview */}
+                  <div className="space-y-2">
+                    {/* White pieces row */}
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] text-muted-foreground w-8 flex-shrink-0">White</span>
+                      <div className="flex gap-1 flex-1">
+                        {pieces.map((piece) => (
+                          <div
+                            key={`w-${piece}`}
+                            className="w-5 h-5 rounded-sm shadow-sm ring-1 ring-black/10"
+                            style={{ backgroundColor: displayColors.white[piece] }}
+                            title={`White ${piece.toUpperCase()}`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    
+                    {/* Black pieces row */}
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] text-muted-foreground w-8 flex-shrink-0">Black</span>
+                      <div className="flex gap-1 flex-1">
+                        {pieces.map((piece) => (
+                          <div
+                            key={`b-${piece}`}
+                            className="w-5 h-5 rounded-sm shadow-sm ring-1 ring-black/10"
+                            style={{ backgroundColor: displayColors.black[piece] }}
+                            title={`Black ${piece.toUpperCase()}`}
+                          />
+                        ))}
+                      </div>
                     </div>
                   </div>
                   
-                  {/* Black pieces row */}
-                  <div className="flex items-center gap-1">
-                    <span className="text-[10px] text-muted-foreground w-8 flex-shrink-0">Black</span>
-                    <div className="flex gap-1 flex-1">
-                      {pieces.map((piece) => (
-                        <div
-                          key={`b-${piece}`}
-                          className="w-5 h-5 rounded-sm shadow-sm ring-1 ring-black/10"
-                          style={{ backgroundColor: displayColors.black[piece] }}
-                          title={`Black ${piece.toUpperCase()}`}
-                        />
-                      ))}
-                    </div>
+                  {/* Piece labels */}
+                  <div className="flex items-center gap-1 mt-1.5 ml-8">
+                    {['K', 'Q', 'R', 'B', 'N', 'P'].map((label) => (
+                      <span key={label} className="w-5 text-center text-[8px] text-muted-foreground/60">
+                        {label}
+                      </span>
+                    ))}
                   </div>
-                </div>
-                
-                {/* Piece labels */}
-                <div className="flex items-center gap-1 mt-1.5 ml-8">
-                  {['K', 'Q', 'R', 'B', 'N', 'P'].map((label) => (
-                    <span key={label} className="w-5 text-center text-[8px] text-muted-foreground/60">
-                      {label}
-                    </span>
-                  ))}
                 </div>
               </button>
             );
