@@ -54,6 +54,8 @@ const Play = () => {
   // Waiting games list
   const [waitingGames, setWaitingGames] = useState<WaitingGame[]>([]);
   const [isLoadingGames, setIsLoadingGames] = useState(false);
+  const [myEloRating, setMyEloRating] = useState<number>(1200);
+  const [matchmakingRange, setMatchmakingRange] = useState<number>(200); // +/- ELO range
   
   // Chess game hook
   const {
@@ -80,6 +82,25 @@ const Play = () => {
       loadGame(gameId).then(() => setViewMode('game'));
     }
   }, [searchParams, loadGame]);
+
+  // Fetch user's ELO rating
+  useEffect(() => {
+    if (!user) return;
+    
+    const fetchMyRating = async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('elo_rating')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (data?.elo_rating) {
+        setMyEloRating(data.elo_rating);
+      }
+    };
+    
+    fetchMyRating();
+  }, [user]);
 
   // Fetch waiting games
   useEffect(() => {
@@ -200,6 +221,47 @@ const Play = () => {
     }
   };
 
+  // Get games filtered by ELO range
+  const getMatchedGames = () => {
+    if (!waitingGames.length) return [];
+    
+    return waitingGames
+      .filter(g => {
+        const gameElo = g.white_elo || 1200;
+        const diff = Math.abs(gameElo - myEloRating);
+        return diff <= matchmakingRange;
+      })
+      .sort((a, b) => {
+        // Sort by closest ELO first
+        const diffA = Math.abs((a.white_elo || 1200) - myEloRating);
+        const diffB = Math.abs((b.white_elo || 1200) - myEloRating);
+        return diffA - diffB;
+      });
+  };
+
+  // Quick match - automatically join the best matched game
+  const handleQuickMatch = async () => {
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
+    if (!isPremium) {
+      setShowUpgradeModal(true);
+      return;
+    }
+
+    const matchedGames = getMatchedGames().filter(g => g.white_player_id !== user.id);
+    
+    if (matchedGames.length > 0) {
+      // Join the closest ELO match
+      await handleJoinGame(matchedGames[0].id);
+    } else {
+      // No matched games, create a new one
+      toast.info('No matching opponents found. Creating a new game...');
+      await handleCreateGame();
+    }
+  };
+
   const copyChallenge = () => {
     if (gameState?.challengeCode) {
       navigator.clipboard.writeText(gameState.challengeCode);
@@ -269,6 +331,57 @@ const Play = () => {
                       <Sparkles className="h-4 w-4" />
                       Upgrade Now
                     </Button>
+                  </div>
+                )}
+
+                {/* ELO Rating & Quick Match */}
+                {user && isPremium && (
+                  <div className="p-6 rounded-lg border border-primary/30 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 space-y-4">
+                    <div className="flex items-center justify-between flex-wrap gap-4">
+                      <div className="flex items-center gap-4">
+                        <div className="text-center">
+                          <span className={`inline-block px-3 py-1 rounded-full bg-gradient-to-r ${getRatingTier(myEloRating).color} text-white font-display text-lg`}>
+                            {myEloRating}
+                          </span>
+                          <p className="text-xs text-muted-foreground mt-1 font-display uppercase">{getRatingTier(myEloRating).name}</p>
+                        </div>
+                        <div>
+                          <h3 className="font-display font-bold uppercase tracking-wider flex items-center gap-2">
+                            <TrendingUp className="h-4 w-4 text-primary" />
+                            Your Rating
+                          </h3>
+                          <p className="text-sm text-muted-foreground font-serif">
+                            Matchmaking range: ±{matchmakingRange} ELO
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="flex gap-2">
+                          {[100, 200, 400].map(range => (
+                            <button
+                              key={range}
+                              onClick={() => setMatchmakingRange(range)}
+                              className={`px-3 py-1 rounded-lg text-xs font-display transition-all ${
+                                matchmakingRange === range
+                                  ? 'bg-primary text-primary-foreground'
+                                  : 'bg-card/50 border border-border/50 text-muted-foreground hover:border-primary/30'
+                              }`}
+                            >
+                              ±{range}
+                            </button>
+                          ))}
+                        </div>
+                        <Button onClick={handleQuickMatch} className="gap-2" disabled={isLoading}>
+                          <Zap className="h-4 w-4" />
+                          Quick Match
+                        </Button>
+                      </div>
+                    </div>
+                    {getMatchedGames().length > 0 && (
+                      <p className="text-sm text-muted-foreground font-serif">
+                        {getMatchedGames().filter(g => g.white_player_id !== user?.id).length} opponent{getMatchedGames().filter(g => g.white_player_id !== user?.id).length !== 1 ? 's' : ''} in your skill range
+                      </p>
+                    )}
                   </div>
                 )}
 
@@ -401,35 +514,52 @@ const Play = () => {
                         </p>
                       ) : (
                         <div className="space-y-2 max-h-48 overflow-y-auto">
-                          {waitingGames.map(g => (
-                            <div
-                              key={g.id}
-                              className="flex items-center justify-between p-3 rounded-lg bg-card/50 border border-border/30"
-                            >
-                              <div className="flex items-center gap-3">
-                                <div>
-                                  <p className="font-display text-sm">
-                                    {TIME_CONTROLS.find(tc => tc.id === g.time_control)?.label || 'Blitz'}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {new Date(g.created_at).toLocaleTimeString()}
-                                  </p>
-                                </div>
-                                {g.white_elo && (
-                                  <span className={`text-xs px-2 py-0.5 rounded-full bg-gradient-to-r ${getRatingTier(g.white_elo).color} text-white font-display`}>
-                                    {g.white_elo}
-                                  </span>
-                                )}
-                              </div>
-                              <Button
-                                size="sm"
-                                onClick={() => handleJoinGame(g.id)}
-                                disabled={isLoading || !isPremium || g.white_player_id === user?.id}
+                          {waitingGames.map(g => {
+                            const isMatched = user && g.white_elo && Math.abs((g.white_elo || 1200) - myEloRating) <= matchmakingRange;
+                            const isOwnGame = g.white_player_id === user?.id;
+                            
+                            return (
+                              <div
+                                key={g.id}
+                                className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
+                                  isMatched && !isOwnGame
+                                    ? 'bg-primary/10 border-primary/30'
+                                    : 'bg-card/50 border-border/30'
+                                }`}
                               >
-                                Join
-                              </Button>
-                            </div>
-                          ))}
+                                <div className="flex items-center gap-3">
+                                  <div>
+                                    <div className="flex items-center gap-2">
+                                      <p className="font-display text-sm">
+                                        {TIME_CONTROLS.find(tc => tc.id === g.time_control)?.label || 'Blitz'}
+                                      </p>
+                                      {isMatched && !isOwnGame && (
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/20 text-primary font-display uppercase">
+                                          Good Match
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">
+                                      {new Date(g.created_at).toLocaleTimeString()}
+                                    </p>
+                                  </div>
+                                  {g.white_elo && (
+                                    <span className={`text-xs px-2 py-0.5 rounded-full bg-gradient-to-r ${getRatingTier(g.white_elo).color} text-white font-display`}>
+                                      {g.white_elo}
+                                    </span>
+                                  )}
+                                </div>
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleJoinGame(g.id)}
+                                  disabled={isLoading || !isPremium || isOwnGame}
+                                  variant={isMatched && !isOwnGame ? 'default' : 'outline'}
+                                >
+                                  Join
+                                </Button>
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
                     </div>
