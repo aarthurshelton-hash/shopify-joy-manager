@@ -140,6 +140,18 @@ serve(async (req) => {
   }
 
   try {
+    // Validate service role authorization - this function is internal-only
+    const authHeader = req.headers.get('Authorization');
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    if (!authHeader || !serviceRoleKey || !authHeader.includes(serviceRoleKey)) {
+      console.error('Unauthorized access attempt to printify-order');
+      return new Response(JSON.stringify({ error: 'Unauthorized - internal use only' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     if (!PRINTIFY_API_KEY) {
       throw new Error('PRINTIFY_API_KEY not configured');
     }
