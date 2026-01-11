@@ -21,6 +21,7 @@ interface PrintPreviewProps {
   simulation: SimulationResult;
   pgn?: string;
   title?: string;
+  onShareIdCreated?: (shareId: string) => void;
 }
 
 // Filter board to show only moves up to a certain point
@@ -33,7 +34,7 @@ function filterBoardToMove(board: SquareData[][], moveNumber: number): SquareDat
   );
 }
 
-const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) => {
+const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onShareIdCreated }) => {
   const printRef = useRef<HTMLDivElement>(null);
   const watermarkRef = useRef<HTMLDivElement>(null);
   const gifBoardRef = useRef<HTMLDivElement>(null);
@@ -418,7 +419,7 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
       const visualizationTitle = title || 
         `${simulation.gameData.white} vs ${simulation.gameData.black}`;
       
-      const { error } = await saveVisualization(
+      const { data, error } = await saveVisualization(
         user.id,
         visualizationTitle,
         simulation,
@@ -431,6 +432,12 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
       }
       
       setIsSaved(true);
+      
+      // Notify parent of the share ID for QR code integration
+      if (data?.public_share_id && onShareIdCreated) {
+        onShareIdCreated(data.public_share_id);
+      }
+      
       toast.success('Saved to your gallery!', {
         description: 'View it anytime in My Vision',
       });

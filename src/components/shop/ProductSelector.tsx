@@ -19,12 +19,14 @@ interface ProductSelectorProps {
     previewImageBase64?: string;
   };
   simulation?: SimulationResult;
+  shareId?: string | null;
   onAddedToCart?: () => void;
 }
 
 export const ProductSelector: React.FC<ProductSelectorProps> = ({ 
   customPrintData,
   simulation,
+  shareId,
   onAddedToCart 
 }) => {
   const [products, setProducts] = useState<ShopifyProduct[]>([]);
@@ -95,7 +97,12 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
       
       if (simulation) {
         try {
-          previewImageBase64 = await generateCleanPrintImage(simulation, { darkMode: false });
+          // Include QR code on premium prints when shareId is available
+          previewImageBase64 = await generateCleanPrintImage(simulation, { 
+            darkMode: false,
+            includeQR: !!shareId,
+            shareId: shareId || undefined,
+          });
         } catch (error) {
           console.error('Failed to generate print image:', error);
           toast.error('Failed to generate print image. Adding to cart without image.');

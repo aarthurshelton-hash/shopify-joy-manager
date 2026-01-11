@@ -9,6 +9,7 @@ export interface SavedVisualization {
   pgn: string | null;
   game_data: GameData;
   image_path: string;
+  public_share_id: string | null;
   created_at: string;
   updated_at: string;
 }
