@@ -24,6 +24,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { EloChangeAnimation } from '@/components/chess/EloChangeAnimation';
 
 type ViewMode = 'lobby' | 'game' | 'waiting';
 
@@ -62,6 +63,11 @@ const Play = () => {
   const [isLoadingGames, setIsLoadingGames] = useState(false);
   const [myEloRating, setMyEloRating] = useState<number>(1200);
   const [matchmakingRange, setMatchmakingRange] = useState<number>(200); // +/- ELO range
+  
+  // ELO animation state
+  const [eloBeforeGame, setEloBeforeGame] = useState<number | null>(null);
+  const [eloAfterGame, setEloAfterGame] = useState<number | null>(null);
+  const [showEloAnimation, setShowEloAnimation] = useState(false);
   
   // Chess game hook
   const {
@@ -163,8 +169,43 @@ const Play = () => {
   useEffect(() => {
     if (gameState?.status === 'active' && viewMode !== 'game') {
       setViewMode('game');
+      // Store ELO before game starts for animation
+      if (eloBeforeGame === null) {
+        setEloBeforeGame(myEloRating);
+      }
     }
-  }, [gameState?.status, viewMode]);
+  }, [gameState?.status, viewMode, myEloRating, eloBeforeGame]);
+
+  // Watch for game completion to trigger ELO animation
+  useEffect(() => {
+    if (gameState?.status === 'completed' && eloBeforeGame !== null && !showEloAnimation && user) {
+      // Fetch updated ELO rating
+      const fetchNewRating = async () => {
+        const { data } = await supabase
+          .from('profiles')
+          .select('elo_rating')
+          .eq('user_id', user.id)
+          .single();
+        
+        if (data?.elo_rating !== undefined) {
+          setEloAfterGame(data.elo_rating);
+          setMyEloRating(data.elo_rating);
+          // Small delay to let the UI settle before showing animation
+          setTimeout(() => setShowEloAnimation(true), 500);
+        }
+      };
+      
+      fetchNewRating();
+    }
+  }, [gameState?.status, eloBeforeGame, showEloAnimation, user]);
+
+  // Reset ELO animation state when returning to lobby
+  const handleBackToLobby = () => {
+    setShowEloAnimation(false);
+    setEloBeforeGame(null);
+    setEloAfterGame(null);
+    setViewMode('lobby');
+  };
 
   const handleCreateGame = async () => {
     if (!user) {
@@ -720,10 +761,21 @@ const Play = () => {
                   </p>
                 </div>
 
+                {/* Post-game ELO Animation */}
+                {gameState.status === 'completed' && eloBeforeGame !== null && eloAfterGame !== null && (
+                  <EloChangeAnimation
+                    oldRating={eloBeforeGame}
+                    newRating={eloAfterGame}
+                    isWin={gameState.winnerId === user?.id}
+                    isDraw={gameState.result === 'draw'}
+                    show={showEloAnimation}
+                  />
+                )}
+
                 {/* Post-game actions */}
                 {gameState.status === 'completed' && (
                   <div className="flex gap-4 justify-center">
-                    <Button onClick={() => setViewMode('lobby')}>
+                    <Button onClick={handleBackToLobby}>
                       Back to Lobby
                     </Button>
                     <Button variant="outline" onClick={shareGame} className="gap-2">
