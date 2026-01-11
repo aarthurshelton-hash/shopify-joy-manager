@@ -1,9 +1,12 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
 import { Crown, TrendingUp, Globe, Zap, Target, Download, ChevronRight, FileText, Presentation, Repeat, Users, Quote, Sparkles, ChevronDown, Star } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { motion, AnimatePresence } from 'framer-motion';
+import { TestimonialSubmissionForm } from '@/components/testimonials/TestimonialSubmissionForm';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 
 type ModalType = 'market' | 'technology' | 'vision' | 'brand' | null;
 
@@ -241,9 +244,43 @@ const TestimonialCard = ({
 };
 
 const Investors = () => {
+  const { user } = useAuth();
   const [activeModal, setActiveModal] = useState<ModalType>(null);
   const [visibleCount, setVisibleCount] = useState(4);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isPremium, setIsPremium] = useState(false);
+  
+  // Check premium status
+  useEffect(() => {
+    const checkPremiumStatus = async () => {
+      if (!user) {
+        setIsPremium(false);
+        return;
+      }
+      
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          setIsPremium(false);
+          return;
+        }
+        
+        const response = await supabase.functions.invoke('check-subscription', {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`
+          }
+        });
+        
+        if (response.data?.subscribed) {
+          setIsPremium(true);
+        }
+      } catch (error) {
+        console.error('Error checking premium status:', error);
+      }
+    };
+    
+    checkPremiumStatus();
+  }, [user]);
   
   // Shuffle testimonials once on component mount
   const shuffledTestimonials = useMemo(() => {
@@ -890,6 +927,16 @@ const Investors = () => {
                 </p>
               </motion.div>
             )}
+
+            {/* Testimonial Submission Form */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+            >
+              <TestimonialSubmissionForm isPremium={isPremium} />
+            </motion.div>
           </div>
 
           {/* Contact CTA */}

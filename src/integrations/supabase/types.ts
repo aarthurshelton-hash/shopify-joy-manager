@@ -131,6 +131,45 @@ export type Database = {
         }
         Relationships: []
       }
+      testimonials: {
+        Row: {
+          created_at: string
+          display_name: string
+          featured: boolean
+          id: string
+          quote: string
+          rating: number
+          role_title: string
+          status: Database["public"]["Enums"]["testimonial_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name: string
+          featured?: boolean
+          id?: string
+          quote: string
+          rating?: number
+          role_title: string
+          status?: Database["public"]["Enums"]["testimonial_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string
+          featured?: boolean
+          id?: string
+          quote?: string
+          rating?: number
+          role_title?: string
+          status?: Database["public"]["Enums"]["testimonial_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -139,7 +178,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      testimonial_status: "pending" | "approved" | "rejected"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -266,6 +305,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      testimonial_status: ["pending", "approved", "rejected"],
+    },
   },
 } as const
