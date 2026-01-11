@@ -27,6 +27,19 @@ export interface PrintOrderData {
   
   // Share ID for QR code
   shareId?: string | null;
+  
+  // Captured visualization state (timeline position, locked pieces, etc.)
+  capturedState?: {
+    currentMove: number;
+    selectedPhase: string;
+    lockedPieces: Array<{ pieceType: string; pieceColor: string }>;
+    compareMode: boolean;
+    displayMode: string;
+    darkMode: boolean;
+    showTerritory: boolean;
+    showHeatmaps: boolean;
+    capturedAt: Date;
+  };
 }
 
 interface PrintOrderStore {

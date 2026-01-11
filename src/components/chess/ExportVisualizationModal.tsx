@@ -18,7 +18,8 @@ import {
   Sparkles,
   Bookmark,
   Check,
-  Crown
+  Crown,
+  Camera
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
@@ -26,6 +27,7 @@ import { useNavigate } from 'react-router-dom';
 import { MoveHistoryEntry, EnPensentOverlay } from './EnPensentOverlay';
 import { PieceType } from '@/lib/chess/pieceColors';
 import { usePrintOrderStore } from '@/stores/printOrderStore';
+import { useVisualizationStateStore } from '@/stores/visualizationStateStore';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 import QRCode from 'qrcode';
 
@@ -57,10 +59,16 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
   const navigate = useNavigate();
   const { user, isPremium } = useAuth();
   const { setOrderData } = usePrintOrderStore();
+  const { captureState, darkMode: storeDarkMode, setDarkMode: setStoreDarkMode } = useVisualizationStateStore();
   const exportRef = useRef<HTMLDivElement>(null);
   const [darkMode, setDarkMode] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
+
+  // Sync dark mode with store
+  useEffect(() => {
+    setStoreDarkMode(darkMode);
+  }, [darkMode, setStoreDarkMode]);
 
   // Generate QR code on mount
   useEffect(() => {
@@ -118,7 +126,10 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
   };
 
   const handleOrderPrint = () => {
-    // Set order data with En Pensent visualization
+    // Capture current visualization state for the print
+    const capturedVisualizationState = captureState(moveHistory);
+    
+    // Set order data with En Pensent visualization and captured state
     setOrderData({
       title: `${gameInfo.white} vs ${gameInfo.black}`,
       gameData: {
@@ -129,6 +140,15 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
       moveHistory,
       whitePalette,
       blackPalette,
+      capturedState: {
+        ...capturedVisualizationState,
+        darkMode, // Use current modal dark mode setting
+      },
+    });
+    
+    toast.success('Board state captured for print!', {
+      description: 'Your exact visualization settings will be preserved.',
+      icon: <Camera className="w-4 h-4" />,
     });
     
     onClose();

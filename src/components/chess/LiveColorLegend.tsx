@@ -1,10 +1,11 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   PieceType, 
   PieceColor,
 } from '@/lib/chess/pieceColors';
 import { useLegendHighlight, HighlightedPiece } from '@/contexts/LegendHighlightContext';
+import { useVisualizationStateStore } from '@/stores/visualizationStateStore';
 import { MoveHistoryEntry } from './EnPensentOverlay';
 import { Sparkles, Eye, Lock, X, MapPin, Grid3X3 } from 'lucide-react';
 
@@ -39,6 +40,13 @@ export const LiveColorLegend: React.FC<LiveColorLegendProps> = ({
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showHeatmap, setShowHeatmap] = useState(false);
   
+  // Sync with visualization state store
+  const { setShowTerritory, setLockedPieces: setStoreLockedPieces } = useVisualizationStateStore();
+  
+  // Sync territory mode with store
+  useEffect(() => {
+    setShowTerritory(showHeatmap);
+  }, [showHeatmap, setShowTerritory]);
   // Try to use highlight context if available
   let highlightContext: ReturnType<typeof useLegendHighlight> | null = null;
   try {

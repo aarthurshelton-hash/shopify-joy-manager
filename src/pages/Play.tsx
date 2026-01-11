@@ -6,13 +6,14 @@ import { Footer } from '@/components/shop/Footer';
 import { 
   Swords, Users, Zap, Clock, Crown, Copy, Share2, 
   Flag, Handshake, ChevronRight, Palette, Sparkles, Lock, TrendingUp,
-  Bot, User, ChevronLeft, Image, Eye
+  Bot, User, ChevronLeft, Image, Eye, Timer
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
 import { useChessGame, TimeControl } from '@/hooks/useChessGame';
 import { PlayableChessBoard } from '@/components/chess/PlayableChessBoard';
 import { LiveColorLegend } from '@/components/chess/LiveColorLegend';
+import { UniversalTimeline } from '@/components/chess/UniversalTimeline';
 import { LegendHighlightProvider } from '@/contexts/LegendHighlightContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -117,6 +118,9 @@ const Play = () => {
   
   // Export visualization modal state
   const [showExportModal, setShowExportModal] = useState(false);
+  
+  // Timeline scrub state for completed games
+  const [timelineMove, setTimelineMove] = useState<number>(Infinity);
 
   // Swipe navigation for lobby sections (mobile)
   const navigateToSection = useCallback((direction: 'left' | 'right') => {
@@ -1262,14 +1266,26 @@ const Play = () => {
                   )}
                 </LegendHighlightProvider>
 
-                {/* Move display */}
-                <div className="p-3 sm:p-4 rounded-lg border border-border/50 bg-card/30">
+                {/* Move display with Timeline for completed games */}
+                <div className="p-3 sm:p-4 rounded-lg border border-border/50 bg-card/30 space-y-3">
                   <p className="text-xs sm:text-sm text-muted-foreground font-display uppercase tracking-wider mb-1 sm:mb-2">
                     Moves: {botGame.history().length}
                   </p>
                   <p className="text-[10px] sm:text-xs text-muted-foreground font-mono break-all line-clamp-2 sm:line-clamp-none">
                     {botGame.pgn() || 'Game started...'}
                   </p>
+                  
+                  {/* Timeline for post-game replay */}
+                  {botGameResult && enPensentEnabled && botMoveHistory.length > 0 && (
+                    <UniversalTimeline
+                      totalMoves={botMoveHistory.length}
+                      moves={botGame.history()}
+                      moveHistory={botMoveHistory}
+                      currentMove={timelineMove === Infinity ? botMoveHistory.length : timelineMove}
+                      onMoveChange={setTimelineMove}
+                      compact
+                    />
+                  )}
                 </div>
 
                 {/* Post-game actions */}
