@@ -6,7 +6,7 @@ import {
 } from '@/lib/chess/pieceColors';
 import { useLegendHighlight, HighlightedPiece } from '@/contexts/LegendHighlightContext';
 import { MoveHistoryEntry } from './EnPensentOverlay';
-import { Sparkles, Eye, Lock, Unlock, X } from 'lucide-react';
+import { Sparkles, Eye, Lock, X, MapPin, Grid3X3 } from 'lucide-react';
 
 interface LiveColorLegendProps {
   whitePalette: Record<string, string>;
@@ -37,6 +37,7 @@ export const LiveColorLegend: React.FC<LiveColorLegendProps> = ({
   title = 'Color Legend',
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [showHeatmap, setShowHeatmap] = useState(false);
   
   // Try to use highlight context if available
   let highlightContext: ReturnType<typeof useLegendHighlight> | null = null;
@@ -82,6 +83,51 @@ export const LiveColorLegend: React.FC<LiveColorLegendProps> = ({
     }
     
     return activity;
+  }, [moveHistory]);
+
+  // Calculate territory heatmap data
+  const territoryData = useMemo(() => {
+    // Create 8x8 grid for each side's territory control
+    const whiteControl: number[][] = Array(8).fill(null).map(() => Array(8).fill(0));
+    const blackControl: number[][] = Array(8).fill(null).map(() => Array(8).fill(0));
+    let maxWhite = 0;
+    let maxBlack = 0;
+    
+    // Count visits per square per side
+    for (const move of moveHistory) {
+      const file = move.square.charCodeAt(0) - 97; // a=0, h=7
+      const rank = parseInt(move.square[1]) - 1; // 1=0, 8=7
+      
+      if (file >= 0 && file < 8 && rank >= 0 && rank < 8) {
+        if (move.color === 'w') {
+          whiteControl[7 - rank][file]++;
+          maxWhite = Math.max(maxWhite, whiteControl[7 - rank][file]);
+        } else {
+          blackControl[7 - rank][file]++;
+          maxBlack = Math.max(maxBlack, blackControl[7 - rank][file]);
+        }
+      }
+    }
+    
+    // Calculate overall control percentages
+    let whiteTotal = 0;
+    let blackTotal = 0;
+    for (let r = 0; r < 8; r++) {
+      for (let f = 0; f < 8; f++) {
+        whiteTotal += whiteControl[r][f];
+        blackTotal += blackControl[r][f];
+      }
+    }
+    const total = whiteTotal + blackTotal || 1;
+    
+    return {
+      whiteControl,
+      blackControl,
+      maxWhite: maxWhite || 1,
+      maxBlack: maxBlack || 1,
+      whitePercent: Math.round((whiteTotal / total) * 100),
+      blackPercent: Math.round((blackTotal / total) * 100),
+    };
   }, [moveHistory]);
 
   // Determine if any filtering is active
@@ -322,14 +368,185 @@ export const LiveColorLegend: React.FC<LiveColorLegendProps> = ({
         )}
       </AnimatePresence>
 
-      {/* Piece rows */}
-      {renderPieceRow('w', 'White')}
-      {renderPieceRow('b', 'Black')}
+      {/* Toggle between pieces and heatmap */}
+      <div className="flex items-center gap-1 mb-2">
+        <button
+          onClick={() => setShowHeatmap(false)}
+          className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded text-[10px] font-medium transition-colors ${
+            !showHeatmap ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:bg-accent/30'
+          }`}
+        >
+          <Grid3X3 className="w-3 h-3" />
+          Pieces
+        </button>
+        <button
+          onClick={() => setShowHeatmap(true)}
+          className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded text-[10px] font-medium transition-colors ${
+            showHeatmap ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:bg-accent/30'
+          }`}
+        >
+          <MapPin className="w-3 h-3" />
+          Territory
+        </button>
+      </div>
 
-      {/* Interactive hint */}
-      <p className="text-[9px] text-muted-foreground text-center italic">
-        {compact ? 'Tap to lock' : 'Hover squares or tap pieces to highlight'}
-      </p>
+      <AnimatePresence mode="wait">
+        {showHeatmap ? (
+          <motion.div
+            key="heatmap"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="space-y-3"
+          >
+            {/* Territory control bar */}
+            <div className="space-y-1">
+              <div className="flex justify-between text-[10px]">
+                <span className="text-sky-400 font-semibold">👑 White {territoryData.whitePercent}%</span>
+                <span className="text-rose-400 font-semibold">🖤 Black {territoryData.blackPercent}%</span>
+              </div>
+              <div className="h-2 rounded-full overflow-hidden bg-muted/50 flex">
+                <motion.div
+                  className="h-full bg-gradient-to-r from-sky-500 to-sky-400"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${territoryData.whitePercent}%` }}
+                  transition={{ duration: 0.5, ease: 'easeOut' }}
+                />
+                <motion.div
+                  className="h-full bg-gradient-to-r from-rose-400 to-rose-500"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${territoryData.blackPercent}%` }}
+                  transition={{ duration: 0.5, ease: 'easeOut' }}
+                />
+              </div>
+            </div>
+
+            {/* Side-by-side heatmaps */}
+            <div className="grid grid-cols-2 gap-2">
+              {/* White territory */}
+              <div className="space-y-1">
+                <span className="text-[9px] text-sky-400 font-display uppercase tracking-wider">White Control</span>
+                <div className="aspect-square grid grid-cols-8 gap-px bg-border/30 rounded overflow-hidden">
+                  {territoryData.whiteControl.map((row, r) =>
+                    row.map((value, f) => {
+                      const intensity = value / territoryData.maxWhite;
+                      return (
+                        <div
+                          key={`w-${r}-${f}`}
+                          className="aspect-square transition-colors"
+                          style={{
+                            backgroundColor: intensity > 0 
+                              ? `rgba(56, 189, 248, ${0.2 + intensity * 0.8})` 
+                              : (r + f) % 2 === 0 ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.1)',
+                          }}
+                          title={`${String.fromCharCode(97 + f)}${8 - r}: ${value} visits`}
+                        />
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              {/* Black territory */}
+              <div className="space-y-1">
+                <span className="text-[9px] text-rose-400 font-display uppercase tracking-wider">Black Control</span>
+                <div className="aspect-square grid grid-cols-8 gap-px bg-border/30 rounded overflow-hidden">
+                  {territoryData.blackControl.map((row, r) =>
+                    row.map((value, f) => {
+                      const intensity = value / territoryData.maxBlack;
+                      return (
+                        <div
+                          key={`b-${r}-${f}`}
+                          className="aspect-square transition-colors"
+                          style={{
+                            backgroundColor: intensity > 0 
+                              ? `rgba(251, 113, 133, ${0.2 + intensity * 0.8})` 
+                              : (r + f) % 2 === 0 ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.1)',
+                          }}
+                          title={`${String.fromCharCode(97 + f)}${8 - r}: ${value} visits`}
+                        />
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Combined heatmap */}
+            <div className="space-y-1">
+              <span className="text-[9px] text-muted-foreground font-display uppercase tracking-wider">Combined Dominance</span>
+              <div className="aspect-[2/1] grid grid-cols-8 gap-px bg-border/30 rounded overflow-hidden">
+                {territoryData.whiteControl.map((row, r) =>
+                  row.map((wValue, f) => {
+                    const bValue = territoryData.blackControl[r][f];
+                    const total = wValue + bValue;
+                    if (total === 0) {
+                      return (
+                        <div
+                          key={`c-${r}-${f}`}
+                          className="aspect-square"
+                          style={{
+                            backgroundColor: (r + f) % 2 === 0 ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.1)',
+                          }}
+                        />
+                      );
+                    }
+                    const whiteRatio = wValue / total;
+                    const contested = Math.min(wValue, bValue) / Math.max(wValue, bValue, 1);
+                    
+                    // Purple for contested, sky for white dominant, rose for black dominant
+                    let color: string;
+                    if (contested > 0.5) {
+                      color = `rgba(168, 85, 247, ${0.4 + (total / (territoryData.maxWhite + territoryData.maxBlack)) * 0.6})`;
+                    } else if (whiteRatio > 0.5) {
+                      color = `rgba(56, 189, 248, ${0.3 + whiteRatio * 0.7})`;
+                    } else {
+                      color = `rgba(251, 113, 133, ${0.3 + (1 - whiteRatio) * 0.7})`;
+                    }
+                    
+                    return (
+                      <div
+                        key={`c-${r}-${f}`}
+                        className="aspect-square transition-colors"
+                        style={{ backgroundColor: color }}
+                        title={`${String.fromCharCode(97 + f)}${8 - r}: W:${wValue} B:${bValue}`}
+                      />
+                    );
+                  })
+                )}
+              </div>
+              <div className="flex justify-center gap-3 text-[8px] text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-sm bg-sky-400" /> White
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-sm bg-purple-500" /> Contested
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-sm bg-rose-400" /> Black
+                </span>
+              </div>
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="pieces"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="space-y-3"
+          >
+            {/* Piece rows */}
+            {renderPieceRow('w', 'White')}
+            {renderPieceRow('b', 'Black')}
+
+            {/* Interactive hint */}
+            <p className="text-[9px] text-muted-foreground text-center italic">
+              {compact ? 'Tap to lock' : 'Hover squares or tap pieces to highlight'}
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };
