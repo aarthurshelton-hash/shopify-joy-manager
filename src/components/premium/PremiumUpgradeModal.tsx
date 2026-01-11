@@ -8,14 +8,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Crown, Check, Loader2, Sparkles, Download, Image, Star } from 'lucide-react';
+import { Crown, Check, Loader2, Sparkles, Download, Image, Star, Film } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface PremiumUpgradeModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAuthRequired?: () => void;
-  trigger?: 'download' | 'save' | 'general';
+  trigger?: 'download' | 'save' | 'general' | 'gif';
 }
 
 const PremiumUpgradeModal: React.FC<PremiumUpgradeModalProps> = ({
@@ -57,6 +57,10 @@ const PremiumUpgradeModal: React.FC<PremiumUpgradeModalProps> = ({
       title: 'Save to Your Gallery',
       description: 'Store and access your visualizations anytime',
     },
+    gif: {
+      title: 'Unlock Animated GIFs',
+      description: 'Export your game journey as a stunning animation',
+    },
     general: {
       title: 'Upgrade to Premium',
       description: 'Unlock the full Visionary experience',
@@ -66,6 +70,7 @@ const PremiumUpgradeModal: React.FC<PremiumUpgradeModalProps> = ({
   const features = [
     { icon: Download, text: 'Download in HD quality', highlight: trigger === 'download' },
     { icon: Image, text: 'No watermarks on images', highlight: trigger === 'download' },
+    { icon: Film, text: 'Export animated GIF sequences', highlight: trigger === 'gif' },
     { icon: Star, text: 'Save to your personal gallery', highlight: trigger === 'save' },
     { icon: Sparkles, text: 'Early access to limited editions', highlight: false },
   ];

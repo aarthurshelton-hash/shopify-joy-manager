@@ -1,11 +1,12 @@
 import React, { useRef, useEffect, useState } from 'react';
 import html2canvas from 'html2canvas';
+import GIF from 'gif.js';
 import ChessBoardVisualization from './ChessBoardVisualization';
 import GameInfoDisplay from './GameInfoDisplay';
 import TimelineSlider from './TimelineSlider';
 import { SimulationResult, SquareData } from '@/lib/chess/gameSimulator';
 import { Button } from '@/components/ui/button';
-import { Download, Loader2, Sun, Moon, Crown, Bookmark, Check } from 'lucide-react';
+import { Download, Loader2, Sun, Moon, Crown, Bookmark, Check, Film } from 'lucide-react';
 import { toast } from 'sonner';
 import QRCode from 'qrcode';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
@@ -14,6 +15,7 @@ import { PremiumUpgradeModal } from '@/components/premium';
 import AuthModal from '@/components/auth/AuthModal';
 import { saveVisualization } from '@/lib/visualizations/visualizationStorage';
 import { useTimeline } from '@/contexts/TimelineContext';
+import { Progress } from '@/components/ui/progress';
 
 interface PrintPreviewProps {
   simulation: SimulationResult;
@@ -21,19 +23,33 @@ interface PrintPreviewProps {
   title?: string;
 }
 
+// Filter board to show only moves up to a certain point
+function filterBoardToMove(board: SquareData[][], moveNumber: number): SquareData[][] {
+  return board.map(rank =>
+    rank.map(square => ({
+      ...square,
+      visits: square.visits.filter(visit => visit.moveNumber <= moveNumber)
+    }))
+  );
+}
+
 const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) => {
   const printRef = useRef<HTMLDivElement>(null);
   const watermarkRef = useRef<HTMLDivElement>(null);
+  const gifBoardRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isGeneratingGif, setIsGeneratingGif] = useState(false);
+  const [gifProgress, setGifProgress] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [boardSize, setBoardSize] = useState(320);
   const [darkMode, setDarkMode] = useState(false);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
   const [showPremiumModal, setShowPremiumModal] = useState(false);
-  const [premiumModalTrigger, setPremiumModalTrigger] = useState<'download' | 'save'>('download');
+  const [premiumModalTrigger, setPremiumModalTrigger] = useState<'download' | 'save' | 'gif'>('download');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showWatermark, setShowWatermark] = useState(false);
+  const [gifPreviewMove, setGifPreviewMove] = useState<number | null>(null);
   
   const { isPremium, user } = useAuth();
 
@@ -56,6 +72,11 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
   } catch {
     // Timeline context not available
   }
+
+  // Board for GIF generation (separate from main display)
+  const gifBoard = gifPreviewMove !== null 
+    ? filterBoardToMove(simulation.board, gifPreviewMove) 
+    : timelineBoard;
   
   // Generate QR code on mount
   useEffect(() => {
@@ -266,6 +287,108 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
     handleDownload(false);
   };
 
+  // GIF generation handler
+  const handleGifDownload = async () => {
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
+    
+    if (!isPremium) {
+      setPremiumModalTrigger('gif');
+      setShowPremiumModal(true);
+      return;
+    }
+
+    if (!printRef.current) return;
+
+    setIsGeneratingGif(true);
+    setGifProgress(0);
+
+    try {
+      // Capture initial frame to get dimensions
+      const firstCanvas = await html2canvas(printRef.current, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: darkMode ? '#0A0A0A' : '#FDFCFB',
+        logging: false,
+      });
+
+      const gif = new GIF({
+        workers: 2,
+        quality: 10,
+        width: firstCanvas.width,
+        height: firstCanvas.height,
+        workerScript: '/gif.worker.js',
+      });
+
+      // Sample moves for reasonable file size
+      const maxFrames = 40;
+      const step = simulation.totalMoves > maxFrames ? Math.ceil(simulation.totalMoves / maxFrames) : 1;
+      const movesToCapture: number[] = [0];
+      
+      for (let i = 1; i <= simulation.totalMoves; i += step) {
+        movesToCapture.push(i);
+      }
+      if (movesToCapture[movesToCapture.length - 1] !== simulation.totalMoves) {
+        movesToCapture.push(simulation.totalMoves);
+      }
+
+      const totalFrames = movesToCapture.length;
+
+      // Show watermark for GIF
+      setShowWatermark(true);
+      await new Promise(r => setTimeout(r, 100));
+
+      for (let i = 0; i < movesToCapture.length; i++) {
+        const moveNum = movesToCapture[i];
+        setGifPreviewMove(moveNum);
+        await new Promise(r => setTimeout(r, 80));
+
+        const canvas = await html2canvas(printRef.current, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: darkMode ? '#0A0A0A' : '#FDFCFB',
+          logging: false,
+        });
+
+        const isFirstOrLast = i === 0 || i === movesToCapture.length - 1;
+        gif.addFrame(canvas, { delay: isFirstOrLast ? 600 : 150, copy: true });
+        setGifProgress(((i + 1) / totalFrames) * 70);
+      }
+
+      setShowWatermark(false);
+      setGifPreviewMove(null);
+
+      gif.on('progress', (p: number) => setGifProgress(70 + p * 30));
+
+      gif.on('finished', (blob: Blob) => {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        const whiteName = simulation.gameData.white?.replace(/\s+/g, '-') || 'chess';
+        const blackName = simulation.gameData.black?.replace(/\s+/g, '-') || 'game';
+        link.download = `EnPensent-${whiteName}-vs-${blackName}-animated.gif`;
+        link.click();
+        URL.revokeObjectURL(url);
+        setIsGeneratingGif(false);
+        setGifProgress(0);
+        toast.success('GIF downloaded!');
+      });
+
+      gif.render();
+    } catch (error) {
+      console.error('GIF generation failed:', error);
+      toast.error('GIF generation failed');
+      setIsGeneratingGif(false);
+      setGifProgress(0);
+      setShowWatermark(false);
+      setGifPreviewMove(null);
+    }
+  };
+
   const handleSaveToGallery = async () => {
     if (!user) {
       setShowAuthModal(true);
@@ -362,11 +485,11 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
           {/* Chess board visualization with watermark overlay */}
           <div className="relative">
             <ChessBoardVisualization 
-              board={timelineBoard} 
+              board={gifPreviewMove !== null ? filterBoardToMove(simulation.board, gifPreviewMove) : timelineBoard} 
               size={boardSize}
             />
             
-            {/* Watermark - only visible during free download capture */}
+            {/* Watermark - visible during free download and GIF capture */}
             {showWatermark && <WatermarkOverlay />}
           </div>
           
@@ -429,12 +552,37 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title }) =
             )}
           </Button>
         </div>
+
+        {/* GIF Download button */}
+        <div className="flex flex-col items-center gap-2">
+          <Button 
+            onClick={handleGifDownload}
+            disabled={isDownloading || isSaving || isGeneratingGif}
+            variant="outline"
+            className={`gap-2 px-6 border-violet-500/30 hover:bg-violet-500/10 ${isPremium ? 'text-violet-400' : ''}`}
+          >
+            {isGeneratingGif ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : isPremium ? (
+              <Film className="h-4 w-4" />
+            ) : (
+              <Crown className="h-4 w-4" />
+            )}
+            {isGeneratingGif ? 'Generating GIF...' : 'Download Animated GIF'}
+            {!isPremium && (
+              <span className="text-xs opacity-75 ml-1">Premium</span>
+            )}
+          </Button>
+          {isGeneratingGif && (
+            <Progress value={gifProgress} className="w-48 h-2" />
+          )}
+        </div>
         
         {/* Save to Gallery button */}
         <div className="flex justify-center">
           <Button 
             onClick={handleSaveToGallery}
-            disabled={isDownloading || isSaving || isSaved}
+            disabled={isDownloading || isSaving || isSaved || isGeneratingGif}
             variant={isSaved ? "secondary" : "outline"}
             className={`gap-2 px-6 ${isSaved ? 'bg-green-500/10 text-green-600 border-green-500/30' : ''}`}
           >
