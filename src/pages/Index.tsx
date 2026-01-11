@@ -501,7 +501,7 @@ const Index = () => {
                 {/* Legend sidebar */}
                 {showLegend && (
                   <div className="lg:w-72">
-                    <ColorLegend key={`legend-${paletteKey}`} />
+                    <ColorLegend key={`legend-${paletteKey}`} board={simulation.board} />
                   </div>
                 )}
               </div>
