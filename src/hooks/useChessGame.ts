@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Chess, Square, Move } from 'chess.js';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { calculateGameRatingChanges } from '@/lib/chess/eloCalculator';
+import { useChessSounds } from '@/hooks/useChessSounds';
 
 export type TimeControl = 'bullet_1' | 'blitz_5' | 'rapid_15' | 'untimed';
 export type GameStatus = 'waiting' | 'active' | 'completed' | 'abandoned';
@@ -61,6 +62,10 @@ export const useChessGame = (): UseChessGameReturn => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [movedSquares, setMovedSquares] = useState<Set<string>>(new Set());
+  
+  // Sound effects
+  const { playSound } = useChessSounds(true, 0.5);
+  const previousFenRef = useRef<string>('');
 
   const myColor: 'w' | 'b' | null = gameState
     ? gameState.whitePlayerId === user?.id
@@ -88,6 +93,18 @@ export const useChessGame = (): UseChessGameReturn => {
         },
         (payload) => {
           const updated = payload.new as any;
+          
+          // Check for game completion and play appropriate sound
+          if (updated.status === 'completed' && gameState.status !== 'completed') {
+            if (updated.result === 'draw') {
+              playSound('draw');
+            } else if (updated.winner_id === user?.id) {
+              playSound('victory');
+            } else {
+              playSound('defeat');
+            }
+          }
+          
           setGameState(prev => prev ? {
             ...prev,
             status: updated.status,
@@ -130,6 +147,22 @@ export const useChessGame = (): UseChessGameReturn => {
             const to = uci.substring(2, 4);
             setMovedSquares(prev => new Set([...prev, to]));
           }
+          
+          // Play sound for opponent's move
+          if (move.player_id !== user?.id) {
+            const san = move.move_san;
+            if (san.includes('#')) {
+              playSound('checkmate');
+            } else if (san.includes('+')) {
+              playSound('check');
+            } else if (san.includes('x')) {
+              playSound('capture');
+            } else if (san === 'O-O' || san === 'O-O-O') {
+              playSound('castle');
+            } else {
+              playSound('move');
+            }
+          }
         }
       )
       .subscribe();
@@ -138,7 +171,7 @@ export const useChessGame = (): UseChessGameReturn => {
       supabase.removeChannel(channel);
       supabase.removeChannel(movesChannel);
     };
-  }, [gameState?.id]);
+  }, [gameState?.id, gameState?.status, user?.id, playSound]);
 
   const loadGame = useCallback(async (gameId: string) => {
     setIsLoading(true);
@@ -283,6 +316,7 @@ export const useChessGame = (): UseChessGameReturn => {
 
       if (updateError) throw updateError;
 
+      playSound('gameStart');
       toast.success('Joined game! You are playing as Black.');
       await loadGame(gameId);
       return true;
@@ -294,7 +328,7 @@ export const useChessGame = (): UseChessGameReturn => {
     } finally {
       setIsLoading(false);
     }
-  }, [user, loadGame]);
+  }, [user, loadGame, playSound]);
 
   const joinByCode = useCallback(async (code: string, palette: Record<string, string>): Promise<boolean> => {
     if (!user) {
@@ -333,7 +367,23 @@ export const useChessGame = (): UseChessGameReturn => {
     try {
       // Make move locally first
       const move = game.move({ from, to, promotion });
-      if (!move) return false;
+      if (!move) {
+        playSound('illegal');
+        return false;
+      }
+
+      // Play appropriate sound for the move
+      if (game.isCheckmate()) {
+        playSound('checkmate');
+      } else if (game.isCheck()) {
+        playSound('check');
+      } else if (move.captured) {
+        playSound('capture');
+      } else if (move.san === 'O-O' || move.san === 'O-O-O') {
+        playSound('castle');
+      } else {
+        playSound('move');
+      }
 
       setGame(new Chess(game.fen()));
       setMovedSquares(prev => new Set([...prev, to]));
@@ -385,6 +435,15 @@ export const useChessGame = (): UseChessGameReturn => {
         // Update ELO ratings
         await updateEloRatings(gameState.whitePlayerId, gameState.blackPlayerId, result);
         
+        // Play game end sounds
+        if (result === 'draw') {
+          playSound('draw');
+        } else if (winnerId === user?.id) {
+          playSound('victory');
+        } else {
+          playSound('defeat');
+        }
+        
         if (result === 'white_wins') {
           toast.success(myColor === 'w' ? 'You won!' : 'White wins!');
         } else if (result === 'black_wins') {
@@ -399,7 +458,7 @@ export const useChessGame = (): UseChessGameReturn => {
       console.error('Move error:', e);
       return false;
     }
-  }, [game, gameState, user, isMyTurn, myColor]);
+  }, [game, gameState, user, isMyTurn, myColor, playSound]);
 
   // Update ELO ratings for both players after a game completes
   const updateEloRatings = useCallback(async (
