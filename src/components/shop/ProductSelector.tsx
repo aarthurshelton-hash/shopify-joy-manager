@@ -7,7 +7,7 @@ import { useCartStore, type CartItem } from '@/stores/cartStore';
 import { useCurrencyStore } from '@/stores/currencyStore';
 import { CurrencySelector } from './CurrencySelector';
 import WallMockup, { RoomSetting } from './WallMockup';
-import ChessBoardVisualization from '@/components/chess/ChessBoardVisualization';
+import PrintReadyVisualization from '@/components/chess/PrintReadyVisualization';
 import { SimulationResult, SquareData } from '@/lib/chess/gameSimulator';
 import { generateCleanPrintImage } from '@/lib/chess/printImageGenerator';
 import { toast } from 'sonner';
@@ -114,16 +114,19 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
     return simulation.board;
   }, [simulation, capturedState]);
 
-  // Create mini visualization for mockup - size will be set by WallMockup
+  // Create mini visualization for mockup using the trademark print-ready style
   const miniVisualization = useMemo(() => {
-    if (!displayBoard) return null;
+    if (!displayBoard || !simulation) return null;
     return (
-      <ChessBoardVisualization 
-        board={displayBoard} 
+      <PrintReadyVisualization 
+        board={displayBoard}
+        gameData={simulation.gameData}
         size={100} // Base size, will be overridden by WallMockup
+        darkMode={capturedState?.darkMode || false}
+        compact={true} // Use compact mode for wall mockup
       />
     );
-  }, [displayBoard]);
+  }, [displayBoard, simulation, capturedState?.darkMode]);
 
   const handleAddToCart = async () => {
     if (!selectedProduct || !selectedVariant) return;

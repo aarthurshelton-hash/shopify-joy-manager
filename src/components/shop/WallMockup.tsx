@@ -185,12 +185,16 @@ export const WallMockup: React.FC<WallMockupProps> = ({
             >
               {visualizationElement ? (
                 <div 
-                  className="w-full h-full flex items-center justify-center"
-                  style={{ transform: 'scale(1)', transformOrigin: 'center' }}
+                  className="w-full h-full flex items-center justify-center overflow-hidden"
+                  style={{ transformOrigin: 'center' }}
                 >
-                  {React.cloneElement(visualizationElement as React.ReactElement, {
-                    size: Math.min(frameWidth - matWidth * 2, frameHeight - matWidth * 2) - 2
-                  })}
+                  {/* Scale the PrintReadyVisualization to fit the frame */}
+                  <div style={{ 
+                    transform: `scale(${(Math.min(frameWidth - matWidth * 2, frameHeight - matWidth * 2) - 2) / 100})`,
+                    transformOrigin: 'center',
+                  }}>
+                    {visualizationElement}
+                  </div>
                 </div>
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center">
