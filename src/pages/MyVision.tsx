@@ -243,7 +243,11 @@ const MyVision: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {visualizations.map((viz) => (
-              <Card key={viz.id} className="overflow-hidden group">
+              <Card 
+                key={viz.id} 
+                className="overflow-hidden group cursor-pointer transition-all hover:ring-2 hover:ring-primary/50"
+                onClick={() => navigate(`/my-vision/${viz.id}`)}
+              >
                 <div className="relative aspect-square">
                   <img
                     src={viz.image_path}
@@ -254,16 +258,33 @@ const MyVision: React.FC = () => {
                     <Button
                       size="sm"
                       variant="secondary"
-                      onClick={() => handleDownload(viz)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/my-vision/${viz.id}`);
+                      }}
+                      className="gap-1"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      Open
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDownload(viz);
+                      }}
                       className="gap-1"
                     >
                       <Download className="h-4 w-4" />
-                      Download
                     </Button>
                     <Button
                       size="sm"
                       variant="destructive"
-                      onClick={() => setDeleteTarget(viz)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeleteTarget(viz);
+                      }}
                       className="gap-1"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -285,7 +306,10 @@ const MyVision: React.FC = () => {
                           size="icon"
                           variant="ghost"
                           className="h-6 w-6"
-                          onClick={() => handleCopyShareLink(viz.public_share_id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCopyShareLink(viz.public_share_id);
+                          }}
                           title="Copy share link"
                         >
                           <Link2 className="h-3 w-3" />
@@ -294,7 +318,10 @@ const MyVision: React.FC = () => {
                           size="icon"
                           variant="ghost"
                           className="h-6 w-6"
-                          onClick={() => handleViewPublicPage(viz.public_share_id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleViewPublicPage(viz.public_share_id);
+                          }}
                           title="View public page"
                         >
                           <ExternalLink className="h-3 w-3" />

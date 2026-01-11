@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Chess, Square } from 'chess.js';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
 import { 
   Swords, Users, Zap, Clock, Crown, Copy, Share2, 
-  Flag, Handshake, ChevronRight, Palette, Sparkles, Lock, TrendingUp
+  Flag, Handshake, ChevronRight, Palette, Sparkles, Lock, TrendingUp,
+  Bot, User
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
@@ -27,8 +29,12 @@ import {
 import { EloChangeAnimation } from '@/components/chess/EloChangeAnimation';
 import { SoundSettings } from '@/components/chess/SoundSettings';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { getBotMove, getBotThinkingDelay, BOT_DIFFICULTIES, BotDifficulty } from '@/lib/chess/chessBot';
+import { useChessSounds } from '@/hooks/useChessSounds';
+import { useSoundStore } from '@/stores/soundStore';
 
-type ViewMode = 'lobby' | 'game' | 'waiting';
+type ViewMode = 'lobby' | 'game' | 'waiting' | 'bot-game';
+type GameType = 'human' | 'bot';
 
 const TIME_CONTROLS: { id: TimeControl; label: string; icon: typeof Clock; description: string }[] = [
   { id: 'bullet_1', label: 'Bullet', icon: Zap, description: '1 minute' },
@@ -54,11 +60,25 @@ const Play = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   
+  // Game type selection
+  const [gameType, setGameType] = useState<GameType>('human');
+  const [botDifficulty, setBotDifficulty] = useState<BotDifficulty>('medium');
+  
   // Game creation
   const [selectedTimeControl, setSelectedTimeControl] = useState<TimeControl>('blitz_5');
   const [selectedPalette, setSelectedPalette] = useState<PaletteId>('hotCold');
   const [isPublicGame, setIsPublicGame] = useState(true);
   const [challengeCode, setChallengeCode] = useState('');
+  
+  // Bot game state (local only, no DB)
+  const [botGame, setBotGame] = useState<Chess | null>(null);
+  const [botMovedSquares, setBotMovedSquares] = useState<Set<string>>(new Set());
+  const [isBotThinking, setIsBotThinking] = useState(false);
+  const [botGameResult, setBotGameResult] = useState<'win' | 'loss' | 'draw' | null>(null);
+  
+  // Sound effects for bot game
+  const { enabled: soundEnabled, volume: soundVolume } = useSoundStore();
+  const { playSound } = useChessSounds(soundEnabled, soundVolume);
   
   // Waiting games list
   const [waitingGames, setWaitingGames] = useState<WaitingGame[]>([]);
@@ -71,7 +91,7 @@ const Play = () => {
   const [eloAfterGame, setEloAfterGame] = useState<number | null>(null);
   const [showEloAnimation, setShowEloAnimation] = useState(false);
   
-  // Chess game hook
+  // Chess game hook (for multiplayer)
   const {
     game,
     gameState,
@@ -94,6 +114,9 @@ const Play = () => {
     setShowEloAnimation(false);
     setEloBeforeGame(null);
     setEloAfterGame(null);
+    setBotGame(null);
+    setBotMovedSquares(new Set());
+    setBotGameResult(null);
     setViewMode('lobby');
   };
 
@@ -345,6 +368,120 @@ const Play = () => {
     return palette || colorPalettes[0].black;
   };
 
+  // ========== BOT GAME FUNCTIONS ==========
+  
+  const startBotGame = () => {
+    // No premium required for bot games - accessible to all!
+    const newGame = new Chess();
+    setBotGame(newGame);
+    setBotMovedSquares(new Set());
+    setBotGameResult(null);
+    setViewMode('bot-game');
+    playSound('gameStart');
+    toast.success(`Starting game vs ${BOT_DIFFICULTIES.find(d => d.id === botDifficulty)?.label} bot`);
+  };
+
+  const makeBotGameMove = useCallback(async (from: Square, to: Square, promotion?: string): Promise<boolean> => {
+    if (!botGame || isBotThinking) return false;
+    
+    try {
+      const move = botGame.move({ from, to, promotion });
+      if (!move) {
+        playSound('illegal');
+        return false;
+      }
+
+      // Play sound for player's move
+      if (botGame.isCheckmate()) {
+        playSound('checkmate');
+      } else if (botGame.isCheck()) {
+        playSound('check');
+      } else if (move.captured) {
+        playSound('capture');
+      } else if (move.san === 'O-O' || move.san === 'O-O-O') {
+        playSound('castle');
+      } else {
+        playSound('move');
+      }
+
+      setBotGame(new Chess(botGame.fen()));
+      setBotMovedSquares(prev => new Set([...prev, to]));
+
+      // Check if game is over after player's move
+      if (botGame.isGameOver()) {
+        if (botGame.isCheckmate()) {
+          setBotGameResult('win');
+          playSound('victory');
+          toast.success('Checkmate! You won!');
+        } else {
+          setBotGameResult('draw');
+          playSound('draw');
+          toast.info('Game drawn!');
+        }
+        return true;
+      }
+
+      // Bot's turn
+      setIsBotThinking(true);
+      const thinkingTime = getBotThinkingDelay(botDifficulty);
+      
+      await new Promise(resolve => setTimeout(resolve, thinkingTime));
+      
+      const botMove = getBotMove(botGame, botDifficulty);
+      if (botMove) {
+        botGame.move(botMove);
+        
+        // Play sound for bot's move
+        if (botGame.isCheckmate()) {
+          playSound('checkmate');
+        } else if (botGame.isCheck()) {
+          playSound('check');
+        } else if (botMove.captured) {
+          playSound('capture');
+        } else if (botMove.san === 'O-O' || botMove.san === 'O-O-O') {
+          playSound('castle');
+        } else {
+          playSound('move');
+        }
+
+        setBotGame(new Chess(botGame.fen()));
+        setBotMovedSquares(prev => new Set([...prev, botMove.to]));
+
+        // Check if game is over after bot's move
+        if (botGame.isGameOver()) {
+          if (botGame.isCheckmate()) {
+            setBotGameResult('loss');
+            playSound('defeat');
+            toast.error('Checkmate! You lost.');
+          } else {
+            setBotGameResult('draw');
+            playSound('draw');
+            toast.info('Game drawn!');
+          }
+        }
+      }
+      
+      setIsBotThinking(false);
+      return true;
+    } catch (e) {
+      console.error('Bot game move error:', e);
+      setIsBotThinking(false);
+      return false;
+    }
+  }, [botGame, isBotThinking, botDifficulty, playSound]);
+
+  const getBotGameAvailableMoves = useCallback((square: Square): Square[] => {
+    if (!botGame) return [];
+    const moves = botGame.moves({ square, verbose: true });
+    return moves.map(m => m.to as Square);
+  }, [botGame]);
+
+  const resignBotGame = () => {
+    setBotGameResult('loss');
+    playSound('defeat');
+    toast.info('You resigned.');
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -381,6 +518,41 @@ const Play = () => {
                 exit={{ opacity: 0, y: -20 }}
                 className="space-y-8"
               >
+                {/* Play vs Bot - Available to everyone! */}
+                <div className="p-6 rounded-lg border border-green-500/30 bg-gradient-to-r from-green-500/10 via-green-500/5 to-transparent space-y-4">
+                  <div className="flex items-center justify-between flex-wrap gap-4">
+                    <div className="flex items-center gap-4">
+                      <Bot className="h-8 w-8 text-green-500" />
+                      <div>
+                        <h3 className="font-display font-bold uppercase tracking-wider">Practice vs Bot</h3>
+                        <p className="text-sm text-muted-foreground font-serif">Free for everyone! No account required.</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="flex gap-2">
+                        {BOT_DIFFICULTIES.map(diff => (
+                          <button
+                            key={diff.id}
+                            onClick={() => setBotDifficulty(diff.id)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-display transition-all ${
+                              botDifficulty === diff.id
+                                ? 'bg-green-500 text-white'
+                                : 'bg-card/50 border border-border/50 text-muted-foreground hover:border-green-500/30'
+                            }`}
+                            title={`${diff.description} (~${diff.rating})`}
+                          >
+                            {diff.label}
+                          </button>
+                        ))}
+                      </div>
+                      <Button onClick={startBotGame} className="gap-2 bg-green-600 hover:bg-green-700">
+                        <Bot className="h-4 w-4" />
+                        Play Bot
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
                 {!isPremium && (
                   <div className="p-6 rounded-lg border border-primary/30 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -797,6 +969,77 @@ const Play = () => {
                     <Button variant="outline" onClick={shareGame} className="gap-2">
                       <Share2 className="h-4 w-4" />
                       Share Game
+                    </Button>
+                  </div>
+                )}
+              </motion.div>
+            )}
+
+            {/* BOT GAME VIEW */}
+            {viewMode === 'bot-game' && botGame && (
+              <motion.div
+                key="bot-game"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="space-y-6"
+              >
+                {/* Game Header */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground font-display uppercase tracking-wider flex items-center gap-2">
+                      <Bot className="h-4 w-4" />
+                      {botGameResult 
+                        ? botGameResult === 'win' ? 'You Won!' 
+                          : botGameResult === 'loss' ? 'You Lost' 
+                          : 'Draw'
+                        : isBotThinking ? "Bot is thinking..." : "Your Turn"}
+                    </p>
+                    <p className="text-xs text-muted-foreground font-serif">
+                      vs {BOT_DIFFICULTIES.find(d => d.id === botDifficulty)?.label} Bot ({BOT_DIFFICULTIES.find(d => d.id === botDifficulty)?.rating})
+                    </p>
+                  </div>
+                  
+                  {!botGameResult && (
+                    <Button variant="outline" size="sm" onClick={resignBotGame} className="gap-1 text-destructive">
+                      <Flag className="h-4 w-4" />
+                      Resign
+                    </Button>
+                  )}
+                </div>
+
+                {/* Chess Board */}
+                <PlayableChessBoard
+                  fen={botGame.fen()}
+                  onMove={makeBotGameMove}
+                  getAvailableMoves={getBotGameAvailableMoves}
+                  isMyTurn={!isBotThinking && !botGameResult && botGame.turn() === 'w'}
+                  myColor="w"
+                  whitePalette={colorPalettes.find(p => p.id === selectedPalette)?.white || colorPalettes[0].white}
+                  blackPalette={colorPalettes.find(p => p.id === selectedPalette)?.black || colorPalettes[0].black}
+                  movedSquares={botMovedSquares}
+                  disabled={isBotThinking || !!botGameResult}
+                />
+
+                {/* Move display */}
+                <div className="p-4 rounded-lg border border-border/50 bg-card/30">
+                  <p className="text-sm text-muted-foreground font-display uppercase tracking-wider mb-2">
+                    Moves: {botGame.history().length}
+                  </p>
+                  <p className="text-xs text-muted-foreground font-mono break-all">
+                    {botGame.pgn() || 'Game started...'}
+                  </p>
+                </div>
+
+                {/* Post-game actions */}
+                {botGameResult && (
+                  <div className="flex gap-4 justify-center">
+                    <Button onClick={handleBackToLobby}>
+                      Back to Lobby
+                    </Button>
+                    <Button variant="outline" onClick={startBotGame} className="gap-2">
+                      <Bot className="h-4 w-4" />
+                      Play Again
                     </Button>
                   </div>
                 )}

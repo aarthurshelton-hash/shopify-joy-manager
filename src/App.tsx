@@ -7,6 +7,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import Index from "./pages/Index";
 import MyPalettes from "./pages/MyPalettes";
 import MyVision from "./pages/MyVision";
+import VisualizationDetail from "./pages/VisualizationDetail";
 import About from "./pages/About";
 import Investors from "./pages/Investors";
 import Analytics from "./pages/Analytics";
@@ -32,12 +33,13 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/my-palettes" element={<MyPalettes />} />
             <Route path="/my-vision" element={<MyVision />} />
+            <Route path="/my-vision/:id" element={<VisualizationDetail />} />
             <Route path="/about" element={<About />} />
             <Route path="/investors" element={<Investors />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/play" element={<Play />} />
-            <Route path="/creative" element={<CreativeMode />} />
+            <Route path="/creative-mode" element={<CreativeMode />} />
             <Route path="/game-history" element={<GameHistory />} />
             <Route path="/news" element={<News />} />
             <Route path="/qr-preview" element={<QRMockup />} />
