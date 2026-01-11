@@ -3,26 +3,11 @@ import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
 import { motion } from 'framer-motion';
 import { Scan, Smartphone, ExternalLink, Crown, Sparkles } from 'lucide-react';
-import QRCode from 'qrcode';
-import logo from '@/assets/en-pensent-logo-new.png';
+import { ArtisticQRCode } from '@/components/qr/ArtisticQRCode';
 
 // Sample visualization pattern (simulating a chess game visualization)
 const SampleVisualization = ({ showQR = false }: { showQR?: boolean }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [qrDataUrl, setQrDataUrl] = useState<string>('');
-
-  useEffect(() => {
-    // Generate QR code
-    QRCode.toDataURL('https://enpensent.com/v/Kx7mP2', {
-      width: 120,
-      margin: 0,
-      color: {
-        dark: '#D4AF37', // Gold
-        light: '#00000000' // Transparent
-      },
-      errorCorrectionLevel: 'H' // High - allows for logo overlay
-    }).then(setQrDataUrl);
-  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -114,46 +99,19 @@ const SampleVisualization = ({ showQR = false }: { showQR?: boolean }) => {
         style={{ width: '400px', height: '400px' }}
       />
       
-      {/* Artistic QR Code Overlay */}
-      {showQR && qrDataUrl && (
+      {/* Artistic QR Code Overlay - Now smaller and more subtle */}
+      {showQR && (
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.5, duration: 0.5 }}
-          className="absolute bottom-4 right-4"
+          className="absolute bottom-3 right-3"
         >
-          <div className="relative">
-            {/* Subtle glow effect */}
-            <div className="absolute inset-0 bg-primary/20 blur-xl rounded-lg" />
-            
-            {/* QR Container with glass effect */}
-            <div className="relative bg-black/60 backdrop-blur-sm rounded-lg p-2 border border-primary/30">
-              {/* QR Code */}
-              <div className="relative">
-                <img 
-                  src={qrDataUrl} 
-                  alt="Scan to view digital version"
-                  className="w-20 h-20"
-                />
-                
-                {/* Logo overlay in center of QR */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-6 h-6 rounded-full bg-black border border-primary/50 flex items-center justify-center overflow-hidden">
-                    <img 
-                      src={logo} 
-                      alt="En Pensent" 
-                      className="w-5 h-5 object-cover"
-                    />
-                  </div>
-                </div>
-              </div>
-              
-              {/* Subtle text */}
-              <p className="text-[6px] text-primary/60 text-center mt-1 font-display tracking-widest uppercase">
-                Scan to View
-              </p>
-            </div>
-          </div>
+          <ArtisticQRCode 
+            url="https://enpensent.com/v/Kx7mP2" 
+            size="small"
+            showLabel={true}
+          />
         </motion.div>
       )}
     </div>
@@ -350,20 +308,20 @@ const QRMockup = () => {
             </h3>
             <div className="grid md:grid-cols-4 gap-4 text-center">
               <div>
-                <p className="text-2xl font-display text-primary">80×80</p>
-                <p className="text-xs text-muted-foreground">Pixel Size</p>
+                <p className="text-2xl font-display text-primary">48×48</p>
+                <p className="text-xs text-muted-foreground">Pixel Size (Subtle)</p>
               </div>
               <div>
                 <p className="text-2xl font-display text-primary">H-Level</p>
-                <p className="text-xs text-muted-foreground">Error Correction</p>
+                <p className="text-xs text-muted-foreground">30% Error Tolerance</p>
               </div>
               <div>
                 <p className="text-2xl font-display text-primary">Gold</p>
-                <p className="text-xs text-muted-foreground">Brand Color #D4AF37</p>
+                <p className="text-xs text-muted-foreground">#D4AF37</p>
               </div>
               <div>
                 <p className="text-2xl font-display text-primary">∞</p>
-                <p className="text-xs text-muted-foreground">Scan Lifespan</p>
+                <p className="text-xs text-muted-foreground">Permanent Link</p>
               </div>
             </div>
           </motion.div>

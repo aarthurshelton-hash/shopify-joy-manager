@@ -1,13 +1,23 @@
 import { SimulationResult } from './gameSimulator';
+import { generateQRDataUrl } from '@/lib/qr/generateVisualizationQR';
+import logo from '@/assets/en-pensent-logo-new.png';
+
+interface PrintOptions {
+  darkMode?: boolean;
+  includeQR?: boolean;
+  shareId?: string;
+}
 
 /**
  * Generates a clean (no watermark) base64 image from a chess visualization
  * This is used for Printify print orders - identical to the preview
+ * For premium users, includes an artistic QR code linking to the digital version
  */
 export async function generateCleanPrintImage(
   simulation: SimulationResult,
-  darkMode: boolean = false
+  options: PrintOptions = {}
 ): Promise<string> {
+  const { darkMode = false, includeQR = false, shareId } = options;
   const html2canvas = (await import('html2canvas')).default;
   
   // Create a temporary container for rendering
@@ -36,9 +46,13 @@ export async function generateCleanPrintImage(
     
     container.appendChild(printContent);
     
-    // Create board container
+    // Create board container with relative positioning for QR overlay
+    const boardWrapper = document.createElement('div');
+    boardWrapper.style.position = 'relative';
+    printContent.appendChild(boardWrapper);
+    
     const boardContainer = document.createElement('div');
-    printContent.appendChild(boardContainer);
+    boardWrapper.appendChild(boardContainer);
     
     // Render the chess board
     const boardRoot = ReactDOM.createRoot(boardContainer);
@@ -52,6 +66,76 @@ export async function generateCleanPrintImage(
       // Give React time to render
       setTimeout(resolve, 100);
     });
+    
+    // Add QR code for premium prints
+    if (includeQR && shareId) {
+      const qrContainer = document.createElement('div');
+      qrContainer.style.position = 'absolute';
+      qrContainer.style.bottom = '8px';
+      qrContainer.style.right = '8px';
+      qrContainer.style.zIndex = '10';
+      
+      try {
+        const qrDataUrl = await generateQRDataUrl(shareId, 96);
+        
+        // Create QR wrapper with glass effect
+        const qrWrapper = document.createElement('div');
+        qrWrapper.style.backgroundColor = 'rgba(0, 0, 0, 0.75)';
+        qrWrapper.style.padding = '4px';
+        qrWrapper.style.borderRadius = '6px';
+        qrWrapper.style.border = '1px solid rgba(212, 175, 55, 0.25)';
+        qrWrapper.style.display = 'flex';
+        qrWrapper.style.flexDirection = 'column';
+        qrWrapper.style.alignItems = 'center';
+        qrWrapper.style.gap = '2px';
+        
+        // QR code image
+        const qrImg = document.createElement('img');
+        qrImg.src = qrDataUrl;
+        qrImg.style.width = '48px';
+        qrImg.style.height = '48px';
+        qrImg.style.display = 'block';
+        qrWrapper.appendChild(qrImg);
+        
+        // Load and add logo overlay
+        const logoImg = document.createElement('img');
+        logoImg.src = logo;
+        logoImg.style.position = 'absolute';
+        logoImg.style.width = '14px';
+        logoImg.style.height = '14px';
+        logoImg.style.top = '50%';
+        logoImg.style.left = '50%';
+        logoImg.style.transform = 'translate(-50%, -50%)';
+        logoImg.style.borderRadius = '50%';
+        logoImg.style.border = '1px solid rgba(212, 175, 55, 0.4)';
+        
+        const logoWrapper = document.createElement('div');
+        logoWrapper.style.position = 'relative';
+        logoWrapper.style.width = '48px';
+        logoWrapper.style.height = '48px';
+        logoWrapper.appendChild(qrImg);
+        logoWrapper.appendChild(logoImg);
+        qrWrapper.appendChild(logoWrapper);
+        
+        // "SCAN" label
+        const scanLabel = document.createElement('p');
+        scanLabel.textContent = 'SCAN';
+        scanLabel.style.fontSize = '5px';
+        scanLabel.style.color = 'rgba(212, 175, 55, 0.5)';
+        scanLabel.style.letterSpacing = '0.15em';
+        scanLabel.style.margin = '0';
+        scanLabel.style.fontFamily = "'Inter', system-ui, sans-serif";
+        qrWrapper.appendChild(scanLabel);
+        
+        qrContainer.appendChild(qrWrapper);
+        boardWrapper.appendChild(qrContainer);
+        
+        // Wait for QR image to load
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch (qrError) {
+        console.warn('Failed to generate QR code for print:', qrError);
+      }
+    }
     
     // Add game info section
     const infoContainer = document.createElement('div');
@@ -106,4 +190,14 @@ export async function generateCleanPrintImage(
     // Always cleanup the container
     document.body.removeChild(container);
   }
+}
+
+/**
+ * Legacy signature for backward compatibility
+ */
+export async function generateCleanPrintImageLegacy(
+  simulation: SimulationResult,
+  darkMode: boolean = false
+): Promise<string> {
+  return generateCleanPrintImage(simulation, { darkMode });
 }

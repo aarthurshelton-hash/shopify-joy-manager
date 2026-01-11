@@ -105,6 +105,7 @@ export type Database = {
           id: string
           image_path: string
           pgn: string | null
+          public_share_id: string | null
           title: string
           updated_at: string
           user_id: string
@@ -115,6 +116,7 @@ export type Database = {
           id?: string
           image_path: string
           pgn?: string | null
+          public_share_id?: string | null
           title: string
           updated_at?: string
           user_id: string
@@ -125,6 +127,7 @@ export type Database = {
           id?: string
           image_path?: string
           pgn?: string | null
+          public_share_id?: string | null
           title?: string
           updated_at?: string
           user_id?: string
@@ -175,7 +178,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      generate_share_id: { Args: never; Returns: string }
     }
     Enums: {
       testimonial_status: "pending" | "approved" | "rejected"
