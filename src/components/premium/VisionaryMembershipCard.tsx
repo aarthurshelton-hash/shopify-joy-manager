@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { recordFunnelEvent, MEMBERSHIP_METRICS } from '@/lib/analytics/membershipFunnel';
+import { useABTest } from '@/hooks/useABTest';
 import {
   Dialog,
   DialogContent,
@@ -16,6 +17,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from '@/components/ui/carousel';
 import {
   Crown,
   Check,
@@ -154,6 +162,90 @@ const FEATURE_BACKGROUNDS: Record<string, string> = {
   'early-access': rubinsteinImmortal,
 };
 
+// FeatureCard component for grid/carousel layouts
+const FeatureCard: React.FC<{
+  feature: typeof PREMIUM_FEATURES[0];
+  isHighlighted: boolean;
+  isHovered: boolean;
+  onHover: (id: string) => void;
+  onLeave: () => void;
+  idx: number;
+}> = ({ feature, isHighlighted, isHovered, onHover, onLeave, idx }) => (
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: idx * 0.05 }}
+        onMouseEnter={() => onHover(feature.id)}
+        onMouseLeave={onLeave}
+        className={`relative p-4 rounded-xl border cursor-pointer transition-all duration-300 overflow-hidden ${
+          isHighlighted
+            ? 'bg-primary/10 border-primary/50 ring-2 ring-primary/30'
+            : 'bg-muted/30 border-border/50 hover:bg-muted/50 hover:border-border'
+        }`}
+      >
+        <div 
+          className="absolute inset-0 bg-cover bg-center opacity-[0.18] transition-opacity duration-300 hover:opacity-[0.25]"
+          style={{ backgroundImage: `url(${FEATURE_BACKGROUNDS[feature.id] || immortalGame})` }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/90 to-background/70" />
+        
+        <div className={`relative z-10 h-10 w-10 rounded-lg flex items-center justify-center mb-3 ${
+          isHighlighted ? 'bg-primary/20' : 'bg-muted'
+        }`}>
+          <feature.icon className={`h-5 w-5 ${isHighlighted ? 'text-primary' : 'text-muted-foreground'}`} />
+        </div>
+        
+        <h4 className="relative z-10 font-medium text-sm mb-1">{feature.title}</h4>
+        <p className="relative z-10 text-xs text-muted-foreground line-clamp-2">{feature.description}</p>
+        
+        <AnimatePresence>
+          {(isHovered || isHighlighted) && (
+            <motion.div
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 5 }}
+              className="relative z-10 mt-3 pt-3 border-t border-border/50"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-muted-foreground">{feature.stats.label}</span>
+                <div className="flex items-center gap-1">
+                  <span className="text-xs font-bold text-primary">{feature.stats.value}</span>
+                  <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4 bg-green-500/10 text-green-600">
+                    {feature.stats.growth}
+                  </Badge>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <div className={`absolute top-2 right-2 z-10 h-5 w-5 rounded-full flex items-center justify-center ${
+          isHighlighted ? 'bg-primary' : 'bg-muted'
+        }`}>
+          <Check className={`h-3 w-3 ${isHighlighted ? 'text-primary-foreground' : 'text-muted-foreground'}`} />
+        </div>
+      </motion.div>
+    </TooltipTrigger>
+    <TooltipContent side="top" className="max-w-xs p-4">
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <feature.icon className="h-4 w-4 text-primary" />
+          <span className="font-medium">{feature.title}</span>
+        </div>
+        <p className="text-sm text-muted-foreground">{feature.tooltip}</p>
+        <div className="flex items-center gap-2 pt-2 border-t">
+          <TrendingUp className="h-3 w-3 text-green-500" />
+          <span className="text-xs text-green-600">
+            {feature.stats.value} • {feature.stats.growth}
+          </span>
+        </div>
+      </div>
+    </TooltipContent>
+  </Tooltip>
+);
+
 export const VisionaryMembershipCard: React.FC<VisionaryMembershipCardProps> = ({
   isOpen,
   onClose,
@@ -161,6 +253,7 @@ export const VisionaryMembershipCard: React.FC<VisionaryMembershipCardProps> = (
   trigger = 'general',
 }) => {
   const { user, isPremium, openCheckout } = useAuth();
+  const { variants, recordImpressions, recordConversions } = useABTest();
   const [isLoading, setIsLoading] = useState(false);
   const [hoveredFeature, setHoveredFeature] = useState<string | null>(null);
   const [bgIndex] = useState(() => Math.floor(Math.random() * BACKGROUND_IMAGES.length));
@@ -174,13 +267,14 @@ export const VisionaryMembershipCard: React.FC<VisionaryMembershipCardProps> = (
       modalOpenTime.current = Date.now();
       hasRecordedView.current = true;
       recordFunnelEvent('modal_view', { trigger_source: trigger });
+      recordImpressions(); // Record A/B test impressions
     }
     
     if (!isOpen) {
       hasRecordedView.current = false;
       featuresViewed.current.clear();
     }
-  }, [isOpen, trigger]);
+  }, [isOpen, trigger, recordImpressions]);
 
   // Track feature hovers
   const handleFeatureHover = (featureId: string) => {
@@ -223,6 +317,7 @@ export const VisionaryMembershipCard: React.FC<VisionaryMembershipCardProps> = (
       time_on_modal_ms: timeOnModal,
       features_viewed: Array.from(featuresViewed.current),
     });
+    recordConversions(); // Record A/B test conversions
 
     setIsLoading(true);
     try {
@@ -300,7 +395,11 @@ export const VisionaryMembershipCard: React.FC<VisionaryMembershipCardProps> = (
               </div>
               
               <DialogTitle className="font-display text-3xl">
-                Become a <span className="text-primary">Visionary</span>
+                {variants.headline.includes('Visionary') ? (
+                  <>Become a <span className="text-primary">Visionary</span></>
+                ) : (
+                  <span className="text-primary">{variants.headline}</span>
+                )}
               </DialogTitle>
               <p className="text-muted-foreground mt-2 max-w-md mx-auto">
                 Join {' '}
@@ -308,14 +407,14 @@ export const VisionaryMembershipCard: React.FC<VisionaryMembershipCardProps> = (
                 {' '} transforming games into masterpieces
               </p>
 
-              {/* Price highlight */}
+              {/* Price highlight - A/B tested */}
               <motion.div 
                 className="mt-4 inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary/10 border border-primary/30"
                 whileHover={{ scale: 1.02 }}
               >
-                <span className="text-4xl font-bold text-primary">$7</span>
+                <span className="text-4xl font-bold text-primary">{variants.priceDisplay}</span>
                 <div className="text-left">
-                  <p className="text-sm font-medium">/month</p>
+                  <p className="text-sm font-medium">{variants.priceSubtext}</p>
                   <p className="text-xs text-muted-foreground">Cancel anytime</p>
                 </div>
                 <Badge className="ml-2 bg-green-500/20 text-green-600 border-green-500/30">
@@ -333,96 +432,83 @@ export const VisionaryMembershipCard: React.FC<VisionaryMembershipCardProps> = (
               </Button>
             </DialogHeader>
 
-            {/* Features Grid */}
+            {/* Features - A/B tested layouts */}
             <div className="p-6 max-h-[50vh] overflow-y-auto">
               <TooltipProvider delayDuration={0}>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {PREMIUM_FEATURES.map((feature, idx) => {
-                    const isHighlighted = highlightedFeatures.includes(feature.id);
-                    const isHovered = hoveredFeature === feature.id;
-                    
-                    return (
-                      <Tooltip key={feature.id}>
-                        <TooltipTrigger asChild>
-                          <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: idx * 0.05 }}
-                            onMouseEnter={() => handleFeatureHover(feature.id)}
-                            onMouseLeave={() => setHoveredFeature(null)}
-                            className={`relative p-4 rounded-xl border cursor-pointer transition-all duration-300 overflow-hidden ${
-                              isHighlighted
-                                ? 'bg-primary/10 border-primary/50 ring-2 ring-primary/30'
-                                : 'bg-muted/30 border-border/50 hover:bg-muted/50 hover:border-border'
-                            }`}
-                          >
-                            {/* Art background - enhanced visibility */}
-                            <div 
-                              className="absolute inset-0 bg-cover bg-center opacity-[0.18] transition-opacity duration-300 hover:opacity-[0.25]"
-                              style={{ backgroundImage: `url(${FEATURE_BACKGROUNDS[feature.id] || immortalGame})` }}
+                {variants.layout === 'carousel' ? (
+                  <Carousel className="w-full">
+                    <CarouselContent>
+                      {PREMIUM_FEATURES.map((feature, idx) => {
+                        const isHighlighted = highlightedFeatures.includes(feature.id);
+                        return (
+                          <CarouselItem key={feature.id} className="md:basis-1/2 lg:basis-1/3">
+                            <FeatureCard
+                              feature={feature}
+                              isHighlighted={isHighlighted}
+                              isHovered={hoveredFeature === feature.id}
+                              onHover={handleFeatureHover}
+                              onLeave={() => setHoveredFeature(null)}
+                              idx={idx}
                             />
-                            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/90 to-background/70" />
-                            
-                            {/* Feature icon - relative to sit above bg */}
-                            <div className={`relative z-10 h-10 w-10 rounded-lg flex items-center justify-center mb-3 ${
-                              isHighlighted ? 'bg-primary/20' : 'bg-muted'
-                            }`}>
-                              <feature.icon className={`h-5 w-5 ${isHighlighted ? 'text-primary' : 'text-muted-foreground'}`} />
-                            </div>
-                            
-                            {/* Title & description - relative to sit above bg */}
-                            <h4 className="relative z-10 font-medium text-sm mb-1">{feature.title}</h4>
-                            <p className="relative z-10 text-xs text-muted-foreground line-clamp-2">{feature.description}</p>
-                            
-                            {/* Stats badge */}
-                            <AnimatePresence>
-                              {(isHovered || isHighlighted) && (
-                                <motion.div
-                                  initial={{ opacity: 0, y: 5 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  exit={{ opacity: 0, y: 5 }}
-                                  className="relative z-10 mt-3 pt-3 border-t border-border/50"
-                                >
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-[10px] text-muted-foreground">{feature.stats.label}</span>
-                                    <div className="flex items-center gap-1">
-                                      <span className="text-xs font-bold text-primary">{feature.stats.value}</span>
-                                      <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4 bg-green-500/10 text-green-600">
-                                        {feature.stats.growth}
-                                      </Badge>
-                                    </div>
-                                  </div>
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
-
-                            {/* Check indicator */}
-                            <div className={`absolute top-2 right-2 z-10 h-5 w-5 rounded-full flex items-center justify-center ${
-                              isHighlighted ? 'bg-primary' : 'bg-muted'
-                            }`}>
-                              <Check className={`h-3 w-3 ${isHighlighted ? 'text-primary-foreground' : 'text-muted-foreground'}`} />
-                            </div>
-                          </motion.div>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="max-w-xs p-4">
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <feature.icon className="h-4 w-4 text-primary" />
-                              <span className="font-medium">{feature.title}</span>
-                            </div>
-                            <p className="text-sm text-muted-foreground">{feature.tooltip}</p>
-                            <div className="flex items-center gap-2 pt-2 border-t">
-                              <TrendingUp className="h-3 w-3 text-green-500" />
-                              <span className="text-xs text-green-600">
-                                {feature.stats.value} • {feature.stats.growth}
-                              </span>
-                            </div>
+                          </CarouselItem>
+                        );
+                      })}
+                    </CarouselContent>
+                    <CarouselPrevious />
+                    <CarouselNext />
+                  </Carousel>
+                ) : variants.layout === 'list' ? (
+                  <div className="space-y-2">
+                    {PREMIUM_FEATURES.map((feature, idx) => {
+                      const isHighlighted = highlightedFeatures.includes(feature.id);
+                      return (
+                        <motion.div
+                          key={feature.id}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: idx * 0.05 }}
+                          onMouseEnter={() => handleFeatureHover(feature.id)}
+                          onMouseLeave={() => setHoveredFeature(null)}
+                          className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+                            isHighlighted
+                              ? 'bg-primary/10 border-primary/50'
+                              : 'bg-muted/30 border-border/50 hover:bg-muted/50'
+                          }`}
+                        >
+                          <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${
+                            isHighlighted ? 'bg-primary/20' : 'bg-muted'
+                          }`}>
+                            <feature.icon className={`h-4 w-4 ${isHighlighted ? 'text-primary' : 'text-muted-foreground'}`} />
                           </div>
-                        </TooltipContent>
-                      </Tooltip>
-                    );
-                  })}
-                </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-medium text-sm">{feature.title}</h4>
+                            <p className="text-xs text-muted-foreground truncate">{feature.description}</p>
+                          </div>
+                          <Badge variant="secondary" className="text-xs bg-green-500/10 text-green-600">
+                            {feature.stats.growth}
+                          </Badge>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {PREMIUM_FEATURES.map((feature, idx) => {
+                      const isHighlighted = highlightedFeatures.includes(feature.id);
+                      return (
+                        <FeatureCard
+                          key={feature.id}
+                          feature={feature}
+                          isHighlighted={isHighlighted}
+                          isHovered={hoveredFeature === feature.id}
+                          onHover={handleFeatureHover}
+                          onLeave={() => setHoveredFeature(null)}
+                          idx={idx}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
               </TooltipProvider>
 
               {/* Social proof */}
@@ -500,13 +586,13 @@ export const VisionaryMembershipCard: React.FC<VisionaryMembershipCardProps> = (
                   ) : user ? (
                     <>
                       <Crown className="h-4 w-4" />
-                      Become a Visionary
+                      {variants.ctaText}
                       <ChevronRight className="h-4 w-4" />
                     </>
                   ) : (
                     <>
                       <User className="h-4 w-4" />
-                      Sign In / Sign Up
+                      {variants.ctaSignInText}
                       <ChevronRight className="h-4 w-4" />
                     </>
                   )}
