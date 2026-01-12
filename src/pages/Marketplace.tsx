@@ -214,7 +214,9 @@ const Marketplace: React.FC = () => {
           {!isPremium && user && (
             <div className="mt-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center gap-2">
               <Crown className="h-5 w-5 text-amber-500 shrink-0" />
-              <span className="text-sm text-amber-600">Premium membership required to purchase visualizations</span>
+              <span className="text-sm text-amber-600">
+                Premium membership required to claim ownership. <span className="text-muted-foreground">Anyone can order prints.</span>
+              </span>
             </div>
           )}
         </div>

@@ -388,12 +388,12 @@ const MarketplaceVisionDetail: React.FC = () => {
                 ) : isFree ? (
                   <>
                     <Gift className="h-4 w-4" />
-                    Claim Gift
+                    Claim Vision
                   </>
                 ) : (
                   <>
-                    <ShoppingBag className="h-4 w-4" />
-                    Purchase
+                    <Crown className="h-4 w-4" />
+                    Claim Ownership
                   </>
                 )}
               </Button>
@@ -408,11 +408,13 @@ const MarketplaceVisionDetail: React.FC = () => {
           </div>
         </div>
 
-        {/* Premium required notice */}
+        {/* Premium required notice for ownership - prints are available to everyone */}
         {!isPremium && user && !isOwnListing && (
           <div className="mb-6 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center gap-2">
             <Crown className="h-5 w-5 text-amber-500 shrink-0" />
-            <span className="text-sm text-amber-600">Premium membership required to purchase visualizations</span>
+            <span className="text-sm text-amber-600">
+              Premium membership required to claim ownership. <span className="text-muted-foreground">Anyone can order prints.</span>
+            </span>
           </div>
         )}
 
