@@ -5,11 +5,13 @@
  * 1. Detecting if colors match 30% or more AND moves match exactly
  * 2. Preventing saves of visualizations too similar to existing ones
  * 3. Supporting palette inheritance for featured palettes
+ * 4. Checking against famous game cards to protect En Pensent intrinsic value
  */
 
 import { colorPalettes, PaletteId, PieceType, PieceColor } from '@/lib/chess/pieceColors';
 import { GameData } from '@/lib/chess/gameSimulator';
 import { supabase } from '@/integrations/supabase/client';
+import { famousGames } from '@/lib/chess/famousGames';
 
 // All piece types for comparison
 const PIECE_TYPES: PieceType[] = ['k', 'q', 'r', 'b', 'n', 'p'];
@@ -155,11 +157,55 @@ export interface SimilarityCheckResult {
   matchedPaletteId?: PaletteId;
   matchedPaletteSimilarity?: number;
   isIntrinsicPalette?: boolean; // True if using/close to a featured En Pensent palette
+  isIntrinsicGame?: boolean; // True if the game matches a famous game card
+  matchedGameCard?: { id: string; title: string }; // The matched famous game
   existingVisualizationId?: string;
   ownerDisplayName?: string;
   ownedByCurrentUser?: boolean;
   reason?: string;
   existingColors?: PaletteColors; // For color comparison preview
+}
+
+/**
+ * Check if the PGN matches any famous game card
+ */
+export function findMatchingFamousGame(pgn: string | undefined, gameData: GameData): { id: string; title: string } | null {
+  if (!pgn && !gameData.pgn && !gameData.moves?.length) return null;
+  
+  const normalizedInput = normalizePgn(pgn || gameData.pgn);
+  
+  for (const game of famousGames) {
+    const normalizedFamous = normalizePgn(game.pgn);
+    
+    // Exact match
+    if (normalizedInput === normalizedFamous) {
+      return { id: game.id, title: game.title };
+    }
+    
+    // Partial match - if the input contains all moves of the famous game (or vice versa)
+    // This catches games that are the same but with extra moves or shorter notation
+    if (normalizedInput.includes(normalizedFamous) || normalizedFamous.includes(normalizedInput)) {
+      // Only match if at least 80% of moves are shared
+      const inputMoves = normalizedInput.split(' ').filter(m => m.length > 0);
+      const famousMoves = normalizedFamous.split(' ').filter(m => m.length > 0);
+      
+      const minLength = Math.min(inputMoves.length, famousMoves.length);
+      const maxLength = Math.max(inputMoves.length, famousMoves.length);
+      
+      if (minLength / maxLength >= 0.8) {
+        let matchingMoves = 0;
+        for (let i = 0; i < minLength; i++) {
+          if (inputMoves[i] === famousMoves[i]) matchingMoves++;
+        }
+        
+        if (matchingMoves / minLength >= 0.9) {
+          return { id: game.id, title: game.title };
+        }
+      }
+    }
+  }
+  
+  return null;
 }
 
 export interface VisualizationWithPalette {
@@ -215,6 +261,10 @@ export async function checkVisualizationSimilarity(
       }
     }
     
+    // Check if the game matches any famous game card
+    const matchedGameCard = findMatchingFamousGame(pgn, gameData);
+    const isIntrinsicGame = matchedGameCard !== null;
+    
     // Fetch all saved visualizations
     const { data: existingViz, error } = await supabase
       .from('saved_visualizations')
@@ -227,6 +277,8 @@ export async function checkVisualizationSimilarity(
         colorSimilarity: 0, 
         movesMatch: false,
         isIntrinsicPalette,
+        isIntrinsicGame,
+        matchedGameCard: matchedGameCard || undefined,
         matchedPaletteId,
         matchedPaletteSimilarity,
       };
@@ -275,6 +327,8 @@ export async function checkVisualizationSimilarity(
           colorSimilarity,
           movesMatch: true,
           isIntrinsicPalette,
+          isIntrinsicGame,
+          matchedGameCard: matchedGameCard || undefined,
           matchedPaletteId,
           matchedPaletteSimilarity,
           existingVisualizationId: viz.id,
@@ -286,12 +340,14 @@ export async function checkVisualizationSimilarity(
       }
     }
     
-    // Return result with intrinsic palette info
+    // Return result with intrinsic palette and game info
     return { 
       isTooSimilar: false, 
       colorSimilarity: 0, 
       movesMatch: false,
       isIntrinsicPalette,
+      isIntrinsicGame,
+      matchedGameCard: matchedGameCard || undefined,
       matchedPaletteId,
       matchedPaletteSimilarity,
     };

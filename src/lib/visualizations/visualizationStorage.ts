@@ -70,6 +70,8 @@ export interface DuplicateCheckResult {
   linkedPaletteId?: PaletteId;
   existingColors?: PaletteColors; // For color comparison preview
   isIntrinsicPalette?: boolean; // True if using a featured En Pensent palette
+  isIntrinsicGame?: boolean; // True if the game matches a famous game card
+  matchedGameCard?: { id: string; title: string }; // The matched famous game
   matchedPaletteId?: PaletteId; // The matched featured palette
   matchedPaletteSimilarity?: number; // How close to the featured palette
 }
@@ -170,6 +172,8 @@ export async function checkDuplicateVisualization(
         reason: similarityResult.reason,
         existingColors: similarityResult.existingColors, // For comparison preview
         isIntrinsicPalette: similarityResult.isIntrinsicPalette,
+        isIntrinsicGame: similarityResult.isIntrinsicGame,
+        matchedGameCard: similarityResult.matchedGameCard,
         matchedPaletteId: similarityResult.matchedPaletteId,
         matchedPaletteSimilarity: similarityResult.matchedPaletteSimilarity,
       };
@@ -187,6 +191,8 @@ export async function checkDuplicateVisualization(
       linkedPaletteId,
       colorSimilarity: similarityResult.colorSimilarity,
       isIntrinsicPalette: similarityResult.isIntrinsicPalette,
+      isIntrinsicGame: similarityResult.isIntrinsicGame,
+      matchedGameCard: similarityResult.matchedGameCard,
       matchedPaletteId: similarityResult.matchedPaletteId,
       matchedPaletteSimilarity: similarityResult.matchedPaletteSimilarity,
     };
