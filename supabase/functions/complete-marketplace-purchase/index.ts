@@ -119,6 +119,17 @@ serve(async (req) => {
       throw new Error(`Failed to update listing: ${listingUpdateError.message}`);
     }
 
+    // Record trade interaction for vision scoring
+    const priceCents = listing.price_cents || 0;
+    await supabaseClient.rpc('record_vision_interaction', {
+      p_visualization_id: listing.visualization_id,
+      p_user_id: user.id,
+      p_interaction_type: 'trade',
+      p_value_cents: priceCents,
+      p_ip_hash: null,
+    });
+
+    logStep("Trade interaction recorded", { visualizationId: listing.visualization_id, priceCents });
     logStep("Transfer completed successfully");
 
     return new Response(JSON.stringify({ 
