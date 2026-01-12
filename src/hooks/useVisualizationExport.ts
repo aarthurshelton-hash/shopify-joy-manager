@@ -23,6 +23,10 @@ interface TrademarkExportOptions {
   darkMode?: boolean;
   showQR?: boolean;
   shareId?: string;
+  highlightState?: {
+    lockedPieces: Array<{ pieceType: string; pieceColor: string }>;
+    compareMode: boolean;
+  };
 }
 
 /**
@@ -143,6 +147,13 @@ export function useVisualizationExport(options: UseVisualizationExportOptions) {
         darkMode: exportOptions.darkMode || false,
         includeQR: exportOptions.showQR || false,
         shareId: exportOptions.shareId,
+        highlightState: exportOptions.highlightState ? {
+          lockedPieces: exportOptions.highlightState.lockedPieces.map(p => ({
+            pieceType: p.pieceType as any,
+            pieceColor: p.pieceColor as any,
+          })),
+          compareMode: exportOptions.highlightState.compareMode,
+        } : undefined,
       });
       
       // Convert base64 to blob for download

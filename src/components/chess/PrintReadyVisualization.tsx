@@ -303,15 +303,15 @@ export const PrintReadyVisualization: React.FC<PrintReadyVisualizationProps> = (
               }}
             />
             
-            {/* Text */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {/* Text - using Inter for bold title, italic for URL */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
               <span
                 style={{
-                  fontSize: 13,
+                  fontSize: 14,
                   fontWeight: 600,
-                  color: '#44403c',
+                  color: '#292524',
                   fontFamily: "'Inter', system-ui, sans-serif",
-                  letterSpacing: '0.01em',
+                  letterSpacing: '0.02em',
                 }}
               >
                 EN PENSENT
@@ -320,7 +320,8 @@ export const PrintReadyVisualization: React.FC<PrintReadyVisualizationProps> = (
                 style={{
                   fontSize: 11,
                   color: '#78716c',
-                  fontFamily: "'Inter', system-ui, sans-serif",
+                  fontFamily: "'Cormorant Garamond', Georgia, serif",
+                  fontStyle: 'italic',
                 }}
               >
                 enpensent.com

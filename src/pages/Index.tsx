@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import PgnUploader from '@/components/chess/PgnUploader';
-import UnifiedVisionExperience from '@/components/chess/UnifiedVisionExperience';
+import UnifiedVisionExperience, { ExportState } from '@/components/chess/UnifiedVisionExperience';
 import ChessLoadingAnimation from '@/components/chess/ChessLoadingAnimation';
 import PaletteSelector from '@/components/chess/PaletteSelector';
 import ChessParticles from '@/components/chess/ChessParticles';
@@ -599,7 +599,7 @@ const Index = () => {
               isPremium={isPremium}
               onBack={handleReturnClick}
               onUpgradePrompt={() => setShowVisionaryModal(true)}
-              onExport={async (type) => {
+              onExport={async (type, exportState) => {
                 // Preview download is available for everyone
                 // HD and GIF require premium
                 if (type !== 'print' && type !== 'preview') {
@@ -614,6 +614,27 @@ const Index = () => {
                 }
                 
                 const visualTitle = gameTitle || `${simulation.gameData.white} vs ${simulation.gameData.black}`;
+                
+                // Filter board to current timeline position if provided
+                const filteredBoard = exportState && exportState.currentMove < simulation.totalMoves
+                  ? simulation.board.map(rank =>
+                      rank.map(square => ({
+                        ...square,
+                        visits: square.visits.filter(visit => visit.moveNumber <= exportState.currentMove)
+                      }))
+                    )
+                  : simulation.board;
+                
+                // Prepare highlight state from export state
+                const highlightState = exportState && exportState.lockedPieces.length > 0
+                  ? {
+                      lockedPieces: exportState.lockedPieces.map(p => ({
+                        pieceType: p.pieceType as any,
+                        pieceColor: p.pieceColor as any,
+                      })),
+                      compareMode: exportState.compareMode,
+                    }
+                  : undefined;
                 
                 if (type === 'print') {
                   // Navigate to order print page with full simulation data
@@ -637,9 +658,16 @@ const Index = () => {
                   try {
                     const { generateCleanPrintImage } = await import('@/lib/chess/printImageGenerator');
                     
-                    const base64Image = await generateCleanPrintImage(simulation, {
-                      darkMode: false,
+                    // Create simulation with filtered board
+                    const exportSimulation = {
+                      ...simulation,
+                      board: filteredBoard,
+                    };
+                    
+                    const base64Image = await generateCleanPrintImage(exportSimulation, {
+                      darkMode: exportState?.darkMode || false,
                       withWatermark: !isPremium, // Add watermark for free users
+                      highlightState,
                     });
                     
                     // Convert base64 to blob for download
@@ -665,10 +693,10 @@ const Index = () => {
                 } else if (type === 'hd') {
                   // Use trademark HD export for proper "print-ready" look
                   await downloadTrademarkHD({
-                    board: simulation.board,
+                    board: filteredBoard,
                     gameData: simulation.gameData,
                     title: visualTitle,
-                    darkMode: false,
+                    darkMode: exportState?.darkMode || false,
                     showQR: !!savedShareId,
                     shareId: savedShareId || undefined,
                   });
