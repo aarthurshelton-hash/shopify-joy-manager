@@ -15,6 +15,8 @@ interface OrderLineItem {
   sku: string;
   size: string;
   customImageUrl: string;
+  productType?: 'print' | 'frame' | 'infocard';
+  frameStyle?: string;
 }
 
 interface ShippingAddress {
@@ -34,6 +36,7 @@ interface CreateOrderRequest {
   shopifyOrderId: string;
   lineItems: OrderLineItem[];
   shippingAddress: ShippingAddress;
+  framedItemCount?: number;
 }
 
 async function printifyRequest(endpoint: string, options: RequestInit = {}) {
@@ -75,14 +78,140 @@ const SIZE_TO_BLUEPRINT: Record<string, { blueprint_id: number; variant_id: numb
   '24×36"': { blueprint_id: 622, variant_id: 79715, print_provider_id: 99 },
 };
 
+// Frame product blueprints (Canvas with frames)
+const FRAME_BLUEPRINTS: Record<string, { blueprint_id: number; variants: Record<string, number>; print_provider_id: number }> = {
+  // Framed Canvas products - Blueprint 1146 (Canvas with float frame)
+  '8×10"': {
+    blueprint_id: 1146,
+    variants: {
+      'natural': 99001,
+      'black': 99002,
+      'white': 99003,
+      'walnut': 99004,
+      'gold': 99005,
+    },
+    print_provider_id: 99,
+  },
+  '11×14"': {
+    blueprint_id: 1146,
+    variants: {
+      'natural': 99011,
+      'black': 99012,
+      'white': 99013,
+      'walnut': 99014,
+      'gold': 99015,
+    },
+    print_provider_id: 99,
+  },
+  '16×20"': {
+    blueprint_id: 1146,
+    variants: {
+      'natural': 99021,
+      'black': 99022,
+      'white': 99023,
+      'walnut': 99024,
+      'gold': 99025,
+    },
+    print_provider_id: 99,
+  },
+  '18×24"': {
+    blueprint_id: 1146,
+    variants: {
+      'natural': 99031,
+      'black': 99032,
+      'white': 99033,
+      'walnut': 99034,
+      'gold': 99035,
+    },
+    print_provider_id: 99,
+  },
+  '24×36"': {
+    blueprint_id: 1146,
+    variants: {
+      'natural': 99041,
+      'black': 99042,
+      'white': 99043,
+      'walnut': 99044,
+      'gold': 99045,
+    },
+    print_provider_id: 99,
+  },
+};
+
+// Info Card blueprint (5x7 premium cards)
+const INFO_CARD_BLUEPRINT = {
+  blueprint_id: 1156, // Premium photo cards
+  variant_id: 98001,
+  print_provider_id: 99,
+};
+
+// Shipping cost configuration
+const FRAME_SHIPPING_COST = 1299; // $12.99 in cents
+const FREE_FRAME_SHIPPING_THRESHOLD = 3; // Free shipping at 3+ framed items
+
 async function createPrintifyOrder(
   shopifyOrderId: string,
   lineItems: OrderLineItem[],
-  shippingAddress: ShippingAddress
+  shippingAddress: ShippingAddress,
+  framedItemCount: number = 0
 ) {
   const printifyLineItems = [];
 
   for (const item of lineItems) {
+    // Handle framed products
+    if (item.productType === 'frame' && item.frameStyle) {
+      const frameConfig = FRAME_BLUEPRINTS[item.size];
+      if (!frameConfig) {
+        console.error(`Unknown frame size: ${item.size}`);
+        continue;
+      }
+      
+      const frameVariant = frameConfig.variants[item.frameStyle.toLowerCase()];
+      if (!frameVariant) {
+        console.error(`Unknown frame style: ${item.frameStyle}`);
+        continue;
+      }
+
+      // Upload the custom image
+      const uploadResult = await uploadImage(
+        item.customImageUrl,
+        `chess-framed-${shopifyOrderId}-${Date.now()}.png`
+      );
+
+      printifyLineItems.push({
+        product_id: null,
+        blueprint_id: frameConfig.blueprint_id,
+        variant_id: frameVariant,
+        print_provider_id: frameConfig.print_provider_id,
+        quantity: item.quantity,
+        print_areas: {
+          front: uploadResult.id,
+        },
+      });
+      continue;
+    }
+
+    // Handle info cards
+    if (item.productType === 'infocard') {
+      const uploadResult = await uploadImage(
+        item.customImageUrl,
+        `chess-infocard-${shopifyOrderId}-${Date.now()}.png`
+      );
+
+      printifyLineItems.push({
+        product_id: null,
+        blueprint_id: INFO_CARD_BLUEPRINT.blueprint_id,
+        variant_id: INFO_CARD_BLUEPRINT.variant_id,
+        print_provider_id: INFO_CARD_BLUEPRINT.print_provider_id,
+        quantity: item.quantity,
+        print_areas: {
+          front: uploadResult.id,
+        },
+      });
+      continue;
+    }
+
+    // Handle standard prints
     const sizeConfig = SIZE_TO_BLUEPRINT[item.size];
     if (!sizeConfig) {
       console.error(`Unknown size: ${item.size}`);
@@ -96,7 +225,7 @@ async function createPrintifyOrder(
     );
 
     printifyLineItems.push({
-      product_id: null, // Will be created as external product
+      product_id: null,
       blueprint_id: sizeConfig.blueprint_id,
       variant_id: sizeConfig.variant_id,
       print_provider_id: sizeConfig.print_provider_id,
@@ -107,13 +236,16 @@ async function createPrintifyOrder(
     });
   }
 
+  // Calculate shipping - frame shipping is extra unless 3+ framed items
+  const shippingMethod = framedItemCount > 0 && framedItemCount < FREE_FRAME_SHIPPING_THRESHOLD ? 2 : 1;
+
   const order = await printifyRequest(`/shops/${PRINTIFY_SHOP_ID}/orders.json`, {
     method: 'POST',
     body: JSON.stringify({
       external_id: shopifyOrderId,
       label: `Chess Visualization - ${shopifyOrderId}`,
       line_items: printifyLineItems,
-      shipping_method: 1, // Standard shipping
+      shipping_method: shippingMethod,
       is_printify_express: false,
       address_to: {
         first_name: shippingAddress.first_name,
@@ -170,7 +302,8 @@ serve(async (req) => {
       const order = await createPrintifyOrder(
         body.shopifyOrderId,
         body.lineItems,
-        body.shippingAddress
+        body.shippingAddress,
+        body.framedItemCount || 0
       );
 
       return new Response(JSON.stringify({ success: true, order }), {

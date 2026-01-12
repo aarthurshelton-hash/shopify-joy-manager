@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { TimelineProvider, useTimeline } from "@/contexts/TimelineContext";
 import { LegendHighlightProvider } from "@/contexts/LegendHighlightContext";
 import InteractiveVisualizationBoard from "@/components/chess/InteractiveVisualizationBoard";
-import { LiveColorLegend } from "@/components/chess/LiveColorLegend";
+import { EnhancedLegend } from "@/components/chess/EnhancedLegend";
 import { UniversalTimeline } from "@/components/chess/UniversalTimeline";
 import GameInfoDisplay from "@/components/chess/GameInfoDisplay";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -171,7 +171,7 @@ function VisionExperienceContent({
                     animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
                   >
-                    <LiveColorLegend
+                    <EnhancedLegend
                       whitePalette={gameData.palette.whiteColors}
                       blackPalette={gameData.palette.blackColors}
                       title={gameData.palette.name}

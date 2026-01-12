@@ -48,7 +48,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { SimulationResult, SquareData, GameData } from '@/lib/chess/gameSimulator';
 import InteractiveVisualizationBoard from '@/components/chess/InteractiveVisualizationBoard';
-import ColorLegend from '@/components/chess/ColorLegend';
+import { EnhancedLegend } from '@/components/chess/EnhancedLegend';
 import GameInfoDisplay from '@/components/chess/GameInfoDisplay';
 import { TimelineProvider, useTimeline } from '@/contexts/TimelineContext';
 import { LegendHighlightProvider } from '@/contexts/LegendHighlightContext';
@@ -610,7 +610,12 @@ const ExperienceTab: React.FC<{
             exit={{ opacity: 0, x: 20 }}
             className="overflow-hidden"
           >
-            <ColorLegend interactive={true} board={board} />
+            <EnhancedLegend 
+              whitePalette={getActivePalette().white}
+              blackPalette={getActivePalette().black}
+              compact={false}
+              title={getActivePalette().name}
+            />
           </motion.div>
         )}
 
