@@ -43,37 +43,72 @@ interface UniversalTimelineProps {
   vertical?: boolean;
 }
 
-// Icon descriptions for tooltips
+// Icon descriptions for tooltips with richer content
 const ICON_DESCRIPTIONS = {
   capture: {
     icon: Target,
     color: 'bg-orange-500 text-orange-400',
     label: 'Capture',
-    description: 'A piece was captured. Captures often shift the material balance and can open new tactical opportunities.',
+    description: 'A piece was captured, shifting material balance.',
+    tactical: 'Captures often open new tactical opportunities and change the positional landscape of the game.',
+    emoji: '⚔️',
   },
   check: {
     icon: Zap,
     color: 'bg-yellow-500 text-yellow-400',
     label: 'Check',
-    description: 'The king is under attack! The opponent must respond to escape the threat.',
+    description: 'The king is under direct attack!',
+    tactical: 'The opponent must immediately respond to escape the threat. Checks can disrupt plans and force defensive moves.',
+    emoji: '⚡',
   },
   checkmate: {
     icon: Crown,
     color: 'bg-red-500 text-red-400',
     label: 'Checkmate',
-    description: 'Game over! The king cannot escape and the game ends in victory.',
+    description: 'Game over! The king cannot escape.',
+    tactical: 'The ultimate goal of chess. The king is in check with no legal moves to escape.',
+    emoji: '👑',
   },
   castling: {
     icon: Castle,
     color: 'bg-blue-500 text-blue-400',
     label: 'Castle',
-    description: 'The king moves to safety while activating the rook. A crucial defensive and developmental move.',
+    description: 'King moves to safety, rook activates.',
+    tactical: 'A crucial defensive and developmental move. Protects the king while connecting the rooks.',
+    emoji: '🏰',
   },
   promotion: {
     icon: Crown,
     color: 'bg-purple-500 text-purple-400',
     label: 'Promotion',
-    description: 'A pawn reached the end and was promoted to a more powerful piece!',
+    description: 'Pawn promoted to a powerful piece!',
+    tactical: 'A pawn reaching the 8th rank transforms into a queen, rook, bishop, or knight. Usually decisive.',
+    emoji: '✨',
+  },
+};
+
+// Phase descriptions for the timeline
+const PHASE_DESCRIPTIONS = {
+  opening: {
+    name: 'Opening',
+    description: 'The first 10-15 moves where players develop pieces and fight for center control.',
+    tips: 'Control the center, develop pieces, castle early, connect rooks.',
+    icon: Flag,
+    color: 'text-emerald-400',
+  },
+  middlegame: {
+    name: 'Middlegame',
+    description: 'The strategic battle where tactics, attacks, and positional play dominate.',
+    tips: 'Create threats, improve piece activity, target weaknesses.',
+    icon: Sword,
+    color: 'text-amber-400',
+  },
+  endgame: {
+    name: 'Endgame',
+    description: 'Few pieces remain. King becomes active, passed pawns are crucial.',
+    tips: 'Activate the king, create passed pawns, simplify if ahead.',
+    icon: Crown,
+    color: 'text-purple-400',
   },
 };
 
@@ -327,7 +362,25 @@ export const UniversalTimeline: React.FC<UniversalTimelineProps> = ({
         {/* Key moments summary with tooltips */}
         {keyMoments.length > 0 && (
           <div className="flex items-center gap-3 text-[10px] flex-wrap">
-            <span className="text-muted-foreground">Key moments:</span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="text-muted-foreground flex items-center gap-1 cursor-help">
+                  <Info className="w-3 h-3" />
+                  Key moments:
+                </span>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-[220px] p-3">
+                <div className="space-y-2">
+                  <div className="font-semibold">Key Moments</div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Critical events that shaped the game. Click any marker on the timeline to jump directly to that moment.
+                  </p>
+                  <p className="text-[10px] text-primary italic">
+                    💡 Hover over icons for details
+                  </p>
+                </div>
+              </TooltipContent>
+            </Tooltip>
             <div className="flex items-center gap-2 flex-wrap">
               {Object.entries(momentCounts).map(([type, count]) => {
                 if (count === 0) return null;
@@ -342,16 +395,20 @@ export const UniversalTimeline: React.FC<UniversalTimelineProps> = ({
                         <span>{count}</span>
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent side="bottom" className="max-w-[200px] p-3">
-                      <div className="space-y-1">
-                        <div className="font-semibold flex items-center gap-1.5">
+                    <TooltipContent side="bottom" className="max-w-[240px] p-3">
+                      <div className="space-y-2">
+                        <div className="font-semibold flex items-center gap-2">
+                          <span className="text-lg">{config.emoji}</span>
                           <Icon className={`w-4 h-4 ${config.color.split(' ')[1]}`} />
                           {config.label}
                         </div>
                         <p className="text-xs text-muted-foreground leading-relaxed">
                           {config.description}
                         </p>
-                        <p className="text-[10px] text-primary mt-1">
+                        <p className="text-xs leading-relaxed border-t border-border/50 pt-2">
+                          {config.tactical}
+                        </p>
+                        <p className="text-[10px] text-primary mt-1 font-medium">
                           {count} occurrence{count !== 1 ? 's' : ''} in this game
                         </p>
                       </div>
@@ -397,17 +454,22 @@ export const UniversalTimeline: React.FC<UniversalTimelineProps> = ({
                       <Icon className="w-2.5 h-2.5 text-white" />
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent side="top" className="max-w-[180px] p-2">
-                    <div className="space-y-1">
-                      <div className="font-semibold flex items-center gap-1">
-                        <Icon className={`w-3 h-3 ${config.color.split(' ')[1]}`} />
+                  <TooltipContent side="top" className="max-w-[220px] p-3">
+                    <div className="space-y-2">
+                      <div className="font-semibold flex items-center gap-2">
+                        <span className="text-lg">{config.emoji}</span>
+                        <Icon className={`w-4 h-4 ${config.color.split(' ')[1]}`} />
                         {config.label}
                       </div>
-                      <div className="text-xs text-muted-foreground">
+                      <div className="flex items-center gap-2 text-sm font-mono bg-muted/50 rounded px-2 py-1">
+                        <div className={`w-2 h-2 rounded-full ${moment.player === 'white' ? 'bg-sky-400' : 'bg-rose-400'}`} />
                         {moveNum}.{isWhiteMove ? '' : '..'} {moment.move}
                       </div>
-                      <p className="text-[9px] text-muted-foreground/80 leading-snug">
-                        {config.description}
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        {config.tactical}
+                      </p>
+                      <p className="text-[10px] text-primary italic">
+                        Click to jump to this moment
                       </p>
                     </div>
                   </TooltipContent>
