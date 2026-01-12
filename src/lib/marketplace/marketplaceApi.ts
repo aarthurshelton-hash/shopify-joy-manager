@@ -260,3 +260,102 @@ export async function getListingById(listingId: string): Promise<{
     return { data: null, error: error as Error };
   }
 }
+
+// Check remaining transfers for a visualization (max 3 per 24h)
+export async function getRemainingTransfers(visualizationId: string): Promise<{
+  remaining: number;
+  canTransfer: boolean;
+  error: Error | null;
+}> {
+  try {
+    const { data: remaining, error } = await supabase
+      .rpc('get_remaining_transfers', { p_visualization_id: visualizationId });
+
+    if (error) throw error;
+
+    return { 
+      remaining: remaining ?? 3, 
+      canTransfer: (remaining ?? 3) > 0,
+      error: null 
+    };
+  } catch (error) {
+    return { remaining: 0, canTransfer: false, error: error as Error };
+  }
+}
+
+// Get orphaned visualizations (available for claim by premium members)
+export async function getOrphanedVisualizations(): Promise<{
+  data: Array<{
+    id: string;
+    title: string;
+    image_path: string;
+    game_data: unknown;
+    pgn?: string | null;
+  }>;
+  error: Error | null;
+}> {
+  try {
+    const { data, error } = await supabase
+      .from('saved_visualizations')
+      .select('id, title, image_path, game_data, pgn')
+      .is('user_id', null)
+      .order('updated_at', { ascending: false })
+      .limit(50);
+
+    if (error) throw error;
+    return { data: (data || []) as Array<{ id: string; title: string; image_path: string; game_data: unknown; pgn?: string | null }>, error: null };
+  } catch (error) {
+    return { data: [], error: error as Error };
+  }
+}
+
+// Claim an orphaned visualization (for premium members)
+export async function claimOrphanedVisualization(visualizationId: string): Promise<{
+  success: boolean;
+  error: Error | null;
+}> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    // Check if user is premium
+    const { data: isPremium } = await supabase.rpc('is_premium_user', { p_user_id: user.id });
+    if (!isPremium) {
+      throw new Error('Premium membership required to claim visions');
+    }
+
+    // Check transfer limits
+    const { data: canTransfer, error: transferError } = await supabase
+      .rpc('can_transfer_visualization', { p_visualization_id: visualizationId });
+    
+    if (transferError) throw transferError;
+    if (!canTransfer) {
+      throw new Error('This vision has reached its transfer limit (3 per 24h). Try again later.');
+    }
+
+    // Claim the visualization
+    const { error: claimError } = await supabase
+      .from('saved_visualizations')
+      .update({ user_id: user.id })
+      .eq('id', visualizationId)
+      .is('user_id', null);
+
+    if (claimError) throw claimError;
+
+    // Record the transfer
+    // Note: This will fail silently if the user doesn't have permission, 
+    // but the claim still succeeds - the record is just for tracking
+    await supabase
+      .from('visualization_transfers')
+      .insert({
+        visualization_id: visualizationId,
+        from_user_id: null, // Orphaned
+        to_user_id: user.id,
+        transfer_type: 'free_claim',
+      });
+
+    return { success: true, error: null };
+  } catch (error) {
+    return { success: false, error: error as Error };
+  }
+}
