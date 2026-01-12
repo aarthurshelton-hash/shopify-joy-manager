@@ -672,6 +672,8 @@ export type Database = {
           id: string
           print_order_count: number
           print_revenue_cents: number
+          royalty_cents_earned: number
+          royalty_orders_count: number
           total_score: number
           trade_count: number
           unique_viewers: number
@@ -685,6 +687,8 @@ export type Database = {
           id?: string
           print_order_count?: number
           print_revenue_cents?: number
+          royalty_cents_earned?: number
+          royalty_orders_count?: number
           total_score?: number
           trade_count?: number
           unique_viewers?: number
@@ -698,6 +702,8 @@ export type Database = {
           id?: string
           print_order_count?: number
           print_revenue_cents?: number
+          royalty_cents_earned?: number
+          royalty_orders_count?: number
           total_score?: number
           trade_count?: number
           unique_viewers?: number
