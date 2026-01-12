@@ -277,56 +277,58 @@ const Marketplace: React.FC = () => {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-                {filteredListings.map((listing, index) => (
-                  <motion.div
-                    key={listing.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.03 }}
-                  >
-                    {(() => {
-                      const paletteId = extractPaletteId(listing.visualization?.game_data);
-                      const hasPremiumPalette = isPremiumPalette(paletteId);
-                      const hasThemedPalette = isThemedPalette(paletteId);
-                      
-                      return (
-                        <Card 
-                          className={`overflow-hidden group hover:shadow-xl transition-all duration-300 cursor-pointer relative ${
-                            hasPremiumPalette
-                              ? 'border-amber-500/50 ring-1 ring-amber-500/20 hover:ring-amber-500/40'
-                              : hasThemedPalette
-                                ? 'border-primary/30 ring-1 ring-primary/10 hover:ring-primary/30'
-                                : 'border-border/50'
-                          }`}
-                          onClick={() => {
-                            navigate(`/marketplace/${listing.id}`);
-                          }}
-                        >
-                          {/* Premium Shimmer Effect */}
-                          {hasPremiumPalette && (
-                            <div 
-                              className="absolute inset-0 z-10 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                              style={{
-                                background: 'linear-gradient(90deg, transparent 0%, rgba(251, 191, 36, 0.15) 25%, rgba(251, 191, 36, 0.3) 50%, rgba(251, 191, 36, 0.15) 75%, transparent 100%)',
-                                backgroundSize: '200% 100%',
-                                animation: 'shimmer 2s linear infinite',
-                              }}
-                            />
-                          )}
-                          {/* Image */}
-                          <div className="aspect-square relative overflow-hidden bg-muted">
-                        {listing.visualization?.image_path ? (
-                          <img
-                            src={listing.visualization.image_path}
-                            alt={listing.visualization.title}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                {filteredListings.map((listing, index) => {
+                  const paletteId = extractPaletteId(listing.visualization?.game_data);
+                  const hasPremiumPalette = isPremiumPalette(paletteId);
+                  const hasThemedPalette = isThemedPalette(paletteId);
+                  const paletteArt = getPaletteArt(paletteId);
+                  const paletteName = getPaletteDisplayName(paletteId);
+                  const backgroundImage = paletteArt || gameArtImages[index % gameArtImages.length];
+
+                  return (
+                    <motion.div
+                      key={listing.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.03 }}
+                      onClick={() => navigate(`/marketplace/${listing.id}`)}
+                      className="cursor-pointer"
+                    >
+                      <Card 
+                        className={`overflow-hidden group hover:shadow-xl transition-all duration-300 relative ${
+                          hasPremiumPalette
+                            ? 'border-amber-500/50 ring-1 ring-amber-500/20 hover:ring-amber-500/40'
+                            : hasThemedPalette
+                              ? 'border-primary/30 ring-1 ring-primary/10 hover:ring-primary/30'
+                              : 'border-border/50'
+                        }`}
+                      >
+                        {/* Premium Shimmer Effect */}
+                        {hasPremiumPalette && (
+                          <div 
+                            className="absolute inset-0 z-10 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                            style={{
+                              background: 'linear-gradient(90deg, transparent 0%, rgba(251, 191, 36, 0.15) 25%, rgba(251, 191, 36, 0.3) 50%, rgba(251, 191, 36, 0.15) 75%, transparent 100%)',
+                              backgroundSize: '200% 100%',
+                              animation: 'shimmer 2s linear infinite',
+                            }}
                           />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <ShoppingBag className="h-12 w-12 text-muted-foreground/30" />
-                          </div>
                         )}
                         
+                        {/* Image */}
+                        <div className="aspect-square relative overflow-hidden bg-muted">
+                          {listing.visualization?.image_path ? (
+                            <img
+                              src={listing.visualization.image_path}
+                              alt={listing.visualization.title}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <ShoppingBag className="h-12 w-12 text-muted-foreground/30" />
+                            </div>
+                          )}
+                          
                           {/* Premium Palette Badge with glow */}
                           {hasPremiumPalette && (
                             <Badge 
@@ -336,111 +338,98 @@ const Marketplace: React.FC = () => {
                               Premium Palette
                             </Badge>
                           )}
-                        
-                        {/* Exemplar Badge */}
-                        {listing.visualization?.title?.includes('Exemplar') && (
-                          <Badge 
-                            className="absolute top-3 left-3 bg-amber-500/90 hover:bg-amber-500 text-black"
-                          >
-                            🏆 Genesis
-                          </Badge>
-                        )}
-                        
-                        {/* Price Badge */}
-                        <Badge 
-                          className={`absolute top-3 right-3 ${
-                            listing.price_cents === 0 
-                              ? 'bg-green-500/90 hover:bg-green-500' 
-                              : 'bg-primary/90 hover:bg-primary'
-                          }`}
-                        >
-                          {listing.price_cents === 0 ? (
-                            <><Gift className="h-3 w-3 mr-1" /> Free</>
-                          ) : (
-                            <><DollarSign className="h-3 w-3 mr-0.5" />{(listing.price_cents / 100).toFixed(2)}</>
+                          
+                          {/* Exemplar Badge */}
+                          {listing.visualization?.title?.includes('Exemplar') && (
+                            <Badge 
+                              className="absolute top-3 left-3 bg-amber-500/90 hover:bg-amber-500 text-black"
+                            >
+                              🏆 Genesis
+                            </Badge>
                           )}
-                        </Badge>
+                          
+                          {/* Price Badge */}
+                          <Badge 
+                            className={`absolute top-3 right-3 ${
+                              listing.price_cents === 0 
+                                ? 'bg-green-500/90 hover:bg-green-500' 
+                                : 'bg-primary/90 hover:bg-primary'
+                            }`}
+                          >
+                            {listing.price_cents === 0 ? (
+                              <><Gift className="h-3 w-3 mr-1" /> Free</>
+                            ) : (
+                              <><DollarSign className="h-3 w-3 mr-0.5" />{(listing.price_cents / 100).toFixed(2)}</>
+                            )}
+                          </Badge>
 
-                        {/* Hover overlay to view details */}
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-                          <div className="px-3 py-2 rounded-md bg-secondary text-secondary-foreground text-sm font-medium flex items-center gap-2">
-                            <Eye className="h-4 w-4" />
-                            View Details
+                          {/* Hover overlay to view details */}
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                            <div className="px-3 py-2 rounded-md bg-secondary text-secondary-foreground text-sm font-medium flex items-center gap-2">
+                              <Eye className="h-4 w-4" />
+                              View Details
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      {(() => {
-                        const paletteId = extractPaletteId(listing.visualization?.game_data);
-                        const paletteArt = getPaletteArt(paletteId);
-                        const paletteName = getPaletteDisplayName(paletteId);
-                        const hasPremiumPalette = isPremiumPalette(paletteId);
-                        const hasThemedPalette = isThemedPalette(paletteId);
-                        const backgroundImage = paletteArt || gameArtImages[index % gameArtImages.length];
-                        
-                        return (
-                          <CardContent 
-                            className={`p-3 sm:p-4 relative overflow-hidden transition-all duration-300 group/content ${
-                              hasPremiumPalette ? 'bg-gradient-to-br from-amber-500/5 to-orange-500/5' : ''
-                            }`}
-                            style={{
-                              backgroundImage: `linear-gradient(to bottom, hsl(var(--card)) 0%, hsl(var(--card) / ${hasPremiumPalette ? '0.82' : hasThemedPalette ? '0.88' : '0.92'}) 100%), url(${backgroundImage})`,
-                              backgroundSize: 'cover',
-                              backgroundPosition: 'center',
-                            }}
-                            title={paletteName ? `${paletteName} Palette` : undefined}
-                          >
-                            {/* Palette name tooltip on hover */}
-                            {paletteName && (
-                              <div className="absolute top-1 right-1 opacity-0 group-hover/content:opacity-100 transition-opacity duration-200 z-20">
-                                <Badge 
-                                  variant="secondary" 
-                                  className={`text-[10px] px-1.5 py-0.5 ${
-                                    hasPremiumPalette 
-                                      ? 'bg-gradient-to-r from-amber-500/90 to-orange-500/90 text-black border-0' 
-                                      : 'bg-card/90 backdrop-blur-sm'
-                                  }`}
-                                >
-                                  <Palette className="h-2.5 w-2.5 mr-1" />
-                                  {paletteName}
-                                </Badge>
+                        <CardContent 
+                          className={`p-3 sm:p-4 relative overflow-hidden transition-all duration-300 group/content ${
+                            hasPremiumPalette ? 'bg-gradient-to-br from-amber-500/5 to-orange-500/5' : ''
+                          }`}
+                          style={{
+                            backgroundImage: `linear-gradient(to bottom, hsl(var(--card)) 0%, hsl(var(--card) / ${hasPremiumPalette ? '0.82' : hasThemedPalette ? '0.88' : '0.92'}) 100%), url(${backgroundImage})`,
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'center',
+                          }}
+                          title={paletteName ? `${paletteName} Palette` : undefined}
+                        >
+                          {/* Palette name tooltip on hover */}
+                          {paletteName && (
+                            <div className="absolute top-1 right-1 opacity-0 group-hover/content:opacity-100 transition-opacity duration-200 z-20">
+                              <Badge 
+                                variant="secondary" 
+                                className={`text-[10px] px-1.5 py-0.5 ${
+                                  hasPremiumPalette 
+                                    ? 'bg-gradient-to-r from-amber-500/90 to-orange-500/90 text-black border-0' 
+                                    : 'bg-card/90 backdrop-blur-sm'
+                                }`}
+                              >
+                                <Palette className="h-2.5 w-2.5 mr-1" />
+                                {paletteName}
+                              </Badge>
+                            </div>
+                          )}
+                          
+                          <h3 className="font-semibold truncate mb-1 text-sm sm:text-base relative z-10">
+                            {listing.visualization?.title || 'Untitled'}
+                          </h3>
+                          <div className="flex items-center justify-between relative z-10">
+                            <p className="text-xs sm:text-sm text-muted-foreground truncate">
+                              by {listing.seller?.display_name || 'Anonymous'}
+                            </p>
+                            {/* Vision Score indicator or Premium Palette indicator */}
+                            {hasPremiumPalette ? (
+                              <div className="flex items-center gap-1 text-xs text-amber-500" title={`Uses the ${paletteName} premium palette`}>
+                                <Palette className="h-3 w-3" />
+                                <span className="hidden sm:inline">Premium</span>
+                              </div>
+                            ) : hasThemedPalette ? (
+                              <div className="flex items-center gap-1 text-xs text-primary/70" title={`Uses the ${paletteName} palette`}>
+                                <Palette className="h-3 w-3" />
+                                <span className="hidden sm:inline">Themed</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground" title="Vision Score contributes to value">
+                                <TrendingUp className="h-3 w-3" />
+                                <span>Tracked</span>
                               </div>
                             )}
-                            
-                            <h3 className="font-semibold truncate mb-1 text-sm sm:text-base relative z-10">
-                              {listing.visualization?.title || 'Untitled'}
-                            </h3>
-                            <div className="flex items-center justify-between relative z-10">
-                              <p className="text-xs sm:text-sm text-muted-foreground truncate">
-                                by {listing.seller?.display_name || 'Anonymous'}
-                              </p>
-                              {/* Vision Score indicator or Premium Palette indicator */}
-                              {hasPremiumPalette ? (
-                                <div className="flex items-center gap-1 text-xs text-amber-500" title={`Uses the ${paletteName} premium palette`}>
-                                  <Palette className="h-3 w-3" />
-                                  <span className="hidden sm:inline">Premium</span>
-                                </div>
-                              ) : hasThemedPalette ? (
-                                <div className="flex items-center gap-1 text-xs text-primary/70" title={`Uses the ${paletteName} palette`}>
-                                  <Palette className="h-3 w-3" />
-                                  <span className="hidden sm:inline">Themed</span>
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-1 text-xs text-muted-foreground" title="Vision Score contributes to value">
-                                  <TrendingUp className="h-3 w-3" />
-                                  <span>Tracked</span>
-                                </div>
-                              )}
-                            </div>
-                          </CardContent>
-                        );
-                      })()}
-
-                    </Card>
-                      );
-                    })()}
-                  </motion.div>
-                ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  );
+                })}
               </div>
             )}
           </TabsContent>
