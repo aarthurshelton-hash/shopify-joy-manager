@@ -13,7 +13,7 @@ import { SimulationResult, SquareData } from '@/lib/chess/gameSimulator';
 import { generateCleanPrintImage } from '@/lib/chess/printImageGenerator';
 import { PieceType } from '@/lib/chess/pieceColors';
 import { toast } from 'sonner';
-import enPensentLogo from '@/assets/en-pensent-logo-new.png';
+
 
 interface CapturedState {
   currentMove: number;
@@ -131,24 +131,25 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
   }, [simulation, capturedState]);
 
   // Create mini visualization for mockup - supports both simulation and EnPensent data
+  // CRITICAL: This must match the "trademark look" exactly - same style as main preview
   const miniVisualization = useMemo(() => {
-    // If we have EnPensent data (from live games), use that
+    // If we have EnPensent data (from live games), use the trademark format
     if (enPensentData) {
       const darkMode = capturedState?.darkMode || false;
       return (
         <div 
           style={{
             backgroundColor: darkMode ? '#0A0A0A' : '#FDFCFB',
-            padding: 4,
+            padding: 6,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            gap: 2,
+            gap: 4,
             width: 'fit-content',
           }}
         >
-          {/* Chess board with EnPensent overlay */}
-          <div style={{ position: 'relative', width: 80, height: 80 }}>
+          {/* Chess board with EnPensent overlay - the main visualization */}
+          <div style={{ position: 'relative', width: 76, height: 76 }}>
             {/* Base chess grid */}
             <div style={{ 
               position: 'absolute', 
@@ -179,35 +180,83 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
               flipped={false}
             />
           </div>
-          {/* Compact game info */}
+          
+          {/* Trademark game info style - matching PrintPreview */}
           <div style={{ 
             width: '100%', 
-            paddingTop: 2,
+            paddingTop: 3,
             borderTop: `1px solid ${darkMode ? '#292524' : '#e7e5e4'}`,
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
+            textAlign: 'center',
           }}>
-            <div style={{ maxWidth: 60 }}>
-              <p style={{ 
-                fontSize: 4, 
-                fontWeight: 600, 
+            {/* Player names - trademark display */}
+            <div style={{ 
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 2,
+            }}>
+              <span style={{ 
+                fontSize: 5, 
+                fontWeight: 700, 
                 color: darkMode ? '#d6d3d1' : '#44403c',
-                margin: 0,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
+                textTransform: 'uppercase',
+                letterSpacing: '0.03em',
+                fontFamily: "'Cinzel', 'Times New Roman', serif",
               }}>
-                {enPensentData.gameInfo.white} vs {enPensentData.gameInfo.black}
-              </p>
+                {enPensentData.gameInfo.white}
+              </span>
+              <span style={{ 
+                fontSize: 3, 
+                color: darkMode ? '#78716c' : '#a8a29e',
+                fontStyle: 'italic',
+              }}>
+                vs
+              </span>
+              <span style={{ 
+                fontSize: 5, 
+                fontWeight: 700, 
+                color: darkMode ? '#d6d3d1' : '#44403c',
+                textTransform: 'uppercase',
+                letterSpacing: '0.03em',
+                fontFamily: "'Cinzel', 'Times New Roman', serif",
+              }}>
+                {enPensentData.gameInfo.black}
+              </span>
             </div>
-            <img src={enPensentLogo} alt="" style={{ width: 8, height: 8, borderRadius: '50%' }} />
+            
+            {/* Event/result line */}
+            <p style={{ 
+              fontSize: 3.5, 
+              color: darkMode ? '#78716c' : '#a8a29e',
+              margin: '2px 0 0 0',
+              fontStyle: 'italic',
+              fontFamily: "'Cormorant Garamond', Georgia, serif",
+            }}>
+              Chess Game
+            </p>
+          </div>
+          
+          {/* Branding footer */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 2,
+          }}>
+            <span style={{ 
+              fontSize: 3, 
+              color: darkMode ? '#57534e' : '#a8a29e',
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+            }}>
+              ♔ En Pensent ♚
+            </span>
           </div>
         </div>
       );
     }
     
-    // Fall back to simulation-based rendering
+    // Fall back to simulation-based rendering using the unified PrintReadyVisualization
     if (!displayBoard || !simulation) return null;
     return (
       <PrintReadyVisualization 

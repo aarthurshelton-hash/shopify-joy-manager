@@ -7,7 +7,7 @@ import {
 import { useLegendHighlight, HighlightedPiece } from '@/contexts/LegendHighlightContext';
 import { useVisualizationStateStore } from '@/stores/visualizationStateStore';
 import { MoveHistoryEntry } from './EnPensentOverlay';
-import { Sparkles, Eye, Lock, X, MapPin, Grid3X3 } from 'lucide-react';
+import { Sparkles, Eye, Lock, X, MapPin } from 'lucide-react';
 
 interface LiveColorLegendProps {
   whitePalette: Record<string, string>;
@@ -376,7 +376,7 @@ export const LiveColorLegend: React.FC<LiveColorLegendProps> = ({
         )}
       </AnimatePresence>
 
-      {/* Toggle between pieces and heatmap */}
+      {/* Toggle between legend colors and territory heatmap */}
       <div className="flex items-center gap-1 mb-2">
         <button
           onClick={() => setShowHeatmap(false)}
@@ -384,8 +384,8 @@ export const LiveColorLegend: React.FC<LiveColorLegendProps> = ({
             !showHeatmap ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:bg-accent/30'
           }`}
         >
-          <Grid3X3 className="w-3 h-3" />
-          Pieces
+          <Eye className="w-3 h-3" />
+          Show Pieces
         </button>
         <button
           onClick={() => setShowHeatmap(true)}
