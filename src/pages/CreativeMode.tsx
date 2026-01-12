@@ -27,6 +27,7 @@ import { LegendHighlightProvider } from '@/contexts/LegendHighlightContext';
 import { useSessionStore } from '@/stores/sessionStore';
 import { useNavigate } from 'react-router-dom';
 import ChessBoardVisualization from '@/components/chess/ChessBoardVisualization';
+import { LayerInspector } from '@/components/chess/LayerInspector';
 
 type PieceKey = 'K' | 'Q' | 'R' | 'B' | 'N' | 'P' | 'k' | 'q' | 'r' | 'b' | 'n' | 'p' | null;
 type EditMode = 'place' | 'paint' | 'erase';
@@ -188,6 +189,7 @@ const CreativeMode = () => {
   const [editMode, setEditMode] = useState<EditMode>('paint');
   const [selectedPiece, setSelectedPiece] = useState<PieceKey>('P');
   const [showVisualization, setShowVisualization] = useState(true);
+  const [inspectedSquare, setInspectedSquare] = useState<{ row: number; col: number } | null>(null);
   
   // Board state
   const [pieceBoard, setPieceBoard] = useState<(string | null)[][]>(parseFen(STARTING_FEN));
@@ -264,6 +266,9 @@ const CreativeMode = () => {
 
   // Handle square click based on edit mode
   const handleSquareClick = useCallback((row: number, col: number) => {
+    // Always update inspected square
+    setInspectedSquare({ row, col });
+    
     if (!isPremium) {
       setShowUpgradeModal(true);
       return;
@@ -391,6 +396,37 @@ const CreativeMode = () => {
     const pieceType = piece.toLowerCase() as PieceType;
     return isWhite ? whitePalette[pieceType] : blackPalette[pieceType];
   };
+
+  // Get layers for inspected square
+  const getInspectedLayers = useCallback((): SquareVisit[] => {
+    if (!inspectedSquare) return [];
+    const squareKey = `${inspectedSquare.col}-${7 - inspectedSquare.row}`;
+    return paintData.get(squareKey) || [];
+  }, [inspectedSquare, paintData]);
+
+  // Remove a specific layer from the inspected square
+  const handleRemoveLayer = useCallback((layerIndex: number) => {
+    if (!inspectedSquare || !isPremium) return;
+    
+    const squareKey = `${inspectedSquare.col}-${7 - inspectedSquare.row}`;
+    const currentLayers = paintData.get(squareKey) || [];
+    
+    if (layerIndex < 0 || layerIndex >= currentLayers.length) return;
+    
+    const newPaintData = new Map(paintData);
+    const newLayers = [...currentLayers];
+    newLayers.splice(layerIndex, 1);
+    
+    if (newLayers.length === 0) {
+      newPaintData.delete(squareKey);
+    } else {
+      newPaintData.set(squareKey, newLayers);
+    }
+    
+    setPaintData(newPaintData);
+    pushState({ pieceBoard, paintData: newPaintData, moveCounter });
+    toast.success('Layer removed');
+  }, [inspectedSquare, paintData, isPremium, pieceBoard, moveCounter, pushState]);
 
   // Save as new vision
   const handleSaveToGallery = async () => {
@@ -765,15 +801,17 @@ const CreativeMode = () => {
                         {pieceBoard.map((row, rowIdx) =>
                           row.map((piece, colIdx) => {
                             const isLight = (rowIdx + colIdx) % 2 === 0;
+                            const isInspected = inspectedSquare?.row === rowIdx && inspectedSquare?.col === colIdx;
                             
                             return (
                               <motion.div
                                 key={`${rowIdx}-${colIdx}`}
                                 onClick={() => handleSquareClick(rowIdx, colIdx)}
                                 className={`
-                                  aspect-square cursor-pointer transition-all flex items-center justify-center
+                                  aspect-square cursor-pointer transition-all flex items-center justify-center relative
                                   ${isLight ? 'bg-amber-100' : 'bg-amber-700'}
                                   hover:brightness-110 touch-manipulation select-none
+                                  ${isInspected ? 'ring-2 ring-primary ring-inset' : ''}
                                 `}
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
@@ -785,6 +823,9 @@ const CreativeMode = () => {
                                   >
                                     {PIECE_SYMBOLS[piece]}
                                   </span>
+                                )}
+                                {isInspected && (
+                                  <div className="absolute inset-0 bg-primary/10 pointer-events-none" />
                                 )}
                               </motion.div>
                             );
@@ -817,8 +858,16 @@ const CreativeMode = () => {
                 </div>
               </div>
 
-              {/* Right sidebar - Legend */}
-              <div className="lg:col-span-3">
+              {/* Right sidebar - Legend & Inspector */}
+              <div className="lg:col-span-3 space-y-4">
+                {/* Layer Inspector */}
+                <LayerInspector
+                  selectedSquare={inspectedSquare}
+                  layers={getInspectedLayers()}
+                  onRemoveLayer={handleRemoveLayer}
+                  onClose={() => setInspectedSquare(null)}
+                />
+                
                 <LiveColorLegend
                   whitePalette={whitePalette}
                   blackPalette={blackPalette}
