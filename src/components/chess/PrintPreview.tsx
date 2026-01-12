@@ -18,7 +18,8 @@ import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 import { useAuth } from '@/hooks/useAuth';
 import { PremiumUpgradeModal } from '@/components/premium';
 import AuthModal from '@/components/auth/AuthModal';
-import { saveVisualization, checkDuplicateVisualization, VisualizationState } from '@/lib/visualizations/visualizationStorage';
+import { saveVisualization, checkDuplicateVisualization, VisualizationState, DuplicateCheckResult } from '@/lib/visualizations/visualizationStorage';
+import { PaletteColors } from '@/lib/visualizations/similarityDetection';
 import { useTimeline } from '@/contexts/TimelineContext';
 import { Progress } from '@/components/ui/progress';
 import { useLegendHighlight } from '@/contexts/LegendHighlightContext';
@@ -50,8 +51,11 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [existsInGallery, setExistsInGallery] = useState(false);
+  const [isTooSimilar, setIsTooSimilar] = useState(false);
+  const [colorSimilarity, setColorSimilarity] = useState<number | undefined>();
   const [isOwnedByCurrentUser, setIsOwnedByCurrentUser] = useState(false);
   const [ownerDisplayName, setOwnerDisplayName] = useState<string | undefined>();
+  const [similarityReason, setSimilarityReason] = useState<string | undefined>();
   const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false);
   const [boardSize, setBoardSize] = useState(320);
   const [darkMode, setDarkMode] = useState(false);
@@ -150,46 +154,69 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
   useEffect(() => {
     setIsSaved(false);
     setExistsInGallery(false);
+    setIsTooSimilar(false);
+    setColorSimilarity(undefined);
     setIsOwnedByCurrentUser(false);
     setOwnerDisplayName(undefined);
+    setSimilarityReason(undefined);
   }, [simulation]);
 
-  // Check if current visualization already exists in gallery (globally)
+  // Check if current visualization already exists or is too similar in gallery (globally)
   useEffect(() => {
     const checkIfExists = async () => {
       if (!user || !isPremium) {
         setExistsInGallery(false);
+        setIsTooSimilar(false);
+        setColorSimilarity(undefined);
         setIsOwnedByCurrentUser(false);
         setOwnerDisplayName(undefined);
+        setSimilarityReason(undefined);
         return;
       }
 
       setIsCheckingDuplicate(true);
       try {
         const activePalette = getActivePalette();
+        
+        // Build custom colors if using custom palette
+        let customColors: PaletteColors | undefined;
+        if (activePalette.id === 'custom') {
+          customColors = {
+            white: activePalette.white,
+            black: activePalette.black,
+          };
+        }
+        
         const visualizationState: VisualizationState = {
           paletteId: activePalette.id,
           darkMode,
           currentMove: currentMove === Infinity ? undefined : currentMove,
           lockedPieces: lockedPieces.length > 0 ? lockedPieces : undefined,
           showLegend,
+          customColors,
         };
 
-        const { isDuplicate, ownedByCurrentUser, ownerDisplayName: owner } = await checkDuplicateVisualization(
+        const result: DuplicateCheckResult = await checkDuplicateVisualization(
           user.id,
           pgn,
           simulation.gameData,
           visualizationState
         );
 
-        setExistsInGallery(isDuplicate);
-        setIsOwnedByCurrentUser(ownedByCurrentUser || false);
-        setOwnerDisplayName(owner);
+        setExistsInGallery(result.isDuplicate);
+        setIsTooSimilar(result.isTooSimilar && !result.isDuplicate);
+        setColorSimilarity(result.colorSimilarity);
+        setIsOwnedByCurrentUser(result.ownedByCurrentUser || false);
+        setOwnerDisplayName(result.ownerDisplayName);
+        setSimilarityReason(result.reason);
       } catch (error) {
         console.error('Error checking duplicate:', error);
         setExistsInGallery(false);
+        setIsTooSimilar(false);
+        setColorSimilarity(undefined);
         setIsOwnedByCurrentUser(false);
         setOwnerDisplayName(undefined);
+        setSimilarityReason(undefined);
       } finally {
         setIsCheckingDuplicate(false);
       }
@@ -503,17 +530,28 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
       const visualizationTitle = title || 
         `${simulation.gameData.white} vs ${simulation.gameData.black}`;
       
-      // Build visualization state for duplicate detection
+      // Build visualization state for duplicate/similarity detection
       const activePalette = getActivePalette();
+      
+      // Build custom colors if using custom palette
+      let customColors: PaletteColors | undefined;
+      if (activePalette.id === 'custom') {
+        customColors = {
+          white: activePalette.white,
+          black: activePalette.black,
+        };
+      }
+      
       const visualizationState: VisualizationState = {
         paletteId: activePalette.id,
         darkMode,
         currentMove: currentMove === Infinity ? undefined : currentMove,
         lockedPieces: lockedPieces.length > 0 ? lockedPieces : undefined,
         showLegend,
+        customColors,
       };
       
-      const { data, error, isDuplicate, ownedByCurrentUser: isOwner, ownerDisplayName: owner } = await saveVisualization(
+      const result = await saveVisualization(
         user.id,
         visualizationTitle,
         simulation,
@@ -522,32 +560,48 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
         visualizationState
       );
       
-      if (error) {
-        if (isDuplicate) {
-          if (isOwner) {
+      if (result.error) {
+        if (result.isDuplicate) {
+          if (result.ownedByCurrentUser) {
             toast.error('Already in your gallery!', {
               description: 'This exact visualization is already saved. Try changing the palette, timeline, or highlighted pieces to create a unique version.',
               duration: 5000,
             });
           } else {
             toast.error('Already claimed!', {
-              description: `This visualization was claimed by ${owner || 'another collector'}. Try a different palette or timeline to create your own unique version.`,
+              description: `This visualization was claimed by ${result.ownerDisplayName || 'another collector'}. Try a different palette or timeline to create your own unique version.`,
               duration: 5000,
             });
           }
           setExistsInGallery(true);
-          setIsOwnedByCurrentUser(isOwner || false);
-          setOwnerDisplayName(owner);
+          setIsOwnedByCurrentUser(result.ownedByCurrentUser || false);
+          setOwnerDisplayName(result.ownerDisplayName);
           return;
         }
-        throw error;
+        
+        // Handle "too similar" case (30%+ color match with same moves)
+        if (result.isTooSimilar) {
+          toast.error('Too similar to an existing vision!', {
+            description: result.reason || `This visualization is ${Math.round(result.colorSimilarity || 30)}% similar to an existing one. Change at least 8 colors to make it unique.`,
+            duration: 6000,
+          });
+          setIsTooSimilar(true);
+          setColorSimilarity(result.colorSimilarity);
+          setIsOwnedByCurrentUser(result.ownedByCurrentUser || false);
+          setOwnerDisplayName(result.ownerDisplayName);
+          setSimilarityReason(result.reason);
+          return;
+        }
+        
+        throw result.error;
       }
       
       setIsSaved(true);
+      setIsTooSimilar(false);
       
       // Notify parent of the share ID for QR code integration
-      if (data?.public_share_id && onShareIdCreated) {
-        onShareIdCreated(data.public_share_id);
+      if (result.data?.public_share_id && onShareIdCreated) {
+        onShareIdCreated(result.data.public_share_id);
       }
       
       toast.success('Saved to your gallery!', {
@@ -743,19 +797,22 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
         <div className="flex flex-col sm:flex-row justify-center gap-3">
           <Button 
             onClick={handleSaveToGallery}
-            disabled={isDownloading || isSaving || isSaved || isGeneratingGif || existsInGallery}
-            variant={isSaved || existsInGallery ? "secondary" : "outline"}
+            disabled={isDownloading || isSaving || isSaved || isGeneratingGif || existsInGallery || isTooSimilar}
+            variant={isSaved || existsInGallery || isTooSimilar ? "secondary" : "outline"}
             className={`gap-2 px-6 relative ${
               isSaved ? 'bg-green-500/10 text-green-600 border-green-500/30' : 
               existsInGallery && isOwnedByCurrentUser ? 'bg-green-500/10 text-green-600 border-green-500/30 cursor-not-allowed' :
-              existsInGallery ? 'bg-rose-500/10 text-rose-600 border-rose-500/30 cursor-not-allowed' : ''
+              existsInGallery ? 'bg-rose-500/10 text-rose-600 border-rose-500/30 cursor-not-allowed' :
+              isTooSimilar ? 'bg-amber-500/10 text-amber-600 border-amber-500/30 cursor-not-allowed' : ''
             }`}
             title={
               existsInGallery && isOwnedByCurrentUser 
                 ? 'You already own this visualization in your gallery' 
                 : existsInGallery 
                   ? `This visualization is owned by ${ownerDisplayName || 'another collector'}` 
-                  : undefined
+                  : isTooSimilar
+                    ? similarityReason || `${Math.round(colorSimilarity || 30)}% similar to an existing vision - change more colors for uniqueness`
+                    : undefined
             }
           >
             {isSaving || isCheckingDuplicate ? (
@@ -765,6 +822,8 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
             ) : existsInGallery && isOwnedByCurrentUser ? (
               <Check className="h-4 w-4" />
             ) : existsInGallery ? (
+              <Crown className="h-4 w-4" />
+            ) : isTooSimilar ? (
               <Crown className="h-4 w-4" />
             ) : isPremium ? (
               <Bookmark className="h-4 w-4" />
@@ -777,12 +836,21 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
                 ? 'In Your Gallery' 
                 : existsInGallery 
                   ? `Claimed by ${ownerDisplayName || 'Collector'}` 
-                  : 'Save to My Vision'
+                  : isTooSimilar
+                    ? `${Math.round(colorSimilarity || 30)}% Similar`
+                    : 'Save to My Vision'
             }
-            {!isPremium && !isSaved && !existsInGallery && (
+            {!isPremium && !isSaved && !existsInGallery && !isTooSimilar && (
               <span className="text-xs opacity-75 ml-1">Premium</span>
             )}
           </Button>
+          
+          {/* Similarity warning message */}
+          {isTooSimilar && (
+            <p className="text-xs text-amber-600 text-center max-w-xs">
+              This vision is too similar to an existing one. Change at least 8 piece colors to create a unique version.
+            </p>
+          )}
 
           {/* Order Print Button - Stylish but not obnoxious */}
           <OrderPrintButton 
