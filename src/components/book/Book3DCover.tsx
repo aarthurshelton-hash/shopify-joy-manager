@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import carlsenCover from '@/assets/book/carlsen-cover-v2.jpg';
 import carlsenBackCover from '@/assets/book/carlsen-back-cover.jpg';
+import carlsenSpine from '@/assets/book/carlsen-spine.jpg';
 
 interface Book3DCoverProps {
   onClick?: () => void;
@@ -95,9 +96,9 @@ export const Book3DCover: React.FC<Book3DCoverProps> = ({
           }}
         />
 
-        {/* Spine */}
+        {/* Spine with actual image */}
         <div 
-          className="absolute top-0 left-0 bottom-0 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900"
+          className="absolute top-0 left-0 bottom-0 overflow-hidden"
           style={{
             width: spineWidth[size],
             transform: `translateX(-${spineWidth[size]}) rotateY(-90deg)`,
@@ -105,17 +106,11 @@ export const Book3DCover: React.FC<Book3DCoverProps> = ({
             boxShadow: 'inset -2px 0 8px rgba(0,0,0,0.3), inset 2px 0 8px rgba(255,255,255,0.1)',
           }}
         >
-          {/* Spine text */}
-          {size === 'lg' && (
-            <div 
-              className="absolute inset-0 flex items-center justify-center"
-              style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
-            >
-              <span className="text-amber-400 font-serif font-bold text-xs tracking-wider">
-                CARLSEN IN COLOR
-              </span>
-            </div>
-          )}
+          <img 
+            src={carlsenSpine} 
+            alt="Book spine"
+            className="w-full h-full object-cover"
+          />
         </div>
 
         {/* Back cover with actual image */}
