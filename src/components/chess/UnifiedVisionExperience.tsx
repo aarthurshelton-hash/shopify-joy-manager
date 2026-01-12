@@ -56,6 +56,8 @@ import { setActivePalette, PaletteId, getActivePalette, getCurrentPalette, color
 import { detectGameCard, GameCardMatch } from '@/lib/chess/gameCardDetection';
 import { format } from 'date-fns';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
+import { RoyaltyPotentialCard } from '@/components/marketplace/RoyaltyPotentialCard';
+import { RoyaltyEarningsCard } from '@/components/vision/RoyaltyEarningsCard';
 
 // Export state for capturing visualization in any configuration
 export interface ExportState {
@@ -104,6 +106,27 @@ export interface UnifiedVisionExperienceProps {
   isPurchasing?: boolean;
   isListed?: boolean;
   onListForSale?: () => void;
+  isOwner?: boolean;
+  sellerName?: string;
+  
+  // Royalty/score data (passed in to avoid re-fetching)
+  visionScoreData?: {
+    viewCount: number;
+    uniqueViewers: number;
+    royaltyCentsEarned: number;
+    royaltyOrdersCount: number;
+    printRevenueCents: number;
+    printOrderCount: number;
+    totalScore: number;
+    downloadHdCount: number;
+    downloadGifCount: number;
+    tradeCount: number;
+  } | null;
+  
+  // Header customization
+  headerActions?: React.ReactNode;
+  showBackButton?: boolean;
+  backButtonText?: string;
 }
 
 // Internal timeline-aware board with trademark look
@@ -689,12 +712,33 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
   isPurchasing = false,
   isListed = false,
   onListForSale,
+  isOwner = false,
+  sellerName,
+  visionScoreData,
+  headerActions,
+  showBackButton = true,
+  backButtonText,
 }) => {
   // Determine default tab based on context
   const computedDefaultTab = defaultTab || (context === 'marketplace' ? 'analytics' : 'experience');
   
   const [activeTab, setActiveTab] = useState<'experience' | 'analytics'>(computedDefaultTab);
-  const [visionScore, setVisionScore] = useState<VisionScore | null>(null);
+  const [visionScore, setVisionScore] = useState<VisionScore | null>(
+    visionScoreData ? {
+      visualizationId: visualizationId || '',
+      viewCount: visionScoreData.viewCount,
+      uniqueViewers: visionScoreData.uniqueViewers,
+      downloadHdCount: visionScoreData.downloadHdCount,
+      downloadGifCount: visionScoreData.downloadGifCount,
+      printOrderCount: visionScoreData.printOrderCount,
+      printRevenueCents: visionScoreData.printRevenueCents,
+      tradeCount: visionScoreData.tradeCount,
+      totalScore: visionScoreData.totalScore,
+      royaltyCentsEarned: visionScoreData.royaltyCentsEarned,
+      royaltyOrdersCount: visionScoreData.royaltyOrdersCount,
+      updatedAt: new Date().toISOString(),
+    } : null
+  );
   const [isLoadingScore, setIsLoadingScore] = useState(false);
   const [gameAnalysis, setGameAnalysis] = useState<GameAnalysis | null>(null);
   const [gameCardMatch, setGameCardMatch] = useState<GameCardMatch | null>(null);
@@ -742,15 +786,15 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
     return () => window.removeEventListener('resize', updateSize);
   }, []);
 
-  // Load vision score
+  // Load vision score (skip if already provided via props)
   useEffect(() => {
-    if (visualizationId) {
+    if (visualizationId && !visionScoreData) {
       setIsLoadingScore(true);
       getVisionScore(visualizationId)
         .then(score => setVisionScore(score))
         .finally(() => setIsLoadingScore(false));
     }
-  }, [visualizationId]);
+  }, [visualizationId, visionScoreData]);
 
   // Analyze game
   useEffect(() => {
@@ -1079,6 +1123,30 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
             {/* Analytics Tab */}
             <TabsContent value="analytics" className="mt-0">
               <ScrollArea className="h-[calc(100vh-300px)] sm:h-auto">
+                {/* Royalty Earnings/Potential Card - Show for marketplace and gallery */}
+                {(context === 'marketplace' || context === 'gallery') && visionScore && (
+                  <div className="mb-6">
+                    {isOwner ? (
+                      <RoyaltyEarningsCard
+                        royaltyCentsEarned={visionScore.royaltyCentsEarned}
+                        royaltyOrdersCount={visionScore.royaltyOrdersCount}
+                        totalPrintRevenue={visionScore.printRevenueCents}
+                        printOrderCount={visionScore.printOrderCount}
+                      />
+                    ) : (
+                      <RoyaltyPotentialCard
+                        isOwner={false}
+                        royaltyCentsEarned={visionScore.royaltyCentsEarned}
+                        royaltyOrdersCount={visionScore.royaltyOrdersCount}
+                        totalPrintRevenue={visionScore.printRevenueCents}
+                        printOrderCount={visionScore.printOrderCount}
+                        viewCount={visionScore.viewCount}
+                        uniqueViewers={visionScore.uniqueViewers}
+                      />
+                    )}
+                  </div>
+                )}
+
                 <AnalyticsPanel
                   visionScore={visionScore}
                   isLoading={isLoadingScore}

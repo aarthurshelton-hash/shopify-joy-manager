@@ -4,18 +4,21 @@ import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
 import { supabase } from '@/integrations/supabase/client';
 import { motion } from 'framer-motion';
-import { Crown, Calendar, ChevronLeft, Share2, ExternalLink, Sparkles } from 'lucide-react';
+import { Crown, Calendar, ChevronLeft, ExternalLink, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { recordVisionInteraction } from '@/lib/visualizations/visionScoring';
+import { recordVisionInteraction, getVisionScore, VisionScore } from '@/lib/visualizations/visionScoring';
 import { SquareData, GameData } from '@/lib/chess/gameSimulator';
 import UnifiedVisionExperience, { ExportState } from '@/components/chess/UnifiedVisionExperience';
+import { TimelineProvider } from '@/contexts/TimelineContext';
+import { LegendHighlightProvider } from '@/contexts/LegendHighlightContext';
 import { useSessionStore } from '@/stores/sessionStore';
-import { usePrintOrderStore } from '@/stores/printOrderStore';
+import { usePrintOrderStore, PrintOrderData } from '@/stores/printOrderStore';
 import { useAuth } from '@/hooks/useAuth';
 import { useVisualizationExport } from '@/hooks/useVisualizationExport';
 import AuthModal from '@/components/auth/AuthModal';
 import { PremiumUpgradeModal } from '@/components/premium';
+import { setActivePalette, PaletteId, PieceType } from '@/lib/chess/pieceColors';
 
 interface VisualizationData {
   id: string;
@@ -48,9 +51,11 @@ const VisualizationView = () => {
   const { setOrderData } = usePrintOrderStore();
   const { 
     setCurrentSimulation, 
-    setSavedShareId: setSessionShareId,
+    setSavedShareId,
     setCapturedTimelineState,
-    setReturningFromOrder 
+    setReturningFromOrder,
+    returningFromOrder,
+    capturedTimelineState,
   } = useSessionStore();
   
   const [visualization, setVisualization] = useState<VisualizationData | null>(null);
@@ -58,14 +63,11 @@ const VisualizationView = () => {
   const [error, setError] = useState<string | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showVisionaryModal, setShowVisionaryModal] = useState(false);
+  const [visionScore, setVisionScore] = useState<VisionScore | null>(null);
   const viewRecordedRef = useRef(false);
   
   // Export hook for HD/GIF downloads
   const { 
-    isExportingHD, 
-    isExportingGIF, 
-    gifProgress,
-    downloadHD, 
     downloadTrademarkHD,
     downloadGIF 
   } = useVisualizationExport({
@@ -74,6 +76,27 @@ const VisualizationView = () => {
     onUnauthorized: () => setShowAuthModal(true),
     onUpgradeRequired: () => setShowVisionaryModal(true),
   });
+
+  // Handle restoration toast when returning from order page
+  useEffect(() => {
+    if (returningFromOrder && capturedTimelineState) {
+      const { currentMove, totalMoves, title } = capturedTimelineState;
+      const titleText = title || 'Visualization';
+      const moveInfo = currentMove !== undefined && totalMoves !== undefined
+        ? `Move ${currentMove} of ${totalMoves}`
+        : currentMove !== undefined
+        ? `Move ${currentMove}`
+        : 'Your visualization is ready';
+      
+      toast.success(`${titleText} restored!`, {
+        description: moveInfo,
+        icon: <Sparkles className="w-4 h-4" />,
+      });
+      
+      setReturningFromOrder(false);
+      setCapturedTimelineState(null);
+    }
+  }, [returningFromOrder, capturedTimelineState, setReturningFromOrder, setCapturedTimelineState]);
 
   useEffect(() => {
     const fetchVisualization = async () => {
@@ -96,12 +119,24 @@ const VisualizationView = () => {
           return;
         }
 
-        setVisualization(data as VisualizationData);
+        // Restore palette if saved
+        const vizData = data as VisualizationData;
+        const paletteId = vizData.game_data?.visualizationState?.paletteId;
+        if (paletteId && paletteId !== 'custom') {
+          setActivePalette(paletteId as PaletteId);
+        }
+
+        setVisualization(vizData);
 
         // Record view interaction (only once per session)
         if (!viewRecordedRef.current) {
           viewRecordedRef.current = true;
           recordVisionInteraction(data.id, 'view');
+          
+          // Fetch vision score
+          getVisionScore(data.id).then(score => {
+            if (score) setVisionScore(score);
+          });
         }
       } catch (err) {
         console.error('Error fetching visualization:', err);
@@ -146,7 +181,6 @@ const VisualizationView = () => {
 
     const data = visualization.game_data;
     
-    // Reconstruct board
     const reconstructedBoard: SquareData[][] = data.board && Array.isArray(data.board)
       ? data.board
       : Array(8).fill(null).map((_, rank) =>
@@ -181,7 +215,6 @@ const VisualizationView = () => {
     if (!visualization) return;
     
     if (type === 'preview') {
-      // Free preview download
       toast.info('Preview download coming soon');
       return;
     }
@@ -198,7 +231,7 @@ const VisualizationView = () => {
     
     if (type === 'gif') {
       const simulation = { board, gameData, totalMoves };
-      const captureElement = document.getElementById('vision-board-container');
+      const captureElement = document.querySelector('[data-vision-board="true"]') as HTMLElement;
       if (captureElement) {
         downloadGIF(simulation, captureElement, visualization.title);
       } else {
@@ -215,8 +248,8 @@ const VisualizationView = () => {
           totalMoves,
           title: visualization.title,
           lockedPieces: exportState.lockedPieces.map(p => ({
-            pieceType: p.pieceType as any,
-            pieceColor: p.pieceColor as any,
+            pieceType: p.pieceType as PieceType,
+            pieceColor: p.pieceColor as 'w' | 'b',
           })),
           compareMode: exportState.compareMode,
           darkMode: exportState.darkMode,
@@ -224,16 +257,12 @@ const VisualizationView = () => {
       }
       
       // Save simulation to session store
-      setCurrentSimulation({
-        board,
-        gameData,
-        totalMoves,
-      }, visualization.pgn || '', visualization.title);
-      setSessionShareId(visualization.public_share_id);
+      setCurrentSimulation({ board, gameData, totalMoves }, visualization.pgn || '', visualization.title);
+      setSavedShareId(visualization.public_share_id);
       setReturningFromOrder(true);
       
       // Navigate to order print page
-      setOrderData({
+      const orderData: PrintOrderData = {
         visualizationId: visualization.id,
         title: visualization.title,
         imagePath: visualization.image_path,
@@ -244,11 +273,7 @@ const VisualizationView = () => {
           date: gameData.date,
           result: gameData.result,
         },
-        simulation: {
-          board,
-          gameData,
-          totalMoves,
-        },
+        simulation: { board, gameData, totalMoves },
         shareId: visualization.public_share_id,
         returnPath: `/v/${shareId}`,
         capturedState: exportState ? {
@@ -262,10 +287,11 @@ const VisualizationView = () => {
           showHeatmaps: false,
           capturedAt: new Date(),
         } : undefined,
-      });
+      };
+      setOrderData(orderData);
       navigate('/order-print');
     }
-  }, [visualization, board, gameData, totalMoves, shareId, downloadTrademarkHD, downloadGIF, navigate, setOrderData, setCapturedTimelineState, setCurrentSimulation, setSessionShareId, setReturningFromOrder]);
+  }, [visualization, board, gameData, totalMoves, shareId, downloadTrademarkHD, downloadGIF, navigate, setOrderData, setCapturedTimelineState, setCurrentSimulation, setSavedShareId, setReturningFromOrder]);
 
   if (loading) {
     return (
@@ -366,22 +392,38 @@ const VisualizationView = () => {
             transition={{ delay: 0.1 }}
             className="bg-card/50 rounded-xl border border-border/50 p-4 md:p-6"
           >
-            <UnifiedVisionExperience
-              board={board}
-              gameData={gameData}
-              totalMoves={totalMoves}
-              context="shared"
-              defaultTab="experience"
-              visualizationId={visualization.id}
-              paletteId={paletteId}
-              createdAt={visualization.created_at}
-              title={visualization.title}
-              shareId={visualization.public_share_id}
-              onShare={handleShare}
-              onExport={handleExport}
-              isPremium={isPremium}
-              onUpgradePrompt={() => setShowVisionaryModal(true)}
-            />
+            <TimelineProvider>
+              <LegendHighlightProvider>
+                <UnifiedVisionExperience
+                  board={board}
+                  gameData={gameData}
+                  totalMoves={totalMoves}
+                  context="shared"
+                  defaultTab="experience"
+                  visualizationId={visualization.id}
+                  paletteId={paletteId}
+                  createdAt={visualization.created_at}
+                  title={visualization.title}
+                  shareId={visualization.public_share_id}
+                  onShare={handleShare}
+                  onExport={handleExport}
+                  isPremium={isPremium}
+                  onUpgradePrompt={() => setShowVisionaryModal(true)}
+                  visionScoreData={visionScore ? {
+                    viewCount: visionScore.viewCount,
+                    uniqueViewers: visionScore.uniqueViewers,
+                    royaltyCentsEarned: visionScore.royaltyCentsEarned,
+                    royaltyOrdersCount: visionScore.royaltyOrdersCount,
+                    printRevenueCents: visionScore.printRevenueCents,
+                    printOrderCount: visionScore.printOrderCount,
+                    totalScore: visionScore.totalScore,
+                    downloadHdCount: visionScore.downloadHdCount,
+                    downloadGifCount: visionScore.downloadGifCount,
+                    tradeCount: visionScore.tradeCount,
+                  } : null}
+                />
+              </LegendHighlightProvider>
+            </TimelineProvider>
           </motion.div>
 
           {/* CTA */}
