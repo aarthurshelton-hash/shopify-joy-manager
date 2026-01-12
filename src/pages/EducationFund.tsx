@@ -424,7 +424,7 @@ const EducationFund: React.FC = () => {
                 
                 <div className="p-3 bg-green-500/10 rounded-lg border border-green-500/30">
                   <p className="text-xs text-green-600">
-                    <strong>Note:</strong> Print royalties (80%) are separate from the Education Fund. 
+                    <strong>Note:</strong> Print royalties (20% to creators) are separate from the Education Fund. 
                     The fund only receives value from lapsed subscriptions, not from active sales.
                   </p>
                 </div>
