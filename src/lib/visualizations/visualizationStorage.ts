@@ -69,6 +69,9 @@ export interface DuplicateCheckResult {
   reason?: string;
   linkedPaletteId?: PaletteId;
   existingColors?: PaletteColors; // For color comparison preview
+  isIntrinsicPalette?: boolean; // True if using a featured En Pensent palette
+  matchedPaletteId?: PaletteId; // The matched featured palette
+  matchedPaletteSimilarity?: number; // How close to the featured palette
 }
 
 /**
@@ -166,6 +169,9 @@ export async function checkDuplicateVisualization(
         colorSimilarity: similarityResult.colorSimilarity,
         reason: similarityResult.reason,
         existingColors: similarityResult.existingColors, // For comparison preview
+        isIntrinsicPalette: similarityResult.isIntrinsicPalette,
+        matchedPaletteId: similarityResult.matchedPaletteId,
+        matchedPaletteSimilarity: similarityResult.matchedPaletteSimilarity,
       };
     }
     
@@ -180,6 +186,9 @@ export async function checkDuplicateVisualization(
       isTooSimilar: false,
       linkedPaletteId,
       colorSimilarity: similarityResult.colorSimilarity,
+      isIntrinsicPalette: similarityResult.isIntrinsicPalette,
+      matchedPaletteId: similarityResult.matchedPaletteId,
+      matchedPaletteSimilarity: similarityResult.matchedPaletteSimilarity,
     };
   } catch (error) {
     console.error('Error in duplicate check:', error);
