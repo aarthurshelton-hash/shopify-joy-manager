@@ -274,6 +274,45 @@ export type Database = {
         }
         Relationships: []
       }
+      membership_funnel_events: {
+        Row: {
+          converted_to_premium: boolean | null
+          converted_to_signup: boolean | null
+          created_at: string
+          event_type: string
+          id: string
+          ip_hash: string | null
+          metadata: Json | null
+          session_id: string | null
+          trigger_source: string | null
+          user_id: string | null
+        }
+        Insert: {
+          converted_to_premium?: boolean | null
+          converted_to_signup?: boolean | null
+          created_at?: string
+          event_type: string
+          id?: string
+          ip_hash?: string | null
+          metadata?: Json | null
+          session_id?: string | null
+          trigger_source?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          converted_to_premium?: boolean | null
+          converted_to_signup?: boolean | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          ip_hash?: string | null
+          metadata?: Json | null
+          session_id?: string | null
+          trigger_source?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       palette_overrides: {
         Row: {
           black_colors: Json
@@ -705,6 +744,16 @@ export type Database = {
       }
       generate_challenge_code: { Args: never; Returns: string }
       generate_share_id: { Args: never; Returns: string }
+      get_funnel_stats: {
+        Args: { days_back?: number }
+        Returns: {
+          conversion_rate: number
+          event_type: string
+          total_count: number
+          trigger_source: string
+          unique_users: number
+        }[]
+      }
       get_user_offense_count: { Args: { p_user_id: string }; Returns: number }
       has_role: {
         Args: {

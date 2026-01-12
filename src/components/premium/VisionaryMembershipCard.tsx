@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { recordFunnelEvent, MEMBERSHIP_METRICS } from '@/lib/analytics/membershipFunnel';
 import {
   Dialog,
   DialogContent,
@@ -163,13 +164,65 @@ export const VisionaryMembershipCard: React.FC<VisionaryMembershipCardProps> = (
   const [isLoading, setIsLoading] = useState(false);
   const [hoveredFeature, setHoveredFeature] = useState<string | null>(null);
   const [bgIndex] = useState(() => Math.floor(Math.random() * BACKGROUND_IMAGES.length));
+  const modalOpenTime = useRef<number>(0);
+  const featuresViewed = useRef<Set<string>>(new Set());
+  const hasRecordedView = useRef(false);
+
+  // Track modal view when opened
+  useEffect(() => {
+    if (isOpen && !hasRecordedView.current) {
+      modalOpenTime.current = Date.now();
+      hasRecordedView.current = true;
+      recordFunnelEvent('modal_view', { trigger_source: trigger });
+    }
+    
+    if (!isOpen) {
+      hasRecordedView.current = false;
+      featuresViewed.current.clear();
+    }
+  }, [isOpen, trigger]);
+
+  // Track feature hovers
+  const handleFeatureHover = (featureId: string) => {
+    setHoveredFeature(featureId);
+    if (!featuresViewed.current.has(featureId)) {
+      featuresViewed.current.add(featureId);
+      recordFunnelEvent('feature_hover', { 
+        trigger_source: trigger, 
+        feature_id: featureId 
+      });
+    }
+  };
+
+  const handleDismiss = () => {
+    const timeOnModal = Date.now() - modalOpenTime.current;
+    recordFunnelEvent('modal_dismiss', { 
+      trigger_source: trigger,
+      time_on_modal_ms: timeOnModal,
+      features_viewed: Array.from(featuresViewed.current),
+    });
+    onClose();
+  };
 
   const handleUpgrade = async () => {
+    const timeOnModal = Date.now() - modalOpenTime.current;
+    
     if (!user) {
+      recordFunnelEvent('signup_started', { 
+        trigger_source: trigger,
+        time_on_modal_ms: timeOnModal,
+        features_viewed: Array.from(featuresViewed.current),
+      });
       onClose();
       onAuthRequired?.();
       return;
     }
+
+    recordFunnelEvent('checkout_started', { 
+      trigger_source: trigger,
+      time_on_modal_ms: timeOnModal,
+      features_viewed: Array.from(featuresViewed.current),
+    });
 
     setIsLoading(true);
     try {
@@ -251,7 +304,7 @@ export const VisionaryMembershipCard: React.FC<VisionaryMembershipCardProps> = (
               </DialogTitle>
               <p className="text-muted-foreground mt-2 max-w-md mx-auto">
                 Join {' '}
-                <span className="text-foreground font-medium">2,847 chess artists</span>
+                <span className="text-foreground font-medium">{MEMBERSHIP_METRICS.activeVisionaries.toLocaleString()} chess artists</span>
                 {' '} transforming games into masterpieces
               </p>
 
@@ -273,7 +326,7 @@ export const VisionaryMembershipCard: React.FC<VisionaryMembershipCardProps> = (
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={onClose}
+                onClick={handleDismiss}
                 className="absolute top-4 right-4 h-8 w-8"
               >
                 <X className="h-4 w-4" />
@@ -295,7 +348,7 @@ export const VisionaryMembershipCard: React.FC<VisionaryMembershipCardProps> = (
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: idx * 0.05 }}
-                            onMouseEnter={() => setHoveredFeature(feature.id)}
+                            onMouseEnter={() => handleFeatureHover(feature.id)}
                             onMouseLeave={() => setHoveredFeature(null)}
                             className={`relative p-4 rounded-xl border cursor-pointer transition-all duration-300 overflow-hidden ${
                               isHighlighted
@@ -389,24 +442,24 @@ export const VisionaryMembershipCard: React.FC<VisionaryMembershipCardProps> = (
                       ))}
                     </div>
                     <div>
-                      <p className="text-sm font-medium">2,847 active Visionaries</p>
-                      <p className="text-xs text-muted-foreground">+127 this week</p>
+                      <p className="text-sm font-medium">{MEMBERSHIP_METRICS.activeVisionaries.toLocaleString()} active Visionaries</p>
+                      <p className="text-xs text-muted-foreground">+{MEMBERSHIP_METRICS.weeklyGrowth} this week</p>
                     </div>
                   </div>
                   
                   <div className="flex gap-4 text-center">
                     <div>
-                      <p className="text-lg font-bold text-primary">4.9★</p>
+                      <p className="text-lg font-bold text-primary">{MEMBERSHIP_METRICS.averageRating}★</p>
                       <p className="text-[10px] text-muted-foreground">Rating</p>
                     </div>
                     <div className="w-px bg-border" />
                     <div>
-                      <p className="text-lg font-bold">$19.8K</p>
+                      <p className="text-lg font-bold">${(MEMBERSHIP_METRICS.currentARR / 1000).toFixed(1)}K</p>
                       <p className="text-[10px] text-muted-foreground">ARR</p>
                     </div>
                     <div className="w-px bg-border" />
                     <div>
-                      <p className="text-lg font-bold text-green-600">95%</p>
+                      <p className="text-lg font-bold text-green-600">{MEMBERSHIP_METRICS.grossMargin}%</p>
                       <p className="text-[10px] text-muted-foreground">Margin</p>
                     </div>
                   </div>
@@ -462,7 +515,7 @@ export const VisionaryMembershipCard: React.FC<VisionaryMembershipCardProps> = (
                 <Button
                   variant="ghost"
                   size="lg"
-                  onClick={onClose}
+                  onClick={handleDismiss}
                   className="w-full sm:w-auto"
                 >
                   Maybe Later

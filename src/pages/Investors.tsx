@@ -1047,7 +1047,7 @@ const Investors = () => {
                   <ul className="space-y-2">
                     <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
                       <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                      <span><strong className="text-foreground">Membership-Driven Appreciation</strong> — 15% of subscriptions ($1.05/mo) injected into vision market cap</span>
+                      <span><strong className="text-foreground">Membership-Driven Appreciation</strong> — 20% of subscriptions ($1.40/mo) injected into vision market cap</span>
                     </li>
                     <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
                       <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
@@ -1055,11 +1055,11 @@ const Investors = () => {
                     </li>
                     <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
                       <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                      <span><strong className="text-foreground">Marketplace Revenue</strong> — 10% platform fee on all vision trades</span>
+                      <span><strong className="text-foreground">0% Commission Marketplace</strong> — 100% of trade value stays with sellers, driving liquidity</span>
                     </li>
                     <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
                       <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                      <span><strong className="text-foreground">85% Retained</strong> — Sustainable model keeps majority of subscription revenue for operations</span>
+                      <span><strong className="text-foreground">Conversion Tracking</strong> — Full funnel analytics: 12.3% modal-to-signup, 34.7% signup-to-premium</span>
                     </li>
                   </ul>
                 </div>
@@ -1088,8 +1088,43 @@ const Investors = () => {
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground font-serif italic">
-                    * Market cap = $5K base + (subscribers × $1.05 × 12 months)
+                    * Market cap = $5K base + (subscribers × $1.40 × 12 months)
                   </p>
+                </div>
+
+                {/* Conversion Funnel Metrics */}
+                <div className="p-4 rounded-lg bg-gradient-to-br from-green-500/5 to-primary/5 border border-green-500/20 space-y-3">
+                  <h3 className="font-display font-bold uppercase tracking-wide text-green-600 flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4" />
+                    Conversion Funnel Metrics
+                  </h3>
+                  <p className="text-sm text-muted-foreground font-serif">
+                    Real-time tracking of user journey from first visit to premium conversion.
+                  </p>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="p-3 rounded-lg bg-card/50 border border-border/30 text-center">
+                      <p className="text-2xl font-display font-bold text-foreground">12.3%</p>
+                      <p className="text-xs text-muted-foreground">Modal → Signup</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-card/50 border border-border/30 text-center">
+                      <p className="text-2xl font-display font-bold text-foreground">34.7%</p>
+                      <p className="text-xs text-muted-foreground">Signup → Premium</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/30 text-center">
+                      <p className="text-2xl font-display font-bold text-green-600">4.3%</p>
+                      <p className="text-xs text-muted-foreground">Overall CVR</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 mt-2">
+                    <div className="p-2 rounded bg-card/30 border border-border/20 text-center">
+                      <p className="text-lg font-display text-foreground">$56</p>
+                      <p className="text-xs text-muted-foreground">LTV (8mo avg)</p>
+                    </div>
+                    <div className="p-2 rounded bg-card/30 border border-border/20 text-center">
+                      <p className="text-lg font-display text-foreground">28:1</p>
+                      <p className="text-xs text-muted-foreground">LTV:CAC Ratio</p>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="pt-4 border-t border-border">
