@@ -28,6 +28,7 @@ import AdminModeration from "./pages/AdminModeration";
 import Account from "./pages/Account";
 import BookGenerator from "./pages/BookGenerator";
 import EducationFund from "./pages/EducationFund";
+import CreatorDashboard from "./pages/CreatorDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -64,6 +65,7 @@ const App = () => (
             <Route path="/account" element={<Account />} />
             <Route path="/book" element={<BookGenerator />} />
             <Route path="/education-fund" element={<EducationFund />} />
+            <Route path="/creator-dashboard" element={<CreatorDashboard />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
