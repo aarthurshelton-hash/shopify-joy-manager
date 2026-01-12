@@ -385,6 +385,94 @@ export type Database = {
         }
         Relationships: []
       }
+      vision_interactions: {
+        Row: {
+          created_at: string
+          id: string
+          interaction_type: string
+          ip_hash: string | null
+          user_id: string | null
+          value_cents: number | null
+          visualization_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          interaction_type: string
+          ip_hash?: string | null
+          user_id?: string | null
+          value_cents?: number | null
+          visualization_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          interaction_type?: string
+          ip_hash?: string | null
+          user_id?: string | null
+          value_cents?: number | null
+          visualization_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vision_interactions_visualization_id_fkey"
+            columns: ["visualization_id"]
+            isOneToOne: false
+            referencedRelation: "saved_visualizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vision_scores: {
+        Row: {
+          download_gif_count: number
+          download_hd_count: number
+          id: string
+          print_order_count: number
+          print_revenue_cents: number
+          total_score: number
+          trade_count: number
+          unique_viewers: number
+          updated_at: string
+          view_count: number
+          visualization_id: string
+        }
+        Insert: {
+          download_gif_count?: number
+          download_hd_count?: number
+          id?: string
+          print_order_count?: number
+          print_revenue_cents?: number
+          total_score?: number
+          trade_count?: number
+          unique_viewers?: number
+          updated_at?: string
+          view_count?: number
+          visualization_id: string
+        }
+        Update: {
+          download_gif_count?: number
+          download_hd_count?: number
+          id?: string
+          print_order_count?: number
+          print_revenue_cents?: number
+          total_score?: number
+          trade_count?: number
+          unique_viewers?: number
+          updated_at?: string
+          view_count?: number
+          visualization_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vision_scores_visualization_id_fkey"
+            columns: ["visualization_id"]
+            isOneToOne: true
+            referencedRelation: "saved_visualizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       visualization_listings: {
         Row: {
           buyer_id: string | null
@@ -437,12 +525,33 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_vision_score: {
+        Args: {
+          p_download_gif_count: number
+          p_download_hd_count: number
+          p_print_order_count: number
+          p_print_revenue_cents: number
+          p_trade_count: number
+          p_view_count: number
+        }
+        Returns: number
+      }
       generate_challenge_code: { Args: never; Returns: string }
       generate_share_id: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
+        }
+        Returns: boolean
+      }
+      record_vision_interaction: {
+        Args: {
+          p_interaction_type: string
+          p_ip_hash?: string
+          p_user_id: string
+          p_value_cents?: number
+          p_visualization_id: string
         }
         Returns: boolean
       }
