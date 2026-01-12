@@ -8,6 +8,7 @@ import {
 } from './similarityDetection';
 import { colorPalettes, PaletteId } from '@/lib/chess/pieceColors';
 import { validateVisualizationTitle, validatePgnData } from '@/lib/validations/visualizationSchemas';
+import { moderateText } from '@/lib/moderation/contentModeration';
 
 export interface VisualizationState {
   paletteId?: string;
@@ -227,6 +228,15 @@ export async function saveVisualization(
     const titleValidation = validateVisualizationTitle(title);
     if (!titleValidation.success) {
       return { data: null, error: new Error(titleValidation.error || 'Invalid title') };
+    }
+
+    // Server-side content moderation for title
+    const titleModeration = await moderateText(title);
+    if (!titleModeration.safe) {
+      return { 
+        data: null, 
+        error: new Error(titleModeration.reason || 'Title contains inappropriate content') 
+      };
     }
 
     // Validate PGN data

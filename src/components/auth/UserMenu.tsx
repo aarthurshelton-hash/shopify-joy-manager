@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -97,9 +98,12 @@ const UserMenu: React.FC = () => {
             size="sm"
             className="gap-2 hover:bg-primary/10"
           >
-            <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center text-xs font-medium text-primary">
-              {initials}
-            </div>
+            <Avatar className="h-7 w-7 border border-border">
+              <AvatarImage src={profile?.avatar_url || undefined} alt={displayName} />
+              <AvatarFallback className="text-xs bg-primary/20 text-primary">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
             <span className="hidden sm:inline text-sm font-medium">{displayName}</span>
             <PremiumBadge showText={false} />
           </Button>
@@ -107,10 +111,20 @@ const UserMenu: React.FC = () => {
         <DropdownMenuContent align="end" className="w-56 bg-card border-border z-50">
           <div className="px-3 py-2">
             <div className="flex items-center gap-2">
-              <p className="text-sm font-medium">{displayName}</p>
-              <PremiumBadge />
+              <Avatar className="h-8 w-8 border border-border">
+                <AvatarImage src={profile?.avatar_url || undefined} alt={displayName} />
+                <AvatarFallback className="text-xs bg-primary/20 text-primary">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1">
+                  <p className="text-sm font-medium truncate">{displayName}</p>
+                  <PremiumBadge />
+                </div>
+                <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground truncate">{user.email}</p>
           </div>
           <DropdownMenuSeparator />
           

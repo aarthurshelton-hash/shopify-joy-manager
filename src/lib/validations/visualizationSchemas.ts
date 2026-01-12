@@ -1,16 +1,30 @@
 import { z } from 'zod';
+import { quickTextCheck } from '@/lib/moderation/contentModeration';
 
 /**
  * Validation schemas for visualization-related inputs
  * Used for client-side validation before database insertion
  */
 
-// Visualization title validation
+// Custom refinement for content moderation
+const contentSafeCheck = (fieldName: string) => (value: string, ctx: z.RefinementCtx) => {
+  const check = quickTextCheck(value);
+  if (!check.safe) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: check.reason || `${fieldName} contains inappropriate content`,
+    });
+  }
+  return value;
+};
+
+// Visualization title validation with content moderation
 export const visualizationTitleSchema = z.string()
   .trim()
   .min(1, 'Title is required')
   .max(200, 'Title must be 200 characters or less')
-  .regex(/^[^<>]*$/, 'Title cannot contain < or > characters');
+  .regex(/^[^<>]*$/, 'Title cannot contain < or > characters')
+  .superRefine(contentSafeCheck('Title'));
 
 // PGN data validation (chess game notation)
 export const pgnDataSchema = z.string()
@@ -32,12 +46,13 @@ export const listingPriceSchema = z.object({
     .max(1000000, 'Maximum price is $10,000'),
 });
 
-// Display name validation (matches database constraints)
+// Display name validation (matches database constraints) with content moderation
 export const displayNameSchema = z.string()
   .trim()
   .min(1, 'Display name is required')
   .max(50, 'Display name must be 50 characters or less')
-  .regex(/^[^\x00-\x1F\x7F]*$/, 'Display name cannot contain control characters');
+  .regex(/^[^\x00-\x1F\x7F]*$/, 'Display name cannot contain control characters')
+  .superRefine(contentSafeCheck('Display name'));
 
 /**
  * Validate visualization title before saving
