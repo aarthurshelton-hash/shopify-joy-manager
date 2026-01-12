@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
-import { User, LogOut, Palette, Settings, Crown, CreditCard, Image, Gamepad2, BarChart3, History, Paintbrush, Shield, ShieldCheck, Wrench, Database, Wallet } from 'lucide-react';
+import { User, LogOut, Palette, Settings, Crown, CreditCard, Image, Gamepad2, BarChart3, History, Paintbrush, Shield, ShieldCheck, Wrench, Database, Wallet, Banknote } from 'lucide-react';
 import AuthModal from './AuthModal';
 import MFASetup from './MFASetup';
 import PremiumBadge from '@/components/premium/PremiumBadge';
@@ -243,6 +243,13 @@ const UserMenu: React.FC = () => {
               >
                 <Wrench className="h-4 w-4" />
                 Palette Admin
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => navigate('/admin/withdrawals')}
+                className="gap-2 cursor-pointer text-primary"
+              >
+                <Banknote className="h-4 w-4" />
+                Withdrawals
               </DropdownMenuItem>
             </>
           )}
