@@ -11,100 +11,109 @@
 @layer base {
   :root {
     /* Deep charcoal with warm undertones - sophisticated dark theme */
-    --background: 220 15% 8%;
-    --foreground: 40 15% 95%;
+    --background: 220 18% 7%;
+    --foreground: 40 20% 96%;
 
-    --card: 220 15% 11%;
-    --card-foreground: 40 15% 95%;
+    --card: 220 16% 10%;
+    --card-foreground: 40 18% 95%;
 
-    --popover: 220 15% 11%;
-    --popover-foreground: 40 15% 95%;
+    --popover: 220 16% 10%;
+    --popover-foreground: 40 18% 95%;
 
     /* Rich gold accent - royal and premium */
-    --primary: 42 85% 55%;
-    --primary-foreground: 220 15% 8%;
+    --primary: 42 90% 52%;
+    --primary-foreground: 220 20% 6%;
 
-    --secondary: 220 12% 18%;
-    --secondary-foreground: 40 15% 90%;
+    --secondary: 220 14% 16%;
+    --secondary-foreground: 40 15% 92%;
 
-    --muted: 220 12% 16%;
-    --muted-foreground: 220 10% 55%;
+    --muted: 220 14% 14%;
+    --muted-foreground: 220 12% 52%;
 
     /* Subtle warm accent for highlights */
-    --accent: 220 12% 14%;
-    --accent-foreground: 42 75% 60%;
+    --accent: 220 14% 12%;
+    --accent-foreground: 42 80% 58%;
 
-    --destructive: 0 72% 50%;
+    --destructive: 0 75% 48%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 12% 18%;
-    --input: 220 12% 15%;
-    --ring: 42 85% 55%;
+    --border: 220 14% 16%;
+    --input: 220 14% 13%;
+    --ring: 42 90% 52%;
 
-    --radius: 0.375rem;
+    --radius: 0.5rem;
 
     /* Sidebar - matching dark theme */
-    --sidebar-background: 220 15% 6%;
-    --sidebar-foreground: 40 15% 90%;
-    --sidebar-primary: 42 85% 55%;
-    --sidebar-primary-foreground: 220 15% 8%;
-    --sidebar-accent: 220 12% 12%;
-    --sidebar-accent-foreground: 40 15% 90%;
-    --sidebar-border: 220 12% 15%;
-    --sidebar-ring: 42 85% 55%;
+    --sidebar-background: 220 18% 5%;
+    --sidebar-foreground: 40 18% 92%;
+    --sidebar-primary: 42 90% 52%;
+    --sidebar-primary-foreground: 220 20% 6%;
+    --sidebar-accent: 220 14% 10%;
+    --sidebar-accent-foreground: 40 18% 92%;
+    --sidebar-border: 220 14% 14%;
+    --sidebar-ring: 42 90% 52%;
 
     /* Custom tokens for premium feel */
-    --gold: 42 85% 55%;
-    --gold-muted: 42 50% 40%;
-    --cream: 40 30% 92%;
-    --charcoal: 220 15% 12%;
-    --obsidian: 220 15% 6%;
+    --gold: 42 90% 52%;
+    --gold-muted: 42 55% 38%;
+    --cream: 40 35% 94%;
+    --charcoal: 220 16% 10%;
+    --obsidian: 220 18% 5%;
+    
+    /* Premium enhancement tokens */
+    --glow-gold: 42 90% 52%;
+    --surface-elevated: 220 16% 12%;
+    --surface-overlay: 220 14% 8%;
   }
 
   /* Light mode - Cream/warm white with dark accents */
   .light {
-    --background: 40 25% 97%;
-    --foreground: 220 20% 12%;
+    --background: 40 30% 97%;
+    --foreground: 220 25% 10%;
 
-    --card: 40 30% 98%;
-    --card-foreground: 220 20% 12%;
+    --card: 40 35% 99%;
+    --card-foreground: 220 25% 10%;
 
-    --popover: 40 30% 98%;
-    --popover-foreground: 220 20% 12%;
+    --popover: 40 35% 99%;
+    --popover-foreground: 220 25% 10%;
 
-    --primary: 220 20% 15%;
-    --primary-foreground: 40 25% 97%;
+    --primary: 220 25% 12%;
+    --primary-foreground: 40 30% 98%;
 
-    --secondary: 40 15% 92%;
-    --secondary-foreground: 220 20% 15%;
+    --secondary: 40 18% 93%;
+    --secondary-foreground: 220 25% 12%;
 
-    --muted: 40 15% 94%;
-    --muted-foreground: 220 10% 45%;
+    --muted: 40 18% 95%;
+    --muted-foreground: 220 12% 42%;
 
-    --accent: 42 75% 50%;
-    --accent-foreground: 220 20% 12%;
+    --accent: 42 80% 48%;
+    --accent-foreground: 220 25% 10%;
 
-    --destructive: 0 72% 50%;
+    --destructive: 0 75% 48%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 40 15% 88%;
-    --input: 40 15% 90%;
-    --ring: 220 20% 15%;
+    --border: 40 18% 86%;
+    --input: 40 18% 92%;
+    --ring: 220 25% 12%;
 
-    --sidebar-background: 40 30% 98%;
-    --sidebar-foreground: 220 20% 12%;
-    --sidebar-primary: 220 20% 15%;
-    --sidebar-primary-foreground: 40 25% 97%;
-    --sidebar-accent: 40 15% 94%;
-    --sidebar-accent-foreground: 220 20% 12%;
-    --sidebar-border: 40 15% 88%;
-    --sidebar-ring: 220 20% 15%;
+    --sidebar-background: 40 35% 99%;
+    --sidebar-foreground: 220 25% 10%;
+    --sidebar-primary: 220 25% 12%;
+    --sidebar-primary-foreground: 40 30% 98%;
+    --sidebar-accent: 40 18% 95%;
+    --sidebar-accent-foreground: 220 25% 10%;
+    --sidebar-border: 40 18% 86%;
+    --sidebar-ring: 220 25% 12%;
 
-    --gold: 42 75% 45%;
-    --gold-muted: 42 40% 55%;
-    --cream: 40 30% 97%;
-    --charcoal: 220 20% 15%;
-    --obsidian: 220 20% 8%;
+    --gold: 42 80% 42%;
+    --gold-muted: 42 45% 52%;
+    --cream: 40 35% 98%;
+    --charcoal: 220 25% 12%;
+    --obsidian: 220 25% 6%;
+    
+    --glow-gold: 42 80% 42%;
+    --surface-elevated: 40 35% 100%;
+    --surface-overlay: 40 30% 96%;
   }
 }
 
@@ -117,39 +126,43 @@
     font-feature-settings: "kern" 1, "liga" 1;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
   }
 
   body {
     @apply bg-background text-foreground;
     font-family: 'Inter', system-ui, sans-serif;
+    line-height: 1.6;
   }
 
   /* Royal display font - Cinzel for headlines */
   .font-display {
     font-family: 'Cinzel', 'Times New Roman', serif;
-    letter-spacing: 0.02em;
+    letter-spacing: 0.03em;
     font-weight: 600;
   }
 
   /* Decorative royal font for special elements */
   .font-royal {
     font-family: 'Cinzel Decorative', 'Times New Roman', serif;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.06em;
   }
 
   /* Elegant serif for body text */
   .font-serif {
     font-family: 'Cormorant', Georgia, serif;
     font-weight: 500;
+    letter-spacing: 0.01em;
   }
 
   .font-sans {
     font-family: 'Inter', system-ui, sans-serif;
+    letter-spacing: -0.01em;
   }
 
-  /* Gold gradient text */
+  /* Gold gradient text - enhanced */
   .text-gold-gradient {
-    background: linear-gradient(135deg, hsl(42 85% 55%) 0%, hsl(38 80% 65%) 50%, hsl(42 85% 55%) 100%);
+    background: linear-gradient(135deg, hsl(42 90% 52%) 0%, hsl(38 85% 62%) 40%, hsl(45 90% 55%) 60%, hsl(42 90% 52%) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -157,34 +170,57 @@
 
   /* Subtle glow effect for premium elements */
   .glow-gold {
-    box-shadow: 0 0 20px hsl(42 85% 55% / 0.15), 0 0 40px hsl(42 85% 55% / 0.1);
+    box-shadow: 0 0 24px hsl(var(--glow-gold) / 0.18), 0 0 48px hsl(var(--glow-gold) / 0.08);
   }
 
   /* Premium border gradient */
   .border-gold-gradient {
     border: 1px solid transparent;
     background: linear-gradient(var(--background), var(--background)) padding-box,
-                linear-gradient(135deg, hsl(42 85% 55% / 0.5), hsl(42 50% 40% / 0.3)) border-box;
+                linear-gradient(135deg, hsl(var(--gold) / 0.6), hsl(var(--gold-muted) / 0.25)) border-box;
+  }
+
+  /* Premium text shadow for headings */
+  .text-shadow-gold {
+    text-shadow: 0 2px 12px hsl(var(--glow-gold) / 0.2);
   }
 }
 
 @layer components {
-  /* Premium card styling */
+  /* Premium card styling - enhanced */
   .card-premium {
-    @apply bg-card border border-border/50;
-    background: linear-gradient(180deg, hsl(220 15% 12%) 0%, hsl(220 15% 10%) 100%);
+    @apply bg-card border border-border/40 rounded-xl;
+    background: linear-gradient(180deg, hsl(var(--surface-elevated)) 0%, hsl(var(--card)) 100%);
+    box-shadow: 0 4px 24px hsl(220 20% 4% / 0.4), inset 0 1px 0 hsl(var(--foreground) / 0.03);
   }
 
   /* Luxury button variant */
   .btn-luxury {
-    @apply bg-primary text-primary-foreground font-medium tracking-wide;
-    background: linear-gradient(135deg, hsl(42 85% 55%) 0%, hsl(38 80% 50%) 100%);
-    box-shadow: 0 2px 10px hsl(42 85% 55% / 0.25);
-    transition: all 0.3s ease;
+    @apply bg-primary text-primary-foreground font-medium tracking-wide rounded-lg;
+    background: linear-gradient(135deg, hsl(var(--gold)) 0%, hsl(38 85% 48%) 100%);
+    box-shadow: 0 4px 16px hsl(var(--glow-gold) / 0.3), inset 0 1px 0 hsl(0 0% 100% / 0.15);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .btn-luxury:hover {
-    box-shadow: 0 4px 20px hsl(42 85% 55% / 0.35);
-    transform: translateY(-1px);
+    box-shadow: 0 6px 24px hsl(var(--glow-gold) / 0.4), inset 0 1px 0 hsl(0 0% 100% / 0.2);
+    transform: translateY(-2px);
+  }
+
+  /* Elevated surface for modals, popovers */
+  .surface-elevated {
+    background: hsl(var(--surface-elevated));
+    box-shadow: 0 8px 32px hsl(220 20% 4% / 0.5), 0 2px 8px hsl(220 20% 4% / 0.3);
+  }
+
+  /* Responsive container padding - improved for tablets */
+  .container-responsive {
+    @apply px-4 sm:px-6 md:px-8 lg:px-12;
+  }
+
+  /* Premium divider */
+  .divider-gold {
+    @apply h-px w-full;
+    background: linear-gradient(90deg, transparent, hsl(var(--gold) / 0.3) 20%, hsl(var(--gold) / 0.5) 50%, hsl(var(--gold) / 0.3) 80%, transparent);
   }
 }

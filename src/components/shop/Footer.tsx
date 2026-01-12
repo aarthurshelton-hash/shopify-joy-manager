@@ -14,34 +14,47 @@ export const Footer = () => {
     }
   };
   return (
-    <footer className="border-t border-border/50 mt-20 bg-card/30">
-      <div className="container mx-auto px-4 py-10">
-        <div className="flex flex-col items-center space-y-4">
+    <footer className="border-t border-border/40 mt-16 sm:mt-20 bg-card/30">
+      <div className="container mx-auto px-4 py-8 sm:py-10 md:py-12">
+        <div className="flex flex-col items-center space-y-4 sm:space-y-5">
+          {/* Decorative divider */}
+          <div className="divider-gold w-32 sm:w-40 mb-2" />
+          
           {/* Logo */}
           <Link to="/" onClick={handleLogoClick} className="group">
             <img 
               src={enPensentLogo} 
               alt="En Pensent Logo" 
-              className="w-16 h-16 rounded-full object-cover glow-gold group-hover:scale-105 transition-transform"
+              className="w-14 h-14 sm:w-16 sm:h-16 rounded-full object-cover glow-gold group-hover:scale-105 transition-transform"
             />
           </Link>
           
           {/* Brand name */}
-          <p className="text-lg font-royal font-bold tracking-widest uppercase text-gold-gradient">
+          <p className="text-base sm:text-lg font-royal font-bold tracking-widest uppercase text-gold-gradient">
             En Pensent
           </p>
           
           {/* Tagline */}
-          <p className="text-sm text-muted-foreground font-serif italic">
+          <p className="text-sm sm:text-base text-muted-foreground font-serif italic text-center px-4">
             Transform chess games into timeless art
           </p>
           
+          {/* Links - visible on tablet+ */}
+          <nav className="hidden sm:flex items-center gap-6 pt-2">
+            <Link to="/about" className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">About</Link>
+            <Link to="/marketplace" className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">Marketplace</Link>
+            <Link to="/investors" className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">Investors</Link>
+          </nav>
+          
           {/* Copyright */}
-          <p className="text-xs text-muted-foreground/70 pt-2">
+          <p className="text-xs text-muted-foreground/60 pt-4 sm:pt-6">
             © {new Date().getFullYear()} En Pensent. All rights reserved.
           </p>
         </div>
       </div>
+      
+      {/* Safe area padding for iOS */}
+      <div className="h-safe-bottom" />
     </footer>
   );
 };
