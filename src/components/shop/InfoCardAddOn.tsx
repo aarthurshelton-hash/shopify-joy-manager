@@ -1,0 +1,166 @@
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FileText, Check, Info, Crown, Sparkles, Lock } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+
+interface InfoCardAddOnProps {
+  isPremium: boolean;
+  onAddInfoCard: (include: boolean) => void;
+  includeInfoCard: boolean;
+  onUpgradePremium?: () => void;
+}
+
+// Price for the physical info card add-on
+const INFO_CARD_PRICE = 9.99;
+
+export const InfoCardAddOn: React.FC<InfoCardAddOnProps> = ({
+  isPremium,
+  onAddInfoCard,
+  includeInfoCard,
+  onUpgradePremium,
+}) => {
+  const [showDetails, setShowDetails] = useState(false);
+
+  return (
+    <Card className="overflow-hidden border-primary/20">
+      <CardContent className="p-4 space-y-3">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+              <FileText className="h-4 w-4 text-primary" />
+            </div>
+            <div>
+              <span className="font-medium text-sm">Vision Data Card</span>
+              <p className="text-[10px] text-muted-foreground">Printed companion piece</p>
+            </div>
+          </div>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button 
+                  onClick={() => setShowDetails(!showDetails)}
+                  className="p-1 rounded-full hover:bg-accent/50 transition-colors"
+                >
+                  <Info className="h-4 w-4 text-muted-foreground" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                <p className="text-sm font-medium">Vision Data Card</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  A beautiful 4×6" printed card with all the game data, color legend, 
+                  piece statistics, and territory analysis from your visualization.
+                </p>
+                <p className="text-xs text-primary mt-1 font-medium">
+                  Perfect for framing alongside your print!
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+
+        {/* Preview of what's included */}
+        <AnimatePresence>
+          {showDetails && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="bg-muted/30 rounded-lg p-3 space-y-2 text-xs">
+                <p className="font-medium">Includes:</p>
+                <ul className="space-y-1 text-muted-foreground">
+                  <li className="flex items-center gap-2">
+                    <Sparkles className="h-3 w-3 text-primary" />
+                    Full color legend with piece activity stats
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Sparkles className="h-3 w-3 text-primary" />
+                    Territory control analysis
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Sparkles className="h-3 w-3 text-primary" />
+                    Game phase timeline breakdown
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Sparkles className="h-3 w-3 text-primary" />
+                    MVP piece highlight
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Sparkles className="h-3 w-3 text-primary" />
+                    Premium matte 4×6" cardstock
+                  </li>
+                </ul>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Selection toggle */}
+        {isPremium ? (
+          <div className="flex gap-2">
+            <Button
+              variant={!includeInfoCard ? "default" : "outline"}
+              size="sm"
+              onClick={() => onAddInfoCard(false)}
+              className="flex-1"
+            >
+              No Card
+            </Button>
+            <Button
+              variant={includeInfoCard ? "default" : "outline"}
+              size="sm"
+              onClick={() => onAddInfoCard(true)}
+              className="flex-1 gap-2"
+            >
+              {includeInfoCard && <Check className="h-3 w-3" />}
+              Add Card +${INFO_CARD_PRICE}
+            </Button>
+          </div>
+        ) : (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onUpgradePremium}
+            className="w-full gap-2 border-primary/30 text-primary hover:bg-primary/10"
+          >
+            <Lock className="h-3 w-3" />
+            <span>Visionary Exclusive</span>
+            <Crown className="h-3 w-3" />
+          </Button>
+        )}
+
+        {/* Price display */}
+        {includeInfoCard && isPremium && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center justify-between pt-2 border-t"
+          >
+            <span className="text-sm text-muted-foreground">Info Card add-on:</span>
+            <span className="font-bold text-primary">+${INFO_CARD_PRICE}</span>
+          </motion.div>
+        )}
+
+        {/* Premium upsell for free users */}
+        {!isPremium && (
+          <p className="text-[10px] text-muted-foreground text-center">
+            Upgrade to Visionary Premium to unlock this collector's add-on
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+export const INFO_CARD_PRICE_EXPORT = INFO_CARD_PRICE;
+
+export default InfoCardAddOn;

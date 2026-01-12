@@ -3,7 +3,7 @@ import html2canvas from 'html2canvas';
 import GIF from 'gif.js';
 import ChessBoardVisualization from './ChessBoardVisualization';
 import InteractiveVisualizationBoard from './InteractiveVisualizationBoard';
-import ColorLegend from './ColorLegend';
+import { EnhancedLegend } from './EnhancedLegend';
 import GameInfoDisplay from './GameInfoDisplay';
 import VerticalTimelineSlider from './VerticalTimelineSlider';
 import TimelineSlider from './TimelineSlider';
@@ -785,9 +785,15 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
         {/* Color Legend on the right - Interactive */}
         {showLegend && (
           <div className="hidden lg:block w-72">
-            <ColorLegend 
-              interactive={true} 
-              board={gifPreviewMove !== null ? filterBoardToMove(simulation.board, gifPreviewMove) : timelineBoard}
+            <EnhancedLegend 
+              whitePalette={getActivePalette().white}
+              blackPalette={getActivePalette().black}
+              moveHistory={simulation.gameData.moves?.map((move, i) => ({
+                piece: (move.match(/^[KQRBN]/)?.[0]?.toLowerCase() || 'p') as any,
+                color: (i % 2 === 0 ? 'w' : 'b') as any,
+                square: move.slice(-2),
+                moveNumber: Math.floor(i / 2) + 1,
+              })) || []}
             />
           </div>
         )}
@@ -804,9 +810,16 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
       {/* Mobile Legend - shown below timeline on small screens */}
       {showLegend && (
         <div className="lg:hidden">
-          <ColorLegend 
-            interactive={true} 
-            board={gifPreviewMove !== null ? filterBoardToMove(simulation.board, gifPreviewMove) : timelineBoard}
+          <EnhancedLegend 
+            whitePalette={getActivePalette().white}
+            blackPalette={getActivePalette().black}
+            compact={true}
+            moveHistory={simulation.gameData.moves?.map((move, i) => ({
+              piece: (move.match(/^[KQRBN]/)?.[0]?.toLowerCase() || 'p') as any,
+              color: (i % 2 === 0 ? 'w' : 'b') as any,
+              square: move.slice(-2),
+              moveNumber: Math.floor(i / 2) + 1,
+            })) || []}
           />
         </div>
       )}
