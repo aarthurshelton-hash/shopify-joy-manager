@@ -238,6 +238,42 @@ export type Database = {
         }
         Relationships: []
       }
+      education_fund: {
+        Row: {
+          created_at: string
+          event_type: string
+          forfeited_value_cents: number
+          fund_contribution_cents: number
+          id: string
+          notes: string | null
+          platform_fee_cents: number
+          source_user_id: string | null
+          visions_released: number
+        }
+        Insert: {
+          created_at?: string
+          event_type?: string
+          forfeited_value_cents?: number
+          fund_contribution_cents?: number
+          id?: string
+          notes?: string | null
+          platform_fee_cents?: number
+          source_user_id?: string | null
+          visions_released?: number
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          forfeited_value_cents?: number
+          fund_contribution_cents?: number
+          id?: string
+          notes?: string | null
+          platform_fee_cents?: number
+          source_user_id?: string | null
+          visions_released?: number
+        }
+        Relationships: []
+      }
       favorite_games: {
         Row: {
           created_at: string
@@ -838,9 +874,23 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      education_fund_stats: {
+        Row: {
+          scholarships_funded: number | null
+          total_contributions: number | null
+          total_forfeited_value_cents: number | null
+          total_fund_cents: number | null
+          total_platform_fee_cents: number | null
+          total_visions_released: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      calculate_portfolio_value: {
+        Args: { p_user_id: string }
+        Returns: number
+      }
       calculate_vision_score: {
         Args: {
           p_download_gif_count: number
@@ -897,6 +947,13 @@ export type Database = {
         Returns: boolean
       }
       release_user_visions: { Args: { p_user_id: string }; Returns: number }
+      release_user_visions_with_value: {
+        Args: { p_user_id: string }
+        Returns: {
+          forfeited_value_cents: number
+          released_count: number
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"

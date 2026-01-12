@@ -20,6 +20,7 @@ import { BookShowcase } from '@/components/book/BookShowcase';
 import { TrendingVisions } from '@/components/marketplace/TrendingVisions';
 import { ClaimableVisionsSection } from '@/components/marketplace/ClaimableVisionsSection';
 import { TransferLimitBadge } from '@/components/marketplace/TransferLimitBadge';
+import EducationFundCard from '@/components/marketplace/EducationFundCard';
 import { useSessionStore } from '@/stores/sessionStore';
 import { 
   getActiveListings, 
@@ -463,8 +464,9 @@ const Marketplace: React.FC = () => {
           )}
 
           {/* Transparency Tab */}
-          <TabsContent value="transparency">
+          <TabsContent value="transparency" className="space-y-6">
             <MarketplaceTransparency />
+            <EducationFundCard />
           </TabsContent>
         </Tabs>
       </div>
