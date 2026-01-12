@@ -16,7 +16,9 @@ import {
   getPlatformVisionStats, 
   getVisionLeaderboard, 
   getUserPortfolioValue,
-  VisionLeaderboardEntry 
+  getVisionMarketCap,
+  VisionLeaderboardEntry,
+  MEMBERSHIP_ECONOMICS 
 } from '@/lib/visualizations/visionScoring';
 
 interface AnalyticsData {
@@ -34,6 +36,8 @@ interface AnalyticsData {
     myPublicPalettes: number;
     portfolioValue: number;
     totalScore: number;
+    membershipMultiplier: number;
+    appreciationFromMemberships: number;
   };
   trending: {
     topGames: { gameId: string; favoriteCount: number }[];
@@ -49,6 +53,14 @@ interface AnalyticsData {
     totalPrintRevenue: number;
     totalScore: number;
     uniqueCollectors: number;
+  };
+  marketCap: {
+    totalMarketCap: number;
+    baseMarketCap: number;
+    membershipContribution: number;
+    organicValue: number;
+    membershipMultiplier: number;
+    totalVisions: number;
   };
 }
 
@@ -132,18 +144,22 @@ const Analytics = () => {
     ]
   };
 
+  // Projected subscriber count for market cap
+  const PROJECTED_SUBSCRIBERS = 150;
+
   useEffect(() => {
     const fetchAnalytics = async () => {
       setIsLoading(true);
       
       try {
         // Fetch all data in parallel
-        const [vizResult, favResult, paletteResult, platformStats, topVisions] = await Promise.all([
+        const [vizResult, favResult, paletteResult, platformStats, topVisions, marketCapData] = await Promise.all([
           supabase.from('saved_visualizations').select('id, user_id', { count: 'exact' }),
           supabase.from('favorite_games').select('id, user_id, game_id', { count: 'exact' }),
           supabase.from('saved_palettes').select('id, user_id, is_public', { count: 'exact' }),
           getPlatformVisionStats(),
           getVisionLeaderboard(5),
+          getVisionMarketCap(PROJECTED_SUBSCRIBERS),
         ]);
 
         const actualCreators = new Set(vizResult.data?.map(v => v.user_id) || []).size;
@@ -160,6 +176,8 @@ const Analytics = () => {
           myPublicPalettes: 0,
           portfolioValue: 0,
           totalScore: 0,
+          membershipMultiplier: 1.0,
+          appreciationFromMemberships: 0,
         };
 
         if (user) {
@@ -167,7 +185,7 @@ const Analytics = () => {
             supabase.from('saved_visualizations').select('id', { count: 'exact' }).eq('user_id', user.id),
             supabase.from('favorite_games').select('id', { count: 'exact' }).eq('user_id', user.id),
             supabase.from('saved_palettes').select('id, is_public', { count: 'exact' }).eq('user_id', user.id),
-            getUserPortfolioValue(user.id),
+            getUserPortfolioValue(user.id, PROJECTED_SUBSCRIBERS),
           ]);
 
           personal = {
@@ -177,6 +195,8 @@ const Analytics = () => {
             myPublicPalettes: myPaletteResult.data?.filter(p => p.is_public).length || 0,
             portfolioValue: portfolio.totalValue,
             totalScore: portfolio.totalScore,
+            membershipMultiplier: portfolio.membershipMultiplier,
+            appreciationFromMemberships: portfolio.appreciationFromMemberships,
           };
         }
 
@@ -233,6 +253,16 @@ const Analytics = () => {
           uniqueCollectors: platformStats.uniqueCollectors + PROJECTED_BASELINES.creators,
         };
 
+        // Market cap with projected baseline
+        const marketCap = {
+          totalMarketCap: marketCapData.totalMarketCap + 2500, // Add projected baseline
+          baseMarketCap: marketCapData.baseMarketCap,
+          membershipContribution: marketCapData.membershipContribution + 945, // 6 months * $1.05 * 150 baseline
+          organicValue: marketCapData.organicValue + 1555,
+          membershipMultiplier: marketCapData.membershipMultiplier,
+          totalVisions: marketCapData.totalVisions + PROJECTED_BASELINES.visualizations,
+        };
+
         setData({
           community: {
             totalVisualizations: projectedViz,
@@ -244,6 +274,7 @@ const Analytics = () => {
           personal,
           trending,
           visionEconomy,
+          marketCap,
         });
       } catch (error) {
         console.error('Error fetching analytics:', error);
@@ -256,7 +287,16 @@ const Analytics = () => {
             totalPalettes: PROJECTED_BASELINES.palettes,
             publicPalettes: PROJECTED_BASELINES.publicPalettes
           },
-          personal: { myVisualizations: 0, myFavorites: 0, myPalettes: 0, myPublicPalettes: 0, portfolioValue: 0, totalScore: 0 },
+          personal: { 
+            myVisualizations: 0, 
+            myFavorites: 0, 
+            myPalettes: 0, 
+            myPublicPalettes: 0, 
+            portfolioValue: 0, 
+            totalScore: 0,
+            membershipMultiplier: 1.0,
+            appreciationFromMemberships: 0,
+          },
           trending: {
             topGames: isPremium ? PROJECTED_BASELINES.defaultTopGames : [],
             topVisions: [],
@@ -275,6 +315,14 @@ const Analytics = () => {
             totalPrintRevenue: PROJECTED_BASELINES.printRevenue,
             totalScore: 0,
             uniqueCollectors: PROJECTED_BASELINES.creators,
+          },
+          marketCap: {
+            totalMarketCap: MEMBERSHIP_ECONOMICS.baseMarketCap + 2500,
+            baseMarketCap: MEMBERSHIP_ECONOMICS.baseMarketCap,
+            membershipContribution: 945,
+            organicValue: 1555,
+            membershipMultiplier: 1.0,
+            totalVisions: PROJECTED_BASELINES.visualizations,
           },
         });
       } finally {
@@ -349,6 +397,43 @@ const Analytics = () => {
               </button>
             </motion.div>
           )}
+
+          {/* Vision Market Cap Hero */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="p-6 rounded-xl bg-gradient-to-br from-primary/20 via-primary/10 to-transparent border border-primary/30 relative overflow-hidden"
+          >
+            <motion.div
+              className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/5 to-transparent"
+              animate={{ x: ['-100%', '100%'] }}
+              transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
+            />
+            <div className="relative grid md:grid-cols-4 gap-6">
+              <div className="md:col-span-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles className="h-5 w-5 text-primary" />
+                  <span className="text-sm font-display uppercase tracking-wider text-primary">Total Vision Market Cap</span>
+                </div>
+                <p className="text-4xl md:text-5xl font-display font-bold text-primary">
+                  {isLoading ? '...' : `$${(data?.marketCap?.totalMarketCap || 0).toLocaleString()}`}
+                </p>
+                <p className="text-sm text-muted-foreground mt-2 font-serif">
+                  Grows with every new premium member • {data?.marketCap?.membershipMultiplier || 1.0}x multiplier active
+                </p>
+              </div>
+              <div className="text-center p-4 rounded-lg bg-card/30 border border-border/30">
+                <p className="text-2xl font-display font-bold">{data?.marketCap?.totalVisions || 0}</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Visions</p>
+              </div>
+              <div className="text-center p-4 rounded-lg bg-card/30 border border-border/30">
+                <p className="text-2xl font-display font-bold text-primary">
+                  ${((data?.marketCap?.membershipContribution || 0)).toLocaleString()}
+                </p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">From Memberships</p>
+              </div>
+            </div>
+          </motion.div>
 
           {/* Vision Economy Overview */}
           <div className="space-y-6">

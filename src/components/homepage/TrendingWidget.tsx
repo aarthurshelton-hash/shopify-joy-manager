@@ -2,12 +2,18 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   TrendingUp, Heart, Users, Crown, BarChart3, Lock, 
-  ChevronRight, Flame, Star, Eye, Download, Printer, ArrowRightLeft, DollarSign
+  ChevronRight, Flame, Star, Eye, Download, Printer, ArrowRightLeft, DollarSign, Sparkles
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { getPlatformVisionStats, getVisionLeaderboard, VisionLeaderboardEntry } from '@/lib/visualizations/visionScoring';
+import { 
+  getPlatformVisionStats, 
+  getVisionLeaderboard, 
+  getVisionMarketCap,
+  VisionLeaderboardEntry,
+  MEMBERSHIP_ECONOMICS 
+} from '@/lib/visualizations/visionScoring';
 
 interface TrendingData {
   totalVisualizations: number;
@@ -22,6 +28,11 @@ interface TrendingData {
     totalPrintOrders: number;
     totalPrintRevenue: number;
     totalScore: number;
+  };
+  marketCap: {
+    totalMarketCap: number;
+    membershipMultiplier: number;
+    totalVisions: number;
   };
 }
 
@@ -46,14 +57,18 @@ const TrendingWidget = () => {
     ]
   };
 
+  // Projected baseline for subscriber count (for market cap calculation)
+  const PROJECTED_SUBSCRIBERS = 150; // Conservative early-stage estimate
+
   useEffect(() => {
     const fetchTrending = async () => {
       try {
-        const [vizResult, favResult, platformStats, topVisions] = await Promise.all([
+        const [vizResult, favResult, platformStats, topVisions, marketCapData] = await Promise.all([
           supabase.from('saved_visualizations').select('id, user_id', { count: 'exact' }),
           supabase.from('favorite_games').select('id, game_id', { count: 'exact' }),
           getPlatformVisionStats(),
           getVisionLeaderboard(3),
+          getVisionMarketCap(PROJECTED_SUBSCRIBERS),
         ]);
 
         const actualCreators = new Set(vizResult.data?.map(v => v.user_id) || []).size;
@@ -84,6 +99,11 @@ const TrendingWidget = () => {
             totalPrintRevenue: PROJECTED_BASELINES.printRevenue + platformStats.totalPrintRevenue,
             totalScore: platformStats.totalScore,
           },
+          marketCap: {
+            totalMarketCap: marketCapData.totalMarketCap + 2500, // Add projected baseline
+            membershipMultiplier: marketCapData.membershipMultiplier,
+            totalVisions: marketCapData.totalVisions + PROJECTED_BASELINES.visualizations,
+          },
         });
       } catch (error) {
         console.error('Error fetching trending data:', error);
@@ -100,6 +120,11 @@ const TrendingWidget = () => {
             totalPrintOrders: PROJECTED_BASELINES.printOrders,
             totalPrintRevenue: PROJECTED_BASELINES.printRevenue,
             totalScore: 0,
+          },
+          marketCap: {
+            totalMarketCap: MEMBERSHIP_ECONOMICS.baseMarketCap + 2500,
+            membershipMultiplier: 1.0,
+            totalVisions: PROJECTED_BASELINES.visualizations,
           },
         });
       } finally {
@@ -158,13 +183,36 @@ const TrendingWidget = () => {
             {/* Content Grid */}
             <div className="p-6">
               <div className="grid md:grid-cols-3 gap-6">
-                {/* Vision Economy Stats */}
+                {/* Vision Market Cap & Economy Stats */}
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 mb-2">
                     <DollarSign className="h-4 w-4 text-primary" />
                     <span className="text-sm font-display uppercase tracking-wider">
-                      Vision Economy
+                      Vision Market
                     </span>
+                  </div>
+                  
+                  {/* Market Cap Hero */}
+                  <div className="p-4 rounded-lg bg-gradient-to-br from-primary/20 via-primary/10 to-transparent border border-primary/30 relative overflow-hidden">
+                    <motion.div
+                      className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/5 to-transparent"
+                      animate={{ x: ['-100%', '100%'] }}
+                      transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+                    />
+                    <div className="relative">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Sparkles className="h-3.5 w-3.5 text-primary" />
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                          Total Market Cap
+                        </span>
+                      </div>
+                      <p className="text-2xl font-display font-bold text-primary">
+                        {isLoading ? '...' : `$${(data?.marketCap.totalMarketCap || 0).toLocaleString()}`}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {isLoading ? '...' : `${data?.marketCap.totalVisions || 0} visions • ${data?.marketCap.membershipMultiplier}x multiplier`}
+                      </p>
+                    </div>
                   </div>
                   
                   <div className="grid grid-cols-2 gap-3">
@@ -182,18 +230,6 @@ const TrendingWidget = () => {
                     
                     <div className="p-3 rounded-lg bg-card/50 border border-border/30">
                       <div className="flex items-center gap-2 mb-1">
-                        <Download className="h-3.5 w-3.5 text-primary/70" />
-                      </div>
-                      <p className="text-xl font-display font-bold">
-                        {isLoading ? '...' : data?.platformStats.totalDownloads.toLocaleString() || 0}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                        Downloads
-                      </p>
-                    </div>
-                    
-                    <div className="p-3 rounded-lg bg-card/50 border border-border/30">
-                      <div className="flex items-center gap-2 mb-1">
                         <ArrowRightLeft className="h-3.5 w-3.5 text-primary/70" />
                       </div>
                       <p className="text-xl font-display font-bold">
@@ -201,18 +237,6 @@ const TrendingWidget = () => {
                       </p>
                       <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
                         Trades
-                      </p>
-                    </div>
-                    
-                    <div className="p-3 rounded-lg bg-primary/10 border border-primary/30">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Printer className="h-3.5 w-3.5 text-primary" />
-                      </div>
-                      <p className="text-xl font-display font-bold text-primary">
-                        {isLoading ? '...' : formatRevenue(data?.platformStats.totalPrintRevenue || 0)}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                        Print Sales
                       </p>
                     </div>
                   </div>

@@ -38,6 +38,31 @@ export const SCORING_WEIGHTS = {
 };
 
 /**
+ * Membership-Driven Market Economics
+ * 
+ * Each premium subscription injects value into the vision economy.
+ * This creates a virtuous cycle: more members = higher vision values = more incentive to create/trade.
+ * 
+ * Economics:
+ * - Monthly subscription: $7/month
+ * - Market contribution: 15% of subscription ($1.05/month per subscriber)
+ * - This is distributed across all visions weighted by their scores
+ * 
+ * Business model:
+ * - 15% market contribution is sustainable (85% retained for operations)
+ * - Creates real value appreciation without diluting core revenue
+ * - Incentivizes vision creation and trading activity
+ */
+export const MEMBERSHIP_ECONOMICS = {
+  monthlySubscription: 7.00,           // $7/month
+  marketContributionRate: 0.15,        // 15% goes to market appreciation
+  monthlyContributionPerMember: 1.05,  // $1.05/month per subscriber to market
+  baseMarketCap: 5000,                 // $5,000 base market cap (foundation value)
+  valuePerScorePoint: 0.50,            // Base $0.50 per score point
+  membershipMultiplierCap: 3.0,        // Max 3x multiplier from memberships
+};
+
+/**
  * Generate a simple hash of the client's IP for rate limiting anonymous users
  * This is NOT a secure hash - just for basic rate limiting
  */
@@ -256,10 +281,14 @@ export async function getPlatformVisionStats(): Promise<{
 
 /**
  * Calculate the estimated value of a vision based on its score and activity
+ * Now includes membership-driven appreciation
  */
-export function calculateVisionValue(score: VisionScore): number {
-  // Base value from score (each point = ~$0.50)
-  const baseValue = score.totalScore * 0.5;
+export function calculateVisionValue(
+  score: VisionScore, 
+  membershipMultiplier: number = 1.0
+): number {
+  // Base value from score
+  const baseValue = score.totalScore * MEMBERSHIP_ECONOMICS.valuePerScorePoint;
   
   // Premium for high engagement
   const engagementMultiplier = Math.min(1 + (score.uniqueViewers / 100), 2);
@@ -267,16 +296,98 @@ export function calculateVisionValue(score: VisionScore): number {
   // Premium for print orders (proven demand)
   const printPremium = score.printOrderCount * 5;
   
-  return Math.round((baseValue * engagementMultiplier + printPremium) * 100) / 100;
+  // Apply membership-driven appreciation (capped)
+  const effectiveMultiplier = Math.min(membershipMultiplier, MEMBERSHIP_ECONOMICS.membershipMultiplierCap);
+  
+  const rawValue = (baseValue * engagementMultiplier + printPremium) * effectiveMultiplier;
+  
+  return Math.round(rawValue * 100) / 100;
 }
 
 /**
- * Get a user's total vision portfolio value
+ * Calculate the membership-driven market multiplier
+ * More subscribers = higher multiplier for all vision values
  */
-export async function getUserPortfolioValue(userId: string): Promise<{
+export function calculateMembershipMultiplier(subscriberCount: number): number {
+  // Logarithmic scaling to prevent runaway inflation
+  // 100 subscribers = 1.3x, 1000 = 1.6x, 10000 = 2.0x, 50000 = 2.5x
+  if (subscriberCount <= 0) return 1.0;
+  
+  const multiplier = 1 + (Math.log10(subscriberCount + 1) * 0.3);
+  return Math.min(multiplier, MEMBERSHIP_ECONOMICS.membershipMultiplierCap);
+}
+
+/**
+ * Calculate the total vision market capitalization
+ * Includes base value + membership contributions + organic score value
+ */
+export async function getVisionMarketCap(estimatedSubscribers: number = 100): Promise<{
+  totalMarketCap: number;
+  baseMarketCap: number;
+  membershipContribution: number;
+  organicValue: number;
+  membershipMultiplier: number;
+  totalVisions: number;
+  totalScore: number;
+}> {
+  try {
+    const platformStats = await getPlatformVisionStats();
+    
+    // Calculate membership multiplier
+    const membershipMultiplier = calculateMembershipMultiplier(estimatedSubscribers);
+    
+    // Base market cap (foundation)
+    const baseMarketCap = MEMBERSHIP_ECONOMICS.baseMarketCap;
+    
+    // Membership contribution pool (monthly injection)
+    // Assuming average 6 months of contributions per subscriber
+    const membershipContribution = estimatedSubscribers * MEMBERSHIP_ECONOMICS.monthlyContributionPerMember * 6;
+    
+    // Organic value from scores (views, downloads, trades, prints)
+    const organicValue = platformStats.totalScore * MEMBERSHIP_ECONOMICS.valuePerScorePoint * membershipMultiplier;
+    
+    // Get total vision count
+    const { count } = await supabase
+      .from('saved_visualizations')
+      .select('id', { count: 'exact', head: true });
+    
+    const totalMarketCap = baseMarketCap + membershipContribution + organicValue;
+    
+    return {
+      totalMarketCap: Math.round(totalMarketCap * 100) / 100,
+      baseMarketCap,
+      membershipContribution: Math.round(membershipContribution * 100) / 100,
+      organicValue: Math.round(organicValue * 100) / 100,
+      membershipMultiplier: Math.round(membershipMultiplier * 100) / 100,
+      totalVisions: count || 0,
+      totalScore: platformStats.totalScore,
+    };
+  } catch (error) {
+    console.error('Error calculating market cap:', error);
+    return {
+      totalMarketCap: MEMBERSHIP_ECONOMICS.baseMarketCap,
+      baseMarketCap: MEMBERSHIP_ECONOMICS.baseMarketCap,
+      membershipContribution: 0,
+      organicValue: 0,
+      membershipMultiplier: 1.0,
+      totalVisions: 0,
+      totalScore: 0,
+    };
+  }
+}
+
+/**
+ * Get a user's total vision portfolio value with membership appreciation
+ */
+export async function getUserPortfolioValue(
+  userId: string,
+  estimatedSubscribers: number = 100
+): Promise<{
   totalValue: number;
   visionCount: number;
   totalScore: number;
+  membershipMultiplier: number;
+  appreciationFromMemberships: number;
 }> {
   try {
     const { data: visualizations } = await supabase
@@ -285,7 +396,13 @@ export async function getUserPortfolioValue(userId: string): Promise<{
       .eq('user_id', userId);
 
     if (!visualizations || visualizations.length === 0) {
-      return { totalValue: 0, visionCount: 0, totalScore: 0 };
+      return { 
+        totalValue: 0, 
+        visionCount: 0, 
+        totalScore: 0,
+        membershipMultiplier: 1.0,
+        appreciationFromMemberships: 0,
+      };
     }
 
     const vizIds = visualizations.map(v => v.id);
@@ -294,7 +411,10 @@ export async function getUserPortfolioValue(userId: string): Promise<{
       .select('*')
       .in('visualization_id', vizIds);
 
-    let totalValue = 0;
+    const membershipMultiplier = calculateMembershipMultiplier(estimatedSubscribers);
+    
+    let totalValueWithMultiplier = 0;
+    let totalValueWithoutMultiplier = 0;
     let totalScore = 0;
 
     for (const scoreData of scores || []) {
@@ -310,17 +430,56 @@ export async function getUserPortfolioValue(userId: string): Promise<{
         uniqueViewers: scoreData.unique_viewers,
         updatedAt: scoreData.updated_at,
       };
-      totalValue += calculateVisionValue(score);
+      totalValueWithMultiplier += calculateVisionValue(score, membershipMultiplier);
+      totalValueWithoutMultiplier += calculateVisionValue(score, 1.0);
       totalScore += score.totalScore;
     }
 
+    // Add base value for visions without scores yet
+    const visionsWithoutScores = visualizations.length - (scores?.length || 0);
+    const baseVisionValue = 2.50 * membershipMultiplier; // $2.50 base value per vision
+    totalValueWithMultiplier += visionsWithoutScores * baseVisionValue;
+    totalValueWithoutMultiplier += visionsWithoutScores * 2.50;
+
     return {
-      totalValue,
+      totalValue: Math.round(totalValueWithMultiplier * 100) / 100,
       visionCount: visualizations.length,
       totalScore,
+      membershipMultiplier: Math.round(membershipMultiplier * 100) / 100,
+      appreciationFromMemberships: Math.round((totalValueWithMultiplier - totalValueWithoutMultiplier) * 100) / 100,
     };
   } catch (error) {
     console.error('Error getting user portfolio value:', error);
-    return { totalValue: 0, visionCount: 0, totalScore: 0 };
+    return { 
+      totalValue: 0, 
+      visionCount: 0, 
+      totalScore: 0,
+      membershipMultiplier: 1.0,
+      appreciationFromMemberships: 0,
+    };
   }
+}
+
+/**
+ * Calculate projected market appreciation for investor presentation
+ */
+export function calculateProjectedMarketCap(subscriberTargets: number[]): {
+  subscribers: number;
+  marketCap: number;
+  multiplier: number;
+  monthlyContribution: number;
+}[] {
+  return subscriberTargets.map(subscribers => {
+    const multiplier = calculateMembershipMultiplier(subscribers);
+    const monthlyContribution = subscribers * MEMBERSHIP_ECONOMICS.monthlyContributionPerMember;
+    const annualContribution = monthlyContribution * 12;
+    const marketCap = MEMBERSHIP_ECONOMICS.baseMarketCap + annualContribution;
+    
+    return {
+      subscribers,
+      marketCap: Math.round(marketCap),
+      multiplier: Math.round(multiplier * 100) / 100,
+      monthlyContribution: Math.round(monthlyContribution * 100) / 100,
+    };
+  });
 }
