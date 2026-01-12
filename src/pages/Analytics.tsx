@@ -21,6 +21,7 @@ import {
   VisionLeaderboardEntry,
   MEMBERSHIP_ECONOMICS 
 } from '@/lib/visualizations/visionScoring';
+import { useRandomGameArt } from '@/hooks/useRandomGameArt';
 
 interface AnalyticsData {
   community: {
@@ -72,7 +73,8 @@ const StatCard = ({
   sublabel, 
   trend,
   isPremium = false,
-  locked = false
+  locked = false,
+  backgroundImage
 }: { 
   icon: typeof Globe; 
   label: string; 
@@ -81,22 +83,32 @@ const StatCard = ({
   trend?: string;
   isPremium?: boolean;
   locked?: boolean;
+  backgroundImage?: string;
 }) => (
   <motion.div 
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
-    className={`relative p-6 rounded-lg border ${
+    className={`relative p-6 rounded-lg border overflow-hidden group ${
       isPremium 
         ? 'border-primary/40 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent' 
         : 'border-border/50 bg-card/50'
     } ${locked ? 'opacity-70' : ''}`}
   >
+    {backgroundImage && (
+      <>
+        <div 
+          className="absolute inset-0 opacity-[0.12] group-hover:opacity-[0.18] transition-opacity bg-cover bg-center"
+          style={{ backgroundImage: `url(${backgroundImage})` }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-br from-background/75 to-background/90" />
+      </>
+    )}
     {locked && (
-      <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-lg backdrop-blur-sm">
+      <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-lg backdrop-blur-sm z-10">
         <Lock className="h-6 w-6 text-muted-foreground" />
       </div>
     )}
-    <div className="flex items-start justify-between">
+    <div className="relative z-[1] flex items-start justify-between">
       <div className={`w-12 h-12 rounded-full ${isPremium ? 'bg-primary/20' : 'bg-primary/10'} flex items-center justify-center`}>
         <Icon className={`h-6 w-6 ${isPremium ? 'text-primary' : 'text-primary/70'}`} />
       </div>
@@ -107,7 +119,7 @@ const StatCard = ({
         </span>
       )}
     </div>
-    <div className="mt-4 space-y-1">
+    <div className="relative z-[1] mt-4 space-y-1">
       <p className="text-3xl font-display font-bold text-foreground">{value}</p>
       <p className="text-sm font-display uppercase tracking-wide text-muted-foreground">{label}</p>
       {sublabel && <p className="text-xs text-muted-foreground/70 font-serif">{sublabel}</p>}
@@ -122,6 +134,7 @@ const Analytics = () => {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const backgroundImages = useRandomGameArt(12);
 
   // Projected baseline data for early-stage analytics
   const PROJECTED_BASELINES = {
@@ -444,47 +457,89 @@ const Analytics = () => {
             </div>
             
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              <div className="p-4 rounded-lg bg-card/50 border border-border/50 text-center">
-                <Eye className="h-5 w-5 text-primary/70 mx-auto mb-2" />
-                <p className="text-2xl font-display font-bold">
-                  {isLoading ? '...' : data?.visionEconomy.totalViews.toLocaleString() || 0}
-                </p>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide">Views</p>
+              <div className="relative p-4 rounded-lg bg-card/50 border border-border/50 text-center overflow-hidden group">
+                <div 
+                  className="absolute inset-0 opacity-[0.10] group-hover:opacity-[0.16] transition-opacity bg-cover bg-center"
+                  style={{ backgroundImage: `url(${backgroundImages[4]})` }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-br from-background/75 to-background/90" />
+                <div className="relative z-[1]">
+                  <Eye className="h-5 w-5 text-primary/70 mx-auto mb-2" />
+                  <p className="text-2xl font-display font-bold">
+                    {isLoading ? '...' : data?.visionEconomy.totalViews.toLocaleString() || 0}
+                  </p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Views</p>
+                </div>
               </div>
-              <div className="p-4 rounded-lg bg-card/50 border border-border/50 text-center">
-                <Download className="h-5 w-5 text-primary/70 mx-auto mb-2" />
-                <p className="text-2xl font-display font-bold">
-                  {isLoading ? '...' : data?.visionEconomy.totalDownloads.toLocaleString() || 0}
-                </p>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide">HD Downloads</p>
+              <div className="relative p-4 rounded-lg bg-card/50 border border-border/50 text-center overflow-hidden group">
+                <div 
+                  className="absolute inset-0 opacity-[0.10] group-hover:opacity-[0.16] transition-opacity bg-cover bg-center"
+                  style={{ backgroundImage: `url(${backgroundImages[5]})` }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-br from-background/75 to-background/90" />
+                <div className="relative z-[1]">
+                  <Download className="h-5 w-5 text-primary/70 mx-auto mb-2" />
+                  <p className="text-2xl font-display font-bold">
+                    {isLoading ? '...' : data?.visionEconomy.totalDownloads.toLocaleString() || 0}
+                  </p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">HD Downloads</p>
+                </div>
               </div>
-              <div className="p-4 rounded-lg bg-card/50 border border-border/50 text-center">
-                <Activity className="h-5 w-5 text-primary/70 mx-auto mb-2" />
-                <p className="text-2xl font-display font-bold">
-                  {isLoading ? '...' : data?.visionEconomy.totalGifDownloads.toLocaleString() || 0}
-                </p>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide">GIF Exports</p>
+              <div className="relative p-4 rounded-lg bg-card/50 border border-border/50 text-center overflow-hidden group">
+                <div 
+                  className="absolute inset-0 opacity-[0.10] group-hover:opacity-[0.16] transition-opacity bg-cover bg-center"
+                  style={{ backgroundImage: `url(${backgroundImages[6]})` }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-br from-background/75 to-background/90" />
+                <div className="relative z-[1]">
+                  <Activity className="h-5 w-5 text-primary/70 mx-auto mb-2" />
+                  <p className="text-2xl font-display font-bold">
+                    {isLoading ? '...' : data?.visionEconomy.totalGifDownloads.toLocaleString() || 0}
+                  </p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">GIF Exports</p>
+                </div>
               </div>
-              <div className="p-4 rounded-lg bg-card/50 border border-border/50 text-center">
-                <ArrowRightLeft className="h-5 w-5 text-primary/70 mx-auto mb-2" />
-                <p className="text-2xl font-display font-bold">
-                  {isLoading ? '...' : data?.visionEconomy.totalTrades || 0}
-                </p>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide">Trades</p>
+              <div className="relative p-4 rounded-lg bg-card/50 border border-border/50 text-center overflow-hidden group">
+                <div 
+                  className="absolute inset-0 opacity-[0.10] group-hover:opacity-[0.16] transition-opacity bg-cover bg-center"
+                  style={{ backgroundImage: `url(${backgroundImages[7]})` }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-br from-background/75 to-background/90" />
+                <div className="relative z-[1]">
+                  <ArrowRightLeft className="h-5 w-5 text-primary/70 mx-auto mb-2" />
+                  <p className="text-2xl font-display font-bold">
+                    {isLoading ? '...' : data?.visionEconomy.totalTrades || 0}
+                  </p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Trades</p>
+                </div>
               </div>
-              <div className="p-4 rounded-lg bg-card/50 border border-border/50 text-center">
-                <Printer className="h-5 w-5 text-primary/70 mx-auto mb-2" />
-                <p className="text-2xl font-display font-bold">
-                  {isLoading ? '...' : data?.visionEconomy.totalPrintOrders || 0}
-                </p>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide">Print Orders</p>
+              <div className="relative p-4 rounded-lg bg-card/50 border border-border/50 text-center overflow-hidden group">
+                <div 
+                  className="absolute inset-0 opacity-[0.10] group-hover:opacity-[0.16] transition-opacity bg-cover bg-center"
+                  style={{ backgroundImage: `url(${backgroundImages[8]})` }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-br from-background/75 to-background/90" />
+                <div className="relative z-[1]">
+                  <Printer className="h-5 w-5 text-primary/70 mx-auto mb-2" />
+                  <p className="text-2xl font-display font-bold">
+                    {isLoading ? '...' : data?.visionEconomy.totalPrintOrders || 0}
+                  </p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Print Orders</p>
+                </div>
               </div>
-              <div className="p-4 rounded-lg bg-primary/10 border border-primary/30 text-center">
-                <DollarSign className="h-5 w-5 text-primary mx-auto mb-2" />
-                <p className="text-2xl font-display font-bold text-primary">
-                  {isLoading ? '...' : formatRevenue(data?.visionEconomy.totalPrintRevenue || 0)}
-                </p>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide">Print Revenue</p>
+              <div className="relative p-4 rounded-lg bg-primary/10 border border-primary/30 text-center overflow-hidden group">
+                <div 
+                  className="absolute inset-0 opacity-[0.12] group-hover:opacity-[0.18] transition-opacity bg-cover bg-center"
+                  style={{ backgroundImage: `url(${backgroundImages[9]})` }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-background/85" />
+                <div className="relative z-[1]">
+                  <DollarSign className="h-5 w-5 text-primary mx-auto mb-2" />
+                  <p className="text-2xl font-display font-bold text-primary">
+                    {isLoading ? '...' : formatRevenue(data?.visionEconomy.totalPrintRevenue || 0)}
+                  </p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Print Revenue</p>
+                </div>
               </div>
             </div>
           </div>
@@ -503,6 +558,7 @@ const Analytics = () => {
                 value={isLoading ? '...' : data?.community.totalVisualizations || 0}
                 sublabel="Unique chess artworks"
                 trend="+12%"
+                backgroundImage={backgroundImages[0]}
               />
               <StatCard
                 icon={Users}
@@ -510,6 +566,7 @@ const Analytics = () => {
                 value={isLoading ? '...' : data?.visionEconomy.uniqueCollectors || 0}
                 sublabel="Active vision owners"
                 trend="+8%"
+                backgroundImage={backgroundImages[1]}
               />
               <StatCard
                 icon={Heart}
@@ -517,12 +574,14 @@ const Analytics = () => {
                 value={isLoading ? '...' : data?.community.totalFavorites || 0}
                 sublabel="Historic games bookmarked"
                 trend="+23%"
+                backgroundImage={backgroundImages[2]}
               />
               <StatCard
                 icon={Palette}
                 label="Custom Palettes"
                 value={isLoading ? '...' : data?.community.totalPalettes || 0}
                 sublabel={`${data?.community.publicPalettes || 0} shared publicly`}
+                backgroundImage={backgroundImages[3]}
               />
             </div>
           </div>
