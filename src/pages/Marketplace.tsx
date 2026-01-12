@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ShoppingBag, Gift, DollarSign, Loader2, Crown, Package, Shield, TrendingUp, Eye, BookOpen } from 'lucide-react';
+import { ShoppingBag, Gift, DollarSign, Loader2, Crown, Package, Shield, TrendingUp, Eye, BookOpen, Palette } from 'lucide-react';
 import { useRandomGameArt } from '@/hooks/useRandomGameArt';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
@@ -25,6 +25,7 @@ import {
   completePurchase,
   MarketplaceListing 
 } from '@/lib/marketplace/marketplaceApi';
+import { getPaletteArt, isPremiumPalette, extractPaletteId } from '@/lib/marketplace/paletteArtMap';
 
 const Marketplace: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -304,7 +305,11 @@ const Marketplace: React.FC = () => {
                     transition={{ delay: index * 0.03 }}
                   >
                     <Card 
-                      className="overflow-hidden group hover:shadow-xl transition-all duration-300 border-border/50 cursor-pointer"
+                      className={`overflow-hidden group hover:shadow-xl transition-all duration-300 cursor-pointer ${
+                        isPremiumPalette(extractPaletteId(listing.visualization?.game_data))
+                          ? 'border-amber-500/50 ring-1 ring-amber-500/20 hover:ring-amber-500/40'
+                          : 'border-border/50'
+                      }`}
                       onClick={() => {
                         setSelectedListing(listing);
                         setShowDetailModal(true);
@@ -322,6 +327,16 @@ const Marketplace: React.FC = () => {
                           <div className="w-full h-full flex items-center justify-center">
                             <ShoppingBag className="h-12 w-12 text-muted-foreground/30" />
                           </div>
+                        )}
+                        
+                        {/* Premium Palette Badge */}
+                        {isPremiumPalette(extractPaletteId(listing.visualization?.game_data)) && (
+                          <Badge 
+                            className="absolute bottom-3 left-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-black gap-1"
+                          >
+                            <Palette className="h-3 w-3" />
+                            Premium Palette
+                          </Badge>
                         )}
                         
                         {/* Exemplar Badge */}
@@ -357,28 +372,46 @@ const Marketplace: React.FC = () => {
                         </div>
                       </div>
 
-                      <CardContent 
-                        className="p-3 sm:p-4 relative overflow-hidden"
-                        style={{
-                          backgroundImage: `linear-gradient(to bottom, hsl(var(--card)) 0%, hsl(var(--card) / 0.92) 100%), url(${gameArtImages[index % gameArtImages.length]})`,
-                          backgroundSize: 'cover',
-                          backgroundPosition: 'center',
-                        }}
-                      >
-                        <h3 className="font-semibold truncate mb-1 text-sm sm:text-base relative z-10">
-                          {listing.visualization?.title || 'Untitled'}
-                        </h3>
-                        <div className="flex items-center justify-between relative z-10">
-                          <p className="text-xs sm:text-sm text-muted-foreground truncate">
-                            by {listing.seller?.display_name || 'Anonymous'}
-                          </p>
-                          {/* Vision Score indicator */}
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground" title="Vision Score contributes to value">
-                            <TrendingUp className="h-3 w-3" />
-                            <span>Tracked</span>
-                          </div>
-                        </div>
-                      </CardContent>
+                      {(() => {
+                        const paletteId = extractPaletteId(listing.visualization?.game_data);
+                        const paletteArt = getPaletteArt(paletteId);
+                        const hasPremiumPalette = isPremiumPalette(paletteId);
+                        const backgroundImage = paletteArt || gameArtImages[index % gameArtImages.length];
+                        
+                        return (
+                          <CardContent 
+                            className={`p-3 sm:p-4 relative overflow-hidden transition-all duration-300 ${
+                              hasPremiumPalette ? 'bg-gradient-to-br from-amber-500/5 to-orange-500/5' : ''
+                            }`}
+                            style={{
+                              backgroundImage: `linear-gradient(to bottom, hsl(var(--card)) 0%, hsl(var(--card) / ${hasPremiumPalette ? '0.85' : '0.92'}) 100%), url(${backgroundImage})`,
+                              backgroundSize: 'cover',
+                              backgroundPosition: 'center',
+                            }}
+                          >
+                            <h3 className="font-semibold truncate mb-1 text-sm sm:text-base relative z-10">
+                              {listing.visualization?.title || 'Untitled'}
+                            </h3>
+                            <div className="flex items-center justify-between relative z-10">
+                              <p className="text-xs sm:text-sm text-muted-foreground truncate">
+                                by {listing.seller?.display_name || 'Anonymous'}
+                              </p>
+                              {/* Vision Score indicator or Premium Palette indicator */}
+                              {hasPremiumPalette ? (
+                                <div className="flex items-center gap-1 text-xs text-amber-500" title="Uses a premium color palette">
+                                  <Palette className="h-3 w-3" />
+                                  <span className="hidden sm:inline">Themed</span>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground" title="Vision Score contributes to value">
+                                  <TrendingUp className="h-3 w-3" />
+                                  <span>Tracked</span>
+                                </div>
+                              )}
+                            </div>
+                          </CardContent>
+                        );
+                      })()}
 
                       <CardFooter className="p-3 sm:p-4 pt-0 flex gap-2">
                         <Button
