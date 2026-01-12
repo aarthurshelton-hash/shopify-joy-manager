@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ShoppingBag, Gift, DollarSign, Loader2, ExternalLink, Crown, Package } from 'lucide-react';
+import { ShoppingBag, Gift, DollarSign, Loader2, ExternalLink, Crown, Package, Shield, TrendingUp, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,7 @@ import { useAuth } from '@/hooks/useAuth';
 import AuthModal from '@/components/auth/AuthModal';
 import { PremiumUpgradeModal } from '@/components/premium';
 import MyListingsSection from '@/components/marketplace/MyListingsSection';
+import MarketplaceTransparency from '@/components/marketplace/MarketplaceTransparency';
 import { 
   getActiveListings, 
   purchaseListing, 
@@ -129,10 +130,15 @@ const Marketplace: React.FC = () => {
           <div className="flex items-center gap-3 mb-4">
             <ShoppingBag className="h-8 w-8 text-primary" />
             <h1 className="text-3xl font-bold">Marketplace</h1>
+            <Badge variant="outline" className="gap-1 ml-2">
+              <Shield className="h-3 w-3" />
+              0% Commission
+            </Badge>
           </div>
           <p className="text-muted-foreground max-w-2xl">
             Discover and collect unique chess visualizations from other premium members. 
-            Each visualization can only be owned by one collector at a time.
+            Each visualization can only be owned by one collector at a time. 
+            <span className="text-primary font-medium"> You own 100% of the value.</span>
           </p>
           {!isPremium && user && (
             <div className="mt-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center gap-2">
@@ -157,6 +163,10 @@ const Marketplace: React.FC = () => {
                 My Listings
               </TabsTrigger>
             )}
+            <TabsTrigger value="transparency" className="gap-2">
+              <Shield className="h-4 w-4" />
+              How It Works
+            </TabsTrigger>
           </TabsList>
 
           {/* Browse Tab */}
@@ -197,6 +207,15 @@ const Marketplace: React.FC = () => {
                           </div>
                         )}
                         
+                        {/* Exemplar Badge */}
+                        {listing.visualization?.title?.includes('Exemplar') && (
+                          <Badge 
+                            className="absolute top-3 left-3 bg-amber-500/90 hover:bg-amber-500 text-black"
+                          >
+                            🏆 Genesis
+                          </Badge>
+                        )}
+                        
                         {/* Price Badge */}
                         <Badge 
                           className={`absolute top-3 right-3 ${
@@ -208,7 +227,7 @@ const Marketplace: React.FC = () => {
                           {listing.price_cents === 0 ? (
                             <><Gift className="h-3 w-3 mr-1" /> Free</>
                           ) : (
-                            <><DollarSign className="h-3 w-3 mr-0.5" />{(listing.price_cents / 100).toFixed(0)}</>
+                            <><DollarSign className="h-3 w-3 mr-0.5" />{(listing.price_cents / 100).toFixed(2)}</>
                           )}
                         </Badge>
                       </div>
@@ -217,9 +236,16 @@ const Marketplace: React.FC = () => {
                         <h3 className="font-semibold truncate mb-1">
                           {listing.visualization?.title || 'Untitled'}
                         </h3>
-                        <p className="text-sm text-muted-foreground">
-                          by {listing.seller?.display_name || 'Anonymous'}
-                        </p>
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm text-muted-foreground truncate">
+                            by {listing.seller?.display_name || 'Anonymous'}
+                          </p>
+                          {/* Vision Score indicator */}
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground" title="Vision Score contributes to value">
+                            <TrendingUp className="h-3 w-3" />
+                            <span>Tracked</span>
+                          </div>
+                        </div>
                       </CardContent>
 
                       <CardFooter className="p-4 pt-0 flex gap-2">
@@ -261,6 +287,11 @@ const Marketplace: React.FC = () => {
               <MyListingsSection userId={user.id} onListingChange={loadListings} />
             </TabsContent>
           )}
+
+          {/* Transparency Tab */}
+          <TabsContent value="transparency">
+            <MarketplaceTransparency />
+          </TabsContent>
         </Tabs>
       </div>
 

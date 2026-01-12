@@ -47,6 +47,7 @@ function generateOffPaletteColors(): { white: Record<string, string>; black: Rec
 }
 
 // Apply custom colors to a simulated board
+// Note: visit.color is 'w' or 'b' from chess.js, but our colors object uses 'white'/'black'
 function applyCustomColorsToBoard(
   board: SquareData[][],
   colors: { white: Record<string, string>; black: Record<string, string> }
@@ -54,10 +55,17 @@ function applyCustomColorsToBoard(
   return board.map(rank =>
     rank.map(square => ({
       ...square,
-      visits: square.visits.map(visit => ({
-        ...visit,
-        hexColor: colors[visit.color][visit.piece],
-      })),
+      visits: square.visits.map(visit => {
+        // Map 'w'/'b' to 'white'/'black' for color lookup
+        const colorKey = visit.color === 'w' ? 'white' : 'black';
+        const pieceColors = colors[colorKey];
+        // Safely access the color, fallback to a default if piece key doesn't exist
+        const hexColor = pieceColors?.[visit.piece] || '#888888';
+        return {
+          ...visit,
+          hexColor,
+        };
+      }),
     }))
   );
 }
