@@ -331,6 +331,53 @@ export type Database = {
         }
         Relationships: []
       }
+      visualization_listings: {
+        Row: {
+          buyer_id: string | null
+          created_at: string
+          id: string
+          price_cents: number
+          seller_id: string
+          sold_at: string | null
+          status: Database["public"]["Enums"]["listing_status"]
+          stripe_payment_intent_id: string | null
+          updated_at: string
+          visualization_id: string
+        }
+        Insert: {
+          buyer_id?: string | null
+          created_at?: string
+          id?: string
+          price_cents?: number
+          seller_id: string
+          sold_at?: string | null
+          status?: Database["public"]["Enums"]["listing_status"]
+          stripe_payment_intent_id?: string | null
+          updated_at?: string
+          visualization_id: string
+        }
+        Update: {
+          buyer_id?: string | null
+          created_at?: string
+          id?: string
+          price_cents?: number
+          seller_id?: string
+          sold_at?: string | null
+          status?: Database["public"]["Enums"]["listing_status"]
+          stripe_payment_intent_id?: string | null
+          updated_at?: string
+          visualization_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visualization_listings_visualization_id_fkey"
+            columns: ["visualization_id"]
+            isOneToOne: false
+            referencedRelation: "saved_visualizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -342,6 +389,7 @@ export type Database = {
     Enums: {
       chess_game_result: "white_wins" | "black_wins" | "draw" | "abandoned"
       chess_game_status: "waiting" | "active" | "completed" | "abandoned"
+      listing_status: "active" | "sold" | "cancelled"
       testimonial_status: "pending" | "approved" | "rejected"
       time_control: "bullet_1" | "blitz_5" | "rapid_15" | "untimed"
     }
@@ -473,6 +521,7 @@ export const Constants = {
     Enums: {
       chess_game_result: ["white_wins", "black_wins", "draw", "abandoned"],
       chess_game_status: ["waiting", "active", "completed", "abandoned"],
+      listing_status: ["active", "sold", "cancelled"],
       testimonial_status: ["pending", "approved", "rejected"],
       time_control: ["bullet_1", "blitz_5", "rapid_15", "untimed"],
     },

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { getUserVisualizations, deleteVisualization, SavedVisualization } from '@/lib/visualizations/visualizationStorage';
 import { migrateUserVisualizations } from '@/lib/visualizations/migrateVisualization';
+import { checkVisualizationListed } from '@/lib/marketplace/marketplaceApi';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { 
@@ -16,11 +17,13 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Crown, Trash2, Download, ArrowLeft, Image as ImageIcon, Loader2, Link2, ExternalLink, Sparkles, Printer, RefreshCw } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Crown, Trash2, Download, Image as ImageIcon, Loader2, Link2, ExternalLink, Sparkles, Printer, RefreshCw, ShoppingBag, Tag } from 'lucide-react';
 import { toast } from 'sonner';
 import { OrderPrintButton } from '@/components/shop/OrderPrintButton';
 import { PremiumUpgradeCard } from '@/components/premium';
 import AuthModal from '@/components/auth/AuthModal';
+import ListForSaleModal from '@/components/marketplace/ListForSaleModal';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
 import { usePrintOrderStore } from '@/stores/printOrderStore';
@@ -35,6 +38,8 @@ const MyVision: React.FC = () => {
   const [deleteTarget, setDeleteTarget] = useState<SavedVisualization | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [listingTarget, setListingTarget] = useState<SavedVisualization | null>(null);
+  const [listedIds, setListedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (user && isPremium) {
@@ -54,6 +59,14 @@ const MyVision: React.FC = () => {
       toast.error('Failed to load visualizations', { description: error.message });
     } else {
       setVisualizations(data);
+      
+      // Check which visualizations are listed
+      const listedSet = new Set<string>();
+      for (const viz of data) {
+        const { isListed } = await checkVisualizationListed(viz.id);
+        if (isListed) listedSet.add(viz.id);
+      }
+      setListedIds(listedSet);
       
       // Check if any visualizations need migration (missing board data)
       const needsMigration = data.some(v => !v.game_data.board || !Array.isArray(v.game_data.board));
@@ -368,6 +381,20 @@ const MyVision: React.FC = () => {
                       <Printer className="h-4 w-4" />
                       Print
                     </Button>
+                    {!listedIds.has(viz.id) && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setListingTarget(viz);
+                        }}
+                        className="gap-1"
+                      >
+                        <Tag className="h-4 w-4" />
+                        Sell
+                      </Button>
+                    )}
                     <Button
                       size="sm"
                       variant="destructive"
@@ -380,6 +407,12 @@ const MyVision: React.FC = () => {
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
+                  {listedIds.has(viz.id) && (
+                    <Badge className="absolute top-2 left-2 bg-green-500/90">
+                      <ShoppingBag className="h-3 w-3 mr-1" />
+                      Listed
+                    </Badge>
+                  )}
                 </div>
                 <CardContent className="p-4 space-y-2">
                   <h3 className="font-medium truncate">{viz.title}</h3>
@@ -452,6 +485,19 @@ const MyVision: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* List for Sale Modal */}
+      {listingTarget && (
+        <ListForSaleModal
+          isOpen={!!listingTarget}
+          onClose={() => setListingTarget(null)}
+          visualizationId={listingTarget.id}
+          visualizationTitle={listingTarget.title}
+          onSuccess={() => {
+            loadVisualizations();
+          }}
+        />
+      )}
       <Footer />
     </div>
   );
