@@ -380,8 +380,7 @@ const Index = () => {
               </div>
             </section>
 
-            {/* Natural QR Vision Showcase */}
-            <NaturalQRShowcase />
+            {/* Floating Gold & Silver Chess Pieces - decorative area (moved up, NaturalQRShowcase moved to bottom) */}
 
             {/* Floating Gold & Silver Chess Pieces - decorative area */}
             <div className="relative h-28 md:h-56 overflow-hidden flex items-center justify-center">
@@ -542,6 +541,9 @@ const Index = () => {
 
             {/* Community Trending Widget */}
             <TrendingWidget />
+
+            {/* Natural QR Vision Showcase - moved to bottom before Premium CTA */}
+            <NaturalQRShowcase />
 
             {/* Premium Subscription CTA */}
             <section className="py-12">
