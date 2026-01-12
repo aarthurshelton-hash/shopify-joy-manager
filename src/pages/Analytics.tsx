@@ -12,6 +12,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { VisionaryMembershipCard } from '@/components/premium';
 import AuthModal from '@/components/auth/AuthModal';
+import FunnelAnalyticsDashboard from '@/components/analytics/FunnelAnalyticsDashboard';
 import { 
   getPlatformVisionStats, 
   getVisionLeaderboard, 
@@ -710,6 +711,11 @@ const Analytics = () => {
               </button>
             )}
           </motion.div>
+
+          {/* Funnel Analytics Dashboard - Admin/Premium Only */}
+          {isPremium && (
+            <FunnelAnalyticsDashboard />
+          )}
         </div>
       </main>
 
