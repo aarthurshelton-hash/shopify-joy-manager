@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import PgnUploader from '@/components/chess/PgnUploader';
-import PrintPreview from '@/components/chess/PrintPreview';
-import ColorLegend from '@/components/chess/ColorLegend';
+import UnifiedVisionExperience from '@/components/chess/UnifiedVisionExperience';
 import ChessLoadingAnimation from '@/components/chess/ChessLoadingAnimation';
 import PaletteSelector from '@/components/chess/PaletteSelector';
 import ChessParticles from '@/components/chess/ChessParticles';
@@ -11,11 +10,9 @@ import CreativeModeShowcase from '@/components/homepage/CreativeModeShowcase';
 import { NaturalQRShowcase } from '@/components/homepage/NaturalQRShowcase';
 import { BookShowcase } from '@/components/book/BookShowcase';
 import { VisionaryMembershipCard } from '@/components/premium';
-import { simulateGame, SimulationResult } from '@/lib/chess/gameSimulator';
+import { simulateGame, SimulationResult, GameData } from '@/lib/chess/gameSimulator';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
-import { ProductSelector } from '@/components/shop/ProductSelector';
-import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,49 +23,31 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Palette, Crown, Sparkles, Award, Paintbrush } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Crown, Sparkles, Award, Palette, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { cleanPgn } from '@/lib/chess/pgnValidator';
-import { PaletteId } from '@/lib/chess/pieceColors';
+import { PaletteId, getActivePalette } from '@/lib/chess/pieceColors';
 import { useScrollAnimation, scrollAnimationClasses } from '@/hooks/useScrollAnimation';
-import { LegendHighlightProvider } from '@/contexts/LegendHighlightContext';
-import { TimelineProvider } from '@/contexts/TimelineContext';
 import { useSessionStore } from '@/stores/sessionStore';
+import { usePrintOrderStore } from '@/stores/printOrderStore';
 import AuthModal from '@/components/auth/AuthModal';
+import { useAuth } from '@/hooks/useAuth';
+import { saveVisualization } from '@/lib/visualizations/visualizationStorage';
+import { useNavigate } from 'react-router-dom';
+import html2canvas from 'html2canvas';
 
 // Import AI-generated art
 import heroChessArt from '@/assets/hero-chess-art.jpg';
 import chessMovementArt from '@/assets/chess-movement-art.jpg';
 import chessKingArt from '@/assets/chess-king-art.jpg';
 
-import { useTimeline } from '@/contexts/TimelineContext';
-import { SquareData } from '@/lib/chess/gameSimulator';
-
-// Timeline-aware wrapper for ColorLegend
-const TimelineAwareColorLegend: React.FC<{ 
-  paletteKey: number; 
-  fullBoard: SquareData[][]; 
-  totalMoves: number;
-}> = ({ paletteKey, fullBoard, totalMoves }) => {
-  const { currentMove } = useTimeline();
-  
-  // Filter board based on timeline
-  const timelineBoard = React.useMemo(() => {
-    if (currentMove === Infinity || currentMove >= totalMoves) {
-      return fullBoard;
-    }
-    return fullBoard.map(rank => 
-      rank.map(square => ({
-        ...square,
-        visits: square.visits.filter(visit => visit.moveNumber <= currentMove)
-      }))
-    );
-  }, [fullBoard, currentMove, totalMoves]);
-  
-  return <ColorLegend key={`legend-${paletteKey}`} board={timelineBoard} />;
-};
-
 const Index = () => {
+  const navigate = useNavigate();
+  const { user, isPremium } = useAuth();
+  const { setOrderData } = usePrintOrderStore();
+  const printRef = useRef<HTMLDivElement>(null);
+  
   const [simulation, setSimulation] = useState<SimulationResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [pendingResult, setPendingResult] = useState<{
@@ -76,15 +55,16 @@ const Index = () => {
     pgn: string;
     title: string;
   } | null>(null);
-  const [showLegend, setShowLegend] = useState(false);
   const [currentPgn, setCurrentPgn] = useState<string>('');
   const [gameTitle, setGameTitle] = useState<string>('');
   const [paletteKey, setPaletteKey] = useState(0);
   const [savedShareId, setSavedShareId] = useState<string | null>(null);
+  const [savedVisualizationId, setSavedVisualizationId] = useState<string | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showReturnDialog, setShowReturnDialog] = useState(false);
   const [showVisionaryModal, setShowVisionaryModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   
   // Session store for persisting visualization state across navigation
   const { 
@@ -92,7 +72,8 @@ const Index = () => {
     currentPgn: storedPgn, 
     currentGameTitle: storedTitle,
     savedShareId: storedShareId,
-    clearSimulation 
+    clearSimulation,
+    setCreativeModeTransfer
   } = useSessionStore();
   
   // Restore visualization from session storage on mount (for returning from order page)
@@ -295,35 +276,7 @@ const Index = () => {
         </AlertDialogContent>
       </AlertDialog>
       
-      {/* Secondary navigation for visualization mode */}
-      {simulation && (
-        <div className="border-b border-border/50 bg-card/50">
-          <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={handleReturnClick}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Return
-            </Button>
-            
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => {
-                setShowLegend(!showLegend);
-                setHasUnsavedChanges(true);
-              }}
-              className="gap-2 border-border/50"
-            >
-              <Palette className="h-4 w-4" />
-              {showLegend ? 'Hide' : 'Show'} Legend
-            </Button>
-          </div>
-        </div>
-      )}
+      {/* No secondary navigation needed - UnifiedVisionExperience has its own back button */}
       
       {/* Main content */}
       <main>
@@ -617,45 +570,104 @@ const Index = () => {
             </section>
           </>
         ) : (
-          <TimelineProvider>
-            <LegendHighlightProvider>
-              <div className="container mx-auto px-4 py-12">
-                <div className="flex flex-col lg:flex-row gap-10 justify-center">
-                  {/* Print preview */}
-                  <div className="flex-1 max-w-2xl space-y-8">
-                    <PrintPreview 
-                      key={paletteKey}
-                      simulation={simulation} 
-                      pgn={currentPgn}
-                      title={gameTitle}
-                      onShareIdCreated={handleShareIdCreated}
-                    />
-                    
-                    {/* Product selector for ordering */}
-                    <ProductSelector 
-                      customPrintData={{
-                        pgn: currentPgn,
-                        gameTitle: gameTitle,
-                      }}
-                      simulation={simulation}
-                      shareId={savedShareId}
-                    />
-                  </div>
-                  
-                  {/* Legend sidebar */}
-                  {showLegend && (
-                    <div className="lg:w-72">
-                      <TimelineAwareColorLegend 
-                        paletteKey={paletteKey} 
-                        fullBoard={simulation.board}
-                        totalMoves={simulation.totalMoves}
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-            </LegendHighlightProvider>
-          </TimelineProvider>
+          <div className="container mx-auto px-4 py-8 max-w-4xl">
+            <UnifiedVisionExperience
+              key={paletteKey}
+              board={simulation.board}
+              gameData={simulation.gameData}
+              totalMoves={simulation.totalMoves}
+              pgn={currentPgn}
+              context="generator"
+              title={gameTitle}
+              shareId={savedShareId}
+              visualizationId={savedVisualizationId || undefined}
+              isPremium={isPremium}
+              onBack={handleReturnClick}
+              onUpgradePrompt={() => setShowVisionaryModal(true)}
+              onExport={async (type) => {
+                if (!isPremium && type !== 'print') {
+                  if (!user) {
+                    setShowAuthModal(true);
+                    return;
+                  }
+                  setShowVisionaryModal(true);
+                  return;
+                }
+                if (type === 'print') {
+                  // Navigate to order print page
+                  setOrderData({
+                    title: gameTitle || `${simulation.gameData.white} vs ${simulation.gameData.black}`,
+                    pgn: currentPgn,
+                    gameData: {
+                      white: simulation.gameData.white,
+                      black: simulation.gameData.black,
+                      event: simulation.gameData.event,
+                      date: simulation.gameData.date,
+                      result: simulation.gameData.result,
+                    },
+                    shareId: savedShareId || undefined,
+                    returnPath: '/',
+                  });
+                  navigate('/order-print');
+                } else if (type === 'hd') {
+                  toast.success('HD download started');
+                  // HD download logic would go here
+                } else if (type === 'gif') {
+                  toast.success('GIF generation started');
+                  // GIF generation logic would go here
+                }
+              }}
+              onSaveToGallery={async () => {
+                if (!user) {
+                  setShowAuthModal(true);
+                  return null;
+                }
+                if (!isPremium) {
+                  setShowVisionaryModal(true);
+                  return null;
+                }
+                
+                // For now, show a toast prompting to use the full download flow
+                // The actual save requires capturing the canvas as an image blob
+                toast.info('Use HD Download to save to gallery', { 
+                  description: 'Download your visualization first, then it will be saved to your gallery' 
+                });
+                return null;
+              }}
+              onShare={() => {
+                if (savedShareId) {
+                  const url = `${window.location.origin}/v/${savedShareId}`;
+                  navigator.clipboard.writeText(url);
+                  toast.success('Share link copied!', { description: url });
+                } else {
+                  toast.info('Save to gallery first to get a share link');
+                }
+              }}
+              onTransferToCreative={() => {
+                // Transfer to creative mode
+                const activePalette = getActivePalette();
+                setCreativeModeTransfer({
+                  board: simulation.board.map((rank, r) => 
+                    rank.map((sq, f) => {
+                      const lastVisit = sq.visits[sq.visits.length - 1];
+                      if (lastVisit) {
+                        const isWhite = lastVisit.color === 'w';
+                        return isWhite 
+                          ? lastVisit.piece.toUpperCase() 
+                          : lastVisit.piece.toLowerCase();
+                      }
+                      return null;
+                    })
+                  ),
+                  whitePalette: activePalette.white as Record<string, string>,
+                  blackPalette: activePalette.black as Record<string, string>,
+                  title: gameTitle || `${simulation.gameData.white} vs ${simulation.gameData.black}`,
+                  sourceVisualizationId: savedVisualizationId || undefined,
+                });
+                navigate('/creative-mode');
+              }}
+            />
+          </div>
         )}
       </main>
       

@@ -58,9 +58,10 @@ export interface UnifiedVisionExperienceProps {
   board: SquareData[][];
   gameData: GameData;
   totalMoves: number;
+  pgn?: string;
   
   // Context-specific settings
-  context: 'marketplace' | 'gallery' | 'shared' | 'postgame' | 'scanner';
+  context: 'marketplace' | 'gallery' | 'shared' | 'postgame' | 'scanner' | 'generator';
   defaultTab?: 'experience' | 'analytics';
   
   // Optional data
@@ -69,22 +70,28 @@ export interface UnifiedVisionExperienceProps {
   createdAt?: string;
   title?: string;
   imageUrl?: string;
+  shareId?: string;
   
   // Callbacks
   onTransferToCreative?: () => void;
   onExport?: (type: 'hd' | 'gif' | 'print') => void;
   onShare?: () => void;
   onClose?: () => void;
+  onBack?: () => void;
+  onSaveToGallery?: () => Promise<string | null>;
+  onPaletteChange?: () => void;
   
   // Premium gating
   isPremium?: boolean;
   onUpgradePrompt?: () => void;
   
-  // Additional features
+  // Marketplace features
   showPurchaseButton?: boolean;
   purchasePrice?: number;
   onPurchase?: () => void;
   isPurchasing?: boolean;
+  isListed?: boolean;
+  onListForSale?: () => void;
 }
 
 // Internal timeline-aware board
@@ -513,6 +520,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
   board,
   gameData,
   totalMoves,
+  pgn,
   context,
   defaultTab,
   visualizationId,
@@ -520,16 +528,22 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
   createdAt,
   title,
   imageUrl,
+  shareId,
   onTransferToCreative,
   onExport,
   onShare,
   onClose,
+  onBack,
+  onSaveToGallery,
+  onPaletteChange,
   isPremium = false,
   onUpgradePrompt,
   showPurchaseButton = false,
   purchasePrice,
   onPurchase,
   isPurchasing = false,
+  isListed = false,
+  onListForSale,
 }) => {
   // Determine default tab based on context
   const computedDefaultTab = defaultTab || (context === 'marketplace' ? 'analytics' : 'experience');
@@ -545,6 +559,8 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
   const [showPieces, setShowPieces] = useState(false);
   const [pieceOpacity, setPieceOpacity] = useState(0.7);
   const [boardSize, setBoardSize] = useState(400);
+  const [darkMode, setDarkMode] = useState(false);
+  const [showLegend, setShowLegend] = useState(true);
   
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -575,15 +591,15 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
 
   // Analyze game
   useEffect(() => {
-    if (gameData.pgn) {
+    if (gameData.pgn || pgn) {
       try {
-        const analysis = analyzeGame(gameData.pgn);
+        const analysis = analyzeGame(gameData.pgn || pgn || '');
         setGameAnalysis(analysis);
       } catch {
         setGameAnalysis(null);
       }
     }
-  }, [gameData.pgn]);
+  }, [gameData.pgn, pgn]);
 
   // Restore palette if provided
   useEffect(() => {
@@ -600,10 +616,54 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
     onTransferToCreative?.();
   }, [isPremium, onUpgradePrompt, onTransferToCreative]);
 
+  // Context-specific title
+  const contextTitle = useMemo(() => {
+    if (title) return title;
+    if (gameData.white && gameData.black) {
+      return `${gameData.white} vs ${gameData.black}`;
+    }
+    return 'Chess Visualization';
+  }, [title, gameData.white, gameData.black]);
+
+  // Determine which action buttons to show based on context
+  const showGeneratorActions = context === 'generator' || context === 'postgame';
+  const showGalleryActions = context === 'gallery';
+  const showMarketplaceInfo = context === 'marketplace';
+
   return (
     <TimelineProvider>
       <LegendHighlightProvider>
         <div className="flex flex-col h-full" ref={containerRef}>
+          {/* Header with back button for certain contexts */}
+          {(context === 'generator' || context === 'gallery') && onBack && (
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-border/50">
+              <Button variant="ghost" size="sm" onClick={onBack} className="gap-2">
+                <RotateCcw className="h-4 w-4" />
+                Return
+              </Button>
+              {context === 'generator' && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant={darkMode ? "outline" : "secondary"}
+                    size="sm"
+                    onClick={() => setDarkMode(false)}
+                    className="gap-1 text-xs h-8"
+                  >
+                    Light
+                  </Button>
+                  <Button
+                    variant={darkMode ? "secondary" : "outline"}
+                    size="sm"
+                    onClick={() => setDarkMode(true)}
+                    className="gap-1 text-xs h-8"
+                  >
+                    Dark
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Tab Navigation */}
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'experience' | 'analytics')}>
             <TabsList className="w-full grid grid-cols-2 bg-muted/50 p-1 mb-4">
@@ -680,11 +740,31 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                         <TooltipContent>Toggle territory heatmap</TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
+                    
+                    {showLegend !== undefined && (
+                      <>
+                        <div className="h-4 w-px bg-border" />
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="flex items-center gap-2">
+                                <Eye className="h-4 w-4 text-muted-foreground" />
+                                <Switch
+                                  checked={showLegend}
+                                  onCheckedChange={setShowLegend}
+                                />
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>Toggle color legend</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </>
+                    )}
                   </div>
 
                   {/* Board with Coordinates */}
                   <div className="flex justify-center">
-                    <div className="relative">
+                    <div className={`relative p-4 rounded-lg ${darkMode ? 'bg-stone-950' : 'bg-stone-50'}`}>
                       {showCoordinates && (
                         <BoardCoordinateGuide size={boardSize} position="inside" />
                       )}
@@ -703,17 +783,122 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                   />
 
                   {/* Legend */}
-                  <EnhancedLegend 
-                    whitePalette={getCurrentPalette().white}
-                    blackPalette={getCurrentPalette().black}
-                    compact
-                  />
+                  {showLegend && (
+                    <EnhancedLegend 
+                      whitePalette={getCurrentPalette().white}
+                      blackPalette={getCurrentPalette().black}
+                      compact
+                    />
+                  )}
 
                   {/* Game Info */}
-                  <GameInfoDisplay gameData={gameData} />
+                  <GameInfoDisplay gameData={gameData} title={contextTitle} darkMode={darkMode} />
 
-                  {/* Action Buttons */}
-                  <div className="flex flex-wrap gap-2 pt-2 border-t border-border/30">
+                  {/* Action Buttons - Context Specific */}
+                  <div className="flex flex-wrap gap-2 pt-4 border-t border-border/30">
+                    {/* Generator/Postgame Actions */}
+                    {showGeneratorActions && (
+                      <>
+                        {onExport && (
+                          <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="gap-2"
+                              onClick={() => onExport('hd')}
+                            >
+                              <Download className="h-4 w-4" />
+                              HD
+                              {!isPremium && <Crown className="h-3 w-3 text-primary" />}
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="gap-2"
+                              onClick={() => onExport('gif')}
+                            >
+                              <Download className="h-4 w-4" />
+                              GIF
+                              {!isPremium && <Crown className="h-3 w-3 text-primary" />}
+                            </Button>
+                            <Button 
+                              variant="default" 
+                              size="sm" 
+                              className="gap-2 bg-gradient-to-r from-amber-500/80 to-amber-600/80 hover:from-amber-500 hover:to-amber-600 text-stone-900"
+                              onClick={() => onExport('print')}
+                            >
+                              <Printer className="h-4 w-4" />
+                              Order Print
+                            </Button>
+                          </div>
+                        )}
+                        
+                        {onSaveToGallery && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="gap-2"
+                            onClick={async () => {
+                              const id = await onSaveToGallery();
+                              if (id) {
+                                // Could trigger success state
+                              }
+                            }}
+                          >
+                            <Crown className="h-4 w-4 text-primary" />
+                            Save to Gallery
+                          </Button>
+                        )}
+                      </>
+                    )}
+
+                    {/* Gallery Actions */}
+                    {showGalleryActions && (
+                      <>
+                        {onExport && (
+                          <>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="gap-2"
+                              onClick={() => onExport('hd')}
+                            >
+                              <Download className="h-4 w-4" />
+                              HD
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="gap-2"
+                              onClick={() => onExport('print')}
+                            >
+                              <Printer className="h-4 w-4" />
+                              Print
+                            </Button>
+                          </>
+                        )}
+                        
+                        {!isListed && onListForSale && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="gap-2"
+                            onClick={onListForSale}
+                          >
+                            <TrendingUp className="h-4 w-4" />
+                            List for Sale
+                          </Button>
+                        )}
+                        
+                        {isListed && (
+                          <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30">
+                            Listed on Marketplace
+                          </Badge>
+                        )}
+                      </>
+                    )}
+
+                    {/* Transfer to Creative Mode - Available in multiple contexts */}
                     {onTransferToCreative && (
                       <Button 
                         variant="outline" 
@@ -727,38 +912,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                       </Button>
                     )}
                     
-                    {onExport && (
-                      <>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="gap-2"
-                          onClick={() => onExport('hd')}
-                        >
-                          <Download className="h-4 w-4" />
-                          HD
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="gap-2"
-                          onClick={() => onExport('gif')}
-                        >
-                          <Download className="h-4 w-4" />
-                          GIF
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="gap-2"
-                          onClick={() => onExport('print')}
-                        >
-                          <Printer className="h-4 w-4" />
-                          Print
-                        </Button>
-                      </>
-                    )}
-                    
+                    {/* Share button */}
                     {onShare && (
                       <Button 
                         variant="ghost" 
@@ -787,6 +941,19 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                   gameAnalysis={gameAnalysis}
                 />
 
+                {/* Marketplace Info */}
+                {showMarketplaceInfo && isListed && (
+                  <div className="mt-4 p-3 rounded-lg bg-green-500/10 border border-green-500/30">
+                    <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30 mb-2">
+                      <TrendingUp className="h-3 w-3 mr-1" />
+                      Listed on Marketplace
+                    </Badge>
+                    <p className="text-sm text-muted-foreground">
+                      This vision is available for collectors to purchase.
+                    </p>
+                  </div>
+                )}
+
                 {/* Purchase Button for Marketplace */}
                 {showPurchaseButton && onPurchase && (
                   <div className="mt-6 pt-4 border-t border-border/30">
@@ -803,6 +970,21 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                       ) : (
                         <>Purchase for ${((purchasePrice || 0) / 100).toFixed(2)}</>
                       )}
+                    </Button>
+                  </div>
+                )}
+
+                {/* List for Sale button in gallery context */}
+                {showGalleryActions && !isListed && onListForSale && (
+                  <div className="mt-6 pt-4 border-t border-border/30">
+                    <Button 
+                      variant="outline"
+                      className="w-full gap-2"
+                      size="lg"
+                      onClick={onListForSale}
+                    >
+                      <TrendingUp className="h-5 w-5" />
+                      List for Sale on Marketplace
                     </Button>
                   </div>
                 )}
