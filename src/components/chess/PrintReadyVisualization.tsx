@@ -44,6 +44,9 @@ interface PrintReadyVisualizationProps {
   
   // Optional highlight state for export (captures locked pieces, compare mode)
   highlightState?: HighlightState;
+  
+  // Watermark for free downloads
+  withWatermark?: boolean;
 }
 
 /**
@@ -69,6 +72,7 @@ export const PrintReadyVisualization: React.FC<PrintReadyVisualizationProps> = (
   title,
   enPensentData,
   highlightState,
+  withWatermark = false,
 }) => {
   const bgColor = darkMode ? '#0A0A0A' : '#FDFCFB';
   const borderColor = darkMode ? '#292524' : '#e7e5e4';
@@ -270,8 +274,63 @@ export const PrintReadyVisualization: React.FC<PrintReadyVisualizationProps> = (
       <div style={{ position: 'relative' }}>
         {renderBoard()}
         
+        {/* Watermark for free downloads - matches reference exactly */}
+        {withWatermark && (
+          <div
+            style={{
+              position: 'absolute',
+              bottom: 12,
+              right: 12,
+              backgroundColor: 'rgba(255, 255, 255, 0.95)',
+              padding: '8px 12px',
+              borderRadius: 6,
+              border: '1px solid #e7e5e4',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+            }}
+          >
+            {/* Logo */}
+            <img
+              src={enPensentLogo}
+              alt="En Pensent"
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: '50%',
+                objectFit: 'cover',
+              }}
+            />
+            
+            {/* Text */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <span
+                style={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: '#44403c',
+                  fontFamily: "'Inter', system-ui, sans-serif",
+                  letterSpacing: '0.01em',
+                }}
+              >
+                EN PENSENT
+              </span>
+              <span
+                style={{
+                  fontSize: 11,
+                  color: '#78716c',
+                  fontFamily: "'Inter', system-ui, sans-serif",
+                }}
+              >
+                enpensent.com
+              </span>
+            </div>
+          </div>
+        )}
+        
         {/* QR Code overlay for premium prints */}
-        {showQR && qrDataUrl && (
+        {showQR && qrDataUrl && !withWatermark && (
           <div
             style={{
               position: 'absolute',

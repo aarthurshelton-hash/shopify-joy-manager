@@ -20,12 +20,18 @@ interface CapturedState {
   capturedAt: Date;
 }
 
+interface HighlightState {
+  lockedPieces: { pieceType: PieceType; pieceColor: PieceColor }[];
+  compareMode: boolean;
+}
+
 interface PrintOptions {
   darkMode?: boolean;
   includeQR?: boolean;
   shareId?: string;
   capturedState?: CapturedState;
   withWatermark?: boolean;
+  highlightState?: HighlightState;
 }
 
 /**
@@ -51,7 +57,7 @@ export async function generateCleanPrintImage(
   simulation: SimulationResult,
   options: PrintOptions = {}
 ): Promise<string> {
-  const { darkMode = false, includeQR = false, shareId, capturedState, withWatermark = false } = options;
+  const { darkMode = false, includeQR = false, shareId, capturedState, withWatermark = false, highlightState: providedHighlightState } = options;
   const html2canvas = (await import('html2canvas')).default;
   
   // Create a temporary container for rendering
@@ -86,14 +92,14 @@ export async function generateCleanPrintImage(
     const printContent = document.createElement('div');
     container.appendChild(printContent);
     
-    // Prepare highlight state for rendering - cast to expected types
-    const highlightState = capturedState && capturedState.lockedPieces.length > 0 ? {
+    // Prepare highlight state for rendering - use provided or from captured state
+    const highlightState = providedHighlightState || (capturedState && capturedState.lockedPieces.length > 0 ? {
       lockedPieces: capturedState.lockedPieces.map(p => ({
         pieceType: p.pieceType as PieceType,
         pieceColor: p.pieceColor as PieceColor,
       })),
       compareMode: capturedState.compareMode,
-    } : undefined;
+    } : undefined);
     
     // Render the unified PrintReadyVisualization component
     const root = ReactDOM.createRoot(printContent);
@@ -108,6 +114,7 @@ export async function generateCleanPrintImage(
           qrDataUrl,
           compact: false,
           highlightState,
+          withWatermark, // Pass watermark flag to component
         })
       );
       // Give React time to render
