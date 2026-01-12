@@ -265,12 +265,26 @@ const MyVision: React.FC = () => {
               <Crown className="h-6 w-6 text-primary" />
               <h1 className="text-3xl font-display font-bold">My Vision Gallery</h1>
             </div>
-            {isMigrating && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <RefreshCw className="h-4 w-4 animate-spin" />
-                <span>Updating...</span>
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              {isMigrating ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  <span>Updating...</span>
+                </div>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleMigration}
+                  disabled={isMigrating || visualizations.length === 0}
+                  className="gap-2"
+                  title="Refresh and re-process any failed visualizations"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Refresh
+                </Button>
+              )}
+            </div>
           </div>
           <p className="text-muted-foreground">
             Your saved chess visualizations, ready to download anytime.
