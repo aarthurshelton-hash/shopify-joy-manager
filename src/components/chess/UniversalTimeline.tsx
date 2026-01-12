@@ -3,10 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Play, Pause, SkipBack, SkipForward, RotateCcw, Gauge, 
   Flag, Sword, Crown, Zap, Target, Castle, Info, ChevronUp, ChevronDown, Keyboard,
-  Navigation, ChevronRight
+  Navigation, ChevronRight, BookOpen, Layers
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
+import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,6 +32,16 @@ interface KeyMoment {
   type: 'capture' | 'check' | 'checkmate' | 'castling' | 'promotion';
   move: string;
   player: 'white' | 'black';
+}
+
+interface GamePhase {
+  name: 'opening' | 'middlegame' | 'endgame';
+  startMove: number;
+  endMove: number;
+  color: string;
+  bgColor: string;
+  icon: typeof Flag;
+  description: string;
 }
 
 interface UniversalTimelineProps {
@@ -88,13 +99,15 @@ const ICON_DESCRIPTIONS = {
 };
 
 // Phase descriptions for the timeline
-const PHASE_DESCRIPTIONS = {
+const PHASE_CONFIG = {
   opening: {
     name: 'Opening',
     description: 'The first 10-15 moves where players develop pieces and fight for center control.',
     tips: 'Control the center, develop pieces, castle early, connect rooks.',
     icon: Flag,
     color: 'text-emerald-400',
+    bgColor: 'bg-emerald-500/20',
+    borderColor: 'border-emerald-500/30',
   },
   middlegame: {
     name: 'Middlegame',
@@ -102,6 +115,8 @@ const PHASE_DESCRIPTIONS = {
     tips: 'Create threats, improve piece activity, target weaknesses.',
     icon: Sword,
     color: 'text-amber-400',
+    bgColor: 'bg-amber-500/20',
+    borderColor: 'border-amber-500/30',
   },
   endgame: {
     name: 'Endgame',
@@ -109,6 +124,8 @@ const PHASE_DESCRIPTIONS = {
     tips: 'Activate the king, create passed pawns, simplify if ahead.',
     icon: Crown,
     color: 'text-purple-400',
+    bgColor: 'bg-purple-500/20',
+    borderColor: 'border-purple-500/30',
   },
 };
 
@@ -121,32 +138,75 @@ function findKeyMoments(moves: string[], moveHistory?: MoveHistoryEntry[]): KeyM
     const moveNumber = index + 1;
     const player: 'white' | 'black' = index % 2 === 0 ? 'white' : 'black';
     
-    // Check for checkmate
     if (move.includes('#')) {
       moments.push({ moveNumber, type: 'checkmate', move, player });
-    }
-    // Check for check (but not checkmate)
-    else if (move.includes('+')) {
+    } else if (move.includes('+')) {
       moments.push({ moveNumber, type: 'check', move, player });
     }
     
-    // Check for capture
     if (move.includes('x')) {
       moments.push({ moveNumber, type: 'capture', move, player });
     }
     
-    // Check for castling
     if (move.includes('O-O') || move.includes('0-0')) {
       moments.push({ moveNumber, type: 'castling', move, player });
     }
     
-    // Check for promotion
     if (move.includes('=')) {
       moments.push({ moveNumber, type: 'promotion', move, player });
     }
   });
   
   return moments;
+}
+
+// Calculate game phases based on total moves
+function calculateGamePhases(totalMoves: number): GamePhase[] {
+  if (totalMoves === 0) return [];
+  
+  const phases: GamePhase[] = [];
+  
+  // Opening: first ~20% of moves, max 30 half-moves
+  const openingEnd = Math.min(Math.floor(totalMoves * 0.25), 30);
+  
+  // Endgame: last ~30% of moves, starts after move 60 minimum
+  const endgameStart = Math.max(Math.floor(totalMoves * 0.7), Math.min(60, totalMoves));
+  
+  phases.push({
+    name: 'opening',
+    startMove: 1,
+    endMove: openingEnd,
+    color: 'text-emerald-400',
+    bgColor: 'bg-emerald-500/20',
+    icon: Flag,
+    description: 'Development & center control',
+  });
+  
+  if (openingEnd < endgameStart - 1) {
+    phases.push({
+      name: 'middlegame',
+      startMove: openingEnd + 1,
+      endMove: endgameStart - 1,
+      color: 'text-amber-400',
+      bgColor: 'bg-amber-500/20',
+      icon: Sword,
+      description: 'Tactics & attacks',
+    });
+  }
+  
+  if (endgameStart <= totalMoves) {
+    phases.push({
+      name: 'endgame',
+      startMove: endgameStart,
+      endMove: totalMoves,
+      color: 'text-purple-400',
+      bgColor: 'bg-purple-500/20',
+      icon: Crown,
+      description: 'King activation & pawns',
+    });
+  }
+  
+  return phases;
 }
 
 export const UniversalTimeline: React.FC<UniversalTimelineProps> = ({
@@ -163,8 +223,14 @@ export const UniversalTimeline: React.FC<UniversalTimelineProps> = ({
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showShortcutHint, setShowShortcutHint] = useState(true);
 
-  // Find key moments
+  // Find key moments and game phases
   const keyMoments = useMemo(() => findKeyMoments(moves, moveHistory), [moves, moveHistory]);
+  const gamePhases = useMemo(() => calculateGamePhases(totalMoves), [totalMoves]);
+  
+  // Get current phase
+  const currentPhase = useMemo(() => {
+    return gamePhases.find(p => currentMove >= p.startMove && currentMove <= p.endMove);
+  }, [gamePhases, currentMove]);
 
   // Keyboard shortcuts for timeline control
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
