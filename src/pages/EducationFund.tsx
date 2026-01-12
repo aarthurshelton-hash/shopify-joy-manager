@@ -33,6 +33,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { MEMBERSHIP_ECONOMICS, getPlatformVisionStats } from '@/lib/visualizations/visionScoring';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
+import { useRandomGameArt } from '@/hooks/useRandomGameArt';
 
 interface FundStats {
   total_contributions: number;
@@ -86,6 +87,8 @@ const impactStories = [
 ];
 
 const EducationFund: React.FC = () => {
+  const backgroundImages = useRandomGameArt(4);
+  
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['education-fund-stats-detailed'],
     queryFn: async () => {
@@ -384,23 +387,33 @@ const EducationFund: React.FC = () => {
             </Card>
             
             {/* Royalty Economics Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Creator Royalty Economics</CardTitle>
+            <Card className="relative overflow-hidden">
+              {backgroundImages[3] && (
+                <div 
+                  className="absolute inset-0 opacity-[0.08] bg-cover bg-center"
+                  style={{ backgroundImage: `url(${backgroundImages[3]})` }}
+                />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-br from-background/90 to-background/95" />
+              <CardHeader className="relative z-10">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <DollarSign className="h-5 w-5 text-green-500" />
+                  Creator Royalty Economics
+                </CardTitle>
                 <CardDescription>How print & book sales are distributed</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="relative z-10 space-y-4">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 rounded-full bg-green-500" />
-                      <span className="text-sm">Vision Creator Royalty</span>
+                      <span className="text-sm font-medium">Vision Creator Royalty</span>
                     </div>
                     <span className="font-bold text-green-500">{MEMBERSHIP_ECONOMICS.ownerValueShare * 100}%</span>
                   </div>
-                  <Progress value={MEMBERSHIP_ECONOMICS.ownerValueShare * 100} className="h-2" />
+                  <Progress value={MEMBERSHIP_ECONOMICS.ownerValueShare * 100} className="h-3" />
                   <p className="text-xs text-muted-foreground">
-                    Goes directly to vision owners when others order prints
+                    Direct to vision owners when others order prints — automatic passive income
                   </p>
                 </div>
                 
@@ -409,14 +422,14 @@ const EducationFund: React.FC = () => {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-blue-500" />
-                      <span className="text-sm">Platform Share</span>
+                      <div className="w-3 h-3 rounded-full bg-muted-foreground" />
+                      <span className="text-sm font-medium">Platform & Fulfillment</span>
                     </div>
-                    <span className="font-bold text-blue-500">{MEMBERSHIP_ECONOMICS.platformValueShare * 100}%</span>
+                    <span className="font-bold text-muted-foreground">{MEMBERSHIP_ECONOMICS.platformValueShare * 100}%</span>
                   </div>
-                  <Progress value={MEMBERSHIP_ECONOMICS.platformValueShare * 100} className="h-2" />
+                  <Progress value={MEMBERSHIP_ECONOMICS.platformValueShare * 100} className="h-3 [&>div]:bg-muted-foreground" />
                   <p className="text-xs text-muted-foreground">
-                    Covers printing, shipping coordination & platform costs
+                    Covers printing, shipping, payment processing & platform operations
                   </p>
                 </div>
                 
@@ -424,8 +437,16 @@ const EducationFund: React.FC = () => {
                 
                 <div className="p-3 bg-green-500/10 rounded-lg border border-green-500/30">
                   <p className="text-xs text-green-600">
-                    <strong>Note:</strong> Print royalties (20% to creators) are separate from the Education Fund. 
-                    The fund only receives value from lapsed subscriptions, not from active sales.
+                    <strong>Important:</strong> Print royalties ({MEMBERSHIP_ECONOMICS.ownerValueShare * 100}% to creators) are separate from the Education Fund. 
+                    The fund only receives forfeited value from lapsed subscriptions, not from active sales.
+                  </p>
+                </div>
+                
+                <div className="p-3 bg-primary/5 rounded-lg border border-primary/20">
+                  <p className="text-xs text-muted-foreground">
+                    <strong className="text-foreground">Why this split?</strong> Physical print fulfillment requires significant investment: 
+                    archival-quality printing, protective packaging, global shipping, and customer support. 
+                    The {MEMBERSHIP_ECONOMICS.platformValueShare * 100}/{MEMBERSHIP_ECONOMICS.ownerValueShare * 100} split ensures platform sustainability while still rewarding creators.
                   </p>
                 </div>
               </CardContent>

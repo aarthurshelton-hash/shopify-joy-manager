@@ -232,7 +232,8 @@ const MarketplaceTransparency: React.FC = () => {
                   <p className="text-sm font-medium">Print Royalties (20%)</p>
                   <p className="text-xs text-muted-foreground">
                     When anyone orders a print of your vision, you earn 20% of the order value as royalties. 
-                    This creates passive income from your collection.
+                    The remaining 80% covers printing, shipping, and platform operations. This creates sustainable 
+                    passive income from your collection.
                   </p>
                 </div>
               </div>
