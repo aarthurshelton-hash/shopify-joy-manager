@@ -4,8 +4,10 @@ import { Footer } from '@/components/shop/Footer';
 import { 
   Wand2, Download, Save, Trash2, 
   RotateCcw, Crown, Lock, Sparkles, Eye, Grid3X3, ArrowLeft,
-  Upload, FolderOpen, Palette, Paintbrush, EyeOff, MousePointer2
+  Upload, FolderOpen, Palette, Paintbrush, EyeOff, MousePointer2,
+  Undo2, Redo2
 } from 'lucide-react';
+import { useUndoRedo, CreativeState } from '@/hooks/useUndoRedo';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -206,6 +208,39 @@ const CreativeMode = () => {
   
   const [isSaving, setIsSaving] = useState(false);
 
+  // Undo/Redo system
+  const initialState: CreativeState = {
+    pieceBoard: parseFen(STARTING_FEN),
+    paintData: new Map(),
+    moveCounter: 1,
+  };
+  const { pushState, undo, redo, resetHistory, canUndo, canRedo } = useUndoRedo(initialState);
+
+  // Push state changes to history
+  const saveToHistory = useCallback(() => {
+    pushState({ pieceBoard, paintData, moveCounter });
+  }, [pushState, pieceBoard, paintData, moveCounter]);
+
+  // Handle undo
+  const handleUndo = useCallback(() => {
+    const restored = undo();
+    if (restored) {
+      setPieceBoard(restored.pieceBoard);
+      setPaintData(restored.paintData);
+      setMoveCounter(restored.moveCounter);
+    }
+  }, [undo]);
+
+  // Handle redo
+  const handleRedo = useCallback(() => {
+    const restored = redo();
+    if (restored) {
+      setPieceBoard(restored.pieceBoard);
+      setPaintData(restored.paintData);
+      setMoveCounter(restored.moveCounter);
+    }
+  }, [redo]);
+
   // Load transferred data from visualization detail page
   useEffect(() => {
     if (creativeModeTransfer) {
@@ -238,23 +273,24 @@ const CreativeMode = () => {
 
     if (editMode === 'erase') {
       // Clear the square
-      setPieceBoard(prev => {
-        const newBoard = prev.map(r => [...r]);
-        newBoard[row][col] = null;
-        return newBoard;
-      });
-      setPaintData(prev => {
-        const next = new Map(prev);
-        next.delete(squareKey);
-        return next;
-      });
+      const newBoard = pieceBoard.map(r => [...r]);
+      newBoard[row][col] = null;
+      setPieceBoard(newBoard);
+      
+      const newPaintData = new Map(paintData);
+      newPaintData.delete(squareKey);
+      setPaintData(newPaintData);
+      
+      // Save to history
+      pushState({ pieceBoard: newBoard, paintData: newPaintData, moveCounter });
     } else if (editMode === 'place' && selectedPiece) {
       // Place a piece
-      setPieceBoard(prev => {
-        const newBoard = prev.map(r => [...r]);
-        newBoard[row][col] = selectedPiece;
-        return newBoard;
-      });
+      const newBoard = pieceBoard.map(r => [...r]);
+      newBoard[row][col] = selectedPiece;
+      setPieceBoard(newBoard);
+      
+      // Save to history
+      pushState({ pieceBoard: newBoard, paintData, moveCounter });
     } else if (editMode === 'paint' && selectedPiece) {
       // Paint a color layer on the square (adds to existing)
       const isWhite = selectedPiece === selectedPiece.toUpperCase();
@@ -269,24 +305,26 @@ const CreativeMode = () => {
         hexColor,
       };
       
-      setPaintData(prev => {
-        const next = new Map(prev);
-        const existing = next.get(squareKey) || [];
-        next.set(squareKey, [...existing, newVisit]);
-        return next;
-      });
+      const newPaintData = new Map(paintData);
+      const existing = newPaintData.get(squareKey) || [];
+      newPaintData.set(squareKey, [...existing, newVisit]);
+      setPaintData(newPaintData);
       
-      setMoveCounter(prev => prev + 1);
+      const newMoveCounter = moveCounter + 1;
+      setMoveCounter(newMoveCounter);
+      
+      // Save to history
+      pushState({ pieceBoard, paintData: newPaintData, moveCounter: newMoveCounter });
     }
-  }, [editMode, selectedPiece, isPremium, whitePalette, blackPalette, moveCounter]);
+  }, [editMode, selectedPiece, isPremium, whitePalette, blackPalette, moveCounter, pieceBoard, paintData, pushState]);
 
   // Import a vision
   const handleImportVision = (viz: SavedVisualization) => {
     // Load the visualization data
+    const newPaintData = new Map<string, SquareVisit[]>();
+    
     if (viz.game_data.board) {
       // Convert SquareData to paint data
-      const newPaintData = new Map<string, SquareVisit[]>();
-      
       (viz.game_data.board as SquareData[][]).forEach((rankData, rank) => {
         rankData.forEach((square, file) => {
           if (square.visits && square.visits.length > 0) {
@@ -305,9 +343,13 @@ const CreativeMode = () => {
       setBlackPalette(vizState.customColors.black as Record<PieceType, string>);
     }
     
+    const newBoard = Array(8).fill(null).map(() => Array(8).fill(null));
     setTitle(`${viz.title} (Edited)`);
     setSourceVisualizationId(viz.id);
-    setPieceBoard(Array(8).fill(null).map(() => Array(8).fill(null))); // Clear piece board
+    setPieceBoard(newBoard);
+    
+    // Reset history with imported state
+    resetHistory({ pieceBoard: newBoard, paintData: newPaintData, moveCounter: 1 });
     toast.success('Vision imported! Now customize it.');
   };
 
@@ -323,17 +365,23 @@ const CreativeMode = () => {
 
   // Clear everything
   const handleClear = () => {
-    setPieceBoard(Array(8).fill(null).map(() => Array(8).fill(null)));
-    setPaintData(new Map());
+    const newBoard = Array(8).fill(null).map(() => Array(8).fill(null));
+    const newPaintData = new Map<string, SquareVisit[]>();
+    setPieceBoard(newBoard);
+    setPaintData(newPaintData);
     setMoveCounter(1);
+    resetHistory({ pieceBoard: newBoard, paintData: newPaintData, moveCounter: 1 });
     toast.success('Canvas cleared');
   };
 
   // Reset to starting position
   const handleReset = () => {
-    setPieceBoard(parseFen(STARTING_FEN));
-    setPaintData(new Map());
+    const newBoard = parseFen(STARTING_FEN);
+    const newPaintData = new Map<string, SquareVisit[]>();
+    setPieceBoard(newBoard);
+    setPaintData(newPaintData);
     setMoveCounter(1);
+    resetHistory({ pieceBoard: newBoard, paintData: newPaintData, moveCounter: 1 });
     toast.success('Reset to starting position');
   };
 
@@ -629,6 +677,28 @@ const CreativeMode = () => {
                     <FolderOpen className="h-4 w-4" />
                     Import Vision
                   </Button>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={handleUndo} 
+                      disabled={!canUndo}
+                      className="gap-1"
+                    >
+                      <Undo2 className="h-3 w-3" />
+                      Undo
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={handleRedo}
+                      disabled={!canRedo}
+                      className="gap-1"
+                    >
+                      <Redo2 className="h-3 w-3" />
+                      Redo
+                    </Button>
+                  </div>
                   <div className="grid grid-cols-2 gap-2">
                     <Button variant="outline" size="sm" onClick={handleReset} className="gap-1">
                       <RotateCcw className="h-3 w-3" />
