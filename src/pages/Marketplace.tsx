@@ -18,6 +18,8 @@ import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
 import { BookShowcase } from '@/components/book/BookShowcase';
 import { TrendingVisions } from '@/components/marketplace/TrendingVisions';
+import { ClaimableVisionsSection } from '@/components/marketplace/ClaimableVisionsSection';
+import { TransferLimitBadge } from '@/components/marketplace/TransferLimitBadge';
 import { useSessionStore } from '@/stores/sessionStore';
 import { 
   getActiveListings, 
@@ -245,6 +247,9 @@ const Marketplace: React.FC = () => {
 
           {/* Browse Tab */}
           <TabsContent value="browse" className="space-y-6">
+            {/* Claimable Visions Section */}
+            <ClaimableVisionsSection onClaim={loadListings} />
+
             {/* Trending Visions by Royalty Activity */}
             <TrendingVisions />
 
@@ -343,6 +348,16 @@ const Marketplace: React.FC = () => {
                               <Palette className="h-3 w-3" />
                               Premium Palette
                             </Badge>
+                          )}
+                          
+                          {/* Transfer Limit Badge */}
+                          {listing.visualization?.id && (
+                            <div className="absolute bottom-3 right-3">
+                              <TransferLimitBadge 
+                                visualizationId={listing.visualization.id} 
+                                variant="compact" 
+                              />
+                            </div>
                           )}
                           
                           {/* Exemplar Badge */}

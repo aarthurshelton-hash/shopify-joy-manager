@@ -58,6 +58,8 @@ import { format } from 'date-fns';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 import { RoyaltyPotentialCard } from '@/components/marketplace/RoyaltyPotentialCard';
 import { RoyaltyEarningsCard } from '@/components/vision/RoyaltyEarningsCard';
+import { TransferHistoryCard } from '@/components/marketplace/TransferHistoryCard';
+import { TransferLimitBadge } from '@/components/marketplace/TransferLimitBadge';
 
 // Export state for capturing visualization in any configuration
 export interface ExportState {
@@ -1144,6 +1146,21 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                         uniqueViewers={visionScore.uniqueViewers}
                       />
                     )}
+                  </div>
+                )}
+
+                {/* Transfer History - Show for marketplace and gallery contexts */}
+                {(context === 'marketplace' || context === 'gallery') && visualizationId && (
+                  <div className="mb-6">
+                    <TransferHistoryCard visualizationId={visualizationId} />
+                  </div>
+                )}
+
+                {/* Transfer Limit Badge - Show in marketplace context */}
+                {context === 'marketplace' && visualizationId && (
+                  <div className="mb-4 flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border/50">
+                    <span className="text-sm text-muted-foreground">Transfer availability:</span>
+                    <TransferLimitBadge visualizationId={visualizationId} />
                   </div>
                 )}
 
