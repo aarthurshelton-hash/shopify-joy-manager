@@ -9,6 +9,7 @@ import { TimelineProvider } from '@/contexts/TimelineContext';
 import { LegendHighlightProvider } from '@/contexts/LegendHighlightContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ArrowLeft, Loader2, Sparkles, ShoppingBag, Gift, DollarSign, Crown } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSessionStore, CreativeModeTransfer } from '@/stores/sessionStore';
@@ -399,25 +400,40 @@ const MarketplaceVisionDetail: React.FC = () => {
             
             {/* Claim Ownership - Premium only */}
             {!isOwnListing && (
-              <Button
-                onClick={handlePurchase}
-                disabled={isPurchasing}
-                className="btn-luxury gap-2"
-              >
-                {isPurchasing ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : isFree ? (
-                  <>
-                    <Gift className="h-4 w-4" />
-                    Claim Vision
-                  </>
-                ) : (
-                  <>
-                    <Crown className="h-4 w-4" />
-                    Claim Ownership
-                  </>
-                )}
-              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={handlePurchase}
+                      disabled={isPurchasing}
+                      className="btn-luxury gap-2"
+                    >
+                      {isPurchasing ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : isFree ? (
+                        <>
+                          <Gift className="h-4 w-4" />
+                          Claim Vision
+                        </>
+                      ) : (
+                        <>
+                          <Crown className="h-4 w-4" />
+                          Claim Ownership
+                        </>
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-xs">
+                    <p className="font-medium mb-1">What is Ownership?</p>
+                    <ul className="text-xs space-y-1 text-muted-foreground">
+                      <li>• Add this vision to your personal gallery</li>
+                      <li>• Exclusive digital ownership - only one owner per vision</li>
+                      <li>• Earn royalties when others order prints</li>
+                      <li>• List for resale anytime on the marketplace</li>
+                    </ul>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
             
             {isOwnListing && (
