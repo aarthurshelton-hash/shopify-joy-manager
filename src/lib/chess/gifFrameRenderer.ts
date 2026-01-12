@@ -1,6 +1,7 @@
 /**
  * GIF Frame Renderer - Generates individual frames for GIF animation
  * Uses offscreen rendering with React to capture each timeline state
+ * Captures the full "trademark look" with game info visible
  */
 
 import { SquareData, GameData, SimulationResult } from './gameSimulator';
@@ -13,6 +14,7 @@ export interface GifFrameOptions {
   size: number;
   darkMode?: boolean;
   showCoordinates?: boolean;
+  gameData?: GameData;
 }
 
 /**
@@ -29,11 +31,12 @@ export function filterBoardToMove(board: SquareData[][], moveNumber: number): Sq
 
 /**
  * Render a single frame of the visualization to a canvas
+ * Uses the full trademark look with game info and branding
  */
 export async function renderFrameToCanvas(
   options: GifFrameOptions
 ): Promise<HTMLCanvasElement> {
-  const { board, currentMove, totalMoves, size, darkMode = false, showCoordinates = false } = options;
+  const { board, currentMove, totalMoves, size, darkMode = false, showCoordinates = false, gameData } = options;
   
   const html2canvas = (await import('html2canvas')).default;
   const React = await import('react');
@@ -51,13 +54,26 @@ export async function renderFrameToCanvas(
   container.style.top = '-9999px';
   document.body.appendChild(container);
   
+  // Colors for trademark look
+  const bgColor = darkMode ? '#0A0A0A' : '#FDFCFB';
+  const borderColor = darkMode ? '#292524' : '#e7e5e4';
+  const mutedColor = darkMode ? '#78716c' : '#a8a29e';
+  const primaryText = darkMode ? '#e7e5e4' : '#292524';
+  const secondaryText = darkMode ? '#a8a29e' : '#78716c';
+  
   try {
-    // Create wrapper with styling
+    // Create wrapper with trademark styling
     const wrapper = document.createElement('div');
-    wrapper.style.padding = '16px';
-    wrapper.style.backgroundColor = darkMode ? '#0A0A0A' : '#FDFCFB';
-    wrapper.style.borderRadius = '8px';
-    wrapper.style.position = 'relative';
+    Object.assign(wrapper.style, {
+      padding: '20px',
+      backgroundColor: bgColor,
+      borderRadius: '8px',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      gap: '16px',
+      border: `1px solid ${borderColor}`,
+    });
     container.appendChild(wrapper);
     
     // Render the board
@@ -80,10 +96,103 @@ export async function renderFrameToCanvas(
       setTimeout(resolve, 50);
     });
     
+    // Add game info section if gameData provided
+    if (gameData) {
+      const infoSection = document.createElement('div');
+      Object.assign(infoSection.style, {
+        width: '100%',
+        paddingTop: '12px',
+        borderTop: `1px solid ${borderColor}`,
+        textAlign: 'center',
+      });
+      
+      // Player names
+      const playersDiv = document.createElement('div');
+      Object.assign(playersDiv.style, {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '8px',
+        marginBottom: '6px',
+      });
+      
+      const whiteSpan = document.createElement('span');
+      Object.assign(whiteSpan.style, {
+        fontSize: '14px',
+        fontWeight: '600',
+        color: primaryText,
+        textTransform: 'uppercase',
+        letterSpacing: '0.05em',
+        fontFamily: "'Cinzel', 'Times New Roman', serif",
+      });
+      whiteSpan.textContent = gameData.white || 'White';
+      
+      const vsSpan = document.createElement('span');
+      Object.assign(vsSpan.style, {
+        fontSize: '10px',
+        color: secondaryText,
+        fontStyle: 'italic',
+      });
+      vsSpan.textContent = 'vs';
+      
+      const blackSpan = document.createElement('span');
+      Object.assign(blackSpan.style, {
+        fontSize: '14px',
+        fontWeight: '600',
+        color: primaryText,
+        textTransform: 'uppercase',
+        letterSpacing: '0.05em',
+        fontFamily: "'Cinzel', 'Times New Roman', serif",
+      });
+      blackSpan.textContent = gameData.black || 'Black';
+      
+      playersDiv.appendChild(whiteSpan);
+      playersDiv.appendChild(vsSpan);
+      playersDiv.appendChild(blackSpan);
+      infoSection.appendChild(playersDiv);
+      
+      // Event and date
+      if (gameData.event || gameData.date) {
+        const eventDiv = document.createElement('div');
+        Object.assign(eventDiv.style, {
+          fontSize: '10px',
+          color: mutedColor,
+          marginBottom: '4px',
+        });
+        eventDiv.textContent = [gameData.event, gameData.date].filter(Boolean).join(' • ');
+        infoSection.appendChild(eventDiv);
+      }
+      
+      // Move counter
+      const moveDiv = document.createElement('div');
+      Object.assign(moveDiv.style, {
+        fontSize: '9px',
+        color: mutedColor,
+        marginTop: '4px',
+      });
+      moveDiv.textContent = `Move ${currentMove} of ${totalMoves}`;
+      infoSection.appendChild(moveDiv);
+      
+      wrapper.appendChild(infoSection);
+    }
+    
+    // Add branding footer
+    const brandingDiv = document.createElement('div');
+    Object.assign(brandingDiv.style, {
+      fontSize: '8px',
+      letterSpacing: '0.25em',
+      textTransform: 'uppercase',
+      fontWeight: '500',
+      color: mutedColor,
+      fontFamily: "'Inter', system-ui, sans-serif",
+    });
+    brandingDiv.textContent = '♔ En Pensent ♚';
+    wrapper.appendChild(brandingDiv);
+    
     // Capture the frame
     const canvas = await html2canvas(wrapper, {
       scale: 2,
-      backgroundColor: darkMode ? '#0A0A0A' : '#FDFCFB',
+      backgroundColor: bgColor,
       useCORS: true,
       allowTaint: true,
       logging: false,
@@ -126,7 +235,7 @@ export async function generateAnimatedGif(
   } = options;
   
   const GIF = (await import('gif.js')).default;
-  const { board, totalMoves } = simulation;
+  const { board, totalMoves, gameData } = simulation;
   
   // Determine which moves to capture (sample if too many)
   const step = totalMoves > maxFrames ? Math.ceil(totalMoves / maxFrames) : 1;
@@ -150,7 +259,8 @@ export async function generateAnimatedGif(
     totalMoves,
     size,
     darkMode,
-    showCoordinates
+    showCoordinates,
+    gameData
   });
   
   // Initialize GIF encoder
@@ -177,7 +287,8 @@ export async function generateAnimatedGif(
       totalMoves,
       size,
       darkMode,
-      showCoordinates
+      showCoordinates,
+      gameData
     });
     
     // Hold first and last frames longer
