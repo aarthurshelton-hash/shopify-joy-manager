@@ -42,7 +42,7 @@ import {
 } from 'lucide-react';
 import { SquareData, GameData, SimulationResult } from '@/lib/chess/gameSimulator';
 import { TimelineProvider, useTimeline } from '@/contexts/TimelineContext';
-import { LegendHighlightProvider } from '@/contexts/LegendHighlightContext';
+import { LegendHighlightProvider, useLegendHighlight } from '@/contexts/LegendHighlightContext';
 import InteractiveVisualizationBoard from './InteractiveVisualizationBoard';
 import { EnhancedLegend } from './EnhancedLegend';
 import GameInfoDisplay from './GameInfoDisplay';
@@ -56,6 +56,14 @@ import { setActivePalette, PaletteId, getActivePalette, getCurrentPalette, color
 import { detectGameCard, GameCardMatch } from '@/lib/chess/gameCardDetection';
 import { format } from 'date-fns';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
+
+// Export state for capturing visualization in any configuration
+export interface ExportState {
+  currentMove: number;
+  lockedPieces: Array<{ pieceType: string; pieceColor: string }>;
+  compareMode: boolean;
+  darkMode: boolean;
+}
 
 export interface UnifiedVisionExperienceProps {
   // Core data
@@ -76,9 +84,9 @@ export interface UnifiedVisionExperienceProps {
   imageUrl?: string;
   shareId?: string;
   
-  // Callbacks
+  // Callbacks - onExport now receives export state for state-aware exports
   onTransferToCreative?: () => void;
-  onExport?: (type: 'hd' | 'gif' | 'print' | 'preview') => void;
+  onExport?: (type: 'hd' | 'gif' | 'print' | 'preview', exportState?: ExportState) => void;
   onShare?: () => void;
   onClose?: () => void;
   onBack?: () => void;
@@ -572,6 +580,76 @@ const AnalyticsPanel: React.FC<{
   );
 };
 
+// Export action buttons that capture current visualization state
+const ExportActionButtons: React.FC<{
+  onExport?: (type: 'hd' | 'gif' | 'print' | 'preview', exportState?: ExportState) => void;
+  isPremium: boolean;
+  darkMode: boolean;
+  totalMoves: number;
+}> = ({ onExport, isPremium, darkMode, totalMoves }) => {
+  const { currentMove } = useTimeline();
+  const { lockedPieces, compareMode } = useLegendHighlight();
+  
+  const handleExport = useCallback((type: 'hd' | 'gif' | 'print' | 'preview') => {
+    const exportState: ExportState = {
+      currentMove: currentMove >= totalMoves ? totalMoves : currentMove,
+      lockedPieces: lockedPieces.map(p => ({
+        pieceType: p.pieceType,
+        pieceColor: p.pieceColor,
+      })),
+      compareMode,
+      darkMode,
+    };
+    onExport?.(type, exportState);
+  }, [onExport, currentMove, totalMoves, lockedPieces, compareMode, darkMode]);
+
+  if (!onExport) return null;
+
+  return (
+    <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+      {/* Free Preview Download - available to everyone */}
+      <Button 
+        variant="outline" 
+        size="sm" 
+        className="gap-2"
+        onClick={() => handleExport('preview')}
+      >
+        <Download className="h-4 w-4" />
+        Download
+      </Button>
+      <Button 
+        variant="outline" 
+        size="sm" 
+        className="gap-2"
+        onClick={() => handleExport('hd')}
+      >
+        <Download className="h-4 w-4" />
+        HD
+        {!isPremium && <Crown className="h-3 w-3 text-primary" />}
+      </Button>
+      <Button 
+        variant="outline" 
+        size="sm" 
+        className="gap-2"
+        onClick={() => handleExport('gif')}
+      >
+        <Download className="h-4 w-4" />
+        GIF
+        {!isPremium && <Crown className="h-3 w-3 text-primary" />}
+      </Button>
+      <Button 
+        variant="default" 
+        size="sm" 
+        className="gap-2 bg-gradient-to-r from-amber-500/80 to-amber-600/80 hover:from-amber-500 hover:to-amber-600 text-stone-900"
+        onClick={() => handleExport('print')}
+      >
+        <Printer className="h-4 w-4" />
+        Order Print
+      </Button>
+    </div>
+  );
+};
+
 /**
  * UnifiedVisionExperience - The single source of truth for all vision displays
  * 
@@ -895,49 +973,12 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                     {/* Generator/Postgame Actions */}
                     {showGeneratorActions && (
                       <>
-                        {onExport && (
-                          <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-                            {/* Free Preview Download - available to everyone */}
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="gap-2"
-                              onClick={() => onExport('preview')}
-                            >
-                              <Download className="h-4 w-4" />
-                              Download
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="gap-2"
-                              onClick={() => onExport('hd')}
-                            >
-                              <Download className="h-4 w-4" />
-                              HD
-                              {!isPremium && <Crown className="h-3 w-3 text-primary" />}
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="gap-2"
-                              onClick={() => onExport('gif')}
-                            >
-                              <Download className="h-4 w-4" />
-                              GIF
-                              {!isPremium && <Crown className="h-3 w-3 text-primary" />}
-                            </Button>
-                            <Button 
-                              variant="default" 
-                              size="sm" 
-                              className="gap-2 bg-gradient-to-r from-amber-500/80 to-amber-600/80 hover:from-amber-500 hover:to-amber-600 text-stone-900"
-                              onClick={() => onExport('print')}
-                            >
-                              <Printer className="h-4 w-4" />
-                              Order Print
-                            </Button>
-                          </div>
-                        )}
+                        <ExportActionButtons
+                          onExport={onExport}
+                          isPremium={isPremium}
+                          darkMode={darkMode}
+                          totalMoves={totalMoves}
+                        />
                         
                         {onSaveToGallery && (
                           <Button 
