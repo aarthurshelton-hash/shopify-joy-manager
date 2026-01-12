@@ -53,6 +53,7 @@ import {
 import { CertifiedBadge } from '@/components/chess/CertifiedBadge';
 import { ShowPiecesToggle } from '@/components/chess/ShowPiecesToggle';
 import { MarketplaceListing } from '@/lib/marketplace/marketplaceApi';
+import { isPremiumPalette, getPaletteArt, getPaletteDisplayName, extractPaletteId } from '@/lib/marketplace/paletteArtMap';
 import { VisionScore, getVisionScore, calculateVisionValue, calculateMembershipMultiplier, SCORING_WEIGHTS, recordVisionInteraction } from '@/lib/visualizations/visionScoring';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -63,6 +64,7 @@ import GameInfoDisplay from '@/components/chess/GameInfoDisplay';
 import { TimelineProvider, useTimeline } from '@/contexts/TimelineContext';
 import { LegendHighlightProvider } from '@/contexts/LegendHighlightContext';
 import { setActivePalette, PaletteId, getActivePalette } from '@/lib/chess/pieceColors';
+import { gameImageImports } from '@/lib/chess/gameImages';
 
 interface VisionExperienceModalProps {
   isOpen: boolean;
@@ -304,11 +306,19 @@ const VisionExperienceModal: React.FC<VisionExperienceModalProps> = ({
   const isGenesis = listing.visualization?.title?.includes('Exemplar');
   const isFree = listing.price_cents === 0;
   const totalMoves = gameData?.totalMoves || gameData?.moves?.length || 0;
-  const paletteId = gameData?.visualizationState?.paletteId || 'modern';
+  const paletteId = extractPaletteId(listing.visualization?.game_data as Record<string, unknown>) || 'modern';
+  const hasPremiumPalette = isPremiumPalette(paletteId);
+  const paletteArt = getPaletteArt(paletteId);
+  const paletteDisplayName = getPaletteDisplayName(paletteId);
   const isCertifiedPalette = paletteId && paletteId !== 'custom';
   const isCertifiedGame = listing.visualization?.title?.includes('Immortal') || 
                           listing.visualization?.title?.includes('Game of the Century') ||
                           listing.visualization?.title?.includes('Deep Blue');
+  
+  // Get a random game image for background if no palette art
+  const gameImageKeys = Object.keys(gameImageImports);
+  const randomGameImage = gameImageImports[gameImageKeys[Math.floor(Math.random() * gameImageKeys.length)]];
+  const backgroundArt = paletteArt || randomGameImage;
 
   // Reconstruct board data
   const board: SquareData[][] = gameData?.board || 
@@ -331,7 +341,39 @@ const VisionExperienceModal: React.FC<VisionExperienceModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={() => onClose()}>
-      <DialogContent className="max-w-6xl max-h-[95vh] overflow-hidden p-0 gap-0">
+      <DialogContent 
+        className={`max-w-6xl max-h-[95vh] overflow-hidden p-0 gap-0 relative ${
+          hasPremiumPalette 
+            ? 'ring-2 ring-amber-500/50 shadow-2xl shadow-amber-500/20' 
+            : ''
+        }`}
+      >
+        {/* Premium palette background art with shimmer */}
+        {hasPremiumPalette && backgroundArt && (
+          <>
+            <div 
+              className="absolute inset-0 z-0 opacity-[0.12] pointer-events-none"
+              style={{
+                backgroundImage: `url(${backgroundArt})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                filter: 'blur(1px)',
+              }}
+            />
+            {/* Gold shimmer overlay */}
+            <div 
+              className="absolute inset-0 z-[1] pointer-events-none opacity-30"
+              style={{
+                background: 'linear-gradient(135deg, transparent 0%, rgba(251, 191, 36, 0.08) 25%, rgba(251, 191, 36, 0.15) 50%, rgba(251, 191, 36, 0.08) 75%, transparent 100%)',
+                backgroundSize: '200% 200%',
+                animation: 'shimmer 3s ease-in-out infinite',
+              }}
+            />
+            {/* Dark overlay for readability */}
+            <div className="absolute inset-0 z-[2] bg-background/85 pointer-events-none" />
+          </>
+        )}
+        
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
@@ -339,12 +381,25 @@ const VisionExperienceModal: React.FC<VisionExperienceModalProps> = ({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
-            className="h-full flex flex-col"
+            className="h-full flex flex-col relative z-10"
           >
             {/* Header with transitional tabs */}
-            <div className="p-4 border-b bg-gradient-to-r from-background via-muted/30 to-background">
+            <div className={`p-4 border-b ${
+              hasPremiumPalette 
+                ? 'bg-gradient-to-r from-amber-950/30 via-background/80 to-amber-950/30 border-amber-500/20' 
+                : 'bg-gradient-to-r from-background via-muted/30 to-background'
+            }`}>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3 flex-wrap">
+                  {/* Premium Palette Badge */}
+                  {hasPremiumPalette && (
+                    <Badge 
+                      className="bg-gradient-to-r from-amber-500 to-orange-500 text-black gap-1 shadow-lg shadow-amber-500/30"
+                    >
+                      <Palette className="h-3 w-3" />
+                      {paletteDisplayName || 'Premium Palette'}
+                    </Badge>
+                  )}
                   {isGenesis && <CertifiedBadge type="genesis" />}
                   {isCertifiedGame && !isGenesis && (
                     <CertifiedBadge 
@@ -354,7 +409,7 @@ const VisionExperienceModal: React.FC<VisionExperienceModalProps> = ({
                       matchType="exact"
                     />
                   )}
-                  {isCertifiedPalette && !isGenesis && !isCertifiedGame && (
+                  {isCertifiedPalette && !isGenesis && !isCertifiedGame && !hasPremiumPalette && (
                     <CertifiedBadge 
                       type="palette" 
                       name={paletteId}
