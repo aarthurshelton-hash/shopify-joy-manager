@@ -354,8 +354,8 @@ const MarketplaceVisionDetail: React.FC = () => {
             Return to Marketplace
           </Button>
           
-          {/* Purchase CTA */}
-          <div className="flex items-center gap-3">
+          {/* Action buttons */}
+          <div className="flex items-center gap-3 flex-wrap">
             {/* Price Badge */}
             <Badge 
               className={`text-sm px-3 py-1 ${
@@ -376,7 +376,28 @@ const MarketplaceVisionDetail: React.FC = () => {
                 {getPaletteDisplayName(paletteId || '') || 'Premium'}
               </Badge>
             )}
+
+            {/* Order Print - Available to everyone */}
+            <Button
+              variant="outline"
+              className="gap-2 border-primary/50 hover:bg-primary/10"
+              onClick={() => {
+                // Navigate to order print with this visualization's data
+                navigate('/order-print', { 
+                  state: { 
+                    fromMarketplace: true,
+                    visualizationId: listing?.visualization?.id,
+                    title: listing?.visualization?.title,
+                    imageUrl: listing?.visualization?.image_path,
+                  } 
+                });
+              }}
+            >
+              <ShoppingBag className="h-4 w-4" />
+              Order Print
+            </Button>
             
+            {/* Claim Ownership - Premium only */}
             {!isOwnListing && (
               <Button
                 onClick={handlePurchase}

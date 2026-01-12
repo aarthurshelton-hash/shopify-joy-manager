@@ -231,7 +231,7 @@ const VisionDetailModal: React.FC<VisionDetailModalProps> = ({
             {!isPremium && !isOwnListing && (
               <p className="text-sm text-muted-foreground text-center">
                 <Crown className="h-4 w-4 inline mr-1 text-amber-500" />
-                Premium membership required to purchase
+                Premium required to claim ownership. <span className="opacity-70">Anyone can order prints.</span>
               </p>
             )}
           </div>
