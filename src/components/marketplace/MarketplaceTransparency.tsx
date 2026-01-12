@@ -49,10 +49,10 @@ const MarketplaceTransparency: React.FC = () => {
       description: 'Each vision can be transferred max 3 times per 24 hours to prevent manipulation.'
     },
     {
-      label: 'Platform Commission',
-      value: '0%',
+      label: 'Transaction Fee',
+      value: '5%',
       icon: <Scale className="h-5 w-5" />,
-      description: 'Zero fees on sales. 100% of sale price goes directly to the seller.'
+      description: 'Small platform fee on marketplace sales. 95% goes directly to the seller.'
     },
     {
       label: 'Grace Period',
@@ -94,7 +94,11 @@ const MarketplaceTransparency: React.FC = () => {
           <div className="flex flex-wrap gap-2">
             <Badge variant="outline" className="gap-1">
               <CheckCircle2 className="h-3 w-3 text-green-500" />
-              Zero Commission
+              5% Transaction Fee
+            </Badge>
+            <Badge variant="outline" className="gap-1">
+              <CheckCircle2 className="h-3 w-3 text-green-500" />
+              95% to Seller
             </Badge>
             <Badge variant="outline" className="gap-1">
               <CheckCircle2 className="h-3 w-3 text-green-500" />
@@ -102,11 +106,7 @@ const MarketplaceTransparency: React.FC = () => {
             </Badge>
             <Badge variant="outline" className="gap-1">
               <CheckCircle2 className="h-3 w-3 text-green-500" />
-              7-Day Grace Period
-            </Badge>
-            <Badge variant="outline" className="gap-1">
-              <CheckCircle2 className="h-3 w-3 text-green-500" />
-              20% Print Royalties
+              20% Value Appreciation
             </Badge>
           </div>
         </CardContent>
@@ -229,11 +229,11 @@ const MarketplaceTransparency: React.FC = () => {
               <div className="flex items-start gap-3">
                 <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-sm font-medium">Print Royalties (20%)</p>
+                  <p className="text-sm font-medium">Value Appreciation (20%)</p>
                   <p className="text-xs text-muted-foreground">
-                    When anyone orders a print of your vision, you earn 20% of the order value as royalties. 
-                    The remaining 80% covers printing, shipping, and platform operations. This creates sustainable 
-                    passive income from your collection.
+                    When anyone orders a print of your vision, 20% of the order value adds to your vision's 
+                    holding value. The remaining 80% covers printing, shipping, and platform operations. 
+                    Sell your appreciated visions on the marketplace to realize gains.
                   </p>
                 </div>
               </div>
@@ -241,10 +241,10 @@ const MarketplaceTransparency: React.FC = () => {
               <div className="flex items-start gap-3">
                 <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-sm font-medium">Value Accrual</p>
+                  <p className="text-sm font-medium">Marketplace Sales (95% to Seller)</p>
                   <p className="text-xs text-muted-foreground">
-                    As your visualization gains views, downloads, and trades, its Vision Score 
-                    increases. This score belongs to the visualization forever.
+                    When you sell a vision, 95% of the sale price goes directly to you. We take only 
+                    a 5% platform fee to maintain the ecosystem. Barter and negotiate with buyers.
                   </p>
                 </div>
               </div>
@@ -360,9 +360,14 @@ const MarketplaceTransparency: React.FC = () => {
             </p>
 
             <div className="space-y-2">
+              <div className="flex justify-between items-center p-2 bg-muted/50 rounded-lg">
+                <span className="text-sm">Marketplace Transaction Fee</span>
+                <Badge variant="outline" className="bg-primary/20 text-primary border-primary/50">5%</Badge>
+              </div>
+              
               <div className="flex justify-between items-center p-2 bg-green-500/10 rounded-lg border border-green-500/30">
-                <span className="text-sm">Marketplace Commission</span>
-                <Badge variant="outline" className="bg-green-500/20 text-green-600 border-green-500/50">0%</Badge>
+                <span className="text-sm">Seller Receives</span>
+                <Badge variant="outline" className="bg-green-500/20 text-green-600 border-green-500/50">95%</Badge>
               </div>
               
               <div className="flex justify-between items-center p-2 bg-muted/50 rounded-lg">
@@ -371,14 +376,14 @@ const MarketplaceTransparency: React.FC = () => {
               </div>
               
               <div className="flex justify-between items-center p-2 bg-muted/50 rounded-lg">
-                <span className="text-sm">Print Orders</span>
-                <span className="text-sm text-muted-foreground">Production cost only</span>
+                <span className="text-sm">Print Value Split</span>
+                <span className="text-sm text-muted-foreground">20% to holdings / 80% operations</span>
               </div>
             </div>
 
             <p className="text-xs text-muted-foreground">
-              Our revenue comes from premium memberships, not from taking a cut of your sales. 
-              This aligns our incentives with making the platform valuable for collectors.
+              Our revenue comes from a small 5% marketplace fee and premium memberships. Print orders 
+              add value to your holdings (20%), which you realize when selling on the marketplace.
             </p>
           </AccordionContent>
         </AccordionItem>
