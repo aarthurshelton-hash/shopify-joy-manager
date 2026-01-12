@@ -78,7 +78,7 @@ export interface UnifiedVisionExperienceProps {
   
   // Callbacks
   onTransferToCreative?: () => void;
-  onExport?: (type: 'hd' | 'gif' | 'print') => void;
+  onExport?: (type: 'hd' | 'gif' | 'print' | 'preview') => void;
   onShare?: () => void;
   onClose?: () => void;
   onBack?: () => void;
@@ -897,6 +897,16 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                       <>
                         {onExport && (
                           <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                            {/* Free Preview Download - available to everyone */}
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="gap-2"
+                              onClick={() => onExport('preview')}
+                            >
+                              <Download className="h-4 w-4" />
+                              Download
+                            </Button>
                             <Button 
                               variant="outline" 
                               size="sm" 

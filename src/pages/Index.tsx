@@ -600,13 +600,17 @@ const Index = () => {
               onBack={handleReturnClick}
               onUpgradePrompt={() => setShowVisionaryModal(true)}
               onExport={async (type) => {
-                if (!user && type !== 'print') {
-                  setShowAuthModal(true);
-                  return;
-                }
-                if (!isPremium && type !== 'print') {
-                  setShowVisionaryModal(true);
-                  return;
+                // Preview download is available for everyone
+                // HD and GIF require premium
+                if (type !== 'print' && type !== 'preview') {
+                  if (!user) {
+                    setShowAuthModal(true);
+                    return;
+                  }
+                  if (!isPremium) {
+                    setShowVisionaryModal(true);
+                    return;
+                  }
                 }
                 
                 const visualTitle = gameTitle || `${simulation.gameData.white} vs ${simulation.gameData.black}`;
@@ -628,6 +632,53 @@ const Index = () => {
                     returnPath: '/',
                   });
                   navigate('/order-print');
+                } else if (type === 'preview') {
+                  // Preview download - with watermark for free users
+                  try {
+                    const { generatePrintCanvas } = await import('@/lib/chess/canvasRenderer');
+                    
+                    const canvas = await generatePrintCanvas(
+                      simulation.board,
+                      {
+                        white: simulation.gameData.white,
+                        black: simulation.gameData.black,
+                        event: simulation.gameData.event,
+                        date: simulation.gameData.date,
+                        moves: simulation.gameData.moves,
+                      },
+                      {
+                        boardSize: 600,
+                        darkMode: false,
+                        withWatermark: !isPremium, // Add watermark for free users
+                        title: visualTitle,
+                      }
+                    );
+                    
+                    // Download the canvas as PNG
+                    const blob = await new Promise<Blob>((resolve, reject) => {
+                      canvas.toBlob(
+                        (b) => b ? resolve(b) : reject(new Error('Failed to create blob')),
+                        'image/png',
+                        1.0
+                      );
+                    });
+                    
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `${visualTitle.replace(/\s+/g, '-').toLowerCase()}-preview.png`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                    
+                    toast.success('Preview downloaded!', {
+                      description: isPremium ? 'Full resolution image saved.' : 'Includes En Pensent branding.',
+                    });
+                  } catch (error) {
+                    console.error('Preview download failed:', error);
+                    toast.error('Download failed', { description: 'Please try again.' });
+                  }
                 } else if (type === 'hd') {
                   // Use trademark HD export for proper "print-ready" look
                   await downloadTrademarkHD({

@@ -3,7 +3,8 @@ import ChessBoardVisualization from './ChessBoardVisualization';
 import GameInfoDisplay from './GameInfoDisplay';
 import { EnPensentOverlay, MoveHistoryEntry } from './EnPensentOverlay';
 import { SquareData } from '@/lib/chess/gameSimulator';
-import { PieceType } from '@/lib/chess/pieceColors';
+import { PieceType, PieceColor } from '@/lib/chess/pieceColors';
+import { HighlightedPiece } from '@/contexts/LegendHighlightContext';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 
 interface GameData {
@@ -21,6 +22,12 @@ interface EnPensentData {
   blackPalette: Record<PieceType, string>;
 }
 
+// Highlight state for export rendering
+interface HighlightState {
+  lockedPieces: Array<{ pieceType: PieceType; pieceColor: PieceColor }>;
+  compareMode: boolean;
+}
+
 interface PrintReadyVisualizationProps {
   // Standard simulation-based rendering
   board?: SquareData[][];
@@ -34,6 +41,9 @@ interface PrintReadyVisualizationProps {
   
   // EnPensent live game rendering (alternative to board)
   enPensentData?: EnPensentData;
+  
+  // Optional highlight state for export (captures locked pieces, compare mode)
+  highlightState?: HighlightState;
 }
 
 /**
@@ -58,6 +68,7 @@ export const PrintReadyVisualization: React.FC<PrintReadyVisualizationProps> = (
   compact = false,
   title,
   enPensentData,
+  highlightState,
 }) => {
   const bgColor = darkMode ? '#0A0A0A' : '#FDFCFB';
   const borderColor = darkMode ? '#292524' : '#e7e5e4';
@@ -108,10 +119,18 @@ export const PrintReadyVisualization: React.FC<PrintReadyVisualizationProps> = (
     }
     
     if (board) {
+      // Convert highlight state to HighlightedPiece array for the visualization
+      const overrideHighlightedPieces: HighlightedPiece[] | undefined = highlightState?.lockedPieces.map(p => ({
+        pieceType: p.pieceType,
+        pieceColor: p.pieceColor,
+      }));
+      
       return (
         <ChessBoardVisualization 
           board={board} 
-          size={boardSize} 
+          size={boardSize}
+          overrideHighlightedPieces={overrideHighlightedPieces}
+          overrideCompareMode={highlightState?.compareMode}
         />
       );
     }
