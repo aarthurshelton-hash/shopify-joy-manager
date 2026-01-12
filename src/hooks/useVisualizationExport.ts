@@ -181,7 +181,8 @@ export function useVisualizationExport(options: UseVisualizationExportOptions) {
   }, [isPremium, visualizationId, onUpgradeRequired]);
 
   /**
-   * Generate animated GIF of the game progression
+   * Generate animated GIF of the game progression - frame-by-frame capture
+   * Each frame represents a move state from the timeline
    */
   const downloadGIF = useCallback(async (
     simulation: SimulationResult,
@@ -197,93 +198,28 @@ export function useVisualizationExport(options: UseVisualizationExportOptions) {
     setState(prev => ({ ...prev, isExportingGIF: true, gifProgress: 0 }));
     
     try {
-      const GIF = (await import('gif.js')).default;
-      const html2canvas = (await import('html2canvas')).default;
-      
-      const { board, totalMoves, gameData } = simulation;
+      // Import the frame-by-frame GIF generator
+      const { generateAnimatedGif } = await import('@/lib/chess/gifFrameRenderer');
       
       // Show progress toast
-      toast.loading('Generating GIF...', { id: 'gif-export', duration: Infinity });
+      toast.loading('Generating animated GIF...', { id: 'gif-export', duration: Infinity });
       
-      // Capture initial frame to get dimensions
-      const firstCanvas = await html2canvas(captureElement, {
-        scale: 2, // 2x for good quality without huge file size
-        useCORS: true,
-        allowTaint: true,
-        logging: false,
-      });
-      
-      const gif = new GIF({
-        workers: 2,
-        quality: 10,
-        width: firstCanvas.width,
-        height: firstCanvas.height,
-        workerScript: '/gif.worker.js',
-      });
-      
-      // Determine which moves to capture (sample if too many)
-      const maxFrames = 60;
-      const step = totalMoves > maxFrames ? Math.ceil(totalMoves / maxFrames) : 1;
-      const movesToCapture: number[] = [];
-      
-      for (let i = 0; i <= totalMoves; i += step) {
-        movesToCapture.push(i);
-      }
-      // Always include final frame
-      if (movesToCapture[movesToCapture.length - 1] !== totalMoves) {
-        movesToCapture.push(totalMoves);
-      }
-      
-      const frameCount = movesToCapture.length;
-      let capturedFrames = 0;
-
-      // We need a way to temporarily filter the board for each frame
-      // This requires the component to expose a method to set the current move
-      // For now, we'll capture the full final state as a single-frame "GIF"
-      // A full implementation would require the board component to accept a currentMove prop
-      
-      // Simplified approach: capture multiple states using CSS animation simulation
-      // For a proper frame-by-frame capture, we'd need to integrate with TimelineContext
-      
-      // Add the initial frame (held longer)
-      gif.addFrame(firstCanvas, { delay: 450, copy: true });
-      capturedFrames++;
-      
-      const updateProgress = (progress: number) => {
+      const updateProgress = (progress: number, message: string) => {
         setState(prev => ({ ...prev, gifProgress: progress }));
         onProgressUpdate?.(progress);
-        toast.loading(`Generating GIF... ${Math.round(progress * 100)}%`, { id: 'gif-export' });
+        toast.loading(`${message} (${Math.round(progress * 100)}%)`, { id: 'gif-export' });
       };
       
-      updateProgress(capturedFrames / frameCount * 0.5);
-      
-      // For a more complete implementation, we'd iterate through moves
-      // and capture each state. For now, add final frame.
-      const finalCanvas = await html2canvas(captureElement, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        logging: false,
-      });
-      
-      gif.addFrame(finalCanvas, { delay: 1000, copy: true });
-      updateProgress(0.6);
-      
-      // Render the GIF
-      const blob = await new Promise<Blob>((resolve, reject) => {
-        gif.on('progress', (p: number) => {
-          updateProgress(0.6 + p * 0.4);
-        });
-        
-        gif.on('finished', (blob: Blob) => {
-          resolve(blob);
-        });
-        
-        gif.on('error', (error: Error) => {
-          reject(error);
-        });
-        
-        gif.render();
+      // Generate the GIF with frame-by-frame capture
+      const blob = await generateAnimatedGif({
+        simulation,
+        size: 400,
+        darkMode: false,
+        showCoordinates: true,
+        frameDelay: 150,
+        quality: 10,
+        maxFrames: 60,
+        onProgress: updateProgress
       });
       
       // Download the GIF
@@ -302,8 +238,8 @@ export function useVisualizationExport(options: UseVisualizationExportOptions) {
       }
       
       toast.dismiss('gif-export');
-      toast.success('GIF downloaded!', {
-        description: `Animated visualization saved (${(blob.size / 1024).toFixed(0)}KB)`,
+      toast.success('Animated GIF downloaded!', {
+        description: `${simulation.totalMoves} moves captured (${(blob.size / 1024).toFixed(0)}KB)`,
       });
       
       return true;

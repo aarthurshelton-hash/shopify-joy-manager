@@ -48,9 +48,11 @@ import { EnhancedLegend } from './EnhancedLegend';
 import GameInfoDisplay from './GameInfoDisplay';
 import { ShowPiecesToggle } from './ShowPiecesToggle';
 import BoardCoordinateGuide from './BoardCoordinateGuide';
+import IntrinsicPaletteCard from './IntrinsicPaletteCard';
 import { VisionScore, getVisionScore, calculateVisionValue, calculateMembershipMultiplier, SCORING_WEIGHTS } from '@/lib/visualizations/visionScoring';
 import { analyzeGame, GameAnalysis } from '@/lib/chess/chessAnalysis';
-import { setActivePalette, PaletteId, getActivePalette, getCurrentPalette } from '@/lib/chess/pieceColors';
+import { setActivePalette, PaletteId, getActivePalette, getCurrentPalette, colorPalettes } from '@/lib/chess/pieceColors';
+import { detectGameCard, GameCardMatch } from '@/lib/chess/gameCardDetection';
 import { format } from 'date-fns';
 
 export interface UnifiedVisionExperienceProps {
@@ -552,6 +554,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
   const [visionScore, setVisionScore] = useState<VisionScore | null>(null);
   const [isLoadingScore, setIsLoadingScore] = useState(false);
   const [gameAnalysis, setGameAnalysis] = useState<GameAnalysis | null>(null);
+  const [gameCardMatch, setGameCardMatch] = useState<GameCardMatch | null>(null);
   
   // Board display options
   const [showCoordinates, setShowCoordinates] = useState(true);
@@ -563,6 +566,23 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
   const [showLegend, setShowLegend] = useState(true);
   
   const containerRef = useRef<HTMLDivElement>(null);
+  
+  // Detect if current palette is an official En Pensent palette
+  const currentPaletteInfo = useMemo(() => {
+    const activePalette = paletteId || getActivePalette().id;
+    if (activePalette === 'custom') return null;
+    const palette = colorPalettes.find(p => p.id === activePalette);
+    return palette ? { id: activePalette as PaletteId, name: palette.name } : null;
+  }, [paletteId]);
+  
+  // Detect game card match from PGN
+  useEffect(() => {
+    const pgnToCheck = pgn || gameData.pgn;
+    if (pgnToCheck) {
+      const match = detectGameCard(pgnToCheck);
+      setGameCardMatch(match);
+    }
+  }, [pgn, gameData.pgn]);
 
   // Calculate responsive board size
   useEffect(() => {
@@ -797,6 +817,18 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
 
                   {/* Game Info */}
                   <GameInfoDisplay gameData={gameData} title={contextTitle} darkMode={darkMode} />
+
+                  {/* Intrinsic Palette/Game Card - Show when matched */}
+                  {(currentPaletteInfo || (gameCardMatch?.isMatch)) && (
+                    <IntrinsicPaletteCard
+                      paletteId={currentPaletteInfo?.id}
+                      similarity={currentPaletteInfo ? 100 : undefined}
+                      gameCardId={gameCardMatch?.matchedGame?.id}
+                      gameCardTitle={gameCardMatch?.matchedGame?.title}
+                      gameCardMatchType={gameCardMatch?.matchType}
+                      gameCardSimilarity={gameCardMatch?.similarity}
+                    />
+                  )}
 
                   {/* Action Buttons - Context Specific */}
                   <div className="flex flex-wrap gap-2 pt-4 border-t border-border/30">
