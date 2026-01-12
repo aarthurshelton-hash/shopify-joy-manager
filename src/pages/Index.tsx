@@ -87,6 +87,8 @@ const Index = () => {
     currentPgn: storedPgn, 
     currentGameTitle: storedTitle,
     savedShareId: storedShareId,
+    setCurrentSimulation,
+    setSavedShareId: setSessionShareId,
     clearSimulation,
     setCreativeModeTransfer
   } = useSessionStore();
@@ -637,6 +639,10 @@ const Index = () => {
                   : undefined;
                 
                 if (type === 'print') {
+                  // Save simulation to session store so we can restore it when returning
+                  setCurrentSimulation(simulation, currentPgn, visualTitle);
+                  setSessionShareId(savedShareId);
+                  
                   // Navigate to order print page with full simulation data
                   setOrderData({
                     title: visualTitle,
