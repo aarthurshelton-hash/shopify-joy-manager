@@ -17,6 +17,7 @@ import { RotatingArtBackground } from '@/components/shared/RotatingArtBackground
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
 import { BookShowcase } from '@/components/book/BookShowcase';
+import { TrendingVisions } from '@/components/marketplace/TrendingVisions';
 import { useSessionStore } from '@/stores/sessionStore';
 import { 
   getActiveListings, 
@@ -244,6 +245,9 @@ const Marketplace: React.FC = () => {
 
           {/* Browse Tab */}
           <TabsContent value="browse" className="space-y-6">
+            {/* Trending Visions by Royalty Activity */}
+            <TrendingVisions />
+
             {/* Featured Book Showcase */}
             <BookShowcase variant="compact" />
 
