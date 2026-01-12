@@ -23,6 +23,7 @@ import OrderPrint from "./pages/OrderPrint";
 import Marketplace from "./pages/Marketplace";
 import AdminSeedMarketplace from "./pages/AdminSeedMarketplace";
 import PaletteAdminPage from "./components/admin/PaletteAdminPage";
+import AdminModeration from "./pages/AdminModeration";
 import Account from "./pages/Account";
 import NotFound from "./pages/NotFound";
 
@@ -55,6 +56,7 @@ const App = () => (
             <Route path="/marketplace" element={<Marketplace />} />
             <Route path="/admin/seed-marketplace" element={<AdminSeedMarketplace />} />
             <Route path="/admin/palettes" element={<PaletteAdminPage />} />
+            <Route path="/admin/moderation" element={<AdminModeration />} />
             <Route path="/account" element={<Account />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
