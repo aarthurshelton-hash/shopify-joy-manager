@@ -1009,6 +1009,51 @@ export type Database = {
           },
         ]
       }
+      withdrawal_requests: {
+        Row: {
+          admin_notes: string | null
+          amount_cents: number
+          completed_at: string | null
+          created_at: string
+          id: string
+          payout_details: Json | null
+          payout_method: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          amount_cents: number
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          payout_details?: Json | null
+          payout_method?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          admin_notes?: string | null
+          amount_cents?: number
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          payout_details?: Json | null
+          payout_method?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       education_fund_stats: {
@@ -1047,6 +1092,14 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: boolean
       }
+      create_withdrawal_request: {
+        Args: {
+          p_amount_cents: number
+          p_payout_details?: Json
+          p_user_id: string
+        }
+        Returns: string
+      }
       generate_challenge_code: { Args: never; Returns: string }
       generate_share_id: { Args: never; Returns: string }
       get_funnel_stats: {
@@ -1084,6 +1137,7 @@ export type Database = {
         Returns: number
       }
       get_user_offense_count: { Args: { p_user_id: string }; Returns: number }
+      get_withdrawable_balance: { Args: { p_user_id: string }; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1117,6 +1171,14 @@ export type Database = {
         Returns: {
           forfeited_value_cents: number
           released_count: number
+        }[]
+      }
+      validate_withdrawal_request: {
+        Args: { p_amount_cents: number; p_user_id: string }
+        Returns: {
+          error_message: string
+          is_valid: boolean
+          max_withdrawable_cents: number
         }[]
       }
     }
