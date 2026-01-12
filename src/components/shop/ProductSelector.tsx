@@ -11,7 +11,7 @@ import PrintReadyVisualization from '@/components/chess/PrintReadyVisualization'
 import { EnPensentOverlay, MoveHistoryEntry } from '@/components/chess/EnPensentOverlay';
 import { SimulationResult, SquareData } from '@/lib/chess/gameSimulator';
 import { generateCleanPrintImage } from '@/lib/chess/printImageGenerator';
-import { PieceType } from '@/lib/chess/pieceColors';
+import { PieceType, getActivePalette } from '@/lib/chess/pieceColors';
 import { toast } from 'sonner';
 import { FrameAddOn, type FrameOption } from './FrameAddOn';
 import { FRAME_SHIPPING_COST, FREE_SHIPPING_THRESHOLD } from '@/lib/shop/framePricing';
@@ -148,6 +148,29 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
     }
     return simulation.board;
   }, [simulation, capturedState]);
+
+  // Derive palettes for info card preview - use enPensent data or fall back to active palette
+  const { infoCardPalettes, infoCardMoveHistory } = useMemo(() => {
+    if (enPensentData) {
+      return {
+        infoCardPalettes: {
+          white: enPensentData.whitePalette as Record<string, string>,
+          black: enPensentData.blackPalette as Record<string, string>,
+        },
+        infoCardMoveHistory: enPensentData.moveHistory,
+      };
+    }
+    
+    // Fall back to active palette for simulation-based orders
+    const activePalette = getActivePalette();
+    return {
+      infoCardPalettes: {
+        white: activePalette.white as Record<string, string>,
+        black: activePalette.black as Record<string, string>,
+      },
+      infoCardMoveHistory: undefined,
+    };
+  }, [enPensentData]);
 
   // Create mini visualization for mockup - supports both simulation and EnPensent data
   // Uses unified PrintReadyVisualization for consistent "trademark look"
@@ -410,7 +433,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
               setShowVisionaryModal(true);
             }
           }}
-          // Pass data for card preview
+          // Pass data for card preview - use displayBoard or derive from enPensent
           board={displayBoard || undefined}
           gameData={simulation?.gameData || enPensentData?.gameInfo ? {
             white: simulation?.gameData?.white || enPensentData?.gameInfo?.white,
@@ -419,10 +442,10 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
             date: simulation?.gameData?.date,
             result: simulation?.gameData?.result || enPensentData?.gameInfo?.result,
           } : undefined}
-          moveHistory={enPensentData?.moveHistory}
+          moveHistory={infoCardMoveHistory}
           totalMoves={enPensentData?.moveHistory?.length || simulation?.totalMoves || 0}
-          whitePalette={enPensentData?.whitePalette as Record<string, string> | undefined}
-          blackPalette={enPensentData?.blackPalette as Record<string, string> | undefined}
+          whitePalette={infoCardPalettes.white}
+          blackPalette={infoCardPalettes.black}
           darkMode={capturedState?.darkMode}
         />
 
