@@ -60,6 +60,36 @@ serve(async (req) => {
       });
     }
 
+    // First check database cache for subscription status
+    const { data: cachedSub, error: cacheError } = await supabaseClient
+      .from('user_subscriptions')
+      .select('*')
+      .eq('user_id', user.id)
+      .single();
+
+    if (!cacheError && cachedSub) {
+      const isActive = cachedSub.subscription_status === 'active';
+      const periodEnd = cachedSub.current_period_end ? new Date(cachedSub.current_period_end) : null;
+      const isValid = isActive && (!periodEnd || periodEnd > new Date());
+
+      if (isValid) {
+        logStep("Using cached subscription data", { 
+          status: cachedSub.subscription_status,
+          periodEnd: periodEnd?.toISOString()
+        });
+        return new Response(JSON.stringify({
+          subscribed: true,
+          product_id: cachedSub.product_id,
+          subscription_end: periodEnd?.toISOString() || null,
+          cached: true
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+    }
+
+    // Fallback to Stripe API if no valid cache
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
     logStep("Stripe key verified");
@@ -104,8 +134,42 @@ serve(async (req) => {
         endDate: subscriptionEnd,
         productId 
       });
+
+      // Sync to database cache
+      const priceId = subscription.items.data[0].price.id;
+      const currentPeriodStart = new Date(subscription.current_period_start * 1000);
+      const currentPeriodEnd = new Date(subscription.current_period_end * 1000);
+
+      await supabaseClient
+        .from('user_subscriptions')
+        .upsert({
+          user_id: user.id,
+          stripe_customer_id: customerId,
+          stripe_subscription_id: subscription.id,
+          subscription_status: subscription.status,
+          product_id: productId,
+          price_id: priceId,
+          current_period_start: currentPeriodStart.toISOString(),
+          current_period_end: currentPeriodEnd.toISOString(),
+          cancel_at_period_end: subscription.cancel_at_period_end,
+          updated_at: new Date().toISOString(),
+        }, {
+          onConflict: 'user_id',
+        });
+      logStep("Synced subscription to database cache");
     } else {
       logStep("No active subscription found");
+      
+      // Update cache to show no active subscription
+      if (cachedSub) {
+        await supabaseClient
+          .from('user_subscriptions')
+          .update({
+            subscription_status: 'canceled',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('user_id', user.id);
+      }
     }
 
     return new Response(JSON.stringify({
