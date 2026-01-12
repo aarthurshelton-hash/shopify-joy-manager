@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Dialog,
@@ -346,9 +346,10 @@ const VisionExperienceModal: React.FC<VisionExperienceModalProps> = ({
                           listing?.visualization?.title?.includes('Game of the Century') ||
                           listing?.visualization?.title?.includes('Deep Blue');
   
-  // Get a random game image for background if no palette art
-  const gameImageKeys = Object.keys(gameImageImports);
-  const randomGameImage = gameImageImports[gameImageKeys[Math.floor(Math.random() * gameImageKeys.length)]];
+  // Get a random game image for background if no palette art - memoized index
+  const gameImageKeys = useMemo(() => Object.keys(gameImageImports), []);
+  const randomImageIndex = useMemo(() => Math.floor(Math.random() * gameImageKeys.length), [gameImageKeys.length]);
+  const randomGameImage = gameImageImports[gameImageKeys[randomImageIndex]];
   const backgroundArt = paletteArt || randomGameImage;
 
   // Reconstruct board data
@@ -372,27 +373,26 @@ const VisionExperienceModal: React.FC<VisionExperienceModalProps> = ({
 
   console.log('[VisionExperienceModal] Rendering - isOpen:', isOpen, 'listing:', listing?.id);
 
-  // Always use parent's isOpen state, regardless of listing
-  // Render empty content if no listing but keep dialog state consistent
+  const handleOpenChange = useCallback((open: boolean) => {
+    console.log('[VisionExperienceModal] onOpenChange called with:', open);
+    if (!open) onClose();
+  }, [onClose]);
+
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => {
-      console.log('[VisionExperienceModal] onOpenChange called with:', open);
-      if (!open) onClose();
-    }}>
-      {!listing ? (
-        <DialogContent className="max-w-6xl max-h-[95vh] overflow-hidden p-0 gap-0 relative">
-          <div className="flex items-center justify-center h-64">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
-        </DialogContent>
-      ) : (
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent 
         className={`max-w-6xl max-h-[95vh] overflow-hidden p-0 gap-0 relative ${
-          hasPremiumPalette 
+          hasPremiumPalette && listing
             ? 'ring-2 ring-amber-500/50 shadow-2xl shadow-amber-500/20' 
             : ''
         }`}
       >
+        {!listing ? (
+          <div className="flex items-center justify-center h-64">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <>
         {/* Premium palette background art with shimmer */}
         {hasPremiumPalette && backgroundArt && (
           <>
@@ -587,8 +587,9 @@ const VisionExperienceModal: React.FC<VisionExperienceModalProps> = ({
             </div>
           </motion.div>
         </AnimatePresence>
+        </>
+        )}
       </DialogContent>
-      )}
     </Dialog>
   );
 };
