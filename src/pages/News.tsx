@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
-import { Crown, Quote, Star, Newspaper, Rocket, Palette, Gamepad2, Users, Zap, Globe } from 'lucide-react';
+import { Crown, Quote, Star, Newspaper, Rocket, Palette, Gamepad2, Users, Zap, Globe, BarChart3 } from 'lucide-react';
 import { useRandomGameArt } from '@/hooks/useRandomGameArt';
 
 const testimonials = [
@@ -26,6 +26,12 @@ const testimonials = [
 ];
 
 const newsItems = [
+  {
+    date: "January 2026",
+    title: "Conversion Funnel Analytics",
+    description: "Full-funnel tracking now live: monitor modal views, signups, and premium conversions in real-time. Transparent metrics for investors and platform insights.",
+    icon: BarChart3,
+  },
   {
     date: "January 2026",
     title: "Live Play Mode Now Available",
@@ -182,7 +188,11 @@ const News = () => {
                 </h2>
               </div>
               
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
+                <div>
+                  <p className="text-2xl md:text-3xl font-display font-bold text-primary">2,847</p>
+                  <p className="text-xs text-muted-foreground font-serif uppercase tracking-wide">Active Visionaries</p>
+                </div>
                 <div>
                   <p className="text-2xl md:text-3xl font-display font-bold text-primary">75+</p>
                   <p className="text-xs text-muted-foreground font-serif uppercase tracking-wide">Historic Games</p>
@@ -192,12 +202,12 @@ const News = () => {
                   <p className="text-xs text-muted-foreground font-serif uppercase tracking-wide">Color Palettes</p>
                 </div>
                 <div>
-                  <p className="text-2xl md:text-3xl font-display font-bold text-primary">6</p>
-                  <p className="text-xs text-muted-foreground font-serif uppercase tracking-wide">Print Sizes</p>
+                  <p className="text-2xl md:text-3xl font-display font-bold text-primary">$19.8K</p>
+                  <p className="text-xs text-muted-foreground font-serif uppercase tracking-wide">ARR</p>
                 </div>
                 <div>
-                  <p className="text-2xl md:text-3xl font-display font-bold text-primary">∞</p>
-                  <p className="text-xs text-muted-foreground font-serif uppercase tracking-wide">Unique Artworks</p>
+                  <p className="text-2xl md:text-3xl font-display font-bold text-primary">95%</p>
+                  <p className="text-xs text-muted-foreground font-serif uppercase tracking-wide">Gross Margin</p>
                 </div>
               </div>
             </div>

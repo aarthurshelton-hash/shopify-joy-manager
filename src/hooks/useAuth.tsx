@@ -1,6 +1,7 @@
 import { useState, useEffect, createContext, useContext, ReactNode, useCallback } from 'react';
 import { User, Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { recordFunnelEvent } from '@/lib/analytics/membershipFunnel';
 
 interface Profile {
   id: string;
@@ -233,7 +234,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [checkSubscription]);
 
   const signUp = async (email: string, password: string, displayName?: string) => {
-    const { error } = await supabase.auth.signUp({
+    const { error, data } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -243,6 +244,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         },
       },
     });
+    
+    // Track successful signup
+    if (!error && data.user) {
+      recordFunnelEvent('signup_completed', {
+        trigger_source: 'auth_modal',
+      });
+    }
+    
     return { error };
   };
 
