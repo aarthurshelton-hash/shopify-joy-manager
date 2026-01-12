@@ -1,4 +1,11 @@
 import { supabase } from '@/integrations/supabase/client';
+import { z } from 'zod';
+
+// Validation schema for listing price
+const listingPriceSchema = z.number()
+  .int('Price must be a whole number of cents')
+  .min(0, 'Price cannot be negative')
+  .max(1000000, 'Maximum price is $10,000');
 
 export interface MarketplaceListing {
   id: string;
@@ -98,6 +105,9 @@ export async function createListing(
   priceCents: number
 ): Promise<{ data: MarketplaceListing | null; error: Error | null }> {
   try {
+    // Validate price before making API call
+    const validatedPrice = listingPriceSchema.parse(priceCents);
+
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
@@ -106,7 +116,7 @@ export async function createListing(
       .insert({
         visualization_id: visualizationId,
         seller_id: user.id,
-        price_cents: priceCents,
+        price_cents: validatedPrice,
       })
       .select()
       .single();
@@ -137,9 +147,12 @@ export async function updateListingPrice(
   priceCents: number
 ): Promise<{ error: Error | null }> {
   try {
+    // Validate price before making API call
+    const validatedPrice = listingPriceSchema.parse(priceCents);
+
     const { error } = await supabase
       .from('visualization_listings')
-      .update({ price_cents: priceCents })
+      .update({ price_cents: validatedPrice })
       .eq('id', listingId);
 
     if (error) throw error;
