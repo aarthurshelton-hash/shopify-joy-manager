@@ -68,6 +68,7 @@ export interface DuplicateCheckResult {
   colorSimilarity?: number;
   reason?: string;
   linkedPaletteId?: PaletteId;
+  existingColors?: PaletteColors; // For color comparison preview
 }
 
 /**
@@ -164,6 +165,7 @@ export async function checkDuplicateVisualization(
         ownerDisplayName: similarityResult.ownerDisplayName,
         colorSimilarity: similarityResult.colorSimilarity,
         reason: similarityResult.reason,
+        existingColors: similarityResult.existingColors, // For comparison preview
       };
     }
     
