@@ -7,6 +7,7 @@ import {
   getFeaturedPaletteForColors
 } from './similarityDetection';
 import { colorPalettes, PaletteId } from '@/lib/chess/pieceColors';
+import { validateVisualizationTitle, validatePgnData } from '@/lib/validations/visualizationSchemas';
 
 export interface VisualizationState {
   paletteId?: string;
@@ -222,6 +223,18 @@ export async function saveVisualization(
   visualizationState?: VisualizationState
 ): Promise<SaveVisualizationResult> {
   try {
+    // Validate title
+    const titleValidation = validateVisualizationTitle(title);
+    if (!titleValidation.success) {
+      return { data: null, error: new Error(titleValidation.error || 'Invalid title') };
+    }
+
+    // Validate PGN data
+    const pgnValidation = validatePgnData(pgn);
+    if (!pgnValidation.success) {
+      return { data: null, error: new Error(pgnValidation.error || 'Invalid PGN data') };
+    }
+
     // Check for duplicates and similarity first (globally)
     const checkResult = await checkDuplicateVisualization(
       userId,
