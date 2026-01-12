@@ -633,35 +633,18 @@ const Index = () => {
                   });
                   navigate('/order-print');
                 } else if (type === 'preview') {
-                  // Preview download - with watermark for free users
+                  // Preview download - uses SAME rendering as HD, but with watermark for free users
                   try {
-                    const { generatePrintCanvas } = await import('@/lib/chess/canvasRenderer');
+                    const { generateCleanPrintImage } = await import('@/lib/chess/printImageGenerator');
                     
-                    const canvas = await generatePrintCanvas(
-                      simulation.board,
-                      {
-                        white: simulation.gameData.white,
-                        black: simulation.gameData.black,
-                        event: simulation.gameData.event,
-                        date: simulation.gameData.date,
-                        moves: simulation.gameData.moves,
-                      },
-                      {
-                        boardSize: 600,
-                        darkMode: false,
-                        withWatermark: !isPremium, // Add watermark for free users
-                        title: visualTitle,
-                      }
-                    );
-                    
-                    // Download the canvas as PNG
-                    const blob = await new Promise<Blob>((resolve, reject) => {
-                      canvas.toBlob(
-                        (b) => b ? resolve(b) : reject(new Error('Failed to create blob')),
-                        'image/png',
-                        1.0
-                      );
+                    const base64Image = await generateCleanPrintImage(simulation, {
+                      darkMode: false,
+                      withWatermark: !isPremium, // Add watermark for free users
                     });
+                    
+                    // Convert base64 to blob for download
+                    const response = await fetch(base64Image);
+                    const blob = await response.blob();
                     
                     const url = URL.createObjectURL(blob);
                     const link = document.createElement('a');
