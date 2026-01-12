@@ -2,19 +2,20 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { getVisualizationById, SavedVisualization, VisualizationState } from '@/lib/visualizations/visualizationStorage';
-import { SimulationResult, SquareData, GameData } from '@/lib/chess/gameSimulator';
-import { setActivePalette, setCustomColor, PaletteId, PieceType, colorPalettes, getActivePalette, getCurrentPalette } from '@/lib/chess/pieceColors';
+import { SquareData, GameData } from '@/lib/chess/gameSimulator';
+import { setActivePalette, setCustomColor, PaletteId, PieceType } from '@/lib/chess/pieceColors';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
-import PrintPreview from '@/components/chess/PrintPreview';
 import { TimelineProvider } from '@/contexts/TimelineContext';
 import { LegendHighlightProvider } from '@/contexts/LegendHighlightContext';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Loader2, RotateCcw, Wand2, Crown } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSessionStore, CreativeModeTransfer } from '@/stores/sessionStore';
 import { VisionaryMembershipCard } from '@/components/premium';
 import { recordVisionInteraction } from '@/lib/visualizations/visionScoring';
+import UnifiedVisionExperience from '@/components/chess/UnifiedVisionExperience';
+import { getCurrentPalette } from '@/lib/chess/pieceColors';
 
 const VisualizationDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -29,7 +30,6 @@ const VisualizationDetail: React.FC = () => {
   
   // Store original palette state for reset functionality
   const originalStateRef = useRef<VisualizationState | undefined>(undefined);
-  const [hasChanges, setHasChanges] = useState(false);
   const viewRecordedRef = useRef(false);
 
   // Restore the saved palette when loading visualization
@@ -52,14 +52,7 @@ const VisualizationDetail: React.FC = () => {
       // Restore the saved palette
       setActivePalette(vizState.paletteId as PaletteId);
     }
-    setHasChanges(false);
   }, []);
-
-  // Reset to saved state
-  const handleResetToSaved = useCallback(() => {
-    restorePaletteState(originalStateRef.current);
-    toast.success('Restored to saved state');
-  }, [restorePaletteState]);
 
   // Transfer to Creative Mode
   const handleTransferToCreative = useCallback(() => {
@@ -106,24 +99,6 @@ const VisualizationDetail: React.FC = () => {
     navigate('/creative-mode');
     toast.success('Transferred to Creative Mode');
   }, [visualization, isPremium, setCreativeModeTransfer, navigate]);
-
-  // Track palette changes
-  useEffect(() => {
-    const checkForChanges = () => {
-      if (!originalStateRef.current) return;
-      
-      const currentPalette = getActivePalette();
-      const originalPaletteId = originalStateRef.current.paletteId || 'modern';
-      
-      if (currentPalette.id !== originalPaletteId) {
-        setHasChanges(true);
-      }
-    };
-
-    // Check periodically for changes (simple approach)
-    const interval = setInterval(checkForChanges, 1000);
-    return () => clearInterval(interval);
-  }, []);
 
   useEffect(() => {
     if (!id) {
@@ -186,57 +161,69 @@ const VisualizationDetail: React.FC = () => {
     }
   }, [id, user, authLoading, restorePaletteState]);
 
-  // Reconstruct SimulationResult from stored game_data
-  const reconstructSimulation = (): SimulationResult | null => {
+  // Reconstruct board and gameData from stored data
+  const getVisualizationData = () => {
     if (!visualization) return null;
 
-    const gameData = visualization.game_data;
+    const storedData = visualization.game_data;
     
-    // Check if we have full board data stored
-    if (gameData.board && Array.isArray(gameData.board)) {
-      return {
-        board: gameData.board as SquareData[][],
-        gameData: {
-          white: gameData.white || 'White',
-          black: gameData.black || 'Black',
-          event: gameData.event || '',
-          date: gameData.date || '',
-          result: gameData.result || '',
-          pgn: gameData.pgn || visualization.pgn || '',
-          moves: gameData.moves || [],
-        },
-        totalMoves: gameData.totalMoves || 0,
-      };
-    }
+    // Reconstruct board
+    const board: SquareData[][] = storedData.board || 
+      Array(8).fill(null).map((_, rank) =>
+        Array(8).fill(null).map((_, file) => ({
+          file,
+          rank,
+          visits: [],
+          isLight: (file + rank) % 2 === 1,
+        }))
+      );
     
-    // Fallback for older visualizations without board data
-    // Create an empty board structure
-    const emptyBoard: SquareData[][] = Array(8).fill(null).map((_, rank) =>
-      Array(8).fill(null).map((_, file) => ({
-        file,
-        rank,
-        visits: [],
-        isLight: (file + rank) % 2 === 1,
-      }))
-    );
-    
-    return {
-      board: emptyBoard,
-      gameData: {
-        white: gameData.white || 'White',
-        black: gameData.black || 'Black',
-        event: gameData.event || '',
-        date: gameData.date || '',
-        result: gameData.result || '',
-        pgn: gameData.pgn || visualization.pgn || '',
-        moves: gameData.moves || [],
-      },
-      totalMoves: gameData.totalMoves || 0,
+    // Reconstruct gameData
+    const gameData: GameData = {
+      white: storedData.white || 'White',
+      black: storedData.black || 'Black',
+      event: storedData.event || '',
+      date: storedData.date || '',
+      result: storedData.result || '',
+      pgn: storedData.pgn || visualization.pgn || '',
+      moves: storedData.moves || [],
     };
+    
+    const totalMoves = storedData.totalMoves || 0;
+    const paletteId = storedData.visualizationState?.paletteId;
+    
+    return { board, gameData, totalMoves, paletteId };
   };
 
   const handleBack = () => {
     navigate('/my-vision');
+  };
+
+  const handleShare = async () => {
+    if (!visualization?.public_share_id) {
+      toast.error('This visualization has no public share link');
+      return;
+    }
+    
+    const shareUrl = `${window.location.origin}/v/${visualization.public_share_id}`;
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: visualization.title || 'Chess Visualization',
+          text: 'Check out this unique chess visualization on En Pensent!',
+          url: shareUrl,
+        });
+      } catch (err) {
+        if ((err as Error).name !== 'AbortError') {
+          await navigator.clipboard.writeText(shareUrl);
+          toast.success('Link copied to clipboard');
+        }
+      }
+    } else {
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success('Link copied to clipboard');
+    }
   };
 
   if (authLoading || isLoading) {
@@ -272,9 +259,9 @@ const VisualizationDetail: React.FC = () => {
     );
   }
 
-  const simulation = reconstructSimulation();
+  const vizData = getVisualizationData();
 
-  if (!simulation) {
+  if (!vizData) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
@@ -297,62 +284,36 @@ const VisualizationDetail: React.FC = () => {
     <div className="min-h-screen bg-background">
       <Header />
       <div className="container mx-auto px-4 py-8">
-        {/* Back button and title with action buttons */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between flex-wrap gap-4 mb-4">
-            <Button 
-              onClick={handleBack} 
-              variant="ghost" 
-              className="gap-2"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Return to Gallery
-            </Button>
-            
-            <div className="flex items-center gap-2">
-              {/* Reset to Saved button - only show if changes made */}
-              {hasChanges && (
-                <Button 
-                  onClick={handleResetToSaved}
-                  variant="outline" 
-                  size="sm"
-                  className="gap-2"
-                >
-                  <RotateCcw className="h-4 w-4" />
-                  Reset to Saved
-                </Button>
-              )}
-              
-              {/* Transfer to Creative Mode */}
-              <Button 
-                onClick={handleTransferToCreative}
-                variant="outline" 
-                size="sm"
-                className="gap-2"
-              >
-                <Wand2 className="h-4 w-4" />
-                Edit in Creative Mode
-                {!isPremium && <Crown className="h-3 w-3 text-primary ml-1" />}
-              </Button>
-            </div>
-          </div>
-          
-          <h1 className="text-2xl md:text-3xl font-display font-bold">{visualization?.title}</h1>
-          <p className="text-muted-foreground mt-1">
-            {simulation.gameData.white} vs {simulation.gameData.black}
-            {simulation.gameData.event && ` • ${simulation.gameData.event}`}
-            {simulation.gameData.date && ` • ${simulation.gameData.date}`}
-          </p>
+        {/* Back button */}
+        <div className="mb-6">
+          <Button 
+            onClick={handleBack} 
+            variant="ghost" 
+            className="gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Return to Gallery
+          </Button>
         </div>
 
-        {/* Full PrintPreview experience */}
+        {/* Unified Vision Experience */}
         <TimelineProvider>
           <LegendHighlightProvider>
-            <PrintPreview
-              simulation={simulation}
-              pgn={visualization?.pgn || undefined}
-              title={visualization?.title}
+            <UnifiedVisionExperience
+              board={vizData.board}
+              gameData={vizData.gameData}
+              totalMoves={vizData.totalMoves}
+              context="gallery"
+              defaultTab="experience"
               visualizationId={visualization?.id}
+              paletteId={vizData.paletteId}
+              createdAt={visualization?.created_at}
+              title={visualization?.title}
+              imageUrl={visualization?.image_path}
+              onTransferToCreative={handleTransferToCreative}
+              onShare={handleShare}
+              isPremium={isPremium}
+              onUpgradePrompt={() => setShowUpgradeModal(true)}
             />
           </LegendHighlightProvider>
         </TimelineProvider>

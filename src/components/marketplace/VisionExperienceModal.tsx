@@ -372,8 +372,13 @@ const VisionExperienceModal: React.FC<VisionExperienceModalProps> = ({
     return result;
   };
 
+  console.log('[VisionExperienceModal] Rendering - isOpen:', isOpen, 'listing:', listing?.id);
+
   return (
-    <Dialog open={isOpen} onOpenChange={() => onClose()}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      console.log('[VisionExperienceModal] onOpenChange called with:', open);
+      if (!open) onClose();
+    }}>
       <DialogContent 
         className={`max-w-6xl max-h-[95vh] overflow-hidden p-0 gap-0 relative ${
           hasPremiumPalette 
