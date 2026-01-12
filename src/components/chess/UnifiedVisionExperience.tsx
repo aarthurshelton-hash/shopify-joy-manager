@@ -790,6 +790,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                     <EnhancedLegend 
                       whitePalette={getCurrentPalette().white}
                       blackPalette={getCurrentPalette().black}
+                      board={board}
                       compact
                     />
                   )}

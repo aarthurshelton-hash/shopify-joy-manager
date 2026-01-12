@@ -24,6 +24,7 @@ interface EnhancedLegendProps {
   whitePalette: Record<string, string>;
   blackPalette: Record<string, string>;
   moveHistory?: MoveHistoryEntry[];
+  board?: import('@/lib/chess/gameSimulator').SquareData[][];
   compact?: boolean;
   title?: string;
 }
@@ -103,6 +104,7 @@ export const EnhancedLegend: React.FC<EnhancedLegendProps> = ({
   whitePalette,
   blackPalette,
   moveHistory = [],
+  board,
   compact = false,
   title = 'Color Legend',
 }) => {
@@ -147,7 +149,7 @@ export const EnhancedLegend: React.FC<EnhancedLegendProps> = ({
     clearLock: () => {},
   };
 
-  // Calculate piece activity from move history
+  // Calculate piece activity from board data (preferred) or move history (fallback)
   const pieceActivity = useMemo(() => {
     const activity = new Map<string, number>();
     const pieceTypes: PieceType[] = ['k', 'q', 'r', 'b', 'n', 'p'];
@@ -159,13 +161,29 @@ export const EnhancedLegend: React.FC<EnhancedLegendProps> = ({
       }
     }
     
-    for (const move of moveHistory) {
-      const key = `${move.color}-${move.piece}`;
-      activity.set(key, (activity.get(key) || 0) + 1);
+    // Use board data if available (more accurate)
+    if (board && board.length > 0) {
+      for (let rank = 0; rank < 8; rank++) {
+        for (let file = 0; file < 8; file++) {
+          const square = board[rank]?.[file];
+          if (square?.visits) {
+            for (const visit of square.visits) {
+              const key = `${visit.color}-${visit.piece}`;
+              activity.set(key, (activity.get(key) || 0) + 1);
+            }
+          }
+        }
+      }
+    } else {
+      // Fallback to moveHistory
+      for (const move of moveHistory) {
+        const key = `${move.color}-${move.piece}`;
+        activity.set(key, (activity.get(key) || 0) + 1);
+      }
     }
     
     return activity;
-  }, [moveHistory]);
+  }, [board, moveHistory]);
 
   // Find MVP piece
   const mvpPiece = useMemo(() => {
@@ -183,24 +201,45 @@ export const EnhancedLegend: React.FC<EnhancedLegendProps> = ({
     return mvp;
   }, [pieceActivity]);
 
-  // Calculate territory heatmap data
+  // Calculate territory heatmap data from board (preferred) or moveHistory (fallback)
   const territoryData = useMemo(() => {
     const whiteControl: number[][] = Array(8).fill(null).map(() => Array(8).fill(0));
     const blackControl: number[][] = Array(8).fill(null).map(() => Array(8).fill(0));
     let maxWhite = 0;
     let maxBlack = 0;
     
-    for (const move of moveHistory) {
-      const file = move.square.charCodeAt(0) - 97;
-      const rank = parseInt(move.square[1]) - 1;
-      
-      if (file >= 0 && file < 8 && rank >= 0 && rank < 8) {
-        if (move.color === 'w') {
-          whiteControl[7 - rank][file]++;
-          maxWhite = Math.max(maxWhite, whiteControl[7 - rank][file]);
-        } else {
-          blackControl[7 - rank][file]++;
-          maxBlack = Math.max(maxBlack, blackControl[7 - rank][file]);
+    // Use board data if available (more accurate)
+    if (board && board.length > 0) {
+      for (let rank = 0; rank < 8; rank++) {
+        for (let file = 0; file < 8; file++) {
+          const square = board[rank]?.[file];
+          if (square?.visits) {
+            for (const visit of square.visits) {
+              if (visit.color === 'w') {
+                whiteControl[rank][file]++;
+                maxWhite = Math.max(maxWhite, whiteControl[rank][file]);
+              } else {
+                blackControl[rank][file]++;
+                maxBlack = Math.max(maxBlack, blackControl[rank][file]);
+              }
+            }
+          }
+        }
+      }
+    } else {
+      // Fallback to moveHistory
+      for (const move of moveHistory) {
+        const file = move.square.charCodeAt(0) - 97;
+        const rank = parseInt(move.square[1]) - 1;
+        
+        if (file >= 0 && file < 8 && rank >= 0 && rank < 8) {
+          if (move.color === 'w') {
+            whiteControl[7 - rank][file]++;
+            maxWhite = Math.max(maxWhite, whiteControl[7 - rank][file]);
+          } else {
+            blackControl[7 - rank][file]++;
+            maxBlack = Math.max(maxBlack, blackControl[7 - rank][file]);
+          }
         }
       }
     }
@@ -223,7 +262,7 @@ export const EnhancedLegend: React.FC<EnhancedLegendProps> = ({
       whitePercent: Math.round((whiteTotal / total) * 100),
       blackPercent: Math.round((blackTotal / total) * 100),
     };
-  }, [moveHistory]);
+  }, [board, moveHistory]);
 
   const hasActiveFilter = hoveredSquare !== null || lockedPieces.length > 0 || highlightedPiece !== null;
 
