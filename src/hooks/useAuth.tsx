@@ -1,5 +1,5 @@
 import { useState, useEffect, createContext, useContext, ReactNode, useCallback } from 'react';
-import { User, Session } from '@supabase/supabase-js';
+import { User, Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Profile {
@@ -17,6 +17,16 @@ interface SubscriptionStatus {
   subscriptionEnd: string | null;
 }
 
+interface MFAStatus {
+  enabled: boolean;
+  factorId: string | null;
+}
+
+interface SignInResult {
+  error: Error | null;
+  requiresMFA?: boolean;
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -25,13 +35,15 @@ interface AuthContextType {
   isPremium: boolean;
   subscriptionStatus: SubscriptionStatus | null;
   isCheckingSubscription: boolean;
+  mfaStatus: MFAStatus;
   signUp: (email: string, password: string, displayName?: string) => Promise<{ error: Error | null }>;
-  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signIn: (email: string, password: string) => Promise<SignInResult>;
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Pick<Profile, 'display_name' | 'avatar_url'>>) => Promise<{ error: Error | null }>;
   checkSubscription: () => Promise<void>;
   openCheckout: () => Promise<void>;
   openCustomerPortal: () => Promise<void>;
+  checkMFAStatus: () => Promise<MFAStatus>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -46,8 +58,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null);
   const [isCheckingSubscription, setIsCheckingSubscription] = useState(false);
+  const [mfaStatus, setMfaStatus] = useState<MFAStatus>({ enabled: false, factorId: null });
 
   const isPremium = subscriptionStatus?.subscribed && subscriptionStatus?.productId === PREMIUM_PRODUCT_ID;
+
+  // Check MFA status
+  const checkMFAStatus = useCallback(async (): Promise<MFAStatus> => {
+    try {
+      const { data, error } = await supabase.auth.mfa.listFactors();
+      if (error) throw error;
+
+      const verifiedTOTP = data.totp?.find(factor => factor.status === 'verified');
+      const status = {
+        enabled: !!verifiedTOTP,
+        factorId: verifiedTOTP?.id || null,
+      };
+      setMfaStatus(status);
+      return status;
+    } catch (error) {
+      console.error('Error checking MFA status:', error);
+      return { enabled: false, factorId: null };
+    }
+  }, []);
 
   // Fetch user profile
   const fetchProfile = async (userId: string) => {
@@ -214,12 +246,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error };
   };
 
-  const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
+  const signIn = async (email: string, password: string): Promise<SignInResult> => {
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
-    return { error };
+
+    if (error) {
+      return { error };
+    }
+
+    // Check if MFA is required (user has factors enrolled)
+    const { data: factorsData } = await supabase.auth.mfa.listFactors();
+    const hasVerifiedTOTP = factorsData?.totp?.some(factor => factor.status === 'verified');
+
+    if (hasVerifiedTOTP) {
+      // Check the assurance level to see if MFA verification is needed
+      const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      
+      if (aalData?.currentLevel === 'aal1' && aalData?.nextLevel === 'aal2') {
+        return { error: null, requiresMFA: true };
+      }
+    }
+
+    return { error: null, requiresMFA: false };
   };
 
   const signOut = async () => {
@@ -228,6 +278,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(null);
     setProfile(null);
     setSubscriptionStatus(null);
+    setMfaStatus({ enabled: false, factorId: null });
   };
 
   const updateProfile = async (updates: Partial<Pick<Profile, 'display_name' | 'avatar_url'>>) => {
@@ -254,6 +305,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isPremium,
       subscriptionStatus,
       isCheckingSubscription,
+      mfaStatus,
       signUp,
       signIn,
       signOut,
@@ -261,6 +313,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       checkSubscription,
       openCheckout,
       openCustomerPortal,
+      checkMFAStatus,
     }}>
       {children}
     </AuthContext.Provider>
