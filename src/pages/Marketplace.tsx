@@ -12,7 +12,7 @@ import AuthModal from '@/components/auth/AuthModal';
 import { PremiumUpgradeModal } from '@/components/premium';
 import MyListingsSection from '@/components/marketplace/MyListingsSection';
 import MarketplaceTransparency from '@/components/marketplace/MarketplaceTransparency';
-import VisionDetailModal from '@/components/marketplace/VisionDetailModal';
+import VisionExperienceModal from '@/components/marketplace/VisionExperienceModal';
 import { MarketplaceFilters, SortOption, CategoryFilter } from '@/components/marketplace/MarketplaceFilters';
 import { RotatingArtBackground } from '@/components/shared/RotatingArtBackground';
 import { Header } from '@/components/shop/Header';
@@ -437,7 +437,7 @@ const Marketplace: React.FC = () => {
         }}
         trigger="save"
       />
-      <VisionDetailModal
+      <VisionExperienceModal
         isOpen={showDetailModal}
         onClose={() => {
           setShowDetailModal(false);
