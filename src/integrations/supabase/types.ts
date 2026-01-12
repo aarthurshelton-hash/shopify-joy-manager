@@ -47,6 +47,42 @@ export type Database = {
         }
         Relationships: []
       }
+      book_generation_progress: {
+        Row: {
+          created_at: string
+          game_index: number
+          game_title: string
+          haiku: string | null
+          id: string
+          status: string
+          updated_at: string
+          user_id: string
+          visualization_data: string | null
+        }
+        Insert: {
+          created_at?: string
+          game_index: number
+          game_title: string
+          haiku?: string | null
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+          visualization_data?: string | null
+        }
+        Update: {
+          created_at?: string
+          game_index?: number
+          game_title?: string
+          haiku?: string | null
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+          visualization_data?: string | null
+        }
+        Relationships: []
+      }
       chess_games: {
         Row: {
           black_palette: Json | null
