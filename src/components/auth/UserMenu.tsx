@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
-import { User, LogOut, Palette, Settings, Crown, CreditCard, Image, Gamepad2, BarChart3, History, Paintbrush, Shield, ShieldCheck, Wrench, Database } from 'lucide-react';
+import { User, LogOut, Palette, Settings, Crown, CreditCard, Image, Gamepad2, BarChart3, History, Paintbrush, Shield, ShieldCheck, Wrench, Database, Wallet } from 'lucide-react';
 import AuthModal from './AuthModal';
 import MFASetup from './MFASetup';
 import PremiumBadge from '@/components/premium/PremiumBadge';
@@ -196,6 +196,15 @@ const UserMenu: React.FC = () => {
           >
             <Image className="h-4 w-4" />
             My Vision Gallery
+            {!isPremium && <Crown className="h-3 w-3 text-primary ml-auto" />}
+          </DropdownMenuItem>
+          
+          <DropdownMenuItem 
+            onClick={() => navigate('/creator-dashboard')}
+            className="gap-2 cursor-pointer"
+          >
+            <Wallet className="h-4 w-4" />
+            Creator Dashboard
             {!isPremium && <Crown className="h-3 w-3 text-primary ml-auto" />}
           </DropdownMenuItem>
           

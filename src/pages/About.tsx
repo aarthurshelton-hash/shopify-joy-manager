@@ -4,6 +4,7 @@ import { Footer } from '@/components/shop/Footer';
 import { Crown, Heart, Palette, Users, Lightbulb, Sparkles, Eye, ScanLine, QrCode, Camera, Fingerprint, DollarSign, Building2 } from 'lucide-react';
 import { useRandomGameArt } from '@/hooks/useRandomGameArt';
 import { Badge } from '@/components/ui/badge';
+import { RoyaltyCalculator } from '@/components/calculator/RoyaltyCalculator';
 
 const About = () => {
   const backgroundImages = useRandomGameArt(6);
@@ -350,6 +351,9 @@ const About = () => {
               </div>
             </div>
           </div>
+          
+          {/* Royalty Calculator */}
+          <RoyaltyCalculator />
           
           {/* Contact */}
           <div className="text-center p-8 rounded-lg border border-border/50 bg-card/50 space-y-4">
