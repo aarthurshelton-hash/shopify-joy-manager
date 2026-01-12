@@ -38,7 +38,6 @@ const samplePatterns = [
 export function NaturalQRShowcase() {
   const [scannerOpen, setScannerOpen] = useState(false);
   const [demoStep, setDemoStep] = useState(0);
-  const [scanningSquare, setScanningSquare] = useState({ row: 0, col: 0 });
 
   // Animate through demo steps
   useEffect(() => {
@@ -46,18 +45,6 @@ export function NaturalQRShowcase() {
       setDemoStep((prev) => (prev + 1) % 4);
     }, 3000);
     return () => clearInterval(interval);
-  }, []);
-
-  // Animate scanning effect
-  useEffect(() => {
-    const scanInterval = setInterval(() => {
-      setScanningSquare((prev) => {
-        const nextCol = (prev.col + 1) % 8;
-        const nextRow = nextCol === 0 ? (prev.row + 1) % 8 : prev.row;
-        return { row: nextRow, col: nextCol };
-      });
-    }, 100);
-    return () => clearInterval(scanInterval);
   }, []);
 
   const demoSteps = [
@@ -121,50 +108,31 @@ export function NaturalQRShowcase() {
               className="relative"
             >
               <div className="relative aspect-square max-w-sm mx-auto">
-                {/* Scanning overlay effect */}
-                <div className="absolute inset-0 z-10 pointer-events-none">
+                {/* Scanning overlay effect - CSS-only for smooth performance */}
+                <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden rounded-xl">
                   <motion.div
-                    className="absolute w-full h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-60"
+                    className="absolute w-full h-0.5 bg-gradient-to-r from-transparent via-primary to-transparent opacity-70"
                     animate={{
-                      top: ["0%", "100%", "0%"],
+                      top: ["0%", "100%"],
                     }}
                     transition={{
-                      duration: 3,
+                      duration: 2.5,
                       repeat: Infinity,
                       ease: "linear",
                     }}
                   />
                 </div>
 
-                {/* The visualization grid */}
+                {/* The visualization grid - static colors, no per-square state updates */}
                 <div className="grid grid-cols-8 gap-0.5 p-2 bg-card rounded-xl border border-border shadow-2xl">
                   {pattern.colors.map((row, rowIndex) =>
-                    row.map((color, colIndex) => {
-                      const isScanning = scanningSquare.row === rowIndex && scanningSquare.col === colIndex;
-                      return (
-                        <motion.div
-                          key={`${rowIndex}-${colIndex}`}
-                          className="aspect-square rounded-sm relative overflow-hidden"
-                          style={{ backgroundColor: color }}
-                          animate={{
-                            scale: isScanning ? 1.1 : 1,
-                            boxShadow: isScanning 
-                              ? "0 0 20px rgba(212, 175, 55, 0.8)" 
-                              : "none",
-                          }}
-                          transition={{ duration: 0.1 }}
-                        >
-                          {isScanning && (
-                            <motion.div
-                              className="absolute inset-0 bg-primary/30"
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: [0, 1, 0] }}
-                              transition={{ duration: 0.2 }}
-                            />
-                          )}
-                        </motion.div>
-                      );
-                    })
+                    row.map((color, colIndex) => (
+                      <div
+                        key={`${rowIndex}-${colIndex}`}
+                        className="aspect-square rounded-sm"
+                        style={{ backgroundColor: color }}
+                      />
+                    ))
                   )}
                 </div>
 
