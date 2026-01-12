@@ -24,7 +24,8 @@ import {
   Save,
   RefreshCw,
   ImageDown,
-  FolderDown
+  FolderDown,
+  Archive
 } from 'lucide-react';
 import { carlsenTop100, CarlsenGame } from '@/lib/book/carlsenGames';
 import { BookSpread } from '@/components/book/BookSpread';
@@ -508,6 +509,73 @@ const BookGenerator: React.FC = () => {
     }
   };
 
+  // Export all completed spreads as a single ZIP archive
+  const exportAsZip = async () => {
+    const completedSpreads = spreads.filter(s => s.status === 'complete');
+    
+    if (completedSpreads.length === 0) {
+      toast.error('No completed spreads to export');
+      return;
+    }
+    
+    setIsExportingImages(true);
+    setImageExportProgress(0);
+    toast.info(`Creating ZIP archive with ${completedSpreads.length} high-res images...`);
+    
+    try {
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+      
+      // Create a folder for the spreads
+      const spreadsFolder = zip.folder('carlsen-in-color-spreads');
+      
+      for (let i = 0; i < completedSpreads.length; i++) {
+        const spread = completedSpreads[i];
+        
+        try {
+          const imageData = await generateHighResSpreadImage(spread);
+          
+          // Extract base64 data (remove data:image/png;base64, prefix)
+          const base64Data = imageData.split(',')[1];
+          
+          // Add to ZIP
+          const filename = `spread-${String(spread.game.rank).padStart(3, '0')}-${spread.game.id}.png`;
+          spreadsFolder?.file(filename, base64Data, { base64: true });
+        } catch (error) {
+          console.error(`Failed to add spread ${spread.game.rank} to ZIP:`, error);
+        }
+        
+        setImageExportProgress(((i + 1) / completedSpreads.length) * 100);
+      }
+      
+      // Generate ZIP file
+      toast.info('Compressing archive...');
+      const zipBlob = await zip.generateAsync({ 
+        type: 'blob',
+        compression: 'DEFLATE',
+        compressionOptions: { level: 6 }
+      });
+      
+      // Create download link
+      const url = URL.createObjectURL(zipBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `carlsen-in-color-spreads-${new Date().toISOString().split('T')[0]}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      toast.success(`Downloaded ZIP with ${completedSpreads.length} high-res images (300 DPI)`);
+    } catch (error) {
+      console.error('ZIP export failed:', error);
+      toast.error('Failed to create ZIP archive');
+    } finally {
+      setIsExportingImages(false);
+      setImageExportProgress(0);
+    }
+  };
+
   const exportToPDF = async () => {
     if (completedCount === 0) {
       toast.error('No spreads generated yet');
@@ -948,7 +1016,7 @@ const BookGenerator: React.FC = () => {
                     onClick={exportAllSpreadImages}
                     variant="outline"
                     size="sm"
-                    className="border-purple-600 text-purple-800 hover:bg-purple-100"
+                    className="border-purple-400 text-purple-700 hover:bg-purple-100"
                     disabled={isExportingImages || completedCount === 0}
                   >
                     {isExportingImages ? (
@@ -956,7 +1024,21 @@ const BookGenerator: React.FC = () => {
                     ) : (
                       <FolderDown className="w-3 h-3 mr-1" />
                     )}
-                    Export All ({completedCount})
+                    Individual
+                  </Button>
+                  
+                  <Button 
+                    onClick={exportAsZip}
+                    size="sm"
+                    className="col-span-2 bg-purple-700 hover:bg-purple-800 text-white"
+                    disabled={isExportingImages || completedCount === 0}
+                  >
+                    {isExportingImages ? (
+                      <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                    ) : (
+                      <Archive className="w-3 h-3 mr-1" />
+                    )}
+                    Download ZIP ({completedCount} images)
                   </Button>
                 </div>
               </div>
