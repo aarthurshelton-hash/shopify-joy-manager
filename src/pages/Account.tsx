@@ -11,6 +11,9 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { AvatarUpload } from '@/components/account/AvatarUpload';
+import { displayNameSchema } from '@/lib/validations/visualizationSchemas';
+import { moderateText } from '@/lib/moderation/contentModeration';
 import { 
   User, 
   Shield, 
@@ -106,7 +109,27 @@ const Account: React.FC = () => {
       return;
     }
 
+    // Validate display name with schema (includes content moderation)
+    const validation = displayNameSchema.safeParse(displayName);
+    if (!validation.success) {
+      toast.error('Invalid display name', { 
+        description: validation.error.errors[0]?.message 
+      });
+      return;
+    }
+
     setIsSavingProfile(true);
+    
+    // Server-side content moderation check
+    const moderationResult = await moderateText(displayName);
+    if (!moderationResult.safe) {
+      toast.error('Display name not allowed', {
+        description: moderationResult.reason || 'This name does not meet our community guidelines',
+      });
+      setIsSavingProfile(false);
+      return;
+    }
+
     const { error } = await updateProfile({ display_name: displayName.trim() });
     
     if (error) {
@@ -314,6 +337,18 @@ const Account: React.FC = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
+                  {/* Avatar Upload */}
+                  {user && (
+                    <AvatarUpload
+                      userId={user.id}
+                      currentAvatarUrl={profile?.avatar_url || null}
+                      displayName={displayName || 'User'}
+                      onAvatarUpdate={async (url) => updateProfile({ avatar_url: url })}
+                    />
+                  )}
+
+                  <Separator />
+
                   {/* Email (read-only) */}
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2">
@@ -341,7 +376,7 @@ const Account: React.FC = () => {
                       maxLength={50}
                     />
                     <p className="text-xs text-muted-foreground">
-                      This is how you'll appear to other users
+                      This is how you'll appear to other users. Names are reviewed to ensure they meet our community guidelines.
                     </p>
                   </div>
 
