@@ -302,9 +302,9 @@ export const VisionaryMembershipCard: React.FC<VisionaryMembershipCardProps> = (
                                 : 'bg-muted/30 border-border/50 hover:bg-muted/50 hover:border-border'
                             }`}
                           >
-                            {/* Art background - increased opacity */}
+                            {/* Art background - enhanced visibility */}
                             <div 
-                              className="absolute inset-0 bg-cover bg-center opacity-[0.12] transition-opacity duration-300 hover:opacity-[0.18]"
+                              className="absolute inset-0 bg-cover bg-center opacity-[0.18] transition-opacity duration-300 hover:opacity-[0.25]"
                               style={{ backgroundImage: `url(${FEATURE_BACKGROUNDS[feature.id] || immortalGame})` }}
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-background via-background/90 to-background/70" />
