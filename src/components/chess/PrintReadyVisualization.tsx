@@ -1,7 +1,9 @@
 import React from 'react';
 import ChessBoardVisualization from './ChessBoardVisualization';
 import GameInfoDisplay from './GameInfoDisplay';
+import { EnPensentOverlay, MoveHistoryEntry } from './EnPensentOverlay';
 import { SquareData } from '@/lib/chess/gameSimulator';
+import { PieceType } from '@/lib/chess/pieceColors';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 
 interface GameData {
@@ -13,8 +15,15 @@ interface GameData {
   moves?: string[];
 }
 
+interface EnPensentData {
+  moveHistory: MoveHistoryEntry[];
+  whitePalette: Record<PieceType, string>;
+  blackPalette: Record<PieceType, string>;
+}
+
 interface PrintReadyVisualizationProps {
-  board: SquareData[][];
+  // Standard simulation-based rendering
+  board?: SquareData[][];
   gameData: GameData;
   size?: number;
   darkMode?: boolean;
@@ -22,6 +31,9 @@ interface PrintReadyVisualizationProps {
   qrDataUrl?: string;
   compact?: boolean; // For wall mockup - smaller text
   title?: string;
+  
+  // EnPensent live game rendering (alternative to board)
+  enPensentData?: EnPensentData;
 }
 
 /**
@@ -31,6 +43,10 @@ interface PrintReadyVisualizationProps {
  * - Print image generation (Printify)
  * - Premium downloads
  * - Order print page preview
+ * 
+ * Supports both:
+ * - Simulation-based board data (SquareData[][])
+ * - EnPensent live game data (MoveHistoryEntry[])
  */
 export const PrintReadyVisualization: React.FC<PrintReadyVisualizationProps> = ({
   board,
@@ -41,16 +57,90 @@ export const PrintReadyVisualization: React.FC<PrintReadyVisualizationProps> = (
   qrDataUrl,
   compact = false,
   title,
+  enPensentData,
 }) => {
   const bgColor = darkMode ? '#0A0A0A' : '#FDFCFB';
   const borderColor = darkMode ? '#292524' : '#e7e5e4';
   const mutedColor = darkMode ? '#78716c' : '#a8a29e';
+  const primaryText = darkMode ? '#e7e5e4' : '#292524';
+  const secondaryText = darkMode ? '#a8a29e' : '#78716c';
   
   // Scale factor for compact mode (wall mockup)
   const padding = compact ? 4 : 24;
   const boardSize = size - (padding * 2);
 
-  // For compact mode, use simplified display
+  // Render the chess board - either EnPensent overlay or standard visualization
+  const renderBoard = () => {
+    if (enPensentData) {
+      return (
+        <div style={{ position: 'relative', width: boardSize, height: boardSize }}>
+          {/* Base chess grid */}
+          <div style={{ 
+            position: 'absolute', 
+            inset: 0, 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(8, 1fr)',
+            gridTemplateRows: 'repeat(8, 1fr)',
+          }}>
+            {Array.from({ length: 64 }).map((_, i) => {
+              const row = Math.floor(i / 8);
+              const col = i % 8;
+              const isLight = (row + col) % 2 === 0;
+              return (
+                <div
+                  key={i}
+                  style={{ backgroundColor: isLight ? '#e7e5e4' : '#78716c' }}
+                />
+              );
+            })}
+          </div>
+          {/* EnPensent Overlay */}
+          <EnPensentOverlay
+            moveHistory={enPensentData.moveHistory}
+            whitePalette={enPensentData.whitePalette}
+            blackPalette={enPensentData.blackPalette}
+            opacity={0.85}
+            isEnabled={true}
+            flipped={false}
+          />
+        </div>
+      );
+    }
+    
+    if (board) {
+      return (
+        <ChessBoardVisualization 
+          board={board} 
+          size={boardSize} 
+        />
+      );
+    }
+    
+    // Fallback: empty chess grid
+    return (
+      <div style={{ 
+        width: boardSize, 
+        height: boardSize,
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(8, 1fr)',
+        gridTemplateRows: 'repeat(8, 1fr)',
+      }}>
+        {Array.from({ length: 64 }).map((_, i) => {
+          const row = Math.floor(i / 8);
+          const col = i % 8;
+          const isLight = (row + col) % 2 === 0;
+          return (
+            <div
+              key={i}
+              style={{ backgroundColor: isLight ? '#e7e5e4' : '#78716c' }}
+            />
+          );
+        })}
+      </div>
+    );
+  };
+
+  // For compact mode (wall mockup), use simplified display
   if (compact) {
     return (
       <div
@@ -67,53 +157,76 @@ export const PrintReadyVisualization: React.FC<PrintReadyVisualizationProps> = (
       >
         {/* Chess Board */}
         <div style={{ position: 'relative' }}>
-          <ChessBoardVisualization 
-            board={board} 
-            size={boardSize} 
-          />
+          {renderBoard()}
         </div>
 
-        {/* Compact Game Info */}
+        {/* Compact Game Info - Trademark style */}
         <div
           style={{
             width: '100%',
             paddingTop: 2,
             borderTop: `1px solid ${borderColor}`,
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
+            textAlign: 'center',
           }}
         >
-          <div style={{ maxWidth: 70, overflow: 'hidden' }}>
-            <p
-              style={{
-                fontSize: 4,
-                fontWeight: 600,
-                color: darkMode ? '#d6d3d1' : '#44403c',
-                margin: 0,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                fontFamily: "'Cinzel', 'Times New Roman', serif",
-                textTransform: 'uppercase',
-                letterSpacing: '0.03em',
-              }}
-            >
-              {gameData.white} vs {gameData.black}
-            </p>
+          {/* Player Names */}
+          <div style={{ 
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 2,
+          }}>
+            <span style={{ 
+              fontSize: 4.5, 
+              fontWeight: 600, 
+              color: primaryText,
+              textTransform: 'uppercase',
+              letterSpacing: '0.02em',
+              fontFamily: "'Cinzel', 'Times New Roman', serif",
+            }}>
+              {gameData.white}
+            </span>
+            <span style={{ 
+              fontSize: 3, 
+              color: secondaryText,
+              fontStyle: 'italic',
+            }}>
+              vs
+            </span>
+            <span style={{ 
+              fontSize: 4.5, 
+              fontWeight: 600, 
+              color: primaryText,
+              textTransform: 'uppercase',
+              letterSpacing: '0.02em',
+              fontFamily: "'Cinzel', 'Times New Roman', serif",
+            }}>
+              {gameData.black}
+            </span>
           </div>
           
-          <img 
-            src={enPensentLogo} 
-            alt="" 
-            style={{
-              width: 6,
-              height: 6,
-              borderRadius: '50%',
-              opacity: 0.8,
-            }}
-          />
+          {/* Event */}
+          <p style={{ 
+            fontSize: 3, 
+            color: mutedColor,
+            margin: '1px 0 0 0',
+            fontStyle: 'italic',
+            fontFamily: "'Cormorant Garamond', Georgia, serif",
+          }}>
+            {gameData.event || 'Chess Game'}
+          </p>
         </div>
+        
+        {/* Branding footer */}
+        <p style={{ 
+          fontSize: 2.5, 
+          color: mutedColor,
+          letterSpacing: '0.15em',
+          textTransform: 'uppercase',
+          margin: 0,
+        }}>
+          ♔ En Pensent ♚
+        </p>
       </div>
     );
   }
@@ -136,10 +249,7 @@ export const PrintReadyVisualization: React.FC<PrintReadyVisualizationProps> = (
     >
       {/* Chess Board */}
       <div style={{ position: 'relative' }}>
-        <ChessBoardVisualization 
-          board={board} 
-          size={boardSize} 
-        />
+        {renderBoard()}
         
         {/* QR Code overlay for premium prints */}
         {showQR && qrDataUrl && (

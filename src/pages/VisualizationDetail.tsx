@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
+import { getVisualizationById, SavedVisualization } from '@/lib/visualizations/visualizationStorage';
 import { SimulationResult, SquareData, GameData } from '@/lib/chess/gameSimulator';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
@@ -12,34 +12,12 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
-interface StoredGameData {
-  white: string;
-  black: string;
-  event?: string;
-  date?: string;
-  result?: string;
-  pgn?: string;
-  moves?: string[];
-  board: SquareData[][];
-  totalMoves: number;
-}
-
 const VisualizationDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user, isPremium, isLoading: authLoading } = useAuth();
   
-  const [visualization, setVisualization] = useState<{
-    id: string;
-    user_id: string;
-    title: string;
-    pgn: string | null;
-    game_data: StoredGameData;
-    image_path: string;
-    public_share_id: string | null;
-    created_at: string;
-    updated_at: string;
-  } | null>(null);
+  const [visualization, setVisualization] = useState<SavedVisualization | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,18 +33,15 @@ const VisualizationDetail: React.FC = () => {
       setError(null);
 
       try {
-        const { data, error: fetchError } = await supabase
-          .from('saved_visualizations')
-          .select('*')
-          .eq('id', id)
-          .single();
+        const { data, error: fetchError } = await getVisualizationById(id);
 
         if (fetchError) {
-          if (fetchError.code === 'PGRST116') {
-            setError('Visualization not found');
-          } else {
-            throw fetchError;
-          }
+          setError(fetchError.message);
+          return;
+        }
+
+        if (!data) {
+          setError('Visualization not found');
           return;
         }
 
@@ -76,20 +51,7 @@ const VisualizationDetail: React.FC = () => {
           return;
         }
 
-        // Parse game_data as StoredGameData
-        const gameData = data.game_data as unknown as StoredGameData;
-        
-        setVisualization({
-          id: data.id,
-          user_id: data.user_id,
-          title: data.title,
-          pgn: data.pgn,
-          game_data: gameData,
-          image_path: data.image_path,
-          public_share_id: data.public_share_id,
-          created_at: data.created_at,
-          updated_at: data.updated_at,
-        });
+        setVisualization(data);
       } catch (err) {
         console.error('Failed to load visualization:', err);
         setError('Failed to load visualization');
@@ -113,8 +75,36 @@ const VisualizationDetail: React.FC = () => {
 
     const gameData = visualization.game_data;
     
+    // Check if we have full board data stored
+    if (gameData.board && Array.isArray(gameData.board)) {
+      return {
+        board: gameData.board as SquareData[][],
+        gameData: {
+          white: gameData.white || 'White',
+          black: gameData.black || 'Black',
+          event: gameData.event || '',
+          date: gameData.date || '',
+          result: gameData.result || '',
+          pgn: gameData.pgn || visualization.pgn || '',
+          moves: gameData.moves || [],
+        },
+        totalMoves: gameData.totalMoves || 0,
+      };
+    }
+    
+    // Fallback for older visualizations without board data
+    // Create an empty board structure
+    const emptyBoard: SquareData[][] = Array(8).fill(null).map((_, rank) =>
+      Array(8).fill(null).map((_, file) => ({
+        file,
+        rank,
+        visits: [],
+        isLight: (file + rank) % 2 === 1,
+      }))
+    );
+    
     return {
-      board: gameData.board,
+      board: emptyBoard,
       gameData: {
         white: gameData.white || 'White',
         black: gameData.black || 'Black',
@@ -124,8 +114,12 @@ const VisualizationDetail: React.FC = () => {
         pgn: gameData.pgn || visualization.pgn || '',
         moves: gameData.moves || [],
       },
-      totalMoves: gameData.totalMoves,
+      totalMoves: gameData.totalMoves || 0,
     };
+  };
+
+  const handleBack = () => {
+    navigate('/my-vision');
   };
 
   if (authLoading || isLoading) {
@@ -150,7 +144,7 @@ const VisualizationDetail: React.FC = () => {
           <div className="max-w-md mx-auto text-center space-y-6">
             <h1 className="text-2xl font-display font-bold">Unable to Load</h1>
             <p className="text-muted-foreground">{error}</p>
-            <Button onClick={() => navigate('/my-vision')} variant="outline" className="gap-2">
+            <Button onClick={handleBack} variant="outline" className="gap-2">
               <ArrowLeft className="h-4 w-4" />
               Back to Gallery
             </Button>
@@ -171,7 +165,7 @@ const VisualizationDetail: React.FC = () => {
           <div className="max-w-md mx-auto text-center space-y-6">
             <h1 className="text-2xl font-display font-bold">Invalid Visualization Data</h1>
             <p className="text-muted-foreground">The visualization data could not be loaded.</p>
-            <Button onClick={() => navigate('/my-vision')} variant="outline" className="gap-2">
+            <Button onClick={handleBack} variant="outline" className="gap-2">
               <ArrowLeft className="h-4 w-4" />
               Back to Gallery
             </Button>
@@ -189,7 +183,7 @@ const VisualizationDetail: React.FC = () => {
         {/* Back button and title */}
         <div className="mb-8">
           <Button 
-            onClick={() => navigate('/my-vision')} 
+            onClick={handleBack} 
             variant="ghost" 
             className="gap-2 mb-4"
           >

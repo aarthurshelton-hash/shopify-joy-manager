@@ -131,126 +131,29 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
   }, [simulation, capturedState]);
 
   // Create mini visualization for mockup - supports both simulation and EnPensent data
-  // CRITICAL: This must match the "trademark look" exactly - same style as main preview
+  // Uses unified PrintReadyVisualization for consistent "trademark look"
   const miniVisualization = useMemo(() => {
     const darkMode = capturedState?.darkMode || false;
-    const bgColor = darkMode ? '#0A0A0A' : '#FDFCFB';
-    const borderColor = darkMode ? '#292524' : '#e7e5e4';
-    const primaryText = darkMode ? '#e7e5e4' : '#292524';
-    const secondaryText = darkMode ? '#a8a29e' : '#78716c';
-    const mutedText = darkMode ? '#78716c' : '#a8a29e';
     
-    // If we have EnPensent data (from live games), use the trademark format
+    // If we have EnPensent data (from live games), use unified component
     if (enPensentData) {
       return (
-        <div 
-          style={{
-            backgroundColor: bgColor,
-            padding: 4,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: 3,
-            width: 'fit-content',
-            borderRadius: 2,
+        <PrintReadyVisualization 
+          gameData={{
+            white: enPensentData.gameInfo.white,
+            black: enPensentData.gameInfo.black,
+            result: enPensentData.gameInfo.result,
+            event: 'Chess Game',
           }}
-        >
-          {/* Chess board with EnPensent overlay */}
-          <div style={{ position: 'relative', width: 76, height: 76 }}>
-            {/* Base chess grid */}
-            <div style={{ 
-              position: 'absolute', 
-              inset: 0, 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(8, 1fr)',
-              gridTemplateRows: 'repeat(8, 1fr)',
-            }}>
-              {Array.from({ length: 64 }).map((_, i) => {
-                const row = Math.floor(i / 8);
-                const col = i % 8;
-                const isLight = (row + col) % 2 === 0;
-                return (
-                  <div
-                    key={i}
-                    style={{ backgroundColor: isLight ? '#e7e5e4' : '#78716c' }}
-                  />
-                );
-              })}
-            </div>
-            {/* EnPensent Overlay */}
-            <EnPensentOverlay
-              moveHistory={enPensentData.moveHistory}
-              whitePalette={enPensentData.whitePalette}
-              blackPalette={enPensentData.blackPalette}
-              opacity={0.85}
-              isEnabled={true}
-              flipped={false}
-            />
-          </div>
-          
-          {/* Trademark game info - player names */}
-          <div style={{ 
-            width: '100%', 
-            paddingTop: 2,
-            borderTop: `1px solid ${borderColor}`,
-            textAlign: 'center',
-          }}>
-            <div style={{ 
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 2,
-            }}>
-              <span style={{ 
-                fontSize: 4.5, 
-                fontWeight: 600, 
-                color: primaryText,
-                textTransform: 'uppercase',
-                letterSpacing: '0.02em',
-                fontFamily: "'Cinzel', 'Times New Roman', serif",
-              }}>
-                {enPensentData.gameInfo.white}
-              </span>
-              <span style={{ 
-                fontSize: 3, 
-                color: secondaryText,
-                fontStyle: 'italic',
-              }}>
-                vs
-              </span>
-              <span style={{ 
-                fontSize: 4.5, 
-                fontWeight: 600, 
-                color: primaryText,
-                textTransform: 'uppercase',
-                letterSpacing: '0.02em',
-                fontFamily: "'Cinzel', 'Times New Roman', serif",
-              }}>
-                {enPensentData.gameInfo.black}
-              </span>
-            </div>
-            <p style={{ 
-              fontSize: 3, 
-              color: mutedText,
-              margin: '1px 0 0 0',
-              fontStyle: 'italic',
-              fontFamily: "'Cormorant Garamond', Georgia, serif",
-            }}>
-              Chess Game
-            </p>
-          </div>
-          
-          {/* Branding footer */}
-          <p style={{ 
-            fontSize: 2.5, 
-            color: mutedText,
-            letterSpacing: '0.15em',
-            textTransform: 'uppercase',
-            margin: 0,
-          }}>
-            ♔ En Pensent ♚
-          </p>
-        </div>
+          enPensentData={{
+            moveHistory: enPensentData.moveHistory,
+            whitePalette: enPensentData.whitePalette,
+            blackPalette: enPensentData.blackPalette,
+          }}
+          size={100}
+          darkMode={darkMode}
+          compact={true}
+        />
       );
     }
     
