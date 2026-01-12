@@ -21,7 +21,7 @@ import { Badge } from '@/components/ui/badge';
 import { Crown, Trash2, Download, Image as ImageIcon, Loader2, Link2, ExternalLink, Sparkles, Printer, RefreshCw, ShoppingBag, Tag } from 'lucide-react';
 import { toast } from 'sonner';
 import { OrderPrintButton } from '@/components/shop/OrderPrintButton';
-import { PremiumUpgradeCard } from '@/components/premium';
+import { VisionaryMembershipCard } from '@/components/premium';
 import AuthModal from '@/components/auth/AuthModal';
 import ListForSaleModal from '@/components/marketplace/ListForSaleModal';
 import { Header } from '@/components/shop/Header';
@@ -40,6 +40,7 @@ const MyVision: React.FC = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [listingTarget, setListingTarget] = useState<SavedVisualization | null>(null);
   const [listedIds, setListedIds] = useState<Set<string>>(new Set());
+  const [showVisionaryModal, setShowVisionaryModal] = useState(false);
 
   useEffect(() => {
     if (user && isPremium) {
@@ -261,7 +262,14 @@ const MyVision: React.FC = () => {
               </div>
             </div>
             
-            <PremiumUpgradeCard />
+            <Button 
+              onClick={() => setShowVisionaryModal(true)}
+              className="btn-luxury gap-2"
+              size="lg"
+            >
+              <Crown className="h-5 w-5" />
+              Become a Visionary
+            </Button>
           </div>
         </div>
         <Footer />
@@ -498,6 +506,18 @@ const MyVision: React.FC = () => {
           }}
         />
       )}
+      
+      {/* Visionary Membership Modal */}
+      <VisionaryMembershipCard
+        isOpen={showVisionaryModal}
+        onClose={() => setShowVisionaryModal(false)}
+        onAuthRequired={() => {
+          setShowVisionaryModal(false);
+          setShowAuthModal(true);
+        }}
+        trigger="save"
+      />
+      
       <Footer />
     </div>
   );

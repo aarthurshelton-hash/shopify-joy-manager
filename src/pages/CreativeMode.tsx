@@ -22,7 +22,7 @@ import { SquareData, SquareVisit } from '@/lib/chess/gameSimulator';
 import { getUserVisualizations, SavedVisualization, saveVisualization } from '@/lib/visualizations/visualizationStorage';
 import { checkCreativeSimilarity, getCreativeSimilarityWarning } from '@/lib/visualizations/similarityDetection';
 import AuthModal from '@/components/auth/AuthModal';
-import PremiumUpgradeModal from '@/components/premium/PremiumUpgradeModal';
+import { VisionaryMembershipCard } from '@/components/premium';
 import { LiveColorLegend } from '@/components/chess/LiveColorLegend';
 import { LegendHighlightProvider } from '@/contexts/LegendHighlightContext';
 import { useSessionStore } from '@/stores/sessionStore';
@@ -1019,9 +1019,10 @@ const CreativeMode = () => {
         onClose={() => setShowAuthModal(false)}
       />
       
-      <PremiumUpgradeModal
+      <VisionaryMembershipCard
         isOpen={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
+        trigger="save"
       />
 
       <AnimatePresence>

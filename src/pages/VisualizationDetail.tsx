@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Loader2, RotateCcw, Wand2, Crown } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSessionStore, CreativeModeTransfer } from '@/stores/sessionStore';
-import PremiumUpgradeModal from '@/components/premium/PremiumUpgradeModal';
+import { VisionaryMembershipCard } from '@/components/premium';
 import { recordVisionInteraction } from '@/lib/visualizations/visionScoring';
 
 const VisualizationDetail: React.FC = () => {
@@ -359,9 +359,10 @@ const VisualizationDetail: React.FC = () => {
       </div>
       <Footer />
       
-      <PremiumUpgradeModal
+      <VisionaryMembershipCard
         isOpen={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
+        trigger="download"
       />
     </div>
   );

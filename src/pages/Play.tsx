@@ -21,7 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { colorPalettes, PaletteId } from '@/lib/chess/pieceColors';
 import AuthModal from '@/components/auth/AuthModal';
-import PremiumUpgradeModal from '@/components/premium/PremiumUpgradeModal';
+import { VisionaryMembershipCard } from '@/components/premium';
 import { getRatingTier, previewEloChanges } from '@/lib/chess/eloCalculator';
 import {
   Tooltip,
@@ -1323,9 +1323,10 @@ const Play = () => {
         onClose={() => setShowAuthModal(false)}
       />
       
-      <PremiumUpgradeModal
+      <VisionaryMembershipCard
         isOpen={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
+        trigger="general"
       />
 
       {/* Export Visualization Modal for post-game En Pensent art */}
