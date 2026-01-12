@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import carlsenCover from '@/assets/book/carlsen-cover-v2.jpg';
+import carlsenBackCover from '@/assets/book/carlsen-back-cover.jpg';
 
 interface Book3DCoverProps {
   onClick?: () => void;
@@ -13,6 +14,7 @@ export const Book3DCover: React.FC<Book3DCoverProps> = ({
   className = '',
   size = 'lg' 
 }) => {
+  const [isFlipped, setIsFlipped] = useState(false);
   const sizeClasses = {
     sm: 'w-20',
     md: 'w-40',
@@ -34,25 +36,35 @@ export const Book3DCover: React.FC<Book3DCoverProps> = ({
   return (
     <motion.button
       onClick={onClick}
+      onMouseEnter={() => setIsFlipped(true)}
+      onMouseLeave={() => setIsFlipped(false)}
       className={`relative group cursor-pointer ${className}`}
       style={{ perspective: '1500px' }}
       whileHover={{ scale: 1.02 }}
       transition={{ duration: 0.3 }}
     >
       {/* Container for 3D book */}
-      <div 
+      <motion.div 
         className={`relative ${sizeClasses[size]}`}
         style={{ 
           transformStyle: 'preserve-3d',
-          transform: 'rotateY(-12deg) rotateX(3deg)',
         }}
+        animate={{
+          rotateY: isFlipped ? 168 : -12,
+          rotateX: 3,
+        }}
+        transition={{ duration: 0.8, ease: [0.4, 0, 0.2, 1] }}
       >
         {/* Book shadow */}
-        <div 
+        <motion.div 
           className="absolute inset-0 bg-black/30 blur-2xl"
           style={{
             transform: 'translateZ(-50px) translateY(20px) translateX(10px) scale(0.95)',
           }}
+          animate={{
+            translateX: isFlipped ? -10 : 10,
+          }}
+          transition={{ duration: 0.8 }}
         />
         
         {/* Page edges (bottom) */}
@@ -106,13 +118,20 @@ export const Book3DCover: React.FC<Book3DCoverProps> = ({
           )}
         </div>
 
-        {/* Back cover */}
+        {/* Back cover with actual image */}
         <div 
-          className="absolute inset-0 bg-gradient-to-br from-slate-800 to-slate-900 rounded-r-sm"
+          className="absolute inset-0 rounded-l-sm overflow-hidden"
           style={{
-            transform: `translateZ(-${parseInt(pageThickness[size]) + 4}px)`,
+            transform: `translateZ(-${parseInt(pageThickness[size]) + 4}px) rotateY(180deg)`,
+            backfaceVisibility: 'hidden',
           }}
-        />
+        >
+          <img 
+            src={carlsenBackCover} 
+            alt="Carlsen in Color - Back Cover"
+            className="w-full h-full object-cover"
+          />
+        </div>
 
         {/* Front cover */}
         <div 
@@ -120,6 +139,7 @@ export const Book3DCover: React.FC<Book3DCoverProps> = ({
           style={{
             transformStyle: 'preserve-3d',
             boxShadow: '4px 4px 12px rgba(0,0,0,0.3), -1px -1px 4px rgba(255,255,255,0.1)',
+            backfaceVisibility: 'hidden',
           }}
         >
           <img 
@@ -141,8 +161,13 @@ export const Book3DCover: React.FC<Book3DCoverProps> = ({
           <div className="absolute top-0 left-0 bottom-0 w-px bg-gradient-to-b from-white/20 via-white/10 to-white/20" />
         </div>
 
-        {/* Hover overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-r-sm flex items-end justify-center pb-6">
+        {/* Hover hint - only show when not flipped */}
+        <motion.div 
+          className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent rounded-r-sm flex items-end justify-center pb-6 pointer-events-none"
+          animate={{ opacity: isFlipped ? 0 : 0 }}
+          whileHover={{ opacity: 1 }}
+          style={{ backfaceVisibility: 'hidden' }}
+        >
           <span className="flex items-center gap-2 bg-white/95 text-slate-900 px-4 py-2 rounded-full text-sm font-medium shadow-lg backdrop-blur-sm">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -150,8 +175,8 @@ export const Book3DCover: React.FC<Book3DCoverProps> = ({
             </svg>
             Preview Pages
           </span>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
     </motion.button>
   );
 };
