@@ -8,6 +8,7 @@ import GameInfoDisplay from './GameInfoDisplay';
 import VerticalTimelineSlider from './VerticalTimelineSlider';
 import TimelineSlider from './TimelineSlider';
 import { SimulationResult, SquareData } from '@/lib/chess/gameSimulator';
+import { getActivePalette } from '@/lib/chess/pieceColors';
 import { Button } from '@/components/ui/button';
 import { OrderPrintButton } from '@/components/shop/OrderPrintButton';
 import { Download, Loader2, Sun, Moon, Crown, Bookmark, Check, Film, Eye, EyeOff } from 'lucide-react';
@@ -17,7 +18,7 @@ import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 import { useAuth } from '@/hooks/useAuth';
 import { PremiumUpgradeModal } from '@/components/premium';
 import AuthModal from '@/components/auth/AuthModal';
-import { saveVisualization } from '@/lib/visualizations/visualizationStorage';
+import { saveVisualization, VisualizationState } from '@/lib/visualizations/visualizationStorage';
 import { useTimeline } from '@/contexts/TimelineContext';
 import { Progress } from '@/components/ui/progress';
 import { useLegendHighlight } from '@/contexts/LegendHighlightContext';
@@ -449,15 +450,33 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
       const visualizationTitle = title || 
         `${simulation.gameData.white} vs ${simulation.gameData.black}`;
       
-      const { data, error } = await saveVisualization(
+      // Build visualization state for duplicate detection
+      const activePalette = getActivePalette();
+      const visualizationState: VisualizationState = {
+        paletteId: activePalette.id,
+        darkMode,
+        currentMove: currentMove === Infinity ? undefined : currentMove,
+        lockedPieces: lockedPieces.length > 0 ? lockedPieces : undefined,
+        showLegend,
+      };
+      
+      const { data, error, isDuplicate } = await saveVisualization(
         user.id,
         visualizationTitle,
         simulation,
         imageBlob,
-        pgn
+        pgn,
+        visualizationState
       );
       
       if (error) {
+        if (isDuplicate) {
+          toast.error('Already saved!', {
+            description: 'This exact visualization is already in your gallery. Try changing the palette, timeline, or highlighted pieces to create a unique version.',
+            duration: 5000,
+          });
+          return;
+        }
         throw error;
       }
       

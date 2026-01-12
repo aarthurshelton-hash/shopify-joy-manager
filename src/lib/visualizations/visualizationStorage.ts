@@ -2,16 +2,94 @@ import { supabase } from '@/integrations/supabase/client';
 import { SimulationResult, GameData, SquareData } from '@/lib/chess/gameSimulator';
 import { Json } from '@/integrations/supabase/types';
 
+export interface VisualizationState {
+  paletteId?: string;
+  darkMode?: boolean;
+  currentMove?: number;
+  lockedPieces?: Array<{ pieceType: string; pieceColor: string }>;
+  showLegend?: boolean;
+}
+
 export interface SavedVisualization {
   id: string;
   user_id: string;
   title: string;
   pgn: string | null;
-  game_data: GameData & { board?: SquareData[][]; totalMoves?: number };
+  game_data: GameData & { 
+    board?: SquareData[][]; 
+    totalMoves?: number;
+    visualizationState?: VisualizationState;
+  };
   image_path: string;
   public_share_id: string | null;
   created_at: string;
   updated_at: string;
+}
+
+/**
+ * Generate a hash/fingerprint of the visualization state for duplicate detection
+ */
+function generateVisualizationFingerprint(
+  pgn: string | undefined,
+  gameData: GameData,
+  state?: VisualizationState
+): string {
+  // Create a normalized string representation of the key visualization attributes
+  const pgnNormalized = (pgn || gameData.pgn || '').trim().replace(/\s+/g, ' ');
+  const stateStr = state ? JSON.stringify({
+    palette: state.paletteId || 'modern',
+    darkMode: state.darkMode || false,
+    currentMove: state.currentMove === Infinity ? 'all' : state.currentMove,
+    lockedPieces: (state.lockedPieces || []).sort((a, b) => 
+      `${a.pieceColor}-${a.pieceType}`.localeCompare(`${b.pieceColor}-${b.pieceType}`)
+    ),
+  }) : '{}';
+  
+  return `${pgnNormalized}::${stateStr}`;
+}
+
+/**
+ * Check if a similar visualization already exists for this user
+ */
+export async function checkDuplicateVisualization(
+  userId: string,
+  pgn: string | undefined,
+  gameData: GameData,
+  state?: VisualizationState
+): Promise<{ isDuplicate: boolean; existingId?: string }> {
+  try {
+    const fingerprint = generateVisualizationFingerprint(pgn, gameData, state);
+    
+    // Fetch user's existing visualizations
+    const { data, error } = await supabase
+      .from('saved_visualizations')
+      .select('id, pgn, game_data')
+      .eq('user_id', userId);
+    
+    if (error) {
+      console.error('Error checking duplicates:', error);
+      return { isDuplicate: false };
+    }
+    
+    // Check each existing visualization for a match
+    for (const viz of data || []) {
+      const existingGameData = viz.game_data as unknown as GameData & { visualizationState?: VisualizationState };
+      const existingFingerprint = generateVisualizationFingerprint(
+        viz.pgn || undefined,
+        existingGameData,
+        existingGameData.visualizationState
+      );
+      
+      if (fingerprint === existingFingerprint) {
+        return { isDuplicate: true, existingId: viz.id };
+      }
+    }
+    
+    return { isDuplicate: false };
+  } catch (error) {
+    console.error('Error in duplicate check:', error);
+    return { isDuplicate: false };
+  }
 }
 
 export async function saveVisualization(
@@ -19,9 +97,26 @@ export async function saveVisualization(
   title: string,
   simulation: SimulationResult,
   imageBlob: Blob,
-  pgn?: string
-): Promise<{ data: SavedVisualization | null; error: Error | null }> {
+  pgn?: string,
+  visualizationState?: VisualizationState
+): Promise<{ data: SavedVisualization | null; error: Error | null; isDuplicate?: boolean }> {
   try {
+    // Check for duplicates first
+    const { isDuplicate, existingId } = await checkDuplicateVisualization(
+      userId,
+      pgn,
+      simulation.gameData,
+      visualizationState
+    );
+    
+    if (isDuplicate) {
+      return { 
+        data: null, 
+        error: new Error(`This exact visualization already exists in your gallery`),
+        isDuplicate: true
+      };
+    }
+    
     // Generate unique filename
     const timestamp = Date.now();
     const filename = `${userId}/${timestamp}-${title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.png`;
@@ -55,6 +150,8 @@ export async function saveVisualization(
       // Include full board data for proper reconstruction
       board: simulation.board as unknown as Json,
       totalMoves: simulation.totalMoves,
+      // Include visualization state for duplicate detection
+      visualizationState: visualizationState as unknown as Json,
     };
     
     // Save visualization record to database
