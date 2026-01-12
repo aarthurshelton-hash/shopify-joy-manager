@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.grant-ceo-admin]
 verify_jwt = false
+
+[functions.generate-haiku]
+verify_jwt = false

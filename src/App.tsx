@@ -25,6 +25,7 @@ import AdminSeedMarketplace from "./pages/AdminSeedMarketplace";
 import PaletteAdminPage from "./components/admin/PaletteAdminPage";
 import AdminModeration from "./pages/AdminModeration";
 import Account from "./pages/Account";
+import BookGenerator from "./pages/BookGenerator";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -58,6 +59,7 @@ const App = () => (
             <Route path="/admin/palettes" element={<PaletteAdminPage />} />
             <Route path="/admin/moderation" element={<AdminModeration />} />
             <Route path="/account" element={<Account />} />
+            <Route path="/book" element={<BookGenerator />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
