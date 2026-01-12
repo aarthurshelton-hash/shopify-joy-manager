@@ -496,8 +496,12 @@ export const UniversalTimeline: React.FC<UniversalTimelineProps> = ({
                 <RotateCcw className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>
-              <p className="text-xs">Reset to show all moves (End)</p>
+            <TooltipContent className="max-w-[200px] p-3">
+              <div className="space-y-1">
+                <div className="font-semibold">Show Complete Vision</div>
+                <p className="text-xs text-muted-foreground">Reset to display all moves, revealing the full artistic pattern. Press End.</p>
+                <p className="text-[10px] text-primary italic">💡 Complete visions have higher collector value</p>
+              </div>
             </TooltipContent>
           </Tooltip>
 
@@ -513,8 +517,12 @@ export const UniversalTimeline: React.FC<UniversalTimelineProps> = ({
                 <SkipBack className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>
-              <p className="text-xs">Previous move (←)</p>
+            <TooltipContent className="max-w-[200px] p-3">
+              <div className="space-y-1">
+                <div className="font-semibold">Previous Move</div>
+                <p className="text-xs text-muted-foreground">Step back through the game's evolution. Use ← arrow key.</p>
+                <p className="text-[10px] text-primary italic">💡 Watch patterns emerge in reverse</p>
+              </div>
             </TooltipContent>
           </Tooltip>
 
@@ -532,8 +540,16 @@ export const UniversalTimeline: React.FC<UniversalTimelineProps> = ({
                 {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 ml-0.5" />}
               </Button>
             </TooltipTrigger>
-            <TooltipContent>
-              <p className="text-xs">{isPlaying ? 'Pause playback (Space)' : 'Play through moves (Space)'}</p>
+            <TooltipContent className="max-w-[220px] p-3">
+              <div className="space-y-1">
+                <div className="font-semibold">{isPlaying ? 'Pause Animation' : 'Animate Vision'}</div>
+                <p className="text-xs text-muted-foreground">
+                  {isPlaying 
+                    ? 'Freeze the current state for analysis or capture.' 
+                    : 'Watch the visualization build move-by-move, revealing the game\'s story.'}
+                </p>
+                <p className="text-[10px] text-primary italic">⌨️ Press Space to toggle</p>
+              </div>
             </TooltipContent>
           </Tooltip>
 
@@ -549,8 +565,12 @@ export const UniversalTimeline: React.FC<UniversalTimelineProps> = ({
                 <SkipForward className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>
-              <p className="text-xs">Next move (→)</p>
+            <TooltipContent className="max-w-[200px] p-3">
+              <div className="space-y-1">
+                <div className="font-semibold">Next Move</div>
+                <p className="text-xs text-muted-foreground">Advance through the game. Use → arrow key.</p>
+                <p className="text-[10px] text-primary italic">💡 Each move adds new layers to the art</p>
+              </div>
             </TooltipContent>
           </Tooltip>
 
