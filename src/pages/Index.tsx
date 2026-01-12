@@ -236,7 +236,7 @@ const Index = () => {
               className="text-muted-foreground hover:text-foreground"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Create Another
+              Return
             </Button>
             
             <Button 
