@@ -59,7 +59,8 @@ export const InfoCardAddOn: React.FC<InfoCardAddOnProps> = ({
   const [showDetails, setShowDetails] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
 
-  const canPreview = board && gameData && whitePalette && blackPalette;
+  // Allow preview if we have palettes (even without board, we can show a sample)
+  const canPreview = whitePalette && blackPalette;
 
   return (
     <>
@@ -173,7 +174,6 @@ export const InfoCardAddOn: React.FC<InfoCardAddOnProps> = ({
             )}
           </AnimatePresence>
 
-          {/* Selection toggle */}
           {isPremium ? (
             <div className="flex gap-2">
               <Button
@@ -204,6 +204,19 @@ export const InfoCardAddOn: React.FC<InfoCardAddOnProps> = ({
               <Lock className="h-3 w-3" />
               <span>Visionary Exclusive</span>
               <Crown className="h-3 w-3" />
+            </Button>
+          )}
+
+          {/* Always show Preview Button when we have palette data */}
+          {canPreview && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowPreview(true)}
+              className="w-full gap-2 border-primary/20 hover:border-primary/50 hover:bg-primary/5"
+            >
+              <Eye className="h-4 w-4 text-primary" />
+              Preview Your Vision Card
             </Button>
           )}
 
@@ -238,12 +251,12 @@ export const InfoCardAddOn: React.FC<InfoCardAddOnProps> = ({
             </DialogTitle>
           </DialogHeader>
           
-          {canPreview && (
+          {canPreview && whitePalette && blackPalette && (
             <VisionInfoCardPreview
               board={board}
               gameData={gameData}
               moveHistory={moveHistory}
-              totalMoves={totalMoves}
+              totalMoves={totalMoves || 50}
               whitePalette={whitePalette}
               blackPalette={blackPalette}
               darkMode={darkMode}
