@@ -2,11 +2,17 @@ import React from 'react';
 
 export type RoomSetting = 'living' | 'office' | 'gallery';
 
+export interface FrameStyleOption {
+  id: string;
+  colorHex: string;
+}
+
 interface WallMockupProps {
   sizeLabel: string;
   roomSetting: RoomSetting;
   visualizationElement?: React.ReactNode;
   className?: string;
+  selectedFrame?: FrameStyleOption | null;
 }
 
 // Size configurations - dimensions in inches, scaled to mockup proportions
@@ -92,15 +98,93 @@ export const WallMockup: React.FC<WallMockupProps> = ({
   sizeLabel, 
   roomSetting,
   visualizationElement,
-  className = '' 
+  className = '',
+  selectedFrame
 }) => {
   const config = findSizeConfig(sizeLabel);
   const room = roomConfigs[roomSetting];
   
   const frameWidth = config.width;
   const frameHeight = config.height;
-  const frameThickness = 4;
+  const frameThickness = selectedFrame ? 6 : 4; // Thicker frame when selected
   const matWidth = 3;
+  
+  // Get frame color based on selection
+  const getFrameStyles = () => {
+    if (!selectedFrame) {
+      // Default minimal black frame
+      return {
+        background: 'linear-gradient(145deg, #1F1F1F 0%, #0A0A0A 50%, #151515 100%)',
+        boxShadow: `
+          inset 1px 1px 0 rgba(255,255,255,0.08),
+          inset -1px -1px 0 rgba(0,0,0,0.5),
+          2px 3px 6px rgba(0,0,0,0.3)
+        `,
+      };
+    }
+    
+    const color = selectedFrame.colorHex;
+    
+    // Generate appropriate gradient based on frame type
+    switch (selectedFrame.id) {
+      case 'natural':
+        return {
+          background: `linear-gradient(145deg, #E8D4B8 0%, ${color} 30%, #B8956E 70%, #A88560 100%)`,
+          boxShadow: `
+            inset 2px 2px 0 rgba(255,255,255,0.2),
+            inset -2px -2px 0 rgba(0,0,0,0.15),
+            3px 4px 8px rgba(0,0,0,0.35)
+          `,
+        };
+      case 'black':
+        return {
+          background: 'linear-gradient(145deg, #2A2A2A 0%, #0A0A0A 30%, #1A1A1A 70%, #0F0F0F 100%)',
+          boxShadow: `
+            inset 2px 2px 0 rgba(255,255,255,0.06),
+            inset -2px -2px 0 rgba(0,0,0,0.6),
+            3px 4px 8px rgba(0,0,0,0.4)
+          `,
+        };
+      case 'white':
+        return {
+          background: 'linear-gradient(145deg, #FFFFFF 0%, #F0F0F0 30%, #E8E8E8 70%, #FAFAFA 100%)',
+          boxShadow: `
+            inset 2px 2px 0 rgba(255,255,255,0.9),
+            inset -2px -2px 0 rgba(0,0,0,0.08),
+            3px 4px 8px rgba(0,0,0,0.25)
+          `,
+        };
+      case 'walnut':
+        return {
+          background: `linear-gradient(145deg, #6D4C41 0%, ${color} 30%, #4E342E 70%, #3E2723 100%)`,
+          boxShadow: `
+            inset 2px 2px 0 rgba(255,255,255,0.12),
+            inset -2px -2px 0 rgba(0,0,0,0.3),
+            3px 4px 8px rgba(0,0,0,0.4)
+          `,
+        };
+      case 'gold':
+        return {
+          background: `linear-gradient(145deg, #F5E6A0 0%, ${color} 25%, #C9A227 50%, #B8960F 75%, #E8C547 100%)`,
+          boxShadow: `
+            inset 2px 2px 0 rgba(255,255,255,0.4),
+            inset -2px -2px 0 rgba(0,0,0,0.2),
+            3px 4px 10px rgba(0,0,0,0.35)
+          `,
+        };
+      default:
+        return {
+          background: `linear-gradient(145deg, ${color} 0%, ${color} 100%)`,
+          boxShadow: `
+            inset 1px 1px 0 rgba(255,255,255,0.1),
+            inset -1px -1px 0 rgba(0,0,0,0.3),
+            2px 3px 6px rgba(0,0,0,0.3)
+          `,
+        };
+    }
+  };
+  
+  const frameStyles = getFrameStyles();
   
   return (
     <div className={`relative group ${className}`}>
@@ -127,36 +211,31 @@ export const WallMockup: React.FC<WallMockupProps> = ({
           />
         )}
         
-        {/* Frame shadow */}
+        {/* Frame shadow - larger for framed prints */}
         <div 
           className="absolute rounded-[1px]"
           style={{
-            width: frameWidth + frameThickness * 2 + 6,
-            height: frameHeight + frameThickness * 2 + 8,
+            width: frameWidth + frameThickness * 2 + (selectedFrame ? 10 : 6),
+            height: frameHeight + frameThickness * 2 + (selectedFrame ? 12 : 8),
             left: '50%',
             top: '45%',
             transform: 'translate(-48%, -48%)',
-            background: `rgba(0,0,0,${room.shadowOpacity})`,
-            filter: 'blur(6px)',
+            background: `rgba(0,0,0,${selectedFrame ? room.shadowOpacity + 0.1 : room.shadowOpacity})`,
+            filter: selectedFrame ? 'blur(8px)' : 'blur(6px)',
           }}
         />
         
         {/* Frame outer edge */}
         <div 
-          className="absolute"
+          className="absolute transition-all duration-300"
           style={{
             width: frameWidth + frameThickness * 2,
             height: frameHeight + frameThickness * 2,
             left: '50%',
             top: '45%',
             transform: 'translate(-50%, -50%)',
-            background: 'linear-gradient(145deg, #1F1F1F 0%, #0A0A0A 50%, #151515 100%)',
-            boxShadow: `
-              inset 1px 1px 0 rgba(255,255,255,0.08),
-              inset -1px -1px 0 rgba(0,0,0,0.5),
-              2px 3px 6px rgba(0,0,0,0.3)
-            `,
-            borderRadius: '1px',
+            ...frameStyles,
+            borderRadius: selectedFrame ? '2px' : '1px',
           }}
         >
           {/* Mat/mount */}

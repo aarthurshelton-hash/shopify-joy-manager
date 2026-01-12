@@ -13,13 +13,12 @@ import { SimulationResult, SquareData } from '@/lib/chess/gameSimulator';
 import { generateCleanPrintImage } from '@/lib/chess/printImageGenerator';
 import { PieceType } from '@/lib/chess/pieceColors';
 import { toast } from 'sonner';
-import { FrameAddOn, FRAME_OPTIONS_EXPORT, FRAME_SHIPPING_COST_EXPORT, FREE_SHIPPING_THRESHOLD_EXPORT } from './FrameAddOn';
+import { FrameAddOn, type FrameOption } from './FrameAddOn';
+import { FRAME_SHIPPING_COST, FREE_SHIPPING_THRESHOLD } from '@/lib/shop/framePricing';
 import { InfoCardAddOn, INFO_CARD_PRICE_EXPORT } from './InfoCardAddOn';
 import { VisionaryMembershipCard } from '@/components/premium/VisionaryMembershipCard';
 import AuthModal from '@/components/auth/AuthModal';
 import { useAuth } from '@/hooks/useAuth';
-
-type FrameOption = typeof FRAME_OPTIONS_EXPORT[number];
 
 interface CapturedState {
   currentMove: number;
@@ -344,6 +343,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
               sizeLabel={displayVariant.title} 
               roomSetting={roomSetting}
               visualizationElement={miniVisualization}
+              selectedFrame={selectedFrame}
             />
           </div>
         )}
