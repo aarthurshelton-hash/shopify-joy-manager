@@ -437,24 +437,24 @@ const CreatorDashboard: React.FC = () => {
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium flex items-center gap-2">
                         <div className="w-3 h-3 rounded-full bg-green-500" />
-                        Your Royalty ({ownerSharePercent}%)
+                        Your Value Appreciation ({valueAppreciationPercent}%)
                       </span>
                       <span className="font-bold text-green-500">${royaltyDollars.toFixed(2)}</span>
                     </div>
                     <div className="flex h-4 rounded-full overflow-hidden bg-muted/30">
                       <div 
                         className="bg-green-500 transition-all"
-                        style={{ width: `${ownerSharePercent}%` }}
+                        style={{ width: `${valueAppreciationPercent}%` }}
                       />
                       <div 
                         className="bg-muted-foreground/30 transition-all"
-                        style={{ width: `${100 - ownerSharePercent}%` }}
+                        style={{ width: `${100 - valueAppreciationPercent}%` }}
                       />
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground flex items-center gap-2">
                         <div className="w-3 h-3 rounded-full bg-muted-foreground/30" />
-                        Platform & Fulfillment ({100 - ownerSharePercent}%)
+                        Platform & Fulfillment ({100 - valueAppreciationPercent}%)
                       </span>
                       <span className="text-muted-foreground">${platformDollars.toFixed(2)}</span>
                     </div>
@@ -534,9 +534,9 @@ const CreatorDashboard: React.FC = () => {
                     <div className="w-10 h-10 mx-auto rounded-full bg-green-500/10 flex items-center justify-center mb-3">
                       <DollarSign className="h-5 w-5 text-green-500" />
                     </div>
-                    <h4 className="font-medium mb-1">3. Earn {ownerSharePercent}% Royalties</h4>
+                    <h4 className="font-medium mb-1">3. Build {valueAppreciationPercent}% Value</h4>
                     <p className="text-xs text-muted-foreground">
-                      Automatic royalties deposited monthly to your account
+                      Print orders add value to your holdings, sell on marketplace
                     </p>
                   </div>
                 </div>
