@@ -31,7 +31,7 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
  * Calculate color distance using Euclidean distance in RGB space
  * Returns a value between 0 (identical) and ~441 (max distance)
  */
-function colorDistance(hex1: string, hex2: string): number {
+export function colorDistance(hex1: string, hex2: string): number {
   const rgb1 = hexToRgb(hex1);
   const rgb2 = hexToRgb(hex2);
   
@@ -157,6 +157,7 @@ export interface SimilarityCheckResult {
   ownerDisplayName?: string;
   ownedByCurrentUser?: boolean;
   reason?: string;
+  existingColors?: PaletteColors; // For color comparison preview
 }
 
 export interface VisualizationWithPalette {
@@ -248,6 +249,7 @@ export async function checkVisualizationSimilarity(
           ownerDisplayName,
           ownedByCurrentUser,
           reason: `This visualization is ${Math.round(colorSimilarity)}% similar to an existing vision of the same game`,
+          existingColors, // Include for comparison preview
         };
       }
     }

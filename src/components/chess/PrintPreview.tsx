@@ -23,6 +23,7 @@ import { PaletteColors } from '@/lib/visualizations/similarityDetection';
 import { useTimeline } from '@/contexts/TimelineContext';
 import { Progress } from '@/components/ui/progress';
 import { useLegendHighlight } from '@/contexts/LegendHighlightContext';
+import ColorComparisonPreview from './ColorComparisonPreview';
 
 interface PrintPreviewProps {
   simulation: SimulationResult;
@@ -56,6 +57,8 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
   const [isOwnedByCurrentUser, setIsOwnedByCurrentUser] = useState(false);
   const [ownerDisplayName, setOwnerDisplayName] = useState<string | undefined>();
   const [similarityReason, setSimilarityReason] = useState<string | undefined>();
+  const [existingColors, setExistingColors] = useState<PaletteColors | undefined>();
+  const [currentColors, setCurrentColors] = useState<PaletteColors | undefined>();
   const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false);
   const [boardSize, setBoardSize] = useState(320);
   const [darkMode, setDarkMode] = useState(false);
@@ -159,6 +162,8 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
     setIsOwnedByCurrentUser(false);
     setOwnerDisplayName(undefined);
     setSimilarityReason(undefined);
+    setExistingColors(undefined);
+    setCurrentColors(undefined);
   }, [simulation]);
 
   // Check if current visualization already exists or is too similar in gallery (globally)
@@ -171,6 +176,8 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
         setIsOwnedByCurrentUser(false);
         setOwnerDisplayName(undefined);
         setSimilarityReason(undefined);
+        setExistingColors(undefined);
+        setCurrentColors(undefined);
         return;
       }
 
@@ -209,6 +216,14 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
         setIsOwnedByCurrentUser(result.ownedByCurrentUser || false);
         setOwnerDisplayName(result.ownerDisplayName);
         setSimilarityReason(result.reason);
+        setExistingColors(result.existingColors);
+        
+        // Store current colors for comparison
+        const currentPaletteColors: PaletteColors = customColors || {
+          white: activePalette.white,
+          black: activePalette.black,
+        };
+        setCurrentColors(currentPaletteColors);
       } catch (error) {
         console.error('Error checking duplicate:', error);
         setExistsInGallery(false);
@@ -217,6 +232,8 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
         setIsOwnedByCurrentUser(false);
         setOwnerDisplayName(undefined);
         setSimilarityReason(undefined);
+        setExistingColors(undefined);
+        setCurrentColors(undefined);
       } finally {
         setIsCheckingDuplicate(false);
       }
@@ -845,11 +862,13 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
             )}
           </Button>
           
-          {/* Similarity warning message */}
-          {isTooSimilar && (
-            <p className="text-xs text-amber-600 text-center max-w-xs">
-              This vision is too similar to an existing one. Change at least 8 piece colors to create a unique version.
-            </p>
+          {/* Color comparison preview when similarity detected */}
+          {isTooSimilar && currentColors && existingColors && (
+            <ColorComparisonPreview
+              yourColors={currentColors}
+              existingColors={existingColors}
+              ownerName={ownerDisplayName}
+            />
           )}
 
           {/* Order Print Button - Stylish but not obnoxious */}
