@@ -19,6 +19,7 @@ export interface CreativeModeTransfer {
 export interface CapturedTimelineState {
   currentMove: number;
   totalMoves?: number;
+  title?: string;
   lockedPieces: Array<{ pieceType: PieceType; pieceColor: PieceColor }>;
   compareMode: boolean;
   darkMode: boolean;
