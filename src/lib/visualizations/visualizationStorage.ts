@@ -49,22 +49,22 @@ function generateVisualizationFingerprint(
 }
 
 /**
- * Check if a similar visualization already exists for this user
+ * Check if a similar visualization already exists globally (any user)
+ * Returns ownership info - who saved it first
  */
 export async function checkDuplicateVisualization(
   userId: string,
   pgn: string | undefined,
   gameData: GameData,
   state?: VisualizationState
-): Promise<{ isDuplicate: boolean; existingId?: string }> {
+): Promise<{ isDuplicate: boolean; existingId?: string; ownedByCurrentUser?: boolean; ownerDisplayName?: string }> {
   try {
     const fingerprint = generateVisualizationFingerprint(pgn, gameData, state);
     
-    // Fetch user's existing visualizations
+    // Fetch ALL saved visualizations globally (not just user's)
     const { data, error } = await supabase
       .from('saved_visualizations')
-      .select('id, pgn, game_data')
-      .eq('user_id', userId);
+      .select('id, user_id, pgn, game_data');
     
     if (error) {
       console.error('Error checking duplicates:', error);
@@ -81,7 +81,25 @@ export async function checkDuplicateVisualization(
       );
       
       if (fingerprint === existingFingerprint) {
-        return { isDuplicate: true, existingId: viz.id };
+        const ownedByCurrentUser = viz.user_id === userId;
+        
+        // If owned by someone else, try to get their display name
+        let ownerDisplayName: string | undefined;
+        if (!ownedByCurrentUser) {
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('display_name')
+            .eq('user_id', viz.user_id)
+            .single();
+          ownerDisplayName = profileData?.display_name || 'Another collector';
+        }
+        
+        return { 
+          isDuplicate: true, 
+          existingId: viz.id,
+          ownedByCurrentUser,
+          ownerDisplayName
+        };
       }
     }
     
@@ -99,10 +117,10 @@ export async function saveVisualization(
   imageBlob: Blob,
   pgn?: string,
   visualizationState?: VisualizationState
-): Promise<{ data: SavedVisualization | null; error: Error | null; isDuplicate?: boolean }> {
+): Promise<{ data: SavedVisualization | null; error: Error | null; isDuplicate?: boolean; ownedByCurrentUser?: boolean; ownerDisplayName?: string }> {
   try {
-    // Check for duplicates first
-    const { isDuplicate, existingId } = await checkDuplicateVisualization(
+    // Check for duplicates first (globally)
+    const { isDuplicate, existingId, ownedByCurrentUser, ownerDisplayName } = await checkDuplicateVisualization(
       userId,
       pgn,
       simulation.gameData,
@@ -110,10 +128,15 @@ export async function saveVisualization(
     );
     
     if (isDuplicate) {
+      const message = ownedByCurrentUser 
+        ? 'This visualization is already in your gallery'
+        : `This visualization is owned by ${ownerDisplayName || 'another collector'}`;
       return { 
         data: null, 
-        error: new Error(`This exact visualization already exists in your gallery`),
-        isDuplicate: true
+        error: new Error(message),
+        isDuplicate: true,
+        ownedByCurrentUser,
+        ownerDisplayName
       };
     }
     
