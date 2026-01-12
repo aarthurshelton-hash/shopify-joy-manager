@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Gift, DollarSign, Loader2 } from 'lucide-react';
+import { Gift, DollarSign, Loader2, AlertCircle } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -13,6 +13,15 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from 'sonner';
 import { createListing } from '@/lib/marketplace/marketplaceApi';
+import { z } from 'zod';
+
+// Validation schema for listing price
+const listingPriceSchema = z.object({
+  priceCents: z.number()
+    .int('Price must be a whole number of cents')
+    .min(0, 'Price cannot be negative')
+    .max(1000000, 'Maximum price is $10,000') // $10,000 max
+});
 
 interface ListForSaleModalProps {
   isOpen: boolean;
@@ -32,13 +41,26 @@ const ListForSaleModal: React.FC<ListForSaleModalProps> = ({
   const [listingType, setListingType] = useState<'free' | 'paid'>('free');
   const [priceUsd, setPriceUsd] = useState('5.00');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [priceError, setPriceError] = useState<string | null>(null);
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
+    setPriceError(null);
 
     const priceCents = listingType === 'free' ? 0 : Math.round(parseFloat(priceUsd) * 100);
 
+    // Validate with zod schema
+    const validation = listingPriceSchema.safeParse({ priceCents });
+    if (!validation.success) {
+      const errorMessage = validation.error.errors[0]?.message || 'Invalid price';
+      setPriceError(errorMessage);
+      toast.error(errorMessage);
+      setIsSubmitting(false);
+      return;
+    }
+
     if (listingType === 'paid' && (isNaN(priceCents) || priceCents < 100)) {
+      setPriceError('Minimum price is $1.00');
       toast.error('Minimum price is $1.00');
       setIsSubmitting(false);
       return;
@@ -123,14 +145,25 @@ const ListForSaleModal: React.FC<ListForSaleModalProps> = ({
                   min="1"
                   step="0.01"
                   value={priceUsd}
-                  onChange={(e) => setPriceUsd(e.target.value)}
-                  className="pl-9"
+                  onChange={(e) => {
+                    setPriceUsd(e.target.value);
+                    setPriceError(null);
+                  }}
+                  className={`pl-9 ${priceError ? 'border-destructive' : ''}`}
                   placeholder="5.00"
+                  max="10000"
                 />
               </div>
-              <p className="text-xs text-muted-foreground">
-                Minimum $1.00. Stripe processing fees apply.
-              </p>
+              {priceError ? (
+                <p className="text-xs text-destructive flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {priceError}
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Minimum $1.00, maximum $10,000. Stripe processing fees apply.
+                </p>
+              )}
             </div>
           )}
         </div>
