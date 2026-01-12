@@ -45,7 +45,12 @@ export const OrderPrintButton: React.FC<OrderPrintButtonProps> = ({
     if (onClick) {
       onClick();
     } else if (orderData) {
-      setOrderData(orderData);
+      // Include current path as return path if not already set
+      const dataWithReturnPath = {
+        ...orderData,
+        returnPath: orderData.returnPath || window.location.pathname,
+      };
+      setOrderData(dataWithReturnPath);
       navigate('/order-print');
     } else {
       // Fallback to home if no data
