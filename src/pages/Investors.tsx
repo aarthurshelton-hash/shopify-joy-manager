@@ -898,7 +898,11 @@ const Investors = () => {
                   <ul className="space-y-2">
                     <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
                       <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                      <span><strong className="text-foreground">Asset Value Creation</strong> — Visions gain real dollar value through engagement</span>
+                      <span><strong className="text-foreground">Membership-Driven Appreciation</strong> — 15% of subscriptions ($1.05/mo) injected into vision market cap</span>
+                    </li>
+                    <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
+                      <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                      <span><strong className="text-foreground">Asset Value Creation</strong> — Visions gain real dollar value through engagement + membership growth</span>
                     </li>
                     <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
                       <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
@@ -906,11 +910,7 @@ const Investors = () => {
                     </li>
                     <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
                       <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                      <span><strong className="text-foreground">Print-Driven Value</strong> — Real revenue adds permanent score to visions</span>
-                    </li>
-                    <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
-                      <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                      <span><strong className="text-foreground">Anti-Gaming Protection</strong> — Rate-limited interactions prevent abuse</span>
+                      <span><strong className="text-foreground">85% Retained</strong> — Sustainable model keeps majority of subscription revenue for operations</span>
                     </li>
                   </ul>
                 </div>
@@ -918,22 +918,29 @@ const Investors = () => {
                 <div className="p-4 rounded-lg bg-card border border-border/50 space-y-3">
                   <h3 className="font-display font-bold uppercase tracking-wide text-primary flex items-center gap-2">
                     <TrendingUp className="h-4 w-4" />
-                    Projected Impact on LTV
+                    Market Cap Projections
                   </h3>
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="text-center">
-                      <p className="text-lg font-display text-foreground">+15%</p>
-                      <p className="text-xs text-muted-foreground font-serif">Conversion Lift</p>
+                  <div className="grid grid-cols-4 gap-2 text-center">
+                    <div className="p-2 rounded bg-primary/5">
+                      <p className="text-xs text-muted-foreground">100 subs</p>
+                      <p className="text-sm font-display font-bold">$5.6K</p>
                     </div>
-                    <div className="text-center">
-                      <p className="text-lg font-display text-foreground">+20%</p>
-                      <p className="text-xs text-muted-foreground font-serif">Retention Boost</p>
+                    <div className="p-2 rounded bg-primary/5">
+                      <p className="text-xs text-muted-foreground">1K subs</p>
+                      <p className="text-sm font-display font-bold">$17.6K</p>
                     </div>
-                    <div className="text-center">
-                      <p className="text-lg font-display text-primary font-bold">$100+</p>
-                      <p className="text-xs text-muted-foreground font-serif">Enhanced LTV</p>
+                    <div className="p-2 rounded bg-primary/10 border border-primary/20">
+                      <p className="text-xs text-muted-foreground">10K subs</p>
+                      <p className="text-sm font-display text-primary font-bold">$131K</p>
+                    </div>
+                    <div className="p-2 rounded bg-primary/10 border border-primary/20">
+                      <p className="text-xs text-muted-foreground">50K subs</p>
+                      <p className="text-sm font-display text-primary font-bold">$635K</p>
                     </div>
                   </div>
+                  <p className="text-xs text-muted-foreground font-serif italic">
+                    * Market cap = $5K base + (subscribers × $1.05 × 12 months)
+                  </p>
                 </div>
 
                 <div className="pt-4 border-t border-border">
