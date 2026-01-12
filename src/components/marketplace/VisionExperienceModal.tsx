@@ -324,29 +324,27 @@ const VisionExperienceModal: React.FC<VisionExperienceModalProps> = ({
 
   // Debug logging for modal click
   useEffect(() => {
+    console.log('[VisionExperienceModal] Props changed - isOpen:', isOpen, 'listing:', listing?.id);
     if (isOpen) {
       console.log('[VisionExperienceModal] Modal opened with listing:', listing?.id);
       console.log('[VisionExperienceModal] Game data:', listing?.visualization?.game_data);
     }
   }, [isOpen, listing]);
 
-  if (!listing) {
-    console.log('[VisionExperienceModal] No listing provided');
-    return null;
-  }
-
-  const gameData = listing.visualization?.game_data as ExtendedGameData | undefined;
-  const isGenesis = listing.visualization?.title?.includes('Exemplar');
-  const isFree = listing.price_cents === 0;
+  // Always render the Dialog to allow proper open/close animations
+  // Only process game data when we have a listing
+  const gameData = listing?.visualization?.game_data as ExtendedGameData | undefined;
+  const isGenesis = listing?.visualization?.title?.includes('Exemplar') ?? false;
+  const isFree = (listing?.price_cents ?? 0) === 0;
   const totalMoves = gameData?.totalMoves || gameData?.moves?.length || 0;
-  const paletteId = extractPaletteId(listing.visualization?.game_data as Record<string, unknown>) || 'modern';
+  const paletteId = listing ? (extractPaletteId(listing.visualization?.game_data as Record<string, unknown>) || 'modern') : 'modern';
   const hasPremiumPalette = isPremiumPalette(paletteId);
   const paletteArt = getPaletteArt(paletteId);
   const paletteDisplayName = getPaletteDisplayName(paletteId);
   const isCertifiedPalette = paletteId && paletteId !== 'custom';
-  const isCertifiedGame = listing.visualization?.title?.includes('Immortal') || 
-                          listing.visualization?.title?.includes('Game of the Century') ||
-                          listing.visualization?.title?.includes('Deep Blue');
+  const isCertifiedGame = listing?.visualization?.title?.includes('Immortal') || 
+                          listing?.visualization?.title?.includes('Game of the Century') ||
+                          listing?.visualization?.title?.includes('Deep Blue');
   
   // Get a random game image for background if no palette art
   const gameImageKeys = Object.keys(gameImageImports);
@@ -373,6 +371,15 @@ const VisionExperienceModal: React.FC<VisionExperienceModalProps> = ({
   };
 
   console.log('[VisionExperienceModal] Rendering - isOpen:', isOpen, 'listing:', listing?.id);
+
+  // Don't render content if no listing - Dialog handles the open state check
+  if (!listing) {
+    return (
+      <Dialog open={false} onOpenChange={() => {}}>
+        <DialogContent className="max-w-6xl max-h-[95vh] overflow-hidden p-0 gap-0 relative" />
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
