@@ -1,13 +1,14 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
-import { Crown, TrendingUp, Globe, Zap, Target, Download, ChevronRight, FileText, Presentation, Repeat, Users, Quote, Sparkles, ChevronDown, Star, Database, BarChart3 } from 'lucide-react';
+import { Crown, TrendingUp, Globe, Zap, Target, Download, ChevronRight, FileText, Presentation, Repeat, Users, Quote, Sparkles, ChevronDown, Star, Database, BarChart3, BookOpen } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TestimonialSubmissionForm } from '@/components/testimonials/TestimonialSubmissionForm';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useRandomGameArt } from '@/hooks/useRandomGameArt';
+import { BookShowcase } from '@/components/book/BookShowcase';
 
 type ModalType = 'market' | 'technology' | 'vision' | 'brand' | 'data' | null;
 
@@ -548,6 +549,17 @@ const Investors = () => {
             />
           </div>
 
+          {/* NEW: Featured Book Showcase for Investors */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <h2 className="text-2xl font-display font-bold uppercase tracking-wider">Latest Development</h2>
+              <span className="px-3 py-1 text-xs bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-full font-display uppercase tracking-wider">
+                New Revenue Stream
+              </span>
+            </div>
+            <BookShowcase variant="featured" showCTA={false} />
+          </div>
+
           {/* Pitch Deck Section */}
           <div className="space-y-6">
             <h2 className="text-2xl font-display font-bold uppercase tracking-wider">Investor Materials</h2>
@@ -867,12 +879,65 @@ const Investors = () => {
                   </p>
                 </div>
 
+                {/* NEW: Carlsen in Color Book Revenue */}
+                <div className="p-4 rounded-lg bg-gradient-to-br from-amber-500/10 to-orange-500/10 border-2 border-amber-500/30 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-display font-bold uppercase tracking-wide text-amber-700 flex items-center gap-2">
+                      <BookOpen className="h-4 w-4" />
+                      NEW: Coffee Table Book Revenue
+                    </h3>
+                    <span className="px-2 py-0.5 text-xs bg-amber-500/20 text-amber-700 rounded-full font-display">Launch</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground font-serif">
+                    <strong className="text-foreground">"Carlsen in Color: 100 Masterpieces of Magnus Carlsen"</strong> — 
+                    A premium coffee table book combining En Pensent visualizations with AI-generated haiku poetry.
+                  </p>
+                  <div className="grid grid-cols-2 gap-3 mt-3">
+                    <div className="text-center p-2 bg-white/50 rounded">
+                      <p className="text-lg font-display text-amber-800">$79.99</p>
+                      <p className="text-xs text-muted-foreground font-serif">Standard (8.5"×11")</p>
+                    </div>
+                    <div className="text-center p-2 bg-white/50 rounded">
+                      <p className="text-lg font-display text-amber-800">$99.99</p>
+                      <p className="text-xs text-muted-foreground font-serif">Large (11"×14")</p>
+                    </div>
+                  </div>
+                  <ul className="space-y-1 mt-3">
+                    <li className="flex items-start gap-2 text-xs text-muted-foreground font-serif">
+                      <ChevronRight className="h-3 w-3 text-amber-600 mt-0.5 shrink-0" />
+                      <span><strong className="text-foreground">New Revenue Stream</strong> — physical product with ~40% margins via print-on-demand</span>
+                    </li>
+                    <li className="flex items-start gap-2 text-xs text-muted-foreground font-serif">
+                      <ChevronRight className="h-3 w-3 text-amber-600 mt-0.5 shrink-0" />
+                      <span><strong className="text-foreground">Series Potential</strong> — template for future player/tournament editions</span>
+                    </li>
+                    <li className="flex items-start gap-2 text-xs text-muted-foreground font-serif">
+                      <ChevronRight className="h-3 w-3 text-amber-600 mt-0.5 shrink-0" />
+                      <span><strong className="text-foreground">Gift Market</strong> — premium positioning for chess enthusiast gifting</span>
+                    </li>
+                  </ul>
+                  <div className="flex items-center justify-between p-2 rounded bg-amber-100/50 mt-2">
+                    <div>
+                      <p className="text-sm font-display text-amber-800">1,000 Books/Year</p>
+                      <p className="text-xs text-muted-foreground font-serif">Conservative Target</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-display text-amber-800">$32K Gross Revenue</p>
+                      <p className="text-xs text-muted-foreground font-serif">~$12K Net (40% margin)</p>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="space-y-3">
                   <h3 className="font-display font-bold uppercase tracking-wide text-primary">Near-Term (6-12 months)</h3>
                   <ul className="space-y-2">
                     <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
                       <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
                       Direct integration with Chess.com and Lichess
+                    </li>
+                    <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
+                      <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                      <strong className="text-amber-700">Launch "Carlsen in Color" coffee table book ($79.99-$99.99)</strong>
                     </li>
                     <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
                       <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />

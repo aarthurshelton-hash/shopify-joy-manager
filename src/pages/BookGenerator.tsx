@@ -509,7 +509,7 @@ const BookGenerator: React.FC = () => {
     }
   };
 
-  // Export all completed spreads as a single ZIP archive
+  // Export all completed spreads as a single ZIP archive with cover and TOC
   const exportAsZip = async () => {
     const completedSpreads = spreads.filter(s => s.status === 'complete');
     
@@ -520,25 +520,41 @@ const BookGenerator: React.FC = () => {
     
     setIsExportingImages(true);
     setImageExportProgress(0);
-    toast.info(`Creating ZIP archive with ${completedSpreads.length} high-res images...`);
+    toast.info(`Creating ZIP archive with cover, TOC, and ${completedSpreads.length} high-res images...`);
     
     try {
       const JSZip = (await import('jszip')).default;
       const zip = new JSZip();
       
-      // Create a folder for the spreads
-      const spreadsFolder = zip.folder('carlsen-in-color-spreads');
+      // Create main folder
+      const mainFolder = zip.folder('carlsen-in-color');
+      const spreadsFolder = mainFolder?.folder('spreads');
       
+      // Add cover image
+      try {
+        const coverResponse = await fetch(carlsenCover);
+        const coverBlob = await coverResponse.blob();
+        const coverBuffer = await coverBlob.arrayBuffer();
+        mainFolder?.file('00-cover.jpg', coverBuffer);
+      } catch (coverError) {
+        console.warn('Could not add cover to ZIP:', coverError);
+      }
+      
+      // Generate Table of Contents (README.md)
+      const tocContent = generateTableOfContents(completedSpreads);
+      mainFolder?.file('README.md', tocContent);
+      
+      // Generate metadata JSON
+      const metadata = generateMetadataJson(completedSpreads);
+      mainFolder?.file('metadata.json', JSON.stringify(metadata, null, 2));
+      
+      // Add each spread
       for (let i = 0; i < completedSpreads.length; i++) {
         const spread = completedSpreads[i];
         
         try {
           const imageData = await generateHighResSpreadImage(spread);
-          
-          // Extract base64 data (remove data:image/png;base64, prefix)
           const base64Data = imageData.split(',')[1];
-          
-          // Add to ZIP
           const filename = `spread-${String(spread.game.rank).padStart(3, '0')}-${spread.game.id}.png`;
           spreadsFolder?.file(filename, base64Data, { base64: true });
         } catch (error) {
@@ -556,17 +572,16 @@ const BookGenerator: React.FC = () => {
         compressionOptions: { level: 6 }
       });
       
-      // Create download link
       const url = URL.createObjectURL(zipBlob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `carlsen-in-color-spreads-${new Date().toISOString().split('T')[0]}.zip`;
+      link.download = `carlsen-in-color-complete-${new Date().toISOString().split('T')[0]}.zip`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
       
-      toast.success(`Downloaded ZIP with ${completedSpreads.length} high-res images (300 DPI)`);
+      toast.success(`Downloaded complete archive: cover, TOC, metadata, and ${completedSpreads.length} spreads`);
     } catch (error) {
       console.error('ZIP export failed:', error);
       toast.error('Failed to create ZIP archive');
@@ -574,6 +589,112 @@ const BookGenerator: React.FC = () => {
       setIsExportingImages(false);
       setImageExportProgress(0);
     }
+  };
+
+  // Generate Table of Contents markdown
+  const generateTableOfContents = (completedSpreads: GeneratedSpread[]): string => {
+    const now = new Date().toLocaleDateString('en-US', { 
+      year: 'numeric', month: 'long', day: 'numeric' 
+    });
+    
+    let toc = `# Carlsen in Color
+## 100 Masterpieces of Magnus Carlsen
+
+**Generated:** ${now}
+**Format:** 300 DPI Print-Ready PNG (3600×2520px)
+**Spreads Included:** ${completedSpreads.length}
+
+---
+
+## About This Collection
+
+This archive contains high-resolution book spreads from "Carlsen in Color," 
+a visual celebration of Magnus Carlsen's greatest chess games, rendered 
+through the En Pensent visualization system with AI-generated haiku poetry.
+
+Each spread features:
+- Left page: Original haiku inspired by the game
+- Right page: En Pensent visualization using the Hot & Cold palette
+
+---
+
+## Table of Contents
+
+| # | Title | Players | Event | Year | Result |
+|---|-------|---------|-------|------|--------|
+`;
+
+    completedSpreads.forEach(spread => {
+      toc += `| ${spread.game.rank} | ${spread.game.title} | ${spread.game.white} vs ${spread.game.black} | ${spread.game.event} | ${spread.game.year} | ${spread.game.result} |\n`;
+    });
+
+    toc += `
+---
+
+## Print Specifications
+
+- **Recommended Paper:** 100lb gloss text or matte art paper
+- **Binding:** Smyth-sewn hardcover
+- **Trim Size:** 12" × 8.4" (spread, folded to 6" × 8.4" per page)
+- **Color Profile:** sRGB
+
+---
+
+## Order Physical Copies
+
+Visit [enpensent.com/shop](https://enpensent.com/shop) to order professionally 
+printed copies of "Carlsen in Color."
+
+- **Standard Edition (8.5"×11"):** $79.99
+- **Large Format (11"×14"):** $99.99
+
+---
+
+© En Pensent • All Rights Reserved
+`;
+
+    return toc;
+  };
+
+  // Generate metadata JSON for each spread
+  const generateMetadataJson = (completedSpreads: GeneratedSpread[]) => {
+    return {
+      title: "Carlsen in Color: 100 Masterpieces of Magnus Carlsen",
+      version: "1.0",
+      generated: new Date().toISOString(),
+      palette: "Hot & Cold",
+      format: {
+        resolution: "300 DPI",
+        dimensions: "3600×2520px",
+        fileType: "PNG"
+      },
+      spreads: completedSpreads.map(spread => ({
+        rank: spread.game.rank,
+        id: spread.game.id,
+        title: spread.game.title,
+        white: spread.game.white,
+        black: spread.game.black,
+        event: spread.game.event,
+        year: spread.game.year,
+        result: spread.game.result,
+        significance: spread.game.significance,
+        haiku: spread.haiku.split('\n').filter(l => l.trim()),
+        filename: `spreads/spread-${String(spread.game.rank).padStart(3, '0')}-${spread.game.id}.png`
+      })),
+      ordering: {
+        standardEdition: {
+          price: "$79.99",
+          size: "8.5×11 inches",
+          weight: "2.5 lbs"
+        },
+        largeFormat: {
+          price: "$99.99", 
+          size: "11×14 inches",
+          weight: "4 lbs"
+        },
+        url: "https://enpensent.com/shop"
+      }
+    };
   };
 
   const exportToPDF = async () => {

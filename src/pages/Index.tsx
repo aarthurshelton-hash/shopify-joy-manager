@@ -9,6 +9,7 @@ import FloatingChessPieces from '@/components/chess/FloatingChessPieces';
 import TrendingWidget from '@/components/homepage/TrendingWidget';
 import CreativeModeShowcase from '@/components/homepage/CreativeModeShowcase';
 import { NaturalQRShowcase } from '@/components/homepage/NaturalQRShowcase';
+import { BookShowcase } from '@/components/book/BookShowcase';
 import { VisionaryMembershipCard } from '@/components/premium';
 import { simulateGame, SimulationResult } from '@/lib/chess/gameSimulator';
 import { Header } from '@/components/shop/Header';
@@ -557,6 +558,9 @@ const Index = () => {
 
             {/* Creative Mode Showcase */}
             <CreativeModeShowcase />
+
+            {/* NEW: Carlsen in Color Book Showcase */}
+            <BookShowcase variant="hero" />
 
             {/* Community Trending Widget */}
             <TrendingWidget />
