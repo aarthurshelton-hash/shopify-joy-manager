@@ -35,6 +35,7 @@ import {
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import AuthModal from '@/components/auth/AuthModal';
+import { VisionaryMembershipCard } from '@/components/premium';
 
 const Account: React.FC = () => {
   const navigate = useNavigate();
@@ -67,6 +68,7 @@ const Account: React.FC = () => {
 
   // Auth modal
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showVisionaryModal, setShowVisionaryModal] = useState(false);
 
   // Subscription state
   const [isSubscriptionLoading, setIsSubscriptionLoading] = useState(false);
@@ -275,11 +277,20 @@ const Account: React.FC = () => {
             <p className="text-muted-foreground">
               Sign in to access your account settings.
             </p>
-            <Button onClick={() => setShowAuthModal(true)} className="btn-luxury">
+            <Button onClick={() => setShowVisionaryModal(true)} className="btn-luxury">
               Sign In to Continue
             </Button>
           </div>
           
+          <VisionaryMembershipCard
+            isOpen={showVisionaryModal}
+            onClose={() => setShowVisionaryModal(false)}
+            onAuthRequired={() => {
+              setShowVisionaryModal(false);
+              setShowAuthModal(true);
+            }}
+            trigger="general"
+          />
           <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
         </div>
         <Footer />
