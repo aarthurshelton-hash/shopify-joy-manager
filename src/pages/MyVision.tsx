@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { getUserVisualizations, deleteVisualization, SavedVisualization } from '@/lib/visualizations/visualizationStorage';
+import { migrateUserVisualizations } from '@/lib/visualizations/migrateVisualization';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { 
@@ -15,7 +16,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Crown, Trash2, Download, ArrowLeft, Image as ImageIcon, Loader2, Link2, ExternalLink, Sparkles, Printer } from 'lucide-react';
+import { Crown, Trash2, Download, ArrowLeft, Image as ImageIcon, Loader2, Link2, ExternalLink, Sparkles, Printer, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { OrderPrintButton } from '@/components/shop/OrderPrintButton';
 import { PremiumUpgradeCard } from '@/components/premium';
@@ -30,6 +31,7 @@ const MyVision: React.FC = () => {
   const { setOrderData } = usePrintOrderStore();
   const [visualizations, setVisualizations] = useState<SavedVisualization[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isMigrating, setIsMigrating] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<SavedVisualization | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -52,9 +54,42 @@ const MyVision: React.FC = () => {
       toast.error('Failed to load visualizations', { description: error.message });
     } else {
       setVisualizations(data);
+      
+      // Check if any visualizations need migration (missing board data)
+      const needsMigration = data.some(v => !v.game_data.board || !Array.isArray(v.game_data.board));
+      if (needsMigration && data.length > 0) {
+        // Auto-migrate in the background
+        handleMigration();
+      }
     }
     
     setIsLoading(false);
+  };
+
+  const handleMigration = async () => {
+    if (!user || isMigrating) return;
+    
+    setIsMigrating(true);
+    try {
+      const result = await migrateUserVisualizations(user.id);
+      
+      if (result.migrated > 0) {
+        toast.success(`Updated ${result.migrated} visualization(s)`, {
+          description: 'Your saved games now support full interactivity',
+        });
+        // Reload visualizations to get updated data
+        const { data } = await getUserVisualizations(user.id);
+        if (data) setVisualizations(data);
+      }
+      
+      if (result.failed > 0) {
+        console.warn('Migration failures:', result.errors);
+      }
+    } catch (err) {
+      console.error('Migration error:', err);
+    } finally {
+      setIsMigrating(false);
+    }
   };
 
   const handleDelete = async () => {
@@ -225,9 +260,17 @@ const MyVision: React.FC = () => {
       <Header />
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <Crown className="h-6 w-6 text-primary" />
-            <h1 className="text-3xl font-display font-bold">My Vision Gallery</h1>
+          <div className="flex items-center justify-between gap-3 mb-2">
+            <div className="flex items-center gap-3">
+              <Crown className="h-6 w-6 text-primary" />
+              <h1 className="text-3xl font-display font-bold">My Vision Gallery</h1>
+            </div>
+            {isMigrating && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <RefreshCw className="h-4 w-4 animate-spin" />
+                <span>Updating...</span>
+              </div>
+            )}
           </div>
           <p className="text-muted-foreground">
             Your saved chess visualizations, ready to download anytime.
