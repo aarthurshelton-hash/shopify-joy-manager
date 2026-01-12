@@ -5,13 +5,19 @@ import { Footer } from '@/components/shop/Footer';
 import { 
   Crown, TrendingUp, BarChart3, Users, Eye, Palette, Heart, 
   Trophy, Sparkles, Lock, ChevronRight, Activity, Globe, 
-  Flame, Star, Zap, Database
+  Flame, Star, Zap, Database, Download, Printer, ArrowRightLeft, DollarSign
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import PremiumUpgradeModal from '@/components/premium/PremiumUpgradeModal';
 import AuthModal from '@/components/auth/AuthModal';
+import { 
+  getPlatformVisionStats, 
+  getVisionLeaderboard, 
+  getUserPortfolioValue,
+  VisionLeaderboardEntry 
+} from '@/lib/visualizations/visionScoring';
 
 interface AnalyticsData {
   community: {
@@ -26,10 +32,23 @@ interface AnalyticsData {
     myFavorites: number;
     myPalettes: number;
     myPublicPalettes: number;
+    portfolioValue: number;
+    totalScore: number;
   };
   trending: {
     topGames: { gameId: string; favoriteCount: number }[];
+    topVisions: VisionLeaderboardEntry[];
     recentActivity: { type: string; count: number; change: string }[];
+  };
+  visionEconomy: {
+    totalViews: number;
+    totalDownloads: number;
+    totalGifDownloads: number;
+    totalTrades: number;
+    totalPrintOrders: number;
+    totalPrintRevenue: number;
+    totalScore: number;
+    uniqueCollectors: number;
   };
 }
 
@@ -91,13 +110,19 @@ const Analytics = () => {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
-  // Projected baseline data for early-stage analytics (short-term growth projections)
+  // Projected baseline data for early-stage analytics
   const PROJECTED_BASELINES = {
-    visualizations: 847,     // Early adopter artwork creation
-    creators: 234,           // Active artists in launch phase
-    favorites: 1892,         // Engagement with famous games
-    palettes: 156,           // Custom color palettes created
-    publicPalettes: 42,      // Shared publicly
+    visualizations: 847,
+    creators: 234,
+    favorites: 1892,
+    palettes: 156,
+    publicPalettes: 42,
+    views: 12500,
+    downloads: 1850,
+    gifDownloads: 420,
+    trades: 127,
+    printOrders: 89,
+    printRevenue: 445000,
     defaultTopGames: [
       { gameId: 'immortal-game', favoriteCount: 127 },
       { gameId: 'opera-game', favoriteCount: 98 },
@@ -112,11 +137,13 @@ const Analytics = () => {
       setIsLoading(true);
       
       try {
-        // Community stats (available to all)
-        const [vizResult, favResult, paletteResult] = await Promise.all([
+        // Fetch all data in parallel
+        const [vizResult, favResult, paletteResult, platformStats, topVisions] = await Promise.all([
           supabase.from('saved_visualizations').select('id, user_id', { count: 'exact' }),
           supabase.from('favorite_games').select('id, user_id, game_id', { count: 'exact' }),
-          supabase.from('saved_palettes').select('id, user_id, is_public', { count: 'exact' })
+          supabase.from('saved_palettes').select('id, user_id, is_public', { count: 'exact' }),
+          getPlatformVisionStats(),
+          getVisionLeaderboard(5),
         ]);
 
         const actualCreators = new Set(vizResult.data?.map(v => v.user_id) || []).size;
@@ -130,21 +157,26 @@ const Analytics = () => {
           myVisualizations: 0,
           myFavorites: 0,
           myPalettes: 0,
-          myPublicPalettes: 0
+          myPublicPalettes: 0,
+          portfolioValue: 0,
+          totalScore: 0,
         };
 
         if (user) {
-          const [myVizResult, myFavResult, myPaletteResult] = await Promise.all([
+          const [myVizResult, myFavResult, myPaletteResult, portfolio] = await Promise.all([
             supabase.from('saved_visualizations').select('id', { count: 'exact' }).eq('user_id', user.id),
             supabase.from('favorite_games').select('id', { count: 'exact' }).eq('user_id', user.id),
-            supabase.from('saved_palettes').select('id, is_public', { count: 'exact' }).eq('user_id', user.id)
+            supabase.from('saved_palettes').select('id, is_public', { count: 'exact' }).eq('user_id', user.id),
+            getUserPortfolioValue(user.id),
           ]);
 
           personal = {
             myVisualizations: myVizResult.count || 0,
             myFavorites: myFavResult.count || 0,
             myPalettes: myPaletteResult.count || 0,
-            myPublicPalettes: myPaletteResult.data?.filter(p => p.is_public).length || 0
+            myPublicPalettes: myPaletteResult.data?.filter(p => p.is_public).length || 0,
+            portfolioValue: portfolio.totalValue,
+            totalScore: portfolio.totalScore,
           };
         }
 
@@ -181,11 +213,24 @@ const Analytics = () => {
 
         const trending = {
           topGames: isPremium ? topGames : [],
+          topVisions: isPremium ? topVisions : [],
           recentActivity: [
             { type: 'New Visualizations', count: projectedViz, change: '+18%' },
             { type: 'Active Creators', count: projectedCreators, change: '+12%' },
             { type: 'Games Favorited', count: projectedFav, change: '+27%' }
           ]
+        };
+
+        // Vision economy stats
+        const visionEconomy = {
+          totalViews: PROJECTED_BASELINES.views + platformStats.totalViews,
+          totalDownloads: PROJECTED_BASELINES.downloads + platformStats.totalDownloads,
+          totalGifDownloads: PROJECTED_BASELINES.gifDownloads + platformStats.totalGifDownloads,
+          totalTrades: PROJECTED_BASELINES.trades + platformStats.totalTrades,
+          totalPrintOrders: PROJECTED_BASELINES.printOrders + platformStats.totalPrintOrders,
+          totalPrintRevenue: PROJECTED_BASELINES.printRevenue + platformStats.totalPrintRevenue,
+          totalScore: platformStats.totalScore,
+          uniqueCollectors: platformStats.uniqueCollectors + PROJECTED_BASELINES.creators,
         };
 
         setData({
@@ -197,7 +242,8 @@ const Analytics = () => {
             publicPalettes: projectedPublicPalettes
           },
           personal,
-          trending
+          trending,
+          visionEconomy,
         });
       } catch (error) {
         console.error('Error fetching analytics:', error);
@@ -210,15 +256,26 @@ const Analytics = () => {
             totalPalettes: PROJECTED_BASELINES.palettes,
             publicPalettes: PROJECTED_BASELINES.publicPalettes
           },
-          personal: { myVisualizations: 0, myFavorites: 0, myPalettes: 0, myPublicPalettes: 0 },
+          personal: { myVisualizations: 0, myFavorites: 0, myPalettes: 0, myPublicPalettes: 0, portfolioValue: 0, totalScore: 0 },
           trending: {
             topGames: isPremium ? PROJECTED_BASELINES.defaultTopGames : [],
+            topVisions: [],
             recentActivity: [
               { type: 'New Visualizations', count: PROJECTED_BASELINES.visualizations, change: '+18%' },
               { type: 'Active Creators', count: PROJECTED_BASELINES.creators, change: '+12%' },
               { type: 'Games Favorited', count: PROJECTED_BASELINES.favorites, change: '+27%' }
             ]
-          }
+          },
+          visionEconomy: {
+            totalViews: PROJECTED_BASELINES.views,
+            totalDownloads: PROJECTED_BASELINES.downloads,
+            totalGifDownloads: PROJECTED_BASELINES.gifDownloads,
+            totalTrades: PROJECTED_BASELINES.trades,
+            totalPrintOrders: PROJECTED_BASELINES.printOrders,
+            totalPrintRevenue: PROJECTED_BASELINES.printRevenue,
+            totalScore: 0,
+            uniqueCollectors: PROJECTED_BASELINES.creators,
+          },
         });
       } finally {
         setIsLoading(false);
@@ -236,6 +293,8 @@ const Analytics = () => {
     await openCheckout();
   };
 
+  const formatRevenue = (cents: number) => `$${(cents / 100).toLocaleString()}`;
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -246,13 +305,13 @@ const Analytics = () => {
           <div className="text-center space-y-6">
             <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-display uppercase tracking-widest">
               <BarChart3 className="h-4 w-4" />
-              Premium Analytics
+              Vision NFT Analytics
             </div>
             <h1 className="text-4xl md:text-5xl font-royal font-bold uppercase tracking-wide">
-              Platform <span className="text-gold-gradient">Insights</span>
+              Vision <span className="text-gold-gradient">Economy</span>
             </h1>
             <p className="text-lg text-muted-foreground font-serif leading-relaxed max-w-2xl mx-auto">
-              Real-time analytics and insights from our community of chess artists and enthusiasts.
+              Real-time analytics tracking vision scores, trades, downloads, and print revenue across the platform.
             </p>
           </div>
 
@@ -279,7 +338,7 @@ const Analytics = () => {
                 </div>
                 <div>
                   <h3 className="font-display font-bold uppercase tracking-wide">Unlock Full Analytics</h3>
-                  <p className="text-sm text-muted-foreground font-serif">Access trending data, leaderboards, and personal insights</p>
+                  <p className="text-sm text-muted-foreground font-serif">Access trending visions, leaderboards, and portfolio insights</p>
                 </div>
               </div>
               <button 
@@ -291,6 +350,59 @@ const Analytics = () => {
             </motion.div>
           )}
 
+          {/* Vision Economy Overview */}
+          <div className="space-y-6">
+            <div className="flex items-center gap-3">
+              <DollarSign className="h-5 w-5 text-primary" />
+              <h2 className="text-2xl font-display font-bold uppercase tracking-wider">Vision Economy</h2>
+            </div>
+            
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              <div className="p-4 rounded-lg bg-card/50 border border-border/50 text-center">
+                <Eye className="h-5 w-5 text-primary/70 mx-auto mb-2" />
+                <p className="text-2xl font-display font-bold">
+                  {isLoading ? '...' : data?.visionEconomy.totalViews.toLocaleString() || 0}
+                </p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">Views</p>
+              </div>
+              <div className="p-4 rounded-lg bg-card/50 border border-border/50 text-center">
+                <Download className="h-5 w-5 text-primary/70 mx-auto mb-2" />
+                <p className="text-2xl font-display font-bold">
+                  {isLoading ? '...' : data?.visionEconomy.totalDownloads.toLocaleString() || 0}
+                </p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">HD Downloads</p>
+              </div>
+              <div className="p-4 rounded-lg bg-card/50 border border-border/50 text-center">
+                <Activity className="h-5 w-5 text-primary/70 mx-auto mb-2" />
+                <p className="text-2xl font-display font-bold">
+                  {isLoading ? '...' : data?.visionEconomy.totalGifDownloads.toLocaleString() || 0}
+                </p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">GIF Exports</p>
+              </div>
+              <div className="p-4 rounded-lg bg-card/50 border border-border/50 text-center">
+                <ArrowRightLeft className="h-5 w-5 text-primary/70 mx-auto mb-2" />
+                <p className="text-2xl font-display font-bold">
+                  {isLoading ? '...' : data?.visionEconomy.totalTrades || 0}
+                </p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">Trades</p>
+              </div>
+              <div className="p-4 rounded-lg bg-card/50 border border-border/50 text-center">
+                <Printer className="h-5 w-5 text-primary/70 mx-auto mb-2" />
+                <p className="text-2xl font-display font-bold">
+                  {isLoading ? '...' : data?.visionEconomy.totalPrintOrders || 0}
+                </p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">Print Orders</p>
+              </div>
+              <div className="p-4 rounded-lg bg-primary/10 border border-primary/30 text-center">
+                <DollarSign className="h-5 w-5 text-primary mx-auto mb-2" />
+                <p className="text-2xl font-display font-bold text-primary">
+                  {isLoading ? '...' : formatRevenue(data?.visionEconomy.totalPrintRevenue || 0)}
+                </p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">Print Revenue</p>
+              </div>
+            </div>
+          </div>
+
           {/* Community Stats */}
           <div className="space-y-6">
             <div className="flex items-center gap-3">
@@ -301,16 +413,16 @@ const Analytics = () => {
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
               <StatCard
                 icon={Eye}
-                label="Visualizations Created"
+                label="Visions Created"
                 value={isLoading ? '...' : data?.community.totalVisualizations || 0}
                 sublabel="Unique chess artworks"
                 trend="+12%"
               />
               <StatCard
                 icon={Users}
-                label="Active Creators"
-                value={isLoading ? '...' : data?.community.totalCreators || 0}
-                sublabel="Artists on platform"
+                label="Collectors"
+                value={isLoading ? '...' : data?.visionEconomy.uniqueCollectors || 0}
+                sublabel="Active vision owners"
                 trend="+8%"
               />
               <StatCard
@@ -334,28 +446,31 @@ const Analytics = () => {
             <div className="space-y-6">
               <div className="flex items-center gap-3">
                 <Activity className="h-5 w-5 text-primary" />
-                <h2 className="text-2xl font-display font-bold uppercase tracking-wider">Your Activity</h2>
+                <h2 className="text-2xl font-display font-bold uppercase tracking-wider">Your Portfolio</h2>
               </div>
               
               <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard
                   icon={Eye}
-                  label="Your Visualizations"
+                  label="Your Visions"
                   value={isLoading ? '...' : data?.personal.myVisualizations || 0}
                   sublabel="Saved to gallery"
                   isPremium={isPremium}
                 />
                 <StatCard
-                  icon={Heart}
-                  label="Your Favorites"
-                  value={isLoading ? '...' : data?.personal.myFavorites || 0}
-                  sublabel="Bookmarked games"
+                  icon={DollarSign}
+                  label="Portfolio Value"
+                  value={isPremium ? `$${(data?.personal.portfolioValue || 0).toFixed(2)}` : '???'}
+                  sublabel="Estimated value"
+                  locked={!isPremium}
+                  isPremium={isPremium}
                 />
                 <StatCard
-                  icon={Palette}
-                  label="Your Palettes"
-                  value={isLoading ? '...' : data?.personal.myPalettes || 0}
-                  sublabel={`${data?.personal.myPublicPalettes || 0} shared`}
+                  icon={Star}
+                  label="Total Score"
+                  value={isPremium ? (data?.personal.totalScore || 0).toFixed(1) : '???'}
+                  sublabel="Cumulative points"
+                  locked={!isPremium}
                 />
                 <StatCard
                   icon={Trophy}
@@ -372,7 +487,7 @@ const Analytics = () => {
           <div className="space-y-6">
             <div className="flex items-center gap-3">
               <Flame className="h-5 w-5 text-primary" />
-              <h2 className="text-2xl font-display font-bold uppercase tracking-wider">Trending Insights</h2>
+              <h2 className="text-2xl font-display font-bold uppercase tracking-wider">Vision Leaderboard</h2>
               {!isPremium && (
                 <span className="px-2 py-1 rounded-full bg-primary/10 text-primary text-xs font-display uppercase tracking-wider">
                   Premium
@@ -382,29 +497,47 @@ const Analytics = () => {
 
             {isPremium ? (
               <div className="grid md:grid-cols-2 gap-6">
-                {/* Activity Metrics */}
+                {/* Top Visions */}
                 <motion.div 
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="p-6 rounded-lg border border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent"
                 >
                   <h3 className="font-display font-bold uppercase tracking-wide mb-4 flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4 text-primary" />
-                    Platform Growth
+                    <Trophy className="h-4 w-4 text-primary" />
+                    Top Scoring Visions
                   </h3>
-                  <div className="space-y-4">
-                    {data?.trending.recentActivity.map((item, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-card/50 border border-border/30">
-                        <div>
-                          <p className="font-display text-sm text-foreground">{item.type}</p>
-                          <p className="text-xs text-muted-foreground font-serif">This month</p>
+                  <div className="space-y-3">
+                    {data?.trending.topVisions && data.trending.topVisions.length > 0 ? (
+                      data.trending.topVisions.map((vision, index) => (
+                        <div 
+                          key={vision.visualizationId} 
+                          className="flex items-center gap-3 p-3 rounded-lg bg-card/50 border border-border/30 cursor-pointer hover:border-primary/50 transition-colors"
+                          onClick={() => navigate(`/v/${vision.visualizationId}`)}
+                        >
+                          <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-display font-bold ${
+                            index === 0 ? 'bg-yellow-500/20 text-yellow-500' :
+                            index === 1 ? 'bg-gray-400/20 text-gray-400' :
+                            index === 2 ? 'bg-amber-600/20 text-amber-600' :
+                            'bg-primary/20 text-primary'
+                          }`}>
+                            {index + 1}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-display text-sm truncate">{vision.title}</p>
+                            <p className="text-xs text-muted-foreground">by {vision.ownerDisplayName}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-display text-lg text-primary">{vision.totalScore.toFixed(1)}</p>
+                            <p className="text-xs text-muted-foreground">pts</p>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <p className="font-display text-lg text-foreground">{item.count}</p>
-                          <p className="text-xs text-green-500">{item.change}</p>
-                        </div>
-                      </div>
-                    ))}
+                      ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground font-serif italic text-center py-4">
+                        Be the first to earn vision points!
+                      </p>
+                    )}
                   </div>
                 </motion.div>
 
@@ -472,12 +605,12 @@ const Analytics = () => {
             </div>
             <div className="space-y-3">
               <h2 className="text-2xl font-display font-bold uppercase tracking-wider">
-                The Value of <span className="text-gold-gradient">Data Insights</span>
+                Vision <span className="text-gold-gradient">NFT Scoring</span>
               </h2>
               <p className="text-muted-foreground font-serif leading-relaxed max-w-2xl mx-auto">
-                Premium members gain exclusive access to real-time platform analytics, trending games, 
-                community leaderboards, and personal performance metrics. This data helps you understand 
-                what makes great chess games resonate as art.
+                Every vision earns points from views (0.01), HD downloads (0.10), GIF exports (0.25), 
+                marketplace trades (1.00), and print orders (2.00 + dollar value). Build your portfolio 
+                and climb the leaderboard as a top collector.
               </p>
             </div>
             

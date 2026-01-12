@@ -852,38 +852,43 @@ const Investors = () => {
               
               <div className="space-y-6 py-4">
                 <div className="space-y-3">
-                  <h3 className="font-display font-bold uppercase tracking-wide text-primary">The Data Opportunity</h3>
+                  <h3 className="font-display font-bold uppercase tracking-wide text-primary">Vision NFT Scoring System</h3>
                   <p className="text-sm text-muted-foreground font-serif">
-                    Every visualization created, game favorited, and palette customized generates valuable behavioral data. 
-                    We're uniquely positioned to transform this into an exclusive premium benefit—offering members 
-                    investor-grade analytics about platform trends and community activity.
+                    Every vision earns points through a weighted scoring system that tracks real engagement 
+                    and monetization. This creates a revolutionary digital asset economy where visions 
+                    gain value through community interaction and print sales.
                   </p>
                 </div>
 
-                <div className="p-4 rounded-lg bg-primary/5 border border-primary/20 space-y-2">
+                <div className="p-4 rounded-lg bg-primary/5 border border-primary/20 space-y-3">
                   <h3 className="font-display font-bold uppercase tracking-wide text-primary flex items-center gap-2">
                     <BarChart3 className="h-4 w-4" />
-                    Premium Analytics Dashboard
+                    Scoring Weights
                   </h3>
-                  <p className="text-sm text-muted-foreground font-serif">
-                    Exclusive access to real-time platform insights available only to Visionary Premium members.
-                  </p>
-                  <div className="grid grid-cols-2 gap-3 mt-3">
-                    <div className="text-center p-2 rounded bg-card/50 border border-border/30">
-                      <p className="text-lg font-display text-foreground">Community</p>
-                      <p className="text-xs text-muted-foreground font-serif">Trends & Activity</p>
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="p-2 rounded bg-card/50 border border-border/30">
+                      <p className="text-lg font-display text-foreground">0.01</p>
+                      <p className="text-xs text-muted-foreground">Per View</p>
                     </div>
-                    <div className="text-center p-2 rounded bg-card/50 border border-border/30">
-                      <p className="text-lg font-display text-foreground">Personal</p>
-                      <p className="text-xs text-muted-foreground font-serif">Stats & Rankings</p>
+                    <div className="p-2 rounded bg-card/50 border border-border/30">
+                      <p className="text-lg font-display text-foreground">0.10</p>
+                      <p className="text-xs text-muted-foreground">HD Download</p>
                     </div>
-                    <div className="text-center p-2 rounded bg-card/50 border border-border/30">
-                      <p className="text-lg font-display text-foreground">Trending</p>
-                      <p className="text-xs text-muted-foreground font-serif">Games & Palettes</p>
+                    <div className="p-2 rounded bg-card/50 border border-border/30">
+                      <p className="text-lg font-display text-foreground">0.25</p>
+                      <p className="text-xs text-muted-foreground">GIF Export</p>
                     </div>
-                    <div className="text-center p-2 rounded bg-card/50 border border-border/30">
-                      <p className="text-lg font-display text-foreground">Leaderboards</p>
-                      <p className="text-xs text-muted-foreground font-serif">Top Creators</p>
+                    <div className="p-2 rounded bg-card/50 border border-border/30">
+                      <p className="text-lg font-display text-foreground">1.00</p>
+                      <p className="text-xs text-muted-foreground">Trade</p>
+                    </div>
+                    <div className="p-2 rounded bg-primary/10 border border-primary/30">
+                      <p className="text-lg font-display text-primary font-bold">2.00+</p>
+                      <p className="text-xs text-muted-foreground">Print Order</p>
+                    </div>
+                    <div className="p-2 rounded bg-primary/10 border border-primary/30">
+                      <p className="text-lg font-display text-primary font-bold">$1=1pt</p>
+                      <p className="text-xs text-muted-foreground">Revenue Bonus</p>
                     </div>
                   </div>
                 </div>
@@ -893,19 +898,19 @@ const Investors = () => {
                   <ul className="space-y-2">
                     <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
                       <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                      <span><strong className="text-foreground">Increased Premium Conversion</strong> — Analytics as an additional value driver for subscription</span>
+                      <span><strong className="text-foreground">Asset Value Creation</strong> — Visions gain real dollar value through engagement</span>
                     </li>
                     <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
                       <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                      <span><strong className="text-foreground">Reduced Churn</strong> — Exclusive insights encourage long-term retention</span>
+                      <span><strong className="text-foreground">Marketplace Revenue</strong> — 10% platform fee on all vision trades</span>
                     </li>
                     <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
                       <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                      <span><strong className="text-foreground">Community Engagement</strong> — Leaderboards and rankings drive activity</span>
+                      <span><strong className="text-foreground">Print-Driven Value</strong> — Real revenue adds permanent score to visions</span>
                     </li>
                     <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
                       <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                      <span><strong className="text-foreground">Zero Marginal Cost</strong> — 100% margin on data-driven features</span>
+                      <span><strong className="text-foreground">Anti-Gaming Protection</strong> — Rate-limited interactions prevent abuse</span>
                     </li>
                   </ul>
                 </div>

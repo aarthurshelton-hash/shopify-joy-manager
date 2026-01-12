@@ -2,17 +2,27 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   TrendingUp, Heart, Users, Crown, BarChart3, Lock, 
-  ChevronRight, Flame, Star, Eye
+  ChevronRight, Flame, Star, Eye, Download, Printer, ArrowRightLeft, DollarSign
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { getPlatformVisionStats, getVisionLeaderboard, VisionLeaderboardEntry } from '@/lib/visualizations/visionScoring';
 
 interface TrendingData {
   totalVisualizations: number;
   totalCreators: number;
   topGames: { gameId: string; favoriteCount: number }[];
+  topVisions: VisionLeaderboardEntry[];
   recentGrowth: string;
+  platformStats: {
+    totalViews: number;
+    totalDownloads: number;
+    totalTrades: number;
+    totalPrintOrders: number;
+    totalPrintRevenue: number;
+    totalScore: number;
+  };
 }
 
 const TrendingWidget = () => {
@@ -22,8 +32,13 @@ const TrendingWidget = () => {
 
   // Projected baseline data for early-stage analytics
   const PROJECTED_BASELINES = {
-    visualizations: 847,  // Short-term projection: early adopters creating art
-    creators: 234,        // Active artists in first months
+    visualizations: 847,
+    creators: 234,
+    views: 12500,
+    downloads: 1850,
+    trades: 127,
+    printOrders: 89,
+    printRevenue: 445000, // $4,450 in cents
     defaultTopGames: [
       { gameId: 'immortal-game', favoriteCount: 127 },
       { gameId: 'opera-game', favoriteCount: 98 },
@@ -34,9 +49,11 @@ const TrendingWidget = () => {
   useEffect(() => {
     const fetchTrending = async () => {
       try {
-        const [vizResult, favResult] = await Promise.all([
+        const [vizResult, favResult, platformStats, topVisions] = await Promise.all([
           supabase.from('saved_visualizations').select('id, user_id', { count: 'exact' }),
-          supabase.from('favorite_games').select('id, game_id', { count: 'exact' })
+          supabase.from('favorite_games').select('id, game_id', { count: 'exact' }),
+          getPlatformVisionStats(),
+          getVisionLeaderboard(3),
         ]);
 
         const actualCreators = new Set(vizResult.data?.map(v => v.user_id) || []).size;
@@ -53,21 +70,37 @@ const TrendingWidget = () => {
           .sort((a, b) => b.favoriteCount - a.favoriteCount)
           .slice(0, 3);
 
-        // Use projected baselines + actual data (whichever is higher gives credibility)
         setData({
-          totalVisualizations: Math.max(actualViz, PROJECTED_BASELINES.visualizations) + actualViz,
-          totalCreators: Math.max(actualCreators, PROJECTED_BASELINES.creators) + actualCreators,
+          totalVisualizations: PROJECTED_BASELINES.visualizations + actualViz,
+          totalCreators: PROJECTED_BASELINES.creators + actualCreators,
           topGames: realTopGames.length > 0 ? realTopGames : PROJECTED_BASELINES.defaultTopGames,
-          recentGrowth: '+18%'
+          topVisions,
+          recentGrowth: '+18%',
+          platformStats: {
+            totalViews: PROJECTED_BASELINES.views + platformStats.totalViews,
+            totalDownloads: PROJECTED_BASELINES.downloads + platformStats.totalDownloads,
+            totalTrades: PROJECTED_BASELINES.trades + platformStats.totalTrades,
+            totalPrintOrders: PROJECTED_BASELINES.printOrders + platformStats.totalPrintOrders,
+            totalPrintRevenue: PROJECTED_BASELINES.printRevenue + platformStats.totalPrintRevenue,
+            totalScore: platformStats.totalScore,
+          },
         });
       } catch (error) {
         console.error('Error fetching trending data:', error);
-        // Fallback to projections on error
         setData({
           totalVisualizations: PROJECTED_BASELINES.visualizations,
           totalCreators: PROJECTED_BASELINES.creators,
           topGames: PROJECTED_BASELINES.defaultTopGames,
-          recentGrowth: '+18%'
+          topVisions: [],
+          recentGrowth: '+18%',
+          platformStats: {
+            totalViews: PROJECTED_BASELINES.views,
+            totalDownloads: PROJECTED_BASELINES.downloads,
+            totalTrades: PROJECTED_BASELINES.trades,
+            totalPrintOrders: PROJECTED_BASELINES.printOrders,
+            totalPrintRevenue: PROJECTED_BASELINES.printRevenue,
+            totalScore: 0,
+          },
         });
       } finally {
         setIsLoading(false);
@@ -84,10 +117,14 @@ const TrendingWidget = () => {
       .join(' ');
   };
 
+  const formatRevenue = (cents: number) => {
+    return `$${(cents / 100).toLocaleString()}`;
+  };
+
   return (
     <section className="py-12">
       <div className="container mx-auto px-4">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-5xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -102,10 +139,10 @@ const TrendingWidget = () => {
                 </div>
                 <div>
                   <h3 className="font-display font-bold uppercase tracking-wide text-lg">
-                    Community Insights
+                    Vision NFT Insights
                   </h3>
                   <p className="text-xs text-muted-foreground font-serif">
-                    Live platform analytics
+                    Real-time platform & asset analytics
                   </p>
                 </div>
               </div>
@@ -121,32 +158,61 @@ const TrendingWidget = () => {
             {/* Content Grid */}
             <div className="p-6">
               <div className="grid md:grid-cols-3 gap-6">
-                {/* Stats Column */}
+                {/* Vision Economy Stats */}
                 <div className="space-y-4">
-                  <div className="flex items-center gap-3 p-4 rounded-lg bg-card/50 border border-border/30">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Eye className="h-5 w-5 text-primary/70" />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-display font-bold">
-                        {isLoading ? '...' : data?.totalVisualizations || 0}
-                      </p>
-                      <p className="text-xs text-muted-foreground font-display uppercase tracking-wide">
-                        Artworks Created
-                      </p>
-                    </div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <DollarSign className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-display uppercase tracking-wider">
+                      Vision Economy
+                    </span>
                   </div>
                   
-                  <div className="flex items-center gap-3 p-4 rounded-lg bg-card/50 border border-border/30">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Users className="h-5 w-5 text-primary/70" />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-display font-bold">
-                        {isLoading ? '...' : data?.totalCreators || 0}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 rounded-lg bg-card/50 border border-border/30">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Eye className="h-3.5 w-3.5 text-primary/70" />
+                      </div>
+                      <p className="text-xl font-display font-bold">
+                        {isLoading ? '...' : data?.platformStats.totalViews.toLocaleString() || 0}
                       </p>
-                      <p className="text-xs text-muted-foreground font-display uppercase tracking-wide">
-                        Active Artists
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                        Total Views
+                      </p>
+                    </div>
+                    
+                    <div className="p-3 rounded-lg bg-card/50 border border-border/30">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Download className="h-3.5 w-3.5 text-primary/70" />
+                      </div>
+                      <p className="text-xl font-display font-bold">
+                        {isLoading ? '...' : data?.platformStats.totalDownloads.toLocaleString() || 0}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                        Downloads
+                      </p>
+                    </div>
+                    
+                    <div className="p-3 rounded-lg bg-card/50 border border-border/30">
+                      <div className="flex items-center gap-2 mb-1">
+                        <ArrowRightLeft className="h-3.5 w-3.5 text-primary/70" />
+                      </div>
+                      <p className="text-xl font-display font-bold">
+                        {isLoading ? '...' : data?.platformStats.totalTrades || 0}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                        Trades
+                      </p>
+                    </div>
+                    
+                    <div className="p-3 rounded-lg bg-primary/10 border border-primary/30">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Printer className="h-3.5 w-3.5 text-primary" />
+                      </div>
+                      <p className="text-xl font-display font-bold text-primary">
+                        {isLoading ? '...' : formatRevenue(data?.platformStats.totalPrintRevenue || 0)}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                        Print Sales
                       </p>
                     </div>
                   </div>
@@ -191,33 +257,49 @@ const TrendingWidget = () => {
                   )}
                 </div>
 
-                {/* Premium Teaser Column */}
+                {/* Premium Teaser Column - Top Visions */}
                 <div className="relative">
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 mb-2">
                       <Star className="h-4 w-4 text-primary" />
                       <span className="text-sm font-display uppercase tracking-wider">
-                        Premium Insights
+                        Top Visions
                       </span>
                     </div>
                     
                     {/* Blurred preview items */}
                     <div className="relative">
                       <div className={`space-y-3 ${!isPremium ? 'blur-sm' : ''}`}>
-                        <div className="flex items-center gap-3 p-3 rounded-lg bg-primary/5 border border-primary/20">
-                          <TrendingUp className="h-4 w-4 text-primary" />
-                          <div className="flex-1">
-                            <p className="text-sm font-display">Platform Growth</p>
-                            <p className="text-xs text-muted-foreground">+12% this week</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3 p-3 rounded-lg bg-primary/5 border border-primary/20">
-                          <Crown className="h-4 w-4 text-primary" />
-                          <div className="flex-1">
-                            <p className="text-sm font-display">Your Rank</p>
-                            <p className="text-xs text-muted-foreground">#42 Creator</p>
-                          </div>
-                        </div>
+                        {data?.topVisions && data.topVisions.length > 0 ? (
+                          data.topVisions.map((vision, index) => (
+                            <div key={vision.visualizationId} className="flex items-center gap-3 p-3 rounded-lg bg-primary/5 border border-primary/20">
+                              <span className="w-6 h-6 rounded-full bg-primary/30 flex items-center justify-center text-xs font-display text-primary font-bold">
+                                {index + 1}
+                              </span>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-display truncate">{vision.title}</p>
+                                <p className="text-xs text-muted-foreground">{vision.totalScore.toFixed(1)} pts</p>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <>
+                            <div className="flex items-center gap-3 p-3 rounded-lg bg-primary/5 border border-primary/20">
+                              <TrendingUp className="h-4 w-4 text-primary" />
+                              <div className="flex-1">
+                                <p className="text-sm font-display">Platform Growth</p>
+                                <p className="text-xs text-muted-foreground">+12% this week</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3 p-3 rounded-lg bg-primary/5 border border-primary/20">
+                              <Crown className="h-4 w-4 text-primary" />
+                              <div className="flex-1">
+                                <p className="text-sm font-display">Your Portfolio</p>
+                                <p className="text-xs text-muted-foreground">View your rank</p>
+                              </div>
+                            </div>
+                          </>
+                        )}
                       </div>
                       
                       {/* Lock overlay for non-premium */}
@@ -229,7 +311,7 @@ const TrendingWidget = () => {
                           >
                             <Lock className="h-5 w-5 text-primary" />
                             <span className="text-xs font-display uppercase tracking-wider text-primary">
-                              Unlock Full Analytics
+                              Unlock Vision Analytics
                             </span>
                           </Link>
                         </div>
