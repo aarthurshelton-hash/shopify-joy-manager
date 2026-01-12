@@ -14,6 +14,7 @@ import { ArrowLeft, Loader2, RotateCcw, Wand2, Crown } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSessionStore, CreativeModeTransfer } from '@/stores/sessionStore';
 import PremiumUpgradeModal from '@/components/premium/PremiumUpgradeModal';
+import { recordVisionInteraction } from '@/lib/visualizations/visionScoring';
 
 const VisualizationDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -29,6 +30,7 @@ const VisualizationDetail: React.FC = () => {
   // Store original palette state for reset functionality
   const originalStateRef = useRef<VisualizationState | undefined>(undefined);
   const [hasChanges, setHasChanges] = useState(false);
+  const viewRecordedRef = useRef(false);
 
   // Restore the saved palette when loading visualization
   const restorePaletteState = useCallback((vizState: VisualizationState | undefined) => {
@@ -161,6 +163,12 @@ const VisualizationDetail: React.FC = () => {
         restorePaletteState(vizState);
 
         setVisualization(data);
+
+        // Record view interaction (only once per session)
+        if (!viewRecordedRef.current) {
+          viewRecordedRef.current = true;
+          recordVisionInteraction(data.id, 'view');
+        }
       } catch (err) {
         console.error('Failed to load visualization:', err);
         setError('Failed to load visualization');
@@ -344,6 +352,7 @@ const VisualizationDetail: React.FC = () => {
               simulation={simulation}
               pgn={visualization?.pgn || undefined}
               title={visualization?.title}
+              visualizationId={visualization?.id}
             />
           </LegendHighlightProvider>
         </TimelineProvider>
