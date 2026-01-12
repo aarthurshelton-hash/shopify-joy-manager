@@ -25,23 +25,39 @@ export async function getActiveListings(): Promise<{
   error: Error | null;
 }> {
   try {
-    const { data, error } = await supabase
+    // First get listings with visualizations
+    const { data: listingsData, error: listingsError } = await supabase
       .from('visualization_listings')
       .select(`
         *,
-        visualization:saved_visualizations(id, title, image_path, game_data),
-        seller:profiles!visualization_listings_seller_id_fkey(display_name)
+        visualization:saved_visualizations(id, title, image_path, game_data)
       `)
       .eq('status', 'active')
       .order('created_at', { ascending: false });
 
-    if (error) throw error;
+    if (listingsError) throw listingsError;
+
+    // Get unique seller IDs and fetch profiles separately
+    const sellerIds = [...new Set((listingsData || []).map(l => l.seller_id))];
+    
+    let profilesMap: Record<string, { display_name: string | null }> = {};
+    if (sellerIds.length > 0) {
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('user_id, display_name')
+        .in('user_id', sellerIds);
+      
+      profilesMap = (profilesData || []).reduce((acc, p) => {
+        acc[p.user_id] = { display_name: p.display_name };
+        return acc;
+      }, {} as Record<string, { display_name: string | null }>);
+    }
 
     // Transform the data to match our interface
-    const listings = (data || []).map((item: Record<string, unknown>) => ({
+    const listings = (listingsData || []).map((item: Record<string, unknown>) => ({
       ...item,
       visualization: Array.isArray(item.visualization) ? item.visualization[0] : item.visualization,
-      seller: Array.isArray(item.seller) ? item.seller[0] : item.seller,
+      seller: profilesMap[item.seller_id as string] || { display_name: null },
     })) as MarketplaceListing[];
 
     return { data: listings, error: null };
