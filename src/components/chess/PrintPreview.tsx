@@ -50,6 +50,8 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [existsInGallery, setExistsInGallery] = useState(false);
+  const [isOwnedByCurrentUser, setIsOwnedByCurrentUser] = useState(false);
+  const [ownerDisplayName, setOwnerDisplayName] = useState<string | undefined>();
   const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false);
   const [boardSize, setBoardSize] = useState(320);
   const [darkMode, setDarkMode] = useState(false);
@@ -148,13 +150,17 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
   useEffect(() => {
     setIsSaved(false);
     setExistsInGallery(false);
+    setIsOwnedByCurrentUser(false);
+    setOwnerDisplayName(undefined);
   }, [simulation]);
 
-  // Check if current visualization already exists in gallery
+  // Check if current visualization already exists in gallery (globally)
   useEffect(() => {
     const checkIfExists = async () => {
       if (!user || !isPremium) {
         setExistsInGallery(false);
+        setIsOwnedByCurrentUser(false);
+        setOwnerDisplayName(undefined);
         return;
       }
 
@@ -169,7 +175,7 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
           showLegend,
         };
 
-        const { isDuplicate } = await checkDuplicateVisualization(
+        const { isDuplicate, ownedByCurrentUser, ownerDisplayName: owner } = await checkDuplicateVisualization(
           user.id,
           pgn,
           simulation.gameData,
@@ -177,9 +183,13 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
         );
 
         setExistsInGallery(isDuplicate);
+        setIsOwnedByCurrentUser(ownedByCurrentUser || false);
+        setOwnerDisplayName(owner);
       } catch (error) {
         console.error('Error checking duplicate:', error);
         setExistsInGallery(false);
+        setIsOwnedByCurrentUser(false);
+        setOwnerDisplayName(undefined);
       } finally {
         setIsCheckingDuplicate(false);
       }
@@ -503,7 +513,7 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
         showLegend,
       };
       
-      const { data, error, isDuplicate } = await saveVisualization(
+      const { data, error, isDuplicate, ownedByCurrentUser: isOwner, ownerDisplayName: owner } = await saveVisualization(
         user.id,
         visualizationTitle,
         simulation,
@@ -514,10 +524,20 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
       
       if (error) {
         if (isDuplicate) {
-          toast.error('Already saved!', {
-            description: 'This exact visualization is already in your gallery. Try changing the palette, timeline, or highlighted pieces to create a unique version.',
-            duration: 5000,
-          });
+          if (isOwner) {
+            toast.error('Already in your gallery!', {
+              description: 'This exact visualization is already saved. Try changing the palette, timeline, or highlighted pieces to create a unique version.',
+              duration: 5000,
+            });
+          } else {
+            toast.error('Already claimed!', {
+              description: `This visualization was claimed by ${owner || 'another collector'}. Try a different palette or timeline to create your own unique version.`,
+              duration: 5000,
+            });
+          }
+          setExistsInGallery(true);
+          setIsOwnedByCurrentUser(isOwner || false);
+          setOwnerDisplayName(owner);
           return;
         }
         throw error;
@@ -727,22 +747,38 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
             variant={isSaved || existsInGallery ? "secondary" : "outline"}
             className={`gap-2 px-6 relative ${
               isSaved ? 'bg-green-500/10 text-green-600 border-green-500/30' : 
-              existsInGallery ? 'bg-amber-500/10 text-amber-600 border-amber-500/30 cursor-not-allowed' : ''
+              existsInGallery && isOwnedByCurrentUser ? 'bg-green-500/10 text-green-600 border-green-500/30 cursor-not-allowed' :
+              existsInGallery ? 'bg-rose-500/10 text-rose-600 border-rose-500/30 cursor-not-allowed' : ''
             }`}
-            title={existsInGallery ? 'This exact visualization is already in your gallery' : undefined}
+            title={
+              existsInGallery && isOwnedByCurrentUser 
+                ? 'You already own this visualization in your gallery' 
+                : existsInGallery 
+                  ? `This visualization is owned by ${ownerDisplayName || 'another collector'}` 
+                  : undefined
+            }
           >
             {isSaving || isCheckingDuplicate ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : isSaved ? (
               <Check className="h-4 w-4" />
-            ) : existsInGallery ? (
+            ) : existsInGallery && isOwnedByCurrentUser ? (
               <Check className="h-4 w-4" />
+            ) : existsInGallery ? (
+              <Crown className="h-4 w-4" />
             ) : isPremium ? (
               <Bookmark className="h-4 w-4" />
             ) : (
               <Crown className="h-4 w-4" />
             )}
-            {isSaved ? 'Saved to Gallery' : existsInGallery ? 'Already in Gallery' : 'Save to My Vision'}
+            {isSaved 
+              ? 'Saved to Gallery' 
+              : existsInGallery && isOwnedByCurrentUser 
+                ? 'In Your Gallery' 
+                : existsInGallery 
+                  ? `Claimed by ${ownerDisplayName || 'Collector'}` 
+                  : 'Save to My Vision'
+            }
             {!isPremium && !isSaved && !existsInGallery && (
               <span className="text-xs opacity-75 ml-1">Premium</span>
             )}
