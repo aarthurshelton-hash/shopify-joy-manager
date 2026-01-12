@@ -20,13 +20,31 @@ serve(async (req) => {
   }
 
   try {
-    const { image_base64 } = await req.json();
+    const { image_base64, image_url } = await req.json();
     
-    if (!image_base64) {
+    // Accept either base64 data or a URL
+    const imageInput = image_base64 || image_url;
+    
+    if (!imageInput) {
       return new Response(
-        JSON.stringify({ error: "No image provided" }),
+        JSON.stringify({ error: "No image provided. Send 'image_base64' or 'image_url'" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+    
+    // Determine if this is a URL or base64
+    const isUrl = imageInput.startsWith("http://") || imageInput.startsWith("https://");
+    const isDataUrl = imageInput.startsWith("data:");
+    
+    // Format the image URL for the AI
+    let formattedImageUrl: string;
+    if (isUrl) {
+      formattedImageUrl = imageInput;
+    } else if (isDataUrl) {
+      formattedImageUrl = imageInput;
+    } else {
+      // Assume raw base64, add data URL prefix
+      formattedImageUrl = `data:image/jpeg;base64,${imageInput}`;
     }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -126,7 +144,7 @@ IMPORTANT: Only respond with the JSON object, no other text.`
               {
                 type: "image_url",
                 image_url: {
-                  url: image_base64.startsWith("data:") ? image_base64 : `data:image/jpeg;base64,${image_base64}`
+                  url: formattedImageUrl
                 }
               }
             ]
@@ -135,6 +153,8 @@ IMPORTANT: Only respond with the JSON object, no other text.`
         max_tokens: 500,
       }),
     });
+
+    console.log("AI request sent for image analysis");
 
     if (!analysisResponse.ok) {
       const errorText = await analysisResponse.text();
@@ -183,17 +203,20 @@ IMPORTANT: Only respond with the JSON object, no other text.`
       const matchedViz = visualizations[matchResult.index];
       
       if (matchedViz) {
-        // Get public URL for the matched visualization
-        const { data: urlData } = supabase.storage
-          .from("visualizations")
-          .getPublicUrl(matchedViz.image_path);
-
+        // Use image_path directly if it's already a full URL, otherwise construct it
+        let imageUrl = matchedViz.image_path;
+        if (!imageUrl.startsWith("http")) {
+          const { data: urlData } = supabase.storage
+            .from("visualizations")
+            .getPublicUrl(matchedViz.image_path);
+          imageUrl = urlData.publicUrl;
+        }
         const result: VisionMatch = {
           visualization_id: matchedViz.id,
           public_share_id: matchedViz.public_share_id,
           title: matchedViz.title,
           confidence: matchResult.confidence || 80,
-          image_url: urlData.publicUrl
+          image_url: imageUrl
         };
 
         return new Response(
