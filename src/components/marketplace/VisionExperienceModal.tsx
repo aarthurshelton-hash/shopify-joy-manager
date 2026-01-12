@@ -192,7 +192,7 @@ const VisionExperienceModal: React.FC<VisionExperienceModalProps> = ({
   isOwnListing,
   isPremium,
 }) => {
-  const [activeTab, setActiveTab] = useState<'experience' | 'analytics'>('experience');
+  const [activeTab, setActiveTab] = useState<'experience' | 'analytics'>('analytics'); // Default to analytics for marketplace
   const [visionScore, setVisionScore] = useState<VisionScore | null>(null);
   const [estimatedValue, setEstimatedValue] = useState<number>(0);
   const [showFullPgn, setShowFullPgn] = useState(false);
@@ -218,7 +218,7 @@ const VisionExperienceModal: React.FC<VisionExperienceModalProps> = ({
     // Reset when modal closes
     if (!isOpen) {
       viewRecordedRef.current = false;
-      setActiveTab('experience');
+      setActiveTab('analytics'); // Reset to analytics (default for marketplace)
       setIsPlaying(false);
       setInternalMove(0);
     }
