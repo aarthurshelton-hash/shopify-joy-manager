@@ -234,9 +234,12 @@ const UserMenu: React.FC = () => {
             {!isPremium && <Crown className="h-3 w-3 text-primary ml-auto" />}
           </DropdownMenuItem>
           
-          <DropdownMenuItem className="gap-2 cursor-pointer">
+          <DropdownMenuItem 
+            onClick={() => navigate('/account')}
+            className="gap-2 cursor-pointer"
+          >
             <Settings className="h-4 w-4" />
-            Settings
+            Account Settings
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem 
