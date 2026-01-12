@@ -17,19 +17,19 @@ import {
   Trash2, 
   ExternalLink, 
   Loader2, 
-  Sparkles, 
+  Sparkles,
   Gift, 
   Truck, 
   Frame, 
-  FileText,
   Crown,
   ChevronRight,
-  Eye,
+  ArrowLeft,
 } from "lucide-react";
 import { useCartStore } from "@/stores/cartStore";
 import { useCurrencyStore } from "@/stores/currencyStore";
 import { usePrintOrderStore } from "@/stores/printOrderStore";
 import { CurrencySelector } from "./CurrencySelector";
+import { CartItemThumbnail } from "./CartItemThumbnail";
 import { calculateDiscount, DISCOUNT_TIERS, ShippingRegion } from "@/lib/discounts";
 import { FRAME_SHIPPING_COST_EXPORT, FREE_SHIPPING_THRESHOLD_EXPORT } from "./FrameAddOn";
 import { useAuth } from "@/hooks/useAuth";
@@ -183,45 +183,43 @@ export const CartDrawer = () => {
               </div>
             ) : (
               <>
+                {/* Continue Shopping Button */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsOpen(false)}
+                  className="mb-3 -ml-1 text-muted-foreground hover:text-foreground"
+                >
+                  <ArrowLeft className="h-4 w-4 mr-1" />
+                  Continue Shopping
+                </Button>
+                
                 <div className="flex-1 overflow-y-auto pr-2 min-h-0">
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     {items.map((item) => {
                       const addOns = parseAddOns(item.variantTitle);
                       const hasCustomPrint = !!item.customPrintData?.previewImageBase64;
+                      // Check if this item is currently being viewed on order-print page
+                      const isCurrentlyViewing = location.pathname === '/order-print' && hasCustomPrint;
                       
                       return (
                         <div 
                           key={item.variantId} 
-                          className={`flex gap-3 p-3 bg-muted/50 rounded-lg transition-all ${hasCustomPrint ? 'cursor-pointer hover:bg-muted/70' : ''}`}
+                          className={`flex gap-3 p-3 rounded-lg transition-all ${
+                            isCurrentlyViewing 
+                              ? 'bg-primary/10 border border-primary/30' 
+                              : 'bg-muted/50 hover:bg-muted/70'
+                          } ${hasCustomPrint ? 'cursor-pointer' : ''}`}
                           onClick={() => hasCustomPrint && handleItemClick(item)}
                         >
-                          {/* Product Image - Full Print Ready Preview */}
-                          <div className="w-20 h-24 bg-secondary/20 rounded-md overflow-hidden flex-shrink-0 relative border border-border/50 shadow-sm">
-                            {item.customPrintData?.previewImageBase64 ? (
-                              <img
-                                src={item.customPrintData.previewImageBase64}
-                                alt={item.customPrintData.gameTitle || 'Chess Vision'}
-                                className="w-full h-full object-contain bg-background"
-                              />
-                            ) : item.product.node.images?.edges?.[0]?.node ? (
-                              <img
-                                src={item.product.node.images.edges[0].node.url}
-                                alt={item.product.node.title}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center bg-muted">
-                                <ShoppingCart className="h-6 w-6 text-muted-foreground" />
-                              </div>
-                            )}
-                            
-                            {/* View indicator for custom prints */}
-                            {hasCustomPrint && (
-                              <div className="absolute inset-0 bg-black/0 hover:bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 transition-all">
-                                <Eye className="h-4 w-4 text-white" />
-                              </div>
-                            )}
-                          </div>
+                          {/* Product Thumbnail - with frame mockup if framed */}
+                          <CartItemThumbnail
+                            previewImage={item.customPrintData?.previewImageBase64}
+                            productImage={item.product.node.images?.edges?.[0]?.node?.url}
+                            gameTitle={item.customPrintData?.gameTitle}
+                            frameStyle={item.customPrintData?.frameStyle}
+                            isActive={isCurrentlyViewing}
+                          />
                           
                           <div className="flex-1 min-w-0">
                             {/* Game Title */}
@@ -236,29 +234,13 @@ export const CartDrawer = () => {
                               {item.product.node.title} • {item.selectedOptions.map(option => option.value).join(' ')}
                             </p>
                             
-                            {/* Line-item breakdown for add-ons */}
-                            <div className="mt-1 space-y-0.5">
-                              {item.customPrintData?.frameStyle && (
-                                <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                                  <Frame className="h-3 w-3 text-amber-500" />
-                                  <span>{addOns.frame || 'Framed'} Frame</span>
-                                </div>
-                              )}
-                              {item.customPrintData?.includeInfoCard && (
-                                <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                                  <FileText className="h-3 w-3 text-primary" />
-                                  <span>Vision Data Card</span>
-                                </div>
-                              )}
-                            </div>
-                            
                             {/* Price */}
                             <p className="font-semibold text-sm mt-1">
                               {formatPrice(parseFloat(item.price.amount))}
                             </p>
                           </div>
                           
-                          <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                          <div className="flex flex-col items-end gap-1 flex-shrink-0">
                             <Button
                               variant="ghost"
                               size="icon"
@@ -271,7 +253,7 @@ export const CartDrawer = () => {
                               <Trash2 className="h-3 w-3" />
                             </Button>
                             
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-0.5">
                               <Button
                                 variant="outline"
                                 size="icon"
