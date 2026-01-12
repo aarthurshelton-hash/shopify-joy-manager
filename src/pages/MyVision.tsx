@@ -57,8 +57,10 @@ const MyVision: React.FC = () => {
   // Handle restoration toast when returning from order page
   useEffect(() => {
     if (returningFromOrder && capturedTimelineState) {
-      const { currentMove } = capturedTimelineState;
-      const moveInfo = currentMove !== undefined 
+      const { currentMove, totalMoves } = capturedTimelineState;
+      const moveInfo = currentMove !== undefined && totalMoves !== undefined
+        ? `Move ${currentMove} of ${totalMoves} restored`
+        : currentMove !== undefined
         ? `Move ${currentMove} restored`
         : 'Your gallery is ready';
       

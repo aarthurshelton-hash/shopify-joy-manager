@@ -9,7 +9,7 @@ import { Footer } from '@/components/shop/Footer';
 import { TimelineProvider } from '@/contexts/TimelineContext';
 import { LegendHighlightProvider } from '@/contexts/LegendHighlightContext';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSessionStore, CreativeModeTransfer } from '@/stores/sessionStore';
 import { VisionaryMembershipCard } from '@/components/premium';
@@ -21,7 +21,13 @@ const VisualizationDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user, isPremium, isLoading: authLoading } = useAuth();
-  const { setCreativeModeTransfer } = useSessionStore();
+  const { 
+    setCreativeModeTransfer,
+    returningFromOrder,
+    capturedTimelineState,
+    setReturningFromOrder,
+    setCapturedTimelineState,
+  } = useSessionStore();
   
   const [visualization, setVisualization] = useState<SavedVisualization | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -31,6 +37,27 @@ const VisualizationDetail: React.FC = () => {
   // Store original palette state for reset functionality
   const originalStateRef = useRef<VisualizationState | undefined>(undefined);
   const viewRecordedRef = useRef(false);
+
+  // Handle restoration toast when returning from order page
+  useEffect(() => {
+    if (returningFromOrder && capturedTimelineState) {
+      const { currentMove, totalMoves } = capturedTimelineState;
+      const moveInfo = currentMove !== undefined && totalMoves !== undefined
+        ? `Move ${currentMove} of ${totalMoves} restored`
+        : currentMove !== undefined
+        ? `Move ${currentMove} restored`
+        : 'Your visualization is ready';
+      
+      toast.success('Welcome back!', {
+        description: moveInfo,
+        icon: <Sparkles className="w-4 h-4" />,
+      });
+      
+      // Clear the flags
+      setReturningFromOrder(false);
+      setCapturedTimelineState(null);
+    }
+  }, [returningFromOrder, capturedTimelineState, setReturningFromOrder, setCapturedTimelineState]);
 
   // Restore the saved palette when loading visualization
   const restorePaletteState = useCallback((vizState: VisualizationState | undefined) => {

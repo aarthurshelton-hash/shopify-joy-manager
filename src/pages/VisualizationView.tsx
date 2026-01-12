@@ -212,6 +212,7 @@ const VisualizationView = () => {
       if (exportState) {
         setCapturedTimelineState({
           currentMove: exportState.currentMove,
+          totalMoves,
           lockedPieces: exportState.lockedPieces.map(p => ({
             pieceType: p.pieceType as any,
             pieceColor: p.pieceColor as any,
