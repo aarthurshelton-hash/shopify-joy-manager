@@ -26,3 +26,10 @@ verify_jwt = false
 
 [functions.generate-haiku]
 verify_jwt = false
+
+[functions.check-grace-periods]
+verify_jwt = false
+
+# Schedule: Run daily at 2:00 AM UTC
+[functions.check-grace-periods.schedule]
+cron = "0 2 * * *"
