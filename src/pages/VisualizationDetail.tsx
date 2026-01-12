@@ -146,7 +146,7 @@ const VisualizationDetail: React.FC = () => {
             <p className="text-muted-foreground">{error}</p>
             <Button onClick={handleBack} variant="outline" className="gap-2">
               <ArrowLeft className="h-4 w-4" />
-              Back to Gallery
+              Return to Gallery
             </Button>
           </div>
         </div>
@@ -167,7 +167,7 @@ const VisualizationDetail: React.FC = () => {
             <p className="text-muted-foreground">The visualization data could not be loaded.</p>
             <Button onClick={handleBack} variant="outline" className="gap-2">
               <ArrowLeft className="h-4 w-4" />
-              Back to Gallery
+              Return to Gallery
             </Button>
           </div>
         </div>
@@ -188,7 +188,7 @@ const VisualizationDetail: React.FC = () => {
             className="gap-2 mb-4"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to Gallery
+            Return to Gallery
           </Button>
           <h1 className="text-2xl md:text-3xl font-display font-bold">{visualization?.title}</h1>
           <p className="text-muted-foreground mt-1">

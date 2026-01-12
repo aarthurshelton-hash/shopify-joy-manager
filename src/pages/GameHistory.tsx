@@ -282,12 +282,12 @@ export default function GameHistory() {
           {selectedGame ? (
             <Button variant="ghost" onClick={() => setSelectedGame(null)}>
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Games
+              Return to Games
             </Button>
           ) : (
             <Button variant="ghost" onClick={() => navigate('/play')}>
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Play
+              Return to Play
             </Button>
           )}
           <h1 className="text-3xl font-display font-bold">

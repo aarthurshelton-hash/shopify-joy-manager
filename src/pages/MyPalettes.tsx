@@ -176,10 +176,9 @@ const MyPalettes: React.FC = () => {
                 variant="ghost"
                 size="sm"
                 onClick={() => navigate('/')}
-                className="text-muted-foreground hover:text-foreground"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                Back
+                Return
               </Button>
               <div>
                 <h1 className="text-2xl md:text-3xl font-display font-bold flex items-center gap-3">
