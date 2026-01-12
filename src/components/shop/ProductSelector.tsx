@@ -398,7 +398,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
           />
         )}
 
-        {/* Add-on: Info Card (Visionary Exclusive) */}
+        {/* Add-on: Info Card (Visionary Exclusive) with Preview */}
         <InfoCardAddOn
           isPremium={isPremium}
           onAddInfoCard={setIncludeInfoCard}
@@ -410,6 +410,20 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
               setShowVisionaryModal(true);
             }
           }}
+          // Pass data for card preview
+          board={displayBoard || undefined}
+          gameData={simulation?.gameData || enPensentData?.gameInfo ? {
+            white: simulation?.gameData?.white || enPensentData?.gameInfo?.white,
+            black: simulation?.gameData?.black || enPensentData?.gameInfo?.black,
+            event: simulation?.gameData?.event,
+            date: simulation?.gameData?.date,
+            result: simulation?.gameData?.result || enPensentData?.gameInfo?.result,
+          } : undefined}
+          moveHistory={enPensentData?.moveHistory}
+          totalMoves={enPensentData?.moveHistory?.length || simulation?.totalMoves || 0}
+          whitePalette={enPensentData?.whitePalette as Record<string, string> | undefined}
+          blackPalette={enPensentData?.blackPalette as Record<string, string> | undefined}
+          darkMode={capturedState?.darkMode}
         />
 
         {/* Price and Add to Cart */}
