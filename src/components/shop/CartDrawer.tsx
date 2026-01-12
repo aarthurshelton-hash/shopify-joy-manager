@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { useCartStore } from "@/stores/cartStore";
 import { useCurrencyStore } from "@/stores/currencyStore";
+import { usePrintOrderStore } from "@/stores/printOrderStore";
 import { CurrencySelector } from "./CurrencySelector";
 import { calculateDiscount, DISCOUNT_TIERS, ShippingRegion } from "@/lib/discounts";
 import { FRAME_SHIPPING_COST_EXPORT, FREE_SHIPPING_THRESHOLD_EXPORT } from "./FrameAddOn";
@@ -40,7 +41,9 @@ export const CartDrawer = () => {
   const [showVisionaryModal, setShowVisionaryModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, isPremium } = useAuth();
+  const { setOrderData } = usePrintOrderStore();
   
   const { 
     items, 
@@ -90,6 +93,18 @@ export const CartDrawer = () => {
   const handleItemClick = (item: typeof items[0]) => {
     // Navigate to vision detail if there's custom print data with a game title
     if (item.customPrintData?.gameTitle) {
+      // Store the current location as the return path
+      const currentPath = location.pathname + location.search;
+      
+      // Get existing order data and update with return path
+      const existingOrderData = usePrintOrderStore.getState().orderData;
+      if (existingOrderData) {
+        setOrderData({
+          ...existingOrderData,
+          returnPath: currentPath,
+        });
+      }
+      
       setIsOpen(false);
       // Navigate to order-print page with the data
       navigate('/order-print');
