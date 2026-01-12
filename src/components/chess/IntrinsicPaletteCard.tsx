@@ -1,7 +1,8 @@
 import React from 'react';
-import { Sparkles, Crown } from 'lucide-react';
+import { Sparkles, Crown, Trophy } from 'lucide-react';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 import { colorPalettes, PaletteId } from '@/lib/chess/pieceColors';
+import { famousGames } from '@/lib/chess/famousGames';
 
 // Import palette background images
 import hotcoldBg from '@/assets/palettes/hotcold.jpg';
@@ -42,21 +43,29 @@ const paletteBackgrounds: Record<string, string> = {
 };
 
 interface IntrinsicPaletteCardProps {
-  paletteId: PaletteId;
+  paletteId?: PaletteId;
   similarity?: number;
   compact?: boolean;
+  // Game card info
+  gameCardId?: string;
+  gameCardTitle?: string;
 }
 
 const IntrinsicPaletteCard: React.FC<IntrinsicPaletteCardProps> = ({ 
   paletteId, 
   similarity,
-  compact = false 
+  compact = false,
+  gameCardId,
+  gameCardTitle,
 }) => {
-  const palette = colorPalettes.find(p => p.id === paletteId);
+  const palette = paletteId ? colorPalettes.find(p => p.id === paletteId) : null;
+  const gameCard = gameCardId ? famousGames.find(g => g.id === gameCardId) : null;
   
-  if (!palette || paletteId === 'custom') return null;
+  // If neither palette nor game card, return null
+  if (!palette && !gameCard) return null;
+  if (paletteId === 'custom' && !gameCard) return null;
   
-  const bgImage = paletteBackgrounds[paletteId];
+  const bgImage = paletteId ? paletteBackgrounds[paletteId] : undefined;
   const pieces = ['k', 'q', 'r', 'b', 'n', 'p'] as const;
   
   if (compact) {
@@ -77,9 +86,9 @@ const IntrinsicPaletteCard: React.FC<IntrinsicPaletteCardProps> = ({
           </span>
         </div>
         
-        {/* Palette name */}
+        {/* Palette name or game title */}
         <span className="text-xs text-muted-foreground font-serif">
-          {palette.name}
+          {palette?.name || gameCardTitle || 'En Pensent'}
         </span>
       </div>
     );
@@ -137,47 +146,64 @@ const IntrinsicPaletteCard: React.FC<IntrinsicPaletteCardProps> = ({
                 WebkitTextFillColor: 'transparent',
               }}
             >
-              Intrinsically Valued Palette
+              {gameCard ? 'Intrinsically Valued Game' : 'Intrinsically Valued Palette'}
             </p>
           </div>
         </div>
         
-        {/* Palette card info */}
-        <div className="flex items-center gap-3 p-3 rounded-lg bg-card/80 backdrop-blur-sm border border-border/50">
-          {/* Color swatches */}
-          <div className="flex flex-col gap-1">
-            <div className="flex gap-0.5">
-              {pieces.map((piece) => (
-                <div
-                  key={`w-${piece}`}
-                  className="w-4 h-4 rounded-sm ring-1 ring-black/20"
-                  style={{ backgroundColor: palette.white[piece] }}
-                />
-              ))}
-            </div>
-            <div className="flex gap-0.5">
-              {pieces.map((piece) => (
-                <div
-                  key={`b-${piece}`}
-                  className="w-4 h-4 rounded-sm ring-1 ring-black/20"
-                  style={{ backgroundColor: palette.black[piece] }}
-                />
-              ))}
+        {/* Game card info if present */}
+        {gameCard && (
+          <div className="flex items-center gap-3 p-3 mb-2 rounded-lg bg-amber-500/10 backdrop-blur-sm border border-amber-500/30">
+            <Trophy className="h-8 w-8 text-amber-500 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <h4 className="font-display font-semibold text-sm text-amber-600">
+                {gameCard.title}
+              </h4>
+              <p className="text-xs text-muted-foreground font-serif">
+                {gameCard.white} vs {gameCard.black} • {gameCard.year}
+              </p>
             </div>
           </div>
-          
-          {/* Palette name and description */}
-          <div className="flex-1 min-w-0">
-            <h4 className="font-display font-semibold text-sm flex items-center gap-1.5">
-              <span>{palette.legendTheme.whiteEmoji}</span>
-              {palette.name}
-              <span>{palette.legendTheme.blackEmoji}</span>
-            </h4>
-            <p className="text-xs text-muted-foreground font-serif truncate">
-              {palette.description}
-            </p>
+        )}
+        
+        {/* Palette card info if present */}
+        {palette && paletteId !== 'custom' && (
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-card/80 backdrop-blur-sm border border-border/50">
+            {/* Color swatches */}
+            <div className="flex flex-col gap-1">
+              <div className="flex gap-0.5">
+                {pieces.map((piece) => (
+                  <div
+                    key={`w-${piece}`}
+                    className="w-4 h-4 rounded-sm ring-1 ring-black/20"
+                    style={{ backgroundColor: palette.white[piece] }}
+                  />
+                ))}
+              </div>
+              <div className="flex gap-0.5">
+                {pieces.map((piece) => (
+                  <div
+                    key={`b-${piece}`}
+                    className="w-4 h-4 rounded-sm ring-1 ring-black/20"
+                    style={{ backgroundColor: palette.black[piece] }}
+                  />
+                ))}
+              </div>
+            </div>
+            
+            {/* Palette name and description */}
+            <div className="flex-1 min-w-0">
+              <h4 className="font-display font-semibold text-sm flex items-center gap-1.5">
+                <span>{palette.legendTheme.whiteEmoji}</span>
+                {palette.name}
+                <span>{palette.legendTheme.blackEmoji}</span>
+              </h4>
+              <p className="text-xs text-muted-foreground font-serif truncate">
+                {palette.description}
+              </p>
+            </div>
           </div>
-        </div>
+        )}
         
         {/* Similarity indicator if provided */}
         {similarity && (
@@ -190,7 +216,12 @@ const IntrinsicPaletteCard: React.FC<IntrinsicPaletteCardProps> = ({
         
         {/* Footer message */}
         <p className="mt-3 text-[10px] text-center text-muted-foreground font-serif italic">
-          This vision uses an officially curated En Pensent palette
+          {gameCard && palette 
+            ? 'This vision uses an officially curated En Pensent game and palette'
+            : gameCard 
+              ? 'This vision recreates an officially curated En Pensent legendary game'
+              : 'This vision uses an officially curated En Pensent palette'
+          }
         </p>
       </div>
     </div>

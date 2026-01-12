@@ -61,8 +61,10 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
   const [existingColors, setExistingColors] = useState<PaletteColors | undefined>();
   const [currentColors, setCurrentColors] = useState<PaletteColors | undefined>();
   const [isIntrinsicPalette, setIsIntrinsicPalette] = useState(false);
+  const [isIntrinsicGame, setIsIntrinsicGame] = useState(false);
   const [matchedPaletteId, setMatchedPaletteId] = useState<PaletteId | undefined>();
   const [matchedPaletteSimilarity, setMatchedPaletteSimilarity] = useState<number | undefined>();
+  const [matchedGameCard, setMatchedGameCard] = useState<{ id: string; title: string } | undefined>();
   const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false);
   const [boardSize, setBoardSize] = useState(320);
   const [darkMode, setDarkMode] = useState(false);
@@ -169,8 +171,10 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
     setExistingColors(undefined);
     setCurrentColors(undefined);
     setIsIntrinsicPalette(false);
+    setIsIntrinsicGame(false);
     setMatchedPaletteId(undefined);
     setMatchedPaletteSimilarity(undefined);
+    setMatchedGameCard(undefined);
   }, [simulation]);
 
   // Check if current visualization already exists or is too similar in gallery (globally)
@@ -196,6 +200,8 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
           setMatchedPaletteId(undefined);
           setMatchedPaletteSimilarity(undefined);
         }
+        setIsIntrinsicGame(false);
+        setMatchedGameCard(undefined);
         return;
       }
 
@@ -236,10 +242,12 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
         setSimilarityReason(result.reason);
         setExistingColors(result.existingColors);
         
-        // Set intrinsic palette info
+        // Set intrinsic palette and game info
         setIsIntrinsicPalette(result.isIntrinsicPalette || false);
+        setIsIntrinsicGame(result.isIntrinsicGame || false);
         setMatchedPaletteId(result.matchedPaletteId);
         setMatchedPaletteSimilarity(result.matchedPaletteSimilarity);
+        setMatchedGameCard(result.matchedGameCard);
         
         // Store current colors for comparison
         const currentPaletteColors: PaletteColors = customColors || {
@@ -258,8 +266,10 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
         setExistingColors(undefined);
         setCurrentColors(undefined);
         setIsIntrinsicPalette(false);
+        setIsIntrinsicGame(false);
         setMatchedPaletteId(undefined);
         setMatchedPaletteSimilarity(undefined);
+        setMatchedGameCard(undefined);
       } finally {
         setIsCheckingDuplicate(false);
       }
@@ -774,12 +784,14 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
         </div>
       )}
       
-      {/* Intrinsic Palette Badge - shown when using a featured En Pensent palette */}
-      {isIntrinsicPalette && matchedPaletteId && (
+      {/* Intrinsic Palette/Game Badge - shown when using a featured En Pensent palette or game */}
+      {(isIntrinsicPalette || isIntrinsicGame) && (
         <div className="flex justify-center">
           <IntrinsicPaletteCard 
             paletteId={matchedPaletteId} 
             similarity={matchedPaletteSimilarity}
+            gameCardId={matchedGameCard?.id}
+            gameCardTitle={matchedGameCard?.title}
           />
         </div>
       )}
