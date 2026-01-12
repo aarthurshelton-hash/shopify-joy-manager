@@ -49,11 +49,13 @@ import GameInfoDisplay from './GameInfoDisplay';
 import { ShowPiecesToggle } from './ShowPiecesToggle';
 import BoardCoordinateGuide from './BoardCoordinateGuide';
 import IntrinsicPaletteCard from './IntrinsicPaletteCard';
+import ChessBoardVisualization from './ChessBoardVisualization';
 import { VisionScore, getVisionScore, calculateVisionValue, calculateMembershipMultiplier, SCORING_WEIGHTS } from '@/lib/visualizations/visionScoring';
 import { analyzeGame, GameAnalysis } from '@/lib/chess/chessAnalysis';
 import { setActivePalette, PaletteId, getActivePalette, getCurrentPalette, colorPalettes } from '@/lib/chess/pieceColors';
 import { detectGameCard, GameCardMatch } from '@/lib/chess/gameCardDetection';
 import { format } from 'date-fns';
+import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 
 export interface UnifiedVisionExperienceProps {
   // Core data
@@ -96,12 +98,16 @@ export interface UnifiedVisionExperienceProps {
   onListForSale?: () => void;
 }
 
-// Internal timeline-aware board
+// Internal timeline-aware board with trademark look
 const TimelineBoard: React.FC<{
   board: SquareData[][];
   totalMoves: number;
   size: number;
-}> = ({ board, totalMoves, size }) => {
+  gameData: GameData;
+  darkMode?: boolean;
+  title?: string;
+  showCoordinates?: boolean;
+}> = ({ board, totalMoves, size, gameData, darkMode = false, title, showCoordinates = false }) => {
   const { currentMove } = useTimeline();
   
   const filteredBoard = useMemo(() => {
@@ -114,7 +120,66 @@ const TimelineBoard: React.FC<{
     );
   }, [board, currentMove, totalMoves]);
 
-  return <InteractiveVisualizationBoard board={filteredBoard} size={size} />;
+  const bgColor = darkMode ? '#0A0A0A' : '#FDFCFB';
+  const borderColor = darkMode ? '#292524' : '#e7e5e4';
+  const mutedColor = darkMode ? '#78716c' : '#a8a29e';
+  const primaryText = darkMode ? '#e7e5e4' : '#292524';
+  const secondaryText = darkMode ? '#a8a29e' : '#78716c';
+
+  return (
+    <div
+      style={{
+        backgroundColor: bgColor,
+        padding: 24,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 20,
+        width: 'fit-content',
+        borderRadius: 8,
+        border: `1px solid ${borderColor}`,
+        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+      }}
+    >
+      {/* Chess Board */}
+      <div style={{ position: 'relative' }}>
+        {showCoordinates && (
+          <BoardCoordinateGuide size={size} position="inside" />
+        )}
+        <ChessBoardVisualization board={filteredBoard} size={size} />
+      </div>
+
+      {/* Game Info Section */}
+      <div
+        style={{
+          width: '100%',
+          paddingTop: 16,
+          borderTop: `1px solid ${borderColor}`,
+        }}
+      >
+        <GameInfoDisplay 
+          gameData={gameData}
+          title={title}
+          darkMode={darkMode} 
+        />
+      </div>
+
+      {/* Branding */}
+      <p
+        style={{
+          fontSize: 10,
+          letterSpacing: '0.3em',
+          textTransform: 'uppercase',
+          fontWeight: 500,
+          color: mutedColor,
+          margin: 0,
+          fontFamily: "'Inter', system-ui, sans-serif",
+        }}
+      >
+        ♔ En Pensent ♚
+      </p>
+    </div>
+  );
 };
 
 // Timeline controls with key moments
@@ -782,21 +847,17 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                     )}
                   </div>
 
-                  {/* Board with Coordinates */}
-                  <div className="flex justify-center">
-                    <div 
-                      className={`relative p-4 rounded-lg ${darkMode ? 'bg-stone-950' : 'bg-stone-50'}`}
-                      data-vision-board="true"
-                    >
-                      {showCoordinates && (
-                        <BoardCoordinateGuide size={boardSize} position="inside" />
-                      )}
-                      <TimelineBoard 
-                        board={board} 
-                        totalMoves={totalMoves} 
-                        size={boardSize}
-                      />
-                    </div>
+                  {/* Board with Trademark Look */}
+                  <div className="flex justify-center" data-vision-board="true">
+                    <TimelineBoard 
+                      board={board} 
+                      totalMoves={totalMoves} 
+                      size={boardSize}
+                      gameData={gameData}
+                      darkMode={darkMode}
+                      title={contextTitle}
+                      showCoordinates={showCoordinates}
+                    />
                   </div>
 
                   {/* Timeline Controls */}
@@ -815,8 +876,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                     />
                   )}
 
-                  {/* Game Info */}
-                  <GameInfoDisplay gameData={gameData} title={contextTitle} darkMode={darkMode} />
+                  {/* Game Info is now integrated into TimelineBoard for trademark look */}
 
                   {/* Intrinsic Palette/Game Card - Show when matched */}
                   {(currentPaletteInfo || (gameCardMatch?.isMatch)) && (
