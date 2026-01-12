@@ -18,12 +18,13 @@ export const RoyaltyCalculator: React.FC = () => {
   const [avgPrintPrice, setAvgPrintPrice] = useState(49.99);
   const backgroundImages = useRandomGameArt(1);
   
-  const royaltyRate = MEMBERSHIP_ECONOMICS.ownerValueShare;
+  const valueAppreciationRate = MEMBERSHIP_ECONOMICS.valueAppreciationRate;
+  const marketplaceFeePercent = MEMBERSHIP_ECONOMICS.marketplaceTransactionFee * 100;
   
-  // Calculations
+  // Calculations - value that accrues to vision
   const monthlyRevenue = ordersPerMonth * avgPrintPrice;
-  const monthlyRoyalty = monthlyRevenue * royaltyRate;
-  const yearlyRoyalty = monthlyRoyalty * 12;
+  const monthlyValueAdded = monthlyRevenue * valueAppreciationRate;
+  const yearlyValueAdded = monthlyValueAdded * 12;
   
   // Milestones
   const milestones = [
@@ -34,8 +35,8 @@ export const RoyaltyCalculator: React.FC = () => {
     { label: 'Vacation Fund', amount: 2500, emoji: '🏖️' },
   ];
   
-  const nextMilestone = milestones.find(m => m.amount > yearlyRoyalty) || milestones[milestones.length - 1];
-  const progressToMilestone = Math.min((yearlyRoyalty / nextMilestone.amount) * 100, 100);
+  const nextMilestone = milestones.find(m => m.amount > yearlyValueAdded) || milestones[milestones.length - 1];
+  const progressToMilestone = Math.min((yearlyValueAdded / nextMilestone.amount) * 100, 100);
 
   return (
     <Card className="relative overflow-hidden border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-green-500/5">
@@ -52,7 +53,7 @@ export const RoyaltyCalculator: React.FC = () => {
         <div className="flex items-center gap-3">
           <CardTitle className="text-xl flex items-center gap-2">
             <Calculator className="h-5 w-5 text-primary" />
-            Royalty Calculator
+            Value Calculator
           </CardTitle>
           <Badge className="bg-green-500/20 text-green-600 border-green-500/30">
             <Sparkles className="h-3 w-3 mr-1" />
@@ -60,7 +61,7 @@ export const RoyaltyCalculator: React.FC = () => {
           </Badge>
         </div>
         <CardDescription>
-          See how much you could earn when others order prints of your visions
+          See how much value accrues to your visions from print orders
         </CardDescription>
       </CardHeader>
       
@@ -116,22 +117,22 @@ export const RoyaltyCalculator: React.FC = () => {
         {/* Results Display */}
         <div className="grid sm:grid-cols-2 gap-4 pt-4 border-t border-border/50">
           <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/30">
-            <p className="text-sm text-muted-foreground mb-1">Monthly Royalties</p>
+            <p className="text-sm text-muted-foreground mb-1">Monthly Value Added</p>
             <p className="text-3xl font-bold text-green-500">
-              ${monthlyRoyalty.toFixed(2)}
+              +${monthlyValueAdded.toFixed(2)}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              {ordersPerMonth} × ${avgPrintPrice} × {royaltyRate * 100}%
+              {ordersPerMonth} × ${avgPrintPrice} × {valueAppreciationRate * 100}%
             </p>
           </div>
           
           <div className="p-4 rounded-lg bg-primary/10 border border-primary/30">
-            <p className="text-sm text-muted-foreground mb-1">Yearly Projection</p>
+            <p className="text-sm text-muted-foreground mb-1">Yearly Value Growth</p>
             <p className="text-3xl font-bold text-primary">
-              ${yearlyRoyalty.toFixed(2)}
+              +${yearlyValueAdded.toFixed(2)}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              Passive income from your art
+              Sell on marketplace ({marketplaceFeePercent}% fee)
             </p>
           </div>
         </div>
@@ -144,7 +145,7 @@ export const RoyaltyCalculator: React.FC = () => {
               Progress to: {nextMilestone.emoji} {nextMilestone.label}
             </span>
             <span className="text-sm text-muted-foreground">
-              ${yearlyRoyalty.toFixed(0)} / ${nextMilestone.amount}
+              ${yearlyValueAdded.toFixed(0)} / ${nextMilestone.amount}
             </span>
           </div>
           <div className="h-3 rounded-full bg-muted/30 overflow-hidden">
@@ -159,8 +160,8 @@ export const RoyaltyCalculator: React.FC = () => {
             {milestones.map((milestone, i) => (
               <Badge 
                 key={i}
-                variant={yearlyRoyalty >= milestone.amount ? 'default' : 'outline'}
-                className={yearlyRoyalty >= milestone.amount 
+                variant={yearlyValueAdded >= milestone.amount ? 'default' : 'outline'}
+                className={yearlyValueAdded >= milestone.amount 
                   ? 'bg-green-500/20 text-green-600 border-green-500/30' 
                   : 'opacity-50'
                 }
@@ -173,7 +174,7 @@ export const RoyaltyCalculator: React.FC = () => {
         
         {/* Disclaimer */}
         <p className="text-xs text-muted-foreground text-center italic">
-          Estimates based on {royaltyRate * 100}% royalty rate. Actual earnings depend on your visions' popularity and order volume.
+          Value based on {valueAppreciationRate * 100}% appreciation rate. Sell visions on marketplace to realize gains.
         </p>
       </CardContent>
     </Card>

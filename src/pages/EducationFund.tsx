@@ -407,13 +407,13 @@ const EducationFund: React.FC = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 rounded-full bg-green-500" />
-                      <span className="text-sm font-medium">Vision Creator Royalty</span>
+                      <span className="text-sm font-medium">Vision Value Appreciation</span>
                     </div>
-                    <span className="font-bold text-green-500">{MEMBERSHIP_ECONOMICS.ownerValueShare * 100}%</span>
+                    <span className="font-bold text-green-500">{MEMBERSHIP_ECONOMICS.valueAppreciationRate * 100}%</span>
                   </div>
-                  <Progress value={MEMBERSHIP_ECONOMICS.ownerValueShare * 100} className="h-3" />
+                  <Progress value={MEMBERSHIP_ECONOMICS.valueAppreciationRate * 100} className="h-3" />
                   <p className="text-xs text-muted-foreground">
-                    Direct to vision owners when others order prints — automatic passive income
+                    Adds to vision value when others order prints — sell on marketplace to realize gains
                   </p>
                 </div>
                 
@@ -425,9 +425,9 @@ const EducationFund: React.FC = () => {
                       <div className="w-3 h-3 rounded-full bg-muted-foreground" />
                       <span className="text-sm font-medium">Platform & Fulfillment</span>
                     </div>
-                    <span className="font-bold text-muted-foreground">{MEMBERSHIP_ECONOMICS.platformValueShare * 100}%</span>
+                    <span className="font-bold text-muted-foreground">{MEMBERSHIP_ECONOMICS.platformRetentionRate * 100}%</span>
                   </div>
-                  <Progress value={MEMBERSHIP_ECONOMICS.platformValueShare * 100} className="h-3 [&>div]:bg-muted-foreground" />
+                  <Progress value={MEMBERSHIP_ECONOMICS.platformRetentionRate * 100} className="h-3 [&>div]:bg-muted-foreground" />
                   <p className="text-xs text-muted-foreground">
                     Covers printing, shipping, payment processing & platform operations
                   </p>
@@ -437,8 +437,8 @@ const EducationFund: React.FC = () => {
                 
                 <div className="p-3 bg-green-500/10 rounded-lg border border-green-500/30">
                   <p className="text-xs text-green-600">
-                    <strong>Important:</strong> Print royalties ({MEMBERSHIP_ECONOMICS.ownerValueShare * 100}% to creators) are separate from the Education Fund. 
-                    The fund only receives forfeited value from lapsed subscriptions, not from active sales.
+                    <strong>Important:</strong> Print value ({MEMBERSHIP_ECONOMICS.valueAppreciationRate * 100}%) accrues to visions. 
+                    Sell on marketplace to realize gains (only {MEMBERSHIP_ECONOMICS.marketplaceTransactionFee * 100}% fee).
                   </p>
                 </div>
                 
@@ -446,7 +446,7 @@ const EducationFund: React.FC = () => {
                   <p className="text-xs text-muted-foreground">
                     <strong className="text-foreground">Why this split?</strong> Physical print fulfillment requires significant investment: 
                     archival-quality printing, protective packaging, global shipping, and customer support. 
-                    The {MEMBERSHIP_ECONOMICS.platformValueShare * 100}/{MEMBERSHIP_ECONOMICS.ownerValueShare * 100} split ensures platform sustainability while still rewarding creators.
+                    The {MEMBERSHIP_ECONOMICS.platformRetentionRate * 100}/{MEMBERSHIP_ECONOMICS.valueAppreciationRate * 100} split ensures platform sustainability while building vision value.
                   </p>
                 </div>
               </CardContent>

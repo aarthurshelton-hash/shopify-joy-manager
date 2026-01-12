@@ -40,20 +40,23 @@ export const SCORING_WEIGHTS = {
 };
 
 /**
- * Membership-Driven Market Economics
+ * Vision Value Appreciation Economics
  * 
- * Each premium subscription injects value into the vision economy.
- * This creates a virtuous cycle: more members = higher vision values = more incentive to create/trade.
+ * Visions appreciate in value based on real-world activity (print orders, views, trades).
+ * Value is NOT paid out directly - it accrues to the vision itself.
+ * To realize gains, holders must sell visions on the marketplace.
  * 
  * Economics:
- * - Monthly subscription: $7/month
- * - Market contribution: 15% of subscription ($1.05/month per subscriber)
- * - This is distributed across all visions weighted by their scores
+ * - Monthly subscription: $7/month (20% contributes to market growth)
+ * - Print orders: 20% of revenue adds to vision's intrinsic value
+ * - Marketplace: Seller keeps 95%, platform takes 5% transaction fee
+ * - Bartering: Users can negotiate trades with counter-offers
  * 
- * Business model:
- * - 15% market contribution is sustainable (85% retained for operations)
- * - Creates real value appreciation without diluting core revenue
- * - Incentivizes vision creation and trading activity
+ * Value Flow:
+ * 1. Activity (prints, views, downloads) → increases vision score
+ * 2. Score + royalty value → determines vision's market value
+ * 3. Holder lists vision for sale → sets asking price
+ * 4. Buyer purchases → pays seller directly (minus 5% fee)
  */
 export const MEMBERSHIP_ECONOMICS = {
   monthlySubscription: 7.00,           // $7/month
@@ -62,8 +65,10 @@ export const MEMBERSHIP_ECONOMICS = {
   baseMarketCap: 5000,                 // $5,000 base market cap (foundation value)
   valuePerScorePoint: 0.50,            // Base $0.50 per score point
   membershipMultiplierCap: 3.0,        // Max 3x multiplier from memberships
-  ownerValueShare: 0.20,               // 20% of print order value goes to vision owner as royalty
-  platformValueShare: 0.80,            // 80% retained by platform (covers printing, fulfillment, operations)
+  valueAppreciationRate: 0.20,         // 20% of print revenue adds to vision value
+  platformRetentionRate: 0.80,         // 80% retained by platform (covers printing, fulfillment, operations)
+  marketplaceTransactionFee: 0.05,     // 5% platform fee on marketplace sales
+  sellerRetentionRate: 0.95,           // 95% goes directly to seller
   creatorPremiumTiers: {               // Creator premium multipliers based on engagement
     tier1: { minInteractions: 10, multiplier: 1.2 },
     tier2: { minInteractions: 50, multiplier: 1.5 },

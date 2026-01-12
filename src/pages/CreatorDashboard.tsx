@@ -74,7 +74,7 @@ const generateMonthlyData = (totalRoyalty: number) => {
 const CreatorDashboard: React.FC = () => {
   const { user, isLoading: authLoading } = useAuth();
   const backgroundImages = useRandomGameArt(3);
-  const ownerSharePercent = MEMBERSHIP_ECONOMICS.ownerValueShare * 100;
+  const valueAppreciationPercent = MEMBERSHIP_ECONOMICS.valueAppreciationRate * 100;
   
   const { data: stats, isLoading } = useQuery({
     queryKey: ['creator-dashboard-stats', user?.id],
