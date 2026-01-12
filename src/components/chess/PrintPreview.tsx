@@ -18,7 +18,7 @@ import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 import { useAuth } from '@/hooks/useAuth';
 import { PremiumUpgradeModal } from '@/components/premium';
 import AuthModal from '@/components/auth/AuthModal';
-import { saveVisualization, VisualizationState } from '@/lib/visualizations/visualizationStorage';
+import { saveVisualization, checkDuplicateVisualization, VisualizationState } from '@/lib/visualizations/visualizationStorage';
 import { useTimeline } from '@/contexts/TimelineContext';
 import { Progress } from '@/components/ui/progress';
 import { useLegendHighlight } from '@/contexts/LegendHighlightContext';
@@ -49,6 +49,8 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
   const [gifProgress, setGifProgress] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [existsInGallery, setExistsInGallery] = useState(false);
+  const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false);
   const [boardSize, setBoardSize] = useState(320);
   const [darkMode, setDarkMode] = useState(false);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
@@ -145,7 +147,48 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
   // Reset saved state when simulation changes
   useEffect(() => {
     setIsSaved(false);
+    setExistsInGallery(false);
   }, [simulation]);
+
+  // Check if current visualization already exists in gallery
+  useEffect(() => {
+    const checkIfExists = async () => {
+      if (!user || !isPremium) {
+        setExistsInGallery(false);
+        return;
+      }
+
+      setIsCheckingDuplicate(true);
+      try {
+        const activePalette = getActivePalette();
+        const visualizationState: VisualizationState = {
+          paletteId: activePalette.id,
+          darkMode,
+          currentMove: currentMove === Infinity ? undefined : currentMove,
+          lockedPieces: lockedPieces.length > 0 ? lockedPieces : undefined,
+          showLegend,
+        };
+
+        const { isDuplicate } = await checkDuplicateVisualization(
+          user.id,
+          pgn,
+          simulation.gameData,
+          visualizationState
+        );
+
+        setExistsInGallery(isDuplicate);
+      } catch (error) {
+        console.error('Error checking duplicate:', error);
+        setExistsInGallery(false);
+      } finally {
+        setIsCheckingDuplicate(false);
+      }
+    };
+
+    // Debounce the check to avoid too many API calls
+    const timeoutId = setTimeout(checkIfExists, 300);
+    return () => clearTimeout(timeoutId);
+  }, [user, isPremium, simulation, pgn, darkMode, currentMove, lockedPieces, showLegend]);
   
   // Capture the preview element directly using html2canvas
   const capturePreview = async (withWatermark: boolean): Promise<HTMLCanvasElement | null> => {
@@ -680,21 +723,27 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
         <div className="flex flex-col sm:flex-row justify-center gap-3">
           <Button 
             onClick={handleSaveToGallery}
-            disabled={isDownloading || isSaving || isSaved || isGeneratingGif}
-            variant={isSaved ? "secondary" : "outline"}
-            className={`gap-2 px-6 ${isSaved ? 'bg-green-500/10 text-green-600 border-green-500/30' : ''}`}
+            disabled={isDownloading || isSaving || isSaved || isGeneratingGif || existsInGallery}
+            variant={isSaved || existsInGallery ? "secondary" : "outline"}
+            className={`gap-2 px-6 relative ${
+              isSaved ? 'bg-green-500/10 text-green-600 border-green-500/30' : 
+              existsInGallery ? 'bg-amber-500/10 text-amber-600 border-amber-500/30 cursor-not-allowed' : ''
+            }`}
+            title={existsInGallery ? 'This exact visualization is already in your gallery' : undefined}
           >
-            {isSaving ? (
+            {isSaving || isCheckingDuplicate ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : isSaved ? (
+              <Check className="h-4 w-4" />
+            ) : existsInGallery ? (
               <Check className="h-4 w-4" />
             ) : isPremium ? (
               <Bookmark className="h-4 w-4" />
             ) : (
               <Crown className="h-4 w-4" />
             )}
-            {isSaved ? 'Saved to Gallery' : 'Save to My Vision'}
-            {!isPremium && !isSaved && (
+            {isSaved ? 'Saved to Gallery' : existsInGallery ? 'Already in Gallery' : 'Save to My Vision'}
+            {!isPremium && !isSaved && !existsInGallery && (
               <span className="text-xs opacity-75 ml-1">Premium</span>
             )}
           </Button>
