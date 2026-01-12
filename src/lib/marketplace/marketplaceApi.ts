@@ -116,6 +116,23 @@ export async function cancelListing(listingId: string): Promise<{ error: Error |
   }
 }
 
+export async function updateListingPrice(
+  listingId: string,
+  priceCents: number
+): Promise<{ error: Error | null }> {
+  try {
+    const { error } = await supabase
+      .from('visualization_listings')
+      .update({ price_cents: priceCents })
+      .eq('id', listingId);
+
+    if (error) throw error;
+    return { error: null };
+  } catch (error) {
+    return { error: error as Error };
+  }
+}
+
 export async function purchaseListing(listingId: string): Promise<{
   url?: string;
   success?: boolean;
