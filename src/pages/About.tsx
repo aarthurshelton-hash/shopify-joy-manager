@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
-import { Crown, Heart, Palette, Users, Lightbulb, Sparkles, Eye, ScanLine, QrCode, Camera, Fingerprint } from 'lucide-react';
+import { Crown, Heart, Palette, Users, Lightbulb, Sparkles, Eye, ScanLine, QrCode, Camera, Fingerprint, DollarSign, Building2 } from 'lucide-react';
 import { useRandomGameArt } from '@/hooks/useRandomGameArt';
 import { Badge } from '@/components/ui/badge';
 
@@ -220,6 +220,73 @@ const About = () => {
             </div>
           </div>
           
+          {/* Platform Economics */}
+          <div className="relative space-y-4 p-6 rounded-xl border-2 border-green-500/30 bg-gradient-to-br from-green-500/5 to-emerald-500/5 overflow-hidden">
+            {backgroundImages[5] && (
+              <div 
+                className="absolute inset-0 opacity-[0.10] bg-cover bg-center"
+                style={{ backgroundImage: `url(${backgroundImages[5]})` }}
+              />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-br from-background/70 to-background/85" />
+            <div className="relative z-10">
+              <div className="flex items-center gap-3 mb-4">
+                <h2 className="text-2xl font-display font-bold uppercase tracking-wider flex items-center gap-2">
+                  <DollarSign className="h-5 w-5 text-green-500" />
+                  Creator Economics
+                </h2>
+                <Badge className="bg-green-500/20 text-green-600 border-green-500/30">
+                  Transparent
+                </Badge>
+              </div>
+              
+              <p className="text-muted-foreground font-serif leading-relaxed">
+                We believe in <strong className="text-foreground">sustainable creator rewards</strong>. When others order 
+                prints of your visions, you earn royalties automatically — passive income from your chess art collection.
+              </p>
+              
+              <div className="grid sm:grid-cols-2 gap-4 mt-6">
+                <div className="p-4 rounded-lg bg-background/50 border border-border/50 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-display text-sm font-bold uppercase flex items-center gap-2">
+                      <Heart className="h-4 w-4 text-green-500" />
+                      Creator Royalty
+                    </h4>
+                    <span className="text-2xl font-bold text-green-500">20%</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground font-serif">
+                    Direct to you when others order prints of your visions. Tracked automatically, paid monthly.
+                  </p>
+                </div>
+                
+                <div className="p-4 rounded-lg bg-background/50 border border-border/50 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-display text-sm font-bold uppercase flex items-center gap-2">
+                      <Building2 className="h-4 w-4 text-muted-foreground" />
+                      Platform & Fulfillment
+                    </h4>
+                    <span className="text-2xl font-bold text-muted-foreground">80%</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground font-serif">
+                    Covers printing, shipping, payment processing, customer support, and platform operations.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="mt-6 p-4 rounded-lg bg-green-500/5 border border-green-500/20">
+                <h4 className="font-display text-sm font-bold uppercase text-green-600 mb-2">
+                  Why 20% Creator Royalties?
+                </h4>
+                <p className="text-sm text-muted-foreground font-serif">
+                  Physical print fulfillment involves significant costs: high-quality archival printing, protective 
+                  packaging, global shipping, payment processing fees, and customer service. Our 80/20 split ensures 
+                  <strong className="text-foreground"> sustainable growth</strong> while still rewarding creators with meaningful 
+                  passive income. As our platform scales, we're committed to exploring ways to increase creator share.
+                </p>
+              </div>
+            </div>
+          </div>
+          
           {/* What We Offer */}
           <div className="space-y-4">
             <h2 className="text-2xl font-display font-bold uppercase tracking-wider flex items-center gap-2">
@@ -263,7 +330,16 @@ const About = () => {
               <div className="p-4 rounded-lg bg-card/50 border border-border/50">
                 <h3 className="font-display font-bold text-sm uppercase tracking-wide text-primary">Vision Marketplace</h3>
                 <p className="text-sm text-muted-foreground font-serif mt-1">
-                  Trade, sell, or collect visualizations. 0% platform commission—100% of sale value goes to sellers. Transparent Vision Scores track cultural impact.
+                  Trade, sell, or collect visualizations. 0% platform commission on trades—100% of sale value goes to sellers. Transparent Vision Scores track cultural impact.
+                </p>
+              </div>
+              <div className="p-4 rounded-lg bg-gradient-to-r from-green-500/5 to-emerald-500/5 border border-green-500/30">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-display font-bold text-sm uppercase tracking-wide text-green-600">20% Print Royalties</h3>
+                  <Badge className="bg-green-500/20 text-green-600 border-green-500/30 text-xs">Passive Income</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground font-serif mt-1">
+                  Own a vision? Earn 20% every time someone else orders a print. Royalties are tracked automatically and accumulate in your account.
                 </p>
               </div>
               <div className="p-4 rounded-lg bg-card/50 border border-border/50">

@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { DollarSign, TrendingUp, Eye, Loader2 } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { DollarSign, TrendingUp, Loader2, Info, Building2, Sparkles, PieChart } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { MEMBERSHIP_ECONOMICS } from '@/lib/visualizations/visionScoring';
+import { useRandomGameArt } from '@/hooks/useRandomGameArt';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Progress } from '@/components/ui/progress';
 
 interface PortfolioRoyaltyStats {
   totalRoyaltyCents: number;
@@ -17,6 +20,9 @@ export const PortfolioRoyaltySummary: React.FC = () => {
   const { user } = useAuth();
   const [stats, setStats] = useState<PortfolioRoyaltyStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const backgroundImages = useRandomGameArt(1);
+  const ownerSharePercent = MEMBERSHIP_ECONOMICS.ownerValueShare * 100;
+  const platformSharePercent = MEMBERSHIP_ECONOMICS.platformValueShare * 100;
 
   useEffect(() => {
     if (!user) return;
@@ -89,17 +95,59 @@ export const PortfolioRoyaltySummary: React.FC = () => {
   if (!stats) return null;
 
   const royaltyDollars = stats.totalRoyaltyCents / 100;
-  const ownerSharePercent = MEMBERSHIP_ECONOMICS.ownerValueShare * 100;
+  const totalRevenueDollars = stats.totalPrintRevenue / 100;
+  const platformDollars = totalRevenueDollars - royaltyDollars;
 
   return (
-    <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
-      <CardHeader className="pb-2">
+    <Card className="relative overflow-hidden bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
+      {/* Subtle AI Art Background */}
+      {backgroundImages[0] && (
+        <div 
+          className="absolute inset-0 opacity-[0.08] bg-cover bg-center"
+          style={{ backgroundImage: `url(${backgroundImages[0]})` }}
+        />
+      )}
+      <div className="absolute inset-0 bg-gradient-to-br from-background/80 to-background/90" />
+      
+      <CardHeader className="relative z-10 pb-2">
         <CardTitle className="flex items-center gap-2 text-lg">
           <DollarSign className="h-5 w-5 text-primary" />
           Portfolio Royalties
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger>
+                <Info className="h-4 w-4 text-muted-foreground" />
+              </TooltipTrigger>
+              <TooltipContent side="right" className="max-w-xs">
+                <p className="font-medium mb-2">Revenue Split Economics</p>
+                <div className="space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1">
+                      <Sparkles className="h-3 w-3 text-primary" />
+                      Your Royalty
+                    </span>
+                    <span className="font-bold text-primary">{ownerSharePercent}%</span>
+                  </div>
+                  <div className="flex items-center justify-between text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <Building2 className="h-3 w-3" />
+                      Platform & Fulfillment
+                    </span>
+                    <span>{platformSharePercent}%</span>
+                  </div>
+                  <p className="text-muted-foreground pt-1 border-t border-border/50">
+                    The {platformSharePercent}% covers printing, shipping, payment processing, and platform operations.
+                  </p>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </CardTitle>
+        <CardDescription className="relative z-10">
+          Lifetime earnings from print orders by others
+        </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="relative z-10 space-y-4">
         {/* Main earnings display */}
         <div className="flex items-baseline gap-2">
           <span className="text-3xl font-bold text-primary">
@@ -107,6 +155,33 @@ export const PortfolioRoyaltySummary: React.FC = () => {
           </span>
           <span className="text-sm text-muted-foreground">total earned</span>
         </div>
+
+        {/* Revenue split visualization */}
+        {stats.totalPrintRevenue > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="flex items-center gap-1.5">
+                <PieChart className="h-3 w-3 text-muted-foreground" />
+                Revenue Distribution
+              </span>
+              <span className="text-muted-foreground">${totalRevenueDollars.toFixed(2)} total</span>
+            </div>
+            <div className="flex h-3 rounded-full overflow-hidden bg-muted/30">
+              <div 
+                className="bg-primary transition-all"
+                style={{ width: `${ownerSharePercent}%` }}
+              />
+              <div 
+                className="bg-muted-foreground/30 transition-all"
+                style={{ width: `${platformSharePercent}%` }}
+              />
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-primary font-medium">You: ${royaltyDollars.toFixed(2)}</span>
+              <span className="text-muted-foreground">Operations: ${platformDollars.toFixed(2)}</span>
+            </div>
+          </div>
+        )}
 
         {/* Stats grid */}
         <div className="grid grid-cols-3 gap-2">
@@ -119,15 +194,18 @@ export const PortfolioRoyaltySummary: React.FC = () => {
             <p className="text-xs text-muted-foreground">Orders by Others</p>
           </div>
           <div className="p-2 rounded-lg bg-background/50 border border-border/50 text-center">
-            <p className="text-lg font-semibold">{ownerSharePercent}%</p>
+            <p className="text-lg font-semibold text-primary">{ownerSharePercent}%</p>
             <p className="text-xs text-muted-foreground">Your Share</p>
           </div>
         </div>
 
         {stats.totalRoyaltyOrders === 0 && (
-          <p className="text-xs text-muted-foreground italic text-center">
-            Share your visions to start earning royalties when others order prints!
-          </p>
+          <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+            <p className="text-xs text-muted-foreground">
+              <strong className="text-foreground">How it works:</strong> Share your visions publicly. 
+              When others order prints, you automatically earn {ownerSharePercent}% royalties.
+            </p>
+          </div>
         )}
       </CardContent>
     </Card>
