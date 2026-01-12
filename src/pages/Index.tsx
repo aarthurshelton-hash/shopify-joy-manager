@@ -122,10 +122,13 @@ const Index = () => {
         setDarkMode(storedTimelineState.darkMode);
       }
       
-      // Show toast if returning from order page
+      // Show toast if returning from order page with move info
       if (returningFromOrder) {
+        const moveInfo = storedTimelineState 
+          ? `Move ${storedTimelineState.currentMove} of ${storedSimulation.totalMoves || 0} restored`
+          : 'Your exact board state has been preserved.';
         toast.success('Visualization restored!', {
-          description: 'Your exact board state has been preserved.',
+          description: moveInfo,
           icon: <Sparkles className="w-4 h-4" />,
         });
         setReturningFromOrder(false);

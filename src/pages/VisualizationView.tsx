@@ -1,15 +1,21 @@
-import { useEffect, useState, useRef, useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
 import { supabase } from '@/integrations/supabase/client';
 import { motion } from 'framer-motion';
-import { Crown, Calendar, ChevronLeft, Share2, ExternalLink } from 'lucide-react';
+import { Crown, Calendar, ChevronLeft, Share2, ExternalLink, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { recordVisionInteraction } from '@/lib/visualizations/visionScoring';
 import { SquareData, GameData } from '@/lib/chess/gameSimulator';
-import UnifiedVisionExperience from '@/components/chess/UnifiedVisionExperience';
+import UnifiedVisionExperience, { ExportState } from '@/components/chess/UnifiedVisionExperience';
+import { useSessionStore } from '@/stores/sessionStore';
+import { usePrintOrderStore } from '@/stores/printOrderStore';
+import { useAuth } from '@/hooks/useAuth';
+import { useVisualizationExport } from '@/hooks/useVisualizationExport';
+import AuthModal from '@/components/auth/AuthModal';
+import { PremiumUpgradeModal } from '@/components/premium';
 
 interface VisualizationData {
   id: string;
@@ -37,10 +43,37 @@ interface VisualizationData {
 
 const VisualizationView = () => {
   const { shareId } = useParams<{ shareId: string }>();
+  const navigate = useNavigate();
+  const { user, isPremium } = useAuth();
+  const { setOrderData } = usePrintOrderStore();
+  const { 
+    setCurrentSimulation, 
+    setSavedShareId: setSessionShareId,
+    setCapturedTimelineState,
+    setReturningFromOrder 
+  } = useSessionStore();
+  
   const [visualization, setVisualization] = useState<VisualizationData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showVisionaryModal, setShowVisionaryModal] = useState(false);
   const viewRecordedRef = useRef(false);
+  
+  // Export hook for HD/GIF downloads
+  const { 
+    isExportingHD, 
+    isExportingGIF, 
+    gifProgress,
+    downloadHD, 
+    downloadTrademarkHD,
+    downloadGIF 
+  } = useVisualizationExport({
+    isPremium,
+    visualizationId: visualization?.id,
+    onUnauthorized: () => setShowAuthModal(true),
+    onUpgradeRequired: () => setShowVisionaryModal(true),
+  });
 
   useEffect(() => {
     const fetchVisualization = async () => {
@@ -142,6 +175,95 @@ const VisualizationView = () => {
       paletteId: data.visualizationState?.paletteId as string | undefined,
     };
   }, [visualization]);
+
+  // Handle exports (HD, GIF, Print)
+  const handleExport = useCallback((type: 'hd' | 'gif' | 'print' | 'preview', exportState?: ExportState) => {
+    if (!visualization) return;
+    
+    if (type === 'preview') {
+      // Free preview download
+      toast.info('Preview download coming soon');
+      return;
+    }
+    
+    if (type === 'hd') {
+      downloadTrademarkHD({
+        board,
+        gameData,
+        title: visualization.title,
+        darkMode: exportState?.darkMode || false,
+      });
+      return;
+    }
+    
+    if (type === 'gif') {
+      const simulation = { board, gameData, totalMoves };
+      const captureElement = document.getElementById('vision-board-container');
+      if (captureElement) {
+        downloadGIF(simulation, captureElement, visualization.title);
+      } else {
+        toast.error('Unable to capture visualization');
+      }
+      return;
+    }
+    
+    if (type === 'print') {
+      // Save timeline state for restoration on return
+      if (exportState) {
+        setCapturedTimelineState({
+          currentMove: exportState.currentMove,
+          lockedPieces: exportState.lockedPieces.map(p => ({
+            pieceType: p.pieceType as any,
+            pieceColor: p.pieceColor as any,
+          })),
+          compareMode: exportState.compareMode,
+          darkMode: exportState.darkMode,
+        });
+      }
+      
+      // Save simulation to session store
+      setCurrentSimulation({
+        board,
+        gameData,
+        totalMoves,
+      }, visualization.pgn || '', visualization.title);
+      setSessionShareId(visualization.public_share_id);
+      setReturningFromOrder(true);
+      
+      // Navigate to order print page
+      setOrderData({
+        visualizationId: visualization.id,
+        title: visualization.title,
+        imagePath: visualization.image_path,
+        gameData: {
+          white: gameData.white,
+          black: gameData.black,
+          event: gameData.event,
+          date: gameData.date,
+          result: gameData.result,
+        },
+        simulation: {
+          board,
+          gameData,
+          totalMoves,
+        },
+        shareId: visualization.public_share_id,
+        returnPath: `/v/${shareId}`,
+        capturedState: exportState ? {
+          currentMove: exportState.currentMove,
+          selectedPhase: 'all',
+          lockedPieces: exportState.lockedPieces,
+          compareMode: exportState.compareMode,
+          displayMode: 'standard',
+          darkMode: exportState.darkMode,
+          showTerritory: false,
+          showHeatmaps: false,
+          capturedAt: new Date(),
+        } : undefined,
+      });
+      navigate('/order-print');
+    }
+  }, [visualization, board, gameData, totalMoves, shareId, downloadTrademarkHD, downloadGIF, navigate, setOrderData, setCapturedTimelineState, setCurrentSimulation, setSessionShareId, setReturningFromOrder]);
 
   if (loading) {
     return (
@@ -252,7 +374,11 @@ const VisualizationView = () => {
               paletteId={paletteId}
               createdAt={visualization.created_at}
               title={visualization.title}
+              shareId={visualization.public_share_id}
               onShare={handleShare}
+              onExport={handleExport}
+              isPremium={isPremium}
+              onUpgradePrompt={() => setShowVisionaryModal(true)}
             />
           </motion.div>
 
@@ -288,6 +414,18 @@ const VisualizationView = () => {
       </main>
       
       <Footer />
+      
+      {/* Auth Modal */}
+      <AuthModal 
+        isOpen={showAuthModal} 
+        onClose={() => setShowAuthModal(false)} 
+      />
+      
+      {/* Premium Upgrade Modal */}
+      <PremiumUpgradeModal
+        isOpen={showVisionaryModal}
+        onClose={() => setShowVisionaryModal(false)}
+      />
     </div>
   );
 };
