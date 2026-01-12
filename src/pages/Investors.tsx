@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { TestimonialSubmissionForm } from '@/components/testimonials/TestimonialSubmissionForm';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { useRandomGameArt } from '@/hooks/useRandomGameArt';
 
 type ModalType = 'market' | 'technology' | 'vision' | 'brand' | 'data' | null;
 
@@ -249,6 +250,7 @@ const Investors = () => {
   const [visibleCount, setVisibleCount] = useState(4);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
+  const backgroundImages = useRandomGameArt(8);
   
   // Check premium status
   useEffect(() => {
@@ -305,27 +307,37 @@ const Investors = () => {
     title, 
     description, 
     cta, 
-    onClick 
+    onClick,
+    backgroundImage
   }: { 
     icon: typeof Globe; 
     title: string; 
     description: string; 
     cta: string;
     onClick: () => void;
+    backgroundImage?: string;
   }) => (
     <button 
       onClick={onClick}
-      className="p-6 rounded-lg border border-border/50 bg-card/50 space-y-3 text-left transition-all hover:border-primary/50 hover:bg-card/80 group cursor-pointer"
+      className="relative p-6 rounded-lg border border-border/50 bg-card/50 space-y-3 text-left transition-all hover:border-primary/50 hover:bg-card/80 group cursor-pointer overflow-hidden"
     >
-      <div className="flex items-start justify-between">
-        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-          <Icon className="h-6 w-6 text-primary" />
+      {backgroundImage && (
+        <div 
+          className="absolute inset-0 opacity-[0.03] group-hover:opacity-[0.06] transition-opacity bg-cover bg-center"
+          style={{ backgroundImage: `url(${backgroundImage})` }}
+        />
+      )}
+      <div className="relative z-10">
+        <div className="flex items-start justify-between">
+          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+            <Icon className="h-6 w-6 text-primary" />
+          </div>
+          <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
         </div>
-        <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+        <h3 className="font-display font-bold uppercase tracking-wide mt-3">{title}</h3>
+        <p className="text-sm text-muted-foreground font-serif mt-2">{description}</p>
+        <span className="text-xs text-primary font-medium uppercase tracking-wide mt-2 inline-block">{cta} →</span>
       </div>
-      <h3 className="font-display font-bold uppercase tracking-wide">{title}</h3>
-      <p className="text-sm text-muted-foreground font-serif">{description}</p>
-      <span className="text-xs text-primary font-medium uppercase tracking-wide">{cta} →</span>
     </button>
   );
 
@@ -372,6 +384,7 @@ const Investors = () => {
               description="Access to 800M+ chess players worldwide, with the market growing 25% year-over-year."
               cta="View TAM Report"
               onClick={() => setActiveModal('market')}
+              backgroundImage={backgroundImages[0]}
             />
             
             <MetricCard
@@ -380,6 +393,7 @@ const Investors = () => {
               description="Proprietary visualization algorithms that transform PGN data into stunning, one-of-a-kind art."
               cta="Learn More"
               onClick={() => setActiveModal('technology')}
+              backgroundImage={backgroundImages[1]}
             />
             
             <MetricCard
@@ -388,6 +402,7 @@ const Investors = () => {
               description="Expanding into licensed partnerships, limited editions, and physical retail presence."
               cta="View Roadmap"
               onClick={() => setActiveModal('vision')}
+              backgroundImage={backgroundImages[2]}
             />
             
             <MetricCard
@@ -396,6 +411,7 @@ const Investors = () => {
               description="Positioned as the definitive chess art brand with museum-quality products."
               cta="Brand Strategy"
               onClick={() => setActiveModal('brand')}
+              backgroundImage={backgroundImages[3]}
             />
             
             <MetricCard
@@ -404,6 +420,7 @@ const Investors = () => {
               description="Premium analytics and community insights as an exclusive membership benefit."
               cta="View Data Strategy"
               onClick={() => setActiveModal('data')}
+              backgroundImage={backgroundImages[4]}
             />
           </div>
 
