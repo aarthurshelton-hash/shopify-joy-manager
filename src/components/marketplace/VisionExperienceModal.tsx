@@ -49,12 +49,15 @@ import {
   SkipBack,
   X,
   Info,
+  BookOpen,
+  Zap,
 } from 'lucide-react';
 import { CertifiedBadge } from '@/components/chess/CertifiedBadge';
 import { ShowPiecesToggle } from '@/components/chess/ShowPiecesToggle';
 import { MarketplaceListing } from '@/lib/marketplace/marketplaceApi';
 import { isPremiumPalette, getPaletteArt, getPaletteDisplayName, extractPaletteId } from '@/lib/marketplace/paletteArtMap';
 import { VisionScore, getVisionScore, calculateVisionValue, calculateMembershipMultiplier, SCORING_WEIGHTS, recordVisionInteraction } from '@/lib/visualizations/visionScoring';
+import { analyzeGame, GameAnalysis } from '@/lib/chess/chessAnalysis';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { SimulationResult, SquareData, GameData } from '@/lib/chess/gameSimulator';
@@ -203,6 +206,25 @@ const VisionExperienceModal: React.FC<VisionExperienceModalProps> = ({
   const [internalMove, setInternalMove] = useState(0);
   const playIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const viewRecordedRef = useRef(false);
+  const [gameAnalysis, setGameAnalysis] = useState<GameAnalysis | null>(null);
+
+  // Analyze game when listing changes
+  useEffect(() => {
+    if (listing?.visualization?.game_data && isOpen) {
+      const gameData = listing.visualization.game_data as ExtendedGameData;
+      if (gameData?.pgn) {
+        try {
+          const analysis = analyzeGame(gameData.pgn);
+          setGameAnalysis(analysis);
+        } catch {
+          setGameAnalysis(null);
+        }
+      }
+    }
+    if (!isOpen) {
+      setGameAnalysis(null);
+    }
+  }, [listing?.visualization?.game_data, isOpen]);
 
   useEffect(() => {
     if (listing?.visualization?.id && isOpen) {
@@ -534,6 +556,7 @@ const VisionExperienceModal: React.FC<VisionExperienceModalProps> = ({
                       isFree={isFree}
                       handleShare={handleShare}
                       formatResult={formatResult}
+                      gameAnalysis={gameAnalysis}
                     />
                   </motion.div>
                 )}
