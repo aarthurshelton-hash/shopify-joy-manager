@@ -13,6 +13,16 @@ import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
 import { ProductSelector } from '@/components/shop/ProductSelector';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { ArrowLeft, Palette, Crown, Sparkles, Award, Paintbrush } from 'lucide-react';
 import { toast } from 'sonner';
 import { cleanPgn } from '@/lib/chess/pgnValidator';
@@ -66,6 +76,8 @@ const Index = () => {
   const [gameTitle, setGameTitle] = useState<string>('');
   const [paletteKey, setPaletteKey] = useState(0);
   const [savedShareId, setSavedShareId] = useState<string | null>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [showReturnDialog, setShowReturnDialog] = useState(false);
   
   // Refs for parallax sections (used for scroll-based CSS transforms)
   const heroRef = useRef<HTMLDivElement>(null);
@@ -167,6 +179,7 @@ const Index = () => {
   const handlePaletteChange = useCallback((paletteId: PaletteId) => {
     // Force re-render of components that use the palette
     setPaletteKey(prev => prev + 1);
+    setHasUnsavedChanges(true);
     toast.success(`Palette changed to ${paletteId.charAt(0).toUpperCase() + paletteId.slice(1)}`);
   }, []);
   
@@ -192,6 +205,7 @@ const Index = () => {
       setGameTitle(pendingResult.title);
       setIsLoading(false);
       setPendingResult(null);
+      setHasUnsavedChanges(false); // Reset unsaved changes on new visualization
       
       if (pendingResult.result.totalMoves > 0) {
         toast.success('Visualization generated!', {
@@ -205,6 +219,14 @@ const Index = () => {
     }
   }, [pendingResult]);
   
+  const handleReturnClick = () => {
+    if (hasUnsavedChanges && !savedShareId) {
+      setShowReturnDialog(true);
+    } else {
+      handleBack();
+    }
+  };
+  
   const handleBack = () => {
     setSimulation(null);
     setCurrentPgn('');
@@ -212,6 +234,8 @@ const Index = () => {
     setIsLoading(false);
     setPendingResult(null);
     setSavedShareId(null);
+    setHasUnsavedChanges(false);
+    setShowReturnDialog(false);
   };
   
   const handleShareIdCreated = (shareId: string) => {
@@ -225,6 +249,24 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <Header />
       
+      {/* Confirmation dialog for unsaved changes */}
+      <AlertDialog open={showReturnDialog} onOpenChange={setShowReturnDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved changes to your visualization. If you leave now, your palette and display settings will be lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Stay Here</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBack}>
+              Leave Anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
       {/* Secondary navigation for visualization mode */}
       {simulation && (
         <div className="border-b border-border/50 bg-card/50">
@@ -232,7 +274,7 @@ const Index = () => {
             <Button 
               variant="ghost" 
               size="sm" 
-              onClick={handleBack}
+              onClick={handleReturnClick}
               className="text-muted-foreground hover:text-foreground"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -242,7 +284,10 @@ const Index = () => {
             <Button 
               variant="outline" 
               size="sm"
-              onClick={() => setShowLegend(!showLegend)}
+              onClick={() => {
+                setShowLegend(!showLegend);
+                setHasUnsavedChanges(true);
+              }}
               className="gap-2 border-border/50"
             >
               <Palette className="h-4 w-4" />
