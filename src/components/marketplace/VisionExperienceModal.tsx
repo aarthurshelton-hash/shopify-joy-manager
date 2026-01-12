@@ -8,6 +8,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import {
   Crown,
   DollarSign,
@@ -41,7 +48,10 @@ import {
   SkipForward,
   SkipBack,
   X,
+  Info,
 } from 'lucide-react';
+import { CertifiedBadge } from '@/components/chess/CertifiedBadge';
+import { ShowPiecesToggle } from '@/components/chess/ShowPiecesToggle';
 import { MarketplaceListing } from '@/lib/marketplace/marketplaceApi';
 import { VisionScore, getVisionScore, calculateVisionValue, calculateMembershipMultiplier, SCORING_WEIGHTS, recordVisionInteraction } from '@/lib/visualizations/visionScoring';
 import { format } from 'date-fns';
@@ -295,6 +305,10 @@ const VisionExperienceModal: React.FC<VisionExperienceModalProps> = ({
   const isFree = listing.price_cents === 0;
   const totalMoves = gameData?.totalMoves || gameData?.moves?.length || 0;
   const paletteId = gameData?.visualizationState?.paletteId || 'modern';
+  const isCertifiedPalette = paletteId && paletteId !== 'custom';
+  const isCertifiedGame = listing.visualization?.title?.includes('Immortal') || 
+                          listing.visualization?.title?.includes('Game of the Century') ||
+                          listing.visualization?.title?.includes('Deep Blue');
 
   // Reconstruct board data
   const board: SquareData[][] = gameData?.board || 
@@ -330,8 +344,24 @@ const VisionExperienceModal: React.FC<VisionExperienceModalProps> = ({
             {/* Header with transitional tabs */}
             <div className="p-4 border-b bg-gradient-to-r from-background via-muted/30 to-background">
               <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  {isGenesis && <Crown className="h-5 w-5 text-amber-500" />}
+                <div className="flex items-center gap-3 flex-wrap">
+                  {isGenesis && <CertifiedBadge type="genesis" />}
+                  {isCertifiedGame && !isGenesis && (
+                    <CertifiedBadge 
+                      type="game" 
+                      name={listing.visualization?.title}
+                      similarity={95}
+                      matchType="exact"
+                    />
+                  )}
+                  {isCertifiedPalette && !isGenesis && !isCertifiedGame && (
+                    <CertifiedBadge 
+                      type="palette" 
+                      name={paletteId}
+                      similarity={100}
+                      matchType="exact"
+                    />
+                  )}
                   <h2 className="text-xl font-display font-bold truncate max-w-md">
                     {listing.visualization?.title || 'Untitled Vision'}
                   </h2>
@@ -498,6 +528,8 @@ const ExperienceTab: React.FC<{
   handleShare,
 }) => {
   const [boardSize, setBoardSize] = useState(320);
+  const [showPieces, setShowPieces] = useState(false);
+  const [pieceOpacity, setPieceOpacity] = useState(0.7);
   
   useEffect(() => {
     const updateSize = () => {
@@ -510,39 +542,70 @@ const ExperienceTab: React.FC<{
   }, []);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {/* Main visualization area */}
-      <div className="lg:col-span-2 space-y-4">
-        {/* Mode controls */}
-        <div className="flex justify-center gap-2 flex-wrap">
-          <Button
-            variant={darkMode ? "outline" : "default"}
-            size="sm"
-            onClick={() => setDarkMode(false)}
-            className="gap-2 text-xs"
-          >
-            <Sun className="h-3 w-3" />
-            Light
-          </Button>
-          <Button
-            variant={darkMode ? "default" : "outline"}
-            size="sm"
-            onClick={() => setDarkMode(true)}
-            className="gap-2 text-xs"
-          >
-            <Moon className="h-3 w-3" />
-            Dark
-          </Button>
-          <Button
-            variant={showLegend ? "default" : "outline"}
-            size="sm"
-            onClick={() => setShowLegend(!showLegend)}
-            className="gap-2 text-xs"
-          >
-            <Palette className="h-3 w-3" />
-            Legend
-          </Button>
-        </div>
+    <ScrollArea className="h-[calc(85vh-150px)]">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pr-4">
+        {/* Main visualization area */}
+        <div className="lg:col-span-2 space-y-4">
+          {/* Mode controls */}
+          <div className="flex justify-center gap-2 flex-wrap">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={darkMode ? "outline" : "default"}
+                    size="sm"
+                    onClick={() => setDarkMode(false)}
+                    className="gap-2 text-xs"
+                  >
+                    <Sun className="h-3 w-3" />
+                    Light
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Light background for print-ready look</p>
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={darkMode ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setDarkMode(true)}
+                    className="gap-2 text-xs"
+                  >
+                    <Moon className="h-3 w-3" />
+                    Dark
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Dark mode for elegant display</p>
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={showLegend ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setShowLegend(!showLegend)}
+                    className="gap-2 text-xs"
+                  >
+                    <Palette className="h-3 w-3" />
+                    Legend
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Show color legend with piece mapping</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <ShowPiecesToggle
+              showPieces={showPieces}
+              pieceOpacity={pieceOpacity}
+              onToggle={setShowPieces}
+              onOpacityChange={setPieceOpacity}
+              compact
+            />
+          </div>
 
         {/* The artwork */}
         <motion.div 
@@ -664,6 +727,7 @@ const ExperienceTab: React.FC<{
         </div>
       </div>
     </div>
+    </ScrollArea>
   );
 };
 
@@ -701,8 +765,12 @@ const AnalyticsTab: React.FC<{
   handleShare,
   formatResult,
 }) => {
+  const paletteIdFromState = gameData?.visualizationState?.paletteId || 'modern';
+  const isCertifiedPalette = paletteIdFromState && paletteIdFromState !== 'custom';
+  
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <ScrollArea className="h-[calc(85vh-150px)]">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pr-4">
       {/* Left Column - Image and Quick Stats */}
       <div className="space-y-4">
         {/* Vision Image */}
@@ -955,8 +1023,20 @@ const AnalyticsTab: React.FC<{
             </AnimatePresence>
           </div>
         )}
+        {/* Certified badges for analytics */}
+        {isCertifiedPalette && (
+          <div className="pt-4 border-t border-border/50">
+            <CertifiedBadge 
+              type="palette" 
+              name={paletteIdFromState}
+              similarity={100}
+              matchType="exact"
+            />
+          </div>
+        )}
       </div>
     </div>
+    </ScrollArea>
   );
 };
 
