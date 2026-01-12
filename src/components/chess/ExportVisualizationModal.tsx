@@ -150,9 +150,11 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
     const capturedVisualizationState = captureState(moveHistory);
     
     // Save timeline state for restoration on return
+    const title = `${gameInfo.white} vs ${gameInfo.black}`;
     setCapturedTimelineState({
       currentMove: capturedVisualizationState.currentMove,
       totalMoves: moveHistory.length,
+      title,
       lockedPieces: capturedVisualizationState.lockedPieces,
       compareMode: capturedVisualizationState.compareMode,
       darkMode,

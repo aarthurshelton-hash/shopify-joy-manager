@@ -69,6 +69,7 @@ export const OrderPrintButton: React.FC<OrderPrintButtonProps> = ({
         setCapturedTimelineState({
           currentMove: orderData.capturedState.currentMove,
           totalMoves: orderData.simulation?.totalMoves,
+          title: orderData.title,
           lockedPieces: orderData.capturedState.lockedPieces.map(p => ({
             pieceType: p.pieceType as any,
             pieceColor: p.pieceColor as any,

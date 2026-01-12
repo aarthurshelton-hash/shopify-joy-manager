@@ -41,14 +41,15 @@ const VisualizationDetail: React.FC = () => {
   // Handle restoration toast when returning from order page
   useEffect(() => {
     if (returningFromOrder && capturedTimelineState) {
-      const { currentMove, totalMoves } = capturedTimelineState;
+      const { currentMove, totalMoves, title } = capturedTimelineState;
+      const titleText = title || 'Visualization';
       const moveInfo = currentMove !== undefined && totalMoves !== undefined
-        ? `Move ${currentMove} of ${totalMoves} restored`
+        ? `Move ${currentMove} of ${totalMoves}`
         : currentMove !== undefined
-        ? `Move ${currentMove} restored`
+        ? `Move ${currentMove}`
         : 'Your visualization is ready';
       
-      toast.success('Welcome back!', {
+      toast.success(`${titleText} restored!`, {
         description: moveInfo,
         icon: <Sparkles className="w-4 h-4" />,
       });

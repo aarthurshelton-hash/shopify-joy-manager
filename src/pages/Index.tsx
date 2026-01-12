@@ -124,10 +124,11 @@ const Index = () => {
       
       // Show toast if returning from order page with move info
       if (returningFromOrder) {
+        const titleText = storedTimelineState?.title || storedTitle || 'Visualization';
         const moveInfo = storedTimelineState 
-          ? `Move ${storedTimelineState.currentMove} of ${storedSimulation.totalMoves || 0} restored`
-          : 'Your exact board state has been preserved.';
-        toast.success('Visualization restored!', {
+          ? `Move ${storedTimelineState.currentMove} of ${storedTimelineState.totalMoves || storedSimulation.totalMoves || 0}`
+          : 'Your exact board state has been preserved';
+        toast.success(`${titleText} restored!`, {
           description: moveInfo,
           icon: <Sparkles className="w-4 h-4" />,
         });
@@ -682,6 +683,7 @@ const Index = () => {
                     setCapturedTimelineState({
                       currentMove: exportState.currentMove,
                       totalMoves: simulation.totalMoves,
+                      title: visualTitle,
                       lockedPieces: exportState.lockedPieces.map(p => ({
                         pieceType: p.pieceType as any,
                         pieceColor: p.pieceColor as any,

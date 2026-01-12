@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ShoppingBag, Gift, DollarSign, Loader2, Crown, Package, Shield, TrendingUp, Eye, BookOpen, Palette } from 'lucide-react';
+import { ShoppingBag, Gift, DollarSign, Loader2, Crown, Package, Shield, TrendingUp, Eye, BookOpen, Palette, Sparkles } from 'lucide-react';
 import { useRandomGameArt } from '@/hooks/useRandomGameArt';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
@@ -19,6 +19,7 @@ import { RotatingArtBackground } from '@/components/shared/RotatingArtBackground
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
 import { BookShowcase } from '@/components/book/BookShowcase';
+import { useSessionStore } from '@/stores/sessionStore';
 import { 
   getActiveListings, 
   purchaseListing, 
@@ -32,6 +33,12 @@ const Marketplace: React.FC = () => {
   const navigate = useNavigate();
   const { user, isPremium } = useAuth();
   const gameArtImages = useRandomGameArt(16); // For listing card backgrounds
+  const {
+    returningFromOrder,
+    capturedTimelineState,
+    setReturningFromOrder,
+    setCapturedTimelineState,
+  } = useSessionStore();
   
   const [listings, setListings] = useState<MarketplaceListing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -46,6 +53,28 @@ const Marketplace: React.FC = () => {
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [category, setCategory] = useState<CategoryFilter>('all');
   const [showGenesisOnly, setShowGenesisOnly] = useState(false);
+
+  // Handle restoration toast when returning from order page
+  useEffect(() => {
+    if (returningFromOrder && capturedTimelineState) {
+      const { currentMove, totalMoves, title } = capturedTimelineState;
+      const titleText = title || 'Vision';
+      const moveInfo = currentMove !== undefined && totalMoves !== undefined
+        ? `Move ${currentMove} of ${totalMoves}`
+        : currentMove !== undefined
+        ? `Move ${currentMove}`
+        : 'Your marketplace view is ready';
+      
+      toast.success(`${titleText} restored!`, {
+        description: moveInfo,
+        icon: <Sparkles className="w-4 h-4" />,
+      });
+      
+      // Clear the flags
+      setReturningFromOrder(false);
+      setCapturedTimelineState(null);
+    }
+  }, [returningFromOrder, capturedTimelineState, setReturningFromOrder, setCapturedTimelineState]);
 
   const loadListings = useCallback(async () => {
     setIsLoading(true);
