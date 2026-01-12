@@ -31,7 +31,7 @@ export interface ChessGambit {
 }
 
 export interface TacticalMotif {
-  type: 'fork' | 'pin' | 'skewer' | 'discovery' | 'double_attack' | 'back_rank' | 'smothered_mate' | 'sacrifice';
+  type: 'fork' | 'pin' | 'skewer' | 'discovery' | 'double_attack' | 'back_rank' | 'smothered_mate' | 'sacrifice' | 'check' | 'checkmate';
   moveNumber: number;
   notation: string;
   attacker: { piece: PieceSymbol; square: Square };
@@ -342,6 +342,32 @@ export function detectTactics(pgn: string): TacticalMotif[] {
       const moveNumber = index + 1;
       chess.move(move.san);
       
+      // Check for checks
+      if (move.san.includes('+') && !move.san.includes('#')) {
+        tactics.push({
+          type: 'check',
+          moveNumber,
+          notation: move.san,
+          attacker: { piece: move.piece, square: move.to },
+          targets: [{ piece: 'k', square: findKingSquare(chess, move.color === 'w' ? 'b' : 'w') }],
+          description: `${getPieceName(move.piece)} delivers check from ${move.to}`,
+          value: 0,
+        });
+      }
+      
+      // Check for checkmate
+      if (move.san.includes('#')) {
+        tactics.push({
+          type: 'checkmate',
+          moveNumber,
+          notation: move.san,
+          attacker: { piece: move.piece, square: move.to },
+          targets: [{ piece: 'k', square: findKingSquare(chess, move.color === 'w' ? 'b' : 'w') }],
+          description: `Checkmate! ${getPieceName(move.piece)} delivers the final blow from ${move.to}`,
+          value: 100, // Game-ending value
+        });
+      }
+      
       // Check for forks (one piece attacking multiple valuable pieces)
       const forksFound = detectForks(chess, move, moveNumber);
       tactics.push(...forksFound);
@@ -423,6 +449,23 @@ function getAttackedSquares(chess: Chess, from: Square): Square[] {
   }
   
   return attacks;
+}
+
+function findKingSquare(chess: Chess, color: 'w' | 'b'): Square {
+  const files = 'abcdefgh';
+  const ranks = '12345678';
+  
+  for (const file of files) {
+    for (const rank of ranks) {
+      const square = (file + rank) as Square;
+      const piece = chess.get(square);
+      if (piece && piece.type === 'k' && piece.color === color) {
+        return square;
+      }
+    }
+  }
+  
+  return 'e1' as Square; // Fallback
 }
 
 function getPieceName(piece: PieceSymbol): string {
