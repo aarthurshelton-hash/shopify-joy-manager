@@ -64,6 +64,8 @@ export interface CartItem {
     pgn: string;
     gameTitle: string;
     previewImageBase64?: string;
+    frameStyle?: string;
+    includeInfoCard?: boolean;
   };
 }
 
