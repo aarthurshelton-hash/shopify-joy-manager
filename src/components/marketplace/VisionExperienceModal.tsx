@@ -824,7 +824,7 @@ const ExperienceTab: React.FC<{
           {!isPremium && !isOwnListing && (
             <p className="text-xs text-muted-foreground text-center mt-2">
               <Crown className="h-3 w-3 inline mr-1 text-amber-500" />
-              Premium membership required to purchase
+              Premium required to claim ownership. <span className="opacity-70">Anyone can order prints.</span>
             </p>
           )}
         </div>
