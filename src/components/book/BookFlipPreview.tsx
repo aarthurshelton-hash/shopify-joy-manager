@@ -4,35 +4,35 @@ import { ChevronLeft, ChevronRight, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 // Import actual spread preview images
-import spread1 from '@/assets/book/spread-preview-1.jpg';
-import spread2 from '@/assets/book/spread-preview-2.jpg';
-import spread3 from '@/assets/book/spread-preview-3.jpg';
+import spread1 from '@/assets/book/spread-preview-1.png';
+import spread2 from '@/assets/book/spread-preview-2.png';
+import spread3 from '@/assets/book/spread-preview-3.png';
 
-// Sample spreads with real preview images
+// Sample spreads with real preview images - matching actual book content
 const SAMPLE_SPREADS = [
   {
-    id: 1,
-    image: spread1,
-    title: "Immortal Game vs Karjakin",
-    year: "2013",
-    opponent: "Sergey Karjakin",
-    pageNumber: 24,
-  },
-  {
-    id: 2,
-    image: spread2,
-    title: "World Championship Brilliance",
-    year: "2014",
-    opponent: "Viswanathan Anand",
-    pageNumber: 56,
-  },
-  {
     id: 3,
+    image: spread1,
+    title: "Breaking the Wall",
+    year: "2016",
+    opponent: "Sergey Karjakin",
+    pageNumber: 6,
+  },
+  {
+    id: 5,
+    image: spread2,
+    title: "The 136-Move Epic",
+    year: "2021",
+    opponent: "Ian Nepomniachtchi",
+    pageNumber: 10,
+  },
+  {
+    id: 7,
     image: spread3,
-    title: "Endgame Mastery",
-    year: "2018",
-    opponent: "Fabiano Caruana",
-    pageNumber: 112,
+    title: "The Berlin Endgame",
+    year: "2013",
+    opponent: "Viswanathan Anand",
+    pageNumber: 14,
   },
 ];
 
