@@ -311,7 +311,7 @@ const Marketplace: React.FC = () => {
                       
                       return (
                         <Card 
-                          className={`overflow-hidden group hover:shadow-xl transition-all duration-300 cursor-pointer ${
+                          className={`overflow-hidden group hover:shadow-xl transition-all duration-300 cursor-pointer relative ${
                             hasPremiumPalette
                               ? 'border-amber-500/50 ring-1 ring-amber-500/20 hover:ring-amber-500/40'
                               : hasThemedPalette
@@ -323,8 +323,19 @@ const Marketplace: React.FC = () => {
                             setShowDetailModal(true);
                           }}
                         >
-                      {/* Image */}
-                      <div className="aspect-square relative overflow-hidden bg-muted">
+                          {/* Premium Shimmer Effect */}
+                          {hasPremiumPalette && (
+                            <div 
+                              className="absolute inset-0 z-10 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                              style={{
+                                background: 'linear-gradient(90deg, transparent 0%, rgba(251, 191, 36, 0.15) 25%, rgba(251, 191, 36, 0.3) 50%, rgba(251, 191, 36, 0.15) 75%, transparent 100%)',
+                                backgroundSize: '200% 100%',
+                                animation: 'shimmer 2s linear infinite',
+                              }}
+                            />
+                          )}
+                          {/* Image */}
+                          <div className="aspect-square relative overflow-hidden bg-muted">
                         {listing.visualization?.image_path ? (
                           <img
                             src={listing.visualization.image_path}
@@ -337,15 +348,15 @@ const Marketplace: React.FC = () => {
                           </div>
                         )}
                         
-                        {/* Premium Palette Badge */}
-                        {isPremiumPalette(extractPaletteId(listing.visualization?.game_data)) && (
-                          <Badge 
-                            className="absolute bottom-3 left-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-black gap-1"
-                          >
-                            <Palette className="h-3 w-3" />
-                            Premium Palette
-                          </Badge>
-                        )}
+                          {/* Premium Palette Badge with glow */}
+                          {hasPremiumPalette && (
+                            <Badge 
+                              className="absolute bottom-3 left-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-black gap-1 shadow-lg shadow-amber-500/30"
+                            >
+                              <Palette className="h-3 w-3" />
+                              Premium Palette
+                            </Badge>
+                          )}
                         
                         {/* Exemplar Badge */}
                         {listing.visualization?.title?.includes('Exemplar') && (
