@@ -319,8 +319,10 @@ const Marketplace: React.FC = () => {
                                 : 'border-border/50'
                           }`}
                           onClick={() => {
+                            console.log('[Marketplace] Card clicked, listing:', listing.id);
                             setSelectedListing(listing);
                             setShowDetailModal(true);
+                            console.log('[Marketplace] showDetailModal set to true');
                           }}
                         >
                           {/* Premium Shimmer Effect */}

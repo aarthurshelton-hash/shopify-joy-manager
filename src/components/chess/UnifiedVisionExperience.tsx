@@ -34,6 +34,11 @@ import {
   ChevronDown,
   Maximize2,
   Loader2,
+  BookOpen,
+  Zap,
+  Swords,
+  Info,
+  TrendingUp,
 } from 'lucide-react';
 import { SquareData, GameData, SimulationResult } from '@/lib/chess/gameSimulator';
 import { TimelineProvider, useTimeline } from '@/contexts/TimelineContext';
@@ -44,6 +49,7 @@ import GameInfoDisplay from './GameInfoDisplay';
 import { ShowPiecesToggle } from './ShowPiecesToggle';
 import BoardCoordinateGuide from './BoardCoordinateGuide';
 import { VisionScore, getVisionScore, calculateVisionValue, calculateMembershipMultiplier, SCORING_WEIGHTS } from '@/lib/visualizations/visionScoring';
+import { analyzeGame, GameAnalysis } from '@/lib/chess/chessAnalysis';
 import { setActivePalette, PaletteId, getActivePalette, getCurrentPalette } from '@/lib/chess/pieceColors';
 import { format } from 'date-fns';
 
@@ -229,14 +235,15 @@ const TimelineControls: React.FC<{
   );
 };
 
-// Analytics panel
+// Analytics panel with deep chess analysis
 const AnalyticsPanel: React.FC<{
   visionScore: VisionScore | null;
   isLoading: boolean;
   gameData: GameData;
   totalMoves: number;
   createdAt?: string;
-}> = ({ visionScore, isLoading, gameData, totalMoves, createdAt }) => {
+  gameAnalysis: GameAnalysis | null;
+}> = ({ visionScore, isLoading, gameData, totalMoves, createdAt, gameAnalysis }) => {
   const membershipMultiplier = calculateMembershipMultiplier(100);
   const estimatedValue = visionScore ? calculateVisionValue(visionScore, membershipMultiplier) : 0;
 
@@ -278,6 +285,139 @@ const AnalyticsPanel: React.FC<{
           </div>
         </div>
       </div>
+
+      {/* Deep Chess Analysis */}
+      {gameAnalysis && (
+        <div className="space-y-3">
+          <h3 className="font-display text-sm uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+            <BookOpen className="h-4 w-4" />
+            Deep Analysis
+          </h3>
+          
+          {/* Opening Detection */}
+          {gameAnalysis.opening && (
+            <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+              <div className="flex items-center gap-2 mb-1">
+                <Badge variant="outline" className="bg-blue-500/20 text-blue-600 border-blue-500/30">
+                  Opening
+                </Badge>
+                <span className="text-xs text-muted-foreground">{gameAnalysis.opening.eco}</span>
+              </div>
+              <p className="font-medium text-sm">{gameAnalysis.opening.name}</p>
+              <p className="text-xs text-muted-foreground mt-1">{gameAnalysis.opening.description}</p>
+            </div>
+          )}
+
+          {/* Gambit Detection */}
+          {gameAnalysis.gambit && (
+            <div className="p-3 rounded-lg bg-orange-500/10 border border-orange-500/20">
+              <div className="flex items-center gap-2 mb-1">
+                <Badge variant="outline" className="bg-orange-500/20 text-orange-600 border-orange-500/30">
+                  <Zap className="h-3 w-3 mr-1" />
+                  Gambit
+                </Badge>
+                <Badge variant="secondary" className="text-[10px]">{gameAnalysis.gambit.frequency}</Badge>
+              </div>
+              <p className="font-medium text-sm">{gameAnalysis.gambit.name}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Sacrifices {gameAnalysis.gambit.sacrificedMaterial} for {gameAnalysis.gambit.compensation}
+              </p>
+            </div>
+          )}
+
+          {/* Tactical Motifs */}
+          {gameAnalysis.tactics.length > 0 && (
+            <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
+              <div className="flex items-center gap-2 mb-2">
+                <Badge variant="outline" className="bg-purple-500/20 text-purple-600 border-purple-500/30">
+                  <Swords className="h-3 w-3 mr-1" />
+                  Tactics ({gameAnalysis.tactics.length})
+                </Badge>
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {gameAnalysis.tactics.slice(0, 6).map((tactic, i) => (
+                  <Badge key={i} variant="secondary" className="text-xs">
+                    {tactic.type === 'fork' && '⑂'}
+                    {tactic.type === 'pin' && '📌'}
+                    {tactic.type === 'discovery' && '💡'}
+                    {tactic.type === 'skewer' && '🗡️'}
+                    {tactic.type === 'back_rank' && '♛'}
+                    {tactic.type === 'smothered_mate' && '🏆'}
+                    {tactic.type === 'sacrifice' && '💎'}
+                    {tactic.type === 'double_attack' && '⚔️'}
+                    {' '}{tactic.type.replace('_', ' ')} (m{tactic.moveNumber})
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Special Moves */}
+          {gameAnalysis.specialMoves.length > 0 && (
+            <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+              <div className="flex items-center gap-2 mb-2">
+                <Badge variant="outline" className="bg-green-500/20 text-green-600 border-green-500/30">
+                  <Sparkles className="h-3 w-3 mr-1" />
+                  Special Moves
+                </Badge>
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {gameAnalysis.specialMoves.map((move, i) => (
+                  <Badge key={i} variant="secondary" className="text-xs">
+                    {move.type === 'castle_kingside' && '0-0'}
+                    {move.type === 'castle_queenside' && '0-0-0'}
+                    {move.type === 'en_passant' && 'e.p.'}
+                    {move.type === 'promotion' && `=${move.promotedTo?.toUpperCase()}`}
+                    {move.type === 'underpromotion' && `=${move.promotedTo?.toUpperCase()}!`}
+                    {' '}(m{move.moveNumber})
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Game Stats from Analysis */}
+          {gameAnalysis.summary && (
+            <div className="p-3 rounded-lg bg-muted/50 border border-border/50">
+              <div className="flex items-center justify-between mb-2">
+                <Badge variant="outline">
+                  <TrendingUp className="h-3 w-3 mr-1" />
+                  Statistics
+                </Badge>
+                <Badge 
+                  variant="secondary" 
+                  className={`text-[10px] ${
+                    gameAnalysis.summary.complexity === 'masterpiece' ? 'bg-amber-500/20 text-amber-600' :
+                    gameAnalysis.summary.complexity === 'complex' ? 'bg-purple-500/20 text-purple-600' :
+                    gameAnalysis.summary.complexity === 'moderate' ? 'bg-blue-500/20 text-blue-600' :
+                    'bg-green-500/20 text-green-600'
+                  }`}
+                >
+                  {gameAnalysis.summary.complexity}
+                </Badge>
+              </div>
+              <div className="grid grid-cols-4 gap-2 text-center text-xs">
+                <div>
+                  <p className="font-bold">{gameAnalysis.summary.totalMoves}</p>
+                  <p className="text-muted-foreground">Moves</p>
+                </div>
+                <div>
+                  <p className="font-bold">{gameAnalysis.summary.captureCount}</p>
+                  <p className="text-muted-foreground">Captures</p>
+                </div>
+                <div>
+                  <p className="font-bold">{gameAnalysis.summary.checkCount}</p>
+                  <p className="text-muted-foreground">Checks</p>
+                </div>
+                <div>
+                  <p className="font-bold">{gameAnalysis.summary.materialBalance > 0 ? '+' : ''}{gameAnalysis.summary.materialBalance}</p>
+                  <p className="text-muted-foreground">Material</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Vision Score */}
       {visionScore && (
@@ -395,6 +535,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
   const [activeTab, setActiveTab] = useState<'experience' | 'analytics'>(computedDefaultTab);
   const [visionScore, setVisionScore] = useState<VisionScore | null>(null);
   const [isLoadingScore, setIsLoadingScore] = useState(false);
+  const [gameAnalysis, setGameAnalysis] = useState<GameAnalysis | null>(null);
   
   // Board display options
   const [showCoordinates, setShowCoordinates] = useState(true);
@@ -429,6 +570,18 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
         .finally(() => setIsLoadingScore(false));
     }
   }, [visualizationId]);
+
+  // Analyze game
+  useEffect(() => {
+    if (gameData.pgn) {
+      try {
+        const analysis = analyzeGame(gameData.pgn);
+        setGameAnalysis(analysis);
+      } catch {
+        setGameAnalysis(null);
+      }
+    }
+  }, [gameData.pgn]);
 
   // Restore palette if provided
   useEffect(() => {
@@ -629,6 +782,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                   gameData={gameData}
                   totalMoves={totalMoves}
                   createdAt={createdAt}
+                  gameAnalysis={gameAnalysis}
                 />
 
                 {/* Purchase Button for Marketplace */}
