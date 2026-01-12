@@ -49,6 +49,8 @@ interface IntrinsicPaletteCardProps {
   // Game card info
   gameCardId?: string;
   gameCardTitle?: string;
+  gameCardMatchType?: 'exact' | 'partial' | 'none';
+  gameCardSimilarity?: number;
 }
 
 const IntrinsicPaletteCard: React.FC<IntrinsicPaletteCardProps> = ({ 
@@ -57,6 +59,8 @@ const IntrinsicPaletteCard: React.FC<IntrinsicPaletteCardProps> = ({
   compact = false,
   gameCardId,
   gameCardTitle,
+  gameCardMatchType,
+  gameCardSimilarity,
 }) => {
   const palette = paletteId ? colorPalettes.find(p => p.id === paletteId) : null;
   const gameCard = gameCardId ? famousGames.find(g => g.id === gameCardId) : null;
@@ -156,9 +160,21 @@ const IntrinsicPaletteCard: React.FC<IntrinsicPaletteCardProps> = ({
           <div className="flex items-center gap-3 p-3 mb-2 rounded-lg bg-amber-500/10 backdrop-blur-sm border border-amber-500/30">
             <Trophy className="h-8 w-8 text-amber-500 shrink-0" />
             <div className="flex-1 min-w-0">
-              <h4 className="font-display font-semibold text-sm text-amber-600">
-                {gameCard.title}
-              </h4>
+              <div className="flex items-center gap-2 mb-0.5">
+                <h4 className="font-display font-semibold text-sm text-amber-600">
+                  {gameCard.title}
+                </h4>
+                {gameCardMatchType === 'exact' && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/20 text-green-600 font-semibold">
+                    EXACT MATCH
+                  </span>
+                )}
+                {gameCardMatchType === 'partial' && gameCardSimilarity && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-600 font-semibold">
+                    {Math.round(gameCardSimilarity * 100)}% MATCH
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-muted-foreground font-serif">
                 {gameCard.white} vs {gameCard.black} • {gameCard.year}
               </p>

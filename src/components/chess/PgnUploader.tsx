@@ -1,11 +1,12 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Upload, FileText, Crown, Sparkles, CheckCircle, XCircle, Loader2, Wrench, ArrowRight, ChevronLeft, ChevronRight, Search, X, Shuffle, Heart } from 'lucide-react';
+import { Upload, FileText, Crown, Sparkles, CheckCircle, XCircle, Loader2, Wrench, ArrowRight, ChevronLeft, ChevronRight, Search, X, Shuffle, Heart, Award } from 'lucide-react';
 import { famousGames, FamousGame, getRandomFamousGame } from '@/lib/chess/famousGames';
 import { gameImageImports } from '@/lib/chess/gameImages';
 import { validatePgn, cleanPgn, PgnValidationResult } from '@/lib/chess/pgnValidator';
 import { fixPgn, PgnFixResult } from '@/lib/chess/pgnFixer';
+import { detectGameCard } from '@/lib/chess/gameCardDetection';
 import { toast } from 'sonner';
 import { useFavoriteGames } from '@/hooks/useFavoriteGames';
 import { useAuth } from '@/hooks/useAuth';
@@ -181,19 +182,64 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
     setFixResult(null);
   }, []);
   
+  // Auto-detect if uploaded/pasted PGN matches a famous game card
+  const checkForGameCardMatch = useCallback((pgnText: string) => {
+    const match = detectGameCard(pgnText);
+    
+    if (match.isMatch && match.matchedGame) {
+      const game = match.matchedGame;
+      setSelectedGame(game);
+      
+      // Show toast with match details
+      const matchPercentage = Math.round(match.similarity * 100);
+      
+      if (match.matchType === 'exact') {
+        toast.success(
+          <div className="flex items-center gap-2">
+            <Award className="h-4 w-4 text-primary" />
+            <span>En Pensent Game Card Detected!</span>
+          </div>,
+          {
+            description: `This is "${game.title}" (${game.year}) - an Intrinsically Valued Game Card.`,
+            duration: 6000,
+          }
+        );
+      } else {
+        toast.info(
+          <div className="flex items-center gap-2">
+            <Crown className="h-4 w-4 text-primary" />
+            <span>Similar Game Card Found</span>
+          </div>,
+          {
+            description: `${matchPercentage}% match with "${game.title}" (${game.year}).`,
+            duration: 5000,
+          }
+        );
+      }
+      
+      return true;
+    }
+    
+    return false;
+  }, []);
+
   const handleFileUpload = useCallback((file: File) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = e.target?.result as string;
       if (text) {
         setPgn(text);
-        setSelectedGame(null);
         setValidation(null);
         setFixResult(null);
+        
+        // Check for game card match
+        if (!checkForGameCardMatch(text)) {
+          setSelectedGame(null);
+        }
       }
     };
     reader.readAsText(file);
-  }, []);
+  }, [checkForGameCardMatch]);
   
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -546,10 +592,27 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
               placeholder="Or paste PGN notation here..."
               value={pgn}
               onChange={(e) => {
-                setPgn(e.target.value);
-                setSelectedGame(null);
+                const newPgn = e.target.value;
+                setPgn(newPgn);
                 setValidation(null);
                 setFixResult(null);
+                
+                // Check for game card match when paste is detected (large text change)
+                if (newPgn.length > 50 && Math.abs(newPgn.length - pgn.length) > 30) {
+                  if (!checkForGameCardMatch(newPgn)) {
+                    setSelectedGame(null);
+                  }
+                } else if (newPgn.length < 20) {
+                  // Clear selection for very short input
+                  setSelectedGame(null);
+                }
+              }}
+              onBlur={(e) => {
+                // Also check on blur for manually typed PGNs
+                const currentPgn = e.target.value;
+                if (currentPgn.length > 50 && !selectedGame) {
+                  checkForGameCardMatch(currentPgn);
+                }
               }}
               className="min-h-[100px] font-mono text-xs bg-background/50 border-border/50 focus:border-primary/50"
             />
