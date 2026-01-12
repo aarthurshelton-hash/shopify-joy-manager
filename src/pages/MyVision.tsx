@@ -30,6 +30,7 @@ import { Footer } from '@/components/shop/Footer';
 import { usePrintOrderStore } from '@/stores/printOrderStore';
 import { useSessionStore } from '@/stores/sessionStore';
 import { PortfolioRoyaltySummary } from '@/components/vision/PortfolioRoyaltySummary';
+import { GracePeriodBanner } from '@/components/notifications/GracePeriodBanner';
 
 const MyVision: React.FC = () => {
   const navigate = useNavigate();
@@ -375,6 +376,8 @@ const MyVision: React.FC = () => {
     <div className="min-h-screen bg-background">
       <Header />
       <div className="container mx-auto px-4 py-8">
+        {/* Grace Period Warning Banner */}
+        <GracePeriodBanner className="mb-6" />
         <div className="mb-8">
           <div className="flex items-center justify-between gap-3 mb-2">
             <div className="flex items-center gap-3">
