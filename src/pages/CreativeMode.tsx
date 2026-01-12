@@ -20,6 +20,7 @@ import {
 } from '@/lib/chess/pieceColors';
 import { SquareData, SquareVisit } from '@/lib/chess/gameSimulator';
 import { getUserVisualizations, SavedVisualization, saveVisualization } from '@/lib/visualizations/visualizationStorage';
+import { checkCreativeSimilarity, getCreativeSimilarityWarning } from '@/lib/visualizations/similarityDetection';
 import AuthModal from '@/components/auth/AuthModal';
 import PremiumUpgradeModal from '@/components/premium/PremiumUpgradeModal';
 import { LiveColorLegend } from '@/components/chess/LiveColorLegend';
@@ -28,6 +29,7 @@ import { useSessionStore } from '@/stores/sessionStore';
 import { useNavigate } from 'react-router-dom';
 import ChessBoardVisualization from '@/components/chess/ChessBoardVisualization';
 import { LayerInspector } from '@/components/chess/LayerInspector';
+import { SimilarityWarning } from '@/components/chess/SimilarityWarning';
 
 type PieceKey = 'K' | 'Q' | 'R' | 'B' | 'N' | 'P' | 'k' | 'q' | 'r' | 'b' | 'n' | 'p' | null;
 type EditMode = 'place' | 'paint' | 'erase';
@@ -209,6 +211,15 @@ const CreativeMode = () => {
   });
   
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Similarity tracking
+  const [similarityWarning, setSimilarityWarning] = useState<{
+    level: 'none' | 'low' | 'medium' | 'high' | 'blocked';
+    similarity: number;
+    ownerName?: string;
+  }>({ level: 'none', similarity: 0 });
+  const [isCheckingSimilarity, setIsCheckingSimilarity] = useState(false);
+  const similarityCheckTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Undo/Redo system
   const initialState: CreativeState = {
@@ -263,6 +274,44 @@ const CreativeMode = () => {
     buildVisualizationBoard(pieceBoard, paintData, whitePalette, blackPalette),
     [pieceBoard, paintData, whitePalette, blackPalette]
   );
+
+  // Check similarity whenever visualization board changes (debounced)
+  useEffect(() => {
+    if (!user || !isPremium) return;
+    
+    // Clear existing timeout
+    if (similarityCheckTimeoutRef.current) {
+      clearTimeout(similarityCheckTimeoutRef.current);
+    }
+    
+    // Only check if there's some paint data
+    const hasPaintData = paintData.size > 0;
+    if (!hasPaintData) {
+      setSimilarityWarning({ level: 'none', similarity: 0 });
+      return;
+    }
+    
+    setIsCheckingSimilarity(true);
+    
+    // Debounce the similarity check
+    similarityCheckTimeoutRef.current = setTimeout(async () => {
+      try {
+        const warning = await getCreativeSimilarityWarning(user.id, visualizationBoard);
+        setSimilarityWarning(warning);
+      } catch (error) {
+        console.error('Similarity check failed:', error);
+        setSimilarityWarning({ level: 'none', similarity: 0 });
+      } finally {
+        setIsCheckingSimilarity(false);
+      }
+    }, 800);
+    
+    return () => {
+      if (similarityCheckTimeoutRef.current) {
+        clearTimeout(similarityCheckTimeoutRef.current);
+      }
+    };
+  }, [visualizationBoard, user, isPremium, paintData.size]);
 
   // Handle square click based on edit mode
   const handleSquareClick = useCallback((row: number, col: number) => {
@@ -438,9 +487,37 @@ const CreativeMode = () => {
       setShowUpgradeModal(true);
       return;
     }
+    
+    // Check similarity first
+    if (similarityWarning.level === 'blocked') {
+      toast.error(
+        similarityWarning.ownerName 
+          ? `This design is too similar to ${similarityWarning.ownerName}'s vision. Make more changes to save it.`
+          : 'This design is too similar to an existing vision. Make more changes to create something unique.'
+      );
+      return;
+    }
 
     setIsSaving(true);
     try {
+      // Run final similarity check before saving
+      const finalCheck = await checkCreativeSimilarity(user.id, visualizationBoard, whitePalette, blackPalette);
+      
+      if (finalCheck.isTooSimilar) {
+        const message = finalCheck.ownerDisplayName
+          ? `This design is ${Math.round(finalCheck.similarity)}% similar to ${finalCheck.ownerDisplayName}'s vision`
+          : `This design is ${Math.round(finalCheck.similarity)}% similar to an existing vision`;
+        toast.error(message);
+        setSimilarityWarning({ 
+          level: 'blocked', 
+          similarity: finalCheck.similarity, 
+          ownerName: finalCheck.ownerDisplayName 
+        });
+        setIsSaving(false);
+        return;
+      }
+      
+      // Generate image from visualization
       // Generate image from visualization
       const canvas = document.createElement('canvas');
       const size = 1200;
@@ -836,17 +913,24 @@ const CreativeMode = () => {
                   </AnimatePresence>
                 </div>
 
+
                 {/* Save actions */}
                 <div className="flex gap-3 justify-center pt-4">
                   <Button 
                     onClick={handleSaveToGallery} 
                     className="gap-2"
-                    disabled={isSaving || !isPremium}
+                    disabled={isSaving || !isPremium || similarityWarning.level === 'blocked'}
+                    variant={similarityWarning.level === 'blocked' ? 'outline' : 'default'}
                   >
                     {isSaving ? (
                       <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}>
                         <Save className="h-4 w-4" />
                       </motion.div>
+                    ) : similarityWarning.level === 'blocked' ? (
+                      <>
+                        <Lock className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-muted-foreground">Vision Claimed</span>
+                      </>
                     ) : (
                       <>
                         {!isPremium && <Lock className="h-4 w-4" />}
@@ -860,6 +944,16 @@ const CreativeMode = () => {
 
               {/* Right sidebar - Legend & Inspector */}
               <div className="lg:col-span-3 space-y-4">
+                {/* Similarity Status for Premium */}
+                {isPremium && (
+                  <SimilarityWarning
+                    level={similarityWarning.level}
+                    similarity={similarityWarning.similarity}
+                    ownerName={similarityWarning.ownerName}
+                    isChecking={isCheckingSimilarity}
+                  />
+                )}
+                
                 {/* Layer Inspector */}
                 <LayerInspector
                   selectedSquare={inspectedSquare}

@@ -367,3 +367,213 @@ export async function propagatePaletteChanges(
     return { updated: 0, error: error as Error };
   }
 }
+
+/**
+ * Generate a fingerprint for Creative Mode board data
+ * Compares paint data structure rather than PGN/moves
+ */
+function generateCreativeBoardFingerprint(
+  paintData: Map<string, Array<{ piece: string; color: string; hexColor: string }>>,
+  whitePalette: Record<PieceType, string>,
+  blackPalette: Record<PieceType, string>
+): string {
+  // Create sorted representation of paint data
+  const paintEntries = Array.from(paintData.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, visits]) => `${key}:${visits.map(v => `${v.piece}${v.color}${v.hexColor}`).join(',')}`);
+  
+  const paletteStr = Object.entries(whitePalette).sort().map(([k, v]) => `w${k}${v}`).join('') +
+                     Object.entries(blackPalette).sort().map(([k, v]) => `b${k}${v}`).join('');
+  
+  return `creative:${paintEntries.join('|')}::${paletteStr}`;
+}
+
+/**
+ * Calculate similarity between two creative board states
+ * Returns percentage of matching squares (by color content)
+ */
+export function calculateCreativeBoardSimilarity(
+  board1: Array<Array<{ visits: Array<{ hexColor: string }> }>>,
+  board2: Array<Array<{ visits: Array<{ hexColor: string }> }>>
+): number {
+  let matchingSquares = 0;
+  let totalActiveSquares = 0;
+  
+  for (let rank = 0; rank < 8; rank++) {
+    for (let file = 0; file < 8; file++) {
+      const visits1 = board1[rank]?.[file]?.visits || [];
+      const visits2 = board2[rank]?.[file]?.visits || [];
+      
+      // If both have visits, compare them
+      if (visits1.length > 0 || visits2.length > 0) {
+        totalActiveSquares++;
+        
+        // Compare color sets
+        const colors1 = new Set(visits1.map(v => v.hexColor.toLowerCase()));
+        const colors2 = new Set(visits2.map(v => v.hexColor.toLowerCase()));
+        
+        if (colors1.size === colors2.size) {
+          let allMatch = true;
+          for (const color of colors1) {
+            if (!colors2.has(color)) {
+              allMatch = false;
+              break;
+            }
+          }
+          if (allMatch) matchingSquares++;
+        }
+      }
+    }
+  }
+  
+  if (totalActiveSquares === 0) return 0;
+  return (matchingSquares / totalActiveSquares) * 100;
+}
+
+export interface CreativeSimilarityResult {
+  isTooSimilar: boolean;
+  similarity: number;
+  existingVisualizationId?: string;
+  ownerDisplayName?: string;
+  ownedByCurrentUser?: boolean;
+  reason?: string;
+}
+
+/**
+ * Check if a Creative Mode visualization is too similar to existing ones
+ * Blocks save if 70%+ of painted squares match existing vision
+ */
+export async function checkCreativeSimilarity(
+  userId: string,
+  visualizationBoard: Array<Array<{ visits: Array<{ hexColor: string }> }>>,
+  whitePalette: Record<PieceType, string>,
+  blackPalette: Record<PieceType, string>
+): Promise<CreativeSimilarityResult> {
+  try {
+    // Fetch all creative mode visualizations (marked by having 'Creative' as white player)
+    const { data: existingViz, error } = await supabase
+      .from('saved_visualizations')
+      .select('id, user_id, game_data');
+    
+    if (error) {
+      console.error('Error fetching visualizations for creative similarity check:', error);
+      return { isTooSimilar: false, similarity: 0 };
+    }
+    
+    let highestSimilarity = 0;
+    let mostSimilarViz: typeof existingViz[0] | null = null;
+    
+    // Check against each existing visualization
+    for (const viz of existingViz || []) {
+      const vizGameData = viz.game_data as unknown as { 
+        board?: Array<Array<{ visits: Array<{ hexColor: string }> }>>;
+        gameData?: { white?: string };
+      };
+      
+      // Only compare with saved visualizations that have board data
+      if (!vizGameData.board) continue;
+      
+      const similarity = calculateCreativeBoardSimilarity(visualizationBoard, vizGameData.board);
+      
+      if (similarity > highestSimilarity) {
+        highestSimilarity = similarity;
+        mostSimilarViz = viz;
+      }
+    }
+    
+    // If 70%+ similar, it's too close
+    if (highestSimilarity >= 70 && mostSimilarViz) {
+      const ownedByCurrentUser = mostSimilarViz.user_id === userId;
+      
+      let ownerDisplayName: string | undefined;
+      if (!ownedByCurrentUser) {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('display_name')
+          .eq('user_id', mostSimilarViz.user_id)
+          .single();
+        ownerDisplayName = profileData?.display_name || 'Another collector';
+      }
+      
+      return {
+        isTooSimilar: true,
+        similarity: highestSimilarity,
+        existingVisualizationId: mostSimilarViz.id,
+        ownerDisplayName,
+        ownedByCurrentUser,
+        reason: `This design is ${Math.round(highestSimilarity)}% similar to an existing vision`,
+      };
+    }
+    
+    return { 
+      isTooSimilar: false, 
+      similarity: highestSimilarity,
+    };
+  } catch (error) {
+    console.error('Error in creative similarity check:', error);
+    return { isTooSimilar: false, similarity: 0 };
+  }
+}
+
+/**
+ * Get real-time similarity warning level for Creative Mode
+ * Returns warning info without blocking (for live feedback)
+ */
+export async function getCreativeSimilarityWarning(
+  userId: string,
+  visualizationBoard: Array<Array<{ visits: Array<{ hexColor: string }> }>>
+): Promise<{ level: 'none' | 'low' | 'medium' | 'high' | 'blocked'; similarity: number; ownerName?: string }> {
+  try {
+    const { data: existingViz, error } = await supabase
+      .from('saved_visualizations')
+      .select('id, user_id, game_data');
+    
+    if (error || !existingViz) {
+      return { level: 'none', similarity: 0 };
+    }
+    
+    let highestSimilarity = 0;
+    let ownerUserId: string | null = null;
+    
+    for (const viz of existingViz) {
+      const vizGameData = viz.game_data as unknown as { 
+        board?: Array<Array<{ visits: Array<{ hexColor: string }> }>>;
+      };
+      
+      if (!vizGameData.board) continue;
+      
+      const similarity = calculateCreativeBoardSimilarity(visualizationBoard, vizGameData.board);
+      
+      if (similarity > highestSimilarity) {
+        highestSimilarity = similarity;
+        ownerUserId = viz.user_id;
+      }
+    }
+    
+    // Get owner name if not current user
+    let ownerName: string | undefined;
+    if (ownerUserId && ownerUserId !== userId && highestSimilarity >= 40) {
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('display_name')
+        .eq('user_id', ownerUserId)
+        .single();
+      ownerName = profileData?.display_name || 'Another collector';
+    }
+    
+    // Determine warning level
+    if (highestSimilarity >= 70) {
+      return { level: 'blocked', similarity: highestSimilarity, ownerName };
+    } else if (highestSimilarity >= 55) {
+      return { level: 'high', similarity: highestSimilarity, ownerName };
+    } else if (highestSimilarity >= 40) {
+      return { level: 'medium', similarity: highestSimilarity, ownerName };
+    } else if (highestSimilarity >= 25) {
+      return { level: 'low', similarity: highestSimilarity };
+    }
+    
+    return { level: 'none', similarity: highestSimilarity };
+  } catch (error) {
+    return { level: 'none', similarity: 0 };
+  }
+}
