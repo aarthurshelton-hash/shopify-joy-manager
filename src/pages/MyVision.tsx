@@ -229,11 +229,20 @@ const MyVision: React.FC = () => {
             <p className="text-muted-foreground">
               Sign in to access your personal gallery of saved chess visualizations.
             </p>
-            <Button onClick={() => setShowAuthModal(true)} className="btn-luxury">
+            <Button onClick={() => setShowVisionaryModal(true)} className="btn-luxury">
               Sign In to Continue
             </Button>
           </div>
           
+          <VisionaryMembershipCard
+            isOpen={showVisionaryModal}
+            onClose={() => setShowVisionaryModal(false)}
+            onAuthRequired={() => {
+              setShowVisionaryModal(false);
+              setShowAuthModal(true);
+            }}
+            trigger="save"
+          />
           <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
         </div>
         <Footer />

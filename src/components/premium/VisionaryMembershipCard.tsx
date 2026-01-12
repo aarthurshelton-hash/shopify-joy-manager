@@ -39,6 +39,7 @@ import {
   Gem,
   X,
   ChevronRight,
+  User,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -443,10 +444,16 @@ export const VisionaryMembershipCard: React.FC<VisionaryMembershipCardProps> = (
                 >
                   {isLoading ? (
                     <><Loader2 className="h-4 w-4 animate-spin" /> Processing...</>
-                  ) : (
+                  ) : user ? (
                     <>
                       <Crown className="h-4 w-4" />
-                      {user ? 'Become a Visionary' : 'Sign Up & Join'}
+                      Become a Visionary
+                      <ChevronRight className="h-4 w-4" />
+                    </>
+                  ) : (
+                    <>
+                      <User className="h-4 w-4" />
+                      Sign In / Sign Up
                       <ChevronRight className="h-4 w-4" />
                     </>
                   )}

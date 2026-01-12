@@ -15,12 +15,14 @@ import { User, LogOut, Palette, Settings, Crown, CreditCard, Image, Gamepad2, Ba
 import AuthModal from './AuthModal';
 import MFASetup from './MFASetup';
 import PremiumBadge from '@/components/premium/PremiumBadge';
+import { VisionaryMembershipCard } from '@/components/premium';
 import { supabase } from '@/integrations/supabase/client';
 
 const UserMenu: React.FC = () => {
   const { user, profile, isLoading, isPremium, mfaStatus, signOut, openCheckout, openCustomerPortal } = useAuth();
   const navigate = useNavigate();
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showVisionaryModal, setShowVisionaryModal] = useState(false);
   const [showMFASetup, setShowMFASetup] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -63,12 +65,21 @@ const UserMenu: React.FC = () => {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => setShowAuthModal(true)}
+          onClick={() => setShowVisionaryModal(true)}
           className="gap-2"
         >
           <User className="h-4 w-4" />
           Sign In
         </Button>
+        <VisionaryMembershipCard
+          isOpen={showVisionaryModal}
+          onClose={() => setShowVisionaryModal(false)}
+          onAuthRequired={() => {
+            setShowVisionaryModal(false);
+            setShowAuthModal(true);
+          }}
+          trigger="general"
+        />
         <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
       </>
     );
@@ -131,7 +142,7 @@ const UserMenu: React.FC = () => {
           {!isPremium && (
             <>
               <DropdownMenuItem 
-                onClick={handleSubscriptionAction}
+                onClick={() => setShowVisionaryModal(true)}
                 className="gap-2 cursor-pointer bg-primary/5 text-primary focus:bg-primary/10 focus:text-primary"
               >
                 <Crown className="h-4 w-4" />
@@ -274,6 +285,17 @@ const UserMenu: React.FC = () => {
       </DropdownMenu>
 
       <MFASetup isOpen={showMFASetup} onClose={() => setShowMFASetup(false)} />
+      
+      <VisionaryMembershipCard
+        isOpen={showVisionaryModal}
+        onClose={() => setShowVisionaryModal(false)}
+        onAuthRequired={() => {
+          setShowVisionaryModal(false);
+          setShowAuthModal(true);
+        }}
+        trigger="general"
+      />
+      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
     </>
   );
 };
