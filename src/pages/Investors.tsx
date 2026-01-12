@@ -683,6 +683,31 @@ const Investors = () => {
                   </p>
                 </div>
 
+                {/* Natural QR Vision - Flagship Innovation */}
+                <div className="p-4 rounded-lg bg-gradient-to-br from-primary/10 to-amber-500/5 border-2 border-primary/30 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-display font-bold uppercase tracking-wide text-primary">Natural QR Vision™</h3>
+                    <span className="px-2 py-0.5 text-xs bg-amber-500/20 text-amber-600 rounded-full font-display">Innovation</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground font-serif">
+                    <strong className="text-foreground">Every visualization is a scannable digital fingerprint.</strong> The unique color patterns created by each game form a natural visual signature that can be recognized and linked to complete game data—no QR code needed.
+                  </p>
+                  <ul className="space-y-2">
+                    <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
+                      <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                      <span><strong className="text-foreground">Physical-to-digital bridge</strong> — scan any print to access game replay, analytics, and Vision Score</span>
+                    </li>
+                    <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
+                      <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                      <span><strong className="text-foreground">Pattern recognition</strong> — AI-powered camera scanning identifies unique game signatures</span>
+                    </li>
+                    <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
+                      <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                      <span><strong className="text-foreground">Art that remembers</strong> — each print becomes a permanent gateway to its game's complete history</span>
+                    </li>
+                  </ul>
+                </div>
+
                 <div className="space-y-3">
                   <h3 className="font-display font-bold uppercase tracking-wide text-primary">Technical Capabilities</h3>
                   <ul className="space-y-2">
@@ -708,7 +733,7 @@ const Investors = () => {
                 <div className="p-4 rounded-lg bg-primary/5 border border-primary/20 space-y-2">
                   <h3 className="font-display font-bold uppercase tracking-wide text-primary">Competitive Moat</h3>
                   <p className="text-sm text-muted-foreground font-serif">
-                    No existing product combines chess analysis with personalized art at this level. Our algorithm creates unique, meaningful visualizations that resonate emotionally with players.
+                    No existing product combines chess analysis with personalized art at this level. Our Natural QR Vision™ technology creates a unique physical-to-digital bridge—each visualization is both fine art and a functional data gateway. This positions En Pensent as the only platform where art literally stores and retrieves its own history.
                   </p>
                 </div>
               </div>

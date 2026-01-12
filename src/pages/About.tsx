@@ -1,11 +1,12 @@
 import { useMemo } from 'react';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
-import { Crown, Heart, Palette, Users, Lightbulb, Sparkles, Eye } from 'lucide-react';
+import { Crown, Heart, Palette, Users, Lightbulb, Sparkles, Eye, ScanLine, QrCode, Camera, Fingerprint } from 'lucide-react';
 import { useRandomGameArt } from '@/hooks/useRandomGameArt';
+import { Badge } from '@/components/ui/badge';
 
 const About = () => {
-  const backgroundImages = useRandomGameArt(4);
+  const backgroundImages = useRandomGameArt(5);
   
   return (
     <div className="min-h-screen bg-background">
@@ -74,6 +75,85 @@ const About = () => {
                 Our proprietary algorithm traces every piece's journey across the 64 squares, encoding 
                 movement as color, building a layered artwork that reveals the soul of the game.
               </p>
+            </div>
+          </div>
+
+          {/* Natural QR Vision Technology - NEW FLAGSHIP SECTION */}
+          <div className="relative space-y-4 p-6 rounded-xl border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-amber-500/5 overflow-hidden">
+            {backgroundImages[4] && (
+              <div 
+                className="absolute inset-0 opacity-[0.06] bg-cover bg-center"
+                style={{ backgroundImage: `url(${backgroundImages[4]})` }}
+              />
+            )}
+            <div className="relative z-10">
+              <div className="flex items-center gap-3 mb-4">
+                <h2 className="text-2xl font-display font-bold uppercase tracking-wider flex items-center gap-2">
+                  <ScanLine className="h-5 w-5 text-primary" />
+                  Natural QR Vision™
+                </h2>
+                <Badge className="bg-primary/20 text-primary border-primary/30">
+                  <Sparkles className="h-3 w-3 mr-1" />
+                  Innovation
+                </Badge>
+              </div>
+              
+              <p className="text-muted-foreground font-serif leading-relaxed">
+                Every En Pensent visualization is more than art — it's a <strong className="text-foreground">scannable digital fingerprint</strong>. 
+                The unique pattern of colors and positions created by each game forms a natural visual signature 
+                that can be recognized and linked back to its complete game data.
+              </p>
+              
+              <div className="grid sm:grid-cols-3 gap-4 mt-6">
+                <div className="p-4 rounded-lg bg-background/50 border border-border/50 text-center space-y-2">
+                  <div className="w-10 h-10 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
+                    <Camera className="h-5 w-5 text-primary" />
+                  </div>
+                  <h4 className="font-display text-sm font-bold uppercase">Scan</h4>
+                  <p className="text-xs text-muted-foreground font-serif">
+                    Point any camera at a vision print or image
+                  </p>
+                </div>
+                
+                <div className="p-4 rounded-lg bg-background/50 border border-border/50 text-center space-y-2">
+                  <div className="w-10 h-10 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
+                    <Fingerprint className="h-5 w-5 text-primary" />
+                  </div>
+                  <h4 className="font-display text-sm font-bold uppercase">Recognize</h4>
+                  <p className="text-xs text-muted-foreground font-serif">
+                    Pattern recognition identifies the unique game signature
+                  </p>
+                </div>
+                
+                <div className="p-4 rounded-lg bg-background/50 border border-border/50 text-center space-y-2">
+                  <div className="w-10 h-10 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
+                    <QrCode className="h-5 w-5 text-primary" />
+                  </div>
+                  <h4 className="font-display text-sm font-bold uppercase">Connect</h4>
+                  <p className="text-xs text-muted-foreground font-serif">
+                    Instantly access game data, analytics, and Vision Score
+                  </p>
+                </div>
+              </div>
+              
+              <div className="mt-6 p-4 rounded-lg bg-primary/5 border border-primary/20">
+                <h4 className="font-display text-sm font-bold uppercase text-primary mb-2">
+                  Physical-to-Digital Bridge
+                </h4>
+                <p className="text-sm text-muted-foreground font-serif">
+                  Premium prints include a subtle gold QR code as a fallback, but the visualization itself 
+                  <em> is</em> the code. Every print becomes a gateway: scan it to reveal the complete game history, 
+                  move-by-move replay, creator profile, and real-time Vision Score analytics. 
+                  <strong className="text-foreground"> Art that remembers its story.</strong>
+                </p>
+              </div>
+              
+              <div className="mt-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                <p className="text-sm font-serif text-amber-600">
+                  <strong>Coming Soon:</strong> Mobile camera scanning for instant vision recognition. 
+                  Point, scan, explore — no QR code needed.
+                </p>
+              </div>
             </div>
           </div>
           
@@ -157,6 +237,15 @@ const About = () => {
                 <h3 className="font-display font-bold text-sm uppercase tracking-wide text-primary">Museum-Quality Prints</h3>
                 <p className="text-sm text-muted-foreground font-serif mt-1">
                   Premium archival prints from 8×10 to 24×36. Gallery-ready framing options. Production-cost pricing with 0% markup.
+                </p>
+              </div>
+              <div className="p-4 rounded-lg bg-gradient-to-r from-primary/5 to-amber-500/5 border-2 border-primary/30">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-display font-bold text-sm uppercase tracking-wide text-primary">Natural QR Vision™</h3>
+                  <Badge className="bg-amber-500/20 text-amber-600 border-amber-500/30 text-xs">New</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground font-serif mt-1">
+                  Every visualization is a scannable fingerprint. Point a camera at any print and instantly access the game's complete history, analytics, and Vision Score. Art that remembers its story.
                 </p>
               </div>
               <div className="p-4 rounded-lg bg-card/50 border border-border/50">
