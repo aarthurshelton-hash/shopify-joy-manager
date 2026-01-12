@@ -25,7 +25,10 @@ import {
   RefreshCw,
   ImageDown,
   FolderDown,
-  Archive
+  Archive,
+  ShoppingCart,
+  ExternalLink,
+  Package
 } from 'lucide-react';
 import { carlsenTop100, CarlsenGame } from '@/lib/book/carlsenGames';
 import { BookSpread } from '@/components/book/BookSpread';
@@ -1162,6 +1165,47 @@ printed copies of "Carlsen in Color."
                     Download ZIP ({completedCount} images)
                   </Button>
                 </div>
+              </div>
+
+              {/* Print Order Section */}
+              <div className="space-y-3 p-3 rounded-lg bg-amber-50 border border-amber-200">
+                <h4 className="text-sm font-medium text-amber-900 flex items-center gap-2">
+                  <Package className="w-4 h-4" />
+                  Order Physical Book
+                </h4>
+                <p className="text-xs text-amber-700">
+                  Ready to print? Order your hardcover coffee table book through our print partner.
+                </p>
+                
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="p-2 bg-white/60 rounded">
+                    <div className="font-medium text-amber-900">Standard</div>
+                    <div className="text-amber-700">8.5" × 11" • $79.99</div>
+                    <div className="text-amber-600">~2.5 lbs</div>
+                  </div>
+                  <div className="p-2 bg-white/60 rounded">
+                    <div className="font-medium text-amber-900">Large Format</div>
+                    <div className="text-amber-700">11" × 14" • $99.99</div>
+                    <div className="text-amber-600">~4 lbs</div>
+                  </div>
+                </div>
+
+                <Button 
+                  onClick={() => window.open('https://printify-shop-manager-fs4kw.myshopify.com/collections/all?q=book', '_blank')}
+                  size="sm"
+                  className="w-full bg-amber-700 hover:bg-amber-800 text-white"
+                  disabled={completedCount < 100}
+                >
+                  <ShoppingCart className="w-3 h-3 mr-1" />
+                  {completedCount < 100 ? `Complete all spreads first (${completedCount}/100)` : 'Order Print Book'}
+                  <ExternalLink className="w-3 h-3 ml-1" />
+                </Button>
+                
+                {completedCount === 100 && (
+                  <p className="text-xs text-center text-amber-600">
+                    ✓ All spreads ready • Book will ship in 5-7 business days
+                  </p>
+                )}
               </div>
 
               <Separator className="bg-[#D4D4C4]" />

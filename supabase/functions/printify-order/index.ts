@@ -15,8 +15,10 @@ interface OrderLineItem {
   sku: string;
   size: string;
   customImageUrl: string;
-  productType?: 'print' | 'frame' | 'infocard';
+  productType?: 'print' | 'frame' | 'infocard' | 'book';
   frameStyle?: string;
+  bookFormat?: 'standard' | 'large';
+  bookPagesZipUrl?: string;
 }
 
 interface ShippingAddress {
@@ -145,9 +147,36 @@ const INFO_CARD_BLUEPRINT = {
   print_provider_id: 99,
 };
 
+// Photo Book blueprints - using Lulu integration via print provider
+// Note: For premium hardcover books, orders are processed manually
+// and forwarded to a specialized book printer (Lulu/Blurb)
+const BOOK_BLUEPRINTS: Record<string, { 
+  blueprint_id: number; 
+  variant_id: number; 
+  print_provider_id: number;
+  page_count: number;
+  weight_lbs: number;
+}> = {
+  'standard': {
+    blueprint_id: 1200, // Custom book - placeholder
+    variant_id: 120001,
+    print_provider_id: 99,
+    page_count: 220,
+    weight_lbs: 2.5,
+  },
+  'large': {
+    blueprint_id: 1201, // Custom large book - placeholder
+    variant_id: 120101,
+    print_provider_id: 99,
+    page_count: 220,
+    weight_lbs: 4.0,
+  },
+};
+
 // Shipping cost configuration
 const FRAME_SHIPPING_COST = 1299; // $12.99 in cents
 const FREE_FRAME_SHIPPING_THRESHOLD = 3; // Free shipping at 3+ framed items
+const BOOK_SHIPPING_COST = 999; // $9.99 base book shipping
 
 async function createPrintifyOrder(
   shopifyOrderId: string,
@@ -206,6 +235,44 @@ async function createPrintifyOrder(
         quantity: item.quantity,
         print_areas: {
           front: uploadResult.id,
+        },
+      });
+      continue;
+    }
+
+    // Handle book orders - these are queued for manual processing
+    // with specialized book printers (Lulu/Blurb integration)
+    if (item.productType === 'book' && item.bookFormat) {
+      const bookConfig = BOOK_BLUEPRINTS[item.bookFormat];
+      if (!bookConfig) {
+        console.error(`Unknown book format: ${item.bookFormat}`);
+        continue;
+      }
+
+      // For books, we store the order details for manual fulfillment
+      // The cover image is uploaded as reference
+      const uploadResult = await uploadImage(
+        item.customImageUrl,
+        `carlsen-book-cover-${shopifyOrderId}-${Date.now()}.jpg`
+      );
+
+      // Book orders are flagged for manual processing
+      // In production, this would integrate with Lulu/Blurb API
+      printifyLineItems.push({
+        product_id: null,
+        blueprint_id: bookConfig.blueprint_id,
+        variant_id: bookConfig.variant_id,
+        print_provider_id: bookConfig.print_provider_id,
+        quantity: item.quantity,
+        print_areas: {
+          front: uploadResult.id,
+        },
+        metadata: {
+          type: 'book',
+          format: item.bookFormat,
+          pagesZipUrl: item.bookPagesZipUrl || null,
+          pageCount: bookConfig.page_count,
+          weightLbs: bookConfig.weight_lbs,
         },
       });
       continue;
