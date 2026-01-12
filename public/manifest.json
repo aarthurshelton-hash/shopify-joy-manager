@@ -1,0 +1,54 @@
+{
+  "name": "En Pensent - Chess Art Prints",
+  "short_name": "En Pensent",
+  "description": "Transform chess games into stunning generative art. Scan, create, and collect unique visualizations.",
+  "theme_color": "#d4af37",
+  "background_color": "#0f1419",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "start_url": "/",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "64x64",
+      "type": "image/png"
+    },
+    {
+      "src": "/pwa-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["games", "lifestyle", "entertainment"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Vision Scanner",
+      "short_name": "Scan",
+      "description": "Scan any En Pensent visualization",
+      "url": "/?scan=true",
+      "icons": [{ "src": "/favicon.png", "sizes": "64x64" }]
+    },
+    {
+      "name": "Create Mode",
+      "short_name": "Create",
+      "description": "Design your own chess art",
+      "url": "/creative-mode",
+      "icons": [{ "src": "/favicon.png", "sizes": "64x64" }]
+    }
+  ]
+}

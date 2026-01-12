@@ -7,8 +7,17 @@ export default {
   theme: {
     container: {
       center: true,
-      padding: "2rem",
+      padding: {
+        DEFAULT: "1rem",
+        sm: "1.5rem",
+        md: "2rem",
+        lg: "2.5rem",
+      },
       screens: {
+        sm: "640px",
+        md: "768px",
+        lg: "1024px",
+        xl: "1280px",
         "2xl": "1400px",
       },
     },
@@ -56,6 +65,10 @@ export default {
           "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
+        },
+        gold: {
+          DEFAULT: "hsl(var(--gold))",
+          muted: "hsl(var(--gold-muted))",
         },
       },
       borderRadius: {
@@ -151,6 +164,15 @@ export default {
         "drift": "drift ease-in-out infinite",
         "sway": "sway ease-in-out infinite",
         "gentle-glow": "gentle-glow 3s ease-in-out infinite",
+        "shimmer": "shimmer 2s linear infinite",
+        "pulse-gold": "pulse-gold 2s ease-in-out infinite",
+      },
+      spacing: {
+        "safe-bottom": "env(safe-area-inset-bottom)",
+        "safe-top": "env(safe-area-inset-top)",
+      },
+      fontSize: {
+        "2xs": ["0.625rem", { lineHeight: "0.875rem" }],
       },
     },
   },
