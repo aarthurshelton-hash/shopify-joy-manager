@@ -1,10 +1,11 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Slider } from '@/components/ui/slider';
 import { toast } from 'sonner';
 import { 
   BookOpen, 
@@ -17,14 +18,20 @@ import {
   Sparkles,
   CheckCircle2,
   XCircle,
-  Loader2
+  Loader2,
+  Lock,
+  Zap
 } from 'lucide-react';
 import { carlsenTop100, CarlsenGame } from '@/lib/book/carlsenGames';
 import { BookSpread } from '@/components/book/BookSpread';
 import { simulateGame } from '@/lib/chess/gameSimulator';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { jsPDF } from 'jspdf';
 import carlsenCover from '@/assets/book/carlsen-cover.jpg';
+
+// CEO access control
+const CEO_EMAIL = 'a.arthur.shelton@gmail.com';
 
 interface GeneratedSpread {
   game: CarlsenGame;
@@ -34,6 +41,10 @@ interface GeneratedSpread {
 }
 
 const BookGenerator: React.FC = () => {
+  const { user, isLoading: authLoading } = useAuth();
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  
   const [spreads, setSpreads] = useState<GeneratedSpread[]>(
     carlsenTop100.map(game => ({
       game,
@@ -47,9 +58,34 @@ const BookGenerator: React.FC = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [previewIndex, setPreviewIndex] = useState(0);
   const [isExporting, setIsExporting] = useState(false);
+  const [batchSize, setBatchSize] = useState(5); // Parallel batch size
+  const pauseRef = React.useRef(false);
+
+  // Check CEO authorization
+  useEffect(() => {
+    const checkAuthorization = async () => {
+      if (authLoading) return;
+      
+      if (!user) {
+        setIsAuthorized(false);
+        setCheckingAuth(false);
+        return;
+      }
+
+      // Check if user email matches CEO
+      const { data: userData } = await supabase.auth.getUser();
+      const email = userData?.user?.email?.toLowerCase();
+      
+      setIsAuthorized(email === CEO_EMAIL);
+      setCheckingAuth(false);
+    };
+
+    checkAuthorization();
+  }, [user, authLoading]);
 
   const completedCount = spreads.filter(s => s.status === 'complete').length;
   const errorCount = spreads.filter(s => s.status === 'error').length;
+  const generatingCount = spreads.filter(s => s.status === 'generating').length;
   const progress = (completedCount / spreads.length) * 100;
 
   const generateHaiku = async (game: CarlsenGame): Promise<string> => {
@@ -92,8 +128,11 @@ const BookGenerator: React.FC = () => {
     }
   };
 
-  const generateSpread = async (index: number): Promise<void> => {
-    const game = spreads[index].game;
+  const generateSpread = async (index: number): Promise<boolean> => {
+    const currentSpread = spreads[index];
+    if (!currentSpread || currentSpread.status === 'complete') return true;
+    
+    const game = currentSpread.game;
     
     setSpreads(prev => prev.map((s, i) => 
       i === index ? { ...s, status: 'generating' } : s
@@ -109,34 +148,58 @@ const BookGenerator: React.FC = () => {
       setSpreads(prev => prev.map((s, i) => 
         i === index ? { ...s, haiku, visualizationImage, status: 'complete' } : s
       ));
+      return true;
     } catch (error) {
       console.error(`Error generating spread ${index}:`, error);
       setSpreads(prev => prev.map((s, i) => 
         i === index ? { ...s, status: 'error' } : s
       ));
+      return false;
     }
   };
 
-  const startGeneration = useCallback(async () => {
+  // Batch parallel generation
+  const startBatchGeneration = useCallback(async () => {
     setIsGenerating(true);
-    setIsPaused(false);
+    pauseRef.current = false;
+    
+    // Get indices of pending/error spreads
+    const pendingIndices = spreads
+      .map((s, i) => ({ status: s.status, index: i }))
+      .filter(s => s.status === 'pending' || s.status === 'error')
+      .map(s => s.index);
 
-    for (let i = currentIndex; i < spreads.length; i++) {
-      if (isPaused) break;
+    toast.info(`Starting batch generation of ${pendingIndices.length} spreads (${batchSize} parallel)`);
+
+    // Process in batches
+    for (let i = 0; i < pendingIndices.length; i += batchSize) {
+      if (pauseRef.current) {
+        toast.info('Generation paused');
+        break;
+      }
+
+      const batch = pendingIndices.slice(i, i + batchSize);
+      setCurrentIndex(batch[0]);
       
-      setCurrentIndex(i);
+      // Run batch in parallel
+      await Promise.all(batch.map(index => generateSpread(index)));
       
-      if (spreads[i].status === 'pending' || spreads[i].status === 'error') {
-        await generateSpread(i);
-        // Small delay between generations to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 500));
+      // Small delay between batches to avoid rate limiting
+      if (i + batchSize < pendingIndices.length) {
+        await new Promise(resolve => setTimeout(resolve, 300));
       }
     }
 
     setIsGenerating(false);
-  }, [currentIndex, isPaused, spreads]);
+    
+    const newCompleted = spreads.filter(s => s.status === 'complete').length;
+    if (!pauseRef.current) {
+      toast.success(`Generation complete! ${newCompleted} spreads ready.`);
+    }
+  }, [spreads, batchSize]);
 
   const pauseGeneration = () => {
+    pauseRef.current = true;
     setIsPaused(true);
     setIsGenerating(false);
   };
@@ -349,6 +412,46 @@ const BookGenerator: React.FC = () => {
 
   const currentSpread = spreads[previewIndex];
 
+  // Authorization check
+  if (checkingAuth || authLoading) {
+    return (
+      <div className="min-h-screen bg-[#F5F5DC] flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4 text-[#2C2C2C]" />
+          <p className="text-[#6B6B6B]">Checking authorization...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthorized) {
+    return (
+      <div className="min-h-screen bg-[#F5F5DC] flex items-center justify-center">
+        <Card className="max-w-md bg-white/80 border-[#D4D4C4]">
+          <CardHeader className="text-center">
+            <Lock className="w-16 h-16 mx-auto mb-4 text-[#6B6B6B]" />
+            <CardTitle className="font-serif">Access Restricted</CardTitle>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <p className="text-[#6B6B6B]">
+              The Book Generator is exclusively available to authorized personnel.
+            </p>
+            <p className="text-sm text-[#9B9B9B]">
+              Please sign in with an authorized account to access this feature.
+            </p>
+            <Button 
+              onClick={() => window.location.href = '/'}
+              variant="outline"
+              className="border-[#2C2C2C]"
+            >
+              Return to Home
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#F5F5DC] text-[#2C2C2C]">
       {/* Header */}
@@ -358,14 +461,23 @@ const BookGenerator: React.FC = () => {
             <BookOpen className="w-8 h-8" />
             <div>
               <h1 className="text-2xl font-serif font-bold">Carlsen in Color</h1>
-              <p className="text-sm text-[#6B6B6B]">Book Generator</p>
+              <p className="text-sm text-[#6B6B6B]">Book Generator • CEO Access</p>
             </div>
           </div>
           
           <div className="flex items-center gap-3">
+            <Badge variant="outline" className="border-amber-600 text-amber-700">
+              <Zap className="w-3 h-3 mr-1" />
+              Batch: {batchSize} parallel
+            </Badge>
             <Badge variant="outline" className="border-[#2C2C2C]">
               {completedCount}/{spreads.length} Complete
             </Badge>
+            {generatingCount > 0 && (
+              <Badge className="bg-amber-600">
+                {generatingCount} In Progress
+              </Badge>
+            )}
             {errorCount > 0 && (
               <Badge variant="destructive">
                 {errorCount} Errors
@@ -395,15 +507,38 @@ const BookGenerator: React.FC = () => {
                 <Progress value={progress} className="h-2" />
               </div>
 
+              {/* Batch Size Control */}
+              <div className="space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span className="flex items-center gap-1">
+                    <Zap className="w-4 h-4" />
+                    Parallel Batch Size
+                  </span>
+                  <span className="font-mono">{batchSize}</span>
+                </div>
+                <Slider
+                  value={[batchSize]}
+                  onValueChange={(value) => setBatchSize(value[0])}
+                  min={1}
+                  max={10}
+                  step={1}
+                  disabled={isGenerating}
+                  className="w-full"
+                />
+                <p className="text-xs text-[#6B6B6B]">
+                  Higher values = faster but may hit rate limits
+                </p>
+              </div>
+
               {/* Control Buttons */}
               <div className="grid grid-cols-2 gap-2">
                 {!isGenerating ? (
                   <Button 
-                    onClick={startGeneration}
+                    onClick={startBatchGeneration}
                     className="col-span-2 bg-[#2C2C2C] hover:bg-[#1C1C1C]"
                   >
-                    <Play className="w-4 h-4 mr-2" />
-                    {currentIndex > 0 ? 'Resume' : 'Start'} Generation
+                    <Zap className="w-4 h-4 mr-2" />
+                    {completedCount > 0 ? 'Resume' : 'Start'} Batch Generation
                   </Button>
                 ) : (
                   <Button 
