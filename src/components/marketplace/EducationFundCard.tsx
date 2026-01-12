@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import { 
   GraduationCap, 
   Heart, 
@@ -7,11 +8,13 @@ import {
   TrendingUp,
   Sparkles,
   BookOpen,
-  Globe
+  Globe,
+  ChevronRight
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Button } from '@/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -154,6 +157,14 @@ const EducationFundCard: React.FC = () => {
               student who couldn't otherwise afford chess education tools.
             </p>
           </div>
+
+          {/* Link to full page */}
+          <Link to="/education-fund">
+            <Button variant="outline" size="sm" className="w-full gap-2">
+              View Full Transparency Report
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </Link>
         </CardContent>
       </Card>
     </motion.div>
