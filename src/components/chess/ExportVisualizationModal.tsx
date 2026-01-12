@@ -190,15 +190,16 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
           </Button>
         </div>
 
-        {/* Visualization Preview */}
+        {/* Visualization Preview - The Trademark Look */}
         <div className="flex justify-center py-4">
           <div 
             ref={exportRef}
-            className={`p-6 rounded-sm border shadow-xl transition-colors ${
+            className={`p-6 md:p-8 rounded-sm border shadow-2xl transition-colors ${
               darkMode 
                 ? 'bg-[#0A0A0A] border-stone-800' 
                 : 'bg-[#FDFCFB] border-stone-200'
             }`}
+            style={{ maxWidth: '420px' }}
           >
             {/* The En Pensent board visualization */}
             <div className="relative w-64 h-64 md:w-80 md:h-80">
@@ -228,34 +229,59 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
               />
             </div>
 
-            {/* Game Info */}
-            <div className={`mt-4 pt-4 border-t ${darkMode ? 'border-stone-800' : 'border-stone-200'}`}>
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className={`text-sm font-display ${darkMode ? 'text-stone-300' : 'text-stone-700'}`}>
-                    {gameInfo.white} vs {gameInfo.black}
-                  </p>
-                  <p className={`text-xs ${darkMode ? 'text-stone-500' : 'text-stone-400'}`}>
-                    {gameInfo.totalMoves} moves • {gameInfo.result || 'Game Finished'}
-                  </p>
+            {/* Game Info - Trademark Style like PrintPreview */}
+            <div className={`mt-6 pt-4 border-t ${darkMode ? 'border-stone-800' : 'border-stone-200'}`}>
+              {/* Player Names - Large, Prominent Display */}
+              <div className="text-center space-y-2">
+                <div className="flex items-center justify-center gap-3">
+                  <span 
+                    className={`text-xl md:text-2xl font-display uppercase tracking-wide ${
+                      darkMode ? 'text-stone-100' : 'text-stone-900'
+                    }`}
+                    style={{ fontFamily: "'Cinzel', 'Times New Roman', serif" }}
+                  >
+                    {gameInfo.white}
+                  </span>
+                  <span className={`text-xs ${darkMode ? 'text-stone-500' : 'text-stone-400'} italic`}>vs</span>
+                  <span 
+                    className={`text-xl md:text-2xl font-display uppercase tracking-wide ${
+                      darkMode ? 'text-stone-100' : 'text-stone-900'
+                    }`}
+                    style={{ fontFamily: "'Cinzel', 'Times New Roman', serif" }}
+                  >
+                    {gameInfo.black}
+                  </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <img src={enPensentLogo} alt="En Pensent" className="w-6 h-6 rounded-full" />
-                  {qrCodeDataUrl && (
-                    <img src={qrCodeDataUrl} alt="QR" className="w-6 h-6 opacity-60" />
-                  )}
-                </div>
+                
+                {/* Game Details */}
+                <p 
+                  className={`text-sm italic ${darkMode ? 'text-stone-400' : 'text-stone-500'}`}
+                  style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
+                >
+                  Chess Game
+                </p>
+                
+                <p 
+                  className={`text-xs uppercase tracking-[0.15em] ${darkMode ? 'text-stone-500' : 'text-stone-400'}`}
+                  style={{ fontFamily: "'Cinzel', 'Times New Roman', serif" }}
+                >
+                  {gameInfo.totalMoves} moves • {gameInfo.result || 'Game Finished'}
+                </p>
               </div>
             </div>
 
-            {/* Branding */}
-            <p 
-              className={`text-center text-[8px] tracking-[0.3em] uppercase mt-3 ${
-                darkMode ? 'text-stone-600' : 'text-stone-400'
-              }`}
-            >
-              ♔ En Pensent ♚
-            </p>
+            {/* Branding with Logo */}
+            <div className="flex items-center justify-center gap-2 mt-4">
+              <img src={enPensentLogo} alt="En Pensent" className="w-5 h-5 rounded-full opacity-70" />
+              <p 
+                className={`text-[10px] tracking-[0.3em] uppercase font-medium ${
+                  darkMode ? 'text-stone-600' : 'text-stone-400'
+                }`}
+              >
+                En Pensent
+              </p>
+              <img src={enPensentLogo} alt="" className="w-5 h-5 rounded-full opacity-70" />
+            </div>
           </div>
         </div>
 
