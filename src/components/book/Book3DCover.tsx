@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import carlsenCover from '@/assets/book/carlsen-cover-new.jpg';
+import carlsenCover from '@/assets/book/carlsen-cover-v2.jpg';
 
 interface Book3DCoverProps {
   onClick?: () => void;

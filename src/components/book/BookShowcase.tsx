@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Book3DCover } from './Book3DCover';
 import { BookFlipPreview } from './BookFlipPreview';
-import carlsenCover from '@/assets/book/carlsen-cover-new.jpg';
+import carlsenCover from '@/assets/book/carlsen-cover-v2.jpg';
 
 interface BookShowcaseProps {
   variant?: 'hero' | 'compact' | 'featured';
