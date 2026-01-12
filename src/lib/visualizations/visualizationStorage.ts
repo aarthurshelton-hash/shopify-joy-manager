@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { SimulationResult, GameData } from '@/lib/chess/gameSimulator';
+import { SimulationResult, GameData, SquareData } from '@/lib/chess/gameSimulator';
 import { Json } from '@/integrations/supabase/types';
 
 export interface SavedVisualization {
@@ -7,7 +7,7 @@ export interface SavedVisualization {
   user_id: string;
   title: string;
   pgn: string | null;
-  game_data: GameData;
+  game_data: GameData & { board?: SquareData[][]; totalMoves?: number };
   image_path: string;
   public_share_id: string | null;
   created_at: string;
@@ -43,7 +43,7 @@ export async function saveVisualization(
       .from('visualizations')
       .getPublicUrl(filename);
     
-    // Prepare game_data as Json type
+    // Prepare game_data as Json type - INCLUDE FULL BOARD DATA for reconstruction
     const gameDataJson: Json = {
       white: simulation.gameData.white,
       black: simulation.gameData.black,
@@ -52,6 +52,9 @@ export async function saveVisualization(
       result: simulation.gameData.result,
       pgn: simulation.gameData.pgn,
       moves: simulation.gameData.moves,
+      // Include full board data for proper reconstruction
+      board: simulation.board as unknown as Json,
+      totalMoves: simulation.totalMoves,
     };
     
     // Save visualization record to database
@@ -129,5 +132,32 @@ export async function deleteVisualization(
     return { error: null };
   } catch (error) {
     return { error: error as Error };
+  }
+}
+
+/**
+ * Get a single visualization by ID - used for detail pages
+ */
+export async function getVisualizationById(id: string): Promise<{
+  data: SavedVisualization | null;
+  error: Error | null;
+}> {
+  try {
+    const { data, error } = await supabase
+      .from('saved_visualizations')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return { data: null, error: new Error('Visualization not found') };
+      }
+      throw new Error(`Failed to fetch visualization: ${error.message}`);
+    }
+    
+    return { data: data as unknown as SavedVisualization, error: null };
+  } catch (error) {
+    return { data: null, error: error as Error };
   }
 }

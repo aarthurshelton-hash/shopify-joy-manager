@@ -16,7 +16,6 @@ import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
 import { ProductSelector } from '@/components/shop/ProductSelector';
 import { usePrintOrderStore } from '@/stores/printOrderStore';
-import { EnPensentOverlay } from '@/components/chess/EnPensentOverlay';
 import PrintReadyVisualization from '@/components/chess/PrintReadyVisualization';
 import GameInfoDisplay from '@/components/chess/GameInfoDisplay';
 import { SquareData } from '@/lib/chess/gameSimulator';
@@ -140,19 +139,8 @@ const OrderPrint: React.FC = () => {
 
                 {/* Visualization Preview - using unified PrintReadyVisualization */}
                 <div className="flex justify-center">
-                  {/* Show different visualizations based on data type */}
-                  {hasImagePath && !hasEnPensentData && !hasSimulation ? (
-                    // Saved visualization from gallery - show image
-                    <PrintReadyVisualization 
-                      board={[]} // Will show image instead
-                      gameData={orderData.gameData}
-                      size={400}
-                      darkMode={darkMode}
-                      title={orderData.title}
-                      compact={false}
-                    />
-                  ) : hasSimulation && displayBoard ? (
-                    // Full simulation visualization - use unified PrintReadyVisualization
+                  {hasSimulation && displayBoard ? (
+                    // Full simulation visualization
                     <PrintReadyVisualization 
                       board={displayBoard}
                       gameData={{
@@ -165,55 +153,51 @@ const OrderPrint: React.FC = () => {
                       compact={false}
                     />
                   ) : hasEnPensentData ? (
-                    // En Pensent live game visualization - wrap in trademark frame
+                    // En Pensent live game visualization - unified component
+                    <PrintReadyVisualization 
+                      enPensentData={{
+                        moveHistory: orderData.moveHistory!,
+                        whitePalette: orderData.whitePalette!,
+                        blackPalette: orderData.blackPalette!,
+                      }}
+                      gameData={{
+                        white: orderData.gameData.white,
+                        black: orderData.gameData.black,
+                        event: orderData.gameData.event || 'Chess Game',
+                        date: orderData.gameData.date || '',
+                        result: orderData.gameData.result || '',
+                      }}
+                      size={400}
+                      darkMode={darkMode}
+                      title={orderData.title}
+                      compact={false}
+                    />
+                  ) : hasImagePath ? (
+                    // Saved visualization from gallery
                     <div 
-                      className={`p-6 rounded-lg border shadow-xl transition-colors ${
+                      className={`p-6 rounded-lg border shadow-xl ${
                         darkMode 
                           ? 'bg-[#0A0A0A] border-stone-800' 
                           : 'bg-[#FDFCFB] border-stone-200'
                       }`}
                     >
-                      <div className="relative w-72 h-72 sm:w-80 sm:h-80">
-                        {/* Chess board grid */}
-                        <div className="absolute inset-0 grid grid-cols-8 grid-rows-8">
-                          {Array.from({ length: 64 }).map((_, i) => {
-                            const row = Math.floor(i / 8);
-                            const col = i % 8;
-                            const isLight = (row + col) % 2 === 0;
-                            return (
-                              <div
-                                key={i}
-                                className={`${isLight ? 'bg-stone-200' : 'bg-stone-600'}`}
-                              />
-                            );
-                          })}
-                        </div>
-                        
-                        {/* En Pensent Overlay */}
-                        <EnPensentOverlay
-                          moveHistory={orderData.moveHistory!}
-                          whitePalette={orderData.whitePalette!}
-                          blackPalette={orderData.blackPalette!}
-                          opacity={0.85}
-                          isEnabled={true}
-                          flipped={false}
-                        />
-                      </div>
-                      {/* Game Info - using GameInfoDisplay for consistency */}
-                      <div className={`mt-6 pt-4 border-t ${darkMode ? 'border-stone-800' : 'border-stone-200'}`}>
-                        <GameInfoDisplay 
-                          gameData={{
-                            white: orderData.gameData.white,
-                            black: orderData.gameData.black,
-                            event: orderData.gameData.event || 'Chess Game',
-                            date: orderData.gameData.date || '',
-                            result: orderData.gameData.result || '',
-                            moves: [],
-                            pgn: '',
-                          }}
-                          darkMode={darkMode}
-                        />
-                      </div>
+                      <img 
+                        src={orderData.imagePath} 
+                        alt={orderData.title}
+                        className="w-72 h-72 sm:w-80 sm:h-80 object-contain"
+                      />
+                      <GameInfoDisplay 
+                        gameData={{
+                          white: orderData.gameData.white,
+                          black: orderData.gameData.black,
+                          event: orderData.gameData.event || 'Chess Game',
+                          date: orderData.gameData.date || '',
+                          result: orderData.gameData.result || '',
+                          moves: [],
+                          pgn: '',
+                        }}
+                        darkMode={darkMode}
+                      />
                       <p 
                         className={`text-center text-[10px] tracking-[0.3em] uppercase mt-4 ${
                           darkMode ? 'text-stone-600' : 'text-stone-400'

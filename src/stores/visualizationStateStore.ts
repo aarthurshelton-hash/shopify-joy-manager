@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { PieceType, PieceColor } from '@/lib/chess/pieceColors';
 import { GamePhase } from '@/contexts/TimelineContext';
 import { MoveHistoryEntry } from '@/components/chess/EnPensentOverlay';
@@ -73,35 +74,50 @@ const initialState = {
   showHeatmaps: false,
 };
 
-export const useVisualizationStateStore = create<VisualizationStateStore>((set, get) => ({
-  ...initialState,
-  
-  setCurrentMove: (move) => set({ currentMove: move }),
-  setSelectedPhase: (phase) => set({ selectedPhase: phase }),
-  setLockedPieces: (pieces) => set({ lockedPieces: pieces }),
-  setCompareMode: (mode) => set({ compareMode: mode }),
-  setDisplayMode: (mode) => set({ displayMode: mode }),
-  setDarkMode: (dark) => set({ darkMode: dark }),
-  setShowTerritory: (show) => set({ showTerritory: show }),
-  setShowHeatmaps: (show) => set({ showHeatmaps: show }),
-  
-  captureState: (moveHistory) => {
-    const state = get();
-    return {
-      currentMove: state.currentMove,
-      selectedPhase: state.selectedPhase,
-      isPlaying: false, // Always pause for capture
-      lockedPieces: [...state.lockedPieces],
-      compareMode: state.compareMode,
-      highlightedPiece: null,
-      displayMode: state.displayMode,
-      darkMode: state.darkMode,
-      showTerritory: state.showTerritory,
-      showHeatmaps: state.showHeatmaps,
-      moveHistory,
-      capturedAt: new Date(),
-    };
-  },
-  
-  resetState: () => set(initialState),
-}));
+export const useVisualizationStateStore = create<VisualizationStateStore>()(
+  persist(
+    (set, get) => ({
+      ...initialState,
+      
+      setCurrentMove: (move) => set({ currentMove: move }),
+      setSelectedPhase: (phase) => set({ selectedPhase: phase }),
+      setLockedPieces: (pieces) => set({ lockedPieces: pieces }),
+      setCompareMode: (mode) => set({ compareMode: mode }),
+      setDisplayMode: (mode) => set({ displayMode: mode }),
+      setDarkMode: (dark) => set({ darkMode: dark }),
+      setShowTerritory: (show) => set({ showTerritory: show }),
+      setShowHeatmaps: (show) => set({ showHeatmaps: show }),
+      
+      captureState: (moveHistory) => {
+        const state = get();
+        return {
+          currentMove: state.currentMove,
+          selectedPhase: state.selectedPhase,
+          isPlaying: false, // Always pause for capture
+          lockedPieces: [...state.lockedPieces],
+          compareMode: state.compareMode,
+          highlightedPiece: null,
+          displayMode: state.displayMode,
+          darkMode: state.darkMode,
+          showTerritory: state.showTerritory,
+          showHeatmaps: state.showHeatmaps,
+          moveHistory,
+          capturedAt: new Date(),
+        };
+      },
+      
+      resetState: () => set(initialState),
+    }),
+    {
+      name: 'en-pensent-visualization-state',
+      storage: createJSONStorage(() => sessionStorage),
+      partialize: (state) => ({
+        // Persist display preferences
+        displayMode: state.displayMode,
+        darkMode: state.darkMode,
+        showTerritory: state.showTerritory,
+        showHeatmaps: state.showHeatmaps,
+      }),
+    }
+  )
+);
