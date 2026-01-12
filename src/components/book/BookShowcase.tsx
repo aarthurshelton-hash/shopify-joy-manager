@@ -1,10 +1,12 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import { BookOpen, Crown, Award, Sparkles, ShoppingCart, ExternalLink } from 'lucide-react';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { BookOpen, Crown, Award, Sparkles, ShoppingCart, ExternalLink, Eye, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import carlsenCover from '@/assets/book/carlsen-cover.jpg';
+import { BookFlipPreview } from './BookFlipPreview';
 
 interface BookShowcaseProps {
   variant?: 'hero' | 'compact' | 'featured';
@@ -17,6 +19,8 @@ export const BookShowcase: React.FC<BookShowcaseProps> = ({
   onOrderClick,
   showCTA = true,
 }) => {
+  const [showPreview, setShowPreview] = useState(false);
+
   const handleOrder = () => {
     if (onOrderClick) {
       onOrderClick();
@@ -25,6 +29,30 @@ export const BookShowcase: React.FC<BookShowcaseProps> = ({
       window.open('https://printify-shop-manager-fs4kw.myshopify.com/collections/all?tag=book', '_blank');
     }
   };
+
+  // Preview modal component
+  const PreviewModal = () => (
+    <Dialog open={showPreview} onOpenChange={setShowPreview}>
+      <DialogContent className="max-w-lg bg-gradient-to-br from-amber-50 to-orange-50">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 font-serif text-amber-900">
+            <BookOpen className="w-5 h-5" />
+            Preview: Carlsen in Color
+          </DialogTitle>
+        </DialogHeader>
+        <BookFlipPreview />
+        <div className="flex justify-center pt-4">
+          <Button 
+            onClick={handleOrder}
+            className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700"
+          >
+            <ShoppingCart className="w-4 h-4 mr-2" />
+            Order Now from $79.99
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 
   if (variant === 'hero') {
     return (
@@ -54,17 +82,28 @@ export const BookShowcase: React.FC<BookShowcaseProps> = ({
                 {/* Shadow/depth effect */}
                 <div className="absolute inset-0 translate-x-4 translate-y-4 bg-gradient-to-br from-amber-900/20 to-orange-900/30 rounded-lg blur-xl" />
                 
-                {/* Book cover */}
-                <div className="relative rounded-lg overflow-hidden shadow-2xl transform hover:scale-105 transition-transform duration-500">
+                {/* Book cover - clickable for preview */}
+                <button 
+                  onClick={() => setShowPreview(true)}
+                  className="relative rounded-lg overflow-hidden shadow-2xl transform hover:scale-105 transition-transform duration-500 group cursor-pointer block w-full"
+                >
                   <img 
                     src={carlsenCover} 
                     alt="Carlsen in Color Book Cover"
                     className="w-full h-auto"
                   />
                   
+                  {/* Hover overlay with preview prompt */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-8">
+                    <span className="flex items-center gap-2 bg-white/90 text-amber-900 px-4 py-2 rounded-full text-sm font-medium shadow-lg">
+                      <Eye className="w-4 h-4" />
+                      Preview Pages
+                    </span>
+                  </div>
+                  
                   {/* Shine effect */}
-                  <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-500" />
-                </div>
+                  <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                </button>
                 
                 {/* Floating badges */}
                 <Badge className="absolute -top-3 -right-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white px-3 py-1.5 shadow-lg">
@@ -134,7 +173,7 @@ export const BookShowcase: React.FC<BookShowcaseProps> = ({
               </div>
               
               {showCTA && (
-                <div className="flex gap-3 pt-4">
+                <div className="flex flex-wrap gap-3 pt-4">
                   <Button 
                     size="lg" 
                     onClick={handleOrder}
@@ -146,101 +185,125 @@ export const BookShowcase: React.FC<BookShowcaseProps> = ({
                   <Button 
                     size="lg" 
                     variant="outline"
-                    onClick={() => window.location.href = '/book'}
+                    onClick={() => setShowPreview(true)}
                     className="border-amber-300"
                   >
-                    Learn More
+                    <Eye className="w-4 h-4 mr-2" />
+                    Preview Pages
                   </Button>
                 </div>
               )}
             </motion.div>
           </div>
         </div>
+        <PreviewModal />
       </motion.section>
     );
   }
 
   if (variant === 'compact') {
     return (
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.95 }}
-        whileInView={{ opacity: 1, scale: 1 }}
-        viewport={{ once: true }}
-        className="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200"
-      >
-        <img 
-          src={carlsenCover} 
-          alt="Carlsen in Color"
-          className="w-20 h-auto rounded-lg shadow-md"
-        />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <h4 className="font-serif font-bold text-foreground truncate">Carlsen in Color</h4>
-            <Badge className="bg-amber-500 text-white text-xs">NEW</Badge>
+      <>
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true }}
+          className="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200"
+        >
+          <button onClick={() => setShowPreview(true)} className="flex-shrink-0 hover:scale-105 transition-transform">
+            <img 
+              src={carlsenCover} 
+              alt="Carlsen in Color"
+              className="w-20 h-auto rounded-lg shadow-md"
+            />
+          </button>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <h4 className="font-serif font-bold text-foreground truncate">Carlsen in Color</h4>
+              <Badge className="bg-amber-500 text-white text-xs">NEW</Badge>
+            </div>
+            <p className="text-sm text-muted-foreground">100 Masterpieces • From $79.99</p>
           </div>
-          <p className="text-sm text-muted-foreground">100 Masterpieces • From $79.99</p>
-        </div>
-        {showCTA && (
-          <Button size="sm" variant="outline" onClick={handleOrder} className="flex-shrink-0">
-            <ExternalLink className="w-3 h-3 mr-1" />
-            Order
-          </Button>
-        )}
-      </motion.div>
+          {showCTA && (
+            <div className="flex gap-2 flex-shrink-0">
+              <Button size="sm" variant="ghost" onClick={() => setShowPreview(true)} className="text-amber-700">
+                <Eye className="w-3 h-3" />
+              </Button>
+              <Button size="sm" variant="outline" onClick={handleOrder}>
+                <ExternalLink className="w-3 h-3 mr-1" />
+                Order
+              </Button>
+            </div>
+          )}
+        </motion.div>
+        <PreviewModal />
+      </>
     );
   }
 
   // Featured variant (default)
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-100 via-orange-50 to-amber-50 p-6 border border-amber-200"
-    >
-      <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-amber-300/20 to-orange-300/20 rounded-full blur-3xl" />
-      
-      <div className="relative flex flex-col md:flex-row gap-6">
-        <div className="flex-shrink-0">
-          <img 
-            src={carlsenCover} 
-            alt="Carlsen in Color"
-            className="w-40 h-auto rounded-lg shadow-xl"
-          />
-        </div>
+    <>
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-100 via-orange-50 to-amber-50 p-6 border border-amber-200"
+      >
+        <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-amber-300/20 to-orange-300/20 rounded-full blur-3xl" />
         
-        <div className="flex-1 space-y-3">
-          <div className="flex items-center gap-2">
-            <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white">
-              <Sparkles className="w-3 h-3 mr-1" />
-              NEW RELEASE
-            </Badge>
+        <div className="relative flex flex-col md:flex-row gap-6">
+          <button 
+            onClick={() => setShowPreview(true)}
+            className="flex-shrink-0 hover:scale-105 transition-transform"
+          >
+            <img 
+              src={carlsenCover} 
+              alt="Carlsen in Color"
+              className="w-40 h-auto rounded-lg shadow-xl"
+            />
+          </button>
+          
+          <div className="flex-1 space-y-3">
+            <div className="flex items-center gap-2">
+              <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white">
+                <Sparkles className="w-3 h-3 mr-1" />
+                NEW RELEASE
+              </Badge>
+            </div>
+            
+            <h3 className="text-2xl font-serif font-bold text-foreground">Carlsen in Color</h3>
+            <p className="text-muted-foreground text-sm">
+              A premium coffee table book featuring 100 En Pensent visualizations 
+              of Magnus Carlsen's greatest games with AI-generated haiku poetry.
+            </p>
+            
+            <div className="flex items-center gap-4 text-sm">
+              <span className="text-muted-foreground">
+                Standard: <strong className="text-foreground">$79.99</strong>
+              </span>
+              <span className="text-muted-foreground">
+                Large: <strong className="text-amber-700">$99.99</strong>
+              </span>
+            </div>
+            
+            {showCTA && (
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={handleOrder} className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700">
+                  <ShoppingCart className="w-4 h-4 mr-2" />
+                  Order Now
+                </Button>
+                <Button variant="outline" onClick={() => setShowPreview(true)} className="border-amber-300">
+                  <Eye className="w-4 h-4 mr-2" />
+                  Preview
+                </Button>
+              </div>
+            )}
           </div>
-          
-          <h3 className="text-2xl font-serif font-bold text-foreground">Carlsen in Color</h3>
-          <p className="text-muted-foreground text-sm">
-            A premium coffee table book featuring 100 En Pensent visualizations 
-            of Magnus Carlsen's greatest games with AI-generated haiku poetry.
-          </p>
-          
-          <div className="flex items-center gap-4 text-sm">
-            <span className="text-muted-foreground">
-              Standard: <strong className="text-foreground">$79.99</strong>
-            </span>
-            <span className="text-muted-foreground">
-              Large: <strong className="text-amber-700">$99.99</strong>
-            </span>
-          </div>
-          
-          {showCTA && (
-            <Button onClick={handleOrder} className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700">
-              <ShoppingCart className="w-4 h-4 mr-2" />
-              Order Now
-            </Button>
-          )}
         </div>
-      </div>
-    </motion.div>
+      </motion.div>
+      <PreviewModal />
+    </>
   );
 };
 
