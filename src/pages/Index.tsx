@@ -72,6 +72,7 @@ const Index = () => {
     isExportingGIF, 
     gifProgress,
     downloadHD, 
+    downloadTrademarkHD,
     downloadGIF 
   } = useVisualizationExport({
     isPremium,
@@ -627,16 +628,15 @@ const Index = () => {
                   });
                   navigate('/order-print');
                 } else if (type === 'hd') {
-                  // Find the board element to capture
-                  const boardElement = visionBoardRef.current?.querySelector('[data-vision-board]') as HTMLElement;
-                  if (boardElement) {
-                    await downloadHD(boardElement, visualTitle, false);
-                  } else {
-                    // Fallback: capture the entire container
-                    if (visionBoardRef.current) {
-                      await downloadHD(visionBoardRef.current, visualTitle, false);
-                    }
-                  }
+                  // Use trademark HD export for proper "print-ready" look
+                  await downloadTrademarkHD({
+                    board: simulation.board,
+                    gameData: simulation.gameData,
+                    title: visualTitle,
+                    darkMode: false,
+                    showQR: !!savedShareId,
+                    shareId: savedShareId || undefined,
+                  });
                 } else if (type === 'gif') {
                   const boardElement = visionBoardRef.current?.querySelector('[data-vision-board]') as HTMLElement;
                   if (boardElement) {
