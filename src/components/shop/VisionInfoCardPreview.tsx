@@ -21,8 +21,8 @@ import { MoveHistoryEntry } from '@/components/chess/EnPensentOverlay';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 
 interface VisionInfoCardPreviewProps {
-  board: SquareData[][];
-  gameData: {
+  board?: SquareData[][];
+  gameData?: {
     white?: string;
     black?: string;
     event?: string;
@@ -52,7 +52,7 @@ const PIECE_NAMES: Record<PieceType, string> = {
 
 export const VisionInfoCardPreview: React.FC<VisionInfoCardPreviewProps> = ({
   board,
-  gameData,
+  gameData: rawGameData,
   moveHistory = [],
   totalMoves,
   whitePalette,
@@ -62,6 +62,15 @@ export const VisionInfoCardPreview: React.FC<VisionInfoCardPreviewProps> = ({
 }) => {
   const palette = getActivePalette();
   const theme = palette.legendTheme;
+  
+  // Default game data for preview
+  const gameData = rawGameData || {
+    white: 'Player 1',
+    black: 'Player 2',
+    event: 'Chess Game',
+    date: new Date().toLocaleDateString(),
+    result: '1-0',
+  };
 
   // Calculate piece activity statistics
   const pieceStats = useMemo(() => {
@@ -74,6 +83,27 @@ export const VisionInfoCardPreview: React.FC<VisionInfoCardPreviewProps> = ({
     
     const pieceTypes: PieceType[] = ['k', 'q', 'r', 'b', 'n', 'p'];
     const colors: PieceColor[] = ['w', 'b'];
+    
+    // If no move history, provide sample data for preview
+    if (moveHistory.length === 0) {
+      const sampleMoves: Record<string, number> = {
+        'w-k': 4, 'w-q': 12, 'w-r': 8, 'w-b': 6, 'w-n': 7, 'w-p': 14,
+        'b-k': 5, 'b-q': 10, 'b-r': 7, 'b-b': 5, 'b-n': 6, 'b-p': 13,
+      };
+      
+      for (const color of colors) {
+        for (const piece of pieceTypes) {
+          const key = `${color}-${piece}`;
+          stats.set(key, { 
+            moves: sampleMoves[key] || 0, 
+            squares: new Set(), 
+            captures: 0,
+            checks: 0,
+          });
+        }
+      }
+      return stats;
+    }
     
     for (const color of colors) {
       for (const piece of pieceTypes) {
@@ -111,11 +141,26 @@ export const VisionInfoCardPreview: React.FC<VisionInfoCardPreviewProps> = ({
       }
     });
     
+    // Default to white pawn if no data
+    if (!mvp && moveHistory.length === 0) {
+      mvp = { piece: 'p', color: 'w', moves: 14 };
+    }
+    
     return mvp;
-  }, [pieceStats]);
+  }, [pieceStats, moveHistory]);
 
   // Calculate territory control
   const territoryStats = useMemo(() => {
+    // If no board data, return sample values for preview
+    if (!board || board.length === 0) {
+      return {
+        white: 28,
+        black: 24,
+        whitePercent: 44,
+        blackPercent: 38,
+      };
+    }
+
     let whiteSquares = 0;
     let blackSquares = 0;
     
