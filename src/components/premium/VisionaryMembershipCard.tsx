@@ -48,6 +48,12 @@ import operaGame from '@/assets/games/opera-game.jpg';
 import gameOfCentury from '@/assets/games/game-of-century.jpg';
 import fischerSpassky from '@/assets/games/fischer-spassky.jpg';
 import kasparovImmortal from '@/assets/games/kasparov-immortal.jpg';
+import evergreenGame from '@/assets/games/evergreen-game.jpg';
+import talBrilliancy from '@/assets/games/tal-brilliancy.jpg';
+import rubinsteinImmortal from '@/assets/games/rubinstein-immortal.jpg';
+
+// Import company logo
+import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 
 interface VisionaryMembershipCardProps {
   isOpen: boolean;
@@ -131,8 +137,20 @@ const TESTIMONIALS = [
   { quote: "Worth every penny", author: "Daniel N.", role: "Chess Streamer" },
 ];
 
-// Background images for visual appeal
-const BACKGROUND_IMAGES = [immortalGame, operaGame, gameOfCentury, fischerSpassky, kasparovImmortal];
+// Background images for visual appeal - expanded collection
+const BACKGROUND_IMAGES = [immortalGame, operaGame, gameOfCentury, fischerSpassky, kasparovImmortal, evergreenGame, talBrilliancy, rubinsteinImmortal];
+
+// Feature-specific background images
+const FEATURE_BACKGROUNDS: Record<string, string> = {
+  downloads: immortalGame,
+  watermark: operaGame,
+  gifs: kasparovImmortal,
+  gallery: gameOfCentury,
+  marketplace: fischerSpassky,
+  analytics: talBrilliancy,
+  infocards: evergreenGame,
+  'early-access': rubinsteinImmortal,
+};
 
 export const VisionaryMembershipCard: React.FC<VisionaryMembershipCardProps> = ({
   isOpen,
@@ -209,8 +227,13 @@ export const VisionaryMembershipCard: React.FC<VisionaryMembershipCardProps> = (
                   }}
                   transition={{ duration: 2, repeat: Infinity }}
                 >
-                  <div className="h-20 w-20 rounded-full bg-gradient-to-br from-primary via-primary/80 to-primary/60 flex items-center justify-center">
-                    <Crown className="h-10 w-10 text-primary-foreground" />
+                  {/* Company logo with gold ring */}
+                  <div className="h-20 w-20 rounded-full bg-gradient-to-br from-primary via-primary/80 to-primary/60 p-0.5 flex items-center justify-center overflow-hidden">
+                    <img 
+                      src={enPensentLogo} 
+                      alt="En Pensent" 
+                      className="h-full w-full rounded-full object-cover"
+                    />
                   </div>
                   <motion.div
                     className="absolute -top-1 -right-1 h-6 w-6 rounded-full bg-green-500 flex items-center justify-center"
@@ -273,22 +296,29 @@ export const VisionaryMembershipCard: React.FC<VisionaryMembershipCardProps> = (
                             transition={{ delay: idx * 0.05 }}
                             onMouseEnter={() => setHoveredFeature(feature.id)}
                             onMouseLeave={() => setHoveredFeature(null)}
-                            className={`relative p-4 rounded-xl border cursor-pointer transition-all duration-300 ${
+                            className={`relative p-4 rounded-xl border cursor-pointer transition-all duration-300 overflow-hidden ${
                               isHighlighted
                                 ? 'bg-primary/10 border-primary/50 ring-2 ring-primary/30'
                                 : 'bg-muted/30 border-border/50 hover:bg-muted/50 hover:border-border'
                             }`}
                           >
-                            {/* Feature icon */}
-                            <div className={`h-10 w-10 rounded-lg flex items-center justify-center mb-3 ${
+                            {/* Art background - subtle */}
+                            <div 
+                              className="absolute inset-0 bg-cover bg-center opacity-[0.08] transition-opacity duration-300 group-hover:opacity-[0.12]"
+                              style={{ backgroundImage: `url(${FEATURE_BACKGROUNDS[feature.id] || immortalGame})` }}
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/90 to-background/70" />
+                            
+                            {/* Feature icon - relative to sit above bg */}
+                            <div className={`relative z-10 h-10 w-10 rounded-lg flex items-center justify-center mb-3 ${
                               isHighlighted ? 'bg-primary/20' : 'bg-muted'
                             }`}>
                               <feature.icon className={`h-5 w-5 ${isHighlighted ? 'text-primary' : 'text-muted-foreground'}`} />
                             </div>
                             
-                            {/* Title & description */}
-                            <h4 className="font-medium text-sm mb-1">{feature.title}</h4>
-                            <p className="text-xs text-muted-foreground line-clamp-2">{feature.description}</p>
+                            {/* Title & description - relative to sit above bg */}
+                            <h4 className="relative z-10 font-medium text-sm mb-1">{feature.title}</h4>
+                            <p className="relative z-10 text-xs text-muted-foreground line-clamp-2">{feature.description}</p>
                             
                             {/* Stats badge */}
                             <AnimatePresence>
@@ -297,7 +327,7 @@ export const VisionaryMembershipCard: React.FC<VisionaryMembershipCardProps> = (
                                   initial={{ opacity: 0, y: 5 }}
                                   animate={{ opacity: 1, y: 0 }}
                                   exit={{ opacity: 0, y: 5 }}
-                                  className="mt-3 pt-3 border-t border-border/50"
+                                  className="relative z-10 mt-3 pt-3 border-t border-border/50"
                                 >
                                   <div className="flex items-center justify-between">
                                     <span className="text-[10px] text-muted-foreground">{feature.stats.label}</span>
@@ -313,7 +343,7 @@ export const VisionaryMembershipCard: React.FC<VisionaryMembershipCardProps> = (
                             </AnimatePresence>
 
                             {/* Check indicator */}
-                            <div className={`absolute top-2 right-2 h-5 w-5 rounded-full flex items-center justify-center ${
+                            <div className={`absolute top-2 right-2 z-10 h-5 w-5 rounded-full flex items-center justify-center ${
                               isHighlighted ? 'bg-primary' : 'bg-muted'
                             }`}>
                               <Check className={`h-3 w-3 ${isHighlighted ? 'text-primary-foreground' : 'text-muted-foreground'}`} />

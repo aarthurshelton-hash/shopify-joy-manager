@@ -155,6 +155,14 @@ export default {
             filter: "drop-shadow(0 0 20px rgba(212, 175, 55, 0.5))",
           },
         },
+        "shimmer": {
+          "0%": {
+            backgroundPosition: "-200% 0",
+          },
+          "100%": {
+            backgroundPosition: "200% 0",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",

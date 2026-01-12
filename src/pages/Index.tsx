@@ -394,16 +394,21 @@ const Index = () => {
                 Make Chess Yours...
               </h2>
               
-              {/* Subtle Visionary Premium Promo */}
+              {/* Subtle Visionary Premium Promo with Shimmer */}
               <button
                 onClick={() => setShowVisionaryModal(true)}
-                className="relative z-10 group flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-primary/5 to-amber-500/5 border border-primary/20 hover:border-primary/40 transition-all duration-300 hover:scale-105"
+                className="relative z-10 group flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-primary/5 to-amber-500/5 border border-primary/20 hover:border-primary/40 transition-all duration-300 hover:scale-105 overflow-hidden"
               >
-                <Crown className="h-3.5 w-3.5 text-primary/70 group-hover:text-primary transition-colors" />
-                <span className="text-xs md:text-sm text-muted-foreground group-hover:text-foreground transition-colors font-medium tracking-wide">
+                {/* Shimmer overlay */}
+                <div 
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/10 to-transparent animate-shimmer"
+                  style={{ backgroundSize: '200% 100%' }}
+                />
+                <Crown className="relative h-3.5 w-3.5 text-primary/70 group-hover:text-primary transition-colors" />
+                <span className="relative text-xs md:text-sm text-muted-foreground group-hover:text-foreground transition-colors font-medium tracking-wide">
                   Unlock HD Downloads & Personal Gallery
                 </span>
-                <Sparkles className="h-3 w-3 text-amber-500/60 group-hover:text-amber-500 transition-colors" />
+                <Sparkles className="relative h-3 w-3 text-amber-500/60 group-hover:text-amber-500 transition-colors" />
               </button>
             </div>
 
