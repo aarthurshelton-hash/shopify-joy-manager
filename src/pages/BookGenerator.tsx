@@ -22,7 +22,9 @@ import {
   Zap,
   PlayCircle,
   Save,
-  RefreshCw
+  RefreshCw,
+  ImageDown,
+  FolderDown
 } from 'lucide-react';
 import { carlsenTop100, CarlsenGame } from '@/lib/book/carlsenGames';
 import { BookSpread } from '@/components/book/BookSpread';
@@ -71,6 +73,9 @@ const BookGenerator: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingProgress, setIsLoadingProgress] = useState(false);
   const [generatingSingleIndex, setGeneratingSingleIndex] = useState<number | null>(null);
+  const [isExportingImages, setIsExportingImages] = useState(false);
+  const [exportingIndex, setExportingIndex] = useState<number | null>(null);
+  const [imageExportProgress, setImageExportProgress] = useState(0);
   const pauseRef = React.useRef(false);
 
   // Check CEO authorization
@@ -367,6 +372,140 @@ const BookGenerator: React.FC = () => {
     setCurrentIndex(0);
     setIsGenerating(false);
     setIsPaused(false);
+  };
+
+  // Generate high-resolution 300 DPI spread image (3600x2520 for 12"x8.4" at 300 DPI)
+  const generateHighResSpreadImage = async (spread: GeneratedSpread): Promise<string> => {
+    const html2canvas = (await import('html2canvas')).default;
+    
+    // Create a temporary container
+    const container = document.createElement('div');
+    container.style.position = 'absolute';
+    container.style.left = '-9999px';
+    container.style.top = '-9999px';
+    container.style.width = '1200px'; // Base width, will be scaled up
+    document.body.appendChild(container);
+    
+    try {
+      const React = await import('react');
+      const ReactDOM = await import('react-dom/client');
+      const { BookSpread } = await import('@/components/book/BookSpread');
+      
+      const spreadElement = document.createElement('div');
+      container.appendChild(spreadElement);
+      
+      const root = ReactDOM.createRoot(spreadElement);
+      await new Promise<void>((resolve) => {
+        root.render(
+          React.createElement(BookSpread, {
+            game: spread.game,
+            haiku: spread.haiku,
+            visualizationImage: spread.visualizationImage,
+            pageNumber: spread.game.rank,
+          })
+        );
+        setTimeout(resolve, 200);
+      });
+      
+      // Wait for images to load
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Capture at 3x scale for 300 DPI (standard screen is ~100 DPI)
+      const canvas = await html2canvas(spreadElement, {
+        scale: 3, // 3x scale = ~300 DPI output
+        backgroundColor: '#F5F5DC',
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        width: 1200,
+        height: 840, // 1.4:1 aspect ratio
+      });
+      
+      const base64 = canvas.toDataURL('image/png', 1.0);
+      root.unmount();
+      
+      return base64;
+    } finally {
+      document.body.removeChild(container);
+    }
+  };
+
+  // Export single spread as high-res image
+  const exportSingleSpreadImage = async (index: number) => {
+    const spread = spreads[index];
+    if (spread.status !== 'complete') {
+      toast.error('This spread is not yet generated');
+      return;
+    }
+    
+    setExportingIndex(index);
+    toast.info(`Generating high-res image for spread #${index + 1}...`);
+    
+    try {
+      const imageData = await generateHighResSpreadImage(spread);
+      
+      // Create download link
+      const link = document.createElement('a');
+      link.href = imageData;
+      link.download = `carlsen-spread-${String(spread.game.rank).padStart(3, '0')}-${spread.game.id}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast.success(`Downloaded spread #${spread.game.rank} (300 DPI)`);
+    } catch (error) {
+      console.error('Export failed:', error);
+      toast.error('Failed to export image');
+    } finally {
+      setExportingIndex(null);
+    }
+  };
+
+  // Export all completed spreads as individual high-res images
+  const exportAllSpreadImages = async () => {
+    const completedSpreads = spreads.filter(s => s.status === 'complete');
+    
+    if (completedSpreads.length === 0) {
+      toast.error('No completed spreads to export');
+      return;
+    }
+    
+    setIsExportingImages(true);
+    setImageExportProgress(0);
+    toast.info(`Starting export of ${completedSpreads.length} high-res images...`);
+    
+    try {
+      for (let i = 0; i < completedSpreads.length; i++) {
+        const spread = completedSpreads[i];
+        
+        try {
+          const imageData = await generateHighResSpreadImage(spread);
+          
+          // Create download link
+          const link = document.createElement('a');
+          link.href = imageData;
+          link.download = `carlsen-spread-${String(spread.game.rank).padStart(3, '0')}-${spread.game.id}.png`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          
+          // Small delay between downloads to prevent browser issues
+          await new Promise(resolve => setTimeout(resolve, 500));
+        } catch (error) {
+          console.error(`Failed to export spread ${spread.game.rank}:`, error);
+        }
+        
+        setImageExportProgress(((i + 1) / completedSpreads.length) * 100);
+      }
+      
+      toast.success(`Exported ${completedSpreads.length} high-res images (300 DPI)`);
+    } catch (error) {
+      console.error('Batch export failed:', error);
+      toast.error('Failed to export images');
+    } finally {
+      setIsExportingImages(false);
+      setImageExportProgress(0);
+    }
   };
 
   const exportToPDF = async () => {
@@ -768,6 +907,58 @@ const BookGenerator: React.FC = () => {
                   )}
                   Export PDF
                 </Button>
+              </div>
+
+              {/* High-Res Image Export Section */}
+              <div className="space-y-3 p-3 rounded-lg bg-purple-50 border border-purple-200">
+                <h4 className="text-sm font-medium text-purple-900 flex items-center gap-2">
+                  <ImageDown className="w-4 h-4" />
+                  300 DPI High-Res Export
+                </h4>
+                <p className="text-xs text-purple-700">
+                  Export individual spreads as print-ready PNG files (3600×2520px)
+                </p>
+                
+                {isExportingImages && (
+                  <div className="space-y-1">
+                    <Progress value={imageExportProgress} className="h-2" />
+                    <p className="text-xs text-purple-600 text-center">
+                      {Math.round(imageExportProgress)}% complete
+                    </p>
+                  </div>
+                )}
+                
+                <div className="grid grid-cols-2 gap-2">
+                  <Button 
+                    onClick={() => exportSingleSpreadImage(previewIndex)}
+                    variant="outline"
+                    size="sm"
+                    className="border-purple-400 text-purple-700 hover:bg-purple-100"
+                    disabled={isExportingImages || exportingIndex !== null || spreads[previewIndex]?.status !== 'complete'}
+                  >
+                    {exportingIndex === previewIndex ? (
+                      <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                    ) : (
+                      <ImageDown className="w-3 h-3 mr-1" />
+                    )}
+                    Export #{previewIndex + 1}
+                  </Button>
+                  
+                  <Button 
+                    onClick={exportAllSpreadImages}
+                    variant="outline"
+                    size="sm"
+                    className="border-purple-600 text-purple-800 hover:bg-purple-100"
+                    disabled={isExportingImages || completedCount === 0}
+                  >
+                    {isExportingImages ? (
+                      <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                    ) : (
+                      <FolderDown className="w-3 h-3 mr-1" />
+                    )}
+                    Export All ({completedCount})
+                  </Button>
+                </div>
               </div>
 
               <Separator className="bg-[#D4D4C4]" />
