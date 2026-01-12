@@ -138,25 +138,37 @@ const About = () => {
               <div className="p-4 rounded-lg bg-card/50 border border-border/50">
                 <h3 className="font-display font-bold text-sm uppercase tracking-wide text-primary">Visualization Engine</h3>
                 <p className="text-sm text-muted-foreground font-serif mt-1">
-                  Upload any PGN and watch your game transform into a unique piece of art in seconds.
+                  Upload any PGN and watch your game transform into a unique piece of art in seconds. Each visualization is one-of-a-kind, encoded from your exact move sequence.
                 </p>
               </div>
               <div className="p-4 rounded-lg bg-card/50 border border-border/50">
                 <h3 className="font-display font-bold text-sm uppercase tracking-wide text-primary">Play & Create</h3>
                 <p className="text-sm text-muted-foreground font-serif mt-1">
-                  Play live games against opponents or our AI bot, with your artwork generating in real-time.
+                  Play live games against opponents or our AI bot. Your artwork generates in real-time as you play—watch strategy become art, move by move.
                 </p>
               </div>
               <div className="p-4 rounded-lg bg-card/50 border border-border/50">
                 <h3 className="font-display font-bold text-sm uppercase tracking-wide text-primary">Creative Mode</h3>
                 <p className="text-sm text-muted-foreground font-serif mt-1">
-                  Deep customization options to design exactly the artwork you envision, piece by piece.
+                  Full customization with 16 curated palettes and piece-by-piece color control. Design visualizations that match your aesthetic vision.
                 </p>
               </div>
               <div className="p-4 rounded-lg bg-card/50 border border-border/50">
                 <h3 className="font-display font-bold text-sm uppercase tracking-wide text-primary">Museum-Quality Prints</h3>
                 <p className="text-sm text-muted-foreground font-serif mt-1">
-                  Turn any visualization into a physical masterpiece with our premium printing partners.
+                  Premium archival prints from 8×10 to 24×36. Gallery-ready framing options. Production-cost pricing with 0% markup.
+                </p>
+              </div>
+              <div className="p-4 rounded-lg bg-card/50 border border-border/50">
+                <h3 className="font-display font-bold text-sm uppercase tracking-wide text-primary">Vision Marketplace</h3>
+                <p className="text-sm text-muted-foreground font-serif mt-1">
+                  Trade, sell, or collect visualizations. 0% platform commission—100% of sale value goes to sellers. Transparent Vision Scores track cultural impact.
+                </p>
+              </div>
+              <div className="p-4 rounded-lg bg-card/50 border border-border/50">
+                <h3 className="font-display font-bold text-sm uppercase tracking-wide text-primary">Visionary Premium</h3>
+                <p className="text-sm text-muted-foreground font-serif mt-1">
+                  $7/month membership: watermark-free HD downloads, personal gallery storage, priority print access, and marketplace selling privileges.
                 </p>
               </div>
             </div>

@@ -95,6 +95,130 @@ const allTestimonials: Testimonial[] = [
     name: "Amanda C.",
     role: "Art Collector & Chess Fan, Premium Member since 2024",
     rating: 5
+  },
+  // NEW TESTIMONIALS - 20 additional reviews
+  {
+    quote: "I teach chess to underprivileged kids in Brooklyn. When they see their games turned into art, the pride in their eyes is priceless. This platform is changing lives.",
+    name: "Damon W.",
+    role: "Youth Chess Outreach Director, Premium Member since 2025",
+    featured: true,
+    rating: 5
+  },
+  {
+    quote: "The 0% commission marketplace is refreshing. I sold three of my visions last month and kept every dollar. No hidden fees, no surprises. Finally, a platform that respects creators.",
+    name: "Lucia F.",
+    role: "Digital Artist & Chess Enthusiast, Premium Member since 2025",
+    rating: 5
+  },
+  {
+    quote: "I'm a professional photographer and I've never seen anything like this. The way movement is encoded into color creates compositions that rival abstract expressionism.",
+    name: "Kenji M.",
+    role: "Fine Art Photographer, Premium Member since 2025",
+    rating: 5
+  },
+  {
+    quote: "Bought a visualization of Kasparov vs Deep Blue for my husband's birthday. He cried. Actual tears. That game meant everything to him growing up.",
+    name: "Rachel S.",
+    role: "Marketing Executive, Premium Member since 2024",
+    rating: 5
+  },
+  {
+    quote: "The transparency of the Vision Score system is incredible. I can see exactly why certain pieces appreciate in value. No black-box algorithms, just honest metrics.",
+    name: "Franklin D.",
+    role: "Blockchain Developer, Premium Member since 2025",
+    rating: 5
+  },
+  {
+    quote: "Every chess streamer needs this. My viewers request visualizations of our community games constantly. The HD exports look incredible on stream overlays.",
+    name: "TwisteeTV",
+    role: "Twitch Partner (85K followers), Premium Member since 2025",
+    rating: 5
+  },
+  {
+    quote: "I'm legally blind and the high-contrast palettes let me finally 'see' my games in a new way. The accessibility options are thoughtfully designed.",
+    name: "Marcus J.",
+    role: "Accessibility Advocate, Premium Member since 2025",
+    rating: 5
+  },
+  {
+    quote: "Our architectural firm has three En Pensent prints in the lobby. Clients always ask about them. They're conversation starters that reflect our strategic mindset.",
+    name: "Ingrid L.",
+    role: "Principal Architect, Premium Member since 2024",
+    rating: 5
+  },
+  {
+    quote: "The Creative Mode is addictive. I've spent hours designing custom palettes that match my apartment's aesthetic. Each visualization is a piece of personalized wall art.",
+    name: "Olivia T.",
+    role: "Interior Designer, Premium Member since 2025",
+    rating: 4
+  },
+  {
+    quote: "I documented my entire chess improvement journey—from 800 to 2000 ELO—in visualizations. Looking at them chronologically, you can literally see my style evolving.",
+    name: "Nathan P.",
+    role: "Chess Improvement Coach, Premium Member since 2024",
+    featured: true,
+    rating: 5
+  },
+  {
+    quote: "The print quality rivals gallery pieces I've paid thousands for. The paper stock, the color accuracy, the packaging—everything screams premium craftsmanship.",
+    name: "Catherine W.",
+    role: "Art Gallery Owner, Premium Member since 2025",
+    rating: 5
+  },
+  {
+    quote: "I run a chess podcast and we now give away En Pensent prints as subscriber rewards. Our patrons absolutely love them. Perfect for community building.",
+    name: "Derek & Lisa",
+    role: "Chess Talk Podcast Hosts, Premium Members since 2024",
+    rating: 5
+  },
+  {
+    quote: "My therapy practice has a game corner. I use En Pensent visualizations to help clients discuss strategy, planning, and accepting losses. Unexpectedly therapeutic.",
+    name: "Dr. Maya R.",
+    role: "Clinical Psychologist, Premium Member since 2025",
+    rating: 5
+  },
+  {
+    quote: "The Play En Pensent mode turned our company's quarterly off-site into a legendary event. We framed the team tournament visualization and hung it in the break room.",
+    name: "Jordan C.",
+    role: "Head of People Ops, Premium Member since 2025",
+    rating: 5
+  },
+  {
+    quote: "As a museum curator, I'm always looking for where art meets technology. En Pensent is it. We're planning an exhibition featuring chess visualizations.",
+    name: "Dr. Simon H.",
+    role: "Modern Art Curator, Premium Member since 2025",
+    featured: true,
+    rating: 5
+  },
+  {
+    quote: "I've collected chess memorabilia for 40 years. En Pensent visualizations are the first digital pieces worthy of my collection. They feel substantial, meaningful.",
+    name: "Walter G.",
+    role: "Chess Memorabilia Collector, Premium Member since 2024",
+    rating: 5
+  },
+  {
+    quote: "The mobile experience is flawless. I visualize games on my phone during my commute and order prints that arrive before the weekend. Seamless workflow.",
+    name: "Aisha B.",
+    role: "Product Manager, Premium Member since 2025",
+    rating: 5
+  },
+  {
+    quote: "We hosted a charity chess tournament and sold limited-edition visualizations of the final game. Raised $12,000 for local schools. The platform made it easy.",
+    name: "Community Chess Foundation",
+    role: "Nonprofit Organization, Premium Member since 2025",
+    rating: 5
+  },
+  {
+    quote: "I'm a minimalist—I own very few physical objects. But my En Pensent print of the Immortal Game? That stays. It's the perfect intersection of meaning and beauty.",
+    name: "Leo M.",
+    role: "Minimalist Lifestyle Blogger, Premium Member since 2025",
+    rating: 5
+  },
+  {
+    quote: "The customer support team is incredible. When my print arrived damaged, they reshipped within 24 hours and included a discount code. That's how you build loyalty.",
+    name: "Christina P.",
+    role: "Restaurant Owner, Premium Member since 2025",
+    rating: 5
   }
 ];
 

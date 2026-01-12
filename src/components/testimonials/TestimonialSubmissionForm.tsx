@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Crown, Star, Send, Sparkles, CheckCircle, AlertCircle, Loader2, PenLine } from 'lucide-react';
+import { Crown, Star, Send, Sparkles, CheckCircle, AlertCircle, Loader2, PenLine, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -41,12 +41,56 @@ export const TestimonialSubmissionForm = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [hasSubmittedThisYear, setHasSubmittedThisYear] = useState(false);
+  const [lastSubmissionDate, setLastSubmissionDate] = useState<Date | null>(null);
+  const [isCheckingEligibility, setIsCheckingEligibility] = useState(true);
   
   const [quote, setQuote] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [roleTitle, setRoleTitle] = useState('');
   const [rating, setRating] = useState(5);
   const [hoveredStar, setHoveredStar] = useState(0);
+
+  // Check if user has already submitted a testimonial this year
+  useEffect(() => {
+    const checkYearlyLimit = async () => {
+      if (!user) {
+        setIsCheckingEligibility(false);
+        return;
+      }
+      
+      try {
+        const currentYear = new Date().getFullYear();
+        const yearStart = `${currentYear}-01-01T00:00:00Z`;
+        const yearEnd = `${currentYear}-12-31T23:59:59Z`;
+        
+        const { data, error } = await supabase
+          .from('testimonials')
+          .select('created_at')
+          .eq('user_id', user.id)
+          .gte('created_at', yearStart)
+          .lte('created_at', yearEnd)
+          .order('created_at', { ascending: false })
+          .limit(1);
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          setHasSubmittedThisYear(true);
+          setLastSubmissionDate(new Date(data[0].created_at));
+        } else {
+          setHasSubmittedThisYear(false);
+          setLastSubmissionDate(null);
+        }
+      } catch (error) {
+        console.error('Error checking testimonial eligibility:', error);
+      } finally {
+        setIsCheckingEligibility(false);
+      }
+    };
+    
+    checkYearlyLimit();
+  }, [user]);
 
   const resetForm = () => {
     setQuote('');
@@ -66,6 +110,11 @@ export const TestimonialSubmissionForm = ({
 
     if (!isPremium) {
       toast.error('Premium membership required to submit testimonials');
+      return;
+    }
+
+    if (hasSubmittedThisYear) {
+      toast.error('You can only submit one testimonial per year');
       return;
     }
 
@@ -138,8 +187,49 @@ export const TestimonialSubmissionForm = ({
             Share Your Story
           </h3>
           <p className="text-xs text-muted-foreground/70 font-serif max-w-xs mx-auto">
-            Premium members can submit their testimonials to be featured on this page
+            Premium members can submit one testimonial per year to be featured on this page
           </p>
+        </div>
+      </motion.div>
+    );
+  }
+
+  if (isCheckingEligibility) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative p-6 rounded-xl border border-dashed border-border/50 bg-card/30 text-center"
+      >
+        <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto" />
+        <p className="text-xs text-muted-foreground mt-2">Checking eligibility...</p>
+      </motion.div>
+    );
+  }
+
+  if (hasSubmittedThisYear) {
+    const nextEligibleDate = new Date(new Date().getFullYear() + 1, 0, 1);
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative p-6 rounded-xl border border-primary/20 bg-primary/5 text-center"
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent rounded-xl" />
+        <div className="relative space-y-3">
+          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+            <CheckCircle className="h-6 w-6 text-primary" />
+          </div>
+          <h3 className="font-display text-sm uppercase tracking-wider text-foreground">
+            Thank You for Sharing!
+          </h3>
+          <p className="text-xs text-muted-foreground font-serif max-w-xs mx-auto">
+            You submitted a testimonial {lastSubmissionDate ? `on ${lastSubmissionDate.toLocaleDateString()}` : 'this year'}.
+          </p>
+          <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+            <Calendar className="h-3 w-3" />
+            <span>Next eligible: {nextEligibleDate.toLocaleDateString()}</span>
+          </div>
         </div>
       </motion.div>
     );
