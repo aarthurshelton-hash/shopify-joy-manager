@@ -21,6 +21,7 @@ import QRMockup from "./pages/QRMockup";
 import VisualizationView from "./pages/VisualizationView";
 import OrderPrint from "./pages/OrderPrint";
 import Marketplace from "./pages/Marketplace";
+import MarketplaceVisionDetail from "./pages/MarketplaceVisionDetail";
 import AdminSeedMarketplace from "./pages/AdminSeedMarketplace";
 import PaletteAdminPage from "./components/admin/PaletteAdminPage";
 import AdminModeration from "./pages/AdminModeration";
@@ -55,6 +56,7 @@ const App = () => (
             <Route path="/v/:shareId" element={<VisualizationView />} />
             <Route path="/order-print" element={<OrderPrint />} />
             <Route path="/marketplace" element={<Marketplace />} />
+            <Route path="/marketplace/:id" element={<MarketplaceVisionDetail />} />
             <Route path="/admin/seed-marketplace" element={<AdminSeedMarketplace />} />
             <Route path="/admin/palettes" element={<PaletteAdminPage />} />
             <Route path="/admin/moderation" element={<AdminModeration />} />
