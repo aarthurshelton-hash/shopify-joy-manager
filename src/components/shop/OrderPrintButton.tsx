@@ -10,6 +10,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { usePrintOrderStore, PrintOrderData } from '@/stores/printOrderStore';
+import { useSessionStore } from '@/stores/sessionStore';
 
 interface OrderPrintButtonProps {
   /** Visual variant of the button */
@@ -40,11 +41,24 @@ export const OrderPrintButton: React.FC<OrderPrintButtonProps> = ({
 }) => {
   const navigate = useNavigate();
   const { setOrderData } = usePrintOrderStore();
+  const { setCurrentSimulation, setSavedShareId: setSessionShareId } = useSessionStore();
 
   const handleClick = () => {
     if (onClick) {
       onClick();
     } else if (orderData) {
+      // Save simulation to session store so we can restore it when returning
+      if (orderData.simulation) {
+        setCurrentSimulation(
+          orderData.simulation, 
+          orderData.pgn || '', 
+          orderData.title
+        );
+        if (orderData.shareId) {
+          setSessionShareId(orderData.shareId);
+        }
+      }
+      
       // Include current path as return path if not already set
       const dataWithReturnPath = {
         ...orderData,
