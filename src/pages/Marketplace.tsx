@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ShoppingBag, Gift, DollarSign, Loader2, Crown, Package, Shield, TrendingUp, Eye } from 'lucide-react';
+import { ShoppingBag, Gift, DollarSign, Loader2, Crown, Package, Shield, TrendingUp, Eye, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +17,7 @@ import { MarketplaceFilters, SortOption, CategoryFilter } from '@/components/mar
 import { RotatingArtBackground } from '@/components/shared/RotatingArtBackground';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
+import { BookShowcase } from '@/components/book/BookShowcase';
 import { 
   getActiveListings, 
   purchaseListing, 
@@ -258,6 +259,9 @@ const Marketplace: React.FC = () => {
 
           {/* Browse Tab */}
           <TabsContent value="browse" className="space-y-6">
+            {/* Featured Book Showcase */}
+            <BookShowcase variant="compact" />
+
             {/* Filters */}
             <MarketplaceFilters
               searchQuery={searchQuery}
