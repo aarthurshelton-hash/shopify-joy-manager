@@ -6,7 +6,7 @@ import { useRandomGameArt } from '@/hooks/useRandomGameArt';
 import { Badge } from '@/components/ui/badge';
 
 const About = () => {
-  const backgroundImages = useRandomGameArt(5);
+  const backgroundImages = useRandomGameArt(6);
   
   return (
     <div className="min-h-screen bg-background">
@@ -32,10 +32,11 @@ const About = () => {
           <div className="relative space-y-4 p-6 rounded-xl border border-border/50 bg-card/80 overflow-hidden">
             {backgroundImages[0] && (
               <div 
-                className="absolute inset-0 opacity-[0.04] bg-cover bg-center"
+                className="absolute inset-0 opacity-[0.12] bg-cover bg-center"
                 style={{ backgroundImage: `url(${backgroundImages[0]})` }}
               />
             )}
+            <div className="absolute inset-0 bg-gradient-to-br from-background/70 to-background/85" />
             <div className="relative z-10">
               <h2 className="text-2xl font-display font-bold uppercase tracking-wider flex items-center gap-2">
                 <Lightbulb className="h-5 w-5 text-primary" />
@@ -57,10 +58,11 @@ const About = () => {
           <div className="relative space-y-4 p-6 rounded-xl border border-border/50 bg-card/80 overflow-hidden">
             {backgroundImages[1] && (
               <div 
-                className="absolute inset-0 opacity-[0.04] bg-cover bg-center"
+                className="absolute inset-0 opacity-[0.12] bg-cover bg-center"
                 style={{ backgroundImage: `url(${backgroundImages[1]})` }}
               />
             )}
+            <div className="absolute inset-0 bg-gradient-to-br from-background/70 to-background/85" />
             <div className="relative z-10">
               <h2 className="text-2xl font-display font-bold uppercase tracking-wider flex items-center gap-2">
                 <Eye className="h-5 w-5 text-primary" />
@@ -82,10 +84,11 @@ const About = () => {
           <div className="relative space-y-4 p-6 rounded-xl border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-amber-500/5 overflow-hidden">
             {backgroundImages[4] && (
               <div 
-                className="absolute inset-0 opacity-[0.06] bg-cover bg-center"
+                className="absolute inset-0 opacity-[0.15] bg-cover bg-center"
                 style={{ backgroundImage: `url(${backgroundImages[4]})` }}
               />
             )}
+            <div className="absolute inset-0 bg-gradient-to-br from-background/60 to-background/80" />
             <div className="relative z-10">
               <div className="flex items-center gap-3 mb-4">
                 <h2 className="text-2xl font-display font-bold uppercase tracking-wider flex items-center gap-2">
@@ -162,10 +165,11 @@ const About = () => {
             <div className="relative p-6 rounded-lg border border-border/50 bg-card/50 space-y-3 overflow-hidden group">
               {backgroundImages[2] && (
                 <div 
-                  className="absolute inset-0 opacity-[0.03] group-hover:opacity-[0.06] transition-opacity bg-cover bg-center"
+                  className="absolute inset-0 opacity-[0.10] group-hover:opacity-[0.18] transition-opacity bg-cover bg-center"
                   style={{ backgroundImage: `url(${backgroundImages[2]})` }}
                 />
               )}
+              <div className="absolute inset-0 bg-gradient-to-br from-background/70 to-background/85" />
               <div className="relative z-10">
                 <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
                   <Heart className="h-6 w-6 text-primary" />
@@ -178,6 +182,13 @@ const About = () => {
             </div>
             
             <div className="relative p-6 rounded-lg border border-border/50 bg-card/50 space-y-3 overflow-hidden group">
+              {backgroundImages[5] && (
+                <div 
+                  className="absolute inset-0 opacity-[0.10] group-hover:opacity-[0.18] transition-opacity bg-cover bg-center"
+                  style={{ backgroundImage: `url(${backgroundImages[5]})` }}
+                />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-br from-background/70 to-background/85" />
               <div className="relative z-10">
                 <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
                   <Palette className="h-6 w-6 text-primary" />
@@ -192,10 +203,11 @@ const About = () => {
             <div className="relative p-6 rounded-lg border border-border/50 bg-card/50 space-y-3 overflow-hidden group">
               {backgroundImages[3] && (
                 <div 
-                  className="absolute inset-0 opacity-[0.03] group-hover:opacity-[0.06] transition-opacity bg-cover bg-center"
+                  className="absolute inset-0 opacity-[0.10] group-hover:opacity-[0.18] transition-opacity bg-cover bg-center"
                   style={{ backgroundImage: `url(${backgroundImages[3]})` }}
                 />
               )}
+              <div className="absolute inset-0 bg-gradient-to-br from-background/70 to-background/85" />
               <div className="relative z-10">
                 <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
                   <Users className="h-6 w-6 text-primary" />

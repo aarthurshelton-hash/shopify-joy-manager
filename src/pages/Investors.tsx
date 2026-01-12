@@ -448,10 +448,11 @@ const Investors = () => {
     >
       {backgroundImage && (
         <div 
-          className="absolute inset-0 opacity-[0.03] group-hover:opacity-[0.06] transition-opacity bg-cover bg-center"
+          className="absolute inset-0 opacity-[0.12] group-hover:opacity-[0.20] transition-opacity bg-cover bg-center"
           style={{ backgroundImage: `url(${backgroundImage})` }}
         />
       )}
+      <div className="absolute inset-0 bg-gradient-to-br from-background/70 to-background/85" />
       <div className="relative z-10">
         <div className="flex items-start justify-between">
           <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">

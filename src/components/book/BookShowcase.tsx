@@ -98,10 +98,10 @@ export const BookShowcase: React.FC<BookShowcaseProps> = ({
             <div className="relative rounded-xl overflow-hidden border border-amber-500/20">
               {/* Faded background art */}
               <div 
-                className="absolute inset-0 bg-cover bg-center opacity-[0.08]"
+                className="absolute inset-0 bg-cover bg-center opacity-[0.18]"
                 style={{ backgroundImage: `url(${immortalGame})` }}
               />
-              <div className="absolute inset-0 bg-gradient-to-br from-slate-900/90 to-slate-800/95" />
+              <div className="absolute inset-0 bg-gradient-to-br from-slate-900/85 to-slate-800/90" />
               
               <div className="relative p-4 space-y-3">
                 {SELLING_POINTS.map((point, i) => (
@@ -126,10 +126,10 @@ export const BookShowcase: React.FC<BookShowcaseProps> = ({
             {/* Testimonial - with faded art background */}
             <div className="relative rounded-lg overflow-hidden border border-slate-700">
               <div 
-                className="absolute inset-0 bg-cover bg-center opacity-[0.12]"
+                className="absolute inset-0 bg-cover bg-center opacity-[0.20]"
                 style={{ backgroundImage: `url(${operaGame})` }}
               />
-              <div className="absolute inset-0 bg-gradient-to-r from-slate-800/90 to-slate-900/95" />
+              <div className="absolute inset-0 bg-gradient-to-r from-slate-800/85 to-slate-900/90" />
               <div className="relative p-4">
                 <div className="flex items-start gap-2">
                   <Heart className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
@@ -145,10 +145,10 @@ export const BookShowcase: React.FC<BookShowcaseProps> = ({
             <div className="space-y-3">
               <Card className="relative overflow-hidden bg-slate-800/50 border-slate-700 hover:border-amber-500/50 transition-colors cursor-pointer group">
                 <div 
-                  className="absolute inset-0 bg-cover bg-center opacity-[0.06] group-hover:opacity-[0.1] transition-opacity"
+                  className="absolute inset-0 bg-cover bg-center opacity-[0.15] group-hover:opacity-[0.22] transition-opacity"
                   style={{ backgroundImage: `url(${evergreenGame})` }}
                 />
-                <div className="absolute inset-0 bg-gradient-to-r from-slate-800/80 to-slate-900/90" />
+                <div className="absolute inset-0 bg-gradient-to-r from-slate-800/75 to-slate-900/85" />
                 <CardContent className="relative p-4 flex items-center justify-between">
                   <div>
                     <p className="text-white font-medium">Standard Edition</p>
@@ -163,10 +163,10 @@ export const BookShowcase: React.FC<BookShowcaseProps> = ({
               
               <Card className="relative overflow-hidden bg-gradient-to-r from-amber-600/20 to-orange-600/20 border-amber-500/50 hover:border-amber-400 transition-colors cursor-pointer group">
                 <div 
-                  className="absolute inset-0 bg-cover bg-center opacity-[0.1] group-hover:opacity-[0.15] transition-opacity"
+                  className="absolute inset-0 bg-cover bg-center opacity-[0.18] group-hover:opacity-[0.25] transition-opacity"
                   style={{ backgroundImage: `url(${gameOfCentury})` }}
                 />
-                <div className="absolute inset-0 bg-gradient-to-r from-amber-900/70 to-orange-900/80" />
+                <div className="absolute inset-0 bg-gradient-to-r from-amber-900/65 to-orange-900/75" />
                 <div className="absolute top-0 right-0 bg-amber-500 text-white text-xs px-2 py-0.5 rounded-bl-lg font-medium z-10">
                   POPULAR
                 </div>
@@ -308,10 +308,10 @@ export const BookShowcase: React.FC<BookShowcaseProps> = ({
               <div className="flex flex-col sm:flex-row gap-4 pt-4">
                 <Card className="flex-1 relative overflow-hidden bg-slate-800/50 border-slate-700 backdrop-blur group hover:border-slate-500 transition-colors">
                   <div 
-                    className="absolute inset-0 bg-cover bg-center opacity-[0.06] group-hover:opacity-[0.1] transition-opacity"
+                    className="absolute inset-0 bg-cover bg-center opacity-[0.15] group-hover:opacity-[0.22] transition-opacity"
                     style={{ backgroundImage: `url(${evergreenGame})` }}
                   />
-                  <div className="absolute inset-0 bg-gradient-to-br from-slate-800/80 to-slate-900/90" />
+                  <div className="absolute inset-0 bg-gradient-to-br from-slate-800/75 to-slate-900/85" />
                   <CardContent className="relative p-4 text-center">
                     <p className="text-sm text-slate-400">Standard Edition</p>
                     <p className="text-sm text-slate-500">8.5" × 11"</p>
@@ -320,7 +320,7 @@ export const BookShowcase: React.FC<BookShowcaseProps> = ({
                 </Card>
                 <Card className="flex-1 relative overflow-hidden bg-gradient-to-br from-amber-600/20 to-orange-600/20 border-amber-500/50 backdrop-blur group hover:border-amber-400 transition-colors">
                   <div 
-                    className="absolute inset-0 bg-cover bg-center opacity-[0.1] group-hover:opacity-[0.15] transition-opacity"
+                    className="absolute inset-0 bg-cover bg-center opacity-[0.18] group-hover:opacity-[0.25] transition-opacity"
                     style={{ backgroundImage: `url(${gameOfCentury})` }}
                   />
                   <div className="absolute inset-0 bg-gradient-to-br from-amber-900/60 to-orange-900/70" />
