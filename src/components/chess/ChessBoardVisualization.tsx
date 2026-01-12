@@ -6,6 +6,9 @@ import { useLegendHighlight, HighlightedPiece } from '@/contexts/LegendHighlight
 interface ChessBoardVisualizationProps {
   board: SquareData[][];
   size?: number;
+  // Optional: override highlight state for export rendering when context isn't available
+  overrideHighlightedPieces?: HighlightedPiece[];
+  overrideCompareMode?: boolean;
 }
 
 // Get the current color for a visit using the active palette
@@ -216,21 +219,27 @@ const renderNestedSquares = (
 const ChessBoardVisualization: React.FC<ChessBoardVisualizationProps> = ({
   board,
   size = 500,
+  overrideHighlightedPieces,
+  overrideCompareMode,
 }) => {
-  // Try to use highlight context if available
-  let highlightedPieces: HighlightedPiece[] = [];
-  let compareMode = false;
-  try {
-    const context = useLegendHighlight();
-    // Combine locked pieces and hover highlight
-    if (context.lockedPieces.length > 0) {
-      highlightedPieces = context.lockedPieces;
-    } else if (context.highlightedPiece) {
-      highlightedPieces = [context.highlightedPiece];
+  // Use override props if provided, otherwise try context
+  let highlightedPieces: HighlightedPiece[] = overrideHighlightedPieces || [];
+  let compareMode = overrideCompareMode || false;
+  
+  // Only try context if no override provided
+  if (!overrideHighlightedPieces) {
+    try {
+      const context = useLegendHighlight();
+      // Combine locked pieces and hover highlight
+      if (context.lockedPieces.length > 0) {
+        highlightedPieces = context.lockedPieces;
+      } else if (context.highlightedPiece) {
+        highlightedPieces = [context.highlightedPiece];
+      }
+      compareMode = context.compareMode;
+    } catch {
+      // Context not available, no highlighting
     }
-    compareMode = context.compareMode;
-  } catch {
-    // Context not available, no highlighting
   }
   
   const squareSize = size / 8;

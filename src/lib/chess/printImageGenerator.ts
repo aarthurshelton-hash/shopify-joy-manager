@@ -1,10 +1,17 @@
 import { SimulationResult, SquareData } from './gameSimulator';
 import { generateQRDataUrl } from '@/lib/qr/generateVisualizationQR';
+import { PieceType, PieceColor } from './pieceColors';
+
+// Use string-based type for CapturedState to match the store's generic type
+interface LockedPiece {
+  pieceType: string;
+  pieceColor: string;
+}
 
 interface CapturedState {
   currentMove: number;
   selectedPhase: string;
-  lockedPieces: Array<{ pieceType: string; pieceColor: string }>;
+  lockedPieces: LockedPiece[];
   compareMode: boolean;
   displayMode: string;
   darkMode: boolean;
@@ -18,6 +25,7 @@ interface PrintOptions {
   includeQR?: boolean;
   shareId?: string;
   capturedState?: CapturedState;
+  withWatermark?: boolean;
 }
 
 /**
@@ -43,7 +51,7 @@ export async function generateCleanPrintImage(
   simulation: SimulationResult,
   options: PrintOptions = {}
 ): Promise<string> {
-  const { darkMode = false, includeQR = false, shareId, capturedState } = options;
+  const { darkMode = false, includeQR = false, shareId, capturedState, withWatermark = false } = options;
   const html2canvas = (await import('html2canvas')).default;
   
   // Create a temporary container for rendering
@@ -78,6 +86,15 @@ export async function generateCleanPrintImage(
     const printContent = document.createElement('div');
     container.appendChild(printContent);
     
+    // Prepare highlight state for rendering - cast to expected types
+    const highlightState = capturedState && capturedState.lockedPieces.length > 0 ? {
+      lockedPieces: capturedState.lockedPieces.map(p => ({
+        pieceType: p.pieceType as PieceType,
+        pieceColor: p.pieceColor as PieceColor,
+      })),
+      compareMode: capturedState.compareMode,
+    } : undefined;
+    
     // Render the unified PrintReadyVisualization component
     const root = ReactDOM.createRoot(printContent);
     await new Promise<void>((resolve) => {
@@ -90,6 +107,7 @@ export async function generateCleanPrintImage(
           showQR: includeQR && !!qrDataUrl,
           qrDataUrl,
           compact: false,
+          highlightState,
         })
       );
       // Give React time to render
