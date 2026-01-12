@@ -21,6 +21,7 @@ export interface MarketplaceListing {
     title: string;
     image_path: string;
     game_data: Record<string, unknown>;
+    pgn?: string | null;
   };
   seller?: {
     display_name: string | null;
@@ -219,5 +220,43 @@ export async function checkVisualizationListed(visualizationId: string): Promise
     return { isListed: true, listing: data as MarketplaceListing };
   } catch {
     return { isListed: false };
+  }
+}
+
+export async function getListingById(listingId: string): Promise<{
+  data: MarketplaceListing | null;
+  error: Error | null;
+}> {
+  try {
+    const { data: listingData, error: listingError } = await supabase
+      .from('visualization_listings')
+      .select(`
+        *,
+        visualization:saved_visualizations(id, title, image_path, game_data, pgn)
+      `)
+      .eq('id', listingId)
+      .single();
+
+    if (listingError) throw listingError;
+    if (!listingData) return { data: null, error: null };
+
+    // Fetch seller profile separately
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('user_id, display_name')
+      .eq('user_id', listingData.seller_id)
+      .single();
+
+    const listing = {
+      ...listingData,
+      visualization: Array.isArray(listingData.visualization) 
+        ? listingData.visualization[0] 
+        : listingData.visualization,
+      seller: profileData ? { display_name: profileData.display_name } : { display_name: null },
+    } as MarketplaceListing;
+
+    return { data: listing, error: null };
+  } catch (error) {
+    return { data: null, error: error as Error };
   }
 }

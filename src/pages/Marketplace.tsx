@@ -1,10 +1,9 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ShoppingBag, Gift, DollarSign, Loader2, Crown, Package, Shield, TrendingUp, Eye, BookOpen, Palette, Sparkles } from 'lucide-react';
+import { ShoppingBag, Gift, DollarSign, Loader2, Crown, Package, Shield, Palette, Sparkles, TrendingUp, Eye } from 'lucide-react';
 import { useRandomGameArt } from '@/hooks/useRandomGameArt';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
@@ -13,7 +12,6 @@ import AuthModal from '@/components/auth/AuthModal';
 import { VisionaryMembershipCard } from '@/components/premium';
 import MyListingsSection from '@/components/marketplace/MyListingsSection';
 import MarketplaceTransparency from '@/components/marketplace/MarketplaceTransparency';
-import VisionExperienceModal from '@/components/marketplace/VisionExperienceModal';
 import { MarketplaceFilters, SortOption, CategoryFilter } from '@/components/marketplace/MarketplaceFilters';
 import { RotatingArtBackground } from '@/components/shared/RotatingArtBackground';
 import { Header } from '@/components/shop/Header';
@@ -22,17 +20,16 @@ import { BookShowcase } from '@/components/book/BookShowcase';
 import { useSessionStore } from '@/stores/sessionStore';
 import { 
   getActiveListings, 
-  purchaseListing, 
   completePurchase,
   MarketplaceListing 
 } from '@/lib/marketplace/marketplaceApi';
-import { getPaletteArt, isPremiumPalette, extractPaletteId, getPaletteDisplayName, isThemedPalette } from '@/lib/marketplace/paletteArtMap';
+import { isPremiumPalette, extractPaletteId, isThemedPalette, getPaletteArt, getPaletteDisplayName } from '@/lib/marketplace/paletteArtMap';
 
 const Marketplace: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user, isPremium } = useAuth();
-  const gameArtImages = useRandomGameArt(16); // For listing card backgrounds
+  const gameArtImages = useRandomGameArt(16);
   const {
     returningFromOrder,
     capturedTimelineState,
@@ -42,11 +39,8 @@ const Marketplace: React.FC = () => {
   
   const [listings, setListings] = useState<MarketplaceListing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [purchasingId, setPurchasingId] = useState<string | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
-  const [selectedListing, setSelectedListing] = useState<MarketplaceListing | null>(null);
-  const [showDetailModal, setShowDetailModal] = useState(false);
 
   // Filter states
   const [searchQuery, setSearchQuery] = useState('');
@@ -161,9 +155,7 @@ const Marketplace: React.FC = () => {
   }, [listings, searchQuery, sortBy, category, showGenesisOnly]);
 
   const handlePurchaseComplete = async (listingId: string) => {
-    setPurchasingId(listingId);
     const { success, message, visualizationId, error } = await completePurchase(listingId);
-    setPurchasingId(null);
 
     if (error) {
       toast.error('Transfer failed', { description: error.message });
@@ -178,47 +170,6 @@ const Marketplace: React.FC = () => {
       loadListings();
       // Clear URL params
       navigate('/marketplace', { replace: true });
-    }
-  };
-
-  const handlePurchase = async (listing: MarketplaceListing) => {
-    if (!user) {
-      setShowAuthModal(true);
-      return;
-    }
-
-    if (!isPremium) {
-      setShowPremiumModal(true);
-      return;
-    }
-
-    setPurchasingId(listing.id);
-    const { url, success, message, visualizationId, error } = await purchaseListing(listing.id);
-
-    if (error) {
-      toast.error('Purchase failed', { description: error.message });
-      setPurchasingId(null);
-      return;
-    }
-
-    // Free gift - transferred immediately
-    if (success) {
-      toast.success('Congratulations!', {
-        description: message || 'Visualization added to your gallery!',
-        action: visualizationId ? {
-          label: 'View',
-          onClick: () => navigate(`/my-vision/${visualizationId}`),
-        } : undefined,
-      });
-      loadListings();
-      setPurchasingId(null);
-      return;
-    }
-
-    // Paid - redirect to Stripe
-    if (url) {
-      window.open(url, '_blank');
-      setPurchasingId(null);
     }
   };
 
@@ -348,10 +299,7 @@ const Marketplace: React.FC = () => {
                                 : 'border-border/50'
                           }`}
                           onClick={() => {
-                            console.log('[Marketplace] Card clicked, listing:', listing.id);
-                            setSelectedListing(listing);
-                            setShowDetailModal(true);
-                            console.log('[Marketplace] showDetailModal set to true');
+                            navigate(`/marketplace/${listing.id}`);
                           }}
                         >
                           {/* Premium Shimmer Effect */}
@@ -488,39 +436,6 @@ const Marketplace: React.FC = () => {
                         );
                       })()}
 
-                      <CardFooter className="p-3 sm:p-4 pt-0 flex gap-2">
-                        <Button
-                          className="flex-1 text-sm"
-                          variant={listing.price_cents === 0 ? "default" : "outline"}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handlePurchase(listing);
-                          }}
-                          disabled={purchasingId === listing.id || listing.seller_id === user?.id}
-                        >
-                          {purchasingId === listing.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : listing.seller_id === user?.id ? (
-                            'Your Listing'
-                          ) : listing.price_cents === 0 ? (
-                            'Claim Gift'
-                          ) : (
-                            formatPrice(listing.price_cents)
-                          )}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedListing(listing);
-                            setShowDetailModal(true);
-                          }}
-                          title="View details"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </CardFooter>
                     </Card>
                       );
                     })()}
@@ -559,18 +474,6 @@ const Marketplace: React.FC = () => {
           setShowAuthModal(true);
         }}
         trigger="marketplace"
-      />
-      <VisionExperienceModal
-        isOpen={showDetailModal}
-        onClose={() => {
-          setShowDetailModal(false);
-          setSelectedListing(null);
-        }}
-        listing={selectedListing}
-        onPurchase={handlePurchase}
-        isPurchasing={purchasingId === selectedListing?.id}
-        isOwnListing={selectedListing?.seller_id === user?.id}
-        isPremium={isPremium}
       />
     </div>
   );
