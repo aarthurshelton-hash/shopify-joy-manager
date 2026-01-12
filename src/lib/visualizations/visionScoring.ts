@@ -55,11 +55,17 @@ export const SCORING_WEIGHTS = {
  */
 export const MEMBERSHIP_ECONOMICS = {
   monthlySubscription: 7.00,           // $7/month
-  marketContributionRate: 0.15,        // 15% goes to market appreciation
-  monthlyContributionPerMember: 1.05,  // $1.05/month per subscriber to market
+  marketContributionRate: 0.20,        // 20% goes to market appreciation
+  monthlyContributionPerMember: 1.40,  // $1.40/month per subscriber to market
   baseMarketCap: 5000,                 // $5,000 base market cap (foundation value)
   valuePerScorePoint: 0.50,            // Base $0.50 per score point
   membershipMultiplierCap: 3.0,        // Max 3x multiplier from memberships
+  ownerValueShare: 0.80,               // 80% of print order value goes to vision owner
+  platformValueShare: 0.20,            // 20% retained by platform
+  creatorPremiumTiers: {               // Creator premium multipliers based on engagement
+    tier1: { minInteractions: 10, multiplier: 1.2 },
+    tier2: { minInteractions: 50, multiplier: 1.5 },
+  },
 };
 
 /**
