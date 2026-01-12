@@ -71,7 +71,7 @@ export interface DuplicateCheckResult {
   existingColors?: PaletteColors; // For color comparison preview
   isIntrinsicPalette?: boolean; // True if using a featured En Pensent palette
   isIntrinsicGame?: boolean; // True if the game matches a famous game card
-  matchedGameCard?: { id: string; title: string }; // The matched famous game
+  matchedGameCard?: { id: string; title: string; similarity?: number; matchType?: 'exact' | 'partial' | 'none' }; // The matched famous game
   matchedPaletteId?: PaletteId; // The matched featured palette
   matchedPaletteSimilarity?: number; // How close to the featured palette
 }

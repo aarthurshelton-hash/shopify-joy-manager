@@ -6,12 +6,13 @@
  * 2. Preventing saves of visualizations too similar to existing ones
  * 3. Supporting palette inheritance for featured palettes
  * 4. Checking against famous game cards to protect En Pensent intrinsic value
+ * 5. Auto-detecting intrinsic game cards for analytics and data collection
  */
 
 import { colorPalettes, PaletteId, PieceType, PieceColor } from '@/lib/chess/pieceColors';
 import { GameData } from '@/lib/chess/gameSimulator';
 import { supabase } from '@/integrations/supabase/client';
-import { famousGames } from '@/lib/chess/famousGames';
+import { detectGameCard, GameCardMatch } from '@/lib/chess/gameCardDetection';
 
 // All piece types for comparison
 const PIECE_TYPES: PieceType[] = ['k', 'q', 'r', 'b', 'n', 'p'];
@@ -158,7 +159,7 @@ export interface SimilarityCheckResult {
   matchedPaletteSimilarity?: number;
   isIntrinsicPalette?: boolean; // True if using/close to a featured En Pensent palette
   isIntrinsicGame?: boolean; // True if the game matches a famous game card
-  matchedGameCard?: { id: string; title: string }; // The matched famous game
+  matchedGameCard?: { id: string; title: string; similarity?: number; matchType?: 'exact' | 'partial' | 'none' }; // The matched famous game
   existingVisualizationId?: string;
   ownerDisplayName?: string;
   ownedByCurrentUser?: boolean;
@@ -167,42 +168,22 @@ export interface SimilarityCheckResult {
 }
 
 /**
- * Check if the PGN matches any famous game card
+ * Check if the PGN matches any famous game card using our detection utility
  */
-export function findMatchingFamousGame(pgn: string | undefined, gameData: GameData): { id: string; title: string } | null {
-  if (!pgn && !gameData.pgn && !gameData.moves?.length) return null;
+export function findMatchingFamousGame(pgn: string | undefined, gameData: GameData): { id: string; title: string; similarity: number; matchType: 'exact' | 'partial' | 'none' } | null {
+  const pgnToCheck = pgn || gameData.pgn;
+  if (!pgnToCheck && !gameData.moves?.length) return null;
   
-  const normalizedInput = normalizePgn(pgn || gameData.pgn);
+  // Use the centralized game card detection
+  const match = detectGameCard(pgnToCheck || '');
   
-  for (const game of famousGames) {
-    const normalizedFamous = normalizePgn(game.pgn);
-    
-    // Exact match
-    if (normalizedInput === normalizedFamous) {
-      return { id: game.id, title: game.title };
-    }
-    
-    // Partial match - if the input contains all moves of the famous game (or vice versa)
-    // This catches games that are the same but with extra moves or shorter notation
-    if (normalizedInput.includes(normalizedFamous) || normalizedFamous.includes(normalizedInput)) {
-      // Only match if at least 80% of moves are shared
-      const inputMoves = normalizedInput.split(' ').filter(m => m.length > 0);
-      const famousMoves = normalizedFamous.split(' ').filter(m => m.length > 0);
-      
-      const minLength = Math.min(inputMoves.length, famousMoves.length);
-      const maxLength = Math.max(inputMoves.length, famousMoves.length);
-      
-      if (minLength / maxLength >= 0.8) {
-        let matchingMoves = 0;
-        for (let i = 0; i < minLength; i++) {
-          if (inputMoves[i] === famousMoves[i]) matchingMoves++;
-        }
-        
-        if (matchingMoves / minLength >= 0.9) {
-          return { id: game.id, title: game.title };
-        }
-      }
-    }
+  if (match.isMatch && match.matchedGame) {
+    return { 
+      id: match.matchedGame.id, 
+      title: match.matchedGame.title,
+      similarity: match.similarity,
+      matchType: match.matchType,
+    };
   }
   
   return null;

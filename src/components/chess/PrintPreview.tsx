@@ -64,7 +64,7 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
   const [isIntrinsicGame, setIsIntrinsicGame] = useState(false);
   const [matchedPaletteId, setMatchedPaletteId] = useState<PaletteId | undefined>();
   const [matchedPaletteSimilarity, setMatchedPaletteSimilarity] = useState<number | undefined>();
-  const [matchedGameCard, setMatchedGameCard] = useState<{ id: string; title: string } | undefined>();
+  const [matchedGameCard, setMatchedGameCard] = useState<{ id: string; title: string; similarity?: number; matchType?: 'exact' | 'partial' | 'none' } | undefined>();
   const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false);
   const [boardSize, setBoardSize] = useState(320);
   const [darkMode, setDarkMode] = useState(false);
@@ -180,6 +180,23 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
   // Check if current visualization already exists or is too similar in gallery (globally)
   useEffect(() => {
     const checkIfExists = async () => {
+      // Check for intrinsic game for all users (even free users)
+      const { findMatchingFamousGame } = await import('@/lib/visualizations/similarityDetection');
+      const gameMatch = findMatchingFamousGame(pgn, simulation.gameData);
+      
+      if (gameMatch) {
+        setIsIntrinsicGame(true);
+        setMatchedGameCard({
+          id: gameMatch.id,
+          title: gameMatch.title,
+          similarity: gameMatch.similarity,
+          matchType: gameMatch.matchType,
+        });
+      } else {
+        setIsIntrinsicGame(false);
+        setMatchedGameCard(undefined);
+      }
+      
       if (!user || !isPremium) {
         setExistsInGallery(false);
         setIsTooSimilar(false);
@@ -200,8 +217,6 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
           setMatchedPaletteId(undefined);
           setMatchedPaletteSimilarity(undefined);
         }
-        setIsIntrinsicGame(false);
-        setMatchedGameCard(undefined);
         return;
       }
 
@@ -792,6 +807,8 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
             similarity={matchedPaletteSimilarity}
             gameCardId={matchedGameCard?.id}
             gameCardTitle={matchedGameCard?.title}
+            gameCardMatchType={matchedGameCard?.matchType}
+            gameCardSimilarity={matchedGameCard?.similarity}
           />
         </div>
       )}
