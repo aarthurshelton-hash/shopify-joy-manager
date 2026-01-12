@@ -385,11 +385,11 @@ const Marketplace: React.FC = () => {
                         </Badge>
 
                         {/* Hover overlay to view details */}
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <Button size="sm" variant="secondary" className="gap-2">
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                          <div className="px-3 py-2 rounded-md bg-secondary text-secondary-foreground text-sm font-medium flex items-center gap-2">
                             <Eye className="h-4 w-4" />
                             View Details
-                          </Button>
+                          </div>
                         </div>
                       </div>
 

@@ -764,7 +764,10 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
 
                   {/* Board with Coordinates */}
                   <div className="flex justify-center">
-                    <div className={`relative p-4 rounded-lg ${darkMode ? 'bg-stone-950' : 'bg-stone-50'}`}>
+                    <div 
+                      className={`relative p-4 rounded-lg ${darkMode ? 'bg-stone-950' : 'bg-stone-50'}`}
+                      data-vision-board="true"
+                    >
                       {showCoordinates && (
                         <BoardCoordinateGuide size={boardSize} position="inside" />
                       )}
