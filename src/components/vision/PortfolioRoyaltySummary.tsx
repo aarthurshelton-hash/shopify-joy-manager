@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { DollarSign, TrendingUp, Loader2, Info, Building2, Sparkles, PieChart } from 'lucide-react';
+import { DollarSign, TrendingUp, Loader2, Info, Building2, Sparkles, PieChart, ArrowRightLeft, Percent } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { MEMBERSHIP_ECONOMICS } from '@/lib/visualizations/visionScoring';
 import { useRandomGameArt } from '@/hooks/useRandomGameArt';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
+import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 
 interface PortfolioRoyaltyStats {
   totalRoyaltyCents: number;
@@ -21,8 +23,10 @@ export const PortfolioRoyaltySummary: React.FC = () => {
   const [stats, setStats] = useState<PortfolioRoyaltyStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const backgroundImages = useRandomGameArt(1);
-  const ownerSharePercent = MEMBERSHIP_ECONOMICS.ownerValueShare * 100;
-  const platformSharePercent = MEMBERSHIP_ECONOMICS.platformValueShare * 100;
+  const valueAppreciationPercent = MEMBERSHIP_ECONOMICS.valueAppreciationRate * 100;
+  const platformSharePercent = MEMBERSHIP_ECONOMICS.platformRetentionRate * 100;
+  const marketplaceFeePercent = MEMBERSHIP_ECONOMICS.marketplaceTransactionFee * 100;
+  const sellerKeepsPercent = MEMBERSHIP_ECONOMICS.sellerRetentionRate * 100;
 
   useEffect(() => {
     if (!user) return;
@@ -94,9 +98,9 @@ export const PortfolioRoyaltySummary: React.FC = () => {
 
   if (!stats) return null;
 
-  const royaltyDollars = stats.totalRoyaltyCents / 100;
+  const valueDollars = stats.totalRoyaltyCents / 100;
   const totalRevenueDollars = stats.totalPrintRevenue / 100;
-  const platformDollars = totalRevenueDollars - royaltyDollars;
+  const platformDollars = totalRevenueDollars - valueDollars;
 
   return (
     <Card className="relative overflow-hidden bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
@@ -111,22 +115,22 @@ export const PortfolioRoyaltySummary: React.FC = () => {
       
       <CardHeader className="relative z-10 pb-2">
         <CardTitle className="flex items-center gap-2 text-lg">
-          <DollarSign className="h-5 w-5 text-primary" />
-          Portfolio Royalties
+          <TrendingUp className="h-5 w-5 text-primary" />
+          Portfolio Value
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger>
                 <Info className="h-4 w-4 text-muted-foreground" />
               </TooltipTrigger>
               <TooltipContent side="right" className="max-w-xs">
-                <p className="font-medium mb-2">Revenue Split Economics</p>
+                <p className="font-medium mb-2">Value Appreciation Model</p>
                 <div className="space-y-2 text-xs">
                   <div className="flex items-center justify-between">
                     <span className="flex items-center gap-1">
                       <Sparkles className="h-3 w-3 text-primary" />
-                      Your Royalty
+                      Value Appreciation
                     </span>
-                    <span className="font-bold text-primary">{ownerSharePercent}%</span>
+                    <span className="font-bold text-primary">{valueAppreciationPercent}%</span>
                   </div>
                   <div className="flex items-center justify-between text-muted-foreground">
                     <span className="flex items-center gap-1">
@@ -136,7 +140,7 @@ export const PortfolioRoyaltySummary: React.FC = () => {
                     <span>{platformSharePercent}%</span>
                   </div>
                   <p className="text-muted-foreground pt-1 border-t border-border/50">
-                    The {platformSharePercent}% covers printing, shipping, payment processing, and platform operations.
+                    Value accrues to your visions. Sell on the marketplace to realize gains ({sellerKeepsPercent}% to you, {marketplaceFeePercent}% platform fee).
                   </p>
                 </div>
               </TooltipContent>
@@ -144,32 +148,32 @@ export const PortfolioRoyaltySummary: React.FC = () => {
           </TooltipProvider>
         </CardTitle>
         <CardDescription className="relative z-10">
-          Lifetime earnings from print orders by others
+          Accrued value from print orders by others
         </CardDescription>
       </CardHeader>
       <CardContent className="relative z-10 space-y-4">
-        {/* Main earnings display */}
+        {/* Main value display */}
         <div className="flex items-baseline gap-2">
           <span className="text-3xl font-bold text-primary">
-            ${royaltyDollars.toFixed(2)}
+            +${valueDollars.toFixed(2)}
           </span>
-          <span className="text-sm text-muted-foreground">total earned</span>
+          <span className="text-sm text-muted-foreground">accrued value</span>
         </div>
 
-        {/* Revenue split visualization */}
+        {/* Value appreciation visualization */}
         {stats.totalPrintRevenue > 0 && (
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs">
               <span className="flex items-center gap-1.5">
                 <PieChart className="h-3 w-3 text-muted-foreground" />
-                Revenue Distribution
+                Print Revenue Split
               </span>
               <span className="text-muted-foreground">${totalRevenueDollars.toFixed(2)} total</span>
             </div>
             <div className="flex h-3 rounded-full overflow-hidden bg-muted/30">
               <div 
                 className="bg-primary transition-all"
-                style={{ width: `${ownerSharePercent}%` }}
+                style={{ width: `${valueAppreciationPercent}%` }}
               />
               <div 
                 className="bg-muted-foreground/30 transition-all"
@@ -177,7 +181,7 @@ export const PortfolioRoyaltySummary: React.FC = () => {
               />
             </div>
             <div className="flex justify-between text-xs">
-              <span className="text-primary font-medium">You: ${royaltyDollars.toFixed(2)}</span>
+              <span className="text-primary font-medium">Your Value: +${valueDollars.toFixed(2)}</span>
               <span className="text-muted-foreground">Operations: ${platformDollars.toFixed(2)}</span>
             </div>
           </div>
@@ -194,19 +198,32 @@ export const PortfolioRoyaltySummary: React.FC = () => {
             <p className="text-xs text-muted-foreground">Orders by Others</p>
           </div>
           <div className="p-2 rounded-lg bg-background/50 border border-border/50 text-center">
-            <p className="text-lg font-semibold text-primary">{ownerSharePercent}%</p>
-            <p className="text-xs text-muted-foreground">Your Share</p>
+            <p className="text-lg font-semibold text-green-500">{sellerKeepsPercent}%</p>
+            <p className="text-xs text-muted-foreground">On Sale</p>
           </div>
         </div>
 
         {stats.totalRoyaltyOrders === 0 && (
           <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
             <p className="text-xs text-muted-foreground">
-              <strong className="text-foreground">How it works:</strong> Share your visions publicly. 
-              When others order prints, you automatically earn {ownerSharePercent}% royalties.
+              <strong className="text-foreground">How it works:</strong> When others order prints, 
+              {valueAppreciationPercent}% of revenue adds to your vision's value. List on the marketplace to sell.
             </p>
           </div>
         )}
+
+        {/* Marketplace CTA */}
+        <div className="p-3 rounded-lg bg-green-500/5 border border-green-500/20 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-xs">
+            <ArrowRightLeft className="h-4 w-4 text-green-500 shrink-0" />
+            <span className="text-muted-foreground">
+              Ready to sell? <strong className="text-foreground">Only {marketplaceFeePercent}% fee</strong>
+            </span>
+          </div>
+          <Button asChild size="sm" variant="outline" className="shrink-0 h-7 text-xs">
+            <Link to="/marketplace">Marketplace</Link>
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

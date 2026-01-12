@@ -35,30 +35,32 @@ export const RoyaltyPotentialCard: React.FC<RoyaltyPotentialCardProps> = ({
 }) => {
   const royaltyDollars = royaltyCentsEarned / 100;
   const totalRevenueDollars = totalPrintRevenue / 100;
-  const ownerSharePercent = MEMBERSHIP_ECONOMICS.ownerValueShare * 100;
+  const valueAppreciationPercent = MEMBERSHIP_ECONOMICS.valueAppreciationRate * 100;
+  const marketplaceFeePercent = MEMBERSHIP_ECONOMICS.marketplaceTransactionFee * 100;
+  const sellerKeepsPercent = MEMBERSHIP_ECONOMICS.sellerRetentionRate * 100;
 
   // Example print prices for potential calculation
   const avgPrintPrice = 49; // Average print price in USD
-  const projectedEarnings = (avgPrintPrice * ownerSharePercent / 100);
+  const projectedValueAdded = (avgPrintPrice * valueAppreciationPercent / 100);
 
   return (
     <Card className={`bg-gradient-to-br from-emerald-500/5 via-primary/5 to-amber-500/5 border-primary/20 ${className}`}>
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-base">
           <DollarSign className="h-5 w-5 text-emerald-500" />
-          {isOwner ? 'Royalty Earnings' : 'Ownership Earnings Potential'}
+          {isOwner ? 'Vision Value' : 'Ownership Value Potential'}
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger>
                 <Info className="h-4 w-4 text-muted-foreground" />
               </TooltipTrigger>
               <TooltipContent side="right" className="max-w-xs">
-                <p className="font-medium mb-1">How Royalties Work</p>
+                <p className="font-medium mb-1">How Value Appreciation Works</p>
                 <ul className="text-xs space-y-1 text-muted-foreground">
-                  <li>• Owners earn {ownerSharePercent}% when others order prints</li>
-                  <li>• Royalties are tracked and paid automatically</li>
-                  <li>• Popular visions can generate ongoing passive income</li>
-                  <li>• You can list your vision for resale anytime</li>
+                  <li>• {valueAppreciationPercent}% of print revenue adds to vision value</li>
+                  <li>• Sell on marketplace to realize gains ({sellerKeepsPercent}% to you)</li>
+                  <li>• Popular visions can appreciate significantly</li>
+                  <li>• Only {marketplaceFeePercent}% platform fee on sales</li>
                 </ul>
               </TooltipContent>
             </Tooltip>
@@ -71,9 +73,9 @@ export const RoyaltyPotentialCard: React.FC<RoyaltyPotentialCardProps> = ({
           <>
             <div className="flex items-baseline gap-2">
               <span className="text-3xl font-bold text-emerald-500">
-                ${royaltyDollars.toFixed(2)}
+                +${royaltyDollars.toFixed(2)}
               </span>
-              <span className="text-sm text-muted-foreground">earned</span>
+              <span className="text-sm text-muted-foreground">accrued value</span>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -107,7 +109,7 @@ export const RoyaltyPotentialCard: React.FC<RoyaltyPotentialCardProps> = ({
 
             {royaltyOrdersCount === 0 && (
               <p className="text-xs text-muted-foreground italic border-t border-border/50 pt-3">
-                When others order prints of your vision, you'll earn royalties here.
+                When others order prints, value accrues here. Sell on marketplace to realize gains.
               </p>
             )}
           </>
@@ -116,18 +118,18 @@ export const RoyaltyPotentialCard: React.FC<RoyaltyPotentialCardProps> = ({
           <>
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                As the owner, you'll earn <span className="text-emerald-500 font-medium">{ownerSharePercent}%</span> of all print sales made by others.
+                As owner, <span className="text-emerald-500 font-medium">{valueAppreciationPercent}%</span> of print revenue adds to this vision's value. Sell to realize gains.
               </p>
               
               <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
                 <div className="flex items-center justify-between">
                   <span className="text-sm">Example: $49 print order</span>
                   <span className="text-lg font-bold text-emerald-500">
-                    +${projectedEarnings.toFixed(2)}
+                    +${projectedValueAdded.toFixed(2)}
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Your royalty per print order
+                  Value added per print order
                 </p>
               </div>
             </div>
@@ -153,7 +155,7 @@ export const RoyaltyPotentialCard: React.FC<RoyaltyPotentialCardProps> = ({
             )}
 
             <p className="text-xs text-muted-foreground italic">
-              Claim ownership to start earning from this vision's print orders.
+              Claim ownership to start building value from print orders. Sell anytime (only {marketplaceFeePercent}% fee).
             </p>
           </>
         )}
