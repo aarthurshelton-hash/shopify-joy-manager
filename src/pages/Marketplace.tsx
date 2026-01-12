@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ShoppingBag, Gift, DollarSign, Loader2, ExternalLink, Crown, Package, Shield, TrendingUp, Info } from 'lucide-react';
+import { ShoppingBag, Gift, DollarSign, Loader2, Crown, Package, Shield, TrendingUp, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +12,7 @@ import AuthModal from '@/components/auth/AuthModal';
 import { PremiumUpgradeModal } from '@/components/premium';
 import MyListingsSection from '@/components/marketplace/MyListingsSection';
 import MarketplaceTransparency from '@/components/marketplace/MarketplaceTransparency';
+import VisionDetailModal from '@/components/marketplace/VisionDetailModal';
 import { 
   getActiveListings, 
   purchaseListing, 
@@ -29,6 +30,8 @@ const Marketplace: React.FC = () => {
   const [purchasingId, setPurchasingId] = useState<string | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [selectedListing, setSelectedListing] = useState<MarketplaceListing | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
 
   const loadListings = useCallback(async () => {
     setIsLoading(true);
@@ -268,10 +271,13 @@ const Marketplace: React.FC = () => {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => navigate(`/v/${listing.visualization?.id}`)}
+                          onClick={() => {
+                            setSelectedListing(listing);
+                            setShowDetailModal(true);
+                          }}
                           title="View details"
                         >
-                          <ExternalLink className="h-4 w-4" />
+                          <Eye className="h-4 w-4" />
                         </Button>
                       </CardFooter>
                     </Card>
@@ -308,6 +314,18 @@ const Marketplace: React.FC = () => {
           setShowAuthModal(true);
         }}
         trigger="save"
+      />
+      <VisionDetailModal
+        isOpen={showDetailModal}
+        onClose={() => {
+          setShowDetailModal(false);
+          setSelectedListing(null);
+        }}
+        listing={selectedListing}
+        onPurchase={handlePurchase}
+        isPurchasing={purchasingId === selectedListing?.id}
+        isOwnListing={selectedListing?.seller_id === user?.id}
+        isPremium={isPremium}
       />
     </div>
   );
