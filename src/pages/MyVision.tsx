@@ -161,6 +161,7 @@ const MyVision: React.FC = () => {
         result: viz.game_data.result,
       },
       shareId: viz.public_share_id,
+      returnPath: '/my-vision',
     });
     navigate('/order-print');
   };

@@ -40,6 +40,9 @@ export interface PrintOrderData {
     showHeatmaps: boolean;
     capturedAt: Date;
   };
+  
+  // Path to return to after closing order page
+  returnPath?: string;
 }
 
 interface PrintOrderStore {

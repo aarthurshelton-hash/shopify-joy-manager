@@ -85,7 +85,13 @@ const OrderPrint: React.FC = () => {
         >
           <Button 
             variant="ghost" 
-            onClick={() => navigate(-1)}
+            onClick={() => {
+              if (orderData.returnPath) {
+                navigate(orderData.returnPath);
+              } else {
+                navigate(-1);
+              }
+            }}
             className="mb-4 -ml-2"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />

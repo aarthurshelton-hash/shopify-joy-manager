@@ -144,6 +144,7 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
         ...capturedVisualizationState,
         darkMode, // Use current modal dark mode setting
       },
+      returnPath: window.location.pathname,
     });
     
     toast.success('Board state captured for print!', {
