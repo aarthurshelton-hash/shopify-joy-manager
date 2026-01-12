@@ -346,6 +346,63 @@ export type Database = {
         }
         Relationships: []
       }
+      marketplace_offers: {
+        Row: {
+          buyer_id: string
+          created_at: string
+          expires_at: string
+          id: string
+          listing_id: string
+          message: string | null
+          offer_cents: number
+          parent_offer_id: string | null
+          seller_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          buyer_id: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          listing_id: string
+          message?: string | null
+          offer_cents: number
+          parent_offer_id?: string | null
+          seller_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          buyer_id?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          listing_id?: string
+          message?: string | null
+          offer_cents?: number
+          parent_offer_id?: string | null
+          seller_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_offers_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "visualization_listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_offers_parent_offer_id_fkey"
+            columns: ["parent_offer_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_offers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       membership_funnel_events: {
         Row: {
           converted_to_premium: boolean | null
@@ -696,6 +753,42 @@ export type Database = {
         }
         Relationships: []
       }
+      user_wallets: {
+        Row: {
+          balance_cents: number
+          created_at: string
+          id: string
+          total_deposited_cents: number
+          total_earned_cents: number
+          total_spent_cents: number
+          total_withdrawn_cents: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance_cents?: number
+          created_at?: string
+          id?: string
+          total_deposited_cents?: number
+          total_earned_cents?: number
+          total_spent_cents?: number
+          total_withdrawn_cents?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance_cents?: number
+          created_at?: string
+          id?: string
+          total_deposited_cents?: number
+          total_earned_cents?: number
+          total_spent_cents?: number
+          total_withdrawn_cents?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       vision_interactions: {
         Row: {
           created_at: string
@@ -872,6 +965,50 @@ export type Database = {
           },
         ]
       }
+      wallet_transactions: {
+        Row: {
+          amount_cents: number
+          balance_after_cents: number
+          counterparty_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          related_listing_id: string | null
+          transaction_type: string
+          user_id: string
+        }
+        Insert: {
+          amount_cents: number
+          balance_after_cents: number
+          counterparty_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          related_listing_id?: string | null
+          transaction_type: string
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          balance_after_cents?: number
+          counterparty_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          related_listing_id?: string | null
+          transaction_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_transactions_related_listing_id_fkey"
+            columns: ["related_listing_id"]
+            isOneToOne: false
+            referencedRelation: "visualization_listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       education_fund_stats: {
@@ -922,6 +1059,26 @@ export type Database = {
           unique_users: number
         }[]
       }
+      get_or_create_wallet: {
+        Args: { p_user_id: string }
+        Returns: {
+          balance_cents: number
+          created_at: string
+          id: string
+          total_deposited_cents: number
+          total_earned_cents: number
+          total_spent_cents: number
+          total_withdrawn_cents: number
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "user_wallets"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       get_remaining_transfers: {
         Args: { p_visualization_id: string }
         Returns: number
@@ -936,6 +1093,14 @@ export type Database = {
       }
       is_premium_user: { Args: { p_user_id: string }; Returns: boolean }
       is_user_banned: { Args: { p_user_id: string }; Returns: boolean }
+      process_marketplace_sale: {
+        Args: {
+          p_buyer_id: string
+          p_listing_id: string
+          p_sale_price_cents: number
+        }
+        Returns: boolean
+      }
       record_vision_interaction: {
         Args: {
           p_interaction_type: string

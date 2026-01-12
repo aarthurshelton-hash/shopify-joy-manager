@@ -30,6 +30,7 @@ import { Footer } from '@/components/shop/Footer';
 import { usePrintOrderStore } from '@/stores/printOrderStore';
 import { useSessionStore } from '@/stores/sessionStore';
 import { PortfolioRoyaltySummary } from '@/components/vision/PortfolioRoyaltySummary';
+import HoldingsValueDashboard from '@/components/vision/HoldingsValueDashboard';
 import { GracePeriodBanner } from '@/components/notifications/GracePeriodBanner';
 
 const MyVision: React.FC = () => {
@@ -428,9 +429,9 @@ const MyVision: React.FC = () => {
           </div>
         )}
 
-        {/* Portfolio Royalty Summary */}
-        <div className="mb-8 max-w-md">
-          <PortfolioRoyaltySummary />
+        {/* Holdings Value Dashboard */}
+        <div className="mb-8">
+          <HoldingsValueDashboard />
         </div>
         
         {isLoading ? (
