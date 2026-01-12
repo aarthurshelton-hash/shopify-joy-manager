@@ -8,6 +8,7 @@ import { useCurrencyStore } from '@/stores/currencyStore';
 import { CurrencySelector } from './CurrencySelector';
 import WallMockup, { RoomSetting } from './WallMockup';
 import PrintReadyVisualization from '@/components/chess/PrintReadyVisualization';
+import ChessBoardVisualization from '@/components/chess/ChessBoardVisualization';
 import { EnPensentOverlay, MoveHistoryEntry } from '@/components/chess/EnPensentOverlay';
 import { SimulationResult, SquareData } from '@/lib/chess/gameSimulator';
 import { generateCleanPrintImage } from '@/lib/chess/printImageGenerator';
@@ -172,45 +173,55 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
     };
   }, [enPensentData]);
 
-  // Create mini visualization for mockup - supports both simulation and EnPensent data
-  // Uses unified PrintReadyVisualization for consistent "trademark look"
+  // Create mini visualization for mockup - uses just the board for clean scaling
+  // The wall mockup shows the framed product preview with just the chess board
   const miniVisualization = useMemo(() => {
-    const darkMode = capturedState?.darkMode || false;
-    
-    // If we have EnPensent data (from live games), use unified component
+    // If we have EnPensent data (from live games), render the overlay on a base board
     if (enPensentData) {
       return (
-        <PrintReadyVisualization 
-          gameData={{
-            white: enPensentData.gameInfo.white,
-            black: enPensentData.gameInfo.black,
-            result: enPensentData.gameInfo.result,
-            event: 'Chess Game',
-          }}
-          enPensentData={{
-            moveHistory: enPensentData.moveHistory,
-            whitePalette: enPensentData.whitePalette,
-            blackPalette: enPensentData.blackPalette,
-          }}
-          size={100}
-          darkMode={darkMode}
-          compact={true}
-        />
+        <div style={{ position: 'relative', width: 100, height: 100 }}>
+          {/* Base chess grid */}
+          <div style={{ 
+            position: 'absolute', 
+            inset: 0, 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(8, 1fr)',
+            gridTemplateRows: 'repeat(8, 1fr)',
+          }}>
+            {Array.from({ length: 64 }).map((_, i) => {
+              const row = Math.floor(i / 8);
+              const col = i % 8;
+              const isLight = (row + col) % 2 === 0;
+              return (
+                <div
+                  key={i}
+                  style={{ backgroundColor: isLight ? '#e7e5e4' : '#78716c' }}
+                />
+              );
+            })}
+          </div>
+          {/* EnPensent Overlay */}
+          <EnPensentOverlay
+            moveHistory={enPensentData.moveHistory}
+            whitePalette={enPensentData.whitePalette}
+            blackPalette={enPensentData.blackPalette}
+            opacity={0.85}
+            isEnabled={true}
+            flipped={false}
+          />
+        </div>
       );
     }
     
-    // Fall back to simulation-based rendering using the unified PrintReadyVisualization
+    // Fall back to simulation-based rendering using just the board
     if (!displayBoard || !simulation) return null;
     return (
-      <PrintReadyVisualization 
+      <ChessBoardVisualization 
         board={displayBoard}
-        gameData={simulation.gameData}
         size={100}
-        darkMode={darkMode}
-        compact={true}
       />
     );
-  }, [displayBoard, simulation, capturedState?.darkMode, enPensentData]);
+  }, [displayBoard, simulation, enPensentData]);
 
   const handleAddToCart = async () => {
     if (!selectedProduct || !selectedVariant) return;

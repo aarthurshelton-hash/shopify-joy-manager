@@ -612,7 +612,7 @@ const Index = () => {
                 const visualTitle = gameTitle || `${simulation.gameData.white} vs ${simulation.gameData.black}`;
                 
                 if (type === 'print') {
-                  // Navigate to order print page
+                  // Navigate to order print page with full simulation data
                   setOrderData({
                     title: visualTitle,
                     pgn: currentPgn,
@@ -623,6 +623,7 @@ const Index = () => {
                       date: simulation.gameData.date,
                       result: simulation.gameData.result,
                     },
+                    simulation: simulation, // Include full simulation for visualization
                     shareId: savedShareId || undefined,
                     returnPath: '/',
                   });
