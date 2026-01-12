@@ -221,7 +221,10 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
       // Generate clean print image for Printify (no watermark - same as preview)
       let previewImageBase64: string | undefined;
       
-      if (simulation) {
+      // Use existing preview image if provided (e.g., from marketplace saved visualizations)
+      if (customPrintData.previewImageBase64) {
+        previewImageBase64 = customPrintData.previewImageBase64;
+      } else if (simulation) {
         try {
           // Include QR code on premium prints when shareId is available
           // Pass capturedState to ensure print matches exact visualization state

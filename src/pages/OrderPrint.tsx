@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   ArrowLeft, 
@@ -15,7 +15,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
 import { ProductSelector } from '@/components/shop/ProductSelector';
-import { usePrintOrderStore } from '@/stores/printOrderStore';
+import { usePrintOrderStore, PrintOrderData } from '@/stores/printOrderStore';
 import PrintReadyVisualization from '@/components/chess/PrintReadyVisualization';
 import GameInfoDisplay from '@/components/chess/GameInfoDisplay';
 import { SquareData } from '@/lib/chess/gameSimulator';
@@ -35,10 +35,45 @@ function filterBoardToMove(board: SquareData[][], currentMove: number): SquareDa
   );
 }
 
+// Location state from marketplace navigation
+interface MarketplaceNavState {
+  fromMarketplace?: boolean;
+  visualizationId?: string;
+  title?: string;
+  imageUrl?: string;
+}
+
 const OrderPrint: React.FC = () => {
   const navigate = useNavigate();
-  const { orderData, clearOrderData } = usePrintOrderStore();
+  const location = useLocation();
+  const { orderData: storeOrderData, setOrderData, clearOrderData } = usePrintOrderStore();
   const [darkMode, setDarkMode] = useState(false);
+
+  // Check for marketplace navigation state
+  const navState = location.state as MarketplaceNavState | null;
+  
+  // Build order data from either store or navigation state
+  const orderData = useMemo(() => {
+    // If we have store data, use that
+    if (storeOrderData) return storeOrderData;
+    
+    // If we came from marketplace with state, construct order data
+    if (navState?.fromMarketplace && navState.title) {
+      const marketplaceOrder: PrintOrderData = {
+        visualizationId: navState.visualizationId,
+        imagePath: navState.imageUrl,
+        title: navState.title || 'Chess Visualization',
+        gameData: {
+          white: 'White',
+          black: 'Black',
+        },
+        returnPath: `/marketplace/${navState.visualizationId}`,
+      };
+      return marketplaceOrder;
+    }
+    
+    return null;
+  }, [storeOrderData, navState]);
 
   // Redirect if no order data
   useEffect(() => {
@@ -46,9 +81,6 @@ const OrderPrint: React.FC = () => {
       navigate('/', { replace: true });
     }
   }, [orderData, navigate]);
-
-  // Clean up on unmount (optional - keep data for back navigation)
-  // useEffect(() => () => clearOrderData(), []);
 
   if (!orderData) {
     return null;
