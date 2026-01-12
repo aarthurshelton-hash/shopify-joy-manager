@@ -13,7 +13,13 @@ import { SimulationResult, SquareData } from '@/lib/chess/gameSimulator';
 import { generateCleanPrintImage } from '@/lib/chess/printImageGenerator';
 import { PieceType } from '@/lib/chess/pieceColors';
 import { toast } from 'sonner';
+import { FrameAddOn, FRAME_OPTIONS_EXPORT, FRAME_SHIPPING_COST_EXPORT, FREE_SHIPPING_THRESHOLD_EXPORT } from './FrameAddOn';
+import { InfoCardAddOn, INFO_CARD_PRICE_EXPORT } from './InfoCardAddOn';
+import { VisionaryMembershipCard } from '@/components/premium/VisionaryMembershipCard';
+import AuthModal from '@/components/auth/AuthModal';
+import { useAuth } from '@/hooks/useAuth';
 
+type FrameOption = typeof FRAME_OPTIONS_EXPORT[number];
 
 interface CapturedState {
   currentMove: number;
@@ -81,8 +87,22 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
   const [roomSetting, setRoomSetting] = useState<RoomSetting>('living');
   const [added, setAdded] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  
+  // Add-on states
+  const [selectedFrame, setSelectedFrame] = useState<FrameOption | null>(null);
+  const [includeInfoCard, setIncludeInfoCard] = useState(false);
+  const [showVisionaryModal, setShowVisionaryModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  
+  const { user, isPremium } = useAuth();
   const addItem = useCartStore(state => state.addItem);
+  const cartItems = useCartStore(state => state.items);
   const { formatPrice: formatWithCurrency, selectedCurrency } = useCurrencyStore();
+
+  // Calculate framed items in cart for free shipping logic
+  const framedItemCount = useMemo(() => {
+    return cartItems.filter(item => item.customPrintData?.frameStyle).length + (selectedFrame ? 1 : 0);
+  }, [cartItems, selectedFrame]);
 
   useEffect(() => {
     loadProducts();
@@ -195,16 +215,31 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
         }
       }
 
+      // Calculate total price with add-ons
+      const basePrice = parseFloat(selectedVariant.price.amount);
+      const framePrice = selectedFrame?.price || 0;
+      const infoCardPrice = includeInfoCard ? INFO_CARD_PRICE_EXPORT : 0;
+      const totalPrice = basePrice + framePrice + infoCardPrice;
+
       const cartItem: CartItem = {
         product: selectedProduct,
         variantId: selectedVariant.id,
-        variantTitle: selectedVariant.title,
-        price: selectedVariant.price,
+        variantTitle: selectedFrame 
+          ? `${selectedVariant.title} + ${selectedFrame.name} Frame${includeInfoCard ? ' + Info Card' : ''}`
+          : includeInfoCard 
+            ? `${selectedVariant.title} + Info Card`
+            : selectedVariant.title,
+        price: {
+          amount: totalPrice.toFixed(2),
+          currencyCode: selectedVariant.price.currencyCode,
+        },
         quantity: 1,
         selectedOptions: selectedVariant.selectedOptions,
         customPrintData: {
           ...customPrintData,
           previewImageBase64,
+          frameStyle: selectedFrame?.id,
+          includeInfoCard,
         },
       };
 
@@ -212,10 +247,23 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
       setAdded(true);
       onAddedToCart?.();
       
+      // Reset add-ons after adding to cart
+      setSelectedFrame(null);
+      setIncludeInfoCard(false);
+      
       setTimeout(() => setAdded(false), 3000);
     } finally {
       setIsGeneratingImage(false);
     }
+  };
+
+  // Calculate total price with add-ons
+  const calculateTotalPrice = () => {
+    if (!selectedVariant) return 0;
+    const basePrice = parseFloat(selectedVariant.price.amount);
+    const framePrice = selectedFrame?.price || 0;
+    const infoCardPrice = includeInfoCard ? INFO_CARD_PRICE_EXPORT : 0;
+    return basePrice + framePrice + infoCardPrice;
   };
 
   // Format price with currency conversion
@@ -340,18 +388,46 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
           </div>
         )}
 
+        {/* Add-on: Frame Selection */}
+        {selectedVariant && (
+          <FrameAddOn
+            selectedSize={selectedVariant.title}
+            onFrameSelect={setSelectedFrame}
+            selectedFrame={selectedFrame}
+            framedItemCount={framedItemCount}
+          />
+        )}
+
+        {/* Add-on: Info Card (Visionary Exclusive) */}
+        <InfoCardAddOn
+          isPremium={isPremium}
+          onAddInfoCard={setIncludeInfoCard}
+          includeInfoCard={includeInfoCard}
+          onUpgradePremium={() => {
+            if (!user) {
+              setShowAuthModal(true);
+            } else {
+              setShowVisionaryModal(true);
+            }
+          }}
+        />
+
         {/* Price and Add to Cart */}
-        <div className="flex items-center justify-between pt-2 border-t border-border/50">
+        <div className="flex items-center justify-between pt-4 border-t border-border/50">
           <div>
             {selectedVariant && (
               <div>
                 <span className="text-2xl font-bold">
-                  {formatPrice(selectedVariant.price.amount)}
+                  {formatWithCurrency(calculateTotalPrice())}
                 </span>
-                <span className="text-sm text-muted-foreground ml-2">
-                  {selectedVariant.title}
-                </span>
-                {selectedCurrency.code !== 'USD' && (
+                {(selectedFrame || includeInfoCard) && (
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    Base: ${parseFloat(selectedVariant.price.amount).toFixed(2)}
+                    {selectedFrame && ` + Frame: $${selectedFrame.price}`}
+                    {includeInfoCard && ` + Card: $${INFO_CARD_PRICE_EXPORT}`}
+                  </div>
+                )}
+                {selectedCurrency.code !== 'USD' && !selectedFrame && !includeInfoCard && (
                   <div className="text-xs text-muted-foreground mt-0.5">
                     ≈ ${parseFloat(selectedVariant.price.amount).toFixed(2)} USD
                   </div>
@@ -394,6 +470,23 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
           </div>
         </div>
       </CardContent>
+
+      {/* Visionary Membership Modal */}
+      <VisionaryMembershipCard
+        isOpen={showVisionaryModal}
+        onClose={() => setShowVisionaryModal(false)}
+        onAuthRequired={() => {
+          setShowVisionaryModal(false);
+          setShowAuthModal(true);
+        }}
+        trigger="infocard"
+      />
+
+      {/* Auth Modal */}
+      <AuthModal 
+        isOpen={showAuthModal} 
+        onClose={() => setShowAuthModal(false)} 
+      />
     </Card>
   );
 };
