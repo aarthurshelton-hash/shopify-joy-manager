@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { SimulationResult } from '@/lib/chess/gameSimulator';
-import { PieceType } from '@/lib/chess/pieceColors';
+import { PieceType, PieceColor } from '@/lib/chess/pieceColors';
 
 /**
  * Session Store - Persists visualization and navigation state across page navigations
@@ -16,12 +16,22 @@ export interface CreativeModeTransfer {
   sourceVisualizationId?: string;
 }
 
+export interface CapturedTimelineState {
+  currentMove: number;
+  lockedPieces: Array<{ pieceType: PieceType; pieceColor: PieceColor }>;
+  compareMode: boolean;
+  darkMode: boolean;
+}
+
 interface SessionState {
   // Current visualization context
   currentSimulation: SimulationResult | null;
   currentPgn: string;
   currentGameTitle: string;
   savedShareId: string | null;
+  
+  // Captured timeline state for exact visual restoration
+  capturedTimelineState: CapturedTimelineState | null;
   
   // Creative mode transfer data
   creativeModeTransfer: CreativeModeTransfer | null;
@@ -30,9 +40,14 @@ interface SessionState {
   previousRoute: string | null;
   navigationStack: string[];
   
+  // Flag to indicate we're returning from order page
+  returningFromOrder: boolean;
+  
   // Actions
   setCurrentSimulation: (simulation: SimulationResult | null, pgn?: string, title?: string) => void;
   setSavedShareId: (shareId: string | null) => void;
+  setCapturedTimelineState: (state: CapturedTimelineState | null) => void;
+  setReturningFromOrder: (returning: boolean) => void;
   clearSimulation: () => void;
   
   // Creative mode transfer
@@ -56,9 +71,11 @@ export const useSessionStore = create<SessionState>()(
       currentPgn: '',
       currentGameTitle: '',
       savedShareId: null,
+      capturedTimelineState: null,
       creativeModeTransfer: null,
       previousRoute: null,
       navigationStack: [],
+      returningFromOrder: false,
       
       // Set current visualization
       setCurrentSimulation: (simulation, pgn = '', title = '') => set({
@@ -69,11 +86,17 @@ export const useSessionStore = create<SessionState>()(
       
       setSavedShareId: (shareId) => set({ savedShareId: shareId }),
       
+      setCapturedTimelineState: (state) => set({ capturedTimelineState: state }),
+      
+      setReturningFromOrder: (returning) => set({ returningFromOrder: returning }),
+      
       clearSimulation: () => set({
         currentSimulation: null,
         currentPgn: '',
         currentGameTitle: '',
         savedShareId: null,
+        capturedTimelineState: null,
+        returningFromOrder: false,
       }),
       
       // Creative mode transfer
@@ -110,9 +133,11 @@ export const useSessionStore = create<SessionState>()(
         currentPgn: '',
         currentGameTitle: '',
         savedShareId: null,
+        capturedTimelineState: null,
         creativeModeTransfer: null,
         previousRoute: null,
         navigationStack: [],
+        returningFromOrder: false,
       }),
     }),
     {
@@ -124,9 +149,11 @@ export const useSessionStore = create<SessionState>()(
         currentPgn: state.currentPgn,
         currentGameTitle: state.currentGameTitle,
         savedShareId: state.savedShareId,
+        capturedTimelineState: state.capturedTimelineState,
         creativeModeTransfer: state.creativeModeTransfer,
         previousRoute: state.previousRoute,
         navigationStack: state.navigationStack,
+        returningFromOrder: state.returningFromOrder,
       }),
     }
   )

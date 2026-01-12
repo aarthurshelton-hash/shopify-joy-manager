@@ -30,6 +30,7 @@ import { cleanPgn } from '@/lib/chess/pgnValidator';
 import { PaletteId, getActivePalette } from '@/lib/chess/pieceColors';
 import { useScrollAnimation, scrollAnimationClasses } from '@/hooks/useScrollAnimation';
 import { useSessionStore } from '@/stores/sessionStore';
+import { useVisualizationStateStore } from '@/stores/visualizationStateStore';
 import { usePrintOrderStore } from '@/stores/printOrderStore';
 import AuthModal from '@/components/auth/AuthModal';
 import { useAuth } from '@/hooks/useAuth';
@@ -87,11 +88,23 @@ const Index = () => {
     currentPgn: storedPgn, 
     currentGameTitle: storedTitle,
     savedShareId: storedShareId,
+    capturedTimelineState: storedTimelineState,
+    returningFromOrder,
     setCurrentSimulation,
     setSavedShareId: setSessionShareId,
+    setCapturedTimelineState,
+    setReturningFromOrder,
     clearSimulation,
     setCreativeModeTransfer
   } = useSessionStore();
+  
+  // Visualization state store for timeline restoration
+  const { 
+    setCurrentMove, 
+    setLockedPieces, 
+    setCompareMode, 
+    setDarkMode 
+  } = useVisualizationStateStore();
   
   // Restore visualization from session storage on mount (for returning from order page)
   useEffect(() => {
@@ -100,6 +113,24 @@ const Index = () => {
       setCurrentPgn(storedPgn);
       setGameTitle(storedTitle);
       setSavedShareId(storedShareId);
+      
+      // Restore timeline state if available
+      if (storedTimelineState) {
+        setCurrentMove(storedTimelineState.currentMove);
+        setLockedPieces(storedTimelineState.lockedPieces);
+        setCompareMode(storedTimelineState.compareMode);
+        setDarkMode(storedTimelineState.darkMode);
+      }
+      
+      // Show toast if returning from order page
+      if (returningFromOrder) {
+        toast.success('Visualization restored!', {
+          description: 'Your exact board state has been preserved.',
+          icon: <Sparkles className="w-4 h-4" />,
+        });
+        setReturningFromOrder(false);
+      }
+      
       // Clear the stored simulation after restoring to prevent stale data
       clearSimulation();
     }
@@ -642,6 +673,22 @@ const Index = () => {
                   // Save simulation to session store so we can restore it when returning
                   setCurrentSimulation(simulation, currentPgn, visualTitle);
                   setSessionShareId(savedShareId);
+                  
+                  // Capture timeline state for exact visual restoration
+                  if (exportState) {
+                    setCapturedTimelineState({
+                      currentMove: exportState.currentMove,
+                      lockedPieces: exportState.lockedPieces.map(p => ({
+                        pieceType: p.pieceType as any,
+                        pieceColor: p.pieceColor as any,
+                      })),
+                      compareMode: exportState.compareMode,
+                      darkMode: exportState.darkMode,
+                    });
+                  }
+                  
+                  // Mark that we're navigating to order page for toast on return
+                  setReturningFromOrder(true);
                   
                   // Navigate to order print page with full simulation data
                   setOrderData({
