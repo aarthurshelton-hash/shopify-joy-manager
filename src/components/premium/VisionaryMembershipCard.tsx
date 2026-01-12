@@ -117,10 +117,10 @@ const PREMIUM_FEATURES = [
   {
     id: 'royalties',
     icon: Heart,
-    title: '80% Print Royalties',
+    title: '20% Print Royalties',
     description: 'Earn from your collection',
     stats: { label: 'Royalties paid', value: '$8.2K', growth: '+425%' },
-    tooltip: 'When anyone orders a print of your vision, you earn 80% of the order value as royalties. Passive income from your art collection.',
+    tooltip: 'When anyone orders a print of your vision, you earn 20% of the order value as royalties. Passive income from your art collection.',
   },
   {
     id: 'analytics',

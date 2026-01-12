@@ -106,7 +106,7 @@ const MarketplaceTransparency: React.FC = () => {
             </Badge>
             <Badge variant="outline" className="gap-1">
               <CheckCircle2 className="h-3 w-3 text-green-500" />
-              80% Print Royalties
+              20% Print Royalties
             </Badge>
           </div>
         </CardContent>
@@ -229,9 +229,9 @@ const MarketplaceTransparency: React.FC = () => {
               <div className="flex items-start gap-3">
                 <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-sm font-medium">Print Royalties (80%)</p>
+                  <p className="text-sm font-medium">Print Royalties (20%)</p>
                   <p className="text-xs text-muted-foreground">
-                    When anyone orders a print of your vision, you earn 80% of the order value as royalties. 
+                    When anyone orders a print of your vision, you earn 20% of the order value as royalties. 
                     This creates passive income from your collection.
                   </p>
                 </div>
