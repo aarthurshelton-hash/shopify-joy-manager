@@ -372,20 +372,20 @@ const VisionExperienceModal: React.FC<VisionExperienceModalProps> = ({
 
   console.log('[VisionExperienceModal] Rendering - isOpen:', isOpen, 'listing:', listing?.id);
 
-  // Don't render content if no listing - Dialog handles the open state check
-  if (!listing) {
-    return (
-      <Dialog open={false} onOpenChange={() => {}}>
-        <DialogContent className="max-w-6xl max-h-[95vh] overflow-hidden p-0 gap-0 relative" />
-      </Dialog>
-    );
-  }
-
+  // Always use parent's isOpen state, regardless of listing
+  // Render empty content if no listing but keep dialog state consistent
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
       console.log('[VisionExperienceModal] onOpenChange called with:', open);
       if (!open) onClose();
     }}>
+      {!listing ? (
+        <DialogContent className="max-w-6xl max-h-[95vh] overflow-hidden p-0 gap-0 relative">
+          <div className="flex items-center justify-center h-64">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        </DialogContent>
+      ) : (
       <DialogContent 
         className={`max-w-6xl max-h-[95vh] overflow-hidden p-0 gap-0 relative ${
           hasPremiumPalette 
@@ -588,6 +588,7 @@ const VisionExperienceModal: React.FC<VisionExperienceModalProps> = ({
           </motion.div>
         </AnimatePresence>
       </DialogContent>
+      )}
     </Dialog>
   );
 };
