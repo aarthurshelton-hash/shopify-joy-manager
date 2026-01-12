@@ -15,8 +15,9 @@ import { toast } from 'sonner';
 import { useSessionStore, CreativeModeTransfer } from '@/stores/sessionStore';
 import { VisionaryMembershipCard } from '@/components/premium';
 import AuthModal from '@/components/auth/AuthModal';
-import { recordVisionInteraction } from '@/lib/visualizations/visionScoring';
+import { recordVisionInteraction, getVisionScore } from '@/lib/visualizations/visionScoring';
 import UnifiedVisionExperience from '@/components/chess/UnifiedVisionExperience';
+import { RoyaltyPotentialCard } from '@/components/marketplace/RoyaltyPotentialCard';
 import { 
   getListingById, 
   purchaseListing, 
@@ -60,6 +61,14 @@ const MarketplaceVisionDetail: React.FC = () => {
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [visionScore, setVisionScore] = useState<{
+    viewCount: number;
+    uniqueViewers: number;
+    royaltyCentsEarned: number;
+    royaltyOrdersCount: number;
+    printRevenueCents: number;
+    printOrderCount: number;
+  } | null>(null);
   
   const viewRecordedRef = useRef(false);
 
@@ -122,6 +131,20 @@ const MarketplaceVisionDetail: React.FC = () => {
         if (!viewRecordedRef.current && data.visualization?.id) {
           viewRecordedRef.current = true;
           recordVisionInteraction(data.visualization.id, 'view');
+          
+          // Fetch vision score for royalty display
+          getVisionScore(data.visualization.id).then(score => {
+            if (score) {
+              setVisionScore({
+                viewCount: score.viewCount,
+                uniqueViewers: score.uniqueViewers,
+                royaltyCentsEarned: score.royaltyCentsEarned,
+                royaltyOrdersCount: score.royaltyOrdersCount,
+                printRevenueCents: score.printRevenueCents,
+                printOrderCount: score.printOrderCount,
+              });
+            }
+          });
         }
       } catch (err) {
         console.error('Failed to load listing:', err);
@@ -454,6 +477,19 @@ const MarketplaceVisionDetail: React.FC = () => {
             </span>
           </div>
         )}
+
+        {/* Royalty Earnings / Potential Card */}
+        <div className="mb-6">
+          <RoyaltyPotentialCard
+            isOwner={isOwnListing}
+            royaltyCentsEarned={visionScore?.royaltyCentsEarned || 0}
+            royaltyOrdersCount={visionScore?.royaltyOrdersCount || 0}
+            totalPrintRevenue={visionScore?.printRevenueCents || 0}
+            printOrderCount={visionScore?.printOrderCount || 0}
+            viewCount={visionScore?.viewCount || 0}
+            uniqueViewers={visionScore?.uniqueViewers || 0}
+          />
+        </div>
 
         {/* Unified Vision Experience */}
         <TimelineProvider>
