@@ -12,7 +12,11 @@ import {
   Scale,
   Heart,
   Lock,
-  CheckCircle2
+  CheckCircle2,
+  Clock,
+  AlertTriangle,
+  RefreshCw,
+  Gift
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -39,10 +43,10 @@ const MarketplaceTransparency: React.FC = () => {
       description: 'You own your visualization completely. Full digital rights transfer on purchase.'
     },
     {
-      label: 'Transfer Rights',
-      value: 'Unrestricted',
-      icon: <ArrowRightLeft className="h-5 w-5" />,
-      description: 'Sell, gift, or hold forever. No approval needed, no waiting periods.'
+      label: 'Transfer Limit',
+      value: '3/day',
+      icon: <RefreshCw className="h-5 w-5" />,
+      description: 'Each vision can be transferred max 3 times per 24 hours to prevent manipulation.'
     },
     {
       label: 'Platform Commission',
@@ -51,10 +55,10 @@ const MarketplaceTransparency: React.FC = () => {
       description: 'Zero fees on sales. 100% of sale price goes directly to the seller.'
     },
     {
-      label: 'Score Formula',
-      value: 'Public',
-      icon: <Eye className="h-5 w-5" />,
-      description: 'Scoring algorithm is openly documented. No hidden boosts or manipulation.'
+      label: 'Grace Period',
+      value: '7 days',
+      icon: <Clock className="h-5 w-5" />,
+      description: 'Cancelled subscriptions have 7 days to renew before visions are released.'
     },
   ];
 
@@ -62,7 +66,7 @@ const MarketplaceTransparency: React.FC = () => {
     { action: 'Unique View', points: '0.01', icon: <Eye className="h-4 w-4" />, rateLimit: '3 per 5 min per user' },
     { action: 'HD Download', points: '0.10', icon: <Download className="h-4 w-4" />, rateLimit: '2 per hour per user' },
     { action: 'GIF Export', points: '0.25', icon: <Download className="h-4 w-4" />, rateLimit: '2 per hour per user' },
-    { action: 'Marketplace Trade', points: '1.00', icon: <ArrowRightLeft className="h-4 w-4" />, rateLimit: 'Verified by payment' },
+    { action: 'Marketplace Trade', points: '1.00', icon: <ArrowRightLeft className="h-4 w-4" />, rateLimit: 'Max 3 per 24h per vision' },
     { action: 'Print Order', points: '2.00 + $revenue', icon: <Printer className="h-4 w-4" />, rateLimit: 'Verified by fulfillment' },
   ];
 
@@ -94,15 +98,15 @@ const MarketplaceTransparency: React.FC = () => {
             </Badge>
             <Badge variant="outline" className="gap-1">
               <CheckCircle2 className="h-3 w-3 text-green-500" />
-              Full Ownership
+              3/day Transfer Limit
             </Badge>
             <Badge variant="outline" className="gap-1">
               <CheckCircle2 className="h-3 w-3 text-green-500" />
-              Open Scoring
+              7-Day Grace Period
             </Badge>
             <Badge variant="outline" className="gap-1">
               <CheckCircle2 className="h-3 w-3 text-green-500" />
-              Fair Pricing
+              80% Print Royalties
             </Badge>
           </div>
         </CardContent>
@@ -214,10 +218,21 @@ const MarketplaceTransparency: React.FC = () => {
               <div className="flex items-start gap-3">
                 <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-sm font-medium">Unrestricted Transfer</p>
+                  <p className="text-sm font-medium">Rate-Limited Transfers</p>
                   <p className="text-xs text-muted-foreground">
-                    Sell at any price, gift to anyone, or hold forever. No approval needed, 
-                    no waiting periods, no platform interference.
+                    Each vision can be transferred (sold, gifted, or claimed) up to 3 times per 24-hour period. 
+                    This prevents market manipulation and rapid flipping.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium">Print Royalties (80%)</p>
+                  <p className="text-xs text-muted-foreground">
+                    When anyone orders a print of your vision, you earn 80% of the order value as royalties. 
+                    This creates passive income from your collection.
                   </p>
                 </div>
               </div>
@@ -228,18 +243,60 @@ const MarketplaceTransparency: React.FC = () => {
                   <p className="text-sm font-medium">Value Accrual</p>
                   <p className="text-xs text-muted-foreground">
                     As your visualization gains views, downloads, and trades, its Vision Score 
-                    increases. This score belongs to the visualization, not to us.
+                    increases. This score belongs to the visualization forever.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+
+        <AccordionItem value="subscription">
+          <AccordionTrigger className="text-sm">
+            <span className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-primary" />
+              Subscription & Vision Retention
+            </span>
+          </AccordionTrigger>
+          <AccordionContent className="space-y-3">
+            <div className="flex items-start gap-2 p-3 bg-amber-500/10 rounded-lg border border-amber-500/30">
+              <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+              <p className="text-xs text-amber-600">
+                <strong>Important:</strong> Vision ownership requires an active Visionary membership. 
+                Cancelled subscriptions enter a 7-day grace period.
+              </p>
+            </div>
+            
+            <div className="space-y-3">
+              <div className="flex items-start gap-3">
+                <Clock className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium">7-Day Grace Period</p>
+                  <p className="text-xs text-muted-foreground">
+                    When your subscription is cancelled, you have 7 days to renew. During this time, 
+                    your visions remain yours and you'll receive reminder notifications.
                   </p>
                 </div>
               </div>
 
               <div className="flex items-start gap-3">
-                <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                <Gift className="h-4 w-4 text-purple-500 mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-sm font-medium">Print Revenue</p>
+                  <p className="text-sm font-medium">Visions Become Claimable</p>
                   <p className="text-xs text-muted-foreground">
-                    Order physical prints of visualizations you own. The print cost covers 
-                    production only — no markup goes to the platform.
+                    After the grace period, your visions are released to the marketplace where any 
+                    active Visionary member can claim them for free. Vision Scores are preserved.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <RefreshCw className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium">Renew Anytime</p>
+                  <p className="text-xs text-muted-foreground">
+                    Renewing during the grace period immediately restores full access to all your visions. 
+                    No data is ever lost — only ownership transfers if unclaimed.
                   </p>
                 </div>
               </div>

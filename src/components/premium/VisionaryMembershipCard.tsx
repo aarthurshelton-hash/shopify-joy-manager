@@ -102,17 +102,25 @@ const PREMIUM_FEATURES = [
     id: 'gallery',
     icon: Star,
     title: 'Personal Gallery',
-    description: 'Your vision collection',
+    description: '7-day grace period protection',
     stats: { label: 'Visions saved', value: '890K', growth: '+67%' },
-    tooltip: 'Build your personal museum of chess visualizations. Access, edit, and share your collection from any device. Our members have saved over 890,000 unique visions.',
+    tooltip: 'Build your personal museum of chess visualizations. If your subscription lapses, you get a 7-day grace period with reminders before visions become claimable.',
   },
   {
     id: 'marketplace',
     icon: DollarSign,
     title: 'Marketplace Access',
-    description: 'Trade & collect visions',
+    description: '0% commission, 3/day transfer limit',
     stats: { label: 'Trading volume', value: '$47K', growth: '+312%' },
-    tooltip: 'Buy, sell, or gift your claimed visualizations. 100% holder value retention - we take 0% commission. $47K+ traded this quarter alone.',
+    tooltip: 'Buy, sell, or gift your claimed visualizations. 100% holder value retention - we take 0% commission. Each vision has a 3 transfer/24h limit to prevent manipulation.',
+  },
+  {
+    id: 'royalties',
+    icon: Heart,
+    title: '80% Print Royalties',
+    description: 'Earn from your collection',
+    stats: { label: 'Royalties paid', value: '$8.2K', growth: '+425%' },
+    tooltip: 'When anyone orders a print of your vision, you earn 80% of the order value as royalties. Passive income from your art collection.',
   },
   {
     id: 'analytics',
@@ -129,14 +137,6 @@ const PREMIUM_FEATURES = [
     description: 'Physical data cards',
     stats: { label: 'Card orders', value: '2.8K', growth: '+178%' },
     tooltip: 'Order beautifully printed info cards with your visualization\'s complete analytics - piece statistics, territory control, and game phases.',
-  },
-  {
-    id: 'early-access',
-    icon: Sparkles,
-    title: 'Early Access',
-    description: 'Limited editions first',
-    stats: { label: 'Exclusive drops', value: '12/yr', growth: 'VIP' },
-    tooltip: 'Get first access to limited edition gold and silver prints, rare palette releases, and exclusive visualizations. 12+ drops per year.',
   },
 ];
 
@@ -157,9 +157,9 @@ const FEATURE_BACKGROUNDS: Record<string, string> = {
   gifs: kasparovImmortal,
   gallery: gameOfCentury,
   marketplace: fischerSpassky,
+  royalties: rubinsteinImmortal,
   analytics: talBrilliancy,
   infocards: evergreenGame,
-  'early-access': rubinsteinImmortal,
 };
 
 // FeatureCard component for grid/carousel layouts
