@@ -17,6 +17,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { useRandomGameArt } from '@/hooks/useRandomGameArt';
 
 export type SortOption = 'newest' | 'oldest' | 'price-low' | 'price-high' | 'score' | 'name';
 export type CategoryFilter = 'all' | 'genesis' | 'free' | 'paid';
@@ -44,6 +45,8 @@ export const MarketplaceFilters: React.FC<MarketplaceFiltersProps> = ({
   onGenesisToggle,
   totalResults,
 }) => {
+  const gameArtImages = useRandomGameArt(2);
+  
   const sortOptions: { value: SortOption; label: string; icon: React.ReactNode }[] = [
     { value: 'newest', label: 'Newest First', icon: <Calendar className="h-3.5 w-3.5" /> },
     { value: 'oldest', label: 'Oldest First', icon: <Calendar className="h-3.5 w-3.5" /> },
@@ -61,9 +64,16 @@ export const MarketplaceFilters: React.FC<MarketplaceFiltersProps> = ({
   ];
 
   return (
-    <div className="space-y-4">
+    <div 
+      className="space-y-4 p-4 rounded-xl border border-border/50 relative overflow-hidden"
+      style={{
+        backgroundImage: `linear-gradient(135deg, hsl(var(--card) / 0.95) 0%, hsl(var(--card) / 0.88) 100%), url(${gameArtImages[0]})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
       {/* Search and Sort Row */}
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="flex flex-col sm:flex-row gap-3 relative z-10">
         {/* Search Input */}
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -71,7 +81,7 @@ export const MarketplaceFilters: React.FC<MarketplaceFiltersProps> = ({
             placeholder="Search by title, player, or creator..."
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-10 bg-card/50 border-border/50"
+            className="pl-10 bg-card/80 border-border/50 backdrop-blur-sm"
           />
         </div>
 
@@ -120,14 +130,14 @@ export const MarketplaceFilters: React.FC<MarketplaceFiltersProps> = ({
       </div>
 
       {/* Category Tabs */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 relative z-10">
         {categoryOptions.map((option) => (
           <Button
             key={option.value}
             variant={category === option.value ? 'default' : 'outline'}
             size="sm"
             onClick={() => onCategoryChange(option.value)}
-            className={`gap-1.5 ${category === option.value ? '' : 'bg-card/50 border-border/50'}`}
+            className={`gap-1.5 ${category === option.value ? '' : 'bg-card/80 border-border/50 backdrop-blur-sm'}`}
           >
             {option.icon}
             {option.label}
@@ -135,7 +145,7 @@ export const MarketplaceFilters: React.FC<MarketplaceFiltersProps> = ({
         ))}
         
         {/* Results count */}
-        <Badge variant="secondary" className="ml-auto">
+        <Badge variant="secondary" className="ml-auto backdrop-blur-sm">
           {totalResults} {totalResults === 1 ? 'vision' : 'visions'}
         </Badge>
       </div>

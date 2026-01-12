@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ShoppingBag, Gift, DollarSign, Loader2, Crown, Package, Shield, TrendingUp, Eye, BookOpen } from 'lucide-react';
+import { useRandomGameArt } from '@/hooks/useRandomGameArt';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +30,7 @@ const Marketplace: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user, isPremium } = useAuth();
+  const gameArtImages = useRandomGameArt(16); // For listing card backgrounds
   
   const [listings, setListings] = useState<MarketplaceListing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -355,11 +357,18 @@ const Marketplace: React.FC = () => {
                         </div>
                       </div>
 
-                      <CardContent className="p-3 sm:p-4">
-                        <h3 className="font-semibold truncate mb-1 text-sm sm:text-base">
+                      <CardContent 
+                        className="p-3 sm:p-4 relative overflow-hidden"
+                        style={{
+                          backgroundImage: `linear-gradient(to bottom, hsl(var(--card)) 0%, hsl(var(--card) / 0.92) 100%), url(${gameArtImages[index % gameArtImages.length]})`,
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center',
+                        }}
+                      >
+                        <h3 className="font-semibold truncate mb-1 text-sm sm:text-base relative z-10">
                           {listing.visualization?.title || 'Untitled'}
                         </h3>
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between relative z-10">
                           <p className="text-xs sm:text-sm text-muted-foreground truncate">
                             by {listing.seller?.display_name || 'Anonymous'}
                           </p>
