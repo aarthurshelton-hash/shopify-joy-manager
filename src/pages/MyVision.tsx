@@ -34,7 +34,14 @@ const MyVision: React.FC = () => {
   const navigate = useNavigate();
   const { user, isPremium, isLoading: authLoading } = useAuth();
   const { setOrderData } = usePrintOrderStore();
-  const { setCurrentSimulation, setSavedShareId, setReturningFromOrder } = useSessionStore();
+  const { 
+    setCurrentSimulation, 
+    setSavedShareId, 
+    setReturningFromOrder,
+    returningFromOrder,
+    capturedTimelineState,
+    setCapturedTimelineState,
+  } = useSessionStore();
   const [visualizations, setVisualizations] = useState<SavedVisualization[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isMigrating, setIsMigrating] = useState(false);
@@ -46,6 +53,25 @@ const MyVision: React.FC = () => {
   const [showVisionaryModal, setShowVisionaryModal] = useState(false);
   const [showSubscriptionPanel, setShowSubscriptionPanel] = useState(false);
   const [isDownloading, setIsDownloading] = useState<string | null>(null);
+
+  // Handle restoration toast when returning from order page
+  useEffect(() => {
+    if (returningFromOrder && capturedTimelineState) {
+      const { currentMove } = capturedTimelineState;
+      const moveInfo = currentMove !== undefined 
+        ? `Move ${currentMove} restored`
+        : 'Your gallery is ready';
+      
+      toast.success('Welcome back!', {
+        description: moveInfo,
+        icon: <Sparkles className="w-4 h-4" />,
+      });
+      
+      // Clear the flags
+      setReturningFromOrder(false);
+      setCapturedTimelineState(null);
+    }
+  }, [returningFromOrder, capturedTimelineState, setReturningFromOrder, setCapturedTimelineState]);
 
   useEffect(() => {
     if (user && isPremium) {
