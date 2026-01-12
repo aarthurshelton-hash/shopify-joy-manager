@@ -31,13 +31,14 @@ export interface ChessGambit {
 }
 
 export interface TacticalMotif {
-  type: 'fork' | 'pin' | 'skewer' | 'discovery' | 'double_attack' | 'back_rank' | 'smothered_mate' | 'sacrifice' | 'check' | 'checkmate';
+  type: 'fork' | 'pin' | 'skewer' | 'discovery' | 'double_attack' | 'back_rank' | 'smothered_mate' | 'sacrifice' | 'check' | 'checkmate' | 'discovered_check' | 'double_check';
   moveNumber: number;
   notation: string;
   attacker: { piece: PieceSymbol; square: Square };
   targets: { piece: PieceSymbol; square: Square }[];
   description: string;
   value: number; // Material value involved
+  isAbsolute?: boolean; // For pins - piece cannot legally move
 }
 
 export interface SpecialMove {
@@ -424,10 +425,115 @@ function detectForks(chess: Chess, lastMove: Move, moveNumber: number): Tactical
 
 function detectPins(chess: Chess, lastMove: Move, moveNumber: number): TacticalMotif[] {
   const pins: TacticalMotif[] = [];
-  // Simplified pin detection - check if sliding piece is on same line as king through another piece
-  // Full implementation would be more complex
+  const skewers: TacticalMotif[] = [];
+  const movedPiece = lastMove.piece;
+  const movedTo = lastMove.to;
+  const attackerColor = lastMove.color;
+  const defenderColor = attackerColor === 'w' ? 'b' : 'w';
   
-  return pins;
+  // Only sliding pieces can create pins/skewers
+  if (!['b', 'r', 'q'].includes(movedPiece)) {
+    return [];
+  }
+  
+  const pieceValues: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 100 };
+  
+  // Find the defender's king position
+  const kingSquare = findKingSquare(chess, defenderColor);
+  
+  // Direction vectors for sliding pieces
+  const bishopDirs = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
+  const rookDirs = [[0, 1], [0, -1], [1, 0], [-1, 0]];
+  const queenDirs = [...bishopDirs, ...rookDirs];
+  
+  const directions = movedPiece === 'b' ? bishopDirs 
+                   : movedPiece === 'r' ? rookDirs 
+                   : queenDirs;
+  
+  const file = movedTo.charCodeAt(0) - 97; // 0-7
+  const rank = parseInt(movedTo[1]) - 1; // 0-7
+  
+  // Check each direction from the moved piece
+  for (const [df, dr] of directions) {
+    const piecesInLine: { piece: PieceSymbol; square: Square; color: 'w' | 'b'; value: number }[] = [];
+    
+    let f = file + df;
+    let r = rank + dr;
+    
+    // Scan along the line
+    while (f >= 0 && f <= 7 && r >= 0 && r <= 7) {
+      const square = (String.fromCharCode(97 + f) + (r + 1)) as Square;
+      const piece = chess.get(square);
+      
+      if (piece) {
+        piecesInLine.push({
+          piece: piece.type,
+          square,
+          color: piece.color,
+          value: pieceValues[piece.type]
+        });
+        
+        // Stop if we hit a same-color piece (can't pin through)
+        if (piece.color === attackerColor) break;
+        
+        // If we have 2 defender pieces in line, check for pin/skewer
+        if (piecesInLine.length === 2) break;
+      }
+      
+      f += df;
+      r += dr;
+    }
+    
+    // Need exactly 2 enemy pieces in line for pin/skewer
+    const enemyPieces = piecesInLine.filter(p => p.color === defenderColor);
+    
+    if (enemyPieces.length === 2) {
+      const first = enemyPieces[0];
+      const second = enemyPieces[1];
+      
+      // PIN: First piece is less valuable than second (or second is king)
+      // The first piece is "pinned" to the more valuable piece behind it
+      if (first.value < second.value || second.piece === 'k') {
+        pins.push({
+          type: 'pin',
+          moveNumber,
+          notation: lastMove.san,
+          attacker: { piece: movedPiece, square: movedTo },
+          targets: [
+            { piece: first.piece, square: first.square },
+            { piece: second.piece, square: second.square }
+          ],
+          description: `${getPieceName(movedPiece)} pins ${getPieceName(first.piece)} to ${second.piece === 'k' ? 'the King' : getPieceName(second.piece)}`,
+          value: first.value + (second.piece === 'k' ? 10 : second.value),
+        });
+      }
+      
+      // SKEWER: First piece is MORE valuable than second
+      // The more valuable piece must move, exposing the lesser piece
+      if (first.value > second.value && first.piece !== 'k') {
+        skewers.push({
+          type: 'skewer',
+          moveNumber,
+          notation: lastMove.san,
+          attacker: { piece: movedPiece, square: movedTo },
+          targets: [
+            { piece: first.piece, square: first.square },
+            { piece: second.piece, square: second.square }
+          ],
+          description: `${getPieceName(movedPiece)} skewers ${getPieceName(first.piece)}, exposing ${getPieceName(second.piece)}`,
+          value: first.value + second.value,
+        });
+      }
+      
+      // Special case: Absolute pin (pinned to king)
+      if (second.piece === 'k') {
+        // This is always a pin, the pinned piece cannot legally move
+        // Already handled above, but could add extra flag
+      }
+    }
+  }
+  
+  return [...pins, ...skewers];
 }
 
 function getAttackedSquares(chess: Chess, from: Square): Square[] {
