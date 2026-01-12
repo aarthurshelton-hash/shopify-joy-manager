@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -10,16 +10,45 @@ import {
   DropdownMenuTrigger,
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
-import { User, LogOut, Palette, Settings, Crown, CreditCard, Image, Gamepad2, BarChart3, History, Paintbrush, Shield, ShieldCheck } from 'lucide-react';
+import { User, LogOut, Palette, Settings, Crown, CreditCard, Image, Gamepad2, BarChart3, History, Paintbrush, Shield, ShieldCheck, Wrench, Database } from 'lucide-react';
 import AuthModal from './AuthModal';
 import MFASetup from './MFASetup';
 import PremiumBadge from '@/components/premium/PremiumBadge';
+import { supabase } from '@/integrations/supabase/client';
 
 const UserMenu: React.FC = () => {
   const { user, profile, isLoading, isPremium, mfaStatus, signOut, openCheckout, openCustomerPortal } = useAuth();
   const navigate = useNavigate();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showMFASetup, setShowMFASetup] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Check if user is admin
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      if (!user) {
+        setIsAdmin(false);
+        return;
+      }
+      
+      try {
+        const { data, error } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .eq('role', 'admin')
+          .maybeSingle();
+        
+        if (error) throw error;
+        setIsAdmin(!!data);
+      } catch (error) {
+        console.error('Error checking admin status:', error);
+        setIsAdmin(false);
+      }
+    };
+    
+    checkAdminStatus();
+  }, [user]);
 
   if (isLoading) {
     return (
@@ -152,6 +181,30 @@ const UserMenu: React.FC = () => {
             <BarChart3 className="h-4 w-4" />
             Analytics
           </DropdownMenuItem>
+          
+          {isAdmin && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-xs text-primary uppercase tracking-wider flex items-center gap-1">
+                <Crown className="h-3 w-3" />
+                Admin
+              </DropdownMenuLabel>
+              <DropdownMenuItem 
+                onClick={() => navigate('/admin/seed-marketplace')}
+                className="gap-2 cursor-pointer text-primary"
+              >
+                <Database className="h-4 w-4" />
+                Seed Marketplace
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => navigate('/admin/palettes')}
+                className="gap-2 cursor-pointer text-primary"
+              >
+                <Wrench className="h-4 w-4" />
+                Palette Admin
+              </DropdownMenuItem>
+            </>
+          )}
           <DropdownMenuSeparator />
           
           <DropdownMenuLabel className="text-xs text-muted-foreground uppercase tracking-wider">
