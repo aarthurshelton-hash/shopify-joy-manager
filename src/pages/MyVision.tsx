@@ -29,6 +29,7 @@ import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
 import { usePrintOrderStore } from '@/stores/printOrderStore';
 import { useSessionStore } from '@/stores/sessionStore';
+import { PortfolioRoyaltySummary } from '@/components/vision/PortfolioRoyaltySummary';
 
 const MyVision: React.FC = () => {
   const navigate = useNavigate();
@@ -423,6 +424,11 @@ const MyVision: React.FC = () => {
             <SubscriptionManagement />
           </div>
         )}
+
+        {/* Portfolio Royalty Summary */}
+        <div className="mb-8 max-w-md">
+          <PortfolioRoyaltySummary />
+        </div>
         
         {isLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">

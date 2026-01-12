@@ -11,6 +11,8 @@ export interface VisionScore {
   totalScore: number;
   uniqueViewers: number;
   updatedAt: string;
+  royaltyCentsEarned: number;
+  royaltyOrdersCount: number;
 }
 
 export interface VisionLeaderboardEntry extends VisionScore {
@@ -158,6 +160,8 @@ export async function getVisionScore(visualizationId: string): Promise<VisionSco
       totalScore: parseFloat(String(data.total_score)),
       uniqueViewers: data.unique_viewers,
       updatedAt: data.updated_at,
+      royaltyCentsEarned: data.royalty_cents_earned || 0,
+      royaltyOrdersCount: data.royalty_orders_count || 0,
     };
   } catch (error) {
     console.error('Error getting vision score:', error);
@@ -212,6 +216,8 @@ export async function getVisionLeaderboard(limit: number = 10): Promise<VisionLe
         totalScore: parseFloat(String(score.total_score)),
         uniqueViewers: score.unique_viewers,
         updatedAt: score.updated_at,
+        royaltyCentsEarned: score.royalty_cents_earned || 0,
+        royaltyOrdersCount: score.royalty_orders_count || 0,
         title: viz?.title || 'Untitled',
         imagePath: viz?.image_path || '',
         ownerDisplayName: profileMap.get(viz?.user_id || '') || 'Anonymous',
@@ -435,6 +441,8 @@ export async function getUserPortfolioValue(
         totalScore: parseFloat(String(scoreData.total_score)),
         uniqueViewers: scoreData.unique_viewers,
         updatedAt: scoreData.updated_at,
+        royaltyCentsEarned: scoreData.royalty_cents_earned || 0,
+        royaltyOrdersCount: scoreData.royalty_orders_count || 0,
       };
       totalValueWithMultiplier += calculateVisionValue(score, membershipMultiplier);
       totalValueWithoutMultiplier += calculateVisionValue(score, 1.0);

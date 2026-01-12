@@ -13,9 +13,10 @@ import { ArrowLeft, Loader2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSessionStore, CreativeModeTransfer } from '@/stores/sessionStore';
 import { VisionaryMembershipCard } from '@/components/premium';
-import { recordVisionInteraction } from '@/lib/visualizations/visionScoring';
+import { recordVisionInteraction, getVisionScore, VisionScore } from '@/lib/visualizations/visionScoring';
 import UnifiedVisionExperience from '@/components/chess/UnifiedVisionExperience';
 import { getCurrentPalette } from '@/lib/chess/pieceColors';
+import { RoyaltyEarningsCard } from '@/components/vision/RoyaltyEarningsCard';
 
 const VisualizationDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -33,6 +34,7 @@ const VisualizationDetail: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [visionScore, setVisionScore] = useState<VisionScore | null>(null);
   
   // Store original palette state for reset functionality
   const originalStateRef = useRef<VisualizationState | undefined>(undefined);
@@ -166,6 +168,12 @@ const VisualizationDetail: React.FC = () => {
         restorePaletteState(vizState);
 
         setVisualization(data);
+
+        // Load vision score for royalty display
+        const score = await getVisionScore(data.id);
+        if (score) {
+          setVisionScore(score);
+        }
 
         // Record view interaction (only once per session)
         if (!viewRecordedRef.current) {
@@ -345,6 +353,18 @@ const VisualizationDetail: React.FC = () => {
             />
           </LegendHighlightProvider>
         </TimelineProvider>
+
+        {/* Royalty Earnings Card */}
+        {visionScore && (visionScore.royaltyOrdersCount > 0 || visionScore.printOrderCount > 0) && (
+          <div className="mt-8 max-w-md">
+            <RoyaltyEarningsCard
+              royaltyCentsEarned={visionScore.royaltyCentsEarned}
+              royaltyOrdersCount={visionScore.royaltyOrdersCount}
+              totalPrintRevenue={visionScore.printRevenueCents}
+              printOrderCount={visionScore.printOrderCount}
+            />
+          </div>
+        )}
       </div>
       <Footer />
       
