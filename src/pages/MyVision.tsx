@@ -180,6 +180,28 @@ const MyVision: React.FC = () => {
   };
 
   const handleOrderPrint = (viz: SavedVisualization) => {
+    // Reconstruct simulation from saved visualization data
+    const storedData = viz.game_data;
+    const board = storedData.board || 
+      Array(8).fill(null).map((_, rank) =>
+        Array(8).fill(null).map((_, file) => ({
+          file,
+          rank,
+          visits: [],
+          isLight: (file + rank) % 2 === 1,
+        }))
+      );
+    
+    const gameData = {
+      white: storedData.white || 'White',
+      black: storedData.black || 'Black',
+      event: storedData.event || '',
+      date: storedData.date || '',
+      result: storedData.result || '',
+      pgn: storedData.pgn || viz.pgn || '',
+      moves: storedData.moves || [],
+    };
+    
     setOrderData({
       visualizationId: viz.id,
       imagePath: viz.image_path,
@@ -191,6 +213,12 @@ const MyVision: React.FC = () => {
         event: viz.game_data.event,
         date: viz.game_data.date,
         result: viz.game_data.result,
+      },
+      // Include reconstructed simulation for print rendering
+      simulation: {
+        board,
+        gameData,
+        totalMoves: storedData.totalMoves || storedData.moves?.length || 0,
       },
       shareId: viz.public_share_id,
       returnPath: '/my-vision',
