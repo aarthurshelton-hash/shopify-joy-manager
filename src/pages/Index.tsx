@@ -8,6 +8,7 @@ import ChessParticles from '@/components/chess/ChessParticles';
 import FloatingChessPieces from '@/components/chess/FloatingChessPieces';
 import TrendingWidget from '@/components/homepage/TrendingWidget';
 import CreativeModeShowcase from '@/components/homepage/CreativeModeShowcase';
+import { NaturalQRShowcase } from '@/components/homepage/NaturalQRShowcase';
 import { simulateGame, SimulationResult } from '@/lib/chess/gameSimulator';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
@@ -378,6 +379,9 @@ const Index = () => {
                 </div>
               </div>
             </section>
+
+            {/* Natural QR Vision Showcase */}
+            <NaturalQRShowcase />
 
             {/* Floating Gold & Silver Chess Pieces - decorative area */}
             <div className="relative h-28 md:h-56 overflow-hidden flex items-center justify-center">
