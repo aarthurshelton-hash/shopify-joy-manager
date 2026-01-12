@@ -25,12 +25,14 @@ const UserMenu: React.FC = () => {
   const [showVisionaryModal, setShowVisionaryModal] = useState(false);
   const [showMFASetup, setShowMFASetup] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [pendingWithdrawals, setPendingWithdrawals] = useState(0);
 
-  // Check if user is admin
+  // Check if user is admin and fetch pending withdrawals
   useEffect(() => {
     const checkAdminStatus = async () => {
       if (!user) {
         setIsAdmin(false);
+        setPendingWithdrawals(0);
         return;
       }
       
@@ -43,7 +45,20 @@ const UserMenu: React.FC = () => {
           .maybeSingle();
         
         if (error) throw error;
-        setIsAdmin(!!data);
+        const adminStatus = !!data;
+        setIsAdmin(adminStatus);
+        
+        // Fetch pending withdrawals count if admin
+        if (adminStatus) {
+          const { count, error: countError } = await supabase
+            .from('withdrawal_requests')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'pending');
+          
+          if (!countError) {
+            setPendingWithdrawals(count || 0);
+          }
+        }
       } catch (error) {
         console.error('Error checking admin status:', error);
         setIsAdmin(false);
@@ -250,6 +265,11 @@ const UserMenu: React.FC = () => {
               >
                 <Banknote className="h-4 w-4" />
                 Withdrawals
+                {pendingWithdrawals > 0 && (
+                  <span className="ml-auto bg-destructive text-destructive-foreground text-xs font-medium px-1.5 py-0.5 rounded-full">
+                    {pendingWithdrawals}
+                  </span>
+                )}
               </DropdownMenuItem>
             </>
           )}
