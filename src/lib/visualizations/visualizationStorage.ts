@@ -1,6 +1,12 @@
 import { supabase } from '@/integrations/supabase/client';
 import { SimulationResult, GameData, SquareData } from '@/lib/chess/gameSimulator';
 import { Json } from '@/integrations/supabase/types';
+import { 
+  checkVisualizationSimilarity, 
+  PaletteColors,
+  getFeaturedPaletteForColors
+} from './similarityDetection';
+import { colorPalettes, PaletteId } from '@/lib/chess/pieceColors';
 
 export interface VisualizationState {
   paletteId?: string;
@@ -8,6 +14,8 @@ export interface VisualizationState {
   currentMove?: number;
   lockedPieces?: Array<{ pieceType: string; pieceColor: string }>;
   showLegend?: boolean;
+  customColors?: PaletteColors; // Store custom colors for similarity detection
+  linkedPaletteId?: string; // If custom colors match a featured palette, link to it
 }
 
 export interface SavedVisualization {
@@ -49,29 +57,45 @@ function generateVisualizationFingerprint(
 }
 
 /**
+ * Result of duplicate/similarity check
+ */
+export interface DuplicateCheckResult {
+  isDuplicate: boolean;
+  isTooSimilar: boolean;
+  existingId?: string;
+  ownedByCurrentUser?: boolean;
+  ownerDisplayName?: string;
+  colorSimilarity?: number;
+  reason?: string;
+  linkedPaletteId?: PaletteId;
+}
+
+/**
  * Check if a similar visualization already exists globally (any user)
- * Returns ownership info - who saved it first
+ * Uses advanced similarity detection:
+ * - Exact fingerprint matching for duplicates
+ * - Color similarity (30%+ threshold) + move matching for "too similar"
  */
 export async function checkDuplicateVisualization(
   userId: string,
   pgn: string | undefined,
   gameData: GameData,
   state?: VisualizationState
-): Promise<{ isDuplicate: boolean; existingId?: string; ownedByCurrentUser?: boolean; ownerDisplayName?: string }> {
+): Promise<DuplicateCheckResult> {
   try {
     const fingerprint = generateVisualizationFingerprint(pgn, gameData, state);
     
-    // Fetch ALL saved visualizations globally (not just user's)
+    // First check for exact duplicates
     const { data, error } = await supabase
       .from('saved_visualizations')
       .select('id, user_id, pgn, game_data');
     
     if (error) {
       console.error('Error checking duplicates:', error);
-      return { isDuplicate: false };
+      return { isDuplicate: false, isTooSimilar: false };
     }
     
-    // Check each existing visualization for a match
+    // Check each existing visualization for an exact match
     for (const viz of data || []) {
       const existingGameData = viz.game_data as unknown as GameData & { visualizationState?: VisualizationState };
       const existingFingerprint = generateVisualizationFingerprint(
@@ -83,7 +107,6 @@ export async function checkDuplicateVisualization(
       if (fingerprint === existingFingerprint) {
         const ownedByCurrentUser = viz.user_id === userId;
         
-        // If owned by someone else, try to get their display name
         let ownerDisplayName: string | undefined;
         if (!ownedByCurrentUser) {
           const { data: profileData } = await supabase
@@ -95,19 +118,82 @@ export async function checkDuplicateVisualization(
         }
         
         return { 
-          isDuplicate: true, 
+          isDuplicate: true,
+          isTooSimilar: true,
           existingId: viz.id,
           ownedByCurrentUser,
-          ownerDisplayName
+          ownerDisplayName,
+          colorSimilarity: 100,
+          reason: 'Exact duplicate exists',
         };
       }
     }
     
-    return { isDuplicate: false };
+    // Now check for similarity (30%+ color match with identical moves)
+    const paletteId = (state?.paletteId || 'modern') as PaletteId;
+    
+    // Build custom colors if using custom palette
+    let customColors: PaletteColors | undefined;
+    if (state?.customColors) {
+      customColors = state.customColors;
+    } else if (paletteId === 'custom') {
+      // Get from current custom palette
+      const customPalette = colorPalettes.find(p => p.id === 'custom');
+      if (customPalette) {
+        customColors = {
+          white: customPalette.white,
+          black: customPalette.black,
+        };
+      }
+    }
+    
+    const similarityResult = await checkVisualizationSimilarity(
+      userId,
+      pgn,
+      gameData,
+      paletteId,
+      customColors
+    );
+    
+    if (similarityResult.isTooSimilar) {
+      return {
+        isDuplicate: false,
+        isTooSimilar: true,
+        existingId: similarityResult.existingVisualizationId,
+        ownedByCurrentUser: similarityResult.ownedByCurrentUser,
+        ownerDisplayName: similarityResult.ownerDisplayName,
+        colorSimilarity: similarityResult.colorSimilarity,
+        reason: similarityResult.reason,
+      };
+    }
+    
+    // Check if custom colors should link to a featured palette
+    let linkedPaletteId: PaletteId | undefined;
+    if (customColors) {
+      linkedPaletteId = getFeaturedPaletteForColors(customColors) || undefined;
+    }
+    
+    return { 
+      isDuplicate: false, 
+      isTooSimilar: false,
+      linkedPaletteId,
+      colorSimilarity: similarityResult.colorSimilarity,
+    };
   } catch (error) {
     console.error('Error in duplicate check:', error);
-    return { isDuplicate: false };
+    return { isDuplicate: false, isTooSimilar: false };
   }
+}
+
+export interface SaveVisualizationResult {
+  data: SavedVisualization | null;
+  error: Error | null;
+  isDuplicate?: boolean;
+  isTooSimilar?: boolean;
+  ownedByCurrentUser?: boolean;
+  ownerDisplayName?: string;
+  colorSimilarity?: number;
+  reason?: string;
 }
 
 export async function saveVisualization(
@@ -117,28 +203,52 @@ export async function saveVisualization(
   imageBlob: Blob,
   pgn?: string,
   visualizationState?: VisualizationState
-): Promise<{ data: SavedVisualization | null; error: Error | null; isDuplicate?: boolean; ownedByCurrentUser?: boolean; ownerDisplayName?: string }> {
+): Promise<SaveVisualizationResult> {
   try {
-    // Check for duplicates first (globally)
-    const { isDuplicate, existingId, ownedByCurrentUser, ownerDisplayName } = await checkDuplicateVisualization(
+    // Check for duplicates and similarity first (globally)
+    const checkResult = await checkDuplicateVisualization(
       userId,
       pgn,
       simulation.gameData,
       visualizationState
     );
     
-    if (isDuplicate) {
-      const message = ownedByCurrentUser 
+    // Block if exact duplicate
+    if (checkResult.isDuplicate) {
+      const message = checkResult.ownedByCurrentUser 
         ? 'This visualization is already in your gallery'
-        : `This visualization is owned by ${ownerDisplayName || 'another collector'}`;
+        : `This visualization is owned by ${checkResult.ownerDisplayName || 'another collector'}`;
       return { 
         data: null, 
         error: new Error(message),
         isDuplicate: true,
-        ownedByCurrentUser,
-        ownerDisplayName
+        ownedByCurrentUser: checkResult.ownedByCurrentUser,
+        ownerDisplayName: checkResult.ownerDisplayName,
+        colorSimilarity: 100,
       };
     }
+    
+    // Block if too similar (30%+ color match with same moves)
+    if (checkResult.isTooSimilar) {
+      const message = checkResult.ownedByCurrentUser 
+        ? 'You have a very similar visualization - try changing at least 8 colors for uniqueness'
+        : `This is ${Math.round(checkResult.colorSimilarity || 30)}% similar to a vision by ${checkResult.ownerDisplayName || 'another collector'}`;
+      return { 
+        data: null, 
+        error: new Error(message),
+        isTooSimilar: true,
+        ownedByCurrentUser: checkResult.ownedByCurrentUser,
+        ownerDisplayName: checkResult.ownerDisplayName,
+        colorSimilarity: checkResult.colorSimilarity,
+        reason: checkResult.reason,
+      };
+    }
+    
+    // If custom colors match a featured palette, link to it for inheritance
+    const stateWithLink: VisualizationState = {
+      ...visualizationState,
+      linkedPaletteId: checkResult.linkedPaletteId,
+    };
     
     // Generate unique filename
     const timestamp = Date.now();
@@ -173,8 +283,8 @@ export async function saveVisualization(
       // Include full board data for proper reconstruction
       board: simulation.board as unknown as Json,
       totalMoves: simulation.totalMoves,
-      // Include visualization state for duplicate detection
-      visualizationState: visualizationState as unknown as Json,
+      // Include visualization state with palette linking for duplicate detection and inheritance
+      visualizationState: stateWithLink as unknown as Json,
     };
     
     // Save visualization record to database
