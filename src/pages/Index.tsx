@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import PgnUploader from '@/components/chess/PgnUploader';
 import PrintPreview from '@/components/chess/PrintPreview';
 import ColorLegend from '@/components/chess/ColorLegend';
@@ -30,6 +30,7 @@ import { PaletteId } from '@/lib/chess/pieceColors';
 import { useScrollAnimation, scrollAnimationClasses } from '@/hooks/useScrollAnimation';
 import { LegendHighlightProvider } from '@/contexts/LegendHighlightContext';
 import { TimelineProvider } from '@/contexts/TimelineContext';
+import { useSessionStore } from '@/stores/sessionStore';
 
 // Import AI-generated art
 import heroChessArt from '@/assets/hero-chess-art.jpg';
@@ -78,6 +79,27 @@ const Index = () => {
   const [savedShareId, setSavedShareId] = useState<string | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showReturnDialog, setShowReturnDialog] = useState(false);
+  
+  // Session store for persisting visualization state across navigation
+  const { 
+    currentSimulation: storedSimulation, 
+    currentPgn: storedPgn, 
+    currentGameTitle: storedTitle,
+    savedShareId: storedShareId,
+    clearSimulation 
+  } = useSessionStore();
+  
+  // Restore visualization from session storage on mount (for returning from order page)
+  useEffect(() => {
+    if (!simulation && storedSimulation && storedPgn) {
+      setSimulation(storedSimulation);
+      setCurrentPgn(storedPgn);
+      setGameTitle(storedTitle);
+      setSavedShareId(storedShareId);
+      // Clear the stored simulation after restoring to prevent stale data
+      clearSimulation();
+    }
+  }, []);
   
   // Refs for parallax sections (used for scroll-based CSS transforms)
   const heroRef = useRef<HTMLDivElement>(null);

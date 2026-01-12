@@ -97,7 +97,8 @@ export const useSessionStore = create<SessionState>()(
       name: 'en-pensent-session',
       storage: createJSONStorage(() => sessionStorage),
       partialize: (state) => ({
-        // Only persist essential navigation data (simulations are too large for sessionStorage)
+        // Persist simulation for navigation back to visualization
+        currentSimulation: state.currentSimulation,
         currentPgn: state.currentPgn,
         currentGameTitle: state.currentGameTitle,
         savedShareId: state.savedShareId,
