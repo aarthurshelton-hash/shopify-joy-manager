@@ -58,7 +58,7 @@ export const paletteDisplayNames: Record<string, string> = {
 
 // Premium palettes that get special visual treatment
 export const premiumPaletteIds = [
-  'japanese', 'nordic', 'artdeco', 'tropical', 'cyberpunk',
+  'hotCold', 'japanese', 'nordic', 'artdeco', 'tropical', 'cyberpunk',
   'autumn', 'ocean', 'desert', 'cosmic', 'vintage'
 ];
 

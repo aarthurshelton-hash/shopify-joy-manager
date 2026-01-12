@@ -224,3 +224,16 @@
     background: linear-gradient(90deg, transparent, hsl(var(--gold) / 0.3) 20%, hsl(var(--gold) / 0.5) 50%, hsl(var(--gold) / 0.3) 80%, transparent);
   }
 }
+
+/* Premium palette shimmer animation */
+@keyframes shimmer {
+  0% {
+    background-position: 200% 200%;
+  }
+  50% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: 200% 200%;
+  }
+}
