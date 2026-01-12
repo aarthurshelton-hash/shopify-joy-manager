@@ -681,6 +681,7 @@ const Index = () => {
                   if (exportState) {
                     setCapturedTimelineState({
                       currentMove: exportState.currentMove,
+                      totalMoves: simulation.totalMoves,
                       lockedPieces: exportState.lockedPieces.map(p => ({
                         pieceType: p.pieceType as any,
                         pieceColor: p.pieceColor as any,

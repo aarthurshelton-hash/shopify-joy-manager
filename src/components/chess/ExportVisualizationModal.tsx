@@ -152,6 +152,7 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
     // Save timeline state for restoration on return
     setCapturedTimelineState({
       currentMove: capturedVisualizationState.currentMove,
+      totalMoves: moveHistory.length,
       lockedPieces: capturedVisualizationState.lockedPieces,
       compareMode: capturedVisualizationState.compareMode,
       darkMode,
