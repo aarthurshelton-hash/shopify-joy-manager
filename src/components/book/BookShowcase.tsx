@@ -13,6 +13,13 @@ import { Book3DCover } from './Book3DCover';
 import { BookFlipPreview } from './BookFlipPreview';
 import carlsenCover from '@/assets/book/carlsen-cover-v2.jpg';
 
+// Import game art for backgrounds
+import immortalGame from '@/assets/games/immortal-game.jpg';
+import operaGame from '@/assets/games/opera-game.jpg';
+import evergreenGame from '@/assets/games/evergreen-game.jpg';
+import gameOfCentury from '@/assets/games/game-of-century.jpg';
+import fischerSpassky from '@/assets/games/fischer-spassky.jpg';
+
 interface BookShowcaseProps {
   variant?: 'hero' | 'compact' | 'featured';
   onOrderClick?: () => void;
@@ -87,41 +94,62 @@ export const BookShowcase: React.FC<BookShowcaseProps> = ({
               <span className="text-amber-200/80 text-sm">Collector's Choice</span>
             </div>
             
-            {/* Key Selling Points */}
-            <div className="space-y-3">
-              {SELLING_POINTS.map((point, i) => (
-                <motion.div 
-                  key={i}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.1 }}
-                  className="flex items-center gap-3 text-slate-200"
-                >
-                  <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center flex-shrink-0">
-                    <point.icon className="w-4 h-4 text-amber-400" />
-                  </div>
-                  <span className="text-sm">{point.text}</span>
-                </motion.div>
-              ))}
+            {/* Key Selling Points - with faded art background */}
+            <div className="relative rounded-xl overflow-hidden border border-amber-500/20">
+              {/* Faded background art */}
+              <div 
+                className="absolute inset-0 bg-cover bg-center opacity-[0.08]"
+                style={{ backgroundImage: `url(${immortalGame})` }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-br from-slate-900/90 to-slate-800/95" />
+              
+              <div className="relative p-4 space-y-3">
+                {SELLING_POINTS.map((point, i) => (
+                  <motion.div 
+                    key={i}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.1 }}
+                    className="flex items-center gap-3 text-slate-200"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+                      <point.icon className="w-4 h-4 text-amber-400" />
+                    </div>
+                    <span className="text-sm">{point.text}</span>
+                  </motion.div>
+                ))}
+              </div>
             </div>
             
             <Separator className="bg-slate-700" />
             
-            {/* Testimonial */}
-            <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
-              <div className="flex items-start gap-2">
-                <Heart className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-slate-300 text-sm italic">"{TESTIMONIALS[0].quote}"</p>
-                  <p className="text-amber-400/70 text-xs mt-1">— {TESTIMONIALS[0].author}</p>
+            {/* Testimonial - with faded art background */}
+            <div className="relative rounded-lg overflow-hidden border border-slate-700">
+              <div 
+                className="absolute inset-0 bg-cover bg-center opacity-[0.12]"
+                style={{ backgroundImage: `url(${operaGame})` }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-slate-800/90 to-slate-900/95" />
+              <div className="relative p-4">
+                <div className="flex items-start gap-2">
+                  <Heart className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-slate-300 text-sm italic">"{TESTIMONIALS[0].quote}"</p>
+                    <p className="text-amber-400/70 text-xs mt-1">— {TESTIMONIALS[0].author}</p>
+                  </div>
                 </div>
               </div>
             </div>
             
-            {/* Pricing */}
+            {/* Pricing - with art backgrounds */}
             <div className="space-y-3">
-              <Card className="bg-slate-800/50 border-slate-700 hover:border-amber-500/50 transition-colors cursor-pointer group">
-                <CardContent className="p-4 flex items-center justify-between">
+              <Card className="relative overflow-hidden bg-slate-800/50 border-slate-700 hover:border-amber-500/50 transition-colors cursor-pointer group">
+                <div 
+                  className="absolute inset-0 bg-cover bg-center opacity-[0.06] group-hover:opacity-[0.1] transition-opacity"
+                  style={{ backgroundImage: `url(${evergreenGame})` }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-slate-800/80 to-slate-900/90" />
+                <CardContent className="relative p-4 flex items-center justify-between">
                   <div>
                     <p className="text-white font-medium">Standard Edition</p>
                     <p className="text-slate-400 text-sm">8.5" × 11" Hardcover</p>
@@ -133,11 +161,16 @@ export const BookShowcase: React.FC<BookShowcaseProps> = ({
                 </CardContent>
               </Card>
               
-              <Card className="bg-gradient-to-r from-amber-600/20 to-orange-600/20 border-amber-500/50 hover:border-amber-400 transition-colors cursor-pointer group relative overflow-hidden">
-                <div className="absolute top-0 right-0 bg-amber-500 text-white text-xs px-2 py-0.5 rounded-bl-lg font-medium">
+              <Card className="relative overflow-hidden bg-gradient-to-r from-amber-600/20 to-orange-600/20 border-amber-500/50 hover:border-amber-400 transition-colors cursor-pointer group">
+                <div 
+                  className="absolute inset-0 bg-cover bg-center opacity-[0.1] group-hover:opacity-[0.15] transition-opacity"
+                  style={{ backgroundImage: `url(${gameOfCentury})` }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-amber-900/70 to-orange-900/80" />
+                <div className="absolute top-0 right-0 bg-amber-500 text-white text-xs px-2 py-0.5 rounded-bl-lg font-medium z-10">
                   POPULAR
                 </div>
-                <CardContent className="p-4 flex items-center justify-between">
+                <CardContent className="relative p-4 flex items-center justify-between">
                   <div>
                     <p className="text-amber-100 font-medium">Large Format</p>
                     <p className="text-amber-200/60 text-sm">11" × 14" Premium</p>
@@ -173,10 +206,17 @@ export const BookShowcase: React.FC<BookShowcaseProps> = ({
               </div>
             </div>
             
-            {/* Publisher Info */}
-            <div className="text-center pt-4 border-t border-slate-800">
-              <p className="text-xs text-slate-500">Published by</p>
-              <p className="text-sm text-amber-400 font-serif tracking-wider">♔ EN PENSENT ♕</p>
+            {/* Publisher Info - with art background */}
+            <div className="relative rounded-lg overflow-hidden border-t border-slate-800 pt-4">
+              <div 
+                className="absolute inset-0 bg-cover bg-center opacity-[0.05]"
+                style={{ backgroundImage: `url(${fischerSpassky})` }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/95 to-transparent" />
+              <div className="relative text-center">
+                <p className="text-xs text-slate-500">Published by</p>
+                <p className="text-sm text-amber-400 font-serif tracking-wider">♔ EN PENSENT ♕</p>
+              </div>
             </div>
           </div>
         </div>
@@ -264,17 +304,27 @@ export const BookShowcase: React.FC<BookShowcaseProps> = ({
                 </Badge>
               </div>
               
-              {/* Pricing Cards */}
+              {/* Pricing Cards - with art backgrounds */}
               <div className="flex flex-col sm:flex-row gap-4 pt-4">
-                <Card className="flex-1 bg-slate-800/50 border-slate-700 backdrop-blur">
-                  <CardContent className="p-4 text-center">
+                <Card className="flex-1 relative overflow-hidden bg-slate-800/50 border-slate-700 backdrop-blur group hover:border-slate-500 transition-colors">
+                  <div 
+                    className="absolute inset-0 bg-cover bg-center opacity-[0.06] group-hover:opacity-[0.1] transition-opacity"
+                    style={{ backgroundImage: `url(${evergreenGame})` }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-br from-slate-800/80 to-slate-900/90" />
+                  <CardContent className="relative p-4 text-center">
                     <p className="text-sm text-slate-400">Standard Edition</p>
                     <p className="text-sm text-slate-500">8.5" × 11"</p>
                     <p className="text-2xl font-bold text-white">$79.99</p>
                   </CardContent>
                 </Card>
-                <Card className="flex-1 bg-gradient-to-br from-amber-600/20 to-orange-600/20 border-amber-500/50 backdrop-blur">
-                  <CardContent className="p-4 text-center">
+                <Card className="flex-1 relative overflow-hidden bg-gradient-to-br from-amber-600/20 to-orange-600/20 border-amber-500/50 backdrop-blur group hover:border-amber-400 transition-colors">
+                  <div 
+                    className="absolute inset-0 bg-cover bg-center opacity-[0.1] group-hover:opacity-[0.15] transition-opacity"
+                    style={{ backgroundImage: `url(${gameOfCentury})` }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-br from-amber-900/60 to-orange-900/70" />
+                  <CardContent className="relative p-4 text-center">
                     <p className="text-sm text-amber-400 font-medium">Large Format</p>
                     <p className="text-sm text-amber-200/70">11" × 14"</p>
                     <p className="text-2xl font-bold text-amber-100">$99.99</p>
