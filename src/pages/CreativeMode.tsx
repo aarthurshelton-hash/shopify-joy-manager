@@ -1,9 +1,9 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
 import { 
   Wand2, Palette, Download, Save, Share2, Trash2, 
-  RotateCcw, Crown, Lock, Sparkles, Eye, Grid3X3
+  RotateCcw, Crown, Lock, Sparkles, Eye, Grid3X3, ArrowLeft
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
@@ -16,6 +16,8 @@ import AuthModal from '@/components/auth/AuthModal';
 import PremiumUpgradeModal from '@/components/premium/PremiumUpgradeModal';
 import { LiveColorLegend } from '@/components/chess/LiveColorLegend';
 import { LegendHighlightProvider, useLegendHighlight, HighlightedPiece } from '@/contexts/LegendHighlightContext';
+import { useSessionStore } from '@/stores/sessionStore';
+import { useNavigate } from 'react-router-dom';
 
 type PieceKey = 'K' | 'Q' | 'R' | 'B' | 'N' | 'P' | 'k' | 'q' | 'r' | 'b' | 'n' | 'p' | null;
 
@@ -187,6 +189,8 @@ const CreativeChessBoard: React.FC<CreativeChessBoardProps> = ({
 
 const CreativeMode = () => {
   const { user, isPremium } = useAuth();
+  const navigate = useNavigate();
+  const { creativeModeTransfer, clearCreativeModeTransfer } = useSessionStore();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   
@@ -194,6 +198,7 @@ const CreativeMode = () => {
   const [board, setBoard] = useState<(string | null)[][]>(parseFen(STARTING_FEN));
   const [selectedPiece, setSelectedPiece] = useState<PieceKey>(null);
   const [title, setTitle] = useState('Untitled Design');
+  const [sourceVisualizationId, setSourceVisualizationId] = useState<string | null>(null);
   
   // Palette state - custom colors for each piece
   const [whitePalette, setWhitePalette] = useState<Record<PieceType, string>>({
@@ -204,6 +209,22 @@ const CreativeMode = () => {
   });
   
   const [isSaving, setIsSaving] = useState(false);
+
+  // Load transferred data from visualization detail page
+  useEffect(() => {
+    if (creativeModeTransfer) {
+      setBoard(creativeModeTransfer.board);
+      setWhitePalette(creativeModeTransfer.whitePalette);
+      setBlackPalette(creativeModeTransfer.blackPalette);
+      setTitle(creativeModeTransfer.title);
+      if (creativeModeTransfer.sourceVisualizationId) {
+        setSourceVisualizationId(creativeModeTransfer.sourceVisualizationId);
+      }
+      // Clear the transfer data after loading
+      clearCreativeModeTransfer();
+      toast.success('Loaded from your vision');
+    }
+  }, [creativeModeTransfer, clearCreativeModeTransfer]);
 
   const fen = useMemo(() => boardToFen(board), [board]);
 
@@ -410,6 +431,18 @@ const CreativeMode = () => {
       
       <main className="container mx-auto px-4 py-16">
         <div className="max-w-6xl mx-auto">
+          {/* Return navigation if coming from a visualization */}
+          {sourceVisualizationId && (
+            <Button 
+              onClick={() => navigate(`/my-vision/${sourceVisualizationId}`)}
+              variant="ghost" 
+              className="gap-2 mb-6"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Return to Vision
+            </Button>
+          )}
+
           {/* Hero */}
           <div className="text-center space-y-6 mb-12">
             <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-display uppercase tracking-widest">

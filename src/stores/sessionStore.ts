@@ -1,11 +1,20 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { SimulationResult } from '@/lib/chess/gameSimulator';
+import { PieceType } from '@/lib/chess/pieceColors';
 
 /**
  * Session Store - Persists visualization and navigation state across page navigations
  * This enables the "memory holding capabilities" for the app
  */
+
+export interface CreativeModeTransfer {
+  board: (string | null)[][];
+  whitePalette: Record<PieceType, string>;
+  blackPalette: Record<PieceType, string>;
+  title: string;
+  sourceVisualizationId?: string;
+}
 
 interface SessionState {
   // Current visualization context
@@ -13,6 +22,9 @@ interface SessionState {
   currentPgn: string;
   currentGameTitle: string;
   savedShareId: string | null;
+  
+  // Creative mode transfer data
+  creativeModeTransfer: CreativeModeTransfer | null;
   
   // Navigation history
   previousRoute: string | null;
@@ -22,6 +34,10 @@ interface SessionState {
   setCurrentSimulation: (simulation: SimulationResult | null, pgn?: string, title?: string) => void;
   setSavedShareId: (shareId: string | null) => void;
   clearSimulation: () => void;
+  
+  // Creative mode transfer
+  setCreativeModeTransfer: (data: CreativeModeTransfer | null) => void;
+  clearCreativeModeTransfer: () => void;
   
   // Navigation tracking
   pushRoute: (route: string) => void;
@@ -40,6 +56,7 @@ export const useSessionStore = create<SessionState>()(
       currentPgn: '',
       currentGameTitle: '',
       savedShareId: null,
+      creativeModeTransfer: null,
       previousRoute: null,
       navigationStack: [],
       
@@ -58,6 +75,10 @@ export const useSessionStore = create<SessionState>()(
         currentGameTitle: '',
         savedShareId: null,
       }),
+      
+      // Creative mode transfer
+      setCreativeModeTransfer: (data) => set({ creativeModeTransfer: data }),
+      clearCreativeModeTransfer: () => set({ creativeModeTransfer: null }),
       
       // Navigation tracking
       pushRoute: (route) => set((state) => ({
@@ -89,6 +110,7 @@ export const useSessionStore = create<SessionState>()(
         currentPgn: '',
         currentGameTitle: '',
         savedShareId: null,
+        creativeModeTransfer: null,
         previousRoute: null,
         navigationStack: [],
       }),
@@ -102,6 +124,7 @@ export const useSessionStore = create<SessionState>()(
         currentPgn: state.currentPgn,
         currentGameTitle: state.currentGameTitle,
         savedShareId: state.savedShareId,
+        creativeModeTransfer: state.creativeModeTransfer,
         previousRoute: state.previousRoute,
         navigationStack: state.navigationStack,
       }),
