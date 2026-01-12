@@ -28,11 +28,13 @@ import ListForSaleModal from '@/components/marketplace/ListForSaleModal';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
 import { usePrintOrderStore } from '@/stores/printOrderStore';
+import { useSessionStore } from '@/stores/sessionStore';
 
 const MyVision: React.FC = () => {
   const navigate = useNavigate();
   const { user, isPremium, isLoading: authLoading } = useAuth();
   const { setOrderData } = usePrintOrderStore();
+  const { setCurrentSimulation, setSavedShareId, setReturningFromOrder } = useSessionStore();
   const [visualizations, setVisualizations] = useState<SavedVisualization[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isMigrating, setIsMigrating] = useState(false);
@@ -202,6 +204,17 @@ const MyVision: React.FC = () => {
       moves: storedData.moves || [],
     };
     
+    const simulation = {
+      board,
+      gameData,
+      totalMoves: storedData.totalMoves || storedData.moves?.length || 0,
+    };
+    
+    // Save to session store for restoration on return
+    setCurrentSimulation(simulation, viz.pgn || '', viz.title);
+    setSavedShareId(viz.public_share_id || null);
+    setReturningFromOrder(true);
+    
     setOrderData({
       visualizationId: viz.id,
       imagePath: viz.image_path,
@@ -215,11 +228,7 @@ const MyVision: React.FC = () => {
         result: viz.game_data.result,
       },
       // Include reconstructed simulation for print rendering
-      simulation: {
-        board,
-        gameData,
-        totalMoves: storedData.totalMoves || storedData.moves?.length || 0,
-      },
+      simulation,
       shareId: viz.public_share_id,
       returnPath: '/my-vision',
     });

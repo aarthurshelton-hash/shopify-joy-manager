@@ -28,6 +28,7 @@ import { MoveHistoryEntry, EnPensentOverlay } from './EnPensentOverlay';
 import { PieceType } from '@/lib/chess/pieceColors';
 import { usePrintOrderStore } from '@/stores/printOrderStore';
 import { useVisualizationStateStore } from '@/stores/visualizationStateStore';
+import { useSessionStore } from '@/stores/sessionStore';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 import QRCode from 'qrcode';
 import { recordVisionInteraction } from '@/lib/visualizations/visionScoring';
@@ -65,6 +66,7 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
   const { user, isPremium } = useAuth();
   const { setOrderData } = usePrintOrderStore();
   const { captureState, darkMode: storeDarkMode, setDarkMode: setStoreDarkMode } = useVisualizationStateStore();
+  const { setCapturedTimelineState, setReturningFromOrder } = useSessionStore();
   const exportRef = useRef<HTMLDivElement>(null);
   const [darkMode, setDarkMode] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -146,6 +148,15 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
   const handleOrderPrint = () => {
     // Capture current visualization state for the print
     const capturedVisualizationState = captureState(moveHistory);
+    
+    // Save timeline state for restoration on return
+    setCapturedTimelineState({
+      currentMove: capturedVisualizationState.currentMove,
+      lockedPieces: capturedVisualizationState.lockedPieces,
+      compareMode: capturedVisualizationState.compareMode,
+      darkMode,
+    });
+    setReturningFromOrder(true);
     
     // Set order data with En Pensent visualization and captured state
     setOrderData({

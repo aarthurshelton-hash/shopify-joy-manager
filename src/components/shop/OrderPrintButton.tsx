@@ -41,7 +41,12 @@ export const OrderPrintButton: React.FC<OrderPrintButtonProps> = ({
 }) => {
   const navigate = useNavigate();
   const { setOrderData } = usePrintOrderStore();
-  const { setCurrentSimulation, setSavedShareId: setSessionShareId } = useSessionStore();
+  const { 
+    setCurrentSimulation, 
+    setSavedShareId: setSessionShareId,
+    setCapturedTimelineState,
+    setReturningFromOrder 
+  } = useSessionStore();
 
   const handleClick = () => {
     if (onClick) {
@@ -58,6 +63,22 @@ export const OrderPrintButton: React.FC<OrderPrintButtonProps> = ({
           setSessionShareId(orderData.shareId);
         }
       }
+      
+      // Capture timeline state for exact visual restoration
+      if (orderData.capturedState) {
+        setCapturedTimelineState({
+          currentMove: orderData.capturedState.currentMove,
+          lockedPieces: orderData.capturedState.lockedPieces.map(p => ({
+            pieceType: p.pieceType as any,
+            pieceColor: p.pieceColor as any,
+          })),
+          compareMode: orderData.capturedState.compareMode,
+          darkMode: orderData.capturedState.darkMode,
+        });
+      }
+      
+      // Mark that we're navigating to order page for toast on return
+      setReturningFromOrder(true);
       
       // Include current path as return path if not already set
       const dataWithReturnPath = {
