@@ -10,7 +10,6 @@ import { toast } from 'sonner';
 import { 
   BookOpen, 
   Download, 
-  Play, 
   Pause, 
   RotateCcw, 
   Image as ImageIcon,
@@ -20,7 +19,10 @@ import {
   XCircle,
   Loader2,
   Lock,
-  Zap
+  Zap,
+  PlayCircle,
+  Save,
+  RefreshCw
 } from 'lucide-react';
 import { carlsenTop100, CarlsenGame } from '@/lib/book/carlsenGames';
 import { BookSpread } from '@/components/book/BookSpread';
@@ -38,6 +40,13 @@ interface GeneratedSpread {
   haiku: string;
   visualizationImage: string;
   status: 'pending' | 'generating' | 'complete' | 'error';
+}
+
+interface SavedProgress {
+  game_index: number;
+  haiku: string | null;
+  visualization_data: string | null;
+  status: string;
 }
 
 const BookGenerator: React.FC = () => {
@@ -58,7 +67,10 @@ const BookGenerator: React.FC = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [previewIndex, setPreviewIndex] = useState(0);
   const [isExporting, setIsExporting] = useState(false);
-  const [batchSize, setBatchSize] = useState(5); // Parallel batch size
+  const [batchSize, setBatchSize] = useState(5);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingProgress, setIsLoadingProgress] = useState(false);
+  const [generatingSingleIndex, setGeneratingSingleIndex] = useState<number | null>(null);
   const pauseRef = React.useRef(false);
 
   // Check CEO authorization
@@ -82,6 +94,119 @@ const BookGenerator: React.FC = () => {
 
     checkAuthorization();
   }, [user, authLoading]);
+
+  // Load saved progress on mount
+  useEffect(() => {
+    if (isAuthorized && user) {
+      loadSavedProgress();
+    }
+  }, [isAuthorized, user]);
+
+  const loadSavedProgress = async () => {
+    if (!user) return;
+    
+    setIsLoadingProgress(true);
+    try {
+      const { data, error } = await supabase
+        .from('book_generation_progress')
+        .select('game_index, haiku, visualization_data, status')
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        setSpreads(prev => {
+          const updated = [...prev];
+          (data as SavedProgress[]).forEach(saved => {
+            if (saved.game_index >= 0 && saved.game_index < updated.length) {
+              updated[saved.game_index] = {
+                ...updated[saved.game_index],
+                haiku: saved.haiku || '',
+                visualizationImage: saved.visualization_data || '',
+                status: saved.status as 'pending' | 'generating' | 'complete' | 'error',
+              };
+            }
+          });
+          return updated;
+        });
+        toast.success(`Loaded ${data.length} saved spreads`);
+      }
+    } catch (error) {
+      console.error('Failed to load progress:', error);
+      toast.error('Failed to load saved progress');
+    } finally {
+      setIsLoadingProgress(false);
+    }
+  };
+
+  const saveProgressToDatabase = async () => {
+    if (!user) return;
+    
+    setIsSaving(true);
+    try {
+      const completedSpreads = spreads
+        .map((spread, index) => ({ spread, index }))
+        .filter(({ spread }) => spread.status === 'complete');
+
+      if (completedSpreads.length === 0) {
+        toast.info('No completed spreads to save');
+        setIsSaving(false);
+        return;
+      }
+
+      // Upsert all completed spreads
+      const upsertData = completedSpreads.map(({ spread, index }) => ({
+        user_id: user.id,
+        game_index: index,
+        game_title: spread.game.title,
+        haiku: spread.haiku,
+        visualization_data: spread.visualizationImage,
+        status: spread.status,
+      }));
+
+      const { error } = await supabase
+        .from('book_generation_progress')
+        .upsert(upsertData, { 
+          onConflict: 'user_id,game_index',
+          ignoreDuplicates: false 
+        });
+
+      if (error) throw error;
+      toast.success(`Saved ${completedSpreads.length} spreads to database`);
+    } catch (error) {
+      console.error('Failed to save progress:', error);
+      toast.error('Failed to save progress');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const saveSingleSpread = async (index: number) => {
+    if (!user) return;
+    
+    const spread = spreads[index];
+    if (spread.status !== 'complete') return;
+
+    try {
+      const { error } = await supabase
+        .from('book_generation_progress')
+        .upsert({
+          user_id: user.id,
+          game_index: index,
+          game_title: spread.game.title,
+          haiku: spread.haiku,
+          visualization_data: spread.visualizationImage,
+          status: spread.status,
+        }, { 
+          onConflict: 'user_id,game_index',
+          ignoreDuplicates: false 
+        });
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Failed to save spread:', error);
+    }
+  };
 
   const completedCount = spreads.filter(s => s.status === 'complete').length;
   const errorCount = spreads.filter(s => s.status === 'error').length;
@@ -128,7 +253,7 @@ const BookGenerator: React.FC = () => {
     }
   };
 
-  const generateSpread = async (index: number): Promise<boolean> => {
+  const generateSpread = async (index: number, autoSave = false): Promise<boolean> => {
     const currentSpread = spreads[index];
     if (!currentSpread || currentSpread.status === 'complete') return true;
     
@@ -148,6 +273,12 @@ const BookGenerator: React.FC = () => {
       setSpreads(prev => prev.map((s, i) => 
         i === index ? { ...s, haiku, visualizationImage, status: 'complete' } : s
       ));
+      
+      // Auto-save after batch generation
+      if (autoSave) {
+        setTimeout(() => saveSingleSpread(index), 100);
+      }
+      
       return true;
     } catch (error) {
       console.error(`Error generating spread ${index}:`, error);
@@ -158,7 +289,24 @@ const BookGenerator: React.FC = () => {
     }
   };
 
-  // Batch parallel generation
+  // Generate single spread for testing
+  const generateSingleSpread = async (index: number) => {
+    setGeneratingSingleIndex(index);
+    setPreviewIndex(index);
+    toast.info(`Generating spread #${index + 1}: ${spreads[index].game.title}`);
+    
+    const success = await generateSpread(index, true);
+    
+    if (success) {
+      toast.success(`Spread #${index + 1} generated successfully!`);
+    } else {
+      toast.error(`Failed to generate spread #${index + 1}`);
+    }
+    
+    setGeneratingSingleIndex(null);
+  };
+
+  // Batch parallel generation with auto-save
   const startBatchGeneration = useCallback(async () => {
     setIsGenerating(true);
     pauseRef.current = false;
@@ -174,15 +322,16 @@ const BookGenerator: React.FC = () => {
     // Process in batches
     for (let i = 0; i < pendingIndices.length; i += batchSize) {
       if (pauseRef.current) {
-        toast.info('Generation paused');
+        toast.info('Generation paused - saving progress...');
+        await saveProgressToDatabase();
         break;
       }
 
       const batch = pendingIndices.slice(i, i + batchSize);
       setCurrentIndex(batch[0]);
       
-      // Run batch in parallel
-      await Promise.all(batch.map(index => generateSpread(index)));
+      // Run batch in parallel with auto-save
+      await Promise.all(batch.map(index => generateSpread(index, true)));
       
       // Small delay between batches to avoid rate limiting
       if (i + batchSize < pendingIndices.length) {
@@ -192,11 +341,13 @@ const BookGenerator: React.FC = () => {
 
     setIsGenerating(false);
     
-    const newCompleted = spreads.filter(s => s.status === 'complete').length;
     if (!pauseRef.current) {
-      toast.success(`Generation complete! ${newCompleted} spreads ready.`);
+      // Final save and count
+      await saveProgressToDatabase();
+      const newCompleted = spreads.filter(s => s.status === 'complete').length;
+      toast.success(`Generation complete! ${newCompleted} spreads ready and saved.`);
     }
-  }, [spreads, batchSize]);
+  }, [spreads, batchSize, user]);
 
   const pauseGeneration = () => {
     pauseRef.current = true;
@@ -536,6 +687,7 @@ const BookGenerator: React.FC = () => {
                   <Button 
                     onClick={startBatchGeneration}
                     className="col-span-2 bg-[#2C2C2C] hover:bg-[#1C1C1C]"
+                    disabled={isLoadingProgress}
                   >
                     <Zap className="w-4 h-4 mr-2" />
                     {completedCount > 0 ? 'Resume' : 'Start'} Batch Generation
@@ -547,9 +699,24 @@ const BookGenerator: React.FC = () => {
                     className="col-span-2 border-[#2C2C2C]"
                   >
                     <Pause className="w-4 h-4 mr-2" />
-                    Pause
+                    Pause & Save
                   </Button>
                 )}
+                
+                {/* Generate Single Spread Button */}
+                <Button 
+                  onClick={() => generateSingleSpread(previewIndex)}
+                  variant="outline"
+                  className="col-span-2 border-amber-600 text-amber-700 hover:bg-amber-50"
+                  disabled={isGenerating || generatingSingleIndex !== null || spreads[previewIndex]?.status === 'complete'}
+                >
+                  {generatingSingleIndex === previewIndex ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <PlayCircle className="w-4 h-4 mr-2" />
+                  )}
+                  Generate Single Spread #{previewIndex + 1}
+                </Button>
                 
                 <Button 
                   onClick={resetGeneration}
@@ -559,6 +726,34 @@ const BookGenerator: React.FC = () => {
                 >
                   <RotateCcw className="w-4 h-4 mr-2" />
                   Reset
+                </Button>
+                
+                <Button 
+                  onClick={saveProgressToDatabase}
+                  variant="outline"
+                  className="border-green-600 text-green-700 hover:bg-green-50"
+                  disabled={isGenerating || isSaving || completedCount === 0}
+                >
+                  {isSaving ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4 mr-2" />
+                  )}
+                  Save Progress
+                </Button>
+                
+                <Button 
+                  onClick={loadSavedProgress}
+                  variant="outline"
+                  className="border-blue-600 text-blue-700 hover:bg-blue-50"
+                  disabled={isGenerating || isLoadingProgress}
+                >
+                  {isLoadingProgress ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                  )}
+                  Load Saved
                 </Button>
                 
                 <Button 
