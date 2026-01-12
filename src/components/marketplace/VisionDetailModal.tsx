@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Dialog,
@@ -9,6 +10,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import {
   Crown,
   DollarSign,
@@ -31,6 +38,7 @@ import {
   FileImage,
   Film,
   ArrowRightLeft,
+  ShoppingBag,
 } from 'lucide-react';
 import { MarketplaceListing } from '@/lib/marketplace/marketplaceApi';
 import { VisionScore, getVisionScore, calculateVisionValue, calculateMembershipMultiplier, SCORING_WEIGHTS } from '@/lib/visualizations/visionScoring';
@@ -73,6 +81,7 @@ const VisionDetailModal: React.FC<VisionDetailModalProps> = ({
   isOwnListing,
   isPremium,
 }) => {
+  const navigate = useNavigate();
   const [visionScore, setVisionScore] = useState<VisionScore | null>(null);
   const [estimatedValue, setEstimatedValue] = useState<number>(0);
   const [showFullPgn, setShowFullPgn] = useState(false);
@@ -196,36 +205,80 @@ const VisionDetailModal: React.FC<VisionDetailModalProps> = ({
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-2">
-              <Button
-                className="flex-1"
-                size="lg"
-                variant={isFree ? "default" : "outline"}
-                onClick={() => onPurchase(listing)}
-                disabled={isPurchasing || isOwnListing}
-              >
-                {isPurchasing ? (
-                  <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Processing...</>
-                ) : isOwnListing ? (
-                  'Your Listing'
-                ) : isFree ? (
-                  <><Gift className="h-4 w-4 mr-2" /> Claim Gift</>
-                ) : (
-                  <><DollarSign className="h-4 w-4 mr-1" /> Purchase {formatPrice(listing.price_cents)}</>
-                )}
-              </Button>
+            <div className="flex flex-col gap-2">
+              <div className="flex gap-2">
+                {/* Order Print - Available to everyone */}
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="flex-1 gap-2 border-primary/50 hover:bg-primary/10"
+                  onClick={() => {
+                    navigate('/order-print', { 
+                      state: { 
+                        fromMarketplace: true,
+                        visualizationId: listing.visualization?.id,
+                        title: listing.visualization?.title,
+                        imageUrl: listing.visualization?.image_path,
+                      } 
+                    });
+                    onClose();
+                  }}
+                >
+                  <ShoppingBag className="h-4 w-4" />
+                  Order Print
+                </Button>
+                
+                {/* Claim Ownership with tooltip */}
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        className="flex-1"
+                        size="lg"
+                        variant={isFree ? "default" : "secondary"}
+                        onClick={() => onPurchase(listing)}
+                        disabled={isPurchasing || isOwnListing}
+                      >
+                        {isPurchasing ? (
+                          <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Processing...</>
+                        ) : isOwnListing ? (
+                          'Your Listing'
+                        ) : isFree ? (
+                          <><Gift className="h-4 w-4 mr-2" /> Claim Vision</>
+                        ) : (
+                          <><Crown className="h-4 w-4 mr-1" /> Claim Ownership</>
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-xs">
+                      <p className="font-medium mb-1">What is Ownership?</p>
+                      <ul className="text-xs space-y-1 text-muted-foreground">
+                        <li>• Add this vision to your personal gallery</li>
+                        <li>• Exclusive digital ownership - only one owner per vision</li>
+                        <li>• Earn royalties when others order prints</li>
+                        <li>• List for resale anytime on the marketplace</li>
+                      </ul>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
               
-              <Button variant="outline" size="icon" onClick={handleShare}>
-                <Share2 className="h-4 w-4" />
-              </Button>
-              
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => window.open(`/v/${listing.visualization?.id}`, '_blank')}
-              >
-                <ExternalLink className="h-4 w-4" />
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" className="flex-1 gap-2" onClick={handleShare}>
+                  <Share2 className="h-4 w-4" />
+                  Share
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 gap-2"
+                  onClick={() => window.open(`/v/${listing.visualization?.id}`, '_blank')}
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Full View
+                </Button>
+              </div>
             </div>
 
             {!isPremium && !isOwnListing && (

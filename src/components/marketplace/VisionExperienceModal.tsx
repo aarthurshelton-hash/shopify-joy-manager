@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Dialog,
@@ -48,6 +49,7 @@ import {
   SkipForward,
   SkipBack,
   X,
+  ShoppingBag,
   Info,
   BookOpen,
   Zap,
@@ -551,6 +553,7 @@ const VisionExperienceModal: React.FC<VisionExperienceModalProps> = ({
                           isPremium={isPremium}
                           isFree={isFree}
                           handleShare={handleShare}
+                          onClose={onClose}
                         />
                       </LegendHighlightProvider>
                     </TimelineProvider>
@@ -612,6 +615,7 @@ const ExperienceTab: React.FC<{
   isPremium: boolean;
   isFree: boolean;
   handleShare: () => void;
+  onClose: () => void;
 }> = ({
   listing,
   board,
@@ -629,6 +633,7 @@ const ExperienceTab: React.FC<{
   isPremium,
   isFree,
   handleShare,
+  onClose,
 }) => {
   const [boardSize, setBoardSize] = useState(320);
   const [showPieces, setShowPieces] = useState(false);
@@ -787,23 +792,54 @@ const ExperienceTab: React.FC<{
 
         {/* Action buttons */}
         <div className="flex flex-col gap-2 p-4 rounded-lg bg-muted/30 border">
+          {/* Order Print - Available to everyone */}
           <Button
-            className="w-full gap-2"
+            variant="outline"
             size="lg"
-            variant={isFree ? "default" : "outline"}
-            onClick={() => onPurchase(listing)}
-            disabled={isPurchasing || isOwnListing}
+            className="w-full gap-2 border-primary/50 hover:bg-primary/10"
+            onClick={() => {
+              onClose();
+              // Use query params for navigation since we're in a modal
+              window.location.href = `/order-print?from=marketplace&visualizationId=${listing.visualization?.id}&title=${encodeURIComponent(listing.visualization?.title || '')}&imageUrl=${encodeURIComponent(listing.visualization?.image_path || '')}`;
+            }}
           >
-            {isPurchasing ? (
-              <><Loader2 className="h-4 w-4 animate-spin" /> Processing...</>
-            ) : isOwnListing ? (
-              'Your Listing'
-            ) : isFree ? (
-              <><Gift className="h-4 w-4" /> Claim Gift</>
-            ) : (
-              <><DollarSign className="h-4 w-4" /> Purchase ${(listing.price_cents / 100).toFixed(2)}</>
-            )}
+            <ShoppingBag className="h-4 w-4" />
+            Order Print
           </Button>
+          
+          {/* Claim Ownership with tooltip */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  className="w-full gap-2"
+                  size="lg"
+                  variant={isFree ? "default" : "secondary"}
+                  onClick={() => onPurchase(listing)}
+                  disabled={isPurchasing || isOwnListing}
+                >
+                  {isPurchasing ? (
+                    <><Loader2 className="h-4 w-4 animate-spin" /> Processing...</>
+                  ) : isOwnListing ? (
+                    'Your Listing'
+                  ) : isFree ? (
+                    <><Gift className="h-4 w-4" /> Claim Vision</>
+                  ) : (
+                    <><Crown className="h-4 w-4" /> Claim Ownership</>
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-xs">
+                <p className="font-medium mb-1">What is Ownership?</p>
+                <ul className="text-xs space-y-1 text-muted-foreground">
+                  <li>• Add this vision to your personal gallery</li>
+                  <li>• Exclusive digital ownership - only one owner per vision</li>
+                  <li>• Earn royalties when others order prints</li>
+                  <li>• List for resale anytime on the marketplace</li>
+                </ul>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           
           <div className="flex gap-2">
             <Button variant="outline" size="sm" className="flex-1 gap-2" onClick={handleShare}>
