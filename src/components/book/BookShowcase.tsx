@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { BookOpen, Crown, Award, Sparkles, ShoppingCart, ExternalLink, Eye } from 'lucide-react';
+import { 
+  BookOpen, Crown, Award, Sparkles, ShoppingCart, ExternalLink, Eye, 
+  Check, Star, Gift, Palette, PenTool, Printer, Globe, Heart
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
 import { Book3DCover } from './Book3DCover';
 import { BookFlipPreview } from './BookFlipPreview';
 import carlsenCover from '@/assets/book/carlsen-cover-v2.jpg';
@@ -14,6 +18,19 @@ interface BookShowcaseProps {
   onOrderClick?: () => void;
   showCTA?: boolean;
 }
+
+const SELLING_POINTS = [
+  { icon: Crown, text: "100 of Carlsen's greatest games" },
+  { icon: Palette, text: "Signature Hot & Cold visualization palette" },
+  { icon: PenTool, text: "AI-generated haiku for each game" },
+  { icon: Printer, text: "Premium hardcover, museum-quality print" },
+  { icon: Gift, text: "Perfect gift for chess enthusiasts" },
+];
+
+const TESTIMONIALS = [
+  { quote: "A masterpiece of chess art.", author: "Chess.com Editor" },
+  { quote: "The perfect fusion of sport and design.", author: "Art Collector" },
+];
 
 export const BookShowcase: React.FC<BookShowcaseProps> = ({
   variant = 'featured',
@@ -32,22 +49,136 @@ export const BookShowcase: React.FC<BookShowcaseProps> = ({
 
   const PreviewModal = () => (
     <Dialog open={showPreview} onOpenChange={setShowPreview}>
-      <DialogContent className="max-w-3xl bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 font-serif text-amber-900">
-            <BookOpen className="w-5 h-5" />
-            Preview: Carlsen in Color
-          </DialogTitle>
-        </DialogHeader>
-        <BookFlipPreview />
-        <div className="flex justify-center pt-4">
-          <Button 
-            onClick={handleOrder}
-            className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 shadow-lg"
-          >
-            <ShoppingCart className="w-4 h-4 mr-2" />
-            Order Now from $79.99
-          </Button>
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto p-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 border-amber-500/20">
+        {/* Header */}
+        <div className="sticky top-0 z-10 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-b border-amber-500/20 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
+                <BookOpen className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h2 className="font-serif text-xl font-bold text-white">Carlsen in Color</h2>
+                <p className="text-amber-400/80 text-sm">100 Masterpieces • Coffee Table Edition</p>
+              </div>
+            </div>
+            <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg">
+              <Sparkles className="w-3 h-3 mr-1" />
+              NEW RELEASE
+            </Badge>
+          </div>
+        </div>
+        
+        <div className="grid lg:grid-cols-5 gap-0">
+          {/* Preview Section - Takes up more space */}
+          <div className="lg:col-span-3 p-6 bg-gradient-to-br from-amber-50 to-orange-50">
+            <BookFlipPreview />
+          </div>
+          
+          {/* Sales Card */}
+          <div className="lg:col-span-2 p-6 space-y-6">
+            {/* Rating */}
+            <div className="flex items-center gap-2">
+              <div className="flex">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
+                ))}
+              </div>
+              <span className="text-amber-200/80 text-sm">Collector's Choice</span>
+            </div>
+            
+            {/* Key Selling Points */}
+            <div className="space-y-3">
+              {SELLING_POINTS.map((point, i) => (
+                <motion.div 
+                  key={i}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  className="flex items-center gap-3 text-slate-200"
+                >
+                  <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+                    <point.icon className="w-4 h-4 text-amber-400" />
+                  </div>
+                  <span className="text-sm">{point.text}</span>
+                </motion.div>
+              ))}
+            </div>
+            
+            <Separator className="bg-slate-700" />
+            
+            {/* Testimonial */}
+            <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
+              <div className="flex items-start gap-2">
+                <Heart className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-slate-300 text-sm italic">"{TESTIMONIALS[0].quote}"</p>
+                  <p className="text-amber-400/70 text-xs mt-1">— {TESTIMONIALS[0].author}</p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Pricing */}
+            <div className="space-y-3">
+              <Card className="bg-slate-800/50 border-slate-700 hover:border-amber-500/50 transition-colors cursor-pointer group">
+                <CardContent className="p-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-white font-medium">Standard Edition</p>
+                    <p className="text-slate-400 text-sm">8.5" × 11" Hardcover</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-bold text-white">$79.99</p>
+                    <p className="text-xs text-slate-500">+ shipping</p>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card className="bg-gradient-to-r from-amber-600/20 to-orange-600/20 border-amber-500/50 hover:border-amber-400 transition-colors cursor-pointer group relative overflow-hidden">
+                <div className="absolute top-0 right-0 bg-amber-500 text-white text-xs px-2 py-0.5 rounded-bl-lg font-medium">
+                  POPULAR
+                </div>
+                <CardContent className="p-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-amber-100 font-medium">Large Format</p>
+                    <p className="text-amber-200/60 text-sm">11" × 14" Premium</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-bold text-amber-100">$99.99</p>
+                    <p className="text-xs text-amber-200/50">+ shipping</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+            
+            {/* CTA Buttons */}
+            <div className="space-y-3 pt-2">
+              <Button 
+                onClick={handleOrder}
+                size="lg"
+                className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-lg shadow-amber-600/25 h-12 text-base"
+              >
+                <ShoppingCart className="w-5 h-5 mr-2" />
+                Order Your Copy
+              </Button>
+              
+              <div className="flex items-center justify-center gap-4 text-xs text-slate-400">
+                <span className="flex items-center gap-1">
+                  <Check className="w-3 h-3 text-green-500" />
+                  Secure checkout
+                </span>
+                <span className="flex items-center gap-1">
+                  <Globe className="w-3 h-3 text-blue-400" />
+                  Worldwide shipping
+                </span>
+              </div>
+            </div>
+            
+            {/* Publisher Info */}
+            <div className="text-center pt-4 border-t border-slate-800">
+              <p className="text-xs text-slate-500">Published by</p>
+              <p className="text-sm text-amber-400 font-serif tracking-wider">♔ EN PENSENT ♕</p>
+            </div>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
@@ -155,7 +286,7 @@ export const BookShowcase: React.FC<BookShowcaseProps> = ({
                 <div className="flex flex-wrap gap-3 pt-4">
                   <Button 
                     size="lg" 
-                    onClick={handleOrder}
+                    onClick={() => setShowPreview(true)}
                     className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white shadow-lg shadow-amber-600/25"
                   >
                     <ShoppingCart className="w-4 h-4 mr-2" />
@@ -208,7 +339,7 @@ export const BookShowcase: React.FC<BookShowcaseProps> = ({
               <Button size="sm" variant="ghost" onClick={() => setShowPreview(true)} className="text-amber-700">
                 <Eye className="w-3 h-3" />
               </Button>
-              <Button size="sm" variant="outline" onClick={handleOrder}>
+              <Button size="sm" variant="outline" onClick={() => setShowPreview(true)}>
                 <ExternalLink className="w-3 h-3 mr-1" />
                 Order
               </Button>
@@ -268,7 +399,7 @@ export const BookShowcase: React.FC<BookShowcaseProps> = ({
             
             {showCTA && (
               <div className="flex flex-wrap gap-2">
-                <Button onClick={handleOrder} className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700">
+                <Button onClick={() => setShowPreview(true)} className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700">
                   <ShoppingCart className="w-4 h-4 mr-2" />
                   Order Now
                 </Button>
