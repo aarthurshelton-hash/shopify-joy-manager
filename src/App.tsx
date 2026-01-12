@@ -29,6 +29,7 @@ import Account from "./pages/Account";
 import BookGenerator from "./pages/BookGenerator";
 import EducationFund from "./pages/EducationFund";
 import CreatorDashboard from "./pages/CreatorDashboard";
+import AdminWithdrawals from "./pages/AdminWithdrawals";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -62,6 +63,7 @@ const App = () => (
             <Route path="/admin/seed-marketplace" element={<AdminSeedMarketplace />} />
             <Route path="/admin/palettes" element={<PaletteAdminPage />} />
             <Route path="/admin/moderation" element={<AdminModeration />} />
+            <Route path="/admin/withdrawals" element={<AdminWithdrawals />} />
             <Route path="/account" element={<Account />} />
             <Route path="/book" element={<BookGenerator />} />
             <Route path="/education-fund" element={<EducationFund />} />
