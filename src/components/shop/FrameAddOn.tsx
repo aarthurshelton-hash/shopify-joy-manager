@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Frame, Check, Truck, Info, Gift } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,8 +9,16 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+  FRAME_STYLES,
+  getFramePricesForSize,
+  getBaseFramePrice,
+  FRAME_SHIPPING_COST,
+  FREE_SHIPPING_THRESHOLD,
+  type FrameStyle,
+} from '@/lib/shop/framePricing';
 
-interface FrameOption {
+export interface FrameOption {
   id: string;
   name: string;
   color: string;
@@ -23,55 +31,8 @@ interface FrameAddOnProps {
   selectedSize: string;
   onFrameSelect: (frame: FrameOption | null) => void;
   selectedFrame: FrameOption | null;
-  framedItemCount: number; // Track framed items in cart for free shipping
+  framedItemCount: number;
 }
-
-const FRAME_OPTIONS: FrameOption[] = [
-  {
-    id: 'natural',
-    name: 'Natural Wood',
-    color: 'Natural',
-    colorHex: '#D4A574',
-    price: 45,
-    description: 'Warm, organic finish that complements any decor',
-  },
-  {
-    id: 'black',
-    name: 'Classic Black',
-    color: 'Black',
-    colorHex: '#1A1A1A',
-    price: 45,
-    description: 'Timeless elegance for modern and traditional spaces',
-  },
-  {
-    id: 'white',
-    name: 'Gallery White',
-    color: 'White',
-    colorHex: '#F5F5F5',
-    price: 45,
-    description: 'Clean, museum-quality presentation',
-  },
-  {
-    id: 'walnut',
-    name: 'Rich Walnut',
-    color: 'Walnut',
-    colorHex: '#5D4037',
-    price: 55,
-    description: 'Premium dark wood with sophisticated grain',
-  },
-  {
-    id: 'gold',
-    name: 'Champagne Gold',
-    color: 'Gold',
-    colorHex: '#D4AF37',
-    price: 65,
-    description: 'Luxurious metallic finish for statement pieces',
-  },
-];
-
-// Extra shipping for framed orders (waived at 3+ framed items)
-const FRAME_SHIPPING_COST = 12.99;
-const FREE_SHIPPING_THRESHOLD = 3;
 
 export const FrameAddOn: React.FC<FrameAddOnProps> = ({
   selectedSize,
@@ -79,6 +40,14 @@ export const FrameAddOn: React.FC<FrameAddOnProps> = ({
   selectedFrame,
   framedItemCount,
 }) => {
+  // Calculate dynamic prices based on selected size
+  const frameOptions = useMemo(() => {
+    return getFramePricesForSize(selectedSize);
+  }, [selectedSize]);
+
+  const basePrice = useMemo(() => {
+    return getBaseFramePrice(selectedSize);
+  }, [selectedSize]);
   const [isExpanded, setIsExpanded] = useState(false);
   
   // Calculate if free shipping applies
@@ -125,15 +94,15 @@ export const FrameAddOn: React.FC<FrameAddOnProps> = ({
             variant={selectedFrame !== null ? "default" : "outline"}
             size="sm"
             onClick={() => {
-              if (selectedFrame === null) {
-                onFrameSelect(FRAME_OPTIONS[0]);
+              if (selectedFrame === null && frameOptions.length > 0) {
+                onFrameSelect(frameOptions[0]);
               }
               setIsExpanded(true);
             }}
             className="flex-1 gap-2"
           >
             <Frame className="h-3 w-3" />
-            Add Frame +${FRAME_OPTIONS[0].price}
+            Add Frame +${basePrice.toFixed(2)}
           </Button>
         </div>
 
@@ -148,11 +117,15 @@ export const FrameAddOn: React.FC<FrameAddOnProps> = ({
               className="overflow-hidden"
             >
               <div className="space-y-3 pt-2">
-                <p className="text-xs text-muted-foreground">Choose your frame style:</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-muted-foreground">Choose your frame style:</p>
+                  <p className="text-[10px] text-muted-foreground/70">Prices vary by size</p>
+                </div>
                 
                 <div className="grid grid-cols-5 gap-2">
-                  {FRAME_OPTIONS.map((frame) => {
+                  {frameOptions.map((frame) => {
                     const isSelected = selectedFrame?.id === frame.id;
+                    const priceDiff = frame.price - basePrice;
                     
                     return (
                       <TooltipProvider key={frame.id}>
@@ -183,8 +156,8 @@ export const FrameAddOn: React.FC<FrameAddOnProps> = ({
                                 {frame.color}
                               </span>
                               
-                              {frame.price > 45 && (
-                                <span className="text-[8px] text-primary">+${frame.price - 45}</span>
+                              {priceDiff > 0.5 && (
+                                <span className="text-[8px] text-primary">+${priceDiff.toFixed(0)}</span>
                               )}
                               
                               {isSelected && (
@@ -201,7 +174,7 @@ export const FrameAddOn: React.FC<FrameAddOnProps> = ({
                           <TooltipContent>
                             <p className="font-medium">{frame.name}</p>
                             <p className="text-xs text-muted-foreground">{frame.description}</p>
-                            <p className="text-xs font-bold mt-1">+${frame.price}</p>
+                            <p className="text-xs font-bold mt-1">+${frame.price.toFixed(2)}</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
@@ -238,8 +211,8 @@ export const FrameAddOn: React.FC<FrameAddOnProps> = ({
                 {/* Price summary */}
                 {selectedFrame && (
                   <div className="flex items-center justify-between pt-2 border-t">
-                    <span className="text-sm text-muted-foreground">Frame add-on:</span>
-                    <span className="font-bold text-primary">+${selectedFrame.price}</span>
+                    <span className="text-sm text-muted-foreground">Frame add-on ({selectedSize}):</span>
+                    <span className="font-bold text-primary">+${selectedFrame.price.toFixed(2)}</span>
                   </div>
                 )}
               </div>
@@ -251,8 +224,8 @@ export const FrameAddOn: React.FC<FrameAddOnProps> = ({
   );
 };
 
-export const FRAME_OPTIONS_EXPORT = FRAME_OPTIONS;
-export const FRAME_SHIPPING_COST_EXPORT = FRAME_SHIPPING_COST;
-export const FREE_SHIPPING_THRESHOLD_EXPORT = FREE_SHIPPING_THRESHOLD;
+// Re-export from pricing module for backward compatibility
+export { FRAME_STYLES as FRAME_OPTIONS_EXPORT } from '@/lib/shop/framePricing';
+export { FRAME_SHIPPING_COST as FRAME_SHIPPING_COST_EXPORT, FREE_SHIPPING_THRESHOLD as FREE_SHIPPING_THRESHOLD_EXPORT } from '@/lib/shop/framePricing';
 
 export default FrameAddOn;
