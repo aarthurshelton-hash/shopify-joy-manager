@@ -10,7 +10,7 @@ import CreativeModeShowcase from '@/components/homepage/CreativeModeShowcase';
 import { NaturalQRShowcase } from '@/components/homepage/NaturalQRShowcase';
 import { BookShowcase } from '@/components/book/BookShowcase';
 import { VisionaryMembershipCard } from '@/components/premium';
-import { simulateGame, SimulationResult, GameData } from '@/lib/chess/gameSimulator';
+import { simulateGame, SimulationResult } from '@/lib/chess/gameSimulator';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
 import {
@@ -24,7 +24,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import { Crown, Sparkles, Award, Palette, ArrowLeft } from 'lucide-react';
+import { Crown, Sparkles, Award, Palette } from 'lucide-react';
 import { toast } from 'sonner';
 import { cleanPgn } from '@/lib/chess/pgnValidator';
 import { PaletteId, getActivePalette } from '@/lib/chess/pieceColors';
@@ -35,7 +35,7 @@ import AuthModal from '@/components/auth/AuthModal';
 import { useAuth } from '@/hooks/useAuth';
 import { saveVisualization } from '@/lib/visualizations/visualizationStorage';
 import { useNavigate } from 'react-router-dom';
-import html2canvas from 'html2canvas';
+import { useVisualizationExport } from '@/hooks/useVisualizationExport';
 
 // Import AI-generated art
 import heroChessArt from '@/assets/hero-chess-art.jpg';
@@ -46,7 +46,7 @@ const Index = () => {
   const navigate = useNavigate();
   const { user, isPremium } = useAuth();
   const { setOrderData } = usePrintOrderStore();
-  const printRef = useRef<HTMLDivElement>(null);
+  const visionBoardRef = useRef<HTMLDivElement>(null);
   
   const [simulation, setSimulation] = useState<SimulationResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -65,6 +65,20 @@ const Index = () => {
   const [showVisionaryModal, setShowVisionaryModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Export hook for HD/GIF downloads
+  const { 
+    isExportingHD, 
+    isExportingGIF, 
+    gifProgress,
+    downloadHD, 
+    downloadGIF 
+  } = useVisualizationExport({
+    isPremium,
+    visualizationId: savedVisualizationId,
+    onUnauthorized: () => setShowAuthModal(true),
+    onUpgradeRequired: () => setShowVisionaryModal(true),
+  });
   
   // Session store for persisting visualization state across navigation
   const { 
@@ -570,7 +584,7 @@ const Index = () => {
             </section>
           </>
         ) : (
-          <div className="container mx-auto px-4 py-8 max-w-4xl">
+          <div className="container mx-auto px-4 py-8 max-w-4xl" ref={visionBoardRef}>
             <UnifiedVisionExperience
               key={paletteKey}
               board={simulation.board}
@@ -585,18 +599,21 @@ const Index = () => {
               onBack={handleReturnClick}
               onUpgradePrompt={() => setShowVisionaryModal(true)}
               onExport={async (type) => {
+                if (!user && type !== 'print') {
+                  setShowAuthModal(true);
+                  return;
+                }
                 if (!isPremium && type !== 'print') {
-                  if (!user) {
-                    setShowAuthModal(true);
-                    return;
-                  }
                   setShowVisionaryModal(true);
                   return;
                 }
+                
+                const visualTitle = gameTitle || `${simulation.gameData.white} vs ${simulation.gameData.black}`;
+                
                 if (type === 'print') {
                   // Navigate to order print page
                   setOrderData({
-                    title: gameTitle || `${simulation.gameData.white} vs ${simulation.gameData.black}`,
+                    title: visualTitle,
                     pgn: currentPgn,
                     gameData: {
                       white: simulation.gameData.white,
@@ -610,11 +627,23 @@ const Index = () => {
                   });
                   navigate('/order-print');
                 } else if (type === 'hd') {
-                  toast.success('HD download started');
-                  // HD download logic would go here
+                  // Find the board element to capture
+                  const boardElement = visionBoardRef.current?.querySelector('[data-vision-board]') as HTMLElement;
+                  if (boardElement) {
+                    await downloadHD(boardElement, visualTitle, false);
+                  } else {
+                    // Fallback: capture the entire container
+                    if (visionBoardRef.current) {
+                      await downloadHD(visionBoardRef.current, visualTitle, false);
+                    }
+                  }
                 } else if (type === 'gif') {
-                  toast.success('GIF generation started');
-                  // GIF generation logic would go here
+                  const boardElement = visionBoardRef.current?.querySelector('[data-vision-board]') as HTMLElement;
+                  if (boardElement) {
+                    await downloadGIF(simulation, boardElement, visualTitle);
+                  } else if (visionBoardRef.current) {
+                    await downloadGIF(simulation, visionBoardRef.current, visualTitle);
+                  }
                 }
               }}
               onSaveToGallery={async () => {
