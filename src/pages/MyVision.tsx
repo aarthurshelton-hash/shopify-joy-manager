@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { getUserVisualizations, deleteVisualization, SavedVisualization } from '@/lib/visualizations/visualizationStorage';
 import { migrateUserVisualizations } from '@/lib/visualizations/migrateVisualization';
 import { checkVisualizationListed } from '@/lib/marketplace/marketplaceApi';
+import { validatePremiumDownload } from '@/lib/premium/validatePremiumDownload';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { 
@@ -18,10 +19,10 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { Crown, Trash2, Download, Image as ImageIcon, Loader2, Link2, ExternalLink, Sparkles, Printer, RefreshCw, ShoppingBag, Tag } from 'lucide-react';
+import { Crown, Trash2, Download, Image as ImageIcon, Loader2, Link2, ExternalLink, Sparkles, Printer, RefreshCw, ShoppingBag, Tag, Settings } from 'lucide-react';
 import { toast } from 'sonner';
 import { OrderPrintButton } from '@/components/shop/OrderPrintButton';
-import { VisionaryMembershipCard } from '@/components/premium';
+import { VisionaryMembershipCard, SubscriptionManagement } from '@/components/premium';
 import AuthModal from '@/components/auth/AuthModal';
 import ListForSaleModal from '@/components/marketplace/ListForSaleModal';
 import { Header } from '@/components/shop/Header';
@@ -41,6 +42,8 @@ const MyVision: React.FC = () => {
   const [listingTarget, setListingTarget] = useState<SavedVisualization | null>(null);
   const [listedIds, setListedIds] = useState<Set<string>>(new Set());
   const [showVisionaryModal, setShowVisionaryModal] = useState(false);
+  const [showSubscriptionPanel, setShowSubscriptionPanel] = useState(false);
+  const [isDownloading, setIsDownloading] = useState<string | null>(null);
 
   useEffect(() => {
     if (user && isPremium) {
@@ -124,7 +127,20 @@ const MyVision: React.FC = () => {
   };
 
   const handleDownload = async (visualization: SavedVisualization) => {
+    setIsDownloading(visualization.id);
+    
     try {
+      // Server-side premium validation before allowing HD download
+      const validation = await validatePremiumDownload();
+      
+      if (!validation.allowed) {
+        toast.error('Premium Required', {
+          description: validation.message || 'Upgrade to Premium for HD downloads',
+        });
+        setShowVisionaryModal(true);
+        return;
+      }
+
       const response = await fetch(visualization.image_path);
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
@@ -138,6 +154,8 @@ const MyVision: React.FC = () => {
       toast.success('Image downloaded!');
     } catch (error) {
       toast.error('Failed to download image');
+    } finally {
+      setIsDownloading(null);
     }
   };
 
@@ -294,17 +312,28 @@ const MyVision: React.FC = () => {
                   <span>Updating...</span>
                 </div>
               ) : (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleMigration}
-                  disabled={isMigrating || visualizations.length === 0}
-                  className="gap-2"
-                  title="Refresh and re-process any failed visualizations"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  Refresh
-                </Button>
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleMigration}
+                    disabled={isMigrating || visualizations.length === 0}
+                    className="gap-2"
+                    title="Refresh and re-process any failed visualizations"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Refresh
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowSubscriptionPanel(!showSubscriptionPanel)}
+                    className="gap-2"
+                  >
+                    <Settings className="h-4 w-4" />
+                    Subscription
+                  </Button>
+                </>
               )}
             </div>
           </div>
@@ -312,6 +341,13 @@ const MyVision: React.FC = () => {
             Your saved chess visualizations, ready to download anytime.
           </p>
         </div>
+
+        {/* Subscription Management Panel */}
+        {showSubscriptionPanel && (
+          <div className="mb-8 max-w-md">
+            <SubscriptionManagement />
+          </div>
+        )}
         
         {isLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -375,8 +411,13 @@ const MyVision: React.FC = () => {
                         handleDownload(viz);
                       }}
                       className="gap-1"
+                      disabled={isDownloading === viz.id}
                     >
-                      <Download className="h-4 w-4" />
+                      {isDownloading === viz.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Download className="h-4 w-4" />
+                      )}
                     </Button>
                     <Button
                       size="sm"
