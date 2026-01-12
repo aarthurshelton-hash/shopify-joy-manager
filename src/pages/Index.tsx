@@ -9,6 +9,7 @@ import FloatingChessPieces from '@/components/chess/FloatingChessPieces';
 import TrendingWidget from '@/components/homepage/TrendingWidget';
 import CreativeModeShowcase from '@/components/homepage/CreativeModeShowcase';
 import { NaturalQRShowcase } from '@/components/homepage/NaturalQRShowcase';
+import { VisionaryMembershipCard } from '@/components/premium';
 import { simulateGame, SimulationResult } from '@/lib/chess/gameSimulator';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
@@ -32,6 +33,7 @@ import { useScrollAnimation, scrollAnimationClasses } from '@/hooks/useScrollAni
 import { LegendHighlightProvider } from '@/contexts/LegendHighlightContext';
 import { TimelineProvider } from '@/contexts/TimelineContext';
 import { useSessionStore } from '@/stores/sessionStore';
+import AuthModal from '@/components/auth/AuthModal';
 
 // Import AI-generated art
 import heroChessArt from '@/assets/hero-chess-art.jpg';
@@ -80,6 +82,8 @@ const Index = () => {
   const [savedShareId, setSavedShareId] = useState<string | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showReturnDialog, setShowReturnDialog] = useState(false);
+  const [showVisionaryModal, setShowVisionaryModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   
   // Session store for persisting visualization state across navigation
   const { 
@@ -578,13 +582,13 @@ const Index = () => {
                             <span className="text-3xl font-display font-bold text-foreground">$7</span>
                             <span className="text-muted-foreground font-serif">/month</span>
                           </div>
-                          <a 
-                            href="/my-vision" 
+                          <Button 
+                            onClick={() => setShowVisionaryModal(true)}
                             className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-primary text-primary-foreground font-display uppercase tracking-wide text-sm hover:opacity-90 transition-opacity"
                           >
                             <Crown className="h-4 w-4" />
                             Become a Visionary
-                          </a>
+                          </Button>
                         </div>
                       </div>
                     </div>
@@ -637,6 +641,23 @@ const Index = () => {
       </main>
       
       <Footer />
+      
+      {/* Visionary Membership Modal */}
+      <VisionaryMembershipCard
+        isOpen={showVisionaryModal}
+        onClose={() => setShowVisionaryModal(false)}
+        onAuthRequired={() => {
+          setShowVisionaryModal(false);
+          setShowAuthModal(true);
+        }}
+        trigger="general"
+      />
+      
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+      />
     </div>
   );
 };

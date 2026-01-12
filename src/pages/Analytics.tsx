@@ -10,7 +10,7 @@ import {
 import { motion } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import PremiumUpgradeModal from '@/components/premium/PremiumUpgradeModal';
+import { VisionaryMembershipCard } from '@/components/premium';
 import AuthModal from '@/components/auth/AuthModal';
 import { 
   getPlatformVisionStats, 
@@ -715,7 +715,7 @@ const Analytics = () => {
 
       <Footer />
 
-      <PremiumUpgradeModal 
+      <VisionaryMembershipCard 
         isOpen={showUpgradeModal} 
         onClose={() => setShowUpgradeModal(false)} 
         onAuthRequired={() => setShowAuthModal(true)}

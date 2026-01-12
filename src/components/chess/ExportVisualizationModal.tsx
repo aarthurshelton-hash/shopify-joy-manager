@@ -31,6 +31,8 @@ import { useVisualizationStateStore } from '@/stores/visualizationStateStore';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 import QRCode from 'qrcode';
 import { recordVisionInteraction } from '@/lib/visualizations/visionScoring';
+import { VisionaryMembershipCard } from '@/components/premium';
+import AuthModal from '@/components/auth/AuthModal';
 
 interface ExportVisualizationModalProps {
   isOpen: boolean;
@@ -67,6 +69,8 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
   const [darkMode, setDarkMode] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
+  const [showVisionaryModal, setShowVisionaryModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   // Sync dark mode with store
   useEffect(() => {
@@ -94,7 +98,13 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
     if (isOpen) generateQR();
   }, [isOpen]);
 
-  const handleDownload = async (withWatermark: boolean) => {
+  const handleDownload = async (isHD: boolean) => {
+    // HD downloads require premium
+    if (isHD && !isPremium) {
+      setShowVisionaryModal(true);
+      return;
+    }
+    
     if (!exportRef.current) return;
     
     setIsDownloading(true);
@@ -112,17 +122,17 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
       });
       
       const dataUrl = canvas.toDataURL('image/png', 1.0);
-      const filename = `EnPensent-${gameInfo.white}-vs-${gameInfo.black}-${darkMode ? 'dark' : 'light'}${withWatermark ? '-preview' : '-HD'}.png`;
+      const filename = `EnPensent-${gameInfo.white}-vs-${gameInfo.black}-${darkMode ? 'dark' : 'light'}${isHD ? '-HD' : '-preview'}.png`;
       
       const link = document.createElement('a');
       link.href = dataUrl;
       link.download = filename;
       link.click();
       
-      toast.success(withWatermark ? 'Preview downloaded!' : 'HD image downloaded!');
+      toast.success(isHD ? 'HD image downloaded!' : 'Preview downloaded!');
       
       // Track HD download for vision scoring (only for HD, not preview)
-      if (!withWatermark && visualizationId) {
+      if (isHD && visualizationId) {
         recordVisionInteraction(visualizationId, 'download_hd');
       }
     } catch (error) {
@@ -299,7 +309,7 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
           {/* Download Row */}
           <div className="flex flex-col sm:flex-row gap-2 justify-center">
             <Button
-              onClick={() => handleDownload(true)}
+              onClick={() => handleDownload(false)}
               disabled={isDownloading}
               variant="outline"
               className="gap-2"
@@ -313,7 +323,7 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
             </Button>
             
             <Button
-              onClick={() => handleDownload(false)}
+              onClick={() => handleDownload(true)}
               disabled={isDownloading}
               className="gap-2 btn-luxury"
             >
@@ -356,6 +366,23 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
           </p>
         </div>
       </DialogContent>
+      
+      {/* Visionary Membership Modal for HD Download upsell */}
+      <VisionaryMembershipCard
+        isOpen={showVisionaryModal}
+        onClose={() => setShowVisionaryModal(false)}
+        onAuthRequired={() => {
+          setShowVisionaryModal(false);
+          setShowAuthModal(true);
+        }}
+        trigger="download"
+      />
+      
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+      />
     </Dialog>
   );
 };

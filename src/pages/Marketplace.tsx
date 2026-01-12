@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import AuthModal from '@/components/auth/AuthModal';
-import { PremiumUpgradeModal } from '@/components/premium';
+import { VisionaryMembershipCard } from '@/components/premium';
 import MyListingsSection from '@/components/marketplace/MyListingsSection';
 import MarketplaceTransparency from '@/components/marketplace/MarketplaceTransparency';
 import VisionExperienceModal from '@/components/marketplace/VisionExperienceModal';
@@ -428,14 +428,14 @@ const Marketplace: React.FC = () => {
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
       />
-      <PremiumUpgradeModal
+      <VisionaryMembershipCard
         isOpen={showPremiumModal}
         onClose={() => setShowPremiumModal(false)}
         onAuthRequired={() => {
           setShowPremiumModal(false);
           setShowAuthModal(true);
         }}
-        trigger="save"
+        trigger="marketplace"
       />
       <VisionExperienceModal
         isOpen={showDetailModal}
