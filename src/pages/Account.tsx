@@ -36,6 +36,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import AuthModal from '@/components/auth/AuthModal';
 import { VisionaryMembershipCard } from '@/components/premium';
+import { GracePeriodBanner } from '@/components/notifications/GracePeriodBanner';
 
 const Account: React.FC = () => {
   const navigate = useNavigate();
@@ -310,6 +311,8 @@ const Account: React.FC = () => {
       <Header />
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-3xl mx-auto">
+          {/* Grace Period Warning */}
+          <GracePeriodBanner className="mb-6" />
           {/* Header */}
           <div className="mb-8">
             <h1 className="text-3xl font-display font-bold">Account Settings</h1>

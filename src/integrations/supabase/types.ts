@@ -484,6 +484,33 @@ export type Database = {
         }
         Relationships: []
       }
+      subscription_notifications: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          notification_type: string
+          read_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          notification_type: string
+          read_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          notification_type?: string
+          read_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       testimonials: {
         Row: {
           created_at: string
@@ -588,6 +615,8 @@ export type Database = {
           created_at: string
           current_period_end: string | null
           current_period_start: string | null
+          grace_notified_at: string | null
+          grace_period_end: string | null
           id: string
           price_id: string | null
           product_id: string | null
@@ -602,6 +631,8 @@ export type Database = {
           created_at?: string
           current_period_end?: string | null
           current_period_start?: string | null
+          grace_notified_at?: string | null
+          grace_period_end?: string | null
           id?: string
           price_id?: string | null
           product_id?: string | null
@@ -616,6 +647,8 @@ export type Database = {
           created_at?: string
           current_period_end?: string | null
           current_period_start?: string | null
+          grace_notified_at?: string | null
+          grace_period_end?: string | null
           id?: string
           price_id?: string | null
           product_id?: string | null
@@ -821,6 +854,10 @@ export type Database = {
       }
       can_transfer_visualization: {
         Args: { p_visualization_id: string }
+        Returns: boolean
+      }
+      check_grace_period_expiration: {
+        Args: { p_user_id: string }
         Returns: boolean
       }
       generate_challenge_code: { Args: never; Returns: string }

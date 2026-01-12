@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { CartDrawer } from './CartDrawer';
 import { CurrencySelector } from './CurrencySelector';
-import { Menu, Gamepad2, Paintbrush, ShoppingBag, Scan } from 'lucide-react';
+import { Menu, Gamepad2, Paintbrush, ShoppingBag } from 'lucide-react';
 import UserMenu from '@/components/auth/UserMenu';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -11,9 +11,9 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { VisionScannerButton } from '@/components/scanner/VisionScannerButton';
+import { SubscriptionNotificationBell } from '@/components/notifications/SubscriptionNotificationBell';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 import { toast } from 'sonner';
-
 const navLinks = [
   { to: '/play', label: 'Play', icon: Gamepad2, highlight: true },
   { to: '/creative-mode', label: 'Create', icon: Paintbrush, highlight: true },
@@ -88,6 +88,7 @@ export const Header = () => {
           <div className="hidden md:block">
             <CurrencySelector compact />
           </div>
+          <SubscriptionNotificationBell />
           <UserMenu />
           <CartDrawer />
           
