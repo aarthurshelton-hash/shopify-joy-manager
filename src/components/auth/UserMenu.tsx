@@ -204,6 +204,13 @@ const UserMenu: React.FC = () => {
                 Admin
               </DropdownMenuLabel>
               <DropdownMenuItem 
+                onClick={() => navigate('/admin/moderation')}
+                className="gap-2 cursor-pointer text-primary"
+              >
+                <Shield className="h-4 w-4" />
+                Content Moderation
+              </DropdownMenuItem>
+              <DropdownMenuItem 
                 onClick={() => navigate('/admin/seed-marketplace')}
                 className="gap-2 cursor-pointer text-primary"
               >

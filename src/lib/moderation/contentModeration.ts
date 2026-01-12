@@ -1,16 +1,51 @@
 import { supabase } from '@/integrations/supabase/client';
+import { flagContent, checkUserBanStatus } from './flagContent';
 
 interface ModerationResult {
   safe: boolean;
   reason?: string;
+  flagged?: boolean; // Content was flagged for admin review
+}
+
+/**
+ * Check if the current user is banned before allowing content submission
+ */
+export async function checkBanBeforeAction(userId: string): Promise<{ allowed: boolean; reason?: string }> {
+  const banStatus = await checkUserBanStatus(userId);
+  if (banStatus.isBanned) {
+    const expiryText = banStatus.expiresAt 
+      ? `Your ban expires on ${new Date(banStatus.expiresAt).toLocaleDateString()}.` 
+      : 'This is a permanent ban.';
+    return { 
+      allowed: false, 
+      reason: `Your account has been suspended. Reason: ${banStatus.reason}. ${expiryText}` 
+    };
+  }
+  return { allowed: true };
 }
 
 /**
  * Moderate text content for inappropriate language
+ * Also flags suspicious content for admin review
  */
-export async function moderateText(text: string): Promise<ModerationResult> {
+export async function moderateText(
+  text: string, 
+  options?: { 
+    userId?: string; 
+    contentType?: string;
+    contentId?: string;
+  }
+): Promise<ModerationResult> {
   if (!text || text.trim().length === 0) {
     return { safe: true };
+  }
+
+  // Check if user is banned first
+  if (options?.userId) {
+    const banCheck = await checkBanBeforeAction(options.userId);
+    if (!banCheck.allowed) {
+      return { safe: false, reason: banCheck.reason };
+    }
   }
 
   try {
@@ -24,9 +59,24 @@ export async function moderateText(text: string): Promise<ModerationResult> {
       return { safe: true };
     }
 
+    // If content is flagged as unsafe, record it for admin review
+    if (!data.safe && options?.userId && options?.contentType) {
+      await flagContent(
+        options.contentType,
+        options.userId,
+        data.reason || 'Detected inappropriate content',
+        {
+          contentId: options.contentId,
+          contentText: text,
+          severity: 'medium',
+        }
+      );
+    }
+
     return {
       safe: data.safe,
       reason: data.reason,
+      flagged: !data.safe,
     };
   } catch (error) {
     console.error('Text moderation error:', error);
@@ -36,10 +86,27 @@ export async function moderateText(text: string): Promise<ModerationResult> {
 
 /**
  * Moderate image content for inappropriate imagery
+ * Also flags suspicious content for admin review
  */
-export async function moderateImage(imageBase64: string): Promise<ModerationResult> {
+export async function moderateImage(
+  imageBase64: string,
+  options?: {
+    userId?: string;
+    contentType?: string;
+    contentId?: string;
+    imageUrl?: string;
+  }
+): Promise<ModerationResult> {
   if (!imageBase64) {
     return { safe: false, reason: 'No image provided' };
+  }
+
+  // Check if user is banned first
+  if (options?.userId) {
+    const banCheck = await checkBanBeforeAction(options.userId);
+    if (!banCheck.allowed) {
+      return { safe: false, reason: banCheck.reason };
+    }
   }
 
   try {
@@ -53,9 +120,24 @@ export async function moderateImage(imageBase64: string): Promise<ModerationResu
       return { safe: true };
     }
 
+    // If content is flagged as unsafe, record it for admin review
+    if (!data.safe && options?.userId && options?.contentType) {
+      await flagContent(
+        options.contentType,
+        options.userId,
+        data.reason || 'Detected inappropriate image',
+        {
+          contentId: options.contentId,
+          contentImageUrl: options.imageUrl,
+          severity: 'high',
+        }
+      );
+    }
+
     return {
       safe: data.safe,
       reason: data.reason,
+      flagged: !data.safe,
     };
   } catch (error) {
     console.error('Image moderation error:', error);

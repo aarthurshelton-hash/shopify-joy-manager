@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      banned_users: {
+        Row: {
+          banned_at: string
+          banned_by: string
+          created_at: string
+          expires_at: string | null
+          id: string
+          offense_count: number
+          reason: string
+          user_id: string
+        }
+        Insert: {
+          banned_at?: string
+          banned_by: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          offense_count?: number
+          reason: string
+          user_id: string
+        }
+        Update: {
+          banned_at?: string
+          banned_by?: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          offense_count?: number
+          reason?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       chess_games: {
         Row: {
           black_palette: Json | null
@@ -186,6 +219,57 @@ export type Database = {
           created_at?: string
           game_id?: string
           id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      flagged_content: {
+        Row: {
+          content_id: string | null
+          content_image_url: string | null
+          content_text: string | null
+          content_type: string
+          created_at: string
+          id: string
+          reason: string
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          severity: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content_id?: string | null
+          content_image_url?: string | null
+          content_text?: string | null
+          content_type: string
+          created_at?: string
+          id?: string
+          reason: string
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          severity?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content_id?: string | null
+          content_image_url?: string | null
+          content_text?: string | null
+          content_type?: string
+          created_at?: string
+          id?: string
+          reason?: string
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          severity?: string
+          status?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -363,6 +447,44 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_offenses: {
+        Row: {
+          created_at: string
+          created_by: string
+          flagged_content_id: string | null
+          id: string
+          notes: string | null
+          offense_type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          flagged_content_id?: string | null
+          id?: string
+          notes?: string | null
+          offense_type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          flagged_content_id?: string | null
+          id?: string
+          notes?: string | null
+          offense_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_offenses_flagged_content_id_fkey"
+            columns: ["flagged_content_id"]
+            isOneToOne: false
+            referencedRelation: "flagged_content"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -583,6 +705,7 @@ export type Database = {
       }
       generate_challenge_code: { Args: never; Returns: string }
       generate_share_id: { Args: never; Returns: string }
+      get_user_offense_count: { Args: { p_user_id: string }; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -591,6 +714,7 @@ export type Database = {
         Returns: boolean
       }
       is_premium_user: { Args: { p_user_id: string }; Returns: boolean }
+      is_user_banned: { Args: { p_user_id: string }; Returns: boolean }
       record_vision_interaction: {
         Args: {
           p_interaction_type: string
