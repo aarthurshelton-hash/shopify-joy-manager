@@ -25,7 +25,7 @@ import {
   completePurchase,
   MarketplaceListing 
 } from '@/lib/marketplace/marketplaceApi';
-import { getPaletteArt, isPremiumPalette, extractPaletteId } from '@/lib/marketplace/paletteArtMap';
+import { getPaletteArt, isPremiumPalette, extractPaletteId, getPaletteDisplayName, isThemedPalette } from '@/lib/marketplace/paletteArtMap';
 
 const Marketplace: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -304,17 +304,25 @@ const Marketplace: React.FC = () => {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.03 }}
                   >
-                    <Card 
-                      className={`overflow-hidden group hover:shadow-xl transition-all duration-300 cursor-pointer ${
-                        isPremiumPalette(extractPaletteId(listing.visualization?.game_data))
-                          ? 'border-amber-500/50 ring-1 ring-amber-500/20 hover:ring-amber-500/40'
-                          : 'border-border/50'
-                      }`}
-                      onClick={() => {
-                        setSelectedListing(listing);
-                        setShowDetailModal(true);
-                      }}
-                    >
+                    {(() => {
+                      const paletteId = extractPaletteId(listing.visualization?.game_data);
+                      const hasPremiumPalette = isPremiumPalette(paletteId);
+                      const hasThemedPalette = isThemedPalette(paletteId);
+                      
+                      return (
+                        <Card 
+                          className={`overflow-hidden group hover:shadow-xl transition-all duration-300 cursor-pointer ${
+                            hasPremiumPalette
+                              ? 'border-amber-500/50 ring-1 ring-amber-500/20 hover:ring-amber-500/40'
+                              : hasThemedPalette
+                                ? 'border-primary/30 ring-1 ring-primary/10 hover:ring-primary/30'
+                                : 'border-border/50'
+                          }`}
+                          onClick={() => {
+                            setSelectedListing(listing);
+                            setShowDetailModal(true);
+                          }}
+                        >
                       {/* Image */}
                       <div className="aspect-square relative overflow-hidden bg-muted">
                         {listing.visualization?.image_path ? (
@@ -375,20 +383,40 @@ const Marketplace: React.FC = () => {
                       {(() => {
                         const paletteId = extractPaletteId(listing.visualization?.game_data);
                         const paletteArt = getPaletteArt(paletteId);
+                        const paletteName = getPaletteDisplayName(paletteId);
                         const hasPremiumPalette = isPremiumPalette(paletteId);
+                        const hasThemedPalette = isThemedPalette(paletteId);
                         const backgroundImage = paletteArt || gameArtImages[index % gameArtImages.length];
                         
                         return (
                           <CardContent 
-                            className={`p-3 sm:p-4 relative overflow-hidden transition-all duration-300 ${
+                            className={`p-3 sm:p-4 relative overflow-hidden transition-all duration-300 group/content ${
                               hasPremiumPalette ? 'bg-gradient-to-br from-amber-500/5 to-orange-500/5' : ''
                             }`}
                             style={{
-                              backgroundImage: `linear-gradient(to bottom, hsl(var(--card)) 0%, hsl(var(--card) / ${hasPremiumPalette ? '0.85' : '0.92'}) 100%), url(${backgroundImage})`,
+                              backgroundImage: `linear-gradient(to bottom, hsl(var(--card)) 0%, hsl(var(--card) / ${hasPremiumPalette ? '0.82' : hasThemedPalette ? '0.88' : '0.92'}) 100%), url(${backgroundImage})`,
                               backgroundSize: 'cover',
                               backgroundPosition: 'center',
                             }}
+                            title={paletteName ? `${paletteName} Palette` : undefined}
                           >
+                            {/* Palette name tooltip on hover */}
+                            {paletteName && (
+                              <div className="absolute top-1 right-1 opacity-0 group-hover/content:opacity-100 transition-opacity duration-200 z-20">
+                                <Badge 
+                                  variant="secondary" 
+                                  className={`text-[10px] px-1.5 py-0.5 ${
+                                    hasPremiumPalette 
+                                      ? 'bg-gradient-to-r from-amber-500/90 to-orange-500/90 text-black border-0' 
+                                      : 'bg-card/90 backdrop-blur-sm'
+                                  }`}
+                                >
+                                  <Palette className="h-2.5 w-2.5 mr-1" />
+                                  {paletteName}
+                                </Badge>
+                              </div>
+                            )}
+                            
                             <h3 className="font-semibold truncate mb-1 text-sm sm:text-base relative z-10">
                               {listing.visualization?.title || 'Untitled'}
                             </h3>
@@ -398,7 +426,12 @@ const Marketplace: React.FC = () => {
                               </p>
                               {/* Vision Score indicator or Premium Palette indicator */}
                               {hasPremiumPalette ? (
-                                <div className="flex items-center gap-1 text-xs text-amber-500" title="Uses a premium color palette">
+                                <div className="flex items-center gap-1 text-xs text-amber-500" title={`Uses the ${paletteName} premium palette`}>
+                                  <Palette className="h-3 w-3" />
+                                  <span className="hidden sm:inline">Premium</span>
+                                </div>
+                              ) : hasThemedPalette ? (
+                                <div className="flex items-center gap-1 text-xs text-primary/70" title={`Uses the ${paletteName} palette`}>
                                   <Palette className="h-3 w-3" />
                                   <span className="hidden sm:inline">Themed</span>
                                 </div>
@@ -447,6 +480,8 @@ const Marketplace: React.FC = () => {
                         </Button>
                       </CardFooter>
                     </Card>
+                      );
+                    })()}
                   </motion.div>
                 ))}
               </div>
