@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { getVisualizationById, SavedVisualization, VisualizationState } from '@/lib/visualizations/visualizationStorage';
 import { SquareData, GameData } from '@/lib/chess/gameSimulator';
-import { setActivePalette, setCustomColor, PaletteId, PieceType } from '@/lib/chess/pieceColors';
+import { setActivePalette, setCustomColor, PaletteId, PieceType, getCurrentPalette } from '@/lib/chess/pieceColors';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
 import { TimelineProvider } from '@/contexts/TimelineContext';
@@ -12,11 +12,11 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Loader2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSessionStore, CreativeModeTransfer } from '@/stores/sessionStore';
+import { usePrintOrderStore, PrintOrderData } from '@/stores/printOrderStore';
 import { VisionaryMembershipCard } from '@/components/premium';
 import { recordVisionInteraction, getVisionScore, VisionScore } from '@/lib/visualizations/visionScoring';
-import UnifiedVisionExperience from '@/components/chess/UnifiedVisionExperience';
-import { getCurrentPalette } from '@/lib/chess/pieceColors';
-import { RoyaltyEarningsCard } from '@/components/vision/RoyaltyEarningsCard';
+import UnifiedVisionExperience, { ExportState } from '@/components/chess/UnifiedVisionExperience';
+import { useVisualizationExport } from '@/hooks/useVisualizationExport';
 
 const VisualizationDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -28,7 +28,10 @@ const VisualizationDetail: React.FC = () => {
     capturedTimelineState,
     setReturningFromOrder,
     setCapturedTimelineState,
+    setCurrentSimulation,
+    setSavedShareId,
   } = useSessionStore();
+  const { setOrderData } = usePrintOrderStore();
   
   const [visualization, setVisualization] = useState<SavedVisualization | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -39,6 +42,16 @@ const VisualizationDetail: React.FC = () => {
   // Store original palette state for reset functionality
   const originalStateRef = useRef<VisualizationState | undefined>(undefined);
   const viewRecordedRef = useRef(false);
+
+  // Export hook for HD/GIF downloads
+  const { 
+    downloadTrademarkHD,
+    downloadGIF 
+  } = useVisualizationExport({
+    isPremium,
+    visualizationId: visualization?.id,
+    onUpgradeRequired: () => setShowUpgradeModal(true),
+  });
 
   // Handle restoration toast when returning from order page
   useEffect(() => {
@@ -56,7 +69,6 @@ const VisualizationDetail: React.FC = () => {
         icon: <Sparkles className="w-4 h-4" />,
       });
       
-      // Clear the flags
       setReturningFromOrder(false);
       setCapturedTimelineState(null);
     }
@@ -66,7 +78,6 @@ const VisualizationDetail: React.FC = () => {
   const restorePaletteState = useCallback((vizState: VisualizationState | undefined) => {
     if (!vizState) return;
     
-    // If custom colors were saved, restore them
     if (vizState.customColors) {
       const pieces: PieceType[] = ['k', 'q', 'r', 'b', 'n', 'p'];
       pieces.forEach(piece => {
@@ -79,7 +90,6 @@ const VisualizationDetail: React.FC = () => {
       });
       setActivePalette('custom');
     } else if (vizState.paletteId) {
-      // Restore the saved palette
       setActivePalette(vizState.paletteId as PaletteId);
     }
   }, []);
@@ -93,12 +103,10 @@ const VisualizationDetail: React.FC = () => {
 
     if (!visualization) return;
 
-    // Build the board from the final position (FEN) or simulation data
     const gameData = visualization.game_data;
     const fen = gameData.pgn?.split(/\s+/).find(part => part.includes('/')) || 
                 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR';
     
-    // Parse FEN to board array
     const parseFenToBoard = (fenStr: string): (string | null)[][] => {
       const rows = fenStr.split(' ')[0].split('/');
       return rows.map(row => {
@@ -114,7 +122,6 @@ const VisualizationDetail: React.FC = () => {
       });
     };
 
-    // Get current palette colors
     const currentPalette = getCurrentPalette();
     
     const transferData: CreativeModeTransfer = {
@@ -171,9 +178,7 @@ const VisualizationDetail: React.FC = () => {
 
         // Load vision score for royalty display
         const score = await getVisionScore(data.id);
-        if (score) {
-          setVisionScore(score);
-        }
+        if (score) setVisionScore(score);
 
         // Record view interaction (only once per session)
         if (!viewRecordedRef.current) {
@@ -198,12 +203,11 @@ const VisualizationDetail: React.FC = () => {
   }, [id, user, authLoading, restorePaletteState]);
 
   // Reconstruct board and gameData from stored data
-  const getVisualizationData = () => {
+  const getVisualizationData = useCallback(() => {
     if (!visualization) return null;
 
     const storedData = visualization.game_data;
     
-    // Reconstruct board
     const board: SquareData[][] = storedData.board || 
       Array(8).fill(null).map((_, rank) =>
         Array(8).fill(null).map((_, file) => ({
@@ -214,7 +218,6 @@ const VisualizationDetail: React.FC = () => {
         }))
       );
     
-    // Reconstruct gameData
     const gameData: GameData = {
       white: storedData.white || 'White',
       black: storedData.black || 'Black',
@@ -229,7 +232,101 @@ const VisualizationDetail: React.FC = () => {
     const paletteId = storedData.visualizationState?.paletteId;
     
     return { board, gameData, totalMoves, paletteId };
-  };
+  }, [visualization]);
+
+  // Handle exports (HD, GIF, Print)
+  const handleExport = useCallback((type: 'hd' | 'gif' | 'print' | 'preview', exportState?: ExportState) => {
+    if (!visualization) return;
+    
+    const vizData = getVisualizationData();
+    if (!vizData) return;
+    
+    if (type === 'preview') {
+      toast.info('Preview download coming soon');
+      return;
+    }
+    
+    if (type === 'hd') {
+      downloadTrademarkHD({
+        board: vizData.board,
+        gameData: vizData.gameData,
+        title: visualization.title,
+        darkMode: exportState?.darkMode || false,
+      });
+      return;
+    }
+    
+    if (type === 'gif') {
+      const simulation = { board: vizData.board, gameData: vizData.gameData, totalMoves: vizData.totalMoves };
+      const captureElement = document.querySelector('[data-vision-board="true"]') as HTMLElement;
+      if (captureElement) {
+        downloadGIF(simulation, captureElement, visualization.title);
+      } else {
+        toast.error('Unable to capture visualization');
+      }
+      return;
+    }
+    
+    if (type === 'print') {
+      // Save timeline state for restoration on return
+      if (exportState) {
+        setCapturedTimelineState({
+          currentMove: exportState.currentMove,
+          totalMoves: vizData.totalMoves,
+          title: visualization.title,
+          lockedPieces: exportState.lockedPieces.map(p => ({
+            pieceType: p.pieceType as PieceType,
+            pieceColor: p.pieceColor as 'w' | 'b',
+          })),
+          compareMode: exportState.compareMode,
+          darkMode: exportState.darkMode,
+        });
+      }
+      
+      // Save simulation to session store
+      setCurrentSimulation({
+        board: vizData.board,
+        gameData: vizData.gameData,
+        totalMoves: vizData.totalMoves,
+      }, visualization.pgn || '', visualization.title);
+      setSavedShareId(visualization.public_share_id || '');
+      setReturningFromOrder(true);
+      
+      // Navigate to order print page
+      const orderData: PrintOrderData = {
+        visualizationId: visualization.id,
+        title: visualization.title,
+        imagePath: visualization.image_path,
+        gameData: {
+          white: vizData.gameData.white,
+          black: vizData.gameData.black,
+          event: vizData.gameData.event,
+          date: vizData.gameData.date,
+          result: vizData.gameData.result,
+        },
+        simulation: {
+          board: vizData.board,
+          gameData: vizData.gameData,
+          totalMoves: vizData.totalMoves,
+        },
+        shareId: visualization.public_share_id,
+        returnPath: `/my-vision/${id}`,
+        capturedState: exportState ? {
+          currentMove: exportState.currentMove,
+          selectedPhase: 'all',
+          lockedPieces: exportState.lockedPieces,
+          compareMode: exportState.compareMode,
+          displayMode: 'standard',
+          darkMode: exportState.darkMode,
+          showTerritory: false,
+          showHeatmaps: false,
+          capturedAt: new Date(),
+        } : undefined,
+      };
+      setOrderData(orderData);
+      navigate('/order-print');
+    }
+  }, [visualization, getVisualizationData, downloadTrademarkHD, downloadGIF, navigate, setOrderData, setCapturedTimelineState, setCurrentSimulation, setSavedShareId, setReturningFromOrder, id]);
 
   const handleBack = () => {
     navigate('/my-vision');
@@ -348,23 +445,25 @@ const VisualizationDetail: React.FC = () => {
               imageUrl={visualization?.image_path}
               onTransferToCreative={handleTransferToCreative}
               onShare={handleShare}
+              onExport={handleExport}
               isPremium={isPremium}
               onUpgradePrompt={() => setShowUpgradeModal(true)}
+              isOwner={true}
+              visionScoreData={visionScore ? {
+                viewCount: visionScore.viewCount,
+                uniqueViewers: visionScore.uniqueViewers,
+                royaltyCentsEarned: visionScore.royaltyCentsEarned,
+                royaltyOrdersCount: visionScore.royaltyOrdersCount,
+                printRevenueCents: visionScore.printRevenueCents,
+                printOrderCount: visionScore.printOrderCount,
+                totalScore: visionScore.totalScore,
+                downloadHdCount: visionScore.downloadHdCount,
+                downloadGifCount: visionScore.downloadGifCount,
+                tradeCount: visionScore.tradeCount,
+              } : null}
             />
           </LegendHighlightProvider>
         </TimelineProvider>
-
-        {/* Royalty Earnings Card */}
-        {visionScore && (visionScore.royaltyOrdersCount > 0 || visionScore.printOrderCount > 0) && (
-          <div className="mt-8 max-w-md">
-            <RoyaltyEarningsCard
-              royaltyCentsEarned={visionScore.royaltyCentsEarned}
-              royaltyOrdersCount={visionScore.royaltyOrdersCount}
-              totalPrintRevenue={visionScore.printRevenueCents}
-              printOrderCount={visionScore.printOrderCount}
-            />
-          </div>
-        )}
       </div>
       <Footer />
       

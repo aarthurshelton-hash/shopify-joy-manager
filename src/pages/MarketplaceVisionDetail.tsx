@@ -13,15 +13,15 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { ArrowLeft, Loader2, Sparkles, ShoppingBag, Gift, DollarSign, Crown } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSessionStore, CreativeModeTransfer } from '@/stores/sessionStore';
+import { usePrintOrderStore, PrintOrderData } from '@/stores/printOrderStore';
 import { VisionaryMembershipCard } from '@/components/premium';
 import AuthModal from '@/components/auth/AuthModal';
-import { recordVisionInteraction, getVisionScore } from '@/lib/visualizations/visionScoring';
-import UnifiedVisionExperience from '@/components/chess/UnifiedVisionExperience';
-import { RoyaltyPotentialCard } from '@/components/marketplace/RoyaltyPotentialCard';
+import { recordVisionInteraction, getVisionScore, VisionScore } from '@/lib/visualizations/visionScoring';
+import UnifiedVisionExperience, { ExportState } from '@/components/chess/UnifiedVisionExperience';
+import { useVisualizationExport } from '@/hooks/useVisualizationExport';
 import { 
   getListingById, 
   purchaseListing, 
-  completePurchase,
   MarketplaceListing 
 } from '@/lib/marketplace/marketplaceApi';
 import { extractPaletteId, isPremiumPalette, getPaletteDisplayName } from '@/lib/marketplace/paletteArtMap';
@@ -53,7 +53,10 @@ const MarketplaceVisionDetail: React.FC = () => {
     capturedTimelineState,
     setReturningFromOrder,
     setCapturedTimelineState,
+    setCurrentSimulation,
+    setSavedShareId,
   } = useSessionStore();
+  const { setOrderData } = usePrintOrderStore();
   
   const [listing, setListing] = useState<MarketplaceListing | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -61,16 +64,20 @@ const MarketplaceVisionDetail: React.FC = () => {
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [visionScore, setVisionScore] = useState<{
-    viewCount: number;
-    uniqueViewers: number;
-    royaltyCentsEarned: number;
-    royaltyOrdersCount: number;
-    printRevenueCents: number;
-    printOrderCount: number;
-  } | null>(null);
+  const [visionScore, setVisionScore] = useState<VisionScore | null>(null);
   
   const viewRecordedRef = useRef(false);
+
+  // Export hook for HD/GIF downloads
+  const { 
+    downloadTrademarkHD,
+    downloadGIF 
+  } = useVisualizationExport({
+    isPremium,
+    visualizationId: listing?.visualization?.id,
+    onUnauthorized: () => setShowAuthModal(true),
+    onUpgradeRequired: () => setShowUpgradeModal(true),
+  });
 
   // Handle restoration toast when returning from order page
   useEffect(() => {
@@ -88,7 +95,6 @@ const MarketplaceVisionDetail: React.FC = () => {
         icon: <Sparkles className="w-4 h-4" />,
       });
       
-      // Clear the flags
       setReturningFromOrder(false);
       setCapturedTimelineState(null);
     }
@@ -132,18 +138,9 @@ const MarketplaceVisionDetail: React.FC = () => {
           viewRecordedRef.current = true;
           recordVisionInteraction(data.visualization.id, 'view');
           
-          // Fetch vision score for royalty display
+          // Fetch vision score
           getVisionScore(data.visualization.id).then(score => {
-            if (score) {
-              setVisionScore({
-                viewCount: score.viewCount,
-                uniqueViewers: score.uniqueViewers,
-                royaltyCentsEarned: score.royaltyCentsEarned,
-                royaltyOrdersCount: score.royaltyOrdersCount,
-                printRevenueCents: score.printRevenueCents,
-                printOrderCount: score.printOrderCount,
-              });
-            }
+            if (score) setVisionScore(score);
           });
         }
       } catch (err) {
@@ -223,7 +220,6 @@ const MarketplaceVisionDetail: React.FC = () => {
       return;
     }
 
-    // Free gift - transferred immediately
     if (success) {
       toast.success('Congratulations!', {
         description: message || 'Visualization added to your gallery!',
@@ -237,7 +233,6 @@ const MarketplaceVisionDetail: React.FC = () => {
       return;
     }
 
-    // Paid - redirect to Stripe
     if (url) {
       window.open(url, '_blank');
       setIsPurchasing(false);
@@ -247,7 +242,8 @@ const MarketplaceVisionDetail: React.FC = () => {
   const handleShare = async () => {
     if (!listing?.visualization?.id) return;
     
-    const shareUrl = `${window.location.origin}/v/${listing.visualization.id}`;
+    const vizData = listing.visualization as { id: string; title: string; image_path: string; game_data: Record<string, unknown>; pgn?: string; public_share_id?: string };
+    const shareUrl = `${window.location.origin}/v/${vizData.public_share_id || vizData.id}`;
     
     if (navigator.share) {
       try {
@@ -268,12 +264,107 @@ const MarketplaceVisionDetail: React.FC = () => {
     }
   };
 
+  // Handle exports (HD, GIF, Print)
+  const handleExport = useCallback((type: 'hd' | 'gif' | 'print' | 'preview', exportState?: ExportState) => {
+    if (!listing?.visualization) return;
+    
+    const vizData = getVisualizationData();
+    if (!vizData) return;
+    
+    if (type === 'preview') {
+      toast.info('Preview download coming soon');
+      return;
+    }
+    
+    if (type === 'hd') {
+      downloadTrademarkHD({
+        board: vizData.board,
+        gameData: vizData.gameData,
+        title: listing.visualization.title,
+        darkMode: exportState?.darkMode || false,
+      });
+      return;
+    }
+    
+    if (type === 'gif') {
+      const simulation = { board: vizData.board, gameData: vizData.gameData, totalMoves: vizData.totalMoves };
+      const captureElement = document.querySelector('[data-vision-board="true"]') as HTMLElement;
+      if (captureElement) {
+        downloadGIF(simulation, captureElement, listing.visualization.title);
+      } else {
+        toast.error('Unable to capture visualization');
+      }
+      return;
+    }
+    
+    if (type === 'print') {
+      // Save timeline state for restoration on return
+      if (exportState) {
+        setCapturedTimelineState({
+          currentMove: exportState.currentMove,
+          totalMoves: vizData.totalMoves,
+          title: listing.visualization.title,
+          lockedPieces: exportState.lockedPieces.map(p => ({
+            pieceType: p.pieceType as PieceType,
+            pieceColor: p.pieceColor as 'w' | 'b',
+          })),
+          compareMode: exportState.compareMode,
+          darkMode: exportState.darkMode,
+        });
+      }
+      
+      // Save simulation to session store
+      setCurrentSimulation({
+        board: vizData.board,
+        gameData: vizData.gameData,
+        totalMoves: vizData.totalMoves,
+      }, listing.visualization.pgn || '', listing.visualization.title);
+      const vizDataCast = listing.visualization as { public_share_id?: string };
+      setSavedShareId(vizDataCast.public_share_id || '');
+      setReturningFromOrder(true);
+      
+      // Navigate to order print page
+      const orderData: PrintOrderData = {
+        visualizationId: listing.visualization.id,
+        title: listing.visualization.title,
+        imagePath: listing.visualization.image_path,
+        gameData: {
+          white: vizData.gameData.white,
+          black: vizData.gameData.black,
+          event: vizData.gameData.event,
+          date: vizData.gameData.date,
+          result: vizData.gameData.result,
+        },
+        simulation: {
+          board: vizData.board,
+          gameData: vizData.gameData,
+          totalMoves: vizData.totalMoves,
+        },
+        shareId: vizDataCast.public_share_id,
+        returnPath: `/marketplace/${id}`,
+        capturedState: exportState ? {
+          currentMove: exportState.currentMove,
+          selectedPhase: 'all',
+          lockedPieces: exportState.lockedPieces,
+          compareMode: exportState.compareMode,
+          displayMode: 'standard',
+          darkMode: exportState.darkMode,
+          showTerritory: false,
+          showHeatmaps: false,
+          capturedAt: new Date(),
+        } : undefined,
+      };
+      setOrderData(orderData);
+      navigate('/order-print');
+    }
+  }, [listing, downloadTrademarkHD, downloadGIF, navigate, setOrderData, setCapturedTimelineState, setCurrentSimulation, setSavedShareId, setReturningFromOrder, id]);
+
   const handleBack = () => {
     navigate('/marketplace');
   };
 
   // Reconstruct board and gameData from stored data
-  const getVisualizationData = () => {
+  const getVisualizationData = useCallback(() => {
     if (!listing?.visualization) return null;
 
     const storedData = listing.visualization.game_data as ExtendedGameData;
@@ -302,7 +393,7 @@ const MarketplaceVisionDetail: React.FC = () => {
     const paletteId = storedData.visualizationState?.paletteId;
     
     return { board, gameData, totalMoves, paletteId };
-  };
+  }, [listing]);
 
   const isOwnListing = user?.id === listing?.seller_id;
   const isFree = (listing?.price_cents ?? 0) === 0;
@@ -363,6 +454,77 @@ const MarketplaceVisionDetail: React.FC = () => {
     );
   }
 
+  // Header actions for marketplace
+  const headerActions = (
+    <div className="flex items-center gap-3 flex-wrap">
+      {/* Price Badge */}
+      <Badge 
+        className={`text-sm px-3 py-1 ${
+          isFree 
+            ? 'bg-green-500/90 hover:bg-green-500' 
+            : 'bg-primary/90 hover:bg-primary'
+        }`}
+      >
+        {isFree ? (
+          <><Gift className="h-3 w-3 mr-1" /> Free</>
+        ) : (
+          <><DollarSign className="h-3 w-3" />{((listing?.price_cents || 0) / 100).toFixed(2)}</>
+        )}
+      </Badge>
+      
+      {hasPremiumPalette && (
+        <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-black">
+          {getPaletteDisplayName(paletteId || '') || 'Premium'}
+        </Badge>
+      )}
+
+      {/* Claim Ownership - Premium only */}
+      {!isOwnListing && (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                onClick={handlePurchase}
+                disabled={isPurchasing}
+                className="btn-luxury gap-2"
+              >
+                {isPurchasing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : isFree ? (
+                  <>
+                    <Gift className="h-4 w-4" />
+                    Claim Vision
+                  </>
+                ) : (
+                  <>
+                    <Crown className="h-4 w-4" />
+                    Claim Ownership
+                  </>
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-xs">
+              <p className="font-medium mb-1">What is Ownership?</p>
+              <ul className="text-xs space-y-1 text-muted-foreground">
+                <li>• Add this vision to your personal gallery</li>
+                <li>• Exclusive digital ownership - only one owner per vision</li>
+                <li>• Earn royalties when others order prints</li>
+                <li>• List for resale anytime on the marketplace</li>
+              </ul>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
+      
+      {isOwnListing && (
+        <Badge variant="outline" className="gap-1">
+          <Crown className="h-3 w-3" />
+          Your Listing
+        </Badge>
+      )}
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -378,97 +540,10 @@ const MarketplaceVisionDetail: React.FC = () => {
             Return to Marketplace
           </Button>
           
-          {/* Action buttons */}
-          <div className="flex items-center gap-3 flex-wrap">
-            {/* Price Badge */}
-            <Badge 
-              className={`text-sm px-3 py-1 ${
-                isFree 
-                  ? 'bg-green-500/90 hover:bg-green-500' 
-                  : 'bg-primary/90 hover:bg-primary'
-              }`}
-            >
-              {isFree ? (
-                <><Gift className="h-3 w-3 mr-1" /> Free</>
-              ) : (
-                <><DollarSign className="h-3 w-3" />{((listing?.price_cents || 0) / 100).toFixed(2)}</>
-              )}
-            </Badge>
-            
-            {hasPremiumPalette && (
-              <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-black">
-                {getPaletteDisplayName(paletteId || '') || 'Premium'}
-              </Badge>
-            )}
-
-            {/* Order Print - Available to everyone */}
-            <Button
-              variant="outline"
-              className="gap-2 border-primary/50 hover:bg-primary/10"
-              onClick={() => {
-                // Navigate to order print with this visualization's data
-                navigate('/order-print', { 
-                  state: { 
-                    fromMarketplace: true,
-                    visualizationId: listing?.visualization?.id,
-                    title: listing?.visualization?.title,
-                    imageUrl: listing?.visualization?.image_path,
-                  } 
-                });
-              }}
-            >
-              <ShoppingBag className="h-4 w-4" />
-              Order Print
-            </Button>
-            
-            {/* Claim Ownership - Premium only */}
-            {!isOwnListing && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      onClick={handlePurchase}
-                      disabled={isPurchasing}
-                      className="btn-luxury gap-2"
-                    >
-                      {isPurchasing ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : isFree ? (
-                        <>
-                          <Gift className="h-4 w-4" />
-                          Claim Vision
-                        </>
-                      ) : (
-                        <>
-                          <Crown className="h-4 w-4" />
-                          Claim Ownership
-                        </>
-                      )}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="max-w-xs">
-                    <p className="font-medium mb-1">What is Ownership?</p>
-                    <ul className="text-xs space-y-1 text-muted-foreground">
-                      <li>• Add this vision to your personal gallery</li>
-                      <li>• Exclusive digital ownership - only one owner per vision</li>
-                      <li>• Earn royalties when others order prints</li>
-                      <li>• List for resale anytime on the marketplace</li>
-                    </ul>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-            
-            {isOwnListing && (
-              <Badge variant="outline" className="gap-1">
-                <Crown className="h-3 w-3" />
-                Your Listing
-              </Badge>
-            )}
-          </div>
+          {headerActions}
         </div>
 
-        {/* Premium required notice for ownership - prints are available to everyone */}
+        {/* Premium required notice for ownership */}
         {!isPremium && user && !isOwnListing && (
           <div className="mb-6 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center gap-2">
             <Crown className="h-5 w-5 text-amber-500 shrink-0" />
@@ -477,19 +552,6 @@ const MarketplaceVisionDetail: React.FC = () => {
             </span>
           </div>
         )}
-
-        {/* Royalty Earnings / Potential Card */}
-        <div className="mb-6">
-          <RoyaltyPotentialCard
-            isOwner={isOwnListing}
-            royaltyCentsEarned={visionScore?.royaltyCentsEarned || 0}
-            royaltyOrdersCount={visionScore?.royaltyOrdersCount || 0}
-            totalPrintRevenue={visionScore?.printRevenueCents || 0}
-            printOrderCount={visionScore?.printOrderCount || 0}
-            viewCount={visionScore?.viewCount || 0}
-            uniqueViewers={visionScore?.uniqueViewers || 0}
-          />
-        </div>
 
         {/* Unified Vision Experience */}
         <TimelineProvider>
@@ -507,12 +569,26 @@ const MarketplaceVisionDetail: React.FC = () => {
               imageUrl={listing?.visualization?.image_path}
               onTransferToCreative={handleTransferToCreative}
               onShare={handleShare}
+              onExport={handleExport}
               isPremium={isPremium}
               onUpgradePrompt={() => setShowUpgradeModal(true)}
               purchasePrice={listing?.price_cents}
               showPurchaseButton={!isOwnListing}
               onPurchase={handlePurchase}
               isPurchasing={isPurchasing}
+              isOwner={isOwnListing}
+              visionScoreData={visionScore ? {
+                viewCount: visionScore.viewCount,
+                uniqueViewers: visionScore.uniqueViewers,
+                royaltyCentsEarned: visionScore.royaltyCentsEarned,
+                royaltyOrdersCount: visionScore.royaltyOrdersCount,
+                printRevenueCents: visionScore.printRevenueCents,
+                printOrderCount: visionScore.printOrderCount,
+                totalScore: visionScore.totalScore,
+                downloadHdCount: visionScore.downloadHdCount,
+                downloadGifCount: visionScore.downloadGifCount,
+                tradeCount: visionScore.tradeCount,
+              } : null}
             />
           </LegendHighlightProvider>
         </TimelineProvider>
