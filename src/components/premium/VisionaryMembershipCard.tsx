@@ -221,14 +221,14 @@ export const VisionaryMembershipCard: React.FC<VisionaryMembershipCardProps> = (
             <DialogHeader className="p-6 pb-4 text-center border-b border-border/50">
               <div className="flex justify-center mb-4">
                 <motion.div
-                  className="relative"
+                  className="relative rounded-full"
                   animate={{ 
                     boxShadow: ['0 0 20px hsl(var(--primary)/0.3)', '0 0 40px hsl(var(--primary)/0.5)', '0 0 20px hsl(var(--primary)/0.3)']
                   }}
                   transition={{ duration: 2, repeat: Infinity }}
                 >
-                  {/* Company logo with gold ring */}
-                  <div className="h-20 w-20 rounded-full bg-gradient-to-br from-primary via-primary/80 to-primary/60 p-0.5 flex items-center justify-center overflow-hidden">
+                  {/* Company logo with gold ring - circular with no square edges */}
+                  <div className="h-20 w-20 rounded-full bg-gradient-to-br from-primary via-primary/80 to-primary/60 p-1 overflow-hidden">
                     <img 
                       src={enPensentLogo} 
                       alt="En Pensent" 
@@ -302,9 +302,9 @@ export const VisionaryMembershipCard: React.FC<VisionaryMembershipCardProps> = (
                                 : 'bg-muted/30 border-border/50 hover:bg-muted/50 hover:border-border'
                             }`}
                           >
-                            {/* Art background - subtle */}
+                            {/* Art background - increased opacity */}
                             <div 
-                              className="absolute inset-0 bg-cover bg-center opacity-[0.08] transition-opacity duration-300 group-hover:opacity-[0.12]"
+                              className="absolute inset-0 bg-cover bg-center opacity-[0.12] transition-opacity duration-300 hover:opacity-[0.18]"
                               style={{ backgroundImage: `url(${FEATURE_BACKGROUNDS[feature.id] || immortalGame})` }}
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-background via-background/90 to-background/70" />
