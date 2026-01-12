@@ -458,7 +458,7 @@ export type Database = {
           public_share_id: string | null
           title: string
           updated_at: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -469,7 +469,7 @@ export type Database = {
           public_share_id?: string | null
           title: string
           updated_at?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -480,7 +480,7 @@ export type Database = {
           public_share_id?: string | null
           title?: string
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -768,6 +768,41 @@ export type Database = {
           },
         ]
       }
+      visualization_transfers: {
+        Row: {
+          created_at: string
+          from_user_id: string | null
+          id: string
+          to_user_id: string
+          transfer_type: string
+          visualization_id: string
+        }
+        Insert: {
+          created_at?: string
+          from_user_id?: string | null
+          id?: string
+          to_user_id: string
+          transfer_type: string
+          visualization_id: string
+        }
+        Update: {
+          created_at?: string
+          from_user_id?: string | null
+          id?: string
+          to_user_id?: string
+          transfer_type?: string
+          visualization_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visualization_transfers_visualization_id_fkey"
+            columns: ["visualization_id"]
+            isOneToOne: false
+            referencedRelation: "saved_visualizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -784,6 +819,10 @@ export type Database = {
         }
         Returns: number
       }
+      can_transfer_visualization: {
+        Args: { p_visualization_id: string }
+        Returns: boolean
+      }
       generate_challenge_code: { Args: never; Returns: string }
       generate_share_id: { Args: never; Returns: string }
       get_funnel_stats: {
@@ -795,6 +834,10 @@ export type Database = {
           trigger_source: string
           unique_users: number
         }[]
+      }
+      get_remaining_transfers: {
+        Args: { p_visualization_id: string }
+        Returns: number
       }
       get_user_offense_count: { Args: { p_user_id: string }; Returns: number }
       has_role: {
@@ -816,6 +859,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      release_user_visions: { Args: { p_user_id: string }; Returns: number }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"

@@ -70,6 +70,20 @@ serve(async (req) => {
       throw new Error("Listing not found or no longer available");
     }
 
+    // Check transfer rate limit (max 3 per 24 hours) before completing
+    const { data: canTransfer, error: transferCheckError } = await supabaseClient
+      .rpc('can_transfer_visualization', { p_visualization_id: listing.visualization_id });
+
+    if (transferCheckError) {
+      logStep("Error checking transfer limit", { error: transferCheckError.message });
+      throw new Error("Failed to check transfer limits");
+    }
+
+    if (!canTransfer) {
+      throw new Error("This vision has reached its transfer limit (3 per 24h). Payment will be refunded if applicable.");
+    }
+    logStep("Transfer limit check passed");
+
     // Verify payment was successful via Stripe
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) throw new Error("Stripe not configured");
@@ -117,6 +131,20 @@ serve(async (req) => {
 
     if (listingUpdateError) {
       throw new Error(`Failed to update listing: ${listingUpdateError.message}`);
+    }
+
+    // Record the transfer
+    const { error: recordError } = await supabaseClient
+      .from('visualization_transfers')
+      .insert({
+        visualization_id: listing.visualization_id,
+        from_user_id: listing.seller_id,
+        to_user_id: user.id,
+        transfer_type: 'purchase',
+      });
+
+    if (recordError) {
+      logStep("Warning: Failed to record transfer", { error: recordError.message });
     }
 
     // Record trade interaction for vision scoring

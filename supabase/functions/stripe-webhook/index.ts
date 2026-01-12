@@ -60,11 +60,21 @@ serve(async (req) => {
     switch (event.type) {
       case "customer.subscription.created":
       case "customer.subscription.updated":
-      case "customer.subscription.deleted":
-      case "customer.subscription.paused":
       case "customer.subscription.resumed": {
         const subscription = event.data.object as Stripe.Subscription;
         await handleSubscriptionChange(supabaseClient, stripe, subscription);
+        break;
+      }
+
+      case "customer.subscription.deleted":
+      case "customer.subscription.paused": {
+        const subscription = event.data.object as Stripe.Subscription;
+        await handleSubscriptionChange(supabaseClient, stripe, subscription);
+        
+        // If subscription is cancelled/paused, release user's visions
+        if (subscription.status === 'canceled' || subscription.status === 'paused') {
+          await handleSubscriptionCancellation(supabaseClient, stripe, subscription);
+        }
         break;
       }
 
@@ -91,6 +101,11 @@ serve(async (req) => {
         if (invoice.subscription) {
           const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
           await handleSubscriptionChange(supabaseClient, stripe, subscription);
+          
+          // After multiple failed payments, subscription may be past_due or canceled
+          if (subscription.status === 'canceled' || subscription.status === 'unpaid') {
+            await handleSubscriptionCancellation(supabaseClient, stripe, subscription);
+          }
         }
         break;
       }
@@ -184,5 +199,58 @@ async function handleSubscriptionChange(
     userId: user.id, 
     status,
     periodEnd: currentPeriodEnd.toISOString()
+  });
+}
+
+// Handle subscription cancellation - release all user's visions
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function handleSubscriptionCancellation(
+  supabase: SupabaseClient<any, any, any>,
+  stripe: Stripe,
+  subscription: Stripe.Subscription
+) {
+  logStep("Processing subscription cancellation - releasing visions", { 
+    subscriptionId: subscription.id, 
+    status: subscription.status 
+  });
+
+  // Get customer to find user
+  const customer = await stripe.customers.retrieve(subscription.customer as string);
+  if (customer.deleted) {
+    logStep("Customer was deleted, skipping vision release");
+    return;
+  }
+
+  const customerEmail = customer.email;
+  if (!customerEmail) {
+    logStep("No email on customer, skipping vision release");
+    return;
+  }
+
+  // Find user by email
+  const { data: users, error: userError } = await supabase.auth.admin.listUsers();
+  if (userError) {
+    logStep("Error fetching users for vision release", { error: userError.message });
+    return;
+  }
+
+  const user = users.users.find((u: { email?: string }) => u.email?.toLowerCase() === customerEmail.toLowerCase());
+  if (!user) {
+    logStep("No user found for email, skipping vision release", { email: customerEmail });
+    return;
+  }
+
+  // Release all visions owned by this user
+  const { data: releasedCount, error: releaseError } = await supabase
+    .rpc('release_user_visions', { p_user_id: user.id });
+
+  if (releaseError) {
+    logStep("Error releasing user visions", { error: releaseError.message, userId: user.id });
+    return;
+  }
+
+  logStep("Visions released due to subscription cancellation", { 
+    userId: user.id, 
+    releasedCount: releasedCount || 0 
   });
 }

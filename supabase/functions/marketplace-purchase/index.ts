@@ -36,6 +36,13 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
+    // Check if buyer has premium subscription
+    const { data: isPremium } = await supabaseClient.rpc('is_premium_user', { p_user_id: user.id });
+    if (!isPremium) {
+      throw new Error("Premium membership required to acquire visions");
+    }
+    logStep("Premium status verified");
+
     const { listingId, action } = await req.json();
     if (!listingId) throw new Error("Listing ID is required");
     logStep("Request payload", { listingId, action });
@@ -43,7 +50,7 @@ serve(async (req) => {
     // Fetch the listing
     const { data: listing, error: listingError } = await supabaseClient
       .from('visualization_listings')
-      .select('*, saved_visualizations(title, image_path, user_id)')
+      .select('*, saved_visualizations(id, title, image_path, user_id)')
       .eq('id', listingId)
       .eq('status', 'active')
       .single();
@@ -59,6 +66,22 @@ serve(async (req) => {
     }
 
     const visualization = listing.saved_visualizations;
+
+    // Check transfer rate limit (max 3 per 24 hours)
+    const { data: canTransfer, error: transferCheckError } = await supabaseClient
+      .rpc('can_transfer_visualization', { p_visualization_id: listing.visualization_id });
+
+    if (transferCheckError) {
+      logStep("Error checking transfer limit", { error: transferCheckError.message });
+      throw new Error("Failed to check transfer limits");
+    }
+
+    if (!canTransfer) {
+      const { data: remaining } = await supabaseClient
+        .rpc('get_remaining_transfers', { p_visualization_id: listing.visualization_id });
+      throw new Error(`This vision has reached its transfer limit (3 per 24h). Try again later. Remaining: ${remaining || 0}`);
+    }
+    logStep("Transfer limit check passed");
 
     // If free (gift), transfer immediately
     if (listing.price_cents === 0) {
@@ -86,6 +109,20 @@ serve(async (req) => {
 
       if (listingUpdateError) {
         throw new Error(`Failed to update listing: ${listingUpdateError.message}`);
+      }
+
+      // Record the transfer
+      const { error: recordError } = await supabaseClient
+        .from('visualization_transfers')
+        .insert({
+          visualization_id: listing.visualization_id,
+          from_user_id: listing.seller_id,
+          to_user_id: user.id,
+          transfer_type: 'free_claim',
+        });
+
+      if (recordError) {
+        logStep("Warning: Failed to record transfer", { error: recordError.message });
       }
 
       logStep("Free transfer completed");
@@ -147,6 +184,7 @@ serve(async (req) => {
         listing_id: listingId,
         buyer_id: user.id,
         visualization_id: listing.visualization_id,
+        seller_id: listing.seller_id,
       },
     });
 
