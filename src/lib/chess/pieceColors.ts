@@ -597,6 +597,14 @@ export function getCustomPalette(): ColorPalette {
   return colorPalettes.find(p => p.id === 'custom') || customPalette;
 }
 
+// Get current palette colors (useful for transferring state)
+export function getCurrentPalette(): { white: Record<PieceType, string>; black: Record<PieceType, string> } {
+  return {
+    white: { ...activePalette.white },
+    black: { ...activePalette.black },
+  };
+}
+
 // Legacy exports for backwards compatibility
 export const whitePieceColors = hotColdPalette.white;
 export const blackPieceColors = hotColdPalette.black;
