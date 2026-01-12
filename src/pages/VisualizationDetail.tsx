@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { getVisualizationById, SavedVisualization } from '@/lib/visualizations/visualizationStorage';
+import { getVisualizationById, SavedVisualization, VisualizationState } from '@/lib/visualizations/visualizationStorage';
 import { SimulationResult, SquareData, GameData } from '@/lib/chess/gameSimulator';
+import { setActivePalette, setCustomColor, PaletteId, PieceType } from '@/lib/chess/pieceColors';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
 import PrintPreview from '@/components/chess/PrintPreview';
@@ -20,6 +21,28 @@ const VisualizationDetail: React.FC = () => {
   const [visualization, setVisualization] = useState<SavedVisualization | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Restore the saved palette when loading visualization
+  const restorePaletteState = (vizState: VisualizationState | undefined) => {
+    if (!vizState) return;
+    
+    // If custom colors were saved, restore them
+    if (vizState.customColors) {
+      const pieces: PieceType[] = ['k', 'q', 'r', 'b', 'n', 'p'];
+      pieces.forEach(piece => {
+        if (vizState.customColors?.white[piece]) {
+          setCustomColor('w', piece, vizState.customColors.white[piece]);
+        }
+        if (vizState.customColors?.black[piece]) {
+          setCustomColor('b', piece, vizState.customColors.black[piece]);
+        }
+      });
+      setActivePalette('custom');
+    } else if (vizState.paletteId) {
+      // Restore the saved palette
+      setActivePalette(vizState.paletteId as PaletteId);
+    }
+  };
 
   useEffect(() => {
     if (!id) {
@@ -50,6 +73,10 @@ const VisualizationDetail: React.FC = () => {
           setError('You do not have permission to view this visualization');
           return;
         }
+
+        // Restore the palette state from the saved visualization
+        const vizState = data.game_data.visualizationState as VisualizationState | undefined;
+        restorePaletteState(vizState);
 
         setVisualization(data);
       } catch (err) {
