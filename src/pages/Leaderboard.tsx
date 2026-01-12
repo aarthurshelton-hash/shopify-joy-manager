@@ -5,12 +5,14 @@ import { Footer } from '@/components/shop/Footer';
 import { 
   Trophy, Crown, Medal, Star, Eye, Heart, Palette, 
   TrendingUp, TrendingDown, Minus, Sparkles, ChevronRight, 
-  User, Flame, Zap, Target, Award, Rocket, Swords, Shield
+  User, Flame, Zap, Target, Award, Rocket, Swords, Shield,
+  Image, BarChart3
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { getRatingTier } from '@/lib/chess/eloCalculator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface CreatorStats {
   userId: string;
@@ -26,6 +28,21 @@ interface CreatorStats {
   rank: number;
   rankChange: number;
   badges: Badge[];
+}
+
+interface VisionScore {
+  id: string;
+  title: string;
+  ownerName: string;
+  ownerId: string;
+  totalScore: number;
+  viewCount: number;
+  downloadHdCount: number;
+  downloadGifCount: number;
+  tradeCount: number;
+  printOrderCount: number;
+  imagePath: string;
+  rank: number;
 }
 
 interface Badge {
@@ -386,8 +403,73 @@ const Leaderboard = () => {
   const { user, isPremium } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [creators, setCreators] = useState<CreatorStats[]>([]);
+  const [visionScores, setVisionScores] = useState<VisionScore[]>([]);
   const [userRank, setUserRank] = useState<CreatorStats | null>(null);
   const [timeframe, setTimeframe] = useState<'all' | 'month' | 'week'>('all');
+  const [activeTab, setActiveTab] = useState<'creators' | 'visions'>('creators');
+  const [isLoadingVisions, setIsLoadingVisions] = useState(false);
+
+  // Fetch Vision Scores
+  useEffect(() => {
+    const fetchVisionScores = async () => {
+      if (activeTab !== 'visions') return;
+      
+      setIsLoadingVisions(true);
+      try {
+        const { data: scoresData, error: scoresError } = await supabase
+          .from('vision_scores')
+          .select(`
+            *,
+            saved_visualizations!inner (
+              id,
+              title,
+              image_path,
+              user_id
+            )
+          `)
+          .order('total_score', { ascending: false })
+          .limit(25);
+
+        if (scoresError) throw scoresError;
+
+        // Get owner profiles
+        const ownerIds = [...new Set(scoresData?.map(s => s.saved_visualizations?.user_id).filter(Boolean) || [])];
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('user_id, display_name')
+          .in('user_id', ownerIds);
+
+        const profilesMap: Record<string, string> = {};
+        profiles?.forEach(p => {
+          profilesMap[p.user_id] = p.display_name || 'Anonymous';
+        });
+
+        const visions: VisionScore[] = (scoresData || []).map((score, index) => ({
+          id: score.visualization_id,
+          title: score.saved_visualizations?.title || 'Untitled Vision',
+          ownerName: profilesMap[score.saved_visualizations?.user_id] || 'Anonymous',
+          ownerId: score.saved_visualizations?.user_id,
+          totalScore: Number(score.total_score) || 0,
+          viewCount: score.view_count || 0,
+          downloadHdCount: score.download_hd_count || 0,
+          downloadGifCount: score.download_gif_count || 0,
+          tradeCount: score.trade_count || 0,
+          printOrderCount: score.print_order_count || 0,
+          imagePath: score.saved_visualizations?.image_path || '',
+          rank: index + 1
+        }));
+
+        setVisionScores(visions);
+      } catch (error) {
+        console.error('Error fetching vision scores:', error);
+        setVisionScores([]);
+      } finally {
+        setIsLoadingVisions(false);
+      }
+    };
+
+    fetchVisionScores();
+  }, [activeTab]);
 
   useEffect(() => {
     const fetchLeaderboard = async () => {
@@ -552,6 +634,66 @@ const Leaderboard = () => {
     fetchLeaderboard();
   }, [user, timeframe]);
 
+  // Vision Score Card Component
+  const VisionScoreCard = ({ vision, index }: { vision: VisionScore; index: number }) => (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.05 }}
+      className={`p-4 rounded-lg border ${getRankBadgeStyle(vision.rank)} flex items-center gap-4`}
+    >
+      <div className="w-10 h-10 flex items-center justify-center shrink-0">
+        {getRankIcon(vision.rank)}
+      </div>
+      
+      <div className="w-12 h-12 rounded-lg overflow-hidden bg-muted shrink-0">
+        {vision.imagePath ? (
+          <img 
+            src={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/visualizations/${vision.imagePath}`}
+            alt={vision.title}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <Image className="h-5 w-5 text-muted-foreground" />
+          </div>
+        )}
+      </div>
+      
+      <div className="flex-1 min-w-0">
+        <Link 
+          to={`/vision/${vision.id}`}
+          className="font-display font-bold text-sm hover:text-primary transition-colors truncate block"
+        >
+          {vision.title}
+        </Link>
+        <p className="text-xs text-muted-foreground">by {vision.ownerName}</p>
+      </div>
+      
+      <div className="grid grid-cols-4 gap-3 text-center shrink-0">
+        <div>
+          <p className="text-sm font-display font-bold">{vision.viewCount}</p>
+          <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-0.5">
+            <Eye className="h-2.5 w-2.5" />
+            Views
+          </p>
+        </div>
+        <div>
+          <p className="text-sm font-display font-bold">{vision.downloadHdCount + vision.downloadGifCount}</p>
+          <p className="text-[10px] text-muted-foreground">DLs</p>
+        </div>
+        <div>
+          <p className="text-sm font-display font-bold">{vision.tradeCount}</p>
+          <p className="text-[10px] text-muted-foreground">Trades</p>
+        </div>
+        <div>
+          <p className="text-sm font-display font-bold text-primary">{vision.totalScore.toFixed(2)}</p>
+          <p className="text-[10px] text-muted-foreground">Score</p>
+        </div>
+      </div>
+    </motion.div>
+  );
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -562,61 +704,75 @@ const Leaderboard = () => {
           <div className="text-center space-y-6">
             <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-display uppercase tracking-widest">
               <Trophy className="h-4 w-4" />
-              Creator Rankings
+              Community Rankings
             </div>
             <h1 className="text-4xl md:text-5xl font-royal font-bold uppercase tracking-wide">
               Community <span className="text-gold-gradient">Leaderboard</span>
             </h1>
             <p className="text-lg text-muted-foreground font-serif leading-relaxed max-w-2xl mx-auto">
-              Celebrating the most active artists and curators in our chess visualization community.
+              Celebrating the most active artists, curators, and top-performing visions.
             </p>
           </div>
 
-          {/* Weekly Badges Showcase */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="p-6 rounded-lg border border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent"
-          >
-            <div className="flex items-center gap-2 mb-4">
-              <Award className="h-5 w-5 text-primary" />
-              <h3 className="font-display font-bold uppercase tracking-wider">Weekly Achievements</h3>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {Object.values(BADGE_DEFINITIONS).slice(0, 4).map((badge, index) => (
-                <motion.div
-                  key={badge.id}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: index * 0.1 }}
-                  className="p-3 rounded-lg bg-card/50 border border-border/30 text-center group hover:border-primary/30 transition-colors"
-                >
-                  <div className={`w-10 h-10 rounded-full bg-gradient-to-r ${badge.color} flex items-center justify-center mx-auto mb-2 group-hover:scale-110 transition-transform`}>
-                    <BadgeIcon badge={badge} />
-                  </div>
-                  <p className="text-xs font-display font-medium">{badge.name}</p>
-                  <p className="text-[10px] text-muted-foreground">{badge.description}</p>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
+          {/* Tab Navigation */}
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'creators' | 'visions')} className="w-full">
+            <TabsList className="grid w-full grid-cols-2 max-w-md mx-auto">
+              <TabsTrigger value="creators" className="gap-2">
+                <User className="h-4 w-4" />
+                Creators
+              </TabsTrigger>
+              <TabsTrigger value="visions" className="gap-2">
+                <BarChart3 className="h-4 w-4" />
+                Vision Scores
+              </TabsTrigger>
+            </TabsList>
 
-          {/* Timeframe Selector */}
-          <div className="flex justify-center gap-2">
-            {(['all', 'month', 'week'] as const).map((tf) => (
-              <button
-                key={tf}
-                onClick={() => setTimeframe(tf)}
-                className={`px-4 py-2 rounded-lg text-sm font-display uppercase tracking-wider transition-all ${
-                  timeframe === tf 
-                    ? 'bg-primary text-primary-foreground' 
-                    : 'bg-card/50 border border-border/50 text-muted-foreground hover:border-primary/30'
-                }`}
+            <TabsContent value="creators" className="mt-8 space-y-6">
+              {/* Weekly Badges Showcase */}
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-6 rounded-lg border border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent"
               >
-                {tf === 'all' ? 'All Time' : tf === 'month' ? 'This Month' : 'This Week'}
-              </button>
-            ))}
-          </div>
+                <div className="flex items-center gap-2 mb-4">
+                  <Award className="h-5 w-5 text-primary" />
+                  <h3 className="font-display font-bold uppercase tracking-wider">Weekly Achievements</h3>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {Object.values(BADGE_DEFINITIONS).slice(0, 4).map((badge, index) => (
+                    <motion.div
+                      key={badge.id}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="p-3 rounded-lg bg-card/50 border border-border/30 text-center group hover:border-primary/30 transition-colors"
+                    >
+                      <div className={`w-10 h-10 rounded-full bg-gradient-to-r ${badge.color} flex items-center justify-center mx-auto mb-2 group-hover:scale-110 transition-transform`}>
+                        <BadgeIcon badge={badge} />
+                      </div>
+                      <p className="text-xs font-display font-medium">{badge.name}</p>
+                      <p className="text-[10px] text-muted-foreground">{badge.description}</p>
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
+
+              {/* Timeframe Selector */}
+              <div className="flex justify-center gap-2">
+                {(['all', 'month', 'week'] as const).map((tf) => (
+                  <button
+                    key={tf}
+                    onClick={() => setTimeframe(tf)}
+                    className={`px-4 py-2 rounded-lg text-sm font-display uppercase tracking-wider transition-all ${
+                      timeframe === tf 
+                        ? 'bg-primary text-primary-foreground' 
+                        : 'bg-card/50 border border-border/50 text-muted-foreground hover:border-primary/30'
+                    }`}
+                  >
+                    {tf === 'all' ? 'All Time' : tf === 'month' ? 'This Month' : 'This Week'}
+                  </button>
+                ))}
+              </div>
 
           {/* Current User Rank Card */}
           {user && userRank && (
@@ -872,6 +1028,124 @@ const Leaderboard = () => {
               </div>
             </div>
           </motion.div>
+          </TabsContent>
+
+            {/* Vision Scores Tab */}
+            <TabsContent value="visions" className="mt-8 space-y-6">
+              {/* Vision Score Header */}
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-6 rounded-lg border border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <BarChart3 className="h-5 w-5 text-primary" />
+                  <h3 className="font-display font-bold uppercase tracking-wider">Vision Score Rankings</h3>
+                </div>
+                <p className="text-sm text-muted-foreground font-serif">
+                  Top visualizations ranked by community engagement. Scores are calculated from views, downloads, trades, and print orders.
+                </p>
+              </motion.div>
+
+              {/* Vision Scores List */}
+              {isLoadingVisions ? (
+                <div className="space-y-3">
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className="p-4 rounded-lg border border-border/50 bg-card/50 animate-pulse">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-full bg-muted" />
+                        <div className="w-12 h-12 rounded-lg bg-muted" />
+                        <div className="flex-1 space-y-2">
+                          <div className="h-4 bg-muted rounded w-32" />
+                          <div className="h-3 bg-muted rounded w-20" />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : visionScores.length === 0 ? (
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="p-12 text-center rounded-lg border border-dashed border-border/50"
+                >
+                  <Image className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
+                  <h3 className="font-display font-bold uppercase tracking-wider mb-2">No Visions Yet</h3>
+                  <p className="text-sm text-muted-foreground font-serif max-w-md mx-auto">
+                    Vision Scores are calculated as visualizations gain views, downloads, and trades. 
+                    Create and share your visualizations to see them ranked here!
+                  </p>
+                  <Link 
+                    to="/"
+                    className="inline-flex items-center gap-2 mt-6 px-6 py-3 rounded-lg bg-primary text-primary-foreground font-display uppercase tracking-wide text-sm hover:opacity-90 transition-opacity"
+                  >
+                    Create Your First Vision
+                    <ChevronRight className="h-4 w-4" />
+                  </Link>
+                </motion.div>
+              ) : (
+                <div className="space-y-3">
+                  {visionScores.map((vision, index) => (
+                    <VisionScoreCard key={vision.id} vision={vision} index={index} />
+                  ))}
+                </div>
+              )}
+
+              {/* Vision Score Formula */}
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-6 rounded-lg border border-border/50 bg-card/30"
+              >
+                <h3 className="font-display font-bold uppercase tracking-wider mb-4 flex items-center gap-2">
+                  <Target className="h-4 w-4 text-primary" />
+                  Vision Score Formula
+                </h3>
+                <div className="bg-muted/50 rounded-lg p-4 mb-4">
+                  <code className="text-xs font-mono text-muted-foreground">
+                    Score = (views × 0.01) + (HD downloads × 0.10) + (GIF downloads × 0.25) + (trades × 1.00) + (prints × 2.00) + revenue
+                  </code>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-card/50 border border-border/30">
+                    <Eye className="h-4 w-4 text-primary/70" />
+                    <div>
+                      <p className="font-display text-xs font-medium">View</p>
+                      <p className="text-[10px] text-muted-foreground">+0.01 pts</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-card/50 border border-border/30">
+                    <Sparkles className="h-4 w-4 text-primary/70" />
+                    <div>
+                      <p className="font-display text-xs font-medium">HD DL</p>
+                      <p className="text-[10px] text-muted-foreground">+0.10 pts</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-card/50 border border-border/30">
+                    <Zap className="h-4 w-4 text-primary/70" />
+                    <div>
+                      <p className="font-display text-xs font-medium">GIF DL</p>
+                      <p className="text-[10px] text-muted-foreground">+0.25 pts</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-card/50 border border-border/30">
+                    <TrendingUp className="h-4 w-4 text-green-500" />
+                    <div>
+                      <p className="font-display text-xs font-medium">Trade</p>
+                      <p className="text-[10px] text-muted-foreground">+1.00 pts</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-card/50 border border-border/30">
+                    <Crown className="h-4 w-4 text-yellow-500" />
+                    <div>
+                      <p className="font-display text-xs font-medium">Print</p>
+                      <p className="text-[10px] text-muted-foreground">+2.00 + $</p>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </TabsContent>
+          </Tabs>
 
           {/* CTA */}
           <div className="text-center">
