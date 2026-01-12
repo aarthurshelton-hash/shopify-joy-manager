@@ -30,6 +30,7 @@ import { usePrintOrderStore } from '@/stores/printOrderStore';
 import { useVisualizationStateStore } from '@/stores/visualizationStateStore';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 import QRCode from 'qrcode';
+import { recordVisionInteraction } from '@/lib/visualizations/visionScoring';
 
 interface ExportVisualizationModalProps {
   isOpen: boolean;
@@ -43,6 +44,7 @@ interface ExportVisualizationModalProps {
     result?: string;
     totalMoves: number;
   };
+  visualizationId?: string; // For tracking downloads
 }
 
 /**
@@ -55,6 +57,7 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
   whitePalette,
   blackPalette,
   gameInfo,
+  visualizationId,
 }) => {
   const navigate = useNavigate();
   const { user, isPremium } = useAuth();
@@ -117,6 +120,11 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
       link.click();
       
       toast.success(withWatermark ? 'Preview downloaded!' : 'HD image downloaded!');
+      
+      // Track HD download for vision scoring (only for HD, not preview)
+      if (!withWatermark && visualizationId) {
+        recordVisionInteraction(visualizationId, 'download_hd');
+      }
     } catch (error) {
       console.error('Download failed:', error);
       toast.error('Download failed');

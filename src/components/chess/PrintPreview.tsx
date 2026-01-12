@@ -25,12 +25,14 @@ import { Progress } from '@/components/ui/progress';
 import { useLegendHighlight } from '@/contexts/LegendHighlightContext';
 import ColorComparisonPreview from './ColorComparisonPreview';
 import IntrinsicPaletteCard from './IntrinsicPaletteCard';
+import { recordVisionInteraction } from '@/lib/visualizations/visionScoring';
 
 interface PrintPreviewProps {
   simulation: SimulationResult;
   pgn?: string;
   title?: string;
   onShareIdCreated?: (shareId: string) => void;
+  visualizationId?: string; // For tracking downloads on existing visualizations
 }
 
 // Filter board to show only moves up to a certain point
@@ -43,7 +45,7 @@ function filterBoardToMove(board: SquareData[][], moveNumber: number): SquareDat
   );
 }
 
-const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onShareIdCreated }) => {
+const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onShareIdCreated, visualizationId }) => {
   const printRef = useRef<HTMLDivElement>(null);
   const watermarkRef = useRef<HTMLDivElement>(null);
   const gifBoardRef = useRef<HTMLDivElement>(null);
@@ -444,6 +446,11 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
       
       console.log('Download triggered:', filename);
       toast.success(withWatermark ? 'Preview downloaded!' : 'HD image downloaded!');
+      
+      // Track HD download for vision scoring (only for HD, not preview)
+      if (!withWatermark && visualizationId) {
+        recordVisionInteraction(visualizationId, 'download_hd');
+      }
     } catch (error) {
       console.error('Download failed:', error);
       toast.error('Download failed. Please try again.');
@@ -556,6 +563,11 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
         setIsGeneratingGif(false);
         setGifProgress(0);
         toast.success('GIF downloaded!');
+        
+        // Track GIF download for vision scoring
+        if (visualizationId) {
+          recordVisionInteraction(visualizationId, 'download_gif');
+        }
       });
 
       gif.render();

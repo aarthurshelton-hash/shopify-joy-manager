@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
 import { supabase } from '@/integrations/supabase/client';
 import { motion } from 'framer-motion';
-import { Crown, Calendar, Clock, ChevronLeft, Share2, ExternalLink } from 'lucide-react';
+import { Crown, Calendar, Clock, ChevronLeft, Share2, ExternalLink, Eye, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { recordVisionInteraction, getVisionScore, VisionScore } from '@/lib/visualizations/visionScoring';
 
 interface VisualizationData {
   id: string;
@@ -32,6 +33,8 @@ const VisualizationView = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [visionScore, setVisionScore] = useState<VisionScore | null>(null);
+  const viewRecordedRef = useRef(false);
 
   useEffect(() => {
     const fetchVisualization = async () => {
@@ -63,6 +66,16 @@ const VisualizationView = () => {
 
         if (urlData?.publicUrl) {
           setImageUrl(urlData.publicUrl);
+        }
+
+        // Record view interaction (only once per session)
+        if (!viewRecordedRef.current) {
+          viewRecordedRef.current = true;
+          recordVisionInteraction(data.id, 'view');
+          
+          // Fetch vision score for display
+          const score = await getVisionScore(data.id);
+          setVisionScore(score);
         }
       } catch (err) {
         console.error('Error fetching visualization:', err);
@@ -266,6 +279,33 @@ const VisualizationView = () => {
                       {Math.ceil(gameData.moves.length / 2)}
                     </span>
                   </div>
+                </div>
+              )}
+
+              {/* Vision Score Stats */}
+              {visionScore && visionScore.viewCount > 0 && (
+                <div className="p-4 rounded-lg border border-primary/20 bg-primary/5 space-y-2">
+                  <div className="flex items-center gap-2 text-sm font-display uppercase tracking-wider text-primary">
+                    <TrendingUp className="h-4 w-4" />
+                    Vision Stats
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="flex items-center gap-2">
+                      <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="text-muted-foreground">{visionScore.viewCount} views</span>
+                    </div>
+                    {visionScore.uniqueViewers > 1 && (
+                      <div className="text-muted-foreground">
+                        {visionScore.uniqueViewers} unique
+                      </div>
+                    )}
+                  </div>
+                  {visionScore.totalScore > 0 && (
+                    <div className="pt-2 border-t border-border/30">
+                      <span className="text-xs text-muted-foreground">Vision Score: </span>
+                      <span className="font-display text-primary">{visionScore.totalScore.toFixed(2)}</span>
+                    </div>
+                  )}
                 </div>
               )}
 
