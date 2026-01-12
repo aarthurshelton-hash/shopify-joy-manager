@@ -153,6 +153,8 @@ export interface SimilarityCheckResult {
   colorSimilarity: number;
   movesMatch: boolean;
   matchedPaletteId?: PaletteId;
+  matchedPaletteSimilarity?: number;
+  isIntrinsicPalette?: boolean; // True if using/close to a featured En Pensent palette
   existingVisualizationId?: string;
   ownerDisplayName?: string;
   ownedByCurrentUser?: boolean;
@@ -193,6 +195,26 @@ export async function checkVisualizationSimilarity(
       black: currentPalette.black,
     };
     
+    // Check if using a featured En Pensent palette (intrinsic value)
+    let isIntrinsicPalette = false;
+    let matchedPaletteId: PaletteId | undefined;
+    let matchedPaletteSimilarity: number | undefined;
+    
+    // If using a featured palette directly, it's intrinsic
+    if (paletteId !== 'custom') {
+      isIntrinsicPalette = true;
+      matchedPaletteId = paletteId;
+      matchedPaletteSimilarity = 100;
+    } else if (customColors) {
+      // Check if custom colors are close to any featured palette
+      const matchedPalette = findSimilarFeaturedPalette(customColors);
+      if (matchedPalette && matchedPalette.similarity >= 30) {
+        isIntrinsicPalette = matchedPalette.similarity >= 80; // Only truly intrinsic at 80%+
+        matchedPaletteId = matchedPalette.paletteId;
+        matchedPaletteSimilarity = matchedPalette.similarity;
+      }
+    }
+    
     // Fetch all saved visualizations
     const { data: existingViz, error } = await supabase
       .from('saved_visualizations')
@@ -200,7 +222,14 @@ export async function checkVisualizationSimilarity(
     
     if (error) {
       console.error('Error fetching visualizations for similarity check:', error);
-      return { isTooSimilar: false, colorSimilarity: 0, movesMatch: false };
+      return { 
+        isTooSimilar: false, 
+        colorSimilarity: 0, 
+        movesMatch: false,
+        isIntrinsicPalette,
+        matchedPaletteId,
+        matchedPaletteSimilarity,
+      };
     }
     
     // Check against each existing visualization
@@ -245,6 +274,9 @@ export async function checkVisualizationSimilarity(
           isTooSimilar: true,
           colorSimilarity,
           movesMatch: true,
+          isIntrinsicPalette,
+          matchedPaletteId,
+          matchedPaletteSimilarity,
           existingVisualizationId: viz.id,
           ownerDisplayName,
           ownedByCurrentUser,
@@ -254,22 +286,15 @@ export async function checkVisualizationSimilarity(
       }
     }
     
-    // Check if colors too closely match a featured palette when using custom
-    if (paletteId === 'custom' && customColors) {
-      const matchedPalette = findSimilarFeaturedPalette(customColors);
-      if (matchedPalette) {
-        // This is informational - we'll inherit from the matched palette
-        return {
-          isTooSimilar: false,
-          colorSimilarity: matchedPalette.similarity,
-          movesMatch: false,
-          matchedPaletteId: matchedPalette.paletteId,
-          reason: `Colors are ${Math.round(matchedPalette.similarity)}% similar to "${colorPalettes.find(p => p.id === matchedPalette.paletteId)?.name}" palette`,
-        };
-      }
-    }
-    
-    return { isTooSimilar: false, colorSimilarity: 0, movesMatch: false };
+    // Return result with intrinsic palette info
+    return { 
+      isTooSimilar: false, 
+      colorSimilarity: 0, 
+      movesMatch: false,
+      isIntrinsicPalette,
+      matchedPaletteId,
+      matchedPaletteSimilarity,
+    };
   } catch (error) {
     console.error('Error in similarity check:', error);
     return { isTooSimilar: false, colorSimilarity: 0, movesMatch: false };

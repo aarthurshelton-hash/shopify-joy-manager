@@ -8,7 +8,7 @@ import GameInfoDisplay from './GameInfoDisplay';
 import VerticalTimelineSlider from './VerticalTimelineSlider';
 import TimelineSlider from './TimelineSlider';
 import { SimulationResult, SquareData } from '@/lib/chess/gameSimulator';
-import { getActivePalette } from '@/lib/chess/pieceColors';
+import { getActivePalette, PaletteId } from '@/lib/chess/pieceColors';
 import { Button } from '@/components/ui/button';
 import { OrderPrintButton } from '@/components/shop/OrderPrintButton';
 import { Download, Loader2, Sun, Moon, Crown, Bookmark, Check, Film, Eye, EyeOff } from 'lucide-react';
@@ -24,6 +24,7 @@ import { useTimeline } from '@/contexts/TimelineContext';
 import { Progress } from '@/components/ui/progress';
 import { useLegendHighlight } from '@/contexts/LegendHighlightContext';
 import ColorComparisonPreview from './ColorComparisonPreview';
+import IntrinsicPaletteCard from './IntrinsicPaletteCard';
 
 interface PrintPreviewProps {
   simulation: SimulationResult;
@@ -59,6 +60,9 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
   const [similarityReason, setSimilarityReason] = useState<string | undefined>();
   const [existingColors, setExistingColors] = useState<PaletteColors | undefined>();
   const [currentColors, setCurrentColors] = useState<PaletteColors | undefined>();
+  const [isIntrinsicPalette, setIsIntrinsicPalette] = useState(false);
+  const [matchedPaletteId, setMatchedPaletteId] = useState<PaletteId | undefined>();
+  const [matchedPaletteSimilarity, setMatchedPaletteSimilarity] = useState<number | undefined>();
   const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false);
   const [boardSize, setBoardSize] = useState(320);
   const [darkMode, setDarkMode] = useState(false);
@@ -164,6 +168,9 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
     setSimilarityReason(undefined);
     setExistingColors(undefined);
     setCurrentColors(undefined);
+    setIsIntrinsicPalette(false);
+    setMatchedPaletteId(undefined);
+    setMatchedPaletteSimilarity(undefined);
   }, [simulation]);
 
   // Check if current visualization already exists or is too similar in gallery (globally)
@@ -178,6 +185,17 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
         setSimilarityReason(undefined);
         setExistingColors(undefined);
         setCurrentColors(undefined);
+        // Still check for intrinsic palette even for non-premium users
+        const activePalette = getActivePalette();
+        if (activePalette.id !== 'custom') {
+          setIsIntrinsicPalette(true);
+          setMatchedPaletteId(activePalette.id);
+          setMatchedPaletteSimilarity(100);
+        } else {
+          setIsIntrinsicPalette(false);
+          setMatchedPaletteId(undefined);
+          setMatchedPaletteSimilarity(undefined);
+        }
         return;
       }
 
@@ -218,6 +236,11 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
         setSimilarityReason(result.reason);
         setExistingColors(result.existingColors);
         
+        // Set intrinsic palette info
+        setIsIntrinsicPalette(result.isIntrinsicPalette || false);
+        setMatchedPaletteId(result.matchedPaletteId);
+        setMatchedPaletteSimilarity(result.matchedPaletteSimilarity);
+        
         // Store current colors for comparison
         const currentPaletteColors: PaletteColors = customColors || {
           white: activePalette.white,
@@ -234,6 +257,9 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
         setSimilarityReason(undefined);
         setExistingColors(undefined);
         setCurrentColors(undefined);
+        setIsIntrinsicPalette(false);
+        setMatchedPaletteId(undefined);
+        setMatchedPaletteSimilarity(undefined);
       } finally {
         setIsCheckingDuplicate(false);
       }
@@ -748,6 +774,16 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
         </div>
       )}
       
+      {/* Intrinsic Palette Badge - shown when using a featured En Pensent palette */}
+      {isIntrinsicPalette && matchedPaletteId && (
+        <div className="flex justify-center">
+          <IntrinsicPaletteCard 
+            paletteId={matchedPaletteId} 
+            similarity={matchedPaletteSimilarity}
+          />
+        </div>
+      )}
+
       {/* Action buttons */}
       <div className="flex flex-col gap-3">
         {/* Download buttons row */}
