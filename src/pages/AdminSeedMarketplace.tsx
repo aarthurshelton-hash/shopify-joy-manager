@@ -63,18 +63,30 @@ function applyCustomColorsToBoard(
 }
 
 // Generate creative titles for non-branded visions
+// First 25 are "Exemplar" editions (company development testers)
+const EXEMPLAR_TITLES = [
+  'Exemplar №001 • Genesis', 'Exemplar №002 • Prototype', 'Exemplar №003 • Blueprint',
+  'Exemplar №004 • Foundation', 'Exemplar №005 • Pioneer', 'Exemplar №006 • Alpha',
+  'Exemplar №007 • Benchmark', 'Exemplar №008 • Catalyst', 'Exemplar №009 • Origin',
+  'Exemplar №010 • Spectrum', 'Exemplar №011 • Prism', 'Exemplar №012 • Vertex',
+  'Exemplar №013 • Meridian', 'Exemplar №014 • Zenith', 'Exemplar №015 • Nexus',
+  'Exemplar №016 • Axiom', 'Exemplar №017 • Epoch', 'Exemplar №018 • Vector',
+  'Exemplar №019 • Cipher', 'Exemplar №020 • Matrix', 'Exemplar №021 • Helix',
+  'Exemplar №022 • Synthesis', 'Exemplar №023 • Thesis', 'Exemplar №024 • Opus',
+  'Exemplar №025 • Finale',
+];
+
+// Second 25 are creative community-style names
 const CREATIVE_TITLES = [
   'Sunset Clash', 'Ocean Depths', 'Earth Tones', 'Forest Canopy', 'Copper Age',
   'Midnight Purple', 'Rustic Charm', 'Steel Gray', 'Olive Grove', 'Slate Dreams',
   'Berry Burst', 'Sandy Beach', 'Wine Country', 'Mint Fresh', 'Mahogany Dreams',
   'Arctic Ice', 'Coral Reef', 'Lavender Fields', 'Bronze Medal', 'Neon Nights',
   'Autumn Leaves', 'Crystal Cave', 'Desert Dusk', 'Emerald City', 'Fire Dance',
-  'Golden Hour', 'Horizon Blue', 'Ivory Tower', 'Jade Garden', 'Karma Colors',
-  'Lunar Light', 'Mosaic Dream', 'Noble Stone', 'Opal Shine', 'Pearl Mist',
-  'Quartz Rose', 'Ruby Glow', 'Sapphire Sky', 'Topaz Trail', 'Urban Edge',
-  'Velvet Night', 'Whisper Gray', 'Xenon Flash', 'Yellow Brick', 'Zen Garden',
-  'Alpine Snow', 'Bamboo Grove', 'Citrus Burst', 'Driftwood', 'Electric Storm',
 ];
+
+// Combine: first 25 Exemplars, then 25 creative titles = 50 total
+const ALL_TITLES = [...EXEMPLAR_TITLES, ...CREATIVE_TITLES];
 
 interface SeedResult {
   title: string;
@@ -82,6 +94,36 @@ interface SeedResult {
   error?: string;
   visualizationId?: string;
   listingId?: string;
+  isExemplar?: boolean;
+}
+
+// Calculate fungible base scores - Exemplars get slightly higher initial recognition
+function calculateInitialScores(isExemplar: boolean, index: number) {
+  const baseMultiplier = isExemplar ? 1.5 : 1.0;
+  // Earlier numbered Exemplars are "rarer" - slight score boost
+  const rarityBonus = isExemplar ? Math.max(0, (25 - index) * 0.1) : 0;
+  
+  return {
+    viewCount: Math.floor((Math.random() * 15 + 3) * baseMultiplier + rarityBonus * 5),
+    hdDownloads: Math.floor((Math.random() * 3) * baseMultiplier),
+    gifDownloads: Math.floor((Math.random() * 2) * baseMultiplier),
+    // Exemplars have slight trade history (early adopter activity)
+    tradeCount: isExemplar ? Math.floor(Math.random() * 2) : 0,
+  };
+}
+
+// Calculate price tiers - Exemplars start lower but have growth potential
+function calculatePrice(isExemplar: boolean, index: number): number {
+  if (isExemplar) {
+    // Exemplars: $0.99 - $4.99 (humble beginnings, value grows with platform)
+    // Lower numbered = slightly more valuable due to rarity
+    const basePrice = 99; // $0.99
+    const indexBonus = Math.max(0, (25 - index) * 10); // Up to $2.50 bonus for low numbers
+    return basePrice + Math.floor(Math.random() * 300) + indexBonus;
+  } else {
+    // Community visions: $1.99 - $7.99
+    return 199 + Math.floor(Math.random() * 600);
+  }
 }
 
 const AdminSeedMarketplace: React.FC = () => {
@@ -97,7 +139,8 @@ const AdminSeedMarketplace: React.FC = () => {
   const generateVisualization = useCallback(async (
     game: typeof famousGames[0],
     title: string,
-    priceRange: { min: number; max: number }
+    index: number,
+    isExemplar: boolean
   ): Promise<SeedResult> => {
     try {
       // Simulate the game
@@ -141,7 +184,7 @@ const AdminSeedMarketplace: React.FC = () => {
         .from('visualizations')
         .getPublicUrl(filename);
       
-      // Prepare game_data
+      // Prepare game_data with exemplar metadata
       const gameDataJson: Json = {
         white: simulation.gameData.white,
         black: simulation.gameData.black,
@@ -157,6 +200,8 @@ const AdminSeedMarketplace: React.FC = () => {
           darkMode: false,
           currentMove: Infinity,
           customColors: customColors,
+          isExemplar: isExemplar,
+          exemplarNumber: isExemplar ? index + 1 : undefined,
         } as unknown as Json,
       };
       
@@ -175,28 +220,32 @@ const AdminSeedMarketplace: React.FC = () => {
       
       if (dbError) throw dbError;
       
-      // Create marketplace listing with random price in range
-      const priceCents = Math.floor(Math.random() * (priceRange.max - priceRange.min + 1)) + priceRange.min;
+      // Create marketplace listing with calculated price
+      const priceCents = calculatePrice(isExemplar, index);
       const { data: listingData, error: listingError } = await createListing(vizData.id, priceCents);
       
       if (listingError) throw listingError;
       
-      // Create vision score with small fungible values
-      const viewCount = Math.floor(Math.random() * 20) + 5;
-      const hdCount = Math.floor(Math.random() * 5);
-      const gifCount = Math.floor(Math.random() * 3);
+      // Create vision score with fungible initial values
+      const scores = calculateInitialScores(isExemplar, index);
       
-      await supabase.rpc('record_vision_interaction', {
-        p_visualization_id: vizData.id,
-        p_user_id: user!.id,
-        p_interaction_type: 'view',
-      });
+      // Record interactions to build the score
+      for (let v = 0; v < scores.viewCount; v++) {
+        await supabase.rpc('record_vision_interaction', {
+          p_visualization_id: vizData.id,
+          p_user_id: user!.id,
+          p_interaction_type: 'view',
+        });
+        // Small delay between interactions
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
       
       return {
         title,
         success: true,
         visualizationId: vizData.id,
         listingId: listingData?.id,
+        isExemplar,
       };
     } catch (error) {
       console.error('Failed to generate vision:', error);
@@ -204,6 +253,7 @@ const AdminSeedMarketplace: React.FC = () => {
         title,
         success: false,
         error: (error as Error).message,
+        isExemplar,
       };
     }
   }, [user]);
@@ -221,40 +271,44 @@ const AdminSeedMarketplace: React.FC = () => {
     const allResults: SeedResult[] = [];
     const gamesToUse = famousGames.slice(0, Math.min(totalCount, famousGames.length));
     
-    // Use each game multiple times if needed, with different titles
-    const expandedGames: Array<{ game: typeof famousGames[0]; title: string }> = [];
-    let titleIndex = 0;
+    // Build vision list: first half Exemplars, second half creative
+    const expandedGames: Array<{ game: typeof famousGames[0]; title: string; isExemplar: boolean }> = [];
     
-    while (expandedGames.length < totalCount && titleIndex < CREATIVE_TITLES.length) {
-      const gameIndex = expandedGames.length % gamesToUse.length;
+    for (let i = 0; i < totalCount; i++) {
+      const gameIndex = i % gamesToUse.length;
+      const isExemplar = i < 25; // First 25 are Exemplars
+      const title = ALL_TITLES[i] || `Vision ${i + 1}`;
+      
       expandedGames.push({
         game: gamesToUse[gameIndex],
-        title: CREATIVE_TITLES[titleIndex],
+        title,
+        isExemplar,
       });
-      titleIndex++;
     }
     
     for (let i = 0; i < expandedGames.length; i++) {
-      const { game, title } = expandedGames[i];
-      setCurrentItem(`${title} (${i + 1}/${expandedGames.length})`);
+      const { game, title, isExemplar } = expandedGames[i];
+      const label = isExemplar ? '🏆' : '🎨';
+      setCurrentItem(`${label} ${title} (${i + 1}/${expandedGames.length})`);
       
-      const result = await generateVisualization(game, title, { min: 199, max: 999 });
+      const result = await generateVisualization(game, title, i, isExemplar);
       allResults.push(result);
       setResults([...allResults]);
       setProgress(((i + 1) / expandedGames.length) * 100);
       
       // Small delay to prevent rate limiting
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 300));
     }
     
     setIsSeeding(false);
     
     const successCount = allResults.filter(r => r.success).length;
     const failCount = allResults.filter(r => !r.success).length;
+    const exemplarCount = allResults.filter(r => r.success && r.isExemplar).length;
     
     if (successCount > 0) {
       toast.success(`Created ${successCount} visions`, {
-        description: failCount > 0 ? `${failCount} failed` : undefined,
+        description: `${exemplarCount} Exemplars, ${successCount - exemplarCount} Creative${failCount > 0 ? ` (${failCount} failed)` : ''}`,
       });
     } else {
       toast.error('Failed to create any visions');
@@ -263,6 +317,7 @@ const AdminSeedMarketplace: React.FC = () => {
 
   const successCount = results.filter(r => r.success).length;
   const failCount = results.filter(r => !r.success).length;
+  const exemplarSuccessCount = results.filter(r => r.success && r.isExemplar).length;
 
   return (
     <div className="min-h-screen bg-background p-8">
@@ -290,8 +345,8 @@ const AdminSeedMarketplace: React.FC = () => {
                 <div>
                   <p className="font-medium text-amber-600">CEO Only</p>
                   <p className="text-sm text-muted-foreground">
-                    This will generate {totalCount} non-branded visions with random off-palette colors 
-                    and list them on the marketplace at $1.99-$9.99 each.
+                    Generates {totalCount} visions: {Math.min(25, totalCount)} Exemplar editions (numbered testers from our humble beginnings) 
+                    + {Math.max(0, totalCount - 25)} creative community visions. Exemplars: $0.99-$4.99, Creative: $1.99-$7.99.
                   </p>
                 </div>
               </div>
@@ -342,10 +397,16 @@ const AdminSeedMarketplace: React.FC = () => {
             
             {results.length > 0 && (
               <div className="space-y-4">
-                <div className="flex items-center gap-4 text-sm">
+                <div className="flex items-center gap-4 text-sm flex-wrap">
                   <span className="flex items-center gap-1 text-green-500">
                     <CheckCircle className="h-4 w-4" />
                     {successCount} successful
+                  </span>
+                  <span className="flex items-center gap-1 text-amber-500">
+                    🏆 {exemplarSuccessCount} Exemplars
+                  </span>
+                  <span className="flex items-center gap-1 text-blue-500">
+                    🎨 {successCount - exemplarSuccessCount} Creative
                   </span>
                   {failCount > 0 && (
                     <span className="flex items-center gap-1 text-red-500">
@@ -361,13 +422,16 @@ const AdminSeedMarketplace: React.FC = () => {
                       key={i}
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
-                      className={`text-sm p-2 rounded ${
+                      className={`text-sm p-2 rounded flex items-center gap-2 ${
                         result.success 
-                          ? 'bg-green-500/10 text-green-600' 
+                          ? result.isExemplar 
+                            ? 'bg-amber-500/10 text-amber-600' 
+                            : 'bg-green-500/10 text-green-600'
                           : 'bg-red-500/10 text-red-600'
                       }`}
                     >
-                      {result.success ? '✓' : '✗'} {result.title}
+                      <span>{result.success ? (result.isExemplar ? '🏆' : '🎨') : '✗'}</span>
+                      <span>{result.title}</span>
                       {result.error && (
                         <span className="text-xs ml-2 opacity-70">({result.error})</span>
                       )}
