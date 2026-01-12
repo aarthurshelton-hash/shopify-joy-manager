@@ -133,22 +133,29 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
   // Create mini visualization for mockup - supports both simulation and EnPensent data
   // CRITICAL: This must match the "trademark look" exactly - same style as main preview
   const miniVisualization = useMemo(() => {
+    const darkMode = capturedState?.darkMode || false;
+    const bgColor = darkMode ? '#0A0A0A' : '#FDFCFB';
+    const borderColor = darkMode ? '#292524' : '#e7e5e4';
+    const primaryText = darkMode ? '#e7e5e4' : '#292524';
+    const secondaryText = darkMode ? '#a8a29e' : '#78716c';
+    const mutedText = darkMode ? '#78716c' : '#a8a29e';
+    
     // If we have EnPensent data (from live games), use the trademark format
     if (enPensentData) {
-      const darkMode = capturedState?.darkMode || false;
       return (
         <div 
           style={{
-            backgroundColor: darkMode ? '#0A0A0A' : '#FDFCFB',
-            padding: 6,
+            backgroundColor: bgColor,
+            padding: 4,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            gap: 4,
+            gap: 3,
             width: 'fit-content',
+            borderRadius: 2,
           }}
         >
-          {/* Chess board with EnPensent overlay - the main visualization */}
+          {/* Chess board with EnPensent overlay */}
           <div style={{ position: 'relative', width: 76, height: 76 }}>
             {/* Base chess grid */}
             <div style={{ 
@@ -181,14 +188,13 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
             />
           </div>
           
-          {/* Trademark game info style - matching PrintPreview */}
+          {/* Trademark game info - player names */}
           <div style={{ 
             width: '100%', 
-            paddingTop: 3,
-            borderTop: `1px solid ${darkMode ? '#292524' : '#e7e5e4'}`,
+            paddingTop: 2,
+            borderTop: `1px solid ${borderColor}`,
             textAlign: 'center',
           }}>
-            {/* Player names - trademark display */}
             <div style={{ 
               display: 'flex',
               alignItems: 'center',
@@ -196,39 +202,37 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
               gap: 2,
             }}>
               <span style={{ 
-                fontSize: 5, 
-                fontWeight: 700, 
-                color: darkMode ? '#d6d3d1' : '#44403c',
+                fontSize: 4.5, 
+                fontWeight: 600, 
+                color: primaryText,
                 textTransform: 'uppercase',
-                letterSpacing: '0.03em',
+                letterSpacing: '0.02em',
                 fontFamily: "'Cinzel', 'Times New Roman', serif",
               }}>
                 {enPensentData.gameInfo.white}
               </span>
               <span style={{ 
                 fontSize: 3, 
-                color: darkMode ? '#78716c' : '#a8a29e',
+                color: secondaryText,
                 fontStyle: 'italic',
               }}>
                 vs
               </span>
               <span style={{ 
-                fontSize: 5, 
-                fontWeight: 700, 
-                color: darkMode ? '#d6d3d1' : '#44403c',
+                fontSize: 4.5, 
+                fontWeight: 600, 
+                color: primaryText,
                 textTransform: 'uppercase',
-                letterSpacing: '0.03em',
+                letterSpacing: '0.02em',
                 fontFamily: "'Cinzel', 'Times New Roman', serif",
               }}>
                 {enPensentData.gameInfo.black}
               </span>
             </div>
-            
-            {/* Event/result line */}
             <p style={{ 
-              fontSize: 3.5, 
-              color: darkMode ? '#78716c' : '#a8a29e',
-              margin: '2px 0 0 0',
+              fontSize: 3, 
+              color: mutedText,
+              margin: '1px 0 0 0',
               fontStyle: 'italic',
               fontFamily: "'Cormorant Garamond', Georgia, serif",
             }}>
@@ -237,21 +241,15 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
           </div>
           
           {/* Branding footer */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 2,
+          <p style={{ 
+            fontSize: 2.5, 
+            color: mutedText,
+            letterSpacing: '0.15em',
+            textTransform: 'uppercase',
+            margin: 0,
           }}>
-            <span style={{ 
-              fontSize: 3, 
-              color: darkMode ? '#57534e' : '#a8a29e',
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase',
-            }}>
-              ♔ En Pensent ♚
-            </span>
-          </div>
+            ♔ En Pensent ♚
+          </p>
         </div>
       );
     }
@@ -263,7 +261,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
         board={displayBoard}
         gameData={simulation.gameData}
         size={100}
-        darkMode={capturedState?.darkMode || false}
+        darkMode={darkMode}
         compact={true}
       />
     );

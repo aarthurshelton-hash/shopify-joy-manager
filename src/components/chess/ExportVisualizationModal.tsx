@@ -190,7 +190,7 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
           </Button>
         </div>
 
-        {/* Visualization Preview - The Trademark Look */}
+        {/* Visualization Preview - The Trademark Look - matches PrintPreview exactly */}
         <div className="flex justify-center py-4">
           <div 
             ref={exportRef}
@@ -229,59 +229,59 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
               />
             </div>
 
-            {/* Game Info - Trademark Style like PrintPreview */}
+            {/* Game Info - Trademark Style matching PrintPreview exactly */}
             <div className={`mt-6 pt-4 border-t ${darkMode ? 'border-stone-800' : 'border-stone-200'}`}>
-              {/* Player Names - Large, Prominent Display */}
-              <div className="text-center space-y-2">
-                <div className="flex items-center justify-center gap-3">
+              <div className="text-center max-w-md mx-auto space-y-3">
+                {/* Player Names - Cinzel inspired, elegant serif */}
+                <h1 
+                  className={`text-xl md:text-2xl font-semibold tracking-wide ${
+                    darkMode ? 'text-stone-100' : 'text-stone-800'
+                  }`}
+                  style={{ fontFamily: "'Cinzel', 'Times New Roman', serif" }}
+                >
+                  <span>{gameInfo.white}</span>
                   <span 
-                    className={`text-xl md:text-2xl font-display uppercase tracking-wide ${
-                      darkMode ? 'text-stone-100' : 'text-stone-900'
-                    }`}
-                    style={{ fontFamily: "'Cinzel', 'Times New Roman', serif" }}
+                    className={`mx-2 font-normal italic text-lg ${
+                      darkMode ? 'text-stone-500' : 'text-stone-400'
+                    }`} 
+                    style={{ fontFamily: "'Cormorant', Georgia, serif" }}
                   >
-                    {gameInfo.white}
+                    vs
                   </span>
-                  <span className={`text-xs ${darkMode ? 'text-stone-500' : 'text-stone-400'} italic`}>vs</span>
-                  <span 
-                    className={`text-xl md:text-2xl font-display uppercase tracking-wide ${
-                      darkMode ? 'text-stone-100' : 'text-stone-900'
-                    }`}
-                    style={{ fontFamily: "'Cinzel', 'Times New Roman', serif" }}
-                  >
-                    {gameInfo.black}
-                  </span>
-                </div>
+                  <span>{gameInfo.black}</span>
+                </h1>
                 
-                {/* Game Details */}
-                <p 
-                  className={`text-sm italic ${darkMode ? 'text-stone-400' : 'text-stone-500'}`}
-                  style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
+                {/* Event Name - Elegant italic serif */}
+                <h2 
+                  className={`text-sm md:text-base italic ${
+                    darkMode ? 'text-stone-400' : 'text-stone-500'
+                  }`}
+                  style={{ fontFamily: "'Cormorant', Georgia, serif" }}
                 >
                   Chess Game
-                </p>
+                </h2>
                 
+                {/* Title and Date - Clean sans-serif */}
                 <p 
-                  className={`text-xs uppercase tracking-[0.15em] ${darkMode ? 'text-stone-500' : 'text-stone-400'}`}
-                  style={{ fontFamily: "'Cinzel', 'Times New Roman', serif" }}
+                  className={`text-xs uppercase tracking-[0.15em] ${
+                    darkMode ? 'text-stone-500' : 'text-stone-400'
+                  }`}
+                  style={{ fontFamily: "'Inter', sans-serif" }}
                 >
                   {gameInfo.totalMoves} moves • {gameInfo.result || 'Game Finished'}
                 </p>
               </div>
             </div>
 
-            {/* Branding with Logo */}
-            <div className="flex items-center justify-center gap-2 mt-4">
-              <img src={enPensentLogo} alt="En Pensent" className="w-5 h-5 rounded-full opacity-70" />
-              <p 
-                className={`text-[10px] tracking-[0.3em] uppercase font-medium ${
-                  darkMode ? 'text-stone-600' : 'text-stone-400'
-                }`}
-              >
-                En Pensent
-              </p>
-              <img src={enPensentLogo} alt="" className="w-5 h-5 rounded-full opacity-70" />
-            </div>
+            {/* Subtle branding - visible in preview */}
+            <p 
+              className={`text-center mt-4 text-[10px] tracking-[0.3em] uppercase font-medium ${
+                darkMode ? 'text-stone-500' : 'text-stone-400'
+              }`}
+              style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
+            >
+              ♔ En Pensent ♚
+            </p>
           </div>
         </div>
 
