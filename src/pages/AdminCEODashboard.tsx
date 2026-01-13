@@ -29,6 +29,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AdminLocationAnalytics } from '@/components/admin/AdminLocationAnalytics';
+import { AdminSecurityAuditLog } from '@/components/admin/AdminSecurityAuditLog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
@@ -231,22 +233,30 @@ const AdminCEODashboard: React.FC = () => {
 
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="users" className="gap-2">
               <Users className="h-4 w-4" />
-              Users
+              <span className="hidden sm:inline">Users</span>
             </TabsTrigger>
             <TabsTrigger value="orders" className="gap-2">
               <ShoppingBag className="h-4 w-4" />
-              Orders
+              <span className="hidden sm:inline">Orders</span>
             </TabsTrigger>
             <TabsTrigger value="subscriptions" className="gap-2">
               <Crown className="h-4 w-4" />
-              Subscriptions
+              <span className="hidden sm:inline">Subs</span>
             </TabsTrigger>
             <TabsTrigger value="activity" className="gap-2">
               <Activity className="h-4 w-4" />
-              Activity
+              <span className="hidden sm:inline">Activity</span>
+            </TabsTrigger>
+            <TabsTrigger value="locations" className="gap-2">
+              <MapPin className="h-4 w-4" />
+              <span className="hidden sm:inline">Locations</span>
+            </TabsTrigger>
+            <TabsTrigger value="security" className="gap-2">
+              <Shield className="h-4 w-4" />
+              <span className="hidden sm:inline">Security</span>
             </TabsTrigger>
           </TabsList>
 
@@ -268,6 +278,14 @@ const AdminCEODashboard: React.FC = () => {
 
           <TabsContent value="activity">
             <AdminActivityFeed />
+          </TabsContent>
+
+          <TabsContent value="locations">
+            <AdminLocationAnalytics />
+          </TabsContent>
+
+          <TabsContent value="security">
+            <AdminSecurityAuditLog />
           </TabsContent>
         </Tabs>
 

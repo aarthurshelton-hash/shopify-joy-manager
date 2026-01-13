@@ -1105,6 +1105,51 @@ export type Database = {
           },
         ]
       }
+      security_audit_log: {
+        Row: {
+          action_category: string
+          action_type: string
+          admin_id: string | null
+          created_at: string
+          id: string
+          ip_address: string | null
+          metadata: Json | null
+          severity: string
+          target_id: string | null
+          target_type: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action_category?: string
+          action_type: string
+          admin_id?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          severity?: string
+          target_id?: string | null
+          target_type?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action_category?: string
+          action_type?: string
+          admin_id?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          severity?: string
+          target_id?: string | null
+          target_type?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       streak_rewards: {
         Row: {
           claimed_at: string
@@ -1196,6 +1241,54 @@ export type Database = {
           rating?: number
           role_title?: string
           status?: Database["public"]["Enums"]["testimonial_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_location_analytics: {
+        Row: {
+          city: string | null
+          country: string | null
+          country_code: string | null
+          created_at: string
+          id: string
+          ip_hash: string | null
+          last_seen_at: string
+          latitude: number | null
+          longitude: number | null
+          region: string | null
+          timezone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          city?: string | null
+          country?: string | null
+          country_code?: string | null
+          created_at?: string
+          id?: string
+          ip_hash?: string | null
+          last_seen_at?: string
+          latitude?: number | null
+          longitude?: number | null
+          region?: string | null
+          timezone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          city?: string | null
+          country?: string | null
+          country_code?: string | null
+          created_at?: string
+          id?: string
+          ip_hash?: string | null
+          last_seen_at?: string
+          latitude?: number | null
+          longitude?: number | null
+          region?: string | null
+          timezone?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -1729,6 +1822,21 @@ export type Database = {
       }
       is_premium_user: { Args: { p_user_id: string }; Returns: boolean }
       is_user_banned: { Args: { p_user_id: string }; Returns: boolean }
+      log_security_event: {
+        Args: {
+          p_action_category?: string
+          p_action_type: string
+          p_admin_id?: string
+          p_ip_address?: string
+          p_metadata?: Json
+          p_severity?: string
+          p_target_id?: string
+          p_target_type?: string
+          p_user_agent?: string
+          p_user_id?: string
+        }
+        Returns: string
+      }
       process_marketplace_sale: {
         Args: {
           p_buyer_id: string
