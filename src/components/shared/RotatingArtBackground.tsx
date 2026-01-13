@@ -40,23 +40,21 @@ export const RotatingArtBackground: React.FC<RotatingArtBackgroundProps> = ({
 
   return (
     <div 
-      className={`absolute inset-0 overflow-hidden ${className}`} 
-      style={{ zIndex: 0, pointerEvents: 'none' }}
+      className={`absolute inset-0 overflow-hidden pointer-events-none select-none ${className}`} 
+      style={{ zIndex: -1 }}
       aria-hidden="true"
     >
-      {/* Background image with CSS transition */}
+      {/* Background image with CSS transition - explicitly non-interactive */}
       <div
-        className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out"
+        className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out pointer-events-none"
         style={{
           backgroundImage: `url(${images[currentIndex]})`,
           opacity: isTransitioning ? 0 : opacity,
-          pointerEvents: 'none',
         }}
       />
-      {/* Gradient overlay for better text readability */}
+      {/* Gradient overlay for better text readability - explicitly non-interactive */}
       <div 
-        className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/80 to-background"
-        style={{ pointerEvents: 'none' }}
+        className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/80 to-background pointer-events-none"
       />
     </div>
   );
