@@ -4,6 +4,7 @@ import { TrendingUp, DollarSign, ShoppingBag, Flame, Loader2 } from 'lucide-reac
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
+import { trackMarketplaceClick } from '@/lib/analytics/marketplaceAnalytics';
 
 interface TrendingVision {
   id: string;
@@ -166,8 +167,15 @@ export const TrendingVisions: React.FC = () => {
               opacity: 0, 
               animation: `fadeInUp 0.3s ease-out ${index * 0.05}s forwards` 
             }}
+            onClick={() => trackMarketplaceClick({
+              click_type: 'trending_vision',
+              listing_id: vision.listingId,
+              visualization_id: vision.id,
+              section: 'trending',
+              metadata: { rank: index + 1 },
+            })}
           >
-              <Card className="overflow-hidden group hover:shadow-lg transition-all duration-300 border-orange-500/20 hover:border-orange-500/40 cursor-pointer">
+            <Card className="overflow-hidden group hover:shadow-lg transition-all duration-300 border-orange-500/20 hover:border-orange-500/40 cursor-pointer">
                 {/* Image */}
                 <div className="aspect-square relative overflow-hidden bg-muted">
                   <img
