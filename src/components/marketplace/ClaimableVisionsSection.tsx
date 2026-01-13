@@ -126,13 +126,13 @@ export const ClaimableVisionsSection: React.FC<ClaimableVisionsSectionProps> = (
                   )}
                   
                   {/* Free badge */}
-                  <Badge className="absolute top-2 right-2 bg-green-500/90 hover:bg-green-500">
+                  <Badge className="absolute top-2 right-2 bg-green-500/90 hover:bg-green-500 pointer-events-none">
                     <Gift className="h-3 w-3 mr-1" />
                     Free
                   </Badge>
 
                   {/* Transfer limit */}
-                  <div className="absolute bottom-2 left-2">
+                  <div className="absolute bottom-2 left-2 pointer-events-none">
                     <TransferLimitBadge visualizationId={vision.id} variant="compact" />
                   </div>
                 </div>
