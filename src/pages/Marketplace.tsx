@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ShoppingBag, Gift, DollarSign, Loader2, Crown, Package, Shield, Palette, Sparkles, TrendingUp, Eye } from 'lucide-react';
 import { useRandomGameArt } from '@/hooks/useRandomGameArt';
@@ -446,16 +446,16 @@ const Marketplace: React.FC = () => {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.03 }}
                     >
-                      <Card 
-                        onClick={() => navigate(`/marketplace/${listing.id}`)}
-                        className={`overflow-hidden group hover:shadow-xl transition-all duration-300 relative cursor-pointer ${
-                          hasPremiumPalette
-                            ? 'border-amber-500/50 ring-1 ring-amber-500/20 hover:ring-amber-500/40'
-                            : hasThemedPalette
-                              ? 'border-primary/30 ring-1 ring-primary/10 hover:ring-primary/30'
-                              : 'border-border/50'
-                        }`}
-                      >
+                      <Link to={`/marketplace/${listing.id}`} className="block">
+                        <Card 
+                          className={`overflow-hidden group hover:shadow-xl transition-all duration-300 relative cursor-pointer ${
+                            hasPremiumPalette
+                              ? 'border-amber-500/50 ring-1 ring-amber-500/20 hover:ring-amber-500/40'
+                              : hasThemedPalette
+                                ? 'border-primary/30 ring-1 ring-primary/10 hover:ring-primary/30'
+                                : 'border-border/50'
+                          }`}
+                        >
                         {/* Premium Shimmer Effect */}
                         {hasPremiumPalette && (
                           <div 
@@ -591,6 +591,7 @@ const Marketplace: React.FC = () => {
                           </div>
                         </CardContent>
                       </Card>
+                      </Link>
                     </motion.div>
                   );
                 })}
