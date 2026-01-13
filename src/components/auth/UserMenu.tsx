@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
-import { User, LogOut, Palette, Settings, Crown, CreditCard, Image, Gamepad2, BarChart3, History, Paintbrush, Shield, ShieldCheck, Wrench, Database, Wallet, Banknote, Scale, Gift } from 'lucide-react';
+import { User, LogOut, Palette, Settings, Crown, CreditCard, Image, Gamepad2, BarChart3, History, Paintbrush, Shield, ShieldCheck, Wrench, Database, Wallet, Banknote, Scale, Gift, LayoutDashboard } from 'lucide-react';
 import AuthModal from './AuthModal';
 import MFASetup from './MFASetup';
 import PremiumBadge from '@/components/premium/PremiumBadge';
@@ -332,6 +332,14 @@ const UserMenu: React.FC = () => {
               >
                 <BarChart3 className="h-4 w-4" />
                 CEO Economics
+                <Crown className="h-3 w-3 ml-auto" />
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => navigate('/admin/ceo-dashboard')}
+                className="gap-2 cursor-pointer text-amber-500 font-semibold"
+              >
+                <LayoutDashboard className="h-4 w-4" />
+                CEO Dashboard
                 <Crown className="h-3 w-3 ml-auto" />
               </DropdownMenuItem>
             </>
