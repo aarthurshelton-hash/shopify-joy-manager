@@ -1,11 +1,10 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ShoppingBag, Gift, DollarSign, Loader2, Crown, Package, Shield, Palette, Sparkles, TrendingUp, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ShoppingBag, Gift, DollarSign, Loader2, Crown, Package, Shield, Palette, Sparkles, TrendingUp, Eye } from 'lucide-react';
 import { useRandomGameArt } from '@/hooks/useRandomGameArt';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
@@ -24,12 +23,15 @@ import { TransferLimitBadge } from '@/components/marketplace/TransferLimitBadge'
 import EducationFundCard from '@/components/marketplace/EducationFundCard';
 import { useSessionStore } from '@/stores/sessionStore';
 import { useMarketplaceRealtime } from '@/hooks/useMarketplaceRealtime';
+import { useMarketplaceCache } from '@/hooks/useMarketplaceCache';
 import { 
   getActiveListings, 
   completePurchase,
   MarketplaceListing 
 } from '@/lib/marketplace/marketplaceApi';
 import { isPremiumPalette, extractPaletteId, isThemedPalette, getPaletteArt, getPaletteDisplayName } from '@/lib/marketplace/paletteArtMap';
+
+const ITEMS_PER_PAGE = 20;
 
 const Marketplace: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -43,16 +45,22 @@ const Marketplace: React.FC = () => {
     setCapturedTimelineState,
   } = useSessionStore();
   
+  // Infinite scroll state
   const [listings, setListings] = useState<MarketplaceListing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [totalListings, setTotalListings] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const loadingRef = useRef(false);
+  
+  // Caching
+  const cache = useMarketplaceCache();
+
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
-  
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalListings, setTotalListings] = useState(0);
-  const [hasMore, setHasMore] = useState(false);
-  const ITEMS_PER_PAGE = 50;
 
   // Filter states
   const [searchQuery, setSearchQuery] = useState('');
@@ -82,42 +90,146 @@ const Marketplace: React.FC = () => {
     }
   }, [returningFromOrder, capturedTimelineState, setReturningFromOrder, setCapturedTimelineState]);
 
-  const loadListings = useCallback(async (page = 1) => {
-    setIsLoading(true);
+  // Load initial listings with cache support
+  const loadInitialListings = useCallback(async () => {
+    // Check cache first
+    const cachedListings = cache.getAllCachedListings();
+    const cachedTotal = cache.getCachedTotalCount();
+    
+    if (cache.isCacheFresh() && cachedListings.length > 0) {
+      setListings(cachedListings);
+      setTotalListings(cachedTotal || cachedListings.length);
+      setHasMore(cachedListings.length < (cachedTotal || 0));
+      setCurrentPage(Math.ceil(cachedListings.length / ITEMS_PER_PAGE));
+      setIsLoading(false);
+      return;
+    }
+
+    // If stale but usable, show cached data while fetching
+    if (cache.isCacheStale() && cachedListings.length > 0) {
+      setListings(cachedListings);
+      setTotalListings(cachedTotal || cachedListings.length);
+      setIsLoading(false);
+    } else {
+      setIsLoading(true);
+    }
+
     const { data, total, hasMore: more, error } = await getActiveListings({ 
-      page, 
+      page: 1, 
       limit: ITEMS_PER_PAGE 
     });
+    
     if (error) {
       toast.error('Failed to load marketplace');
     } else {
       setListings(data);
       setTotalListings(total);
       setHasMore(more);
-      setCurrentPage(page);
+      setCurrentPage(1);
+      
+      // Update cache
+      cache.cacheListingsPage(1, data);
+      cache.cacheTotalCount(total);
     }
     setIsLoading(false);
-  }, []);
+  }, [cache]);
+
+  // Load more listings for infinite scroll
+  const loadMoreListings = useCallback(async () => {
+    if (!hasMore || loadingRef.current) return;
+    
+    loadingRef.current = true;
+    setIsLoadingMore(true);
+    
+    const nextPage = currentPage + 1;
+    
+    // Check cache first
+    const cachedPage = cache.getCachedPage(nextPage);
+    if (cachedPage && cachedPage.length > 0) {
+      setListings(prev => [...prev, ...cachedPage]);
+      setCurrentPage(nextPage);
+      setHasMore(listings.length + cachedPage.length < totalListings);
+      setIsLoadingMore(false);
+      loadingRef.current = false;
+      return;
+    }
+    
+    const { data, hasMore: more, error } = await getActiveListings({ 
+      page: nextPage, 
+      limit: ITEMS_PER_PAGE 
+    });
+    
+    if (error) {
+      toast.error('Failed to load more listings');
+    } else {
+      setListings(prev => [...prev, ...data]);
+      setHasMore(more);
+      setCurrentPage(nextPage);
+      
+      // Update cache
+      cache.cacheListingsPage(nextPage, data);
+    }
+    
+    setIsLoadingMore(false);
+    loadingRef.current = false;
+  }, [currentPage, hasMore, listings.length, totalListings, cache]);
+
+  // Set up intersection observer for infinite scroll
+  useEffect(() => {
+    if (observerRef.current) {
+      observerRef.current.disconnect();
+    }
+
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isLoading && !isLoadingMore) {
+          loadMoreListings();
+        }
+      },
+      { rootMargin: '300px', threshold: 0.1 }
+    );
+
+    if (sentinelRef.current) {
+      observerRef.current.observe(sentinelRef.current);
+    }
+
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+      }
+    };
+  }, [hasMore, isLoading, isLoadingMore, loadMoreListings]);
 
   // Real-time updates for marketplace listings
   useMarketplaceRealtime({
     onListingChange: (payload) => {
-      // Refresh listings when any listing changes
-      if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE' || payload.eventType === 'DELETE') {
-        loadListings(currentPage);
+      if (payload.eventType === 'INSERT') {
+        // Prepend new listing
+        loadInitialListings();
+      } else if (payload.eventType === 'UPDATE') {
+        // Update existing listing in cache and state
+        const updated = payload.new as MarketplaceListing;
+        cache.updateCachedListing(updated.id, updated);
+        setListings(prev => prev.map(l => l.id === updated.id ? { ...l, ...updated } : l));
+      } else if (payload.eventType === 'DELETE') {
+        // Remove from cache and state
+        const deleted = payload.old as { id: string };
+        cache.invalidateListing(deleted.id);
+        setListings(prev => prev.filter(l => l.id !== deleted.id));
       }
     },
     enabled: true,
   });
 
   useEffect(() => {
-    loadListings(1);
-  }, [loadListings]);
+    loadInitialListings();
+  }, [loadInitialListings]);
 
-  const handlePageChange = (page: number) => {
-    loadListings(page);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  // Refresh listings helper
+  const refreshListings = useCallback(() => {
+    cache.clearCache();
+    loadInitialListings();
+  }, [cache, loadInitialListings]);
 
   // Handle successful purchase redirect
   useEffect(() => {
@@ -201,7 +313,7 @@ const Marketplace: React.FC = () => {
           onClick: () => navigate(`/my-vision/${visualizationId}`),
         } : undefined,
       });
-      loadListings();
+      refreshListings();
       // Clear URL params
       navigate('/marketplace', { replace: true });
     }
@@ -279,7 +391,7 @@ const Marketplace: React.FC = () => {
           {/* Browse Tab */}
           <TabsContent value="browse" className="space-y-6">
             {/* Claimable Visions Section */}
-            <ClaimableVisionsSection onClaim={loadListings} />
+            <ClaimableVisionsSection onClaim={refreshListings} />
 
             {/* Trending Visions by Royalty Activity */}
             <TrendingVisions />
@@ -485,33 +597,25 @@ const Marketplace: React.FC = () => {
               </div>
             )}
 
-            {/* Pagination Controls */}
-            {!isLoading && totalListings > ITEMS_PER_PAGE && (
-              <div className="flex items-center justify-center gap-4 mt-8">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePageChange(currentPage - 1)}
-                  disabled={currentPage === 1}
-                  className="gap-1"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  Previous
-                </Button>
-                <div className="text-sm text-muted-foreground">
-                  Page {currentPage} of {Math.ceil(totalListings / ITEMS_PER_PAGE)}
-                  <span className="hidden sm:inline ml-2">({totalListings} total)</span>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={!hasMore}
-                  className="gap-1"
-                >
-                  Next
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
+            {/* Infinite Scroll Sentinel */}
+            {hasMore && (
+              <div 
+                ref={sentinelRef}
+                className="flex items-center justify-center py-8"
+              >
+                {isLoadingMore && (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <span className="text-sm">Loading more visions...</span>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* End of listings indicator */}
+            {!hasMore && listings.length > 0 && (
+              <div className="text-center py-8 text-muted-foreground text-sm">
+                You've seen all {totalListings} visions
               </div>
             )}
           </TabsContent>
@@ -519,7 +623,7 @@ const Marketplace: React.FC = () => {
           {/* My Listings Tab */}
           {user && (
             <TabsContent value="my-listings">
-              <MyListingsSection userId={user.id} onListingChange={() => loadListings(currentPage)} />
+              <MyListingsSection userId={user.id} onListingChange={refreshListings} />
             </TabsContent>
           )}
 

@@ -25,6 +25,7 @@ import MarketplaceVisionDetail from "./pages/MarketplaceVisionDetail";
 import AdminSeedMarketplace from "./pages/AdminSeedMarketplace";
 import PaletteAdminPage from "./components/admin/PaletteAdminPage";
 import AdminModeration from "./pages/AdminModeration";
+import AdminEconomics from "./pages/AdminEconomics";
 import Account from "./pages/Account";
 import BookGenerator from "./pages/BookGenerator";
 import EducationFund from "./pages/EducationFund";
@@ -72,6 +73,7 @@ const App = () => (
             <Route path="/admin/seed-marketplace" element={<AdminSeedMarketplace />} />
             <Route path="/admin/palettes" element={<PaletteAdminPage />} />
             <Route path="/admin/moderation" element={<AdminModeration />} />
+            <Route path="/admin/economics" element={<AdminEconomics />} />
             <Route path="/admin/withdrawals" element={<AdminWithdrawals />} />
             <Route path="/admin/dmca" element={<AdminDMCA />} />
             <Route path="/admin/watermark-verification" element={<AdminWatermarkVerification />} />
