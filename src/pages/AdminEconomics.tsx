@@ -677,7 +677,7 @@ const AdminEconomics: React.FC = () => {
                     </div>
                     
                     <div className="p-4 rounded-lg border border-primary/20 bg-primary/5">
-                      <p className="text-sm font-medium mb-3">Value Appreciation Distribution (20%)</p>
+                      <p className="text-sm font-medium mb-3">Value Appreciation Distribution (20% of Profit)</p>
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Creator Royalty (40%)</span>
@@ -685,15 +685,15 @@ const AdminEconomics: React.FC = () => {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Education Fund (25%)</span>
-                          <span>{formatCents(Math.floor((platformStats?.interactions.totalPrintRevenue || 0) * 0.20 * 0.25))}</span>
+                          <span>{formatCents(Math.floor((platformStats?.revenue.creatorPayouts || 0) * 0.625))}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Palette Pool (20%)</span>
-                          <span>{formatCents(Math.floor((platformStats?.interactions.totalPrintRevenue || 0) * 0.20 * 0.20))}</span>
+                          <span>{formatCents(Math.floor((platformStats?.revenue.creatorPayouts || 0) * 0.50))}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Gamecard Pool (15%)</span>
-                          <span>{formatCents(Math.floor((platformStats?.interactions.totalPrintRevenue || 0) * 0.20 * 0.15))}</span>
+                          <span>{formatCents(Math.floor((platformStats?.revenue.creatorPayouts || 0) * 0.375))}</span>
                         </div>
                       </div>
                     </div>
@@ -893,7 +893,7 @@ const AdminEconomics: React.FC = () => {
                   <div>
                     <h4 className="font-semibold mb-2">How It Works</h4>
                     <p className="text-sm text-muted-foreground mb-4">
-                      When visions are engaged with (prints ordered, downloads, trades), 20% of the revenue 
+                      When visions are engaged with (prints ordered, downloads, trades), 20% of the <strong>profit</strong> (not revenue) 
                       goes to value appreciation. This 20% is then distributed:
                     </p>
                     <ul className="space-y-2 text-sm">
@@ -1097,11 +1097,11 @@ const AdminEconomics: React.FC = () => {
                   <div className="p-4 rounded-lg border">
                     <h4 className="font-semibold mb-2">Print Orders</h4>
                     <p className="text-sm text-muted-foreground mb-2">
-                      From the 20% value appreciation pool:
+                      From the 20% profit appreciation pool:
                     </p>
                     <ul className="text-sm space-y-1">
                       <li>• 25% of value appreciation → Education Fund</li>
-                      <li>• Automatic distribution on each order</li>
+                      <li>• Based on profit, not revenue</li>
                     </ul>
                   </div>
                   

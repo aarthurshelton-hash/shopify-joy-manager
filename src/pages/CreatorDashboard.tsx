@@ -534,9 +534,9 @@ const CreatorDashboard: React.FC = () => {
                     <div className="w-10 h-10 mx-auto rounded-full bg-green-500/10 flex items-center justify-center mb-3">
                       <DollarSign className="h-5 w-5 text-green-500" />
                     </div>
-                    <h4 className="font-medium mb-1">3. Build {valueAppreciationPercent}% Value</h4>
+                    <h4 className="font-medium mb-1">3. Build {valueAppreciationPercent}% Profit Value</h4>
                     <p className="text-xs text-muted-foreground">
-                      Print orders add value to your holdings, sell on marketplace
+                      Print order profits add value to your holdings, sell on marketplace
                     </p>
                   </div>
                 </div>

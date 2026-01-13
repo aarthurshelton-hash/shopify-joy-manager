@@ -53,11 +53,11 @@ export const RoyaltyEarningsCard: React.FC<RoyaltyEarningsCardProps> = ({
                 <ul className="text-xs space-y-1.5 text-muted-foreground">
                   <li className="flex items-start gap-1.5">
                     <Sparkles className="h-3 w-3 text-primary mt-0.5 shrink-0" />
-                    <span><strong className="text-foreground">{valueAppreciationPercent}%</strong> of print revenue adds to your vision's value</span>
+                    <span><strong className="text-foreground">{valueAppreciationPercent}%</strong> of order <em>profit</em> adds to your vision's value</span>
                   </li>
                   <li className="flex items-start gap-1.5">
                     <Building2 className="h-3 w-3 text-muted-foreground mt-0.5 shrink-0" />
-                    <span>{platformSharePercent}% covers printing, fulfillment & operations</span>
+                    <span>{platformSharePercent}% of profit covers printing, fulfillment & operations</span>
                   </li>
                   <li className="flex items-start gap-1.5">
                     <ArrowRightLeft className="h-3 w-3 text-green-500 mt-0.5 shrink-0" />
@@ -110,11 +110,11 @@ export const RoyaltyEarningsCard: React.FC<RoyaltyEarningsCardProps> = ({
               <span className="font-medium">{printOrderCount}</span>
             </div>
             <div className="flex justify-between mt-1">
-              <span>Value added ({valueAppreciationPercent}%):</span>
+              <span>Value added ({valueAppreciationPercent}% of profit):</span>
               <span className="font-medium text-primary">+${valueDollars.toFixed(2)}</span>
             </div>
             <div className="flex justify-between mt-1 opacity-60">
-              <span>Platform & fulfillment ({platformSharePercent}%):</span>
+              <span>Platform & fulfillment ({platformSharePercent}% of profit):</span>
               <span className="font-medium">${(totalRevenueDollars - valueDollars).toFixed(2)}</span>
             </div>
           </div>
@@ -124,7 +124,7 @@ export const RoyaltyEarningsCard: React.FC<RoyaltyEarningsCardProps> = ({
           <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
             <p className="text-xs text-muted-foreground">
               <strong className="text-foreground">Grow value:</strong> When others order prints, 
-              {valueAppreciationPercent}% of revenue adds to this vision's value. Sell on the marketplace 
+              {valueAppreciationPercent}% of order <em>profit</em> adds to this vision's value. Sell on the marketplace 
               to realize gains.
             </p>
           </div>
