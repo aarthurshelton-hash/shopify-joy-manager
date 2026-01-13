@@ -359,7 +359,7 @@ const Index = () => {
                   backfaceVisibility: 'hidden',
                 }}
               />
-              <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/60 to-background" />
+              <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/60 to-background pointer-events-none" />
               
               {/* Floating Chess Particles */}
               <ChessParticles />

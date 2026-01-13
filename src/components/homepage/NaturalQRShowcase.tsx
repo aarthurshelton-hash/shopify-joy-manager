@@ -59,7 +59,7 @@ export const NaturalQRShowcase = forwardRef<HTMLElement, Record<string, never>>(
   return (
     <section ref={ref} className="relative py-16 md:py-24 overflow-hidden">
       {/* Background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-background to-background" />
+      <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-background to-background pointer-events-none" />
       
       <div className="relative container mx-auto px-4">
         <div className="max-w-6xl mx-auto">
