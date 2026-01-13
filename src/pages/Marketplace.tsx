@@ -32,6 +32,7 @@ import {
 } from '@/lib/marketplace/marketplaceApi';
 import { trackMarketplaceClick } from '@/lib/analytics/marketplaceAnalytics';
 import { isPremiumPalette, extractPaletteId, isThemedPalette, getPaletteArt, getPaletteDisplayName } from '@/lib/marketplace/paletteArtMap';
+import { supabase } from '@/integrations/supabase/client';
 
 const ITEMS_PER_PAGE = 20;
 
@@ -74,6 +75,7 @@ const Marketplace: React.FC = () => {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [totalListings, setTotalListings] = useState(0);
+  const [totalMarketVisions, setTotalMarketVisions] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -112,6 +114,20 @@ const Marketplace: React.FC = () => {
       setCapturedTimelineState(null);
     }
   }, [returningFromOrder, capturedTimelineState, setReturningFromOrder, setCapturedTimelineState]);
+
+  // Fetch total market visions (including private)
+  useEffect(() => {
+    const fetchTotalVisions = async () => {
+      const { count, error } = await supabase
+        .from('saved_visualizations')
+        .select('*', { count: 'exact', head: true });
+      
+      if (!error && count !== null) {
+        setTotalMarketVisions(count);
+      }
+    };
+    fetchTotalVisions();
+  }, []);
 
   // Load initial listings with cache support
   const loadInitialListings = useCallback(async () => {
@@ -434,6 +450,7 @@ const Marketplace: React.FC = () => {
               showGenesisOnly={showGenesisOnly}
               onGenesisToggle={setShowGenesisOnly}
               totalResults={filteredListings.length}
+              totalMarketVisions={totalMarketVisions}
             />
 
             {/* Listings Grid */}

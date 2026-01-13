@@ -32,6 +32,7 @@ interface MarketplaceFiltersProps {
   showGenesisOnly: boolean;
   onGenesisToggle: (show: boolean) => void;
   totalResults: number;
+  totalMarketVisions?: number;
 }
 
 export const MarketplaceFilters: React.FC<MarketplaceFiltersProps> = ({
@@ -44,6 +45,7 @@ export const MarketplaceFilters: React.FC<MarketplaceFiltersProps> = ({
   showGenesisOnly,
   onGenesisToggle,
   totalResults,
+  totalMarketVisions,
 }) => {
   const gameArtImages = useRandomGameArt(2);
   
@@ -145,9 +147,16 @@ export const MarketplaceFilters: React.FC<MarketplaceFiltersProps> = ({
         ))}
         
         {/* Results count */}
-        <Badge variant="secondary" className="ml-auto backdrop-blur-sm">
-          {totalResults} {totalResults === 1 ? 'vision' : 'visions'}
-        </Badge>
+        <div className="ml-auto flex items-center gap-2">
+          {totalMarketVisions !== undefined && totalMarketVisions > 0 && (
+            <Badge variant="outline" className="backdrop-blur-sm bg-primary/10 border-primary/30 text-primary">
+              {totalMarketVisions.toLocaleString()} total visions
+            </Badge>
+          )}
+          <Badge variant="secondary" className="backdrop-blur-sm">
+            {totalResults} {totalResults === 1 ? 'listed' : 'listed'}
+          </Badge>
+        </div>
       </div>
     </div>
   );
