@@ -30,6 +30,7 @@ import BookGenerator from "./pages/BookGenerator";
 import EducationFund from "./pages/EducationFund";
 import CreatorDashboard from "./pages/CreatorDashboard";
 import AdminWithdrawals from "./pages/AdminWithdrawals";
+import AdminDMCA from "./pages/AdminDMCA";
 import VisionScannerPage from "./pages/VisionScannerPage";
 import TermsOfService from "./pages/TermsOfService";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
@@ -68,6 +69,7 @@ const App = () => (
             <Route path="/admin/palettes" element={<PaletteAdminPage />} />
             <Route path="/admin/moderation" element={<AdminModeration />} />
             <Route path="/admin/withdrawals" element={<AdminWithdrawals />} />
+            <Route path="/admin/dmca" element={<AdminDMCA />} />
             <Route path="/account" element={<Account />} />
             <Route path="/book" element={<BookGenerator />} />
             <Route path="/education-fund" element={<EducationFund />} />
