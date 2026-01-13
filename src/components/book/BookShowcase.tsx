@@ -693,38 +693,80 @@ export const BookShowcase: React.FC<BookShowcaseProps> = ({
   if (variant === 'compact') {
     return (
       <>
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.95 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          viewport={{ once: true }}
-          className="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200"
+        <div 
+          className="relative flex items-center gap-5 p-5 rounded-2xl border border-amber-500/30 bg-gradient-to-r from-slate-900/95 via-slate-800/95 to-slate-900/95 backdrop-blur-sm overflow-hidden shadow-xl shadow-amber-900/20"
+          style={{ isolation: 'isolate' }}
         >
-          <button onClick={() => setShowPreview(true)} className="flex-shrink-0 hover:scale-105 transition-transform">
-            <img 
-              src={carlsenCover} 
-              alt="Carlsen in Color"
-              className="w-20 h-auto rounded-lg shadow-md"
-            />
-          </button>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <h4 className="font-serif font-bold text-foreground truncate">Carlsen in Color</h4>
-              <Badge className="bg-amber-500 text-white text-xs">NEW</Badge>
+          {/* Subtle gold accent line */}
+          <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-amber-500/60 to-transparent" />
+          
+          {/* Faded art background - pointer-events-none */}
+          <div 
+            className="absolute inset-0 bg-cover bg-center opacity-[0.08] pointer-events-none"
+            style={{ backgroundImage: `url(${kasparovImmortal})` }}
+            aria-hidden="true"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-900/90 via-slate-800/80 to-slate-900/90 pointer-events-none" aria-hidden="true" />
+          
+          {/* Book cover - clickable */}
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowPreview(true);
+            }} 
+            className="relative z-10 flex-shrink-0 group"
+          >
+            <div className="relative">
+              <img 
+                src={carlsenCover} 
+                alt="Carlsen in Color"
+                className="w-24 h-auto rounded-lg shadow-xl shadow-amber-900/30 transition-transform duration-300 group-hover:scale-105 group-hover:-rotate-1"
+              />
+              {/* Gilded edge effect */}
+              <div className="absolute -right-0.5 top-1 bottom-1 w-1 bg-gradient-to-b from-amber-400 via-amber-500 to-amber-600 rounded-r opacity-80" />
             </div>
-            <p className="text-sm text-muted-foreground">100 Masterpieces • From $79.99</p>
+          </button>
+          
+          {/* Content - positioned above background */}
+          <div className="relative z-10 flex-1 min-w-0 space-y-1">
+            <div className="flex items-center gap-3">
+              <h4 className="font-serif text-lg font-bold text-amber-50 tracking-wide">Carlsen in Color</h4>
+              <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-bold px-2 py-0.5 shadow-lg shadow-amber-500/30">
+                NEW
+              </Badge>
+            </div>
+            <p className="text-sm text-slate-300 font-medium">100 Masterpieces • From $79.99</p>
+            <p className="text-xs text-slate-400 hidden sm:block">Premium hardcover with unique haiku poetry</p>
           </div>
+          
+          {/* CTA buttons - positioned above background */}
           {showCTA && (
-            <div className="flex gap-2 flex-shrink-0">
-              <Button size="sm" variant="ghost" onClick={() => setShowPreview(true)} className="text-amber-700">
-                <Eye className="w-3 h-3" />
+            <div className="relative z-10 flex gap-3 flex-shrink-0">
+              <Button 
+                size="sm" 
+                variant="ghost" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowPreview(true);
+                }} 
+                className="text-amber-400 hover:text-amber-300 hover:bg-amber-500/10"
+              >
+                <Eye className="w-4 h-4" />
               </Button>
-              <Button size="sm" variant="outline" onClick={() => setShowPreview(true)}>
-                <ExternalLink className="w-3 h-3 mr-1" />
+              <Button 
+                size="sm" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowPreview(true);
+                }}
+                className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white shadow-lg shadow-amber-600/30 gap-1.5"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
                 Order
               </Button>
             </div>
           )}
-        </motion.div>
+        </div>
         {previewModalContent}
       </>
     );
