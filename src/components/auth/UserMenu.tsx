@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -157,7 +158,9 @@ const UserMenu: React.FC = () => {
             <PremiumBadge showText={false} />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56 bg-card border-border z-50">
+        <DropdownMenuContent align="end" className="w-56 bg-card border-border z-50 p-0">
+          <ScrollArea className="max-h-[70vh]">
+            <div className="p-1">
           <div className="px-3 py-2">
             <div className="flex items-center gap-2">
               <Avatar className="h-8 w-8 border border-border">
@@ -396,6 +399,8 @@ const UserMenu: React.FC = () => {
             <LogOut className="h-4 w-4" />
             Sign Out
           </DropdownMenuItem>
+            </div>
+          </ScrollArea>
         </DropdownMenuContent>
       </DropdownMenu>
 
