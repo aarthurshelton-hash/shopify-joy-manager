@@ -197,12 +197,16 @@ const OfferNegotiationCard: React.FC<OfferNegotiationCardProps> = ({
   const pendingOffers = offers.filter(o => o.status === 'pending');
   const hasActiveOfferFromUser = pendingOffers.some(o => o.buyer_id === currentUserId);
 
+  // Calculate fee preview
+  const previewFee = offerAmount ? Math.floor(parseFloat(offerAmount) * 100 * 0.05) : 0;
+  const previewSellerReceives = offerAmount ? Math.floor(parseFloat(offerAmount) * 100 * 0.95) : 0;
+
   return (
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center gap-2">
           <MessageSquare className="h-5 w-5" />
-          Make an Offer
+          Negotiate with Credits
           {pendingOffers.length > 0 && (
             <Badge variant="secondary" className="ml-auto">
               {pendingOffers.length} pending
@@ -211,9 +215,20 @@ const OfferNegotiationCard: React.FC<OfferNegotiationCardProps> = ({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Fee Disclosure */}
+        <div className="text-xs bg-muted/50 p-3 rounded-lg space-y-1">
+          <p className="font-medium">Trade Fee Structure:</p>
+          <p className="text-muted-foreground">
+            • <strong>Credit trades:</strong> 5% platform fee (seller receives 95%)
+          </p>
+          <p className="text-muted-foreground">
+            • <strong>Gifts:</strong> No fees — recipient gets full value
+          </p>
+        </div>
+
         {/* Wallet Balance Display */}
-        <div className="flex items-center justify-between text-sm bg-muted/50 p-3 rounded-lg">
-          <span className="text-muted-foreground">Your Wallet Balance</span>
+        <div className="flex items-center justify-between text-sm bg-primary/5 p-3 rounded-lg border border-primary/20">
+          <span className="text-muted-foreground">Your Platform Credits</span>
           <span className="font-bold text-primary">{formatBalance(walletBalance)}</span>
         </div>
 
@@ -249,8 +264,23 @@ const OfferNegotiationCard: React.FC<OfferNegotiationCardProps> = ({
               rows={2}
               className="resize-none"
             />
+            
+            {/* Live fee preview */}
+            {offerAmount && parseFloat(offerAmount) > 0 && (
+              <div className="text-xs bg-muted/30 p-2 rounded space-y-0.5">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Seller receives (95%):</span>
+                  <span className="font-medium">${(previewSellerReceives / 100).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Platform fee (5%):</span>
+                  <span className="text-muted-foreground">${(previewFee / 100).toFixed(2)}</span>
+                </div>
+              </div>
+            )}
+            
             <p className="text-xs text-muted-foreground">
-              Listing price: {formatOffer(listingPriceCents)} • Offers expire in 48 hours
+              Listing price: {formatOffer(listingPriceCents)} • Offers expire in 48 hours • 5% fee on trades
             </p>
           </div>
         )}

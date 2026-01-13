@@ -307,7 +307,7 @@ const CreatorDashboard: React.FC = () => {
                 </CardContent>
               </Card>
 
-              {/* Payout Status */}
+              {/* Value Realization */}
               <Card className="relative overflow-hidden">
                 {backgroundImages[1] && (
                   <div 
@@ -318,40 +318,52 @@ const CreatorDashboard: React.FC = () => {
                 <div className="absolute inset-0 bg-gradient-to-br from-background/90 to-background/95" />
                 <CardHeader className="relative z-10">
                   <CardTitle className="flex items-center gap-2">
-                    <Wallet className="h-5 w-5 text-green-500" />
-                    Payout Status
+                    <Gift className="h-5 w-5 text-green-500" />
+                    Realize Your Value
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="relative z-10 space-y-4">
                   <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/30">
-                    <p className="text-sm text-muted-foreground">Pending Payout</p>
+                    <p className="text-sm text-muted-foreground">Accrued Vision Value</p>
                     <p className="text-2xl font-bold text-green-500">${pendingPayout.toFixed(2)}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Transfer to another member to realize gains
+                    </p>
                   </div>
                   
-                  <div className="flex items-center gap-3 p-3 rounded-lg bg-background/50 border border-border/50">
-                    <Calendar className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm font-medium">Next Payout</p>
-                      <p className="text-xs text-muted-foreground">
-                        {nextPayoutDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-                      </p>
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-primary">How to realize value:</p>
+                    <div className="flex items-start gap-2 text-sm">
+                      <DollarSign className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-medium">Sell</span>
+                        <span className="text-muted-foreground"> — 5% platform fee, you receive 95%</span>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2 text-sm">
+                      <Sparkles className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-medium">Trade</span>
+                        <span className="text-muted-foreground"> — 5% fee when credits involved</span>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2 text-sm">
+                      <Gift className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-medium">Gift</span>
+                        <span className="text-muted-foreground"> — No fees, recipient gets full value</span>
+                      </div>
                     </div>
                   </div>
                   
                   <Separator />
                   
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm">
-                      <CheckCircle2 className="h-4 w-4 text-green-500" />
-                      <span>Automatic monthly payouts</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm">
-                      <CheckCircle2 className="h-4 w-4 text-green-500" />
-                      <span>No minimum threshold</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Clock className="h-4 w-4" />
-                      <span>PayPal & bank transfer</span>
+                  <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
+                    <div className="flex items-start gap-2 text-xs">
+                      <AlertCircle className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                      <p className="text-muted-foreground">
+                        <strong className="text-foreground">No automatic payouts.</strong> Your vision's value grows from print orders. Transfer ownership to convert value to credits.
+                      </p>
                     </div>
                   </div>
                 </CardContent>
