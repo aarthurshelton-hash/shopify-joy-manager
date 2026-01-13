@@ -6,7 +6,7 @@
 
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Shield, AlertTriangle, FileWarning, Send, CheckCircle, Scale, Mail } from 'lucide-react';
+import { ArrowLeft, Shield, AlertTriangle, FileWarning, Send, CheckCircle, Scale, Mail, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -458,27 +458,50 @@ const DMCA = () => {
           </CardContent>
         </Card>
 
-        {/* Counter-Notification Section */}
-        <Card className="mt-8 border-primary/20 bg-primary/5">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Scale className="w-5 h-5" />
-              Content Wrongly Removed?
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground space-y-3">
-            <p>
-              If you believe your content was removed due to a mistake or misidentification, 
-              you may file a DMCA counter-notification.
-            </p>
-            <Link to="/dmca/counter-notification">
-              <Button variant="outline" className="gap-2">
-                <Scale className="w-4 h-4" />
-                File Counter-Notification
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
+        {/* Status Tracking & Counter-Notification */}
+        <div className="grid md:grid-cols-2 gap-6 mt-8">
+          <Card className="border-primary/20 bg-primary/5">
+            <CardContent className="py-6">
+              <div className="flex items-center gap-3 mb-3">
+                <Clock className="w-6 h-6 text-primary" />
+                <div>
+                  <h3 className="font-medium">Track Your Reports</h3>
+                  <p className="text-sm text-muted-foreground">Check the status of your submissions</p>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground mb-4">
+                View the progress of your DMCA reports and counter-notifications in real-time.
+              </p>
+              <Link to="/dmca/status">
+                <Button variant="outline" className="gap-2 w-full">
+                  <Clock className="w-4 h-4" />
+                  View Status
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+
+          <Card className="border-primary/20 bg-primary/5">
+            <CardContent className="py-6">
+              <div className="flex items-center gap-3 mb-3">
+                <Scale className="w-6 h-6 text-primary" />
+                <div>
+                  <h3 className="font-medium">Content Wrongly Removed?</h3>
+                  <p className="text-sm text-muted-foreground">File a counter-notification</p>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground mb-4">
+                If you believe your content was removed due to a mistake or misidentification.
+              </p>
+              <Link to="/dmca/counter-notification">
+                <Button variant="outline" className="gap-2 w-full">
+                  <Scale className="w-4 h-4" />
+                  File Counter-Notification
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Designated Agent */}
         <Card className="mt-8">
