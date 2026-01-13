@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Scan, Camera, Fingerprint, Link2, Sparkles, TrendingUp, Users, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { VisionScanner } from "@/components/scanner/VisionScanner";
+import { useNavigate } from "react-router-dom";
 
 // Sample visualization patterns for the demo
 const samplePatterns = [
@@ -36,7 +36,7 @@ const samplePatterns = [
 ];
 
 export function NaturalQRShowcase() {
-  const [scannerOpen, setScannerOpen] = useState(false);
+  const navigate = useNavigate();
   const [demoStep, setDemoStep] = useState(0);
 
   // Animate through demo steps
@@ -83,7 +83,7 @@ export function NaturalQRShowcase() {
               transition={{ delay: 0.1 }}
               className="text-3xl md:text-5xl font-royal font-bold uppercase tracking-wide mb-4"
             >
-              Natural QR Vision™
+              Natural Vision™
             </motion.h2>
             
             <motion.p
@@ -230,14 +230,14 @@ export function NaturalQRShowcase() {
                 </div>
               </div>
 
-              {/* CTA Button */}
+              {/* CTA Button - Navigate to dedicated page */}
               <Button
                 size="lg"
                 className="w-full gap-2 text-lg py-6"
-                onClick={() => setScannerOpen(true)}
+                onClick={() => navigate('/vision-scanner')}
               >
                 <Scan className="h-5 w-5" />
-                Try Vision Scanner
+                Try Natural Vision Scanner
               </Button>
               
               <p className="text-center text-xs text-muted-foreground">
@@ -247,8 +247,6 @@ export function NaturalQRShowcase() {
           </div>
         </div>
       </div>
-
-      <VisionScanner isOpen={scannerOpen} onClose={() => setScannerOpen(false)} />
     </section>
   );
 }

@@ -1,9 +1,8 @@
-import { useState } from "react";
 import { motion } from "framer-motion";
 import { Scan } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { VisionScanner } from "./VisionScanner";
+import { useNavigate } from "react-router-dom";
 
 interface VisionScannerButtonProps {
   variant?: "default" | "outline" | "ghost" | "secondary";
@@ -18,32 +17,28 @@ export function VisionScannerButton({
   className = "",
   showLabel = true 
 }: VisionScannerButtonProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const navigate = useNavigate();
 
   return (
-    <>
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-              <Button
-                variant={variant}
-                size={size}
-                className={className}
-                onClick={() => setIsOpen(true)}
-              >
-                <Scan className={showLabel ? "h-4 w-4 mr-2" : "h-4 w-4"} />
-                {showLabel && "Scan Vision"}
-              </Button>
-            </motion.div>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Scan any En Pensent visualization to find its page</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-
-      <VisionScanner isOpen={isOpen} onClose={() => setIsOpen(false)} />
-    </>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+            <Button
+              variant={variant}
+              size={size}
+              className={className}
+              onClick={() => navigate('/vision-scanner')}
+            >
+              <Scan className={showLabel ? "h-4 w-4 mr-2" : "h-4 w-4"} />
+              {showLabel && "Scan Vision"}
+            </Button>
+          </motion.div>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>Scan any En Pensent visualization to find its page</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }

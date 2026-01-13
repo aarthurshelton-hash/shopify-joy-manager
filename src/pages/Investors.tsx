@@ -696,10 +696,10 @@ const Investors = () => {
                   </p>
                 </div>
 
-                {/* Natural QR Vision - Flagship Innovation */}
+                {/* Natural Vision - Flagship Innovation */}
                 <div className="p-4 rounded-lg bg-gradient-to-br from-primary/10 to-amber-500/5 border-2 border-primary/30 space-y-3">
                   <div className="flex items-center gap-2">
-                    <h3 className="font-display font-bold uppercase tracking-wide text-primary">Natural QR Vision™</h3>
+                    <h3 className="font-display font-bold uppercase tracking-wide text-primary">Natural Vision™</h3>
                     <span className="px-2 py-0.5 text-xs bg-amber-500/20 text-amber-600 rounded-full font-display">Innovation</span>
                   </div>
                   <p className="text-sm text-muted-foreground font-serif">
@@ -746,7 +746,7 @@ const Investors = () => {
                 <div className="p-4 rounded-lg bg-primary/5 border border-primary/20 space-y-2">
                   <h3 className="font-display font-bold uppercase tracking-wide text-primary">Competitive Moat</h3>
                   <p className="text-sm text-muted-foreground font-serif">
-                    No existing product combines chess analysis with personalized art at this level. Our Natural QR Vision™ technology creates a unique physical-to-digital bridge—each visualization is both fine art and a functional data gateway. This positions En Pensent as the only platform where art literally stores and retrieves its own history.
+                    No existing product combines chess analysis with personalized art at this level. Our Natural Vision™ technology creates a unique physical-to-digital bridge—each visualization is both fine art and a functional data gateway. This positions En Pensent as the only platform where art literally stores and retrieves its own history.
                   </p>
                 </div>
               </div>
