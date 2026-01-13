@@ -50,6 +50,8 @@ export const ClaimableVisionsSection: React.FC<ClaimableVisionsSectionProps> = (
       section: 'claimable_visions',
       metadata: { is_premium: isPremium },
     });
+    // Navigate to vision detail for full interactive experience
+    navigate(`/my-vision/${visionId}`);
   };
 
   const handleClaim = async (visionId: string, title: string) => {
