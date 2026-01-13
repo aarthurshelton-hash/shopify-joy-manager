@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { ShoppingBag, Gift, DollarSign, Loader2, Crown, Package, Shield, Palette, Sparkles, TrendingUp, Eye } from 'lucide-react';
 import { useRandomGameArt } from '@/hooks/useRandomGameArt';
 import { Card, CardContent } from '@/components/ui/card';
@@ -440,13 +439,15 @@ const Marketplace: React.FC = () => {
                   const backgroundImage = paletteArt || gameArtImages[index % gameArtImages.length];
 
                   return (
-                    <motion.div
+                    <Link 
                       key={listing.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.03 }}
+                      to={`/marketplace/${listing.id}`} 
+                      className="block"
+                      style={{ 
+                        opacity: 0, 
+                        animation: `fadeInUp 0.3s ease-out ${index * 0.03}s forwards` 
+                      }}
                     >
-                      <Link to={`/marketplace/${listing.id}`} className="block">
                         <Card 
                           className={`overflow-hidden group hover:shadow-xl transition-all duration-300 relative cursor-pointer ${
                             hasPremiumPalette
@@ -591,8 +592,7 @@ const Marketplace: React.FC = () => {
                           </div>
                         </CardContent>
                       </Card>
-                      </Link>
-                    </motion.div>
+                    </Link>
                   );
                 })}
               </div>

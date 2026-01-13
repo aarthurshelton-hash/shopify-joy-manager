@@ -1,9 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { motion } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, Gift, Sparkles, Crown, AlertCircle } from 'lucide-react';
+import { Loader2, Gift, Sparkles, Crown } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -105,11 +104,12 @@ export const ClaimableVisionsSection: React.FC<ClaimableVisionsSectionProps> = (
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
           {visions.map((vision, index) => (
-            <motion.div
+            <div
               key={vision.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.03 }}
+              style={{ 
+                opacity: 0, 
+                animation: `fadeInUp 0.3s ease-out ${index * 0.03}s forwards` 
+              }}
             >
               <Card className="overflow-hidden group border-green-500/30 hover:border-green-500/60 transition-all">
                 <div className="aspect-square relative overflow-hidden bg-muted">
@@ -167,7 +167,7 @@ export const ClaimableVisionsSection: React.FC<ClaimableVisionsSectionProps> = (
                   </Button>
                 </CardContent>
               </Card>
-            </motion.div>
+            </div>
           ))}
         </div>
       )}
