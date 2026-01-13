@@ -1,8 +1,10 @@
 import { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
-import { Crown, Quote, Star, Newspaper, Rocket, Palette, Gamepad2, Users, Zap, Globe, BarChart3, Scan, BookOpen, Shield, Sparkles, Gift, Target, TrendingUp, Award } from 'lucide-react';
+import { Crown, Quote, Star, Newspaper, Rocket, Palette, Gamepad2, Users, Zap, Globe, BarChart3, Scan, BookOpen, Shield, Sparkles, Gift, Target, TrendingUp, Award, ArrowRight } from 'lucide-react';
 import { useRandomGameArt } from '@/hooks/useRandomGameArt';
+import { gameImageImports } from '@/lib/chess/gameImages';
 
 // Extended testimonials pool - 3 randomly selected each page load
 const allTestimonials = [
@@ -86,71 +88,94 @@ const allTestimonials = [
   },
 ];
 
+// Get specific images for each news item
+const newsImages = Object.values(gameImageImports);
+
 const newsItems = [
   {
     date: "January 2026",
     title: "Natural Vision™ Recognition Launched",
     description: "Our proprietary pattern recognition technology can now identify any En Pensent print and instantly display its game details, provenance, and ownership history.",
     icon: Scan,
+    link: "/vision-scanner",
+    image: newsImages[0],
   },
   {
     date: "January 2026",
     title: "Carlsen in Color Book Pre-Orders Open",
     description: "100 of Magnus Carlsen's greatest games, each with AI-generated haiku poetry. Limited first edition of 1,000 copies with exclusive collector's box.",
     icon: BookOpen,
+    link: "/book",
+    image: newsImages[1],
   },
   {
     date: "January 2026",
     title: "Vision Marketplace Goes Live",
     description: "Trade, collect, and discover unique chess visualizations. Built-in wallet system, royalty tracking, and secure ownership transfers.",
     icon: TrendingUp,
+    link: "/marketplace",
+    image: newsImages[2],
   },
   {
     date: "January 2026",
     title: "AI Poetry Generation",
     description: "Every famous game now features unique AI-generated poetry — haikus, couplets, and free verse that capture the essence of each battle.",
     icon: Sparkles,
+    link: "/",
+    image: newsImages[3],
   },
   {
     date: "January 2026",
     title: "Premium Framing Options",
     description: "Museum-quality frames now available: Walnut, Matte Black, Natural Oak, and Gold Gilded. Ships worldwide with white-glove service.",
     icon: Award,
+    link: "/order-print",
+    image: newsImages[4],
   },
   {
     date: "December 2025",
     title: "Live Play Mode Released",
     description: "Play chess directly on En Pensent against opponents or our AI bot. Watch your artwork generate in real-time as you make moves.",
     icon: Gamepad2,
+    link: "/play",
+    image: newsImages[5],
   },
   {
     date: "December 2025",
     title: "Education Fund Initiative",
     description: "A portion of every sale now contributes to chess education programs in underserved communities worldwide.",
     icon: Gift,
+    link: "/education-fund",
+    image: newsImages[6],
   },
   {
     date: "November 2025",
     title: "75+ Historic Games Library",
     description: "Explore and visualize legendary games spanning 500 years of chess history, from Ruy López to Magnus Carlsen's modern classics.",
     icon: Globe,
+    link: "/",
+    image: newsImages[7],
   },
   {
     date: "November 2025",
     title: "Visionary Membership Launch",
     description: "Premium tier unlocked: unlimited downloads, HD exports, exclusive palettes, priority printing, and early access to new features.",
     icon: Crown,
+    link: "/account",
+    image: newsImages[8],
   },
   {
     date: "October 2025",
     title: "16 Curated Color Palettes",
     description: "From Japanese minimalism to Art Deco grandeur — each palette transforms your games into distinct visual experiences.",
     icon: Palette,
+    link: "/creative",
+    image: newsImages[9],
   },
 ];
 
 const News = () => {
-  // Get plenty of random art for all sections
+  // Get plenty of random art for testimonials
   const backgroundImages = useRandomGameArt(16);
   
   // Randomly select 3 testimonials on each render
@@ -164,7 +189,7 @@ const News = () => {
       <Header />
       
       <main className="container mx-auto px-4 py-16">
-        <div className="max-w-4xl mx-auto space-y-16">
+        <div className="max-w-5xl mx-auto space-y-16">
           {/* Hero */}
           <div className="text-center space-y-6">
             <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-display uppercase tracking-widest">
@@ -235,40 +260,48 @@ const News = () => {
               Latest <span className="text-gold-gradient">Updates</span>
             </h2>
             
-            <div className="space-y-4">
+            <div className="grid md:grid-cols-2 gap-4">
               {newsItems.map((item, index) => {
                 const Icon = item.icon;
                 return (
-                  <div 
+                  <Link 
                     key={index}
-                    className="relative p-6 rounded-lg border border-border/50 bg-card/50 hover:border-primary/40 transition-all duration-300 overflow-hidden group"
+                    to={item.link}
+                    className="relative rounded-xl border border-border/50 bg-card/50 hover:border-primary/50 transition-all duration-300 overflow-hidden group cursor-pointer"
                   >
-                    {backgroundImages[3 + index] && (
-                      <div 
-                        className="absolute inset-0 opacity-[0.05] group-hover:opacity-[0.10] transition-opacity duration-500 bg-cover bg-center"
-                        style={{ backgroundImage: `url(${backgroundImages[3 + index]})` }}
+                    {/* Image section */}
+                    <div className="relative h-32 overflow-hidden">
+                      <img 
+                        src={item.image} 
+                        alt={item.title}
+                        className="w-full h-full object-cover opacity-60 group-hover:opacity-80 group-hover:scale-105 transition-all duration-500"
                       />
-                    )}
-                    {/* Gradient overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-card via-card/95 to-card/80" />
-                    
-                    <div className="relative z-10 flex flex-col md:flex-row md:items-center gap-4">
-                      <div className="flex items-center gap-4 md:w-52 flex-shrink-0">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                          <Icon className="h-5 w-5 text-primary" />
-                        </div>
-                        <span className="text-xs uppercase tracking-wider text-primary font-medium">
-                          {item.date}
-                        </span>
+                      <div className="absolute inset-0 bg-gradient-to-t from-card via-card/60 to-transparent" />
+                      
+                      {/* Date badge */}
+                      <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-primary/90 text-primary-foreground text-xs font-medium uppercase tracking-wider">
+                        {item.date}
                       </div>
-                      <div className="space-y-1">
-                        <h3 className="font-display font-bold text-lg group-hover:text-primary transition-colors">{item.title}</h3>
-                        <p className="text-muted-foreground font-serif text-sm leading-relaxed">
-                          {item.description}
-                        </p>
+                      
+                      {/* Icon */}
+                      <div className="absolute top-3 right-3 w-10 h-10 rounded-full bg-card/90 border border-primary/30 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                        <Icon className="h-5 w-5 text-primary" />
                       </div>
                     </div>
-                  </div>
+                    
+                    {/* Content section */}
+                    <div className="p-5 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-display font-bold text-lg group-hover:text-primary transition-colors">
+                          {item.title}
+                        </h3>
+                        <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                      </div>
+                      <p className="text-muted-foreground font-serif text-sm leading-relaxed line-clamp-2">
+                        {item.description}
+                      </p>
+                    </div>
+                  </Link>
                 );
               })}
             </div>
@@ -318,10 +351,13 @@ const News = () => {
           </div>
           
           {/* CTA */}
-          <div className="relative text-center p-8 rounded-lg border border-primary/30 bg-primary/5 space-y-4 overflow-hidden">
+          <Link 
+            to="/"
+            className="relative block text-center p-8 rounded-lg border border-primary/30 bg-primary/5 space-y-4 overflow-hidden group hover:border-primary/50 transition-all"
+          >
             {backgroundImages[15] && (
               <div 
-                className="absolute inset-0 opacity-[0.05] bg-cover bg-center"
+                className="absolute inset-0 opacity-[0.05] group-hover:opacity-[0.10] bg-cover bg-center transition-opacity"
                 style={{ backgroundImage: `url(${backgroundImages[15]})` }}
               />
             )}
@@ -335,8 +371,11 @@ const News = () => {
               <p className="text-muted-foreground font-serif max-w-lg mx-auto">
                 Create your own chess masterpiece today and become part of the En Pensent community.
               </p>
+              <div className="inline-flex items-center gap-2 text-primary font-display text-sm uppercase tracking-wider group-hover:gap-3 transition-all">
+                Start Creating <ArrowRight className="h-4 w-4" />
+              </div>
             </div>
-          </div>
+          </Link>
         </div>
       </main>
       
