@@ -619,7 +619,7 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
       <div className="relative rounded-lg border border-border/50 overflow-hidden">
         {/* AI-generated background art */}
         <div 
-          className="absolute inset-0 bg-cover bg-center opacity-15"
+          className="absolute inset-0 bg-cover bg-center opacity-45"
           style={{ backgroundImage: `url(${uploadHeroArt})` }}
         />
         <div className="absolute inset-0 bg-gradient-to-br from-card/95 via-card/85 to-card/95" />
