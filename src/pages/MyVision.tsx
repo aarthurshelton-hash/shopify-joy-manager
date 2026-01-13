@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { getUserVisualizations, deleteVisualization, SavedVisualization } from '@/lib/visualizations/visualizationStorage';
 import { migrateUserVisualizations } from '@/lib/visualizations/migrateVisualization';
-import { checkVisualizationListed } from '@/lib/marketplace/marketplaceApi';
+import { batchCheckVisualizationsListed } from '@/lib/marketplace/marketplaceApi';
 import { validatePremiumDownload } from '@/lib/premium/validatePremiumDownload';
+import { useMyVisionRealtime } from '@/hooks/useMarketplaceRealtime';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { 
@@ -79,15 +80,8 @@ const MyVision: React.FC = () => {
     }
   }, [returningFromOrder, capturedTimelineState, setReturningFromOrder, setCapturedTimelineState]);
 
-  useEffect(() => {
-    if (user && isPremium) {
-      loadVisualizations();
-    } else {
-      setIsLoading(false);
-    }
-  }, [user, isPremium]);
-
-  const loadVisualizations = async () => {
+  // Batched loading function for better performance
+  const loadVisualizations = useCallback(async () => {
     if (!user) return;
     
     setIsLoading(true);
@@ -98,13 +92,14 @@ const MyVision: React.FC = () => {
     } else {
       setVisualizations(data);
       
-      // Check which visualizations are listed
-      const listedSet = new Set<string>();
-      for (const viz of data) {
-        const { isListed } = await checkVisualizationListed(viz.id);
-        if (isListed) listedSet.add(viz.id);
+      // Batch check which visualizations are listed (single query instead of N queries)
+      if (data.length > 0) {
+        const vizIds = data.map(v => v.id);
+        const listedMap = await batchCheckVisualizationsListed(vizIds);
+        setListedIds(new Set(Object.entries(listedMap).filter(([_, isListed]) => isListed).map(([id]) => id)));
+      } else {
+        setListedIds(new Set());
       }
-      setListedIds(listedSet);
       
       // Check if any visualizations need migration (missing board data)
       const needsMigration = data.some(v => !v.game_data.board || !Array.isArray(v.game_data.board));
@@ -115,7 +110,26 @@ const MyVision: React.FC = () => {
     }
     
     setIsLoading(false);
-  };
+  }, [user]);
+
+  // Real-time updates for My Vision page
+  useMyVisionRealtime({
+    userId: user?.id,
+    onVisualizationChange: loadVisualizations,
+    onScoreChange: () => {
+      // Scores changed, could trigger a refresh of value displays
+      // The HoldingsValueDashboard handles its own updates
+    },
+    enabled: !!user && isPremium,
+  });
+
+  useEffect(() => {
+    if (user && isPremium) {
+      loadVisualizations();
+    } else {
+      setIsLoading(false);
+    }
+  }, [user, isPremium, loadVisualizations]);
 
   const handleMigration = async () => {
     if (!user || isMigrating) return;
