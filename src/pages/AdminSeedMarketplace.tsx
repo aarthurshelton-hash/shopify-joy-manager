@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Loader2, Play, CheckCircle, XCircle, AlertTriangle, ArrowLeft, Package } from 'lucide-react';
+import { Loader2, Play, CheckCircle, XCircle, AlertTriangle, ArrowLeft, Package, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -144,6 +144,8 @@ const AdminSeedMarketplace: React.FC = () => {
   const [currentItem, setCurrentItem] = useState('');
   const [results, setResults] = useState<SeedResult[]>([]);
   const [totalCount, setTotalCount] = useState(50);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteStats, setDeleteStats] = useState<{ deleted: number; preserved: number } | null>(null);
 
   // Check admin status using secure has_role function
   useEffect(() => {
@@ -345,6 +347,123 @@ const AdminSeedMarketplace: React.FC = () => {
     }
   };
 
+  // Delete admin's test visions (only those without natural value accrual)
+  const handleDeleteTestVisions = async () => {
+    if (!user) return;
+    
+    const confirmed = window.confirm(
+      'This will delete all YOUR visions that have NOT earned royalties from other users\' print orders.\n\n' +
+      'Visions with natural value accrual will be preserved.\n\n' +
+      'Are you sure?'
+    );
+    
+    if (!confirmed) return;
+    
+    setIsDeleting(true);
+    setDeleteStats(null);
+    
+    try {
+      // Get all visualizations owned by this admin
+      const { data: myVisions, error: fetchError } = await supabase
+        .from('saved_visualizations')
+        .select('id')
+        .eq('user_id', user.id);
+      
+      if (fetchError) throw fetchError;
+      
+      if (!myVisions || myVisions.length === 0) {
+        toast.info('No visions to delete');
+        setIsDeleting(false);
+        return;
+      }
+      
+      const visionIds = myVisions.map(v => v.id);
+      
+      // Get vision scores to check for natural value (royalties from others)
+      const { data: scores, error: scoresError } = await supabase
+        .from('vision_scores')
+        .select('visualization_id, royalty_cents_earned, royalty_orders_count')
+        .in('visualization_id', visionIds);
+      
+      if (scoresError) throw scoresError;
+      
+      // Identify visions with natural value (royalties earned from other users' orders)
+      const visionsWithValue = new Set(
+        (scores || [])
+          .filter(s => s.royalty_cents_earned > 0 || s.royalty_orders_count > 0)
+          .map(s => s.visualization_id)
+      );
+      
+      // Visions to delete (no natural value accrual)
+      const visionsToDelete = visionIds.filter(id => !visionsWithValue.has(id));
+      const visionsToPreserve = visionIds.filter(id => visionsWithValue.has(id));
+      
+      if (visionsToDelete.length === 0) {
+        toast.info('All your visions have accrued natural value - none deleted');
+        setDeleteStats({ deleted: 0, preserved: visionsToPreserve.length });
+        setIsDeleting(false);
+        return;
+      }
+      
+      // Delete related records first (in order of dependencies)
+      // 1. Delete listings
+      await supabase
+        .from('visualization_listings')
+        .delete()
+        .in('visualization_id', visionsToDelete);
+      
+      // 2. Delete vision scores
+      await supabase
+        .from('vision_scores')
+        .delete()
+        .in('visualization_id', visionsToDelete);
+      
+      // 3. Delete vision interactions
+      await supabase
+        .from('vision_interactions')
+        .delete()
+        .in('visualization_id', visionsToDelete);
+      
+      // 4. Delete visualization transfers
+      await supabase
+        .from('visualization_transfers')
+        .delete()
+        .in('visualization_id', visionsToDelete);
+      
+      // 5. Finally delete the visualizations themselves
+      const { error: deleteError } = await supabase
+        .from('saved_visualizations')
+        .delete()
+        .in('id', visionsToDelete);
+      
+      if (deleteError) throw deleteError;
+      
+      // Also delete stored images from storage
+      for (const viz of myVisions.filter(v => visionsToDelete.includes(v.id))) {
+        // Extract filename from image path if possible
+        // Images are stored as: {user_id}/{timestamp}-{title}.png
+        await supabase.storage
+          .from('visualizations')
+          .remove([`${user.id}/`]); // This will fail silently if path doesn't exist
+      }
+      
+      setDeleteStats({ deleted: visionsToDelete.length, preserved: visionsToPreserve.length });
+      toast.success(`Deleted ${visionsToDelete.length} test visions`, {
+        description: visionsToPreserve.length > 0 
+          ? `${visionsToPreserve.length} visions with natural value preserved`
+          : undefined
+      });
+      
+    } catch (error) {
+      console.error('Failed to delete test visions:', error);
+      toast.error('Failed to delete visions', {
+        description: (error as Error).message
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const successCount = results.filter(r => r.success).length;
   const failCount = results.filter(r => !r.success).length;
   const exemplarSuccessCount = results.filter(r => r.success && r.isExemplar).length;
@@ -442,6 +561,53 @@ const AdminSeedMarketplace: React.FC = () => {
                 </>
               )}
             </Button>
+
+            {/* Delete Test Visions Section */}
+            <div className="border-t border-border pt-6 mt-6">
+              <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/30 mb-4">
+                <div className="flex items-start gap-3">
+                  <Trash2 className="h-5 w-5 text-destructive mt-0.5" />
+                  <div>
+                    <p className="font-medium text-destructive">Delete My Test Visions</p>
+                    <p className="text-sm text-muted-foreground">
+                      Deletes only YOUR visions that have NOT earned royalties from other users' print orders. 
+                      Visions with natural value accrual are preserved. Safe for testing cleanup.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              <Button
+                onClick={handleDeleteTestVisions}
+                disabled={isDeleting || isSeeding || !user}
+                variant="destructive"
+                className="w-full"
+                size="lg"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                    Deleting Test Visions...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-5 w-5 mr-2" />
+                    Delete My Test Visions
+                  </>
+                )}
+              </Button>
+              
+              {deleteStats && (
+                <div className="mt-4 p-3 rounded-lg bg-muted text-sm">
+                  <div className="flex items-center gap-4">
+                    <span className="text-destructive">🗑 {deleteStats.deleted} deleted</span>
+                    {deleteStats.preserved > 0 && (
+                      <span className="text-green-500">✓ {deleteStats.preserved} preserved (has value)</span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
             
             {isSeeding && (
               <div className="space-y-2">
