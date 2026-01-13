@@ -64,6 +64,8 @@ import { PoetryModal, PoetryPreviewCard } from './PoetryModal';
 import { getGamePoetry } from '@/lib/chess/gamePoetry';
 import PaletteAvailabilityIndicator from './PaletteAvailabilityIndicator';
 import { useAuth } from '@/hooks/useAuth';
+import MiniPrintOrderSection from './MiniPrintOrderSection';
+import { EducationFundShowcase } from '@/components/homepage/EducationFundShowcase';
 
 // Export state for capturing visualization in any configuration
 export interface ExportState {
@@ -1153,6 +1155,21 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                       </Button>
                     )}
                   </div>
+
+                  {/* Mini Print Order Section */}
+                  {onExport && (
+                    <MiniPrintOrderSection
+                      board={board}
+                      gameData={gameData}
+                      totalMoves={totalMoves}
+                      darkMode={darkMode}
+                      onOrderPrint={(exportState) => onExport('print', exportState)}
+                      className="mt-6"
+                    />
+                  )}
+
+                  {/* Education Fund Showcase */}
+                  <EducationFundShowcase variant="card" className="mt-4" />
                 </div>
               </ScrollArea>
             </TabsContent>
