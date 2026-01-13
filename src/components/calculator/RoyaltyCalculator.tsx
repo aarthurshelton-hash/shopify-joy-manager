@@ -198,9 +198,14 @@ export const RoyaltyCalculator: React.FC = () => {
         </div>
         
         {/* Disclaimer */}
-        <p className="text-xs text-muted-foreground text-center italic">
-          Value based on {valueAppreciationRate}% of order <strong>profit</strong> (not revenue). Sell visions on marketplace to realize gains.
-        </p>
+        <div className="text-xs text-muted-foreground text-center space-y-1 border-t border-border/50 pt-4">
+          <p className="italic">
+            Value based on {valueAppreciationRate}% of order <strong>profit</strong> (not revenue).
+          </p>
+          <p className="text-[10px] text-muted-foreground/70">
+            <strong>No automatic payouts.</strong> Sell, trade, or gift your vision to another member to realize gains.
+          </p>
+        </div>
       </CardContent>
     </Card>
   );
