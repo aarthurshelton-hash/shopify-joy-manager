@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-
+import { SecurityEvents } from '@/lib/security/auditLog';
 export interface WithdrawalRequest {
   id: string;
   user_id: string;
@@ -84,6 +84,10 @@ export async function createWithdrawalRequest(
       });
 
     if (error) throw error;
+    
+    // Log security event for withdrawal request
+    SecurityEvents.withdrawalRequested(user.id, amountCents);
+    
     return { data: data as string, error: null };
   } catch (error) {
     return { data: null, error: error as Error };

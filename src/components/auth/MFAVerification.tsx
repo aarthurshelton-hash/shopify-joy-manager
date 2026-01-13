@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Loader2, Shield } from 'lucide-react';
+import { SecurityEvents } from '@/lib/security/auditLog';
 
 interface MFAVerificationProps {
   isOpen: boolean;
@@ -56,6 +57,12 @@ const MFAVerification: React.FC<MFAVerificationProps> = ({ isOpen, onClose, onSu
       });
 
       if (verifyError) throw verifyError;
+
+      // Log MFA verification success
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        SecurityEvents.mfaVerified(user.id);
+      }
 
       toast.success('Verification successful!');
       onSuccess();
