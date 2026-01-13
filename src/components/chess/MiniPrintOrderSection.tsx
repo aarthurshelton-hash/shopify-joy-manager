@@ -31,6 +31,13 @@ const MINI_FRAME_OPTIONS: FrameStyleOption[] = FRAME_STYLES.slice(0, 4).map(f =>
   colorHex: f.color,
 }));
 
+// 3 most popular print sizes
+const POPULAR_SIZES: { label: string; value: string; price: number; scale: number }[] = [
+  { label: '8×10"', value: '8x10', price: 29.99, scale: 0.7 },
+  { label: '16×20"', value: '16x20', price: 49.99, scale: 1.0 },
+  { label: '24×36"', value: '24x36', price: 79.99, scale: 1.3 },
+];
+
 export const MiniPrintOrderSection: React.FC<MiniPrintOrderSectionProps> = ({
   board,
   gameData,
@@ -42,6 +49,7 @@ export const MiniPrintOrderSection: React.FC<MiniPrintOrderSectionProps> = ({
   const { currentMove } = useTimeline();
   const { lockedPieces, compareMode } = useLegendHighlight();
   const [selectedFrame, setSelectedFrame] = useState<FrameStyleOption | null>(MINI_FRAME_OPTIONS[0]);
+  const [selectedSize, setSelectedSize] = useState(POPULAR_SIZES[0]);
   const [roomSetting] = useState<RoomSetting>('living');
 
   const handleOrderPrint = () => {
@@ -79,8 +87,7 @@ export const MiniPrintOrderSection: React.FC<MiniPrintOrderSectionProps> = ({
     />
   ), [filteredBoard, gameData, darkMode]);
 
-  const basePrice = 29.99; // Starting price for 8x10
-  const framePrice = selectedFrame ? getBaseFramePrice('8x10') : 0;
+  const framePrice = selectedFrame ? getBaseFramePrice(selectedSize.value as '8x10' | '11x14' | '16x20' | '18x24' | '24x36') : 0;
 
   return (
     <motion.div
@@ -100,21 +107,52 @@ export const MiniPrintOrderSection: React.FC<MiniPrintOrderSectionProps> = ({
           </div>
         </div>
         <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 text-xs">
-          From ${basePrice.toFixed(0)}
+          ${selectedSize.price.toFixed(0)}{selectedFrame ? `+` : ''}
         </Badge>
+      </div>
+
+      {/* Size Quick Select */}
+      <div className="mb-3">
+        <p className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1">
+          <Package className="h-3 w-3" />
+          Size
+        </p>
+        <div className="flex gap-2">
+          {POPULAR_SIZES.map((size) => (
+            <button
+              key={size.value}
+              onClick={() => setSelectedSize(size)}
+              className={`flex-1 py-1.5 px-2 rounded-md border text-xs font-medium transition-all ${
+                selectedSize.value === size.value
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border bg-background/50 text-muted-foreground hover:border-primary/50 hover:text-foreground'
+              }`}
+            >
+              <span className="block">{size.label}</span>
+              <span className="block text-[10px] opacity-70">${size.price}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Content */}
       <div className="flex gap-4 items-center">
         {/* Wall Mockup */}
-        <div className="shrink-0 scale-[0.85] origin-left -ml-2">
+        <motion.div 
+          key={selectedSize.value}
+          initial={{ scale: 0.9, opacity: 0.5 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.2 }}
+          className="shrink-0 origin-left -ml-2"
+          style={{ transform: `scale(${0.85 * selectedSize.scale})` }}
+        >
           <WallMockup
-            sizeLabel="8x10"
+            sizeLabel={selectedSize.value}
             roomSetting={roomSetting}
             visualizationElement={miniVisualization}
             selectedFrame={selectedFrame}
           />
-        </div>
+        </motion.div>
 
         {/* Right Side */}
         <div className="flex-1 min-w-0 space-y-3">
