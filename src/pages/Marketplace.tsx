@@ -28,6 +28,7 @@ import {
   completePurchase,
   MarketplaceListing 
 } from '@/lib/marketplace/marketplaceApi';
+import { trackMarketplaceClick } from '@/lib/analytics/marketplaceAnalytics';
 import { isPremiumPalette, extractPaletteId, isThemedPalette, getPaletteArt, getPaletteDisplayName } from '@/lib/marketplace/paletteArtMap';
 
 const ITEMS_PER_PAGE = 20;
@@ -447,6 +448,12 @@ const Marketplace: React.FC = () => {
                         opacity: 0, 
                         animation: `fadeInUp 0.3s ease-out ${index * 0.03}s forwards` 
                       }}
+                      onClick={() => trackMarketplaceClick({
+                        click_type: 'listing_card',
+                        listing_id: listing.id,
+                        visualization_id: listing.visualization?.id,
+                        section: 'browse_grid',
+                      })}
                     >
                         <Card 
                           className={`overflow-hidden group hover:shadow-xl transition-all duration-300 relative cursor-pointer ${

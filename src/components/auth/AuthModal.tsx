@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, forwardRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,7 +24,7 @@ const FREE_ACCOUNT_BENEFITS = [
   'One-click upgrade to Premium anytime',
 ];
 
-const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMode = 'signin' }) => {
+const AuthModal = forwardRef<HTMLDivElement, AuthModalProps>(({ isOpen, onClose, defaultMode = 'signin' }, ref) => {
   const [mode, setMode] = useState<AuthMode>(defaultMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -88,7 +88,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMode = 's
   };
 
   return (
-    <>
+    <div ref={ref}>
       <Dialog open={isOpen && !showMFAVerification} onOpenChange={(open) => !open && onClose()}>
         <DialogContent className="sm:max-w-md bg-card border-border">
           <DialogHeader>
@@ -244,8 +244,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMode = 's
         onClose={() => setShowMFAVerification(false)}
         onSuccess={handleMFASuccess}
       />
-    </>
+    </div>
   );
-};
+});
+
+AuthModal.displayName = 'AuthModal';
 
 export default AuthModal;
