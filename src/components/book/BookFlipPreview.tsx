@@ -9,7 +9,7 @@ import spread2 from '@/assets/book/spread-preview-2.png';
 import spread3 from '@/assets/book/spread-preview-3.png';
 import frontCover from '@/assets/book/carlsen-cover-v2.jpg';
 import backCover from '@/assets/book/carlsen-back-cover.jpg';
-import spineImage from '@/assets/book/carlsen-spine.jpg';
+import logoImage from '@/assets/en-pensent-logo-new.png';
 
 type PageType = 'spine' | 'cover' | 'spread' | 'back';
 
@@ -28,7 +28,7 @@ const BOOK_PAGES: PageData[] = [
   {
     id: 0,
     type: 'spine',
-    image: spineImage,
+    image: '', // We render spine custom
     title: "Spine",
   },
   {
@@ -178,21 +178,94 @@ export const BookFlipPreview: React.FC<BookFlipPreviewProps> = ({ className = ''
                 className="relative"
                 style={{ transformStyle: 'preserve-3d' }}
               >
-                {/* Image */}
+                {/* Image or Custom Spine */}
                 <div className="relative">
-                  <img 
-                    src={page.image}
-                    alt={page.title}
-                    className={`w-full h-auto block ${
-                      isSpine ? 'aspect-[1/4] object-contain mx-auto py-4' :
-                      isCover ? 'aspect-[3/4] object-contain mx-auto py-4' : ''
-                    }`}
-                    style={{ 
-                      aspectRatio: isSpine ? '1/4' : isCover ? '3/4' : '16/9',
-                      objectFit: isSpine ? 'contain' : isCover ? 'contain' : 'cover',
-                      maxHeight: isSpine ? '500px' : isCover ? '500px' : 'auto',
-                    }}
-                  />
+                  {isSpine ? (
+                    /* Custom Realistic Spine Render */
+                    <div 
+                      className="mx-auto flex flex-col items-center justify-between py-8 px-3"
+                      style={{
+                        width: '80px', // Realistic spine thickness for ~200 page coffee table book
+                        height: '500px',
+                        background: 'linear-gradient(to right, #0f172a 0%, #1e293b 20%, #1e293b 80%, #0f172a 100%)',
+                        boxShadow: 'inset 2px 0 8px rgba(0,0,0,0.5), inset -2px 0 8px rgba(0,0,0,0.5)',
+                      }}
+                    >
+                      {/* Gold gilded edge effect on left side */}
+                      <div 
+                        className="absolute left-0 top-0 bottom-0 w-[3px]"
+                        style={{
+                          background: 'linear-gradient(to bottom, #d4a574, #f5d89a 20%, #c9a45c 50%, #f5d89a 80%, #d4a574)',
+                        }}
+                      />
+                      {/* Gold gilded edge effect on right side */}
+                      <div 
+                        className="absolute right-0 top-0 bottom-0 w-[3px]"
+                        style={{
+                          background: 'linear-gradient(to bottom, #d4a574, #f5d89a 20%, #c9a45c 50%, #f5d89a 80%, #d4a574)',
+                        }}
+                      />
+                      
+                      {/* Title - CARLSEN */}
+                      <div 
+                        className="text-amber-400 font-serif tracking-[0.3em] text-center"
+                        style={{
+                          writingMode: 'vertical-rl',
+                          textOrientation: 'mixed',
+                          transform: 'rotate(180deg)',
+                          fontSize: '14px',
+                          fontWeight: 600,
+                          letterSpacing: '0.25em',
+                        }}
+                      >
+                        CARLSEN
+                      </div>
+                      
+                      {/* King Chess Piece */}
+                      <div className="text-amber-400 text-2xl my-4">♔</div>
+                      
+                      {/* EN PENSENT text */}
+                      <div 
+                        className="text-amber-400/80 text-center"
+                        style={{
+                          writingMode: 'vertical-rl',
+                          textOrientation: 'mixed',
+                          transform: 'rotate(180deg)',
+                          fontSize: '8px',
+                          fontWeight: 'bold',
+                          letterSpacing: '0.2em',
+                          fontVariant: 'small-caps',
+                        }}
+                      >
+                        EN PENSENT
+                      </div>
+                      
+                      {/* Gold Seal Logo at Bottom */}
+                      <div className="mt-4">
+                        <img 
+                          src={logoImage} 
+                          alt="En Pensent" 
+                          className="w-10 h-10 rounded-full object-cover"
+                          style={{
+                            boxShadow: '0 0 8px rgba(212, 165, 116, 0.6)',
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <img 
+                      src={page.image}
+                      alt={page.title}
+                      className={`w-full h-auto block ${
+                        isCover ? 'aspect-[3/4] object-contain mx-auto py-4' : ''
+                      }`}
+                      style={{ 
+                        aspectRatio: isCover ? '3/4' : '16/9',
+                        objectFit: isCover ? 'contain' : 'cover',
+                        maxHeight: isCover ? '500px' : 'auto',
+                      }}
+                    />
+                  )}
                   
                   {/* Page texture overlay - only for spreads */}
                   {!isCover && !isSpine && (
@@ -214,7 +287,7 @@ export const BookFlipPreview: React.FC<BookFlipPreviewProps> = ({ className = ''
                   
                   {/* Spine badge overlay */}
                   {isSpine && (
-                    <div className="absolute bottom-4 left-0 right-0 text-center">
+                    <div className="absolute -bottom-8 left-0 right-0 text-center">
                       <span className="inline-block bg-gradient-to-r from-amber-600 to-amber-500 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg">
                         Gold Gilded Spine
                       </span>
