@@ -2,6 +2,7 @@ import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Upload, FileText, Crown, Sparkles, CheckCircle, XCircle, Loader2, Wrench, ArrowRight, ChevronLeft, ChevronRight, Search, X, Shuffle, Heart, Award, PenTool, Trophy, Star } from 'lucide-react';
+import uploadHeroArt from '@/assets/ai-art/upload-section-hero.jpg';
 import { famousGames, FamousGame, getRandomFamousGame } from '@/lib/chess/famousGames';
 import { gameImageImports } from '@/lib/chess/gameImages';
 import { getPoetryPreview, getPoetryStyleLabel } from '@/lib/chess/gamePoetry';
@@ -614,17 +615,26 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
         </div>
       </div>
 
-      {/* Upload Card */}
-      <div className="rounded-lg border border-border/50 bg-card/50 overflow-hidden">
-        <div className="px-5 py-4 border-b border-border/50">
-          <h3 className="flex items-center gap-2 font-display text-base font-semibold">
-            <FileText className="h-4 w-4" />
-            Upload Your Game
-          </h3>
-          <p className="text-xs text-muted-foreground mt-0.5 font-serif">
-            Paste PGN notation or upload a .pgn file
-          </p>
-        </div>
+      {/* Upload Card - with AI Art Background */}
+      <div className="relative rounded-lg border border-border/50 overflow-hidden">
+        {/* AI-generated background art */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center opacity-15"
+          style={{ backgroundImage: `url(${uploadHeroArt})` }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-br from-card/95 via-card/85 to-card/95" />
+        
+        {/* Content */}
+        <div className="relative">
+          <div className="px-5 py-4 border-b border-border/50">
+            <h3 className="flex items-center gap-2 font-display text-base font-semibold">
+              <FileText className="h-4 w-4" />
+              Upload Your Game
+            </h3>
+            <p className="text-xs text-muted-foreground mt-0.5 font-serif">
+              Paste PGN notation or upload a .pgn file
+            </p>
+          </div>
         <div className="p-4 space-y-4">
           {/* Drop zone */}
           <div
@@ -814,6 +824,7 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
               Generate Visualization
             </Button>
           </div>
+        </div>
         </div>
       </div>
     </div>

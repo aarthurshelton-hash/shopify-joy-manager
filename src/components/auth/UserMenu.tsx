@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
-import { User, LogOut, Palette, Settings, Crown, CreditCard, Image, Gamepad2, BarChart3, History, Paintbrush, Shield, ShieldCheck, Wrench, Database, Wallet, Banknote, Scale, Gift, LayoutDashboard, BookOpen } from 'lucide-react';
+import { User, LogOut, Palette, Settings, Crown, CreditCard, Image, Gamepad2, BarChart3, History, Paintbrush, Shield, ShieldCheck, Wrench, Database, Wallet, Banknote, Scale, Gift, LayoutDashboard, BookOpen, ImageIcon } from 'lucide-react';
 import AuthModal from './AuthModal';
 import MFASetup from './MFASetup';
 import PremiumBadge from '@/components/premium/PremiumBadge';
@@ -351,6 +351,14 @@ const UserMenu: React.FC = () => {
               >
                 <BookOpen className="h-4 w-4" />
                 Book Generator
+                <Crown className="h-3 w-3 ml-auto" />
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => navigate('/admin/ai-art-bank')}
+                className="gap-2 cursor-pointer text-amber-500 font-semibold"
+              >
+                <ImageIcon className="h-4 w-4" />
+                AI Art Bank
                 <Crown className="h-3 w-3 ml-auto" />
               </DropdownMenuItem>
             </>
