@@ -10,8 +10,6 @@ import { toast } from 'sonner';
 import { recordVisionInteraction, getVisionScore, VisionScore } from '@/lib/visualizations/visionScoring';
 import { SquareData, GameData } from '@/lib/chess/gameSimulator';
 import UnifiedVisionExperience, { ExportState } from '@/components/chess/UnifiedVisionExperience';
-import { TimelineProvider } from '@/contexts/TimelineContext';
-import { LegendHighlightProvider } from '@/contexts/LegendHighlightContext';
 import { useSessionStore } from '@/stores/sessionStore';
 import { usePrintOrderStore, PrintOrderData } from '@/stores/printOrderStore';
 import { useAuth } from '@/hooks/useAuth';
@@ -392,38 +390,35 @@ const VisualizationView = () => {
             transition={{ delay: 0.1 }}
             className="bg-card/50 rounded-xl border border-border/50 p-4 md:p-6"
           >
-            <TimelineProvider>
-              <LegendHighlightProvider>
-                <UnifiedVisionExperience
-                  board={board}
-                  gameData={gameData}
-                  totalMoves={totalMoves}
-                  context="shared"
-                  defaultTab="experience"
-                  visualizationId={visualization.id}
-                  paletteId={paletteId}
-                  createdAt={visualization.created_at}
-                  title={visualization.title}
-                  shareId={visualization.public_share_id}
-                  onShare={handleShare}
-                  onExport={handleExport}
-                  isPremium={isPremium}
-                  onUpgradePrompt={() => setShowVisionaryModal(true)}
-                  visionScoreData={visionScore ? {
-                    viewCount: visionScore.viewCount,
-                    uniqueViewers: visionScore.uniqueViewers,
-                    royaltyCentsEarned: visionScore.royaltyCentsEarned,
-                    royaltyOrdersCount: visionScore.royaltyOrdersCount,
-                    printRevenueCents: visionScore.printRevenueCents,
-                    printOrderCount: visionScore.printOrderCount,
-                    totalScore: visionScore.totalScore,
-                    downloadHdCount: visionScore.downloadHdCount,
-                    downloadGifCount: visionScore.downloadGifCount,
-                    tradeCount: visionScore.tradeCount,
-                  } : null}
-                />
-              </LegendHighlightProvider>
-            </TimelineProvider>
+            <UnifiedVisionExperience
+              board={board}
+              gameData={gameData}
+              totalMoves={totalMoves}
+              pgn={visualization.pgn || ''}
+              context="shared"
+              defaultTab="experience"
+              visualizationId={visualization.id}
+              paletteId={paletteId}
+              createdAt={visualization.created_at}
+              title={visualization.title}
+              shareId={visualization.public_share_id}
+              onShare={handleShare}
+              onExport={handleExport}
+              isPremium={isPremium}
+              onUpgradePrompt={() => setShowVisionaryModal(true)}
+              visionScoreData={visionScore ? {
+                viewCount: visionScore.viewCount,
+                uniqueViewers: visionScore.uniqueViewers,
+                royaltyCentsEarned: visionScore.royaltyCentsEarned,
+                royaltyOrdersCount: visionScore.royaltyOrdersCount,
+                printRevenueCents: visionScore.printRevenueCents,
+                printOrderCount: visionScore.printOrderCount,
+                totalScore: visionScore.totalScore,
+                downloadHdCount: visionScore.downloadHdCount,
+                downloadGifCount: visionScore.downloadGifCount,
+                tradeCount: visionScore.tradeCount,
+              } : null}
+            />
           </motion.div>
 
           {/* CTA */}

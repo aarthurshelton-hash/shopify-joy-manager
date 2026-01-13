@@ -6,8 +6,7 @@ import { SquareData, GameData } from '@/lib/chess/gameSimulator';
 import { setActivePalette, setCustomColor, PaletteId, PieceType, getCurrentPalette } from '@/lib/chess/pieceColors';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
-import { TimelineProvider } from '@/contexts/TimelineContext';
-import { LegendHighlightProvider } from '@/contexts/LegendHighlightContext';
+
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Loader2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
@@ -425,41 +424,38 @@ const VisualizationDetail: React.FC = () => {
           </Button>
         </div>
 
-        {/* Unified Vision Experience */}
-        <TimelineProvider>
-          <LegendHighlightProvider>
-            <UnifiedVisionExperience
-              board={vizData.board}
-              gameData={vizData.gameData}
-              totalMoves={vizData.totalMoves}
-              context="gallery"
-              defaultTab="experience"
-              visualizationId={visualization?.id}
-              paletteId={vizData.paletteId}
-              createdAt={visualization?.created_at}
-              title={visualization?.title}
-              imageUrl={visualization?.image_path}
-              onTransferToCreative={handleTransferToCreative}
-              onShare={handleShare}
-              onExport={handleExport}
-              isPremium={isPremium}
-              onUpgradePrompt={() => setShowUpgradeModal(true)}
-              isOwner={isOwner}
-              visionScoreData={visionScore ? {
-                viewCount: visionScore.viewCount,
-                uniqueViewers: visionScore.uniqueViewers,
-                royaltyCentsEarned: visionScore.royaltyCentsEarned,
-                royaltyOrdersCount: visionScore.royaltyOrdersCount,
-                printRevenueCents: visionScore.printRevenueCents,
-                printOrderCount: visionScore.printOrderCount,
-                totalScore: visionScore.totalScore,
-                downloadHdCount: visionScore.downloadHdCount,
-                downloadGifCount: visionScore.downloadGifCount,
-                tradeCount: visionScore.tradeCount,
-              } : null}
-            />
-          </LegendHighlightProvider>
-        </TimelineProvider>
+        {/* Unified Vision Experience - providers are handled internally */}
+        <UnifiedVisionExperience
+          board={vizData.board}
+          gameData={vizData.gameData}
+          totalMoves={vizData.totalMoves}
+          pgn={visualization?.pgn || ''}
+          context="gallery"
+          defaultTab="experience"
+          visualizationId={visualization?.id}
+          paletteId={vizData.paletteId}
+          createdAt={visualization?.created_at}
+          title={visualization?.title}
+          imageUrl={visualization?.image_path}
+          onTransferToCreative={handleTransferToCreative}
+          onShare={handleShare}
+          onExport={handleExport}
+          isPremium={isPremium}
+          onUpgradePrompt={() => setShowUpgradeModal(true)}
+          isOwner={isOwner}
+          visionScoreData={visionScore ? {
+            viewCount: visionScore.viewCount,
+            uniqueViewers: visionScore.uniqueViewers,
+            royaltyCentsEarned: visionScore.royaltyCentsEarned,
+            royaltyOrdersCount: visionScore.royaltyOrdersCount,
+            printRevenueCents: visionScore.printRevenueCents,
+            printOrderCount: visionScore.printOrderCount,
+            totalScore: visionScore.totalScore,
+            downloadHdCount: visionScore.downloadHdCount,
+            downloadGifCount: visionScore.downloadGifCount,
+            tradeCount: visionScore.tradeCount,
+          } : null}
+        />
       </div>
       <Footer />
       
