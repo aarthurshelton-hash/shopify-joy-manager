@@ -60,6 +60,8 @@ import { RoyaltyPotentialCard } from '@/components/marketplace/RoyaltyPotentialC
 import { RoyaltyEarningsCard } from '@/components/vision/RoyaltyEarningsCard';
 import { TransferHistoryCard } from '@/components/marketplace/TransferHistoryCard';
 import { TransferLimitBadge } from '@/components/marketplace/TransferLimitBadge';
+import { PoetryModal, PoetryPreviewCard } from './PoetryModal';
+import { getGamePoetry } from '@/lib/chess/gamePoetry';
 
 // Export state for capturing visualization in any configuration
 export interface ExportState {
@@ -744,6 +746,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
   const [isLoadingScore, setIsLoadingScore] = useState(false);
   const [gameAnalysis, setGameAnalysis] = useState<GameAnalysis | null>(null);
   const [gameCardMatch, setGameCardMatch] = useState<GameCardMatch | null>(null);
+  const [showPoetryModal, setShowPoetryModal] = useState(false);
   
   // Board display options
   const [showCoordinates, setShowCoordinates] = useState(true);
@@ -1014,6 +1017,15 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                     />
                   )}
 
+                  {/* Poetry Preview - Show when famous game has poetry */}
+                  {gameCardMatch?.isMatch && gameCardMatch?.matchedGame?.id && getGamePoetry(gameCardMatch.matchedGame.id) && (
+                    <PoetryPreviewCard
+                      gameId={gameCardMatch.matchedGame.id}
+                      gameTitle={gameCardMatch.matchedGame.title}
+                      onOpenModal={() => setShowPoetryModal(true)}
+                    />
+                  )}
+
                   {/* Action Buttons - Context Specific */}
                   <div className="flex flex-wrap gap-2 pt-4 border-t border-border/30">
                     {/* Generator/Postgame Actions */}
@@ -1223,6 +1235,14 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
               </ScrollArea>
             </TabsContent>
           </Tabs>
+
+          {/* Poetry Modal */}
+          <PoetryModal
+            gameId={gameCardMatch?.matchedGame?.id || null}
+            gameTitle={gameCardMatch?.matchedGame?.title}
+            isOpen={showPoetryModal}
+            onClose={() => setShowPoetryModal(false)}
+          />
         </div>
       </LegendHighlightProvider>
     </TimelineProvider>
