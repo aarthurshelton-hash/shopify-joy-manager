@@ -480,6 +480,51 @@ export type Database = {
         }
         Relationships: []
       }
+      gamecard_value_pool: {
+        Row: {
+          base_value_cents: number
+          created_at: string
+          earned_value_cents: number
+          game_id: string
+          game_title: string
+          id: string
+          last_interaction_at: string | null
+          rarity_tier: string
+          total_interactions: number
+          total_print_orders: number
+          total_visions: number
+          updated_at: string
+        }
+        Insert: {
+          base_value_cents?: number
+          created_at?: string
+          earned_value_cents?: number
+          game_id: string
+          game_title: string
+          id?: string
+          last_interaction_at?: string | null
+          rarity_tier?: string
+          total_interactions?: number
+          total_print_orders?: number
+          total_visions?: number
+          updated_at?: string
+        }
+        Update: {
+          base_value_cents?: number
+          created_at?: string
+          earned_value_cents?: number
+          game_id?: string
+          game_title?: string
+          id?: string
+          last_interaction_at?: string | null
+          rarity_tier?: string
+          total_interactions?: number
+          total_print_orders?: number
+          total_visions?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       marketplace_offers: {
         Row: {
           buyer_id: string
@@ -576,6 +621,71 @@ export type Database = {
         }
         Relationships: []
       }
+      order_financials: {
+        Row: {
+          created_at: string
+          creator_royalty_cents: number
+          education_fund_cents: number
+          fulfillment_costs_cents: number
+          game_id: string | null
+          gamecard_pool_cents: number
+          gross_revenue_cents: number
+          id: string
+          net_revenue_cents: number
+          order_reference: string | null
+          order_type: string
+          palette_id: string | null
+          palette_pool_cents: number
+          platform_fees_cents: number
+          user_id: string | null
+          visualization_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          creator_royalty_cents?: number
+          education_fund_cents?: number
+          fulfillment_costs_cents?: number
+          game_id?: string | null
+          gamecard_pool_cents?: number
+          gross_revenue_cents?: number
+          id?: string
+          net_revenue_cents?: number
+          order_reference?: string | null
+          order_type: string
+          palette_id?: string | null
+          palette_pool_cents?: number
+          platform_fees_cents?: number
+          user_id?: string | null
+          visualization_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          creator_royalty_cents?: number
+          education_fund_cents?: number
+          fulfillment_costs_cents?: number
+          game_id?: string | null
+          gamecard_pool_cents?: number
+          gross_revenue_cents?: number
+          id?: string
+          net_revenue_cents?: number
+          order_reference?: string | null
+          order_type?: string
+          palette_id?: string | null
+          palette_pool_cents?: number
+          platform_fees_cents?: number
+          user_id?: string | null
+          visualization_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_financials_visualization_id_fkey"
+            columns: ["visualization_id"]
+            isOneToOne: false
+            referencedRelation: "saved_visualizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       palette_overrides: {
         Row: {
           black_colors: Json
@@ -606,6 +716,111 @@ export type Database = {
           updated_at?: string
           version?: number
           white_colors?: Json
+        }
+        Relationships: []
+      }
+      palette_value_pool: {
+        Row: {
+          base_value_cents: number
+          created_at: string
+          earned_value_cents: number
+          id: string
+          last_interaction_at: string | null
+          palette_id: string
+          palette_name: string
+          total_interactions: number
+          total_print_orders: number
+          total_visions_using: number
+          updated_at: string
+        }
+        Insert: {
+          base_value_cents?: number
+          created_at?: string
+          earned_value_cents?: number
+          id?: string
+          last_interaction_at?: string | null
+          palette_id: string
+          palette_name: string
+          total_interactions?: number
+          total_print_orders?: number
+          total_visions_using?: number
+          updated_at?: string
+        }
+        Update: {
+          base_value_cents?: number
+          created_at?: string
+          earned_value_cents?: number
+          id?: string
+          last_interaction_at?: string | null
+          palette_id?: string
+          palette_name?: string
+          total_interactions?: number
+          total_print_orders?: number
+          total_visions_using?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      platform_financials: {
+        Row: {
+          book_order_revenue_cents: number
+          created_at: string
+          creator_royalties_cents: number
+          education_fund_cents: number
+          gamecard_pool_cents: number
+          id: string
+          lulu_costs_cents: number
+          marketplace_fee_revenue_cents: number
+          net_profit_cents: number
+          palette_pool_cents: number
+          period_end: string
+          period_start: string
+          print_order_revenue_cents: number
+          printify_costs_cents: number
+          shopify_fees_cents: number
+          stripe_fees_cents: number
+          subscription_revenue_cents: number
+          updated_at: string
+        }
+        Insert: {
+          book_order_revenue_cents?: number
+          created_at?: string
+          creator_royalties_cents?: number
+          education_fund_cents?: number
+          gamecard_pool_cents?: number
+          id?: string
+          lulu_costs_cents?: number
+          marketplace_fee_revenue_cents?: number
+          net_profit_cents?: number
+          palette_pool_cents?: number
+          period_end: string
+          period_start: string
+          print_order_revenue_cents?: number
+          printify_costs_cents?: number
+          shopify_fees_cents?: number
+          stripe_fees_cents?: number
+          subscription_revenue_cents?: number
+          updated_at?: string
+        }
+        Update: {
+          book_order_revenue_cents?: number
+          created_at?: string
+          creator_royalties_cents?: number
+          education_fund_cents?: number
+          gamecard_pool_cents?: number
+          id?: string
+          lulu_costs_cents?: number
+          marketplace_fee_revenue_cents?: number
+          net_profit_cents?: number
+          palette_pool_cents?: number
+          period_end?: string
+          period_start?: string
+          print_order_revenue_cents?: number
+          printify_costs_cents?: number
+          shopify_fees_cents?: number
+          stripe_fees_cents?: number
+          subscription_revenue_cents?: number
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1397,6 +1612,20 @@ export type Database = {
           p_sale_price_cents: number
         }
         Returns: boolean
+      }
+      record_order_with_distribution: {
+        Args: {
+          p_fulfillment_costs_cents: number
+          p_game_id?: string
+          p_gross_revenue_cents: number
+          p_order_reference: string
+          p_order_type: string
+          p_palette_id?: string
+          p_platform_fees_cents: number
+          p_user_id?: string
+          p_visualization_id?: string
+        }
+        Returns: string
       }
       record_vision_interaction: {
         Args: {

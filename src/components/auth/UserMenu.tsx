@@ -294,6 +294,14 @@ const UserMenu: React.FC = () => {
                   </span>
                 )}
               </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => navigate('/admin/economics')}
+                className="gap-2 cursor-pointer text-amber-500 font-semibold"
+              >
+                <BarChart3 className="h-4 w-4" />
+                CEO Economics
+                <Crown className="h-3 w-3 ml-auto" />
+              </DropdownMenuItem>
             </>
           )}
           <DropdownMenuSeparator />
