@@ -429,6 +429,96 @@ export type Database = {
         }
         Relationships: []
       }
+      financial_trends: {
+        Row: {
+          created_at: string
+          daily_book_revenue_cents: number | null
+          daily_churned_subscribers: number | null
+          daily_creator_royalties_cents: number | null
+          daily_downloads: number | null
+          daily_education_fund_cents: number | null
+          daily_gamecard_pool_cents: number | null
+          daily_lulu_costs_cents: number | null
+          daily_marketplace_fee_cents: number | null
+          daily_marketplace_sales: number | null
+          daily_new_subscribers: number | null
+          daily_new_users: number | null
+          daily_palette_pool_cents: number | null
+          daily_print_orders: number | null
+          daily_print_revenue_cents: number | null
+          daily_printify_costs_cents: number | null
+          daily_shopify_fees_cents: number | null
+          daily_stripe_fees_cents: number | null
+          daily_subscription_revenue_cents: number | null
+          daily_trades: number | null
+          daily_views: number | null
+          daily_visions_created: number | null
+          date: string
+          id: string
+          total_gamecard_pool_value_cents: number | null
+          total_market_cap_cents: number | null
+          total_palette_pool_value_cents: number | null
+        }
+        Insert: {
+          created_at?: string
+          daily_book_revenue_cents?: number | null
+          daily_churned_subscribers?: number | null
+          daily_creator_royalties_cents?: number | null
+          daily_downloads?: number | null
+          daily_education_fund_cents?: number | null
+          daily_gamecard_pool_cents?: number | null
+          daily_lulu_costs_cents?: number | null
+          daily_marketplace_fee_cents?: number | null
+          daily_marketplace_sales?: number | null
+          daily_new_subscribers?: number | null
+          daily_new_users?: number | null
+          daily_palette_pool_cents?: number | null
+          daily_print_orders?: number | null
+          daily_print_revenue_cents?: number | null
+          daily_printify_costs_cents?: number | null
+          daily_shopify_fees_cents?: number | null
+          daily_stripe_fees_cents?: number | null
+          daily_subscription_revenue_cents?: number | null
+          daily_trades?: number | null
+          daily_views?: number | null
+          daily_visions_created?: number | null
+          date?: string
+          id?: string
+          total_gamecard_pool_value_cents?: number | null
+          total_market_cap_cents?: number | null
+          total_palette_pool_value_cents?: number | null
+        }
+        Update: {
+          created_at?: string
+          daily_book_revenue_cents?: number | null
+          daily_churned_subscribers?: number | null
+          daily_creator_royalties_cents?: number | null
+          daily_downloads?: number | null
+          daily_education_fund_cents?: number | null
+          daily_gamecard_pool_cents?: number | null
+          daily_lulu_costs_cents?: number | null
+          daily_marketplace_fee_cents?: number | null
+          daily_marketplace_sales?: number | null
+          daily_new_subscribers?: number | null
+          daily_new_users?: number | null
+          daily_palette_pool_cents?: number | null
+          daily_print_orders?: number | null
+          daily_print_revenue_cents?: number | null
+          daily_printify_costs_cents?: number | null
+          daily_shopify_fees_cents?: number | null
+          daily_stripe_fees_cents?: number | null
+          daily_subscription_revenue_cents?: number | null
+          daily_trades?: number | null
+          daily_views?: number | null
+          daily_visions_created?: number | null
+          date?: string
+          id?: string
+          total_gamecard_pool_value_cents?: number | null
+          total_market_cap_cents?: number | null
+          total_palette_pool_value_cents?: number | null
+        }
+        Relationships: []
+      }
       flagged_content: {
         Row: {
           content_id: string | null
@@ -821,6 +911,36 @@ export type Database = {
           stripe_fees_cents?: number
           subscription_revenue_cents?: number
           updated_at?: string
+        }
+        Relationships: []
+      }
+      premium_analytics: {
+        Row: {
+          analytics_type: string
+          created_at: string
+          data: Json
+          expires_at: string
+          generated_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          analytics_type: string
+          created_at?: string
+          data?: Json
+          expires_at?: string
+          generated_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          analytics_type?: string
+          created_at?: string
+          data?: Json
+          expires_at?: string
+          generated_at?: string
+          id?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -1558,6 +1678,10 @@ export type Database = {
         Returns: string
       }
       generate_challenge_code: { Args: never; Returns: string }
+      generate_premium_analytics: {
+        Args: { p_analytics_type: string; p_user_id: string }
+        Returns: string
+      }
       generate_share_id: { Args: never; Returns: string }
       get_funnel_stats: {
         Args: { days_back?: number }
@@ -1645,6 +1769,7 @@ export type Database = {
           released_count: number
         }[]
       }
+      snapshot_daily_financials: { Args: never; Returns: undefined }
       update_scan_streak: { Args: { p_user_id: string }; Returns: Json }
       validate_withdrawal_request: {
         Args: { p_amount_cents: number; p_user_id: string }
