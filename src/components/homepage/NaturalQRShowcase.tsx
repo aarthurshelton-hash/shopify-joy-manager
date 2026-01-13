@@ -4,40 +4,22 @@ import { Scan, Camera, Fingerprint, Link2, Sparkles, TrendingUp, Users, Crown } 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
+import AnimatedVisualizationPreview from "@/components/chess/AnimatedVisualizationPreview";
+import { famousGames } from "@/lib/chess/famousGames";
 
-// Sample visualization patterns for the demo
-const samplePatterns = [
-  {
-    title: "The Immortal Game",
-    colors: [
-      ["#8B4513", "#FFD700", "#8B4513", "#DC143C", "#FFD700", "#8B4513", "#DC143C", "#FFD700"],
-      ["#DC143C", "#8B4513", "#FFD700", "#8B4513", "#DC143C", "#FFD700", "#8B4513", "#DC143C"],
-      ["#FFD700", "#DC143C", "#8B4513", "#FFD700", "#8B4513", "#DC143C", "#FFD700", "#8B4513"],
-      ["#8B4513", "#FFD700", "#DC143C", "#8B4513", "#FFD700", "#8B4513", "#DC143C", "#FFD700"],
-      ["#DC143C", "#8B4513", "#FFD700", "#DC143C", "#8B4513", "#FFD700", "#8B4513", "#DC143C"],
-      ["#FFD700", "#DC143C", "#8B4513", "#FFD700", "#DC143C", "#8B4513", "#FFD700", "#8B4513"],
-      ["#8B4513", "#FFD700", "#DC143C", "#8B4513", "#FFD700", "#DC143C", "#8B4513", "#FFD700"],
-      ["#DC143C", "#8B4513", "#FFD700", "#DC143C", "#8B4513", "#FFD700", "#DC143C", "#8B4513"],
-    ],
-  },
-  {
-    title: "Opera Game",
-    colors: [
-      ["#1E3A5F", "#87CEEB", "#1E3A5F", "#C0C0C0", "#87CEEB", "#1E3A5F", "#C0C0C0", "#87CEEB"],
-      ["#C0C0C0", "#1E3A5F", "#87CEEB", "#1E3A5F", "#C0C0C0", "#87CEEB", "#1E3A5F", "#C0C0C0"],
-      ["#87CEEB", "#C0C0C0", "#1E3A5F", "#87CEEB", "#1E3A5F", "#C0C0C0", "#87CEEB", "#1E3A5F"],
-      ["#1E3A5F", "#87CEEB", "#C0C0C0", "#1E3A5F", "#87CEEB", "#1E3A5F", "#C0C0C0", "#87CEEB"],
-      ["#C0C0C0", "#1E3A5F", "#87CEEB", "#C0C0C0", "#1E3A5F", "#87CEEB", "#1E3A5F", "#C0C0C0"],
-      ["#87CEEB", "#C0C0C0", "#1E3A5F", "#87CEEB", "#C0C0C0", "#1E3A5F", "#87CEEB", "#1E3A5F"],
-      ["#1E3A5F", "#87CEEB", "#C0C0C0", "#1E3A5F", "#87CEEB", "#C0C0C0", "#1E3A5F", "#87CEEB"],
-      ["#C0C0C0", "#1E3A5F", "#87CEEB", "#C0C0C0", "#1E3A5F", "#87CEEB", "#C0C0C0", "#1E3A5F"],
-    ],
-  },
-];
+// Import AI art for background accents
+import chessKingArt from "@/assets/chess-king-art.jpg";
+import chessMovementArt from "@/assets/chess-movement-art.jpg";
+import heroChessArt from "@/assets/hero-chess-art.jpg";
 
 export const NaturalQRShowcase = forwardRef<HTMLElement, Record<string, never>>(function NaturalQRShowcase(_props, ref) {
   const navigate = useNavigate();
   const [demoStep, setDemoStep] = useState(0);
+
+  // Get The Immortal Game PGN
+  const immortalGame = famousGames.find(g => g.id === 'anderssen-kieseritzky-1851');
+  const gamePgn = immortalGame?.pgn || famousGames[0].pgn;
+  const gameTitle = immortalGame?.title || "The Immortal Game";
 
   // Animate through demo steps
   useEffect(() => {
@@ -54,12 +36,40 @@ export const NaturalQRShowcase = forwardRef<HTMLElement, Record<string, never>>(
     { icon: TrendingUp, title: "Score", desc: "Every scan increases Vision Score" },
   ];
 
-  const pattern = samplePatterns[0];
-
   return (
     <section ref={ref} className="relative py-16 md:py-24 overflow-hidden">
+      {/* AI Art Background Layers */}
+      <div className="absolute -left-32 top-1/4 w-96 h-96 opacity-10 blur-sm pointer-events-none rotate-12">
+        <img 
+          src={chessKingArt} 
+          alt="" 
+          className="w-full h-full object-cover rounded-full"
+        />
+      </div>
+      
+      <div className="absolute -right-24 bottom-1/3 w-80 h-80 opacity-8 blur-sm pointer-events-none -rotate-12">
+        <img 
+          src={chessMovementArt} 
+          alt="" 
+          className="w-full h-full object-cover rounded-full"
+        />
+      </div>
+      
+      <div className="absolute left-1/2 -translate-x-1/2 top-0 w-full h-48 opacity-5 pointer-events-none">
+        <img 
+          src={heroChessArt} 
+          alt="" 
+          className="w-full h-full object-cover"
+        />
+      </div>
+      
       {/* Background gradient */}
       <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-background to-background pointer-events-none" />
+      
+      {/* Decorative particles */}
+      <div className="absolute top-20 left-1/4 w-2 h-2 bg-primary/40 rounded-full animate-pulse" />
+      <div className="absolute top-1/3 right-1/4 w-1.5 h-1.5 bg-gold/40 rounded-full animate-pulse" style={{ animationDelay: '0.5s' }} />
+      <div className="absolute bottom-32 left-1/3 w-2.5 h-2.5 bg-primary/30 rounded-full animate-pulse" style={{ animationDelay: '1s' }} />
       
       <div className="relative container mx-auto px-4">
         <div className="max-w-6xl mx-auto">
@@ -100,7 +110,7 @@ export const NaturalQRShowcase = forwardRef<HTMLElement, Record<string, never>>(
 
           {/* Main showcase grid */}
           <div className="grid md:grid-cols-2 gap-8 lg:gap-12 items-center">
-            {/* Left: Interactive Pattern Demo */}
+            {/* Left: Animated Visualization Demo */}
             <motion.div
               initial={{ opacity: 0, x: -30 }}
               whileInView={{ opacity: 1, x: 0 }}
@@ -108,10 +118,13 @@ export const NaturalQRShowcase = forwardRef<HTMLElement, Record<string, never>>(
               className="relative"
             >
               <div className="relative aspect-square max-w-sm mx-auto">
-                {/* Scanning overlay effect - CSS-only for smooth performance */}
+                {/* Glowing backdrop */}
+                <div className="absolute -inset-4 bg-gradient-to-br from-primary/20 via-gold/10 to-primary/20 rounded-2xl blur-xl opacity-50" />
+                
+                {/* Scanning overlay effect */}
                 <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden rounded-xl">
                   <motion.div
-                    className="absolute w-full h-0.5 bg-gradient-to-r from-transparent via-primary to-transparent opacity-70"
+                    className="absolute w-full h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-80"
                     animate={{
                       top: ["0%", "100%"],
                     }}
@@ -123,38 +136,43 @@ export const NaturalQRShowcase = forwardRef<HTMLElement, Record<string, never>>(
                   />
                 </div>
 
-                {/* The visualization grid - static colors, no per-square state updates */}
-                <div className="grid grid-cols-8 gap-0.5 p-2 bg-card rounded-xl border border-border shadow-2xl">
-                  {pattern.colors.map((row, rowIndex) =>
-                    row.map((color, colIndex) => (
-                      <div
-                        key={`${rowIndex}-${colIndex}`}
-                        className="aspect-square rounded-sm"
-                        style={{ backgroundColor: color }}
-                      />
-                    ))
-                  )}
+                {/* The animated visualization - simulates GIF playback */}
+                <div className="relative bg-card rounded-xl border border-border shadow-2xl overflow-hidden">
+                  <AnimatedVisualizationPreview
+                    pgn={gamePgn}
+                    size={320}
+                    animationSpeed={120}
+                    className="w-full h-auto"
+                  />
+                  
+                  {/* Corner brackets overlay - scanner viewfinder effect */}
+                  <div className="absolute inset-0 pointer-events-none">
+                    <div className="absolute top-2 left-2 w-6 h-6 border-l-2 border-t-2 border-primary/70" />
+                    <div className="absolute top-2 right-2 w-6 h-6 border-r-2 border-t-2 border-primary/70" />
+                    <div className="absolute bottom-2 left-2 w-6 h-6 border-l-2 border-b-2 border-primary/70" />
+                    <div className="absolute bottom-2 right-2 w-6 h-6 border-r-2 border-b-2 border-primary/70" />
+                  </div>
                 </div>
 
                 {/* Pattern info overlay */}
                 <motion.div
-                  className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-card/95 backdrop-blur-sm px-4 py-2 rounded-full border border-border shadow-lg"
+                  className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-card/95 backdrop-blur-sm px-5 py-2.5 rounded-full border border-primary/30 shadow-lg"
                   animate={{ y: [0, -5, 0] }}
                   transition={{ duration: 2, repeat: Infinity }}
                 >
-                  <span className="text-sm font-medium text-gold-gradient">{pattern.title}</span>
+                  <span className="text-sm font-medium text-gold-gradient">{gameTitle}</span>
                 </motion.div>
 
                 {/* Fingerprint visualization lines */}
-                <div className="absolute -right-8 top-1/2 -translate-y-1/2 flex flex-col gap-1">
+                <div className="absolute -right-10 top-1/2 -translate-y-1/2 flex flex-col gap-1.5">
                   {[...Array(8)].map((_, i) => (
                     <motion.div
                       key={i}
-                      className="h-1 bg-primary/40 rounded-full"
+                      className="h-1 bg-gradient-to-r from-primary/60 to-gold/40 rounded-full"
                       initial={{ width: 20 }}
                       animate={{ 
                         width: [20, 40 + Math.random() * 30, 20],
-                        opacity: [0.4, 0.8, 0.4]
+                        opacity: [0.4, 0.9, 0.4]
                       }}
                       transition={{ 
                         duration: 1.5, 
@@ -174,15 +192,17 @@ export const NaturalQRShowcase = forwardRef<HTMLElement, Record<string, never>>(
               viewport={{ once: true }}
               className="space-y-8"
             >
-              {/* Process steps */}
+              {/* Process steps with AI art backgrounds */}
               <div className="grid grid-cols-2 gap-4">
                 {demoSteps.map((step, index) => {
                   const Icon = step.icon;
                   const isActive = demoStep === index;
+                  const bgImages = [chessKingArt, chessMovementArt, heroChessArt, chessKingArt];
+                  
                   return (
                     <motion.div
                       key={step.title}
-                      className={`p-4 rounded-xl border transition-all duration-300 ${
+                      className={`relative p-4 rounded-xl border transition-all duration-300 overflow-hidden ${
                         isActive 
                           ? "bg-primary/10 border-primary/30 shadow-lg shadow-primary/10" 
                           : "bg-card/50 border-border/50"
@@ -191,19 +211,41 @@ export const NaturalQRShowcase = forwardRef<HTMLElement, Record<string, never>>(
                         scale: isActive ? 1.02 : 1,
                       }}
                     >
-                      <Icon className={`h-6 w-6 mb-2 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
-                      <h4 className={`font-semibold ${isActive ? "text-foreground" : "text-muted-foreground"}`}>
-                        {step.title}
-                      </h4>
-                      <p className="text-xs text-muted-foreground mt-1">{step.desc}</p>
+                      {/* Subtle AI art background */}
+                      <div 
+                        className={`absolute inset-0 opacity-[0.08] pointer-events-none transition-opacity duration-500 ${isActive ? 'opacity-[0.12]' : ''}`}
+                      >
+                        <img 
+                          src={bgImages[index]} 
+                          alt="" 
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      
+                      <div className="relative z-10">
+                        <Icon className={`h-6 w-6 mb-2 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
+                        <h4 className={`font-semibold ${isActive ? "text-foreground" : "text-muted-foreground"}`}>
+                          {step.title}
+                        </h4>
+                        <p className="text-xs text-muted-foreground mt-1">{step.desc}</p>
+                      </div>
                     </motion.div>
                   );
                 })}
               </div>
 
-              {/* Value proposition */}
-              <div className="bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl p-6 border border-primary/20">
-                <div className="flex items-start gap-4">
+              {/* Value proposition with AI art accent */}
+              <div className="relative bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl p-6 border border-primary/20 overflow-hidden">
+                {/* Subtle background art */}
+                <div className="absolute inset-0 opacity-[0.06] pointer-events-none">
+                  <img 
+                    src={heroChessArt} 
+                    alt="" 
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                
+                <div className="relative z-10 flex items-start gap-4">
                   <div className="p-2 bg-primary/20 rounded-lg">
                     <Crown className="h-6 w-6 text-primary" />
                   </div>
@@ -217,7 +259,7 @@ export const NaturalQRShowcase = forwardRef<HTMLElement, Record<string, never>>(
                   </div>
                 </div>
                 
-                <div className="mt-4 pt-4 border-t border-primary/20 flex items-center gap-4 text-sm">
+                <div className="relative z-10 mt-4 pt-4 border-t border-primary/20 flex items-center gap-4 text-sm">
                   <div className="flex items-center gap-1.5">
                     <Users className="h-4 w-4 text-primary" />
                     <span className="text-muted-foreground">More Members</span>
@@ -230,10 +272,10 @@ export const NaturalQRShowcase = forwardRef<HTMLElement, Record<string, never>>(
                 </div>
               </div>
 
-              {/* CTA Button - Navigate to dedicated page */}
+              {/* CTA Button */}
               <Button
                 size="lg"
-                className="w-full gap-2 text-lg py-6"
+                className="w-full gap-2 text-lg py-6 shadow-lg shadow-primary/20"
                 onClick={() => navigate('/vision-scanner')}
               >
                 <Scan className="h-5 w-5" />
