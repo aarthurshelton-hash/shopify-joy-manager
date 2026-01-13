@@ -7,6 +7,7 @@ import PaletteSelector from '@/components/chess/PaletteSelector';
 import ChessParticles from '@/components/chess/ChessParticles';
 import FloatingChessPieces from '@/components/chess/FloatingChessPieces';
 import TrendingWidget from '@/components/homepage/TrendingWidget';
+import LiveMarketWidget from '@/components/homepage/LiveMarketWidget';
 import CreativeModeShowcase from '@/components/homepage/CreativeModeShowcase';
 import { NaturalQRShowcase } from '@/components/homepage/NaturalQRShowcase';
 import { BookShowcase } from '@/components/book/BookShowcase';
@@ -628,6 +629,9 @@ const Index = () => {
 
             {/* NEW: Carlsen in Color Book Showcase */}
             <BookShowcase variant="hero" />
+
+            {/* Live Market Activity Widget */}
+            <LiveMarketWidget />
 
             {/* Community Trending Widget */}
             <TrendingWidget />
