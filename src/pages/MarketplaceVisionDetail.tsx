@@ -10,7 +10,7 @@ import { LegendHighlightProvider } from '@/contexts/LegendHighlightContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { ArrowLeft, Loader2, Sparkles, ShoppingBag, Gift, DollarSign, Crown } from 'lucide-react';
+import { ArrowLeft, Loader2, Sparkles, ShoppingBag, Gift, DollarSign, Crown, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSessionStore, CreativeModeTransfer } from '@/stores/sessionStore';
 import { usePrintOrderStore, PrintOrderData } from '@/stores/printOrderStore';
@@ -25,6 +25,7 @@ import {
   MarketplaceListing 
 } from '@/lib/marketplace/marketplaceApi';
 import { extractPaletteId, isPremiumPalette, getPaletteDisplayName } from '@/lib/marketplace/paletteArtMap';
+import WalletPurchaseModal from '@/components/marketplace/WalletPurchaseModal';
 
 interface ExtendedGameData {
   white?: string;
@@ -64,6 +65,7 @@ const MarketplaceVisionDetail: React.FC = () => {
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showWalletPurchaseModal, setShowWalletPurchaseModal] = useState(false);
   const [visionScore, setVisionScore] = useState<VisionScore | null>(null);
   
   const viewRecordedRef = useRef(false);
@@ -211,32 +213,37 @@ const MarketplaceVisionDetail: React.FC = () => {
       return;
     }
 
-    setIsPurchasing(true);
-    const { url, success, message, visualizationId, error } = await purchaseListing(listing.id);
+    // For free listings, use the direct claim flow
+    if (listing.price_cents === 0) {
+      setIsPurchasing(true);
+      const { success, message, visualizationId, error } = await purchaseListing(listing.id);
 
-    if (error) {
-      toast.error('Purchase failed', { description: error.message });
+      if (error) {
+        toast.error('Claim failed', { description: error.message });
+        setIsPurchasing(false);
+        return;
+      }
+
+      if (success) {
+        toast.success('Congratulations!', {
+          description: message || 'Visualization added to your gallery!',
+          action: visualizationId ? {
+            label: 'View',
+            onClick: () => navigate(`/my-vision/${visualizationId}`),
+          } : undefined,
+        });
+        navigate('/my-vision');
+      }
       setIsPurchasing(false);
       return;
     }
 
-    if (success) {
-      toast.success('Congratulations!', {
-        description: message || 'Visualization added to your gallery!',
-        action: visualizationId ? {
-          label: 'View',
-          onClick: () => navigate(`/my-vision/${visualizationId}`),
-        } : undefined,
-      });
-      navigate('/my-vision');
-      setIsPurchasing(false);
-      return;
-    }
+    // For paid listings, show wallet purchase modal
+    setShowWalletPurchaseModal(true);
+  };
 
-    if (url) {
-      window.open(url, '_blank');
-      setIsPurchasing(false);
-    }
+  const handleWalletPurchaseSuccess = (visualizationId: string) => {
+    navigate('/my-vision');
   };
 
   const handleShare = async () => {
@@ -468,7 +475,10 @@ const MarketplaceVisionDetail: React.FC = () => {
         {isFree ? (
           <><Gift className="h-3 w-3 mr-1" /> Free</>
         ) : (
-          <><DollarSign className="h-3 w-3" />{((listing?.price_cents || 0) / 100).toFixed(2)}</>
+          <>
+            <Wallet className="h-3 w-3 mr-1" />
+            {((listing?.price_cents || 0) / 100).toFixed(2)} Credits
+          </>
         )}
       </Badge>
       
@@ -497,8 +507,8 @@ const MarketplaceVisionDetail: React.FC = () => {
                   </>
                 ) : (
                   <>
-                    <Crown className="h-4 w-4" />
-                    Claim Ownership
+                    <Wallet className="h-4 w-4" />
+                    Buy with Credits
                   </>
                 )}
               </Button>
@@ -509,7 +519,7 @@ const MarketplaceVisionDetail: React.FC = () => {
                 <li>• Add this vision to your personal gallery</li>
                 <li>• Exclusive digital ownership - only one owner per vision</li>
                 <li>• Earn royalties when others order prints</li>
-                <li>• List for resale anytime on the marketplace</li>
+                <li>• Seller receives 95%, 5% supports Education Fund</li>
               </ul>
             </TooltipContent>
           </Tooltip>
@@ -605,6 +615,19 @@ const MarketplaceVisionDetail: React.FC = () => {
         isOpen={showAuthModal} 
         onClose={() => setShowAuthModal(false)} 
       />
+
+      {/* Wallet Purchase Modal for paid listings */}
+      {listing && (
+        <WalletPurchaseModal
+          open={showWalletPurchaseModal}
+          onOpenChange={setShowWalletPurchaseModal}
+          listingId={listing.id}
+          visualizationTitle={listing.visualization?.title || 'Vision'}
+          priceCents={listing.price_cents}
+          sellerName={listing.seller?.display_name || 'Collector'}
+          onSuccess={handleWalletPurchaseSuccess}
+        />
+      )}
     </div>
   );
 };
