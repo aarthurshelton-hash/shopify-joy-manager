@@ -31,6 +31,8 @@ import EducationFund from "./pages/EducationFund";
 import CreatorDashboard from "./pages/CreatorDashboard";
 import AdminWithdrawals from "./pages/AdminWithdrawals";
 import VisionScannerPage from "./pages/VisionScannerPage";
+import TermsOfService from "./pages/TermsOfService";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -70,6 +72,8 @@ const App = () => (
             <Route path="/education-fund" element={<EducationFund />} />
             <Route path="/creator-dashboard" element={<CreatorDashboard />} />
             <Route path="/vision-scanner" element={<VisionScannerPage />} />
+            <Route path="/terms" element={<TermsOfService />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

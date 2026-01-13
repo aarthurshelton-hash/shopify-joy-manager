@@ -1,6 +1,17 @@
+/**
+ * @license
+ * Copyright (c) 2024-2026 En Pensent LLC. All Rights Reserved.
+ * 
+ * This source code is proprietary and confidential.
+ * Unauthorized copying, modification, distribution, or use of this software,
+ * via any medium, is strictly prohibited without the express written permission
+ * of En Pensent LLC.
+ */
+
 import { Link, useLocation } from 'react-router-dom';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 import { toast } from 'sonner';
+import { Lock } from 'lucide-react';
 
 export const Footer = () => {
   const location = useLocation();
@@ -13,6 +24,7 @@ export const Footer = () => {
       setTimeout(() => window.location.reload(), 300);
     }
   };
+  
   return (
     <footer className="border-t border-border/40 mt-16 sm:mt-20 bg-card/30">
       <div className="container mx-auto px-4 py-8 sm:py-10 md:py-12">
@@ -46,10 +58,23 @@ export const Footer = () => {
             <Link to="/investors" className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">Investors</Link>
           </nav>
           
-          {/* Copyright */}
-          <p className="text-xs text-muted-foreground/60 pt-4 sm:pt-6">
-            © {new Date().getFullYear()} En Pensent. All rights reserved.
-          </p>
+          {/* Legal Links */}
+          <nav className="flex items-center gap-4 pt-3">
+            <Link to="/terms" className="text-xs text-muted-foreground/70 hover:text-foreground transition-colors">Terms of Service</Link>
+            <span className="text-muted-foreground/30">•</span>
+            <Link to="/privacy" className="text-xs text-muted-foreground/70 hover:text-foreground transition-colors">Privacy Policy</Link>
+          </nav>
+          
+          {/* Copyright & Protection Notice */}
+          <div className="flex flex-col items-center gap-2 pt-4 sm:pt-6">
+            <p className="text-xs text-muted-foreground/60">
+              © {new Date().getFullYear()} En Pensent LLC. All rights reserved.
+            </p>
+            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/40">
+              <Lock className="w-3 h-3" />
+              <span>Patent Pending • Proprietary Technology</span>
+            </div>
+          </div>
         </div>
       </div>
       
