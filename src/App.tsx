@@ -32,6 +32,7 @@ import CreatorDashboard from "./pages/CreatorDashboard";
 import AdminWithdrawals from "./pages/AdminWithdrawals";
 import AdminDMCA from "./pages/AdminDMCA";
 import AdminWatermarkVerification from "./pages/AdminWatermarkVerification";
+import AdminBatchWatermarkVerification from "./pages/AdminBatchWatermarkVerification";
 import DMCACounterNotification from "./pages/DMCACounterNotification";
 import VisionScannerPage from "./pages/VisionScannerPage";
 import TermsOfService from "./pages/TermsOfService";
@@ -73,6 +74,7 @@ const App = () => (
             <Route path="/admin/withdrawals" element={<AdminWithdrawals />} />
             <Route path="/admin/dmca" element={<AdminDMCA />} />
             <Route path="/admin/watermark-verification" element={<AdminWatermarkVerification />} />
+            <Route path="/admin/batch-watermark-verification" element={<AdminBatchWatermarkVerification />} />
             <Route path="/account" element={<Account />} />
             <Route path="/book" element={<BookGenerator />} />
             <Route path="/education-fund" element={<EducationFund />} />
