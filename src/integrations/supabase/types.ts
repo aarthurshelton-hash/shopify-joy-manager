@@ -636,6 +636,36 @@ export type Database = {
           },
         ]
       }
+      streak_rewards: {
+        Row: {
+          claimed_at: string
+          claimed_date: string
+          id: string
+          reward_type: string
+          reward_value: number
+          streak_day: number
+          user_id: string
+        }
+        Insert: {
+          claimed_at?: string
+          claimed_date?: string
+          id?: string
+          reward_type: string
+          reward_value?: number
+          streak_day: number
+          user_id: string
+        }
+        Update: {
+          claimed_at?: string
+          claimed_date?: string
+          id?: string
+          reward_type?: string
+          reward_value?: number
+          streak_day?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       subscription_notifications: {
         Row: {
           created_at: string
@@ -1215,6 +1245,7 @@ export type Database = {
         Returns: number
       }
       get_user_offense_count: { Args: { p_user_id: string }; Returns: number }
+      get_user_streak: { Args: { p_user_id: string }; Returns: Json }
       get_withdrawable_balance: { Args: { p_user_id: string }; Returns: number }
       has_role: {
         Args: {
@@ -1251,6 +1282,7 @@ export type Database = {
           released_count: number
         }[]
       }
+      update_scan_streak: { Args: { p_user_id: string }; Returns: Json }
       validate_withdrawal_request: {
         Args: { p_amount_cents: number; p_user_id: string }
         Returns: {
