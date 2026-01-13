@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Loader2, Play, CheckCircle, XCircle, AlertTriangle, ArrowLeft, Package } from 'lucide-react';
@@ -136,13 +136,35 @@ function calculatePrice(isExemplar: boolean, index: number): number {
 
 const AdminSeedMarketplace: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [isSeeding, setIsSeeding] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentItem, setCurrentItem] = useState('');
   const [results, setResults] = useState<SeedResult[]>([]);
   const [totalCount, setTotalCount] = useState(50);
+
+  // Check admin status using secure has_role function
+  useEffect(() => {
+    const checkAdmin = async () => {
+      if (!user) {
+        setIsAdmin(false);
+        return;
+      }
+
+      const { data } = await supabase.rpc('has_role', { 
+        _user_id: user.id, 
+        _role: 'admin' 
+      });
+
+      setIsAdmin(data === true);
+    };
+
+    if (!authLoading) {
+      checkAdmin();
+    }
+  }, [user, authLoading]);
 
   const generateVisualization = useCallback(async (
     game: typeof famousGames[0],
@@ -326,6 +348,33 @@ const AdminSeedMarketplace: React.FC = () => {
   const successCount = results.filter(r => r.success).length;
   const failCount = results.filter(r => !r.success).length;
   const exemplarSuccessCount = results.filter(r => r.success && r.isExemplar).length;
+
+  // Loading state
+  if (authLoading || isAdmin === null) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Not authorized
+  if (!user || !isAdmin) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-8">
+        <Card className="max-w-md">
+          <CardContent className="pt-6 text-center">
+            <XCircle className="h-12 w-12 mx-auto text-destructive mb-4" />
+            <h2 className="text-xl font-bold mb-2">Access Denied</h2>
+            <p className="text-muted-foreground mb-4">
+              You need admin privileges to access this page.
+            </p>
+            <Button onClick={() => navigate('/')}>Go Home</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background p-8">

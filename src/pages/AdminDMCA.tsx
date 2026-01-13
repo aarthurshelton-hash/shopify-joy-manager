@@ -78,7 +78,7 @@ const AdminDMCA: React.FC = () => {
   const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState('pending');
 
-  // Check admin status
+  // Check admin status using secure has_role function
   useEffect(() => {
     const checkAdmin = async () => {
       if (!user) {
@@ -88,15 +88,13 @@ const AdminDMCA: React.FC = () => {
       }
 
       try {
-        const { data, error } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', user.id)
-          .eq('role', 'admin')
-          .maybeSingle();
+        const { data, error } = await supabase.rpc('has_role', { 
+          _user_id: user.id, 
+          _role: 'admin' 
+        });
 
         if (error) throw error;
-        setIsAdmin(!!data);
+        setIsAdmin(data === true);
       } catch (error) {
         console.error('Error checking admin status:', error);
         setIsAdmin(false);
