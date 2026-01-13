@@ -70,10 +70,8 @@ const MarketplaceTransparency = React.forwardRef<HTMLDivElement, Record<string, 
   ];
 
   return (
-    <div ref={ref} className="space-y-6" style={{ opacity: 1 }}>
-      <div
-        style={{ animation: 'fadeInUp 0.5s ease-out' }}
-      >
+    <div ref={ref} className="space-y-6">
+      <div className="animate-fade-in">
       {/* Trust Header */}
       <Card className="border-primary/30 bg-primary/5">
         <CardHeader className="pb-3">
@@ -110,14 +108,11 @@ const MarketplaceTransparency = React.forwardRef<HTMLDivElement, Record<string, 
         </CardContent>
       </Card>
 
-      {/* Ownership Metrics Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {platformMetrics.map((metric, index) => (
           <div
             key={metric.label}
-            style={{ 
-              animation: `fadeInUp 0.5s ease-out ${index * 0.1}s both`
-            }}
+            className="animate-fade-in"
           >
             <Card className="h-full">
               <CardContent className="p-4 text-center">
