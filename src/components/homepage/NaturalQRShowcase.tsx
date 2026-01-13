@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, forwardRef } from "react";
 import { motion } from "framer-motion";
 import { Scan, Camera, Fingerprint, Link2, Sparkles, TrendingUp, Users, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -35,7 +35,7 @@ const samplePatterns = [
   },
 ];
 
-export function NaturalQRShowcase() {
+export const NaturalQRShowcase = forwardRef<HTMLElement, object>(function NaturalQRShowcase(_, ref) {
   const navigate = useNavigate();
   const [demoStep, setDemoStep] = useState(0);
 
@@ -57,7 +57,7 @@ export function NaturalQRShowcase() {
   const pattern = samplePatterns[0];
 
   return (
-    <section className="relative py-16 md:py-24 overflow-hidden">
+    <section ref={ref} className="relative py-16 md:py-24 overflow-hidden">
       {/* Background gradient */}
       <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-background to-background" />
       
@@ -249,4 +249,4 @@ export function NaturalQRShowcase() {
       </div>
     </section>
   );
-}
+});

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, forwardRef } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Activity, TrendingUp, DollarSign, Palette, Crown, 
@@ -24,7 +24,7 @@ interface MarketActivity {
   timestamp: Date;
 }
 
-const LiveMarketWidget = () => {
+const LiveMarketWidget = forwardRef<HTMLElement, object>(function LiveMarketWidget(_, ref) {
   const { isPremium, isAdmin } = useAuth();
   const [valuePools, setValuePools] = useState<ValuePool[]>([]);
   const [activities, setActivities] = useState<MarketActivity[]>([]);
@@ -163,7 +163,7 @@ const LiveMarketWidget = () => {
   };
 
   return (
-    <section className="py-8">
+    <section ref={ref} className="py-8">
       <div className="container mx-auto px-4">
         <div className="max-w-5xl mx-auto">
           <motion.div
@@ -361,6 +361,6 @@ const LiveMarketWidget = () => {
       </div>
     </section>
   );
-};
+});
 
 export default LiveMarketWidget;
