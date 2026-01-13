@@ -274,10 +274,16 @@ const AdminDMCA: React.FC = () => {
                 Review and manage DMCA takedown requests
               </p>
             </div>
-            <Button variant="outline" onClick={loadReports} disabled={isLoading}>
-              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => navigate('/admin/watermark-verification')}>
+                <Shield className="h-4 w-4 mr-2" />
+                Watermark Verification
+              </Button>
+              <Button variant="outline" onClick={loadReports} disabled={isLoading}>
+                <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+            </div>
           </div>
 
           {/* Stats Cards */}

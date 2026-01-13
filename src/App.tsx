@@ -31,6 +31,8 @@ import EducationFund from "./pages/EducationFund";
 import CreatorDashboard from "./pages/CreatorDashboard";
 import AdminWithdrawals from "./pages/AdminWithdrawals";
 import AdminDMCA from "./pages/AdminDMCA";
+import AdminWatermarkVerification from "./pages/AdminWatermarkVerification";
+import DMCACounterNotification from "./pages/DMCACounterNotification";
 import VisionScannerPage from "./pages/VisionScannerPage";
 import TermsOfService from "./pages/TermsOfService";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
@@ -70,6 +72,7 @@ const App = () => (
             <Route path="/admin/moderation" element={<AdminModeration />} />
             <Route path="/admin/withdrawals" element={<AdminWithdrawals />} />
             <Route path="/admin/dmca" element={<AdminDMCA />} />
+            <Route path="/admin/watermark-verification" element={<AdminWatermarkVerification />} />
             <Route path="/account" element={<Account />} />
             <Route path="/book" element={<BookGenerator />} />
             <Route path="/education-fund" element={<EducationFund />} />
@@ -78,6 +81,7 @@ const App = () => (
             <Route path="/terms" element={<TermsOfService />} />
             <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/dmca" element={<DMCA />} />
+            <Route path="/dmca/counter-notification" element={<DMCACounterNotification />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
