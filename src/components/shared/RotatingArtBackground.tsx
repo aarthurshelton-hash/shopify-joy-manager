@@ -35,7 +35,7 @@ export const RotatingArtBackground: React.FC<RotatingArtBackgroundProps> = ({
   if (images.length === 0) return null;
 
   return (
-    <div className={`absolute inset-0 overflow-hidden pointer-events-none ${className}`}>
+    <div className={`absolute inset-0 overflow-hidden pointer-events-none ${className}`} style={{ zIndex: 0 }}>
       <AnimatePresence mode="wait">
         <motion.div
           key={currentIndex}
@@ -43,17 +43,17 @@ export const RotatingArtBackground: React.FC<RotatingArtBackgroundProps> = ({
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.98 }}
           transition={{ duration: 1.5, ease: 'easeInOut' }}
-          className="absolute inset-0"
+          className="absolute inset-0 pointer-events-none"
         >
           <div
-            className="absolute inset-0 bg-cover bg-center"
+            className="absolute inset-0 bg-cover bg-center pointer-events-none"
             style={{
               backgroundImage: `url(${images[currentIndex]})`,
               opacity,
             }}
           />
           {/* Gradient overlay for better text readability */}
-          <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/80 to-background" />
+          <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/80 to-background pointer-events-none" />
         </motion.div>
       </AnimatePresence>
     </div>
