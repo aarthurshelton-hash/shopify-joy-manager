@@ -238,6 +238,77 @@ export type Database = {
         }
         Relationships: []
       }
+      dmca_counter_notifications: {
+        Row: {
+          admin_notes: string | null
+          created_at: string
+          electronic_signature: string
+          good_faith_statement: boolean
+          id: string
+          jurisdiction_consent: boolean
+          notifier_address: string
+          notifier_email: string
+          notifier_name: string
+          notifier_phone: string | null
+          original_report_id: string | null
+          original_takedown_description: string
+          perjury_statement: boolean
+          removed_content_description: string
+          removed_content_url: string | null
+          status: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string
+          electronic_signature: string
+          good_faith_statement?: boolean
+          id?: string
+          jurisdiction_consent?: boolean
+          notifier_address: string
+          notifier_email: string
+          notifier_name: string
+          notifier_phone?: string | null
+          original_report_id?: string | null
+          original_takedown_description: string
+          perjury_statement?: boolean
+          removed_content_description: string
+          removed_content_url?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string
+          electronic_signature?: string
+          good_faith_statement?: boolean
+          id?: string
+          jurisdiction_consent?: boolean
+          notifier_address?: string
+          notifier_email?: string
+          notifier_name?: string
+          notifier_phone?: string | null
+          original_report_id?: string | null
+          original_takedown_description?: string
+          perjury_statement?: boolean
+          removed_content_description?: string
+          removed_content_url?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dmca_counter_notifications_original_report_id_fkey"
+            columns: ["original_report_id"]
+            isOneToOne: false
+            referencedRelation: "dmca_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dmca_reports: {
         Row: {
           accuracy_statement: boolean

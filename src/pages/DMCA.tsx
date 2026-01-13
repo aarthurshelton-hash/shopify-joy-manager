@@ -458,6 +458,28 @@ const DMCA = () => {
           </CardContent>
         </Card>
 
+        {/* Counter-Notification Section */}
+        <Card className="mt-8 border-primary/20 bg-primary/5">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Scale className="w-5 h-5" />
+              Content Wrongly Removed?
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground space-y-3">
+            <p>
+              If you believe your content was removed due to a mistake or misidentification, 
+              you may file a DMCA counter-notification.
+            </p>
+            <Link to="/dmca/counter-notification">
+              <Button variant="outline" className="gap-2">
+                <Scale className="w-4 h-4" />
+                File Counter-Notification
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+
         {/* Designated Agent */}
         <Card className="mt-8">
           <CardHeader>
