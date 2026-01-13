@@ -40,7 +40,7 @@ import {
   Info,
   TrendingUp,
 } from 'lucide-react';
-import { SquareData, GameData, SimulationResult } from '@/lib/chess/gameSimulator';
+import { SquareData, GameData, SimulationResult, simulateGame } from '@/lib/chess/gameSimulator';
 import { TimelineProvider, useTimeline } from '@/contexts/TimelineContext';
 import { LegendHighlightProvider, useLegendHighlight } from '@/contexts/LegendHighlightContext';
 import InteractiveVisualizationBoard from './InteractiveVisualizationBoard';
@@ -52,7 +52,7 @@ import IntrinsicPaletteCard from './IntrinsicPaletteCard';
 import ChessBoardVisualization from './ChessBoardVisualization';
 import { VisionScore, getVisionScore, calculateVisionValue, calculateMembershipMultiplier, SCORING_WEIGHTS } from '@/lib/visualizations/visionScoring';
 import { analyzeGame, GameAnalysis } from '@/lib/chess/chessAnalysis';
-import { setActivePalette, PaletteId, getActivePalette, getCurrentPalette, colorPalettes } from '@/lib/chess/pieceColors';
+import { setActivePalette, PaletteId, getActivePalette, getCurrentPalette, colorPalettes, getPieceColor } from '@/lib/chess/pieceColors';
 import { detectGameCard, GameCardMatch } from '@/lib/chess/gameCardDetection';
 import { format } from 'date-fns';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
@@ -66,6 +66,9 @@ import PaletteAvailabilityIndicator from './PaletteAvailabilityIndicator';
 import { useAuth } from '@/hooks/useAuth';
 import MiniPrintOrderSection from './MiniPrintOrderSection';
 import { EducationFundShowcase } from '@/components/homepage/EducationFundShowcase';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { PaletteAvailabilityInfo } from '@/lib/visualizations/paletteAvailability';
 
 // Export state for capturing visualization in any configuration
 export interface ExportState {
@@ -765,13 +768,137 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
   
   const containerRef = useRef<HTMLDivElement>(null);
   
+  // === Seamless Palette Switching State ===
+  const [localBoard, setLocalBoard] = useState<SquareData[][]>(board);
+  const [localGameData, setLocalGameData] = useState<GameData>(gameData);
+  const [localTotalMoves, setLocalTotalMoves] = useState<number>(totalMoves);
+  const [localPaletteId, setLocalPaletteId] = useState<PaletteId | undefined>(paletteId as PaletteId | undefined);
+  const [localVisualizationId, setLocalVisualizationId] = useState<string | undefined>(visualizationId);
+  const [localTitle, setLocalTitle] = useState<string | undefined>(title);
+  const [localIsOwner, setLocalIsOwner] = useState<boolean>(isOwner);
+  const [localIsListed, setLocalIsListed] = useState<boolean>(isListed);
+  const [localSellerName, setLocalSellerName] = useState<string | undefined>(sellerName);
+  const [localPurchasePrice, setLocalPurchasePrice] = useState<number | undefined>(purchasePrice);
+  const [isSwitchingPalette, setIsSwitchingPalette] = useState(false);
+
+  // Sync props to local state when they change externally
+  useEffect(() => {
+    setLocalBoard(board);
+    setLocalGameData(gameData);
+    setLocalTotalMoves(totalMoves);
+    setLocalPaletteId(paletteId as PaletteId | undefined);
+    setLocalVisualizationId(visualizationId);
+    setLocalTitle(title);
+    setLocalIsOwner(isOwner);
+    setLocalIsListed(isListed);
+    setLocalSellerName(sellerName);
+    setLocalPurchasePrice(purchasePrice);
+  }, [board, gameData, totalMoves, paletteId, visualizationId, title, isOwner, isListed, sellerName, purchasePrice]);
+  
   // Detect if current palette is an official En Pensent palette
   const currentPaletteInfo = useMemo(() => {
-    const activePalette = paletteId || getActivePalette().id;
+    const activePalette = localPaletteId || getActivePalette().id;
     if (activePalette === 'custom') return null;
     const palette = colorPalettes.find(p => p.id === activePalette);
     return palette ? { id: activePalette as PaletteId, name: palette.name } : null;
-  }, [paletteId]);
+  }, [localPaletteId]);
+  
+  // Seamless palette switch handler
+  const handleSeamlessPaletteSwitch = useCallback(async (info: PaletteAvailabilityInfo) => {
+    const pgnToUse = pgn || localGameData.pgn;
+    if (!pgnToUse) return;
+    
+    setIsSwitchingPalette(true);
+    
+    try {
+      // Set new palette globally
+      setActivePalette(info.paletteId);
+      setLocalPaletteId(info.paletteId);
+      
+      if (info.isTaken && info.visualizationId) {
+        // Fetch existing visualization data
+        const { data: vizData, error } = await supabase
+          .from('saved_visualizations')
+          .select('*')
+          .eq('id', info.visualizationId)
+          .single();
+        
+        if (error) throw error;
+        
+        // Parse the saved game data
+        const savedGameData = vizData.game_data as unknown as {
+          board?: SquareData[][];
+          gameData?: GameData;
+          totalMoves?: number;
+        };
+        
+        if (savedGameData.board) {
+          setLocalBoard(savedGameData.board);
+        }
+        if (savedGameData.gameData) {
+          setLocalGameData(savedGameData.gameData);
+        }
+        if (savedGameData.totalMoves) {
+          setLocalTotalMoves(savedGameData.totalMoves);
+        }
+        
+        setLocalVisualizationId(info.visualizationId);
+        setLocalTitle(vizData.title);
+        setLocalIsOwner(vizData.user_id === user?.id);
+        
+        // Check for listing
+        const { data: listingData } = await supabase
+          .from('visualization_listings')
+          .select('*, profiles:seller_id(display_name)')
+          .eq('visualization_id', info.visualizationId)
+          .eq('status', 'active')
+          .maybeSingle();
+        
+        setLocalIsListed(!!listingData);
+        setLocalPurchasePrice(listingData?.price_cents);
+        setLocalSellerName((listingData?.profiles as { display_name?: string })?.display_name || 'Anonymous');
+        
+        // Fetch new vision score
+        const newScore = await getVisionScore(info.visualizationId);
+        setVisionScore(newScore);
+        
+        toast.success(`Switched to ${info.ownerDisplayName}'s ${colorPalettes.find(p => p.id === info.paletteId)?.name || 'palette'} colorway`);
+      } else {
+        // Regenerate board from PGN with new palette colors
+        const simResult = simulateGame(pgnToUse);
+        
+        // Re-apply colors based on new palette
+        const updatedBoard = simResult.board.map(rank =>
+          rank.map(square => ({
+            ...square,
+            visits: square.visits.map(visit => ({
+              ...visit,
+              hexColor: getPieceColor(visit.piece, visit.color),
+            })),
+          }))
+        );
+        
+        setLocalBoard(updatedBoard);
+        setLocalGameData(simResult.gameData);
+        setLocalTotalMoves(simResult.totalMoves);
+        setLocalVisualizationId(undefined);
+        setLocalTitle(undefined);
+        setLocalIsOwner(false);
+        setLocalIsListed(false);
+        setVisionScore(null);
+        
+        const paletteName = colorPalettes.find(p => p.id === info.paletteId)?.name;
+        toast.success(`Applied ${paletteName || 'new'} palette`);
+      }
+      
+      onPaletteChange?.();
+    } catch (err) {
+      console.error('Failed to switch palette:', err);
+      toast.error('Failed to switch palette');
+    } finally {
+      setIsSwitchingPalette(false);
+    }
+  }, [pgn, localGameData.pgn, user?.id, onPaletteChange]);
   
   // Detect game card match from PGN
   useEffect(() => {
@@ -981,14 +1108,19 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                   </div>
 
                   {/* Board with Trademark Look */}
-                  <div className="flex justify-center" data-vision-board="true">
+                  <div className="flex justify-center relative" data-vision-board="true">
+                    {isSwitchingPalette && (
+                      <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10 rounded-lg">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                      </div>
+                    )}
                     <TimelineBoard 
-                      board={board} 
-                      totalMoves={totalMoves} 
+                      board={localBoard} 
+                      totalMoves={localTotalMoves} 
                       size={boardSize}
-                      gameData={gameData}
+                      gameData={localGameData}
                       darkMode={darkMode}
-                      title={contextTitle}
+                      title={localTitle || contextTitle}
                       showCoordinates={showCoordinates}
                     />
                   </div>
@@ -1023,18 +1155,15 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                     />
                   )}
 
-                  {/* Palette Availability - Shows which colorways are taken/available */}
-                  {(pgn || gameData.pgn) && (
+                  {/* Palette Availability - Seamless switching */}
+                  {(pgn || localGameData.pgn) && (
                     <PaletteAvailabilityIndicator
-                      pgn={pgn || gameData.pgn}
+                      pgn={pgn || localGameData.pgn}
                       currentUserId={user?.id}
                       currentPaletteId={currentPaletteInfo?.id}
                       context={context}
                       compact={context !== 'generator'}
-                      onPaletteSelect={context === 'generator' ? (paletteId) => {
-                        setActivePalette(paletteId);
-                        onPaletteChange?.();
-                      } : undefined}
+                      onSeamlessSwitch={handleSeamlessPaletteSwitch}
                     />
                   )}
 

@@ -49,6 +49,8 @@ interface PaletteAvailabilityIndicatorProps {
   currentPaletteId?: PaletteId;
   /** Called when user wants to apply a different palette (generator context) */
   onPaletteSelect?: (paletteId: PaletteId) => void;
+  /** Called for seamless palette switching with full info */
+  onSeamlessSwitch?: (info: PaletteAvailabilityInfo) => void;
   /** Context determines navigation behavior */
   context?: 'generator' | 'gallery' | 'marketplace' | 'shared' | 'scanner' | 'postgame';
   compact?: boolean;
@@ -60,6 +62,7 @@ const PaletteAvailabilityIndicator: React.FC<PaletteAvailabilityIndicatorProps> 
   currentUserId,
   currentPaletteId,
   onPaletteSelect,
+  onSeamlessSwitch,
   context = 'generator',
   compact = false,
   showAllPalettes = false,
@@ -80,20 +83,24 @@ const PaletteAvailabilityIndicator: React.FC<PaletteAvailabilityIndicatorProps> 
 
   // Handle clicking on a palette chip
   const handlePaletteClick = useCallback((info: PaletteAvailabilityInfo) => {
+    // If seamless switch is provided, use it for all palette changes
+    if (onSeamlessSwitch) {
+      onSeamlessSwitch(info);
+      return;
+    }
+    
     if (info.isTaken && info.visualizationId) {
       // Navigate to the vision's detail page (universal menu)
-      // Works for both my-vision gallery items and marketplace
       if (info.isListedForSale) {
         navigate(`/marketplace/${info.visualizationId}`);
       } else {
-        // Navigate to the vision detail (works for public and private if owner)
         navigate(`/vision/${info.visualizationId}`);
       }
     } else if (!info.isTaken && onPaletteSelect) {
       // Apply this palette (only in generator context)
       onPaletteSelect(info.paletteId);
     }
-  }, [navigate, onPaletteSelect]);
+  }, [navigate, onPaletteSelect, onSeamlessSwitch]);
 
   if (!pgn) return null;
 
