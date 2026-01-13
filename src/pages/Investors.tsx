@@ -891,7 +891,7 @@ const Investors = () => {
                   </div>
                   <p className="text-sm text-muted-foreground font-serif">
                     <strong className="text-foreground">"Carlsen in Color: 100 Masterpieces of Magnus Carlsen"</strong> — 
-                    A premium coffee table book combining En Pensent visualizations with AI-generated haiku poetry.
+                    A premium coffee table book combining En Pensent visualizations with unique haiku poetry.
                   </p>
                   <div className="grid grid-cols-2 gap-3 mt-3">
                     <div className="text-center p-2 bg-white/50 rounded">
