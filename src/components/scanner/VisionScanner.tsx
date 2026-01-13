@@ -530,7 +530,7 @@ export function VisionScanner({ isOpen, onClose }: VisionScannerProps) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
-            {showExperience ? "Vision Experience" : "Natural QR Vision™ Scanner"}
+            {showExperience ? "Vision Experience" : "Natural Vision™ Scanner"}
           </DialogTitle>
         </DialogHeader>
 

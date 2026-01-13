@@ -142,7 +142,7 @@ const About = () => {
               <div className="flex items-center gap-3 mb-4">
                 <h2 className="text-2xl font-display font-bold uppercase tracking-wider flex items-center gap-2">
                   <ScanLine className="h-5 w-5 text-primary" />
-                  Natural QR Vision™
+                  Natural Vision™
                 </h2>
                 <Badge className="bg-primary/20 text-primary border-primary/30">
                   <Sparkles className="h-3 w-3 mr-1" />
@@ -369,7 +369,7 @@ const About = () => {
               </div>
               <div className="p-4 rounded-lg bg-gradient-to-r from-primary/5 to-amber-500/5 border-2 border-primary/30">
                 <div className="flex items-center gap-2">
-                  <h3 className="font-display font-bold text-sm uppercase tracking-wide text-primary">Natural QR Vision™</h3>
+                  <h3 className="font-display font-bold text-sm uppercase tracking-wide text-primary">Natural Vision™</h3>
                   <Badge className="bg-amber-500/20 text-amber-600 border-amber-500/30 text-xs">New</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground font-serif mt-1">
