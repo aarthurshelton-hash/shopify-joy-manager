@@ -33,7 +33,7 @@ interface BookShowcaseProps {
 const SELLING_POINTS = [
   { icon: Crown, text: "100 of Carlsen's greatest games" },
   { icon: Palette, text: "Signature Hot & Cold visualization palette" },
-  { icon: PenTool, text: "AI-generated haiku for each game" },
+  { icon: PenTool, text: "Unique haiku poetry for each game" },
   { icon: Printer, text: "Premium hardcover, museum-quality print" },
   { icon: Gift, text: "Perfect gift for chess enthusiasts" },
 ];
@@ -473,7 +473,7 @@ export const BookShowcase: React.FC<BookShowcaseProps> = ({
               <p className="text-slate-300 leading-relaxed">
                 A stunning coffee table book featuring En Pensent visualizations of the 
                 greatest games from the world champion's legendary career. Each spread 
-                pairs AI-generated haiku poetry with the signature Hot & Cold palette.
+                pairs unique haiku poetry with the signature Hot & Cold palette.
               </p>
               
               <div className="flex flex-wrap gap-3">
@@ -764,7 +764,7 @@ export const BookShowcase: React.FC<BookShowcaseProps> = ({
             <h3 className="text-2xl font-serif font-bold text-foreground">Carlsen in Color</h3>
             <p className="text-muted-foreground text-sm">
               A premium coffee table book featuring 100 En Pensent visualizations 
-              of Magnus Carlsen's greatest games with AI-generated haiku poetry.
+              of Magnus Carlsen's greatest games with unique haiku poetry.
             </p>
             
             <div className="flex items-center gap-4 text-sm">
