@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 import { 
   Shield, 
   TrendingUp, 
@@ -34,7 +33,7 @@ interface TransparencyMetric {
   description: string;
 }
 
-const MarketplaceTransparency: React.FC = () => {
+const MarketplaceTransparency = React.forwardRef<HTMLDivElement, Record<string, never>>(function MarketplaceTransparency(_props, ref) {
   const platformMetrics: TransparencyMetric[] = [
     {
       label: 'Holder Ownership',
@@ -71,11 +70,10 @@ const MarketplaceTransparency: React.FC = () => {
   ];
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="space-y-6"
-    >
+    <div ref={ref} className="space-y-6" style={{ opacity: 1 }}>
+      <div
+        style={{ animation: 'fadeInUp 0.5s ease-out' }}
+      >
       {/* Trust Header */}
       <Card className="border-primary/30 bg-primary/5">
         <CardHeader className="pb-3">
@@ -115,11 +113,11 @@ const MarketplaceTransparency: React.FC = () => {
       {/* Ownership Metrics Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {platformMetrics.map((metric, index) => (
-          <motion.div
+          <div
             key={metric.label}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: index * 0.1 }}
+            style={{ 
+              animation: `fadeInUp 0.5s ease-out ${index * 0.1}s both`
+            }}
           >
             <Card className="h-full">
               <CardContent className="p-4 text-center">
@@ -135,7 +133,7 @@ const MarketplaceTransparency: React.FC = () => {
                 </div>
               </CardContent>
             </Card>
-          </motion.div>
+          </div>
         ))}
       </div>
 
@@ -388,8 +386,11 @@ const MarketplaceTransparency: React.FC = () => {
           </AccordionContent>
         </AccordionItem>
       </Accordion>
-    </motion.div>
+      </div>
+    </div>
   );
-};
+});
+
+MarketplaceTransparency.displayName = 'MarketplaceTransparency';
 
 export default MarketplaceTransparency;

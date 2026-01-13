@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { 
   GraduationCap, 
@@ -27,7 +26,7 @@ interface FundStats {
   scholarships_funded: number;
 }
 
-const EducationFundCard: React.FC = () => {
+const EducationFundCard = React.forwardRef<HTMLDivElement, Record<string, never>>(function EducationFundCard(_props, ref) {
   const { data: stats, isLoading } = useQuery({
     queryKey: ['education-fund-stats'],
     queryFn: async () => {
@@ -67,10 +66,7 @@ const EducationFundCard: React.FC = () => {
     ((stats.total_fund_cents % 700) / 700) * 100 : 0;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-    >
+    <div ref={ref} style={{ animation: 'fadeInUp 0.5s ease-out' }}>
       <Card className="border-purple-500/30 bg-gradient-to-br from-purple-500/5 via-background to-pink-500/5 overflow-hidden">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-lg">
@@ -167,8 +163,10 @@ const EducationFundCard: React.FC = () => {
           </Link>
         </CardContent>
       </Card>
-    </motion.div>
+    </div>
   );
-};
+});
+
+EducationFundCard.displayName = 'EducationFundCard';
 
 export default EducationFundCard;
