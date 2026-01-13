@@ -21,7 +21,8 @@ import {
   Image as ImageIcon,
   Link2,
   ArrowLeft,
-  RefreshCw
+  RefreshCw,
+  BarChart3
 } from "lucide-react";
 
 interface WatermarkResult {
@@ -34,7 +35,7 @@ interface WatermarkResult {
   };
   visualization?: {
     id: string;
-    game_title: string;
+    title: string;
     created_at: string;
     public_share_id: string;
   };
@@ -120,7 +121,7 @@ const AdminWatermarkVerification = () => {
       // Try to get visualization details
       const { data: vizData } = await supabase
         .from('saved_visualizations')
-        .select('id, game_title, created_at, public_share_id')
+        .select('id, title, created_at, public_share_id')
         .eq('id', watermarkData.visualizationId)
         .single();
 
@@ -243,6 +244,10 @@ const AdminWatermarkVerification = () => {
               Extract and verify ownership data from En Pensent visualization images
             </p>
           </div>
+          <Button variant="outline" onClick={() => navigate('/admin/batch-watermark-verification')}>
+            <BarChart3 className="w-4 h-4 mr-2" />
+            Batch Analysis
+          </Button>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
@@ -364,7 +369,7 @@ const AdminWatermarkVerification = () => {
                           <div>
                             <p className="text-sm text-muted-foreground">Visualization</p>
                             <p className="font-medium">
-                              {result.visualization?.game_title || 'Unknown Vision'}
+                              {result.visualization?.title || 'Unknown Vision'}
                             </p>
                             <p className="text-xs text-muted-foreground font-mono">
                               {result.data?.visualizationId}
