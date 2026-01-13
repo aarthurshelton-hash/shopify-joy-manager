@@ -10,6 +10,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Header } from "@/components/shop/Header";
 import { Footer } from "@/components/shop/Footer";
 import { useRandomGameArt } from "@/hooks/useRandomGameArt";
+import { useAuth } from "@/hooks/useAuth";
+import { ViewfinderOverlay } from "@/components/scanner/ViewfinderOverlay";
+import { ConfidenceRing } from "@/components/scanner/ConfidenceRing";
+import { ScanHistory, saveScanToHistory } from "@/components/scanner/ScanHistory";
 import type { SquareData } from "@/lib/chess/gameSimulator";
 
 interface ScanResult {
@@ -91,6 +95,7 @@ const demoSteps = [
 
 export default function VisionScannerPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -107,6 +112,7 @@ export default function VisionScannerPage() {
   const [showLegend, setShowLegend] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
   const [demoStep, setDemoStep] = useState(0);
+  const [historyKey, setHistoryKey] = useState(0);
 
   // Animate through demo steps when idle
   useEffect(() => {
@@ -142,6 +148,18 @@ export default function VisionScannerPage() {
 
       const data = await response.json();
       setResult(data);
+      
+      // Save to scan history
+      if (user) {
+        await saveScanToHistory(
+          user.id,
+          data.matched,
+          data.vision?.visualization_id,
+          data.vision?.confidence,
+          imageData.substring(0, 500)
+        );
+        setHistoryKey(prev => prev + 1); // Trigger history refresh
+      }
       
       if (data.matched && data.vision) {
         await fetchVisionData(data.vision.visualization_id);
@@ -319,23 +337,28 @@ export default function VisionScannerPage() {
                 <TabsContent value="experience" className="mt-6">
                   <div className="grid lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-2">
-                      {board.length > 0 ? (
-                        <div className="aspect-square bg-card rounded-xl overflow-hidden border border-border">
+                      {/* Confidence Ring with Image */}
+                      <div className="flex flex-col items-center">
+                        <ConfidenceRing 
+                          confidence={result?.vision?.confidence || 0} 
+                          size={Math.min(400, window.innerWidth - 100)}
+                        >
                           <img
                             src={visionData.image_path}
                             alt={visionData.title}
-                            className="w-full h-full object-contain"
+                            className="w-full h-full object-cover rounded-full"
                           />
-                        </div>
-                      ) : (
-                        <div className="aspect-square bg-card rounded-xl flex items-center justify-center">
-                          <img
-                            src={visionData.image_path}
-                            alt={visionData.title}
-                            className="max-w-full max-h-full rounded-lg"
-                          />
-                        </div>
-                      )}
+                        </ConfidenceRing>
+                      </div>
+                      
+                      {/* Full Image Preview */}
+                      <div className="mt-6 aspect-square bg-card rounded-xl overflow-hidden border border-border">
+                        <img
+                          src={visionData.image_path}
+                          alt={visionData.title}
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
                     </div>
                     <div className="space-y-4">
                       {gameData?.gameInfo && (
@@ -446,9 +469,7 @@ export default function VisionScannerPage() {
                         playsInline
                         className="absolute inset-0 w-full h-full object-cover"
                       />
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-3/4 h-3/4 border-2 border-primary/50 rounded-lg" />
-                      </div>
+                      <ViewfinderOverlay scanning={scanning} />
                     </>
                   ) : previewUrl ? (
                     <img
@@ -544,6 +565,11 @@ export default function VisionScannerPage() {
                   onChange={handleFileUpload}
                   className="hidden"
                 />
+
+                {/* Scan History */}
+                <div className="mt-6">
+                  <ScanHistory key={historyKey} />
+                </div>
               </div>
             </motion.div>
 
