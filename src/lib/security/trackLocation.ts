@@ -1,7 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { getIPGeolocationSecure, hashIP } from './geolocation';
 
-// Track user location on auth events
+// Track user location on auth events (anonymized - no precise coordinates)
 export async function trackUserLocation(userId: string): Promise<boolean> {
   try {
     const geo = await getIPGeolocationSecure();
@@ -13,7 +13,7 @@ export async function trackUserLocation(userId: string): Promise<boolean> {
 
     const ipHash = geo.ip ? hashIP(geo.ip) : null;
 
-    // Upsert location data
+    // Upsert location data - ANONYMIZED: no latitude/longitude stored
     const { error } = await supabase
       .from('user_location_analytics')
       .upsert(
@@ -24,8 +24,9 @@ export async function trackUserLocation(userId: string): Promise<boolean> {
           country_code: geo.countryCode,
           region: geo.region,
           city: geo.city,
-          latitude: geo.latitude,
-          longitude: geo.longitude,
+          // Precise coordinates removed for privacy - only country/region/city retained
+          latitude: null,
+          longitude: null,
           timezone: geo.timezone,
           last_seen_at: new Date().toISOString(),
         },
