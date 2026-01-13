@@ -39,13 +39,15 @@ const TESTIMONIALS = [
   { quote: "The perfect fusion of sport and design.", author: "Art Collector" },
 ];
 
+type EditionType = 'standard' | 'large';
+
 export const BookShowcase: React.FC<BookShowcaseProps> = ({
   variant = 'featured',
   onOrderClick,
   showCTA = true,
 }) => {
   const [showPreview, setShowPreview] = useState(false);
-
+  const [selectedEdition, setSelectedEdition] = useState<EditionType>('large');
   const handleOrder = () => {
     if (onOrderClick) {
       onOrderClick();
@@ -143,44 +145,78 @@ export const BookShowcase: React.FC<BookShowcaseProps> = ({
             
             {/* Pricing - with art backgrounds */}
             <div className="space-y-3">
-              <Card className="relative overflow-hidden bg-slate-800/50 border-slate-700 hover:border-amber-500/50 transition-colors cursor-pointer group">
-                <div 
-                  className="absolute inset-0 bg-cover bg-center opacity-[0.15] group-hover:opacity-[0.22] transition-opacity"
-                  style={{ backgroundImage: `url(${evergreenGame})` }}
-                />
-                <div className="absolute inset-0 bg-gradient-to-r from-slate-800/75 to-slate-900/85" />
-                <CardContent className="relative p-4 flex items-center justify-between">
-                  <div>
-                    <p className="text-white font-medium">Standard Edition</p>
-                    <p className="text-slate-400 text-sm">8.5" × 11" Hardcover</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-bold text-white">$79.99</p>
-                    <p className="text-xs text-slate-500">+ shipping</p>
-                  </div>
-                </CardContent>
-              </Card>
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setSelectedEdition('standard')}
+              >
+                <Card className={`relative overflow-hidden cursor-pointer transition-all duration-300 ${
+                  selectedEdition === 'standard'
+                    ? 'bg-slate-800/70 border-2 border-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.3)] ring-2 ring-amber-400/20'
+                    : 'bg-slate-800/50 border border-slate-700 hover:border-slate-500'
+                }`}>
+                  <div 
+                    className={`absolute inset-0 bg-cover bg-center transition-opacity ${
+                      selectedEdition === 'standard' ? 'opacity-[0.25]' : 'opacity-[0.15] group-hover:opacity-[0.22]'
+                    }`}
+                    style={{ backgroundImage: `url(${evergreenGame})` }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-r from-slate-800/75 to-slate-900/85" />
+                  {selectedEdition === 'standard' && (
+                    <div className="absolute top-2 left-2 w-6 h-6 rounded-full bg-amber-500 flex items-center justify-center z-10">
+                      <Check className="w-4 h-4 text-white" />
+                    </div>
+                  )}
+                  <CardContent className="relative p-4 flex items-center justify-between">
+                    <div>
+                      <p className={`font-medium ${selectedEdition === 'standard' ? 'text-amber-100' : 'text-white'}`}>Standard Edition</p>
+                      <p className={`text-sm ${selectedEdition === 'standard' ? 'text-amber-200/70' : 'text-slate-400'}`}>8.5" × 11" Hardcover</p>
+                    </div>
+                    <div className="text-right">
+                      <p className={`text-2xl font-bold ${selectedEdition === 'standard' ? 'text-amber-100' : 'text-white'}`}>$79.99</p>
+                      <p className="text-xs text-slate-500">+ shipping</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
               
-              <Card className="relative overflow-hidden bg-gradient-to-r from-amber-600/20 to-orange-600/20 border-amber-500/50 hover:border-amber-400 transition-colors cursor-pointer group">
-                <div 
-                  className="absolute inset-0 bg-cover bg-center opacity-[0.18] group-hover:opacity-[0.25] transition-opacity"
-                  style={{ backgroundImage: `url(${gameOfCentury})` }}
-                />
-                <div className="absolute inset-0 bg-gradient-to-r from-amber-900/65 to-orange-900/75" />
-                <div className="absolute top-0 right-0 bg-amber-500 text-white text-xs px-2 py-0.5 rounded-bl-lg font-medium z-10">
-                  POPULAR
-                </div>
-                <CardContent className="relative p-4 flex items-center justify-between">
-                  <div>
-                    <p className="text-amber-100 font-medium">Large Format</p>
-                    <p className="text-amber-200/60 text-sm">11" × 14" Premium</p>
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setSelectedEdition('large')}
+              >
+                <Card className={`relative overflow-hidden cursor-pointer transition-all duration-300 ${
+                  selectedEdition === 'large'
+                    ? 'bg-gradient-to-r from-amber-600/30 to-orange-600/30 border-2 border-amber-400 shadow-[0_0_25px_rgba(251,191,36,0.4)] ring-2 ring-amber-400/30'
+                    : 'bg-gradient-to-r from-amber-600/20 to-orange-600/20 border border-amber-500/50 hover:border-amber-400'
+                }`}>
+                  <div 
+                    className={`absolute inset-0 bg-cover bg-center transition-opacity ${
+                      selectedEdition === 'large' ? 'opacity-[0.28]' : 'opacity-[0.18] group-hover:opacity-[0.25]'
+                    }`}
+                    style={{ backgroundImage: `url(${gameOfCentury})` }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-r from-amber-900/65 to-orange-900/75" />
+                  <div className="absolute top-0 right-0 bg-amber-500 text-white text-xs px-2 py-0.5 rounded-bl-lg font-medium z-10">
+                    POPULAR
                   </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-bold text-amber-100">$99.99</p>
-                    <p className="text-xs text-amber-200/50">+ shipping</p>
-                  </div>
-                </CardContent>
-              </Card>
+                  {selectedEdition === 'large' && (
+                    <div className="absolute top-2 left-2 w-6 h-6 rounded-full bg-amber-400 flex items-center justify-center z-10 shadow-lg">
+                      <Check className="w-4 h-4 text-slate-900" />
+                    </div>
+                  )}
+                  <CardContent className="relative p-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-amber-100 font-medium">Large Format</p>
+                      <p className="text-amber-200/60 text-sm">11" × 14" Premium</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-bold text-amber-100">$99.99</p>
+                      <p className="text-xs text-amber-200/50">+ shipping</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
             </div>
             
             {/* CTA Buttons */}
@@ -306,30 +342,66 @@ export const BookShowcase: React.FC<BookShowcaseProps> = ({
               
               {/* Pricing Cards - with art backgrounds */}
               <div className="flex flex-col sm:flex-row gap-4 pt-4">
-                <Card className="flex-1 relative overflow-hidden bg-slate-800/50 border-slate-700 backdrop-blur group hover:border-slate-500 transition-colors">
-                  <div 
-                    className="absolute inset-0 bg-cover bg-center opacity-[0.15] group-hover:opacity-[0.22] transition-opacity"
-                    style={{ backgroundImage: `url(${evergreenGame})` }}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-br from-slate-800/75 to-slate-900/85" />
-                  <CardContent className="relative p-4 text-center">
-                    <p className="text-sm text-slate-400">Standard Edition</p>
-                    <p className="text-sm text-slate-500">8.5" × 11"</p>
-                    <p className="text-2xl font-bold text-white">$79.99</p>
-                  </CardContent>
-                </Card>
-                <Card className="flex-1 relative overflow-hidden bg-gradient-to-br from-amber-600/20 to-orange-600/20 border-amber-500/50 backdrop-blur group hover:border-amber-400 transition-colors">
-                  <div 
-                    className="absolute inset-0 bg-cover bg-center opacity-[0.18] group-hover:opacity-[0.25] transition-opacity"
-                    style={{ backgroundImage: `url(${gameOfCentury})` }}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-br from-amber-900/60 to-orange-900/70" />
-                  <CardContent className="relative p-4 text-center">
-                    <p className="text-sm text-amber-400 font-medium">Large Format</p>
-                    <p className="text-sm text-amber-200/70">11" × 14"</p>
-                    <p className="text-2xl font-bold text-amber-100">$99.99</p>
-                  </CardContent>
-                </Card>
+                <motion.div
+                  className="flex-1"
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => setSelectedEdition('standard')}
+                >
+                  <Card className={`relative overflow-hidden backdrop-blur cursor-pointer transition-all duration-300 h-full ${
+                    selectedEdition === 'standard'
+                      ? 'bg-slate-800/70 border-2 border-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.35)] ring-2 ring-amber-400/20'
+                      : 'bg-slate-800/50 border border-slate-700 hover:border-slate-500'
+                  }`}>
+                    <div 
+                      className={`absolute inset-0 bg-cover bg-center transition-opacity ${
+                        selectedEdition === 'standard' ? 'opacity-[0.25]' : 'opacity-[0.15]'
+                      }`}
+                      style={{ backgroundImage: `url(${evergreenGame})` }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-br from-slate-800/75 to-slate-900/85" />
+                    {selectedEdition === 'standard' && (
+                      <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-amber-500 flex items-center justify-center z-10 shadow-lg">
+                        <Check className="w-4 h-4 text-white" />
+                      </div>
+                    )}
+                    <CardContent className="relative p-4 text-center">
+                      <p className={`text-sm ${selectedEdition === 'standard' ? 'text-amber-300 font-medium' : 'text-slate-400'}`}>Standard Edition</p>
+                      <p className={`text-sm ${selectedEdition === 'standard' ? 'text-amber-200/70' : 'text-slate-500'}`}>8.5" × 11"</p>
+                      <p className={`text-2xl font-bold ${selectedEdition === 'standard' ? 'text-amber-100' : 'text-white'}`}>$79.99</p>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+                <motion.div
+                  className="flex-1"
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => setSelectedEdition('large')}
+                >
+                  <Card className={`relative overflow-hidden backdrop-blur cursor-pointer transition-all duration-300 h-full ${
+                    selectedEdition === 'large'
+                      ? 'bg-gradient-to-br from-amber-600/30 to-orange-600/30 border-2 border-amber-400 shadow-[0_0_25px_rgba(251,191,36,0.45)] ring-2 ring-amber-400/30'
+                      : 'bg-gradient-to-br from-amber-600/20 to-orange-600/20 border border-amber-500/50 hover:border-amber-400'
+                  }`}>
+                    <div 
+                      className={`absolute inset-0 bg-cover bg-center transition-opacity ${
+                        selectedEdition === 'large' ? 'opacity-[0.28]' : 'opacity-[0.18]'
+                      }`}
+                      style={{ backgroundImage: `url(${gameOfCentury})` }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-br from-amber-900/60 to-orange-900/70" />
+                    {selectedEdition === 'large' && (
+                      <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-amber-400 flex items-center justify-center z-10 shadow-lg">
+                        <Check className="w-4 h-4 text-slate-900" />
+                      </div>
+                    )}
+                    <CardContent className="relative p-4 text-center">
+                      <p className="text-sm text-amber-400 font-medium">Large Format</p>
+                      <p className="text-sm text-amber-200/70">11" × 14"</p>
+                      <p className="text-2xl font-bold text-amber-100">$99.99</p>
+                    </CardContent>
+                  </Card>
+                </motion.div>
               </div>
               
               {showCTA && (
