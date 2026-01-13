@@ -20,6 +20,8 @@ import operaGame from '@/assets/games/opera-game.jpg';
 import evergreenGame from '@/assets/games/evergreen-game.jpg';
 import gameOfCentury from '@/assets/games/game-of-century.jpg';
 import fischerSpassky from '@/assets/games/fischer-spassky.jpg';
+import carlsenKarjakin from '@/assets/games/carlsen-karjakin.jpg';
+import kasparovImmortal from '@/assets/games/kasparov-immortal.jpg';
 
 interface BookShowcaseProps {
   variant?: 'hero' | 'compact' | 'featured';
@@ -224,33 +226,62 @@ export const BookShowcase: React.FC<BookShowcaseProps> = ({
               </div>
             </div>
             
-            {/* Pricing - with art backgrounds */}
+            {/* Pricing Cards - with stunning AI art */}
             <div className="space-y-3">
+              {/* Standard Edition */}
               <motion.div
-                whileHover={{ scale: 1.02 }}
+                whileHover={{ scale: 1.02, x: 4 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setSelectedEdition('standard')}
               >
-                <Card className={`relative overflow-hidden cursor-pointer transition-all duration-300 ${
+                <Card className={`group relative overflow-hidden cursor-pointer transition-all duration-500 ${
                   selectedEdition === 'standard'
-                    ? 'bg-slate-800/70 border-2 border-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.3)] ring-2 ring-amber-400/20'
+                    ? 'border-2 border-amber-400 shadow-[0_0_30px_rgba(251,191,36,0.45)] ring-3 ring-amber-400/25'
                     : 'bg-slate-800/50 border border-slate-700 hover:border-slate-500'
                 }`}>
+                  {/* AI Art Background */}
                   <div 
-                    className={`absolute inset-0 bg-cover bg-center transition-opacity ${
-                      selectedEdition === 'standard' ? 'opacity-[0.25]' : 'opacity-[0.15] group-hover:opacity-[0.22]'
+                    className={`absolute inset-0 bg-cover bg-center scale-105 transition-all duration-700 ${
+                      selectedEdition === 'standard' 
+                        ? 'opacity-35 group-hover:scale-110' 
+                        : 'opacity-20 group-hover:opacity-30 group-hover:scale-105'
                     }`}
-                    style={{ backgroundImage: `url(${evergreenGame})` }}
+                    style={{ backgroundImage: `url(${carlsenKarjakin})` }}
                   />
-                  <div className="absolute inset-0 bg-gradient-to-r from-slate-800/75 to-slate-900/85" />
+                  <div className={`absolute inset-0 transition-all duration-500 ${
+                    selectedEdition === 'standard'
+                      ? 'bg-gradient-to-r from-slate-900/65 via-slate-800/55 to-amber-900/45'
+                      : 'bg-gradient-to-r from-slate-800/85 to-slate-900/90'
+                  }`} />
+                  
+                  {/* Shimmer Effect */}
                   {selectedEdition === 'standard' && (
-                    <div className="absolute top-2 left-2 w-6 h-6 rounded-full bg-amber-500 flex items-center justify-center z-10">
-                      <Check className="w-4 h-4 text-white" />
-                    </div>
+                    <motion.div 
+                      className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-400/15 to-transparent"
+                      animate={{ x: ['-100%', '100%'] }}
+                      transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
+                    />
                   )}
+                  
+                  {/* Selection Check */}
+                  {selectedEdition === 'standard' && (
+                    <motion.div 
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="absolute top-2 left-2 w-6 h-6 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center z-10 shadow-lg"
+                    >
+                      <Check className="w-4 h-4 text-white" />
+                    </motion.div>
+                  )}
+                  
                   <CardContent className="relative p-4 flex items-center justify-between">
                     <div>
-                      <p className={`font-medium ${selectedEdition === 'standard' ? 'text-amber-100' : 'text-white'}`}>Standard Edition</p>
+                      <div className="flex items-center gap-2">
+                        <p className={`font-medium ${selectedEdition === 'standard' ? 'text-amber-100' : 'text-white'}`}>Standard Edition</p>
+                        {selectedEdition === 'standard' && (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/30 text-amber-300">♔ Classic</span>
+                        )}
+                      </div>
                       <p className={`text-sm ${selectedEdition === 'standard' ? 'text-amber-200/70' : 'text-slate-400'}`}>8.5" × 11" Hardcover</p>
                     </div>
                     <div className="text-right">
@@ -261,34 +292,67 @@ export const BookShowcase: React.FC<BookShowcaseProps> = ({
                 </Card>
               </motion.div>
               
+              {/* Large Format - Premium */}
               <motion.div
-                whileHover={{ scale: 1.02 }}
+                whileHover={{ scale: 1.02, x: 4 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setSelectedEdition('large')}
               >
-                <Card className={`relative overflow-hidden cursor-pointer transition-all duration-300 ${
+                <Card className={`group relative overflow-hidden cursor-pointer transition-all duration-500 ${
                   selectedEdition === 'large'
-                    ? 'bg-gradient-to-r from-amber-600/30 to-orange-600/30 border-2 border-amber-400 shadow-[0_0_25px_rgba(251,191,36,0.4)] ring-2 ring-amber-400/30'
+                    ? 'border-2 border-amber-400 shadow-[0_0_35px_rgba(251,191,36,0.55),0_0_60px_rgba(249,115,22,0.25)] ring-3 ring-amber-400/30'
                     : 'bg-gradient-to-r from-amber-600/20 to-orange-600/20 border border-amber-500/50 hover:border-amber-400'
                 }`}>
+                  {/* AI Art Background */}
                   <div 
-                    className={`absolute inset-0 bg-cover bg-center transition-opacity ${
-                      selectedEdition === 'large' ? 'opacity-[0.28]' : 'opacity-[0.18] group-hover:opacity-[0.25]'
+                    className={`absolute inset-0 bg-cover bg-center scale-105 transition-all duration-700 ${
+                      selectedEdition === 'large' 
+                        ? 'opacity-45 group-hover:scale-110' 
+                        : 'opacity-25 group-hover:opacity-35 group-hover:scale-105'
                     }`}
-                    style={{ backgroundImage: `url(${gameOfCentury})` }}
+                    style={{ backgroundImage: `url(${kasparovImmortal})` }}
                   />
-                  <div className="absolute inset-0 bg-gradient-to-r from-amber-900/65 to-orange-900/75" />
-                  <div className="absolute top-0 right-0 bg-amber-500 text-white text-xs px-2 py-0.5 rounded-bl-lg font-medium z-10">
-                    POPULAR
-                  </div>
+                  <div className={`absolute inset-0 transition-all duration-500 ${
+                    selectedEdition === 'large'
+                      ? 'bg-gradient-to-r from-amber-900/55 via-orange-900/45 to-amber-800/55'
+                      : 'bg-gradient-to-r from-amber-900/70 to-orange-900/80'
+                  }`} />
+                  
+                  {/* Animated Shimmer */}
                   {selectedEdition === 'large' && (
-                    <div className="absolute top-2 left-2 w-6 h-6 rounded-full bg-amber-400 flex items-center justify-center z-10 shadow-lg">
-                      <Check className="w-4 h-4 text-slate-900" />
-                    </div>
+                    <motion.div 
+                      className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-300/20 to-transparent"
+                      animate={{ x: ['-100%', '100%'] }}
+                      transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 0.5 }}
+                    />
                   )}
+                  
+                  {/* Popular Badge */}
+                  <div className="absolute top-0 right-0 z-20">
+                    <div className="relative">
+                      <div className="bg-gradient-to-r from-amber-500 via-amber-400 to-orange-500 text-slate-900 text-[10px] font-bold px-2 py-0.5 rounded-bl-lg">
+                        ★ POPULAR
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Selection Check */}
+                  {selectedEdition === 'large' && (
+                    <motion.div 
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="absolute top-2 left-2 w-6 h-6 rounded-full bg-gradient-to-br from-amber-300 to-amber-500 flex items-center justify-center z-10 shadow-lg shadow-amber-400/50"
+                    >
+                      <Check className="w-4 h-4 text-slate-900" />
+                    </motion.div>
+                  )}
+                  
                   <CardContent className="relative p-4 flex items-center justify-between">
                     <div>
-                      <p className="text-amber-100 font-medium">Large Format</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-amber-100 font-medium">Large Format</p>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-amber-400/30 text-amber-200 border border-amber-400/30">♔ Premium</span>
+                      </div>
                       <p className="text-amber-200/60 text-sm">11" × 14" Premium</p>
                     </div>
                     <div className="text-right">
@@ -421,65 +485,166 @@ export const BookShowcase: React.FC<BookShowcaseProps> = ({
                 </Badge>
               </div>
               
-              {/* Pricing Cards - with art backgrounds */}
-              <div className="flex flex-col sm:flex-row gap-4 pt-4">
+              {/* Pricing Cards - with stunning AI art backgrounds */}
+              <div className="flex flex-col sm:flex-row gap-5 pt-4">
+                {/* Standard Edition Card */}
                 <motion.div
                   className="flex-1"
-                  whileHover={{ scale: 1.03 }}
+                  whileHover={{ scale: 1.04, y: -4 }}
                   whileTap={{ scale: 0.97 }}
                   onClick={() => setSelectedEdition('standard')}
                 >
-                  <Card className={`relative overflow-hidden backdrop-blur cursor-pointer transition-all duration-300 h-full ${
+                  <Card className={`group relative overflow-hidden cursor-pointer transition-all duration-500 h-full ${
                     selectedEdition === 'standard'
-                      ? 'bg-slate-800/70 border-2 border-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.35)] ring-2 ring-amber-400/20'
-                      : 'bg-slate-800/50 border border-slate-700 hover:border-slate-500'
+                      ? 'border-2 border-amber-400 shadow-[0_0_35px_rgba(251,191,36,0.5),0_0_60px_rgba(251,191,36,0.2)] ring-4 ring-amber-400/30'
+                      : 'border border-slate-600/50 hover:border-amber-500/50 shadow-lg hover:shadow-amber-500/20'
                   }`}>
+                    {/* AI Art Background Layer */}
                     <div 
-                      className={`absolute inset-0 bg-cover bg-center transition-opacity ${
-                        selectedEdition === 'standard' ? 'opacity-[0.25]' : 'opacity-[0.15]'
+                      className={`absolute inset-0 bg-cover bg-center scale-110 transition-all duration-700 ${
+                        selectedEdition === 'standard' 
+                          ? 'opacity-40 group-hover:scale-125' 
+                          : 'opacity-25 group-hover:opacity-35 group-hover:scale-115'
                       }`}
-                      style={{ backgroundImage: `url(${evergreenGame})` }}
+                      style={{ backgroundImage: `url(${carlsenKarjakin})` }}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-br from-slate-800/75 to-slate-900/85" />
+                    
+                    {/* Gradient Overlay */}
+                    <div className={`absolute inset-0 transition-all duration-500 ${
+                      selectedEdition === 'standard'
+                        ? 'bg-gradient-to-br from-slate-900/70 via-slate-800/60 to-amber-900/50'
+                        : 'bg-gradient-to-br from-slate-900/85 via-slate-800/80 to-slate-900/85'
+                    }`} />
+                    
+                    {/* Shimmer Effect when selected */}
                     {selectedEdition === 'standard' && (
-                      <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-amber-500 flex items-center justify-center z-10 shadow-lg">
-                        <Check className="w-4 h-4 text-white" />
-                      </div>
+                      <motion.div 
+                        className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-400/20 to-transparent"
+                        animate={{ x: ['-100%', '100%'] }}
+                        transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
+                      />
                     )}
-                    <CardContent className="relative p-4 text-center">
-                      <p className={`text-sm ${selectedEdition === 'standard' ? 'text-amber-300 font-medium' : 'text-slate-400'}`}>Standard Edition</p>
-                      <p className={`text-sm ${selectedEdition === 'standard' ? 'text-amber-200/70' : 'text-slate-500'}`}>8.5" × 11"</p>
-                      <p className={`text-2xl font-bold ${selectedEdition === 'standard' ? 'text-amber-100' : 'text-white'}`}>$79.99</p>
+                    
+                    {/* Corner Accent */}
+                    <div className={`absolute top-0 left-0 w-16 h-16 transition-opacity duration-300 ${
+                      selectedEdition === 'standard' ? 'opacity-100' : 'opacity-0'
+                    }`}>
+                      <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-amber-400 to-transparent" />
+                      <div className="absolute top-0 left-0 w-[2px] h-full bg-gradient-to-b from-amber-400 to-transparent" />
+                    </div>
+                    
+                    {/* Selection Badge */}
+                    {selectedEdition === 'standard' && (
+                      <motion.div 
+                        initial={{ scale: 0, rotate: -180 }}
+                        animate={{ scale: 1, rotate: 0 }}
+                        className="absolute top-3 right-3 w-7 h-7 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center z-10 shadow-lg shadow-amber-500/50"
+                      >
+                        <Check className="w-4 h-4 text-white" />
+                      </motion.div>
+                    )}
+                    
+                    <CardContent className="relative p-5 text-center space-y-1">
+                      <div className={`inline-block px-3 py-1 rounded-full text-xs font-medium mb-2 transition-colors ${
+                        selectedEdition === 'standard' 
+                          ? 'bg-amber-500/30 text-amber-200' 
+                          : 'bg-slate-700/50 text-slate-400'
+                      }`}>
+                        ♔ Classic
+                      </div>
+                      <p className={`text-lg font-serif font-semibold transition-colors ${
+                        selectedEdition === 'standard' ? 'text-amber-100' : 'text-slate-200'
+                      }`}>Standard Edition</p>
+                      <p className={`text-sm transition-colors ${
+                        selectedEdition === 'standard' ? 'text-amber-200/80' : 'text-slate-500'
+                      }`}>8.5" × 11" Hardcover</p>
+                      <p className={`text-3xl font-bold pt-2 transition-colors ${
+                        selectedEdition === 'standard' ? 'text-amber-100' : 'text-white'
+                      }`}>$79<span className="text-lg">.99</span></p>
                     </CardContent>
                   </Card>
                 </motion.div>
+                
+                {/* Large Format Card - Premium */}
                 <motion.div
                   className="flex-1"
-                  whileHover={{ scale: 1.03 }}
+                  whileHover={{ scale: 1.04, y: -4 }}
                   whileTap={{ scale: 0.97 }}
                   onClick={() => setSelectedEdition('large')}
                 >
-                  <Card className={`relative overflow-hidden backdrop-blur cursor-pointer transition-all duration-300 h-full ${
+                  <Card className={`group relative overflow-hidden cursor-pointer transition-all duration-500 h-full ${
                     selectedEdition === 'large'
-                      ? 'bg-gradient-to-br from-amber-600/30 to-orange-600/30 border-2 border-amber-400 shadow-[0_0_25px_rgba(251,191,36,0.45)] ring-2 ring-amber-400/30'
-                      : 'bg-gradient-to-br from-amber-600/20 to-orange-600/20 border border-amber-500/50 hover:border-amber-400'
+                      ? 'border-2 border-amber-400 shadow-[0_0_40px_rgba(251,191,36,0.6),0_0_80px_rgba(249,115,22,0.3)] ring-4 ring-amber-400/40'
+                      : 'border border-amber-600/40 hover:border-amber-500 shadow-lg shadow-orange-500/10 hover:shadow-amber-500/25'
                   }`}>
+                    {/* AI Art Background Layer */}
                     <div 
-                      className={`absolute inset-0 bg-cover bg-center transition-opacity ${
-                        selectedEdition === 'large' ? 'opacity-[0.28]' : 'opacity-[0.18]'
+                      className={`absolute inset-0 bg-cover bg-center scale-110 transition-all duration-700 ${
+                        selectedEdition === 'large' 
+                          ? 'opacity-50 group-hover:scale-125' 
+                          : 'opacity-30 group-hover:opacity-40 group-hover:scale-115'
                       }`}
-                      style={{ backgroundImage: `url(${gameOfCentury})` }}
+                      style={{ backgroundImage: `url(${kasparovImmortal})` }}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-br from-amber-900/60 to-orange-900/70" />
+                    
+                    {/* Premium Gold Gradient Overlay */}
+                    <div className={`absolute inset-0 transition-all duration-500 ${
+                      selectedEdition === 'large'
+                        ? 'bg-gradient-to-br from-amber-900/60 via-orange-900/50 to-amber-800/60'
+                        : 'bg-gradient-to-br from-amber-900/75 via-orange-900/70 to-amber-900/75'
+                    }`} />
+                    
+                    {/* Animated Shimmer when selected */}
                     {selectedEdition === 'large' && (
-                      <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-amber-400 flex items-center justify-center z-10 shadow-lg">
-                        <Check className="w-4 h-4 text-slate-900" />
-                      </div>
+                      <motion.div 
+                        className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-300/25 to-transparent"
+                        animate={{ x: ['-100%', '100%'] }}
+                        transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 0.5 }}
+                      />
                     )}
-                    <CardContent className="relative p-4 text-center">
-                      <p className="text-sm text-amber-400 font-medium">Large Format</p>
-                      <p className="text-sm text-amber-200/70">11" × 14"</p>
-                      <p className="text-2xl font-bold text-amber-100">$99.99</p>
+                    
+                    {/* Corner Accents */}
+                    <div className={`absolute top-0 left-0 w-20 h-20 transition-opacity duration-300 ${
+                      selectedEdition === 'large' ? 'opacity-100' : 'opacity-50'
+                    }`}>
+                      <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-amber-400 to-transparent" />
+                      <div className="absolute top-0 left-0 w-[2px] h-full bg-gradient-to-b from-amber-400 to-transparent" />
+                    </div>
+                    <div className={`absolute bottom-0 right-0 w-20 h-20 transition-opacity duration-300 ${
+                      selectedEdition === 'large' ? 'opacity-100' : 'opacity-50'
+                    }`}>
+                      <div className="absolute bottom-0 right-0 w-full h-[2px] bg-gradient-to-l from-amber-400 to-transparent" />
+                      <div className="absolute bottom-0 right-0 w-[2px] h-full bg-gradient-to-t from-amber-400 to-transparent" />
+                    </div>
+                    
+                    {/* Popular Badge */}
+                    <div className="absolute -top-1 -right-1 z-20">
+                      <div className="relative">
+                        <div className="bg-gradient-to-r from-amber-500 via-amber-400 to-orange-500 text-slate-900 text-[10px] font-bold px-3 py-1 rounded-bl-lg rounded-tr shadow-lg">
+                          ★ POPULAR
+                        </div>
+                        <div className="absolute inset-0 bg-gradient-to-r from-amber-300 to-orange-400 blur-sm opacity-50 -z-10" />
+                      </div>
+                    </div>
+                    
+                    {/* Selection Badge */}
+                    {selectedEdition === 'large' && (
+                      <motion.div 
+                        initial={{ scale: 0, rotate: -180 }}
+                        animate={{ scale: 1, rotate: 0 }}
+                        className="absolute top-10 right-3 w-8 h-8 rounded-full bg-gradient-to-br from-amber-300 to-amber-500 flex items-center justify-center z-10 shadow-lg shadow-amber-400/60"
+                      >
+                        <Check className="w-5 h-5 text-slate-900" />
+                      </motion.div>
+                    )}
+                    
+                    <CardContent className="relative p-5 text-center space-y-1">
+                      <div className="inline-block px-3 py-1 rounded-full text-xs font-medium mb-2 bg-amber-400/30 text-amber-200 border border-amber-400/30">
+                        ♔ Premium
+                      </div>
+                      <p className="text-lg font-serif font-semibold text-amber-100">Large Format</p>
+                      <p className="text-sm text-amber-200/80">11" × 14" Premium</p>
+                      <p className="text-3xl font-bold pt-2 text-amber-50">$99<span className="text-lg">.99</span></p>
                     </CardContent>
                   </Card>
                 </motion.div>
