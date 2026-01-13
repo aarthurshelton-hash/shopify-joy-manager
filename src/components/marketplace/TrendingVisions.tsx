@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { TrendingUp, DollarSign, ShoppingBag, Flame, Loader2 } from 'lucide-react';
+import { TrendingUp, DollarSign, ShoppingBag, Flame } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { trackMarketplaceClick } from '@/lib/analytics/marketplaceAnalytics';
+import { TrendingGridSkeleton } from './MarketplaceSkeletons';
 
 interface TrendingVision {
   id: string;
@@ -135,8 +136,17 @@ export const TrendingVisions: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      <div className="mb-6">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="h-8 w-8 rounded-lg bg-orange-500/10 flex items-center justify-center">
+            <Flame className="h-4 w-4 text-orange-500" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold">Trending by Royalties</h2>
+            <p className="text-xs text-muted-foreground">Visions earning from print orders</p>
+          </div>
+        </div>
+        <TrendingGridSkeleton count={6} />
       </div>
     );
   }

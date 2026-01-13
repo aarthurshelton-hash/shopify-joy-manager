@@ -9,6 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { getOrphanedVisualizations, claimOrphanedVisualization } from '@/lib/marketplace/marketplaceApi';
 import { TransferLimitBadge } from './TransferLimitBadge';
 import { trackMarketplaceClick } from '@/lib/analytics/marketplaceAnalytics';
+import { ClaimableGridSkeleton } from './MarketplaceSkeletons';
 
 interface OrphanedVision {
   id: string;
@@ -116,9 +117,7 @@ export const ClaimableVisionsSection: React.FC<ClaimableVisionsSectionProps> = (
       </div>
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
+        <ClaimableGridSkeleton count={6} />
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
           {visions.map((vision, index) => (
