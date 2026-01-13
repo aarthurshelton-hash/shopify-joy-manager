@@ -483,49 +483,49 @@ const Marketplace: React.FC = () => {
                             </div>
                           )}
                           
-                          {/* Premium Palette Badge with glow */}
-                          {hasPremiumPalette && (
-                            <Badge 
-                              className="absolute bottom-3 left-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-black gap-1 shadow-lg shadow-amber-500/30"
-                            >
-                              <Palette className="h-3 w-3" />
-                              Premium Palette
-                            </Badge>
-                          )}
-                          
-                          {/* Transfer Limit Badge */}
-                          {listing.visualization?.id && (
-                            <div className="absolute bottom-3 right-3">
-                              <TransferLimitBadge 
-                                visualizationId={listing.visualization.id} 
-                                variant="compact" 
-                              />
-                            </div>
-                          )}
-                          
-                          {/* Exemplar Badge */}
-                          {listing.visualization?.title?.includes('Exemplar') && (
-                            <Badge 
-                              className="absolute top-3 left-3 bg-amber-500/90 hover:bg-amber-500 text-black"
-                            >
-                              🏆 Genesis
-                            </Badge>
-                          )}
-                          
-                          {/* Price Badge */}
+                        {/* Premium Palette Badge with glow */}
+                        {hasPremiumPalette && (
                           <Badge 
-                            className={`absolute top-3 right-3 ${
-                              listing.price_cents === 0 
-                                ? 'bg-green-500/90 hover:bg-green-500' 
-                                : 'bg-primary/90 hover:bg-primary'
-                            }`}
+                            className="absolute bottom-3 left-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-black gap-1 shadow-lg shadow-amber-500/30 pointer-events-none"
                           >
-                            {listing.price_cents === 0 ? (
-                              <><Gift className="h-3 w-3 mr-1" /> Free</>
-                            ) : (
-                              <><DollarSign className="h-3 w-3 mr-0.5" />{(listing.price_cents / 100).toFixed(2)}</>
-                            )}
+                            <Palette className="h-3 w-3" />
+                            Premium Palette
                           </Badge>
+                        )}
+                        
+                        {/* Transfer Limit Badge */}
+                        {listing.visualization?.id && (
+                          <div className="absolute bottom-3 right-3 pointer-events-none">
+                            <TransferLimitBadge 
+                              visualizationId={listing.visualization.id} 
+                              variant="compact" 
+                            />
+                          </div>
+                        )}
+                        
+                        {/* Exemplar Badge */}
+                        {listing.visualization?.title?.includes('Exemplar') && (
+                          <Badge 
+                            className="absolute top-3 left-3 bg-amber-500/90 hover:bg-amber-500 text-black pointer-events-none"
+                          >
+                            🏆 Genesis
+                          </Badge>
+                        )}
+                        
+                        {/* Price Badge */}
+                        <Badge 
+                          className={`absolute top-3 right-3 pointer-events-none ${
+                            listing.price_cents === 0 
+                              ? 'bg-green-500/90 hover:bg-green-500' 
+                              : 'bg-primary/90 hover:bg-primary'
+                          }`}
+                        >
+                          {listing.price_cents === 0 ? (
+                            <><Gift className="h-3 w-3 mr-1" /> Free</>
+                          ) : (
+                            <><DollarSign className="h-3 w-3 mr-0.5" />{(listing.price_cents / 100).toFixed(2)}</>
+                          )}
+                        </Badge>
 
                           {/* Hover overlay to view details */}
                           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
@@ -547,22 +547,22 @@ const Marketplace: React.FC = () => {
                           }}
                           title={paletteName ? `${paletteName} Palette` : undefined}
                         >
-                          {/* Palette name tooltip on hover */}
-                          {paletteName && (
-                            <div className="absolute top-1 right-1 opacity-0 group-hover/content:opacity-100 transition-opacity duration-200 z-20">
-                              <Badge 
-                                variant="secondary" 
-                                className={`text-[10px] px-1.5 py-0.5 ${
-                                  hasPremiumPalette 
-                                    ? 'bg-gradient-to-r from-amber-500/90 to-orange-500/90 text-black border-0' 
-                                    : 'bg-card/90 backdrop-blur-sm'
-                                }`}
-                              >
-                                <Palette className="h-2.5 w-2.5 mr-1" />
-                                {paletteName}
-                              </Badge>
-                            </div>
-                          )}
+                        {/* Palette name tooltip on hover */}
+                        {paletteName && (
+                          <div className="absolute top-1 right-1 opacity-0 group-hover/content:opacity-100 transition-opacity duration-200 z-20 pointer-events-none">
+                            <Badge 
+                              variant="secondary" 
+                              className={`text-[10px] px-1.5 py-0.5 ${
+                                hasPremiumPalette 
+                                  ? 'bg-gradient-to-r from-amber-500/90 to-orange-500/90 text-black border-0' 
+                                  : 'bg-card/90 backdrop-blur-sm'
+                              }`}
+                            >
+                              <Palette className="h-2.5 w-2.5 mr-1" />
+                              {paletteName}
+                            </Badge>
+                          </div>
+                        )}
                           
                           <h3 className="font-semibold truncate mb-1 text-sm sm:text-base relative z-10">
                             {listing.visualization?.title || 'Untitled'}

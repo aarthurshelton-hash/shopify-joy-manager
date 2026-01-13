@@ -48,10 +48,10 @@ export const TransferLimitBadge: React.FC<TransferLimitBadgeProps> = ({
   return (
     <TooltipProvider>
       <Tooltip>
-        <TooltipTrigger asChild>
+        <TooltipTrigger asChild onClick={(e) => e.stopPropagation()}>
           <Badge 
             variant={canTransfer ? 'outline' : 'destructive'}
-            className={`gap-1 ${
+            className={`gap-1 cursor-default ${
               canTransfer 
                 ? isLimited 
                   ? 'border-amber-500/50 text-amber-600 bg-amber-500/10' 
