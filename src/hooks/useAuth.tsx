@@ -34,6 +34,7 @@ interface AuthContextType {
   profile: Profile | null;
   isLoading: boolean;
   isPremium: boolean;
+  isAdmin: boolean;
   subscriptionStatus: SubscriptionStatus | null;
   isCheckingSubscription: boolean;
   mfaStatus: MFAStatus;
@@ -60,8 +61,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null);
   const [isCheckingSubscription, setIsCheckingSubscription] = useState(false);
   const [mfaStatus, setMfaStatus] = useState<MFAStatus>({ enabled: false, factorId: null });
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const isPremium = subscriptionStatus?.subscribed && subscriptionStatus?.productId === PREMIUM_PRODUCT_ID;
+
+  // Check admin role
+  const checkAdminRole = useCallback(async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId)
+        .eq('role', 'admin')
+        .maybeSingle();
+      
+      setIsAdmin(!error && !!data);
+    } catch {
+      setIsAdmin(false);
+    }
+  }, []);
 
   // Check MFA status
   const checkMFAStatus = useCallback(async (): Promise<MFAStatus> => {
@@ -179,10 +197,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         if (currentSession?.user) {
           // Use setTimeout to avoid potential deadlock with Supabase client
-          setTimeout(() => fetchProfile(currentSession.user.id), 0);
+          setTimeout(() => {
+            fetchProfile(currentSession.user.id);
+            checkAdminRole(currentSession.user.id);
+          }, 0);
         } else {
           setProfile(null);
           setSubscriptionStatus(null);
+          setIsAdmin(false);
         }
         
         setIsLoading(false);
@@ -196,6 +218,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (currentSession?.user) {
         fetchProfile(currentSession.user.id);
+        checkAdminRole(currentSession.user.id);
       }
       
       setIsLoading(false);
@@ -288,6 +311,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(null);
     setSubscriptionStatus(null);
     setMfaStatus({ enabled: false, factorId: null });
+    setIsAdmin(false);
   };
 
   const updateProfile = async (updates: Partial<Pick<Profile, 'display_name' | 'avatar_url'>>) => {
@@ -312,6 +336,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       profile,
       isLoading,
       isPremium,
+      isAdmin,
       subscriptionStatus,
       isCheckingSubscription,
       mfaStatus,
