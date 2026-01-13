@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_art_bank: {
+        Row: {
+          category: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          image_path: string
+          is_active: boolean | null
+          prompt: string | null
+          tags: string[] | null
+          title: string
+          updated_at: string
+          usage_locations: string[] | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          image_path: string
+          is_active?: boolean | null
+          prompt?: string | null
+          tags?: string[] | null
+          title: string
+          updated_at?: string
+          usage_locations?: string[] | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          image_path?: string
+          is_active?: boolean | null
+          prompt?: string | null
+          tags?: string[] | null
+          title?: string
+          updated_at?: string
+          usage_locations?: string[] | null
+        }
+        Relationships: []
+      }
       banned_users: {
         Row: {
           banned_at: string
