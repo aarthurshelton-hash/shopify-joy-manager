@@ -1,9 +1,10 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Upload, FileText, Crown, Sparkles, CheckCircle, XCircle, Loader2, Wrench, ArrowRight, ChevronLeft, ChevronRight, Search, X, Shuffle, Heart, Award } from 'lucide-react';
+import { Upload, FileText, Crown, Sparkles, CheckCircle, XCircle, Loader2, Wrench, ArrowRight, ChevronLeft, ChevronRight, Search, X, Shuffle, Heart, Award, PenTool } from 'lucide-react';
 import { famousGames, FamousGame, getRandomFamousGame } from '@/lib/chess/famousGames';
 import { gameImageImports } from '@/lib/chess/gameImages';
+import { getPoetryPreview, getPoetryStyleLabel } from '@/lib/chess/gamePoetry';
 import { validatePgn, cleanPgn, PgnValidationResult } from '@/lib/chess/pgnValidator';
 import { fixPgn, PgnFixResult } from '@/lib/chess/pgnFixer';
 import { detectGameCard } from '@/lib/chess/gameCardDetection';
@@ -478,6 +479,8 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
               >
                 {visibleGames.map((game) => {
                   const gameImage = gameImageImports[game.id];
+                  const poetryPreview = getPoetryPreview(game.id);
+                  const poetryStyle = getPoetryStyleLabel(game.id);
                   return (
                     <button
                       key={game.id}
@@ -505,6 +508,12 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
                           <Crown className={isMobile ? "h-6 w-6 text-primary/40" : "h-5 w-5 text-primary/40"} />
                         </div>
                       )}
+                      {/* Poetry indicator badge */}
+                      {poetryPreview && (
+                        <div className={`absolute ${isMobile ? 'bottom-1 left-1' : 'bottom-0 left-0'} px-1.5 py-0.5 bg-primary/90 rounded-tr-md rounded-bl-md`}>
+                          <PenTool className="h-2.5 w-2.5 text-primary-foreground" />
+                        </div>
+                      )}
                       {/* Favorite button */}
                       <button
                         onClick={(e) => handleToggleFavorite(e, game.id)}
@@ -520,8 +529,14 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
                     </div>
                     {/* Text info */}
                     <div className={`flex flex-col justify-center ${isMobile ? 'p-2 flex-1' : 'flex-1 min-w-0'}`}>
-                      <p className="text-xs font-semibold text-foreground leading-tight line-clamp-2">{game.title}</p>
-                      <p className={`text-muted-foreground ${isMobile ? 'text-[10px] mt-0.5' : 'text-[10px] mt-1'}`}>{game.year}</p>
+                      <p className="text-xs font-semibold text-foreground leading-tight line-clamp-1">{game.title}</p>
+                      <p className={`text-muted-foreground ${isMobile ? 'text-[10px] mt-0.5' : 'text-[10px] mt-0.5'}`}>{game.year}</p>
+                      {/* Poetry preview */}
+                      {poetryPreview && (
+                        <p className={`italic text-primary/70 line-clamp-1 ${isMobile ? 'text-[9px] mt-1' : 'text-[9px] mt-0.5'}`}>
+                          "{poetryPreview}"
+                        </p>
+                      )}
                     </div>
                   </button>
                 );
