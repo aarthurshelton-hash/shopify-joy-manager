@@ -420,7 +420,7 @@ export const BookShowcase: React.FC<BookShowcaseProps> = ({
         className="relative py-20 overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900"
       >
         {/* Ambient lighting effects */}
-        <div className="absolute inset-0">
+        <div className="absolute inset-0 pointer-events-none">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(251,191,36,0.15),transparent_50%)]" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_70%,rgba(249,115,22,0.1),transparent_50%)]" />
         </div>
@@ -656,10 +656,13 @@ export const BookShowcase: React.FC<BookShowcaseProps> = ({
               </div>
               
               {showCTA && (
-                <div className="flex flex-wrap gap-3 pt-4">
+                <div className="flex flex-wrap gap-3 pt-4 relative z-10">
                   <Button 
                     size="lg" 
-                    onClick={handleOrder}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleOrder();
+                    }}
                     className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white shadow-lg shadow-amber-600/25"
                   >
                     <ShoppingCart className="w-4 h-4 mr-2" />
@@ -668,7 +671,10 @@ export const BookShowcase: React.FC<BookShowcaseProps> = ({
                   <Button 
                     size="lg" 
                     variant="outline"
-                    onClick={() => setShowPreview(true)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowPreview(true);
+                    }}
                     className="border-amber-500/50 text-amber-200 hover:bg-amber-500/10"
                   >
                     <Eye className="w-4 h-4 mr-2" />
