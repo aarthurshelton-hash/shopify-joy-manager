@@ -238,6 +238,69 @@ export type Database = {
         }
         Relationships: []
       }
+      dmca_reports: {
+        Row: {
+          accuracy_statement: boolean
+          admin_notes: string | null
+          copyrighted_work_description: string
+          created_at: string
+          electronic_signature: string
+          good_faith_statement: boolean
+          id: string
+          infringing_material_description: string
+          infringing_material_url: string
+          reporter_address: string | null
+          reporter_email: string
+          reporter_name: string
+          reporter_phone: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          accuracy_statement?: boolean
+          admin_notes?: string | null
+          copyrighted_work_description: string
+          created_at?: string
+          electronic_signature: string
+          good_faith_statement?: boolean
+          id?: string
+          infringing_material_description: string
+          infringing_material_url: string
+          reporter_address?: string | null
+          reporter_email: string
+          reporter_name: string
+          reporter_phone?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          accuracy_statement?: boolean
+          admin_notes?: string | null
+          copyrighted_work_description?: string
+          created_at?: string
+          electronic_signature?: string
+          good_faith_statement?: boolean
+          id?: string
+          infringing_material_description?: string
+          infringing_material_url?: string
+          reporter_address?: string | null
+          reporter_email?: string
+          reporter_name?: string
+          reporter_phone?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       education_fund: {
         Row: {
           created_at: string
