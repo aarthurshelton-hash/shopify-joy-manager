@@ -9,8 +9,9 @@ import spread2 from '@/assets/book/spread-preview-2.png';
 import spread3 from '@/assets/book/spread-preview-3.png';
 import frontCover from '@/assets/book/carlsen-cover-v2.jpg';
 import backCover from '@/assets/book/carlsen-back-cover.jpg';
+import spineImage from '@/assets/book/carlsen-spine.jpg';
 
-type PageType = 'cover' | 'spread' | 'back';
+type PageType = 'spine' | 'cover' | 'spread' | 'back';
 
 interface PageData {
   id: number;
@@ -26,12 +27,18 @@ interface PageData {
 const BOOK_PAGES: PageData[] = [
   {
     id: 0,
+    type: 'spine',
+    image: spineImage,
+    title: "Spine",
+  },
+  {
+    id: 1,
     type: 'cover',
     image: frontCover,
     title: "Front Cover",
   },
   {
-    id: 1,
+    id: 2,
     type: 'spread',
     image: spread1,
     title: "Breaking the Wall",
@@ -40,7 +47,7 @@ const BOOK_PAGES: PageData[] = [
     pageNumber: 6,
   },
   {
-    id: 2,
+    id: 3,
     type: 'spread',
     image: spread2,
     title: "The 136-Move Epic",
@@ -49,7 +56,7 @@ const BOOK_PAGES: PageData[] = [
     pageNumber: 10,
   },
   {
-    id: 3,
+    id: 4,
     type: 'spread',
     image: spread3,
     title: "The Berlin Endgame",
@@ -58,7 +65,7 @@ const BOOK_PAGES: PageData[] = [
     pageNumber: 14,
   },
   {
-    id: 4,
+    id: 5,
     type: 'back',
     image: backCover,
     title: "Back Cover",
@@ -108,11 +115,13 @@ export const BookFlipPreview: React.FC<BookFlipPreviewProps> = ({ className = ''
 
   const page = BOOK_PAGES[currentPage];
   const isCover = page.type === 'cover' || page.type === 'back';
+  const isSpine = page.type === 'spine';
 
   const getPageLabel = () => {
+    if (page.type === 'spine') return 'Spine';
     if (page.type === 'cover') return 'Front Cover';
     if (page.type === 'back') return 'Back Cover';
-    return `Spread ${currentPage} of 3`;
+    return `Spread ${currentPage - 1} of 3`;
   };
 
   return (
@@ -131,9 +140,11 @@ export const BookFlipPreview: React.FC<BookFlipPreviewProps> = ({ className = ''
         {/* Open book container */}
         <div 
           className={`relative rounded-lg shadow-2xl overflow-hidden ${
-            isCover 
-              ? 'bg-gradient-to-br from-slate-900 to-slate-800' 
-              : 'bg-gradient-to-b from-amber-100 to-amber-50'
+            isSpine
+              ? 'bg-gradient-to-b from-slate-900 to-slate-800'
+              : isCover 
+                ? 'bg-gradient-to-br from-slate-900 to-slate-800' 
+                : 'bg-gradient-to-b from-amber-100 to-amber-50'
           }`}
           style={{ 
             transformStyle: 'preserve-3d',
@@ -141,7 +152,7 @@ export const BookFlipPreview: React.FC<BookFlipPreviewProps> = ({ className = ''
           }}
         >
           {/* Book binding/spine shadow - only for spreads */}
-          {!isCover && (
+          {!isCover && !isSpine && (
             <div className="absolute left-1/2 top-0 bottom-0 w-4 -translate-x-1/2 bg-gradient-to-r from-amber-200 via-amber-300 to-amber-200 z-10 shadow-inner" />
           )}
           
@@ -173,17 +184,18 @@ export const BookFlipPreview: React.FC<BookFlipPreviewProps> = ({ className = ''
                     src={page.image}
                     alt={page.title}
                     className={`w-full h-auto block ${
+                      isSpine ? 'aspect-[1/4] object-contain mx-auto py-4' :
                       isCover ? 'aspect-[3/4] object-contain mx-auto py-4' : ''
                     }`}
                     style={{ 
-                      aspectRatio: isCover ? '3/4' : '16/9',
-                      objectFit: isCover ? 'contain' : 'cover',
-                      maxHeight: isCover ? '500px' : 'auto',
+                      aspectRatio: isSpine ? '1/4' : isCover ? '3/4' : '16/9',
+                      objectFit: isSpine ? 'contain' : isCover ? 'contain' : 'cover',
+                      maxHeight: isSpine ? '500px' : isCover ? '500px' : 'auto',
                     }}
                   />
                   
                   {/* Page texture overlay - only for spreads */}
-                  {!isCover && (
+                  {!isCover && !isSpine && (
                     <>
                       <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-black/5 pointer-events-none" />
                       
@@ -198,6 +210,15 @@ export const BookFlipPreview: React.FC<BookFlipPreviewProps> = ({ className = ''
                       {/* Center binding shadow */}
                       <div className="absolute left-1/2 top-0 bottom-0 w-8 -translate-x-1/2 bg-gradient-to-r from-transparent via-black/10 to-transparent pointer-events-none" />
                     </>
+                  )}
+                  
+                  {/* Spine badge overlay */}
+                  {isSpine && (
+                    <div className="absolute bottom-4 left-0 right-0 text-center">
+                      <span className="inline-block bg-gradient-to-r from-amber-600 to-amber-500 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg">
+                        Gold Gilded Spine
+                      </span>
+                    </div>
                   )}
                   
                   {/* Cover badge overlay */}
@@ -246,7 +267,7 @@ export const BookFlipPreview: React.FC<BookFlipPreviewProps> = ({ className = ''
           </div>
           
           {/* Page corners curl effect - only for spreads */}
-          {!isCover && (
+          {!isCover && !isSpine && (
             <>
               <div className="absolute top-0 right-0 w-12 h-12 bg-gradient-to-bl from-amber-50 to-transparent rounded-bl-lg pointer-events-none" 
                    style={{ boxShadow: 'inset 2px 2px 6px rgba(0,0,0,0.05)' }} />
@@ -283,11 +304,11 @@ export const BookFlipPreview: React.FC<BookFlipPreviewProps> = ({ className = ''
               className={`transition-all duration-300 rounded-sm ${
                 index === currentPage 
                   ? 'w-8 h-3 bg-amber-600' 
-                  : pageData.type === 'cover' || pageData.type === 'back'
+                  : pageData.type === 'spine' || pageData.type === 'cover' || pageData.type === 'back'
                     ? 'w-3 h-3 bg-amber-500/60 hover:bg-amber-500'
                     : 'w-3 h-3 bg-amber-300 hover:bg-amber-400'
               }`}
-              title={pageData.type === 'cover' ? 'Front Cover' : pageData.type === 'back' ? 'Back Cover' : pageData.title}
+              title={pageData.type === 'spine' ? 'Spine' : pageData.type === 'cover' ? 'Front Cover' : pageData.type === 'back' ? 'Back Cover' : pageData.title}
             />
           ))}
         </div>
