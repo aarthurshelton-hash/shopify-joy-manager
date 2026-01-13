@@ -59,10 +59,12 @@ export const Footer = () => {
           </nav>
           
           {/* Legal Links */}
-          <nav className="flex items-center gap-4 pt-3">
+          <nav className="flex items-center gap-4 pt-3 flex-wrap justify-center">
             <Link to="/terms" className="text-xs text-muted-foreground/70 hover:text-foreground transition-colors">Terms of Service</Link>
             <span className="text-muted-foreground/30">•</span>
             <Link to="/privacy" className="text-xs text-muted-foreground/70 hover:text-foreground transition-colors">Privacy Policy</Link>
+            <span className="text-muted-foreground/30">•</span>
+            <Link to="/dmca" className="text-xs text-muted-foreground/70 hover:text-foreground transition-colors">DMCA</Link>
           </nav>
           
           {/* Copyright & Protection Notice */}
