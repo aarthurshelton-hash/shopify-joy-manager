@@ -332,7 +332,8 @@ const Marketplace: React.FC = () => {
       <div className="relative border-b border-border/40 overflow-hidden">
         <RotatingArtBackground opacity={0.1} interval={10000} imageCount={12} />
         
-        <div className="relative container mx-auto px-4 py-8 sm:py-12">
+        {/* Content must be above background with higher z-index */}
+        <div className="relative z-10 container mx-auto px-4 py-8 sm:py-12">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4">
             <div className="flex items-center gap-3">
               <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">

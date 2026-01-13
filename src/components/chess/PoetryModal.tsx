@@ -177,11 +177,14 @@ export const PoetryModal: React.FC<PoetryModalProps> = ({
 };
 
 // Compact poetry preview card for embedding in vision experience
-export const PoetryPreviewCard: React.FC<{
-  gameId: string | null;
-  gameTitle?: string;
-  onOpenModal: () => void;
-}> = ({ gameId, gameTitle, onOpenModal }) => {
+export const PoetryPreviewCard = React.forwardRef<
+  HTMLButtonElement,
+  {
+    gameId: string | null;
+    gameTitle?: string;
+    onOpenModal: () => void;
+  }
+>(function PoetryPreviewCard({ gameId, gameTitle, onOpenModal }, ref) {
   const poetry = gameId ? getGamePoetry(gameId) : null;
   const styleLabel = gameId ? getPoetryStyleLabel(gameId) : null;
 
@@ -190,11 +193,10 @@ export const PoetryPreviewCard: React.FC<{
   const firstLine = poetry.poem.split('\n')[0];
 
   return (
-    <motion.button
+    <button
+      ref={ref}
       onClick={onOpenModal}
-      className="w-full text-left p-4 rounded-lg bg-gradient-to-r from-primary/5 via-transparent to-amber-500/5 border border-primary/20 hover:border-primary/40 transition-all duration-300 group cursor-pointer"
-      whileHover={{ scale: 1.01 }}
-      whileTap={{ scale: 0.99 }}
+      className="w-full text-left p-4 rounded-lg bg-gradient-to-r from-primary/5 via-transparent to-amber-500/5 border border-primary/20 hover:border-primary/40 transition-all duration-300 group cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
     >
       <div className="flex items-start gap-3">
         <div className="p-2 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
@@ -215,8 +217,8 @@ export const PoetryPreviewCard: React.FC<{
           </p>
         </div>
       </div>
-    </motion.button>
+    </button>
   );
-};
+});
 
 export default PoetryModal;
