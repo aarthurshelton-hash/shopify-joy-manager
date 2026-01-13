@@ -131,29 +131,31 @@ export const MarketplaceFilters: React.FC<MarketplaceFiltersProps> = ({
         </Popover>
       </div>
 
-      {/* Category Tabs */}
-      <div className="flex flex-wrap gap-2 relative z-10">
-        {categoryOptions.map((option) => (
-          <Button
-            key={option.value}
-            variant={category === option.value ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => onCategoryChange(option.value)}
-            className={`gap-1.5 ${category === option.value ? '' : 'bg-card/80 border-border/50 backdrop-blur-sm'}`}
-          >
-            {option.icon}
-            {option.label}
-          </Button>
-        ))}
+      {/* Category Tabs - Horizontally scrollable on mobile */}
+      <div className="flex flex-col sm:flex-row gap-2 relative z-10">
+        <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0 scrollbar-hide snap-x snap-mandatory shrink-0">
+          {categoryOptions.map((option) => (
+            <Button
+              key={option.value}
+              variant={category === option.value ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => onCategoryChange(option.value)}
+              className={`gap-1.5 shrink-0 snap-start ${category === option.value ? '' : 'bg-card/80 border-border/50 backdrop-blur-sm'}`}
+            >
+              {option.icon}
+              {option.label}
+            </Button>
+          ))}
+        </div>
         
         {/* Results count */}
-        <div className="ml-auto flex items-center gap-2">
+        <div className="flex items-center gap-2 sm:ml-auto shrink-0">
           {totalMarketVisions !== undefined && totalMarketVisions > 0 && (
-            <Badge variant="outline" className="backdrop-blur-sm bg-primary/10 border-primary/30 text-primary">
+            <Badge variant="outline" className="backdrop-blur-sm bg-primary/10 border-primary/30 text-primary whitespace-nowrap">
               {totalMarketVisions.toLocaleString()} total visions
             </Badge>
           )}
-          <Badge variant="secondary" className="backdrop-blur-sm">
+          <Badge variant="secondary" className="backdrop-blur-sm whitespace-nowrap">
             {totalResults} {totalResults === 1 ? 'listed' : 'listed'}
           </Badge>
         </div>

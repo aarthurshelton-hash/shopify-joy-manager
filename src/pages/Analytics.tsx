@@ -456,8 +456,8 @@ const Analytics = () => {
               <h2 className="text-2xl font-display font-bold uppercase tracking-wider">Vision Economy</h2>
             </div>
             
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              <div className="relative p-4 rounded-lg bg-card/50 border border-border/50 text-center overflow-hidden group">
+            <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory md:grid md:grid-cols-4 lg:grid-cols-6 md:overflow-visible md:pb-0">
+              <div className="relative p-4 rounded-lg bg-card/50 border border-border/50 text-center overflow-hidden group min-w-[140px] md:min-w-0 snap-start">
                 <div 
                   className="absolute inset-0 opacity-[0.10] group-hover:opacity-[0.16] transition-opacity bg-cover bg-center"
                   style={{ backgroundImage: `url(${backgroundImages[4]})` }}
@@ -471,7 +471,7 @@ const Analytics = () => {
                   <p className="text-xs text-muted-foreground uppercase tracking-wide">Views</p>
                 </div>
               </div>
-              <div className="relative p-4 rounded-lg bg-card/50 border border-border/50 text-center overflow-hidden group">
+              <div className="relative p-4 rounded-lg bg-card/50 border border-border/50 text-center overflow-hidden group min-w-[140px] md:min-w-0 snap-start">
                 <div 
                   className="absolute inset-0 opacity-[0.10] group-hover:opacity-[0.16] transition-opacity bg-cover bg-center"
                   style={{ backgroundImage: `url(${backgroundImages[5]})` }}
@@ -485,7 +485,7 @@ const Analytics = () => {
                   <p className="text-xs text-muted-foreground uppercase tracking-wide">HD Downloads</p>
                 </div>
               </div>
-              <div className="relative p-4 rounded-lg bg-card/50 border border-border/50 text-center overflow-hidden group">
+              <div className="relative p-4 rounded-lg bg-card/50 border border-border/50 text-center overflow-hidden group min-w-[140px] md:min-w-0 snap-start">
                 <div 
                   className="absolute inset-0 opacity-[0.10] group-hover:opacity-[0.16] transition-opacity bg-cover bg-center"
                   style={{ backgroundImage: `url(${backgroundImages[6]})` }}
@@ -499,7 +499,7 @@ const Analytics = () => {
                   <p className="text-xs text-muted-foreground uppercase tracking-wide">GIF Exports</p>
                 </div>
               </div>
-              <div className="relative p-4 rounded-lg bg-card/50 border border-border/50 text-center overflow-hidden group">
+              <div className="relative p-4 rounded-lg bg-card/50 border border-border/50 text-center overflow-hidden group min-w-[140px] md:min-w-0 snap-start">
                 <div 
                   className="absolute inset-0 opacity-[0.10] group-hover:opacity-[0.16] transition-opacity bg-cover bg-center"
                   style={{ backgroundImage: `url(${backgroundImages[7]})` }}
@@ -513,7 +513,7 @@ const Analytics = () => {
                   <p className="text-xs text-muted-foreground uppercase tracking-wide">Trades</p>
                 </div>
               </div>
-              <div className="relative p-4 rounded-lg bg-card/50 border border-border/50 text-center overflow-hidden group">
+              <div className="relative p-4 rounded-lg bg-card/50 border border-border/50 text-center overflow-hidden group min-w-[140px] md:min-w-0 snap-start">
                 <div 
                   className="absolute inset-0 opacity-[0.10] group-hover:opacity-[0.16] transition-opacity bg-cover bg-center"
                   style={{ backgroundImage: `url(${backgroundImages[8]})` }}
@@ -527,7 +527,7 @@ const Analytics = () => {
                   <p className="text-xs text-muted-foreground uppercase tracking-wide">Print Orders</p>
                 </div>
               </div>
-              <div className="relative p-4 rounded-lg bg-primary/10 border border-primary/30 text-center overflow-hidden group">
+              <div className="relative p-4 rounded-lg bg-primary/10 border border-primary/30 text-center overflow-hidden group min-w-[140px] md:min-w-0 snap-start">
                 <div 
                   className="absolute inset-0 opacity-[0.12] group-hover:opacity-[0.18] transition-opacity bg-cover bg-center"
                   style={{ backgroundImage: `url(${backgroundImages[9]})` }}

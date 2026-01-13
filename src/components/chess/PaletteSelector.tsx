@@ -384,8 +384,8 @@ const PaletteSelector: React.FC<PaletteSelectorProps> = ({ onPaletteChange }) =>
       </div>
       
       <div className="p-5 space-y-5">
-        {/* Preset palettes */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Preset palettes - horizontally scrollable on mobile */}
+        <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:overflow-visible sm:pb-0">
           {colorPalettes.map((palette) => {
             const isActive = palette.id === activePaletteId;
             const isCustom = palette.id === 'custom';
@@ -396,7 +396,7 @@ const PaletteSelector: React.FC<PaletteSelectorProps> = ({ onPaletteChange }) =>
               <button
                 key={palette.id}
                 onClick={() => handleSelect(palette.id)}
-                className={`relative text-left p-4 rounded-lg border transition-all duration-300 overflow-hidden ${
+                className={`relative text-left p-4 rounded-lg border transition-all duration-300 overflow-hidden min-w-[280px] sm:min-w-0 snap-start ${
                   isActive 
                     ? 'border-primary glow-gold' 
                     : 'border-border/50 hover:border-primary/30'

@@ -325,26 +325,26 @@ const News = () => {
                 </h2>
               </div>
               
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
-                <div>
+              <div className="flex gap-6 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory md:grid md:grid-cols-5 md:overflow-visible md:pb-0">
+                <div className="min-w-[120px] md:min-w-0 snap-start shrink-0">
                   <p className="text-2xl md:text-3xl font-display font-bold text-primary">2,847</p>
-                  <p className="text-xs text-muted-foreground font-serif uppercase tracking-wide">Active Visionaries</p>
+                  <p className="text-xs text-muted-foreground font-serif uppercase tracking-wide whitespace-nowrap">Active Visionaries</p>
                 </div>
-                <div>
+                <div className="min-w-[120px] md:min-w-0 snap-start shrink-0">
                   <p className="text-2xl md:text-3xl font-display font-bold text-primary">75+</p>
-                  <p className="text-xs text-muted-foreground font-serif uppercase tracking-wide">Historic Games</p>
+                  <p className="text-xs text-muted-foreground font-serif uppercase tracking-wide whitespace-nowrap">Historic Games</p>
                 </div>
-                <div>
+                <div className="min-w-[120px] md:min-w-0 snap-start shrink-0">
                   <p className="text-2xl md:text-3xl font-display font-bold text-primary">16</p>
-                  <p className="text-xs text-muted-foreground font-serif uppercase tracking-wide">Color Palettes</p>
+                  <p className="text-xs text-muted-foreground font-serif uppercase tracking-wide whitespace-nowrap">Color Palettes</p>
                 </div>
-                <div>
+                <div className="min-w-[120px] md:min-w-0 snap-start shrink-0">
                   <p className="text-2xl md:text-3xl font-display font-bold text-primary">$19.8K</p>
-                  <p className="text-xs text-muted-foreground font-serif uppercase tracking-wide">ARR</p>
+                  <p className="text-xs text-muted-foreground font-serif uppercase tracking-wide whitespace-nowrap">ARR</p>
                 </div>
-                <div>
+                <div className="min-w-[120px] md:min-w-0 snap-start shrink-0">
                   <p className="text-2xl md:text-3xl font-display font-bold text-primary">95%</p>
-                  <p className="text-xs text-muted-foreground font-serif uppercase tracking-wide">Gross Margin</p>
+                  <p className="text-xs text-muted-foreground font-serif uppercase tracking-wide whitespace-nowrap">Gross Margin</p>
                 </div>
               </div>
             </div>

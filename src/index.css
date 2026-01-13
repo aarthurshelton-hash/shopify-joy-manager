@@ -223,6 +223,15 @@
     @apply h-px w-full;
     background: linear-gradient(90deg, transparent, hsl(var(--gold) / 0.3) 20%, hsl(var(--gold) / 0.5) 50%, hsl(var(--gold) / 0.3) 80%, transparent);
   }
+
+  /* Hide scrollbar utility for horizontal scroll areas */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 /* Premium palette shimmer animation */

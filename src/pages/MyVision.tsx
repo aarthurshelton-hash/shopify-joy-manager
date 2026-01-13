@@ -563,9 +563,9 @@ const MyVision: React.FC = () => {
               <Crown className="h-6 w-6 text-primary" />
               <h1 className="text-3xl font-display font-bold">My Vision Gallery</h1>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide shrink-0">
               {isMigrating ? (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground shrink-0">
                   <RefreshCw className="h-4 w-4 animate-spin" />
                   <span>Updating...</span>
                 </div>
@@ -576,20 +576,20 @@ const MyVision: React.FC = () => {
                     size="sm"
                     onClick={handleMigration}
                     disabled={isMigrating || visualizations.length === 0}
-                    className="gap-2"
+                    className="gap-2 shrink-0"
                     title="Refresh and re-process any failed visualizations"
                   >
                     <RefreshCw className="h-4 w-4" />
-                    Refresh
+                    <span className="hidden sm:inline">Refresh</span>
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setShowSubscriptionPanel(!showSubscriptionPanel)}
-                    className="gap-2"
+                    className="gap-2 shrink-0"
                   >
                     <Settings className="h-4 w-4" />
-                    Subscription
+                    <span className="hidden sm:inline">Subscription</span>
                   </Button>
                 </>
               )}
