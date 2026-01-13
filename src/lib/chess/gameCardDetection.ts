@@ -1,4 +1,5 @@
 // Game Card Detection - Auto-detect when uploaded PGN matches our famous game cards
+// Also integrates with emerging game detection for new high-value games
 import { famousGames, FamousGame } from './famousGames';
 import { Chess } from 'chess.js';
 
@@ -8,6 +9,10 @@ export interface GameCardMatch {
   similarity: number; // 0-1 representing how closely the moves match
   matchType: 'exact' | 'partial' | 'none';
 }
+
+// Re-export emerging game detection for unified access
+export { detectEmergingGame, formatSignificanceDisplay, getSignificanceLabel } from './emergingGameDetection';
+export type { EmergingGameSignificance } from './emergingGameDetection';
 
 /**
  * Normalize PGN moves by removing annotations, comments, and extra whitespace
