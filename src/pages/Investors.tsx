@@ -9,6 +9,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useRandomGameArt } from '@/hooks/useRandomGameArt';
 import { BookShowcase } from '@/components/book/BookShowcase';
+import { generatePitchDeck } from '@/lib/pitchDeck/generatePitchDeck';
+import { toast } from 'sonner';
 
 type ModalType = 'market' | 'technology' | 'vision' | 'brand' | 'data' | null;
 
@@ -578,14 +580,29 @@ const Investors = () => {
                 <p className="text-sm text-muted-foreground font-serif">
                   Our comprehensive pitch deck covering market opportunity, product strategy, business model, and growth plans.
                 </p>
-                <a 
-                  href="/documents/En_Pensent_Pitch_Deck.pdf"
-                  download
+                <button 
+                  onClick={async () => {
+                    toast.loading('Generating pitch deck...', { id: 'pitch-deck' });
+                    try {
+                      const blob = await generatePitchDeck();
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = 'En_Pensent_Pitch_Deck.pdf';
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      URL.revokeObjectURL(url);
+                      toast.success('Pitch deck downloaded!', { id: 'pitch-deck' });
+                    } catch (error) {
+                      toast.error('Failed to generate pitch deck', { id: 'pitch-deck' });
+                    }
+                  }}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground font-display uppercase tracking-wide text-xs hover:opacity-90 transition-opacity"
                 >
                   <Download className="h-3 w-3" />
                   Download Deck
-                </a>
+                </button>
               </div>
               
               <div className="p-6 rounded-lg border border-border/50 bg-card/50 space-y-4">
