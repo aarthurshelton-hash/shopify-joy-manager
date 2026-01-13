@@ -42,7 +42,7 @@ import { useVisualizationExport } from '@/hooks/useVisualizationExport';
 import { useRandomGameArt } from '@/hooks/useRandomGameArt';
 
 // Import AI-generated art
-import heroChessArt from '@/assets/hero-chess-art.jpg';
+import heroChessArt from '@/assets/ai-art/upload-section-hero.jpg';
 import chessMovementArt from '@/assets/chess-movement-art.jpg';
 import chessKingArt from '@/assets/chess-king-art.jpg';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
