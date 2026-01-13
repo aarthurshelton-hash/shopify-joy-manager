@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useRandomGameArt } from '@/hooks/useRandomGameArt';
 import { BookShowcase } from '@/components/book/BookShowcase';
 import { generatePitchDeck } from '@/lib/pitchDeck/generatePitchDeck';
+import { generateTAMReport } from '@/lib/pitchDeck/generateTAMReport';
 import { toast } from 'sonner';
 
 type ModalType = 'market' | 'technology' | 'vision' | 'brand' | 'data' | null;
@@ -618,14 +619,29 @@ const Investors = () => {
                 <p className="text-sm text-muted-foreground font-serif">
                   Detailed bottom-up market analysis with defensible TAM calculations and growth projections.
                 </p>
-                <a 
-                  href="/documents/Chess_Game_Visualizer_TAM_Report.pdf"
-                  download
+                <button 
+                  onClick={async () => {
+                    toast.loading('Generating TAM report...', { id: 'tam-report' });
+                    try {
+                      const blob = await generateTAMReport();
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = 'En_Pensent_TAM_Report.pdf';
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      URL.revokeObjectURL(url);
+                      toast.success('TAM report downloaded!', { id: 'tam-report' });
+                    } catch (error) {
+                      toast.error('Failed to generate TAM report', { id: 'tam-report' });
+                    }
+                  }}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground font-display uppercase tracking-wide text-xs hover:opacity-90 transition-opacity"
                 >
                   <Download className="h-3 w-3" />
                   Download PDF
-                </a>
+                </button>
               </div>
             </div>
           </div>
@@ -649,14 +665,18 @@ const Investors = () => {
 
                 <div className="p-4 rounded-lg bg-primary/5 border border-primary/20 space-y-2">
                   <h3 className="font-display font-bold uppercase tracking-wide text-primary">Market Opportunity</h3>
-                  <div className="grid grid-cols-2 gap-4 mt-3">
+                  <div className="grid grid-cols-3 gap-4 mt-3">
                     <div>
-                      <p className="text-2xl font-display text-foreground">600M–800M</p>
-                      <p className="text-xs text-muted-foreground font-serif">Global chess players</p>
+                      <p className="text-2xl font-display text-foreground">$12.5B</p>
+                      <p className="text-xs text-muted-foreground font-serif">TAM (Chess + Art)</p>
                     </div>
                     <div>
-                      <p className="text-2xl font-display text-foreground">$2.6B–$3.3B</p>
-                      <p className="text-xs text-muted-foreground font-serif">Annual chess economy</p>
+                      <p className="text-2xl font-display text-foreground">$2.1B</p>
+                      <p className="text-xs text-muted-foreground font-serif">SAM (Digital)</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-display text-foreground">$180M</p>
+                      <p className="text-xs text-muted-foreground font-serif">SOM (5-Year)</p>
                     </div>
                   </div>
                 </div>
@@ -666,32 +686,47 @@ const Investors = () => {
                   <ul className="space-y-2">
                     <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
                       <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                      <span><strong className="text-foreground">50M core addressable users</strong> — digitally engaged players who review and save games</span>
+                      <span><strong className="text-foreground">800M+ global chess players</strong> — 45% growth since 2020</span>
                     </li>
                     <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
                       <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                      <span><strong className="text-foreground">$120M–$250M TAM</strong> — based on 5-10% conversion at $49 average selling price</span>
+                      <span><strong className="text-foreground">95% digital margin</strong> — subscriptions and downloads</span>
                     </li>
                     <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
                       <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                      <span><strong className="text-foreground">$170M–$350M expanded TAM</strong> — with book upsells and future roadmap</span>
+                      <span><strong className="text-foreground">20% profit-based royalties</strong> — sustainable creator economics</span>
                     </li>
                     <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
                       <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                      <span><strong className="text-foreground">Free-to-paid funnel</strong> — digital exports are free, physical prints are monetized</span>
+                      <span><strong className="text-foreground">1M subscriber goal</strong> — $120M ARR at $120 ARPU by Year 5</span>
                     </li>
                   </ul>
                 </div>
 
                 <div className="pt-4 border-t border-border">
-                  <a 
-                    href="/documents/Chess_Game_Visualizer_TAM_Report.pdf" 
-                    download
+                  <button 
+                    onClick={async () => {
+                      toast.loading('Generating TAM report...', { id: 'tam-modal' });
+                      try {
+                        const blob = await generateTAMReport();
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'En_Pensent_TAM_Report.pdf';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                        toast.success('TAM report downloaded!', { id: 'tam-modal' });
+                      } catch (error) {
+                        toast.error('Failed to generate TAM report', { id: 'tam-modal' });
+                      }
+                    }}
                     className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-primary text-primary-foreground font-display uppercase tracking-wide text-sm hover:opacity-90 transition-opacity"
                   >
                     <Download className="h-4 w-4" />
                     Download Full TAM Report
-                  </a>
+                  </button>
                 </div>
               </div>
             </DialogContent>
@@ -849,52 +884,49 @@ const Investors = () => {
                     Subscriber Projections
                   </h3>
                   <p className="text-sm text-muted-foreground font-serif">
-                    Conservative growth projections based on addressable market of 50M engaged chess players.
+                    Growth projections aligned with TAM report — targeting 1M subscribers by Year 5.
                   </p>
                   <div className="space-y-3 mt-3">
                     <div className="flex items-center justify-between p-2 rounded bg-primary/5">
                       <div>
-                        <p className="text-sm font-display text-foreground">1,000 Subscribers</p>
-                        <p className="text-xs text-muted-foreground font-serif">Year 1 Target</p>
+                        <p className="text-sm font-display text-foreground">5,000 Subscribers</p>
+                        <p className="text-xs text-muted-foreground font-serif">Year 1</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-display text-primary">$84K ARR</p>
-                        <p className="text-xs text-muted-foreground font-serif">$7K MRR</p>
+                        <p className="text-sm font-display text-primary">$250K</p>
                       </div>
                     </div>
                     <div className="flex items-center justify-between p-2 rounded bg-primary/5">
                       <div>
-                        <p className="text-sm font-display text-foreground">5,000 Subscribers</p>
-                        <p className="text-xs text-muted-foreground font-serif">Year 2 Target</p>
+                        <p className="text-sm font-display text-foreground">25,000 Subscribers</p>
+                        <p className="text-xs text-muted-foreground font-serif">Year 2</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-display text-primary">$420K ARR</p>
-                        <p className="text-xs text-muted-foreground font-serif">$35K MRR</p>
+                        <p className="text-sm font-display text-primary">$1.6M</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between p-2 rounded bg-primary/5">
+                      <div>
+                        <p className="text-sm font-display text-foreground">100,000 Subscribers</p>
+                        <p className="text-xs text-muted-foreground font-serif">Year 3</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-display text-primary">$8M</p>
                       </div>
                     </div>
                     <div className="flex items-center justify-between p-2 rounded bg-primary/10 border border-primary/20">
                       <div>
-                        <p className="text-sm font-display text-foreground font-bold">10,000 Subscribers</p>
-                        <p className="text-xs text-muted-foreground font-serif">Year 3 Target</p>
+                        <p className="text-sm font-display text-foreground font-bold">1,000,000 Subscribers</p>
+                        <p className="text-xs text-muted-foreground font-serif">Year 5 Target</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-display text-primary font-bold">$840K ARR</p>
-                        <p className="text-xs text-muted-foreground font-serif">$70K MRR</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between p-2 rounded bg-primary/5">
-                      <div>
-                        <p className="text-sm font-display text-foreground">50,000 Subscribers</p>
-                        <p className="text-xs text-muted-foreground font-serif">Long-term Vision</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-display text-primary">$4.2M ARR</p>
-                        <p className="text-xs text-muted-foreground font-serif">$350K MRR</p>
+                        <p className="text-sm font-display text-primary font-bold">$120M ARR</p>
+                        <p className="text-xs text-muted-foreground font-serif">$120 ARPU</p>
                       </div>
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground font-serif italic mt-2">
-                    * Projections assume 0.02% to 0.1% conversion of addressable market
+                    * Based on profit-based royalty model with 95% digital margins
                   </p>
                 </div>
 
