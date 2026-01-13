@@ -165,10 +165,11 @@ export const TrendingVisions: React.FC = () => {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: index * 0.05 }}
-            onClick={() => navigate(`/marketplace/${vision.listingId}`)}
-            className="cursor-pointer"
           >
-            <Card className="overflow-hidden group hover:shadow-lg transition-all duration-300 border-orange-500/20 hover:border-orange-500/40">
+            <Card 
+              onClick={() => navigate(`/marketplace/${vision.listingId}`)}
+              className="overflow-hidden group hover:shadow-lg transition-all duration-300 border-orange-500/20 hover:border-orange-500/40 cursor-pointer"
+            >
               {/* Image */}
               <div className="aspect-square relative overflow-hidden bg-muted">
                 <img
@@ -179,7 +180,7 @@ export const TrendingVisions: React.FC = () => {
                 
                 {/* Trending rank badge */}
                 <Badge 
-                  className="absolute top-2 left-2 bg-orange-500/90 hover:bg-orange-500 text-white gap-1"
+                  className="absolute top-2 left-2 bg-orange-500/90 hover:bg-orange-500 text-white gap-1 pointer-events-none"
                 >
                   <TrendingUp className="h-3 w-3" />
                   #{index + 1}
@@ -188,14 +189,14 @@ export const TrendingVisions: React.FC = () => {
                 {/* Recent activity indicator */}
                 {vision.recentOrders > 0 && (
                   <Badge 
-                    className="absolute top-2 right-2 bg-green-500/90 hover:bg-green-500 text-white text-[10px] px-1.5"
+                    className="absolute top-2 right-2 bg-green-500/90 hover:bg-green-500 text-white text-[10px] px-1.5 pointer-events-none"
                   >
                     {vision.recentOrders} this week
                   </Badge>
                 )}
 
                 {/* Royalty earnings overlay */}
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2 pointer-events-none">
                   <div className="flex items-center gap-1 text-white text-xs font-medium">
                     <DollarSign className="h-3 w-3 text-green-400" />
                     <span>${(vision.royaltyCentsEarned / 100).toFixed(2)} earned</span>
