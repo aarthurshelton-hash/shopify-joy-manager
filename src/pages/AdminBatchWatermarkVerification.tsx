@@ -257,7 +257,7 @@ const AdminBatchWatermarkVerification = () => {
     }
   };
 
-  const downloadReport = () => {
+  const downloadReportJSON = () => {
     if (!report) return;
 
     const reportData = {
@@ -288,6 +288,72 @@ const AdminBatchWatermarkVerification = () => {
     const a = document.createElement('a');
     a.href = url;
     a.download = `watermark-report-${format(new Date(), 'yyyy-MM-dd-HHmmss')}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadReportCSV = () => {
+    if (!report) return;
+
+    // CSV header
+    const headers = [
+      'Filename',
+      'Watermark Found',
+      'Owner',
+      'Visualization Title',
+      'Visualization ID',
+      'User ID',
+      'Export Timestamp',
+      'Share ID',
+      'Error'
+    ];
+
+    // CSV rows
+    const rows = report.results.map(r => [
+      r.filename,
+      r.watermarkFound ? 'Yes' : 'No',
+      r.ownerName || '',
+      r.visualizationTitle || '',
+      r.data?.visualizationId || '',
+      r.data?.userId || '',
+      r.data?.timestamp ? new Date(r.data.timestamp).toISOString() : '',
+      r.data?.shareId || '',
+      r.error || ''
+    ]);
+
+    // Escape CSV values (handle commas, quotes, newlines)
+    const escapeCSV = (value: string) => {
+      if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+        return `"${value.replace(/"/g, '""')}"`;
+      }
+      return value;
+    };
+
+    // Build CSV content with summary at top
+    const summaryLines = [
+      `# En Pensent Watermark Verification Report`,
+      `# Generated: ${report.generatedAt.toISOString()}`,
+      `# Total Images: ${report.totalImages}`,
+      `# Watermarked: ${report.watermarkedCount}`,
+      `# Unwatermarked: ${report.unwatermarkedCount}`,
+      `# Errors: ${report.errorCount}`,
+      `# Watermark Rate: ${((report.watermarkedCount / report.totalImages) * 100).toFixed(1)}%`,
+      '' // Empty line before data
+    ];
+
+    const csvContent = [
+      ...summaryLines,
+      headers.join(','),
+      ...rows.map(row => row.map(cell => escapeCSV(String(cell))).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `watermark-report-${format(new Date(), 'yyyy-MM-dd-HHmmss')}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -544,10 +610,16 @@ const AdminBatchWatermarkVerification = () => {
                     />
                   </div>
 
-                  <Button onClick={downloadReport} className="w-full">
-                    <FileDown className="w-4 h-4 mr-2" />
-                    Download Report (JSON)
-                  </Button>
+                  <div className="space-y-2">
+                    <Button onClick={downloadReportJSON} className="w-full">
+                      <FileDown className="w-4 h-4 mr-2" />
+                      Download JSON
+                    </Button>
+                    <Button onClick={downloadReportCSV} variant="outline" className="w-full">
+                      <FileDown className="w-4 h-4 mr-2" />
+                      Download CSV
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ) : (
