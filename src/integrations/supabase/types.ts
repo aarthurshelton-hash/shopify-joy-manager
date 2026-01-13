@@ -577,6 +577,44 @@ export type Database = {
         }
         Relationships: []
       }
+      scan_history: {
+        Row: {
+          confidence: number | null
+          id: string
+          image_preview: string | null
+          matched: boolean
+          scanned_at: string
+          user_id: string | null
+          visualization_id: string | null
+        }
+        Insert: {
+          confidence?: number | null
+          id?: string
+          image_preview?: string | null
+          matched?: boolean
+          scanned_at?: string
+          user_id?: string | null
+          visualization_id?: string | null
+        }
+        Update: {
+          confidence?: number | null
+          id?: string
+          image_preview?: string | null
+          matched?: boolean
+          scanned_at?: string
+          user_id?: string | null
+          visualization_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scan_history_visualization_id_fkey"
+            columns: ["visualization_id"]
+            isOneToOne: false
+            referencedRelation: "saved_visualizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscription_notifications: {
         Row: {
           created_at: string
