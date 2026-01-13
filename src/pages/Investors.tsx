@@ -579,11 +579,12 @@ const Investors = () => {
                   Our comprehensive pitch deck covering market opportunity, product strategy, business model, and growth plans.
                 </p>
                 <a 
-                  href="mailto:investors@enpensent.com?subject=Pitch Deck Request"
+                  href="/documents/En_Pensent_Pitch_Deck.pdf"
+                  download
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground font-display uppercase tracking-wide text-xs hover:opacity-90 transition-opacity"
                 >
                   <Download className="h-3 w-3" />
-                  Request Deck
+                  Download Deck
                 </a>
               </div>
               

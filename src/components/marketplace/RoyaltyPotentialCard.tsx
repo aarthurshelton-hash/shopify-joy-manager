@@ -2,7 +2,7 @@ import React, { forwardRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DollarSign, TrendingUp, Info, Users, ShoppingBag } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { MEMBERSHIP_ECONOMICS } from '@/lib/visualizations/visionScoring';
+import { PROFIT_ECONOMICS, calculateExampleRoyalty, getRoyaltyExplanation } from '@/lib/economics/profitBasedRoyalties';
 
 interface RoyaltyPotentialCardProps {
   // Current stats (if owner viewing their own listing)
@@ -22,6 +22,8 @@ interface RoyaltyPotentialCardProps {
  * Shows royalty earnings breakdown for marketplace listings
  * - For owners: shows actual earnings and potential
  * - For buyers: shows potential earnings preview
+ * 
+ * IMPORTANT: Royalties are 20% of PROFIT, not revenue
  */
 export const RoyaltyPotentialCard = forwardRef<HTMLDivElement, RoyaltyPotentialCardProps>(function RoyaltyPotentialCard({
   royaltyCentsEarned = 0,
@@ -35,13 +37,13 @@ export const RoyaltyPotentialCard = forwardRef<HTMLDivElement, RoyaltyPotentialC
 }, ref) {
   const royaltyDollars = royaltyCentsEarned / 100;
   const totalRevenueDollars = totalPrintRevenue / 100;
-  const valueAppreciationPercent = MEMBERSHIP_ECONOMICS.valueAppreciationRate * 100;
-  const marketplaceFeePercent = MEMBERSHIP_ECONOMICS.marketplaceTransactionFee * 100;
-  const sellerKeepsPercent = MEMBERSHIP_ECONOMICS.sellerRetentionRate * 100;
+  const valueAppreciationPercent = PROFIT_ECONOMICS.valueAppreciationRate * 100;
+  const marketplaceFeePercent = PROFIT_ECONOMICS.marketplaceFee * 100;
+  const sellerKeepsPercent = (1 - PROFIT_ECONOMICS.marketplaceFee) * 100;
 
-  // Example print prices for potential calculation
-  const avgPrintPrice = 49; // Average print price in USD
-  const projectedValueAdded = (avgPrintPrice * valueAppreciationPercent / 100);
+  // Get profit-based example
+  const royaltyInfo = getRoyaltyExplanation();
+  const exampleRoyalty = calculateExampleRoyalty(49, 'print', '16x20');
 
   return (
     <Card ref={ref} className={`bg-gradient-to-br from-emerald-500/5 via-primary/5 to-amber-500/5 border-primary/20 ${className}`}>
@@ -55,11 +57,11 @@ export const RoyaltyPotentialCard = forwardRef<HTMLDivElement, RoyaltyPotentialC
                 <Info className="h-4 w-4 text-muted-foreground" />
               </TooltipTrigger>
               <TooltipContent side="right" className="max-w-xs">
-                <p className="font-medium mb-1">How Value Appreciation Works</p>
+                <p className="font-medium mb-1">Profit-Based Value Appreciation</p>
                 <ul className="text-xs space-y-1 text-muted-foreground">
-                  <li>• {valueAppreciationPercent}% of print revenue adds to vision value</li>
+                  <li>• {valueAppreciationPercent}% of <strong>profit</strong> (not revenue) adds to vision value</li>
+                  <li>• ~${exampleRoyalty.creatorRoyalty.toFixed(2)} per $49 print after costs</li>
                   <li>• Sell on marketplace to realize gains ({sellerKeepsPercent}% to you)</li>
-                  <li>• Popular visions can appreciate significantly</li>
                   <li>• Only {marketplaceFeePercent}% platform fee on sales</li>
                 </ul>
               </TooltipContent>
@@ -118,18 +120,18 @@ export const RoyaltyPotentialCard = forwardRef<HTMLDivElement, RoyaltyPotentialC
           <>
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                As owner, <span className="text-emerald-500 font-medium">{valueAppreciationPercent}%</span> of print revenue adds to this vision's value. Sell to realize gains.
+                As owner, <span className="text-emerald-500 font-medium">{valueAppreciationPercent}%</span> of order <strong>profit</strong> adds to this vision's value. Sell to realize gains.
               </p>
               
               <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
                 <div className="flex items-center justify-between">
                   <span className="text-sm">Example: $49 print order</span>
                   <span className="text-lg font-bold text-emerald-500">
-                    +${projectedValueAdded.toFixed(2)}
+                    +${exampleRoyalty.creatorRoyalty.toFixed(2)}
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Value added per print order
+                  After ~${(49 - exampleRoyalty.grossProfit).toFixed(0)} fulfillment costs
                 </p>
               </div>
             </div>

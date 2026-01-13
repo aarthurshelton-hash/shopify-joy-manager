@@ -11,6 +11,7 @@ import LiveMarketWidget from '@/components/homepage/LiveMarketWidget';
 import CreativeModeShowcase from '@/components/homepage/CreativeModeShowcase';
 import { NaturalQRShowcase } from '@/components/homepage/NaturalQRShowcase';
 import { BookShowcase } from '@/components/book/BookShowcase';
+import { EducationFundShowcase } from '@/components/homepage/EducationFundShowcase';
 import { VisionaryMembershipCard } from '@/components/premium';
 import { simulateGame, SimulationResult } from '@/lib/chess/gameSimulator';
 import { Header } from '@/components/shop/Header';
@@ -932,6 +933,9 @@ const Index = () => {
           </div>
         )}
       </main>
+
+      {/* Education Fund Section */}
+      <EducationFundShowcase variant="homepage" />
       
       <Footer />
       
