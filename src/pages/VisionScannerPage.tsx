@@ -16,6 +16,7 @@ import { ConfidenceRing } from "@/components/scanner/ConfidenceRing";
 import { ScanHistory, saveScanToHistory } from "@/components/scanner/ScanHistory";
 import { ScanLeaderboard } from "@/components/scanner/ScanLeaderboard";
 import { OfflineSyncIndicator } from "@/components/scanner/OfflineSyncIndicator";
+import { ScanStreak, updateScanStreak } from "@/components/scanner/ScanStreak";
 import { useOfflineScanCache } from "@/hooks/useOfflineScanCache";
 import type { SquareData } from "@/lib/chess/gameSimulator";
 
@@ -120,6 +121,7 @@ export default function VisionScannerPage() {
   const [demoStep, setDemoStep] = useState(0);
   const [historyKey, setHistoryKey] = useState(0);
   const [leaderboardKey, setLeaderboardKey] = useState(0);
+  const [streakKey, setStreakKey] = useState(0);
 
   // Animate through demo steps when idle
   useEffect(() => {
@@ -176,7 +178,7 @@ export default function VisionScannerPage() {
       const data = await response.json();
       setResult(data);
       
-      // Save to scan history
+      // Save to scan history and update streak
       if (user) {
         await saveScanToHistory(
           user.id,
@@ -186,6 +188,26 @@ export default function VisionScannerPage() {
           imageData.substring(0, 500)
         );
         setHistoryKey(prev => prev + 1); // Trigger history refresh
+        
+        // Update scan streak
+        try {
+          const streakResult = await updateScanStreak(user.id);
+          if (streakResult?.new_day) {
+            setStreakKey(prev => prev + 1); // Trigger streak refresh
+            
+            if (streakResult.streak_broken) {
+              toast.info("Streak reset", {
+                description: "Your streak was reset. Keep scanning daily!",
+              });
+            } else if (streakResult.reward_value > 0) {
+              toast.success(`🔥 ${streakResult.current_streak} Day Streak!`, {
+                description: `+${streakResult.reward_value} points (${streakResult.reward_type} reward)`,
+              });
+            }
+          }
+        } catch (error) {
+          console.error("Streak update failed:", error);
+        }
         
         // Check for achievements
         try {
@@ -622,6 +644,11 @@ export default function VisionScannerPage() {
                     />
                   </div>
                 )}
+
+                {/* Scan Streak */}
+                <div className="mt-4">
+                  <ScanStreak key={streakKey} />
+                </div>
 
                 {/* Scan History */}
                 <div className="mt-4">
