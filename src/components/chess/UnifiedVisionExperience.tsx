@@ -62,6 +62,8 @@ import { TransferHistoryCard } from '@/components/marketplace/TransferHistoryCar
 import { TransferLimitBadge } from '@/components/marketplace/TransferLimitBadge';
 import { PoetryModal, PoetryPreviewCard } from './PoetryModal';
 import { getGamePoetry } from '@/lib/chess/gamePoetry';
+import PaletteAvailabilityIndicator from './PaletteAvailabilityIndicator';
+import { useAuth } from '@/hooks/useAuth';
 
 // Export state for capturing visualization in any configuration
 export interface ExportState {
@@ -723,6 +725,8 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
   showBackButton = true,
   backButtonText,
 }) => {
+  const { user } = useAuth();
+  
   // Determine default tab based on context
   const computedDefaultTab = defaultTab || (context === 'marketplace' ? 'analytics' : 'experience');
   
@@ -1014,6 +1018,16 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                       gameCardTitle={gameCardMatch?.matchedGame?.title}
                       gameCardMatchType={gameCardMatch?.matchType}
                       gameCardSimilarity={gameCardMatch?.similarity}
+                    />
+                  )}
+
+                  {/* Palette Availability - Shows which colorways are taken/available */}
+                  {(pgn || gameData.pgn) && (
+                    <PaletteAvailabilityIndicator
+                      pgn={pgn || gameData.pgn}
+                      currentUserId={user?.id}
+                      currentPaletteId={currentPaletteInfo?.id}
+                      compact={context !== 'generator'}
                     />
                   )}
 
