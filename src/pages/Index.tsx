@@ -1,4 +1,5 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import PgnUploader from '@/components/chess/PgnUploader';
 import UnifiedVisionExperience, { ExportState } from '@/components/chess/UnifiedVisionExperience';
 import ChessLoadingAnimation from '@/components/chess/ChessLoadingAnimation';
@@ -24,7 +25,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import { Crown, Sparkles, Award, Palette } from 'lucide-react';
+import { Crown, Sparkles, Award, Palette, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { cleanPgn } from '@/lib/chess/pgnValidator';
 import { PaletteId, getActivePalette } from '@/lib/chess/pieceColors';
@@ -35,8 +36,8 @@ import { usePrintOrderStore } from '@/stores/printOrderStore';
 import AuthModal from '@/components/auth/AuthModal';
 import { useAuth } from '@/hooks/useAuth';
 import { saveVisualization } from '@/lib/visualizations/visualizationStorage';
-import { useNavigate } from 'react-router-dom';
 import { useVisualizationExport } from '@/hooks/useVisualizationExport';
+import { useRandomGameArt } from '@/hooks/useRandomGameArt';
 
 // Import AI-generated art
 import heroChessArt from '@/assets/hero-chess-art.jpg';
@@ -44,6 +45,9 @@ import chessMovementArt from '@/assets/chess-movement-art.jpg';
 import chessKingArt from '@/assets/chess-king-art.jpg';
 
 const Index = () => {
+  // Random AI art for feature cards
+  const randomArts = useRandomGameArt(3);
+  
   const navigate = useNavigate();
   const { user, isPremium } = useAuth();
   const { setOrderData } = usePrintOrderStore();
@@ -464,55 +468,112 @@ const Index = () => {
                   </h3>
                   
                   <div className="grid md:grid-cols-3 gap-6">
-                    <div 
+                    {/* Historic Moments - Links to Marketplace */}
+                    <div
                       ref={featureCard1Ref}
-                      className={`text-center space-y-4 p-8 rounded-lg bg-card/80 backdrop-blur-sm border border-border/50 hover:border-primary/30 transition-all duration-500 ease-out group ${
+                      className={`transition-all duration-500 ease-out ${
                         featureCard1Visible 
                           ? scrollAnimationClasses.scaleUp.visible 
                           : scrollAnimationClasses.scaleUp.hidden
                       }`}
                     >
-                      <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto group-hover:bg-primary/20 transition-colors">
-                        <Award className="h-8 w-8 text-primary" />
-                      </div>
-                      <h3 className="font-display font-bold text-xl uppercase tracking-wide">Historic Moments</h3>
-                      <p className="text-sm text-muted-foreground leading-relaxed font-serif">
-                        Immortalize Fischer vs Spassky, Kasparov vs Deep Blue, or any legendary game in history
-                      </p>
+                      <Link 
+                        to="/marketplace"
+                        className="relative block text-center space-y-4 p-8 rounded-xl overflow-hidden border border-border/50 group cursor-pointer hover:scale-[1.02] hover:border-primary/50 hover:shadow-xl hover:shadow-primary/10 transition-all duration-300"
+                      >
+                        {/* AI Art Background */}
+                        <div 
+                          className="absolute inset-0 bg-cover bg-center opacity-15 group-hover:opacity-25 transition-opacity duration-500"
+                          style={{ backgroundImage: `url(${randomArts[0]})` }}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-card via-card/90 to-card/70" />
+                        
+                        {/* Content */}
+                        <div className="relative z-10">
+                          <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto group-hover:bg-primary/30 group-hover:scale-110 transition-all duration-300">
+                            <Award className="h-8 w-8 text-primary" />
+                          </div>
+                          <h3 className="font-display font-bold text-xl uppercase tracking-wide mt-4 group-hover:text-primary transition-colors">Historic Moments</h3>
+                          <p className="text-sm text-muted-foreground leading-relaxed font-serif mt-2">
+                            Immortalize Fischer vs Spassky, Kasparov vs Deep Blue, or any legendary game in history
+                          </p>
+                          <span className="inline-flex items-center gap-1 text-xs text-primary/70 mt-3 group-hover:text-primary transition-colors">
+                            Explore Marketplace <ExternalLink className="h-3 w-3" />
+                          </span>
+                        </div>
+                      </Link>
                     </div>
                     
-                    <div 
+                    {/* Unique Artwork - Links to Creative Mode */}
+                    <div
                       ref={featureCard2Ref}
-                      className={`text-center space-y-4 p-8 rounded-lg bg-card/80 backdrop-blur-sm border border-border/50 hover:border-primary/30 transition-all duration-500 delay-100 ease-out group ${
+                      className={`transition-all duration-500 delay-100 ease-out ${
                         featureCard2Visible 
                           ? scrollAnimationClasses.scaleUp.visible 
                           : scrollAnimationClasses.scaleUp.hidden
                       }`}
                     >
-                      <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto group-hover:bg-primary/20 transition-colors">
-                        <Palette className="h-8 w-8 text-primary" />
-                      </div>
-                      <h3 className="font-display font-bold text-xl uppercase tracking-wide">Unique Artwork</h3>
-                      <p className="text-sm text-muted-foreground leading-relaxed font-serif">
-                        Every game creates a one-of-a-kind masterpiece — no two visualizations are ever the same
-                      </p>
+                      <Link 
+                        to="/creative-mode"
+                        className="relative block text-center space-y-4 p-8 rounded-xl overflow-hidden border border-border/50 group cursor-pointer hover:scale-[1.02] hover:border-primary/50 hover:shadow-xl hover:shadow-primary/10 transition-all duration-300"
+                      >
+                        {/* AI Art Background */}
+                        <div 
+                          className="absolute inset-0 bg-cover bg-center opacity-15 group-hover:opacity-25 transition-opacity duration-500"
+                          style={{ backgroundImage: `url(${randomArts[1]})` }}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-card via-card/90 to-card/70" />
+                        
+                        {/* Content */}
+                        <div className="relative z-10">
+                          <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto group-hover:bg-primary/30 group-hover:scale-110 transition-all duration-300">
+                            <Palette className="h-8 w-8 text-primary" />
+                          </div>
+                          <h3 className="font-display font-bold text-xl uppercase tracking-wide mt-4 group-hover:text-primary transition-colors">Unique Artwork</h3>
+                          <p className="text-sm text-muted-foreground leading-relaxed font-serif mt-2">
+                            Every game creates a one-of-a-kind masterpiece — no two visualizations are ever the same
+                          </p>
+                          <span className="inline-flex items-center gap-1 text-xs text-primary/70 mt-3 group-hover:text-primary transition-colors">
+                            Create Your Own <ExternalLink className="h-3 w-3" />
+                          </span>
+                        </div>
+                      </Link>
                     </div>
                     
-                    <div 
+                    {/* Personal Legacy - Links to My Vision Gallery */}
+                    <div
                       ref={featureCard3Ref}
-                      className={`text-center space-y-4 p-8 rounded-lg bg-card/80 backdrop-blur-sm border border-border/50 hover:border-primary/30 transition-all duration-500 delay-200 ease-out group ${
+                      className={`transition-all duration-500 delay-200 ease-out ${
                         featureCard3Visible 
                           ? scrollAnimationClasses.scaleUp.visible 
                           : scrollAnimationClasses.scaleUp.hidden
                       }`}
                     >
-                      <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto group-hover:bg-primary/20 transition-colors">
-                        <Sparkles className="h-8 w-8 text-primary" />
-                      </div>
-                      <h3 className="font-display font-bold text-xl uppercase tracking-wide">Personal Legacy</h3>
-                      <p className="text-sm text-muted-foreground leading-relaxed font-serif">
-                        Commemorate your own victories, lessons learned, or matches played with loved ones
-                      </p>
+                      <Link 
+                        to="/my-vision"
+                        className="relative block text-center space-y-4 p-8 rounded-xl overflow-hidden border border-border/50 group cursor-pointer hover:scale-[1.02] hover:border-primary/50 hover:shadow-xl hover:shadow-primary/10 transition-all duration-300"
+                      >
+                        {/* AI Art Background */}
+                        <div 
+                          className="absolute inset-0 bg-cover bg-center opacity-15 group-hover:opacity-25 transition-opacity duration-500"
+                          style={{ backgroundImage: `url(${randomArts[2]})` }}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-card via-card/90 to-card/70" />
+                        
+                        {/* Content */}
+                        <div className="relative z-10">
+                          <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto group-hover:bg-primary/30 group-hover:scale-110 transition-all duration-300">
+                            <Sparkles className="h-8 w-8 text-primary" />
+                          </div>
+                          <h3 className="font-display font-bold text-xl uppercase tracking-wide mt-4 group-hover:text-primary transition-colors">Personal Legacy</h3>
+                          <p className="text-sm text-muted-foreground leading-relaxed font-serif mt-2">
+                            Commemorate your own victories, lessons learned, or matches played with loved ones
+                          </p>
+                          <span className="inline-flex items-center gap-1 text-xs text-primary/70 mt-3 group-hover:text-primary transition-colors">
+                            View Your Gallery <ExternalLink className="h-3 w-3" />
+                          </span>
+                        </div>
+                      </Link>
                     </div>
                   </div>
                 </div>
