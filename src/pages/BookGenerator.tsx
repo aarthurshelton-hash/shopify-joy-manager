@@ -613,7 +613,7 @@ const BookGenerator: React.FC = () => {
 
 This archive contains high-resolution book spreads from "Carlsen in Color," 
 a visual celebration of Magnus Carlsen's greatest chess games, rendered 
-through the En Pensent visualization system with AI-generated haiku poetry.
+through the En Pensent visualization system with unique haiku poetry.
 
 Each spread features:
 - Left page: Original haiku inspired by the game
