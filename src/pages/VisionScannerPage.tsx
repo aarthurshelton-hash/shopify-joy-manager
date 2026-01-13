@@ -94,7 +94,7 @@ export default function VisionScannerPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const randomArts = useRandomGameArt(3);
+  const randomArts = useRandomGameArt(6);
   
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
@@ -554,7 +554,7 @@ export default function VisionScannerPage() {
               transition={{ delay: 0.4 }}
               className="space-y-6"
             >
-              {/* Process Steps */}
+              {/* Process Steps with AI Art Backgrounds */}
               <div className="grid grid-cols-2 gap-4">
                 {demoSteps.map((step, index) => {
                   const Icon = step.icon;
@@ -562,20 +562,30 @@ export default function VisionScannerPage() {
                   return (
                     <motion.div
                       key={step.title}
-                      className={`p-5 rounded-xl border transition-all duration-300 ${
+                      className={`relative p-5 rounded-xl border overflow-hidden transition-all duration-300 ${
                         isActive 
-                          ? "bg-primary/10 border-primary/30 shadow-lg shadow-primary/10" 
-                          : "bg-card/50 border-border/50"
+                          ? "border-primary/30 shadow-lg shadow-primary/10" 
+                          : "border-border/50"
                       }`}
                       animate={{
                         scale: isActive ? 1.02 : 1,
                       }}
                     >
-                      <Icon className={`h-7 w-7 mb-3 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
-                      <h4 className={`font-semibold text-lg ${isActive ? "text-foreground" : "text-muted-foreground"}`}>
-                        {step.title}
-                      </h4>
-                      <p className="text-sm text-muted-foreground mt-1">{step.desc}</p>
+                      {/* AI Art Background */}
+                      <div 
+                        className="absolute inset-0 bg-cover bg-center opacity-15"
+                        style={{ backgroundImage: `url(${randomArts[index]})` }}
+                      />
+                      <div className={`absolute inset-0 ${isActive ? 'bg-primary/10' : 'bg-card/80'}`} />
+                      
+                      {/* Content */}
+                      <div className="relative z-10">
+                        <Icon className={`h-7 w-7 mb-3 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
+                        <h4 className={`font-semibold text-lg ${isActive ? "text-foreground" : "text-muted-foreground"}`}>
+                          {step.title}
+                        </h4>
+                        <p className="text-sm text-muted-foreground mt-1">{step.desc}</p>
+                      </div>
                     </motion.div>
                   );
                 })}

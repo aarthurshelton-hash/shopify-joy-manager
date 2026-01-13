@@ -18,10 +18,12 @@ import {
   DollarSign,
   Crown,
   Sparkles,
-  PiggyBank
+  PiggyBank,
+  Plus
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getUserWallet, formatBalance, purchaseWithWallet } from '@/lib/marketplace/walletApi';
+import { initiateDeposit } from '@/lib/marketplace/withdrawalApi';
 import { useNavigate } from 'react-router-dom';
 
 interface WalletPurchaseModalProps {
@@ -116,6 +118,33 @@ export const WalletPurchaseModal: React.FC<WalletPurchaseModalProps> = ({
     navigate('/marketplace?tab=wallet');
   };
 
+  const handleQuickDeposit = async () => {
+    const neededAmount = priceCents - walletBalance;
+    // Add a small buffer (10%) to avoid edge cases
+    const depositAmount = Math.max(500, Math.ceil(neededAmount * 1.1));
+    
+    setIsPurchasing(true);
+    try {
+      const { url, error } = await initiateDeposit(depositAmount);
+      
+      if (error) {
+        toast.error('Deposit failed', { description: error.message });
+        return;
+      }
+
+      if (url) {
+        toast.info('Redirecting to payment...', {
+          description: `Adding ${formatBalance(depositAmount)} to complete purchase`,
+        });
+        window.open(url, '_blank');
+      }
+    } catch (err) {
+      toast.error('Failed to initiate deposit');
+    } finally {
+      setIsPurchasing(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -189,14 +218,33 @@ export const WalletPurchaseModal: React.FC<WalletPurchaseModalProps> = ({
               </div>
 
               {!isLoading && !hasEnoughBalance && (
-                <div className="flex items-start gap-2 p-3 bg-destructive/10 text-destructive rounded-lg text-sm">
-                  <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-                  <div>
-                    <p className="font-medium">Insufficient balance</p>
-                    <p className="text-destructive/80">
-                      You need {formatBalance(priceCents - walletBalance)} more to complete this purchase.
-                    </p>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-2 p-3 bg-destructive/10 text-destructive rounded-lg text-sm">
+                    <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="font-medium">Insufficient balance</p>
+                      <p className="text-destructive/80">
+                        You need {formatBalance(priceCents - walletBalance)} more to complete this purchase.
+                      </p>
+                    </div>
                   </div>
+                  
+                  {/* Quick Deposit Button */}
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2 border-primary/30 text-primary hover:bg-primary/10"
+                    onClick={handleQuickDeposit}
+                    disabled={isPurchasing}
+                  >
+                    {isPurchasing ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <>
+                        <Plus className="h-4 w-4" />
+                        Quick Deposit {formatBalance(Math.max(500, Math.ceil((priceCents - walletBalance) * 1.1)))}
+                      </>
+                    )}
+                  </Button>
                 </div>
               )}
             </div>
