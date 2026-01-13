@@ -34,6 +34,7 @@ import AdminDMCA from "./pages/AdminDMCA";
 import AdminWatermarkVerification from "./pages/AdminWatermarkVerification";
 import AdminBatchWatermarkVerification from "./pages/AdminBatchWatermarkVerification";
 import DMCACounterNotification from "./pages/DMCACounterNotification";
+import DMCAStatusTracking from "./pages/DMCAStatusTracking";
 import VisionScannerPage from "./pages/VisionScannerPage";
 import TermsOfService from "./pages/TermsOfService";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
@@ -84,6 +85,7 @@ const App = () => (
             <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/dmca" element={<DMCA />} />
             <Route path="/dmca/counter-notification" element={<DMCACounterNotification />} />
+            <Route path="/dmca/status" element={<DMCAStatusTracking />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
