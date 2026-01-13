@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import carlsenCover from '@/assets/book/carlsen-cover-v2.jpg';
 import carlsenBackCover from '@/assets/book/carlsen-back-cover.jpg';
-import carlsenSpine from '@/assets/book/carlsen-spine.jpg';
+import logoImage from '@/assets/en-pensent-logo-new.png';
 
 interface Book3DCoverProps {
   onClick?: () => void;
@@ -142,23 +142,87 @@ export const Book3DCover: React.FC<Book3DCoverProps> = ({
           />
         </div>
 
-        {/* Spine with actual image */}
+        {/* Spine - Custom Rendered to Match BookFlipPreview */}
         <div 
-          className="absolute top-0 left-0 bottom-0 overflow-hidden"
+          className="absolute top-0 left-0 bottom-0 overflow-hidden flex flex-col items-center justify-between"
           style={{
             width: spineWidth[size],
             transform: `translateX(-${spineWidth[size]}) rotateY(-90deg)`,
             transformOrigin: 'right center',
+            background: 'linear-gradient(to right, #0f172a 0%, #1e293b 20%, #1e293b 80%, #0f172a 100%)',
             boxShadow: 'inset -3px 0 12px rgba(0,0,0,0.4), inset 3px 0 8px rgba(255,255,255,0.05)',
+            padding: size === 'sm' ? '4px 2px' : size === 'md' ? '8px 3px' : '12px 4px',
           }}
         >
-          <img 
-            src={carlsenSpine} 
-            alt="Book spine"
-            className="w-full h-full object-cover"
+          {/* Gold gilded edge effect on left side */}
+          <div 
+            className="absolute left-0 top-0 bottom-0"
+            style={{
+              width: size === 'sm' ? '1px' : size === 'md' ? '2px' : '3px',
+              background: 'linear-gradient(to bottom, #d4a574, #f5d89a 20%, #c9a45c 50%, #f5d89a 80%, #d4a574)',
+            }}
           />
-          {/* Spine wear/highlight */}
-          <div className="absolute inset-0 bg-gradient-to-r from-white/10 via-transparent to-black/20 pointer-events-none" />
+          {/* Gold gilded edge effect on right side */}
+          <div 
+            className="absolute right-0 top-0 bottom-0"
+            style={{
+              width: size === 'sm' ? '1px' : size === 'md' ? '2px' : '3px',
+              background: 'linear-gradient(to bottom, #d4a574, #f5d89a 20%, #c9a45c 50%, #f5d89a 80%, #d4a574)',
+            }}
+          />
+          
+          {/* Title - CARLSEN */}
+          <div 
+            className="text-amber-400 font-serif text-center"
+            style={{
+              writingMode: 'vertical-rl',
+              textOrientation: 'mixed',
+              transform: 'rotate(180deg)',
+              fontSize: size === 'sm' ? '4px' : size === 'md' ? '7px' : '10px',
+              fontWeight: 600,
+              letterSpacing: '0.2em',
+            }}
+          >
+            CARLSEN
+          </div>
+          
+          {/* King Chess Piece */}
+          <div 
+            className="text-amber-400"
+            style={{
+              fontSize: size === 'sm' ? '6px' : size === 'md' ? '10px' : '14px',
+            }}
+          >
+            ♔
+          </div>
+          
+          {/* EN PENSENT text */}
+          <div 
+            className="text-amber-400/80 text-center"
+            style={{
+              writingMode: 'vertical-rl',
+              textOrientation: 'mixed',
+              transform: 'rotate(180deg)',
+              fontSize: size === 'sm' ? '2px' : size === 'md' ? '4px' : '6px',
+              fontWeight: 'bold',
+              letterSpacing: '0.15em',
+              fontVariant: 'small-caps',
+            }}
+          >
+            EN PENSENT
+          </div>
+          
+          {/* Gold Seal Logo at Bottom */}
+          <img 
+            src={logoImage} 
+            alt="En Pensent" 
+            className="rounded-full object-cover"
+            style={{
+              width: size === 'sm' ? '6px' : size === 'md' ? '12px' : '20px',
+              height: size === 'sm' ? '6px' : size === 'md' ? '12px' : '20px',
+              boxShadow: '0 0 4px rgba(212, 165, 116, 0.6)',
+            }}
+          />
         </div>
 
         {/* Back cover with actual image */}
