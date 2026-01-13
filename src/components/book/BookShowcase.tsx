@@ -12,6 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { Book3DCover } from './Book3DCover';
 import { BookFlipPreview } from './BookFlipPreview';
 import { useCartStore, CartItem } from '@/stores/cartStore';
+import { toast } from 'sonner';
 import carlsenCover from '@/assets/book/carlsen-cover-v2.jpg';
 
 // Import game art for backgrounds
@@ -129,6 +130,10 @@ export const BookShowcase: React.FC<BookShowcaseProps> = ({
     };
     
     addItem(cartItem);
+    
+    toast.success(`Added to cart!`, {
+      description: `${edition.title} - $${edition.price}`,
+    });
   };
 
   const handleOrder = () => {
