@@ -71,14 +71,13 @@ const AdminBatchWatermarkVerification = () => {
         return;
       }
 
-      const { data } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .eq('role', 'admin')
-        .single();
+      // Use secure has_role function instead of direct table query
+      const { data } = await supabase.rpc('has_role', { 
+        _user_id: user.id, 
+        _role: 'admin' 
+      });
 
-      setIsAdmin(!!data);
+      setIsAdmin(data === true);
     };
 
     if (!authLoading) {

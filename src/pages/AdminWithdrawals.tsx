@@ -64,15 +64,13 @@ export default function AdminWithdrawals() {
       return;
     }
 
-    // Check admin role
-    const { data } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id)
-      .eq('role', 'admin')
-      .single();
+    // Check admin role using secure has_role function
+    const { data } = await supabase.rpc('has_role', { 
+      _user_id: user.id, 
+      _role: 'admin' 
+    });
 
-    if (data) {
+    if (data === true) {
       setIsAdmin(true);
       await loadData();
     }
