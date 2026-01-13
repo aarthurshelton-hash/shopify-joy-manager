@@ -113,7 +113,7 @@ const ListForSaleModal: React.FC<ListForSaleModalProps> = ({
               <Gift className={`h-8 w-8 ${listingType === 'free' ? 'text-green-500' : 'text-muted-foreground'}`} />
               <span className="font-medium">Gift (Free)</span>
               <span className="text-xs text-muted-foreground text-center">
-                First to claim gets it
+                No fees — first to claim gets full value
               </span>
             </Label>
 
@@ -129,14 +129,31 @@ const ListForSaleModal: React.FC<ListForSaleModalProps> = ({
               <DollarSign className={`h-8 w-8 ${listingType === 'paid' ? 'text-primary' : 'text-muted-foreground'}`} />
               <span className="font-medium">Sell</span>
               <span className="text-xs text-muted-foreground text-center">
-                Set your price
+                5% fee — you receive 95%
               </span>
             </Label>
           </RadioGroup>
 
+          {/* Fee explanation based on selection */}
+          <div className={`text-xs p-3 rounded-lg ${
+            listingType === 'free' 
+              ? 'bg-green-500/10 border border-green-500/30' 
+              : 'bg-muted/50'
+          }`}>
+            {listingType === 'free' ? (
+              <p className="text-green-600">
+                <strong>Gift:</strong> The recipient receives full ownership and all accrued value. No platform fees are charged.
+              </p>
+            ) : (
+              <p className="text-muted-foreground">
+                <strong>Sale:</strong> 5% platform fee supports the Education Fund. Buyer pays with Platform Credits; you receive 95% instantly.
+              </p>
+            )}
+          </div>
+
           {listingType === 'paid' && (
             <div className="space-y-2">
-              <Label htmlFor="price">Price (USD)</Label>
+              <Label htmlFor="price">Price (Platform Credits)</Label>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -160,9 +177,12 @@ const ListForSaleModal: React.FC<ListForSaleModalProps> = ({
                   {priceError}
                 </p>
               ) : (
-                <p className="text-xs text-muted-foreground">
-                  Minimum $1.00, maximum $10,000. Stripe processing fees apply.
-                </p>
+                <div className="text-xs text-muted-foreground space-y-1">
+                  <p>Minimum $1.00, maximum $10,000.</p>
+                  <p className="text-primary/80">
+                    You receive: ${(parseFloat(priceUsd || '0') * 0.95).toFixed(2)} (95%)
+                  </p>
+                </div>
               )}
             </div>
           )}

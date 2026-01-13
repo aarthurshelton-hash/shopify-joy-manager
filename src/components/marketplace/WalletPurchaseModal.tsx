@@ -197,7 +197,7 @@ export const WalletPurchaseModal: React.FC<WalletPurchaseModalProps> = ({
                 </div>
                 <div className="flex justify-between text-muted-foreground">
                   <span className="flex items-center gap-1">
-                    <PiggyBank className="h-3 w-3" /> Education Fund (5%)
+                    <PiggyBank className="h-3 w-3" /> Platform Fee (5%)
                   </span>
                   <span>{formatBalance(platformFeeCents)}</span>
                 </div>

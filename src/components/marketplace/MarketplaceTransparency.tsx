@@ -48,10 +48,10 @@ const MarketplaceTransparency = React.forwardRef<HTMLDivElement, Record<string, 
       description: 'Each vision can be transferred max 3 times per 24 hours to prevent manipulation.'
     },
     {
-      label: 'Transaction Fee',
+      label: 'Sale/Trade Fee',
       value: '5%',
       icon: <Scale className="h-5 w-5" />,
-      description: 'Small platform fee on marketplace sales. 95% goes directly to the seller.'
+      description: '5% fee on credit-based sales and trades. Gift transfers have NO fees — recipient gets full value.'
     },
     {
       label: 'Grace Period',
@@ -65,7 +65,8 @@ const MarketplaceTransparency = React.forwardRef<HTMLDivElement, Record<string, 
     { action: 'Unique View', points: '0.01', icon: <Eye className="h-4 w-4" />, rateLimit: '3 per 5 min per user' },
     { action: 'HD Download', points: '0.10', icon: <Download className="h-4 w-4" />, rateLimit: '2 per hour per user' },
     { action: 'GIF Export', points: '0.25', icon: <Download className="h-4 w-4" />, rateLimit: '2 per hour per user' },
-    { action: 'Marketplace Trade', points: '1.00', icon: <ArrowRightLeft className="h-4 w-4" />, rateLimit: 'Max 3 per 24h per vision' },
+    { action: 'Marketplace Trade (5% fee)', points: '1.00', icon: <ArrowRightLeft className="h-4 w-4" />, rateLimit: 'Max 3 per 24h per vision' },
+    { action: 'Gift Transfer (No fee)', points: '1.00', icon: <Gift className="h-4 w-4" />, rateLimit: 'Max 3 per 24h per vision' },
     { action: 'Print Order', points: '2.00 + $revenue', icon: <Printer className="h-4 w-4" />, rateLimit: 'Verified by fulfillment' },
   ];
 
@@ -83,18 +84,18 @@ const MarketplaceTransparency = React.forwardRef<HTMLDivElement, Record<string, 
         <CardContent>
           <p className="text-sm text-muted-foreground mb-4">
             En Pensent is built on radical transparency. We believe collectors should understand 
-            exactly what they own and how value is determined. No hidden fees, no manipulation.
+            exactly what they own and how value is determined. <strong>No automatic payouts</strong> — sell, trade, or gift your vision to realize gains.
           </p>
           
           {/* Trust Badges */}
           <div className="flex flex-wrap gap-2">
             <Badge variant="outline" className="gap-1">
               <CheckCircle2 className="h-3 w-3 text-green-500" />
-              5% Transaction Fee
+              5% Fee on Sales/Trades
             </Badge>
             <Badge variant="outline" className="gap-1">
-              <CheckCircle2 className="h-3 w-3 text-green-500" />
-              95% to Seller
+              <Gift className="h-3 w-3 text-green-500" />
+              Gifts: No Fees
             </Badge>
             <Badge variant="outline" className="gap-1">
               <CheckCircle2 className="h-3 w-3 text-green-500" />
