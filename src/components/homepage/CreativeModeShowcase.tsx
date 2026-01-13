@@ -3,47 +3,60 @@ import { Paintbrush, Crown, Sparkles, ArrowRight, Palette } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useScrollAnimation, scrollAnimationClasses } from '@/hooks/useScrollAnimation';
+import PaletteVisualizationPreview from '@/components/chess/PaletteVisualizationPreview';
+import { famousGames } from '@/lib/chess/famousGames';
+import { PaletteId } from '@/lib/chess/pieceColors';
 
-// Import palette preview images as board examples
-import cosmicPalette from '@/assets/palettes/cosmic.jpg';
-import medievalPalette from '@/assets/palettes/medieval.jpg';
-import japanesePalette from '@/assets/palettes/japanese.jpg';
-import artdecoPalette from '@/assets/palettes/artdeco.jpg';
-import egyptianPalette from '@/assets/palettes/egyptian.jpg';
-import cyberpunkPalette from '@/assets/palettes/cyberpunk.jpg';
-
-// Import AI art for background accents
+// Import AI art for card background accents
 import chessKingArt from '@/assets/chess-king-art.jpg';
 import chessMovementArt from '@/assets/chess-movement-art.jpg';
+import cosmicArt from '@/assets/palettes/cosmic.jpg';
+import medievalArt from '@/assets/palettes/medieval.jpg';
 
-// Showcase designs with real palette images
-const SHOWCASE_DESIGNS = [
+// Showcase designs with real game visualizations + palettes
+const SHOWCASE_DESIGNS: {
+  id: string;
+  title: string;
+  description: string;
+  paletteId: PaletteId;
+  gameId: string;
+  backgroundArt: string;
+  accentColor: string;
+}[] = [
   {
     id: 'cosmic-masterpiece',
     title: 'Cosmic Dreams',
     description: 'Deep space aesthetics',
-    image: cosmicPalette,
+    paletteId: 'cosmic',
+    gameId: 'kasparov-topalov-1999', // Kasparov's Immortal
+    backgroundArt: cosmicArt,
     accentColor: 'from-purple-500/20 to-blue-500/20',
   },
   {
     id: 'medieval-kingdom',
     title: 'Medieval Kingdom',
     description: 'Royal court elegance',
-    image: medievalPalette,
+    paletteId: 'medieval',
+    gameId: 'morphy-opera-1858', // The Opera Game
+    backgroundArt: medievalArt,
     accentColor: 'from-amber-500/20 to-stone-500/20',
   },
   {
     id: 'japanese-zen',
     title: 'Japanese Zen',
     description: 'Tranquil minimalism',
-    image: japanesePalette,
+    paletteId: 'japanese',
+    gameId: 'anderssen-kieseritzky-1851', // The Immortal Game
+    backgroundArt: chessKingArt,
     accentColor: 'from-red-500/20 to-rose-500/20',
   },
   {
     id: 'art-deco-glory',
     title: 'Art Deco Glory',
     description: 'Gatsby-era opulence',
-    image: artdecoPalette,
+    paletteId: 'artdeco',
+    gameId: 'byrne-fischer-1956', // Game of the Century
+    backgroundArt: chessMovementArt,
     accentColor: 'from-yellow-500/20 to-amber-500/20',
   },
 ];
@@ -54,6 +67,10 @@ interface DesignCardProps {
 }
 
 const DesignCard = ({ design, index }: DesignCardProps) => {
+  // Find the game PGN
+  const game = famousGames.find(g => g.id === design.gameId);
+  const pgn = game?.pgn || famousGames[0].pgn;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20, scale: 0.95 }}
@@ -63,16 +80,26 @@ const DesignCard = ({ design, index }: DesignCardProps) => {
       className="group"
     >
       <div className="relative p-3 rounded-xl bg-card/80 backdrop-blur-sm border border-border/50 hover:border-primary/50 transition-all duration-500 hover:shadow-xl hover:shadow-primary/10 overflow-hidden">
+        {/* AI Art Background Layer */}
+        <div className="absolute inset-0 opacity-15 pointer-events-none">
+          <img 
+            src={design.backgroundArt} 
+            alt="" 
+            className="w-full h-full object-cover"
+          />
+        </div>
+        
         {/* Gradient accent overlay */}
         <div className={`absolute inset-0 bg-gradient-to-br ${design.accentColor} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
         
-        {/* Image Board Preview */}
+        {/* Chess Visualization Board Preview */}
         <div className="relative mb-3 rounded-lg overflow-hidden border-2 border-amber-900/30 group-hover:border-primary/40 shadow-lg transition-all duration-300">
           <div className="aspect-square relative">
-            <img 
-              src={design.image} 
-              alt={design.title}
-              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+            <PaletteVisualizationPreview
+              pgn={pgn}
+              paletteId={design.paletteId}
+              size={200}
+              className="w-full h-full transition-transform duration-700 group-hover:scale-110"
             />
             {/* Premium shimmer overlay */}
             <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
