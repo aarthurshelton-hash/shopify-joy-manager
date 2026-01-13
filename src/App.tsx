@@ -40,6 +40,7 @@ import VisionScannerPage from "./pages/VisionScannerPage";
 import TermsOfService from "./pages/TermsOfService";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import DMCA from "./pages/DMCA";
+import PremiumAnalytics from "./pages/PremiumAnalytics";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -88,6 +89,7 @@ const App = () => (
             <Route path="/dmca" element={<DMCA />} />
             <Route path="/dmca/counter-notification" element={<DMCACounterNotification />} />
             <Route path="/dmca/status" element={<DMCAStatusTracking />} />
+            <Route path="/premium-analytics" element={<PremiumAnalytics />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

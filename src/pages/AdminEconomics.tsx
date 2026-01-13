@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, Navigate } from 'react-router-dom';
 import { 
   DollarSign, 
@@ -34,7 +34,9 @@ import {
   CreditCard,
   Package,
   BookOpen,
-  Percent
+  Percent,
+  LineChart,
+  Calendar
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -47,8 +49,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart as RechartsPie, Pie, Cell, Legend } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart as RechartsPie, Pie, Cell, Legend, LineChart as RechartsLine, Line, ComposedChart } from 'recharts';
 import { format } from 'date-fns';
+import { getFinancialTrends, getPaletteValuePools, getGamecardValuePools, triggerDailySnapshot, type FinancialTrend, type ValuePool } from '@/lib/analytics/financialTrends';
+import { toast } from 'sonner';
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
 
@@ -433,8 +437,12 @@ const AdminEconomics: React.FC = () => {
           </Card>
         </div>
 
-        <Tabs defaultValue="financials" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-grid">
+        <Tabs defaultValue="trends" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-7 lg:w-auto lg:inline-grid">
+            <TabsTrigger value="trends" className="gap-2">
+              <LineChart className="h-4 w-4" />
+              <span className="hidden sm:inline">Trends</span>
+            </TabsTrigger>
             <TabsTrigger value="financials" className="gap-2">
               <DollarSign className="h-4 w-4" />
               <span className="hidden sm:inline">Financials</span>
@@ -460,6 +468,9 @@ const AdminEconomics: React.FC = () => {
               <span className="hidden sm:inline">Education</span>
             </TabsTrigger>
           </TabsList>
+
+          {/* Trends Tab - New! */}
+          <TrendsTab formatCents={formatCents} />
 
           {/* Financials Tab */}
           <TabsContent value="financials" className="space-y-6">
@@ -1113,6 +1124,247 @@ const AdminEconomics: React.FC = () => {
 
       <Footer />
     </div>
+  );
+};
+
+// Trends Tab Component
+const TrendsTab: React.FC<{ formatCents: (cents: number) => string }> = ({ formatCents }) => {
+  const queryClient = useQueryClient();
+
+  // Fetch financial trends
+  const { data: trends, isLoading: trendsLoading } = useQuery({
+    queryKey: ['financial-trends'],
+    queryFn: () => getFinancialTrends(30),
+  });
+
+  // Fetch value pools
+  const { data: palettePools } = useQuery({
+    queryKey: ['palette-value-pools'],
+    queryFn: getPaletteValuePools,
+  });
+
+  const { data: gamecardPools } = useQuery({
+    queryKey: ['gamecard-value-pools'],
+    queryFn: getGamecardValuePools,
+  });
+
+  // Snapshot mutation
+  const snapshotMutation = useMutation({
+    mutationFn: triggerDailySnapshot,
+    onSuccess: () => {
+      toast.success('Daily snapshot captured!');
+      queryClient.invalidateQueries({ queryKey: ['financial-trends'] });
+    },
+    onError: () => {
+      toast.error('Failed to capture snapshot');
+    },
+  });
+
+  // Prepare trend chart data (reverse for chronological order)
+  const chartData = (trends || []).slice().reverse().map(t => ({
+    date: format(new Date(t.date), 'MMM d'),
+    revenue: (t.dailySubscriptionRevenueCents + t.dailyPrintRevenueCents + t.dailyMarketplaceFeeCents) / 100,
+    costs: (t.dailyStripeFeesCents + t.dailyShopifyFeesCents + t.dailyPrintifyCostsCents) / 100,
+    views: t.dailyViews,
+    downloads: t.dailyDownloads,
+    trades: t.dailyTrades,
+    visions: t.dailyVisionsCreated,
+    palettePool: t.totalPalettePoolValueCents / 100,
+    gamecardPool: t.totalGamecardPoolValueCents / 100,
+  }));
+
+  // Calculate totals from pools
+  const totalPaletteValue = (palettePools || []).reduce((sum, p) => sum + p.totalValueCents, 0);
+  const totalGamecardValue = (gamecardPools || []).reduce((sum, p) => sum + p.totalValueCents, 0);
+
+  return (
+    <TabsContent value="trends" className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold">Financial Trends</h3>
+          <p className="text-sm text-muted-foreground">30-day rolling performance data</p>
+        </div>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => snapshotMutation.mutate()}
+          disabled={snapshotMutation.isPending}
+          className="gap-2"
+        >
+          <Calendar className="h-4 w-4" />
+          Capture Today's Snapshot
+        </Button>
+      </div>
+
+      {/* Revenue & Costs Chart */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-green-500" />
+            Revenue vs Costs
+          </CardTitle>
+          <CardDescription>Daily revenue and cost comparison</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[300px]">
+            {trendsLoading ? (
+              <div className="h-full flex items-center justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+              </div>
+            ) : chartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                  <YAxis tickFormatter={(v) => `$${v}`} />
+                  <Tooltip 
+                    formatter={(value: number, name: string) => [`$${value.toFixed(2)}`, name]}
+                    contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }}
+                  />
+                  <Legend />
+                  <Area type="monotone" dataKey="revenue" fill="hsl(var(--chart-1) / 0.2)" stroke="hsl(var(--chart-1))" name="Revenue" />
+                  <Line type="monotone" dataKey="costs" stroke="hsl(var(--destructive))" name="Costs" strokeWidth={2} dot={false} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-muted-foreground">
+                <p>No trend data yet. Capture your first snapshot above.</p>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Engagement Chart */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Activity className="h-5 w-5 text-primary" />
+            Daily Engagement
+          </CardTitle>
+          <CardDescription>Views, downloads, trades, and new visions</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[250px]">
+            {chartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                  <YAxis />
+                  <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
+                  <Legend />
+                  <Bar dataKey="views" fill="hsl(var(--chart-1))" name="Views" />
+                  <Bar dataKey="downloads" fill="hsl(var(--chart-2))" name="Downloads" />
+                  <Bar dataKey="trades" fill="hsl(var(--chart-3))" name="Trades" />
+                  <Bar dataKey="visions" fill="hsl(var(--chart-4))" name="New Visions" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-muted-foreground">
+                <p>Engagement data will appear here after snapshots.</p>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Value Pool Growth */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Palette className="h-5 w-5 text-purple-500" />
+              Palette Value Pool
+            </CardTitle>
+            <CardDescription>Top performing trademarked palettes</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold mb-4">{formatCents(totalPaletteValue)}</div>
+            <div className="space-y-3">
+              {(palettePools || []).slice(0, 8).map((palette) => (
+                <div key={palette.id} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{palette.name}</span>
+                    <Badge variant="outline" className="text-xs">{palette.usageCount} uses</Badge>
+                  </div>
+                  <span className="text-sm font-medium">{formatCents(palette.totalValueCents)}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Gamepad2 className="h-5 w-5 text-amber-500" />
+              Gamecard Value Pool
+            </CardTitle>
+            <CardDescription>Legendary chess games by rarity</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold mb-4">{formatCents(totalGamecardValue)}</div>
+            <div className="space-y-3">
+              {(gamecardPools || []).slice(0, 8).map((game) => (
+                <div key={game.id} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium truncate max-w-[180px]">{game.name}</span>
+                    <Badge 
+                      variant="outline" 
+                      className={`text-xs ${
+                        game.rarityTier === 'legendary' ? 'border-amber-500 text-amber-500' :
+                        game.rarityTier === 'epic' ? 'border-purple-500 text-purple-500' :
+                        game.rarityTier === 'rare' ? 'border-blue-500 text-blue-500' :
+                        'border-muted-foreground'
+                      }`}
+                    >
+                      {game.rarityTier}
+                    </Badge>
+                  </div>
+                  <span className="text-sm font-medium">{formatCents(game.totalValueCents)}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Market Cap Growth Chart */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-primary" />
+            Total Market Value Growth
+          </CardTitle>
+          <CardDescription>Combined palette and gamecard pool values over time</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[250px]">
+            {chartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                  <YAxis tickFormatter={(v) => `$${v}`} />
+                  <Tooltip 
+                    formatter={(value: number, name: string) => [`$${value.toFixed(2)}`, name]}
+                    contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }}
+                  />
+                  <Legend />
+                  <Area type="monotone" dataKey="palettePool" stackId="1" fill="hsl(var(--chart-3) / 0.5)" stroke="hsl(var(--chart-3))" name="Palette Pool" />
+                  <Area type="monotone" dataKey="gamecardPool" stackId="1" fill="hsl(var(--chart-4) / 0.5)" stroke="hsl(var(--chart-4))" name="Gamecard Pool" />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-muted-foreground">
+                <p>Market cap history will appear after snapshots.</p>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </TabsContent>
   );
 };
 
