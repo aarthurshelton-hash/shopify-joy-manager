@@ -3,10 +3,12 @@
  * 
  * Checks which color palettes are available or taken for a given game (PGN).
  * Shows users if a game+palette combo is already owned and by whom.
+ * Uses enhanced palette detection to identify palettes even when pieces didn't move.
  */
 
 import { supabase } from '@/integrations/supabase/client';
 import { colorPalettes, PaletteId } from '@/lib/chess/pieceColors';
+import { extractPaletteId } from '@/lib/marketplace/paletteArtMap';
 
 export interface PaletteAvailabilityInfo {
   paletteId: PaletteId;
@@ -73,8 +75,10 @@ export async function getGamePaletteAvailability(
   for (const viz of matchingViz || []) {
     const vizPgn = normalizePgn(viz.pgn || '');
     if (vizPgn === normalizedPgn) {
-      const vizState = (viz.game_data as Record<string, unknown>)?.visualizationState as { paletteId?: string } | undefined;
-      const paletteId = vizState?.paletteId || 'modern';
+      // Use enhanced palette detection that checks board colors when metadata is missing
+      const gameData = viz.game_data as Record<string, unknown>;
+      const paletteId = extractPaletteId(gameData) || 'modern';
+      
       takenPaletteMap.set(paletteId, {
         ownerId: viz.user_id || '',
         visualizationId: viz.id,
