@@ -36,6 +36,167 @@ import HoldingsValueDashboard from '@/components/vision/HoldingsValueDashboard';
 import { GracePeriodBanner } from '@/components/notifications/GracePeriodBanner';
 import PrivacyToggle from '@/components/vision/PrivacyToggle';
 
+// VisionCard component for gallery items
+interface VisionCardProps {
+  viz: SavedVisualization;
+  listedIds: Set<string>;
+  isDownloading: string | null;
+  onNavigate: () => void;
+  onDownload: () => void;
+  onPrint: () => void;
+  onSell: () => void;
+  onDelete: () => void;
+  onCopyLink: () => void;
+  onViewPublic: () => void;
+  isPrivate?: boolean;
+}
+
+const VisionCard: React.FC<VisionCardProps> = ({
+  viz,
+  listedIds,
+  isDownloading,
+  onNavigate,
+  onDownload,
+  onPrint,
+  onSell,
+  onDelete,
+  onCopyLink,
+  onViewPublic,
+  isPrivate,
+}) => {
+  return (
+    <Card 
+      className="overflow-hidden group cursor-pointer transition-all hover:ring-2 hover:ring-primary/50"
+      onClick={onNavigate}
+    >
+      <div className="relative aspect-square">
+        <img
+          src={viz.image_path}
+          alt={viz.title}
+          className="w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 flex-wrap p-2">
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={(e) => {
+              e.stopPropagation();
+              onNavigate();
+            }}
+            className="gap-1"
+          >
+            <ExternalLink className="h-4 w-4" />
+            Open
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDownload();
+            }}
+            className="gap-1"
+            disabled={isDownloading === viz.id}
+          >
+            {isDownloading === viz.id ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+          </Button>
+          <Button
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              onPrint();
+            }}
+            className="gap-1 bg-gradient-to-r from-amber-500/80 to-amber-600/80 hover:from-amber-500 hover:to-amber-600 text-stone-900"
+          >
+            <Printer className="h-4 w-4" />
+            Print
+          </Button>
+          {!listedIds.has(viz.id) && !isPrivate && (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={(e) => {
+                e.stopPropagation();
+                onSell();
+              }}
+              className="gap-1"
+            >
+              <Tag className="h-4 w-4" />
+              Sell
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            className="gap-1"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+        {listedIds.has(viz.id) && (
+          <Badge className="absolute top-2 left-2 bg-green-500/90">
+            <ShoppingBag className="h-3 w-3 mr-1" />
+            Listed
+          </Badge>
+        )}
+        {isPrivate && (
+          <Badge variant="secondary" className="absolute top-2 right-2">
+            <Lock className="h-3 w-3 mr-1" />
+            Private
+          </Badge>
+        )}
+      </div>
+      <CardContent className="p-4 space-y-2">
+        <h3 className="font-medium truncate">{viz.title}</h3>
+        <p className="text-sm text-muted-foreground">
+          {viz.game_data.white} vs {viz.game_data.black}
+        </p>
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-muted-foreground">
+            {new Date(viz.created_at).toLocaleDateString()}
+          </p>
+          {viz.public_share_id && (
+            <div className="flex gap-1">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-6 w-6"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onCopyLink();
+                }}
+                title="Copy share link"
+              >
+                <Link2 className="h-3 w-3" />
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-6 w-6"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onViewPublic();
+                }}
+                title="View public page"
+              >
+                <ExternalLink className="h-3 w-3" />
+              </Button>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
 const MyVision: React.FC = () => {
   const navigate = useNavigate();
   const { user, isPremium, isLoading: authLoading } = useAuth();
@@ -538,133 +699,6 @@ const MyVision: React.FC = () => {
               )}
             </TabsContent>
           </Tabs>
-            {visualizations.map((viz) => (
-              <Card 
-                key={viz.id} 
-                className="overflow-hidden group cursor-pointer transition-all hover:ring-2 hover:ring-primary/50"
-                onClick={() => navigate(`/my-vision/${viz.id}`)}
-              >
-                <div className="relative aspect-square">
-                  <img
-                    src={viz.image_path}
-                    alt={viz.title}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 flex-wrap p-2">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/my-vision/${viz.id}`);
-                      }}
-                      className="gap-1"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                      Open
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDownload(viz);
-                      }}
-                      className="gap-1"
-                      disabled={isDownloading === viz.id}
-                    >
-                      {isDownloading === viz.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Download className="h-4 w-4" />
-                      )}
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleOrderPrint(viz);
-                      }}
-                      className="gap-1 bg-gradient-to-r from-amber-500/80 to-amber-600/80 hover:from-amber-500 hover:to-amber-600 text-stone-900"
-                    >
-                      <Printer className="h-4 w-4" />
-                      Print
-                    </Button>
-                    {!listedIds.has(viz.id) && (
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setListingTarget(viz);
-                        }}
-                        className="gap-1"
-                      >
-                        <Tag className="h-4 w-4" />
-                        Sell
-                      </Button>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDeleteTarget(viz);
-                      }}
-                      className="gap-1"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  {listedIds.has(viz.id) && (
-                    <Badge className="absolute top-2 left-2 bg-green-500/90">
-                      <ShoppingBag className="h-3 w-3 mr-1" />
-                      Listed
-                    </Badge>
-                  )}
-                </div>
-                <CardContent className="p-4 space-y-2">
-                  <h3 className="font-medium truncate">{viz.title}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {viz.game_data.white} vs {viz.game_data.black}
-                  </p>
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(viz.created_at).toLocaleDateString()}
-                    </p>
-                    {viz.public_share_id && (
-                      <div className="flex gap-1">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-6 w-6"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleCopyShareLink(viz.public_share_id);
-                          }}
-                          title="Copy share link"
-                        >
-                          <Link2 className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-6 w-6"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleViewPublicPage(viz.public_share_id);
-                          }}
-                          title="View public page"
-                        >
-                          <ExternalLink className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
         )}
       </div>
       
