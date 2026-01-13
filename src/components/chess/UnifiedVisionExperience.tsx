@@ -1027,7 +1027,12 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                       pgn={pgn || gameData.pgn}
                       currentUserId={user?.id}
                       currentPaletteId={currentPaletteInfo?.id}
+                      context={context}
                       compact={context !== 'generator'}
+                      onPaletteSelect={context === 'generator' ? (paletteId) => {
+                        setActivePalette(paletteId);
+                        onPaletteChange?.();
+                      } : undefined}
                     />
                   )}
 
