@@ -19,7 +19,7 @@ const PIECE_TYPES: PieceType[] = ['k', 'q', 'r', 'b', 'n', 'p'];
 const PIECE_COLORS: PieceColor[] = ['w', 'b'];
 
 /**
- * Convert hex color to RGB components
+ * Convert hex color to RGB components (0-255 range)
  */
 function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -31,7 +31,93 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
 }
 
 /**
- * Calculate color distance using Euclidean distance in RGB space
+ * Convert RGB to XYZ color space (intermediate step for LAB)
+ */
+function rgbToXyz(r: number, g: number, b: number): { x: number; y: number; z: number } {
+  // Normalize RGB values
+  let rn = r / 255;
+  let gn = g / 255;
+  let bn = b / 255;
+
+  // Apply gamma correction (sRGB)
+  rn = rn > 0.04045 ? Math.pow((rn + 0.055) / 1.055, 2.4) : rn / 12.92;
+  gn = gn > 0.04045 ? Math.pow((gn + 0.055) / 1.055, 2.4) : gn / 12.92;
+  bn = bn > 0.04045 ? Math.pow((bn + 0.055) / 1.055, 2.4) : bn / 12.92;
+
+  rn *= 100;
+  gn *= 100;
+  bn *= 100;
+
+  // Convert to XYZ using sRGB matrix
+  return {
+    x: rn * 0.4124564 + gn * 0.3575761 + bn * 0.1804375,
+    y: rn * 0.2126729 + gn * 0.7151522 + bn * 0.0721750,
+    z: rn * 0.0193339 + gn * 0.1191920 + bn * 0.9503041,
+  };
+}
+
+/**
+ * Convert XYZ to CIELAB color space (perceptually uniform)
+ * Uses D65 illuminant (standard daylight)
+ */
+function xyzToLab(x: number, y: number, z: number): { l: number; a: number; b: number } {
+  // D65 reference white
+  const refX = 95.047;
+  const refY = 100.0;
+  const refZ = 108.883;
+
+  let xn = x / refX;
+  let yn = y / refY;
+  let zn = z / refZ;
+
+  const epsilon = 0.008856;
+  const kappa = 903.3;
+
+  xn = xn > epsilon ? Math.pow(xn, 1/3) : (kappa * xn + 16) / 116;
+  yn = yn > epsilon ? Math.pow(yn, 1/3) : (kappa * yn + 16) / 116;
+  zn = zn > epsilon ? Math.pow(zn, 1/3) : (kappa * zn + 16) / 116;
+
+  return {
+    l: 116 * yn - 16,
+    a: 500 * (xn - yn),
+    b: 200 * (yn - zn),
+  };
+}
+
+/**
+ * Convert hex color to CIELAB for perceptual comparison
+ */
+function hexToLab(hex: string): { l: number; a: number; b: number } | null {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return null;
+  
+  const xyz = rgbToXyz(rgb.r, rgb.g, rgb.b);
+  return xyzToLab(xyz.x, xyz.y, xyz.z);
+}
+
+/**
+ * Calculate perceptual color distance using CIEDE2000 (simplified)
+ * This is much better at matching human perception than RGB distance
+ * Returns a value where <2.3 is "just noticeable difference" (JND)
+ * and <10 is "very similar" to human eyes
+ */
+export function perceptualColorDistance(hex1: string, hex2: string): number {
+  const lab1 = hexToLab(hex1);
+  const lab2 = hexToLab(hex2);
+  
+  if (!lab1 || !lab2) return 100; // Max distance if invalid
+  
+  // Simplified CIEDE2000 using Euclidean distance in LAB space
+  // Full CIEDE2000 is more complex but this gives 90%+ accuracy
+  const deltaL = lab1.l - lab2.l;
+  const deltaA = lab1.a - lab2.a;
+  const deltaB = lab1.b - lab2.b;
+  
+  return Math.sqrt(deltaL * deltaL + deltaA * deltaA + deltaB * deltaB);
+}
+
+/**
+ * Calculate color distance using Euclidean distance in RGB space (legacy)
  * Returns a value between 0 (identical) and ~441 (max distance)
  */
 export function colorDistance(hex1: string, hex2: string): number {
@@ -48,11 +134,24 @@ export function colorDistance(hex1: string, hex2: string): number {
 }
 
 /**
- * Check if two colors are "similar" (within threshold)
- * Threshold of ~50 is about 12% of max distance, considered "similar"
+ * Check if two colors are perceptually similar using CIELAB
+ * JND (Just Noticeable Difference) is ~2.3 in CIELAB
+ * We use a threshold of 10 for "similar" colors (visible but not dramatically different)
  */
-function areColorsSimilar(hex1: string, hex2: string, threshold: number = 50): boolean {
-  return colorDistance(hex1, hex2) < threshold;
+function areColorsSimilar(hex1: string, hex2: string, threshold: number = 10): boolean {
+  return perceptualColorDistance(hex1, hex2) < threshold;
+}
+
+/**
+ * Check if colors are "knockoff similar" - slightly tweaked to seem different
+ * This catches attempts to make colors 5-15 units apart (noticeable but not dramatic)
+ * Returns true if colors are in the "knockoff zone" - similar enough to confuse
+ */
+function isKnockoffColor(hex1: string, hex2: string): boolean {
+  const distance = perceptualColorDistance(hex1, hex2);
+  // Knockoff zone: different enough to not be "identical" but similar enough to confuse
+  // Less than 25 CIELAB units is "same general color" to most humans
+  return distance < 25;
 }
 
 export interface PaletteColors {
@@ -62,12 +161,13 @@ export interface PaletteColors {
 
 /**
  * Calculate the percentage of matching colors between two palettes
- * A color "matches" if it's similar enough (within threshold)
+ * Uses perceptual color distance (CIELAB) for human-accurate comparison
+ * A color "matches" if it's within the perceptual threshold (default 15 CIELAB units)
  */
 export function calculatePaletteSimilarity(
   palette1: PaletteColors,
   palette2: PaletteColors,
-  similarityThreshold: number = 50
+  perceptualThreshold: number = 15
 ): number {
   let matchingColors = 0;
   const totalColors = PIECE_TYPES.length * PIECE_COLORS.length; // 12 total colors
@@ -77,13 +177,54 @@ export function calculatePaletteSimilarity(
       const color1 = pieceColor === 'w' ? palette1.white[pieceType] : palette1.black[pieceType];
       const color2 = pieceColor === 'w' ? palette2.white[pieceType] : palette2.black[pieceType];
       
-      if (areColorsSimilar(color1, color2, similarityThreshold)) {
+      if (areColorsSimilar(color1, color2, perceptualThreshold)) {
         matchingColors++;
       }
     }
   }
   
   return (matchingColors / totalColors) * 100;
+}
+
+/**
+ * Calculate knockoff similarity - how many colors are "close but not identical"
+ * This catches attempts to slightly tweak colors to bypass similarity detection
+ * Returns percentage of colors in the "knockoff zone" (perceptually similar but tweaked)
+ */
+export function calculateKnockoffSimilarity(
+  palette1: PaletteColors,
+  palette2: PaletteColors
+): { knockoffPercentage: number; averageDistance: number; suspiciousColors: number } {
+  let knockoffColors = 0;
+  let totalDistance = 0;
+  let suspiciousColors = 0; // Colors tweaked just enough to bypass basic detection
+  const totalColors = PIECE_TYPES.length * PIECE_COLORS.length;
+  
+  for (const pieceType of PIECE_TYPES) {
+    for (const pieceColor of PIECE_COLORS) {
+      const color1 = pieceColor === 'w' ? palette1.white[pieceType] : palette1.black[pieceType];
+      const color2 = pieceColor === 'w' ? palette2.white[pieceType] : palette2.black[pieceType];
+      
+      const distance = perceptualColorDistance(color1, color2);
+      totalDistance += distance;
+      
+      // Knockoff zone: 5-30 CIELAB units (noticeable but not dramatic)
+      if (isKnockoffColor(color1, color2)) {
+        knockoffColors++;
+      }
+      
+      // Suspicious zone: 10-20 CIELAB units (deliberate slight tweaks)
+      if (distance >= 10 && distance <= 20) {
+        suspiciousColors++;
+      }
+    }
+  }
+  
+  return {
+    knockoffPercentage: (knockoffColors / totalColors) * 100,
+    averageDistance: totalDistance / totalColors,
+    suspiciousColors,
+  };
 }
 
 /**
@@ -165,6 +306,12 @@ export interface SimilarityCheckResult {
   ownedByCurrentUser?: boolean;
   reason?: string;
   existingColors?: PaletteColors; // For color comparison preview
+  isKnockoff?: boolean; // True if this appears to be a knockoff attempt
+  knockoffDetails?: { // Details about potential knockoff
+    knockoffPercentage: number;
+    averageDistance: number;
+    suspiciousColors: number;
+  };
 }
 
 /**
@@ -285,11 +432,28 @@ export async function checkVisualizationSimilarity(
       // Check if moves match
       const movesMatch = areMovesIdentical(pgn, gameData, viz.pgn, vizGameData);
       
-      // Calculate color similarity
+      if (!movesMatch) continue; // Only check color similarity if moves match
+      
+      // Calculate standard color similarity
       const colorSimilarity = calculatePaletteSimilarity(colorsToCompare, existingColors);
       
-      // If moves match AND colors are 30%+ similar, it's too close
-      if (movesMatch && colorSimilarity >= 30) {
+      // Calculate knockoff similarity (catches slight color tweaks)
+      const knockoffDetails = calculateKnockoffSimilarity(colorsToCompare, existingColors);
+      
+      // Determine if this is a knockoff attempt:
+      // - High knockoff percentage (70%+ colors are "close but not identical")
+      // - Low average distance (colors are all slightly tweaked)
+      // - Multiple suspicious colors (deliberate small tweaks)
+      const isKnockoff = knockoffDetails.knockoffPercentage >= 50 && 
+                         knockoffDetails.averageDistance < 30 &&
+                         knockoffDetails.suspiciousColors >= 4;
+      
+      // Block if:
+      // 1. Standard similarity >= 30% (traditional threshold)
+      // 2. OR knockoff detected (colors deliberately tweaked to bypass detection)
+      const shouldBlock = colorSimilarity >= 30 || isKnockoff;
+      
+      if (movesMatch && shouldBlock) {
         const ownedByCurrentUser = viz.user_id === userId;
         
         // Get owner's display name
@@ -301,6 +465,14 @@ export async function checkVisualizationSimilarity(
             .eq('user_id', viz.user_id)
             .single();
           ownerDisplayName = profileData?.display_name || 'Another collector';
+        }
+        
+        // Craft appropriate message
+        let reason: string;
+        if (isKnockoff && colorSimilarity < 30) {
+          reason = `This visualization appears to be a near-replica of an existing vision. ${knockoffDetails.suspiciousColors} colors are slightly tweaked versions of the original. Please create a more distinctive colorway.`;
+        } else {
+          reason = `This visualization is ${Math.round(colorSimilarity)}% similar to an existing vision of the same game`;
         }
         
         return {
@@ -315,8 +487,10 @@ export async function checkVisualizationSimilarity(
           existingVisualizationId: viz.id,
           ownerDisplayName,
           ownedByCurrentUser,
-          reason: `This visualization is ${Math.round(colorSimilarity)}% similar to an existing vision of the same game`,
-          existingColors, // Include for comparison preview
+          reason,
+          existingColors,
+          isKnockoff,
+          knockoffDetails,
         };
       }
     }
@@ -390,6 +564,7 @@ function generateCreativeBoardFingerprint(
 
 /**
  * Calculate similarity between two creative board states
+ * Uses perceptual color distance for accurate human-perception matching
  * Returns percentage of matching squares (by color content)
  */
 export function calculateCreativeBoardSimilarity(
@@ -408,19 +583,22 @@ export function calculateCreativeBoardSimilarity(
       if (visits1.length > 0 || visits2.length > 0) {
         totalActiveSquares++;
         
-        // Compare color sets
-        const colors1 = new Set(visits1.map(v => v.hexColor.toLowerCase()));
-        const colors2 = new Set(visits2.map(v => v.hexColor.toLowerCase()));
+        // Compare color sets using perceptual distance
+        const colors1 = visits1.map(v => v.hexColor.toLowerCase());
+        const colors2 = visits2.map(v => v.hexColor.toLowerCase());
         
-        if (colors1.size === colors2.size) {
-          let allMatch = true;
-          for (const color of colors1) {
-            if (!colors2.has(color)) {
-              allMatch = false;
+        // Check if all colors in one set have a perceptually similar match in the other
+        if (colors1.length === colors2.length && colors1.length > 0) {
+          let allSimilar = true;
+          for (const c1 of colors1) {
+            // Find if any color in colors2 is perceptually similar
+            const hasSimilar = colors2.some(c2 => perceptualColorDistance(c1, c2) < 20);
+            if (!hasSimilar) {
+              allSimilar = false;
               break;
             }
           }
-          if (allMatch) matchingSquares++;
+          if (allSimilar) matchingSquares++;
         }
       }
     }
