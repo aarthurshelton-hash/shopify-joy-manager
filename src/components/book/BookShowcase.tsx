@@ -11,6 +11,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { Book3DCover } from './Book3DCover';
 import { BookFlipPreview } from './BookFlipPreview';
+import { useCartStore, CartItem } from '@/stores/cartStore';
 import carlsenCover from '@/assets/book/carlsen-cover-v2.jpg';
 
 // Import game art for backgrounds
@@ -39,6 +40,30 @@ const TESTIMONIALS = [
   { quote: "The perfect fusion of sport and design.", author: "Art Collector" },
 ];
 
+// Book edition product data from Shopify
+const BOOK_EDITIONS = {
+  standard: {
+    variantId: 'gid://shopify/ProductVariant/46478683537570',
+    productId: 'gid://shopify/Product/8892237185186',
+    title: 'Carlsen in Color: Standard Edition',
+    variantTitle: 'Standard 8.5×11',
+    price: '79.99',
+    size: '8.5" × 11"',
+    handle: 'carlsen-in-color-standard-edition',
+    imageUrl: 'https://cdn.shopify.com/s/files/1/0701/8276/4706/files/carlsen-cover.jpg?v=1768242062',
+  },
+  large: {
+    variantId: 'gid://shopify/ProductVariant/46478683603106',
+    productId: 'gid://shopify/Product/8892237217954',
+    title: 'Carlsen in Color: Large Format Edition',
+    variantTitle: 'Large 11×14',
+    price: '99.99',
+    size: '11" × 14"',
+    handle: 'carlsen-in-color-large-format-edition',
+    imageUrl: 'https://cdn.shopify.com/s/files/1/0701/8276/4706/files/carlsen-cover.jpg?v=1768242062',
+  },
+};
+
 type EditionType = 'standard' | 'large';
 
 export const BookShowcase: React.FC<BookShowcaseProps> = ({
@@ -48,11 +73,67 @@ export const BookShowcase: React.FC<BookShowcaseProps> = ({
 }) => {
   const [showPreview, setShowPreview] = useState(false);
   const [selectedEdition, setSelectedEdition] = useState<EditionType>('large');
+  const addItem = useCartStore(state => state.addItem);
+
+  const handleAddToCart = () => {
+    const edition = BOOK_EDITIONS[selectedEdition];
+    
+    const cartItem: CartItem = {
+      product: {
+        node: {
+          id: edition.productId,
+          title: edition.title,
+          description: `Premium hardcover book, ${edition.size}`,
+          handle: edition.handle,
+          priceRange: {
+            minVariantPrice: {
+              amount: edition.price,
+              currencyCode: 'USD',
+            },
+          },
+          images: {
+            edges: edition.imageUrl ? [{
+              node: {
+                url: edition.imageUrl,
+                altText: edition.title,
+              },
+            }] : [],
+          },
+          variants: {
+            edges: [{
+              node: {
+                id: edition.variantId,
+                title: edition.variantTitle,
+                price: {
+                  amount: edition.price,
+                  currencyCode: 'USD',
+                },
+                availableForSale: true,
+                selectedOptions: [{ name: 'Title', value: edition.variantTitle }],
+              },
+            }],
+          },
+          options: [{ name: 'Title', values: [edition.variantTitle] }],
+        },
+      },
+      variantId: edition.variantId,
+      variantTitle: edition.variantTitle,
+      price: {
+        amount: edition.price,
+        currencyCode: 'USD',
+      },
+      quantity: 1,
+      selectedOptions: [{ name: 'Title', value: edition.variantTitle }],
+    };
+    
+    addItem(cartItem);
+  };
+
   const handleOrder = () => {
     if (onOrderClick) {
       onOrderClick();
     } else {
-      window.open('https://printify-shop-manager-fs4kw.myshopify.com/collections/all?tag=book', '_blank');
+      handleAddToCart();
     }
   };
 
