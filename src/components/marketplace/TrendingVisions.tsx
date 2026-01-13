@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { TrendingUp, DollarSign, ShoppingBag, Flame, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -19,7 +19,6 @@ interface TrendingVision {
 }
 
 export const TrendingVisions: React.FC = () => {
-  const navigate = useNavigate();
   const [trending, setTrending] = useState<TrendingVision[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -166,10 +165,10 @@ export const TrendingVisions: React.FC = () => {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: index * 0.05 }}
           >
-            <Card 
-              onClick={() => navigate(`/marketplace/${vision.listingId}`)}
-              className="overflow-hidden group hover:shadow-lg transition-all duration-300 border-orange-500/20 hover:border-orange-500/40 cursor-pointer"
-            >
+            <Link to={`/marketplace/${vision.listingId}`} className="block">
+              <Card 
+                className="overflow-hidden group hover:shadow-lg transition-all duration-300 border-orange-500/20 hover:border-orange-500/40 cursor-pointer"
+              >
               {/* Image */}
               <div className="aspect-square relative overflow-hidden bg-muted">
                 <img
@@ -217,6 +216,7 @@ export const TrendingVisions: React.FC = () => {
                 </div>
               </CardContent>
             </Card>
+            </Link>
           </motion.div>
         ))}
       </div>
