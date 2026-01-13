@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { 
@@ -18,9 +18,10 @@ import {
   Edit,
   Plus,
   Search,
-  Filter,
   RefreshCw,
-  Clock
+  Clock,
+  FileJson,
+  FileSpreadsheet
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -28,8 +29,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { format, formatDistanceToNow } from 'date-fns';
+import { toast } from 'sonner';
 
 interface AuditLogEntry {
   id: string;
@@ -158,6 +161,103 @@ export const AdminSecurityAuditLog: React.FC = () => {
     return actionIcons[key] || Shield;
   };
 
+  // Export to CSV
+  const exportToCSV = useCallback(() => {
+    if (!filteredLogs.length) {
+      toast.error('No data to export');
+      return;
+    }
+
+    const headers = [
+      'Timestamp',
+      'Action Type',
+      'Category',
+      'Severity',
+      'User ID',
+      'Admin ID',
+      'Target Type',
+      'Target ID',
+      'IP Address',
+      'User Agent',
+      'Metadata'
+    ];
+
+    const rows = filteredLogs.map(log => [
+      format(new Date(log.created_at), 'yyyy-MM-dd HH:mm:ss'),
+      log.action_type,
+      log.action_category,
+      log.severity,
+      log.user_id || '',
+      log.admin_id || '',
+      log.target_type || '',
+      log.target_id || '',
+      log.ip_address || '',
+      log.user_agent || '',
+      JSON.stringify(log.metadata || {})
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `security-audit-log-${format(new Date(), 'yyyy-MM-dd-HHmmss')}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast.success(`Exported ${filteredLogs.length} events to CSV`);
+  }, [filteredLogs]);
+
+  // Export to JSON
+  const exportToJSON = useCallback(() => {
+    if (!filteredLogs.length) {
+      toast.error('No data to export');
+      return;
+    }
+
+    const exportData = {
+      exportedAt: new Date().toISOString(),
+      filters: {
+        severity: severityFilter,
+        category: categoryFilter,
+        search: searchQuery || null,
+      },
+      totalEvents: filteredLogs.length,
+      events: filteredLogs.map(log => ({
+        id: log.id,
+        timestamp: log.created_at,
+        actionType: log.action_type,
+        actionCategory: log.action_category,
+        severity: log.severity,
+        userId: log.user_id,
+        adminId: log.admin_id,
+        targetType: log.target_type,
+        targetId: log.target_id,
+        ipAddress: log.ip_address,
+        userAgent: log.user_agent,
+        metadata: log.metadata,
+      }))
+    };
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `security-audit-log-${format(new Date(), 'yyyy-MM-dd-HHmmss')}.json`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast.success(`Exported ${filteredLogs.length} events to JSON`);
+  }, [filteredLogs, severityFilter, categoryFilter, searchQuery]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -223,6 +323,24 @@ export const AdminSecurityAuditLog: React.FC = () => {
               <CardDescription>Track all security-related events on the platform</CardDescription>
             </div>
             <div className="flex items-center gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <Download className="h-4 w-4" />
+                    Export
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={exportToCSV} className="gap-2 cursor-pointer">
+                    <FileSpreadsheet className="h-4 w-4" />
+                    Export as CSV
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={exportToJSON} className="gap-2 cursor-pointer">
+                    <FileJson className="h-4 w-4" />
+                    Export as JSON
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Button
                 variant={autoRefresh ? 'default' : 'outline'}
                 size="sm"
