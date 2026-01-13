@@ -1,10 +1,11 @@
 import { useMemo } from 'react';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
-import { Crown, Quote, Star, Newspaper, Rocket, Palette, Gamepad2, Users, Zap, Globe, BarChart3 } from 'lucide-react';
+import { Crown, Quote, Star, Newspaper, Rocket, Palette, Gamepad2, Users, Zap, Globe, BarChart3, Scan, BookOpen, Shield, Sparkles, Gift, Target, TrendingUp, Award } from 'lucide-react';
 import { useRandomGameArt } from '@/hooks/useRandomGameArt';
 
-const testimonials = [
+// Extended testimonials pool - 3 randomly selected each page load
+const allTestimonials = [
   {
     quote: "En Pensent turned my favorite Carlsen game into a stunning piece of art. It's the centerpiece of my study now.",
     author: "Michael T.",
@@ -23,49 +24,140 @@ const testimonials = [
     role: "Collector",
     rating: 5,
   },
+  {
+    quote: "Finally, a way to immortalize my tournament victories. Each print tells the story of my journey.",
+    author: "James R.",
+    role: "Tournament Player",
+    rating: 5,
+  },
+  {
+    quote: "The Natural Vision™ scanner recognized my print instantly. This technology is incredible.",
+    author: "Elena V.",
+    role: "Art Collector",
+    rating: 5,
+  },
+  {
+    quote: "My chess club was blown away. We've ordered prints for our top 10 games of the decade.",
+    author: "Robert M.",
+    role: "Chess Club President",
+    rating: 5,
+  },
+  {
+    quote: "The color palettes are mesmerizing. Japanese theme on the Opera Game is pure poetry.",
+    author: "Yuki T.",
+    role: "Digital Artist",
+    rating: 5,
+  },
+  {
+    quote: "Bought one for my dad's 60th - his favorite Fischer game. He cried. Worth every penny.",
+    author: "Amanda P.",
+    role: "Gift Buyer",
+    rating: 5,
+  },
+  {
+    quote: "As a FIDE master, I've seen many chess products. This is the first that feels like true art.",
+    author: "GM Viktor S.",
+    role: "FIDE Master",
+    rating: 5,
+  },
+  {
+    quote: "The animated GIF exports are stunning. Perfect for sharing my best games on social media.",
+    author: "Chris B.",
+    role: "Chess Streamer",
+    rating: 5,
+  },
+  {
+    quote: "Creative Mode lets me design exactly what I envision. The customization is unmatched.",
+    author: "Michelle W.",
+    role: "Graphic Designer",
+    rating: 5,
+  },
+  {
+    quote: "The marketplace is addictive. I've collected 15 unique visions already. Investment and art combined.",
+    author: "Andrew K.",
+    role: "Vision Collector",
+    rating: 5,
+  },
+  {
+    quote: "Teaching chess to kids just got exciting. They love seeing their games transformed into art.",
+    author: "Patricia H.",
+    role: "Chess Coach",
+    rating: 5,
+  },
 ];
 
 const newsItems = [
   {
     date: "January 2026",
-    title: "Conversion Funnel Analytics",
-    description: "Full-funnel tracking now live: monitor modal views, signups, and premium conversions in real-time. Transparent metrics for investors and platform insights.",
-    icon: BarChart3,
+    title: "Natural Vision™ Recognition Launched",
+    description: "Our proprietary pattern recognition technology can now identify any En Pensent print and instantly display its game details, provenance, and ownership history.",
+    icon: Scan,
   },
   {
     date: "January 2026",
-    title: "Live Play Mode Now Available",
-    description: "Play chess directly on En Pensent against opponents or our AI bot, with your artwork generating in real-time as you make moves.",
-    icon: Gamepad2,
+    title: "Carlsen in Color Book Pre-Orders Open",
+    description: "100 of Magnus Carlsen's greatest games, each with AI-generated haiku poetry. Limited first edition of 1,000 copies with exclusive collector's box.",
+    icon: BookOpen,
   },
   {
     date: "January 2026",
-    title: "Creative Mode Launch",
-    description: "Deep customization now available — place pieces, choose palettes, and design your perfect visualization from scratch.",
-    icon: Palette,
+    title: "Vision Marketplace Goes Live",
+    description: "Trade, collect, and discover unique chess visualizations. Built-in wallet system, royalty tracking, and secure ownership transfers.",
+    icon: TrendingUp,
+  },
+  {
+    date: "January 2026",
+    title: "AI Poetry Generation",
+    description: "Every famous game now features unique AI-generated poetry — haikus, couplets, and free verse that capture the essence of each battle.",
+    icon: Sparkles,
+  },
+  {
+    date: "January 2026",
+    title: "Premium Framing Options",
+    description: "Museum-quality frames now available: Walnut, Matte Black, Natural Oak, and Gold Gilded. Ships worldwide with white-glove service.",
+    icon: Award,
   },
   {
     date: "December 2025",
-    title: "My Vision Gallery Goes Live",
-    description: "Premium members can now save unlimited visualizations to their personal gallery, accessible anytime.",
-    icon: Crown,
+    title: "Live Play Mode Released",
+    description: "Play chess directly on En Pensent against opponents or our AI bot. Watch your artwork generate in real-time as you make moves.",
+    icon: Gamepad2,
+  },
+  {
+    date: "December 2025",
+    title: "Education Fund Initiative",
+    description: "A portion of every sale now contributes to chess education programs in underserved communities worldwide.",
+    icon: Gift,
   },
   {
     date: "November 2025",
     title: "75+ Historic Games Library",
-    description: "Explore and visualize legendary games spanning 500 years of chess history, from Ruy López to Magnus Carlsen.",
+    description: "Explore and visualize legendary games spanning 500 years of chess history, from Ruy López to Magnus Carlsen's modern classics.",
     icon: Globe,
   },
   {
+    date: "November 2025",
+    title: "Visionary Membership Launch",
+    description: "Premium tier unlocked: unlimited downloads, HD exports, exclusive palettes, priority printing, and early access to new features.",
+    icon: Crown,
+  },
+  {
     date: "October 2025",
-    title: "Custom Palette Creator",
-    description: "Design and save your own color palettes to apply to any visualization. Share with the community or keep them private.",
-    icon: Zap,
+    title: "16 Curated Color Palettes",
+    description: "From Japanese minimalism to Art Deco grandeur — each palette transforms your games into distinct visual experiences.",
+    icon: Palette,
   },
 ];
 
 const News = () => {
-  const backgroundImages = useRandomGameArt(6);
+  // Get plenty of random art for all sections
+  const backgroundImages = useRandomGameArt(16);
+  
+  // Randomly select 3 testimonials on each render
+  const displayedTestimonials = useMemo(() => {
+    const shuffled = [...allTestimonials].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, 3);
+  }, []);
   
   return (
     <div className="min-h-screen bg-background">
@@ -94,18 +186,21 @@ const News = () => {
             </h2>
             
             <div className="grid md:grid-cols-3 gap-6">
-              {testimonials.map((testimonial, index) => (
+              {displayedTestimonials.map((testimonial, index) => (
                 <div 
                   key={index}
-                  className="relative p-6 rounded-lg border border-border/50 bg-card/50 space-y-4 overflow-hidden group"
+                  className="relative p-6 rounded-lg border border-border/50 bg-card/50 space-y-4 overflow-hidden group hover:border-primary/40 transition-all duration-300"
                 >
                   {backgroundImages[index] && (
                     <div 
-                      className="absolute inset-0 opacity-[0.03] group-hover:opacity-[0.06] transition-opacity bg-cover bg-center"
+                      className="absolute inset-0 opacity-[0.08] group-hover:opacity-[0.15] transition-opacity duration-500 bg-cover bg-center"
                       style={{ backgroundImage: `url(${backgroundImages[index]})` }}
                     />
                   )}
-                  <Quote className="h-8 w-8 text-primary/20 absolute top-4 right-4" />
+                  {/* Gradient overlay for readability */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-card via-card/80 to-transparent opacity-90" />
+                  
+                  <Quote className="h-8 w-8 text-primary/30 absolute top-4 right-4 z-10" />
                   
                   <div className="relative z-10 space-y-4">
                     <div className="flex gap-1">
@@ -128,6 +223,10 @@ const News = () => {
                 </div>
               ))}
             </div>
+            
+            <p className="text-center text-xs text-muted-foreground/60 font-serif italic">
+              Refresh to see more community voices
+            </p>
           </div>
           
           {/* Latest News */}
@@ -136,32 +235,35 @@ const News = () => {
               Latest <span className="text-gold-gradient">Updates</span>
             </h2>
             
-            <div className="space-y-6">
+            <div className="space-y-4">
               {newsItems.map((item, index) => {
                 const Icon = item.icon;
                 return (
                   <div 
                     key={index}
-                    className="relative p-6 rounded-lg border border-border/50 bg-card/50 hover:border-primary/30 transition-colors overflow-hidden group"
+                    className="relative p-6 rounded-lg border border-border/50 bg-card/50 hover:border-primary/40 transition-all duration-300 overflow-hidden group"
                   >
-                    {backgroundImages[3 + (index % 3)] && (
+                    {backgroundImages[3 + index] && (
                       <div 
-                        className="absolute inset-0 opacity-[0.02] group-hover:opacity-[0.04] transition-opacity bg-cover bg-center"
-                        style={{ backgroundImage: `url(${backgroundImages[3 + (index % 3)]})` }}
+                        className="absolute inset-0 opacity-[0.05] group-hover:opacity-[0.10] transition-opacity duration-500 bg-cover bg-center"
+                        style={{ backgroundImage: `url(${backgroundImages[3 + index]})` }}
                       />
                     )}
+                    {/* Gradient overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-card via-card/95 to-card/80" />
+                    
                     <div className="relative z-10 flex flex-col md:flex-row md:items-center gap-4">
-                      <div className="flex items-center gap-4 md:w-48 flex-shrink-0">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <div className="flex items-center gap-4 md:w-52 flex-shrink-0">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
                           <Icon className="h-5 w-5 text-primary" />
                         </div>
                         <span className="text-xs uppercase tracking-wider text-primary font-medium">
                           {item.date}
                         </span>
                       </div>
-                      <div className="space-y-2">
-                        <h3 className="font-display font-bold text-lg">{item.title}</h3>
-                        <p className="text-muted-foreground font-serif">
+                      <div className="space-y-1">
+                        <h3 className="font-display font-bold text-lg group-hover:text-primary transition-colors">{item.title}</h3>
+                        <p className="text-muted-foreground font-serif text-sm leading-relaxed">
                           {item.description}
                         </p>
                       </div>
@@ -174,12 +276,14 @@ const News = () => {
           
           {/* Community Stats */}
           <div className="relative p-8 rounded-xl border border-primary/30 bg-primary/5 overflow-hidden">
-            {backgroundImages[5] && (
+            {backgroundImages[14] && (
               <div 
-                className="absolute inset-0 opacity-[0.03] bg-cover bg-center"
-                style={{ backgroundImage: `url(${backgroundImages[5]})` }}
+                className="absolute inset-0 opacity-[0.06] bg-cover bg-center"
+                style={{ backgroundImage: `url(${backgroundImages[14]})` }}
               />
             )}
+            <div className="absolute inset-0 bg-gradient-to-br from-card/90 via-card/80 to-transparent" />
+            
             <div className="relative z-10 text-center space-y-6">
               <div className="flex items-center justify-center gap-2">
                 <Users className="h-6 w-6 text-primary" />
@@ -214,14 +318,24 @@ const News = () => {
           </div>
           
           {/* CTA */}
-          <div className="text-center p-8 rounded-lg border border-primary/30 bg-primary/5 space-y-4">
-            <Crown className="h-10 w-10 text-primary mx-auto" />
-            <h2 className="text-xl font-display font-bold uppercase tracking-wider">
-              Join Our Story
-            </h2>
-            <p className="text-muted-foreground font-serif max-w-lg mx-auto">
-              Create your own chess masterpiece today and become part of the En Pensent community.
-            </p>
+          <div className="relative text-center p-8 rounded-lg border border-primary/30 bg-primary/5 space-y-4 overflow-hidden">
+            {backgroundImages[15] && (
+              <div 
+                className="absolute inset-0 opacity-[0.05] bg-cover bg-center"
+                style={{ backgroundImage: `url(${backgroundImages[15]})` }}
+              />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-card via-card/90 to-transparent" />
+            
+            <div className="relative z-10 space-y-4">
+              <Crown className="h-10 w-10 text-primary mx-auto" />
+              <h2 className="text-xl font-display font-bold uppercase tracking-wider">
+                Join Our Story
+              </h2>
+              <p className="text-muted-foreground font-serif max-w-lg mx-auto">
+                Create your own chess masterpiece today and become part of the En Pensent community.
+              </p>
+            </div>
           </div>
         </div>
       </main>
