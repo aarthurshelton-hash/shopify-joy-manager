@@ -191,10 +191,10 @@ const CreativeModeShowcase = () => {
             </p>
           </div>
 
-          {/* Showcase Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-12">
+          {/* Showcase Grid - horizontally scrollable on mobile */}
+          <div className="flex gap-4 md:gap-6 overflow-x-auto pb-4 scrollbar-hide snap-x snap-mandatory md:grid md:grid-cols-4 md:overflow-visible md:pb-0 mb-12">
             {SHOWCASE_DESIGNS.map((design, index) => (
-              <Link key={design.id} to="/creative-mode">
+              <Link key={design.id} to="/creative-mode" className="min-w-[180px] md:min-w-0 snap-start">
                 <DesignCard design={design} index={index} />
               </Link>
             ))}

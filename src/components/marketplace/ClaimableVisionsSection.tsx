@@ -143,12 +143,12 @@ export const ClaimableVisionsSection: React.FC<ClaimableVisionsSectionProps> = (
       {isLoading ? (
         <ClaimableGridSkeleton count={6} />
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory md:grid md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 md:overflow-visible md:pb-0">
           {visions.map((vision, index) => (
             <div
               key={vision.id}
               onClick={() => handleCardClick(vision.id)}
-              className="animate-fade-in cursor-pointer"
+              className="animate-fade-in cursor-pointer min-w-[160px] sm:min-w-[180px] md:min-w-0 snap-start"
             >
               <Card className="overflow-hidden group border-green-500/30 hover:border-green-500/60 transition-all">
                 <div className="aspect-square relative overflow-hidden bg-muted">

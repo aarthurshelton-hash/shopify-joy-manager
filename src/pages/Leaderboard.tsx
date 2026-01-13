@@ -738,14 +738,14 @@ const Leaderboard = () => {
                   <Award className="h-5 w-5 text-primary" />
                   <h3 className="font-display font-bold uppercase tracking-wider">Weekly Achievements</h3>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory md:grid md:grid-cols-4 md:overflow-visible md:pb-0">
                   {Object.values(BADGE_DEFINITIONS).slice(0, 4).map((badge, index) => (
                     <motion.div
                       key={badge.id}
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: index * 0.1 }}
-                      className="p-3 rounded-lg bg-card/50 border border-border/30 text-center group hover:border-primary/30 transition-colors"
+                      className="p-3 rounded-lg bg-card/50 border border-border/30 text-center group hover:border-primary/30 transition-colors min-w-[140px] sm:min-w-[160px] md:min-w-0 snap-start"
                     >
                       <div className={`w-10 h-10 rounded-full bg-gradient-to-r ${badge.color} flex items-center justify-center mx-auto mb-2 group-hover:scale-110 transition-transform`}>
                         <BadgeIcon badge={badge} />

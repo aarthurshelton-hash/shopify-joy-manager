@@ -167,12 +167,12 @@ export const TrendingVisions: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory lg:grid lg:grid-cols-6 lg:overflow-visible lg:pb-0">
         {trending.map((vision, index) => (
           <Link 
             key={vision.id}
             to={`/marketplace/${vision.listingId}`} 
-            className="block animate-fade-in"
+            className="block animate-fade-in min-w-[160px] sm:min-w-[180px] lg:min-w-0 snap-start"
             onClick={() => trackMarketplaceClick({
               click_type: 'trending_vision',
               listing_id: vision.listingId,
