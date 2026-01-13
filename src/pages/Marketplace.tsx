@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { ShoppingBag, Gift, DollarSign, Loader2, Crown, Package, Shield, Palette, Sparkles, TrendingUp, Eye } from 'lucide-react';
+import { ListingsGridSkeleton } from '@/components/marketplace/MarketplaceSkeletons';
 import { useRandomGameArt } from '@/hooks/useRandomGameArt';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -415,9 +416,7 @@ const Marketplace: React.FC = () => {
 
             {/* Listings Grid */}
             {isLoading ? (
-              <div className="flex items-center justify-center py-20">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              </div>
+              <ListingsGridSkeleton count={8} />
             ) : filteredListings.length === 0 ? (
               <div className="text-center py-20">
                 <ShoppingBag className="h-16 w-16 mx-auto text-muted-foreground/30 mb-4" />
