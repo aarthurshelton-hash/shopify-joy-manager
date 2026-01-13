@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Upload, FileText, Crown, Sparkles, CheckCircle, XCircle, Loader2, Wrench, ArrowRight, ChevronLeft, ChevronRight, Search, X, Shuffle, Heart, Award, PenTool, Trophy, Star } from 'lucide-react';
-import uploadHeroArt from '@/assets/ai-art/upload-section-hero.jpg';
+import uploadHeroArt from '@/assets/hero-chess-art.jpg';
 import { famousGames, FamousGame, getRandomFamousGame } from '@/lib/chess/famousGames';
 import { gameImageImports } from '@/lib/chess/gameImages';
 import { getPoetryPreview, getPoetryStyleLabel } from '@/lib/chess/gamePoetry';
