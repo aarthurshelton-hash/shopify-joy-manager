@@ -2,29 +2,40 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
-import { Calculator, DollarSign, TrendingUp, ShoppingBag, Sparkles } from 'lucide-react';
+import { Calculator, DollarSign, TrendingUp, ShoppingBag, Sparkles, Info } from 'lucide-react';
 import { MEMBERSHIP_ECONOMICS } from '@/lib/visualizations/visionScoring';
+import { PROFIT_ECONOMICS, estimateOrderCosts, calculateProfitDistribution } from '@/lib/economics/profitBasedRoyalties';
 import { useRandomGameArt } from '@/hooks/useRandomGameArt';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
-// Average print prices by size
+// Average print prices by size with size keys
 const PRINT_PRICES = {
-  small: { label: '8×10"', price: 29.99 },
-  medium: { label: '16×20"', price: 49.99 },
-  large: { label: '24×36"', price: 79.99 },
+  small: { label: '8×10"', price: 29.99, sizeKey: '8x10' },
+  medium: { label: '16×20"', price: 49.99, sizeKey: '16x20' },
+  large: { label: '24×36"', price: 79.99, sizeKey: '24x36' },
 };
 
 export const RoyaltyCalculator: React.FC = () => {
   const [ordersPerMonth, setOrdersPerMonth] = useState(10);
-  const [avgPrintPrice, setAvgPrintPrice] = useState(49.99);
+  const [selectedSize, setSelectedSize] = useState<'small' | 'medium' | 'large'>('medium');
   const backgroundImages = useRandomGameArt(1);
   
-  const valueAppreciationRate = MEMBERSHIP_ECONOMICS.valueAppreciationRate;
-  const marketplaceFeePercent = MEMBERSHIP_ECONOMICS.marketplaceTransactionFee * 100;
+  const printInfo = PRINT_PRICES[selectedSize];
+  const avgPrintPrice = printInfo.price;
   
-  // Calculations - value that accrues to vision
-  const monthlyRevenue = ordersPerMonth * avgPrintPrice;
-  const monthlyValueAdded = monthlyRevenue * valueAppreciationRate;
+  // Calculate using profit-based economics
+  const priceCents = Math.round(avgPrintPrice * 100);
+  const orderCosts = estimateOrderCosts('print', printInfo.sizeKey, priceCents);
+  const distribution = calculateProfitDistribution(orderCosts);
+  
+  const profitPerOrder = distribution.grossProfitCents / 100;
+  const valueAddedPerOrder = distribution.valueAppreciationPoolCents / 100;
+  
+  const monthlyValueAdded = valueAddedPerOrder * ordersPerMonth;
   const yearlyValueAdded = monthlyValueAdded * 12;
+  
+  const valueAppreciationRate = PROFIT_ECONOMICS.valueAppreciationRate * 100;
+  const marketplaceFeePercent = MEMBERSHIP_ECONOMICS.marketplaceTransactionFee * 100;
   
   // Milestones
   const milestones = [
@@ -97,12 +108,12 @@ export const RoyaltyCalculator: React.FC = () => {
             Average print size
           </label>
           <div className="grid grid-cols-3 gap-2">
-            {Object.entries(PRINT_PRICES).map(([key, { label, price }]) => (
+            {(Object.entries(PRINT_PRICES) as [keyof typeof PRINT_PRICES, typeof PRINT_PRICES[keyof typeof PRINT_PRICES]][]).map(([key, { label, price }]) => (
               <button
                 key={key}
-                onClick={() => setAvgPrintPrice(price)}
+                onClick={() => setSelectedSize(key)}
                 className={`p-3 rounded-lg border text-center transition-all ${
-                  avgPrintPrice === price 
+                  selectedSize === key 
                     ? 'border-primary bg-primary/10 text-primary' 
                     : 'border-border/50 bg-background/50 hover:border-primary/50'
                 }`}
@@ -117,12 +128,26 @@ export const RoyaltyCalculator: React.FC = () => {
         {/* Results Display */}
         <div className="grid sm:grid-cols-2 gap-4 pt-4 border-t border-border/50">
           <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/30">
-            <p className="text-sm text-muted-foreground mb-1">Monthly Value Added</p>
+            <div className="flex items-center gap-2 mb-1">
+              <p className="text-sm text-muted-foreground">Monthly Value Added</p>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p className="text-xs">
+                      <strong>Profit-based:</strong> ${avgPrintPrice} order → ${profitPerOrder.toFixed(2)} profit after fulfillment costs → ${valueAddedPerOrder.toFixed(2)} ({valueAppreciationRate}% of profit) adds to vision value
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
             <p className="text-3xl font-bold text-green-500">
               +${monthlyValueAdded.toFixed(2)}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              {ordersPerMonth} × ${avgPrintPrice} × {valueAppreciationRate * 100}%
+              {ordersPerMonth} × ${valueAddedPerOrder.toFixed(2)} (20% of profit)
             </p>
           </div>
           
@@ -174,7 +199,7 @@ export const RoyaltyCalculator: React.FC = () => {
         
         {/* Disclaimer */}
         <p className="text-xs text-muted-foreground text-center italic">
-          Value based on {valueAppreciationRate * 100}% appreciation rate. Sell visions on marketplace to realize gains.
+          Value based on {valueAppreciationRate}% of order <strong>profit</strong> (not revenue). Sell visions on marketplace to realize gains.
         </p>
       </CardContent>
     </Card>
