@@ -1,16 +1,16 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
-import { ShoppingBag, Gift, DollarSign, Loader2, Crown, Package, Shield, Palette, Sparkles, TrendingUp, Eye, Printer } from 'lucide-react';
+import { ShoppingBag, Gift, DollarSign, Loader2, Crown, Package, Shield, Palette, Sparkles, TrendingUp, Eye, Printer, ArrowRight } from 'lucide-react';
 import { ListingsGridSkeleton } from '@/components/marketplace/MarketplaceSkeletons';
 import { useRandomGameArt } from '@/hooks/useRandomGameArt';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import AuthModal from '@/components/auth/AuthModal';
 import { VisionaryMembershipCard } from '@/components/premium';
-import MyListingsSection from '@/components/marketplace/MyListingsSection';
 import MarketplaceTransparency from '@/components/marketplace/MarketplaceTransparency';
 import { MarketplaceFilters, SortOption, CategoryFilter } from '@/components/marketplace/MarketplaceFilters';
 import { RotatingArtBackground } from '@/components/shared/RotatingArtBackground';
@@ -687,10 +687,23 @@ const Marketplace: React.FC = () => {
             )}
           </TabsContent>
 
-          {/* My Listings Tab */}
+          {/* My Listings Tab - Redirects to unified My Vision gallery */}
           {user && (
             <TabsContent value="my-listings">
-              <MyListingsSection userId={user.id} onListingChange={refreshListings} />
+              <div className="text-center py-12 px-4 max-w-md mx-auto">
+                <Package className="h-12 w-12 mx-auto text-primary/40 mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Manage Your Visions</h3>
+                <p className="text-muted-foreground text-sm mb-6">
+                  View all your visions, list them for sale, gift them, or manage existing listings from your unified Vision Gallery.
+                </p>
+                <Button
+                  onClick={() => navigate('/my-vision')}
+                  className="gap-2"
+                >
+                  Go to My Vision Gallery
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </div>
             </TabsContent>
           )}
 
