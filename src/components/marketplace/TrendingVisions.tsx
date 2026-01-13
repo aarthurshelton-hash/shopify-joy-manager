@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { TrendingUp, DollarSign, ShoppingBag, Flame, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -159,13 +158,15 @@ export const TrendingVisions: React.FC = () => {
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {trending.map((vision, index) => (
-          <motion.div
+          <Link 
             key={vision.id}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: index * 0.05 }}
+            to={`/marketplace/${vision.listingId}`} 
+            className="block"
+            style={{ 
+              opacity: 0, 
+              animation: `fadeInUp 0.3s ease-out ${index * 0.05}s forwards` 
+            }}
           >
-            <Link to={`/marketplace/${vision.listingId}`} className="block">
               <Card className="overflow-hidden group hover:shadow-lg transition-all duration-300 border-orange-500/20 hover:border-orange-500/40 cursor-pointer">
                 {/* Image */}
                 <div className="aspect-square relative overflow-hidden bg-muted">
@@ -214,8 +215,7 @@ export const TrendingVisions: React.FC = () => {
                   </div>
                 </CardContent>
               </Card>
-            </Link>
-          </motion.div>
+          </Link>
         ))}
       </div>
     </div>
