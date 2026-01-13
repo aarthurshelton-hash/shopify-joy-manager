@@ -34,11 +34,12 @@ interface AuthContextType {
   profile: Profile | null;
   isLoading: boolean;
   isPremium: boolean;
+  isFreeAccount: boolean; // Has account but no premium subscription
   isAdmin: boolean;
   subscriptionStatus: SubscriptionStatus | null;
   isCheckingSubscription: boolean;
   mfaStatus: MFAStatus;
-  signUp: (email: string, password: string, displayName?: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, displayName?: string, phone?: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<SignInResult>;
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Pick<Profile, 'display_name' | 'avatar_url'>>) => Promise<{ error: Error | null }>;
@@ -64,6 +65,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
 
   const isPremium = subscriptionStatus?.subscribed && subscriptionStatus?.productId === PREMIUM_PRODUCT_ID;
+  // User has an account but no active premium subscription
+  const isFreeAccount = !!user && !isPremium;
 
   // Check admin role
   const checkAdminRole = useCallback(async (userId: string) => {
@@ -256,7 +259,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [checkSubscription]);
 
-  const signUp = async (email: string, password: string, displayName?: string) => {
+  const signUp = async (email: string, password: string, displayName?: string, phone?: string) => {
     const { error, data } = await supabase.auth.signUp({
       email,
       password,
@@ -264,14 +267,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         emailRedirectTo: window.location.origin,
         data: {
           display_name: displayName,
+          phone: phone,
         },
       },
     });
     
-    // Track successful signup
+    // Track successful signup - now tracking as free_account_created
     if (!error && data.user) {
       recordFunnelEvent('signup_completed', {
         trigger_source: 'auth_modal',
+        account_type: 'free',
+        has_phone: !!phone,
       });
     }
     
@@ -336,6 +342,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       profile,
       isLoading,
       isPremium,
+      isFreeAccount,
       isAdmin,
       subscriptionStatus,
       isCheckingSubscription,

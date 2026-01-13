@@ -5,9 +5,11 @@ export type FunnelEventType =
   | 'modal_dismiss'        // User closed the modal without action
   | 'cta_click'            // User clicked the main CTA
   | 'signup_started'       // User was redirected to auth
-  | 'signup_completed'     // User completed registration
+  | 'signup_completed'     // User completed registration (free or premium)
+  | 'free_account_created' // User created a free account
   | 'checkout_started'     // User initiated Stripe checkout
   | 'subscription_active'  // User completed subscription
+  | 'free_to_premium'      // Free user upgraded to premium
   | 'feature_hover';       // User hovered on a feature card
 
 export interface FunnelEventMetadata {

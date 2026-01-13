@@ -1,25 +1,35 @@
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
-import { Loader2, Mail, Lock, User } from 'lucide-react';
+import { Loader2, Mail, Lock, User, Phone, Crown, Sparkles, Gift, Check } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import MFAVerification from './MFAVerification';
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
+  defaultMode?: 'signin' | 'signup';
 }
 
 type AuthMode = 'signin' | 'signup';
 
-const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
-  const [mode, setMode] = useState<AuthMode>('signin');
+const FREE_ACCOUNT_BENEFITS = [
+  'Save email for personalized experience',
+  'Track your visualization views',
+  'Get notified about new features',
+  'One-click upgrade to Premium anytime',
+];
+
+const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMode = 'signin' }) => {
+  const [mode, setMode] = useState<AuthMode>(defaultMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [phone, setPhone] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showMFAVerification, setShowMFAVerification] = useState(false);
   const { signIn, signUp } = useAuth();
@@ -34,7 +44,6 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         if (error) {
           toast.error('Sign in failed', { description: error.message });
         } else if (requiresMFA) {
-          // Show MFA verification modal
           setShowMFAVerification(true);
         } else {
           toast.success('Welcome back!');
@@ -42,11 +51,14 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           resetForm();
         }
       } else {
-        const { error } = await signUp(email, password, displayName);
+        const { error } = await signUp(email, password, displayName, phone || undefined);
         if (error) {
           toast.error('Sign up failed', { description: error.message });
         } else {
-          toast.success('Account created!', { description: 'You are now signed in.' });
+          toast.success('Free account created!', { 
+            description: 'Upgrade to Premium anytime to unlock all features.',
+            icon: <Gift className="h-4 w-4" />,
+          });
           onClose();
           resetForm();
         }
@@ -67,6 +79,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     setEmail('');
     setPassword('');
     setDisplayName('');
+    setPhone('');
   };
 
   const toggleMode = () => {
@@ -80,9 +93,37 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         <DialogContent className="sm:max-w-md bg-card border-border">
           <DialogHeader>
             <DialogTitle className="font-display text-xl text-center">
-              {mode === 'signin' ? 'Welcome Back' : 'Create Account'}
+              {mode === 'signin' ? 'Welcome Back' : 'Create Free Account'}
             </DialogTitle>
+            {mode === 'signup' && (
+              <DialogDescription className="text-center">
+                Start with a free account • Upgrade anytime
+              </DialogDescription>
+            )}
           </DialogHeader>
+
+          {mode === 'signup' && (
+            <div className="bg-muted/30 rounded-lg p-4 border border-border/50">
+              <div className="flex items-center gap-2 mb-3">
+                <Gift className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium">Free Account Includes:</span>
+              </div>
+              <ul className="space-y-2">
+                {FREE_ACCOUNT_BENEFITS.map((benefit, idx) => (
+                  <li key={idx} className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Check className="h-3 w-3 text-green-500 flex-shrink-0" />
+                    {benefit}
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-3 pt-3 border-t border-border/50 flex items-center gap-2">
+                <Crown className="h-4 w-4 text-primary" />
+                <span className="text-xs text-primary">
+                  <span className="font-medium">Premium features</span> unlock after payment
+                </span>
+              </div>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4 mt-4">
             {mode === 'signup' && (
@@ -122,6 +163,29 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
               </div>
             </div>
 
+            {mode === 'signup' && (
+              <div className="space-y-2">
+                <Label htmlFor="phone" className="text-sm font-medium flex items-center gap-2">
+                  Phone Number
+                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Optional</Badge>
+                </Label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="phone"
+                    type="tel"
+                    placeholder="+1 (555) 123-4567"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  Get SMS notifications about your visions and exclusive offers
+                </p>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="password" className="text-sm font-medium">
                 Password
@@ -151,7 +215,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
               ) : mode === 'signin' ? (
                 'Sign In'
               ) : (
-                'Create Account'
+                <>
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Create Free Account
+                </>
               )}
             </Button>
           </form>
@@ -163,7 +230,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
               className="text-sm text-muted-foreground hover:text-primary transition-colors"
             >
               {mode === 'signin' ? (
-                <>Don't have an account? <span className="font-medium text-primary">Sign up</span></>
+                <>Don't have an account? <span className="font-medium text-primary">Sign up free</span></>
               ) : (
                 <>Already have an account? <span className="font-medium text-primary">Sign in</span></>
               )}

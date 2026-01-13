@@ -252,7 +252,7 @@ export const VisionaryMembershipCard: React.FC<VisionaryMembershipCardProps> = (
   onAuthRequired,
   trigger = 'general',
 }) => {
-  const { user, isPremium, openCheckout } = useAuth();
+  const { user, isPremium, isFreeAccount, openCheckout } = useAuth();
   const { variants, recordImpressions, recordConversions } = useABTest();
   const [isLoading, setIsLoading] = useState(false);
   const [hoveredFeature, setHoveredFeature] = useState<string | null>(null);
@@ -302,6 +302,7 @@ export const VisionaryMembershipCard: React.FC<VisionaryMembershipCardProps> = (
     const timeOnModal = Date.now() - modalOpenTime.current;
     
     if (!user) {
+      // No account - redirect to signup
       recordFunnelEvent('signup_started', { 
         trigger_source: trigger,
         time_on_modal_ms: timeOnModal,
@@ -312,10 +313,13 @@ export const VisionaryMembershipCard: React.FC<VisionaryMembershipCardProps> = (
       return;
     }
 
-    recordFunnelEvent('checkout_started', { 
+    // User has account (free or upgrading) - go to checkout
+    const eventType = isFreeAccount ? 'free_to_premium' : 'checkout_started';
+    recordFunnelEvent(eventType, { 
       trigger_source: trigger,
       time_on_modal_ms: timeOnModal,
       features_viewed: Array.from(featuresViewed.current),
+      account_type: isFreeAccount ? 'free' : 'existing',
     });
     recordConversions(); // Record A/B test conversions
 
@@ -574,6 +578,18 @@ export const VisionaryMembershipCard: React.FC<VisionaryMembershipCardProps> = (
 
             {/* CTA Footer */}
             <div className="p-6 pt-4 border-t border-border/50 bg-gradient-to-t from-muted/50 to-transparent">
+              {/* Free account callout */}
+              {isFreeAccount && (
+                <div className="mb-4 p-3 rounded-lg bg-primary/5 border border-primary/20 text-center">
+                  <p className="text-sm text-primary font-medium">
+                    Ready to unlock your full potential?
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Your free account is set up • One click to Premium
+                  </p>
+                </div>
+              )}
+              
               <div className="flex flex-col sm:flex-row gap-3 items-center justify-center">
                 <Button
                   size="lg"
@@ -583,6 +599,12 @@ export const VisionaryMembershipCard: React.FC<VisionaryMembershipCardProps> = (
                 >
                   {isLoading ? (
                     <><Loader2 className="h-4 w-4 animate-spin" /> Processing...</>
+                  ) : isFreeAccount ? (
+                    <>
+                      <Crown className="h-4 w-4" />
+                      Upgrade Now — $6.99/mo
+                      <ChevronRight className="h-4 w-4" />
+                    </>
                   ) : user ? (
                     <>
                       <Crown className="h-4 w-4" />

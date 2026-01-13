@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,7 +12,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
-import { User, LogOut, Palette, Settings, Crown, CreditCard, Image, Gamepad2, BarChart3, History, Paintbrush, Shield, ShieldCheck, Wrench, Database, Wallet, Banknote, Scale } from 'lucide-react';
+import { User, LogOut, Palette, Settings, Crown, CreditCard, Image, Gamepad2, BarChart3, History, Paintbrush, Shield, ShieldCheck, Wrench, Database, Wallet, Banknote, Scale, Gift } from 'lucide-react';
 import AuthModal from './AuthModal';
 import MFASetup from './MFASetup';
 import PremiumBadge from '@/components/premium/PremiumBadge';
@@ -19,7 +20,7 @@ import { VisionaryMembershipCard } from '@/components/premium';
 import { supabase } from '@/integrations/supabase/client';
 
 const UserMenu: React.FC = () => {
-  const { user, profile, isLoading, isPremium, mfaStatus, signOut, openCheckout, openCustomerPortal } = useAuth();
+  const { user, profile, isLoading, isPremium, isFreeAccount, mfaStatus, signOut, openCheckout, openCustomerPortal } = useAuth();
   const navigate = useNavigate();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showVisionaryModal, setShowVisionaryModal] = useState(false);
@@ -91,11 +92,22 @@ const UserMenu: React.FC = () => {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => setShowVisionaryModal(true)}
+          onClick={() => setShowAuthModal(true)}
           className="gap-2"
         >
           <User className="h-4 w-4" />
-          Sign In
+          <span className="hidden sm:inline">Sign In</span>
+        </Button>
+        <Button
+          variant="default"
+          size="sm"
+          onClick={() => {
+            setShowAuthModal(true);
+          }}
+          className="gap-1.5 btn-luxury hidden sm:flex"
+        >
+          <Gift className="h-4 w-4" />
+          Free Sign Up
         </Button>
         <VisionaryMembershipCard
           isOpen={showVisionaryModal}
@@ -106,7 +118,7 @@ const UserMenu: React.FC = () => {
           }}
           trigger="general"
         />
-        <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
+        <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} defaultMode="signup" />
       </>
     );
   }
@@ -157,7 +169,11 @@ const UserMenu: React.FC = () => {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1">
                   <p className="text-sm font-medium truncate">{displayName}</p>
-                  <PremiumBadge />
+                  {isPremium ? (
+                    <PremiumBadge />
+                  ) : isFreeAccount ? (
+                    <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 bg-muted">FREE</Badge>
+                  ) : null}
                 </div>
                 <p className="text-xs text-muted-foreground truncate">{user.email}</p>
               </div>
@@ -172,7 +188,12 @@ const UserMenu: React.FC = () => {
                 className="gap-2 cursor-pointer bg-primary/5 text-primary focus:bg-primary/10 focus:text-primary"
               >
                 <Crown className="h-4 w-4" />
-                Upgrade to Premium
+                {isFreeAccount ? 'Upgrade to Premium' : 'Get Premium'}
+                {isFreeAccount && (
+                  <Badge variant="secondary" className="ml-auto text-[9px] px-1.5 bg-green-500/10 text-green-600">
+                    Unlock All
+                  </Badge>
+                )}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
             </>
