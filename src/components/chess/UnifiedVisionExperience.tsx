@@ -1071,31 +1071,15 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                       </>
                     )}
 
-                    {/* Gallery Actions */}
+                    {/* Gallery Actions - Use same ExportActionButtons for state capture */}
                     {showGalleryActions && (
                       <>
-                        {onExport && (
-                          <>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="gap-2"
-                              onClick={() => onExport('hd')}
-                            >
-                              <Download className="h-4 w-4" />
-                              HD
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="gap-2"
-                              onClick={() => onExport('print')}
-                            >
-                              <Printer className="h-4 w-4" />
-                              Print
-                            </Button>
-                          </>
-                        )}
+                        <ExportActionButtons
+                          onExport={onExport}
+                          isPremium={isPremium}
+                          darkMode={darkMode}
+                          totalMoves={totalMoves}
+                        />
                         
                         {!isListed && onListForSale && (
                           <Button 
@@ -1115,6 +1099,26 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                           </Badge>
                         )}
                       </>
+                    )}
+                    
+                    {/* Marketplace Actions - Use same ExportActionButtons for state capture */}
+                    {showMarketplaceInfo && (
+                      <ExportActionButtons
+                        onExport={onExport}
+                        isPremium={isPremium}
+                        darkMode={darkMode}
+                        totalMoves={totalMoves}
+                      />
+                    )}
+                    
+                    {/* Shared/Scanner/Other contexts - Show export buttons if onExport provided */}
+                    {!showGeneratorActions && !showGalleryActions && !showMarketplaceInfo && onExport && (
+                      <ExportActionButtons
+                        onExport={onExport}
+                        isPremium={isPremium}
+                        darkMode={darkMode}
+                        totalMoves={totalMoves}
+                      />
                     )}
 
                     {/* Transfer to Creative Mode - Available in multiple contexts */}

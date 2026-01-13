@@ -5,8 +5,6 @@ import { SquareData, GameData } from '@/lib/chess/gameSimulator';
 import { setActivePalette, PaletteId, PieceType, getCurrentPalette } from '@/lib/chess/pieceColors';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
-import { TimelineProvider } from '@/contexts/TimelineContext';
-import { LegendHighlightProvider } from '@/contexts/LegendHighlightContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -563,45 +561,42 @@ const MarketplaceVisionDetail: React.FC = () => {
           </div>
         )}
 
-        {/* Unified Vision Experience */}
-        <TimelineProvider>
-          <LegendHighlightProvider>
-            <UnifiedVisionExperience
-              board={vizData.board}
-              gameData={vizData.gameData}
-              totalMoves={vizData.totalMoves}
-              context="marketplace"
-              defaultTab="analytics"
-              visualizationId={listing?.visualization?.id}
-              paletteId={vizData.paletteId}
-              createdAt={listing?.created_at}
-              title={listing?.visualization?.title}
-              imageUrl={listing?.visualization?.image_path}
-              onTransferToCreative={handleTransferToCreative}
-              onShare={handleShare}
-              onExport={handleExport}
-              isPremium={isPremium}
-              onUpgradePrompt={() => setShowUpgradeModal(true)}
-              purchasePrice={listing?.price_cents}
-              showPurchaseButton={!isOwnListing}
-              onPurchase={handlePurchase}
-              isPurchasing={isPurchasing}
-              isOwner={isOwnListing}
-              visionScoreData={visionScore ? {
-                viewCount: visionScore.viewCount,
-                uniqueViewers: visionScore.uniqueViewers,
-                royaltyCentsEarned: visionScore.royaltyCentsEarned,
-                royaltyOrdersCount: visionScore.royaltyOrdersCount,
-                printRevenueCents: visionScore.printRevenueCents,
-                printOrderCount: visionScore.printOrderCount,
-                totalScore: visionScore.totalScore,
-                downloadHdCount: visionScore.downloadHdCount,
-                downloadGifCount: visionScore.downloadGifCount,
-                tradeCount: visionScore.tradeCount,
-              } : null}
-            />
-          </LegendHighlightProvider>
-        </TimelineProvider>
+        {/* Unified Vision Experience - providers are handled internally */}
+        <UnifiedVisionExperience
+          board={vizData.board}
+          gameData={vizData.gameData}
+          totalMoves={vizData.totalMoves}
+          pgn={listing?.visualization?.pgn || ''}
+          context="marketplace"
+          defaultTab="analytics"
+          visualizationId={listing?.visualization?.id}
+          paletteId={vizData.paletteId}
+          createdAt={listing?.created_at}
+          title={listing?.visualization?.title}
+          imageUrl={listing?.visualization?.image_path}
+          onTransferToCreative={handleTransferToCreative}
+          onShare={handleShare}
+          onExport={handleExport}
+          isPremium={isPremium}
+          onUpgradePrompt={() => setShowUpgradeModal(true)}
+          purchasePrice={listing?.price_cents}
+          showPurchaseButton={!isOwnListing}
+          onPurchase={handlePurchase}
+          isPurchasing={isPurchasing}
+          isOwner={isOwnListing}
+          visionScoreData={visionScore ? {
+            viewCount: visionScore.viewCount,
+            uniqueViewers: visionScore.uniqueViewers,
+            royaltyCentsEarned: visionScore.royaltyCentsEarned,
+            royaltyOrdersCount: visionScore.royaltyOrdersCount,
+            printRevenueCents: visionScore.printRevenueCents,
+            printOrderCount: visionScore.printOrderCount,
+            totalScore: visionScore.totalScore,
+            downloadHdCount: visionScore.downloadHdCount,
+            downloadGifCount: visionScore.downloadGifCount,
+            tradeCount: visionScore.tradeCount,
+          } : null}
+        />
       </div>
       <Footer />
       
