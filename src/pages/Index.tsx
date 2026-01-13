@@ -43,10 +43,11 @@ import { useRandomGameArt } from '@/hooks/useRandomGameArt';
 import heroChessArt from '@/assets/hero-chess-art.jpg';
 import chessMovementArt from '@/assets/chess-movement-art.jpg';
 import chessKingArt from '@/assets/chess-king-art.jpg';
+import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 
 const Index = () => {
   // Random AI art for feature cards
-  const randomArts = useRandomGameArt(3);
+  const randomArts = useRandomGameArt(4); // 3 for feature cards + 1 for premium banner
   
   const navigate = useNavigate();
   const { user, isPremium } = useAuth();
@@ -635,45 +636,90 @@ const Index = () => {
             <NaturalQRShowcase />
 
             {/* Premium Subscription CTA */}
-            <section className="py-12">
+            <section className="py-16">
               <div className="container mx-auto px-4">
-                <div className="max-w-4xl mx-auto">
-                  <div className="relative overflow-hidden rounded-2xl border border-primary/30 bg-gradient-to-br from-card via-card to-primary/5 p-8 md:p-12">
-                    {/* Decorative elements */}
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-                    <div className="absolute bottom-0 left-0 w-48 h-48 bg-primary/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+                <div className="max-w-5xl mx-auto">
+                  <div className="relative overflow-hidden rounded-3xl border-2 border-primary/40 bg-gradient-to-br from-card/95 via-card to-primary/10 shadow-2xl shadow-primary/10">
+                    {/* AI Art Background with animated overlay */}
+                    <div 
+                      className="absolute inset-0 bg-cover bg-center opacity-20 transition-opacity duration-1000"
+                      style={{ backgroundImage: `url(${randomArts[3]})` }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-r from-card via-card/80 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-card/50" />
                     
-                    <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
-                      {/* Crown Icon */}
-                      <div className="w-20 h-20 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center flex-shrink-0 animate-gentle-glow">
-                        <Crown className="h-10 w-10 text-primary" />
-                      </div>
-                      
-                      {/* Content */}
-                      <div className="flex-1 text-center md:text-left space-y-3">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-xs font-display uppercase tracking-widest text-primary">
-                          <Sparkles className="h-3 w-3" />
-                          Visionary Membership
-                        </div>
-                        <h3 className="text-2xl md:text-3xl font-display font-bold uppercase tracking-wide">
-                          Unlock <span className="text-gold-gradient">Premium</span> Features
-                        </h3>
-                        <p className="text-muted-foreground font-serif leading-relaxed">
-                          Get watermark-free HD downloads, save unlimited visualizations to your personal gallery, 
-                          and enjoy first access to limited edition gold & silver prints.
-                        </p>
-                        <div className="flex flex-col sm:flex-row items-center gap-4 pt-2">
-                          <div className="text-center sm:text-left">
-                            <span className="text-3xl font-display font-bold text-foreground">$7</span>
-                            <span className="text-muted-foreground font-serif">/month</span>
+                    {/* Gold shimmer effect */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/5 to-transparent animate-shimmer" />
+                    
+                    {/* Decorative corner accents */}
+                    <div className="absolute top-0 left-0 w-32 h-32 border-t-2 border-l-2 border-primary/40 rounded-tl-3xl" />
+                    <div className="absolute bottom-0 right-0 w-32 h-32 border-b-2 border-r-2 border-primary/40 rounded-br-3xl" />
+                    
+                    <div className="relative z-10 p-8 md:p-14">
+                      <div className="flex flex-col lg:flex-row items-center gap-10">
+                        {/* Gold Seal Logo */}
+                        <div className="relative flex-shrink-0 group">
+                          <div className="absolute -inset-4 bg-gradient-to-r from-primary/30 via-amber-400/20 to-primary/30 rounded-full blur-xl opacity-60 group-hover:opacity-100 transition-opacity duration-500" />
+                          <div className="relative w-28 h-28 md:w-36 md:h-36 rounded-full border-4 border-primary/50 overflow-hidden shadow-xl shadow-primary/20 group-hover:border-primary/80 transition-colors duration-300">
+                            <img 
+                              src={enPensentLogo} 
+                              alt="En Pensent" 
+                              className="w-full h-full object-cover"
+                            />
                           </div>
-                          <Button 
-                            onClick={() => setShowVisionaryModal(true)}
-                            className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-primary text-primary-foreground font-display uppercase tracking-wide text-sm hover:opacity-90 transition-opacity"
-                          >
-                            <Crown className="h-4 w-4" />
-                            Become a Visionary
-                          </Button>
+                          {/* Rotating glow ring */}
+                          <div className="absolute -inset-2 border border-primary/30 rounded-full animate-spin-slow opacity-50" style={{ animationDuration: '20s' }} />
+                        </div>
+                        
+                        {/* Content */}
+                        <div className="flex-1 text-center lg:text-left space-y-5">
+                          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-primary/20 to-amber-500/20 border border-primary/30 text-xs font-display uppercase tracking-[0.2em] text-primary shadow-lg shadow-primary/10">
+                            <Sparkles className="h-3.5 w-3.5" />
+                            Visionary Membership
+                          </div>
+                          
+                          <h3 className="text-3xl md:text-4xl lg:text-5xl font-display font-bold uppercase tracking-wide leading-tight">
+                            Elevate Your <span className="text-gold-gradient">Chess Legacy</span>
+                          </h3>
+                          
+                          <p className="text-base md:text-lg text-muted-foreground font-serif leading-relaxed max-w-2xl">
+                            Join an exclusive circle of chess art collectors. Unlock pristine HD downloads, 
+                            curate your personal gallery, and gain first access to limited edition gold & silver prints.
+                          </p>
+                          
+                          {/* Feature highlights */}
+                          <div className="flex flex-wrap justify-center lg:justify-start gap-4 text-sm">
+                            <div className="flex items-center gap-2 text-primary/80">
+                              <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                              <span className="font-serif">Watermark-free exports</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-primary/80">
+                              <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                              <span className="font-serif">Unlimited gallery saves</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-primary/80">
+                              <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                              <span className="font-serif">Priority print access</span>
+                            </div>
+                          </div>
+                          
+                          <div className="flex flex-col sm:flex-row items-center gap-6 pt-4">
+                            <div className="text-center sm:text-left">
+                              <div className="flex items-baseline gap-1">
+                                <span className="text-4xl md:text-5xl font-display font-bold text-gold-gradient">$7</span>
+                                <span className="text-muted-foreground font-serif text-lg">/month</span>
+                              </div>
+                              <p className="text-xs text-muted-foreground/70 font-serif mt-1">Cancel anytime</p>
+                            </div>
+                            <Button 
+                              onClick={() => setShowVisionaryModal(true)}
+                              className="group relative inline-flex items-center gap-3 px-8 py-4 rounded-xl bg-gradient-to-r from-primary via-amber-500 to-primary text-primary-foreground font-display uppercase tracking-wider text-sm hover:shadow-xl hover:shadow-primary/30 transition-all duration-300 overflow-hidden"
+                            >
+                              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-700" />
+                              <Crown className="h-5 w-5 relative z-10" />
+                              <span className="relative z-10">Become a Visionary</span>
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </div>
