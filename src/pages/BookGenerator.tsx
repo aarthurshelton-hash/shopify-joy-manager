@@ -38,9 +38,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { jsPDF } from 'jspdf';
 import carlsenCover from '@/assets/book/carlsen-cover.jpg';
 
-// CEO access control
-const CEO_EMAIL = 'a.arthur.shelton@gmail.com';
-
 interface GeneratedSpread {
   game: CarlsenGame;
   haiku: string;
@@ -82,7 +79,7 @@ const BookGenerator: React.FC = () => {
   const [imageExportProgress, setImageExportProgress] = useState(0);
   const pauseRef = React.useRef(false);
 
-  // Check CEO authorization
+  // Check admin authorization using has_role RPC
   useEffect(() => {
     const checkAuthorization = async () => {
       if (authLoading) return;
@@ -93,11 +90,19 @@ const BookGenerator: React.FC = () => {
         return;
       }
 
-      // Check if user email matches CEO
-      const { data: userData } = await supabase.auth.getUser();
-      const email = userData?.user?.email?.toLowerCase();
+      try {
+        const { data, error } = await supabase.rpc('has_role', {
+          _user_id: user.id,
+          _role: 'admin'
+        });
+        
+        if (error) throw error;
+        setIsAuthorized(!!data);
+      } catch (error) {
+        console.error('Authorization check failed:', error);
+        setIsAuthorized(false);
+      }
       
-      setIsAuthorized(email === CEO_EMAIL);
       setCheckingAuth(false);
     };
 

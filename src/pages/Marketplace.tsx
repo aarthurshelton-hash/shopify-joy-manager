@@ -445,11 +445,10 @@ const Marketplace: React.FC = () => {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.03 }}
-                      onClick={() => navigate(`/marketplace/${listing.id}`)}
-                      className="cursor-pointer"
                     >
                       <Card 
-                        className={`overflow-hidden group hover:shadow-xl transition-all duration-300 relative ${
+                        onClick={() => navigate(`/marketplace/${listing.id}`)}
+                        className={`overflow-hidden group hover:shadow-xl transition-all duration-300 relative cursor-pointer ${
                           hasPremiumPalette
                             ? 'border-amber-500/50 ring-1 ring-amber-500/20 hover:ring-amber-500/40'
                             : hasThemedPalette
@@ -460,11 +459,12 @@ const Marketplace: React.FC = () => {
                         {/* Premium Shimmer Effect */}
                         {hasPremiumPalette && (
                           <div 
-                            className="absolute inset-0 z-10 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                            className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500"
                             style={{
                               background: 'linear-gradient(90deg, transparent 0%, rgba(251, 191, 36, 0.15) 25%, rgba(251, 191, 36, 0.3) 50%, rgba(251, 191, 36, 0.15) 75%, transparent 100%)',
                               backgroundSize: '200% 100%',
                               animation: 'shimmer 2s linear infinite',
+                              zIndex: 1,
                             }}
                           />
                         )}
