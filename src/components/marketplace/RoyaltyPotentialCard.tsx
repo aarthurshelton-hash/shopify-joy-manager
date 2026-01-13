@@ -56,12 +56,12 @@ export const RoyaltyPotentialCard = forwardRef<HTMLDivElement, RoyaltyPotentialC
               <TooltipTrigger>
                 <Info className="h-4 w-4 text-muted-foreground" />
               </TooltipTrigger>
-              <TooltipContent side="right" className="max-w-xs">
+              <TooltipContent side="right" className="max-w-xs bg-card border-border">
                 <p className="font-medium mb-1">Profit-Based Value Appreciation</p>
                 <ul className="text-xs space-y-1 text-muted-foreground">
                   <li>• {valueAppreciationPercent}% of <strong>profit</strong> (not revenue) adds to vision value</li>
                   <li>• ~${exampleRoyalty.creatorRoyalty.toFixed(2)} per $49 print after costs</li>
-                  <li>• Sell on marketplace to realize gains ({sellerKeepsPercent}% to you)</li>
+                  <li>• <strong>No automatic payouts</strong> — sell, trade, or gift to realize gains</li>
                   <li>• Only {marketplaceFeePercent}% platform fee on sales</li>
                 </ul>
               </TooltipContent>
@@ -111,7 +111,7 @@ export const RoyaltyPotentialCard = forwardRef<HTMLDivElement, RoyaltyPotentialC
 
             {royaltyOrdersCount === 0 && (
               <p className="text-xs text-muted-foreground italic border-t border-border/50 pt-3">
-                When others order prints, value accrues here. Sell on marketplace to realize gains.
+                When others order prints, value accrues here. <strong>No automatic payouts</strong> — sell, trade, or gift to realize gains.
               </p>
             )}
           </>
@@ -157,7 +157,7 @@ export const RoyaltyPotentialCard = forwardRef<HTMLDivElement, RoyaltyPotentialC
             )}
 
             <p className="text-xs text-muted-foreground italic">
-              Claim ownership to start building value from print orders. Sell anytime (only {marketplaceFeePercent}% fee).
+              Claim ownership to build value from print orders. <strong>No automatic payouts</strong> — sell, trade, or gift your vision to realize gains (only {marketplaceFeePercent}% fee on sales).
             </p>
           </>
         )}

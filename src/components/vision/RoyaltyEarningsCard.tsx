@@ -48,7 +48,7 @@ export const RoyaltyEarningsCard: React.FC<RoyaltyEarningsCardProps> = ({
               <TooltipTrigger>
                 <Info className="h-4 w-4 text-muted-foreground" />
               </TooltipTrigger>
-              <TooltipContent side="right" className="max-w-xs">
+              <TooltipContent side="right" className="max-w-xs bg-card border-border">
                 <p className="font-medium mb-2">How Value Appreciation Works</p>
                 <ul className="text-xs space-y-1.5 text-muted-foreground">
                   <li className="flex items-start gap-1.5">
@@ -61,7 +61,7 @@ export const RoyaltyEarningsCard: React.FC<RoyaltyEarningsCardProps> = ({
                   </li>
                   <li className="flex items-start gap-1.5">
                     <ArrowRightLeft className="h-3 w-3 text-green-500 mt-0.5 shrink-0" />
-                    <span>Sell your vision on the marketplace to realize gains (only {marketplaceFeePercent}% fee)</span>
+                    <span><strong className="text-foreground">No automatic payouts</strong> — sell, trade, or gift your vision to realize gains</span>
                   </li>
                 </ul>
               </TooltipContent>
@@ -124,21 +124,24 @@ export const RoyaltyEarningsCard: React.FC<RoyaltyEarningsCardProps> = ({
           <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
             <p className="text-xs text-muted-foreground">
               <strong className="text-foreground">Grow value:</strong> When others order prints, 
-              {valueAppreciationPercent}% of order <em>profit</em> adds to this vision's value. Sell on the marketplace 
-              to realize gains.
+              {valueAppreciationPercent}% of order <em>profit</em> adds to this vision's value. 
+              <strong className="text-foreground"> Sell, trade, or gift</strong> your vision to realize gains — no automatic payouts.
             </p>
           </div>
         )}
 
         {/* Marketplace CTA */}
         <div className="p-3 rounded-lg bg-green-500/5 border border-green-500/20">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2 text-xs">
               <Percent className="h-3.5 w-3.5 text-green-500" />
               <span className="text-muted-foreground">
-                List on marketplace: <strong className="text-foreground">only {marketplaceFeePercent}% fee</strong>
+                Sell on marketplace: <strong className="text-foreground">only {marketplaceFeePercent}% fee</strong>
               </span>
             </div>
+            <p className="text-[10px] text-muted-foreground/70">
+              Visions can also be traded or gifted to other members
+            </p>
           </div>
         </div>
       </CardContent>
