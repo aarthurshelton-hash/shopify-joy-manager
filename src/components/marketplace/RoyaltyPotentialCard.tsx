@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { forwardRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DollarSign, TrendingUp, Info, Users, ShoppingBag } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -23,7 +23,7 @@ interface RoyaltyPotentialCardProps {
  * - For owners: shows actual earnings and potential
  * - For buyers: shows potential earnings preview
  */
-export const RoyaltyPotentialCard: React.FC<RoyaltyPotentialCardProps> = ({
+export const RoyaltyPotentialCard = forwardRef<HTMLDivElement, RoyaltyPotentialCardProps>(function RoyaltyPotentialCard({
   royaltyCentsEarned = 0,
   royaltyOrdersCount = 0,
   totalPrintRevenue = 0,
@@ -32,7 +32,7 @@ export const RoyaltyPotentialCard: React.FC<RoyaltyPotentialCardProps> = ({
   uniqueViewers = 0,
   isOwner = false,
   className = '',
-}) => {
+}, ref) {
   const royaltyDollars = royaltyCentsEarned / 100;
   const totalRevenueDollars = totalPrintRevenue / 100;
   const valueAppreciationPercent = MEMBERSHIP_ECONOMICS.valueAppreciationRate * 100;
@@ -44,7 +44,7 @@ export const RoyaltyPotentialCard: React.FC<RoyaltyPotentialCardProps> = ({
   const projectedValueAdded = (avgPrintPrice * valueAppreciationPercent / 100);
 
   return (
-    <Card className={`bg-gradient-to-br from-emerald-500/5 via-primary/5 to-amber-500/5 border-primary/20 ${className}`}>
+    <Card ref={ref} className={`bg-gradient-to-br from-emerald-500/5 via-primary/5 to-amber-500/5 border-primary/20 ${className}`}>
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-base">
           <DollarSign className="h-5 w-5 text-emerald-500" />
@@ -162,6 +162,8 @@ export const RoyaltyPotentialCard: React.FC<RoyaltyPotentialCardProps> = ({
       </CardContent>
     </Card>
   );
-};
+});
+
+RoyaltyPotentialCard.displayName = 'RoyaltyPotentialCard';
 
 export default RoyaltyPotentialCard;

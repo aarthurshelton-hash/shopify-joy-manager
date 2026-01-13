@@ -352,4 +352,6 @@ const TrendingWidget = forwardRef<HTMLElement, Record<string, never>>(function T
   );
 });
 
+TrendingWidget.displayName = 'TrendingWidget';
+
 export default TrendingWidget;

@@ -363,4 +363,6 @@ const LiveMarketWidget = forwardRef<HTMLElement, Record<string, never>>(function
   );
 });
 
+LiveMarketWidget.displayName = 'LiveMarketWidget';
+
 export default LiveMarketWidget;
