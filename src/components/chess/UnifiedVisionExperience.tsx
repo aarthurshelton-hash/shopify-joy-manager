@@ -65,7 +65,7 @@ import { getGamePoetry } from '@/lib/chess/gamePoetry';
 import PaletteAvailabilityIndicator from './PaletteAvailabilityIndicator';
 import { useAuth } from '@/hooks/useAuth';
 import MiniPrintOrderSection from './MiniPrintOrderSection';
-import { EducationFundShowcase } from '@/components/homepage/EducationFundShowcase';
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { PaletteAvailabilityInfo } from '@/lib/visualizations/paletteAvailability';
@@ -1297,8 +1297,35 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                     />
                   )}
 
-                  {/* Education Fund Showcase */}
-                  <EducationFundShowcase variant="card" className="mt-4" />
+                  {/* Print Value Proposition */}
+                  <div className="mt-6 p-4 rounded-xl bg-gradient-to-br from-primary/5 via-transparent to-primary/10 border border-primary/20">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-primary/10">
+                        <Sparkles className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        <h4 className="font-medium text-foreground">Museum-Quality Chess Art</h4>
+                        <ul className="text-sm text-muted-foreground space-y-1.5">
+                          <li className="flex items-center gap-2">
+                            <div className="w-1 h-1 rounded-full bg-primary" />
+                            Archival canvas prints that last 100+ years
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <div className="w-1 h-1 rounded-full bg-primary" />
+                            Free US shipping on every order
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <div className="w-1 h-1 rounded-full bg-primary" />
+                            Handcrafted frames in 5 premium finishes
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <div className="w-1 h-1 rounded-full bg-primary" />
+                            30-day satisfaction guarantee
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </ScrollArea>
             </TabsContent>
