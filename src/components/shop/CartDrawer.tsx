@@ -358,9 +358,16 @@ export const CartDrawer = () => {
                     </div>
                   )}
                   
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-muted-foreground">Currency:</span>
-                    <CurrencySelector compact />
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-muted-foreground">Currency:</span>
+                      <CurrencySelector compact />
+                    </div>
+                    {selectedCurrency.code !== 'USD' && (
+                      <p className="text-[10px] text-muted-foreground text-center">
+                        Checkout will be in {selectedCurrency.name}
+                      </p>
+                    )}
                   </div>
                   
                   {/* Pricing breakdown */}

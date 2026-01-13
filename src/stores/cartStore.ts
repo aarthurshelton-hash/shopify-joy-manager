@@ -1,6 +1,23 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { toast } from 'sonner';
+import { useCurrencyStore } from './currencyStore';
+
+// Map currency codes to Shopify country codes for checkout localization
+const CURRENCY_TO_COUNTRY: Record<string, string> = {
+  USD: 'US',
+  CAD: 'CA',
+  EUR: 'DE', // Default to Germany for Euro
+  GBP: 'GB',
+  AUD: 'AU',
+  JPY: 'JP',
+  CHF: 'CH',
+  CNY: 'CN',
+  INR: 'IN',
+  MXN: 'MX',
+  BRL: 'BR',
+  KRW: 'KR',
+};
 
 // Re-export types from API
 export type { ShopifyProduct } from '@/lib/shopify/api';
@@ -75,9 +92,9 @@ const SHOPIFY_STORE_PERMANENT_DOMAIN = 'printify-shop-manager-fs4kw.myshopify.co
 const SHOPIFY_STOREFRONT_URL = `https://${SHOPIFY_STORE_PERMANENT_DOMAIN}/api/${SHOPIFY_API_VERSION}/graphql.json`;
 const SHOPIFY_STOREFRONT_TOKEN = 'a0ffa036b52f6150e7e1bfaf4b307ff4';
 
-// Cart creation mutation
+// Cart creation mutation with buyer identity for currency localization
 const CART_CREATE_MUTATION = `
-  mutation cartCreate($input: CartInput!) {
+  mutation cartCreate($input: CartInput!, $country: CountryCode) @inContext(country: $country) {
     cartCreate(input: $input) {
       cart {
         id
@@ -97,6 +114,10 @@ async function createStorefrontCheckout(items: CartItem[]): Promise<string> {
     merchandiseId: item.variantId,
   }));
 
+  // Get user's selected currency and map to country code
+  const selectedCurrency = useCurrencyStore.getState().selectedCurrency;
+  const countryCode = CURRENCY_TO_COUNTRY[selectedCurrency.code] || 'US';
+
   const response = await fetch(SHOPIFY_STOREFRONT_URL, {
     method: 'POST',
     headers: {
@@ -105,7 +126,10 @@ async function createStorefrontCheckout(items: CartItem[]): Promise<string> {
     },
     body: JSON.stringify({
       query: CART_CREATE_MUTATION,
-      variables: { input: { lines } },
+      variables: { 
+        input: { lines },
+        country: countryCode
+      },
     }),
   });
 
