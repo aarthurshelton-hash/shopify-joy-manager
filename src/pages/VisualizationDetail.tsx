@@ -38,6 +38,7 @@ const VisualizationDetail: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [visionScore, setVisionScore] = useState<VisionScore | null>(null);
+  const [isOwner, setIsOwner] = useState(false);
   
   // Store original palette state for reset functionality
   const originalStateRef = useRef<VisualizationState | undefined>(undefined);
@@ -161,11 +162,10 @@ const VisualizationDetail: React.FC = () => {
           return;
         }
 
-        // Check ownership
-        if (data.user_id !== user?.id) {
-          setError('You do not have permission to view this visualization');
-          return;
-        }
+        // Everyone can VIEW any visualization - ownership only matters for editing/saving
+        // The isOwner flag controls what actions are available, not viewing rights
+        const ownerCheck = user?.id === data.user_id;
+        setIsOwner(ownerCheck);
 
         // Store original state for reset functionality
         const vizState = data.game_data.visualizationState as VisualizationState | undefined;
@@ -194,13 +194,9 @@ const VisualizationDetail: React.FC = () => {
       }
     };
 
-    if (user) {
-      loadVisualization();
-    } else if (!authLoading) {
-      setError('Please sign in to view this visualization');
-      setIsLoading(false);
-    }
-  }, [id, user, authLoading, restorePaletteState]);
+    // Load visualization for anyone - no auth required for viewing
+    loadVisualization();
+  }, [id, user, restorePaletteState]);
 
   // Reconstruct board and gameData from stored data
   const getVisualizationData = useCallback(() => {
@@ -359,7 +355,7 @@ const VisualizationDetail: React.FC = () => {
     }
   };
 
-  if (authLoading || isLoading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
@@ -448,7 +444,7 @@ const VisualizationDetail: React.FC = () => {
               onExport={handleExport}
               isPremium={isPremium}
               onUpgradePrompt={() => setShowUpgradeModal(true)}
-              isOwner={true}
+              isOwner={isOwner}
               visionScoreData={visionScore ? {
                 viewCount: visionScore.viewCount,
                 uniqueViewers: visionScore.uniqueViewers,
