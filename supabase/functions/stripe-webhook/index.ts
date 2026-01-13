@@ -105,6 +105,11 @@ serve(async (req) => {
           if (subscription.status === 'active') {
             await clearGracePeriod(supabaseClient, stripe, subscription);
           }
+          
+          // Record subscription revenue in financial system
+          if (invoice.amount_paid > 0) {
+            await recordSubscriptionRevenue(supabaseClient, stripe, invoice);
+          }
         }
         break;
       }
@@ -373,4 +378,61 @@ async function clearGracePeriod(
   });
 
   logStep("Grace period cleared", { userId: user.id });
+}
+
+// Record subscription revenue in financial tracking system
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function recordSubscriptionRevenue(
+  supabase: SupabaseClient<any, any, any>,
+  stripe: Stripe,
+  invoice: Stripe.Invoice
+) {
+  logStep("Recording subscription revenue", { 
+    invoiceId: invoice.id,
+    amountPaid: invoice.amount_paid,
+  });
+
+  try {
+    // Get customer to find user
+    const customer = await stripe.customers.retrieve(invoice.customer as string);
+    if (customer.deleted) return;
+
+    const customerEmail = customer.email;
+    if (!customerEmail) return;
+
+    // Find user by email
+    const { data: users } = await supabase.auth.admin.listUsers();
+    const user = users?.users.find((u: { email?: string }) => u.email?.toLowerCase() === customerEmail.toLowerCase());
+    const userId = user?.id || null;
+
+    // Calculate platform fees (Stripe takes ~2.9% + 30¢)
+    const stripeFees = Math.round(invoice.amount_paid * 0.029 + 30);
+
+    // Record the subscription payment in order_financials
+    const { error } = await supabase.rpc('record_order_with_distribution', {
+      p_order_type: 'subscription',
+      p_order_reference: invoice.id,
+      p_gross_revenue_cents: invoice.amount_paid,
+      p_platform_fees_cents: stripeFees,
+      p_fulfillment_costs_cents: 0, // No fulfillment for subscriptions
+      p_user_id: userId,
+      p_visualization_id: null,
+      p_game_id: null,
+      p_palette_id: null,
+    });
+
+    if (error) {
+      logStep("ERROR: Failed to record subscription revenue", { error: error.message });
+    } else {
+      logStep("Subscription revenue recorded", { 
+        userId, 
+        amount: invoice.amount_paid,
+        invoiceId: invoice.id 
+      });
+    }
+  } catch (error) {
+    logStep("ERROR: Exception recording subscription revenue", { 
+      error: error instanceof Error ? error.message : String(error) 
+    });
+  }
 }
