@@ -163,6 +163,14 @@ export default {
             backgroundPosition: "200% 0",
           },
         },
+        "fade-in": {
+          "0%": {
+            opacity: "0",
+          },
+          "100%": {
+            opacity: "1",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -174,6 +182,7 @@ export default {
         "gentle-glow": "gentle-glow 3s ease-in-out infinite",
         "shimmer": "shimmer 2s linear infinite",
         "pulse-gold": "pulse-gold 2s ease-in-out infinite",
+        "fade-in": "fade-in 0.3s ease-out",
       },
       spacing: {
         "safe-bottom": "env(safe-area-inset-bottom)",

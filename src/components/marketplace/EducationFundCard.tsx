@@ -66,7 +66,7 @@ const EducationFundCard = React.forwardRef<HTMLDivElement, Record<string, never>
     ((stats.total_fund_cents % 700) / 700) * 100 : 0;
 
   return (
-    <div ref={ref} style={{ animation: 'fadeInUp 0.5s ease-out' }}>
+    <div ref={ref} className="animate-fade-in">
       <Card className="border-purple-500/30 bg-gradient-to-br from-purple-500/5 via-background to-pink-500/5 overflow-hidden">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-lg">

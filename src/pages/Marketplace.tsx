@@ -444,11 +444,7 @@ const Marketplace: React.FC = () => {
                     <Link 
                       key={listing.id}
                       to={`/marketplace/${listing.id}`} 
-                      className="block"
-                      style={{ 
-                        opacity: 0, 
-                        animation: `fadeInUp 0.3s ease-out ${index * 0.03}s forwards` 
-                      }}
+                      className="block animate-fade-in"
                       onClick={() => trackMarketplaceClick({
                         click_type: 'listing_card',
                         listing_id: listing.id,

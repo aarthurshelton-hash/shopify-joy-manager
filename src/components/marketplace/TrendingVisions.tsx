@@ -162,11 +162,7 @@ export const TrendingVisions: React.FC = () => {
           <Link 
             key={vision.id}
             to={`/marketplace/${vision.listingId}`} 
-            className="block"
-            style={{ 
-              opacity: 0, 
-              animation: `fadeInUp 0.3s ease-out ${index * 0.05}s forwards` 
-            }}
+            className="block animate-fade-in"
             onClick={() => trackMarketplaceClick({
               click_type: 'trending_vision',
               listing_id: vision.listingId,

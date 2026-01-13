@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Loader2, Gift, Sparkles, Crown } from 'lucide-react';
 import { toast } from 'sonner';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { getOrphanedVisualizations, claimOrphanedVisualization } from '@/lib/marketplace/marketplaceApi';
 import { TransferLimitBadge } from './TransferLimitBadge';
@@ -122,16 +122,12 @@ export const ClaimableVisionsSection: React.FC<ClaimableVisionsSectionProps> = (
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
           {visions.map((vision, index) => (
-            <Link
-              to={`/marketplace/${vision.id}`}
+            <div
               key={vision.id}
               onClick={() => handleCardClick(vision.id)}
-              style={{ 
-                opacity: 0, 
-                animation: `fadeInUp 0.3s ease-out ${index * 0.03}s forwards` 
-              }}
+              className="animate-fade-in cursor-pointer"
             >
-              <Card className="overflow-hidden group border-green-500/30 hover:border-green-500/60 transition-all cursor-pointer">
+              <Card className="overflow-hidden group border-green-500/30 hover:border-green-500/60 transition-all">
                 <div className="aspect-square relative overflow-hidden bg-muted">
                   {vision.image_path ? (
                     <img
@@ -187,7 +183,7 @@ export const ClaimableVisionsSection: React.FC<ClaimableVisionsSectionProps> = (
                   </Button>
                 </CardContent>
               </Card>
-            </Link>
+            </div>
           ))}
         </div>
       )}
