@@ -36,7 +36,7 @@ interface TrendingData {
   };
 }
 
-const TrendingWidget = forwardRef<HTMLElement, object>(function TrendingWidget(_, ref) {
+const TrendingWidget = forwardRef<HTMLElement, Record<string, never>>(function TrendingWidget(_props, ref) {
   const { isPremium } = useAuth();
   const [data, setData] = useState<TrendingData | null>(null);
   const [isLoading, setIsLoading] = useState(true);

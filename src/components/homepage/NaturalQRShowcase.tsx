@@ -35,7 +35,7 @@ const samplePatterns = [
   },
 ];
 
-export const NaturalQRShowcase = forwardRef<HTMLElement, object>(function NaturalQRShowcase(_, ref) {
+export const NaturalQRShowcase = forwardRef<HTMLElement, Record<string, never>>(function NaturalQRShowcase(_props, ref) {
   const navigate = useNavigate();
   const [demoStep, setDemoStep] = useState(0);
 
@@ -250,3 +250,5 @@ export const NaturalQRShowcase = forwardRef<HTMLElement, object>(function Natura
     </section>
   );
 });
+
+NaturalQRShowcase.displayName = 'NaturalQRShowcase';

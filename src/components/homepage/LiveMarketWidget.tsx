@@ -24,7 +24,7 @@ interface MarketActivity {
   timestamp: Date;
 }
 
-const LiveMarketWidget = forwardRef<HTMLElement, object>(function LiveMarketWidget(_, ref) {
+const LiveMarketWidget = forwardRef<HTMLElement, Record<string, never>>(function LiveMarketWidget(_props, ref) {
   const { isPremium, isAdmin } = useAuth();
   const [valuePools, setValuePools] = useState<ValuePool[]>([]);
   const [activities, setActivities] = useState<MarketActivity[]>([]);
