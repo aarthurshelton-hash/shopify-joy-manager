@@ -28,12 +28,36 @@ export interface MarketplaceListing {
   };
 }
 
-export async function getActiveListings(): Promise<{
-  data: MarketplaceListing[];
+export interface PaginationOptions {
+  page?: number;
+  limit?: number;
+}
+
+export interface PaginatedResult<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+  hasMore: boolean;
   error: Error | null;
-}> {
+}
+
+export async function getActiveListings(
+  options: PaginationOptions = {}
+): Promise<PaginatedResult<MarketplaceListing>> {
+  const { page = 1, limit = 50 } = options;
+  const offset = (page - 1) * limit;
+
   try {
-    // First get listings with visualizations
+    // Get total count for pagination
+    const { count, error: countError } = await supabase
+      .from('visualization_listings')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'active');
+
+    if (countError) throw countError;
+
+    // Get paginated listings with visualizations
     const { data: listingsData, error: listingsError } = await supabase
       .from('visualization_listings')
       .select(`
@@ -41,7 +65,8 @@ export async function getActiveListings(): Promise<{
         visualization:saved_visualizations(id, title, image_path, game_data)
       `)
       .eq('status', 'active')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
 
     if (listingsError) throw listingsError;
 
@@ -68,9 +93,48 @@ export async function getActiveListings(): Promise<{
       seller: profilesMap[item.seller_id as string] || { display_name: null },
     })) as MarketplaceListing[];
 
-    return { data: listings, error: null };
+    const total = count || 0;
+
+    return { 
+      data: listings, 
+      total,
+      page,
+      limit,
+      hasMore: offset + listings.length < total,
+      error: null 
+    };
   } catch (error) {
-    return { data: [], error: error as Error };
+    return { data: [], total: 0, page, limit, hasMore: false, error: error as Error };
+  }
+}
+
+// Batch check multiple visualizations for listing status (optimized for N+1)
+export async function batchCheckVisualizationsListed(
+  visualizationIds: string[]
+): Promise<Record<string, boolean>> {
+  if (visualizationIds.length === 0) return {};
+
+  try {
+    const { data, error } = await supabase
+      .from('visualization_listings')
+      .select('visualization_id')
+      .in('visualization_id', visualizationIds)
+      .eq('status', 'active');
+
+    if (error) throw error;
+
+    const listedSet = new Set((data || []).map(l => l.visualization_id));
+    
+    return visualizationIds.reduce((acc, id) => {
+      acc[id] = listedSet.has(id);
+      return acc;
+    }, {} as Record<string, boolean>);
+  } catch (error) {
+    console.error('Batch listing check failed:', error);
+    return visualizationIds.reduce((acc, id) => {
+      acc[id] = false;
+      return acc;
+    }, {} as Record<string, boolean>);
   }
 }
 

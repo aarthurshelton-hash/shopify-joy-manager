@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ShoppingBag, Gift, DollarSign, Loader2, Crown, Package, Shield, Palette, Sparkles, TrendingUp, Eye } from 'lucide-react';
+import { ShoppingBag, Gift, DollarSign, Loader2, Crown, Package, Shield, Palette, Sparkles, TrendingUp, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useRandomGameArt } from '@/hooks/useRandomGameArt';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
@@ -22,6 +23,7 @@ import { ClaimableVisionsSection } from '@/components/marketplace/ClaimableVisio
 import { TransferLimitBadge } from '@/components/marketplace/TransferLimitBadge';
 import EducationFundCard from '@/components/marketplace/EducationFundCard';
 import { useSessionStore } from '@/stores/sessionStore';
+import { useMarketplaceRealtime } from '@/hooks/useMarketplaceRealtime';
 import { 
   getActiveListings, 
   completePurchase,
@@ -45,6 +47,12 @@ const Marketplace: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalListings, setTotalListings] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const ITEMS_PER_PAGE = 50;
 
   // Filter states
   const [searchQuery, setSearchQuery] = useState('');
@@ -74,20 +82,42 @@ const Marketplace: React.FC = () => {
     }
   }, [returningFromOrder, capturedTimelineState, setReturningFromOrder, setCapturedTimelineState]);
 
-  const loadListings = useCallback(async () => {
+  const loadListings = useCallback(async (page = 1) => {
     setIsLoading(true);
-    const { data, error } = await getActiveListings();
+    const { data, total, hasMore: more, error } = await getActiveListings({ 
+      page, 
+      limit: ITEMS_PER_PAGE 
+    });
     if (error) {
       toast.error('Failed to load marketplace');
     } else {
       setListings(data);
+      setTotalListings(total);
+      setHasMore(more);
+      setCurrentPage(page);
     }
     setIsLoading(false);
   }, []);
 
+  // Real-time updates for marketplace listings
+  useMarketplaceRealtime({
+    onListingChange: (payload) => {
+      // Refresh listings when any listing changes
+      if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE' || payload.eventType === 'DELETE') {
+        loadListings(currentPage);
+      }
+    },
+    enabled: true,
+  });
+
   useEffect(() => {
-    loadListings();
+    loadListings(1);
   }, [loadListings]);
+
+  const handlePageChange = (page: number) => {
+    loadListings(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   // Handle successful purchase redirect
   useEffect(() => {
@@ -454,12 +484,42 @@ const Marketplace: React.FC = () => {
                 })}
               </div>
             )}
+
+            {/* Pagination Controls */}
+            {!isLoading && totalListings > ITEMS_PER_PAGE && (
+              <div className="flex items-center justify-center gap-4 mt-8">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="gap-1"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Previous
+                </Button>
+                <div className="text-sm text-muted-foreground">
+                  Page {currentPage} of {Math.ceil(totalListings / ITEMS_PER_PAGE)}
+                  <span className="hidden sm:inline ml-2">({totalListings} total)</span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={!hasMore}
+                  className="gap-1"
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
           </TabsContent>
 
           {/* My Listings Tab */}
           {user && (
             <TabsContent value="my-listings">
-              <MyListingsSection userId={user.id} onListingChange={loadListings} />
+              <MyListingsSection userId={user.id} onListingChange={() => loadListings(currentPage)} />
             </TabsContent>
           )}
 
