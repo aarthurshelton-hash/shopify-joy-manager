@@ -76,6 +76,7 @@ const Marketplace: React.FC = () => {
   const [hasMore, setHasMore] = useState(true);
   const [totalListings, setTotalListings] = useState(0);
   const [totalMarketVisions, setTotalMarketVisions] = useState(0);
+  const [totalActiveListed, setTotalActiveListed] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -115,18 +116,29 @@ const Marketplace: React.FC = () => {
     }
   }, [returningFromOrder, capturedTimelineState, setReturningFromOrder, setCapturedTimelineState]);
 
-  // Fetch total market visions (including private)
+  // Fetch total market visions (including private) and total active listings
   useEffect(() => {
-    const fetchTotalVisions = async () => {
-      const { count, error } = await supabase
+    const fetchCounts = async () => {
+      // Fetch total visions (all saved visualizations)
+      const { count: visionsCount, error: visionsError } = await supabase
         .from('saved_visualizations')
         .select('*', { count: 'exact', head: true });
       
-      if (!error && count !== null) {
-        setTotalMarketVisions(count);
+      if (!visionsError && visionsCount !== null) {
+        setTotalMarketVisions(visionsCount);
+      }
+
+      // Fetch total active listings
+      const { count: listingsCount, error: listingsError } = await supabase
+        .from('visualization_listings')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'active');
+      
+      if (!listingsError && listingsCount !== null) {
+        setTotalActiveListed(listingsCount);
       }
     };
-    fetchTotalVisions();
+    fetchCounts();
   }, []);
 
   // Load initial listings with cache support
@@ -449,7 +461,7 @@ const Marketplace: React.FC = () => {
               onCategoryChange={setCategory}
               showGenesisOnly={showGenesisOnly}
               onGenesisToggle={setShowGenesisOnly}
-              totalResults={filteredListings.length}
+              totalResults={totalActiveListed}
               totalMarketVisions={totalMarketVisions}
             />
 
