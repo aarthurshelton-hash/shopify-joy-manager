@@ -139,7 +139,7 @@ export const BookShowcase: React.FC<BookShowcaseProps> = ({
     }
   };
 
-  const PreviewModal = () => (
+  const previewModalContent = (
     <Dialog open={showPreview} onOpenChange={setShowPreview}>
       <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto p-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 border-amber-500/20">
         {/* Header */}
@@ -654,7 +654,7 @@ export const BookShowcase: React.FC<BookShowcaseProps> = ({
                 <div className="flex flex-wrap gap-3 pt-4">
                   <Button 
                     size="lg" 
-                    onClick={() => setShowPreview(true)}
+                    onClick={handleOrder}
                     className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white shadow-lg shadow-amber-600/25"
                   >
                     <ShoppingCart className="w-4 h-4 mr-2" />
@@ -674,7 +674,7 @@ export const BookShowcase: React.FC<BookShowcaseProps> = ({
             </motion.div>
           </div>
         </div>
-        <PreviewModal />
+        {previewModalContent}
       </motion.section>
     );
   }
@@ -714,7 +714,7 @@ export const BookShowcase: React.FC<BookShowcaseProps> = ({
             </div>
           )}
         </motion.div>
-        <PreviewModal />
+        {previewModalContent}
       </>
     );
   }
@@ -780,7 +780,7 @@ export const BookShowcase: React.FC<BookShowcaseProps> = ({
           </div>
         </div>
       </motion.div>
-      <PreviewModal />
+      {previewModalContent}
     </>
   );
 };
