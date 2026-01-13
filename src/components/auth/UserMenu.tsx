@@ -242,6 +242,17 @@ const UserMenu: React.FC = () => {
             Analytics
           </DropdownMenuItem>
           
+          {isPremium && (
+            <DropdownMenuItem 
+              onClick={() => navigate('/premium-analytics')}
+              className="gap-2 cursor-pointer text-primary"
+            >
+              <BarChart3 className="h-4 w-4" />
+              Premium Analytics
+              <Crown className="h-3 w-3 ml-auto" />
+            </DropdownMenuItem>
+          )}
+          
           {isAdmin && (
             <>
               <DropdownMenuSeparator />
