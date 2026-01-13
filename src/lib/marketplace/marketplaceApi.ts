@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { z } from 'zod';
+import { SecurityEvents } from '@/lib/security/auditLog';
 
 // Validation schema for listing price
 const listingPriceSchema = z.number()
@@ -187,6 +188,10 @@ export async function createListing(
       .single();
 
     if (error) throw error;
+    
+    // Log security event for listing creation
+    SecurityEvents.visionListed(user.id, visualizationId, validatedPrice);
+    
     return { data: data as MarketplaceListing, error: null };
   } catch (error) {
     return { data: null, error: error as Error };

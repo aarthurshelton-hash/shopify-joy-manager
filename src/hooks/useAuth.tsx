@@ -2,7 +2,8 @@ import { useState, useEffect, createContext, useContext, ReactNode, useCallback 
 import { User, Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { recordFunnelEvent } from '@/lib/analytics/membershipFunnel';
-
+import { SecurityEvents } from '@/lib/security/auditLog';
+import { trackUserLocation } from '@/lib/security/trackLocation';
 interface Profile {
   id: string;
   user_id: string;
@@ -279,6 +280,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         account_type: 'free',
         has_phone: !!phone,
       });
+      
+      // Log security event and track location
+      SecurityEvents.userSignUp(data.user.id, {
+        email: email,
+        has_phone: !!phone,
+        has_display_name: !!displayName,
+      });
+      
+      // Track geolocation in background
+      trackUserLocation(data.user.id);
     }
     
     return { error };
@@ -291,7 +302,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     if (error) {
+      // Log failed sign-in attempt
+      SecurityEvents.signInFailed(email, error.message);
       return { error };
+    }
+
+    // Log successful sign-in and track location
+    if (data.user) {
+      SecurityEvents.userSignIn(data.user.id, { email });
+      trackUserLocation(data.user.id);
     }
 
     // Check if MFA is required (user has factors enrolled)
@@ -311,6 +330,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    // Log sign-out before clearing state
+    if (user) {
+      SecurityEvents.userSignOut(user.id);
+    }
+    
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
