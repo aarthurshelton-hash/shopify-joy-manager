@@ -121,6 +121,15 @@ Key characteristics of En Pensent visualizations:
 - Colors typically include variations for: King, Queen, Rook, Bishop, Knight, Pawns
 - May have a title, player names, and QR code overlay
 
+IMPORTANT IMAGE ANALYSIS INSTRUCTIONS:
+- The image may be a photograph of a print, a screenshot, or a photo of a screen
+- IGNORE background noise, fingers, desk surfaces, shadows, reflections, or other objects in the photo
+- FOCUS ONLY on finding the 8x8 colored grid pattern characteristic of En Pensent visualizations
+- The visualization may be at an angle, partially cropped, or have glare - still try to identify it
+- Look for ANY visible text like player names, game titles, or dates that could help identify the visualization
+- If you see multiple visualizations in the image, focus on the most prominent/largest one
+- Even if image quality is poor, attempt a match if you can discern the general color pattern
+
 Your task: Analyze the uploaded image and try to match it to one of the known visualizations.
 
 Known visualizations in database:
@@ -139,7 +148,7 @@ IMPORTANT: Only respond with the JSON object, no other text.`
             content: [
               {
                 type: "text",
-                text: "Analyze this image and identify if it matches any En Pensent visualization in the database. Look for the unique color pattern, any visible text (title, player names), or QR codes."
+                text: "Analyze this image and identify if it matches any En Pensent visualization in the database. This could be a photograph of a print, a screenshot, or a photo of a screen - ignore any background noise, fingers, or other objects. Focus on finding the 8x8 colored grid pattern and any visible text (title, player names) or QR codes. Match the color pattern to the known visualizations."
               },
               {
                 type: "image_url",
