@@ -2,6 +2,7 @@ import { useState, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import { SimulationResult, SquareData, GameData } from '@/lib/chess/gameSimulator';
 import { recordVisionInteraction } from '@/lib/visualizations/visionScoring';
+import { watermarkBase64Image } from '@/lib/chess/invisibleWatermark';
 
 interface ExportState {
   isExportingHD: boolean;
@@ -12,6 +13,7 @@ interface ExportState {
 interface UseVisualizationExportOptions {
   isPremium: boolean;
   visualizationId?: string | null;
+  userId?: string | null;
   onUnauthorized?: () => void;
   onUpgradeRequired?: () => void;
 }
@@ -33,7 +35,7 @@ interface TrademarkExportOptions {
  * Hook for handling HD download and GIF export functionality
  */
 export function useVisualizationExport(options: UseVisualizationExportOptions) {
-  const { isPremium, visualizationId, onUnauthorized, onUpgradeRequired } = options;
+  const { isPremium, visualizationId, userId, onUnauthorized, onUpgradeRequired } = options;
   
   const [state, setState] = useState<ExportState>({
     isExportingHD: false,
@@ -78,14 +80,26 @@ export function useVisualizationExport(options: UseVisualizationExportOptions) {
         },
       });
       
-      // Convert to blob for download
-      const blob = await new Promise<Blob>((resolve, reject) => {
-        canvas.toBlob(
-          (b) => b ? resolve(b) : reject(new Error('Failed to create blob')),
-          'image/png',
-          1.0
-        );
-      });
+      // Convert to base64 first for watermarking
+      let base64Image = canvas.toDataURL('image/png', 1.0);
+      
+      // Apply invisible watermark with ownership data
+      if (visualizationId && userId) {
+        try {
+          base64Image = await watermarkBase64Image(base64Image, {
+            visualizationId,
+            userId,
+            timestamp: Date.now(),
+          });
+        } catch (wmError) {
+          console.warn('Failed to apply watermark:', wmError);
+          // Continue without watermark
+        }
+      }
+      
+      // Convert base64 to blob for download
+      const response = await fetch(base64Image);
+      const blob = await response.blob();
       
       // Create download link
       const url = URL.createObjectURL(blob);
@@ -143,7 +157,7 @@ export function useVisualizationExport(options: UseVisualizationExportOptions) {
         totalMoves: exportOptions.gameData.moves?.length || 0,
       };
       
-      const base64Image = await generateCleanPrintImage(simulation, {
+      let base64Image = await generateCleanPrintImage(simulation, {
         darkMode: exportOptions.darkMode || false,
         includeQR: exportOptions.showQR || false,
         shareId: exportOptions.shareId,
@@ -155,6 +169,21 @@ export function useVisualizationExport(options: UseVisualizationExportOptions) {
           compareMode: exportOptions.highlightState.compareMode,
         } : undefined,
       });
+      
+      // Apply invisible watermark with ownership data
+      if (visualizationId && userId) {
+        try {
+          base64Image = await watermarkBase64Image(base64Image, {
+            visualizationId,
+            userId,
+            timestamp: Date.now(),
+            shareId: exportOptions.shareId,
+          });
+        } catch (wmError) {
+          console.warn('Failed to apply watermark:', wmError);
+          // Continue without watermark
+        }
+      }
       
       // Convert base64 to blob for download
       const response = await fetch(base64Image);

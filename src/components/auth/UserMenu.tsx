@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
-import { User, LogOut, Palette, Settings, Crown, CreditCard, Image, Gamepad2, BarChart3, History, Paintbrush, Shield, ShieldCheck, Wrench, Database, Wallet, Banknote } from 'lucide-react';
+import { User, LogOut, Palette, Settings, Crown, CreditCard, Image, Gamepad2, BarChart3, History, Paintbrush, Shield, ShieldCheck, Wrench, Database, Wallet, Banknote, Scale } from 'lucide-react';
 import AuthModal from './AuthModal';
 import MFASetup from './MFASetup';
 import PremiumBadge from '@/components/premium/PremiumBadge';
@@ -26,6 +26,7 @@ const UserMenu: React.FC = () => {
   const [showMFASetup, setShowMFASetup] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [pendingWithdrawals, setPendingWithdrawals] = useState(0);
+  const [pendingDMCA, setPendingDMCA] = useState(0);
 
   // Check if user is admin and fetch pending withdrawals
   useEffect(() => {
@@ -33,6 +34,7 @@ const UserMenu: React.FC = () => {
       if (!user) {
         setIsAdmin(false);
         setPendingWithdrawals(0);
+        setPendingDMCA(0);
         return;
       }
       
@@ -48,15 +50,24 @@ const UserMenu: React.FC = () => {
         const adminStatus = !!data;
         setIsAdmin(adminStatus);
         
-        // Fetch pending withdrawals count if admin
+        // Fetch pending counts if admin
         if (adminStatus) {
-          const { count, error: countError } = await supabase
-            .from('withdrawal_requests')
-            .select('*', { count: 'exact', head: true })
-            .eq('status', 'pending');
+          const [withdrawalsResult, dmcaResult] = await Promise.all([
+            supabase
+              .from('withdrawal_requests')
+              .select('*', { count: 'exact', head: true })
+              .eq('status', 'pending'),
+            supabase
+              .from('dmca_reports')
+              .select('*', { count: 'exact', head: true })
+              .eq('status', 'pending'),
+          ]);
           
-          if (!countError) {
-            setPendingWithdrawals(count || 0);
+          if (!withdrawalsResult.error) {
+            setPendingWithdrawals(withdrawalsResult.count || 0);
+          }
+          if (!dmcaResult.error) {
+            setPendingDMCA(dmcaResult.count || 0);
           }
         }
       } catch (error) {
@@ -268,6 +279,18 @@ const UserMenu: React.FC = () => {
                 {pendingWithdrawals > 0 && (
                   <span className="ml-auto bg-destructive text-destructive-foreground text-xs font-medium px-1.5 py-0.5 rounded-full">
                     {pendingWithdrawals}
+                  </span>
+                )}
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => navigate('/admin/dmca')}
+                className="gap-2 cursor-pointer text-primary"
+              >
+                <Scale className="h-4 w-4" />
+                DMCA Reports
+                {pendingDMCA > 0 && (
+                  <span className="ml-auto bg-destructive text-destructive-foreground text-xs font-medium px-1.5 py-0.5 rounded-full">
+                    {pendingDMCA}
                   </span>
                 )}
               </DropdownMenuItem>
