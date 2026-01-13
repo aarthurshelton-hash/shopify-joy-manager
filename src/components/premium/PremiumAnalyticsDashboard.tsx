@@ -23,11 +23,38 @@ export function PremiumAnalyticsDashboard() {
   const { user, isPremium, isLoading: authLoading } = useAuth();
   const queryClient = useQueryClient();
   const [selectedType, setSelectedType] = useState<'market_trends' | 'engagement_insights' | 'portfolio_analysis'>('market_trends');
+  const [isAdmin, setIsAdmin] = React.useState(false);
+  const [adminLoading, setAdminLoading] = React.useState(true);
+
+  // Check admin status
+  React.useEffect(() => {
+    const checkAdmin = async () => {
+      if (!user) {
+        setIsAdmin(false);
+        setAdminLoading(false);
+        return;
+      }
+      try {
+        const { supabase } = await import('@/integrations/supabase/client');
+        const { data } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .eq('role', 'admin')
+          .maybeSingle();
+        setIsAdmin(!!data);
+      } catch {
+        setIsAdmin(false);
+      }
+      setAdminLoading(false);
+    };
+    checkAdmin();
+  }, [user]);
 
   const { data: analyticsHistory, isLoading: historyLoading } = useQuery({
     queryKey: ['premium-analytics-history'],
     queryFn: getPremiumAnalyticsHistory,
-    enabled: !!user && isPremium,
+    enabled: !!user && isAdmin,
   });
 
   const generateMutation = useMutation({
@@ -45,7 +72,7 @@ export function PremiumAnalyticsDashboard() {
     },
   });
 
-  if (authLoading) {
+  if (authLoading || adminLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -53,47 +80,18 @@ export function PremiumAnalyticsDashboard() {
     );
   }
 
-  if (!isPremium) {
+  if (!isAdmin) {
     return (
-      <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5">
+      <Card className="border-destructive/20 bg-gradient-to-br from-destructive/5 to-muted">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-            <Lock className="h-8 w-8 text-primary" />
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
+            <Lock className="h-8 w-8 text-destructive" />
           </div>
-          <CardTitle className="text-2xl">Premium Analytics</CardTitle>
+          <CardTitle className="text-2xl">Admin Access Required</CardTitle>
           <CardDescription>
-            Unlock exclusive market insights, engagement data, and portfolio analysis
+            Premium Analytics is restricted to administrators only
           </CardDescription>
         </CardHeader>
-        <CardContent className="text-center">
-          <div className="grid gap-4 md:grid-cols-3 mb-6">
-            <div className="p-4 rounded-lg bg-background/50">
-              <TrendingUp className="h-8 w-8 text-primary mx-auto mb-2" />
-              <h4 className="font-semibold">Market Trends</h4>
-              <p className="text-sm text-muted-foreground">
-                Palette & gamecard performance data
-              </p>
-            </div>
-            <div className="p-4 rounded-lg bg-background/50">
-              <BarChart3 className="h-8 w-8 text-accent mx-auto mb-2" />
-              <h4 className="font-semibold">Engagement Insights</h4>
-              <p className="text-sm text-muted-foreground">
-                Top visions & activity patterns
-              </p>
-            </div>
-            <div className="p-4 rounded-lg bg-background/50">
-              <Briefcase className="h-8 w-8 text-primary mx-auto mb-2" />
-              <h4 className="font-semibold">Portfolio Analysis</h4>
-              <p className="text-sm text-muted-foreground">
-                Your holdings & earnings breakdown
-              </p>
-            </div>
-          </div>
-          <Button className="gap-2">
-            <Sparkles className="h-4 w-4" />
-            Upgrade to Premium
-          </Button>
-        </CardContent>
       </Card>
     );
   }

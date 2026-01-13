@@ -158,8 +158,8 @@ const UserMenu: React.FC = () => {
             <PremiumBadge showText={false} />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56 bg-card border-border z-50 p-0">
-          <ScrollArea className="max-h-[70vh]">
+        <DropdownMenuContent align="end" className="w-56 bg-card border-border z-50 p-0 overflow-hidden">
+          <ScrollArea className="h-auto max-h-[70vh] overflow-y-auto">
             <div className="p-1">
           <div className="px-3 py-2">
             <div className="flex items-center gap-2">
@@ -266,16 +266,6 @@ const UserMenu: React.FC = () => {
             Analytics
           </DropdownMenuItem>
           
-          {isPremium && (
-            <DropdownMenuItem 
-              onClick={() => navigate('/premium-analytics')}
-              className="gap-2 cursor-pointer text-primary"
-            >
-              <BarChart3 className="h-4 w-4" />
-              Premium Analytics
-              <Crown className="h-3 w-3 ml-auto" />
-            </DropdownMenuItem>
-          )}
           
           {isAdmin && (
             <>
@@ -359,6 +349,14 @@ const UserMenu: React.FC = () => {
               >
                 <ImageIcon className="h-4 w-4" />
                 AI Art Bank
+                <Crown className="h-3 w-3 ml-auto" />
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => navigate('/premium-analytics')}
+                className="gap-2 cursor-pointer text-amber-500 font-semibold"
+              >
+                <BarChart3 className="h-4 w-4" />
+                Premium Analytics
                 <Crown className="h-3 w-3 ml-auto" />
               </DropdownMenuItem>
             </>
