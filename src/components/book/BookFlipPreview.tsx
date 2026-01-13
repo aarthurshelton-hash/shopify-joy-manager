@@ -7,11 +7,32 @@ import { Button } from '@/components/ui/button';
 import spread1 from '@/assets/book/spread-preview-1.png';
 import spread2 from '@/assets/book/spread-preview-2.png';
 import spread3 from '@/assets/book/spread-preview-3.png';
+import frontCover from '@/assets/book/carlsen-cover-v2.jpg';
+import backCover from '@/assets/book/carlsen-back-cover.jpg';
 
-// Sample spreads with real preview images - matching actual book content
-const SAMPLE_SPREADS = [
+type PageType = 'cover' | 'spread' | 'back';
+
+interface PageData {
+  id: number;
+  type: PageType;
+  image: string;
+  title: string;
+  year?: string;
+  opponent?: string;
+  pageNumber?: number;
+}
+
+// Sample pages including covers
+const BOOK_PAGES: PageData[] = [
   {
-    id: 3,
+    id: 0,
+    type: 'cover',
+    image: frontCover,
+    title: "Front Cover",
+  },
+  {
+    id: 1,
+    type: 'spread',
     image: spread1,
     title: "Breaking the Wall",
     year: "2016",
@@ -19,7 +40,8 @@ const SAMPLE_SPREADS = [
     pageNumber: 6,
   },
   {
-    id: 5,
+    id: 2,
+    type: 'spread',
     image: spread2,
     title: "The 136-Move Epic",
     year: "2021",
@@ -27,12 +49,19 @@ const SAMPLE_SPREADS = [
     pageNumber: 10,
   },
   {
-    id: 7,
+    id: 3,
+    type: 'spread',
     image: spread3,
     title: "The Berlin Endgame",
     year: "2013",
     opponent: "Viswanathan Anand",
     pageNumber: 14,
+  },
+  {
+    id: 4,
+    type: 'back',
+    image: backCover,
+    title: "Back Cover",
   },
 ];
 
@@ -46,7 +75,7 @@ export const BookFlipPreview: React.FC<BookFlipPreviewProps> = ({ className = ''
   const [isFlipping, setIsFlipping] = useState(false);
 
   const nextPage = () => {
-    if (isFlipping || currentPage >= SAMPLE_SPREADS.length - 1) return;
+    if (isFlipping || currentPage >= BOOK_PAGES.length - 1) return;
     setDirection(1);
     setIsFlipping(true);
     setCurrentPage((prev) => prev + 1);
@@ -77,7 +106,14 @@ export const BookFlipPreview: React.FC<BookFlipPreviewProps> = ({ className = ''
     }),
   };
 
-  const spread = SAMPLE_SPREADS[currentPage];
+  const page = BOOK_PAGES[currentPage];
+  const isCover = page.type === 'cover' || page.type === 'back';
+
+  const getPageLabel = () => {
+    if (page.type === 'cover') return 'Front Cover';
+    if (page.type === 'back') return 'Back Cover';
+    return `Spread ${currentPage} of 3`;
+  };
 
   return (
     <div className={`relative ${className}`}>
@@ -94,14 +130,20 @@ export const BookFlipPreview: React.FC<BookFlipPreviewProps> = ({ className = ''
         
         {/* Open book container */}
         <div 
-          className="relative bg-gradient-to-b from-amber-100 to-amber-50 rounded-lg shadow-2xl overflow-hidden"
+          className={`relative rounded-lg shadow-2xl overflow-hidden ${
+            isCover 
+              ? 'bg-gradient-to-br from-slate-900 to-slate-800' 
+              : 'bg-gradient-to-b from-amber-100 to-amber-50'
+          }`}
           style={{ 
             transformStyle: 'preserve-3d',
             transform: 'rotateX(5deg)',
           }}
         >
-          {/* Book binding/spine shadow */}
-          <div className="absolute left-1/2 top-0 bottom-0 w-4 -translate-x-1/2 bg-gradient-to-r from-amber-200 via-amber-300 to-amber-200 z-10 shadow-inner" />
+          {/* Book binding/spine shadow - only for spreads */}
+          {!isCover && (
+            <div className="absolute left-1/2 top-0 bottom-0 w-4 -translate-x-1/2 bg-gradient-to-r from-amber-200 via-amber-300 to-amber-200 z-10 shadow-inner" />
+          )}
           
           {/* Page content area */}
           <div className="relative">
@@ -125,62 +167,93 @@ export const BookFlipPreview: React.FC<BookFlipPreviewProps> = ({ className = ''
                 className="relative"
                 style={{ transformStyle: 'preserve-3d' }}
               >
-                {/* Spread image */}
+                {/* Image */}
                 <div className="relative">
                   <img 
-                    src={spread.image}
-                    alt={`Spread: ${spread.title}`}
-                    className="w-full h-auto block"
+                    src={page.image}
+                    alt={page.title}
+                    className={`w-full h-auto block ${
+                      isCover ? 'aspect-[3/4] object-contain mx-auto py-4' : ''
+                    }`}
                     style={{ 
-                      aspectRatio: '16/9',
-                      objectFit: 'cover',
+                      aspectRatio: isCover ? '3/4' : '16/9',
+                      objectFit: isCover ? 'contain' : 'cover',
+                      maxHeight: isCover ? '500px' : 'auto',
                     }}
                   />
                   
-                  {/* Page texture overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-black/5 pointer-events-none" />
+                  {/* Page texture overlay - only for spreads */}
+                  {!isCover && (
+                    <>
+                      <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-black/5 pointer-events-none" />
+                      
+                      {/* Paper grain texture */}
+                      <div 
+                        className="absolute inset-0 opacity-[0.03] pointer-events-none"
+                        style={{
+                          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+                        }}
+                      />
+                      
+                      {/* Center binding shadow */}
+                      <div className="absolute left-1/2 top-0 bottom-0 w-8 -translate-x-1/2 bg-gradient-to-r from-transparent via-black/10 to-transparent pointer-events-none" />
+                    </>
+                  )}
                   
-                  {/* Paper grain texture */}
-                  <div 
-                    className="absolute inset-0 opacity-[0.03] pointer-events-none"
-                    style={{
-                      backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-                    }}
-                  />
+                  {/* Cover badge overlay */}
+                  {page.type === 'cover' && (
+                    <div className="absolute bottom-4 left-0 right-0 text-center">
+                      <span className="inline-block bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg">
+                        100 Masterpieces
+                      </span>
+                    </div>
+                  )}
                   
-                  {/* Center binding shadow */}
-                  <div className="absolute left-1/2 top-0 bottom-0 w-8 -translate-x-1/2 bg-gradient-to-r from-transparent via-black/10 to-transparent pointer-events-none" />
+                  {/* Back cover info */}
+                  {page.type === 'back' && (
+                    <div className="absolute bottom-4 left-0 right-0 text-center">
+                      <span className="inline-block bg-slate-800/80 text-amber-200 text-xs font-medium px-4 py-2 rounded-full">
+                        Premium Hardcover • Museum-Quality Print
+                      </span>
+                    </div>
+                  )}
                 </div>
                 
-                {/* Game info bar */}
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent p-4 pt-12">
-                  <div className="flex items-end justify-between text-white">
-                    <div>
-                      <p className="text-xs uppercase tracking-wider opacity-70 mb-1">
-                        Game #{spread.id} • Page {spread.pageNumber}
-                      </p>
-                      <h3 className="font-serif text-lg font-bold">
-                        {spread.title}
-                      </h3>
-                      <p className="text-sm opacity-80">
-                        vs {spread.opponent} • {spread.year}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1 text-xs opacity-60">
-                      <BookOpen className="w-3 h-3" />
-                      <span>En Pensent Visualization</span>
+                {/* Game info bar - only for spreads */}
+                {page.type === 'spread' && (
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent p-4 pt-12">
+                    <div className="flex items-end justify-between text-white">
+                      <div>
+                        <p className="text-xs uppercase tracking-wider opacity-70 mb-1">
+                          Game #{page.id} • Page {page.pageNumber}
+                        </p>
+                        <h3 className="font-serif text-lg font-bold">
+                          {page.title}
+                        </h3>
+                        <p className="text-sm opacity-80">
+                          vs {page.opponent} • {page.year}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1 text-xs opacity-60">
+                        <BookOpen className="w-3 h-3" />
+                        <span>En Pensent Visualization</span>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
               </motion.div>
             </AnimatePresence>
           </div>
           
-          {/* Page corners curl effect */}
-          <div className="absolute top-0 right-0 w-12 h-12 bg-gradient-to-bl from-amber-50 to-transparent rounded-bl-lg pointer-events-none" 
-               style={{ boxShadow: 'inset 2px 2px 6px rgba(0,0,0,0.05)' }} />
-          <div className="absolute top-0 left-0 w-12 h-12 bg-gradient-to-br from-amber-50 to-transparent rounded-br-lg pointer-events-none"
-               style={{ boxShadow: 'inset -2px 2px 6px rgba(0,0,0,0.05)' }} />
+          {/* Page corners curl effect - only for spreads */}
+          {!isCover && (
+            <>
+              <div className="absolute top-0 right-0 w-12 h-12 bg-gradient-to-bl from-amber-50 to-transparent rounded-bl-lg pointer-events-none" 
+                   style={{ boxShadow: 'inset 2px 2px 6px rgba(0,0,0,0.05)' }} />
+              <div className="absolute top-0 left-0 w-12 h-12 bg-gradient-to-br from-amber-50 to-transparent rounded-br-lg pointer-events-none"
+                   style={{ boxShadow: 'inset -2px 2px 6px rgba(0,0,0,0.05)' }} />
+            </>
+          )}
         </div>
       </div>
       
@@ -198,7 +271,7 @@ export const BookFlipPreview: React.FC<BookFlipPreviewProps> = ({ className = ''
         
         {/* Page indicators */}
         <div className="flex items-center gap-3">
-          {SAMPLE_SPREADS.map((_, index) => (
+          {BOOK_PAGES.map((pageData, index) => (
             <button
               key={index}
               onClick={() => {
@@ -210,8 +283,11 @@ export const BookFlipPreview: React.FC<BookFlipPreviewProps> = ({ className = ''
               className={`transition-all duration-300 rounded-sm ${
                 index === currentPage 
                   ? 'w-8 h-3 bg-amber-600' 
-                  : 'w-3 h-3 bg-amber-300 hover:bg-amber-400'
+                  : pageData.type === 'cover' || pageData.type === 'back'
+                    ? 'w-3 h-3 bg-amber-500/60 hover:bg-amber-500'
+                    : 'w-3 h-3 bg-amber-300 hover:bg-amber-400'
               }`}
+              title={pageData.type === 'cover' ? 'Front Cover' : pageData.type === 'back' ? 'Back Cover' : pageData.title}
             />
           ))}
         </div>
@@ -220,7 +296,7 @@ export const BookFlipPreview: React.FC<BookFlipPreviewProps> = ({ className = ''
           variant="outline"
           size="icon"
           onClick={nextPage}
-          disabled={currentPage === SAMPLE_SPREADS.length - 1 || isFlipping}
+          disabled={currentPage === BOOK_PAGES.length - 1 || isFlipping}
           className="h-12 w-12 rounded-full border-amber-300 bg-white hover:bg-amber-50 disabled:opacity-30 shadow-md"
         >
           <ChevronRight className="h-6 w-6 text-amber-700" />
@@ -229,7 +305,7 @@ export const BookFlipPreview: React.FC<BookFlipPreviewProps> = ({ className = ''
       
       {/* Page count indicator */}
       <p className="text-center text-sm text-amber-700 mt-4 font-medium">
-        Preview spread {currentPage + 1} of {SAMPLE_SPREADS.length}
+        {getPageLabel()}
         <span className="text-amber-500 font-normal"> • 100 spreads in full book</span>
       </p>
     </div>
