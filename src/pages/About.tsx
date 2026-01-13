@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
-import { Crown, Heart, Palette, Users, Lightbulb, Sparkles, Eye, ScanLine, QrCode, Camera, Fingerprint, DollarSign, Building2 } from 'lucide-react';
+import { Crown, Heart, Palette, Users, Lightbulb, Sparkles, Eye, ScanLine, QrCode, Camera, Fingerprint, DollarSign, Building2, PenTool } from 'lucide-react';
 import { useRandomGameArt } from '@/hooks/useRandomGameArt';
 import { Badge } from '@/components/ui/badge';
 import { RoyaltyCalculator } from '@/components/calculator/RoyaltyCalculator';
@@ -81,7 +81,55 @@ const About = () => {
             </div>
           </div>
 
-          {/* Natural QR Vision Technology - NEW FLAGSHIP SECTION */}
+          {/* The Art of Haiku */}
+          <div className="relative space-y-4 p-6 rounded-xl border border-border/50 bg-card/80 overflow-hidden">
+            {backgroundImages[2] && (
+              <div 
+                className="absolute inset-0 opacity-[0.12] bg-cover bg-center"
+                style={{ backgroundImage: `url(${backgroundImages[2]})` }}
+              />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-br from-background/70 to-background/85" />
+            <div className="relative z-10">
+              <div className="flex items-center gap-3 mb-2">
+                <h2 className="text-2xl font-display font-bold uppercase tracking-wider flex items-center gap-2">
+                  <PenTool className="h-5 w-5 text-primary" />
+                  The Art of Haiku
+                </h2>
+                <Badge className="bg-primary/20 text-primary border-primary/30">
+                  Poetry
+                </Badge>
+              </div>
+              <p className="text-muted-foreground font-serif leading-relaxed mt-3">
+                Each En Pensent visualization is paired with a <strong className="text-foreground">unique haiku</strong> — 
+                a seventeen-syllable poem that distills the essence of the game into three contemplative lines. 
+                This ancient Japanese art form mirrors the precision and elegance of chess itself.
+              </p>
+              <p className="text-muted-foreground font-serif leading-relaxed mt-3">
+                Our haikus capture the emotional arc of each battle: the tension of the opening, the drama of 
+                the middlegame, and the resolution of the endgame. They transform tactical moments into meditative 
+                reflections, giving voice to the silent struggle on the board.
+              </p>
+              
+              <div className="mt-6 p-4 rounded-lg bg-primary/5 border border-primary/20">
+                <p className="text-center font-serif italic text-foreground leading-relaxed">
+                  "Pawns march like soldiers,<br />
+                  A queen's sacrifice blooms bright—<br />
+                  Checkmate, silent art."
+                </p>
+                <p className="text-center text-xs text-muted-foreground mt-3 font-display uppercase tracking-wider">
+                  — Example haiku from "The Immortal Game"
+                </p>
+              </div>
+
+              <p className="text-muted-foreground font-serif leading-relaxed mt-4">
+                Whether adorning our <strong className="text-foreground">"Carlsen in Color"</strong> coffee table book 
+                or accompanying individual prints, these poems elevate chess visualization from digital art to 
+                a complete sensory experience — visual, intellectual, and poetic.
+              </p>
+            </div>
+          </div>
+
           <div className="relative space-y-4 p-6 rounded-xl border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-amber-500/5 overflow-hidden">
             {backgroundImages[4] && (
               <div 
