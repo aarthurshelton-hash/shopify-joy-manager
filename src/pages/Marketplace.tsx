@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
-import { ShoppingBag, Gift, DollarSign, Loader2, Crown, Package, Shield, Palette, Sparkles, TrendingUp, Eye } from 'lucide-react';
+import { ShoppingBag, Gift, DollarSign, Loader2, Crown, Package, Shield, Palette, Sparkles, TrendingUp, Eye, Printer } from 'lucide-react';
 import { ListingsGridSkeleton } from '@/components/marketplace/MarketplaceSkeletons';
 import { useRandomGameArt } from '@/hooks/useRandomGameArt';
 import { Card, CardContent } from '@/components/ui/card';
@@ -22,6 +22,7 @@ import { ClaimableVisionsSection } from '@/components/marketplace/ClaimableVisio
 import { TransferLimitBadge } from '@/components/marketplace/TransferLimitBadge';
 import EducationFundCard from '@/components/marketplace/EducationFundCard';
 import { useSessionStore } from '@/stores/sessionStore';
+import { usePrintOrderStore } from '@/stores/printOrderStore';
 import { useMarketplaceRealtime } from '@/hooks/useMarketplaceRealtime';
 import { useMarketplaceCache } from '@/hooks/useMarketplaceCache';
 import { 
@@ -39,12 +40,33 @@ const Marketplace: React.FC = () => {
   const navigate = useNavigate();
   const { user, isPremium } = useAuth();
   const gameArtImages = useRandomGameArt(16);
+  const { setOrderData } = usePrintOrderStore();
   const {
     returningFromOrder,
     capturedTimelineState,
     setReturningFromOrder,
     setCapturedTimelineState,
   } = useSessionStore();
+
+  const handleOrderPrint = (e: React.MouseEvent, listing: MarketplaceListing) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const gameData = listing.visualization?.game_data as { white?: string; black?: string; event?: string; date?: string; result?: string } | null;
+    setOrderData({
+      title: listing.visualization?.title || 'Untitled Vision',
+      imagePath: listing.visualization?.image_path,
+      pgn: listing.visualization?.pgn || undefined,
+      gameData: {
+        white: gameData?.white || 'Unknown',
+        black: gameData?.black || 'Unknown',
+        event: gameData?.event,
+        date: gameData?.date,
+        result: gameData?.result,
+      },
+      returnPath: '/marketplace',
+    });
+    navigate('/order-print');
+  };
   
   // Infinite scroll state
   const [listings, setListings] = useState<MarketplaceListing[]>([]);
@@ -571,7 +593,7 @@ const Marketplace: React.FC = () => {
                           <h3 className="font-semibold truncate mb-1 text-sm sm:text-base relative z-10">
                             {listing.visualization?.title || 'Untitled'}
                           </h3>
-                          <div className="flex items-center justify-between relative z-10">
+                          <div className="flex items-center justify-between relative z-10 mb-2">
                             <p className="text-xs sm:text-sm text-muted-foreground truncate">
                               by {listing.seller?.display_name || 'Anonymous'}
                             </p>
@@ -593,6 +615,18 @@ const Marketplace: React.FC = () => {
                               </div>
                             )}
                           </div>
+                          
+                          {/* Order Print CTA - Available to everyone */}
+                          <button
+                            onClick={(e) => handleOrderPrint(e, listing)}
+                            className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium
+                              border border-amber-500/30 bg-gradient-to-r from-amber-500/10 to-amber-600/10
+                              hover:from-amber-500/20 hover:to-amber-600/20 hover:border-amber-500/50
+                              text-amber-700 dark:text-amber-400 transition-all relative z-10"
+                          >
+                            <Printer className="h-3.5 w-3.5" />
+                            Order Print
+                          </button>
                         </CardContent>
                       </Card>
                     </Link>

@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, Gift, Sparkles, Crown } from 'lucide-react';
+import { Loader2, Gift, Sparkles, Crown, Printer } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -10,6 +10,7 @@ import { getOrphanedVisualizations, claimOrphanedVisualization } from '@/lib/mar
 import { TransferLimitBadge } from './TransferLimitBadge';
 import { trackMarketplaceClick } from '@/lib/analytics/marketplaceAnalytics';
 import { ClaimableGridSkeleton } from './MarketplaceSkeletons';
+import { usePrintOrderStore } from '@/stores/printOrderStore';
 
 interface OrphanedVision {
   id: string;
@@ -26,9 +27,30 @@ interface ClaimableVisionsSectionProps {
 export const ClaimableVisionsSection: React.FC<ClaimableVisionsSectionProps> = ({ onClaim }) => {
   const { user, isPremium } = useAuth();
   const navigate = useNavigate();
+  const { setOrderData } = usePrintOrderStore();
   const [visions, setVisions] = useState<OrphanedVision[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [claimingId, setClaimingId] = useState<string | null>(null);
+
+  const handleOrderPrint = (e: React.MouseEvent, vision: OrphanedVision) => {
+    e.stopPropagation();
+    // Extract game data from vision if available
+    const gameData = vision.game_data as { white?: string; black?: string; event?: string; date?: string; result?: string } | null;
+    setOrderData({
+      title: vision.title || 'Untitled Vision',
+      imagePath: vision.image_path,
+      pgn: vision.pgn || undefined,
+      gameData: {
+        white: gameData?.white || 'Unknown',
+        black: gameData?.black || 'Unknown',
+        event: gameData?.event,
+        date: gameData?.date,
+        result: gameData?.result,
+      },
+      returnPath: '/marketplace',
+    });
+    navigate('/order-print');
+  };
 
   const loadOrphanedVisions = useCallback(async () => {
     setIsLoading(true);
@@ -159,29 +181,43 @@ export const ClaimableVisionsSection: React.FC<ClaimableVisionsSectionProps> = (
                     {vision.title || 'Untitled Vision'}
                   </h3>
                   
-                  <Button
-                    size="sm"
-                    className="w-full h-7 text-xs gap-1"
-                    disabled={!isPremium || claimingId === vision.id}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleClaim(vision.id, vision.title);
-                    }}
-                  >
-                    {claimingId === vision.id ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : !isPremium ? (
-                      <>
-                        <Crown className="h-3 w-3" />
-                        Premium Only
-                      </>
-                    ) : (
-                      <>
-                        <Gift className="h-3 w-3" />
-                        Claim
-                      </>
-                    )}
-                  </Button>
+                  <div className="flex gap-1.5">
+                    {/* Order Print - Available to everyone */}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1 h-7 text-xs gap-1 border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                      onClick={(e) => handleOrderPrint(e, vision)}
+                    >
+                      <Printer className="h-3 w-3" />
+                      Print
+                    </Button>
+                    
+                    {/* Claim - Premium only */}
+                    <Button
+                      size="sm"
+                      className="flex-1 h-7 text-xs gap-1"
+                      disabled={!isPremium || claimingId === vision.id}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleClaim(vision.id, vision.title);
+                      }}
+                    >
+                      {claimingId === vision.id ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : !isPremium ? (
+                        <>
+                          <Crown className="h-3 w-3" />
+                          Own
+                        </>
+                      ) : (
+                        <>
+                          <Gift className="h-3 w-3" />
+                          Claim
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             </div>
