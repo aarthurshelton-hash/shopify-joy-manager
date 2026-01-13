@@ -166,56 +166,54 @@ export const TrendingVisions: React.FC = () => {
             transition={{ delay: index * 0.05 }}
           >
             <Link to={`/marketplace/${vision.listingId}`} className="block">
-              <Card 
-                className="overflow-hidden group hover:shadow-lg transition-all duration-300 border-orange-500/20 hover:border-orange-500/40 cursor-pointer"
-              >
-              {/* Image */}
-              <div className="aspect-square relative overflow-hidden bg-muted">
-                <img
-                  src={vision.imagePath}
-                  alt={vision.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-                
-                {/* Trending rank badge */}
-                <Badge 
-                  className="absolute top-2 left-2 bg-orange-500/90 hover:bg-orange-500 text-white gap-1 pointer-events-none"
-                >
-                  <TrendingUp className="h-3 w-3" />
-                  #{index + 1}
-                </Badge>
-
-                {/* Recent activity indicator */}
-                {vision.recentOrders > 0 && (
+              <Card className="overflow-hidden group hover:shadow-lg transition-all duration-300 border-orange-500/20 hover:border-orange-500/40 cursor-pointer">
+                {/* Image */}
+                <div className="aspect-square relative overflow-hidden bg-muted">
+                  <img
+                    src={vision.imagePath}
+                    alt={vision.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  
+                  {/* Trending rank badge */}
                   <Badge 
-                    className="absolute top-2 right-2 bg-green-500/90 hover:bg-green-500 text-white text-[10px] px-1.5 pointer-events-none"
+                    className="absolute top-2 left-2 bg-orange-500/90 hover:bg-orange-500 text-white gap-1 pointer-events-none"
                   >
-                    {vision.recentOrders} this week
+                    <TrendingUp className="h-3 w-3" />
+                    #{index + 1}
                   </Badge>
-                )}
 
-                {/* Royalty earnings overlay */}
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2 pointer-events-none">
-                  <div className="flex items-center gap-1 text-white text-xs font-medium">
-                    <DollarSign className="h-3 w-3 text-green-400" />
-                    <span>${(vision.royaltyCentsEarned / 100).toFixed(2)} earned</span>
+                  {/* Recent activity indicator */}
+                  {vision.recentOrders > 0 && (
+                    <Badge 
+                      className="absolute top-2 right-2 bg-green-500/90 hover:bg-green-500 text-white text-[10px] px-1.5 pointer-events-none"
+                    >
+                      {vision.recentOrders} this week
+                    </Badge>
+                  )}
+
+                  {/* Royalty earnings overlay */}
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2 pointer-events-none">
+                    <div className="flex items-center gap-1 text-white text-xs font-medium">
+                      <DollarSign className="h-3 w-3 text-green-400" />
+                      <span>${(vision.royaltyCentsEarned / 100).toFixed(2)} earned</span>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <CardContent className="p-2">
-                <p className="text-xs font-medium truncate">{vision.title}</p>
-                <div className="flex items-center justify-between mt-1">
-                  <span className="text-[10px] text-muted-foreground truncate">
-                    {vision.ownerName}
-                  </span>
-                  <div className="flex items-center gap-1 text-[10px] text-orange-500">
-                    <ShoppingBag className="h-2.5 w-2.5" />
-                    {vision.royaltyOrdersCount}
+                <CardContent className="p-2">
+                  <p className="text-xs font-medium truncate">{vision.title}</p>
+                  <div className="flex items-center justify-between mt-1">
+                    <span className="text-[10px] text-muted-foreground truncate">
+                      {vision.ownerName}
+                    </span>
+                    <div className="flex items-center gap-1 text-[10px] text-orange-500">
+                      <ShoppingBag className="h-2.5 w-2.5" />
+                      {vision.royaltyOrdersCount}
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
             </Link>
           </motion.div>
         ))}

@@ -44,19 +44,21 @@ export const TransferLimitBadge: React.FC<TransferLimitBadgeProps> = ({
   const canTransfer = remaining > 0;
   const isLimited = remaining < 3;
 
+  const tooltipText = canTransfer 
+    ? `${remaining} transfer${remaining !== 1 ? 's' : ''} remaining today. Each vision can be transferred max 3 times per 24 hours.`
+    : 'Transfer limit reached - try again after 24 hours';
+
   return (
     <Badge 
       variant={canTransfer ? 'outline' : 'destructive'}
-      className={`gap-1 cursor-default ${
+      className={`gap-1 ${
         canTransfer 
           ? isLimited 
             ? 'border-amber-500/50 text-amber-600 bg-amber-500/10' 
             : 'border-green-500/50 text-green-600 bg-green-500/10'
           : ''
       } ${className}`}
-      title={canTransfer 
-        ? `${remaining} transfer${remaining !== 1 ? 's' : ''} remaining today. Each vision can be transferred max 3 times per 24 hours.`
-        : 'Transfer limit reached - try again after 24 hours'}
+      title={tooltipText}
     >
       {canTransfer ? (
         <Unlock className="h-3 w-3" />
