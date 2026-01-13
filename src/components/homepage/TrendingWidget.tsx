@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, forwardRef } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   TrendingUp, Heart, Users, Crown, BarChart3, Lock, 
@@ -36,7 +36,7 @@ interface TrendingData {
   };
 }
 
-const TrendingWidget = () => {
+const TrendingWidget = forwardRef<HTMLElement, object>(function TrendingWidget(_, ref) {
   const { isPremium } = useAuth();
   const [data, setData] = useState<TrendingData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -147,7 +147,7 @@ const TrendingWidget = () => {
   };
 
   return (
-    <section className="py-12">
+    <section ref={ref} className="py-12">
       <div className="container mx-auto px-4">
         <div className="max-w-5xl mx-auto">
           <motion.div
@@ -350,6 +350,6 @@ const TrendingWidget = () => {
       </div>
     </section>
   );
-};
+});
 
 export default TrendingWidget;
