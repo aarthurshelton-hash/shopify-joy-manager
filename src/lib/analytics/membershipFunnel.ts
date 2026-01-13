@@ -40,57 +40,30 @@ function getSessionId(): string {
 }
 
 /**
- * Generate a simple IP hash for anonymous tracking
- */
-async function getIpHash(): Promise<string | null> {
-  try {
-    const fingerprint = [
-      navigator.userAgent,
-      navigator.language,
-      screen.width,
-      screen.height,
-      new Date().getTimezoneOffset(),
-    ].join('|');
-    
-    let hash = 0;
-    for (let i = 0; i < fingerprint.length; i++) {
-      const char = fingerprint.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash;
-    }
-    return hash.toString(36);
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Record a membership funnel event
+ * Record a membership funnel event via secure edge function
+ * Uses server-side rate limiting and validation
  */
 export async function recordFunnelEvent(
   eventType: FunnelEventType,
   metadata?: FunnelEventMetadata
 ): Promise<boolean> {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
     const currentSessionId = getSessionId();
-    const ipHash = user ? null : await getIpHash();
-
-    const { error } = await supabase
-      .from('membership_funnel_events')
-      .insert({
+    
+    // Get auth token if available
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    const response = await supabase.functions.invoke('track-funnel-event', {
+      body: {
         event_type: eventType,
-        user_id: user?.id || null,
         session_id: currentSessionId,
         trigger_source: metadata?.trigger_source || null,
-        ip_hash: ipHash,
-        metadata: metadata ? JSON.stringify(metadata) : null,
-        converted_to_signup: eventType === 'signup_completed',
-        converted_to_premium: eventType === 'subscription_active',
-      });
+        metadata: metadata || null,
+      },
+    });
 
-    if (error) {
-      console.error('Error recording funnel event:', error);
+    if (response.error) {
+      console.error('Error recording funnel event:', response.error);
       return false;
     }
 
