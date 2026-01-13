@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Camera, Upload, Scan, CheckCircle, XCircle, Loader2, ExternalLink, Sparkles, Play, BarChart3, ArrowRight, ArrowLeft, Fingerprint, TrendingUp, Crown, Users, Link2 } from "lucide-react";
+import { Camera, Upload, Scan, CheckCircle, XCircle, Loader2, ExternalLink, Sparkles, Play, BarChart3, ArrowRight, ArrowLeft, Fingerprint, TrendingUp, Crown, Users, Link2, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -14,6 +14,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { ViewfinderOverlay } from "@/components/scanner/ViewfinderOverlay";
 import { ConfidenceRing } from "@/components/scanner/ConfidenceRing";
 import { ScanHistory, saveScanToHistory } from "@/components/scanner/ScanHistory";
+import { ScanLeaderboard } from "@/components/scanner/ScanLeaderboard";
+import { OfflineSyncIndicator } from "@/components/scanner/OfflineSyncIndicator";
+import { useOfflineScanCache } from "@/hooks/useOfflineScanCache";
 import type { SquareData } from "@/lib/chess/gameSimulator";
 
 interface ScanResult {
@@ -101,6 +104,9 @@ export default function VisionScannerPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const randomArts = useRandomGameArt(6);
   
+  // Offline scan cache
+  const { isOnline, pendingCount, syncing, cacheScan, syncPendingScans } = useOfflineScanCache(user?.id);
+  
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -113,6 +119,7 @@ export default function VisionScannerPage() {
   const [darkMode, setDarkMode] = useState(false);
   const [demoStep, setDemoStep] = useState(0);
   const [historyKey, setHistoryKey] = useState(0);
+  const [leaderboardKey, setLeaderboardKey] = useState(0);
 
   // Animate through demo steps when idle
   useEffect(() => {
@@ -128,6 +135,26 @@ export default function VisionScannerPage() {
     setScanning(true);
     setResult(null);
     setPreviewUrl(imageData);
+
+    // Handle offline mode
+    if (!isOnline) {
+      // Cache the scan for later sync
+      if (user) {
+        cacheScan({
+          matched: false, // We can't know if it matches when offline
+          imagePreview: imageData.substring(0, 500),
+        });
+        toast.info("Scan saved offline", {
+          description: "Will sync when connection is restored",
+        });
+      }
+      setScanning(false);
+      setResult({
+        matched: false,
+        reason: "You're offline. Scan saved locally and will sync when you're back online.",
+      });
+      return;
+    }
 
     try {
       const response = await fetch(
@@ -159,6 +186,24 @@ export default function VisionScannerPage() {
           imageData.substring(0, 500)
         );
         setHistoryKey(prev => prev + 1); // Trigger history refresh
+        
+        // Check for achievements
+        try {
+          const { data: achievements } = await supabase.rpc("check_scan_achievements", { 
+            p_user_id: user.id 
+          });
+          
+          // Show toast for newly earned achievements
+          const newAchievements = (achievements || []).filter((a: { just_earned: boolean }) => a.just_earned);
+          if (newAchievements.length > 0) {
+            toast.success("🏆 Achievement Unlocked!", {
+              description: `You earned: ${newAchievements.map((a: { achievement_type: string }) => a.achievement_type.replace(/_/g, " ")).join(", ")}`,
+            });
+            setLeaderboardKey(prev => prev + 1);
+          }
+        } catch (error) {
+          console.error("Achievement check failed:", error);
+        }
       }
       
       if (data.matched && data.vision) {
@@ -566,9 +611,26 @@ export default function VisionScannerPage() {
                   className="hidden"
                 />
 
+                {/* Offline Sync Indicator */}
+                {(pendingCount > 0 || !isOnline) && (
+                  <div className="mt-4">
+                    <OfflineSyncIndicator
+                      isOnline={isOnline}
+                      pendingCount={pendingCount}
+                      syncing={syncing}
+                      onSync={syncPendingScans}
+                    />
+                  </div>
+                )}
+
                 {/* Scan History */}
-                <div className="mt-6">
+                <div className="mt-4">
                   <ScanHistory key={historyKey} />
+                </div>
+                
+                {/* Scan Leaderboard */}
+                <div className="mt-4">
+                  <ScanLeaderboard key={leaderboardKey} />
                 </div>
               </div>
             </motion.div>

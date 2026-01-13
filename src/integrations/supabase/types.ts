@@ -577,6 +577,27 @@ export type Database = {
         }
         Relationships: []
       }
+      scan_achievements: {
+        Row: {
+          achieved_at: string
+          achievement_type: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          achieved_at?: string
+          achievement_type: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          achieved_at?: string
+          achievement_type?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       scan_history: {
         Row: {
           confidence: number | null
@@ -1105,6 +1126,18 @@ export type Database = {
         }
         Relationships: []
       }
+      scan_leaderboard: {
+        Row: {
+          avatar_url: string | null
+          display_name: string | null
+          last_scan_at: string | null
+          total_scans: number | null
+          total_successful_scans: number | null
+          unique_visions_scanned: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       calculate_portfolio_value: {
@@ -1129,6 +1162,13 @@ export type Database = {
       check_grace_period_expiration: {
         Args: { p_user_id: string }
         Returns: boolean
+      }
+      check_scan_achievements: {
+        Args: { p_user_id: string }
+        Returns: {
+          achievement_type: string
+          just_earned: boolean
+        }[]
       }
       create_withdrawal_request: {
         Args: {
