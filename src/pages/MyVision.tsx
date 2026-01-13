@@ -20,7 +20,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { Crown, Trash2, Download, Image as ImageIcon, Loader2, Link2, ExternalLink, Sparkles, Printer, RefreshCw, ShoppingBag, Tag, Settings } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Crown, Trash2, Download, Image as ImageIcon, Loader2, Link2, ExternalLink, Sparkles, Printer, RefreshCw, ShoppingBag, Tag, Settings, Globe, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import { OrderPrintButton } from '@/components/shop/OrderPrintButton';
 import { VisionaryMembershipCard, SubscriptionManagement } from '@/components/premium';
@@ -33,6 +34,7 @@ import { useSessionStore } from '@/stores/sessionStore';
 import { PortfolioRoyaltySummary } from '@/components/vision/PortfolioRoyaltySummary';
 import HoldingsValueDashboard from '@/components/vision/HoldingsValueDashboard';
 import { GracePeriodBanner } from '@/components/notifications/GracePeriodBanner';
+import PrivacyToggle from '@/components/vision/PrivacyToggle';
 
 const MyVision: React.FC = () => {
   const navigate = useNavigate();
@@ -57,6 +59,7 @@ const MyVision: React.FC = () => {
   const [showVisionaryModal, setShowVisionaryModal] = useState(false);
   const [showSubscriptionPanel, setShowSubscriptionPanel] = useState(false);
   const [isDownloading, setIsDownloading] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState<'public' | 'private'>('public');
 
   // Handle restoration toast when returning from order page
   useEffect(() => {
@@ -476,7 +479,65 @@ const MyVision: React.FC = () => {
             </Button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <Tabs value={activeSection} onValueChange={(v) => setActiveSection(v as 'public' | 'private')}>
+            <TabsList className="mb-6">
+              <TabsTrigger value="public" className="gap-2">
+                <Globe className="h-4 w-4" />
+                Public ({visualizations.filter(v => !(v.game_data as { is_private?: boolean }).is_private).length})
+              </TabsTrigger>
+              <TabsTrigger value="private" className="gap-2">
+                <Lock className="h-4 w-4" />
+                Private ({visualizations.filter(v => (v.game_data as { is_private?: boolean }).is_private).length})
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="public">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {visualizations.filter(v => !(v.game_data as { is_private?: boolean }).is_private).map((viz) => (
+                  <VisionCard 
+                    key={viz.id} 
+                    viz={viz} 
+                    listedIds={listedIds}
+                    isDownloading={isDownloading}
+                    onNavigate={() => navigate(`/my-vision/${viz.id}`)}
+                    onDownload={() => handleDownload(viz)}
+                    onPrint={() => handleOrderPrint(viz)}
+                    onSell={() => setListingTarget(viz)}
+                    onDelete={() => setDeleteTarget(viz)}
+                    onCopyLink={() => handleCopyShareLink(viz.public_share_id)}
+                    onViewPublic={() => handleViewPublicPage(viz.public_share_id)}
+                  />
+                ))}
+              </div>
+              {visualizations.filter(v => !(v.game_data as { is_private?: boolean }).is_private).length === 0 && (
+                <p className="text-center text-muted-foreground py-8">No public visions yet. Your visions will be visible to other collectors here.</p>
+              )}
+            </TabsContent>
+            
+            <TabsContent value="private">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {visualizations.filter(v => (v.game_data as { is_private?: boolean }).is_private).map((viz) => (
+                  <VisionCard 
+                    key={viz.id} 
+                    viz={viz} 
+                    listedIds={listedIds}
+                    isDownloading={isDownloading}
+                    onNavigate={() => navigate(`/my-vision/${viz.id}`)}
+                    onDownload={() => handleDownload(viz)}
+                    onPrint={() => handleOrderPrint(viz)}
+                    onSell={() => setListingTarget(viz)}
+                    onDelete={() => setDeleteTarget(viz)}
+                    onCopyLink={() => handleCopyShareLink(viz.public_share_id)}
+                    onViewPublic={() => handleViewPublicPage(viz.public_share_id)}
+                    isPrivate
+                  />
+                ))}
+              </div>
+              {visualizations.filter(v => (v.game_data as { is_private?: boolean }).is_private).length === 0 && (
+                <p className="text-center text-muted-foreground py-8">No private visions. Toggle any vision to private to hide it from other collectors.</p>
+              )}
+            </TabsContent>
+          </Tabs>
             {visualizations.map((viz) => (
               <Card 
                 key={viz.id} 

@@ -1016,6 +1016,7 @@ export type Database = {
           game_data: Json
           id: string
           image_path: string
+          is_private: boolean
           pgn: string | null
           public_share_id: string | null
           title: string
@@ -1027,6 +1028,7 @@ export type Database = {
           game_data: Json
           id?: string
           image_path: string
+          is_private?: boolean
           pgn?: string | null
           public_share_id?: string | null
           title: string
@@ -1038,6 +1040,7 @@ export type Database = {
           game_data?: Json
           id?: string
           image_path?: string
+          is_private?: boolean
           pgn?: string | null
           public_share_id?: string | null
           title?: string
@@ -1776,6 +1779,17 @@ export type Database = {
         Returns: string
       }
       generate_share_id: { Args: never; Returns: string }
+      get_available_palettes_for_game: {
+        Args: { p_pgn: string }
+        Returns: {
+          is_taken: boolean
+          listing_price_cents: number
+          owner_display_name: string
+          owner_user_id: string
+          palette_id: string
+          visualization_id: string
+        }[]
+      }
       get_funnel_stats: {
         Args: { days_back?: number }
         Returns: {
