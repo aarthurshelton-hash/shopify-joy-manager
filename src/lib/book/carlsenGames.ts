@@ -12,7 +12,7 @@ export interface CarlsenGame {
   result: string;
   significance: string; // Brief description of why this game is notable
   pgn: string;
-  haiku?: string; // AI-generated haiku
+  haiku?: string; // Unique haiku poetry
 }
 
 // Magnus Carlsen's 100 Greatest Games (curated selection)
