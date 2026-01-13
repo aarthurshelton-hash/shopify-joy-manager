@@ -1,13 +1,14 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Upload, FileText, Crown, Sparkles, CheckCircle, XCircle, Loader2, Wrench, ArrowRight, ChevronLeft, ChevronRight, Search, X, Shuffle, Heart, Award, PenTool } from 'lucide-react';
+import { Upload, FileText, Crown, Sparkles, CheckCircle, XCircle, Loader2, Wrench, ArrowRight, ChevronLeft, ChevronRight, Search, X, Shuffle, Heart, Award, PenTool, Trophy, Star } from 'lucide-react';
 import { famousGames, FamousGame, getRandomFamousGame } from '@/lib/chess/famousGames';
 import { gameImageImports } from '@/lib/chess/gameImages';
 import { getPoetryPreview, getPoetryStyleLabel } from '@/lib/chess/gamePoetry';
 import { validatePgn, cleanPgn, PgnValidationResult } from '@/lib/chess/pgnValidator';
 import { fixPgn, PgnFixResult } from '@/lib/chess/pgnFixer';
 import { detectGameCard } from '@/lib/chess/gameCardDetection';
+import { detectEmergingGame, formatSignificanceDisplay, EmergingGameSignificance } from '@/lib/chess/emergingGameDetection';
 import { toast } from 'sonner';
 import { useFavoriteGames } from '@/hooks/useFavoriteGames';
 import { useAuth } from '@/hooks/useAuth';
@@ -183,8 +184,9 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
     setFixResult(null);
   }, []);
   
-  // Auto-detect if uploaded/pasted PGN matches a famous game card
-  const checkForGameCardMatch = useCallback((pgnText: string) => {
+  // Auto-detect if uploaded/pasted PGN matches a famous game card OR is an emerging classic
+  const checkForGameCardMatch = useCallback(async (pgnText: string) => {
+    // First check for famous game card match
     const match = detectGameCard(pgnText);
     
     if (match.isMatch && match.matchedGame) {
@@ -221,20 +223,69 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
       return true;
     }
     
+    // If not a famous game, check if it's an emerging classic (new high-value game)
+    try {
+      const emergingResult = await detectEmergingGame(pgnText);
+      
+      if (emergingResult.isEmergingClassic) {
+        const display = formatSignificanceDisplay(emergingResult);
+        
+        toast.success(
+          <div className="flex items-center gap-2">
+            {emergingResult.projectedRarity === 'legendary' ? (
+              <Trophy className="h-4 w-4 text-amber-400" />
+            ) : (
+              <Star className="h-4 w-4 text-purple-400" />
+            )}
+            <span>{display.badge}</span>
+          </div>,
+          {
+            description: (
+              <div className="space-y-1">
+                <p>{display.description}</p>
+                {emergingResult.reasons.slice(0, 2).map((reason, i) => (
+                  <p key={i} className="text-xs opacity-80">• {reason}</p>
+                ))}
+                {emergingResult.firstClaimBonus && (
+                  <p className="text-xs font-medium text-amber-400">🏆 Be the first to claim this game!</p>
+                )}
+              </div>
+            ),
+            duration: 8000,
+          }
+        );
+      } else if (emergingResult.significanceScore >= 25) {
+        // Show subtle notification for moderately interesting games
+        toast.info(
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-blue-400" />
+            <span>Interesting Game Detected</span>
+          </div>,
+          {
+            description: emergingResult.reasons[0] || 'This game has collecting potential.',
+            duration: 4000,
+          }
+        );
+      }
+    } catch (error) {
+      console.error('Error detecting emerging game:', error);
+    }
+    
     return false;
   }, []);
 
   const handleFileUpload = useCallback((file: File) => {
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       const text = e.target?.result as string;
       if (text) {
         setPgn(text);
         setValidation(null);
         setFixResult(null);
         
-        // Check for game card match
-        if (!checkForGameCardMatch(text)) {
+        // Check for game card match (async)
+        const matched = await checkForGameCardMatch(text);
+        if (!matched) {
           setSelectedGame(null);
         }
       }
