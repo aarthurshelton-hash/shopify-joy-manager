@@ -1953,6 +1953,252 @@ export const carlsenLegendaryGames: FamousGame[] = [
 [Result "1-0"]
 
 1. d4 Nf6 2. c4 e6 3. Nf3 d5 4. Nc3 Be7 5. Bf4 O-O 6. e3 c5 7. dxc5 Bxc5 8. cxd5 Nxd5 9. Nxd5 exd5 10. a3 Nc6 11. Bd3 Bb6 12. O-O d4 1-0`
+  },
+  {
+    id: 'carlsen-anand-wc-2014',
+    title: 'The Berlin Endgame Maestro',
+    event: 'World Championship',
+    year: 2014,
+    white: 'Magnus Carlsen',
+    black: 'Viswanathan Anand',
+    description: 'Game 6 - A masterclass in the Berlin endgame, showcasing Carlsen\'s legendary technique.',
+    source: 'chessgames.com/2014',
+    pgn: `[Event "World Championship"]
+[Site "Sochi RUS"]
+[Date "2014.11.15"]
+[Round "6"]
+[White "Magnus Carlsen"]
+[Black "Viswanathan Anand"]
+[Result "1-0"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bb5 Nf6 4. O-O Nxe4 5. d4 Nd6 6. Bxc6 dxc6 7. dxe5 Nf5 8. Qxd8+ Kxd8 9. h3 Bd7 10. Rd1 Be7 11. Nc3 Kc8 12. Bg5 h6 13. Bxe7 Nxe7 14. Rd2 c5 15. Rad1 Be6 16. Ne1 Ng6 17. Nd3 b6 18. Ne2 Kb7 19. Nef4 Nxf4 20. Nxf4 Bc4 21. Nd5 Rad8 22. b3 Ba6 23. c4 Rxd5 24. Rxd5 Rd8 25. Rxd8 Kc6 26. R1d5 1-0`
+  },
+  {
+    id: 'carlsen-aronian-2012',
+    title: 'Nordic Warrior Spirit',
+    event: 'Bilbao Masters',
+    year: 2012,
+    white: 'Magnus Carlsen',
+    black: 'Levon Aronian',
+    description: 'A fierce battle where Carlsen\'s Nordic fighting spirit prevails.',
+    source: 'chessgames.com/2012',
+    pgn: `[Event "Bilbao Masters"]
+[Site "Bilbao ESP"]
+[Date "2012.10.10"]
+[Round "5"]
+[White "Magnus Carlsen"]
+[Black "Levon Aronian"]
+[Result "1-0"]
+
+1. d4 Nf6 2. c4 e6 3. Nf3 b6 4. g3 Ba6 5. b3 Bb4+ 6. Bd2 Be7 7. Nc3 c6 8. e4 d5 9. e5 Nfd7 10. Bg2 O-O 11. O-O b5 12. cxd5 exd5 13. Ne2 c5 14. Nf4 Nc6 15. Bc3 cxd4 16. Nxd4 Nxd4 17. Bxd4 Bc5 18. Bxc5 Nxc5 19. Qd4 b4 20. Rfd1 Qe7 21. Rac1 Rfd8 22. Qe3 Nd3 23. Nxd5 1-0`
+  },
+  {
+    id: 'carlsen-nakamura-2011',
+    title: 'Blitz Lightning Speed',
+    event: 'Zurich Chess Challenge Blitz',
+    year: 2011,
+    white: 'Magnus Carlsen',
+    black: 'Hikaru Nakamura',
+    description: 'A blitz masterpiece showcasing Carlsen\'s unmatched speed and intuition.',
+    source: 'chessgames.com/2011',
+    pgn: `[Event "Zurich Chess Challenge"]
+[Site "Zurich SUI"]
+[Date "2011.09.11"]
+[White "Magnus Carlsen"]
+[Black "Hikaru Nakamura"]
+[Result "1-0"]
+
+1. c4 e5 2. Nc3 Nf6 3. Nf3 Nc6 4. g3 Bb4 5. Bg2 O-O 6. O-O e4 7. Ng5 Bxc3 8. bxc3 Re8 9. f3 e3 10. d3 d5 11. cxd5 Qxd5 12. Qa4 Bf5 13. dxe3 h6 14. Nf3 Rad8 15. Nd4 Nxd4 16. cxd4 Qxa2 17. Bb2 c6 18. e4 Bg6 19. d5 cxd5 20. Bxa7 d4 21. Bb6 Rd7 22. Ba5 Nd5 23. e5 Nc3 24. Qd4 Re6 25. f4 Qb3 26. Qxd7 1-0`
+  },
+  {
+    id: 'carlsen-giri-2015',
+    title: 'The Positional Squeeze',
+    event: 'Gashimov Memorial',
+    year: 2015,
+    white: 'Magnus Carlsen',
+    black: 'Anish Giri',
+    description: 'A slow, crushing positional masterpiece that leaves no escape.',
+    source: 'chessgames.com/2015',
+    pgn: `[Event "Gashimov Memorial"]
+[Site "Shamkir AZE"]
+[Date "2015.04.17"]
+[Round "1"]
+[White "Magnus Carlsen"]
+[Black "Anish Giri"]
+[Result "1-0"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bb5 Nf6 4. d3 Bc5 5. c3 O-O 6. Bg5 h6 7. Bh4 Be7 8. O-O d6 9. Nbd2 Nh5 10. Bxe7 Qxe7 11. Nc4 Nf4 12. Ne3 g6 13. a4 a6 14. Ba4 Kg7 15. Bc2 Ne6 16. d4 Nf4 17. dxe5 dxe5 18. Nd5 Nxd5 19. exd5 Nd4 20. Nxd4 exd4 21. Qf3 Bf5 22. Bxf5 gxf5 23. Qxf5 Qe5 24. Qxe5+ dxe5 25. Rfe1 f6 26. Re4 1-0`
+  },
+  {
+    id: 'carlsen-so-2017',
+    title: 'The Exchange Sacrifice',
+    event: 'Paris Grand Chess Tour',
+    year: 2017,
+    white: 'Magnus Carlsen',
+    black: 'Wesley So',
+    description: 'A beautiful exchange sacrifice demonstrates Carlsen\'s deep positional understanding.',
+    source: 'chessgames.com/2017',
+    pgn: `[Event "Paris Grand Chess Tour"]
+[Site "Paris FRA"]
+[Date "2017.06.21"]
+[Round "1"]
+[White "Magnus Carlsen"]
+[Black "Wesley So"]
+[Result "1-0"]
+
+1. c4 e6 2. Nc3 d5 3. d4 Nf6 4. cxd5 exd5 5. Bg5 c6 6. e3 Bf5 7. Qf3 Bg6 8. Bxf6 Qxf6 9. Qxf6 gxf6 10. Nf3 Nd7 11. Nh4 Be7 12. g3 O-O-O 13. Bg2 Nb6 14. O-O Bf5 15. Nxf5 Rg8 16. Nd6+ Bxd6 17. Kh1 Rxg3 18. fxg3 Bxg3 19. Rac1 Nd7 20. Na4 Nb8 21. Nb6+ axb6 22. Rxc6+ Kb8 23. Rxb6 Rd6 24. Rxd6 1-0`
+  },
+  {
+    id: 'carlsen-ding-2019',
+    title: 'Knight Outpost Domination',
+    event: 'Sinquefield Cup',
+    year: 2019,
+    white: 'Magnus Carlsen',
+    black: 'Ding Liren',
+    description: 'A knight on d5 becomes the decisive factor in this strategic masterpiece.',
+    source: 'chessgames.com/2019',
+    pgn: `[Event "Sinquefield Cup"]
+[Site "Saint Louis USA"]
+[Date "2019.08.19"]
+[Round "3"]
+[White "Magnus Carlsen"]
+[Black "Ding Liren"]
+[Result "1-0"]
+
+1. c4 e6 2. Nc3 d5 3. d4 Nf6 4. cxd5 exd5 5. Bg5 c6 6. e3 Bf5 7. Qf3 Bg6 8. Bxf6 Qxf6 9. Qxf6 gxf6 10. Nf3 Nd7 11. Nh4 Nb6 12. Bd3 Bxd3 13. Kd2 Bf5 14. Nxf5 O-O-O 15. Rac1 Kb8 16. Na4 Nxa4 17. b3 Nb6 18. Nd6 Be7 19. Nc4 Nc8 20. Ke2 Nd6 21. Nxd6 Bxd6 22. Kf3 Rhe8 23. e4 1-0`
+  },
+  {
+    id: 'carlsen-firouzja-2022',
+    title: 'The Passing of the Torch',
+    event: 'Norway Chess',
+    year: 2022,
+    white: 'Magnus Carlsen',
+    black: 'Alireza Firouzja',
+    description: 'An epic battle against the rising star, featuring a crucial pawn promotion.',
+    source: 'chessgames.com/2022',
+    pgn: `[Event "Norway Chess"]
+[Site "Stavanger NOR"]
+[Date "2022.06.02"]
+[Round "4"]
+[White "Magnus Carlsen"]
+[Black "Alireza Firouzja"]
+[Result "1-0"]
+
+1. d4 Nf6 2. c4 e6 3. Nf3 d5 4. g3 Be7 5. Bg2 O-O 6. O-O dxc4 7. Qc2 a6 8. a4 Bd7 9. Qxc4 Bc6 10. Bf4 a5 11. Nc3 Na6 12. Ne5 Bxg2 13. Kxg2 Nd5 14. Nxd5 Qxd5+ 15. Qxd5 exd5 16. Nd3 c6 17. Rfc1 Nb4 18. Nxb4 axb4 19. a5 Ra6 20. Rc5 1-0`
+  },
+  {
+    id: 'carlsen-nepo-wc-2021-g8',
+    title: 'The Crushing Blow',
+    event: 'World Championship',
+    year: 2021,
+    white: 'Magnus Carlsen',
+    black: 'Ian Nepomniachtchi',
+    description: 'Game 8 - Exploiting a blunder to deliver a devastating psychological blow.',
+    source: 'chessgames.com/2021',
+    pgn: `[Event "World Championship"]
+[Site "Dubai UAE"]
+[Date "2021.12.05"]
+[Round "8"]
+[White "Magnus Carlsen"]
+[Black "Ian Nepomniachtchi"]
+[Result "1-0"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 6. Re1 b5 7. Bb3 O-O 8. a4 Rb8 9. axb5 axb5 10. h3 d6 11. c3 b4 12. d3 bxc3 13. bxc3 d5 14. Nbd2 dxe4 15. dxe4 Bd6 16. Qc2 h6 17. Nf1 Ne7 18. Ng3 Ng6 19. Be3 Qe8 20. Red1 Be6 21. Ba4 Bd7 22. Nd2 Bxa4 23. Qxa4 Qxa4 24. Rxa4 Ra8 25. Rda1 Rxa4 26. Rxa4 Rb8 27. Ra6 Nf4 28. Kf1 Bc5 29. Bxc5 Nd3 30. Bd6 Rd8 31. Bxe5 1-0`
+  },
+  {
+    id: 'carlsen-caruana-2018-g10',
+    title: 'The Spanish Attack',
+    event: 'World Championship',
+    year: 2018,
+    white: 'Magnus Carlsen',
+    black: 'Fabiano Caruana',
+    description: 'Game 10 - A near-win with the Spanish Opening that showcased Carlsen\'s attacking prowess.',
+    source: 'chessgames.com/2018',
+    pgn: `[Event "World Championship"]
+[Site "London ENG"]
+[Date "2018.11.22"]
+[Round "10"]
+[White "Magnus Carlsen"]
+[Black "Fabiano Caruana"]
+[Result "1/2-1/2"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 6. Re1 b5 7. Bb3 O-O 8. a4 b4 9. d4 d6 10. dxe5 dxe5 11. Nbd2 Bc5 12. h3 h6 13. Nf1 Be6 14. Ng3 Qxd1 15. Rxd1 Bxb3 16. cxb3 Rfd8 17. Rxd8+ Rxd8 18. Be3 Bxe3 19. fxe3 Ne8 20. Rc1 c6 21. Kf2 Nd6 22. Nf5 Nxf5 23. exf5 g6 24. Ke2 gxf5 25. Rxc6 e4 26. Nd4 Rd5 27. Nxf5 Rxf5 28. Rc8+ Kg7 29. Ra8 a5 30. Rb8 Na7 31. Rb7 Nc8 32. Rc7 Nd6 33. Kd2 f6 34. Ra7 Nf7 35. Kc2 Nd6 36. Kd2 Nf7 37. Kc2 Nd6 1/2-1/2`
+  },
+  {
+    id: 'carlsen-anand-wc-2013-showdown',
+    title: 'The Anand Showdown',
+    event: 'World Championship',
+    year: 2013,
+    white: 'Viswanathan Anand',
+    black: 'Magnus Carlsen',
+    description: 'Game 9 - Carlsen defends brilliantly and clinches the world title.',
+    source: 'chessgames.com/2013',
+    pgn: `[Event "World Championship"]
+[Site "Chennai IND"]
+[Date "2013.11.21"]
+[Round "9"]
+[White "Viswanathan Anand"]
+[Black "Magnus Carlsen"]
+[Result "0-1"]
+
+1. d4 Nf6 2. c4 e6 3. Nc3 Bb4 4. f3 d5 5. a3 Bxc3+ 6. bxc3 c5 7. cxd5 exd5 8. e3 c4 9. Ne2 Nc6 10. g4 O-O 11. Bg2 Na5 12. O-O Nb3 13. Ra2 b5 14. Ng3 a5 15. g5 Ne8 16. e4 Nxc1 17. Qxc1 Ra6 18. e5 Nc7 19. f4 b4 20. axb4 axb4 21. Rxa6 Nxa6 22. f5 b3 23. Qf4 Nc7 24. f6 g6 25. Qh4 Ne8 26. Qh6 Nxf6 27. exf6 Qxf6 28. Rxf6 1-0`
+  },
+  {
+    id: 'carlsen-vachier-lagrave-2020',
+    title: 'Technique Triumph',
+    event: 'Tata Steel',
+    year: 2020,
+    white: 'Magnus Carlsen',
+    black: 'Maxime Vachier-Lagrave',
+    description: 'A display of pure technique, converting the smallest of advantages.',
+    source: 'chessgames.com/2020',
+    pgn: `[Event "Tata Steel"]
+[Site "Wijk aan Zee NED"]
+[Date "2020.01.19"]
+[Round "7"]
+[White "Magnus Carlsen"]
+[Black "Maxime Vachier-Lagrave"]
+[Result "1-0"]
+
+1. c4 e6 2. Nc3 d5 3. d4 Nf6 4. cxd5 exd5 5. Bg5 c6 6. e3 Bf5 7. Qf3 Bg6 8. Bxf6 Qxf6 9. Qxf6 gxf6 10. Nf3 Nd7 11. Nh4 Nb6 12. Bd3 Bxd3 13. Kd2 Be4 14. f3 Bf5 15. Nxf5 O-O-O 16. g4 Bd6 17. Rhf1 Be7 18. Ke2 Rhg8 19. h3 Rg5 20. Rad1 Rdg8 21. Rd3 h5 22. Rfd1 hxg4 23. hxg4 1-0`
+  },
+  {
+    id: 'carlsen-anand-zugzwang-2014',
+    title: 'The Zugzwang Master',
+    event: 'World Championship',
+    year: 2014,
+    white: 'Magnus Carlsen',
+    black: 'Viswanathan Anand',
+    description: 'Game 11 - A textbook zugzwang position leads to Carlsen\'s victory.',
+    source: 'chessgames.com/2014',
+    pgn: `[Event "World Championship"]
+[Site "Sochi RUS"]
+[Date "2014.11.23"]
+[Round "11"]
+[White "Magnus Carlsen"]
+[Black "Viswanathan Anand"]
+[Result "1-0"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bb5 Nf6 4. O-O Nxe4 5. d4 Nd6 6. Bxc6 dxc6 7. dxe5 Nf5 8. Qxd8+ Kxd8 9. h3 Ke8 10. Nc3 h5 11. Ne2 b6 12. Rd1 Ba6 13. Nf4 Bb7 14. e6 Bd6 15. exf7+ Kxf7 16. Ng5+ Kf6 17. Ne4+ Kf7 18. Ng5+ Kf6 19. Ne4+ Ke7 20. Re1 Bxf4 21. Bxf4 Kf7 22. Rad1 Rad8 23. Rxd8 Rxd8 24. Nd6+ Nxd6 25. Bxd6 Rxd6 26. Re7+ Kf6 27. Rxc7 a5 28. g4 hxg4 29. hxg4 Rd1+ 30. Kg2 g6 31. f4 a4 32. Rc8 Rd2+ 33. Kf3 Rxb2 34. Rf8+ Ke6 35. Rxf7 1-0`
+  },
+  {
+    id: 'carlsen-endgame-2015',
+    title: 'Endgame Mastery',
+    event: 'London Chess Classic',
+    year: 2015,
+    white: 'Magnus Carlsen',
+    black: 'Veselin Topalov',
+    description: 'A masterclass in endgame technique, showcasing Carlsen\'s legendary precision.',
+    source: 'chessgames.com/2015',
+    pgn: `[Event "London Chess Classic"]
+[Site "London ENG"]
+[Date "2015.12.10"]
+[Round "5"]
+[White "Magnus Carlsen"]
+[Black "Veselin Topalov"]
+[Result "1-0"]
+
+1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 a6 6. Be3 e5 7. Nb3 Be6 8. f3 Be7 9. Qd2 O-O 10. O-O-O Nbd7 11. g4 b5 12. g5 Nh5 13. Kb1 Nb6 14. Na5 Rc8 15. Rg1 Qc7 16. Nd5 Bxd5 17. exd5 f5 18. gxf6 Nxf6 19. Rg2 Kh8 20. Bd3 Qc5 21. Rdg1 Rg8 22. Bh6 gxh6 23. Qxh6 Bf8 24. Qxf6+ Bg7 25. Qf7 Rcf8 26. Qxb7 Qd4 27. Qxb6 Bh6 28. Nc6 Qxf2 29. Ne7 Rb8 30. Qxd6 1-0`
   }
 ];
 
