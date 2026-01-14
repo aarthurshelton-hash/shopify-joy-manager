@@ -10,6 +10,7 @@ export interface HighlightedPiece {
 export interface HoveredSquareInfo {
   square: string;
   pieces: HighlightedPiece[]; // All pieces that have visited this square
+  moveNumbers: number[]; // Move numbers associated with this square's visits
 }
 
 // Annotation types that can be highlighted

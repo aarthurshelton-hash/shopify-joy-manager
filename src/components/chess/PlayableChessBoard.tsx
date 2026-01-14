@@ -180,7 +180,8 @@ export const PlayableChessBoard = ({
     
     const pieces = squarePieceMap.get(square);
     if (pieces && pieces.length > 0) {
-      legendContext.setHoveredSquare({ square, pieces });
+      // For live games, we don't have moveNumbers per square yet, so pass empty array
+      legendContext.setHoveredSquare({ square, pieces, moveNumbers: [] });
     } else {
       // Clear hover when moving to a square with no history
       legendContext.setHoveredSquare(null);
