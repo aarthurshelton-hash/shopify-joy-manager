@@ -1,10 +1,13 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Loader2, Play, CheckCircle, XCircle, AlertTriangle, ArrowLeft, Package, Trash2 } from 'lucide-react';
+import { Loader2, Play, CheckCircle, XCircle, AlertTriangle, ArrowLeft, Package, Trash2, Palette } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { famousGames } from '@/lib/chess/famousGames';
@@ -13,54 +16,31 @@ import { generatePrintCanvas } from '@/lib/chess/canvasRenderer';
 import { supabase } from '@/integrations/supabase/client';
 import { createListing } from '@/lib/marketplace/marketplaceApi';
 import { Json } from '@/integrations/supabase/types';
+import { colorPalettes, PaletteId, setActivePalette, getPieceColor } from '@/lib/chess/pieceColors';
+import { generateGameHash } from '@/lib/visualizations/gameCanonical';
 
-// Off-palette random colors that DON'T match En Pensent palettes
-const OFF_PALETTE_COLORS = [
-  '#2F4F4F', '#8B4513', '#CD853F', '#708090', '#556B2F', '#8B0000',
-  '#483D8B', '#2E8B57', '#B8860B', '#4682B4', '#D2691E', '#6B8E23',
-  '#9932CC', '#FF6347', '#4169E1', '#32CD32', '#FF4500', '#DA70D6',
-  '#00CED1', '#FF69B4', '#8A2BE2', '#00FA9A', '#DC143C', '#00BFFF',
-  '#1E90FF', '#ADFF2F', '#FF1493', '#7B68EE', '#20B2AA', '#87CEEB',
-];
+// Official En Pensent palettes (excluding 'custom')
+const OFFICIAL_PALETTES = colorPalettes.filter(p => p.id !== 'custom');
 
-// Generate a random off-palette color scheme for 12 pieces
-function generateOffPaletteColors(): { white: Record<string, string>; black: Record<string, string> } {
-  const shuffled = [...OFF_PALETTE_COLORS].sort(() => Math.random() - 0.5);
-  return {
-    white: {
-      k: shuffled[0],
-      q: shuffled[1],
-      r: shuffled[2],
-      b: shuffled[3],
-      n: shuffled[4],
-      p: shuffled[5],
-    },
-    black: {
-      k: shuffled[6],
-      q: shuffled[7],
-      r: shuffled[8],
-      b: shuffled[9],
-      n: shuffled[10],
-      p: shuffled[11],
-    },
-  };
+// Get a random official palette
+function getRandomOfficialPalette(): typeof OFFICIAL_PALETTES[0] {
+  return OFFICIAL_PALETTES[Math.floor(Math.random() * OFFICIAL_PALETTES.length)];
 }
 
-// Apply custom colors to a simulated board
-// Note: visit.color is 'w' or 'b' from chess.js, but our colors object uses 'white'/'black'
-function applyCustomColorsToBoard(
+// Apply official palette colors to a simulated board
+function applyPaletteToBoard(
   board: SquareData[][],
-  colors: { white: Record<string, string>; black: Record<string, string> }
+  paletteId: PaletteId
 ): SquareData[][] {
+  const palette = colorPalettes.find(p => p.id === paletteId) || colorPalettes[0];
+  
   return board.map(rank =>
     rank.map(square => ({
       ...square,
       visits: square.visits.map(visit => {
-        // Map 'w'/'b' to 'white'/'black' for color lookup
-        const colorKey = visit.color === 'w' ? 'white' : 'black';
-        const pieceColors = colors[colorKey];
-        // Safely access the color, fallback to a default if piece key doesn't exist
-        const hexColor = pieceColors?.[visit.piece] || '#888888';
+        // Map 'w'/'b' to palette colors
+        const colorSet = visit.color === 'w' ? palette.white : palette.black;
+        const hexColor = colorSet[visit.piece as keyof typeof colorSet] || '#888888';
         return {
           ...visit,
           hexColor,
@@ -103,6 +83,9 @@ interface SeedResult {
   visualizationId?: string;
   listingId?: string;
   isExemplar?: boolean;
+  paletteId?: string;
+  paletteName?: string;
+  gameHash?: string;
 }
 
 // Calculate fungible base scores - Exemplars get slightly higher initial recognition
@@ -144,6 +127,7 @@ const AdminSeedMarketplace: React.FC = () => {
   const [currentItem, setCurrentItem] = useState('');
   const [results, setResults] = useState<SeedResult[]>([]);
   const [totalCount, setTotalCount] = useState(50);
+  const [useOfficialPalettes, setUseOfficialPalettes] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteStats, setDeleteStats] = useState<{ deleted: number; preserved: number } | null>(null);
 
@@ -172,15 +156,23 @@ const AdminSeedMarketplace: React.FC = () => {
     game: typeof famousGames[0],
     title: string,
     index: number,
-    isExemplar: boolean
+    isExemplar: boolean,
+    useOfficialPalette: boolean = true
   ): Promise<SeedResult> => {
     try {
       // Simulate the game
       const simulation = simulateGame(game.pgn);
       
-      // Apply random off-palette colors
-      const customColors = generateOffPaletteColors();
-      const coloredBoard = applyCustomColorsToBoard(simulation.board, customColors);
+      // Select palette - use official palette or random official palette
+      const selectedPalette = useOfficialPalette 
+        ? getRandomOfficialPalette()
+        : OFFICIAL_PALETTES[index % OFFICIAL_PALETTES.length];
+      
+      // Apply palette colors to board
+      const coloredBoard = applyPaletteToBoard(simulation.board, selectedPalette.id);
+      
+      // Set active palette for canvas generation
+      setActivePalette(selectedPalette.id);
       
       // Generate the print canvas
       const canvas = await generatePrintCanvas(coloredBoard, simulation.gameData, {
@@ -216,7 +208,10 @@ const AdminSeedMarketplace: React.FC = () => {
         .from('visualizations')
         .getPublicUrl(filename);
       
-      // Prepare game_data with exemplar metadata
+      // Generate canonical game hash for URL routing
+      const gameHash = generateGameHash(game.pgn);
+      
+      // Prepare game_data with official palette and canonical info
       const gameDataJson: Json = {
         white: simulation.gameData.white,
         black: simulation.gameData.black,
@@ -228,12 +223,14 @@ const AdminSeedMarketplace: React.FC = () => {
         board: coloredBoard as unknown as Json,
         totalMoves: simulation.totalMoves,
         visualizationState: {
-          paletteId: 'custom',
+          paletteId: selectedPalette.id,
+          paletteName: selectedPalette.name,
+          isOfficialPalette: true,
           darkMode: false,
           currentMove: Infinity,
-          customColors: customColors,
           isExemplar: isExemplar,
           exemplarNumber: isExemplar ? index + 1 : undefined,
+          gameHash: gameHash,
         } as unknown as Json,
       };
       
@@ -278,6 +275,9 @@ const AdminSeedMarketplace: React.FC = () => {
         visualizationId: vizData.id,
         listingId: listingData?.id,
         isExemplar,
+        paletteId: selectedPalette.id,
+        paletteName: selectedPalette.name,
+        gameHash: gameHash,
       };
     } catch (error) {
       console.error('Failed to generate vision:', error);
@@ -323,7 +323,7 @@ const AdminSeedMarketplace: React.FC = () => {
       const label = isExemplar ? '🏆' : '🎨';
       setCurrentItem(`${label} ${title} (${i + 1}/${expandedGames.length})`);
       
-      const result = await generateVisualization(game, title, i, isExemplar);
+      const result = await generateVisualization(game, title, i, isExemplar, useOfficialPalettes);
       allResults.push(result);
       setResults([...allResults]);
       setProgress(((i + 1) / expandedGames.length) * 100);
@@ -528,19 +528,41 @@ const AdminSeedMarketplace: React.FC = () => {
               </div>
             </div>
             
-            <div className="flex items-center gap-4">
-              <label className="text-sm text-muted-foreground">Number of visions:</label>
-              <select
-                value={totalCount}
-                onChange={(e) => setTotalCount(Number(e.target.value))}
-                disabled={isSeeding}
-                className="bg-muted border border-border rounded px-3 py-2"
-              >
-                <option value={5}>5 (test)</option>
-                <option value={10}>10</option>
-                <option value={25}>25</option>
-                <option value={50}>50</option>
-              </select>
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <label className="text-sm text-muted-foreground">Number of visions:</label>
+                <select
+                  value={totalCount}
+                  onChange={(e) => setTotalCount(Number(e.target.value))}
+                  disabled={isSeeding}
+                  className="bg-muted border border-border rounded px-3 py-2"
+                >
+                  <option value={5}>5 (test)</option>
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                </select>
+              </div>
+              
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="use-official-palettes"
+                    checked={useOfficialPalettes}
+                    onCheckedChange={setUseOfficialPalettes}
+                    disabled={isSeeding}
+                  />
+                  <Label htmlFor="use-official-palettes" className="flex items-center gap-2">
+                    <Palette className="h-4 w-4 text-primary" />
+                    <span className="text-sm">Official Palettes</span>
+                  </Label>
+                </div>
+                {useOfficialPalettes && (
+                  <Badge variant="secondary" className="text-xs">
+                    {OFFICIAL_PALETTES.length} palettes
+                  </Badge>
+                )}
+              </div>
             </div>
             
             <Button
@@ -645,7 +667,7 @@ const AdminSeedMarketplace: React.FC = () => {
                       key={i}
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
-                      className={`text-sm p-2 rounded flex items-center gap-2 ${
+                      className={`text-sm p-2 rounded flex items-center justify-between gap-2 ${
                         result.success 
                           ? result.isExemplar 
                             ? 'bg-amber-500/10 text-amber-600' 
@@ -653,10 +675,30 @@ const AdminSeedMarketplace: React.FC = () => {
                           : 'bg-red-500/10 text-red-600'
                       }`}
                     >
-                      <span>{result.success ? (result.isExemplar ? '🏆' : '🎨') : '✗'}</span>
-                      <span>{result.title}</span>
-                      {result.error && (
-                        <span className="text-xs ml-2 opacity-70">({result.error})</span>
+                      <div className="flex items-center gap-2">
+                        <span>{result.success ? (result.isExemplar ? '🏆' : '🎨') : '✗'}</span>
+                        <span>{result.title}</span>
+                        {result.error && (
+                          <span className="text-xs ml-2 opacity-70">({result.error})</span>
+                        )}
+                      </div>
+                      {result.success && result.paletteName && (
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-[10px]">
+                            <Palette className="h-2.5 w-2.5 mr-1" />
+                            {result.paletteName}
+                          </Badge>
+                          {result.gameHash && (
+                            <a 
+                              href={`/g/${result.gameHash}?p=${result.paletteId}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[10px] text-primary hover:underline"
+                            >
+                              View →
+                            </a>
+                          )}
+                        </div>
                       )}
                     </motion.div>
                   ))}
