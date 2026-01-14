@@ -2,7 +2,7 @@ import React, { useEffect, useMemo } from 'react';
 import { useTimeline, GamePhase } from '@/contexts/TimelineContext';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
-import { Play, Pause, SkipBack, SkipForward, RotateCcw, Gauge, Flag, Sword, Crown, Zap, Target, Castle } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, RotateCcw, Gauge, Flag, Sword, Crown, Zap, Target, Castle, Star, AlertTriangle, TrendingUp } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,17 +15,20 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { classifyMoves, getMoveQualitySummary, MoveQuality } from '@/lib/chess/moveQuality';
 
 interface VerticalTimelineSliderProps {
   totalMoves: number;
   moves?: string[];
+  pgn?: string;
 }
 
 interface KeyMoment {
   moveNumber: number;
-  type: 'capture' | 'check' | 'checkmate' | 'castling';
+  type: 'capture' | 'check' | 'checkmate' | 'castling' | 'brilliant' | 'blunder' | 'great';
   move: string;
   player: 'white' | 'black';
+  quality?: MoveQuality;
 }
 
 const momentConfig = {
@@ -33,6 +36,9 @@ const momentConfig = {
   check: { icon: Zap, color: 'bg-yellow-500', label: 'Check' },
   checkmate: { icon: Crown, color: 'bg-red-500', label: 'Checkmate' },
   castling: { icon: Castle, color: 'bg-blue-500', label: 'Castle' },
+  brilliant: { icon: Star, color: 'bg-cyan-500', label: 'Brilliant' },
+  great: { icon: TrendingUp, color: 'bg-green-500', label: 'Great' },
+  blunder: { icon: AlertTriangle, color: 'bg-red-600', label: 'Blunder' },
 };
 
 const phaseConfig: Record<GamePhase, { label: string; icon: React.ReactNode; color: string }> = {
@@ -42,13 +48,34 @@ const phaseConfig: Record<GamePhase, { label: string; icon: React.ReactNode; col
   endgame: { label: 'Endgame', icon: <Crown className="w-3 h-3" />, color: 'bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 border-rose-500/30' },
 };
 
-// Analyze moves to find key moments
-function findKeyMoments(moves: string[]): KeyMoment[] {
+// Analyze moves to find key moments including move quality
+function findKeyMoments(moves: string[], pgn?: string): KeyMoment[] {
   const moments: KeyMoment[] = [];
+  
+  // Get move quality analysis if PGN available
+  let classifiedMoves: ReturnType<typeof classifyMoves> = [];
+  if (pgn) {
+    try {
+      classifiedMoves = classifyMoves(pgn);
+    } catch {
+      // Silently fail if PGN parsing fails
+    }
+  }
   
   moves.forEach((move, index) => {
     const moveNumber = index + 1;
     const player: 'white' | 'black' = index % 2 === 0 ? 'white' : 'black';
+    const classifiedMove = classifiedMoves[index];
+    const quality = classifiedMove?.quality;
+    
+    // Check for brilliant/great/blunder moves (prioritize these)
+    if (quality === 'brilliant') {
+      moments.push({ moveNumber, type: 'brilliant', move, player, quality });
+    } else if (quality === 'great') {
+      moments.push({ moveNumber, type: 'great', move, player, quality });
+    } else if (quality === 'blunder') {
+      moments.push({ moveNumber, type: 'blunder', move, player, quality });
+    }
     
     // Check for checkmate
     if (move.includes('#')) {
@@ -59,8 +86,8 @@ function findKeyMoments(moves: string[]): KeyMoment[] {
       moments.push({ moveNumber, type: 'check', move, player });
     }
     
-    // Check for capture
-    if (move.includes('x')) {
+    // Check for capture (only if not already a quality move)
+    if (move.includes('x') && !quality) {
       moments.push({ moveNumber, type: 'capture', move, player });
     }
     
@@ -73,10 +100,9 @@ function findKeyMoments(moves: string[]): KeyMoment[] {
   return moments;
 }
 
-const VerticalTimelineSlider: React.FC<VerticalTimelineSliderProps> = ({ totalMoves, moves = [] }) => {
+const VerticalTimelineSlider: React.FC<VerticalTimelineSliderProps> = ({ totalMoves, moves = [], pgn }) => {
   const {
     currentMove,
-    maxMoves,
     isPlaying,
     playbackSpeed,
     selectedPhase,
@@ -91,8 +117,19 @@ const VerticalTimelineSlider: React.FC<VerticalTimelineSliderProps> = ({ totalMo
     setSelectedPhase,
   } = useTimeline();
 
-  // Find key moments in the game
-  const keyMoments = useMemo(() => findKeyMoments(moves), [moves]);
+  // Find key moments in the game (now with move quality)
+  const keyMoments = useMemo(() => findKeyMoments(moves, pgn), [moves, pgn]);
+
+  // Get move quality summary
+  const qualitySummary = useMemo(() => {
+    if (!pgn) return null;
+    try {
+      const classified = classifyMoves(pgn);
+      return getMoveQualitySummary(classified);
+    } catch {
+      return null;
+    }
+  }, [pgn]);
 
   // Update max moves when totalMoves changes
   useEffect(() => {
@@ -148,11 +185,9 @@ const VerticalTimelineSlider: React.FC<VerticalTimelineSliderProps> = ({ totalMo
   };
 
   const speedOptions = [
-    { label: '0.25x', value: 2000 },
     { label: '0.5x', value: 1000 },
     { label: '1x', value: 500 },
     { label: '2x', value: 250 },
-    { label: '4x', value: 125 },
   ];
 
   const currentSpeedLabel = speedOptions.find(s => s.value === playbackSpeed)?.label || '1x';
@@ -166,8 +201,10 @@ const VerticalTimelineSlider: React.FC<VerticalTimelineSliderProps> = ({ totalMo
 
   // Count moments by type for summary
   const momentCounts = useMemo(() => {
-    const counts = { capture: 0, check: 0, checkmate: 0, castling: 0 };
-    visibleMoments.forEach(m => counts[m.type]++);
+    const counts = { capture: 0, check: 0, checkmate: 0, castling: 0, brilliant: 0, great: 0, blunder: 0 };
+    visibleMoments.forEach(m => {
+      if (m.type in counts) counts[m.type as keyof typeof counts]++;
+    });
     return counts;
   }, [visibleMoments]);
 
@@ -189,6 +226,20 @@ const VerticalTimelineSlider: React.FC<VerticalTimelineSliderProps> = ({ totalMo
           <div className="text-xs font-medium text-center truncate w-full">
             {getMoveLabel()}
           </div>
+
+          {/* Accuracy display */}
+          {qualitySummary && (
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-muted/50 border border-border/30">
+              <span className="text-[9px] text-muted-foreground">Accuracy</span>
+              <span className={`text-xs font-bold ${
+                qualitySummary.accuracy >= 90 ? 'text-green-400' :
+                qualitySummary.accuracy >= 70 ? 'text-yellow-400' :
+                'text-red-400'
+              }`}>
+                {qualitySummary.accuracy.toFixed(0)}%
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Phase filter buttons - vertical stack */}
@@ -220,11 +271,33 @@ const VerticalTimelineSlider: React.FC<VerticalTimelineSliderProps> = ({ totalMo
           })}
         </div>
 
-        {/* Key moments summary - compact */}
+        {/* Key moments summary - with quality metrics */}
         {visibleMoments.length > 0 && (
           <div className="py-2 border-b border-border/30">
             <div className="text-[9px] text-muted-foreground mb-1 text-center">Key moments</div>
             <div className="flex flex-wrap items-center justify-center gap-1.5">
+              {momentCounts.brilliant > 0 && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-0.5 text-cyan-400 cursor-help">
+                      <Star className="w-2.5 h-2.5" />
+                      <span className="text-[9px]">{momentCounts.brilliant}</span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">Brilliant moves</TooltipContent>
+                </Tooltip>
+              )}
+              {momentCounts.blunder > 0 && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-0.5 text-red-400 cursor-help">
+                      <AlertTriangle className="w-2.5 h-2.5" />
+                      <span className="text-[9px]">{momentCounts.blunder}</span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">Blunders</TooltipContent>
+                </Tooltip>
+              )}
               {momentCounts.capture > 0 && (
                 <div className="flex items-center gap-0.5 text-orange-400">
                   <Target className="w-2.5 h-2.5" />
@@ -258,7 +331,7 @@ const VerticalTimelineSlider: React.FC<VerticalTimelineSliderProps> = ({ totalMo
           <div className="relative h-full flex items-center gap-2">
             {/* Key moment markers on the left side */}
             <div className="relative h-full w-6">
-              {visibleMoments.map((moment, idx) => {
+              {visibleMoments.slice(0, 25).map((moment, idx) => {
                 const position = getMomentPosition(moment.moveNumber);
                 const config = momentConfig[moment.type];
                 const Icon = config.icon;
