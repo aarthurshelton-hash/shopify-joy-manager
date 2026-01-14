@@ -106,6 +106,12 @@ export async function generateCleanPrintImage(
       compareMode: capturedState.compareMode,
     } : undefined);
     
+    // Prepare pieces state for overlay if captured
+    const piecesState = capturedState && (capturedState as any).showPieces ? {
+      showPieces: (capturedState as any).showPieces,
+      pieceOpacity: (capturedState as any).pieceOpacity ?? 0.7,
+    } : undefined;
+    
     // Render the unified PrintReadyVisualization component
     const root = ReactDOM.createRoot(printContent);
     await new Promise<void>((resolve) => {
@@ -119,6 +125,8 @@ export async function generateCleanPrintImage(
           qrDataUrl,
           compact: false,
           highlightState,
+          piecesState,
+          pgn: simulation.gameData.pgn,
           withWatermark, // Pass watermark flag to component
         })
       );
