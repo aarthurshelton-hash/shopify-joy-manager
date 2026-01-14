@@ -108,11 +108,20 @@ export interface UnifiedVisionExperienceProps {
   // Callbacks - onExport now receives export state for state-aware exports
   onTransferToCreative?: () => void;
   onExport?: (type: 'hd' | 'gif' | 'print' | 'preview', exportState?: ExportState) => void;
-  onShare?: () => void;
+  onShare?: (exportState?: ExportState) => void;
   onClose?: () => void;
   onBack?: () => void;
   onSaveToGallery?: () => Promise<string | null>;
   onPaletteChange?: () => void;
+  
+  // Initial state from shared URL
+  initialState?: {
+    move?: number;
+    dark?: boolean;
+    pieces?: boolean;
+    opacity?: number;
+    locked?: Array<{ type: string; color: string }>;
+  };
   
   // Premium gating
   isPremium?: boolean;
@@ -385,19 +394,34 @@ const AnalyticsPanel: React.FC<{
 }> = ({ visionScore, isLoading, gameData, totalMoves, createdAt, gameAnalysis, pgn }) => {
   const membershipMultiplier = calculateMembershipMultiplier(100);
   
+  // Extract clean PGN from multiple possible sources
+  const effectivePgn = React.useMemo(() => {
+    // Priority: prop pgn > gameData.pgn
+    const sources = [pgn, gameData.pgn];
+    for (const source of sources) {
+      if (source && typeof source === 'string' && source.trim().length > 0) {
+        return source.trim();
+      }
+    }
+    return '';
+  }, [pgn, gameData.pgn]);
+  
   // Calculate move quality summary - ensure we have valid PGN
   const qualitySummary = React.useMemo(() => {
-    // Priority: prop pgn > gameData.pgn
-    const pgnToUse = (pgn && pgn.trim()) || (gameData.pgn && gameData.pgn.trim()) || '';
-    if (!pgnToUse) return null;
+    if (!effectivePgn) {
+      return null;
+    }
     try {
-      const classified = classifyMoves(pgnToUse);
+      const classified = classifyMoves(effectivePgn);
+      if (classified.length === 0) {
+        return null;
+      }
       return getMoveQualitySummary(classified);
     } catch (e) {
       console.warn('Move quality analysis failed:', e);
       return null;
     }
-  }, [pgn, gameData.pgn]);
+  }, [effectivePgn]);
   
   // Calculate estimated value - show even for new (unsaved) visions based on game complexity
   const baseEstimatedValue = visionScore ? calculateVisionValue(visionScore, membershipMultiplier) : 0;
@@ -882,6 +906,45 @@ const ExportActionButtons: React.FC<{
   );
 };
 
+// Share button that captures current visual state
+const ShareButtonWithState: React.FC<{
+  onShare: (exportState?: ExportState) => void;
+  darkMode: boolean;
+  showPieces: boolean;
+  pieceOpacity: number;
+  totalMoves: number;
+}> = ({ onShare, darkMode, showPieces, pieceOpacity, totalMoves }) => {
+  const { currentMove } = useTimeline();
+  const { lockedPieces, compareMode } = useLegendHighlight();
+  
+  const handleClick = useCallback(() => {
+    const exportState: ExportState = {
+      currentMove: currentMove >= totalMoves ? totalMoves : currentMove,
+      lockedPieces: lockedPieces.map(p => ({
+        pieceType: p.pieceType,
+        pieceColor: p.pieceColor,
+      })),
+      compareMode,
+      darkMode,
+      showPieces,
+      pieceOpacity,
+    };
+    onShare(exportState);
+  }, [onShare, currentMove, totalMoves, lockedPieces, compareMode, darkMode, showPieces, pieceOpacity]);
+  
+  return (
+    <Button 
+      variant="ghost" 
+      size="sm" 
+      className="gap-2 ml-auto"
+      onClick={handleClick}
+    >
+      <Share2 className="h-4 w-4" />
+      Share
+    </Button>
+  );
+};
+
 /**
  * UnifiedVisionExperience - The single source of truth for all vision displays
  * 
@@ -927,6 +990,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
   headerActions,
   showBackButton = true,
   backButtonText,
+  initialState,
 }) => {
   const { user } = useAuth();
   
@@ -1715,17 +1779,15 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                       </TooltipProvider>
                     )}
                     
-                    {/* Share button */}
+                    {/* Share button - Captures current visual state */}
                     {onShare && (
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="gap-2 ml-auto"
-                        onClick={onShare}
-                      >
-                        <Share2 className="h-4 w-4" />
-                        Share
-                      </Button>
+                      <ShareButtonWithState 
+                        onShare={onShare}
+                        darkMode={darkMode}
+                        showPieces={showPieces}
+                        pieceOpacity={pieceOpacity}
+                        totalMoves={localTotalMoves}
+                      />
                     )}
                   </div>
 
