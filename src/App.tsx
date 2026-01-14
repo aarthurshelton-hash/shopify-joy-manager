@@ -20,6 +20,7 @@ import GameHistory from "./pages/GameHistory";
 import News from "./pages/News";
 import QRMockup from "./pages/QRMockup";
 import VisualizationView from "./pages/VisualizationView";
+import GameView from "./pages/GameView";
 import OrderPrint from "./pages/OrderPrint";
 import Marketplace from "./pages/Marketplace";
 import MarketplaceVisionDetail from "./pages/MarketplaceVisionDetail";
@@ -72,6 +73,7 @@ const App = () => (
             <Route path="/news" element={<News />} />
             <Route path="/qr-preview" element={<QRMockup />} />
             <Route path="/v/:shareId" element={<VisualizationView />} />
+            <Route path="/g/:gameHash" element={<GameView />} />
             <Route path="/order-print" element={<OrderPrint />} />
             <Route path="/marketplace" element={<Marketplace />} />
             <Route path="/marketplace/:id" element={<MarketplaceVisionDetail />} />
