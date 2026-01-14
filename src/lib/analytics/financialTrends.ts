@@ -209,3 +209,110 @@ export async function getPremiumAnalyticsHistory(): Promise<{
     expiresAt: row.expires_at,
   }));
 }
+
+/**
+ * Record a palette interaction (load/preview) to build value pool data
+ * This tracks usage even before a vision is saved
+ */
+export async function recordPaletteInteraction(paletteId: string): Promise<boolean> {
+  try {
+    // First check if it exists
+    const { data: existing } = await supabase
+      .from('palette_value_pool')
+      .select('total_interactions')
+      .eq('palette_id', paletteId)
+      .single();
+
+    if (existing) {
+      // Increment existing
+      await supabase
+        .from('palette_value_pool')
+        .update({
+          total_interactions: (existing.total_interactions || 0) + 1,
+          last_interaction_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('palette_id', paletteId);
+    }
+    // If doesn't exist, it will be created by seed data - don't create new entries
+    return true;
+  } catch (err) {
+    console.error('Error recording palette interaction:', err);
+    return false;
+  }
+}
+
+/**
+ * Record a gamecard interaction (load/preview) to build value pool data
+ */
+export async function recordGamecardInteraction(gameId: string): Promise<boolean> {
+  try {
+    // First check if it exists
+    const { data: existing } = await supabase
+      .from('gamecard_value_pool')
+      .select('total_interactions')
+      .eq('game_id', gameId)
+      .single();
+
+    if (existing) {
+      // Increment existing
+      await supabase
+        .from('gamecard_value_pool')
+        .update({
+          total_interactions: (existing.total_interactions || 0) + 1,
+          last_interaction_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('game_id', gameId);
+    }
+    // If doesn't exist, it will be created by seed data - don't create new entries
+    return true;
+  } catch (err) {
+    console.error('Error recording gamecard interaction:', err);
+    return false;
+  }
+}
+
+/**
+ * Increment interaction count for a palette (SQL-side increment to avoid race conditions)
+ */
+export async function incrementPaletteUsage(paletteId: string): Promise<void> {
+  const { data: existing } = await supabase
+    .from('palette_value_pool')
+    .select('total_interactions')
+    .eq('palette_id', paletteId)
+    .single();
+
+  if (existing) {
+    await supabase
+      .from('palette_value_pool')
+      .update({
+        total_interactions: (existing.total_interactions || 0) + 1,
+        last_interaction_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('palette_id', paletteId);
+  }
+}
+
+/**
+ * Increment interaction count for a gamecard
+ */
+export async function incrementGamecardUsage(gameId: string): Promise<void> {
+  const { data: existing } = await supabase
+    .from('gamecard_value_pool')
+    .select('total_interactions')
+    .eq('game_id', gameId)
+    .single();
+
+  if (existing) {
+    await supabase
+      .from('gamecard_value_pool')
+      .update({
+        total_interactions: (existing.total_interactions || 0) + 1,
+        last_interaction_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('game_id', gameId);
+  }
+}

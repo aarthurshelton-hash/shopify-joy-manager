@@ -53,6 +53,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { format } from 'date-fns';
 import { getFinancialTrends, getPaletteValuePools, getGamecardValuePools, triggerDailySnapshot, type FinancialTrend, type ValuePool } from '@/lib/analytics/financialTrends';
 import { toast } from 'sonner';
+import RealTimeValueTracker from '@/components/admin/RealTimeValueTracker';
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
 
@@ -437,8 +438,12 @@ const AdminEconomics: React.FC = () => {
           </Card>
         </div>
 
-        <Tabs defaultValue="trends" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7 lg:w-auto lg:inline-grid">
+        <Tabs defaultValue="realtime" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-8 lg:w-auto lg:inline-grid">
+            <TabsTrigger value="realtime" className="gap-2">
+              <Activity className="h-4 w-4" />
+              <span className="hidden sm:inline">Real-Time</span>
+            </TabsTrigger>
             <TabsTrigger value="trends" className="gap-2">
               <LineChart className="h-4 w-4" />
               <span className="hidden sm:inline">Trends</span>
@@ -469,7 +474,12 @@ const AdminEconomics: React.FC = () => {
             </TabsTrigger>
           </TabsList>
 
-          {/* Trends Tab - New! */}
+          {/* Real-Time Value Tracking Tab */}
+          <TabsContent value="realtime">
+            <RealTimeValueTracker />
+          </TabsContent>
+
+          {/* Trends Tab */}
           <TrendsTab formatCents={formatCents} />
 
           {/* Financials Tab */}

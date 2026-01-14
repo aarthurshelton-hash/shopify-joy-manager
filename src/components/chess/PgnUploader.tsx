@@ -13,6 +13,7 @@ import { detectEmergingGame, formatSignificanceDisplay, EmergingGameSignificance
 import { toast } from 'sonner';
 import { useFavoriteGames } from '@/hooks/useFavoriteGames';
 import { useAuth } from '@/hooks/useAuth';
+import { incrementGamecardUsage } from '@/lib/analytics/financialTrends';
 
 const GAMES_PER_MOBILE_PAGE = 4;
 const GAMES_PER_DESKTOP_PAGE = 16;
@@ -184,6 +185,9 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
     setSelectedGame(game);
     setValidation(null);
     setFixResult(null);
+    
+    // Track gamecard interaction for value pool accrual
+    incrementGamecardUsage(game.id).catch(console.error);
   }, []);
   
   // Auto-detect if uploaded/pasted PGN matches a famous game card OR is an emerging classic
