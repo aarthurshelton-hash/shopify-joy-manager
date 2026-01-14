@@ -1413,6 +1413,14 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                         <ColorLegend 
                           interactive={true}
                           board={localBoard}
+                          gameContext={{
+                            whiteName: localGameData.white,
+                            blackName: localGameData.black,
+                            event: localGameData.event,
+                            result: localGameData.result,
+                            opening: gameAnalysis?.opening?.name,
+                            totalMoves: totalMoves,
+                          }}
                         />
                       </div>
                     )}

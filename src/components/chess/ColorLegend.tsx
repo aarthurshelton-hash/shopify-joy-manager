@@ -11,11 +11,22 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
+import { AIHeatmapInsights } from './AIHeatmapInsights';
+
+interface GameContext {
+  whiteName?: string;
+  blackName?: string;
+  event?: string;
+  result?: string;
+  opening?: string;
+  totalMoves: number;
+}
 
 interface ColorLegendProps {
   interactive?: boolean;
   board?: SquareData[][];
   onNavigateToMove?: (moveNumber: number) => void;
+  gameContext?: GameContext;
 }
 
 interface PieceStats {
@@ -140,7 +151,7 @@ const MiniHeatmap: React.FC<{ heatmap: PieceHeatmap; color: string; pieceName: s
   );
 };
 
-const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board, onNavigateToMove }) => {
+const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board, onNavigateToMove, gameContext }) => {
   const legend = getPieceColorLegend();
   const palette = getActivePalette();
   const theme = palette.legendTheme;
@@ -390,6 +401,38 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board, on
     
     return { overlapCount, piece1Only, piece2Only };
   }, [board, compareMode, lockedPieces]);
+
+  // Build piece activity data for AI insights
+  const pieceActivityForAI = useMemo(() => {
+    if (!pieceStats || pieceStats.size === 0) return [];
+    
+    const pieceNames: Record<PieceType, string> = {
+      k: 'King', q: 'Queen', r: 'Rook', b: 'Bishop', n: 'Knight', p: 'Pawn'
+    };
+    
+    const activity: { pieceType: string; color: string; count: number; percentage: number }[] = [];
+    
+    for (const [key, stat] of pieceStats) {
+      const [color, piece] = key.split('-') as [PieceColor, PieceType];
+      activity.push({
+        pieceType: pieceNames[piece],
+        color: color === 'w' ? 'White' : 'Black',
+        count: stat.visitCount,
+        percentage: stat.percentage,
+      });
+    }
+    
+    return activity;
+  }, [pieceStats]);
+
+  // Calculate territory control for AI
+  const territoryDataForAI = useMemo(() => {
+    if (!battleStats) return undefined;
+    return {
+      whiteControl: battleStats.whitePercentage,
+      blackControl: battleStats.blackPercentage,
+    };
+  }, [battleStats]);
   
   // Group by piece color
   const whitePieces = legend.filter(p => p.color === 'w');
@@ -675,6 +718,15 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board, on
         <p className="text-[9px] text-muted-foreground text-center">
           Darker = more visits • Shows piece movement patterns
         </p>
+
+        {/* AI Insights Section */}
+        {pieceActivityForAI.length > 0 && gameContext && (
+          <AIHeatmapInsights
+            pieceActivity={pieceActivityForAI}
+            gameContext={gameContext}
+            territoryData={territoryDataForAI}
+          />
+        )}
       </div>
     );
   };
@@ -787,6 +839,15 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board, on
             );
           })}
         </div>
+
+        {/* AI Insights Section */}
+        {pieceActivityForAI.length > 0 && gameContext && (
+          <AIHeatmapInsights
+            pieceActivity={pieceActivityForAI}
+            gameContext={gameContext}
+            territoryData={territoryDataForAI}
+          />
+        )}
       </div>
     );
   };
