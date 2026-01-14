@@ -33,6 +33,8 @@ import {
   RotateCcw,
   ChevronDown,
   Maximize2,
+  Minimize2,
+  X,
   Loader2,
   BookOpen,
   Zap,
@@ -857,8 +859,10 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
   const [darkMode, setDarkMode] = useState(false);
   const [showLegend, setShowLegend] = useState(true);
   const [mobileLegendExpanded, setMobileLegendExpanded] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   
   const containerRef = useRef<HTMLDivElement>(null);
+  const fullscreenRef = useRef<HTMLDivElement>(null);
   
   // === Seamless Palette Switching State ===
   const [localBoard, setLocalBoard] = useState<SquareData[][]>(board);
@@ -1061,6 +1065,57 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
     onTransferToCreative?.();
   }, [isPremium, onUpgradePrompt, onTransferToCreative]);
 
+  // Keyboard shortcuts for visualization controls
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger shortcuts when typing in inputs
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        (e.target as HTMLElement).isContentEditable
+      ) {
+        return;
+      }
+
+      const key = e.key.toLowerCase();
+
+      switch (key) {
+        // F - Toggle fullscreen
+        case 'f':
+          e.preventDefault();
+          setIsFullscreen(prev => !prev);
+          break;
+
+        // C - Toggle coordinates
+        case 'c':
+          e.preventDefault();
+          setShowCoordinates(prev => !prev);
+          break;
+
+        // L - Toggle legend (expand on mobile, toggle on desktop)
+        case 'l':
+          e.preventDefault();
+          if (window.innerWidth < 1280) {
+            setMobileLegendExpanded(prev => !prev);
+          } else {
+            setShowLegend(prev => !prev);
+          }
+          break;
+
+        // Escape - Exit fullscreen
+        case 'escape':
+          if (isFullscreen) {
+            e.preventDefault();
+            setIsFullscreen(false);
+          }
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isFullscreen]);
+
   // Context-specific title
   const contextTitle = useMemo(() => {
     if (title) return title;
@@ -1078,6 +1133,56 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
   return (
     <TimelineProvider>
       <LegendHighlightProvider>
+        {/* Fullscreen Overlay */}
+        <AnimatePresence>
+          {isFullscreen && (
+            <motion.div
+              ref={fullscreenRef}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 bg-background flex items-center justify-center"
+            >
+              {/* Fullscreen close button */}
+              <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setIsFullscreen(false)}
+                        className="bg-background/80 backdrop-blur-sm"
+                      >
+                        <Minimize2 className="h-5 w-5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Exit fullscreen (Esc)</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+
+              {/* Fullscreen board - larger size */}
+              <div className="relative" data-vision-board="true">
+                <TimelineBoard 
+                  board={localBoard} 
+                  totalMoves={localTotalMoves} 
+                  size={Math.min(window.innerHeight - 100, window.innerWidth - 100, 700)}
+                  gameData={localGameData}
+                  darkMode={darkMode}
+                  title={localTitle || contextTitle}
+                  showCoordinates={showCoordinates}
+                />
+              </div>
+
+              {/* Fullscreen keyboard hint */}
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-xs text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-full">
+                Press <kbd className="px-1.5 py-0.5 bg-background rounded border text-foreground">Esc</kbd> or <kbd className="px-1.5 py-0.5 bg-background rounded border text-foreground">F</kbd> to exit
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <div className="flex flex-col h-full" ref={containerRef}>
           {/* Header with back button for certain contexts */}
           {(context === 'generator' || context === 'gallery') && onBack && (
@@ -1155,7 +1260,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                             />
                           </div>
                         </TooltipTrigger>
-                        <TooltipContent>Toggle board coordinates (a-h, 1-8)</TooltipContent>
+                        <TooltipContent>Toggle board coordinates (C)</TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
 
@@ -1200,11 +1305,29 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                                 />
                               </div>
                             </TooltipTrigger>
-                            <TooltipContent>Toggle color legend</TooltipContent>
+                            <TooltipContent>Toggle color legend (L)</TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
                       </>
                     )}
+
+                    {/* Fullscreen Button */}
+                    <div className="h-4 w-px bg-border" />
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setIsFullscreen(true)}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Maximize2 className="h-4 w-4 text-muted-foreground" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Fullscreen mode (F)</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
 
                   {/* Main Layout: Timeline Left | Board Center | Legend Right */}

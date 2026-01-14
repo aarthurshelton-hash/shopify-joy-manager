@@ -88,7 +88,7 @@ export const KEYBOARD_SHORTCUTS = [
   { key: 'M', action: 'Toggle sound on/off' },
   { key: 'R', action: 'Resign game (during play)' },
   { key: 'D', action: 'Offer draw (your turn)' },
-  { key: 'Esc', action: 'Return to lobby' },
+  { key: 'Esc', action: 'Return to lobby / Exit fullscreen' },
   { key: '?', action: 'Show keyboard shortcuts' },
 ];
 
@@ -98,4 +98,10 @@ export const TIMELINE_SHORTCUTS = [
   { key: '→', action: 'Next move' },
   { key: 'Home', action: 'Go to start' },
   { key: 'End', action: 'Go to end (show all)' },
+];
+
+export const VISUALIZATION_SHORTCUTS = [
+  { key: 'F', action: 'Toggle fullscreen mode' },
+  { key: 'C', action: 'Toggle board coordinates' },
+  { key: 'L', action: 'Toggle/expand legend' },
 ];
