@@ -173,6 +173,7 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board, on
     compareMode = false,
     hoveredSquare = null,
     hoveredAnnotation = null,
+    hoveredMove = null,
     followPieceData = null,
     pieceArrows = [],
     setHighlightedPiece, 
@@ -188,6 +189,7 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board, on
     compareMode: false,
     hoveredSquare: null,
     hoveredAnnotation: null,
+    hoveredMove: null,
     followPieceData: null,
     pieceArrows: [],
     setHighlightedPiece: () => {},
@@ -213,6 +215,12 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board, on
     return hoveredAnnotation.associatedPieces.some(
       p => p.pieceType === pieceType && p.pieceColor === pieceColor
     );
+  };
+
+  // Check if a piece is highlighted from move notation hover
+  const isHighlightedFromMove = (pieceType: PieceType, pieceColor: PieceColor) => {
+    if (!hoveredMove) return false;
+    return hoveredMove.piece.pieceType === pieceType && hoveredMove.piece.pieceColor === pieceColor;
   };
 
   
@@ -502,12 +510,17 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board, on
     return pieceHeatmaps.get(`${pieceColor}-${pieceType}`) || null;
   };
 
-  // Check if any filter is active (hover, lock, square hover, or annotation hover)
-  const hasActiveFilter = hoveredSquare !== null || lockedPieces.length > 0 || highlightedPiece !== null || hoveredAnnotation !== null;
+  // Check if any filter is active (hover, lock, square hover, annotation hover, or move hover)
+  const hasActiveFilter = hoveredSquare !== null || lockedPieces.length > 0 || highlightedPiece !== null || hoveredAnnotation !== null || hoveredMove !== null;
 
   // Check if this piece should be dimmed
   const shouldDim = (pieceType: PieceType, pieceColor: PieceColor) => {
     if (!hasActiveFilter) return false;
+    
+    // If move notation is hovered, dim pieces not involved in that move
+    if (hoveredMove) {
+      return !isHighlightedFromMove(pieceType, pieceColor);
+    }
     
     // If annotation is hovered, dim pieces not associated with that annotation
     if (hoveredAnnotation) {

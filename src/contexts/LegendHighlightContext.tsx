@@ -44,6 +44,15 @@ export interface FollowPieceData {
   currentIndex: number;  // Current position in the moveNumbers array
 }
 
+// For move notation hover highlighting
+export interface HoveredMoveInfo {
+  moveNumber: number;       // 1-indexed move number in the game
+  san: string;              // The SAN notation (e.g., "Nf3", "e4")
+  piece: HighlightedPiece;  // The piece that moved
+  targetSquare: string;     // The destination square (e.g., "f3", "e4")
+  isCapture: boolean;       // Whether this move was a capture
+}
+
 interface LegendHighlightContextValue {
   highlightedPiece: HighlightedPiece | null;
   lockedPieces: HighlightedPiece[];
@@ -55,6 +64,8 @@ interface LegendHighlightContextValue {
   // Follow piece mode
   followPieceData: FollowPieceData | null;
   pieceArrows: PieceMoveArrow[];
+  // Move notation hover
+  hoveredMove: HoveredMoveInfo | null;
   setHighlightedPiece: (piece: HighlightedPiece | null) => void;
   toggleLockedPiece: (piece: HighlightedPiece) => void;
   toggleCompareMode: () => void;
@@ -67,6 +78,8 @@ interface LegendHighlightContextValue {
   setPieceArrows: (arrows: PieceMoveArrow[]) => void;
   nextPieceMove: () => number | null;
   prevPieceMove: () => number | null;
+  // Move notation hover
+  setHoveredMove: (move: HoveredMoveInfo | null) => void;
 }
 
 const LegendHighlightContext = createContext<LegendHighlightContextValue | undefined>(undefined);
@@ -80,6 +93,7 @@ export function LegendHighlightProvider({ children }: { children: ReactNode }) {
   const [highlightedAnnotations, setHighlightedAnnotationsState] = useState<AnnotationType[]>([]);
   const [followPieceData, setFollowPieceDataState] = useState<FollowPieceData | null>(null);
   const [pieceArrows, setPieceArrowsState] = useState<PieceMoveArrow[]>([]);
+  const [hoveredMove, setHoveredMoveState] = useState<HoveredMoveInfo | null>(null);
 
   const setHighlightedPiece = useCallback((piece: HighlightedPiece | null) => {
     setHighlightedPieceState(piece);
@@ -103,6 +117,10 @@ export function LegendHighlightProvider({ children }: { children: ReactNode }) {
 
   const setPieceArrows = useCallback((arrows: PieceMoveArrow[]) => {
     setPieceArrowsState(arrows);
+  }, []);
+
+  const setHoveredMove = useCallback((move: HoveredMoveInfo | null) => {
+    setHoveredMoveState(move);
   }, []);
 
   const nextPieceMove = useCallback((): number | null => {
@@ -179,6 +197,7 @@ export function LegendHighlightProvider({ children }: { children: ReactNode }) {
       highlightedAnnotations,
       followPieceData,
       pieceArrows,
+      hoveredMove,
       setHighlightedPiece, 
       toggleLockedPiece,
       toggleCompareMode,
@@ -190,6 +209,7 @@ export function LegendHighlightProvider({ children }: { children: ReactNode }) {
       setPieceArrows,
       nextPieceMove,
       prevPieceMove,
+      setHoveredMove,
     }}>
       {children}
     </LegendHighlightContext.Provider>
@@ -202,4 +222,47 @@ export function useLegendHighlight() {
     throw new Error('useLegendHighlight must be used within a LegendHighlightProvider');
   }
   return context;
+}
+
+// Helper function to parse SAN notation and extract piece type and target square
+export function parseSanMove(san: string, isWhiteMove: boolean): { pieceType: PieceType; targetSquare: string; isCapture: boolean } | null {
+  if (!san) return null;
+  
+  // Remove check/checkmate symbols
+  const cleanSan = san.replace(/[+#!?]/g, '');
+  
+  // Handle castling
+  if (cleanSan === 'O-O' || cleanSan === 'O-O-O') {
+    return { pieceType: 'k', targetSquare: cleanSan === 'O-O' ? (isWhiteMove ? 'g1' : 'g8') : (isWhiteMove ? 'c1' : 'c8'), isCapture: false };
+  }
+  
+  const isCapture = cleanSan.includes('x');
+  
+  // Extract piece type (uppercase letter at start, or pawn if lowercase/no letter)
+  let pieceType: PieceType = 'p';
+  let remaining = cleanSan;
+  
+  if (/^[KQRBN]/.test(cleanSan)) {
+    const pieceChar = cleanSan[0].toLowerCase();
+    pieceType = pieceChar as PieceType;
+    remaining = cleanSan.slice(1);
+  }
+  
+  // Remove capture symbol and disambiguation
+  remaining = remaining.replace('x', '');
+  
+  // Extract target square (last 2 characters before promotion)
+  const promotionMatch = remaining.match(/=([QRBN])$/i);
+  if (promotionMatch) {
+    remaining = remaining.slice(0, -2);
+  }
+  
+  // Target square is the last 2 characters
+  const targetSquare = remaining.slice(-2);
+  
+  if (!/^[a-h][1-8]$/.test(targetSquare)) {
+    return null;
+  }
+  
+  return { pieceType, targetSquare, isCapture };
 }

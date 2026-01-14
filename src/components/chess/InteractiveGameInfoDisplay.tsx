@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { GameData, formatMoves } from '@/lib/chess/gameSimulator';
-import { useLegendHighlight, AnnotationType, HighlightedPiece } from '@/contexts/LegendHighlightContext';
+import { useLegendHighlight, AnnotationType, HighlightedPiece, parseSanMove, HoveredMoveInfo } from '@/contexts/LegendHighlightContext';
 import { PieceType, PieceColor } from '@/lib/chess/pieceColors';
 
 interface InteractiveGameInfoDisplayProps {
@@ -80,14 +80,18 @@ const InteractiveGameInfoDisplay: React.FC<InteractiveGameInfoDisplayProps> = ({
     highlightedAnnotations = [],
     hoveredAnnotation = null,
     hoveredSquare = null,
+    hoveredMove = null,
     setHoveredAnnotation,
+    setHoveredMove,
     highlightedPiece,
   } = highlightContext || {
     lockedPieces: [],
     highlightedAnnotations: [],
     hoveredAnnotation: null,
     hoveredSquare: null,
+    hoveredMove: null,
     setHoveredAnnotation: () => {},
+    setHoveredMove: () => {},
     highlightedPiece: null,
   };
 
@@ -158,6 +162,34 @@ const InteractiveGameInfoDisplay: React.FC<InteractiveGameInfoDisplayProps> = ({
       setHoveredAnnotation(null);
     }
   };
+
+  // Handle move notation hover
+  const handleMoveHover = useCallback((moveIndex: number, san: string) => {
+    if (!setHoveredMove) return;
+    
+    const isWhiteMove = moveIndex % 2 === 0;
+    const parsed = parseSanMove(san, isWhiteMove);
+    
+    if (parsed) {
+      const moveInfo: HoveredMoveInfo = {
+        moveNumber: moveIndex + 1, // 1-indexed
+        san,
+        piece: {
+          pieceType: parsed.pieceType,
+          pieceColor: isWhiteMove ? 'w' : 'b',
+        },
+        targetSquare: parsed.targetSquare,
+        isCapture: parsed.isCapture,
+      };
+      setHoveredMove(moveInfo);
+    }
+  }, [setHoveredMove]);
+
+  const handleMoveLeave = useCallback(() => {
+    if (setHoveredMove) {
+      setHoveredMove(null);
+    }
+  }, [setHoveredMove]);
   
   // Color classes based on mode
   const primaryText = darkMode ? 'text-stone-100' : 'text-stone-800';
@@ -198,7 +230,7 @@ const InteractiveGameInfoDisplay: React.FC<InteractiveGameInfoDisplayProps> = ({
     return style;
   };
 
-  // Render individual moves with highlighting based on hovered square
+  // Render individual moves with highlighting based on hovered square or hovered move
   const renderMovesWithHighlighting = useMemo(() => {
     const moves = gameData.moves;
     if (!moves || moves.length === 0) return null;
@@ -210,8 +242,13 @@ const InteractiveGameInfoDisplay: React.FC<InteractiveGameInfoDisplayProps> = ({
       const isWhiteMove = i % 2 === 0;
       const displayMoveNumber = Math.floor(i / 2) + 1;
       
-      // Check if this move should be highlighted
-      const isHighlighted = highlightedMoveNumbers?.has(moveNumber) ?? false;
+      // Check if this move should be highlighted from square hover
+      const isHighlightedFromSquare = highlightedMoveNumbers?.has(moveNumber) ?? false;
+      
+      // Check if this is the currently hovered move
+      const isCurrentlyHovered = hoveredMove?.moveNumber === moveNumber;
+      
+      const isHighlighted = isHighlightedFromSquare || isCurrentlyHovered;
       
       // Add move number for white moves
       if (isWhiteMove) {
@@ -238,7 +275,10 @@ const InteractiveGameInfoDisplay: React.FC<InteractiveGameInfoDisplayProps> = ({
         <span 
           key={`move-${i}`} 
           style={moveStyle}
-          title={isHighlighted ? `Move ${moveNumber}: ${moves[i]}` : undefined}
+          className="cursor-pointer hover:bg-amber-500/20 rounded transition-colors"
+          title={`Move ${moveNumber}: ${moves[i]}`}
+          onMouseEnter={() => handleMoveHover(i, moves[i])}
+          onMouseLeave={handleMoveLeave}
         >
           {moves[i]}
         </span>
@@ -249,7 +289,7 @@ const InteractiveGameInfoDisplay: React.FC<InteractiveGameInfoDisplayProps> = ({
     }
     
     return elements;
-  }, [gameData.moves, highlightedMoveNumbers, darkMode]);
+  }, [gameData.moves, highlightedMoveNumbers, darkMode, hoveredMove, handleMoveHover, handleMoveLeave]);
 
   // Determine if there are highlighted moves (for summary display)
   const hasHighlightedMoves = highlightedMoveNumbers && highlightedMoveNumbers.size > 0;

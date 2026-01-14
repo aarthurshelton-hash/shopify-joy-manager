@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { SquareData, SquareVisit } from '@/lib/chess/gameSimulator';
 import { boardColors, getPieceColor, PieceType, PieceColor } from '@/lib/chess/pieceColors';
-import { useLegendHighlight, HighlightedPiece } from '@/contexts/LegendHighlightContext';
+import { useLegendHighlight, HighlightedPiece, HoveredMoveInfo } from '@/contexts/LegendHighlightContext';
 
 interface ChessBoardVisualizationProps {
   board: SquareData[][];
@@ -35,12 +35,23 @@ const renderNestedSquares = (
   squareSize: number,
   baseColor: string,
   highlightedPieces: HighlightedPiece[],
-  compareMode: boolean
+  compareMode: boolean,
+  hoveredMove: HoveredMoveInfo | null,
+  squareName: string // e.g., "e4"
 ): React.ReactNode[] => {
   const elements: React.ReactNode[] = [];
   const padding = squareSize * 0.08;
   
   const hasHighlight = highlightedPieces.length > 0;
+  
+  // Check if this square is targeted by the hovered move
+  const isHoveredMoveTarget = hoveredMove?.targetSquare === squareName;
+  
+  // Check if this square has visits from the hovered move's piece
+  const hoveredMoveMatchingVisits = hoveredMove 
+    ? visits.filter(v => v.piece === hoveredMove.piece.pieceType && v.color === hoveredMove.piece.pieceColor)
+    : [];
+  const hasHoveredMoveVisit = hoveredMoveMatchingVisits.length > 0;
   
   // Determine if this square has any matching visits
   const matchingVisits = hasHighlight 
@@ -59,7 +70,8 @@ const renderNestedSquares = (
   const isOverlap = piece1Present && piece2Present;
   
   // Base dimming when highlight is active but this square doesn't match
-  const shouldDim = hasHighlight && !hasMatchingVisit;
+  // Also dim when hovering a move and this square doesn't match
+  const shouldDim = (hasHighlight && !hasMatchingVisit) || (hoveredMove && !hasHoveredMoveVisit && !isHoveredMoveTarget);
   
   // Draw base square
   elements.push(
@@ -213,6 +225,43 @@ const renderNestedSquares = (
     }
   }
   
+  // Add visual effect for hovered move - highlight target square and piece visits
+  if (hoveredMove && (isHoveredMoveTarget || hasHoveredMoveVisit)) {
+    const glowSize = squareSize * 0.025;
+    
+    if (isHoveredMoveTarget) {
+      // Target square gets a strong amber glow
+      elements.push(
+        <rect
+          key={`glow-move-target-${x}-${y}`}
+          x={x + glowSize}
+          y={y + glowSize}
+          width={squareSize - glowSize * 2}
+          height={squareSize - glowSize * 2}
+          fill="none"
+          stroke="rgba(251, 191, 36, 0.9)"
+          strokeWidth={glowSize * 2}
+          style={{ transition: 'all 0.15s ease-out' }}
+        />
+      );
+    } else if (hasHoveredMoveVisit) {
+      // Other squares with the same piece get a softer glow
+      elements.push(
+        <rect
+          key={`glow-move-piece-${x}-${y}`}
+          x={x + glowSize}
+          y={y + glowSize}
+          width={squareSize - glowSize * 2}
+          height={squareSize - glowSize * 2}
+          fill="none"
+          stroke="rgba(251, 191, 36, 0.4)"
+          strokeWidth={glowSize}
+          style={{ transition: 'all 0.15s ease-out' }}
+        />
+      );
+    }
+  }
+  
   return elements;
 };
 
@@ -225,6 +274,7 @@ const ChessBoardVisualization: React.FC<ChessBoardVisualizationProps> = ({
   // Use override props if provided, otherwise try context
   let highlightedPieces: HighlightedPiece[] = overrideHighlightedPieces || [];
   let compareMode = overrideCompareMode || false;
+  let hoveredMove: HoveredMoveInfo | null = null;
   
   // Only try context if no override provided
   if (!overrideHighlightedPieces) {
@@ -237,6 +287,7 @@ const ChessBoardVisualization: React.FC<ChessBoardVisualizationProps> = ({
         highlightedPieces = [context.highlightedPiece];
       }
       compareMode = context.compareMode;
+      hoveredMove = context.hoveredMove;
     } catch {
       // Context not available, no highlighting
     }
@@ -245,6 +296,12 @@ const ChessBoardVisualization: React.FC<ChessBoardVisualizationProps> = ({
   const squareSize = size / 8;
   const borderWidth = size * 0.02;
   const totalSize = size + borderWidth * 2;
+  
+  // Helper to convert file/rank indices to square name
+  const getSquareName = (file: number, rank: number): string => {
+    const files = 'abcdefgh';
+    return `${files[file]}${rank + 1}`;
+  };
   
   // Memoize board rendering for performance
   const boardElements = useMemo(() => {
@@ -255,6 +312,7 @@ const ChessBoardVisualization: React.FC<ChessBoardVisualizationProps> = ({
         const baseColor = square.isLight ? boardColors.light : boardColors.dark;
         const x = borderWidth + file * squareSize;
         const y = borderWidth + rowIndex * squareSize;
+        const squareName = getSquareName(file, rank);
         
         return renderNestedSquares(
           square.visits,
@@ -263,11 +321,13 @@ const ChessBoardVisualization: React.FC<ChessBoardVisualizationProps> = ({
           squareSize,
           baseColor,
           highlightedPieces,
-          compareMode
+          compareMode,
+          hoveredMove,
+          squareName
         );
       });
     });
-  }, [board, borderWidth, squareSize, highlightedPieces, compareMode]);
+  }, [board, borderWidth, squareSize, highlightedPieces, compareMode, hoveredMove]);
   
   return (
     <svg
