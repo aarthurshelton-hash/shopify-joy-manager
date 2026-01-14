@@ -15,6 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
+import { incrementPaletteUsage } from '@/lib/analytics/financialTrends';
 import {
   Dialog,
   DialogContent,
@@ -236,6 +237,13 @@ const PaletteSelector: React.FC<PaletteSelectorProps> = ({ onPaletteChange }) =>
     setActivePalette(paletteId);
     setActivePaletteId(paletteId);
     onPaletteChange?.(paletteId);
+    
+    // Track palette interaction for value attribution (only for non-custom palettes)
+    if (paletteId !== 'custom') {
+      incrementPaletteUsage(paletteId).catch(err => 
+        console.warn('Failed to track palette interaction:', err)
+      );
+    }
   }, [onPaletteChange, activePaletteId]);
   
   const handleCustomColorChange = useCallback((pieceColor: PieceColor, pieceType: PieceType, hexColor: string) => {

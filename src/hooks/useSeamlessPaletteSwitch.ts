@@ -10,6 +10,7 @@ import { simulateGame, SquareData, GameData, SimulationResult } from '@/lib/ches
 import { setActivePalette, PaletteId, getPieceColor } from '@/lib/chess/pieceColors';
 import { supabase } from '@/integrations/supabase/client';
 import { getVisionScore, VisionScore } from '@/lib/visualizations/visionScoring';
+import { incrementPaletteUsage } from '@/lib/analytics/financialTrends';
 
 export interface PaletteSwitchResult {
   board: SquareData[][];
@@ -65,6 +66,11 @@ export function useSeamlessPaletteSwitch({
       // Set the new palette globally
       setActivePalette(newPaletteId);
       setCurrentPaletteId(newPaletteId);
+
+      // Track palette interaction for value attribution
+      incrementPaletteUsage(newPaletteId).catch(err => 
+        console.warn('Failed to track palette interaction:', err)
+      );
 
       let result: PaletteSwitchResult;
 
