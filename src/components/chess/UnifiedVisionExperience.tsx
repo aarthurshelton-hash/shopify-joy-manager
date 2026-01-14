@@ -1130,8 +1130,8 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
             </TabsList>
 
             {/* Experience Tab */}
-            <TabsContent value="experience" className="mt-0">
-              <ScrollArea className="h-[calc(100vh-300px)] sm:h-auto">
+            <TabsContent value="experience" className="mt-0 overflow-visible">
+              <div className="overflow-visible">
                 <div className="space-y-4">
                   {/* Board Controls */}
                   <div className="flex flex-wrap items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border/50">
@@ -1199,7 +1199,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                   </div>
 
                   {/* Main Layout: Timeline Left | Board Center | Legend Right */}
-                  <div className="flex gap-2 xl:gap-4 items-start justify-center w-full overflow-x-auto">
+                  <div className="flex gap-2 xl:gap-4 items-start justify-center w-full overflow-visible">
                     {/* Left: Vertical Timeline */}
                     <div className="hidden xl:block flex-shrink-0">
                       <VerticalTimelineSlider 
@@ -1227,9 +1227,9 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                       />
                     </div>
 
-                    {/* Right: Color Legend */}
+                    {/* Right: Color Legend - scrollable to show full content */}
                     {showLegend && (
-                      <div className="hidden xl:block flex-shrink-0 w-[200px]">
+                      <div className="hidden xl:flex flex-shrink-0 w-[200px] max-h-[80vh] overflow-y-auto scrollbar-hide">
                         <ColorLegend 
                           interactive={true}
                           board={localBoard}
@@ -1444,7 +1444,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                     </div>
                   </div>
                 </div>
-              </ScrollArea>
+              </div>
             </TabsContent>
 
             {/* Analytics Tab */}
