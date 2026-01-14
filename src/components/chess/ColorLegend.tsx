@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { getPieceColorLegend, getActivePalette, PieceType, PieceColor } from '@/lib/chess/pieceColors';
 import { useLegendHighlight } from '@/contexts/LegendHighlightContext';
 import { SquareData } from '@/lib/chess/gameSimulator';
-import { GitCompare, X, Swords, Grid3X3, Flame } from 'lucide-react';
+import { GitCompare, X, Swords, Grid3X3, Flame, ChevronLeft, ChevronRight, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
@@ -10,10 +10,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { Badge } from '@/components/ui/badge';
 
 interface ColorLegendProps {
   interactive?: boolean;
   board?: SquareData[][];
+  onNavigateToMove?: (moveNumber: number) => void;
 }
 
 interface PieceStats {
@@ -138,7 +140,7 @@ const MiniHeatmap: React.FC<{ heatmap: PieceHeatmap; color: string; pieceName: s
   );
 };
 
-const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board }) => {
+const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board, onNavigateToMove }) => {
   const legend = getPieceColorLegend();
   const palette = getActivePalette();
   const theme = palette.legendTheme;
@@ -160,22 +162,30 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board }) 
     compareMode = false,
     hoveredSquare = null,
     hoveredAnnotation = null,
+    followPieceData = null,
+    pieceArrows = [],
     setHighlightedPiece, 
     toggleLockedPiece, 
     toggleCompareMode,
     clearLock,
     setHighlightedAnnotations,
+    nextPieceMove,
+    prevPieceMove,
   } = highlightContext || { 
     highlightedPiece: null,
     lockedPieces: [],
     compareMode: false,
     hoveredSquare: null,
     hoveredAnnotation: null,
+    followPieceData: null,
+    pieceArrows: [],
     setHighlightedPiece: () => {},
     toggleLockedPiece: () => {},
     toggleCompareMode: () => {},
     clearLock: () => {},
     setHighlightedAnnotations: () => {},
+    nextPieceMove: () => null,
+    prevPieceMove: () => null,
   };
 
   // Check if a piece is highlighted via square hover (reverse highlight)
@@ -898,6 +908,66 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board }) 
                   <div className="text-[9px] text-muted-foreground">Only ②</div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Follow Piece Navigation - when a piece is locked and has arrows */}
+          {!compareMode && lockedPieces.length === 1 && followPieceData && pieceArrows.length > 0 && (
+            <div className="bg-gradient-to-r from-amber-500/10 via-yellow-500/15 to-amber-500/10 rounded-lg p-3 border border-amber-500/30 animate-fade-in">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-1.5">
+                  <MapPin className="w-3 h-3 text-amber-400" />
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-amber-400">
+                    Follow Mode
+                  </span>
+                </div>
+                <Badge variant="secondary" className="text-[9px] h-4 px-1.5">
+                  {followPieceData.currentIndex + 1} / {pieceArrows.length}
+                </Badge>
+              </div>
+              
+              <div className="flex items-center justify-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const moveNum = prevPieceMove();
+                    if (moveNum !== null && onNavigateToMove) {
+                      onNavigateToMove(moveNum);
+                    }
+                  }}
+                  disabled={followPieceData.currentIndex === 0}
+                  className="h-7 px-2 text-xs gap-1"
+                >
+                  <ChevronLeft className="w-3 h-3" />
+                  Prev
+                </Button>
+                
+                <div className="text-xs font-mono text-muted-foreground">
+                  Move {pieceArrows[followPieceData.currentIndex]?.moveNumber || '-'}
+                </div>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const moveNum = nextPieceMove();
+                    if (moveNum !== null && onNavigateToMove) {
+                      onNavigateToMove(moveNum);
+                    }
+                  }}
+                  disabled={followPieceData.currentIndex >= pieceArrows.length - 1}
+                  className="h-7 px-2 text-xs gap-1"
+                >
+                  Next
+                  <ChevronRight className="w-3 h-3" />
+                </Button>
+              </div>
+              
+              <p className="text-[9px] text-muted-foreground text-center mt-2">
+                {pieceArrows.filter(a => a.isCapture).length} captures •{' '}
+                {pieceArrows.length} total moves
+              </p>
             </div>
           )}
           

@@ -27,6 +27,23 @@ export interface HoveredAnnotation {
   associatedPieces?: HighlightedPiece[];
 }
 
+// Move arrow data for visualizing piece movements
+export interface PieceMoveArrow {
+  from: string; // e.g., "e2"
+  to: string;   // e.g., "e4"
+  moveNumber: number;
+  pieceType: PieceType;
+  pieceColor: PieceColor;
+  isCapture: boolean;
+}
+
+// Follow piece mode data
+export interface FollowPieceData {
+  piece: HighlightedPiece;
+  moveNumbers: number[]; // All move numbers where this piece moved
+  currentIndex: number;  // Current position in the moveNumbers array
+}
+
 interface LegendHighlightContextValue {
   highlightedPiece: HighlightedPiece | null;
   lockedPieces: HighlightedPiece[];
@@ -35,6 +52,9 @@ interface LegendHighlightContextValue {
   // Annotation highlighting
   hoveredAnnotation: HoveredAnnotation | null;
   highlightedAnnotations: AnnotationType[]; // Annotations to highlight based on piece selection
+  // Follow piece mode
+  followPieceData: FollowPieceData | null;
+  pieceArrows: PieceMoveArrow[];
   setHighlightedPiece: (piece: HighlightedPiece | null) => void;
   toggleLockedPiece: (piece: HighlightedPiece) => void;
   toggleCompareMode: () => void;
@@ -42,6 +62,11 @@ interface LegendHighlightContextValue {
   setHoveredSquare: (info: HoveredSquareInfo | null) => void;
   setHoveredAnnotation: (annotation: HoveredAnnotation | null) => void;
   setHighlightedAnnotations: (annotations: AnnotationType[]) => void;
+  // Follow piece mode functions
+  setFollowPieceData: (data: FollowPieceData | null) => void;
+  setPieceArrows: (arrows: PieceMoveArrow[]) => void;
+  nextPieceMove: () => number | null;
+  prevPieceMove: () => number | null;
 }
 
 const LegendHighlightContext = createContext<LegendHighlightContextValue | undefined>(undefined);
@@ -53,6 +78,8 @@ export function LegendHighlightProvider({ children }: { children: ReactNode }) {
   const [hoveredSquare, setHoveredSquareState] = useState<HoveredSquareInfo | null>(null);
   const [hoveredAnnotation, setHoveredAnnotationState] = useState<HoveredAnnotation | null>(null);
   const [highlightedAnnotations, setHighlightedAnnotationsState] = useState<AnnotationType[]>([]);
+  const [followPieceData, setFollowPieceDataState] = useState<FollowPieceData | null>(null);
+  const [pieceArrows, setPieceArrowsState] = useState<PieceMoveArrow[]>([]);
 
   const setHighlightedPiece = useCallback((piece: HighlightedPiece | null) => {
     setHighlightedPieceState(piece);
@@ -70,6 +97,34 @@ export function LegendHighlightProvider({ children }: { children: ReactNode }) {
     setHighlightedAnnotationsState(annotations);
   }, []);
 
+  const setFollowPieceData = useCallback((data: FollowPieceData | null) => {
+    setFollowPieceDataState(data);
+  }, []);
+
+  const setPieceArrows = useCallback((arrows: PieceMoveArrow[]) => {
+    setPieceArrowsState(arrows);
+  }, []);
+
+  const nextPieceMove = useCallback((): number | null => {
+    if (!followPieceData) return null;
+    const newIndex = Math.min(followPieceData.currentIndex + 1, followPieceData.moveNumbers.length - 1);
+    if (newIndex !== followPieceData.currentIndex) {
+      setFollowPieceDataState({ ...followPieceData, currentIndex: newIndex });
+      return followPieceData.moveNumbers[newIndex];
+    }
+    return null;
+  }, [followPieceData]);
+
+  const prevPieceMove = useCallback((): number | null => {
+    if (!followPieceData) return null;
+    const newIndex = Math.max(followPieceData.currentIndex - 1, 0);
+    if (newIndex !== followPieceData.currentIndex) {
+      setFollowPieceDataState({ ...followPieceData, currentIndex: newIndex });
+      return followPieceData.moveNumbers[newIndex];
+    }
+    return null;
+  }, [followPieceData]);
+
   const toggleLockedPiece = useCallback((piece: HighlightedPiece) => {
     setLockedPieces(prev => {
       const existingIndex = prev.findIndex(
@@ -77,7 +132,9 @@ export function LegendHighlightProvider({ children }: { children: ReactNode }) {
       );
       
       if (existingIndex !== -1) {
-        // Remove if already selected
+        // Remove if already selected - also clear follow mode
+        setFollowPieceDataState(null);
+        setPieceArrowsState([]);
         return prev.filter((_, i) => i !== existingIndex);
       }
       
@@ -108,6 +165,8 @@ export function LegendHighlightProvider({ children }: { children: ReactNode }) {
   const clearLock = useCallback(() => {
     setLockedPieces([]);
     setHighlightedAnnotationsState([]);
+    setFollowPieceDataState(null);
+    setPieceArrowsState([]);
   }, []);
 
   return (
@@ -118,6 +177,8 @@ export function LegendHighlightProvider({ children }: { children: ReactNode }) {
       hoveredSquare,
       hoveredAnnotation,
       highlightedAnnotations,
+      followPieceData,
+      pieceArrows,
       setHighlightedPiece, 
       toggleLockedPiece,
       toggleCompareMode,
@@ -125,6 +186,10 @@ export function LegendHighlightProvider({ children }: { children: ReactNode }) {
       setHoveredSquare,
       setHoveredAnnotation,
       setHighlightedAnnotations,
+      setFollowPieceData,
+      setPieceArrows,
+      nextPieceMove,
+      prevPieceMove,
     }}>
       {children}
     </LegendHighlightContext.Provider>

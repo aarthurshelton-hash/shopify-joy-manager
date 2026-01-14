@@ -159,7 +159,7 @@ const TimelineBoard: React.FC<{
   pieceOpacity?: number;
   pgn?: string;
 }> = ({ board, totalMoves, size, gameData, darkMode = false, title, showCoordinates = false, showPieces = false, pieceOpacity = 0.7, pgn }) => {
-  const { currentMove } = useTimeline();
+  const { currentMove, setCurrentMove } = useTimeline();
   
   const filteredBoard = useMemo(() => {
     if (currentMove >= totalMoves) return board;
@@ -170,6 +170,11 @@ const TimelineBoard: React.FC<{
       }))
     );
   }, [board, currentMove, totalMoves]);
+
+  // Handle follow piece activation - jump to the move
+  const handleFollowPieceActivated = useCallback((moveNumber: number) => {
+    setCurrentMove(moveNumber);
+  }, [setCurrentMove]);
 
   const bgColor = darkMode ? '#0A0A0A' : '#FDFCFB';
   const borderColor = darkMode ? '#292524' : '#e7e5e4';
@@ -202,6 +207,7 @@ const TimelineBoard: React.FC<{
           pieceOpacity={pieceOpacity}
           pgn={pgn}
           currentMoveNumber={currentMove}
+          onFollowPieceActivated={handleFollowPieceActivated}
         />
       </div>
 
