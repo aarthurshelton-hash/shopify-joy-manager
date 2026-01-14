@@ -284,8 +284,13 @@ const VisualizationView = () => {
     if (type === 'gif') {
       const simulation = { board, gameData, totalMoves };
       const captureElement = document.querySelector('[data-vision-board="true"]') as HTMLElement;
+      const piecesState = exportState ? {
+        showPieces: exportState.showPieces,
+        pieceOpacity: exportState.pieceOpacity,
+      } : undefined;
+      
       if (captureElement) {
-        downloadGIF(simulation, captureElement, visualization.title);
+        downloadGIF(simulation, captureElement, visualization.title, undefined, piecesState);
       } else {
         toast.error('Unable to capture visualization');
       }

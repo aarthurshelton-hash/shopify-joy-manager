@@ -353,8 +353,13 @@ const MarketplaceVisionDetail: React.FC = () => {
     if (type === 'gif') {
       const simulation = { board: vizData.board, gameData: vizData.gameData, totalMoves: vizData.totalMoves };
       const captureElement = document.querySelector('[data-vision-board="true"]') as HTMLElement;
+      const piecesState = exportState ? {
+        showPieces: exportState.showPieces,
+        pieceOpacity: exportState.pieceOpacity,
+      } : undefined;
+      
       if (captureElement) {
-        downloadGIF(simulation, captureElement, listing.visualization.title);
+        downloadGIF(simulation, captureElement, listing.visualization.title, undefined, piecesState);
       } else {
         toast.error('Unable to capture visualization');
       }
