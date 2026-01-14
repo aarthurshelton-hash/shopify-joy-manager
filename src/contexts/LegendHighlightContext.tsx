@@ -12,16 +12,35 @@ export interface HoveredSquareInfo {
   pieces: HighlightedPiece[]; // All pieces that have visited this square
 }
 
+// Annotation types that can be highlighted
+export type AnnotationType = 
+  | 'white-player'    // The white player name
+  | 'black-player'    // The black player name
+  | 'move-notation'   // The move notation text
+  | 'result';         // The game result
+
+// For annotation highlighting: which annotation element is hovered
+export interface HoveredAnnotation {
+  type: AnnotationType;
+  // For annotations, specify which pieces are associated
+  associatedPieces?: HighlightedPiece[];
+}
+
 interface LegendHighlightContextValue {
   highlightedPiece: HighlightedPiece | null;
   lockedPieces: HighlightedPiece[];
   compareMode: boolean;
   hoveredSquare: HoveredSquareInfo | null;
+  // Annotation highlighting
+  hoveredAnnotation: HoveredAnnotation | null;
+  highlightedAnnotations: AnnotationType[]; // Annotations to highlight based on piece selection
   setHighlightedPiece: (piece: HighlightedPiece | null) => void;
   toggleLockedPiece: (piece: HighlightedPiece) => void;
   toggleCompareMode: () => void;
   clearLock: () => void;
   setHoveredSquare: (info: HoveredSquareInfo | null) => void;
+  setHoveredAnnotation: (annotation: HoveredAnnotation | null) => void;
+  setHighlightedAnnotations: (annotations: AnnotationType[]) => void;
 }
 
 const LegendHighlightContext = createContext<LegendHighlightContextValue | undefined>(undefined);
@@ -31,6 +50,8 @@ export function LegendHighlightProvider({ children }: { children: ReactNode }) {
   const [lockedPieces, setLockedPieces] = useState<HighlightedPiece[]>([]);
   const [compareMode, setCompareMode] = useState(false);
   const [hoveredSquare, setHoveredSquareState] = useState<HoveredSquareInfo | null>(null);
+  const [hoveredAnnotation, setHoveredAnnotationState] = useState<HoveredAnnotation | null>(null);
+  const [highlightedAnnotations, setHighlightedAnnotationsState] = useState<AnnotationType[]>([]);
 
   const setHighlightedPiece = useCallback((piece: HighlightedPiece | null) => {
     setHighlightedPieceState(piece);
@@ -38,6 +59,14 @@ export function LegendHighlightProvider({ children }: { children: ReactNode }) {
 
   const setHoveredSquare = useCallback((info: HoveredSquareInfo | null) => {
     setHoveredSquareState(info);
+  }, []);
+
+  const setHoveredAnnotation = useCallback((annotation: HoveredAnnotation | null) => {
+    setHoveredAnnotationState(annotation);
+  }, []);
+
+  const setHighlightedAnnotations = useCallback((annotations: AnnotationType[]) => {
+    setHighlightedAnnotationsState(annotations);
   }, []);
 
   const toggleLockedPiece = useCallback((piece: HighlightedPiece) => {
@@ -77,6 +106,7 @@ export function LegendHighlightProvider({ children }: { children: ReactNode }) {
 
   const clearLock = useCallback(() => {
     setLockedPieces([]);
+    setHighlightedAnnotationsState([]);
   }, []);
 
   return (
@@ -85,11 +115,15 @@ export function LegendHighlightProvider({ children }: { children: ReactNode }) {
       lockedPieces,
       compareMode,
       hoveredSquare,
+      hoveredAnnotation,
+      highlightedAnnotations,
       setHighlightedPiece, 
       toggleLockedPiece,
       toggleCompareMode,
       clearLock,
       setHoveredSquare,
+      setHoveredAnnotation,
+      setHighlightedAnnotations,
     }}>
       {children}
     </LegendHighlightContext.Provider>

@@ -158,19 +158,23 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board }) 
     lockedPieces = [], 
     compareMode = false,
     hoveredSquare = null,
+    hoveredAnnotation = null,
     setHighlightedPiece, 
     toggleLockedPiece, 
     toggleCompareMode,
-    clearLock 
+    clearLock,
+    setHighlightedAnnotations,
   } = highlightContext || { 
     highlightedPiece: null,
     lockedPieces: [],
     compareMode: false,
     hoveredSquare: null,
+    hoveredAnnotation: null,
     setHighlightedPiece: () => {},
     toggleLockedPiece: () => {},
     toggleCompareMode: () => {},
-    clearLock: () => {}
+    clearLock: () => {},
+    setHighlightedAnnotations: () => {},
   };
 
   // Check if a piece is highlighted via square hover (reverse highlight)
@@ -180,6 +184,15 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board }) 
       p => p.pieceType === pieceType && p.pieceColor === pieceColor
     );
   };
+
+  // Check if a piece is highlighted from annotation hover
+  const isHighlightedFromAnnotation = (pieceType: PieceType, pieceColor: PieceColor) => {
+    if (!hoveredAnnotation?.associatedPieces) return false;
+    return hoveredAnnotation.associatedPieces.some(
+      p => p.pieceType === pieceType && p.pieceColor === pieceColor
+    );
+  };
+
   
   // Calculate stats for each piece type
   const pieceStats = useMemo(() => {
@@ -386,6 +399,32 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board }) 
   const handlePieceClick = (pieceType: PieceType, pieceColor: PieceColor) => {
     if (interactive && toggleLockedPiece) {
       toggleLockedPiece({ pieceType, pieceColor });
+      
+      // Update highlighted annotations based on piece color
+      if (setHighlightedAnnotations) {
+        // Check if this will result in a lock or unlock
+        const isCurrentlyLocked = lockedPieces.some(
+          p => p.pieceType === pieceType && p.pieceColor === pieceColor
+        );
+        
+        if (isCurrentlyLocked) {
+          // Will be unlocked - recalculate annotations based on remaining pieces
+          const remainingPieces = lockedPieces.filter(
+            p => !(p.pieceType === pieceType && p.pieceColor === pieceColor)
+          );
+          const annotations: ('white-player' | 'black-player')[] = [];
+          if (remainingPieces.some(p => p.pieceColor === 'w')) annotations.push('white-player');
+          if (remainingPieces.some(p => p.pieceColor === 'b')) annotations.push('black-player');
+          setHighlightedAnnotations(annotations);
+        } else {
+          // Will be locked - add annotation for this piece's color
+          const annotations: ('white-player' | 'black-player')[] = [];
+          const allPieces = [...lockedPieces, { pieceType, pieceColor }];
+          if (allPieces.some(p => p.pieceColor === 'w')) annotations.push('white-player');
+          if (allPieces.some(p => p.pieceColor === 'b')) annotations.push('black-player');
+          setHighlightedAnnotations(annotations);
+        }
+      }
     }
   };
 
@@ -409,12 +448,17 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board }) 
     return pieceHeatmaps.get(`${pieceColor}-${pieceType}`) || null;
   };
 
-  // Check if any filter is active (hover, lock, or square hover)
-  const hasActiveFilter = hoveredSquare !== null || lockedPieces.length > 0 || highlightedPiece !== null;
+  // Check if any filter is active (hover, lock, square hover, or annotation hover)
+  const hasActiveFilter = hoveredSquare !== null || lockedPieces.length > 0 || highlightedPiece !== null || hoveredAnnotation !== null;
 
   // Check if this piece should be dimmed
   const shouldDim = (pieceType: PieceType, pieceColor: PieceColor) => {
     if (!hasActiveFilter) return false;
+    
+    // If annotation is hovered, dim pieces not associated with that annotation
+    if (hoveredAnnotation) {
+      return !isHighlightedFromAnnotation(pieceType, pieceColor);
+    }
     
     // If square is hovered, dim pieces not on that square
     if (hoveredSquare) {
@@ -443,6 +487,7 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board }) 
     const showStats = (highlighted || locked) && stats;
 
     const fromSquare = isHighlightedFromSquare(item.piece, item.color);
+    const fromAnnotation = isHighlightedFromAnnotation(item.piece, item.color);
     const dimmed = shouldDim(item.piece, item.color);
 
     return (
@@ -452,7 +497,9 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board }) 
           interactive && highlightContext ? 'cursor-pointer hover:bg-accent/50' : ''
         } ${highlighted ? 'bg-accent ring-2 ring-primary/50' : ''} ${
           locked ? (lockedIndex === 0 ? 'bg-sky-500/20 ring-2 ring-sky-500' : 'bg-rose-500/20 ring-2 ring-rose-500') : ''
-        } ${fromSquare ? 'bg-amber-400/20 ring-2 ring-amber-400 scale-[1.02]' : ''}`}
+        } ${fromSquare ? 'bg-amber-400/20 ring-2 ring-amber-400 scale-[1.02]' : ''} ${
+          fromAnnotation ? 'bg-purple-400/20 ring-2 ring-purple-400 scale-[1.02]' : ''
+        }`}
         style={{
           opacity: dimmed ? 0.2 : 1,
           transition: 'opacity 0.2s ease-out',
