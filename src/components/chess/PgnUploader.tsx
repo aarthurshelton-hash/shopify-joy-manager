@@ -389,9 +389,166 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
     return filteredGames.slice(start, start + gamesPerPage);
   }, [filteredGames, pageIndex, gamesPerPage]);
 
+  // Carlsen-specific games for dedicated section
+  const carlsenGames = useMemo(() => {
+    return carlsenLegendaryGames.sort((a, b) => {
+      if (a.year !== b.year) return a.year - b.year;
+      return a.title.localeCompare(b.title);
+    });
+  }, []);
+
+  // Render a game card
+  const renderGameCard = (game: FamousGame) => {
+    const gameImage = gameImageImports[game.id];
+    const poetryPreview = getPoetryPreview(game.id);
+    return (
+      <button
+        key={game.id}
+        onClick={() => handleLoadGame(game)}
+        className={`group text-left rounded-lg border transition-all duration-200 overflow-hidden ${
+          isMobile ? 'flex flex-col' : 'flex gap-3 p-2 hover:scale-[1.02]'
+        } ${
+          selectedGame?.id === game.id 
+            ? 'border-primary ring-1 ring-primary/30 bg-primary/5' 
+            : 'border-border/40 bg-card/50 hover:border-primary/50 hover:bg-card active:scale-[0.98]'
+        }`}
+      >
+        {/* Thumbnail */}
+        <div className={`relative overflow-hidden bg-muted ${
+          isMobile ? 'w-full aspect-[4/3]' : 'w-14 h-14 flex-shrink-0 rounded-md'
+        }`}>
+          {gameImage ? (
+            <img 
+              src={gameImage} 
+              alt={game.title}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
+              <Crown className={isMobile ? "h-6 w-6 text-primary/40" : "h-5 w-5 text-primary/40"} />
+            </div>
+          )}
+          {/* Poetry indicator badge */}
+          {poetryPreview && (
+            <div className={`absolute ${isMobile ? 'bottom-1 left-1' : 'bottom-0 left-0'} px-1.5 py-0.5 bg-primary/90 rounded-tr-md rounded-bl-md`}>
+              <PenTool className="h-2.5 w-2.5 text-primary-foreground" />
+            </div>
+          )}
+          {/* Favorite button */}
+          <button
+            onClick={(e) => handleToggleFavorite(e, game.id)}
+            className={`absolute ${isMobile ? 'top-1.5 right-1.5' : 'top-0.5 right-0.5'} p-1 rounded-full transition-all ${
+              isFavorite(game.id)
+                ? 'bg-red-500/90 text-white'
+                : 'bg-black/40 text-white/70 opacity-0 group-hover:opacity-100'
+            }`}
+            aria-label={isFavorite(game.id) ? 'Remove from favorites' : 'Add to favorites'}
+          >
+            <Heart className={`${isMobile ? 'h-3.5 w-3.5' : 'h-3 w-3'} ${isFavorite(game.id) ? 'fill-current' : ''}`} />
+          </button>
+        </div>
+        {/* Text info */}
+        <div className={`flex flex-col justify-center ${isMobile ? 'p-2 flex-1' : 'flex-1 min-w-0'}`}>
+          <p className="text-xs font-semibold text-foreground leading-tight line-clamp-1">{game.title}</p>
+          <p className={`text-muted-foreground ${isMobile ? 'text-[10px] mt-0.5' : 'text-[10px] mt-0.5'}`}>{game.year}</p>
+          {/* Poetry preview */}
+          {poetryPreview && (
+            <p className={`italic text-primary/70 line-clamp-1 ${isMobile ? 'text-[9px] mt-1' : 'text-[9px] mt-0.5'}`}>
+              "{poetryPreview}"
+            </p>
+          )}
+        </div>
+      </button>
+    );
+  };
+
   return (
-    <div className="space-y-8">
-      {/* Famous Games Showcase */}
+    <div className="space-y-6">
+      {/* Magnus Carlsen Dedicated Section */}
+      <div className="rounded-lg border border-amber-500/30 bg-gradient-to-br from-amber-500/5 via-card/50 to-card/50 overflow-hidden">
+        <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-amber-500/20">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+              <Trophy className="h-5 w-5 text-amber-500" />
+            </div>
+            <div>
+              <h3 className="font-display text-base sm:text-lg font-semibold text-amber-100">
+                Magnus Carlsen Collection
+              </h3>
+              <p className="text-xs sm:text-sm text-muted-foreground font-serif">
+                {carlsenGames.length} masterpieces from the World Champion
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="p-3 sm:p-4">
+          <div className="overflow-x-auto pb-2 -mx-3 px-3 scrollbar-thin scrollbar-thumb-amber-500/30 scrollbar-track-transparent">
+            <div className="flex gap-3" style={{ minWidth: 'max-content' }}>
+              {carlsenGames.map((game) => {
+                const gameImage = gameImageImports[game.id];
+                const poetryPreview = getPoetryPreview(game.id);
+                return (
+                  <button
+                    key={game.id}
+                    onClick={() => handleLoadGame(game)}
+                    className={`group flex-shrink-0 w-40 sm:w-48 text-left rounded-lg border transition-all duration-200 overflow-hidden hover:scale-[1.02] ${
+                      selectedGame?.id === game.id 
+                        ? 'border-amber-500 ring-1 ring-amber-500/30 bg-amber-500/10' 
+                        : 'border-amber-500/20 bg-card/50 hover:border-amber-500/50 hover:bg-card active:scale-[0.98]'
+                    }`}
+                  >
+                    {/* Thumbnail */}
+                    <div className="relative w-full aspect-[4/3] overflow-hidden bg-muted">
+                      {gameImage ? (
+                        <img 
+                          src={gameImage} 
+                          alt={game.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-amber-500/20 to-amber-500/5">
+                          <Trophy className="h-8 w-8 text-amber-500/40" />
+                        </div>
+                      )}
+                      {/* Poetry indicator badge */}
+                      {poetryPreview && (
+                        <div className="absolute bottom-1 left-1 px-1.5 py-0.5 bg-amber-500/90 rounded-tr-md rounded-bl-md">
+                          <PenTool className="h-2.5 w-2.5 text-amber-900" />
+                        </div>
+                      )}
+                      {/* Favorite button */}
+                      <button
+                        onClick={(e) => handleToggleFavorite(e, game.id)}
+                        className={`absolute top-1.5 right-1.5 p-1 rounded-full transition-all ${
+                          isFavorite(game.id)
+                            ? 'bg-red-500/90 text-white'
+                            : 'bg-black/40 text-white/70 opacity-0 group-hover:opacity-100'
+                        }`}
+                        aria-label={isFavorite(game.id) ? 'Remove from favorites' : 'Add to favorites'}
+                      >
+                        <Heart className={`h-3.5 w-3.5 ${isFavorite(game.id) ? 'fill-current' : ''}`} />
+                      </button>
+                    </div>
+                    {/* Text info */}
+                    <div className="p-2.5">
+                      <p className="text-xs font-semibold text-foreground leading-tight line-clamp-1">{game.title}</p>
+                      <p className="text-[10px] text-amber-500/70 mt-0.5">{game.year}</p>
+                      {poetryPreview && (
+                        <p className="italic text-amber-500/60 line-clamp-1 text-[9px] mt-1">
+                          "{poetryPreview}"
+                        </p>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* All Legendary Games Showcase */}
       <div ref={gamesContainerRef} className="rounded-lg border border-border/50 bg-card/50 overflow-hidden">
         <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-border/50">
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
@@ -530,70 +687,7 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
                 }`}
                 style={{ minHeight: isMobile ? '180px' : '200px' }}
               >
-                {visibleGames.map((game) => {
-                  const gameImage = gameImageImports[game.id];
-                  const poetryPreview = getPoetryPreview(game.id);
-                  const poetryStyle = getPoetryStyleLabel(game.id);
-                  return (
-                    <button
-                      key={game.id}
-                      onClick={() => handleLoadGame(game)}
-                      className={`group text-left rounded-lg border transition-all duration-200 overflow-hidden ${
-                        isMobile ? 'flex flex-col' : 'flex gap-3 p-2 hover:scale-[1.02]'
-                      } ${
-                        selectedGame?.id === game.id 
-                          ? 'border-primary ring-1 ring-primary/30 bg-primary/5' 
-                          : 'border-border/40 bg-card/50 hover:border-primary/50 hover:bg-card active:scale-[0.98]'
-                      }`}
-                    >
-                    {/* Thumbnail */}
-                    <div className={`relative overflow-hidden bg-muted ${
-                      isMobile ? 'w-full aspect-[4/3]' : 'w-14 h-14 flex-shrink-0 rounded-md'
-                    }`}>
-                      {gameImage ? (
-                        <img 
-                          src={gameImage} 
-                          alt={game.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
-                          <Crown className={isMobile ? "h-6 w-6 text-primary/40" : "h-5 w-5 text-primary/40"} />
-                        </div>
-                      )}
-                      {/* Poetry indicator badge */}
-                      {poetryPreview && (
-                        <div className={`absolute ${isMobile ? 'bottom-1 left-1' : 'bottom-0 left-0'} px-1.5 py-0.5 bg-primary/90 rounded-tr-md rounded-bl-md`}>
-                          <PenTool className="h-2.5 w-2.5 text-primary-foreground" />
-                        </div>
-                      )}
-                      {/* Favorite button */}
-                      <button
-                        onClick={(e) => handleToggleFavorite(e, game.id)}
-                        className={`absolute ${isMobile ? 'top-1.5 right-1.5' : 'top-0.5 right-0.5'} p-1 rounded-full transition-all ${
-                          isFavorite(game.id)
-                            ? 'bg-red-500/90 text-white'
-                            : 'bg-black/40 text-white/70 opacity-0 group-hover:opacity-100'
-                        }`}
-                        aria-label={isFavorite(game.id) ? 'Remove from favorites' : 'Add to favorites'}
-                      >
-                        <Heart className={`${isMobile ? 'h-3.5 w-3.5' : 'h-3 w-3'} ${isFavorite(game.id) ? 'fill-current' : ''}`} />
-                      </button>
-                    </div>
-                    {/* Text info */}
-                    <div className={`flex flex-col justify-center ${isMobile ? 'p-2 flex-1' : 'flex-1 min-w-0'}`}>
-                      <p className="text-xs font-semibold text-foreground leading-tight line-clamp-1">{game.title}</p>
-                      <p className={`text-muted-foreground ${isMobile ? 'text-[10px] mt-0.5' : 'text-[10px] mt-0.5'}`}>{game.year}</p>
-                      {/* Poetry preview */}
-                      {poetryPreview && (
-                        <p className={`italic text-primary/70 line-clamp-1 ${isMobile ? 'text-[9px] mt-1' : 'text-[9px] mt-0.5'}`}>
-                          "{poetryPreview}"
-                        </p>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
+                {visibleGames.map((game) => renderGameCard(game))}
             </div>
             
             {/* Pagination dots */}
