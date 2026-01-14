@@ -1113,13 +1113,16 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
 
   // Analyze game - use effectivePgn for consistency
   useEffect(() => {
-    if (effectivePgn) {
+    if (effectivePgn && effectivePgn.trim()) {
       try {
         const analysis = analyzeGame(effectivePgn);
         setGameAnalysis(analysis);
-      } catch {
+      } catch (e) {
+        console.warn('Failed to analyze game:', e);
         setGameAnalysis(null);
       }
+    } else {
+      setGameAnalysis(null);
     }
   }, [effectivePgn]);
 
@@ -1635,12 +1638,12 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                     )}
                   </div>
 
-                  {/* Mini Print Order Section */}
+                  {/* Mini Print Order Section - Use local state for consistency */}
                   {onExport && (
                     <MiniPrintOrderSection
-                      board={board}
-                      gameData={gameData}
-                      totalMoves={totalMoves}
+                      board={localBoard}
+                      gameData={localGameData}
+                      totalMoves={localTotalMoves}
                       darkMode={darkMode}
                       showPieces={showPieces}
                       pieceOpacity={pieceOpacity}
