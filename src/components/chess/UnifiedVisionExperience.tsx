@@ -1202,9 +1202,8 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
     return 'Chess Visualization';
   }, [title, gameData.white, gameData.black]);
 
-  // Determine which action buttons to show based on context
-  const showGeneratorActions = context === 'generator' || context === 'postgame';
-  const showGalleryActions = context === 'gallery';
+  // All contexts now share unified action buttons
+  // No more context-specific flags needed
 
   return (
     <TimelineProvider>
@@ -1532,73 +1531,9 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                     />
                   )}
 
-                  {/* Action Buttons - Context Specific */}
+                  {/* Action Buttons - Unified for all contexts */}
                   <div className="flex flex-wrap gap-2 pt-4 border-t border-border/30">
-                    {/* Generator/Postgame Actions */}
-                    {showGeneratorActions && (
-                      <>
-                        <ExportActionButtons
-                          onExport={onExport}
-                          isPremium={isPremium}
-                          darkMode={darkMode}
-                          totalMoves={totalMoves}
-                          showPieces={showPieces}
-                          pieceOpacity={pieceOpacity}
-                        />
-                        
-                        {onSaveToGallery && (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button 
-                                  variant="outline" 
-                                  size="sm" 
-                                  className="gap-2"
-                                  onClick={async () => {
-                                    const id = await onSaveToGallery();
-                                    if (id) {
-                                      // Could trigger success state
-                                    }
-                                  }}
-                                >
-                                  <Crown className="h-4 w-4 text-primary" />
-                                  Save to Gallery
-                                  {!isPremium && <Crown className="h-3 w-3 text-primary" />}
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                {isPremium ? 'Save to your vision gallery' : 'Premium: Save to your vision gallery'}
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        )}
-                      </>
-                    )}
-
-                    {/* Gallery Actions - List for Sale button */}
-                    {showGalleryActions && (
-                      <>
-                        {!localIsListed && onListForSale && (
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="gap-2"
-                            onClick={onListForSale}
-                          >
-                            <TrendingUp className="h-4 w-4" />
-                            List for Sale
-                          </Button>
-                        )}
-                        
-                        {localIsListed && (
-                          <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30">
-                            Listed on Marketplace
-                          </Badge>
-                        )}
-                      </>
-                    )}
-                    
-                    {/* Unified Export Buttons - Show for all contexts when onExport provided */}
+                    {/* Export Buttons - Single unified rendering for all contexts */}
                     {onExport && (
                       <ExportActionButtons
                         onExport={onExport}
@@ -1608,6 +1543,55 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                         showPieces={showPieces}
                         pieceOpacity={pieceOpacity}
                       />
+                    )}
+
+                    {/* Save to Gallery - Show for generator/postgame contexts */}
+                    {onSaveToGallery && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="gap-2"
+                              onClick={async () => {
+                                const id = await onSaveToGallery();
+                                if (id) {
+                                  setLocalVisualizationId(id);
+                                  setLocalIsOwner(true);
+                                }
+                              }}
+                            >
+                              <Crown className="h-4 w-4 text-primary" />
+                              Save to Gallery
+                              {!isPremium && <Crown className="h-3 w-3 text-primary" />}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {isPremium ? 'Save to your vision gallery' : 'Premium: Save to your vision gallery'}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+
+                    {/* List for Sale - Show for owners who haven't listed */}
+                    {localIsOwner && !localIsListed && onListForSale && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="gap-2"
+                        onClick={onListForSale}
+                      >
+                        <TrendingUp className="h-4 w-4" />
+                        List for Sale
+                      </Button>
+                    )}
+                    
+                    {/* Listed Badge */}
+                    {localIsListed && (
+                      <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30">
+                        Listed on Marketplace
+                      </Badge>
                     )}
 
                     {/* Transfer to Creative Mode - Available in multiple contexts */}
