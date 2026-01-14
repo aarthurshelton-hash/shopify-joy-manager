@@ -1521,7 +1521,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
           )}
         </AnimatePresence>
 
-        <div className="flex flex-col h-full w-full max-w-full overflow-x-hidden" ref={containerRef}>
+        <div className="flex flex-col w-full max-w-full" ref={containerRef}>
           {/* Header with back button, header actions, and dark mode toggle - Available for ALL contexts */}
           {(onBack || headerActions) && (
             <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4 pb-3 border-b border-border/50">
@@ -1593,9 +1593,9 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="experience" className="mt-0 w-full max-w-full overflow-visible">
-              <div className="w-full max-w-full overflow-visible">
-                <div className="space-y-4 w-full">
+            <TabsContent value="experience" className="mt-0 w-full">
+              <div className="w-full">
+                <div className="space-y-4 w-full pb-4">
                   {/* Board Controls + Quick Actions Bar */}
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border/50">
                     {/* Left: View controls */}
@@ -1708,8 +1708,8 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                     </button>
                   )}
 
-                  {/* Main Layout: Timeline Left | Board Center | Legend Right - Full width usage */}
-                  <div className="flex gap-2 xl:gap-3 items-start justify-center w-full overflow-visible">
+                  {/* Main Layout: Timeline Left | Board Center | Legend Right */}
+                  <div className="flex gap-2 xl:gap-3 items-start justify-center w-full">
                     {/* Left: Vertical Timeline - full width */}
                     <div className="hidden xl:flex flex-shrink-0" style={{ minWidth: '160px', width: '160px' }}>
                       <VerticalTimelineSlider 
@@ -1995,7 +1995,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
 
             {/* Analytics Tab */}
             <TabsContent value="analytics" className="mt-0">
-              <ScrollArea className="h-[calc(100vh-300px)] sm:h-auto">
+              <div className="pb-4">
                 {/* Royalty Earnings/Potential Card - Show for all contexts when vision score exists */}
                 {visionScore && (
                   <div className="mb-6">
@@ -2092,7 +2092,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                     </Button>
                   </div>
                 )}
-              </ScrollArea>
+              </div>
             </TabsContent>
           </Tabs>
 
