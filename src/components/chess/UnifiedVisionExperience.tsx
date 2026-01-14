@@ -1170,9 +1170,9 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                   </div>
 
                   {/* Main Layout: Timeline Left | Board Center | Legend Right */}
-                  <div className="flex gap-4 items-start justify-center">
+                  <div className="flex gap-2 xl:gap-4 items-start justify-center w-full overflow-x-auto">
                     {/* Left: Vertical Timeline */}
-                    <div className="hidden lg:block flex-shrink-0">
+                    <div className="hidden xl:block flex-shrink-0">
                       <VerticalTimelineSlider 
                         totalMoves={localTotalMoves} 
                         moves={localGameData.moves}
@@ -1200,7 +1200,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
 
                     {/* Right: Color Legend */}
                     {showLegend && (
-                      <div className="hidden lg:block flex-shrink-0 w-[220px]">
+                      <div className="hidden xl:block flex-shrink-0 w-[200px]">
                         <ColorLegend 
                           interactive={true}
                           board={localBoard}
@@ -1209,17 +1209,17 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                     )}
                   </div>
 
-                  {/* Mobile Timeline Controls (shown on smaller screens) */}
-                  <div className="lg:hidden">
+                  {/* Mobile/Tablet Timeline Controls (shown on smaller screens) */}
+                  <div className="xl:hidden">
                     <TimelineControls 
                       totalMoves={totalMoves} 
                       moves={gameData.moves}
                     />
                   </div>
 
-                  {/* Mobile Legend (shown on smaller screens) */}
+                  {/* Mobile/Tablet Legend (shown on smaller screens) */}
                   {showLegend && (
-                    <div className="lg:hidden">
+                    <div className="xl:hidden">
                       <EnhancedLegend 
                         whitePalette={getCurrentPalette().white}
                         blackPalette={getCurrentPalette().black}
