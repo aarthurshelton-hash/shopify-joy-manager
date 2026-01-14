@@ -638,66 +638,124 @@ const AnalyticsPanel: React.FC<{
                   <Sparkles className="h-3 w-3 mr-1" />
                   Move Quality
                 </Badge>
-                <span className={`text-lg font-bold ${
-                  qualitySummary.accuracy >= 90 ? 'text-green-400' :
-                  qualitySummary.accuracy >= 70 ? 'text-yellow-400' :
-                  'text-red-400'
-                }`}>
-                  {qualitySummary.accuracy.toFixed(1)}% Accuracy
-                </span>
               </div>
               
-              {/* Quality breakdown */}
+              {/* Per-player accuracy display - chess.com style */}
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div className="p-2 rounded bg-background/50 border border-border/30 text-center">
+                  <p className="text-[10px] text-muted-foreground mb-1">♔ {gameData.white || 'White'}</p>
+                  <p className={`text-lg font-bold ${
+                    qualitySummary.whiteAccuracy >= 90 ? 'text-green-400' :
+                    qualitySummary.whiteAccuracy >= 70 ? 'text-yellow-400' :
+                    'text-red-400'
+                  }`}>
+                    {qualitySummary.whiteAccuracy}%
+                  </p>
+                </div>
+                <div className="p-2 rounded bg-background/50 border border-border/30 text-center">
+                  <p className="text-[10px] text-muted-foreground mb-1">♚ {gameData.black || 'Black'}</p>
+                  <p className={`text-lg font-bold ${
+                    qualitySummary.blackAccuracy >= 90 ? 'text-green-400' :
+                    qualitySummary.blackAccuracy >= 70 ? 'text-yellow-400' :
+                    'text-red-400'
+                  }`}>
+                    {qualitySummary.blackAccuracy}%
+                  </p>
+                </div>
+              </div>
+              
+              {/* Quality breakdown - show all categories */}
               <div className="grid grid-cols-4 gap-2 text-center text-xs mb-3">
+                {/* Brilliant moves - always show if > 0 */}
                 {qualitySummary.brilliantCount > 0 && (
-                  <div className="p-2 rounded bg-cyan-500/10">
+                  <div className="p-2 rounded bg-cyan-500/10 border border-cyan-500/20">
                     <p className="font-bold text-cyan-400">{qualitySummary.brilliantCount}</p>
-                    <p className="text-muted-foreground text-[10px]">Brilliant</p>
+                    <p className="text-muted-foreground text-[10px]">Brilliant !!</p>
                   </div>
                 )}
+                {/* Great moves */}
                 {qualitySummary.greatCount > 0 && (
-                  <div className="p-2 rounded bg-green-500/10">
+                  <div className="p-2 rounded bg-green-500/10 border border-green-500/20">
                     <p className="font-bold text-green-400">{qualitySummary.greatCount}</p>
-                    <p className="text-muted-foreground text-[10px]">Great</p>
+                    <p className="text-muted-foreground text-[10px]">Great !</p>
                   </div>
                 )}
-                {qualitySummary.blunderCount > 0 && (
-                  <div className="p-2 rounded bg-red-500/10">
-                    <p className="font-bold text-red-400">{qualitySummary.blunderCount}</p>
-                    <p className="text-muted-foreground text-[10px]">Blunders</p>
+                {/* Best moves */}
+                {qualitySummary.bestCount > 0 && (
+                  <div className="p-2 rounded bg-lime-500/10 border border-lime-500/20">
+                    <p className="font-bold text-lime-400">{qualitySummary.bestCount}</p>
+                    <p className="text-muted-foreground text-[10px]">Best ✓</p>
                   </div>
                 )}
-                {qualitySummary.mistakeCount > 0 && (
-                  <div className="p-2 rounded bg-orange-500/10">
-                    <p className="font-bold text-orange-400">{qualitySummary.mistakeCount}</p>
-                    <p className="text-muted-foreground text-[10px]">Mistakes</p>
+                {/* Good moves */}
+                {qualitySummary.goodCount > 0 && (
+                  <div className="p-2 rounded bg-gray-500/10 border border-gray-500/20">
+                    <p className="font-bold text-gray-400">{qualitySummary.goodCount}</p>
+                    <p className="text-muted-foreground text-[10px]">Good ○</p>
                   </div>
                 )}
               </div>
+              
+              {/* Errors breakdown - only show if there are any */}
+              {(qualitySummary.inaccuracyCount > 0 || qualitySummary.mistakeCount > 0 || qualitySummary.blunderCount > 0) && (
+                <div className="grid grid-cols-3 gap-2 text-center text-xs mb-3">
+                  {qualitySummary.inaccuracyCount > 0 && (
+                    <div className="p-2 rounded bg-yellow-500/10 border border-yellow-500/20">
+                      <p className="font-bold text-yellow-400">{qualitySummary.inaccuracyCount}</p>
+                      <p className="text-muted-foreground text-[10px]">Inaccuracy ?!</p>
+                    </div>
+                  )}
+                  {qualitySummary.mistakeCount > 0 && (
+                    <div className="p-2 rounded bg-orange-500/10 border border-orange-500/20">
+                      <p className="font-bold text-orange-400">{qualitySummary.mistakeCount}</p>
+                      <p className="text-muted-foreground text-[10px]">Mistake ?</p>
+                    </div>
+                  )}
+                  {qualitySummary.blunderCount > 0 && (
+                    <div className="p-2 rounded bg-red-500/10 border border-red-500/20">
+                      <p className="font-bold text-red-400">{qualitySummary.blunderCount}</p>
+                      <p className="text-muted-foreground text-[10px]">Blunder ??</p>
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {/* Book moves - show if game has opening theory */}
+              {qualitySummary.bookCount > 0 && (
+                <div className="mb-3 p-2 rounded bg-emerald-500/10 border border-emerald-500/20 text-center">
+                  <span className="text-xs text-emerald-400">
+                    📖 {qualitySummary.bookCount} Opening Book Moves
+                  </span>
+                </div>
+              )}
               
               {/* Tactical event counts */}
               <div className="pt-2 border-t border-border/30">
                 <p className="text-[10px] text-muted-foreground mb-2">Tactical Events</p>
-                <div className="grid grid-cols-5 gap-1.5 text-center text-xs">
-                  <div className="p-1.5 rounded bg-yellow-500/10">
+                <div className="grid grid-cols-6 gap-1 text-center text-xs">
+                  <div className="p-1 rounded bg-yellow-500/10">
                     <p className="font-bold text-yellow-400">{qualitySummary.checkCount}</p>
                     <p className="text-muted-foreground text-[9px]">Checks</p>
                   </div>
-                  <div className="p-1.5 rounded bg-red-500/10">
+                  <div className="p-1 rounded bg-red-500/10">
                     <p className="font-bold text-red-400">{qualitySummary.checkmateCount}</p>
                     <p className="text-muted-foreground text-[9px]">Mate</p>
                   </div>
-                  <div className="p-1.5 rounded bg-orange-500/10">
+                  <div className="p-1 rounded bg-orange-500/10">
                     <p className="font-bold text-orange-400">{qualitySummary.captureCount}</p>
                     <p className="text-muted-foreground text-[9px]">Captures</p>
                   </div>
-                  <div className="p-1.5 rounded bg-blue-500/10">
+                  <div className="p-1 rounded bg-blue-500/10">
                     <p className="font-bold text-blue-400">{qualitySummary.castleCount}</p>
                     <p className="text-muted-foreground text-[9px]">Castles</p>
                   </div>
-                  <div className="p-1.5 rounded bg-purple-500/10">
+                  <div className="p-1 rounded bg-purple-500/10">
                     <p className="font-bold text-purple-400">{qualitySummary.sacrificeCount}</p>
                     <p className="text-muted-foreground text-[9px]">Sacrifices</p>
+                  </div>
+                  <div className="p-1 rounded bg-pink-500/10">
+                    <p className="font-bold text-pink-400">{qualitySummary.promotionCount}</p>
+                    <p className="text-muted-foreground text-[9px]">Promos</p>
                   </div>
                 </div>
               </div>

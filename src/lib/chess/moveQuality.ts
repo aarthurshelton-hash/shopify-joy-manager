@@ -234,56 +234,93 @@ function classifySingleMove(params: ClassifyMoveParams): MoveQuality {
     return 'brilliant';
   }
   
-  // Sacrifice that leads to check or strong position is brilliant
+  // Sacrifice that leads to check is brilliant
   if (isSacrifice && isCheck) {
     return 'brilliant';
   }
   
-  // Pure sacrifice (giving up material) - could be brilliant or blunder
-  if (isSacrifice && !isCheck) {
-    // If we can detect it leads to forced checkmate, it's brilliant
-    // Without an engine, we'll mark sacrifices as "great" if they're followed by check
+  // Pure sacrifice (giving up material for position) - mark as great
+  // This indicates tactical awareness even without engine confirmation
+  if (isSacrifice && !isCheck && materialChange < -100) {
     return 'great';
   }
   
-  // Major blunder detection: hanging pieces, losing queen, etc.
-  if (materialChange < -500) { // Lost more than 5 pawns worth
+  // === BLUNDER / MISTAKE / INACCURACY Detection ===
+  // Major blunder: hanging major pieces or losing queen
+  if (materialChange < -500) {
     return 'blunder';
   }
   
-  if (materialChange < -200) { // Lost 2+ pawns worth
+  // Mistake: lost a minor piece or equivalent
+  if (materialChange < -200) {
     return 'mistake';
   }
   
-  if (materialChange < -50) { // Small material loss
+  // Inaccuracy: small material loss (a pawn or less)
+  if (materialChange < -50) {
     return 'inaccuracy';
   }
   
-  // Opening book moves (first 10 moves with standard patterns)
+  // === BOOK MOVES ===
+  // Standard opening theory moves in first 10 moves
   if (isOpening && isStandardOpeningMove(move, moveNumber)) {
     return 'book';
   }
   
-  // Winning material is good/great
-  if (materialChange > 300) {
+  // === BRILLIANT / GREAT / BEST / GOOD Detection ===
+  
+  // Winning a queen or major material is brilliant
+  if (materialChange >= 800) {
+    return 'brilliant';
+  }
+  
+  // Winning significant material (rook value or more) is great
+  if (materialChange >= 450) {
     return 'great';
   }
   
-  if (materialChange > 100) {
+  // Winning a minor piece is a "best" move (likely optimal in position)
+  if (materialChange >= 250) {
+    return 'best';
+  }
+  
+  // Winning material worth 1-2 pawns is "good"
+  if (materialChange >= 80) {
     return 'good';
   }
   
-  // Check without material loss is good
-  if (isCheck) {
+  // Check that wins material is great
+  if (isCheck && materialChange > 0) {
+    return 'great';
+  }
+  
+  // Check without losing material is good
+  if (isCheck && materialChange >= 0) {
     return 'good';
   }
   
-  // Castle in opening is good
-  if ((move.flags.includes('k') || move.flags.includes('q')) && moveNumber <= 15) {
+  // Castle in opening/early middlegame is good (king safety)
+  if ((move.flags.includes('k') || move.flags.includes('q')) && moveNumber <= 20) {
     return 'good';
   }
   
-  // Default to "good" for neutral moves
+  // Capture that trades equally or slightly favorably is "best"
+  if (isCapture && materialChange >= 0 && materialChange < 80) {
+    return 'best';
+  }
+  
+  // Central pawn moves in opening are often best
+  if (isOpening && !isCapture && (move.san === 'e4' || move.san === 'd4' || move.san === 'e5' || move.san === 'd5')) {
+    return 'best';
+  }
+  
+  // Knight development to good squares is best in opening
+  if (isOpening && move.piece === 'n' && ['c3', 'f3', 'c6', 'f6'].includes(move.to)) {
+    return 'best';
+  }
+  
+  // Neutral moves without clear improvement - classify as good by default
+  // (Without engine analysis, we can't distinguish "best" from "good" perfectly)
   return 'good';
 }
 
@@ -369,9 +406,32 @@ export interface MoveQualitySummary {
   castleCount: number;
   promotionCount: number;
   sacrificeCount: number;
-  accuracy: number; // Percentage of good+ moves
+  accuracy: number; // Overall accuracy percentage
+  whiteAccuracy: number; // White's accuracy percentage
+  blackAccuracy: number; // Black's accuracy percentage
   whiteMoves: ClassifiedMove[];
   blackMoves: ClassifiedMove[];
+}
+
+// Helper function to calculate accuracy from moves array
+function calculateAccuracyFromMoves(moves: ClassifiedMove[]): number {
+  if (moves.length === 0) return 100;
+  
+  let score = 0;
+  for (const move of moves) {
+    switch (move.quality) {
+      case 'brilliant': score += 100; break;
+      case 'great': score += 95; break;
+      case 'best': score += 90; break;
+      case 'good': score += 75; break;
+      case 'book': score += 85; break;
+      case 'inaccuracy': score += 50; break;
+      case 'mistake': score += 25; break;
+      case 'blunder': score += 0; break;
+    }
+  }
+  
+  return Math.round((score / (moves.length * 100)) * 100);
 }
 
 export function getMoveQualitySummary(classifiedMoves: ClassifiedMove[]): MoveQualitySummary {
@@ -392,6 +452,8 @@ export function getMoveQualitySummary(classifiedMoves: ClassifiedMove[]): MoveQu
     promotionCount: 0,
     sacrificeCount: 0,
     accuracy: 0,
+    whiteAccuracy: 0,
+    blackAccuracy: 0,
     whiteMoves: [],
     blackMoves: [],
   };
@@ -423,11 +485,12 @@ export function getMoveQualitySummary(classifiedMoves: ClassifiedMove[]): MoveQu
     }
   }
   
-  // Calculate accuracy (percentage of good or better moves)
-  const goodMoves = summary.brilliantCount + summary.greatCount + summary.bestCount + summary.goodCount + summary.bookCount;
-  summary.accuracy = summary.totalMoves > 0 
-    ? Math.round((goodMoves / summary.totalMoves) * 100) 
-    : 100;
+  // Calculate overall accuracy using weighted scoring (chess.com-like formula)
+  summary.accuracy = calculateAccuracyFromMoves(classifiedMoves);
+  
+  // Calculate per-player accuracy
+  summary.whiteAccuracy = calculateAccuracyFromMoves(summary.whiteMoves);
+  summary.blackAccuracy = calculateAccuracyFromMoves(summary.blackMoves);
   
   return summary;
 }
