@@ -1596,72 +1596,117 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
             <TabsContent value="experience" className="mt-0 w-full max-w-full overflow-visible">
               <div className="w-full max-w-full overflow-visible">
                 <div className="space-y-4 w-full">
-                  {/* Board Controls */}
-                  <div className="flex flex-wrap items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border/50">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div className="flex items-center gap-2">
-                            <Grid3X3 className="h-4 w-4 text-muted-foreground" />
-                            <Switch
-                              checked={showCoordinates}
-                              onCheckedChange={setShowCoordinates}
-                            />
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent>Toggle board coordinates (C)</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                  {/* Board Controls + Quick Actions Bar */}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border/50">
+                    {/* Left: View controls */}
+                    <div className="flex flex-wrap items-center gap-3">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="flex items-center gap-2">
+                              <Grid3X3 className="h-4 w-4 text-muted-foreground" />
+                              <Switch
+                                checked={showCoordinates}
+                                onCheckedChange={setShowCoordinates}
+                              />
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent>Toggle board coordinates (C)</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
 
-                    <div className="h-4 w-px bg-border" />
+                      <div className="h-4 w-px bg-border" />
 
-                    <ShowPiecesToggle 
-                      showPieces={showPieces}
-                      pieceOpacity={pieceOpacity}
-                      onToggle={setShowPieces}
-                      onOpacityChange={setPieceOpacity}
-                      compact
-                    />
+                      <ShowPiecesToggle 
+                        showPieces={showPieces}
+                        pieceOpacity={pieceOpacity}
+                        onToggle={setShowPieces}
+                        onOpacityChange={setPieceOpacity}
+                        compact
+                      />
 
+                      {showLegend !== undefined && (
+                        <>
+                          <div className="h-4 w-px bg-border" />
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="flex items-center gap-2">
+                                  <Eye className="h-4 w-4 text-muted-foreground" />
+                                  <Switch
+                                    checked={showLegend}
+                                    onCheckedChange={setShowLegend}
+                                  />
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent>Toggle color legend (L)</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </>
+                      )}
 
-                    {showLegend !== undefined && (
+                      {/* Fullscreen Button */}
+                      <div className="h-4 w-px bg-border" />
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setIsFullscreen(true)}
+                              className="h-8 w-8 p-0"
+                            >
+                              <Maximize2 className="h-4 w-4 text-muted-foreground" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Fullscreen mode (F)</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                    
+                    {/* Right: Quick export actions - prominently visible */}
+                    {onExport && (
                       <>
-                        <div className="h-4 w-px bg-border" />
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div className="flex items-center gap-2">
-                                <Eye className="h-4 w-4 text-muted-foreground" />
-                                <Switch
-                                  checked={showLegend}
-                                  onCheckedChange={setShowLegend}
-                                />
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent>Toggle color legend (L)</TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
+                        <div className="hidden sm:block h-4 w-px bg-border mx-1" />
+                        <div className="flex items-center gap-2 sm:ml-auto">
+                          <ExportActionButtons
+                            onExport={onExport}
+                            isPremium={isPremium}
+                            darkMode={darkMode}
+                            totalMoves={localTotalMoves}
+                            showPieces={showPieces}
+                            pieceOpacity={pieceOpacity}
+                          />
+                        </div>
                       </>
                     )}
-
-                    {/* Fullscreen Button */}
-                    <div className="h-4 w-px bg-border" />
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setIsFullscreen(true)}
-                            className="h-8 w-8 p-0"
-                          >
-                            <Maximize2 className="h-4 w-4 text-muted-foreground" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Fullscreen mode (F)</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
                   </div>
+                  
+                  {/* Deep Analysis Teaser - Link to Analytics Tab */}
+                  {gameAnalysis && (
+                    <button
+                      onClick={() => setActiveTab('analytics')}
+                      className="w-full p-3 rounded-lg bg-gradient-to-r from-purple-500/10 via-blue-500/5 to-cyan-500/10 border border-purple-500/20 hover:border-purple-500/40 transition-all group flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-purple-500/20 group-hover:bg-purple-500/30 transition-colors">
+                          <BookOpen className="h-4 w-4 text-purple-400" />
+                        </div>
+                        <div className="text-left">
+                          <p className="font-medium text-sm text-foreground">Deep Analysis Available</p>
+                          <p className="text-xs text-muted-foreground">
+                            {gameAnalysis.opening ? `${gameAnalysis.opening.name}` : 'Opening detection'} 
+                            {gameAnalysis.tactics.length > 0 && ` • ${gameAnalysis.tactics.length} tactics`}
+                            {gameAnalysis.gambit && ` • Gambit detected`}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 text-xs text-purple-400 group-hover:text-purple-300">
+                        <span>View in Analytics</span>
+                        <BarChart3 className="h-4 w-4" />
+                      </div>
+                    </button>
+                  )}
 
                   {/* Main Layout: Timeline Left | Board Center | Legend Right - Full width usage */}
                   <div className="flex gap-2 xl:gap-3 items-start justify-center w-full overflow-visible">
