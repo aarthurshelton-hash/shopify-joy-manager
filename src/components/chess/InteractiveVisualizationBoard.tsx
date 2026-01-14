@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
+import { Chess } from 'chess.js';
 import { SquareData, SquareVisit } from '@/lib/chess/gameSimulator';
 import { boardColors, getPieceColor, PieceType, PieceColor } from '@/lib/chess/pieceColors';
 import { useLegendHighlight, HighlightedPiece, HoveredSquareInfo, AnnotationType } from '@/contexts/LegendHighlightContext';
@@ -6,7 +7,17 @@ import { useLegendHighlight, HighlightedPiece, HoveredSquareInfo, AnnotationType
 interface InteractiveVisualizationBoardProps {
   board: SquareData[][];
   size?: number;
+  showPieces?: boolean;
+  pieceOpacity?: number;
+  pgn?: string;
+  currentMoveNumber?: number;
 }
+
+// Unicode chess piece characters
+const PIECE_SYMBOLS: Record<string, string> = {
+  'K': '♔', 'Q': '♕', 'R': '♖', 'B': '♗', 'N': '♘', 'P': '♙',
+  'k': '♚', 'q': '♛', 'r': '♜', 'b': '♝', 'n': '♞', 'p': '♟',
+};
 
 // Get the current color for a visit using the active palette
 function getVisitColor(visit: SquareVisit): string {
@@ -233,6 +244,10 @@ const renderNestedSquares = (
 const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps> = ({
   board,
   size = 500,
+  showPieces = false,
+  pieceOpacity = 0.7,
+  pgn,
+  currentMoveNumber,
 }) => {
   const [hoveredSquareLocal, setHoveredSquareLocal] = useState<string | null>(null);
   
@@ -267,6 +282,33 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
   const squareSize = size / 8;
   const borderWidth = size * 0.02;
   const totalSize = size + borderWidth * 2;
+
+  // Calculate the current FEN position based on PGN and move number
+  const currentPosition = useMemo(() => {
+    if (!showPieces || !pgn) return null;
+    
+    try {
+      const chess = new Chess();
+      chess.loadPgn(pgn);
+      
+      // Get all moves
+      const history = chess.history();
+      
+      // Reset and replay to the current move
+      chess.reset();
+      const moveCount = currentMoveNumber !== undefined ? currentMoveNumber : history.length;
+      
+      for (let i = 0; i < Math.min(moveCount, history.length); i++) {
+        chess.move(history[i]);
+      }
+      
+      // Get the board state
+      const boardState = chess.board();
+      return boardState;
+    } catch {
+      return null;
+    }
+  }, [showPieces, pgn, currentMoveNumber]);
 
   // Get unique pieces that visited a square
   const getPiecesForSquare = useCallback((square: SquareData): HighlightedPiece[] => {
@@ -401,6 +443,57 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
     });
   }, [board, borderWidth, squareSize, handleSquareHover, handleSquareLeave]);
   
+  // Render chess pieces layer
+  const pieceElements = useMemo(() => {
+    if (!showPieces || !currentPosition) return null;
+    
+    const elements: React.ReactNode[] = [];
+    const fontSize = squareSize * 0.75;
+    
+    for (let rowIndex = 0; rowIndex < 8; rowIndex++) {
+      const rank = 7 - rowIndex;
+      for (let file = 0; file < 8; file++) {
+        const piece = currentPosition[rowIndex]?.[file];
+        if (piece) {
+          const x = borderWidth + file * squareSize + squareSize / 2;
+          const y = borderWidth + rowIndex * squareSize + squareSize / 2;
+          
+          // Get the piece symbol
+          const pieceKey = piece.color === 'w' 
+            ? piece.type.toUpperCase() 
+            : piece.type.toLowerCase();
+          const symbol = PIECE_SYMBOLS[pieceKey];
+          
+          if (symbol) {
+            elements.push(
+              <text
+                key={`piece-${rank}-${file}`}
+                x={x}
+                y={y}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fontSize={fontSize}
+                fill={piece.color === 'w' ? '#ffffff' : '#1a1a1a'}
+                stroke={piece.color === 'w' ? '#1a1a1a' : '#ffffff'}
+                strokeWidth={fontSize * 0.03}
+                style={{ 
+                  opacity: pieceOpacity,
+                  transition: 'opacity 0.2s ease-out',
+                  pointerEvents: 'none',
+                  filter: `drop-shadow(0 ${fontSize * 0.02}px ${fontSize * 0.04}px rgba(0,0,0,0.3))`,
+                }}
+              >
+                {symbol}
+              </text>
+            );
+          }
+        }
+      }
+    }
+    
+    return elements;
+  }, [showPieces, currentPosition, borderWidth, squareSize, pieceOpacity]);
+  
   return (
     <svg
       width={totalSize}
@@ -420,6 +513,9 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
       
       {/* Board squares */}
       {boardElements}
+      
+      {/* Chess pieces overlay */}
+      {pieceElements}
       
       {/* Invisible interaction layer */}
       {interactionSquares}
