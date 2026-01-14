@@ -772,61 +772,84 @@ export const BookShowcase: React.FC<BookShowcaseProps> = ({
     );
   }
 
-  // Featured variant (default)
+  // Featured variant (default) - Dark themed for investors/marketplace pages
   return (
     <>
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
-        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-100 via-orange-50 to-amber-50 p-6 border border-amber-200"
+        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 border border-primary/30"
       >
-        <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-amber-300/20 to-orange-300/20 rounded-full blur-3xl" />
+        {/* Ambient glow effects */}
+        <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-primary/20 to-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-tr from-amber-600/10 to-transparent rounded-full blur-2xl pointer-events-none" />
         
-        <div className="relative flex flex-col md:flex-row gap-6">
+        {/* Subtle top accent */}
+        <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
+        
+        <div className="relative flex flex-col md:flex-row gap-6 items-start">
+          {/* Book cover */}
           <button 
             onClick={() => setShowPreview(true)}
-            className="flex-shrink-0 hover:scale-105 transition-transform"
+            className="flex-shrink-0 hover:scale-105 transition-transform group"
           >
-            <img 
-              src={carlsenCover} 
-              alt="Carlsen in Color"
-              className="w-40 h-auto rounded-lg shadow-xl"
-            />
+            <div className="relative">
+              <img 
+                src={carlsenCover} 
+                alt="Carlsen in Color"
+                className="w-40 h-auto rounded-lg shadow-2xl shadow-amber-900/40"
+              />
+              {/* Gilded edge effect */}
+              <div className="absolute -right-0.5 top-1 bottom-1 w-1 bg-gradient-to-b from-amber-400 via-amber-500 to-amber-600 rounded-r opacity-80" />
+              {/* Hover glow */}
+              <div className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-t from-amber-500/20 to-transparent pointer-events-none" />
+            </div>
           </button>
           
-          <div className="flex-1 space-y-3">
+          {/* Content */}
+          <div className="flex-1 space-y-4">
             <div className="flex items-center gap-2">
-              <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white">
+              <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-600/30">
                 <Sparkles className="w-3 h-3 mr-1" />
                 NEW RELEASE
               </Badge>
             </div>
             
-            <h3 className="text-2xl font-serif font-bold text-foreground">Carlsen in Color</h3>
-            <p className="text-muted-foreground text-sm">
+            <h3 className="text-2xl font-serif font-bold text-white tracking-wide">
+              Carlsen in Color
+            </h3>
+            
+            <p className="text-slate-300 text-sm leading-relaxed">
               A premium coffee table book featuring 100 En Pensent visualizations 
               of Magnus Carlsen's greatest games with unique haiku poetry.
             </p>
             
-            <div className="flex items-center gap-4 text-sm">
-              <span className="text-muted-foreground">
-                Standard: <strong className="text-foreground">$79.99</strong>
+            <div className="flex items-center gap-6 text-sm pt-1">
+              <span className="text-slate-400">
+                Standard: <strong className="text-white font-semibold">$79.99</strong>
               </span>
-              <span className="text-muted-foreground">
-                Large: <strong className="text-amber-700">$99.99</strong>
+              <span className="text-slate-400">
+                Large: <strong className="text-primary font-semibold">$99.99</strong>
               </span>
             </div>
             
             {showCTA && (
-              <div className="flex flex-wrap gap-2">
-                <Button onClick={() => setShowPreview(true)} className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700">
+              <div className="flex flex-wrap gap-3 pt-2">
+                <Button 
+                  onClick={() => setShowPreview(true)} 
+                  className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white shadow-lg shadow-amber-600/30"
+                >
                   <ShoppingCart className="w-4 h-4 mr-2" />
                   Order Now
                 </Button>
-                <Button variant="outline" onClick={() => setShowPreview(true)} className="border-amber-300">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowPreview(true)} 
+                  className="border-primary/50 text-primary hover:bg-primary/10 hover:text-primary"
+                >
                   <Eye className="w-4 h-4 mr-2" />
-                  Preview
+                  Preview Pages
                 </Button>
               </div>
             )}
