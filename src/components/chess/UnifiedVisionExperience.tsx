@@ -385,18 +385,50 @@ const AnalyticsPanel: React.FC<{
 }> = ({ visionScore, isLoading, gameData, totalMoves, createdAt, gameAnalysis, pgn }) => {
   const membershipMultiplier = calculateMembershipMultiplier(100);
   
-  // Calculate move quality summary
+  // Calculate move quality summary - ensure we have valid PGN
   const qualitySummary = React.useMemo(() => {
-    const pgnToUse = pgn || gameData.pgn;
+    // Priority: prop pgn > gameData.pgn
+    const pgnToUse = (pgn && pgn.trim()) || (gameData.pgn && gameData.pgn.trim()) || '';
     if (!pgnToUse) return null;
     try {
       const classified = classifyMoves(pgnToUse);
       return getMoveQualitySummary(classified);
-    } catch {
+    } catch (e) {
+      console.warn('Move quality analysis failed:', e);
       return null;
     }
   }, [pgn, gameData.pgn]);
-  const estimatedValue = visionScore ? calculateVisionValue(visionScore, membershipMultiplier) : 0;
+  
+  // Calculate estimated value - show even for new (unsaved) visions based on game complexity
+  const baseEstimatedValue = visionScore ? calculateVisionValue(visionScore, membershipMultiplier) : 0;
+  
+  // For new visions without a score, show a complexity-based potential value
+  const potentialValue = React.useMemo(() => {
+    if (visionScore) return null; // Already have real score
+    
+    // Base value on game complexity signals
+    let potential = 5.00; // Base minimum
+    
+    if (gameAnalysis) {
+      // Add value for notable game features
+      if (gameAnalysis.opening) potential += 2.00;
+      if (gameAnalysis.gambit) potential += 3.00;
+      if (gameAnalysis.tactics.length > 0) potential += gameAnalysis.tactics.length * 0.50;
+      if (gameAnalysis.specialMoves.length > 0) potential += gameAnalysis.specialMoves.length * 0.25;
+      if (gameAnalysis.summary?.complexity === 'masterpiece') potential += 5.00;
+      else if (gameAnalysis.summary?.complexity === 'complex') potential += 3.00;
+    }
+    
+    // Add value based on move quality
+    if (qualitySummary) {
+      potential += qualitySummary.brilliantCount * 2.00;
+      potential += qualitySummary.greatCount * 0.50;
+    }
+    
+    return Math.min(potential, 50.00); // Cap at $50 potential
+  }, [visionScore, gameAnalysis, qualitySummary]);
+  
+  const estimatedValue = baseEstimatedValue;
 
   if (isLoading) {
     return (
@@ -646,36 +678,61 @@ const AnalyticsPanel: React.FC<{
         </div>
       )}
 
-      {/* Vision Score */}
-      {visionScore && (
+      {/* Vision Score - show for saved visions OR potential value for new ones */}
+      {(visionScore || potentialValue) && (
         <div className="p-4 rounded-lg border border-primary/30 bg-primary/5 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="font-display text-sm uppercase tracking-wider text-primary">Vision Score</h3>
-            <Badge variant="outline" className="bg-primary/10 text-primary">
-              {visionScore.totalScore.toFixed(2)} pts
-            </Badge>
+            <h3 className="font-display text-sm uppercase tracking-wider text-primary">
+              {visionScore ? 'Vision Score' : 'Potential Value'}
+            </h3>
+            {visionScore ? (
+              <Badge variant="outline" className="bg-primary/10 text-primary">
+                {visionScore.totalScore.toFixed(2)} pts
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30">
+                New Vision
+              </Badge>
+            )}
           </div>
           
-          <div className="grid grid-cols-3 gap-3 text-center">
-            <div className="p-2 rounded bg-background/50">
-              <div className="text-lg font-display">{visionScore.viewCount}</div>
-              <div className="text-xs text-muted-foreground">Views</div>
+          {visionScore ? (
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="p-2 rounded bg-background/50">
+                <div className="text-lg font-display">{visionScore.viewCount}</div>
+                <div className="text-xs text-muted-foreground">Views</div>
+              </div>
+              <div className="p-2 rounded bg-background/50">
+                <div className="text-lg font-display">{visionScore.downloadHdCount + visionScore.downloadGifCount}</div>
+                <div className="text-xs text-muted-foreground">Downloads</div>
+              </div>
+              <div className="p-2 rounded bg-background/50">
+                <div className="text-lg font-display">{visionScore.printOrderCount}</div>
+                <div className="text-xs text-muted-foreground">Prints</div>
+              </div>
             </div>
-            <div className="p-2 rounded bg-background/50">
-              <div className="text-lg font-display">{visionScore.downloadHdCount + visionScore.downloadGifCount}</div>
-              <div className="text-xs text-muted-foreground">Downloads</div>
+          ) : (
+            <div className="text-center py-2">
+              <p className="text-sm text-muted-foreground">
+                Save this vision to start tracking its value
+              </p>
             </div>
-            <div className="p-2 rounded bg-background/50">
-              <div className="text-lg font-display">{visionScore.printOrderCount}</div>
-              <div className="text-xs text-muted-foreground">Prints</div>
-            </div>
-          </div>
+          )}
 
           <div className="pt-3 border-t border-border/30">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Estimated Value</span>
-              <span className="font-display text-xl text-primary">${estimatedValue.toFixed(2)}</span>
+              <span className="text-sm text-muted-foreground">
+                {visionScore ? 'Estimated Value' : 'Potential Starting Value'}
+              </span>
+              <span className="font-display text-xl text-primary">
+                ${(visionScore ? estimatedValue : potentialValue || 0).toFixed(2)}
+              </span>
             </div>
+            {!visionScore && potentialValue && (
+              <p className="text-xs text-muted-foreground mt-1 text-center">
+                Based on game complexity and tactical richness
+              </p>
+            )}
           </div>
         </div>
       )}

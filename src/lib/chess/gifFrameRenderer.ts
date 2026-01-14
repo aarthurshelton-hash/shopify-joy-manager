@@ -15,6 +15,9 @@ export interface GifFrameOptions {
   darkMode?: boolean;
   showCoordinates?: boolean;
   gameData?: GameData;
+  showPieces?: boolean;
+  pieceOpacity?: number;
+  pgn?: string;
 }
 
 /**
@@ -36,13 +39,14 @@ export function filterBoardToMove(board: SquareData[][], moveNumber: number): Sq
 export async function renderFrameToCanvas(
   options: GifFrameOptions
 ): Promise<HTMLCanvasElement> {
-  const { board, currentMove, totalMoves, size, darkMode = false, showCoordinates = false, gameData } = options;
+  const { board, currentMove, totalMoves, size, darkMode = false, showCoordinates = false, gameData, showPieces = false, pieceOpacity = 0.7, pgn } = options;
   
   const html2canvas = (await import('html2canvas')).default;
   const React = await import('react');
   const ReactDOM = await import('react-dom/client');
   const { default: ChessBoardVisualization } = await import('@/components/chess/ChessBoardVisualization');
   const { default: BoardCoordinateGuide } = await import('@/components/chess/BoardCoordinateGuide');
+  const { default: InteractiveVisualizationBoard } = await import('@/components/chess/InteractiveVisualizationBoard');
   
   // Filter board to current move
   const filteredBoard = filterBoardToMove(board, currentMove);
@@ -76,7 +80,7 @@ export async function renderFrameToCanvas(
     });
     container.appendChild(wrapper);
     
-    // Render the board
+    // Render the board - use InteractiveVisualizationBoard when showing pieces for proper overlay
     const boardContainer = document.createElement('div');
     boardContainer.style.position = 'relative';
     wrapper.appendChild(boardContainer);
@@ -84,16 +88,35 @@ export async function renderFrameToCanvas(
     const root = ReactDOM.createRoot(boardContainer);
     
     await new Promise<void>((resolve) => {
-      root.render(
-        React.createElement('div', { style: { position: 'relative' } },
-          showCoordinates && React.createElement(BoardCoordinateGuide, { size, position: 'inside' }),
-          React.createElement(ChessBoardVisualization, {
-            board: filteredBoard,
-            size: size
-          })
-        )
-      );
-      setTimeout(resolve, 50);
+      // Choose component based on whether pieces should be shown
+      if (showPieces && pgn) {
+        // Use InteractiveVisualizationBoard for piece overlay support
+        root.render(
+          React.createElement('div', { style: { position: 'relative' } },
+            showCoordinates && React.createElement(BoardCoordinateGuide, { size, position: 'inside' }),
+            React.createElement(InteractiveVisualizationBoard, {
+              board: filteredBoard,
+              size,
+              showPieces: true,
+              pieceOpacity,
+              currentMoveNumber: currentMove,
+              pgn,
+            })
+          )
+        );
+      } else {
+        // Use simple ChessBoardVisualization for faster rendering without pieces
+        root.render(
+          React.createElement('div', { style: { position: 'relative' } },
+            showCoordinates && React.createElement(BoardCoordinateGuide, { size, position: 'inside' }),
+            React.createElement(ChessBoardVisualization, {
+              board: filteredBoard,
+              size: size
+            })
+          )
+        );
+      }
+      setTimeout(resolve, showPieces ? 100 : 50); // Give more time for piece rendering
     });
     
     // Add game info section if gameData provided
@@ -214,6 +237,8 @@ export interface GenerateGifOptions {
   quality?: number;
   maxFrames?: number;
   onProgress?: (progress: number, message: string) => void;
+  showPieces?: boolean;
+  pieceOpacity?: number;
 }
 
 /**
@@ -231,7 +256,9 @@ export async function generateAnimatedGif(
     frameDelay = 150,
     quality = 10,
     maxFrames = 60,
-    onProgress
+    onProgress,
+    showPieces = false,
+    pieceOpacity = 0.7,
   } = options;
   
   // Validate simulation data
@@ -266,6 +293,8 @@ export async function generateAnimatedGif(
     
     // Capture first frame to get dimensions
     let firstCanvas: HTMLCanvasElement;
+    const pgn = gameData?.pgn || '';
+    
     try {
       firstCanvas = await renderFrameToCanvas({
         board,
@@ -274,7 +303,10 @@ export async function generateAnimatedGif(
         size,
         darkMode,
         showCoordinates,
-        gameData
+        gameData,
+        showPieces,
+        pieceOpacity,
+        pgn,
       });
     } catch (frameError) {
       console.error('Failed to render first frame:', frameError);
@@ -313,7 +345,10 @@ export async function generateAnimatedGif(
           size,
           darkMode,
           showCoordinates,
-          gameData
+          gameData,
+          showPieces,
+          pieceOpacity,
+          pgn,
         });
         
         // Hold first and last frames longer

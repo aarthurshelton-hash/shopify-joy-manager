@@ -906,10 +906,15 @@ const Index = () => {
                   });
                 } else if (type === 'gif') {
                   const boardElement = visionBoardRef.current?.querySelector('[data-vision-board]') as HTMLElement;
+                  const piecesState = exportState ? {
+                    showPieces: exportState.showPieces,
+                    pieceOpacity: exportState.pieceOpacity,
+                  } : undefined;
+                  
                   if (boardElement) {
-                    await downloadGIF(simulation, boardElement, visualTitle);
+                    await downloadGIF(simulation, boardElement, visualTitle, undefined, piecesState);
                   } else if (visionBoardRef.current) {
-                    await downloadGIF(simulation, visionBoardRef.current, visualTitle);
+                    await downloadGIF(simulation, visionBoardRef.current, visualTitle, undefined, piecesState);
                   }
                 }
               }}
