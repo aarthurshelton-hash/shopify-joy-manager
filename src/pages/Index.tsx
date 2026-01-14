@@ -1016,17 +1016,12 @@ const Index = () => {
                 }
               }}
               onShare={() => {
-                if (savedShareId) {
-                  // Use specific vision link for saved visions
-                  const url = `${window.location.origin}/v/${savedShareId}`;
-                  navigator.clipboard.writeText(url);
-                  toast.success('Share link copied!', { description: url });
-                } else if (currentPgn) {
-                  // Use canonical game link for unsaved games
+                if (currentPgn) {
+                  // Always use canonical game link based on PGN moves
                   const url = buildCanonicalShareUrl(currentPgn, getActivePalette().id);
                   navigator.clipboard.writeText(url);
-                  toast.success('Game link copied!', { 
-                    description: 'Anyone can view this game with your palette!',
+                  toast.success('Share link copied!', { 
+                    description: 'Universal link to this game!',
                   });
                 } else {
                   toast.info('Generate a visualization first to share');

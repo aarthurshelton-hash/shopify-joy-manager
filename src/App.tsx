@@ -9,7 +9,6 @@ import { LocationTracker } from "@/components/shared/LocationTracker";
 import Index from "./pages/Index";
 import MyPalettes from "./pages/MyPalettes";
 import MyVision from "./pages/MyVision";
-import VisualizationDetail from "./pages/VisualizationDetail";
 import About from "./pages/About";
 import Investors from "./pages/Investors";
 import Analytics from "./pages/Analytics";
@@ -19,12 +18,14 @@ import CreativeMode from "./pages/CreativeMode";
 import GameHistory from "./pages/GameHistory";
 import News from "./pages/News";
 import QRMockup from "./pages/QRMockup";
-import VisualizationView from "./pages/VisualizationView";
 import GameView from "./pages/GameView";
 import OrderPrint from "./pages/OrderPrint";
 import Marketplace from "./pages/Marketplace";
-import MarketplaceVisionDetail from "./pages/MarketplaceVisionDetail";
 import AdminSeedMarketplace from "./pages/AdminSeedMarketplace";
+// Redirect pages for canonical URL unification
+import VisualizationRedirect from "./pages/VisualizationRedirect";
+import GalleryDetailRedirect from "./pages/GalleryDetailRedirect";
+import MarketplaceDetailRedirect from "./pages/MarketplaceDetailRedirect";
 import PaletteAdminPage from "./components/admin/PaletteAdminPage";
 import AdminModeration from "./pages/AdminModeration";
 import AdminEconomics from "./pages/AdminEconomics";
@@ -62,7 +63,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/my-palettes" element={<MyPalettes />} />
             <Route path="/my-vision" element={<MyVision />} />
-            <Route path="/my-vision/:id" element={<VisualizationDetail />} />
+            <Route path="/my-vision/:id" element={<GalleryDetailRedirect />} />
             <Route path="/about" element={<About />} />
             <Route path="/investors" element={<Investors />} />
             <Route path="/analytics" element={<Analytics />} />
@@ -72,11 +73,11 @@ const App = () => (
             <Route path="/game-history" element={<GameHistory />} />
             <Route path="/news" element={<News />} />
             <Route path="/qr-preview" element={<QRMockup />} />
-            <Route path="/v/:shareId" element={<VisualizationView />} />
+            <Route path="/v/:shareId" element={<VisualizationRedirect />} />
             <Route path="/g/:gameHash" element={<GameView />} />
             <Route path="/order-print" element={<OrderPrint />} />
             <Route path="/marketplace" element={<Marketplace />} />
-            <Route path="/marketplace/:id" element={<MarketplaceVisionDetail />} />
+            <Route path="/marketplace/:id" element={<MarketplaceDetailRedirect />} />
             <Route path="/admin/seed-marketplace" element={<AdminSeedMarketplace />} />
             <Route path="/admin/palettes" element={<PaletteAdminPage />} />
             <Route path="/admin/moderation" element={<AdminModeration />} />

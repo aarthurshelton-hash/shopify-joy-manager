@@ -98,6 +98,28 @@ const GameView = () => {
     opacity: searchParams.has('o') ? parseFloat(searchParams.get('o')!) : undefined,
   }), [searchParams]);
 
+  // Determine context from URL params (set by redirects)
+  const sourceContext = useMemo(() => {
+    const src = searchParams.get('src');
+    const listingId = searchParams.get('listing');
+    return {
+      source: src as 'gallery' | 'marketplace' | 'shared' | null,
+      listingId,
+    };
+  }, [searchParams]);
+
+  // Get back link based on source context
+  const backLink = useMemo(() => {
+    switch (sourceContext.source) {
+      case 'gallery':
+        return { href: '/my-vision', label: 'Return to Gallery' };
+      case 'marketplace':
+        return { href: '/marketplace', label: 'Return to Marketplace' };
+      default:
+        return { href: '/', label: 'Back to En Pensent' };
+    }
+  }, [sourceContext.source]);
+
   // Export hook
   const {
     downloadTrademarkHD,
@@ -499,11 +521,11 @@ const GameView = () => {
             className="mb-6"
           >
             <Link
-              to="/"
+              to={backLink.href}
               className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               <ChevronLeft className="h-4 w-4" />
-              <span className="font-serif">Back to En Pensent</span>
+              <span className="font-serif">{backLink.label}</span>
             </Link>
           </motion.div>
 
@@ -541,8 +563,9 @@ const GameView = () => {
               gameData={gameData}
               totalMoves={totalMoves}
               pgn={effectivePgn}
-              context="shared"
+              context={sourceContext.source || 'shared'}
               paletteId={activePaletteId}
+              visualizationId={primaryVision?.id}
               visionScoreData={visionScore ? {
                 viewCount: visionScore.viewCount,
                 uniqueViewers: visionScore.uniqueViewers,
