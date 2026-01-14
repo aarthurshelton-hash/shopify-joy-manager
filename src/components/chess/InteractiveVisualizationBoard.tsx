@@ -288,24 +288,23 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
     if (!showPieces || !pgn) return null;
     
     try {
+      // First load the PGN to get all moves
+      const fullGame = new Chess();
+      fullGame.loadPgn(pgn);
+      const allMoves = fullGame.history();
+      
+      // Now create a fresh game and replay to the target move
       const chess = new Chess();
-      chess.loadPgn(pgn);
+      const moveCount = currentMoveNumber !== undefined ? currentMoveNumber : allMoves.length;
       
-      // Get all moves
-      const history = chess.history();
-      
-      // Reset and replay to the current move
-      chess.reset();
-      const moveCount = currentMoveNumber !== undefined ? currentMoveNumber : history.length;
-      
-      for (let i = 0; i < Math.min(moveCount, history.length); i++) {
-        chess.move(history[i]);
+      for (let i = 0; i < Math.min(moveCount, allMoves.length); i++) {
+        chess.move(allMoves[i]);
       }
       
       // Get the board state
-      const boardState = chess.board();
-      return boardState;
-    } catch {
+      return chess.board();
+    } catch (e) {
+      console.error('Error parsing PGN for pieces:', e);
       return null;
     }
   }, [showPieces, pgn, currentMoveNumber]);
