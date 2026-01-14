@@ -181,9 +181,13 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board }) 
   // Check if a piece is highlighted via square hover (reverse highlight)
   const isHighlightedFromSquare = (pieceType: PieceType, pieceColor: PieceColor) => {
     if (!hoveredSquare) return false;
-    return hoveredSquare.pieces.some(
+    const result = hoveredSquare.pieces.some(
       p => p.pieceType === pieceType && p.pieceColor === pieceColor
     );
+    if (result) {
+      console.log('[DEBUG] Legend piece highlighted from square:', pieceType, pieceColor);
+    }
+    return result;
   };
 
   // Check if a piece is highlighted from annotation hover
