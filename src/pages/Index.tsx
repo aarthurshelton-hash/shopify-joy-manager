@@ -734,7 +734,7 @@ const Index = () => {
             </section>
           </>
         ) : (
-          <div className="container mx-auto px-4 py-8 max-w-7xl" ref={visionBoardRef}>
+          <div className="w-full px-4 py-8" ref={visionBoardRef}>
             <UnifiedVisionExperience
               key={paletteKey}
               board={simulation.board}
