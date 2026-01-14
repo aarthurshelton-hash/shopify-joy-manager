@@ -662,9 +662,9 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board }) 
   
   return (
     <TooltipProvider>
-      <div className="flex flex-col gap-5 p-6 bg-card rounded-lg border border-border/50">
-        <div className="flex items-center justify-between gap-2">
-          <h3 className="font-display text-sm font-semibold tracking-wide">
+      <div className="flex flex-col gap-4 p-4 bg-card rounded-lg border border-border/50 min-w-0">
+        <div className="flex items-center justify-between gap-1 flex-wrap">
+          <h3 className="font-display text-xs font-semibold tracking-wide">
             Color Legend
           </h3>
           <div className="flex items-center gap-1">
@@ -760,25 +760,25 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board }) 
           
           <div className="space-y-5">
             {/* White pieces */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 pb-2 border-b border-border/50">
-                <span className="text-[10px] font-sans font-medium text-sky-400 uppercase tracking-widest">
-                  {theme.whiteEmoji} White — {theme.whiteName}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 pb-1.5 border-b border-border/50">
+                <span className="text-[9px] font-sans font-medium text-sky-400 uppercase tracking-wider truncate">
+                  {theme.whiteEmoji} {theme.whiteName}
                 </span>
               </div>
-              <div className="grid grid-cols-1 gap-2">
+              <div className="grid grid-cols-1 gap-1.5">
                 {whitePieces.map(renderPieceItem)}
               </div>
             </div>
             
             {/* Black pieces */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 pb-2 border-b border-border/50">
-                <span className="text-[10px] font-sans font-medium text-rose-400 uppercase tracking-widest">
-                  {theme.blackEmoji} Black — {theme.blackName}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 pb-1.5 border-b border-border/50">
+                <span className="text-[9px] font-sans font-medium text-rose-400 uppercase tracking-wider truncate">
+                  {theme.blackEmoji} {theme.blackName}
                 </span>
               </div>
-              <div className="grid grid-cols-1 gap-2">
+              <div className="grid grid-cols-1 gap-1.5">
                 {blackPieces.map(renderPieceItem)}
               </div>
             </div>

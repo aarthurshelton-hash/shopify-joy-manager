@@ -568,7 +568,9 @@ const AnalyticsPanel: React.FC<{
                   {qualitySummary.accuracy.toFixed(1)}% Accuracy
                 </span>
               </div>
-              <div className="grid grid-cols-4 gap-2 text-center text-xs">
+              
+              {/* Quality breakdown */}
+              <div className="grid grid-cols-4 gap-2 text-center text-xs mb-3">
                 {qualitySummary.brilliantCount > 0 && (
                   <div className="p-2 rounded bg-cyan-500/10">
                     <p className="font-bold text-cyan-400">{qualitySummary.brilliantCount}</p>
@@ -593,6 +595,33 @@ const AnalyticsPanel: React.FC<{
                     <p className="text-muted-foreground text-[10px]">Mistakes</p>
                   </div>
                 )}
+              </div>
+              
+              {/* Tactical event counts */}
+              <div className="pt-2 border-t border-border/30">
+                <p className="text-[10px] text-muted-foreground mb-2">Tactical Events</p>
+                <div className="grid grid-cols-5 gap-1.5 text-center text-xs">
+                  <div className="p-1.5 rounded bg-yellow-500/10">
+                    <p className="font-bold text-yellow-400">{qualitySummary.checkCount}</p>
+                    <p className="text-muted-foreground text-[9px]">Checks</p>
+                  </div>
+                  <div className="p-1.5 rounded bg-red-500/10">
+                    <p className="font-bold text-red-400">{qualitySummary.checkmateCount}</p>
+                    <p className="text-muted-foreground text-[9px]">Mate</p>
+                  </div>
+                  <div className="p-1.5 rounded bg-orange-500/10">
+                    <p className="font-bold text-orange-400">{qualitySummary.captureCount}</p>
+                    <p className="text-muted-foreground text-[9px]">Captures</p>
+                  </div>
+                  <div className="p-1.5 rounded bg-blue-500/10">
+                    <p className="font-bold text-blue-400">{qualitySummary.castleCount}</p>
+                    <p className="text-muted-foreground text-[9px]">Castles</p>
+                  </div>
+                  <div className="p-1.5 rounded bg-purple-500/10">
+                    <p className="font-bold text-purple-400">{qualitySummary.sacrificeCount}</p>
+                    <p className="text-muted-foreground text-[9px]">Sacrifices</p>
+                  </div>
+                </div>
               </div>
             </div>
           )}
