@@ -30,6 +30,7 @@ interface VisualizationData {
     event?: string;
     date?: string;
     result?: string;
+    pgn?: string; // PGN can be stored in game_data as well
     moves?: string[];
     totalMoves?: number;
     board?: SquareData[][];
