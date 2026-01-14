@@ -47,8 +47,8 @@ export const SCORING_WEIGHTS = {
  * To realize gains, holders must sell visions on the marketplace.
  * 
  * Economics:
- * - Monthly subscription: $7/month (20% contributes to market growth)
- * - Print orders: 20% of PROFIT (not revenue) adds to vision's intrinsic value
+ * - Monthly subscription: $7/month (17% contributes to market growth)
+ * - Print orders: 17% of PROFIT (not revenue) adds to vision's intrinsic value
  * - Marketplace: Seller keeps 95%, platform takes 5% transaction fee
  * - Bartering: Users can negotiate trades with counter-offers
  * 
@@ -60,13 +60,13 @@ export const SCORING_WEIGHTS = {
  */
 export const MEMBERSHIP_ECONOMICS = {
   monthlySubscription: 7.00,           // $7/month
-  marketContributionRate: 0.20,        // 20% goes to market appreciation
-  monthlyContributionPerMember: 1.40,  // $1.40/month per subscriber to market
+  marketContributionRate: 0.17,        // 17% goes to market appreciation
+  monthlyContributionPerMember: 1.19,  // $1.19/month per subscriber to market
   baseMarketCap: 5000,                 // $5,000 base market cap (foundation value)
   valuePerScorePoint: 0.50,            // Base $0.50 per score point
   membershipMultiplierCap: 3.0,        // Max 3x multiplier from memberships
-  valueAppreciationRate: 0.20,         // 20% of PROFIT adds to vision value (not revenue)
-  platformRetentionRate: 0.80,         // 80% of profit retained by platform (covers printing, fulfillment, operations)
+  valueAppreciationRate: 0.17,         // 17% of PROFIT adds to vision value (not revenue)
+  platformRetentionRate: 0.83,         // 83% of profit retained by platform (covers printing, fulfillment, operations)
   marketplaceTransactionFee: 0.05,     // 5% platform fee on marketplace sales
   sellerRetentionRate: 0.95,           // 95% goes directly to seller
   creatorPremiumTiers: {               // Creator premium multipliers based on engagement

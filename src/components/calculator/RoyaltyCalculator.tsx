@@ -147,7 +147,7 @@ export const RoyaltyCalculator: React.FC = () => {
               +${monthlyValueAdded.toFixed(2)}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              {ordersPerMonth} × ${valueAddedPerOrder.toFixed(2)} (20% of profit)
+              {ordersPerMonth} × ${valueAddedPerOrder.toFixed(2)} (17% of profit)
             </p>
           </div>
           

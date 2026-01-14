@@ -677,7 +677,7 @@ const AdminEconomics: React.FC = () => {
                     </div>
                     
                     <div className="p-4 rounded-lg border border-primary/20 bg-primary/5">
-                      <p className="text-sm font-medium mb-3">Value Appreciation Distribution (20% of Profit)</p>
+                      <p className="text-sm font-medium mb-3">Value Appreciation Distribution (17% of Profit)</p>
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Creator Royalty (40%)</span>
@@ -700,9 +700,9 @@ const AdminEconomics: React.FC = () => {
                     
                     <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
                       <div className="flex justify-between items-center">
-                        <span className="font-semibold">Platform Retention (80%)</span>
+                        <span className="font-semibold">Platform Retention (83%)</span>
                         <span className="font-bold text-primary text-lg">
-                          {formatCents(Math.floor((platformStats?.interactions.totalPrintRevenue || 0) * 0.80 - (platformStats?.costs.printifyCosts || 0)))}
+                          {formatCents(Math.floor((platformStats?.interactions.totalPrintRevenue || 0) * 0.83 - (platformStats?.costs.printifyCosts || 0)))}
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">After production costs</p>
@@ -893,8 +893,8 @@ const AdminEconomics: React.FC = () => {
                   <div>
                     <h4 className="font-semibold mb-2">How It Works</h4>
                     <p className="text-sm text-muted-foreground mb-4">
-                      When visions are engaged with (prints ordered, downloads, trades), 20% of the <strong>profit</strong> (not revenue) 
-                      goes to value appreciation. This 20% is then distributed:
+                      When visions are engaged with (prints ordered, downloads, trades), 17% of the <strong>profit</strong> (not revenue) 
+                      goes to value appreciation. This 17% is then distributed:
                     </p>
                     <ul className="space-y-2 text-sm">
                       <li className="flex items-center gap-2">
@@ -1097,7 +1097,7 @@ const AdminEconomics: React.FC = () => {
                   <div className="p-4 rounded-lg border">
                     <h4 className="font-semibold mb-2">Print Orders</h4>
                     <p className="text-sm text-muted-foreground mb-2">
-                      From the 20% profit appreciation pool:
+                      From the 17% profit appreciation pool:
                     </p>
                     <ul className="text-sm space-y-1">
                       <li>• 25% of value appreciation → Education Fund</li>

@@ -694,7 +694,7 @@ const Investors = () => {
                     </li>
                     <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
                       <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                      <span><strong className="text-foreground">20% profit-based royalties</strong> — sustainable creator economics</span>
+                      <span><strong className="text-foreground">17% profit-based royalties</strong> — sustainable creator economics</span>
                     </li>
                     <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
                       <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />

@@ -83,7 +83,7 @@ export async function generatePitchDeck(): Promise<Blob> {
     ['📖 Curated Haiku Poetry', 'Each Vision includes a hand-crafted haiku capturing the essence'],
     ['🖨️ Premium Physical Prints', 'Gallery-quality prints through Printify integration'],
     ['💎 Digital Ownership', 'Claim, trade, and collect unique Visions'],
-    ['📈 Creator Royalties', '20% of PROFIT flows back to Vision owners forever']
+    ['📈 Creator Royalties', '17% of PROFIT flows back to Vision owners forever']
   ];
   
   solutions.forEach((sol, i) => {
@@ -161,7 +161,7 @@ export async function generatePitchDeck(): Promise<Blob> {
   doc.setFillColor(30, 28, 26);
   doc.roundedRect(margin + 800, 680, 600, 120, 15, 15, 'F');
   doc.setFont('helvetica', 'bold');
-  leftText('20%', margin + 850, 750, 64, gold);
+  leftText('17%', margin + 850, 750, 64, gold);
   doc.setFont('helvetica', 'normal');
   leftText('Net margin on', margin + 1050, 730, 28);
   leftText('physical prints', margin + 1050, 765, 28);
@@ -175,7 +175,7 @@ export async function generatePitchDeck(): Promise<Blob> {
   
   doc.setFont('helvetica', 'normal');
   const royaltyPoints = [
-    '• Creators earn 20% of PROFIT, not revenue — ensuring sustainability',
+    '• Creators earn 17% of PROFIT, not revenue — ensuring sustainability',
     '• Revenue share only after platform costs are covered',
     '• Transparent tracking via real-time dashboard',
     '• Lifetime royalties on every print order and trade',

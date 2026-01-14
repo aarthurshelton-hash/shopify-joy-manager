@@ -23,7 +23,7 @@ interface RoyaltyPotentialCardProps {
  * - For owners: shows actual earnings and potential
  * - For buyers: shows potential earnings preview
  * 
- * IMPORTANT: Royalties are 20% of PROFIT, not revenue
+ * IMPORTANT: Royalties are 17% of PROFIT, not revenue
  */
 export const RoyaltyPotentialCard = forwardRef<HTMLDivElement, RoyaltyPotentialCardProps>(function RoyaltyPotentialCard({
   royaltyCentsEarned = 0,
