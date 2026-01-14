@@ -198,3 +198,6 @@ export const gameImageImports: Record<string, string> = {
   'habu-kasparov-2014': habuKasparov,
   'mwali-amateur-1850': mwaliAmateur,
 };
+
+// Re-export Carlsen game images from dedicated file
+export { carlsenGameImages, getCarlsenGameImage, allCarlsenArtwork } from './carlsenGameImages';

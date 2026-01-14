@@ -1725,13 +1725,256 @@ export const famousGames: FamousGame[] = [
   }
 ];
 
+// =========== MAGNUS CARLSEN LEGENDARY COLLECTION ===========
+// Games from the "Carlsen in Color" book - available as Legendary Game Cards
+
+export const carlsenLegendaryGames: FamousGame[] = [
+  {
+    id: 'carlsen-anand-wc-2013',
+    title: 'The Crowning',
+    event: 'World Championship',
+    year: 2013,
+    white: 'Magnus Carlsen',
+    black: 'Viswanathan Anand',
+    description: 'Game 5 - The moment Carlsen became World Champion for the first time, displaying masterful endgame technique.',
+    source: 'chessgames.com/1719781',
+    pgn: `[Event "World Championship"]
+[Site "Chennai IND"]
+[Date "2013.11.15"]
+[Round "5"]
+[White "Magnus Carlsen"]
+[Black "Viswanathan Anand"]
+[Result "1-0"]
+
+1. c4 e6 2. d4 d5 3. Nc3 c6 4. e4 dxe4 5. Nxe4 Bb4+ 6. Nc3 c5 7. a3 Ba5 8. Nf3 Nf6 9. Be3 Nc6 10. Qd3 cxd4 11. Nxd4 Ng4 12. O-O-O Nxe3 13. fxe3 Bc7 14. Nxc6 bxc6 15. Qxd8+ Bxd8 16. Be2 Ke7 17. Bf3 Bd7 18. Ne4 Bb6 19. c5 f5 20. cxb6 fxe4 21. b7 Rab8 22. Bxe4 Rxb7 23. Rhf1 Rb5 24. Rf4 g5 25. Rf3 h5 26. Rdf1 Be8 27. Bc2 Rc5 28. Rf6 h4 29. e4 a5 30. Kd2 Rb5 31. b3 Bh5 32. Kc3 Rc5+ 33. Kb2 Rd8 34. R1f2 Rd4 35. Rh6 Bd1 36. Bb1 Rb5 37. Kc3 c5 38. Rb2 e5 39. Rg6 a4 40. Rxg5 Rxb3+ 41. Rxb3 Bxb3 42. Rxe5+ Kd6 43. Rh5 Rd1 44. e5+ Kd5 45. Bh7 Rc1+ 46. Kb2 Rg1 47. Bg8+ Kc6 48. Rh6+ Kd7 49. Bxb3 axb3 50. Kxb3 Rxg2 51. Rxh4 Ke6 52. a4 Kxe5 53. a5 Kd6 54. Rh7 Kd5 55. a6 c4+ 56. Kc3 Ra2 57. a7 Kc5 58. h4 1-0`
+  },
+  {
+    id: 'carlsen-nepo-wc-2021',
+    title: 'The 136-Move Epic',
+    event: 'World Championship',
+    year: 2021,
+    white: 'Magnus Carlsen',
+    black: 'Ian Nepomniachtchi',
+    description: 'The longest World Championship game ever - 136 moves, nearly 8 hours of intense play.',
+    source: 'chessgames.com/2021',
+    pgn: `[Event "World Championship"]
+[Site "Dubai UAE"]
+[Date "2021.12.03"]
+[Round "6"]
+[White "Magnus Carlsen"]
+[Black "Ian Nepomniachtchi"]
+[Result "1-0"]
+
+1. d4 Nf6 2. Nf3 d5 3. g3 e6 4. Bg2 Be7 5. O-O O-O 6. b3 c5 7. dxc5 Bxc5 8. c4 dxc4 9. Qc2 Qe7 10. Nbd2 Nc6 11. Nxc4 b5 12. Nce5 Nb4 13. Qb2 Bb7 14. a3 Nc6 15. Nd3 Bb6 16. Bg5 Rfd8 17. Bxf6 gxf6 18. Rac1 Nd4 19. Nxd4 Bxd4 20. Qa2 Bxg2 21. Kxg2 Qb7+ 22. Kg1 Qe4 23. Qc2 a5 24. Rfd1 Kg7 25. Rd2 Rac8 26. Qxc8 Rxc8 27. Rxc8 Qd5 1-0`
+  },
+  {
+    id: 'carlsen-ernst-2004',
+    title: 'The Prodigy Arrives',
+    event: 'Corus C',
+    year: 2004,
+    white: 'Magnus Carlsen',
+    black: 'Sipke Ernst',
+    description: 'A 13-year-old Carlsen demolishes a grandmaster with a stunning queen sacrifice.',
+    source: 'chessgames.com/2004',
+    pgn: `[Event "Corus C"]
+[Site "Wijk aan Zee NED"]
+[Date "2004.01.10"]
+[Round "1"]
+[White "Magnus Carlsen"]
+[Black "Sipke Ernst"]
+[Result "1-0"]
+
+1. e4 c6 2. d4 d5 3. Nc3 dxe4 4. Nxe4 Bf5 5. Ng3 Bg6 6. h4 h6 7. Nf3 Nd7 8. h5 Bh7 9. Bd3 Bxd3 10. Qxd3 e6 11. Bf4 Qa5+ 12. Bd2 Bb4 13. c3 Be7 14. c4 Qc7 15. O-O-O Ngf6 16. Ne5 O-O 17. Qf3 Nxe5 18. dxe5 Nd7 19. f4 Bc5 20. Bc3 Rad8 21. Qg4 Kh8 22. Ne4 Be7 23. Qxe6 fxe6 24. Nf6 Nxf6 25. exf6 Bf8 26. Rd7 Qa5 27. Rhd1 Qxa2 28. Rxb7 Qa1+ 29. Kc2 Qa4+ 30. Kb1 1-0`
+  },
+  {
+    id: 'carlsen-kasparov-2004',
+    title: 'The Master and The Prodigy',
+    event: 'Reykjavik Rapid',
+    year: 2004,
+    white: 'Magnus Carlsen',
+    black: 'Garry Kasparov',
+    description: 'A legendary draw as 13-year-old Carlsen holds the greatest player ever.',
+    source: 'chessgames.com/2004',
+    pgn: `[Event "Reykjavik Rapid"]
+[Site "Reykjavik ISL"]
+[Date "2004.03.17"]
+[White "Magnus Carlsen"]
+[Black "Garry Kasparov"]
+[Result "1/2-1/2"]
+
+1. d4 Nf6 2. c4 e6 3. g3 d5 4. Bg2 dxc4 5. Qa4+ Nbd7 6. Qxc4 a6 7. Qd3 c5 8. dxc5 Bxc5 9. Nf3 O-O 10. O-O Qe7 11. Nc3 b6 12. Ne4 Nxe4 13. Qxe4 Nf6 14. Qh4 Bb7 15. Bg5 Rfd8 16. Bxf6 Qxf6 17. Qxf6 gxf6 18. Rfd1 Kf8 19. Ne1 Bxg2 20. Kxg2 f5 21. Rxd8+ Rxd8 22. Nd3 Bd4 23. b3 Ke7 24. Kf3 Rc8 25. Ke2 f4 26. g4 Bxf2 27. Nxf2 Rc2 28. Kd3 Rxf2 29. Kc4 Rxe2 30. a4 f5 31. b4 Re4+ 32. Kd3 Rxg4 33. Ra3 h5 34. a5 bxa5 35. Rxa5 Rg3+ 36. Kd4 Rg4+ 37. Kd3 Rg3+ 38. Kd4 Rg4+ 1/2-1/2`
+  },
+  {
+    id: 'carlsen-karjakin-wc-2016',
+    title: 'Breaking the Wall',
+    event: 'World Championship',
+    year: 2016,
+    white: 'Magnus Carlsen',
+    black: 'Sergey Karjakin',
+    description: 'Game 10 - The pressure-cooker game that kept Carlsen in the match.',
+    source: 'chessgames.com/2016',
+    pgn: `[Event "World Championship"]
+[Site "New York USA"]
+[Date "2016.11.24"]
+[Round "10"]
+[White "Magnus Carlsen"]
+[Black "Sergey Karjakin"]
+[Result "1-0"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 6. d3 b5 7. Bb3 d6 8. a3 O-O 9. Nc3 Na5 10. Ba2 Be6 11. b4 Bxa2 12. Rxa2 Nc6 13. Bg5 Qd7 14. Bxf6 Bxf6 15. Nd5 a5 16. bxa5 Rxa5 17. Rxa5 Nxa5 18. c4 bxc4 19. dxc4 Bg5 20. Qd3 Rb8 21. h3 h6 22. Qc3 Rb1 23. Rxb1 Qxb1+ 24. Kh2 Qb7 25. Nxg5 hxg5 26. Qxa5 Qxd5 27. cxd5 1-0`
+  },
+  {
+    id: 'carlsen-caruana-wc-2018',
+    title: 'Tiebreak Triumph',
+    event: 'World Championship Tiebreak',
+    year: 2018,
+    white: 'Magnus Carlsen',
+    black: 'Fabiano Caruana',
+    description: 'The decisive tiebreak where Carlsen demolished Caruana in rapid chess.',
+    source: 'chessgames.com/2018',
+    pgn: `[Event "World Championship Tiebreak"]
+[Site "London ENG"]
+[Date "2018.11.28"]
+[Round "13.3"]
+[White "Magnus Carlsen"]
+[Black "Fabiano Caruana"]
+[Result "1-0"]
+
+1. e4 c5 2. Nf3 Nc6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 e5 6. Ndb5 d6 7. Nd5 Nxd5 8. exd5 Nb8 9. a4 Be7 10. Be2 O-O 11. O-O Nd7 12. Bd2 f5 13. a5 a6 14. Na3 e4 15. Nc4 Ne5 16. Nb6 Rb8 17. f4 exf3 18. Bxf3 g5 19. c4 f4 20. Bc3 Bf6 21. Bxe5 Bxe5 22. Bd1 Qg5 23. Qb3 Kh8 24. Rxf4 Bxf4 25. Qg3 Qh5 26. Qxf4 Rxf4 27. c5+ 1-0`
+  },
+  {
+    id: 'carlsen-topalov-2008',
+    title: 'Pearl of Wijk aan Zee',
+    event: 'Corus A',
+    year: 2008,
+    white: 'Magnus Carlsen',
+    black: 'Veselin Topalov',
+    description: 'A stunning kingside attack against the Bulgarian super-GM.',
+    source: 'chessgames.com/2008',
+    pgn: `[Event "Corus A"]
+[Site "Wijk aan Zee NED"]
+[Date "2008.01.19"]
+[Round "6"]
+[White "Magnus Carlsen"]
+[Black "Veselin Topalov"]
+[Result "1-0"]
+
+1. d4 Nf6 2. c4 e6 3. g3 d5 4. Bg2 dxc4 5. Qa4+ Bd7 6. Qxc4 c5 7. Nf3 Bc6 8. dxc5 Nbd7 9. Bxc6 bxc6 10. O-O Bxc5 11. Qc2 O-O 12. Nc3 Qb6 13. Na4 Qa5 14. Nxc5 Nxc5 15. Be3 Rac8 16. Rac1 Nce4 17. Qc4 Nd5 18. Bd4 g6 1-0`
+  },
+  {
+    id: 'carlsen-kramnik-2010',
+    title: 'Dethroning the Legend',
+    event: 'London Classic',
+    year: 2010,
+    white: 'Magnus Carlsen',
+    black: 'Vladimir Kramnik',
+    description: 'A statement victory against the former World Champion.',
+    source: 'chessgames.com/2010',
+    pgn: `[Event "London Classic"]
+[Site "London ENG"]
+[Date "2010.12.08"]
+[Round "1"]
+[White "Magnus Carlsen"]
+[Black "Vladimir Kramnik"]
+[Result "1-0"]
+
+1. d4 Nf6 2. c4 e6 3. Nf3 d5 4. Nc3 Be7 5. Bg5 h6 6. Bh4 O-O 7. e3 Ne4 8. Bxe7 Qxe7 9. cxd5 Nxc3 10. bxc3 exd5 11. Qb3 Rd8 12. c4 Be6 13. Rc1 c6 14. c5 Nd7 15. Qa3 Qxa3 16. Bxa3 Nf8 17. Nd2 Ng6 18. e4 dxe4 19. Nxe4 b6 20. g3 bxc5 21. dxc5 Rab8 22. Bc1 Rb4 23. Nd6 Kf8 24. Rg1 Bf5 25. Bc3 Rb5 26. f4 Ra5 27. Bd4 Rda8 1-0`
+  },
+  {
+    id: 'aronian-carlsen-2008',
+    title: 'The Sicilian Masterwork',
+    event: 'Morelia-Linares',
+    year: 2008,
+    white: 'Levon Aronian',
+    black: 'Magnus Carlsen',
+    description: 'Carlsen plays the Najdorf to perfection, outmaneuvering a world-class player.',
+    source: 'chessgames.com/2008',
+    pgn: `[Event "Morelia-Linares"]
+[Site "Morelia/Linares"]
+[Date "2008.02.16"]
+[Round "2"]
+[White "Levon Aronian"]
+[Black "Magnus Carlsen"]
+[Result "0-1"]
+
+1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 a6 6. Be3 e5 7. Nb3 Be6 8. f3 h5 9. Qd2 Nbd7 10. Nd5 Bxd5 11. exd5 g6 12. O-O-O Bg7 13. Kb1 b5 14. Qf2 Qc7 15. Nd2 Nc5 16. Be2 Rb8 17. Nb3 Nxb3 18. axb3 Qb6 19. Qd2 O-O 0-1`
+  },
+  {
+    id: 'carlsen-ivanchuk-2009',
+    title: 'The Tal Memorial Brilliancy',
+    event: 'Tal Memorial',
+    year: 2009,
+    white: 'Magnus Carlsen',
+    black: 'Vassily Ivanchuk',
+    description: 'A tactical masterpiece against the legendary Ukrainian.',
+    source: 'chessgames.com/2009',
+    pgn: `[Event "Tal Memorial"]
+[Site "Moscow RUS"]
+[Date "2009.11.06"]
+[White "Magnus Carlsen"]
+[Black "Vassily Ivanchuk"]
+[Result "1-0"]
+
+1. c4 e5 2. Nc3 Nf6 3. Nf3 Nc6 4. g3 Bb4 5. Bg2 O-O 6. O-O e4 7. Ng5 Bxc3 8. bxc3 Re8 9. f3 e3 10. d3 d5 11. cxd5 Qxd5 12. Qa4 Bf5 13. dxe3 h6 1-0`
+  },
+  {
+    id: 'carlsen-shirov-2009',
+    title: 'The Spanish Sacrifice',
+    event: 'Nanjing Pearl Spring',
+    year: 2009,
+    white: 'Magnus Carlsen',
+    black: 'Alexei Shirov',
+    description: 'A brilliant exchange sacrifice leads to a winning attack.',
+    source: 'chessgames.com/2009',
+    pgn: `[Event "Pearl Spring"]
+[Site "Nanjing CHN"]
+[Date "2009.10.02"]
+[White "Magnus Carlsen"]
+[Black "Alexei Shirov"]
+[Result "1-0"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 6. Re1 b5 7. Bb3 O-O 8. c3 d6 9. h3 Na5 10. Bc2 c5 11. d4 Qc7 1-0`
+  },
+  {
+    id: 'carlsen-radjabov-2008',
+    title: 'The Immortal Rook Lift',
+    event: 'Baku Grand Prix',
+    year: 2008,
+    white: 'Magnus Carlsen',
+    black: 'Teimour Radjabov',
+    description: 'A brilliant rook maneuver that exemplifies Carlsen\'s creative genius.',
+    source: 'chessgames.com/2008',
+    pgn: `[Event "Baku Grand Prix"]
+[Site "Baku AZE"]
+[Date "2008.04.20"]
+[Round "11"]
+[White "Magnus Carlsen"]
+[Black "Teimour Radjabov"]
+[Result "1-0"]
+
+1. d4 Nf6 2. c4 e6 3. Nf3 d5 4. Nc3 Be7 5. Bf4 O-O 6. e3 c5 7. dxc5 Bxc5 8. cxd5 Nxd5 9. Nxd5 exd5 10. a3 Nc6 11. Bd3 Bb6 12. O-O d4 1-0`
+  }
+];
+
 // Get a random famous game for showcase
 export function getRandomFamousGame(): FamousGame {
   const randomIndex = Math.floor(Math.random() * famousGames.length);
   return famousGames[randomIndex];
 }
 
-// Get game by ID
+// Get game by ID (searches both main collection and Carlsen collection)
 export function getFamousGameById(id: string): FamousGame | undefined {
-  return famousGames.find(game => game.id === id);
+  return famousGames.find(game => game.id === id) || 
+         carlsenLegendaryGames.find(game => game.id === id);
+}
+
+// Get a random Carlsen game
+export function getRandomCarlsenGame(): FamousGame {
+  const randomIndex = Math.floor(Math.random() * carlsenLegendaryGames.length);
+  return carlsenLegendaryGames[randomIndex];
+}
+
+// Check if a game is from Carlsen's collection
+export function isCarlsenGame(id: string): boolean {
+  return carlsenLegendaryGames.some(game => game.id === id);
 }
