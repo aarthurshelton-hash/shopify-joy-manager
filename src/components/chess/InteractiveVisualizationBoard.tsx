@@ -302,13 +302,21 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
 
   // Calculate tracked pieces with unique IDs for animation
   const trackedPieces = useMemo((): TrackedPiece[] => {
-    if (!showPieces || !pgn) return [];
+    // Early return if pieces shouldn't be shown or no valid PGN
+    if (!showPieces) return [];
+    if (!pgn || typeof pgn !== 'string' || pgn.trim() === '') return [];
     
     try {
       // First load the PGN to get all moves with verbose info
       const fullGame = new Chess();
       fullGame.loadPgn(pgn);
       const allMovesVerbose = fullGame.history({ verbose: true });
+      
+      // If no moves were parsed, return empty
+      if (allMovesVerbose.length === 0) {
+        console.warn('No moves parsed from PGN for piece tracking');
+        return [];
+      }
       
       // Track piece origins - each piece gets a unique ID based on starting square
       const pieceOrigins = new Map<string, string>(); // current square -> origin ID

@@ -337,10 +337,15 @@ const MarketplaceVisionDetail: React.FC = () => {
     
     if (type === 'hd') {
       downloadTrademarkHD({
-        board: vizData.board,
+        board: filteredBoard,
         gameData: vizData.gameData,
         title: listing.visualization.title,
         darkMode: exportState?.darkMode || false,
+        highlightState,
+        piecesState: exportState ? {
+          showPieces: exportState.showPieces,
+          pieceOpacity: exportState.pieceOpacity,
+        } : undefined,
       });
       return;
     }
@@ -616,11 +621,12 @@ const MarketplaceVisionDetail: React.FC = () => {
         )}
 
         {/* Unified Vision Experience - providers are handled internally */}
+        {/* PGN is stored in multiple places - prefer game_data.pgn, then visualization.pgn */}
         <UnifiedVisionExperience
           board={vizData.board}
           gameData={vizData.gameData}
           totalMoves={vizData.totalMoves}
-          pgn={listing?.visualization?.pgn || ''}
+          pgn={vizData.gameData.pgn || listing?.visualization?.pgn || ''}
           context="marketplace"
           defaultTab="analytics"
           visualizationId={listing?.visualization?.id}
