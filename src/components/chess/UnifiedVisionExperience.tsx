@@ -856,6 +856,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
   const [boardSize, setBoardSize] = useState(400);
   const [darkMode, setDarkMode] = useState(false);
   const [showLegend, setShowLegend] = useState(true);
+  const [mobileLegendExpanded, setMobileLegendExpanded] = useState(false);
   
   const containerRef = useRef<HTMLDivElement>(null);
   
@@ -1000,13 +1001,21 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
     }
   }, [pgn, gameData.pgn]);
 
-  // Calculate responsive board size
+  // Calculate responsive board size - accounts for timeline and legend on xl screens
   useEffect(() => {
     const updateSize = () => {
       if (containerRef.current) {
         const containerWidth = containerRef.current.offsetWidth;
-        const maxSize = Math.min(containerWidth - 32, 500);
-        setBoardSize(Math.max(280, maxSize));
+        const windowWidth = window.innerWidth;
+        
+        // On xl screens, subtract timeline (120px) and legend (200px) widths plus gaps
+        const isXlScreen = windowWidth >= 1280;
+        const sidebarSpace = isXlScreen ? 120 + 200 + 32 : 0; // timeline + legend + gaps
+        const availableWidth = containerWidth - sidebarSpace - 32; // 32px padding
+        
+        // Calculate max size based on available space
+        const maxSize = Math.min(availableWidth, 500);
+        setBoardSize(Math.max(280, Math.min(maxSize, 500)));
       }
     };
     
@@ -1246,15 +1255,49 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                     />
                   </div>
 
-                  {/* Mobile/Tablet Legend (shown on smaller screens) */}
+                  {/* Mobile/Tablet Collapsible Legend */}
                   {showLegend && (
                     <div className="xl:hidden">
-                      <EnhancedLegend 
-                        whitePalette={getCurrentPalette().white}
-                        blackPalette={getCurrentPalette().black}
-                        board={board}
-                        compact
-                      />
+                      <motion.div
+                        className="rounded-lg border border-border/50 bg-card/50 overflow-hidden"
+                        initial={false}
+                      >
+                        <button
+                          onClick={() => setMobileLegendExpanded(!mobileLegendExpanded)}
+                          className="w-full flex items-center justify-between p-3 hover:bg-muted/30 transition-colors"
+                        >
+                          <span className="font-display text-sm uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                            <Eye className="h-4 w-4" />
+                            Color Legend
+                          </span>
+                          <motion.div
+                            animate={{ rotate: mobileLegendExpanded ? 180 : 0 }}
+                            transition={{ duration: 0.2 }}
+                          >
+                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                          </motion.div>
+                        </button>
+                        <AnimatePresence>
+                          {mobileLegendExpanded && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.2 }}
+                              className="overflow-hidden"
+                            >
+                              <div className="p-3 pt-0">
+                                <EnhancedLegend 
+                                  whitePalette={getCurrentPalette().white}
+                                  blackPalette={getCurrentPalette().black}
+                                  board={board}
+                                  compact
+                                />
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </motion.div>
                     </div>
                   )}
 
