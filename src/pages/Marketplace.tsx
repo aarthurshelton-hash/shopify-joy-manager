@@ -491,9 +491,11 @@ const Marketplace: React.FC = () => {
                   const backgroundImage = paletteArt || gameArtImages[index % gameArtImages.length];
 
                   return (
-                    <Link 
+                    <a 
                       key={listing.id}
-                      to={`/marketplace/${listing.id}`} 
+                      href={`/marketplace/${listing.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="block animate-fade-in"
                       onClick={() => trackMarketplaceClick({
                         click_type: 'listing_card',
@@ -658,7 +660,7 @@ const Marketplace: React.FC = () => {
                           </button>
                         </CardContent>
                       </Card>
-                    </Link>
+                    </a>
                   );
                 })}
               </div>
