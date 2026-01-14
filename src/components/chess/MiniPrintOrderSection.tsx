@@ -15,6 +15,8 @@ interface ExportState {
   lockedPieces: Array<{ pieceType: string; pieceColor: string }>;
   compareMode: boolean;
   darkMode: boolean;
+  showPieces: boolean;
+  pieceOpacity: number;
 }
 
 interface MiniPrintOrderSectionProps {
@@ -22,6 +24,8 @@ interface MiniPrintOrderSectionProps {
   gameData: GameData;
   totalMoves: number;
   darkMode?: boolean;
+  showPieces?: boolean;
+  pieceOpacity?: number;
   onOrderPrint?: (exportState: ExportState) => void;
   className?: string;
 }
@@ -43,6 +47,8 @@ export const MiniPrintOrderSection: React.FC<MiniPrintOrderSectionProps> = ({
   gameData,
   totalMoves,
   darkMode = false,
+  showPieces = false,
+  pieceOpacity = 0.7,
   onOrderPrint,
   className = '',
 }) => {
@@ -61,6 +67,8 @@ export const MiniPrintOrderSection: React.FC<MiniPrintOrderSectionProps> = ({
       })),
       compareMode,
       darkMode,
+      showPieces,
+      pieceOpacity,
     };
     onOrderPrint?.(exportState);
   };

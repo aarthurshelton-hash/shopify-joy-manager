@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import { Chess } from 'chess.js';
 import ChessBoardVisualization from './ChessBoardVisualization';
 import GameInfoDisplay from './GameInfoDisplay';
 import { EnPensentOverlay, MoveHistoryEntry } from './EnPensentOverlay';
@@ -7,6 +8,12 @@ import { PieceType, PieceColor } from '@/lib/chess/pieceColors';
 import { HighlightedPiece } from '@/contexts/LegendHighlightContext';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 
+// Unicode chess piece characters
+const PIECE_SYMBOLS: Record<string, string> = {
+  'K': '♔', 'Q': '♕', 'R': '♖', 'B': '♗', 'N': '♘', 'P': '♙',
+  'k': '♚', 'q': '♛', 'r': '♜', 'b': '♝', 'n': '♞', 'p': '♟',
+};
+
 interface GameData {
   white: string;
   black: string;
@@ -14,6 +21,7 @@ interface GameData {
   date?: string;
   result?: string;
   moves?: string[];
+  pgn?: string;
 }
 
 interface EnPensentData {
@@ -26,6 +34,12 @@ interface EnPensentData {
 interface HighlightState {
   lockedPieces: Array<{ pieceType: PieceType; pieceColor: PieceColor }>;
   compareMode: boolean;
+}
+
+// Pieces overlay state for export rendering
+interface PiecesState {
+  showPieces: boolean;
+  pieceOpacity: number;
 }
 
 interface PrintReadyVisualizationProps {
@@ -44,6 +58,12 @@ interface PrintReadyVisualizationProps {
   
   // Optional highlight state for export (captures locked pieces, compare mode)
   highlightState?: HighlightState;
+  
+  // Optional pieces overlay state for export
+  piecesState?: PiecesState;
+  
+  // PGN for piece position calculation
+  pgn?: string;
   
   // Watermark for free downloads
   withWatermark?: boolean;
@@ -72,6 +92,8 @@ export const PrintReadyVisualization: React.FC<PrintReadyVisualizationProps> = (
   title,
   enPensentData,
   highlightState,
+  piecesState,
+  pgn,
   withWatermark = false,
 }) => {
   const bgColor = darkMode ? '#0A0A0A' : '#FDFCFB';
@@ -83,6 +105,44 @@ export const PrintReadyVisualization: React.FC<PrintReadyVisualizationProps> = (
   // Scale factor for compact mode (wall mockup)
   const padding = compact ? 4 : 24;
   const boardSize = size - (padding * 2);
+  const squareSize = boardSize / 8;
+
+  // Calculate piece positions for overlay
+  const piecePositions = useMemo(() => {
+    if (!piecesState?.showPieces) return [];
+    
+    const pgnToUse = pgn || gameData.pgn;
+    if (!pgnToUse) return [];
+    
+    try {
+      const chess = new Chess();
+      chess.loadPgn(pgnToUse);
+      const boardState = chess.board();
+      
+      const pieces: { square: string; piece: string; color: 'w' | 'b'; row: number; col: number }[] = [];
+      
+      for (let rowIndex = 0; rowIndex < 8; rowIndex++) {
+        for (let file = 0; file < 8; file++) {
+          const piece = boardState[rowIndex]?.[file];
+          if (piece) {
+            const rank = 7 - rowIndex;
+            const square = `${String.fromCharCode(97 + file)}${rank + 1}`;
+            pieces.push({
+              square,
+              piece: piece.type,
+              color: piece.color,
+              row: rowIndex,
+              col: file,
+            });
+          }
+        }
+      }
+      return pieces;
+    } catch (e) {
+      console.error('Error parsing PGN for piece positions:', e);
+      return [];
+    }
+  }, [piecesState?.showPieces, pgn, gameData.pgn]);
 
   // Render the chess board - either EnPensent overlay or standard visualization
   const renderBoard = () => {
@@ -130,12 +190,48 @@ export const PrintReadyVisualization: React.FC<PrintReadyVisualizationProps> = (
       }));
       
       return (
-        <ChessBoardVisualization 
-          board={board} 
-          size={boardSize}
-          overrideHighlightedPieces={overrideHighlightedPieces}
-          overrideCompareMode={highlightState?.compareMode}
-        />
+        <div style={{ position: 'relative', width: boardSize, height: boardSize }}>
+          <ChessBoardVisualization 
+            board={board} 
+            size={boardSize}
+            overrideHighlightedPieces={overrideHighlightedPieces}
+            overrideCompareMode={highlightState?.compareMode}
+          />
+          {/* Pieces overlay */}
+          {piecesState?.showPieces && piecePositions.length > 0 && (
+            <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+              {piecePositions.map((p, idx) => {
+                const symbol = p.color === 'w' 
+                  ? PIECE_SYMBOLS[p.piece.toUpperCase()] 
+                  : PIECE_SYMBOLS[p.piece.toLowerCase()];
+                return (
+                  <div
+                    key={idx}
+                    style={{
+                      position: 'absolute',
+                      left: p.col * squareSize,
+                      top: p.row * squareSize,
+                      width: squareSize,
+                      height: squareSize,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: squareSize * 0.75,
+                      opacity: piecesState.pieceOpacity,
+                      color: p.color === 'w' ? '#ffffff' : '#1a1a1a',
+                      textShadow: p.color === 'w' 
+                        ? '0 1px 3px rgba(0,0,0,0.5), 0 0 1px rgba(0,0,0,0.8)' 
+                        : '0 1px 2px rgba(255,255,255,0.3)',
+                      fontFamily: 'serif',
+                    }}
+                  >
+                    {symbol}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       );
     }
     

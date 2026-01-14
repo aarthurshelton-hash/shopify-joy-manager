@@ -82,6 +82,8 @@ export interface ExportState {
   lockedPieces: Array<{ pieceType: string; pieceColor: string }>;
   compareMode: boolean;
   darkMode: boolean;
+  showPieces: boolean;
+  pieceOpacity: number;
 }
 
 export interface UnifiedVisionExperienceProps {
@@ -727,7 +729,9 @@ const ExportActionButtons: React.FC<{
   isPremium?: boolean;
   darkMode: boolean;
   totalMoves: number;
-}> = ({ onExport, isPremium = false, darkMode, totalMoves }) => {
+  showPieces: boolean;
+  pieceOpacity: number;
+}> = ({ onExport, isPremium = false, darkMode, totalMoves, showPieces, pieceOpacity }) => {
   const { currentMove } = useTimeline();
   const { lockedPieces, compareMode } = useLegendHighlight();
   
@@ -740,9 +744,11 @@ const ExportActionButtons: React.FC<{
       })),
       compareMode,
       darkMode,
+      showPieces,
+      pieceOpacity,
     };
     onExport?.(type, exportState);
-  }, [onExport, currentMove, totalMoves, lockedPieces, compareMode, darkMode]);
+  }, [onExport, currentMove, totalMoves, lockedPieces, compareMode, darkMode, showPieces, pieceOpacity]);
 
   if (!onExport) return null;
 
@@ -1347,23 +1353,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                       compact
                     />
 
-                    <div className="h-4 w-px bg-border" />
 
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div className="flex items-center gap-2">
-                            <Flame className="h-4 w-4 text-muted-foreground" />
-                            <Switch
-                              checked={showHeatmap}
-                              onCheckedChange={setShowHeatmap}
-                            />
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent>Toggle territory heatmap</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                    
                     {showLegend !== undefined && (
                       <>
                         <div className="h-4 w-px bg-border" />
@@ -1553,6 +1543,8 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                           isPremium={isPremium}
                           darkMode={darkMode}
                           totalMoves={totalMoves}
+                          showPieces={showPieces}
+                          pieceOpacity={pieceOpacity}
                         />
                         
                         {onSaveToGallery && (
@@ -1592,6 +1584,8 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                           isPremium={isPremium}
                           darkMode={darkMode}
                           totalMoves={totalMoves}
+                          showPieces={showPieces}
+                          pieceOpacity={pieceOpacity}
                         />
                         
                         {!isListed && onListForSale && (
@@ -1621,6 +1615,8 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                         isPremium={isPremium}
                         darkMode={darkMode}
                         totalMoves={totalMoves}
+                        showPieces={showPieces}
+                        pieceOpacity={pieceOpacity}
                       />
                     )}
                     
@@ -1631,6 +1627,8 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                         isPremium={isPremium}
                         darkMode={darkMode}
                         totalMoves={totalMoves}
+                        showPieces={showPieces}
+                        pieceOpacity={pieceOpacity}
                       />
                     )}
 
@@ -1678,6 +1676,8 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                       gameData={gameData}
                       totalMoves={totalMoves}
                       darkMode={darkMode}
+                      showPieces={showPieces}
+                      pieceOpacity={pieceOpacity}
                       onOrderPrint={(exportState) => onExport('print', exportState)}
                       className="mt-6"
                     />
