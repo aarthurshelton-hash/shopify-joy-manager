@@ -93,6 +93,33 @@ import pillsburyTarrasch from '@/assets/games/pillsbury-tarrasch.jpg';
 import birdAmateur from '@/assets/games/bird-amateur.jpg';
 import candidates2020 from '@/assets/games/candidates-2020.jpg';
 
+// Magnus Carlsen Collection - AI-generated artwork
+import carlsenCrowning from '@/assets/games/carlsen/carlsen-crowning.jpg';
+import carlsenProdigy from '@/assets/games/carlsen/carlsen-prodigy.jpg';
+import carlsenAnandShowdown from '@/assets/games/carlsen/carlsen-anand-showdown.jpg';
+import carlsenTiebreak from '@/assets/games/carlsen/carlsen-tiebreak.jpg';
+import carlsenEpicMarathon from '@/assets/games/carlsen/carlsen-epic-marathon.jpg';
+import carlsenKasparovLegend from '@/assets/games/carlsen/carlsen-kasparov-legend.jpg';
+import carlsenBreakthrough from '@/assets/games/carlsen/carlsen-breakthrough.jpg';
+import carlsenEndgameMaster from '@/assets/games/carlsen/carlsen-endgame-master.jpg';
+import carlsenSicilianFire from '@/assets/games/carlsen/carlsen-sicilian-fire.jpg';
+import carlsenCrushingVictory from '@/assets/games/carlsen/carlsen-crushing-victory.jpg';
+import carlsenRookLift from '@/assets/games/carlsen/carlsen-rook-lift.jpg';
+import carlsenBerlinMaster from '@/assets/games/carlsen/carlsen-berlin-master.jpg';
+import carlsenSpanishAttack from '@/assets/games/carlsen/carlsen-spanish-attack.jpg';
+import carlsenQueenSacrifice from '@/assets/games/carlsen/carlsen-queen-sacrifice.jpg';
+import carlsenTacticalBrilliancy from '@/assets/games/carlsen/carlsen-tactical-brilliancy.jpg';
+import carlsenPositionalSqueeze from '@/assets/games/carlsen/carlsen-positional-squeeze.jpg';
+import carlsenNordicWarrior from '@/assets/games/carlsen/carlsen-nordic-warrior.jpg';
+import carlsenKnightOutpost from '@/assets/games/carlsen/carlsen-knight-outpost.jpg';
+import carlsenPromotion from '@/assets/games/carlsen/carlsen-promotion.jpg';
+import carlsenBlitzSpeed from '@/assets/games/carlsen/carlsen-blitz-speed.jpg';
+import carlsenExchangeSac from '@/assets/games/carlsen/carlsen-exchange-sac.jpg';
+import carlsenZugzwang from '@/assets/games/carlsen/carlsen-zugzwang.jpg';
+import carlsenKramnikBattle from '@/assets/games/carlsen/carlsen-kramnik-battle.jpg';
+import carlsenGrunfeldCounter from '@/assets/games/carlsen/carlsen-grunfeld-counter.jpg';
+import carlsenTechnique from '@/assets/games/carlsen/carlsen-technique.jpg';
+
 export const gameImageImports: Record<string, string> = {
   // Original games
   'kasparov-topalov-1999': kasparovImmortal,
@@ -197,6 +224,20 @@ export const gameImageImports: Record<string, string> = {
   'stockfish-leela-2020': stockfishLeela,
   'habu-kasparov-2014': habuKasparov,
   'mwali-amateur-1850': mwaliAmateur,
+  
+  // Magnus Carlsen Collection - "Carlsen in Color" Book Games
+  'carlsen-anand-wc-2013': carlsenCrowning,
+  'carlsen-nepo-wc-2021': carlsenEpicMarathon,
+  'carlsen-ernst-2004': carlsenProdigy,
+  'carlsen-kasparov-2004': carlsenKasparovLegend,
+  'carlsen-karjakin-wc-2016': carlsenBreakthrough,
+  'carlsen-caruana-wc-2018': carlsenTiebreak,
+  'carlsen-topalov-2008': carlsenSicilianFire,
+  'carlsen-kramnik-2010': carlsenKramnikBattle,
+  'aronian-carlsen-2008': carlsenGrunfeldCounter,
+  'carlsen-ivanchuk-2009': carlsenTacticalBrilliancy,
+  'carlsen-shirov-2009': carlsenQueenSacrifice,
+  'carlsen-radjabov-2008': carlsenRookLift,
 };
 
 // Re-export Carlsen game images from dedicated file

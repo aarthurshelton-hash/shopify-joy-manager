@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Upload, FileText, Crown, Sparkles, CheckCircle, XCircle, Loader2, Wrench, ArrowRight, ChevronLeft, ChevronRight, Search, X, Shuffle, Heart, Award, PenTool, Trophy, Star } from 'lucide-react';
 import uploadHeroArt from '@/assets/hero-chess-art.jpg';
-import { famousGames, FamousGame, getRandomFamousGame } from '@/lib/chess/famousGames';
+import { famousGames, carlsenLegendaryGames, FamousGame, getRandomFamousGame } from '@/lib/chess/famousGames';
 import { gameImageImports } from '@/lib/chess/gameImages';
 import { getPoetryPreview, getPoetryStyleLabel } from '@/lib/chess/gamePoetry';
 import { validatePgn, cleanPgn, PgnValidationResult } from '@/lib/chess/pgnValidator';
@@ -81,9 +81,10 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
   
-  // Sort games by year (oldest to newest), then alphabetically by title within same year
+  // Combine all games including Carlsen collection and sort by year
   const sortedGames = useMemo(() => {
-    return [...famousGames].sort((a, b) => {
+    const allGames = [...famousGames, ...carlsenLegendaryGames];
+    return allGames.sort((a, b) => {
       if (a.year !== b.year) {
         return a.year - b.year;
       }
