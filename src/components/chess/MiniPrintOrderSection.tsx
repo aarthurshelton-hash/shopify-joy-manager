@@ -76,16 +76,28 @@ export const MiniPrintOrderSection: React.FC<MiniPrintOrderSectionProps> = ({
     );
   }, [board, currentMove, totalMoves]);
 
-  // Mini visualization for the mockup
-  const miniVisualization = useMemo(() => (
-    <PrintReadyVisualization
-      board={filteredBoard}
-      gameData={gameData}
-      size={100}
-      darkMode={darkMode}
-      compact
-    />
-  ), [filteredBoard, gameData, darkMode]);
+  // Mini visualization for the mockup - captures exact current state including highlights
+  const miniVisualization = useMemo(() => {
+    // Build highlight state from current locked pieces
+    const highlightState = lockedPieces.length > 0 ? {
+      lockedPieces: lockedPieces.map(p => ({
+        pieceType: p.pieceType,
+        pieceColor: p.pieceColor,
+      })),
+      compareMode,
+    } : undefined;
+
+    return (
+      <PrintReadyVisualization
+        board={filteredBoard}
+        gameData={gameData}
+        size={100}
+        darkMode={darkMode}
+        compact
+        highlightState={highlightState}
+      />
+    );
+  }, [filteredBoard, gameData, darkMode, lockedPieces, compareMode]);
 
   const framePrice = selectedFrame ? getBaseFramePrice(selectedSize.value as '8x10' | '11x14' | '16x20' | '18x24' | '24x36') : 0;
 

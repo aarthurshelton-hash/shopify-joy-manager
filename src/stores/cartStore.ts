@@ -80,9 +80,16 @@ export interface CartItem {
   customPrintData?: {
     pgn: string;
     gameTitle: string;
-    previewImageBase64?: string;
+    previewImageBase64?: string; // Exact current state image
     frameStyle?: string;
     includeInfoCard?: boolean;
+    // Captured visualization state - ensures print matches exactly what user sees
+    capturedState?: {
+      currentMove: number;
+      lockedPieces: Array<{ pieceType: string; pieceColor: string }>;
+      compareMode: boolean;
+      darkMode: boolean;
+    };
   };
 }
 

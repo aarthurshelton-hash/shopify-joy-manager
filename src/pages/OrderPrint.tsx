@@ -178,7 +178,7 @@ const OrderPrint: React.FC = () => {
                 {/* Visualization Preview - using unified PrintReadyVisualization */}
                 <div className="flex justify-center">
                   {hasSimulation && displayBoard ? (
-                    // Full simulation visualization
+                    // Full simulation visualization - includes highlight state for exact match
                     <PrintReadyVisualization 
                       board={displayBoard}
                       gameData={{
@@ -189,6 +189,13 @@ const OrderPrint: React.FC = () => {
                       darkMode={darkMode}
                       title={orderData.title}
                       compact={false}
+                      highlightState={orderData.capturedState?.lockedPieces && orderData.capturedState.lockedPieces.length > 0 ? {
+                        lockedPieces: orderData.capturedState.lockedPieces.map(p => ({
+                          pieceType: p.pieceType as 'k' | 'q' | 'r' | 'b' | 'n' | 'p',
+                          pieceColor: (p.pieceColor === 'white' ? 'w' : p.pieceColor === 'black' ? 'b' : p.pieceColor) as 'w' | 'b',
+                        })),
+                        compareMode: orderData.capturedState.compareMode || false,
+                      } : undefined}
                     />
                   ) : hasEnPensentData ? (
                     // En Pensent live game visualization - unified component
