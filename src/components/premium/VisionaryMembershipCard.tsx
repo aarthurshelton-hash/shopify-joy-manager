@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, forwardRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -246,12 +246,12 @@ const FeatureCard: React.FC<{
   </Tooltip>
 );
 
-export const VisionaryMembershipCard: React.FC<VisionaryMembershipCardProps> = ({
+export const VisionaryMembershipCard = forwardRef<HTMLDivElement, VisionaryMembershipCardProps>(({
   isOpen,
   onClose,
   onAuthRequired,
   trigger = 'general',
-}) => {
+}, ref) => {
   const { user, isPremium, isFreeAccount, openCheckout } = useAuth();
   const { variants, recordImpressions, recordConversions } = useABTest();
   const [isLoading, setIsLoading] = useState(false);
@@ -650,6 +650,8 @@ export const VisionaryMembershipCard: React.FC<VisionaryMembershipCardProps> = (
       </DialogContent>
     </Dialog>
   );
-};
+});
+
+VisionaryMembershipCard.displayName = 'VisionaryMembershipCard';
 
 export default VisionaryMembershipCard;

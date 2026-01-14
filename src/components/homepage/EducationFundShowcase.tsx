@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { forwardRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { GraduationCap, Heart, Globe, ChevronRight, Sparkles } from 'lucide-react';
@@ -13,10 +13,10 @@ interface EducationFundShowcaseProps {
   className?: string;
 }
 
-export const EducationFundShowcase: React.FC<EducationFundShowcaseProps> = ({
+export const EducationFundShowcase = forwardRef<HTMLElement, EducationFundShowcaseProps>(({
   variant = 'homepage',
   className = '',
-}) => {
+}, ref) => {
   const { data: stats } = useQuery({
     queryKey: ['education-fund-summary'],
     queryFn: async () => {
@@ -75,7 +75,7 @@ export const EducationFundShowcase: React.FC<EducationFundShowcaseProps> = ({
     );
   }
 
-  // Full homepage variant
+  // Full homepage variant - assign ref to the section
   return (
     <section className={`py-16 ${className}`}>
       <div className="container mx-auto px-4">
@@ -149,6 +149,8 @@ export const EducationFundShowcase: React.FC<EducationFundShowcaseProps> = ({
       </div>
     </section>
   );
-};
+});
+
+EducationFundShowcase.displayName = 'EducationFundShowcase';
 
 export default EducationFundShowcase;
