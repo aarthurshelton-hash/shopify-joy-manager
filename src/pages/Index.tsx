@@ -85,6 +85,7 @@ const Index = () => {
   } = useVisualizationExport({
     isPremium,
     visualizationId: savedVisualizationId,
+    userId: user?.id,
     onUnauthorized: () => setShowAuthModal(true),
     onUpgradeRequired: () => setShowVisionaryModal(true),
   });
@@ -851,6 +852,19 @@ const Index = () => {
                       darkMode: exportState?.darkMode || false,
                       withWatermark: !isPremium, // Add watermark for free users
                       highlightState,
+                      capturedState: exportState ? {
+                        currentMove: exportState.currentMove,
+                        selectedPhase: 'all',
+                        lockedPieces: exportState.lockedPieces || [],
+                        compareMode: exportState.compareMode,
+                        displayMode: 'art',
+                        darkMode: exportState.darkMode,
+                        showTerritory: false,
+                        showHeatmaps: false,
+                        showPieces: exportState.showPieces,
+                        pieceOpacity: exportState.pieceOpacity,
+                        capturedAt: new Date(),
+                      } : undefined,
                     });
                     
                     // Convert base64 to blob for download
@@ -875,7 +889,7 @@ const Index = () => {
                   }
                 } else if (type === 'hd') {
                   // Use trademark HD export for proper "print-ready" look
-                  // Include highlight state so HD matches exactly what user sees
+                  // Include highlight state and pieces state so HD matches exactly what user sees
                   await downloadTrademarkHD({
                     board: filteredBoard,
                     gameData: simulation.gameData,
@@ -884,6 +898,11 @@ const Index = () => {
                     showQR: !!savedShareId,
                     shareId: savedShareId || undefined,
                     highlightState,
+                    piecesState: exportState ? {
+                      showPieces: exportState.showPieces,
+                      pieceOpacity: exportState.pieceOpacity,
+                    } : undefined,
+                    currentMoveNumber: exportState?.currentMove,
                   });
                 } else if (type === 'gif') {
                   const boardElement = visionBoardRef.current?.querySelector('[data-vision-board]') as HTMLElement;
@@ -904,12 +923,91 @@ const Index = () => {
                   return null;
                 }
                 
-                // For now, show a toast prompting to use the full download flow
-                // The actual save requires capturing the canvas as an image blob
-                toast.info('Use HD Download to save to gallery', { 
-                  description: 'Download your visualization first, then it will be saved to your gallery' 
-                });
-                return null;
+                // Check for similarity/ownership before saving
+                setIsSaving(true);
+                try {
+                  const { checkDuplicateVisualization, saveVisualization } = await import('@/lib/visualizations/visualizationStorage');
+                  const { getActivePalette } = await import('@/lib/chess/pieceColors');
+                  
+                  // Build visualization state for ownership check
+                  const activePalette = getActivePalette();
+                  const visualizationState = {
+                    paletteId: activePalette.id,
+                    darkMode: false,
+                  };
+                  
+                  // Check if this visualization is already owned
+                  const checkResult = await checkDuplicateVisualization(
+                    user.id,
+                    currentPgn,
+                    simulation.gameData,
+                    visualizationState
+                  );
+                  
+                  if (checkResult.isDuplicate) {
+                    if (checkResult.ownedByCurrentUser) {
+                      toast.info('Already in your gallery', {
+                        description: 'This visualization is already saved to your collection.',
+                      });
+                    } else {
+                      toast.error('This vision is already owned', {
+                        description: `Owned by ${checkResult.ownerDisplayName || 'another collector'}. Try a different palette!`,
+                      });
+                    }
+                    return null;
+                  }
+                  
+                  if (checkResult.isTooSimilar) {
+                    toast.error('Too similar to an existing vision', {
+                      description: `${Math.round(checkResult.colorSimilarity || 30)}% similar to a vision by ${checkResult.ownerDisplayName || 'another collector'}. Change at least 8 colors.`,
+                    });
+                    return null;
+                  }
+                  
+                  // Generate image for storage
+                  const { generateCleanPrintImage } = await import('@/lib/chess/printImageGenerator');
+                  const base64Image = await generateCleanPrintImage(simulation, {
+                    darkMode: false,
+                  });
+                  
+                  // Convert base64 to blob
+                  const response = await fetch(base64Image);
+                  const blob = await response.blob();
+                  
+                  // Save to database
+                  const visualTitle = gameTitle || `${simulation.gameData.white} vs ${simulation.gameData.black}`;
+                  const result = await saveVisualization(
+                    user.id,
+                    visualTitle,
+                    simulation,
+                    blob,
+                    currentPgn,
+                    visualizationState
+                  );
+                  
+                  if (result.error) {
+                    toast.error('Save failed', { description: result.error.message });
+                    return null;
+                  }
+                  
+                  if (result.data) {
+                    setSavedVisualizationId(result.data.id);
+                    setSavedShareId(result.data.public_share_id);
+                    setHasUnsavedChanges(false);
+                    toast.success('Saved to your gallery!', {
+                      description: 'You now own this unique visualization.',
+                    });
+                    return result.data.id;
+                  }
+                  
+                  return null;
+                } catch (error) {
+                  console.error('Save to gallery failed:', error);
+                  toast.error('Save failed', { description: 'Please try again.' });
+                  return null;
+                } finally {
+                  setIsSaving(false);
+                }
               }}
               onShare={() => {
                 if (savedShareId) {
