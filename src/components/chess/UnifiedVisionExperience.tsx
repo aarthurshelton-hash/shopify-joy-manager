@@ -724,10 +724,10 @@ const AnalyticsPanel: React.FC<{
 // Export action buttons that capture current visualization state
 const ExportActionButtons: React.FC<{
   onExport?: (type: 'hd' | 'gif' | 'print' | 'preview', exportState?: ExportState) => void;
-  isPremium: boolean;
+  isPremium?: boolean;
   darkMode: boolean;
   totalMoves: number;
-}> = ({ onExport, isPremium, darkMode, totalMoves }) => {
+}> = ({ onExport, isPremium = false, darkMode, totalMoves }) => {
   const { currentMove } = useTimeline();
   const { lockedPieces, compareMode } = useLegendHighlight();
   
@@ -749,35 +749,63 @@ const ExportActionButtons: React.FC<{
   return (
     <div className="flex flex-wrap gap-2 w-full sm:w-auto">
       {/* Free Preview Download - available to everyone */}
-      <Button 
-        variant="outline" 
-        size="sm" 
-        className="gap-2"
-        onClick={() => handleExport('preview')}
-      >
-        <Download className="h-4 w-4" />
-        Download
-      </Button>
-      <Button 
-        variant="outline" 
-        size="sm" 
-        className="gap-2"
-        onClick={() => handleExport('hd')}
-      >
-        <Download className="h-4 w-4" />
-        HD
-        {!isPremium && <Crown className="h-3 w-3 text-primary" />}
-      </Button>
-      <Button 
-        variant="outline" 
-        size="sm" 
-        className="gap-2"
-        onClick={() => handleExport('gif')}
-      >
-        <Download className="h-4 w-4" />
-        GIF
-        {!isPremium && <Crown className="h-3 w-3 text-primary" />}
-      </Button>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="gap-2"
+              onClick={() => handleExport('preview')}
+            >
+              <Download className="h-4 w-4" />
+              Preview
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Download preview image (free)</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="gap-2"
+              onClick={() => handleExport('hd')}
+            >
+              <Download className="h-4 w-4" />
+              HD
+              {!isPremium && <Crown className="h-3 w-3 text-primary" />}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            {isPremium ? 'Download high-resolution image' : 'Premium: Download HD image'}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="gap-2"
+              onClick={() => handleExport('gif')}
+            >
+              <Download className="h-4 w-4" />
+              GIF
+              {!isPremium && <Crown className="h-3 w-3 text-primary" />}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            {isPremium ? 'Download animated GIF' : 'Premium: Download animated GIF'}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      
       <Button 
         variant="default" 
         size="sm" 
@@ -1528,20 +1556,30 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                         />
                         
                         {onSaveToGallery && (
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="gap-2"
-                            onClick={async () => {
-                              const id = await onSaveToGallery();
-                              if (id) {
-                                // Could trigger success state
-                              }
-                            }}
-                          >
-                            <Crown className="h-4 w-4 text-primary" />
-                            Save to Gallery
-                          </Button>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  className="gap-2"
+                                  onClick={async () => {
+                                    const id = await onSaveToGallery();
+                                    if (id) {
+                                      // Could trigger success state
+                                    }
+                                  }}
+                                >
+                                  <Crown className="h-4 w-4 text-primary" />
+                                  Save to Gallery
+                                  {!isPremium && <Crown className="h-3 w-3 text-primary" />}
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                {isPremium ? 'Save to your vision gallery' : 'Premium: Save to your vision gallery'}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         )}
                       </>
                     )}
@@ -1598,16 +1636,25 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
 
                     {/* Transfer to Creative Mode - Available in multiple contexts */}
                     {onTransferToCreative && (
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="gap-2"
-                        onClick={handleTransferToCreative}
-                      >
-                        <Wand2 className="h-4 w-4" />
-                        Edit in Creative Mode
-                        {!isPremium && <Crown className="h-3 w-3 text-primary" />}
-                      </Button>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="gap-2"
+                              onClick={handleTransferToCreative}
+                            >
+                              <Wand2 className="h-4 w-4" />
+                              Edit in Creative
+                              {!isPremium && <Crown className="h-3 w-3 text-primary" />}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {isPremium ? 'Open in Creative Mode studio' : 'Premium: Edit in Creative Mode'}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     )}
                     
                     {/* Share button */}

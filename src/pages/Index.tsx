@@ -921,6 +921,16 @@ const Index = () => {
                 }
               }}
               onTransferToCreative={() => {
+                // Premium gate for Creative Mode
+                if (!user) {
+                  setShowAuthModal(true);
+                  return;
+                }
+                if (!isPremium) {
+                  setShowVisionaryModal(true);
+                  return;
+                }
+                
                 // Transfer to creative mode
                 const activePalette = getActivePalette();
                 setCreativeModeTransfer({
