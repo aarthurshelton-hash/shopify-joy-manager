@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { SquareData, SquareVisit } from '@/lib/chess/gameSimulator';
 import { boardColors, getPieceColor, PieceType, PieceColor } from '@/lib/chess/pieceColors';
-import { useLegendHighlight, HighlightedPiece } from '@/contexts/LegendHighlightContext';
+import { useLegendHighlight, HighlightedPiece, HoveredSquareInfo, AnnotationType } from '@/contexts/LegendHighlightContext';
 
 interface InteractiveVisualizationBoardProps {
   board: SquareData[][];
@@ -236,34 +236,33 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
 }) => {
   const [hoveredSquareLocal, setHoveredSquareLocal] = useState<string | null>(null);
   
-  // Try to use highlight context if available
-  let highlightedPieces: HighlightedPiece[] = [];
-  let compareMode = false;
-  let setHoveredSquare: ((info: { square: string; pieces: HighlightedPiece[]; moveNumbers: number[] } | null) => void) | null = null;
-  let setHighlightedAnnotations: ((annotations: ('white-player' | 'black-player')[]) => void) | null = null;
-  let hoveredAnnotation: { type: string; associatedPieces?: HighlightedPiece[] } | null = null;
-  let hoveredSquareFromContext: { square: string; pieces: HighlightedPiece[]; moveNumbers: number[] } | null = null;
+  // Use the context hook directly - it will throw if not in provider, but that's expected
+  const context = useLegendHighlight();
   
-  try {
-    const context = useLegendHighlight();
+  // Extract values from context
+  const lockedPieces = context.lockedPieces;
+  const highlightedPiece = context.highlightedPiece;
+  const compareMode = context.compareMode;
+  const setHoveredSquare = context.setHoveredSquare;
+  const setHighlightedAnnotations = context.setHighlightedAnnotations;
+  const hoveredAnnotation = context.hoveredAnnotation;
+  const hoveredSquareFromContext = context.hoveredSquare;
+  
+  // Build highlighted pieces array from context state
+  const highlightedPieces = useMemo(() => {
+    // If annotation is hovered, use its associated pieces
+    if (hoveredAnnotation?.associatedPieces && hoveredAnnotation.associatedPieces.length > 0) {
+      return hoveredAnnotation.associatedPieces;
+    }
     // Combine locked pieces and hover highlight
-    if (context.lockedPieces.length > 0) {
-      highlightedPieces = context.lockedPieces;
-    } else if (context.highlightedPiece) {
-      highlightedPieces = [context.highlightedPiece];
+    if (lockedPieces.length > 0) {
+      return lockedPieces;
     }
-    // If annotation is hovered, use its associated pieces for highlighting
-    if (context.hoveredAnnotation?.associatedPieces && context.hoveredAnnotation.associatedPieces.length > 0) {
-      highlightedPieces = context.hoveredAnnotation.associatedPieces;
+    if (highlightedPiece) {
+      return [highlightedPiece];
     }
-    compareMode = context.compareMode;
-    setHoveredSquare = context.setHoveredSquare;
-    setHighlightedAnnotations = context.setHighlightedAnnotations;
-    hoveredAnnotation = context.hoveredAnnotation;
-    hoveredSquareFromContext = context.hoveredSquare;
-  } catch {
-    // Context not available, no highlighting
-  }
+    return [];
+  }, [lockedPieces, highlightedPiece, hoveredAnnotation]);
   
   const squareSize = size / 8;
   const borderWidth = size * 0.02;
@@ -304,30 +303,24 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
     const pieces = getPiecesForSquare(square);
     const moveNumbers = getMoveNumbersForSquare(square);
     
-    // Always update hover state - even for empty squares (with empty pieces array)
-    if (setHoveredSquare) {
-      setHoveredSquare({ square: squareName, pieces, moveNumbers });
-    }
+    // Update the context with hovered square info
+    setHoveredSquare({ square: squareName, pieces, moveNumbers });
     
     // Update annotation highlighting based on pieces on this square
-    if (setHighlightedAnnotations && pieces.length > 0) {
-      const annotations: ('white-player' | 'black-player')[] = [];
+    if (pieces.length > 0) {
+      const annotations: AnnotationType[] = [];
       if (pieces.some(p => p.pieceColor === 'w')) annotations.push('white-player');
       if (pieces.some(p => p.pieceColor === 'b')) annotations.push('black-player');
       setHighlightedAnnotations(annotations);
-    } else if (setHighlightedAnnotations) {
+    } else {
       setHighlightedAnnotations([]);
     }
   }, [board, setHoveredSquare, setHighlightedAnnotations, getPiecesForSquare, getMoveNumbersForSquare]);
 
   const handleSquareLeave = useCallback(() => {
     setHoveredSquareLocal(null);
-    if (setHoveredSquare) {
-      setHoveredSquare(null);
-    }
-    if (setHighlightedAnnotations) {
-      setHighlightedAnnotations([]);
-    }
+    setHoveredSquare(null);
+    setHighlightedAnnotations([]);
   }, [setHoveredSquare, setHighlightedAnnotations]);
   
   // Determine effective highlighting pieces - include pieces from hovered square for full board highlighting
