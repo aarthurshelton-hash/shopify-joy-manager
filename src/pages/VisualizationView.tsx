@@ -66,10 +66,23 @@ const VisualizationView = () => {
   const [visionScore, setVisionScore] = useState<VisionScore | null>(null);
   const viewRecordedRef = useRef(false);
   
-  // Decode initial state from URL
+  // Decode initial state from URL for stateful share links
   const initialState = useMemo(() => {
     const encoded = searchParams.get('s');
-    return decodeShareState(encoded);
+    const decoded = decodeShareState(encoded);
+    
+    // Transform to match UnifiedVisionExperience initialState format
+    return {
+      move: decoded.move,
+      dark: decoded.dark,
+      pieces: decoded.pieces,
+      opacity: decoded.opacity,
+      locked: decoded.locked?.map(l => ({ type: l.type, color: l.color })),
+      compare: decoded.compare,
+      territory: decoded.territory,
+      heatmaps: decoded.heatmaps,
+      phase: decoded.phase,
+    };
   }, [searchParams]);
   
   // Export hook for HD/GIF downloads
@@ -158,15 +171,18 @@ const VisualizationView = () => {
   const handleShare = useCallback(async (exportState?: ExportState) => {
     const baseUrl = `${window.location.origin}/v/${shareId}`;
     
-    // Build stateful share URL
+    // Build comprehensive stateful share URL
     const shareableState: ShareableState = exportState ? {
-      move: exportState.currentMove > 0 ? exportState.currentMove : undefined,
+      move: exportState.currentMove > 0 && exportState.currentMove !== Infinity 
+        ? exportState.currentMove 
+        : undefined,
       dark: exportState.darkMode || undefined,
       pieces: exportState.showPieces || undefined,
       opacity: exportState.pieceOpacity !== 0.7 ? exportState.pieceOpacity : undefined,
       locked: exportState.lockedPieces?.length > 0 
         ? exportState.lockedPieces.map(p => ({ type: p.pieceType, color: p.pieceColor }))
         : undefined,
+      compare: exportState.compareMode || undefined,
     } : {};
     
     const url = buildShareUrl(baseUrl, shareableState);
@@ -179,7 +195,11 @@ const VisualizationView = () => {
           url
         });
       } catch (err) {
-        // User cancelled or error
+        // User cancelled or error - fallback to clipboard
+        if ((err as Error).name !== 'AbortError') {
+          await navigator.clipboard.writeText(url);
+          toast.success('Link copied to clipboard!');
+        }
       }
     } else {
       await navigator.clipboard.writeText(url);

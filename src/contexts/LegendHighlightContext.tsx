@@ -84,10 +84,20 @@ interface LegendHighlightContextValue {
 
 const LegendHighlightContext = createContext<LegendHighlightContextValue | undefined>(undefined);
 
-export function LegendHighlightProvider({ children }: { children: ReactNode }) {
+interface LegendHighlightProviderProps {
+  children: ReactNode;
+  initialLockedPieces?: HighlightedPiece[];
+  initialCompareMode?: boolean;
+}
+
+export function LegendHighlightProvider({ 
+  children, 
+  initialLockedPieces, 
+  initialCompareMode 
+}: LegendHighlightProviderProps) {
   const [highlightedPiece, setHighlightedPieceState] = useState<HighlightedPiece | null>(null);
-  const [lockedPieces, setLockedPieces] = useState<HighlightedPiece[]>([]);
-  const [compareMode, setCompareMode] = useState(false);
+  const [lockedPieces, setLockedPieces] = useState<HighlightedPiece[]>(initialLockedPieces ?? []);
+  const [compareMode, setCompareMode] = useState(initialCompareMode ?? false);
   const [hoveredSquare, setHoveredSquareState] = useState<HoveredSquareInfo | null>(null);
   const [hoveredAnnotation, setHoveredAnnotationState] = useState<HoveredAnnotation | null>(null);
   const [highlightedAnnotations, setHighlightedAnnotationsState] = useState<AnnotationType[]>([]);

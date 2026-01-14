@@ -44,12 +44,18 @@ function calculatePhaseRanges(totalMoves: number): Record<GamePhase, PhaseRange>
   };
 }
 
-export function TimelineProvider({ children }: { children: ReactNode }) {
-  const [currentMove, setCurrentMoveState] = useState<number>(Infinity); // Infinity means "show all"
+interface TimelineProviderProps {
+  children: ReactNode;
+  initialMove?: number;
+  initialPhase?: GamePhase;
+}
+
+export function TimelineProvider({ children, initialMove, initialPhase }: TimelineProviderProps) {
+  const [currentMove, setCurrentMoveState] = useState<number>(initialMove ?? Infinity); // Infinity means "show all"
   const [maxMoves, setMaxMovesState] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(500); // ms per move
-  const [selectedPhase, setSelectedPhaseState] = useState<GamePhase>('all');
+  const [selectedPhase, setSelectedPhaseState] = useState<GamePhase>(initialPhase ?? 'all');
   const [phaseRanges, setPhaseRanges] = useState<Record<GamePhase, PhaseRange>>(
     calculatePhaseRanges(0)
   );
