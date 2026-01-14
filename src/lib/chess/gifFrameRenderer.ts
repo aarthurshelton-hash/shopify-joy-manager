@@ -234,91 +234,137 @@ export async function generateAnimatedGif(
     onProgress
   } = options;
   
-  const GIF = (await import('gif.js')).default;
+  // Validate simulation data
+  if (!simulation || !simulation.board || simulation.totalMoves === undefined) {
+    throw new Error('Invalid simulation data provided for GIF generation');
+  }
+  
   const { board, totalMoves, gameData } = simulation;
   
-  // Determine which moves to capture (sample if too many)
-  const step = totalMoves > maxFrames ? Math.ceil(totalMoves / maxFrames) : 1;
-  const movesToCapture: number[] = [0]; // Always start with position 0
-  
-  for (let i = step; i <= totalMoves; i += step) {
-    movesToCapture.push(i);
-  }
-  // Always include final frame
-  if (movesToCapture[movesToCapture.length - 1] !== totalMoves) {
-    movesToCapture.push(totalMoves);
+  // Handle edge case of no moves
+  if (totalMoves === 0) {
+    throw new Error('Cannot generate GIF for a game with no moves');
   }
   
-  const totalFramesToCapture = movesToCapture.length;
-  onProgress?.(0, 'Preparing frames...');
-  
-  // Capture first frame to get dimensions
-  const firstCanvas = await renderFrameToCanvas({
-    board,
-    currentMove: 0,
-    totalMoves,
-    size,
-    darkMode,
-    showCoordinates,
-    gameData
-  });
-  
-  // Initialize GIF encoder
-  const gif = new GIF({
-    workers: 2,
-    quality,
-    width: firstCanvas.width,
-    height: firstCanvas.height,
-    workerScript: '/gif.worker.js',
-  });
-  
-  // Add first frame with longer delay
-  gif.addFrame(firstCanvas, { delay: frameDelay * 3, copy: true });
-  onProgress?.(0.05, `Captured frame 1 of ${totalFramesToCapture}`);
-  
-  // Capture remaining frames
-  for (let i = 1; i < movesToCapture.length; i++) {
-    const moveNum = movesToCapture[i];
-    const isLastFrame = i === movesToCapture.length - 1;
+  try {
+    const GIF = (await import('gif.js')).default;
     
-    const canvas = await renderFrameToCanvas({
-      board,
-      currentMove: moveNum,
-      totalMoves,
-      size,
-      darkMode,
-      showCoordinates,
-      gameData
+    // Determine which moves to capture (sample if too many)
+    const step = totalMoves > maxFrames ? Math.ceil(totalMoves / maxFrames) : 1;
+    const movesToCapture: number[] = [0]; // Always start with position 0
+    
+    for (let i = step; i <= totalMoves; i += step) {
+      movesToCapture.push(i);
+    }
+    // Always include final frame
+    if (movesToCapture[movesToCapture.length - 1] !== totalMoves) {
+      movesToCapture.push(totalMoves);
+    }
+    
+    const totalFramesToCapture = movesToCapture.length;
+    onProgress?.(0, 'Preparing frames...');
+    
+    // Capture first frame to get dimensions
+    let firstCanvas: HTMLCanvasElement;
+    try {
+      firstCanvas = await renderFrameToCanvas({
+        board,
+        currentMove: 0,
+        totalMoves,
+        size,
+        darkMode,
+        showCoordinates,
+        gameData
+      });
+    } catch (frameError) {
+      console.error('Failed to render first frame:', frameError);
+      throw new Error('Failed to render visualization frame. Please try again.');
+    }
+    
+    // Initialize GIF encoder with error handling for worker
+    let gif: InstanceType<typeof GIF>;
+    try {
+      gif = new GIF({
+        workers: 2,
+        quality,
+        width: firstCanvas.width,
+        height: firstCanvas.height,
+        workerScript: '/gif.worker.js',
+      });
+    } catch (workerError) {
+      console.error('Failed to initialize GIF encoder:', workerError);
+      throw new Error('GIF encoder initialization failed. The worker script may not be available.');
+    }
+    
+    // Add first frame with longer delay
+    gif.addFrame(firstCanvas, { delay: frameDelay * 3, copy: true });
+    onProgress?.(0.05, `Captured frame 1 of ${totalFramesToCapture}`);
+    
+    // Capture remaining frames
+    for (let i = 1; i < movesToCapture.length; i++) {
+      const moveNum = movesToCapture[i];
+      const isLastFrame = i === movesToCapture.length - 1;
+      
+      try {
+        const canvas = await renderFrameToCanvas({
+          board,
+          currentMove: moveNum,
+          totalMoves,
+          size,
+          darkMode,
+          showCoordinates,
+          gameData
+        });
+        
+        // Hold first and last frames longer
+        const delay = isLastFrame ? frameDelay * 4 : frameDelay;
+        gif.addFrame(canvas, { delay, copy: true });
+        
+        const captureProgress = (i + 1) / totalFramesToCapture;
+        onProgress?.(
+          0.05 + captureProgress * 0.75,
+          `Captured frame ${i + 1} of ${totalFramesToCapture}`
+        );
+      } catch (frameError) {
+        console.warn(`Failed to capture frame ${i + 1}, skipping:`, frameError);
+        // Continue with remaining frames
+      }
+    }
+    
+    onProgress?.(0.8, 'Encoding GIF...');
+    
+    // Render GIF with timeout protection
+    return new Promise<Blob>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('GIF encoding timed out after 60 seconds'));
+      }, 60000);
+      
+      gif.on('progress', (p: number) => {
+        onProgress?.(0.8 + p * 0.2, 'Encoding GIF...');
+      });
+      
+      gif.on('finished', (blob: Blob) => {
+        clearTimeout(timeout);
+        onProgress?.(1, 'Complete!');
+        resolve(blob);
+      });
+      
+      gif.on('error', (error: Error) => {
+        clearTimeout(timeout);
+        console.error('GIF encoding error:', error);
+        reject(new Error('GIF encoding failed: ' + error.message));
+      });
+      
+      try {
+        gif.render();
+      } catch (renderError) {
+        clearTimeout(timeout);
+        console.error('GIF render call failed:', renderError);
+        reject(new Error('Failed to start GIF encoding'));
+      }
     });
-    
-    // Hold first and last frames longer
-    const delay = isLastFrame ? frameDelay * 4 : frameDelay;
-    gif.addFrame(canvas, { delay, copy: true });
-    
-    const captureProgress = (i + 1) / totalFramesToCapture;
-    onProgress?.(
-      0.05 + captureProgress * 0.75,
-      `Captured frame ${i + 1} of ${totalFramesToCapture}`
-    );
+  } catch (error) {
+    console.error('GIF generation failed:', error);
+    throw error instanceof Error ? error : new Error('Unknown error during GIF generation');
   }
-  
-  onProgress?.(0.8, 'Encoding GIF...');
-  
-  // Render GIF
-  return new Promise<Blob>((resolve, reject) => {
-    gif.on('progress', (p: number) => {
-      onProgress?.(0.8 + p * 0.2, 'Encoding GIF...');
-    });
-    
-    gif.on('finished', (blob: Blob) => {
-      onProgress?.(1, 'Complete!');
-      resolve(blob);
-    });
-    
-    gif.on('error', (error: Error) => {
-      reject(error);
-    });
-    
-    gif.render();
-  });
 }

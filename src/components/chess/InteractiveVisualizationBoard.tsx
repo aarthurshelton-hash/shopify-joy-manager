@@ -302,19 +302,46 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
 
   // Calculate tracked pieces with unique IDs for animation
   const trackedPieces = useMemo((): TrackedPiece[] => {
-    // Early return if pieces shouldn't be shown or no valid PGN
+    // Early return if pieces shouldn't be shown
     if (!showPieces) return [];
-    if (!pgn || typeof pgn !== 'string' || pgn.trim() === '') return [];
+    
+    // Validate PGN is a non-empty string
+    if (!pgn || typeof pgn !== 'string') {
+      return [];
+    }
+    
+    const trimmedPgn = pgn.trim();
+    if (trimmedPgn === '') {
+      return [];
+    }
     
     try {
       // First load the PGN to get all moves with verbose info
       const fullGame = new Chess();
-      fullGame.loadPgn(pgn);
+      
+      // Try to load PGN - chess.js loadPgn throws on invalid PGN in newer versions
+      try {
+        fullGame.loadPgn(trimmedPgn);
+      } catch (pgnError) {
+        // Try loading as move text without headers
+        const cleanMoves = trimmedPgn.replace(/\[.*?\]/g, '').trim();
+        if (cleanMoves) {
+          try {
+            fullGame.loadPgn(cleanMoves);
+          } catch {
+            console.warn('Failed to parse PGN for piece tracking');
+            return [];
+          }
+        } else {
+          return [];
+        }
+      }
+      
       const allMovesVerbose = fullGame.history({ verbose: true });
       
       // If no moves were parsed, return empty
       if (allMovesVerbose.length === 0) {
-        console.warn('No moves parsed from PGN for piece tracking');
+        // This is not necessarily an error - could be starting position only
         return [];
       }
       

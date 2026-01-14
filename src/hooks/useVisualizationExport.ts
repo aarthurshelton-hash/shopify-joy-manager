@@ -257,6 +257,21 @@ export function useVisualizationExport(options: UseVisualizationExportOptions) {
       return false;
     }
 
+    // Validate simulation data before starting
+    if (!simulation || !simulation.board || simulation.totalMoves === undefined) {
+      toast.error('Invalid visualization data', {
+        description: 'Cannot generate GIF from current visualization.',
+      });
+      return false;
+    }
+
+    if (simulation.totalMoves === 0) {
+      toast.error('No moves to animate', {
+        description: 'This visualization has no moves to create a GIF from.',
+      });
+      return false;
+    }
+
     setState(prev => ({ ...prev, isExportingGIF: true, gifProgress: 0 }));
     
     try {
@@ -264,12 +279,13 @@ export function useVisualizationExport(options: UseVisualizationExportOptions) {
       const { generateAnimatedGif } = await import('@/lib/chess/gifFrameRenderer');
       
       // Show progress toast
-      toast.loading('Generating animated GIF...', { id: 'gif-export', duration: Infinity });
+      const toastId = 'gif-export';
+      toast.loading('Generating animated GIF...', { id: toastId, duration: Infinity });
       
       const updateProgress = (progress: number, message: string) => {
         setState(prev => ({ ...prev, gifProgress: progress }));
         onProgressUpdate?.(progress);
-        toast.loading(`${message} (${Math.round(progress * 100)}%)`, { id: 'gif-export' });
+        toast.loading(`${message} (${Math.round(progress * 100)}%)`, { id: toastId });
       };
       
       // Generate the GIF with frame-by-frame capture
@@ -283,6 +299,11 @@ export function useVisualizationExport(options: UseVisualizationExportOptions) {
         maxFrames: 60,
         onProgress: updateProgress
       });
+      
+      // Validate blob was created
+      if (!blob || blob.size === 0) {
+        throw new Error('Generated GIF is empty');
+      }
       
       // Download the GIF
       const url = URL.createObjectURL(blob);
@@ -299,7 +320,7 @@ export function useVisualizationExport(options: UseVisualizationExportOptions) {
         recordVisionInteraction(visualizationId, 'download_gif');
       }
       
-      toast.dismiss('gif-export');
+      toast.dismiss(toastId);
       toast.success('Animated GIF downloaded!', {
         description: `${simulation.totalMoves} moves captured (${(blob.size / 1024).toFixed(0)}KB)`,
       });
@@ -308,9 +329,20 @@ export function useVisualizationExport(options: UseVisualizationExportOptions) {
     } catch (error) {
       console.error('GIF export failed:', error);
       toast.dismiss('gif-export');
-      toast.error('GIF generation failed', {
-        description: 'Please try again or use HD download instead.',
-      });
+      
+      // Provide more specific error messages
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      let description = 'Please try again or use HD download instead.';
+      
+      if (errorMessage.includes('worker')) {
+        description = 'GIF encoder failed to initialize. Try refreshing the page.';
+      } else if (errorMessage.includes('timeout')) {
+        description = 'GIF generation took too long. Try with a shorter game.';
+      } else if (errorMessage.includes('frame')) {
+        description = 'Failed to capture visualization frames.';
+      }
+      
+      toast.error('GIF generation failed', { description });
       return false;
     } finally {
       setState(prev => ({ ...prev, isExportingGIF: false, gifProgress: 0 }));
