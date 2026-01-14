@@ -35,6 +35,7 @@ import { PortfolioRoyaltySummary } from '@/components/vision/PortfolioRoyaltySum
 import HoldingsValueDashboard from '@/components/vision/HoldingsValueDashboard';
 import { GracePeriodBanner } from '@/components/notifications/GracePeriodBanner';
 import PrivacyToggle from '@/components/vision/PrivacyToggle';
+import { generateGameHash, buildCanonicalShareUrl } from '@/lib/visualizations/gameCanonical';
 
 // VisionCard component for gallery items
 interface VisionCardProps {
@@ -371,24 +372,38 @@ const MyVision: React.FC = () => {
     }
   };
 
-  const handleCopyShareLink = async (shareId: string | null) => {
-    if (!shareId) {
+  const handleCopyShareLink = async (viz: SavedVisualization) => {
+    // Get PGN from visualization to generate canonical URL
+    const pgn = viz.pgn || (viz.game_data as { pgn?: string }).pgn;
+    const paletteId = (viz.game_data as { visualizationState?: { paletteId?: string } }).visualizationState?.paletteId;
+    
+    if (!pgn) {
       toast.error('Share link not available');
       return;
     }
     
-    const url = `${window.location.origin}/v/${shareId}`;
+    const url = buildCanonicalShareUrl(pgn, paletteId);
     try {
       await navigator.clipboard.writeText(url);
-      toast.success('Share link copied!', { description: url });
+      toast.success('Share link copied!', { description: 'Universal game link!' });
     } catch {
       toast.error('Failed to copy link');
     }
   };
 
-  const handleViewPublicPage = (shareId: string | null) => {
-    if (!shareId) return;
-    window.open(`/v/${shareId}`, '_blank');
+  const handleViewPublicPage = (viz: SavedVisualization) => {
+    // Get PGN from visualization to generate canonical URL
+    const pgn = viz.pgn || (viz.game_data as { pgn?: string }).pgn;
+    const paletteId = (viz.game_data as { visualizationState?: { paletteId?: string } }).visualizationState?.paletteId;
+    
+    if (!pgn) return;
+    
+    const gameHash = generateGameHash(pgn);
+    const params = new URLSearchParams();
+    if (paletteId) params.set('p', paletteId);
+    const paramString = params.toString();
+    
+    window.open(`/g/${gameHash}${paramString ? `?${paramString}` : ''}`, '_blank');
   };
 
   const handleOrderPrint = (viz: SavedVisualization) => {
@@ -665,8 +680,8 @@ const MyVision: React.FC = () => {
                     onPrint={() => handleOrderPrint(viz)}
                     onSell={() => setListingTarget(viz)}
                     onDelete={() => setDeleteTarget(viz)}
-                    onCopyLink={() => handleCopyShareLink(viz.public_share_id)}
-                    onViewPublic={() => handleViewPublicPage(viz.public_share_id)}
+                    onCopyLink={() => handleCopyShareLink(viz)}
+                    onViewPublic={() => handleViewPublicPage(viz)}
                   />
                 ))}
               </div>
@@ -688,8 +703,8 @@ const MyVision: React.FC = () => {
                     onPrint={() => handleOrderPrint(viz)}
                     onSell={() => setListingTarget(viz)}
                     onDelete={() => setDeleteTarget(viz)}
-                    onCopyLink={() => handleCopyShareLink(viz.public_share_id)}
-                    onViewPublic={() => handleViewPublicPage(viz.public_share_id)}
+                    onCopyLink={() => handleCopyShareLink(viz)}
+                    onViewPublic={() => handleViewPublicPage(viz)}
                     isPrivate
                   />
                 ))}
