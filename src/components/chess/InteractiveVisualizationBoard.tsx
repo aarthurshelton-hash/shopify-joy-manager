@@ -304,14 +304,9 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
     const pieces = getPiecesForSquare(square);
     const moveNumbers = getMoveNumbersForSquare(square);
     
-    console.log('[DEBUG] Square hovered:', squareName, 'Pieces:', pieces.length, pieces);
-    
     // Always update hover state - even for empty squares (with empty pieces array)
     if (setHoveredSquare) {
-      console.log('[DEBUG] Calling setHoveredSquare with:', { square: squareName, pieces, moveNumbers });
       setHoveredSquare({ square: squareName, pieces, moveNumbers });
-    } else {
-      console.log('[DEBUG] setHoveredSquare is null - context not available');
     }
     
     // Update annotation highlighting based on pieces on this square

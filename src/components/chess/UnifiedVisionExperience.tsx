@@ -171,8 +171,6 @@ const TimelineBoard: React.FC<{
   const bgColor = darkMode ? '#0A0A0A' : '#FDFCFB';
   const borderColor = darkMode ? '#292524' : '#e7e5e4';
   const mutedColor = darkMode ? '#78716c' : '#a8a29e';
-  const primaryText = darkMode ? '#e7e5e4' : '#292524';
-  const secondaryText = darkMode ? '#a8a29e' : '#78716c';
 
   return (
     <div
@@ -189,12 +187,12 @@ const TimelineBoard: React.FC<{
         boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
       }}
     >
-      {/* Chess Board */}
+      {/* Chess Board - Now Interactive for square hover highlighting */}
       <div style={{ position: 'relative' }}>
         {showCoordinates && (
           <BoardCoordinateGuide size={size} position="inside" />
         )}
-        <ChessBoardVisualization board={filteredBoard} size={size} />
+        <InteractiveVisualizationBoard board={filteredBoard} size={size} />
       </div>
 
       {/* Game Info Section - Now Interactive */}
