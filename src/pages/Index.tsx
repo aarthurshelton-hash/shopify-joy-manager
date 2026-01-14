@@ -40,6 +40,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { saveVisualization } from '@/lib/visualizations/visualizationStorage';
 import { useVisualizationExport } from '@/hooks/useVisualizationExport';
 import { useRandomGameArt } from '@/hooks/useRandomGameArt';
+import { buildCanonicalShareUrl } from '@/lib/visualizations/gameCanonical';
 
 // Import AI-generated art
 import heroChessArt from '@/assets/ai-art/upload-section-hero.jpg';
@@ -1016,11 +1017,19 @@ const Index = () => {
               }}
               onShare={() => {
                 if (savedShareId) {
+                  // Use specific vision link for saved visions
                   const url = `${window.location.origin}/v/${savedShareId}`;
                   navigator.clipboard.writeText(url);
                   toast.success('Share link copied!', { description: url });
+                } else if (currentPgn) {
+                  // Use canonical game link for unsaved games
+                  const url = buildCanonicalShareUrl(currentPgn, getActivePalette().id);
+                  navigator.clipboard.writeText(url);
+                  toast.success('Game link copied!', { 
+                    description: 'Anyone can view this game with your palette!',
+                  });
                 } else {
-                  toast.info('Save to gallery first to get a share link');
+                  toast.info('Generate a visualization first to share');
                 }
               }}
               onTransferToCreative={() => {
