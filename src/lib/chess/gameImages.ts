@@ -238,6 +238,20 @@ export const gameImageImports: Record<string, string> = {
   'carlsen-ivanchuk-2009': carlsenTacticalBrilliancy,
   'carlsen-shirov-2009': carlsenQueenSacrifice,
   'carlsen-radjabov-2008': carlsenRookLift,
+  // Additional Carlsen games using remaining artwork
+  'carlsen-anand-wc-2014': carlsenBerlinMaster,
+  'carlsen-aronian-2012': carlsenNordicWarrior,
+  'carlsen-nakamura-2011': carlsenBlitzSpeed,
+  'carlsen-giri-2015': carlsenPositionalSqueeze,
+  'carlsen-so-2017': carlsenExchangeSac,
+  'carlsen-ding-2019': carlsenKnightOutpost,
+  'carlsen-firouzja-2022': carlsenPromotion,
+  'carlsen-nepo-wc-2021-g8': carlsenCrushingVictory,
+  'carlsen-caruana-2018-g10': carlsenSpanishAttack,
+  'carlsen-anand-wc-2013-showdown': carlsenAnandShowdown,
+  'carlsen-vachier-lagrave-2020': carlsenTechnique,
+  'carlsen-anand-zugzwang-2014': carlsenZugzwang,
+  'carlsen-endgame-2015': carlsenEndgameMaster,
 };
 
 // Re-export Carlsen game images from dedicated file
