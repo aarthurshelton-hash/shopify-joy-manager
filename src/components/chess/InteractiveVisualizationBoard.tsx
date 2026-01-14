@@ -240,6 +240,8 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
   let highlightedPieces: HighlightedPiece[] = [];
   let compareMode = false;
   let setHoveredSquare: ((info: { square: string; pieces: HighlightedPiece[] } | null) => void) | null = null;
+  let setHighlightedAnnotations: ((annotations: ('white-player' | 'black-player')[]) => void) | null = null;
+  let hoveredAnnotation: { type: string; associatedPieces?: HighlightedPiece[] } | null = null;
   
   try {
     const context = useLegendHighlight();
@@ -249,8 +251,14 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
     } else if (context.highlightedPiece) {
       highlightedPieces = [context.highlightedPiece];
     }
+    // If annotation is hovered, use its associated pieces for highlighting
+    if (context.hoveredAnnotation?.associatedPieces && context.hoveredAnnotation.associatedPieces.length > 0) {
+      highlightedPieces = context.hoveredAnnotation.associatedPieces;
+    }
     compareMode = context.compareMode;
     setHoveredSquare = context.setHoveredSquare;
+    setHighlightedAnnotations = context.setHighlightedAnnotations;
+    hoveredAnnotation = context.hoveredAnnotation;
   } catch {
     // Context not available, no highlighting
   }
@@ -280,18 +288,32 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
     const squareName = `${String.fromCharCode(97 + file)}${rank + 1}`;
     setHoveredSquareLocal(squareName);
     
-    if (setHoveredSquare && square.visits.length > 0) {
+    if (square.visits.length > 0) {
       const pieces = getPiecesForSquare(square);
-      setHoveredSquare({ square: squareName, pieces });
+      
+      if (setHoveredSquare) {
+        setHoveredSquare({ square: squareName, pieces });
+      }
+      
+      // Also update annotation highlighting based on pieces on this square
+      if (setHighlightedAnnotations) {
+        const annotations: ('white-player' | 'black-player')[] = [];
+        if (pieces.some(p => p.pieceColor === 'w')) annotations.push('white-player');
+        if (pieces.some(p => p.pieceColor === 'b')) annotations.push('black-player');
+        setHighlightedAnnotations(annotations);
+      }
     }
-  }, [board, setHoveredSquare, getPiecesForSquare]);
+  }, [board, setHoveredSquare, setHighlightedAnnotations, getPiecesForSquare]);
 
   const handleSquareLeave = useCallback(() => {
     setHoveredSquareLocal(null);
     if (setHoveredSquare) {
       setHoveredSquare(null);
     }
-  }, [setHoveredSquare]);
+    if (setHighlightedAnnotations) {
+      setHighlightedAnnotations([]);
+    }
+  }, [setHoveredSquare, setHighlightedAnnotations]);
   
   // Memoize board rendering for performance
   const boardElements = useMemo(() => {
@@ -323,7 +345,7 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
         );
       });
     });
-  }, [board, borderWidth, squareSize, highlightedPieces, compareMode, hoveredSquareLocal]);
+  }, [board, borderWidth, squareSize, highlightedPieces, compareMode, hoveredSquareLocal, hoveredAnnotation]);
 
   // Create invisible interaction layer for hover detection
   const interactionSquares = useMemo(() => {

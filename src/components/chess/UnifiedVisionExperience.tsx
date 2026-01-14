@@ -46,6 +46,7 @@ import { LegendHighlightProvider, useLegendHighlight } from '@/contexts/LegendHi
 import InteractiveVisualizationBoard from './InteractiveVisualizationBoard';
 import { EnhancedLegend } from './EnhancedLegend';
 import GameInfoDisplay from './GameInfoDisplay';
+import InteractiveGameInfoDisplay from './InteractiveGameInfoDisplay';
 import VerticalTimelineSlider from './VerticalTimelineSlider';
 import ColorLegend from './ColorLegend';
 import { classifyMoves, getMoveQualitySummary, MOVE_QUALITY_INFO } from '@/lib/chess/moveQuality';
@@ -194,7 +195,7 @@ const TimelineBoard: React.FC<{
         <ChessBoardVisualization board={filteredBoard} size={size} />
       </div>
 
-      {/* Game Info Section */}
+      {/* Game Info Section - Now Interactive */}
       <div
         style={{
           width: '100%',
@@ -202,7 +203,7 @@ const TimelineBoard: React.FC<{
           borderTop: `1px solid ${borderColor}`,
         }}
       >
-        <GameInfoDisplay 
+        <InteractiveGameInfoDisplay 
           gameData={gameData}
           title={title}
           darkMode={darkMode} 
