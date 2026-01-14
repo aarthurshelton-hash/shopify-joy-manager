@@ -1005,28 +1005,56 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
     }
   }, [pgn, gameData.pgn]);
 
-  // Calculate responsive board size - accounts for timeline and legend on xl screens
+  // Calculate responsive board size - Apple-style edge-to-edge layout
+  // Ensures timeline + board + legend all fit within viewport without horizontal scroll
   useEffect(() => {
     const updateSize = () => {
-      if (containerRef.current) {
-        const containerWidth = containerRef.current.offsetWidth;
-        const windowWidth = window.innerWidth;
-        
-        // On xl screens, subtract timeline (120px) and legend (200px) widths plus gaps
-        const isXlScreen = windowWidth >= 1280;
-        const sidebarSpace = isXlScreen ? 120 + 200 + 32 : 0; // timeline + legend + gaps
-        const availableWidth = containerWidth - sidebarSpace - 32; // 32px padding
-        
-        // Calculate max size based on available space
-        const maxSize = Math.min(availableWidth, 500);
-        setBoardSize(Math.max(280, Math.min(maxSize, 500)));
+      const windowWidth = window.innerWidth;
+      const windowHeight = window.innerHeight;
+      
+      // Constants for layout (matching the actual rendered elements)
+      const timelineWidth = 140; // VerticalTimelineSlider width
+      const legendWidth = 220; // ColorLegend width  
+      const gaps = 32; // gaps between elements
+      const containerPadding = 64; // padding on container sides
+      const boardPadding = 48; // padding inside board component
+      
+      const isXlScreen = windowWidth >= 1280;
+      const isLgScreen = windowWidth >= 1024;
+      
+      // Calculate available width for the board
+      let availableWidth: number;
+      if (isXlScreen) {
+        // Full layout: timeline + board + legend
+        availableWidth = windowWidth - timelineWidth - legendWidth - gaps - containerPadding;
+      } else if (isLgScreen) {
+        // Medium screens: just board with some padding
+        availableWidth = windowWidth - containerPadding;
+      } else {
+        // Mobile/tablet: full width minus minimal padding
+        availableWidth = windowWidth - 32;
       }
+      
+      // Also consider height constraints (leave room for header, tabs, controls)
+      const headerSpace = 200; // approximate header + tabs + controls height
+      const availableHeight = windowHeight - headerSpace;
+      
+      // Board size should fit both width and height, with reasonable min/max
+      const maxBoardFromWidth = availableWidth - boardPadding;
+      const maxBoardFromHeight = availableHeight - boardPadding - 100; // extra buffer for info
+      
+      const optimalSize = Math.min(maxBoardFromWidth, maxBoardFromHeight);
+      
+      // Clamp to reasonable bounds
+      const minSize = 280;
+      const maxSize = 600;
+      setBoardSize(Math.max(minSize, Math.min(optimalSize, maxSize)));
     };
     
     updateSize();
     window.addEventListener('resize', updateSize);
     return () => window.removeEventListener('resize', updateSize);
-  }, []);
+  }, [showLegend]);
 
   // Load vision score (skip if already provided via props)
   useEffect(() => {
@@ -1183,7 +1211,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
           )}
         </AnimatePresence>
 
-        <div className="flex flex-col h-full" ref={containerRef}>
+        <div className="flex flex-col h-full w-full max-w-full overflow-x-hidden" ref={containerRef}>
           {/* Header with back button for certain contexts */}
           {(context === 'generator' || context === 'gallery') && onBack && (
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-border/50">
@@ -1243,10 +1271,9 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
               </TabsTrigger>
             </TabsList>
 
-            {/* Experience Tab */}
-            <TabsContent value="experience" className="mt-0 overflow-visible">
-              <div className="overflow-visible">
-                <div className="space-y-4">
+            <TabsContent value="experience" className="mt-0 w-full max-w-full">
+              <div className="w-full max-w-full">
+                <div className="space-y-4 w-full">
                   {/* Board Controls */}
                   <div className="flex flex-wrap items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border/50">
                     <TooltipProvider>
@@ -1330,10 +1357,10 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                     </TooltipProvider>
                   </div>
 
-                  {/* Main Layout: Timeline Left | Board Center | Legend Right */}
-                  <div className="flex gap-2 xl:gap-4 items-start justify-center w-full overflow-visible">
+                  {/* Main Layout: Timeline Left | Board Center | Legend Right - Apple-style edge-to-edge */}
+                  <div className="flex gap-2 xl:gap-4 items-start justify-center w-full max-w-full">
                     {/* Left: Vertical Timeline */}
-                    <div className="hidden xl:block flex-shrink-0">
+                    <div className="hidden xl:flex flex-shrink-0 w-[140px]">
                       <VerticalTimelineSlider 
                         totalMoves={localTotalMoves} 
                         moves={localGameData.moves}
@@ -1341,7 +1368,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                       />
                     </div>
 
-                    {/* Center: Board */}
+                    {/* Center: Board - scales to fill available space */}
                     <div className="flex-shrink-0 relative" data-vision-board="true">
                       {isSwitchingPalette && (
                         <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10 rounded-lg">
@@ -1359,9 +1386,9 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                       />
                     </div>
 
-                    {/* Right: Color Legend - scrollable to show full content */}
+                    {/* Right: Color Legend - fixed width, scrolls independently */}
                     {showLegend && (
-                      <div className="hidden xl:flex flex-shrink-0 w-[200px] max-h-[80vh] overflow-y-auto scrollbar-hide">
+                      <div className="hidden xl:flex flex-col flex-shrink-0 w-[220px] max-h-[calc(100vh-220px)] overflow-y-auto overflow-x-hidden scrollbar-hide">
                         <ColorLegend 
                           interactive={true}
                           board={localBoard}
