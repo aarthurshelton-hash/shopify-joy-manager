@@ -362,6 +362,13 @@ export interface MoveQualitySummary {
   inaccuracyCount: number;
   mistakeCount: number;
   blunderCount: number;
+  // Tactical event counts
+  checkCount: number;
+  checkmateCount: number;
+  captureCount: number;
+  castleCount: number;
+  promotionCount: number;
+  sacrificeCount: number;
   accuracy: number; // Percentage of good+ moves
   whiteMoves: ClassifiedMove[];
   blackMoves: ClassifiedMove[];
@@ -378,6 +385,12 @@ export function getMoveQualitySummary(classifiedMoves: ClassifiedMove[]): MoveQu
     inaccuracyCount: 0,
     mistakeCount: 0,
     blunderCount: 0,
+    checkCount: 0,
+    checkmateCount: 0,
+    captureCount: 0,
+    castleCount: 0,
+    promotionCount: 0,
+    sacrificeCount: 0,
     accuracy: 0,
     whiteMoves: [],
     blackMoves: [],
@@ -394,6 +407,14 @@ export function getMoveQualitySummary(classifiedMoves: ClassifiedMove[]): MoveQu
       case 'mistake': summary.mistakeCount++; break;
       case 'blunder': summary.blunderCount++; break;
     }
+    
+    // Count tactical events
+    if (move.isCheckmate) summary.checkmateCount++;
+    else if (move.isCheck) summary.checkCount++; // Only count non-checkmate checks
+    if (move.isCapture) summary.captureCount++;
+    if (move.isCastle) summary.castleCount++;
+    if (move.isPromotion) summary.promotionCount++;
+    if (move.isSacrifice) summary.sacrificeCount++;
     
     if (move.color === 'w') {
       summary.whiteMoves.push(move);
