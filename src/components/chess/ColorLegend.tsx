@@ -501,12 +501,12 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board }) 
           interactive && highlightContext ? 'cursor-pointer hover:bg-accent/50' : ''
         } ${highlighted ? 'bg-accent ring-2 ring-primary/50' : ''} ${
           locked ? (lockedIndex === 0 ? 'bg-sky-500/20 ring-2 ring-sky-500' : 'bg-rose-500/20 ring-2 ring-rose-500') : ''
-        } ${fromSquare ? 'bg-amber-400/30 ring-2 ring-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.4)]' : ''} ${
+        } ${fromSquare ? 'bg-amber-500/40 ring-2 ring-amber-500 shadow-[0_0_16px_rgba(251,191,36,0.6)] scale-105' : ''} ${
           fromAnnotation ? 'bg-purple-400/30 ring-2 ring-purple-400 shadow-[0_0_12px_rgba(192,132,252,0.4)]' : ''
-        } ${isActivelyHighlighted ? 'scale-[1.03] z-10' : ''}`}
+        } ${isActivelyHighlighted && !fromSquare ? 'scale-[1.03] z-10' : ''} ${fromSquare ? 'z-20' : ''}`}
         style={{
-          opacity: dimmed ? 0.2 : 1,
-          transition: 'opacity 0.2s ease-out',
+          opacity: dimmed ? 0.15 : 1,
+          transition: 'all 0.15s ease-out',
         }}
         onMouseEnter={() => handlePieceHover(item.piece, item.color)}
         onMouseLeave={handlePieceLeave}
@@ -524,7 +524,9 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board }) 
         <div
           className={`w-5 h-5 rounded shadow-sm transition-all duration-200 shrink-0 ${
             highlighted || locked ? 'scale-125 ring-2 ring-white/50' : ''
-          } ${isActivelyHighlighted ? 'scale-110 ring-2 ring-amber-300/80 animate-pulse' : ''}`}
+          } ${fromSquare ? 'scale-125 ring-2 ring-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)] animate-pulse' : ''} ${
+            isActivelyHighlighted && !fromSquare ? 'scale-110 ring-2 ring-amber-300/80' : ''
+          }`}
           style={{ backgroundColor: item.hex }}
         />
         <span className="text-lg shrink-0">{item.symbol}</span>
