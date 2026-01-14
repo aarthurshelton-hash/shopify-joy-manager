@@ -2,7 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { Chess, Square } from 'chess.js';
 import { SquareData, SquareVisit } from '@/lib/chess/gameSimulator';
 import { boardColors, getPieceColor, PieceType, PieceColor } from '@/lib/chess/pieceColors';
-import { useLegendHighlight, HighlightedPiece, HoveredSquareInfo, AnnotationType } from '@/contexts/LegendHighlightContext';
+import { useLegendHighlight, HighlightedPiece, HoveredSquareInfo, AnnotationType, PieceMoveArrow } from '@/contexts/LegendHighlightContext';
 
 interface InteractiveVisualizationBoardProps {
   board: SquareData[][];
@@ -11,6 +11,7 @@ interface InteractiveVisualizationBoardProps {
   pieceOpacity?: number;
   pgn?: string;
   currentMoveNumber?: number;
+  onFollowPieceActivated?: (moveNumber: number) => void;
 }
 
 // Track individual pieces with unique IDs for animation
@@ -258,11 +259,10 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
   pieceOpacity = 0.7,
   pgn,
   currentMoveNumber,
+  onFollowPieceActivated,
 }) => {
   const [hoveredSquareLocal, setHoveredSquareLocal] = useState<string | null>(null);
   const [hoveredPieceSquare, setHoveredPieceSquare] = useState<string | null>(null);
-  
-  
   
   // Use the context hook directly - it will throw if not in provider, but that's expected
   const context = useLegendHighlight();
@@ -276,6 +276,9 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
   const hoveredAnnotation = context.hoveredAnnotation;
   const hoveredSquareFromContext = context.hoveredSquare;
   const toggleLockedPiece = context.toggleLockedPiece;
+  const pieceArrows = context.pieceArrows;
+  const setFollowPieceData = context.setFollowPieceData;
+  const setPieceArrows = context.setPieceArrows;
 
   // Build highlighted pieces array from context state
   const highlightedPieces = useMemo(() => {
@@ -403,14 +406,71 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
     }
   }, [showPieces, pgn, currentMoveNumber, borderWidth, squareSize]);
   
-  // Handle piece click to highlight all squares it visited
+  // Calculate piece move arrows from PGN
+  const calculatePieceArrows = useCallback((pieceType: string, pieceColor: 'w' | 'b'): PieceMoveArrow[] => {
+    if (!pgn) return [];
+    
+    try {
+      const chess = new Chess();
+      chess.loadPgn(pgn);
+      const allMoves = chess.history({ verbose: true });
+      
+      const arrows: PieceMoveArrow[] = [];
+      const normalizedType = pieceType.toLowerCase();
+      
+      allMoves.forEach((move, index) => {
+        // Match piece type (pawns are '' in move.piece)
+        const moveType = move.piece;
+        const isPawn = normalizedType === 'p' && moveType === 'p';
+        const isOtherPiece = moveType === normalizedType;
+        
+        if ((isPawn || isOtherPiece) && move.color === pieceColor) {
+          arrows.push({
+            from: move.from,
+            to: move.to,
+            moveNumber: index + 1,
+            pieceType: pieceType.toUpperCase() as PieceType,
+            pieceColor: pieceColor as PieceColor,
+            isCapture: !!move.captured,
+          });
+        }
+      });
+      
+      return arrows;
+    } catch (e) {
+      console.error('Error calculating piece arrows:', e);
+      return [];
+    }
+  }, [pgn]);
+
+  // Handle piece click to highlight all squares it visited and activate follow mode
   const handlePieceClick = useCallback((pieceType: string, pieceColor: 'w' | 'b') => {
     const highlightPiece: HighlightedPiece = {
       pieceType: pieceType.toUpperCase() as PieceType,
       pieceColor: pieceColor as PieceColor,
     };
+    
+    // Calculate arrows for this piece
+    const arrows = calculatePieceArrows(pieceType, pieceColor);
+    setPieceArrows(arrows);
+    
+    // Set up follow piece mode
+    if (arrows.length > 0) {
+      const moveNumbers = arrows.map(a => a.moveNumber);
+      setFollowPieceData({
+        piece: highlightPiece,
+        moveNumbers,
+        currentIndex: 0,
+      });
+      
+      // Notify parent to jump to first move of this piece
+      if (onFollowPieceActivated) {
+        onFollowPieceActivated(moveNumbers[0]);
+      }
+    }
+    
     toggleLockedPiece(highlightPiece);
-  }, [toggleLockedPiece]);
+  }, [toggleLockedPiece, calculatePieceArrows, setPieceArrows, setFollowPieceData, onFollowPieceActivated]);
 
   // Handle piece hover
   const handlePieceHover = useCallback((square: string, pieceType: string, pieceColor: 'w' | 'b') => {
@@ -628,6 +688,107 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
     return elements;
   }, [showPieces, trackedPieces, squareSize, pieceOpacity, highlightedPieces, hoveredPieceSquare, handlePieceClick, handlePieceHover, handlePieceLeave]);
   
+  // Helper to convert square notation to coordinates
+  const squareToCoords = useCallback((square: string): { x: number; y: number } => {
+    const file = square.charCodeAt(0) - 97; // 'a' = 0
+    const rank = parseInt(square[1]) - 1;   // '1' = 0
+    const rowIndex = 7 - rank;
+    return {
+      x: borderWidth + file * squareSize + squareSize / 2,
+      y: borderWidth + rowIndex * squareSize + squareSize / 2,
+    };
+  }, [borderWidth, squareSize]);
+
+  // Render move arrows
+  const arrowElements = useMemo(() => {
+    if (pieceArrows.length === 0) return null;
+    
+    const arrows: React.ReactNode[] = [];
+    const arrowWidth = squareSize * 0.08;
+    const headLength = squareSize * 0.2;
+    const headWidth = squareSize * 0.15;
+    
+    // Create arrow marker definition
+    const markerId = 'arrowhead';
+    
+    pieceArrows.forEach((arrow, idx) => {
+      const from = squareToCoords(arrow.from);
+      const to = squareToCoords(arrow.to);
+      
+      // Calculate arrow direction
+      const dx = to.x - from.x;
+      const dy = to.y - from.y;
+      const length = Math.sqrt(dx * dx + dy * dy);
+      
+      if (length === 0) return;
+      
+      // Normalize direction
+      const nx = dx / length;
+      const ny = dy / length;
+      
+      // Shorten arrow to not overlap with piece center
+      const shortenStart = squareSize * 0.15;
+      const shortenEnd = squareSize * 0.25;
+      
+      const startX = from.x + nx * shortenStart;
+      const startY = from.y + ny * shortenStart;
+      const endX = to.x - nx * shortenEnd;
+      const endY = to.y - ny * shortenEnd;
+      
+      // Calculate arrowhead points
+      const headBaseX = endX - nx * headLength;
+      const headBaseY = endY - ny * headLength;
+      const perpX = -ny * headWidth;
+      const perpY = nx * headWidth;
+      
+      // Color based on capture status and opacity based on move number
+      const baseOpacity = 0.5 + (idx / pieceArrows.length) * 0.4;
+      const color = arrow.isCapture ? 'rgba(239, 68, 68, 0.8)' : 'rgba(251, 191, 36, 0.8)';
+      
+      arrows.push(
+        <g key={`arrow-${idx}`} style={{ opacity: baseOpacity }}>
+          {/* Arrow line */}
+          <line
+            x1={startX}
+            y1={startY}
+            x2={headBaseX}
+            y2={headBaseY}
+            stroke={color}
+            strokeWidth={arrowWidth}
+            strokeLinecap="round"
+          />
+          {/* Arrow head */}
+          <polygon
+            points={`${endX},${endY} ${headBaseX + perpX},${headBaseY + perpY} ${headBaseX - perpX},${headBaseY - perpY}`}
+            fill={color}
+          />
+          {/* Move number indicator */}
+          <circle
+            cx={startX}
+            cy={startY}
+            r={squareSize * 0.1}
+            fill="rgba(0,0,0,0.7)"
+            stroke={color}
+            strokeWidth={1}
+          />
+          <text
+            x={startX}
+            y={startY}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fontSize={squareSize * 0.12}
+            fill="white"
+            fontWeight="bold"
+          >
+            {arrow.moveNumber}
+          </text>
+        </g>
+      );
+    });
+    
+    return arrows;
+  }, [pieceArrows, squareSize, squareToCoords]);
+  
   return (
     <svg
       width={totalSize}
@@ -647,6 +808,9 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
       
       {/* Board squares */}
       {boardElements}
+      
+      {/* Move arrows layer */}
+      {arrowElements}
       
       {/* Chess pieces overlay */}
       {pieceElements}
