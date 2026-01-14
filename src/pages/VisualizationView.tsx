@@ -209,11 +209,65 @@ const VisualizationView = () => {
   }, [visualization]);
 
   // Handle exports (HD, GIF, Print)
-  const handleExport = useCallback((type: 'hd' | 'gif' | 'print' | 'preview', exportState?: ExportState) => {
+  const handleExport = useCallback(async (type: 'hd' | 'gif' | 'print' | 'preview', exportState?: ExportState) => {
     if (!visualization) return;
     
+    // Build filtered board based on export state
+    const filteredBoard = exportState && exportState.currentMove < totalMoves && exportState.currentMove > 0
+      ? board.map(row => 
+          row.map(square => ({
+            ...square,
+            visits: square.visits.filter(visit => visit.moveNumber <= exportState.currentMove)
+          }))
+        )
+      : board;
+    
+    // Build highlight state for rendering
+    const highlightState = exportState?.lockedPieces && exportState.lockedPieces.length > 0 ? {
+      lockedPieces: exportState.lockedPieces.map(p => ({
+        pieceType: p.pieceType as PieceType,
+        pieceColor: (p.pieceColor === 'white' ? 'w' : p.pieceColor === 'black' ? 'b' : p.pieceColor) as 'w' | 'b',
+      })),
+      compareMode: exportState.compareMode,
+    } : undefined;
+    
     if (type === 'preview') {
-      toast.info('Preview download coming soon');
+      // Preview download - uses SAME rendering as HD, but with watermark for free users
+      try {
+        const { generateCleanPrintImage } = await import('@/lib/chess/printImageGenerator');
+        
+        const exportSimulation = {
+          board: filteredBoard,
+          gameData,
+          totalMoves,
+        };
+        
+        const base64Image = await generateCleanPrintImage(exportSimulation, {
+          darkMode: exportState?.darkMode || false,
+          withWatermark: !isPremium, // Add watermark for free users
+          highlightState,
+        });
+        
+        // Convert base64 to blob for download
+        const response = await fetch(base64Image);
+        const blob = await response.blob();
+        
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${visualization.title.replace(/\s+/g, '-').toLowerCase()}-preview.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        
+        toast.success('Preview downloaded!', {
+          description: isPremium ? 'Full resolution image saved.' : 'Includes En Pensent branding.',
+        });
+      } catch (error) {
+        console.error('Preview download failed:', error);
+        toast.error('Download failed', { description: 'Please try again.' });
+      }
       return;
     }
     
