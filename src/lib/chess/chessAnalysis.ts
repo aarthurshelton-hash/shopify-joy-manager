@@ -10,10 +10,10 @@
  */
 
 import { Chess, Move, Square, PieceSymbol } from 'chess.js';
-import { PIECE_VALUES, PIECE_POINTS, classifyMoves, getMoveQualitySummary, MoveQualitySummary, ClassifiedMove } from './moveQuality';
+import { PIECE_VALUES, PIECE_POINTS, ENDGAME_PIECE_VALUES, cpToWinProbability, calculateMoveAccuracy, classifyMoves, getMoveQualitySummary, MoveQualitySummary, ClassifiedMove } from './moveQuality';
 
 // Re-export for convenience
-export { PIECE_VALUES, PIECE_POINTS };
+export { PIECE_VALUES, PIECE_POINTS, ENDGAME_PIECE_VALUES, cpToWinProbability, calculateMoveAccuracy };
 export type { MoveQualitySummary, ClassifiedMove };
 
 // ===================== TYPES =====================
