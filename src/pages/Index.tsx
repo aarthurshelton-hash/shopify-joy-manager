@@ -822,6 +822,18 @@ const Index = () => {
                     simulation: simulation, // Include full simulation for visualization
                     shareId: savedShareId || undefined,
                     returnPath: '/',
+                    // Include captured state so print matches exactly what user sees
+                    capturedState: exportState ? {
+                      currentMove: exportState.currentMove,
+                      selectedPhase: 'all',
+                      lockedPieces: exportState.lockedPieces,
+                      compareMode: exportState.compareMode,
+                      displayMode: 'standard',
+                      darkMode: exportState.darkMode,
+                      showTerritory: false,
+                      showHeatmaps: false,
+                      capturedAt: new Date(),
+                    } : undefined,
                   });
                   navigate('/order-print');
                 } else if (type === 'preview') {
@@ -863,6 +875,7 @@ const Index = () => {
                   }
                 } else if (type === 'hd') {
                   // Use trademark HD export for proper "print-ready" look
+                  // Include highlight state so HD matches exactly what user sees
                   await downloadTrademarkHD({
                     board: filteredBoard,
                     gameData: simulation.gameData,
@@ -870,6 +883,7 @@ const Index = () => {
                     darkMode: exportState?.darkMode || false,
                     showQR: !!savedShareId,
                     shareId: savedShareId || undefined,
+                    highlightState,
                   });
                 } else if (type === 'gif') {
                   const boardElement = visionBoardRef.current?.querySelector('[data-vision-board]') as HTMLElement;

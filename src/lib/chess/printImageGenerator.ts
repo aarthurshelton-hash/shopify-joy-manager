@@ -73,10 +73,13 @@ export async function generateCleanPrintImage(
     const ReactDOM = await import('react-dom/client');
     const { default: PrintReadyVisualization } = await import('@/components/chess/PrintReadyVisualization');
     
-    // Apply captured state filtering if available
-    const filteredBoard = capturedState && capturedState.currentMove !== Infinity
+    // Apply captured state filtering if available - this ensures the print matches exactly what the user sees
+    const filteredBoard = capturedState && capturedState.currentMove !== Infinity && capturedState.currentMove > 0
       ? filterBoardToMove(simulation.board, capturedState.currentMove)
       : simulation.board;
+    
+    // Use captured dark mode if available, otherwise fall back to passed option
+    const effectiveDarkMode = capturedState?.darkMode ?? darkMode;
     
     // Generate QR code if needed
     let qrDataUrl: string | undefined;
@@ -93,10 +96,12 @@ export async function generateCleanPrintImage(
     container.appendChild(printContent);
     
     // Prepare highlight state for rendering - use provided or from captured state
+    // This ensures locked pieces and compare mode are captured exactly as displayed
+    // Map pieceColor from 'white'/'black' strings to 'w'/'b' types if needed
     const highlightState = providedHighlightState || (capturedState && capturedState.lockedPieces.length > 0 ? {
       lockedPieces: capturedState.lockedPieces.map(p => ({
         pieceType: p.pieceType as PieceType,
-        pieceColor: p.pieceColor as PieceColor,
+        pieceColor: (p.pieceColor === 'white' ? 'w' : p.pieceColor === 'black' ? 'b' : p.pieceColor) as PieceColor,
       })),
       compareMode: capturedState.compareMode,
     } : undefined);
@@ -109,7 +114,7 @@ export async function generateCleanPrintImage(
           board: filteredBoard,
           gameData: simulation.gameData,
           size: 440, // High-res for print (400 board + padding)
-          darkMode,
+          darkMode: effectiveDarkMode,
           showQR: includeQR && !!qrDataUrl,
           qrDataUrl,
           compact: false,
@@ -127,7 +132,7 @@ export async function generateCleanPrintImage(
     // Capture with html2canvas
     const canvas = await html2canvas(printContent, {
       scale: 3, // High resolution for print quality
-      backgroundColor: darkMode ? '#0A0A0A' : '#FDFCFB',
+      backgroundColor: effectiveDarkMode ? '#0A0A0A' : '#FDFCFB',
       useCORS: true,
       allowTaint: true,
       logging: false,

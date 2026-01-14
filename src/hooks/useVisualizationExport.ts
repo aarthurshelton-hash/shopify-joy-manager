@@ -163,8 +163,9 @@ export function useVisualizationExport(options: UseVisualizationExportOptions) {
         shareId: exportOptions.shareId,
         highlightState: exportOptions.highlightState ? {
           lockedPieces: exportOptions.highlightState.lockedPieces.map(p => ({
-            pieceType: p.pieceType as any,
-            pieceColor: p.pieceColor as any,
+            pieceType: p.pieceType as 'k' | 'q' | 'r' | 'b' | 'n' | 'p',
+            // Map 'white'/'black' to 'w'/'b' if needed
+            pieceColor: (p.pieceColor === 'white' ? 'w' : p.pieceColor === 'black' ? 'b' : p.pieceColor) as 'w' | 'b',
           })),
           compareMode: exportOptions.highlightState.compareMode,
         } : undefined,

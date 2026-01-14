@@ -176,6 +176,21 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
   // The wall mockup shows the complete framed product with game info and branding
   const darkMode = capturedState?.darkMode || false;
   
+  // Build highlight state from captured state
+  const highlightState = useMemo(() => {
+    if (capturedState && capturedState.lockedPieces && capturedState.lockedPieces.length > 0) {
+      return {
+        lockedPieces: capturedState.lockedPieces.map(p => ({
+          pieceType: p.pieceType as PieceType,
+          // Map 'white'/'black' to 'w'/'b' if needed
+          pieceColor: (p.pieceColor === 'white' ? 'w' : p.pieceColor === 'black' ? 'b' : p.pieceColor) as 'w' | 'b',
+        })),
+        compareMode: capturedState.compareMode || false,
+      };
+    }
+    return undefined;
+  }, [capturedState]);
+  
   const miniVisualization = useMemo(() => {
     // If we have EnPensent data (from live games), use unified component
     if (enPensentData) {
@@ -200,6 +215,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
     }
     
     // Fall back to simulation-based rendering using the full trademark look
+    // Include highlight state to show exact current piece highlights
     if (!displayBoard || !simulation) return null;
     return (
       <PrintReadyVisualization 
@@ -208,9 +224,10 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
         size={80}
         darkMode={darkMode}
         compact={true}
+        highlightState={highlightState}
       />
     );
-  }, [displayBoard, simulation, enPensentData, darkMode]);
+  }, [displayBoard, simulation, enPensentData, darkMode, highlightState]);
 
   const handleAddToCart = async () => {
     if (!selectedProduct || !selectedVariant) return;
@@ -265,6 +282,13 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
           previewImageBase64,
           frameStyle: selectedFrame?.id,
           includeInfoCard,
+          // Store captured state so the exact visual state can be reproduced
+          capturedState: capturedState ? {
+            currentMove: capturedState.currentMove,
+            lockedPieces: capturedState.lockedPieces,
+            compareMode: capturedState.compareMode,
+            darkMode: capturedState.darkMode,
+          } : undefined,
         },
       };
 
