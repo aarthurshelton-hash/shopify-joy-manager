@@ -10,7 +10,10 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
+  Tooltip,
+  TooltipContent,
   TooltipProvider,
+  TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { analyzeTimeline, getMomentCounts, TimelineAnalysisResult } from '@/lib/chess/timelineAnalysis';
 import { TimelineMarker, PhaseButton, momentConfig, phaseConfig } from './EnhancedTimelineMarker';
@@ -165,13 +168,26 @@ const VerticalTimelineSlider: React.FC<VerticalTimelineSliderProps> = ({ totalMo
             const phaseRange = phaseRanges[phase];
             const moveCount = phaseRange.end - phaseRange.start;
             
+            // Handle phase click: select the phase AND jump to its start
+            const handlePhaseClick = () => {
+              setSelectedPhase(phase);
+              // Jump to the appropriate position
+              if (phase === 'all') {
+                // "All" shows the complete visualization
+                setCurrentMove(Infinity);
+              } else {
+                // Other phases jump to their start move
+                setCurrentMove(phaseRange.start);
+              }
+            };
+            
             return (
               <PhaseButton
                 key={phase}
                 phase={phase}
                 isActive={selectedPhase === phase}
                 moveCount={moveCount}
-                onClick={() => setSelectedPhase(phase)}
+                onClick={handlePhaseClick}
                 phaseInfo={getPhaseInfo(phase)}
                 compact
               />
@@ -179,67 +195,184 @@ const VerticalTimelineSlider: React.FC<VerticalTimelineSliderProps> = ({ totalMo
           })}
         </div>
 
-        {/* Key moments summary with rich tooltips */}
+        {/* Key moments summary with rich tooltips - clickable to jump to first occurrence */}
         {visibleMoments.length > 0 && (
           <div className="py-2 border-b border-border/30">
             <div className="text-[9px] text-muted-foreground mb-1.5 text-center">Key Moments</div>
             <div className="flex flex-wrap items-center justify-center gap-1.5">
               {/* Quality moves */}
               {momentCounts.brilliant > 0 && (
-                <div className={`flex items-center gap-0.5 ${momentConfig.brilliant.color}`}>
-                  <momentConfig.brilliant.icon className="w-2.5 h-2.5" />
-                  <span className="text-[9px]">{momentCounts.brilliant}</span>
-                </div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button 
+                      onClick={() => {
+                        const first = visibleMoments.find(m => m.type === 'brilliant');
+                        if (first) setCurrentMove(first.moveNumber);
+                      }}
+                      className={`flex items-center gap-0.5 ${momentConfig.brilliant.color} hover:scale-110 transition-transform cursor-pointer`}
+                    >
+                      <momentConfig.brilliant.icon className="w-2.5 h-2.5" />
+                      <span className="text-[9px]">{momentCounts.brilliant}</span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="text-xs">
+                    Click to jump to first brilliant move
+                  </TooltipContent>
+                </Tooltip>
               )}
               {momentCounts.great > 0 && (
-                <div className={`flex items-center gap-0.5 ${momentConfig.great.color}`}>
-                  <momentConfig.great.icon className="w-2.5 h-2.5" />
-                  <span className="text-[9px]">{momentCounts.great}</span>
-                </div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button 
+                      onClick={() => {
+                        const first = visibleMoments.find(m => m.type === 'great');
+                        if (first) setCurrentMove(first.moveNumber);
+                      }}
+                      className={`flex items-center gap-0.5 ${momentConfig.great.color} hover:scale-110 transition-transform cursor-pointer`}
+                    >
+                      <momentConfig.great.icon className="w-2.5 h-2.5" />
+                      <span className="text-[9px]">{momentCounts.great}</span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="text-xs">
+                    Click to jump to first great move
+                  </TooltipContent>
+                </Tooltip>
               )}
               {momentCounts.blunder > 0 && (
-                <div className={`flex items-center gap-0.5 ${momentConfig.blunder.color}`}>
-                  <momentConfig.blunder.icon className="w-2.5 h-2.5" />
-                  <span className="text-[9px]">{momentCounts.blunder}</span>
-                </div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button 
+                      onClick={() => {
+                        const first = visibleMoments.find(m => m.type === 'blunder');
+                        if (first) setCurrentMove(first.moveNumber);
+                      }}
+                      className={`flex items-center gap-0.5 ${momentConfig.blunder.color} hover:scale-110 transition-transform cursor-pointer`}
+                    >
+                      <momentConfig.blunder.icon className="w-2.5 h-2.5" />
+                      <span className="text-[9px]">{momentCounts.blunder}</span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="text-xs">
+                    Click to jump to first blunder
+                  </TooltipContent>
+                </Tooltip>
               )}
               {/* Tactical */}
               {momentCounts.fork > 0 && (
-                <div className={`flex items-center gap-0.5 ${momentConfig.fork.color}`}>
-                  <momentConfig.fork.icon className="w-2.5 h-2.5" />
-                  <span className="text-[9px]">{momentCounts.fork}</span>
-                </div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button 
+                      onClick={() => {
+                        const first = visibleMoments.find(m => m.type === 'fork');
+                        if (first) setCurrentMove(first.moveNumber);
+                      }}
+                      className={`flex items-center gap-0.5 ${momentConfig.fork.color} hover:scale-110 transition-transform cursor-pointer`}
+                    >
+                      <momentConfig.fork.icon className="w-2.5 h-2.5" />
+                      <span className="text-[9px]">{momentCounts.fork}</span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="text-xs">
+                    Click to jump to first fork
+                  </TooltipContent>
+                </Tooltip>
               )}
               {momentCounts.sacrifice > 0 && (
-                <div className={`flex items-center gap-0.5 ${momentConfig.sacrifice.color}`}>
-                  <momentConfig.sacrifice.icon className="w-2.5 h-2.5" />
-                  <span className="text-[9px]">{momentCounts.sacrifice}</span>
-                </div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button 
+                      onClick={() => {
+                        const first = visibleMoments.find(m => m.type === 'sacrifice');
+                        if (first) setCurrentMove(first.moveNumber);
+                      }}
+                      className={`flex items-center gap-0.5 ${momentConfig.sacrifice.color} hover:scale-110 transition-transform cursor-pointer`}
+                    >
+                      <momentConfig.sacrifice.icon className="w-2.5 h-2.5" />
+                      <span className="text-[9px]">{momentCounts.sacrifice}</span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="text-xs">
+                    Click to jump to first sacrifice
+                  </TooltipContent>
+                </Tooltip>
               )}
               {/* Events */}
               {momentCounts.checkmate > 0 && (
-                <div className={`flex items-center gap-0.5 ${momentConfig.checkmate.color}`}>
-                  <momentConfig.checkmate.icon className="w-2.5 h-2.5" />
-                  <span className="text-[9px]">{momentCounts.checkmate}</span>
-                </div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button 
+                      onClick={() => {
+                        const first = visibleMoments.find(m => m.type === 'checkmate');
+                        if (first) setCurrentMove(first.moveNumber);
+                      }}
+                      className={`flex items-center gap-0.5 ${momentConfig.checkmate.color} hover:scale-110 transition-transform cursor-pointer`}
+                    >
+                      <momentConfig.checkmate.icon className="w-2.5 h-2.5" />
+                      <span className="text-[9px]">{momentCounts.checkmate}</span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="text-xs">
+                    Click to jump to checkmate
+                  </TooltipContent>
+                </Tooltip>
               )}
               {momentCounts.check > 0 && (
-                <div className={`flex items-center gap-0.5 ${momentConfig.check.color}`}>
-                  <momentConfig.check.icon className="w-2.5 h-2.5" />
-                  <span className="text-[9px]">{momentCounts.check}</span>
-                </div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button 
+                      onClick={() => {
+                        const first = visibleMoments.find(m => m.type === 'check');
+                        if (first) setCurrentMove(first.moveNumber);
+                      }}
+                      className={`flex items-center gap-0.5 ${momentConfig.check.color} hover:scale-110 transition-transform cursor-pointer`}
+                    >
+                      <momentConfig.check.icon className="w-2.5 h-2.5" />
+                      <span className="text-[9px]">{momentCounts.check}</span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="text-xs">
+                    Click to jump to first check
+                  </TooltipContent>
+                </Tooltip>
               )}
               {momentCounts.castling > 0 && (
-                <div className={`flex items-center gap-0.5 ${momentConfig.castling.color}`}>
-                  <momentConfig.castling.icon className="w-2.5 h-2.5" />
-                  <span className="text-[9px]">{momentCounts.castling}</span>
-                </div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button 
+                      onClick={() => {
+                        const first = visibleMoments.find(m => m.type === 'castling');
+                        if (first) setCurrentMove(first.moveNumber);
+                      }}
+                      className={`flex items-center gap-0.5 ${momentConfig.castling.color} hover:scale-110 transition-transform cursor-pointer`}
+                    >
+                      <momentConfig.castling.icon className="w-2.5 h-2.5" />
+                      <span className="text-[9px]">{momentCounts.castling}</span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="text-xs">
+                    Click to jump to first castle
+                  </TooltipContent>
+                </Tooltip>
               )}
               {momentCounts.promotion > 0 && (
-                <div className={`flex items-center gap-0.5 ${momentConfig.promotion.color}`}>
-                  <momentConfig.promotion.icon className="w-2.5 h-2.5" />
-                  <span className="text-[9px]">{momentCounts.promotion}</span>
-                </div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button 
+                      onClick={() => {
+                        const first = visibleMoments.find(m => m.type === 'promotion');
+                        if (first) setCurrentMove(first.moveNumber);
+                      }}
+                      className={`flex items-center gap-0.5 ${momentConfig.promotion.color} hover:scale-110 transition-transform cursor-pointer`}
+                    >
+                      <momentConfig.promotion.icon className="w-2.5 h-2.5" />
+                      <span className="text-[9px]">{momentCounts.promotion}</span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="text-xs">
+                    Click to jump to first promotion
+                  </TooltipContent>
+                </Tooltip>
               )}
             </div>
           </div>
