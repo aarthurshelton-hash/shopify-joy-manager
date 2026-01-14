@@ -80,9 +80,13 @@ export interface CartItem {
   customPrintData?: {
     pgn: string;
     gameTitle: string;
-    previewImageBase64?: string; // Exact current state image
+    previewImageBase64?: string; // Exact current state image for cart thumbnail
+    printImageUrl?: string; // Public URL for Printify fulfillment
     frameStyle?: string;
     includeInfoCard?: boolean;
+    visualizationId?: string; // For tracking and royalties
+    gameId?: string; // For game pool attribution
+    paletteId?: string; // For palette pool attribution
     // Captured visualization state - ensures print matches exactly what user sees
     capturedState?: {
       currentMove: number;
@@ -100,6 +104,7 @@ const SHOPIFY_STOREFRONT_URL = `https://${SHOPIFY_STORE_PERMANENT_DOMAIN}/api/${
 const SHOPIFY_STOREFRONT_TOKEN = 'a0ffa036b52f6150e7e1bfaf4b307ff4';
 
 // Cart creation mutation with buyer identity for currency localization
+// Includes attributes for custom line item properties (print images, viz IDs, etc.)
 const CART_CREATE_MUTATION = `
   mutation cartCreate($input: CartInput!, $country: CountryCode) @inContext(country: $country) {
     cartCreate(input: $input) {
@@ -116,10 +121,63 @@ const CART_CREATE_MUTATION = `
 `;
 
 async function createStorefrontCheckout(items: CartItem[]): Promise<string> {
-  const lines = items.map(item => ({
-    quantity: item.quantity,
-    merchandiseId: item.variantId,
-  }));
+  const lines = items.map(item => {
+    // Build line item with attributes for custom print data
+    const lineItem: {
+      quantity: number;
+      merchandiseId: string;
+      attributes?: Array<{ key: string; value: string }>;
+    } = {
+      quantity: item.quantity,
+      merchandiseId: item.variantId,
+    };
+    
+    // Add custom attributes for print fulfillment
+    if (item.customPrintData) {
+      const attributes: Array<{ key: string; value: string }> = [];
+      
+      // Add print image URL for Printify
+      if (item.customPrintData.printImageUrl) {
+        attributes.push({ key: '_custom_image_url', value: item.customPrintData.printImageUrl });
+      }
+      
+      // Add game title for order identification
+      if (item.customPrintData.gameTitle) {
+        attributes.push({ key: '_game_title', value: item.customPrintData.gameTitle });
+      }
+      
+      // Add visualization ID for tracking and royalties
+      if (item.customPrintData.visualizationId) {
+        attributes.push({ key: '_visualization_id', value: item.customPrintData.visualizationId });
+      }
+      
+      // Add game ID for game pool attribution
+      if (item.customPrintData.gameId) {
+        attributes.push({ key: '_game_id', value: item.customPrintData.gameId });
+      }
+      
+      // Add palette ID for palette pool attribution
+      if (item.customPrintData.paletteId) {
+        attributes.push({ key: '_palette_id', value: item.customPrintData.paletteId });
+      }
+      
+      // Add frame style if present
+      if (item.customPrintData.frameStyle) {
+        attributes.push({ key: '_frame_style', value: item.customPrintData.frameStyle });
+      }
+      
+      // Add info card flag if present
+      if (item.customPrintData.includeInfoCard) {
+        attributes.push({ key: '_include_info_card', value: 'true' });
+      }
+      
+      if (attributes.length > 0) {
+        lineItem.attributes = attributes;
+      }
+    }
+    
+    return lineItem;
+  });
 
   // Get user's selected currency and map to country code
   const selectedCurrency = useCurrencyStore.getState().selectedCurrency;

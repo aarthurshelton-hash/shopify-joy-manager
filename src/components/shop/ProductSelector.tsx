@@ -11,6 +11,7 @@ import PrintReadyVisualization from '@/components/chess/PrintReadyVisualization'
 import { MoveHistoryEntry } from '@/components/chess/EnPensentOverlay';
 import { SimulationResult, SquareData } from '@/lib/chess/gameSimulator';
 import { generateCleanPrintImage } from '@/lib/chess/printImageGenerator';
+import { uploadPrintImageToStorage } from '@/lib/shop/uploadPrintImage';
 import { PieceType, getActivePalette } from '@/lib/chess/pieceColors';
 import { toast } from 'sonner';
 import { FrameAddOn, type FrameOption } from './FrameAddOn';
@@ -237,6 +238,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
     try {
       // Generate clean print image for Printify (no watermark - same as preview)
       let previewImageBase64: string | undefined;
+      let printImageUrl: string | undefined;
       
       // Use existing preview image if provided (e.g., from marketplace saved visualizations)
       if (customPrintData.previewImageBase64) {
@@ -254,6 +256,24 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
         } catch (error) {
           console.error('Failed to generate print image:', error);
           toast.error('Failed to generate print image. Adding to cart without image.');
+        }
+      }
+      
+      // Upload the image to storage for Printify fulfillment
+      // This ensures the exact image is available via public URL
+      if (previewImageBase64) {
+        try {
+          const uploadedUrl = await uploadPrintImageToStorage(
+            previewImageBase64, 
+            customPrintData.gameTitle
+          );
+          if (uploadedUrl) {
+            printImageUrl = uploadedUrl;
+            console.log('[ProductSelector] Print image uploaded:', printImageUrl);
+          }
+        } catch (uploadError) {
+          console.error('Failed to upload print image to storage:', uploadError);
+          // Continue without URL - order can still be processed manually
         }
       }
 
@@ -279,7 +299,8 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
         selectedOptions: selectedVariant.selectedOptions,
         customPrintData: {
           ...customPrintData,
-          previewImageBase64,
+          previewImageBase64, // For cart thumbnail display
+          printImageUrl, // For Printify fulfillment
           frameStyle: selectedFrame?.id,
           includeInfoCard,
           // Store captured state so the exact visual state can be reproduced
