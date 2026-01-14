@@ -1013,10 +1013,10 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
       const windowHeight = window.innerHeight;
       
       // Fixed sidebar widths - must match the layout
-      const timelineWidth = 140; // Timeline container width
-      const legendWidth = 200; // Legend container width
-      const gaps = 24; // Gap between elements (gap-3 = 12px * 2)
-      const pagePadding = 80; // Page padding (container margins + extra safety)
+      const timelineWidth = 160; // Timeline container width
+      const legendWidth = 240; // Legend container width
+      const gaps = 24; // Gap between elements
+      const pagePadding = 32; // Page padding
       
       const isXlScreen = windowWidth >= 1280;
       const isLgScreen = windowWidth >= 1024;
@@ -1046,9 +1046,9 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
       
       const optimalSize = Math.min(maxBoardFromWidth, maxBoardFromHeight);
       
-      // Board size limits
+      // Board size limits - cap at 580px to leave room for sidebars
       const minSize = 300;
-      const maxSize = isXlScreen ? 600 : 520;
+      const maxSize = isXlScreen ? 580 : 520;
       setBoardSize(Math.max(minSize, Math.min(optimalSize, maxSize)));
     };
     
@@ -1360,8 +1360,8 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
 
                   {/* Main Layout: Timeline Left | Board Center | Legend Right - Full width usage */}
                   <div className="flex gap-2 xl:gap-3 items-start justify-center w-full overflow-visible">
-                    {/* Left: Vertical Timeline - proper width */}
-                    <div className="hidden xl:flex flex-shrink-0" style={{ minWidth: '140px', width: '140px' }}>
+                    {/* Left: Vertical Timeline - full width */}
+                    <div className="hidden xl:flex flex-shrink-0" style={{ minWidth: '160px', width: '160px' }}>
                       <VerticalTimelineSlider 
                         totalMoves={localTotalMoves} 
                         moves={localGameData.moves}
@@ -1387,9 +1387,9 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                       />
                     </div>
 
-                    {/* Right: Color Legend - proper width */}
+                    {/* Right: Color Legend - full width */}
                     {showLegend && (
-                      <div className="hidden xl:flex flex-col flex-shrink-0" style={{ minWidth: '200px', width: '200px', maxHeight: 'calc(100vh - 240px)', overflowY: 'auto' }}>
+                      <div className="hidden xl:flex flex-col flex-shrink-0" style={{ minWidth: '240px', width: '240px', maxHeight: 'calc(100vh - 240px)', overflowY: 'auto' }}>
                         <ColorLegend 
                           interactive={true}
                           board={localBoard}
