@@ -2,10 +2,11 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { SimulationResult } from '@/lib/chess/gameSimulator';
 import { PieceType, PieceColor } from '@/lib/chess/pieceColors';
+import { GamePhase } from '@/contexts/TimelineContext';
 
 /**
  * Session Store - Persists visualization and navigation state across page navigations
- * This enables the "memory holding capabilities" for the app
+ * This enables full "backtrack restoration" - clicking back restores exact board state
  */
 
 export interface CreativeModeTransfer {
@@ -25,6 +26,42 @@ export interface CapturedTimelineState {
   darkMode: boolean;
 }
 
+/**
+ * Full visualization state for backtrack restoration
+ * Captures every aspect of the board's visual configuration
+ */
+export interface FullVisualizationState {
+  // Timeline state
+  currentMove: number;
+  selectedPhase: GamePhase;
+  isPlaying: boolean;
+  
+  // Legend state
+  lockedPieces: Array<{ pieceType: PieceType; pieceColor: PieceColor }>;
+  compareMode: boolean;
+  highlightedPiece: { pieceType: PieceType; pieceColor: PieceColor } | null;
+  
+  // Display modes
+  displayMode: 'art' | 'analysis' | 'minimal';
+  darkMode: boolean;
+  
+  // Territory/heatmap modes
+  showTerritory: boolean;
+  showHeatmaps: boolean;
+  
+  // Show pieces overlay
+  showPieces: boolean;
+  pieceOpacity: number;
+  
+  // Captured timestamp
+  capturedAt: number;
+  
+  // Source identifier (for matching on restore)
+  sourceRoute: string;
+  visualizationId?: string;
+  pgn?: string;
+}
+
 interface SessionState {
   // Current visualization context
   currentSimulation: SimulationResult | null;
@@ -34,6 +71,9 @@ interface SessionState {
   
   // Captured timeline state for exact visual restoration
   capturedTimelineState: CapturedTimelineState | null;
+  
+  // Full visualization state stack for backtrack restoration
+  visualizationStateStack: FullVisualizationState[];
   
   // Creative mode transfer data
   creativeModeTransfer: CreativeModeTransfer | null;
@@ -51,6 +91,13 @@ interface SessionState {
   setCapturedTimelineState: (state: CapturedTimelineState | null) => void;
   setReturningFromOrder: (returning: boolean) => void;
   clearSimulation: () => void;
+  
+  // Full visualization state for backtrack
+  pushVisualizationState: (state: FullVisualizationState) => void;
+  popVisualizationState: () => FullVisualizationState | null;
+  peekVisualizationState: () => FullVisualizationState | null;
+  getVisualizationStateForRoute: (route: string) => FullVisualizationState | null;
+  clearVisualizationStateStack: () => void;
   
   // Creative mode transfer
   setCreativeModeTransfer: (data: CreativeModeTransfer | null) => void;
@@ -74,6 +121,7 @@ export const useSessionStore = create<SessionState>()(
       currentGameTitle: '',
       savedShareId: null,
       capturedTimelineState: null,
+      visualizationStateStack: [],
       creativeModeTransfer: null,
       previousRoute: null,
       navigationStack: [],
@@ -100,6 +148,42 @@ export const useSessionStore = create<SessionState>()(
         capturedTimelineState: null,
         returningFromOrder: false,
       }),
+      
+      // Full visualization state stack management
+      pushVisualizationState: (state) => set((prev) => {
+        // Limit stack size to prevent memory bloat (keep last 10)
+        const newStack = [...prev.visualizationStateStack, state].slice(-10);
+        return { visualizationStateStack: newStack };
+      }),
+      
+      popVisualizationState: () => {
+        const state = get();
+        if (state.visualizationStateStack.length === 0) return null;
+        
+        const newStack = [...state.visualizationStateStack];
+        const popped = newStack.pop() || null;
+        set({ visualizationStateStack: newStack });
+        return popped;
+      },
+      
+      peekVisualizationState: () => {
+        const state = get();
+        if (state.visualizationStateStack.length === 0) return null;
+        return state.visualizationStateStack[state.visualizationStateStack.length - 1];
+      },
+      
+      getVisualizationStateForRoute: (route: string) => {
+        const state = get();
+        // Find the most recent state for this route
+        for (let i = state.visualizationStateStack.length - 1; i >= 0; i--) {
+          if (state.visualizationStateStack[i].sourceRoute === route) {
+            return state.visualizationStateStack[i];
+          }
+        }
+        return null;
+      },
+      
+      clearVisualizationStateStack: () => set({ visualizationStateStack: [] }),
       
       // Creative mode transfer
       setCreativeModeTransfer: (data) => set({ creativeModeTransfer: data }),
@@ -136,6 +220,7 @@ export const useSessionStore = create<SessionState>()(
         currentGameTitle: '',
         savedShareId: null,
         capturedTimelineState: null,
+        visualizationStateStack: [],
         creativeModeTransfer: null,
         previousRoute: null,
         navigationStack: [],
@@ -152,6 +237,7 @@ export const useSessionStore = create<SessionState>()(
         currentGameTitle: state.currentGameTitle,
         savedShareId: state.savedShareId,
         capturedTimelineState: state.capturedTimelineState,
+        visualizationStateStack: state.visualizationStateStack,
         creativeModeTransfer: state.creativeModeTransfer,
         previousRoute: state.previousRoute,
         navigationStack: state.navigationStack,

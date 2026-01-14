@@ -28,6 +28,10 @@ export interface CapturedVisualizationState {
   showTerritory: boolean;
   showHeatmaps: boolean;
   
+  // Show pieces overlay
+  showPieces: boolean;
+  pieceOpacity: number;
+  
   // Move history for live games
   moveHistory?: MoveHistoryEntry[];
   
@@ -46,6 +50,10 @@ interface VisualizationStateStore {
   showTerritory: boolean;
   showHeatmaps: boolean;
   
+  // Show pieces state (synced with visualization)
+  showPieces: boolean;
+  pieceOpacity: number;
+  
   // Actions
   setCurrentMove: (move: number) => void;
   setSelectedPhase: (phase: GamePhase) => void;
@@ -55,9 +63,14 @@ interface VisualizationStateStore {
   setDarkMode: (dark: boolean) => void;
   setShowTerritory: (show: boolean) => void;
   setShowHeatmaps: (show: boolean) => void;
+  setShowPieces: (show: boolean) => void;
+  setPieceOpacity: (opacity: number) => void;
   
   // Capture current state for export
   captureState: (moveHistory?: MoveHistoryEntry[]) => CapturedVisualizationState;
+  
+  // Restore from captured state
+  restoreFromState: (state: Partial<CapturedVisualizationState>) => void;
   
   // Reset state
   resetState: () => void;
@@ -72,6 +85,8 @@ const initialState = {
   darkMode: false,
   showTerritory: false,
   showHeatmaps: false,
+  showPieces: false,
+  pieceOpacity: 0.7,
 };
 
 export const useVisualizationStateStore = create<VisualizationStateStore>()(
@@ -87,6 +102,8 @@ export const useVisualizationStateStore = create<VisualizationStateStore>()(
       setDarkMode: (dark) => set({ darkMode: dark }),
       setShowTerritory: (show) => set({ showTerritory: show }),
       setShowHeatmaps: (show) => set({ showHeatmaps: show }),
+      setShowPieces: (show) => set({ showPieces: show }),
+      setPieceOpacity: (opacity) => set({ pieceOpacity: opacity }),
       
       captureState: (moveHistory) => {
         const state = get();
@@ -101,9 +118,26 @@ export const useVisualizationStateStore = create<VisualizationStateStore>()(
           darkMode: state.darkMode,
           showTerritory: state.showTerritory,
           showHeatmaps: state.showHeatmaps,
+          showPieces: state.showPieces,
+          pieceOpacity: state.pieceOpacity,
           moveHistory,
           capturedAt: new Date(),
         };
+      },
+      
+      restoreFromState: (state) => {
+        set({
+          currentMove: state.currentMove ?? initialState.currentMove,
+          selectedPhase: state.selectedPhase ?? initialState.selectedPhase,
+          lockedPieces: state.lockedPieces ?? initialState.lockedPieces,
+          compareMode: state.compareMode ?? initialState.compareMode,
+          displayMode: state.displayMode ?? initialState.displayMode,
+          darkMode: state.darkMode ?? initialState.darkMode,
+          showTerritory: state.showTerritory ?? initialState.showTerritory,
+          showHeatmaps: state.showHeatmaps ?? initialState.showHeatmaps,
+          showPieces: state.showPieces ?? initialState.showPieces,
+          pieceOpacity: state.pieceOpacity ?? initialState.pieceOpacity,
+        });
       },
       
       resetState: () => set(initialState),
@@ -112,11 +146,17 @@ export const useVisualizationStateStore = create<VisualizationStateStore>()(
       name: 'en-pensent-visualization-state',
       storage: createJSONStorage(() => sessionStorage),
       partialize: (state) => ({
-        // Persist display preferences
+        // Persist display preferences and current state
+        currentMove: state.currentMove,
+        selectedPhase: state.selectedPhase,
+        lockedPieces: state.lockedPieces,
+        compareMode: state.compareMode,
         displayMode: state.displayMode,
         darkMode: state.darkMode,
         showTerritory: state.showTerritory,
         showHeatmaps: state.showHeatmaps,
+        showPieces: state.showPieces,
+        pieceOpacity: state.pieceOpacity,
       }),
     }
   )
