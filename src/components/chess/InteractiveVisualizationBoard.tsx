@@ -299,21 +299,22 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
     const squareName = `${String.fromCharCode(97 + file)}${rank + 1}`;
     setHoveredSquareLocal(squareName);
     
-    if (square.visits.length > 0) {
-      const pieces = getPiecesForSquare(square);
-      const moveNumbers = getMoveNumbersForSquare(square);
-      
-      if (setHoveredSquare) {
-        setHoveredSquare({ square: squareName, pieces, moveNumbers });
-      }
-      
-      // Also update annotation highlighting based on pieces on this square
-      if (setHighlightedAnnotations) {
-        const annotations: ('white-player' | 'black-player')[] = [];
-        if (pieces.some(p => p.pieceColor === 'w')) annotations.push('white-player');
-        if (pieces.some(p => p.pieceColor === 'b')) annotations.push('black-player');
-        setHighlightedAnnotations(annotations);
-      }
+    const pieces = getPiecesForSquare(square);
+    const moveNumbers = getMoveNumbersForSquare(square);
+    
+    // Always update hover state - even for empty squares (with empty pieces array)
+    if (setHoveredSquare) {
+      setHoveredSquare({ square: squareName, pieces, moveNumbers });
+    }
+    
+    // Update annotation highlighting based on pieces on this square
+    if (setHighlightedAnnotations && pieces.length > 0) {
+      const annotations: ('white-player' | 'black-player')[] = [];
+      if (pieces.some(p => p.pieceColor === 'w')) annotations.push('white-player');
+      if (pieces.some(p => p.pieceColor === 'b')) annotations.push('black-player');
+      setHighlightedAnnotations(annotations);
+    } else if (setHighlightedAnnotations) {
+      setHighlightedAnnotations([]);
     }
   }, [board, setHoveredSquare, setHighlightedAnnotations, getPiecesForSquare, getMoveNumbersForSquare]);
 
