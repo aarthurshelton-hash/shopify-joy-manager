@@ -70,6 +70,7 @@ import { TransferLimitBadge } from '@/components/marketplace/TransferLimitBadge'
 import { PoetryModal, PoetryPreviewCard } from './PoetryModal';
 import { getGamePoetry } from '@/lib/chess/gamePoetry';
 import PaletteAvailabilityIndicator from './PaletteAvailabilityIndicator';
+import PaletteOwnershipCard from './PaletteOwnershipCard';
 import { useAuth } from '@/hooks/useAuth';
 import MiniPrintOrderSection from './MiniPrintOrderSection';
 import { generateGameHash } from '@/lib/visualizations/gameCanonical';
@@ -2052,6 +2053,17 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
             {/* Analytics Tab */}
             <TabsContent value="analytics" className="mt-0">
               <div className="pb-4">
+                {/* Palette Ownership Card - Shows who owns which colorways */}
+                {effectivePgn && (
+                  <div className="mb-6">
+                    <PaletteOwnershipCard
+                      pgn={effectivePgn}
+                      currentPaletteId={localPaletteId}
+                      onPaletteSelect={handleSeamlessPaletteSwitch}
+                      compact={false}
+                    />
+                  </div>
+                )}
                 {/* Royalty Earnings/Potential Card - Show for all contexts when vision score exists */}
                 {visionScore && (
                   <div className="mb-6">
