@@ -1205,7 +1205,6 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
   // Determine which action buttons to show based on context
   const showGeneratorActions = context === 'generator' || context === 'postgame';
   const showGalleryActions = context === 'gallery';
-  const showMarketplaceInfo = context === 'marketplace';
 
   return (
     <TimelineProvider>
@@ -1576,19 +1575,10 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                       </>
                     )}
 
-                    {/* Gallery Actions - Use same ExportActionButtons for state capture */}
+                    {/* Gallery Actions - List for Sale button */}
                     {showGalleryActions && (
                       <>
-                        <ExportActionButtons
-                          onExport={onExport}
-                          isPremium={isPremium}
-                          darkMode={darkMode}
-                          totalMoves={totalMoves}
-                          showPieces={showPieces}
-                          pieceOpacity={pieceOpacity}
-                        />
-                        
-                        {!isListed && onListForSale && (
+                        {!localIsListed && onListForSale && (
                           <Button 
                             variant="outline" 
                             size="sm" 
@@ -1600,7 +1590,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                           </Button>
                         )}
                         
-                        {isListed && (
+                        {localIsListed && (
                           <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30">
                             Listed on Marketplace
                           </Badge>
@@ -1608,25 +1598,13 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                       </>
                     )}
                     
-                    {/* Marketplace Actions - Use same ExportActionButtons for state capture */}
-                    {showMarketplaceInfo && (
+                    {/* Unified Export Buttons - Show for all contexts when onExport provided */}
+                    {onExport && (
                       <ExportActionButtons
                         onExport={onExport}
                         isPremium={isPremium}
                         darkMode={darkMode}
-                        totalMoves={totalMoves}
-                        showPieces={showPieces}
-                        pieceOpacity={pieceOpacity}
-                      />
-                    )}
-                    
-                    {/* Shared/Scanner/Other contexts - Show export buttons if onExport provided */}
-                    {!showGeneratorActions && !showGalleryActions && !showMarketplaceInfo && onExport && (
-                      <ExportActionButtons
-                        onExport={onExport}
-                        isPremium={isPremium}
-                        darkMode={darkMode}
-                        totalMoves={totalMoves}
+                        totalMoves={localTotalMoves}
                         showPieces={showPieces}
                         pieceOpacity={pieceOpacity}
                       />
@@ -1719,10 +1697,10 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
             {/* Analytics Tab */}
             <TabsContent value="analytics" className="mt-0">
               <ScrollArea className="h-[calc(100vh-300px)] sm:h-auto">
-                {/* Royalty Earnings/Potential Card - Show for marketplace and gallery */}
-                {(context === 'marketplace' || context === 'gallery') && visionScore && (
+                {/* Royalty Earnings/Potential Card - Show for all contexts when vision score exists */}
+                {visionScore && (
                   <div className="mb-6">
-                    {isOwner ? (
+                    {localIsOwner ? (
                       <RoyaltyEarningsCard
                         royaltyCentsEarned={visionScore.royaltyCentsEarned}
                         royaltyOrdersCount={visionScore.royaltyOrdersCount}
@@ -1743,33 +1721,33 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                   </div>
                 )}
 
-                {/* Transfer History - Show for marketplace and gallery contexts */}
-                {(context === 'marketplace' || context === 'gallery') && visualizationId && (
+                {/* Transfer History - Show for all contexts when visualization exists */}
+                {localVisualizationId && (
                   <div className="mb-6">
-                    <TransferHistoryCard visualizationId={visualizationId} />
+                    <TransferHistoryCard visualizationId={localVisualizationId} />
                   </div>
                 )}
 
-                {/* Transfer Limit Badge - Show in marketplace context */}
-                {context === 'marketplace' && visualizationId && (
+                {/* Transfer Limit Badge - Show for all contexts when visualization exists */}
+                {localVisualizationId && (
                   <div className="mb-4 flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border/50">
                     <span className="text-sm text-muted-foreground">Transfer availability:</span>
-                    <TransferLimitBadge visualizationId={visualizationId} />
+                    <TransferLimitBadge visualizationId={localVisualizationId} />
                   </div>
                 )}
 
                 <AnalyticsPanel
                   visionScore={visionScore}
                   isLoading={isLoadingScore}
-                  gameData={gameData}
-                  totalMoves={totalMoves}
+                  gameData={localGameData}
+                  totalMoves={localTotalMoves}
                   createdAt={createdAt}
                   gameAnalysis={gameAnalysis}
-                  pgn={pgn || gameData.pgn}
+                  pgn={pgn || localGameData.pgn}
                 />
 
-                {/* Marketplace Info */}
-                {showMarketplaceInfo && isListed && (
+                {/* Marketplace Info - Show for all contexts when listed */}
+                {localIsListed && (
                   <div className="mt-4 p-3 rounded-lg bg-green-500/10 border border-green-500/30">
                     <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30 mb-2">
                       <TrendingUp className="h-3 w-3 mr-1" />
@@ -1781,7 +1759,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                   </div>
                 )}
 
-                {/* Purchase Button for Marketplace */}
+                {/* Purchase Button - Show for all contexts when purchase is available */}
                 {showPurchaseButton && onPurchase && (
                   <div className="mt-6 pt-4 border-t border-border/30">
                     <Button 
@@ -1792,17 +1770,17 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                     >
                       {isPurchasing ? (
                         <Loader2 className="h-5 w-5 animate-spin" />
-                      ) : purchasePrice === 0 ? (
+                      ) : localPurchasePrice === 0 ? (
                         <>Claim for Free</>
                       ) : (
-                        <>Purchase for ${((purchasePrice || 0) / 100).toFixed(2)}</>
+                        <>Purchase for ${((localPurchasePrice || 0) / 100).toFixed(2)}</>
                       )}
                     </Button>
                   </div>
                 )}
 
-                {/* List for Sale button in gallery context */}
-                {showGalleryActions && !isListed && onListForSale && (
+                {/* List for Sale button - Show for all contexts when owner and not listed */}
+                {localIsOwner && !localIsListed && onListForSale && (
                   <div className="mt-6 pt-4 border-t border-border/30">
                     <Button 
                       variant="outline"
