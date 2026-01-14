@@ -155,7 +155,10 @@ const TimelineBoard: React.FC<{
   darkMode?: boolean;
   title?: string;
   showCoordinates?: boolean;
-}> = ({ board, totalMoves, size, gameData, darkMode = false, title, showCoordinates = false }) => {
+  showPieces?: boolean;
+  pieceOpacity?: number;
+  pgn?: string;
+}> = ({ board, totalMoves, size, gameData, darkMode = false, title, showCoordinates = false, showPieces = false, pieceOpacity = 0.7, pgn }) => {
   const { currentMove } = useTimeline();
   
   const filteredBoard = useMemo(() => {
@@ -192,7 +195,14 @@ const TimelineBoard: React.FC<{
         {showCoordinates && (
           <BoardCoordinateGuide size={size} position="inside" />
         )}
-        <InteractiveVisualizationBoard board={filteredBoard} size={size} />
+        <InteractiveVisualizationBoard 
+          board={filteredBoard} 
+          size={size}
+          showPieces={showPieces}
+          pieceOpacity={pieceOpacity}
+          pgn={pgn}
+          currentMoveNumber={currentMove}
+        />
       </div>
 
       {/* Game Info Section - Now Interactive */}
@@ -1199,6 +1209,9 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                   darkMode={darkMode}
                   title={localTitle || contextTitle}
                   showCoordinates={showCoordinates}
+                  showPieces={showPieces}
+                  pieceOpacity={pieceOpacity}
+                  pgn={pgn || localGameData.pgn}
                 />
               </div>
 
@@ -1382,6 +1395,9 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                         darkMode={darkMode}
                         title={localTitle || contextTitle}
                         showCoordinates={showCoordinates}
+                        showPieces={showPieces}
+                        pieceOpacity={pieceOpacity}
+                        pgn={pgn || localGameData.pgn}
                       />
                     </div>
 
