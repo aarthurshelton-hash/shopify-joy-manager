@@ -11,7 +11,6 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Tooltip,
@@ -41,7 +40,6 @@ import {
   GamePaletteAvailability,
   PaletteAvailabilityInfo,
 } from '@/lib/visualizations/paletteAvailability';
-import { useNavigate } from 'react-router-dom';
 
 interface PaletteAvailabilityIndicatorProps {
   pgn?: string;
@@ -67,7 +65,6 @@ const PaletteAvailabilityIndicator: React.FC<PaletteAvailabilityIndicatorProps> 
   compact = false,
   showAllPalettes = false,
 }) => {
-  const navigate = useNavigate();
   const [availability, setAvailability] = useState<GamePaletteAvailability | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -83,24 +80,19 @@ const PaletteAvailabilityIndicator: React.FC<PaletteAvailabilityIndicatorProps> 
 
   // Handle clicking on a palette chip
   const handlePaletteClick = useCallback((info: PaletteAvailabilityInfo) => {
-    // If seamless switch is provided, use it for all palette changes
+    // If seamless switch is provided, use it for all palette changes (in-place update)
     if (onSeamlessSwitch) {
       onSeamlessSwitch(info);
       return;
     }
     
-    if (info.isTaken && info.visualizationId) {
-      // Navigate to the vision's detail page (universal menu)
-      if (info.isListedForSale) {
-        navigate(`/marketplace/${info.visualizationId}`);
-      } else {
-        navigate(`/vision/${info.visualizationId}`);
-      }
-    } else if (!info.isTaken && onPaletteSelect) {
+    // Fallback navigation (shouldn't happen in unified system, but kept for safety)
+    if (!info.isTaken && onPaletteSelect) {
       // Apply this palette (only in generator context)
       onPaletteSelect(info.paletteId);
     }
-  }, [navigate, onPaletteSelect, onSeamlessSwitch]);
+    // Note: Navigation to taken palettes is handled by seamless switch updating URL
+  }, [onPaletteSelect, onSeamlessSwitch]);
 
   if (!pgn) return null;
 
