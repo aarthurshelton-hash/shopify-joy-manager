@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,6 +17,7 @@ import { useVisualizationExport } from '@/hooks/useVisualizationExport';
 import AuthModal from '@/components/auth/AuthModal';
 import { PremiumUpgradeModal } from '@/components/premium';
 import { setActivePalette, PaletteId, PieceType } from '@/lib/chess/pieceColors';
+import { buildShareUrl, decodeShareState, ShareableState } from '@/lib/visualizations/shareStateEncoding';
 
 interface VisualizationData {
   id: string;
@@ -44,6 +45,7 @@ interface VisualizationData {
 
 const VisualizationView = () => {
   const { shareId } = useParams<{ shareId: string }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user, isPremium } = useAuth();
   const { setOrderData } = usePrintOrderStore();
@@ -63,6 +65,12 @@ const VisualizationView = () => {
   const [showVisionaryModal, setShowVisionaryModal] = useState(false);
   const [visionScore, setVisionScore] = useState<VisionScore | null>(null);
   const viewRecordedRef = useRef(false);
+  
+  // Decode initial state from URL
+  const initialState = useMemo(() => {
+    const encoded = searchParams.get('s');
+    return decodeShareState(encoded);
+  }, [searchParams]);
   
   // Export hook for HD/GIF downloads
   const { 
@@ -147,8 +155,21 @@ const VisualizationView = () => {
     fetchVisualization();
   }, [shareId]);
 
-  const handleShare = async () => {
-    const url = window.location.href;
+  const handleShare = useCallback(async (exportState?: ExportState) => {
+    const baseUrl = `${window.location.origin}/v/${shareId}`;
+    
+    // Build stateful share URL
+    const shareableState: ShareableState = exportState ? {
+      move: exportState.currentMove > 0 ? exportState.currentMove : undefined,
+      dark: exportState.darkMode || undefined,
+      pieces: exportState.showPieces || undefined,
+      opacity: exportState.pieceOpacity !== 0.7 ? exportState.pieceOpacity : undefined,
+      locked: exportState.lockedPieces?.length > 0 
+        ? exportState.lockedPieces.map(p => ({ type: p.pieceType, color: p.pieceColor }))
+        : undefined,
+    } : {};
+    
+    const url = buildShareUrl(baseUrl, shareableState);
     
     if (navigator.share) {
       try {
@@ -164,7 +185,7 @@ const VisualizationView = () => {
       await navigator.clipboard.writeText(url);
       toast.success('Link copied to clipboard!');
     }
-  };
+  }, [shareId, visualization?.title]);
 
   // Reconstruct board and game data
   const { board, gameData, totalMoves, paletteId } = useMemo(() => {

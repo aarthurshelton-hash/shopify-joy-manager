@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Chess, Square } from 'chess.js';
+import { Chess, Square, Move } from 'chess.js';
 import { SquareData, SquareVisit } from '@/lib/chess/gameSimulator';
 import { boardColors, getPieceColor, PieceType, PieceColor } from '@/lib/chess/pieceColors';
 import { useLegendHighlight, HighlightedPiece, HoveredSquareInfo, AnnotationType, PieceMoveArrow } from '@/contexts/LegendHighlightContext';
@@ -300,6 +300,56 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
   const borderWidth = size * 0.02;
   const totalSize = size + borderWidth * 2;
 
+  // Helper to try multiple PGN parsing strategies
+  const parsePgn = useCallback((rawPgn: string): { success: boolean; moves: Move[] } => {
+    const chess = new Chess();
+    
+    // Strategy 1: Try loading full PGN as-is
+    try {
+      chess.loadPgn(rawPgn);
+      const moves = chess.history({ verbose: true }) as Move[];
+      if (moves.length > 0) {
+        return { success: true, moves };
+      }
+    } catch {}
+    
+    // Strategy 2: Remove headers and try again
+    chess.reset();
+    const withoutHeaders = rawPgn.replace(/\[.*?\]\s*/g, '').trim();
+    if (withoutHeaders) {
+      try {
+        chess.loadPgn(withoutHeaders);
+        const moves = chess.history({ verbose: true }) as Move[];
+        if (moves.length > 0) {
+          return { success: true, moves };
+        }
+      } catch {}
+    }
+    
+    // Strategy 3: Parse moves manually (e.g., "1. e4 e5 2. Nf3 Nc6")
+    chess.reset();
+    const moveTextMatch = rawPgn.match(/(\d+\.\s*\S+(?:\s+\S+)?)/g);
+    if (moveTextMatch) {
+      try {
+        for (const moveGroup of moveTextMatch) {
+          // Extract just the moves without move numbers
+          const individualMoves = moveGroup.replace(/\d+\.\s*/, '').trim().split(/\s+/);
+          for (const m of individualMoves) {
+            if (m && m !== '*' && !m.match(/^[012/-]+$/)) {
+              chess.move(m);
+            }
+          }
+        }
+        const parsedMoves = chess.history({ verbose: true }) as Move[];
+        if (parsedMoves.length > 0) {
+          return { success: true, moves: parsedMoves };
+        }
+      } catch {}
+    }
+    
+    return { success: false, moves: [] };
+  }, []);
+
   // Calculate tracked pieces with unique IDs for animation
   const trackedPieces = useMemo((): TrackedPiece[] => {
     // Early return if pieces shouldn't be shown
@@ -316,32 +366,10 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
     }
     
     try {
-      // First load the PGN to get all moves with verbose info
-      const fullGame = new Chess();
+      // Use robust PGN parser
+      const { success, moves: allMovesVerbose } = parsePgn(trimmedPgn);
       
-      // Try to load PGN - chess.js loadPgn throws on invalid PGN in newer versions
-      try {
-        fullGame.loadPgn(trimmedPgn);
-      } catch (pgnError) {
-        // Try loading as move text without headers
-        const cleanMoves = trimmedPgn.replace(/\[.*?\]/g, '').trim();
-        if (cleanMoves) {
-          try {
-            fullGame.loadPgn(cleanMoves);
-          } catch {
-            console.warn('Failed to parse PGN for piece tracking');
-            return [];
-          }
-        } else {
-          return [];
-        }
-      }
-      
-      const allMovesVerbose = fullGame.history({ verbose: true });
-      
-      // If no moves were parsed, return empty
-      if (allMovesVerbose.length === 0) {
-        // This is not necessarily an error - could be starting position only
+      if (!success || allMovesVerbose.length === 0) {
         return [];
       }
       
