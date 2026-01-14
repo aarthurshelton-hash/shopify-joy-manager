@@ -239,7 +239,7 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
   // Try to use highlight context if available
   let highlightedPieces: HighlightedPiece[] = [];
   let compareMode = false;
-  let setHoveredSquare: ((info: { square: string; pieces: HighlightedPiece[] } | null) => void) | null = null;
+  let setHoveredSquare: ((info: { square: string; pieces: HighlightedPiece[]; moveNumbers: number[] } | null) => void) | null = null;
   let setHighlightedAnnotations: ((annotations: ('white-player' | 'black-player')[]) => void) | null = null;
   let hoveredAnnotation: { type: string; associatedPieces?: HighlightedPiece[] } | null = null;
   
@@ -283,6 +283,17 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
     return pieces;
   }, []);
 
+  // Get all move numbers associated with a square's visits
+  const getMoveNumbersForSquare = useCallback((square: SquareData): number[] => {
+    const moveNumbers: number[] = [];
+    for (const visit of square.visits) {
+      if (!moveNumbers.includes(visit.moveNumber)) {
+        moveNumbers.push(visit.moveNumber);
+      }
+    }
+    return moveNumbers.sort((a, b) => a - b);
+  }, []);
+
   const handleSquareHover = useCallback((rank: number, file: number) => {
     const square = board[rank][file];
     const squareName = `${String.fromCharCode(97 + file)}${rank + 1}`;
@@ -290,9 +301,10 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
     
     if (square.visits.length > 0) {
       const pieces = getPiecesForSquare(square);
+      const moveNumbers = getMoveNumbersForSquare(square);
       
       if (setHoveredSquare) {
-        setHoveredSquare({ square: squareName, pieces });
+        setHoveredSquare({ square: squareName, pieces, moveNumbers });
       }
       
       // Also update annotation highlighting based on pieces on this square
@@ -303,7 +315,7 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
         setHighlightedAnnotations(annotations);
       }
     }
-  }, [board, setHoveredSquare, setHighlightedAnnotations, getPiecesForSquare]);
+  }, [board, setHoveredSquare, setHighlightedAnnotations, getPiecesForSquare, getMoveNumbersForSquare]);
 
   const handleSquareLeave = useCallback(() => {
     setHoveredSquareLocal(null);

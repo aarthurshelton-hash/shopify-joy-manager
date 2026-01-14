@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { GameData, formatMoves } from '@/lib/chess/gameSimulator';
 import { useLegendHighlight, AnnotationType, HighlightedPiece } from '@/contexts/LegendHighlightContext';
 import { PieceType, PieceColor } from '@/lib/chess/pieceColors';
@@ -67,8 +67,6 @@ const InteractiveGameInfoDisplay: React.FC<InteractiveGameInfoDisplayProps> = ({
   title, 
   darkMode = false 
 }) => {
-  const formattedMoves = formatMoves(gameData.moves);
-  
   // Try to use highlight context if available
   let highlightContext: ReturnType<typeof useLegendHighlight> | null = null;
   try {
@@ -81,15 +79,25 @@ const InteractiveGameInfoDisplay: React.FC<InteractiveGameInfoDisplayProps> = ({
     lockedPieces = [],
     highlightedAnnotations = [],
     hoveredAnnotation = null,
+    hoveredSquare = null,
     setHoveredAnnotation,
     highlightedPiece,
   } = highlightContext || {
     lockedPieces: [],
     highlightedAnnotations: [],
     hoveredAnnotation: null,
+    hoveredSquare: null,
     setHoveredAnnotation: () => {},
     highlightedPiece: null,
   };
+
+  // Get highlighted move numbers from hovered square
+  const highlightedMoveNumbers = useMemo(() => {
+    if (hoveredSquare?.moveNumbers && hoveredSquare.moveNumbers.length > 0) {
+      return new Set(hoveredSquare.moveNumbers);
+    }
+    return null;
+  }, [hoveredSquare]);
 
   // Determine if annotation should be highlighted
   const isAnnotationHighlighted = (type: AnnotationType): boolean => {
@@ -189,6 +197,62 @@ const InteractiveGameInfoDisplay: React.FC<InteractiveGameInfoDisplayProps> = ({
     
     return style;
   };
+
+  // Render individual moves with highlighting based on hovered square
+  const renderMovesWithHighlighting = useMemo(() => {
+    const moves = gameData.moves;
+    if (!moves || moves.length === 0) return null;
+
+    const elements: React.ReactNode[] = [];
+    
+    for (let i = 0; i < moves.length; i++) {
+      const moveNumber = i + 1; // 1-indexed move number
+      const isWhiteMove = i % 2 === 0;
+      const displayMoveNumber = Math.floor(i / 2) + 1;
+      
+      // Check if this move should be highlighted
+      const isHighlighted = highlightedMoveNumbers?.has(moveNumber) ?? false;
+      
+      // Add move number for white moves
+      if (isWhiteMove) {
+        elements.push(
+          <span key={`num-${i}`} className="text-muted-foreground/60">
+            {displayMoveNumber}.{' '}
+          </span>
+        );
+      }
+      
+      // Add the move with potential highlighting
+      const moveStyle: React.CSSProperties = isHighlighted
+        ? {
+            backgroundColor: 'rgba(251, 191, 36, 0.3)',
+            borderRadius: '2px',
+            padding: '0 2px',
+            fontWeight: 600,
+            color: darkMode ? '#fbbf24' : '#d97706',
+            boxShadow: '0 0 4px rgba(251, 191, 36, 0.4)',
+          }
+        : {};
+      
+      elements.push(
+        <span 
+          key={`move-${i}`} 
+          style={moveStyle}
+          title={isHighlighted ? `Move ${moveNumber}: ${moves[i]}` : undefined}
+        >
+          {moves[i]}
+        </span>
+      );
+      
+      // Add space after move
+      elements.push(<span key={`space-${i}`}> </span>);
+    }
+    
+    return elements;
+  }, [gameData.moves, highlightedMoveNumbers, darkMode]);
+
+  // Determine if there are highlighted moves (for summary display)
+  const hasHighlightedMoves = highlightedMoveNumbers && highlightedMoveNumbers.size > 0;
   
   return (
     <div className="text-center max-w-md mx-auto space-y-3">
@@ -235,18 +299,30 @@ const InteractiveGameInfoDisplay: React.FC<InteractiveGameInfoDisplayProps> = ({
         {title && <span className={dotText}>•</span>}
         <span>{formatDate(gameData.date)}</span>
       </p>
+
+      {/* Square hover summary - shows which moves are highlighted */}
+      {hasHighlightedMoves && hoveredSquare && (
+        <div 
+          className="text-xs px-3 py-1.5 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 inline-flex items-center gap-1"
+          style={{ fontFamily: "'Inter', sans-serif" }}
+        >
+          <span className="font-medium">{hoveredSquare.square.toUpperCase()}</span>
+          <span className="opacity-70">•</span>
+          <span>{highlightedMoveNumbers!.size} move{highlightedMoveNumbers!.size !== 1 ? 's' : ''}</span>
+        </div>
+      )}
       
-      {/* Move Notation - Classic Times New Roman */}
+      {/* Move Notation - Classic Times New Roman with individual move highlighting */}
       <div 
         className={`leading-relaxed px-2 text-[8px] ${mutedText}`}
         style={{ 
           fontFamily: "'Times New Roman', Times, serif",
-          ...getAnnotationStyle('move-notation'),
+          ...(!hasHighlightedMoves ? getAnnotationStyle('move-notation') : {}),
         }}
-        onMouseEnter={() => handleAnnotationHover('move-notation')}
+        onMouseEnter={() => !hasHighlightedMoves && handleAnnotationHover('move-notation')}
         onMouseLeave={handleAnnotationLeave}
       >
-        {formattedMoves}
+        {renderMovesWithHighlighting}
       </div>
     </div>
   );
