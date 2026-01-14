@@ -946,11 +946,15 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
     const palette = colorPalettes.find(p => p.id === activePalette);
     return palette ? { id: activePalette as PaletteId, name: palette.name } : null;
   }, [localPaletteId]);
+
+  // Memoize the actual PGN to use consistently throughout the component
+  const effectivePgn = useMemo(() => {
+    return pgn || localGameData.pgn || gameData.pgn || '';
+  }, [pgn, localGameData.pgn, gameData.pgn]);
   
   // Seamless palette switch handler
   const handleSeamlessPaletteSwitch = useCallback(async (info: PaletteAvailabilityInfo) => {
-    const pgnToUse = pgn || localGameData.pgn;
-    if (!pgnToUse) return;
+    if (!effectivePgn) return;
     
     setIsSwitchingPalette(true);
     
@@ -1009,7 +1013,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
         toast.success(`Switched to ${info.ownerDisplayName}'s ${colorPalettes.find(p => p.id === info.paletteId)?.name || 'palette'} colorway`);
       } else {
         // Regenerate board from PGN with new palette colors
-        const simResult = simulateGame(pgnToUse);
+        const simResult = simulateGame(effectivePgn);
         
         // Re-apply colors based on new palette
         const updatedBoard = simResult.board.map(rank =>
@@ -1042,17 +1046,8 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
     } finally {
       setIsSwitchingPalette(false);
     }
-  }, [pgn, localGameData.pgn, user?.id, onPaletteChange]);
+  }, [effectivePgn, user?.id, onPaletteChange]);
   
-  // Detect game card match from PGN
-  useEffect(() => {
-    const pgnToCheck = pgn || gameData.pgn;
-    if (pgnToCheck) {
-      const match = detectGameCard(pgnToCheck);
-      setGameCardMatch(match);
-    }
-  }, [pgn, gameData.pgn]);
-
   // Calculate responsive board size - maximize screen utilization
   // Ensures timeline + board + legend all fit within viewport without cutoffs
   useEffect(() => {
@@ -1115,17 +1110,26 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
     }
   }, [visualizationId, visionScoreData]);
 
-  // Analyze game
+
+  // Analyze game - use effectivePgn for consistency
   useEffect(() => {
-    if (gameData.pgn || pgn) {
+    if (effectivePgn) {
       try {
-        const analysis = analyzeGame(gameData.pgn || pgn || '');
+        const analysis = analyzeGame(effectivePgn);
         setGameAnalysis(analysis);
       } catch {
         setGameAnalysis(null);
       }
     }
-  }, [gameData.pgn, pgn]);
+  }, [effectivePgn]);
+
+  // Detect game card match from PGN
+  useEffect(() => {
+    if (effectivePgn) {
+      const match = detectGameCard(effectivePgn);
+      setGameCardMatch(match);
+    }
+  }, [effectivePgn]);
 
   // Restore palette if provided
   useEffect(() => {
@@ -1249,7 +1253,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                   showCoordinates={showCoordinates}
                   showPieces={showPieces}
                   pieceOpacity={pieceOpacity}
-                  pgn={pgn || localGameData.pgn}
+                  pgn={effectivePgn}
                 />
               </div>
 
@@ -1398,7 +1402,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                       <VerticalTimelineSlider 
                         totalMoves={localTotalMoves} 
                         moves={localGameData.moves}
-                        pgn={pgn || localGameData.pgn}
+                        pgn={effectivePgn}
                       />
                     </div>
 
@@ -1419,7 +1423,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                         showCoordinates={showCoordinates}
                         showPieces={showPieces}
                         pieceOpacity={pieceOpacity}
-                        pgn={pgn || localGameData.pgn}
+                        pgn={effectivePgn}
                       />
                     </div>
 
@@ -1511,9 +1515,9 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                   )}
 
                   {/* Palette Availability - Seamless switching */}
-                  {(pgn || localGameData.pgn) && (
+                  {effectivePgn && (
                     <PaletteAvailabilityIndicator
-                      pgn={pgn || localGameData.pgn}
+                      pgn={effectivePgn}
                       currentUserId={user?.id}
                       currentPaletteId={currentPaletteInfo?.id}
                       context={context}
@@ -1727,7 +1731,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                   totalMoves={localTotalMoves}
                   createdAt={createdAt}
                   gameAnalysis={gameAnalysis}
-                  pgn={pgn || localGameData.pgn}
+                  pgn={effectivePgn}
                 />
 
                 {/* Marketplace Info - Show for all contexts when listed */}
