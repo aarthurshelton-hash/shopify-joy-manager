@@ -43,8 +43,8 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { SquareData, GameData, SimulationResult, simulateGame } from '@/lib/chess/gameSimulator';
-import { TimelineProvider, useTimeline } from '@/contexts/TimelineContext';
-import { LegendHighlightProvider, useLegendHighlight } from '@/contexts/LegendHighlightContext';
+import { TimelineProvider, useTimeline, GamePhase } from '@/contexts/TimelineContext';
+import { LegendHighlightProvider, useLegendHighlight, HighlightedPiece } from '@/contexts/LegendHighlightContext';
 import InteractiveVisualizationBoard from './InteractiveVisualizationBoard';
 import { EnhancedLegend } from './EnhancedLegend';
 import GameInfoDisplay from './GameInfoDisplay';
@@ -58,7 +58,7 @@ import IntrinsicPaletteCard from './IntrinsicPaletteCard';
 import ChessBoardVisualization from './ChessBoardVisualization';
 import { VisionScore, getVisionScore, calculateVisionValue, calculateMembershipMultiplier, SCORING_WEIGHTS } from '@/lib/visualizations/visionScoring';
 import { analyzeGame, GameAnalysis } from '@/lib/chess/chessAnalysis';
-import { setActivePalette, PaletteId, getActivePalette, getCurrentPalette, colorPalettes, getPieceColor } from '@/lib/chess/pieceColors';
+import { setActivePalette, PaletteId, getActivePalette, getCurrentPalette, colorPalettes, getPieceColor, PieceType, PieceColor } from '@/lib/chess/pieceColors';
 import { detectGameCard, GameCardMatch } from '@/lib/chess/gameCardDetection';
 import { format } from 'date-fns';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
@@ -114,13 +114,17 @@ export interface UnifiedVisionExperienceProps {
   onSaveToGallery?: () => Promise<string | null>;
   onPaletteChange?: () => void;
   
-  // Initial state from shared URL
+  // Initial state from shared URL or session restoration
   initialState?: {
     move?: number;
     dark?: boolean;
     pieces?: boolean;
     opacity?: number;
     locked?: Array<{ type: string; color: string }>;
+    compare?: boolean;
+    territory?: boolean;
+    heatmaps?: boolean;
+    phase?: 'all' | 'opening' | 'middlegame' | 'endgame';
   };
   
   // Premium gating
@@ -1019,16 +1023,24 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
   const [gameCardMatch, setGameCardMatch] = useState<GameCardMatch | null>(null);
   const [showPoetryModal, setShowPoetryModal] = useState(false);
   
-  // Board display options
+  // Board display options - initialize from initialState if provided
   const [showCoordinates, setShowCoordinates] = useState(true);
-  const [showHeatmap, setShowHeatmap] = useState(false);
-  const [showPieces, setShowPieces] = useState(false);
-  const [pieceOpacity, setPieceOpacity] = useState(0.7);
+  const [showHeatmap, setShowHeatmap] = useState(initialState?.heatmaps ?? false);
+  const [showPieces, setShowPieces] = useState(initialState?.pieces ?? false);
+  const [pieceOpacity, setPieceOpacity] = useState(initialState?.opacity ?? 0.7);
   const [boardSize, setBoardSize] = useState(400);
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(initialState?.dark ?? false);
   const [showLegend, setShowLegend] = useState(true);
   const [mobileLegendExpanded, setMobileLegendExpanded] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  
+  // Initial move position for TimelineProvider
+  const initialMove = useMemo(() => {
+    if (initialState?.move !== undefined && initialState.move > 0) {
+      return Math.min(initialState.move, totalMoves);
+    }
+    return totalMoves; // Default to showing all moves
+  }, [initialState?.move, totalMoves]);
   
   const containerRef = useRef<HTMLDivElement>(null);
   const fullscreenRef = useRef<HTMLDivElement>(null);
@@ -1355,9 +1367,24 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
   // All contexts now share unified action buttons
   // No more context-specific flags needed
 
+  // Transform locked pieces from initialState format to provider format
+  const initialLockedPieces = useMemo((): HighlightedPiece[] | undefined => {
+    if (!initialState?.locked?.length) return undefined;
+    return initialState.locked.map(l => ({
+      pieceType: l.type as PieceType,
+      pieceColor: l.color as PieceColor,
+    }));
+  }, [initialState?.locked]);
+
   return (
-    <TimelineProvider>
-      <LegendHighlightProvider>
+    <TimelineProvider 
+      initialMove={initialMove} 
+      initialPhase={initialState?.phase as GamePhase | undefined}
+    >
+      <LegendHighlightProvider
+        initialLockedPieces={initialLockedPieces}
+        initialCompareMode={initialState?.compare}
+      >
         {/* Fullscreen Overlay */}
         <AnimatePresence>
           {isFullscreen && (
