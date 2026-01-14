@@ -1870,7 +1870,15 @@ export type Database = {
         Returns: number
       }
       get_user_offense_count: { Args: { p_user_id: string }; Returns: number }
+      get_user_portfolio_economics: {
+        Args: { p_user_id: string }
+        Returns: Json
+      }
       get_user_streak: { Args: { p_user_id: string }; Returns: Json }
+      get_vision_economics: {
+        Args: { p_visualization_id: string }
+        Returns: Json
+      }
       get_withdrawable_balance: { Args: { p_user_id: string }; Returns: number }
       has_role: {
         Args: {
@@ -1904,6 +1912,18 @@ export type Database = {
         }
         Returns: boolean
       }
+      record_marketplace_economics: {
+        Args: {
+          p_buyer_id: string
+          p_game_id?: string
+          p_listing_id: string
+          p_palette_id?: string
+          p_sale_price_cents: number
+          p_seller_id: string
+          p_visualization_id: string
+        }
+        Returns: Json
+      }
       record_order_with_distribution: {
         Args: {
           p_fulfillment_costs_cents: number
@@ -1917,6 +1937,20 @@ export type Database = {
           p_visualization_id?: string
         }
         Returns: string
+      }
+      record_print_order_economics: {
+        Args: {
+          p_fulfillment_costs_cents: number
+          p_game_id?: string
+          p_gross_revenue_cents: number
+          p_order_reference: string
+          p_palette_id?: string
+          p_platform_fees_cents: number
+          p_shipping_costs_cents?: number
+          p_user_id: string
+          p_visualization_id: string
+        }
+        Returns: Json
       }
       record_vision_interaction: {
         Args: {

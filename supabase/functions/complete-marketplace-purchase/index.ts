@@ -157,6 +157,36 @@ serve(async (req) => {
       p_ip_hash: null,
     });
 
+    // Get game and palette info for economics
+    const { data: vizData } = await supabaseClient
+      .from('saved_visualizations')
+      .select('game_data')
+      .eq('id', listing.visualization_id)
+      .single();
+
+    const gameId = vizData?.game_data?.id as string || null;
+    const paletteId = vizData?.game_data?.palette?.id as string || null;
+
+    // Record marketplace economics (profit distribution)
+    const { data: economicsResult, error: economicsError } = await supabaseClient.rpc(
+      'record_marketplace_economics',
+      {
+        p_listing_id: listingId,
+        p_visualization_id: listing.visualization_id,
+        p_seller_id: listing.seller_id,
+        p_buyer_id: user.id,
+        p_sale_price_cents: priceCents,
+        p_game_id: gameId,
+        p_palette_id: paletteId,
+      }
+    );
+
+    if (economicsError) {
+      logStep("Warning: Failed to record economics", { error: economicsError.message });
+    } else {
+      logStep("Marketplace economics recorded", economicsResult);
+    }
+
     logStep("Trade interaction recorded", { visualizationId: listing.visualization_id, priceCents });
     logStep("Transfer completed successfully");
 
