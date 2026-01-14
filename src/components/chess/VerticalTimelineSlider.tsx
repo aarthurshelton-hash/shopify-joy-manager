@@ -210,7 +210,7 @@ const VerticalTimelineSlider: React.FC<VerticalTimelineSliderProps> = ({ totalMo
 
   return (
     <TooltipProvider>
-      <div className="bg-card/80 backdrop-blur-sm rounded-lg border border-border/50 p-3 h-full flex flex-col w-[140px] min-w-[140px]">
+      <div className="bg-card/80 backdrop-blur-sm rounded-lg border border-border/50 p-3 h-full flex flex-col w-[120px] min-w-[120px]">
         {/* Header */}
         <div className="flex flex-col items-center gap-2 pb-3 border-b border-border/30">
           <div className="flex items-center gap-2">
