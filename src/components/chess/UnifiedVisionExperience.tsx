@@ -948,9 +948,23 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
   }, [localPaletteId]);
 
   // Memoize the actual PGN to use consistently throughout the component
+  // Check multiple sources in priority order to ensure we find valid PGN
   const effectivePgn = useMemo(() => {
-    return pgn || localGameData.pgn || gameData.pgn || '';
-  }, [pgn, localGameData.pgn, gameData.pgn]);
+    // Priority: prop pgn > localGameData.pgn > gameData.pgn
+    const sources = [
+      pgn,
+      localGameData?.pgn,
+      gameData?.pgn,
+    ];
+    
+    for (const source of sources) {
+      if (source && typeof source === 'string' && source.trim().length > 0) {
+        return source;
+      }
+    }
+    
+    return '';
+  }, [pgn, localGameData?.pgn, gameData?.pgn]);
   
   // Seamless palette switch handler
   const handleSeamlessPaletteSwitch = useCallback(async (info: PaletteAvailabilityInfo) => {
@@ -1112,16 +1126,24 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
 
 
   // Analyze game - use effectivePgn for consistency
+  // This runs for ALL contexts when valid PGN is available
   useEffect(() => {
-    if (effectivePgn && effectivePgn.trim()) {
-      try {
-        const analysis = analyzeGame(effectivePgn);
-        setGameAnalysis(analysis);
-      } catch (e) {
-        console.warn('Failed to analyze game:', e);
-        setGameAnalysis(null);
-      }
-    } else {
+    if (!effectivePgn) {
+      setGameAnalysis(null);
+      return;
+    }
+    
+    const trimmedPgn = effectivePgn.trim();
+    if (!trimmedPgn) {
+      setGameAnalysis(null);
+      return;
+    }
+    
+    try {
+      const analysis = analyzeGame(trimmedPgn);
+      setGameAnalysis(analysis);
+    } catch (e) {
+      console.warn('Failed to analyze game:', e);
       setGameAnalysis(null);
     }
   }, [effectivePgn]);
