@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
+import { Chess } from 'chess.js';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -1158,6 +1159,52 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
     return '';
   }, [pgn, localGameData?.pgn, gameData?.pgn]);
   
+  // Extract moves from PGN when gameData.moves is empty - ensures timeline analysis works
+  const effectiveMoves = useMemo((): string[] => {
+    // First try existing moves array
+    const existingMoves = localGameData?.moves || gameData?.moves;
+    if (existingMoves && existingMoves.length > 0) {
+      return existingMoves;
+    }
+    
+    // If no moves array, extract from PGN
+    if (!effectivePgn) return [];
+    
+    try {
+      const chess = new Chess();
+      chess.loadPgn(effectivePgn);
+      return chess.history();
+    } catch {
+      // Try manual extraction
+      try {
+        const chess = new Chess();
+        const movesSection = effectivePgn.replace(/\[[^\]]*\]/g, '').trim();
+        const moveTokens = movesSection
+          .replace(/\{[^}]*\}/g, '')
+          .replace(/\([^)]*\)/g, '')
+          .replace(/\$\d+/g, '')
+          .replace(/1-0|0-1|1\/2-1\/2|\*/g, '')
+          .split(/\s+/)
+          .filter(token => token && !token.match(/^\d+\.+$/) && token !== '...');
+        
+        const parsedMoves: string[] = [];
+        for (const token of moveTokens) {
+          try {
+            const fixedMove = token
+              .replace(/0-0-0/gi, 'O-O-O')
+              .replace(/0-0/gi, 'O-O')
+              .replace(/[+#!?]+$/, '');
+            const result = chess.move(fixedMove);
+            if (result) parsedMoves.push(result.san);
+          } catch {}
+        }
+        return parsedMoves;
+      } catch {
+        return [];
+      }
+    }
+  }, [localGameData?.moves, gameData?.moves, effectivePgn]);
+  
   // Seamless palette switch handler - updates board in-place AND updates URL
   const handleSeamlessPaletteSwitch = useCallback(async (info: PaletteAvailabilityInfo) => {
     if (!effectivePgn) return;
@@ -1345,6 +1392,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
   // This runs for ALL contexts when valid PGN is available
   useEffect(() => {
     if (!effectivePgn) {
+      console.log('[UnifiedVisionExperience] No PGN available for analysis');
       setGameAnalysis(null);
       return;
     }
@@ -1355,14 +1403,22 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
       return;
     }
     
+    console.log('[UnifiedVisionExperience] Analyzing game, PGN length:', trimmedPgn.length, 'moves:', effectiveMoves.length);
+    
     try {
       const analysis = analyzeGame(trimmedPgn);
+      console.log('[UnifiedVisionExperience] Analysis result:', {
+        opening: analysis?.opening?.name,
+        tacticsCount: analysis?.tactics?.length,
+        specialMoves: analysis?.specialMoves?.length,
+        summary: analysis?.summary?.complexity
+      });
       setGameAnalysis(analysis);
     } catch (e) {
-      console.warn('Failed to analyze game:', e);
+      console.error('[UnifiedVisionExperience] Failed to analyze game:', e);
       setGameAnalysis(null);
     }
-  }, [effectivePgn]);
+  }, [effectivePgn, effectiveMoves.length]);
 
   // Detect game card match from PGN
   useEffect(() => {
@@ -1714,7 +1770,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                     <div className="hidden xl:flex flex-shrink-0" style={{ minWidth: '160px', width: '160px' }}>
                       <VerticalTimelineSlider 
                         totalMoves={localTotalMoves} 
-                        moves={localGameData.moves}
+                        moves={effectiveMoves}
                         pgn={effectivePgn}
                       />
                     </div>
@@ -1762,8 +1818,8 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                   {/* Mobile/Tablet Timeline Controls (shown on smaller screens) */}
                   <div className="xl:hidden">
                     <TimelineControls 
-                      totalMoves={totalMoves} 
-                      moves={gameData.moves}
+                      totalMoves={localTotalMoves} 
+                      moves={effectiveMoves}
                     />
                   </div>
 
