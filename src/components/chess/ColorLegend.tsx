@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { getPieceColorLegend, getActivePalette, PieceType, PieceColor } from '@/lib/chess/pieceColors';
 import { useLegendHighlight } from '@/contexts/LegendHighlightContext';
 import { SquareData } from '@/lib/chess/gameSimulator';
-import { GitCompare, X, Swords, Grid3X3 } from 'lucide-react';
+import { GitCompare, X, Swords, Grid3X3, Flame } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
@@ -144,6 +144,7 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board }) 
   const theme = palette.legendTheme;
   const [showBattleAnalysis, setShowBattleAnalysis] = useState(false);
   const [showHeatmaps, setShowHeatmaps] = useState(false);
+  const [showFullHeatmap, setShowFullHeatmap] = useState(false);
   
   // Try to use highlight context if available (wrapped in provider)
   let highlightContext: ReturnType<typeof useLegendHighlight> | null = null;
@@ -489,6 +490,9 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board }) 
     const fromSquare = isHighlightedFromSquare(item.piece, item.color);
     const fromAnnotation = isHighlightedFromAnnotation(item.piece, item.color);
     const dimmed = shouldDim(item.piece, item.color);
+    
+    // Enhanced visual state for square hover
+    const isActivelyHighlighted = fromSquare || fromAnnotation;
 
     return (
       <div 
@@ -497,9 +501,9 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board }) 
           interactive && highlightContext ? 'cursor-pointer hover:bg-accent/50' : ''
         } ${highlighted ? 'bg-accent ring-2 ring-primary/50' : ''} ${
           locked ? (lockedIndex === 0 ? 'bg-sky-500/20 ring-2 ring-sky-500' : 'bg-rose-500/20 ring-2 ring-rose-500') : ''
-        } ${fromSquare ? 'bg-amber-400/20 ring-2 ring-amber-400 scale-[1.02]' : ''} ${
-          fromAnnotation ? 'bg-purple-400/20 ring-2 ring-purple-400 scale-[1.02]' : ''
-        }`}
+        } ${fromSquare ? 'bg-amber-400/30 ring-2 ring-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.4)]' : ''} ${
+          fromAnnotation ? 'bg-purple-400/30 ring-2 ring-purple-400 shadow-[0_0_12px_rgba(192,132,252,0.4)]' : ''
+        } ${isActivelyHighlighted ? 'scale-[1.03] z-10' : ''}`}
         style={{
           opacity: dimmed ? 0.2 : 1,
           transition: 'opacity 0.2s ease-out',
@@ -518,9 +522,9 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board }) 
         )}
         
         <div
-          className={`w-5 h-5 rounded shadow-sm transition-transform duration-200 shrink-0 ${
+          className={`w-5 h-5 rounded shadow-sm transition-all duration-200 shrink-0 ${
             highlighted || locked ? 'scale-125 ring-2 ring-white/50' : ''
-          }`}
+          } ${isActivelyHighlighted ? 'scale-110 ring-2 ring-amber-300/80 animate-pulse' : ''}`}
           style={{ backgroundColor: item.hex }}
         />
         <span className="text-lg shrink-0">{item.symbol}</span>
@@ -544,6 +548,121 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board }) 
             <span className="text-muted-foreground">{stats.squareCount} sq</span>
           </div>
         )}
+      </div>
+    );
+  };
+
+  // Full heatmap panel showing all pieces at once
+  const renderFullHeatmapPanel = () => {
+    if (!board) return null;
+    
+    const pieceTypes: PieceType[] = ['k', 'q', 'r', 'b', 'n', 'p'];
+    const pieceNames: Record<PieceType, string> = {
+      k: 'King', q: 'Queen', r: 'Rook', b: 'Bishop', n: 'Knight', p: 'Pawn'
+    };
+    
+    const renderHeatmapSquare = (heatmap: PieceHeatmap, color: string, size: number) => (
+      <div 
+        className="rounded overflow-hidden border border-border/40 shadow-inner"
+        style={{ width: size, height: size }}
+      >
+        <svg width={size} height={size} viewBox="0 0 8 8">
+          {/* Board pattern */}
+          {Array.from({ length: 8 }).map((_, rankIdx) =>
+            Array.from({ length: 8 }).map((_, fileIdx) => (
+              <rect
+                key={`bg-${rankIdx}-${fileIdx}`}
+                x={fileIdx}
+                y={rankIdx}
+                width={1}
+                height={1}
+                fill={(rankIdx + fileIdx) % 2 === 0 ? 'hsl(var(--muted))' : 'hsl(var(--border))'}
+                opacity={0.3}
+              />
+            ))
+          )}
+          {/* Heatmap overlay */}
+          {heatmap.grid.map((rank, rankIdx) =>
+            rank.map((visits, fileIdx) => {
+              const intensity = heatmap.maxVisits > 0 ? visits / heatmap.maxVisits : 0;
+              return visits > 0 ? (
+                <rect
+                  key={`heat-${rankIdx}-${fileIdx}`}
+                  x={fileIdx}
+                  y={rankIdx}
+                  width={1}
+                  height={1}
+                  fill={color}
+                  opacity={intensity * 0.85 + 0.15}
+                />
+              ) : null;
+            })
+          )}
+        </svg>
+      </div>
+    );
+
+    return (
+      <div className="space-y-4 animate-fade-in">
+        {/* White pieces heatmaps */}
+        <div>
+          <div className="flex items-center gap-2 pb-2 border-b border-border/50 mb-3">
+            <span className="text-[9px] font-sans font-medium text-sky-400 uppercase tracking-wider">
+              {theme.whiteEmoji} {theme.whiteName} Territory
+            </span>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {pieceTypes.map(pt => {
+              const heatmap = pieceHeatmaps.get(`w-${pt}`);
+              const legendItem = legend.find(l => l.piece === pt && l.color === 'w');
+              if (!heatmap || !legendItem) return null;
+              return (
+                <div key={`w-${pt}`} className="flex flex-col items-center gap-1">
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm">{legendItem.symbol}</span>
+                    <span className="text-[9px] text-muted-foreground">{pieceNames[pt]}</span>
+                  </div>
+                  {renderHeatmapSquare(heatmap, legendItem.hex, 56)}
+                  <span className="text-[9px] text-muted-foreground">
+                    {pieceStats.get(`w-${pt}`)?.percentage || 0}%
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        
+        {/* Black pieces heatmaps */}
+        <div>
+          <div className="flex items-center gap-2 pb-2 border-b border-border/50 mb-3">
+            <span className="text-[9px] font-sans font-medium text-rose-400 uppercase tracking-wider">
+              {theme.blackEmoji} {theme.blackName} Territory
+            </span>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {pieceTypes.map(pt => {
+              const heatmap = pieceHeatmaps.get(`b-${pt}`);
+              const legendItem = legend.find(l => l.piece === pt && l.color === 'b');
+              if (!heatmap || !legendItem) return null;
+              return (
+                <div key={`b-${pt}`} className="flex flex-col items-center gap-1">
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm">{legendItem.symbol}</span>
+                    <span className="text-[9px] text-muted-foreground">{pieceNames[pt]}</span>
+                  </div>
+                  {renderHeatmapSquare(heatmap, legendItem.hex, 56)}
+                  <span className="text-[9px] text-muted-foreground">
+                    {pieceStats.get(`b-${pt}`)?.percentage || 0}%
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        
+        <p className="text-[9px] text-muted-foreground text-center">
+          Darker = more visits • Shows piece movement patterns
+        </p>
       </div>
     );
   };
@@ -668,17 +787,34 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board }) 
             Color Legend
           </h3>
           <div className="flex items-center gap-1">
-            {/* Heatmap toggle */}
-            {board && !showBattleAnalysis && (
+            {/* Mini heatmap toggle (inline) */}
+            {board && !showBattleAnalysis && !showFullHeatmap && (
               <Button
                 variant={showHeatmaps ? "default" : "ghost"}
                 size="sm"
                 onClick={() => setShowHeatmaps(!showHeatmaps)}
                 className={`h-6 px-2 text-[10px] gap-1 ${showHeatmaps ? 'bg-violet-500 hover:bg-violet-600' : ''}`}
-                title="Toggle mini heatmaps"
+                title="Toggle mini heatmaps inline"
               >
                 <Grid3X3 className="w-3 h-3" />
-                Maps
+                Mini
+              </Button>
+            )}
+            
+            {/* Full Heatmap panel toggle */}
+            {board && (
+              <Button
+                variant={showFullHeatmap ? "default" : "ghost"}
+                size="sm"
+                onClick={() => {
+                  setShowFullHeatmap(!showFullHeatmap);
+                  if (!showFullHeatmap) setShowBattleAnalysis(false);
+                }}
+                className={`h-6 px-2 text-[10px] gap-1 ${showFullHeatmap ? 'bg-emerald-500 hover:bg-emerald-600' : ''}`}
+                title="Show full heatmap panel"
+              >
+                <Flame className="w-3 h-3" />
+                Heatmap
               </Button>
             )}
             
@@ -687,7 +823,10 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board }) 
               <Button
                 variant={showBattleAnalysis ? "default" : "ghost"}
                 size="sm"
-                onClick={() => setShowBattleAnalysis(!showBattleAnalysis)}
+                onClick={() => {
+                  setShowBattleAnalysis(!showBattleAnalysis);
+                  if (!showBattleAnalysis) setShowFullHeatmap(false);
+                }}
                 className={`h-6 px-2 text-[10px] gap-1 ${showBattleAnalysis ? 'bg-amber-500 hover:bg-amber-600' : ''}`}
               >
                 <Swords className="w-3 h-3" />
@@ -721,9 +860,11 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board }) 
         </div>
       </div>
       
-      {/* Battle Analysis View */}
+      {/* View selection: Battle Analysis, Full Heatmap, or Default Legend */}
       {showBattleAnalysis ? (
         renderBattleAnalysis()
+      ) : showFullHeatmap ? (
+        renderFullHeatmapPanel()
       ) : (
         <>
           {interactive && highlightContext && (
