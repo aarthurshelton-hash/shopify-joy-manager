@@ -10,6 +10,11 @@
  */
 
 import { Chess, Move, Square, PieceSymbol } from 'chess.js';
+import { PIECE_VALUES, PIECE_POINTS, classifyMoves, getMoveQualitySummary, MoveQualitySummary, ClassifiedMove } from './moveQuality';
+
+// Re-export for convenience
+export { PIECE_VALUES, PIECE_POINTS };
+export type { MoveQualitySummary, ClassifiedMove };
 
 // ===================== TYPES =====================
 
@@ -63,10 +68,14 @@ export interface GameAnalysis {
   tactics: TacticalMotif[];
   specialMoves: SpecialMove[];
   phases: GamePhase[];
+  moveQuality?: MoveQualitySummary;
   summary: {
     totalMoves: number;
     captureCount: number;
     checkCount: number;
+    brilliantCount: number;
+    blunderCount: number;
+    accuracy: number; // Percentage of good+ moves
     materialBalance: number; // Positive = white ahead
     longestForcingSequence: number;
     complexity: 'simple' | 'moderate' | 'complex' | 'masterpiece';
@@ -667,11 +676,16 @@ export function analyzeGame(pgn: string): GameAnalysis {
     if (move.includes('+') || move.includes('#')) checkCount++;
   }
   
-  // Determine complexity
+  // Classify move quality
+  const classifiedMoves = classifyMoves(pgn);
+  const moveQuality = getMoveQualitySummary(classifiedMoves);
+  
+  // Determine complexity - enhanced with brilliant/blunder data
   let complexity: GameAnalysis['summary']['complexity'] = 'simple';
   if (totalMoves > 40) complexity = 'moderate';
   if (totalMoves > 60 && captureCount > 10) complexity = 'complex';
   if (totalMoves > 80 && checkCount > 5) complexity = 'masterpiece';
+  if (moveQuality.brilliantCount >= 2) complexity = 'masterpiece';
   
   const analysis: GameAnalysis = {
     opening: detectOpening(moves),
@@ -679,10 +693,14 @@ export function analyzeGame(pgn: string): GameAnalysis {
     tactics: detectTactics(pgn),
     specialMoves: detectSpecialMoves(pgn),
     phases: detectGamePhases(totalMoves, moves),
+    moveQuality,
     summary: {
       totalMoves,
       captureCount,
       checkCount,
+      brilliantCount: moveQuality.brilliantCount,
+      blunderCount: moveQuality.blunderCount,
+      accuracy: moveQuality.accuracy,
       materialBalance: 0, // Would require position analysis
       longestForcingSequence: 0, // Would require deep analysis
       complexity,
@@ -718,6 +736,18 @@ export function getAnalysisSummary(analysis: GameAnalysis): string {
   
   if (analysis.specialMoves.length > 0) {
     parts.push(`Special moves: ${analysis.specialMoves.map(m => m.type).join(', ')}`);
+  }
+  
+  // Add move quality summary
+  if (analysis.moveQuality) {
+    const mq = analysis.moveQuality;
+    parts.push(`Move Quality: ${analysis.summary.accuracy}% accuracy`);
+    if (mq.brilliantCount > 0) {
+      parts.push(`  → Brilliant moves: ${mq.brilliantCount}`);
+    }
+    if (mq.blunderCount > 0) {
+      parts.push(`  → Blunders: ${mq.blunderCount}`);
+    }
   }
   
   parts.push(`Game complexity: ${analysis.summary.complexity}`);
