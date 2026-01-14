@@ -2,7 +2,7 @@ import React, { useEffect, useMemo } from 'react';
 import { useTimeline, GamePhase } from '@/contexts/TimelineContext';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
-import { Play, Pause, SkipBack, SkipForward, RotateCcw, Gauge, Flag, Sword, Crown, Zap, Target, Castle } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, RotateCcw, Gauge } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,93 +10,20 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  Tooltip,
-  TooltipContent,
   TooltipProvider,
-  TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { analyzeTimeline, getMomentCounts, TimelineAnalysisResult } from '@/lib/chess/timelineAnalysis';
+import { TimelineMarker, PhaseButton, momentConfig, phaseConfig } from './EnhancedTimelineMarker';
 
 interface TimelineSliderProps {
   totalMoves: number;
   moves?: string[];
+  pgn?: string;
 }
 
-interface KeyMoment {
-  moveNumber: number;
-  type: 'capture' | 'check' | 'checkmate' | 'castling';
-  move: string;
-  player: 'white' | 'black';
-}
-
-const momentConfig = {
-  capture: { 
-    icon: Target, 
-    color: 'bg-orange-500', 
-    label: 'Capture',
-    description: 'A piece was captured. Captures shift material balance and open tactical opportunities.'
-  },
-  check: { 
-    icon: Zap, 
-    color: 'bg-yellow-500', 
-    label: 'Check',
-    description: 'The king is under attack! The opponent must respond to escape the threat.'
-  },
-  checkmate: { 
-    icon: Crown, 
-    color: 'bg-red-500', 
-    label: 'Checkmate',
-    description: 'Game over! The king cannot escape and the game ends in victory.'
-  },
-  castling: { 
-    icon: Castle, 
-    color: 'bg-blue-500', 
-    label: 'Castle',
-    description: 'The king moves to safety while activating the rook. A crucial defensive move.'
-  },
-};
-
-const phaseConfig: Record<GamePhase, { label: string; icon: React.ReactNode; color: string }> = {
-  all: { label: 'All', icon: null, color: 'bg-muted hover:bg-muted/80' },
-  opening: { label: 'Opening', icon: <Flag className="w-3 h-3" />, color: 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border-emerald-500/30' },
-  middlegame: { label: 'Middle', icon: <Sword className="w-3 h-3" />, color: 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border-amber-500/30' },
-  endgame: { label: 'Endgame', icon: <Crown className="w-3 h-3" />, color: 'bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 border-rose-500/30' },
-};
-
-// Analyze moves to find key moments
-function findKeyMoments(moves: string[]): KeyMoment[] {
-  const moments: KeyMoment[] = [];
-  
-  moves.forEach((move, index) => {
-    const moveNumber = index + 1;
-    const player: 'white' | 'black' = index % 2 === 0 ? 'white' : 'black';
-    
-    // Check for checkmate
-    if (move.includes('#')) {
-      moments.push({ moveNumber, type: 'checkmate', move, player });
-    }
-    // Check for check (but not checkmate)
-    else if (move.includes('+')) {
-      moments.push({ moveNumber, type: 'check', move, player });
-    }
-    
-    // Check for capture
-    if (move.includes('x')) {
-      moments.push({ moveNumber, type: 'capture', move, player });
-    }
-    
-    // Check for castling
-    if (move.includes('O-O') || move.includes('0-0')) {
-      moments.push({ moveNumber, type: 'castling', move, player });
-    }
-  });
-  
-  return moments;
-}
-
-const TimelineSlider: React.FC<TimelineSliderProps> = ({ totalMoves, moves = [] }) => {
+const TimelineSlider: React.FC<TimelineSliderProps> = ({ totalMoves, moves = [], pgn }) => {
   const {
     currentMove,
-    maxMoves,
     isPlaying,
     playbackSpeed,
     selectedPhase,
@@ -111,8 +38,15 @@ const TimelineSlider: React.FC<TimelineSliderProps> = ({ totalMoves, moves = [] 
     setSelectedPhase,
   } = useTimeline();
 
-  // Find key moments in the game
-  const keyMoments = useMemo(() => findKeyMoments(moves), [moves]);
+  // Comprehensive timeline analysis
+  const analysis: TimelineAnalysisResult | null = useMemo(() => {
+    if (!pgn || moves.length === 0) return null;
+    try {
+      return analyzeTimeline(pgn, moves);
+    } catch {
+      return null;
+    }
+  }, [pgn, moves]);
 
   // Update max moves when totalMoves changes
   useEffect(() => {
@@ -124,13 +58,22 @@ const TimelineSlider: React.FC<TimelineSliderProps> = ({ totalMoves, moves = [] 
   const isAtEnd = displayMove >= range.end;
   const isAtStart = currentMove <= range.start || currentMove === 0;
 
-  // Filter key moments to current phase
+  // Filter moments to current phase
   const visibleMoments = useMemo(() => 
-    keyMoments.filter(m => m.moveNumber >= range.start && m.moveNumber <= range.end),
-    [keyMoments, range]
+    analysis?.moments.filter(m => m.moveNumber >= range.start && m.moveNumber <= range.end) || [],
+    [analysis, range]
   );
 
-  // Format move display (e.g., "Move 15" or "1. e4")
+  // Get phase info from analysis
+  const getPhaseInfo = (phase: GamePhase) => {
+    if (phase === 'all' || !analysis) return undefined;
+    return analysis.phases.find(p => p.name === phase);
+  };
+
+  // Moment counts for summary
+  const momentCounts = useMemo(() => getMomentCounts(visibleMoments), [visibleMoments]);
+
+  // Format move display
   const getMoveLabel = () => {
     if (currentMove === Infinity || currentMove >= range.end) {
       if (selectedPhase === 'all') return 'All Moves';
@@ -178,20 +121,12 @@ const TimelineSlider: React.FC<TimelineSliderProps> = ({ totalMoves, moves = [] 
 
   const currentSpeedLabel = speedOptions.find(s => s.value === playbackSpeed)?.label || '1x';
   const player = getCurrentPlayer();
-
-  const phaseMoveCount = range.end - range.start;
+  const phaseMoveCount = Math.max(range.end - range.start, 1);
 
   // Calculate position for a moment marker
   const getMomentPosition = (moveNumber: number) => {
     return ((moveNumber - range.start) / phaseMoveCount) * 100;
   };
-
-  // Count moments by type for summary
-  const momentCounts = useMemo(() => {
-    const counts = { capture: 0, check: 0, checkmate: 0, castling: 0 };
-    visibleMoments.forEach(m => counts[m.type]++);
-    return counts;
-  }, [visibleMoments]);
 
   return (
     <TooltipProvider>
@@ -207,104 +142,94 @@ const TimelineSlider: React.FC<TimelineSliderProps> = ({ totalMoves, moves = [] 
             )}
           </div>
           
-          {/* Phase filter buttons */}
+          {/* Phase filter buttons with hover tooltips */}
           <div className="flex items-center gap-1">
-            {(Object.keys(phaseConfig) as GamePhase[]).map((phase) => {
-              const config = phaseConfig[phase];
-              const isActive = selectedPhase === phase;
+            {(['all', 'opening', 'middlegame', 'endgame'] as const).map((phase) => {
               const phaseRange = phaseRanges[phase];
               const moveCount = phaseRange.end - phaseRange.start;
               
               return (
-                <Button
+                <PhaseButton
                   key={phase}
-                  variant="ghost"
-                  size="sm"
+                  phase={phase}
+                  isActive={selectedPhase === phase}
+                  moveCount={moveCount}
                   onClick={() => setSelectedPhase(phase)}
-                  className={`h-6 px-2 text-[10px] gap-1 border transition-all ${
-                    isActive 
-                      ? config.color + ' border-current' 
-                      : 'border-transparent opacity-60 hover:opacity-100'
-                  }`}
-                  title={`${config.label} (${moveCount} moves)`}
-                >
-                  {config.icon}
-                  <span className="hidden sm:inline">{config.label}</span>
-                  <span className="text-[9px] opacity-70">({moveCount})</span>
-                </Button>
+                  phaseInfo={getPhaseInfo(phase)}
+                  compact
+                />
               );
             })}
           </div>
         </div>
 
-        {/* Key moments summary with tooltips */}
+        {/* Key moments summary with category icons */}
         {visibleMoments.length > 0 && (
           <div className="flex items-center gap-3 text-[10px]">
             <span className="text-muted-foreground">Key moments:</span>
             <div className="flex items-center gap-2 flex-wrap">
+              {/* Quality */}
+              {momentCounts.brilliant > 0 && (
+                <div className={`flex items-center gap-1 ${momentConfig.brilliant.color} hover:scale-110 transition-transform`}>
+                  <momentConfig.brilliant.icon className="w-3 h-3" />
+                  <span>{momentCounts.brilliant}</span>
+                </div>
+              )}
+              {momentCounts.great > 0 && (
+                <div className={`flex items-center gap-1 ${momentConfig.great.color} hover:scale-110 transition-transform`}>
+                  <momentConfig.great.icon className="w-3 h-3" />
+                  <span>{momentCounts.great}</span>
+                </div>
+              )}
+              {momentCounts.blunder > 0 && (
+                <div className={`flex items-center gap-1 ${momentConfig.blunder.color} hover:scale-110 transition-transform`}>
+                  <momentConfig.blunder.icon className="w-3 h-3" />
+                  <span>{momentCounts.blunder}</span>
+                </div>
+              )}
+              {/* Tactical */}
+              {momentCounts.fork > 0 && (
+                <div className={`flex items-center gap-1 ${momentConfig.fork.color} hover:scale-110 transition-transform`}>
+                  <momentConfig.fork.icon className="w-3 h-3" />
+                  <span>{momentCounts.fork}</span>
+                </div>
+              )}
+              {momentCounts.sacrifice > 0 && (
+                <div className={`flex items-center gap-1 ${momentConfig.sacrifice.color} hover:scale-110 transition-transform`}>
+                  <momentConfig.sacrifice.icon className="w-3 h-3" />
+                  <span>{momentCounts.sacrifice}</span>
+                </div>
+              )}
+              {/* Events */}
               {momentCounts.capture > 0 && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button className="flex items-center gap-1 text-orange-400 hover:scale-110 transition-transform cursor-help">
-                      <Target className="w-3 h-3" />
-                      <span>{momentCounts.capture}</span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="max-w-[180px] p-2">
-                    <div className="space-y-1">
-                      <div className="font-semibold">Captures</div>
-                      <p className="text-xs text-muted-foreground">{momentConfig.capture.description}</p>
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
+                <div className={`flex items-center gap-1 ${momentConfig.capture.color} hover:scale-110 transition-transform`}>
+                  <momentConfig.capture.icon className="w-3 h-3" />
+                  <span>{momentCounts.capture}</span>
+                </div>
               )}
               {momentCounts.check > 0 && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button className="flex items-center gap-1 text-yellow-400 hover:scale-110 transition-transform cursor-help">
-                      <Zap className="w-3 h-3" />
-                      <span>{momentCounts.check}</span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="max-w-[180px] p-2">
-                    <div className="space-y-1">
-                      <div className="font-semibold">Checks</div>
-                      <p className="text-xs text-muted-foreground">{momentConfig.check.description}</p>
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
+                <div className={`flex items-center gap-1 ${momentConfig.check.color} hover:scale-110 transition-transform`}>
+                  <momentConfig.check.icon className="w-3 h-3" />
+                  <span>{momentCounts.check}</span>
+                </div>
               )}
               {momentCounts.checkmate > 0 && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button className="flex items-center gap-1 text-red-400 hover:scale-110 transition-transform cursor-help">
-                      <Crown className="w-3 h-3" />
-                      <span>{momentCounts.checkmate}</span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="max-w-[180px] p-2">
-                    <div className="space-y-1">
-                      <div className="font-semibold">Checkmate</div>
-                      <p className="text-xs text-muted-foreground">{momentConfig.checkmate.description}</p>
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
+                <div className={`flex items-center gap-1 ${momentConfig.checkmate.color} hover:scale-110 transition-transform`}>
+                  <momentConfig.checkmate.icon className="w-3 h-3" />
+                  <span>{momentCounts.checkmate}</span>
+                </div>
               )}
               {momentCounts.castling > 0 && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button className="flex items-center gap-1 text-blue-400 hover:scale-110 transition-transform cursor-help">
-                      <Castle className="w-3 h-3" />
-                      <span>{momentCounts.castling}</span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="max-w-[180px] p-2">
-                    <div className="space-y-1">
-                      <div className="font-semibold">Castling</div>
-                      <p className="text-xs text-muted-foreground">{momentConfig.castling.description}</p>
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
+                <div className={`flex items-center gap-1 ${momentConfig.castling.color} hover:scale-110 transition-transform`}>
+                  <momentConfig.castling.icon className="w-3 h-3" />
+                  <span>{momentCounts.castling}</span>
+                </div>
+              )}
+              {momentCounts.promotion > 0 && (
+                <div className={`flex items-center gap-1 ${momentConfig.promotion.color} hover:scale-110 transition-transform`}>
+                  <momentConfig.promotion.icon className="w-3 h-3" />
+                  <span>{momentCounts.promotion}</span>
+                </div>
               )}
             </div>
           </div>
@@ -324,47 +249,19 @@ const TimelineSlider: React.FC<TimelineSliderProps> = ({ totalMoves, moves = [] 
 
         {/* Slider with moment markers */}
         <div className="relative">
-          {/* Key moment markers */}
+          {/* Key moment markers with enhanced tooltips */}
           <div className="absolute inset-x-0 top-0 h-5 pointer-events-none z-10">
-            {visibleMoments.map((moment, idx) => {
-              const position = getMomentPosition(moment.moveNumber);
-              const config = momentConfig[moment.type];
-              const Icon = config.icon;
-              const moveIndex = moment.moveNumber - 1;
-              const moveNum = Math.floor(moveIndex / 2) + 1;
-              const isWhiteMove = moveIndex % 2 === 0;
-              
-              return (
-                <Tooltip key={`${moment.moveNumber}-${moment.type}-${idx}`}>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={() => handleMomentClick(moment.moveNumber)}
-                      className={`absolute -translate-x-1/2 -top-1 w-4 h-4 rounded-full ${config.color} 
-                        flex items-center justify-center cursor-pointer pointer-events-auto
-                        hover:scale-125 transition-transform shadow-lg ring-1 ring-black/20
-                        ${moment.player === 'white' ? 'ring-white/30' : 'ring-black/50'}`}
-                      style={{ left: `${position}%` }}
-                    >
-                      <Icon className="w-2.5 h-2.5 text-white" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="max-w-[200px] p-2">
-                    <div className="space-y-1">
-                      <div className="font-semibold flex items-center gap-1">
-                        <Icon className={`w-3 h-3`} />
-                        {config.label}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {moveNum}.{isWhiteMove ? '' : '..'} {moment.move}
-                      </div>
-                      <p className="text-[9px] text-muted-foreground/80 leading-snug">
-                        {config.description}
-                      </p>
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
-              );
-            })}
+            {visibleMoments.slice(0, 30).map((moment, idx) => (
+              <div key={`${moment.moveNumber}-${moment.type}-${idx}`} className="pointer-events-auto">
+                <TimelineMarker
+                  moment={moment}
+                  position={getMomentPosition(moment.moveNumber)}
+                  orientation="horizontal"
+                  onClick={() => handleMomentClick(moment.moveNumber)}
+                  size="sm"
+                />
+              </div>
+            ))}
           </div>
 
           <Slider
