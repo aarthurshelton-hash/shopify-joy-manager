@@ -71,6 +71,7 @@ import { getGamePoetry } from '@/lib/chess/gamePoetry';
 import PaletteAvailabilityIndicator from './PaletteAvailabilityIndicator';
 import { useAuth } from '@/hooks/useAuth';
 import MiniPrintOrderSection from './MiniPrintOrderSection';
+import { generateGameHash } from '@/lib/visualizations/gameCanonical';
 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -1157,7 +1158,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
     return '';
   }, [pgn, localGameData?.pgn, gameData?.pgn]);
   
-  // Seamless palette switch handler
+  // Seamless palette switch handler - updates board in-place AND updates URL
   const handleSeamlessPaletteSwitch = useCallback(async (info: PaletteAvailabilityInfo) => {
     if (!effectivePgn) return;
     
@@ -1167,6 +1168,30 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
       // Set new palette globally
       setActivePalette(info.paletteId);
       setLocalPaletteId(info.paletteId);
+      
+      // Update URL to reflect current palette (without navigation/reload)
+      const gameHash = generateGameHash(effectivePgn);
+      const newUrl = new URL(window.location.href);
+      newUrl.pathname = `/g/${gameHash}`;
+      
+      // Set palette in URL if not default
+      if (info.paletteId && info.paletteId !== 'modern') {
+        newUrl.searchParams.set('p', info.paletteId);
+      } else {
+        newUrl.searchParams.delete('p');
+      }
+      
+      // Preserve source context params
+      const currentParams = new URLSearchParams(window.location.search);
+      if (currentParams.has('src')) {
+        newUrl.searchParams.set('src', currentParams.get('src')!);
+      }
+      if (currentParams.has('listing')) {
+        newUrl.searchParams.set('listing', currentParams.get('listing')!);
+      }
+      
+      // Update browser URL without reload
+      window.history.replaceState({}, '', newUrl.toString());
       
       if (info.isTaken && info.visualizationId) {
         // Fetch existing visualization data
