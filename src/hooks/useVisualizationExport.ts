@@ -25,9 +25,14 @@ interface TrademarkExportOptions {
   darkMode?: boolean;
   showQR?: boolean;
   shareId?: string;
+  currentMoveNumber?: number;
   highlightState?: {
     lockedPieces: Array<{ pieceType: string; pieceColor: string }>;
     compareMode: boolean;
+  };
+  piecesState?: {
+    showPieces: boolean;
+    pieceOpacity: number;
   };
 }
 
@@ -157,10 +162,26 @@ export function useVisualizationExport(options: UseVisualizationExportOptions) {
         totalMoves: exportOptions.gameData.moves?.length || 0,
       };
       
+      // Build captured state for print generator
+      const capturedState = {
+        currentMove: exportOptions.currentMoveNumber ?? Infinity,
+        selectedPhase: 'all' as const,
+        lockedPieces: exportOptions.highlightState?.lockedPieces || [],
+        compareMode: exportOptions.highlightState?.compareMode || false,
+        displayMode: 'art' as const,
+        darkMode: exportOptions.darkMode || false,
+        showTerritory: false,
+        showHeatmaps: false,
+        showPieces: exportOptions.piecesState?.showPieces || false,
+        pieceOpacity: exportOptions.piecesState?.pieceOpacity || 0.7,
+        capturedAt: new Date(),
+      };
+      
       let base64Image = await generateCleanPrintImage(simulation, {
         darkMode: exportOptions.darkMode || false,
         includeQR: exportOptions.showQR || false,
         shareId: exportOptions.shareId,
+        capturedState,
         highlightState: exportOptions.highlightState ? {
           lockedPieces: exportOptions.highlightState.lockedPieces.map(p => ({
             pieceType: p.pieceType as 'k' | 'q' | 'r' | 'b' | 'n' | 'p',

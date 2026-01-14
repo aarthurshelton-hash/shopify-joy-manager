@@ -106,10 +106,11 @@ export async function generateCleanPrintImage(
       compareMode: capturedState.compareMode,
     } : undefined);
     
-    // Prepare pieces state for overlay if captured
+    // Prepare pieces state for overlay if captured - include currentMoveNumber for accurate position
     const piecesState = capturedState && (capturedState as any).showPieces ? {
       showPieces: (capturedState as any).showPieces,
       pieceOpacity: (capturedState as any).pieceOpacity ?? 0.7,
+      currentMoveNumber: capturedState.currentMove !== Infinity ? capturedState.currentMove : undefined,
     } : undefined;
     
     // Render the unified PrintReadyVisualization component

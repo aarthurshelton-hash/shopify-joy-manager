@@ -84,7 +84,7 @@ export const MiniPrintOrderSection: React.FC<MiniPrintOrderSectionProps> = ({
     );
   }, [board, currentMove, totalMoves]);
 
-  // Mini visualization for the mockup - captures exact current state including highlights
+  // Mini visualization for the mockup - captures exact current state including highlights and pieces
   const miniVisualization = useMemo(() => {
     // Build highlight state from current locked pieces
     const highlightState = lockedPieces.length > 0 ? {
@@ -95,6 +95,13 @@ export const MiniPrintOrderSection: React.FC<MiniPrintOrderSectionProps> = ({
       compareMode,
     } : undefined;
 
+    // Build pieces state if pieces are shown
+    const piecesState = showPieces ? {
+      showPieces: true,
+      pieceOpacity,
+      currentMoveNumber: currentMove >= totalMoves ? undefined : currentMove,
+    } : undefined;
+
     return (
       <PrintReadyVisualization
         board={filteredBoard}
@@ -103,9 +110,11 @@ export const MiniPrintOrderSection: React.FC<MiniPrintOrderSectionProps> = ({
         darkMode={darkMode}
         compact
         highlightState={highlightState}
+        piecesState={piecesState}
+        pgn={gameData.pgn}
       />
     );
-  }, [filteredBoard, gameData, darkMode, lockedPieces, compareMode]);
+  }, [filteredBoard, gameData, darkMode, lockedPieces, compareMode, showPieces, pieceOpacity, currentMove, totalMoves]);
 
   const framePrice = selectedFrame ? getBaseFramePrice(selectedSize.value as '8x10' | '11x14' | '16x20' | '18x24' | '24x36') : 0;
 

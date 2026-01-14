@@ -40,6 +40,7 @@ interface HighlightState {
 interface PiecesState {
   showPieces: boolean;
   pieceOpacity: number;
+  currentMoveNumber?: number; // The move to show pieces at
 }
 
 interface PrintReadyVisualizationProps {
@@ -107,7 +108,7 @@ export const PrintReadyVisualization: React.FC<PrintReadyVisualizationProps> = (
   const boardSize = size - (padding * 2);
   const squareSize = boardSize / 8;
 
-  // Calculate piece positions for overlay
+  // Calculate piece positions for overlay at the specific move number
   const piecePositions = useMemo(() => {
     if (!piecesState?.showPieces) return [];
     
@@ -115,10 +116,21 @@ export const PrintReadyVisualization: React.FC<PrintReadyVisualizationProps> = (
     if (!pgnToUse) return [];
     
     try {
-      const chess = new Chess();
-      chess.loadPgn(pgnToUse);
-      const boardState = chess.board();
+      // First load PGN to get all moves
+      const fullGame = new Chess();
+      fullGame.loadPgn(pgnToUse);
+      const allMoves = fullGame.history({ verbose: true });
       
+      // Replay to the target move number
+      const chess = new Chess();
+      const targetMove = piecesState.currentMoveNumber ?? allMoves.length;
+      const movesToPlay = Math.min(targetMove, allMoves.length);
+      
+      for (let i = 0; i < movesToPlay; i++) {
+        chess.move(allMoves[i].san);
+      }
+      
+      const boardState = chess.board();
       const pieces: { square: string; piece: string; color: 'w' | 'b'; row: number; col: number }[] = [];
       
       for (let rowIndex = 0; rowIndex < 8; rowIndex++) {
@@ -142,7 +154,7 @@ export const PrintReadyVisualization: React.FC<PrintReadyVisualizationProps> = (
       console.error('Error parsing PGN for piece positions:', e);
       return [];
     }
-  }, [piecesState?.showPieces, pgn, gameData.pgn]);
+  }, [piecesState?.showPieces, piecesState?.currentMoveNumber, pgn, gameData.pgn]);
 
   // Render the chess board - either EnPensent overlay or standard visualization
   const renderBoard = () => {
