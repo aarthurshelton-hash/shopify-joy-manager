@@ -1005,49 +1005,57 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
     }
   }, [pgn, gameData.pgn]);
 
-  // Calculate responsive board size - Apple-style edge-to-edge layout
-  // Ensures timeline + board + legend all fit within viewport without horizontal scroll
+  // Calculate responsive board size - maximize screen utilization
+  // Ensures timeline + board + legend all fit within viewport without cutoffs
   useEffect(() => {
     const updateSize = () => {
       const windowWidth = window.innerWidth;
       const windowHeight = window.innerHeight;
       
-      // Constants for layout (matching the actual rendered elements)
-      const timelineWidth = 140; // VerticalTimelineSlider width
-      const legendWidth = 220; // ColorLegend width  
-      const gaps = 32; // gaps between elements
-      const containerPadding = 64; // padding on container sides
-      const boardPadding = 48; // padding inside board component
+      // Accurate layout measurements
+      const timelineWidth = 130; // VerticalTimelineSlider actual width (120px + padding)
+      const legendWidth = 240; // ColorLegend actual width with some breathing room
+      const gaps = 16; // gap-2 xl:gap-4 = ~16px
+      const pagePadding = 48; // page container px-4 or px-6 on each side
       
       const isXlScreen = windowWidth >= 1280;
       const isLgScreen = windowWidth >= 1024;
       
       // Calculate available width for the board
       let availableWidth: number;
-      if (isXlScreen) {
+      if (isXlScreen && showLegend) {
         // Full layout: timeline + board + legend
-        availableWidth = windowWidth - timelineWidth - legendWidth - gaps - containerPadding;
+        // Use most of the screen width
+        availableWidth = windowWidth - timelineWidth - legendWidth - gaps * 2 - pagePadding;
+      } else if (isXlScreen) {
+        // No legend, just timeline
+        availableWidth = windowWidth - timelineWidth - gaps - pagePadding;
       } else if (isLgScreen) {
-        // Medium screens: just board with some padding
-        availableWidth = windowWidth - containerPadding;
+        // Medium screens: board centered
+        availableWidth = windowWidth - pagePadding;
       } else {
         // Mobile/tablet: full width minus minimal padding
-        availableWidth = windowWidth - 32;
+        availableWidth = windowWidth - 24;
       }
       
-      // Also consider height constraints (leave room for header, tabs, controls)
-      const headerSpace = 200; // approximate header + tabs + controls height
-      const availableHeight = windowHeight - headerSpace;
+      // Height constraints (header + nav + tabs + controls + game info below board)
+      const headerSpace = 180; // header + tabs
+      const controlsSpace = 60; // board controls
+      const infoSpace = 120; // game info below board
+      const availableHeight = windowHeight - headerSpace - controlsSpace - infoSpace;
       
-      // Board size should fit both width and height, with reasonable min/max
-      const maxBoardFromWidth = availableWidth - boardPadding;
-      const maxBoardFromHeight = availableHeight - boardPadding - 100; // extra buffer for info
+      // Board wrapper includes internal padding (~48px total)
+      const boardPadding = 48;
+      
+      // Board size should fit both width and height
+      const maxBoardFromWidth = Math.max(280, availableWidth - boardPadding);
+      const maxBoardFromHeight = Math.max(280, availableHeight - boardPadding);
       
       const optimalSize = Math.min(maxBoardFromWidth, maxBoardFromHeight);
       
-      // Clamp to reasonable bounds
+      // Allow larger boards on big screens (up to 650px)
       const minSize = 280;
-      const maxSize = 600;
+      const maxSize = isXlScreen ? 650 : 550;
       setBoardSize(Math.max(minSize, Math.min(optimalSize, maxSize)));
     };
     
@@ -1357,10 +1365,10 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                     </TooltipProvider>
                   </div>
 
-                  {/* Main Layout: Timeline Left | Board Center | Legend Right - Apple-style edge-to-edge */}
-                  <div className="flex gap-2 xl:gap-4 items-start justify-center w-full max-w-full">
-                    {/* Left: Vertical Timeline */}
-                    <div className="hidden xl:flex flex-shrink-0 w-[140px]">
+                  {/* Main Layout: Timeline Left | Board Center | Legend Right - Full width utilization */}
+                  <div className="flex gap-2 xl:gap-3 items-start justify-center w-full">
+                    {/* Left: Vertical Timeline - matches VerticalTimelineSlider's internal 120px + wrapper */}
+                    <div className="hidden xl:flex flex-shrink-0">
                       <VerticalTimelineSlider 
                         totalMoves={localTotalMoves} 
                         moves={localGameData.moves}
@@ -1368,7 +1376,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                       />
                     </div>
 
-                    {/* Center: Board - scales to fill available space */}
+                    {/* Center: Board - dynamically sized to fill remaining space */}
                     <div className="flex-shrink-0 relative" data-vision-board="true">
                       {isSwitchingPalette && (
                         <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10 rounded-lg">
@@ -1386,9 +1394,9 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                       />
                     </div>
 
-                    {/* Right: Color Legend - fixed width, scrolls independently */}
+                    {/* Right: Color Legend - fully visible, scrolls independently */}
                     {showLegend && (
-                      <div className="hidden xl:flex flex-col flex-shrink-0 w-[220px] max-h-[calc(100vh-220px)] overflow-y-auto overflow-x-hidden scrollbar-hide">
+                      <div className="hidden xl:flex flex-col flex-shrink-0 min-w-[200px] max-h-[calc(100vh-200px)] overflow-y-auto overflow-x-visible scrollbar-hide">
                         <ColorLegend 
                           interactive={true}
                           board={localBoard}
