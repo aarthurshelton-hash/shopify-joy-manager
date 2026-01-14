@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Chess } from 'chess.js';
+import { Chess, Square } from 'chess.js';
 import { SquareData, SquareVisit } from '@/lib/chess/gameSimulator';
 import { boardColors, getPieceColor, PieceType, PieceColor } from '@/lib/chess/pieceColors';
 import { useLegendHighlight, HighlightedPiece, HoveredSquareInfo, AnnotationType } from '@/contexts/LegendHighlightContext';
@@ -11,6 +11,16 @@ interface InteractiveVisualizationBoardProps {
   pieceOpacity?: number;
   pgn?: string;
   currentMoveNumber?: number;
+}
+
+// Track individual pieces with unique IDs for animation
+interface TrackedPiece {
+  id: string; // Unique ID like "w-Q-d1" (color-type-startSquare)
+  type: string;
+  color: 'w' | 'b';
+  square: string;
+  x: number;
+  y: number;
 }
 
 // Unicode chess piece characters
@@ -250,6 +260,9 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
   currentMoveNumber,
 }) => {
   const [hoveredSquareLocal, setHoveredSquareLocal] = useState<string | null>(null);
+  const [hoveredPieceSquare, setHoveredPieceSquare] = useState<string | null>(null);
+  
+  
   
   // Use the context hook directly - it will throw if not in provider, but that's expected
   const context = useLegendHighlight();
@@ -262,7 +275,8 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
   const setHighlightedAnnotations = context.setHighlightedAnnotations;
   const hoveredAnnotation = context.hoveredAnnotation;
   const hoveredSquareFromContext = context.hoveredSquare;
-  
+  const toggleLockedPiece = context.toggleLockedPiece;
+
   // Build highlighted pieces array from context state
   const highlightedPieces = useMemo(() => {
     // If annotation is hovered, use its associated pieces
@@ -283,31 +297,129 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
   const borderWidth = size * 0.02;
   const totalSize = size + borderWidth * 2;
 
-  // Calculate the current FEN position based on PGN and move number
-  const currentPosition = useMemo(() => {
-    if (!showPieces || !pgn) return null;
+  // Calculate tracked pieces with unique IDs for animation
+  const trackedPieces = useMemo((): TrackedPiece[] => {
+    if (!showPieces || !pgn) return [];
     
     try {
-      // First load the PGN to get all moves
+      // First load the PGN to get all moves with verbose info
       const fullGame = new Chess();
       fullGame.loadPgn(pgn);
-      const allMoves = fullGame.history();
+      const allMovesVerbose = fullGame.history({ verbose: true });
       
-      // Now create a fresh game and replay to the target move
-      const chess = new Chess();
-      const moveCount = currentMoveNumber !== undefined ? currentMoveNumber : allMoves.length;
+      // Track piece origins - each piece gets a unique ID based on starting square
+      const pieceOrigins = new Map<string, string>(); // current square -> origin ID
       
-      for (let i = 0; i < Math.min(moveCount, allMoves.length); i++) {
-        chess.move(allMoves[i]);
+      // Initialize with starting position
+      const startChess = new Chess();
+      for (let rank = 0; rank < 8; rank++) {
+        for (let file = 0; file < 8; file++) {
+          const square = `${String.fromCharCode(97 + file)}${rank + 1}` as Square;
+          const piece = startChess.get(square);
+          if (piece) {
+            const originId = `${piece.color}-${piece.type.toUpperCase()}-${square}`;
+            pieceOrigins.set(square, originId);
+          }
+        }
       }
       
-      // Get the board state
-      return chess.board();
+      // Replay moves to track piece movements
+      const chess = new Chess();
+      const moveCount = currentMoveNumber !== undefined ? currentMoveNumber : allMovesVerbose.length;
+      
+      for (let i = 0; i < Math.min(moveCount, allMovesVerbose.length); i++) {
+        const move = allMovesVerbose[i];
+        const originId = pieceOrigins.get(move.from);
+        
+        // Handle captures - remove captured piece
+        if (move.captured) {
+          pieceOrigins.delete(move.to);
+        }
+        
+        // Move piece to new square
+        if (originId) {
+          pieceOrigins.delete(move.from);
+          pieceOrigins.set(move.to, originId);
+        }
+        
+        // Handle castling - move the rook too
+        if (move.flags.includes('k')) { // Kingside
+          const rookFrom = move.color === 'w' ? 'h1' : 'h8';
+          const rookTo = move.color === 'w' ? 'f1' : 'f8';
+          const rookId = pieceOrigins.get(rookFrom);
+          if (rookId) {
+            pieceOrigins.delete(rookFrom);
+            pieceOrigins.set(rookTo, rookId);
+          }
+        } else if (move.flags.includes('q')) { // Queenside
+          const rookFrom = move.color === 'w' ? 'a1' : 'a8';
+          const rookTo = move.color === 'w' ? 'd1' : 'd8';
+          const rookId = pieceOrigins.get(rookFrom);
+          if (rookId) {
+            pieceOrigins.delete(rookFrom);
+            pieceOrigins.set(rookTo, rookId);
+          }
+        }
+        
+        // Handle promotion - update the piece type in the ID
+        if (move.promotion) {
+          const newId = `${move.color}-${move.promotion.toUpperCase()}-${move.from}-promoted`;
+          pieceOrigins.set(move.to, newId);
+        }
+        
+        chess.move(allMovesVerbose[i].san);
+      }
+      
+      // Build tracked pieces array
+      const pieces: TrackedPiece[] = [];
+      const boardState = chess.board();
+      
+      for (let rowIndex = 0; rowIndex < 8; rowIndex++) {
+        const rank = 7 - rowIndex;
+        for (let file = 0; file < 8; file++) {
+          const piece = boardState[rowIndex]?.[file];
+          if (piece) {
+            const square = `${String.fromCharCode(97 + file)}${rank + 1}`;
+            const originId = pieceOrigins.get(square) || `${piece.color}-${piece.type.toUpperCase()}-${square}`;
+            const x = borderWidth + file * squareSize + squareSize / 2;
+            const y = borderWidth + rowIndex * squareSize + squareSize / 2;
+            
+            pieces.push({
+              id: originId,
+              type: piece.type,
+              color: piece.color,
+              square,
+              x,
+              y,
+            });
+          }
+        }
+      }
+      
+      return pieces;
     } catch (e) {
       console.error('Error parsing PGN for pieces:', e);
-      return null;
+      return [];
     }
-  }, [showPieces, pgn, currentMoveNumber]);
+  }, [showPieces, pgn, currentMoveNumber, borderWidth, squareSize]);
+  
+  // Handle piece click to highlight all squares it visited
+  const handlePieceClick = useCallback((pieceType: string, pieceColor: 'w' | 'b') => {
+    const highlightPiece: HighlightedPiece = {
+      pieceType: pieceType.toUpperCase() as PieceType,
+      pieceColor: pieceColor as PieceColor,
+    };
+    toggleLockedPiece(highlightPiece);
+  }, [toggleLockedPiece]);
+
+  // Handle piece hover
+  const handlePieceHover = useCallback((square: string, pieceType: string, pieceColor: 'w' | 'b') => {
+    setHoveredPieceSquare(square);
+  }, []);
+
+  const handlePieceLeave = useCallback(() => {
+    setHoveredPieceSquare(null);
+  }, []);
 
   // Get unique pieces that visited a square
   const getPiecesForSquare = useCallback((square: SquareData): HighlightedPiece[] => {
@@ -442,56 +554,79 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
     });
   }, [board, borderWidth, squareSize, handleSquareHover, handleSquareLeave]);
   
-  // Render chess pieces layer
+  // Render chess pieces layer with animations
   const pieceElements = useMemo(() => {
-    if (!showPieces || !currentPosition) return null;
+    if (!showPieces || trackedPieces.length === 0) return null;
     
     const elements: React.ReactNode[] = [];
     const fontSize = squareSize * 0.75;
     
-    for (let rowIndex = 0; rowIndex < 8; rowIndex++) {
-      const rank = 7 - rowIndex;
-      for (let file = 0; file < 8; file++) {
-        const piece = currentPosition[rowIndex]?.[file];
-        if (piece) {
-          const x = borderWidth + file * squareSize + squareSize / 2;
-          const y = borderWidth + rowIndex * squareSize + squareSize / 2;
-          
-          // Get the piece symbol
-          const pieceKey = piece.color === 'w' 
-            ? piece.type.toUpperCase() 
-            : piece.type.toLowerCase();
-          const symbol = PIECE_SYMBOLS[pieceKey];
-          
-          if (symbol) {
-            elements.push(
-              <text
-                key={`piece-${rank}-${file}`}
-                x={x}
-                y={y}
-                textAnchor="middle"
-                dominantBaseline="central"
-                fontSize={fontSize}
-                fill={piece.color === 'w' ? '#ffffff' : '#1a1a1a'}
-                stroke={piece.color === 'w' ? '#1a1a1a' : '#ffffff'}
-                strokeWidth={fontSize * 0.03}
-                style={{ 
-                  opacity: pieceOpacity,
-                  transition: 'opacity 0.2s ease-out',
-                  pointerEvents: 'none',
-                  filter: `drop-shadow(0 ${fontSize * 0.02}px ${fontSize * 0.04}px rgba(0,0,0,0.3))`,
-                }}
-              >
-                {symbol}
-              </text>
-            );
-          }
-        }
-      }
+    for (const piece of trackedPieces) {
+      const pieceKey = piece.color === 'w' 
+        ? piece.type.toUpperCase() 
+        : piece.type.toLowerCase();
+      const symbol = PIECE_SYMBOLS[pieceKey];
+      
+      if (!symbol) continue;
+      
+      // Check if this piece type is currently highlighted
+      const isHighlighted = highlightedPieces.some(
+        h => h.pieceType === piece.type.toUpperCase() && h.pieceColor === piece.color
+      );
+      const isHovered = hoveredPieceSquare === piece.square;
+      
+      elements.push(
+        <g 
+          key={piece.id}
+          style={{
+            transform: `translate(${piece.x}px, ${piece.y}px)`,
+            transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+          }}
+        >
+          <text
+            x={0}
+            y={0}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fontSize={fontSize}
+            fill={piece.color === 'w' ? '#ffffff' : '#1a1a1a'}
+            stroke={piece.color === 'w' ? '#1a1a1a' : '#ffffff'}
+            strokeWidth={fontSize * 0.03}
+            style={{ 
+              opacity: pieceOpacity,
+              transition: 'opacity 0.2s ease-out, filter 0.2s ease-out',
+              cursor: 'pointer',
+              filter: isHighlighted 
+                ? `drop-shadow(0 0 ${fontSize * 0.15}px rgba(251, 191, 36, 0.8)) drop-shadow(0 ${fontSize * 0.02}px ${fontSize * 0.04}px rgba(0,0,0,0.3))`
+                : isHovered
+                ? `drop-shadow(0 0 ${fontSize * 0.1}px rgba(255, 255, 255, 0.6)) drop-shadow(0 ${fontSize * 0.02}px ${fontSize * 0.04}px rgba(0,0,0,0.3))`
+                : `drop-shadow(0 ${fontSize * 0.02}px ${fontSize * 0.04}px rgba(0,0,0,0.3))`,
+              pointerEvents: 'none', // We use invisible rects for interaction
+            }}
+          >
+            {symbol}
+          </text>
+          {/* Invisible interaction area for piece */}
+          <rect
+            x={-squareSize * 0.4}
+            y={-squareSize * 0.4}
+            width={squareSize * 0.8}
+            height={squareSize * 0.8}
+            fill="transparent"
+            style={{ cursor: 'pointer' }}
+            onClick={(e) => {
+              e.stopPropagation();
+              handlePieceClick(piece.type, piece.color);
+            }}
+            onMouseEnter={() => handlePieceHover(piece.square, piece.type, piece.color)}
+            onMouseLeave={handlePieceLeave}
+          />
+        </g>
+      );
     }
     
     return elements;
-  }, [showPieces, currentPosition, borderWidth, squareSize, pieceOpacity]);
+  }, [showPieces, trackedPieces, squareSize, pieceOpacity, highlightedPieces, hoveredPieceSquare, handlePieceClick, handlePieceHover, handlePieceLeave]);
   
   return (
     <svg
