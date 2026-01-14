@@ -1,14 +1,14 @@
 /**
  * Profit-Based Royalty System
  * 
- * IMPORTANT: Visions earn 20% of PROFIT, not revenue.
+ * IMPORTANT: Visions earn 17% of PROFIT, not revenue.
  * 
  * Revenue Flow:
  * 1. Customer pays order total (e.g., $49 for print)
  * 2. Platform pays fulfillment costs (Printify, shipping, fees)
  * 3. Remaining = Gross Profit
- * 4. 20% of Gross Profit → Value Appreciation Pool
- * 5. 80% of Gross Profit → Platform operations
+ * 4. 17% of Gross Profit → Value Appreciation Pool
+ * 5. 83% of Gross Profit → Platform operations
  * 
  * Value Appreciation Pool Distribution:
  * - Creator Royalties: 40%
@@ -31,7 +31,7 @@ export interface OrderCosts {
 export interface ProfitDistribution {
   /** Gross profit after all costs */
   grossProfitCents: number;
-  /** Total going to value appreciation (20% of profit) */
+  /** Total going to value appreciation (17% of profit) */
   valueAppreciationPoolCents: number;
   /** Creator royalty share (40% of pool) */
   creatorRoyaltyCents: number;
@@ -41,7 +41,7 @@ export interface ProfitDistribution {
   palettePoolCents: number;
   /** Gamecard pool share (15% of pool) */
   gamecardPoolCents: number;
-  /** Platform retention (80% of profit) */
+  /** Platform retention (83% of profit) */
   platformRetentionCents: number;
   /** Profit margin percentage */
   profitMarginPercent: number;
@@ -49,11 +49,11 @@ export interface ProfitDistribution {
 
 // Core economic constants
 export const PROFIT_ECONOMICS = {
-  // Value appreciation rate - 20% of PROFIT (not revenue)
-  valueAppreciationRate: 0.20,
+  // Value appreciation rate - 17% of PROFIT (not revenue)
+  valueAppreciationRate: 0.17,
   
-  // Platform retention - 80% of profit covers operations
-  platformRetentionRate: 0.80,
+  // Platform retention - 83% of profit covers operations
+  platformRetentionRate: 0.83,
   
   // Value Appreciation Pool distribution
   poolDistribution: {
@@ -95,7 +95,7 @@ export const PROFIT_ECONOMICS = {
   marketplaceFee: 0.05, // 5%
   
   // Subscription contribution rate
-  subscriptionContributionRate: 0.20, // 20% of $7 = $1.40/month
+  subscriptionContributionRate: 0.17, // 17% of $7 = $1.19/month
 };
 
 /**
@@ -105,7 +105,7 @@ export function calculateProfitDistribution(costs: OrderCosts): ProfitDistributi
   const totalCosts = costs.fulfillmentCostCents + costs.platformFeesCents + costs.shippingCostCents;
   const grossProfitCents = Math.max(0, costs.grossRevenueCents - totalCosts);
   
-  // 20% of profit goes to value appreciation
+  // 17% of profit goes to value appreciation
   const valueAppreciationPoolCents = Math.round(grossProfitCents * PROFIT_ECONOMICS.valueAppreciationRate);
   
   // Distribute the pool
@@ -115,7 +115,7 @@ export function calculateProfitDistribution(costs: OrderCosts): ProfitDistributi
   const palettePoolCents = Math.round(valueAppreciationPoolCents * dist.palettePool);
   const gamecardPoolCents = Math.round(valueAppreciationPoolCents * dist.gamecardPool);
   
-  // Platform keeps 80%
+  // Platform keeps 83%
   const platformRetentionCents = grossProfitCents - valueAppreciationPoolCents;
   
   // Calculate margin
@@ -207,7 +207,7 @@ export function getRoyaltyExplanation(): {
   const example = calculateExampleRoyalty(49, 'print', '16x20');
   
   return {
-    headline: '20% of profit adds to vision value',
+    headline: '17% of profit adds to vision value',
     bullets: [
       'Based on actual profit after fulfillment costs',
       'Not raw revenue—honest, sustainable economics',

@@ -276,12 +276,12 @@ export async function generateTAMReport(): Promise<Blob> {
   addHeader('Unit Economics');
   
   addSubheader('Profit-Based Royalty Model');
-  addParagraph('En Pensent employs a sustainable profit-based royalty system. Creators earn 20% of PROFIT, not revenue, ensuring platform sustainability while rewarding engagement.');
+  addParagraph('En Pensent employs a sustainable profit-based royalty system. Creators earn 17% of PROFIT, not revenue, ensuring platform sustainability while rewarding engagement.');
   
   yPos += 10;
   
   addMetricBox('Digital Margin', '95%', 'Subscriptions & digital downloads');
-  addMetricBox('Physical Margin', '~20%', 'After fulfillment & platform costs');
+  addMetricBox('Physical Margin', '~17%', 'After fulfillment & platform costs');
   addMetricBox('Marketplace Fee', '5%', 'On peer-to-peer Vision trades');
   
   addSubheader('Example: $49 Canvas Print');
@@ -291,8 +291,8 @@ export async function generateTAMReport(): Promise<Blob> {
     ['Fulfillment (Printify)', '-$28.00'],
     ['Platform overhead', '-$5.00'],
     ['Gross Profit', '$16.00'],
-    ['Creator Royalty (20%)', '$3.20'],
-    ['Net to Platform', '$12.80']
+    ['Creator Royalty (17%)', '$2.72'],
+    ['Net to Platform', '$13.28']
   ];
   
   doc.setFillColor(245, 243, 240);
@@ -313,7 +313,7 @@ export async function generateTAMReport(): Promise<Blob> {
   
   yPos += 190;
   
-  addSubheader('Value Distribution (20% Appreciation Pool)');
+  addSubheader('Value Distribution (17% Appreciation Pool)');
   addBullet('Creator Royalties: 40% — Direct earnings for Vision owners');
   addBullet('Education Fund: 25% — Chess scholarships and youth programs');
   addBullet('Palette Pool: 20% — Distributed to palette usage');

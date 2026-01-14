@@ -223,10 +223,10 @@ const MarketplaceTransparency = React.forwardRef<HTMLDivElement, Record<string, 
               <div className="flex items-start gap-3">
                 <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-sm font-medium">Value Appreciation (20%)</p>
+                  <p className="text-sm font-medium">Value Appreciation (17%)</p>
                   <p className="text-xs text-muted-foreground">
-                    When anyone orders a print of your vision, 20% of the order value adds to your vision's 
-                    holding value. The remaining 80% covers printing, shipping, and platform operations. 
+                    When anyone orders a print of your vision, 17% of the order profit adds to your vision's 
+                    holding value. The remaining 83% covers printing, shipping, and platform operations. 
                     Sell your appreciated visions on the marketplace to realize gains.
                   </p>
                 </div>
