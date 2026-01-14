@@ -1269,15 +1269,20 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
         </AnimatePresence>
 
         <div className="flex flex-col h-full w-full max-w-full overflow-x-hidden" ref={containerRef}>
-          {/* Header with back button for certain contexts */}
-          {(context === 'generator' || context === 'gallery') && onBack && (
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-border/50">
-              <Button variant="ghost" size="sm" onClick={onBack} className="gap-2">
-                <RotateCcw className="h-4 w-4" />
-                Return
-              </Button>
-              {context === 'generator' && (
+          {/* Header with back button, header actions, and dark mode toggle - Available for ALL contexts */}
+          {(onBack || headerActions) && (
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4 pb-3 border-b border-border/50">
+              <div className="flex items-center justify-between flex-1">
+                {onBack ? (
+                  <Button variant="ghost" size="sm" onClick={onBack} className="gap-2">
+                    <RotateCcw className="h-4 w-4" />
+                    {backButtonText || 'Return'}
+                  </Button>
+                ) : <div />}
+                
+                {/* Dark mode toggle - Always available for print paper selection */}
                 <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground hidden sm:inline">Print Paper:</span>
                   <Button
                     variant={darkMode ? "outline" : "secondary"}
                     size="sm"
@@ -1294,6 +1299,13 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                   >
                     Dark
                   </Button>
+                </div>
+              </div>
+              
+              {/* Custom header actions (e.g., price badges, purchase buttons) */}
+              {headerActions && (
+                <div className="flex-shrink-0">
+                  {headerActions}
                 </div>
               )}
             </div>
@@ -1517,14 +1529,14 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                     />
                   )}
 
-                  {/* Palette Availability - Seamless switching */}
+                  {/* Palette Availability - Seamless switching - Available for ALL contexts */}
                   {effectivePgn && (
                     <PaletteAvailabilityIndicator
                       pgn={effectivePgn}
                       currentUserId={user?.id}
                       currentPaletteId={currentPaletteInfo?.id}
                       context={context}
-                      compact={context !== 'generator'}
+                      compact={false}
                       onSeamlessSwitch={handleSeamlessPaletteSwitch}
                     />
                   )}

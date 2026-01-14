@@ -596,20 +596,6 @@ const MarketplaceVisionDetail: React.FC = () => {
     <div className="min-h-screen bg-background">
       <Header />
       <div className="container mx-auto px-4 py-8">
-        {/* Header with back button and purchase info */}
-        <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <Button 
-            onClick={handleBack} 
-            variant="ghost" 
-            className="gap-2 self-start"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Return to Marketplace
-          </Button>
-          
-          {headerActions}
-        </div>
-
         {/* Premium required notice for ownership */}
         {!isPremium && user && !isOwnListing && (
           <div className="mb-6 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center gap-2">
@@ -620,8 +606,7 @@ const MarketplaceVisionDetail: React.FC = () => {
           </div>
         )}
 
-        {/* Unified Vision Experience - providers are handled internally */}
-        {/* PGN is stored in multiple places - prefer game_data.pgn, then visualization.pgn */}
+        {/* Unified Vision Experience - Single unified menu for ALL contexts */}
         <UnifiedVisionExperience
           board={vizData.board}
           gameData={vizData.gameData}
@@ -634,6 +619,9 @@ const MarketplaceVisionDetail: React.FC = () => {
           createdAt={listing?.created_at}
           title={listing?.visualization?.title}
           imageUrl={listing?.visualization?.image_path}
+          onBack={handleBack}
+          backButtonText="Return to Marketplace"
+          headerActions={headerActions}
           onTransferToCreative={handleTransferToCreative}
           onShare={handleShare}
           onExport={handleExport}
