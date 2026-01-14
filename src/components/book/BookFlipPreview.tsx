@@ -77,7 +77,7 @@ interface BookFlipPreviewProps {
 }
 
 export const BookFlipPreview: React.FC<BookFlipPreviewProps> = ({ className = '' }) => {
-  const [currentPage, setCurrentPage] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1); // Start on front cover
   const [direction, setDirection] = useState(0);
   const [isFlipping, setIsFlipping] = useState(false);
 
