@@ -46,6 +46,9 @@ import { LegendHighlightProvider, useLegendHighlight } from '@/contexts/LegendHi
 import InteractiveVisualizationBoard from './InteractiveVisualizationBoard';
 import { EnhancedLegend } from './EnhancedLegend';
 import GameInfoDisplay from './GameInfoDisplay';
+import VerticalTimelineSlider from './VerticalTimelineSlider';
+import ColorLegend from './ColorLegend';
+import { classifyMoves, getMoveQualitySummary, MOVE_QUALITY_INFO } from '@/lib/chess/moveQuality';
 import { ShowPiecesToggle } from './ShowPiecesToggle';
 import BoardCoordinateGuide from './BoardCoordinateGuide';
 import IntrinsicPaletteCard from './IntrinsicPaletteCard';
@@ -351,7 +354,7 @@ const TimelineControls: React.FC<{
   );
 };
 
-// Analytics panel with deep chess analysis
+// Analytics panel with deep chess analysis and move quality metrics
 const AnalyticsPanel: React.FC<{
   visionScore: VisionScore | null;
   isLoading: boolean;
@@ -359,8 +362,21 @@ const AnalyticsPanel: React.FC<{
   totalMoves: number;
   createdAt?: string;
   gameAnalysis: GameAnalysis | null;
-}> = ({ visionScore, isLoading, gameData, totalMoves, createdAt, gameAnalysis }) => {
+  pgn?: string;
+}> = ({ visionScore, isLoading, gameData, totalMoves, createdAt, gameAnalysis, pgn }) => {
   const membershipMultiplier = calculateMembershipMultiplier(100);
+  
+  // Calculate move quality summary
+  const qualitySummary = React.useMemo(() => {
+    const pgnToUse = pgn || gameData.pgn;
+    if (!pgnToUse) return null;
+    try {
+      const classified = classifyMoves(pgnToUse);
+      return getMoveQualitySummary(classified);
+    } catch {
+      return null;
+    }
+  }, [pgn, gameData.pgn]);
   const estimatedValue = visionScore ? calculateVisionValue(visionScore, membershipMultiplier) : 0;
 
   if (isLoading) {
@@ -531,6 +547,51 @@ const AnalyticsPanel: React.FC<{
                   <p className="font-bold">{gameAnalysis.summary.materialBalance > 0 ? '+' : ''}{gameAnalysis.summary.materialBalance}</p>
                   <p className="text-muted-foreground">Material</p>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Move Quality Metrics */}
+          {qualitySummary && (
+            <div className="p-3 rounded-lg bg-gradient-to-br from-cyan-500/10 via-transparent to-purple-500/10 border border-cyan-500/20">
+              <div className="flex items-center justify-between mb-3">
+                <Badge variant="outline" className="bg-cyan-500/10 text-cyan-600 border-cyan-500/30">
+                  <Sparkles className="h-3 w-3 mr-1" />
+                  Move Quality
+                </Badge>
+                <span className={`text-lg font-bold ${
+                  qualitySummary.accuracy >= 90 ? 'text-green-400' :
+                  qualitySummary.accuracy >= 70 ? 'text-yellow-400' :
+                  'text-red-400'
+                }`}>
+                  {qualitySummary.accuracy.toFixed(1)}% Accuracy
+                </span>
+              </div>
+              <div className="grid grid-cols-4 gap-2 text-center text-xs">
+                {qualitySummary.brilliantCount > 0 && (
+                  <div className="p-2 rounded bg-cyan-500/10">
+                    <p className="font-bold text-cyan-400">{qualitySummary.brilliantCount}</p>
+                    <p className="text-muted-foreground text-[10px]">Brilliant</p>
+                  </div>
+                )}
+                {qualitySummary.greatCount > 0 && (
+                  <div className="p-2 rounded bg-green-500/10">
+                    <p className="font-bold text-green-400">{qualitySummary.greatCount}</p>
+                    <p className="text-muted-foreground text-[10px]">Great</p>
+                  </div>
+                )}
+                {qualitySummary.blunderCount > 0 && (
+                  <div className="p-2 rounded bg-red-500/10">
+                    <p className="font-bold text-red-400">{qualitySummary.blunderCount}</p>
+                    <p className="text-muted-foreground text-[10px]">Blunders</p>
+                  </div>
+                )}
+                {qualitySummary.mistakeCount > 0 && (
+                  <div className="p-2 rounded bg-orange-500/10">
+                    <p className="font-bold text-orange-400">{qualitySummary.mistakeCount}</p>
+                    <p className="text-muted-foreground text-[10px]">Mistakes</p>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -1107,38 +1168,64 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                     )}
                   </div>
 
-                  {/* Board with Trademark Look */}
-                  <div className="flex justify-center relative" data-vision-board="true">
-                    {isSwitchingPalette && (
-                      <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10 rounded-lg">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  {/* Main Layout: Timeline Left | Board Center | Legend Right */}
+                  <div className="flex gap-4 items-start justify-center">
+                    {/* Left: Vertical Timeline */}
+                    <div className="hidden lg:block flex-shrink-0">
+                      <VerticalTimelineSlider 
+                        totalMoves={localTotalMoves} 
+                        moves={localGameData.moves}
+                        pgn={pgn || localGameData.pgn}
+                      />
+                    </div>
+
+                    {/* Center: Board */}
+                    <div className="flex-shrink-0 relative" data-vision-board="true">
+                      {isSwitchingPalette && (
+                        <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10 rounded-lg">
+                          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        </div>
+                      )}
+                      <TimelineBoard 
+                        board={localBoard} 
+                        totalMoves={localTotalMoves} 
+                        size={boardSize}
+                        gameData={localGameData}
+                        darkMode={darkMode}
+                        title={localTitle || contextTitle}
+                        showCoordinates={showCoordinates}
+                      />
+                    </div>
+
+                    {/* Right: Color Legend */}
+                    {showLegend && (
+                      <div className="hidden lg:block flex-shrink-0 w-[220px]">
+                        <ColorLegend 
+                          interactive={true}
+                          board={localBoard}
+                        />
                       </div>
                     )}
-                    <TimelineBoard 
-                      board={localBoard} 
-                      totalMoves={localTotalMoves} 
-                      size={boardSize}
-                      gameData={localGameData}
-                      darkMode={darkMode}
-                      title={localTitle || contextTitle}
-                      showCoordinates={showCoordinates}
+                  </div>
+
+                  {/* Mobile Timeline Controls (shown on smaller screens) */}
+                  <div className="lg:hidden">
+                    <TimelineControls 
+                      totalMoves={totalMoves} 
+                      moves={gameData.moves}
                     />
                   </div>
 
-                  {/* Timeline Controls */}
-                  <TimelineControls 
-                    totalMoves={totalMoves} 
-                    moves={gameData.moves}
-                  />
-
-                  {/* Legend */}
+                  {/* Mobile Legend (shown on smaller screens) */}
                   {showLegend && (
-                    <EnhancedLegend 
-                      whitePalette={getCurrentPalette().white}
-                      blackPalette={getCurrentPalette().black}
-                      board={board}
-                      compact
-                    />
+                    <div className="lg:hidden">
+                      <EnhancedLegend 
+                        whitePalette={getCurrentPalette().white}
+                        blackPalette={getCurrentPalette().black}
+                        board={board}
+                        compact
+                      />
+                    </div>
                   )}
 
                   {/* Game Info is now integrated into TimelineBoard for trademark look */}
@@ -1379,6 +1466,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                   totalMoves={totalMoves}
                   createdAt={createdAt}
                   gameAnalysis={gameAnalysis}
+                  pgn={pgn || gameData.pgn}
                 />
 
                 {/* Marketplace Info */}
