@@ -242,6 +242,7 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
   let setHoveredSquare: ((info: { square: string; pieces: HighlightedPiece[]; moveNumbers: number[] } | null) => void) | null = null;
   let setHighlightedAnnotations: ((annotations: ('white-player' | 'black-player')[]) => void) | null = null;
   let hoveredAnnotation: { type: string; associatedPieces?: HighlightedPiece[] } | null = null;
+  let hoveredSquareFromContext: { square: string; pieces: HighlightedPiece[]; moveNumbers: number[] } | null = null;
   
   try {
     const context = useLegendHighlight();
@@ -259,6 +260,7 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
     setHoveredSquare = context.setHoveredSquare;
     setHighlightedAnnotations = context.setHighlightedAnnotations;
     hoveredAnnotation = context.hoveredAnnotation;
+    hoveredSquareFromContext = context.hoveredSquare;
   } catch {
     // Context not available, no highlighting
   }
@@ -328,6 +330,17 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
     }
   }, [setHoveredSquare, setHighlightedAnnotations]);
   
+  // Determine effective highlighting pieces - include pieces from hovered square for full board highlighting
+  const effectiveHighlightPieces = useMemo(() => {
+    // If we have locked pieces or legend hover, use those
+    if (highlightedPieces.length > 0) return highlightedPieces;
+    // If a square is being hovered, use the pieces from that square to highlight all their visited squares
+    if (hoveredSquareFromContext?.pieces && hoveredSquareFromContext.pieces.length > 0) {
+      return hoveredSquareFromContext.pieces;
+    }
+    return [];
+  }, [highlightedPieces, hoveredSquareFromContext]);
+  
   // Memoize board rendering for performance
   const boardElements = useMemo(() => {
     return [...Array(8)].map((_, rowIndex) => {
@@ -340,9 +353,9 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
         const squareName = `${String.fromCharCode(97 + file)}${rank + 1}`;
         const isHovered = hoveredSquareLocal === squareName;
         
-        // Check if this square has any of the highlighted pieces
-        const isHighlightedFromLegend = highlightedPieces.length > 0 && square.visits.some(
-          v => highlightedPieces.some(h => h.pieceType === v.piece && h.pieceColor === v.color)
+        // Check if this square has any of the effective highlighted pieces
+        const isHighlightedFromLegend = effectiveHighlightPieces.length > 0 && square.visits.some(
+          v => effectiveHighlightPieces.some(h => h.pieceType === v.piece && h.pieceColor === v.color)
         );
         
         return renderNestedSquares(
@@ -351,14 +364,14 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
           y,
           squareSize,
           baseColor,
-          highlightedPieces,
+          effectiveHighlightPieces,
           compareMode,
           isHovered,
           isHighlightedFromLegend
         );
       });
     });
-  }, [board, borderWidth, squareSize, highlightedPieces, compareMode, hoveredSquareLocal, hoveredAnnotation]);
+  }, [board, borderWidth, squareSize, effectiveHighlightPieces, compareMode, hoveredSquareLocal, hoveredAnnotation]);
 
   // Create invisible interaction layer for hover detection
   const interactionSquares = useMemo(() => {
