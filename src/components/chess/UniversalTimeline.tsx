@@ -481,8 +481,92 @@ export const UniversalTimeline: React.FC<UniversalTimelineProps> = ({
                     </TooltipContent>
                   </Tooltip>
                 );
-              })}
-            </div>
+            })}
+          </div>
+        </div>
+        )}
+
+        {/* Game Phase Navigation */}
+        {gamePhases.length > 0 && (
+          <div className="flex items-center gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="text-muted-foreground flex items-center gap-1 cursor-help">
+                  <Layers className="w-3 h-3" />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-[220px] p-3">
+                <div className="space-y-2">
+                  <div className="font-semibold">Game Phases</div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Click any phase to jump to its starting position. View how the game evolved through each stage.
+                  </p>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+            
+            {/* All Moves Button */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={currentMove >= totalMoves ? "secondary" : "ghost"}
+                  size="sm"
+                  className="h-6 px-2 text-[10px] font-medium"
+                  onClick={() => onMoveChange(totalMoves)}
+                >
+                  All Moves
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-[200px] p-3">
+                <div className="space-y-1">
+                  <div className="font-semibold">All Moves</div>
+                  <p className="text-xs text-muted-foreground">Show the complete visualization with all {totalMoves} moves.</p>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+
+            {/* Phase Buttons */}
+            {gamePhases.map((phase) => {
+              const phaseConfig = PHASE_CONFIG[phase.name];
+              const PhaseIcon = phaseConfig.icon;
+              const isActive = currentMove >= phase.startMove && currentMove <= phase.endMove && currentMove < totalMoves;
+              
+              return (
+                <Tooltip key={phase.name}>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={isActive ? "secondary" : "ghost"}
+                      size="sm"
+                      className={`h-6 px-2 text-[10px] font-medium gap-1 ${isActive ? phaseConfig.bgColor : ''}`}
+                      onClick={() => onMoveChange(phase.startMove)}
+                    >
+                      <PhaseIcon className={`w-3 h-3 ${phaseConfig.color}`} />
+                      <span className="hidden sm:inline capitalize">{phase.name}</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-[240px] p-3">
+                    <div className="space-y-2">
+                      <div className="font-semibold flex items-center gap-2">
+                        <PhaseIcon className={`w-4 h-4 ${phaseConfig.color}`} />
+                        {phaseConfig.name}
+                      </div>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        {phaseConfig.description}
+                      </p>
+                      <p className="text-xs leading-relaxed border-t border-border/50 pt-2">
+                        {phaseConfig.tips}
+                      </p>
+                      <p className="text-[10px] text-primary mt-1 font-medium">
+                        Moves {phase.startMove} - {phase.endMove}
+                      </p>
+                      <p className="text-[10px] text-primary italic">
+                        Click to jump to start of {phase.name}
+                      </p>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              );
+            })}
           </div>
         )}
 
