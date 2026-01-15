@@ -26,8 +26,11 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { MoveHistoryEntry } from './EnPensentOverlay';
+import { KeyMomentMarker, KeyMoment as EnhancedKeyMoment, KeyMomentType } from './KeyMomentMarker';
+import { analyzeTimeline, TimelineAnalysisResult } from '@/lib/chess/timelineAnalysis';
 
-interface KeyMoment {
+// Local KeyMoment type for basic parsing (converted to EnhancedKeyMoment for display)
+interface LocalKeyMoment {
   moveNumber: number;
   type: 'capture' | 'check' | 'checkmate' | 'castling' | 'promotion';
   move: string;
@@ -52,6 +55,7 @@ interface UniversalTimelineProps {
   onMoveChange: (move: number) => void;
   compact?: boolean;
   vertical?: boolean;
+  pgn?: string; // Added for deep analysis
 }
 
 // Icon descriptions for tooltips with richer content
@@ -130,8 +134,8 @@ const PHASE_CONFIG = {
 };
 
 // Analyze moves to find key moments
-function findKeyMoments(moves: string[], moveHistory?: MoveHistoryEntry[]): KeyMoment[] {
-  const moments: KeyMoment[] = [];
+function findKeyMoments(moves: string[], moveHistory?: MoveHistoryEntry[]): LocalKeyMoment[] {
+  const moments: LocalKeyMoment[] = [];
   const movesToAnalyze = moves.length > 0 ? moves : (moveHistory?.map(() => '') || []);
   
   movesToAnalyze.forEach((move, index) => {
@@ -364,7 +368,7 @@ export const UniversalTimeline: React.FC<UniversalTimelineProps> = ({
 
   // Group moments by type for jump menu
   const momentsByType = useMemo(() => {
-    const grouped: Record<string, KeyMoment[]> = {
+    const grouped: Record<string, LocalKeyMoment[]> = {
       capture: [],
       check: [],
       checkmate: [],
@@ -376,7 +380,7 @@ export const UniversalTimeline: React.FC<UniversalTimelineProps> = ({
   }, [keyMoments]);
 
   // Format move for display
-  const formatMoveDisplay = (moment: KeyMoment) => {
+  const formatMoveDisplay = (moment: LocalKeyMoment) => {
     const moveIndex = moment.moveNumber - 1;
     const moveNum = Math.floor(moveIndex / 2) + 1;
     const isWhite = moveIndex % 2 === 0;
@@ -580,50 +584,29 @@ export const UniversalTimeline: React.FC<UniversalTimelineProps> = ({
 
         {/* Slider with moment markers */}
         <div className="relative">
-          {/* Key moment markers */}
+          {/* Key moment markers - now using enhanced KeyMomentMarker with hover highlighting */}
           <div className="absolute inset-x-0 top-0 h-5 pointer-events-none z-10">
             {keyMoments.slice(0, 20).map((moment, idx) => {
               const position = (moment.moveNumber / totalMoves) * 100;
-              const config = ICON_DESCRIPTIONS[moment.type];
-              const Icon = config.icon;
-              const moveIndex = moment.moveNumber - 1;
-              const moveNum = Math.floor(moveIndex / 2) + 1;
-              const isWhiteMove = moveIndex % 2 === 0;
+              
+              // Convert LocalKeyMoment to EnhancedKeyMoment for the marker
+              const enhancedMoment: EnhancedKeyMoment = {
+                moveNumber: moment.moveNumber,
+                type: moment.type as KeyMomentType,
+                move: moment.move,
+                player: moment.player,
+              };
               
               return (
-                <Tooltip key={`${moment.moveNumber}-${moment.type}-${idx}`}>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={() => onMoveChange(moment.moveNumber)}
-                      className={`absolute -translate-x-1/2 -top-1 w-4 h-4 rounded-full ${config.color.split(' ')[0]} 
-                        flex items-center justify-center cursor-pointer pointer-events-auto
-                        hover:scale-125 transition-transform shadow-lg ring-1 ring-black/20
-                        ${moment.player === 'white' ? 'ring-white/30' : 'ring-black/50'}`}
-                      style={{ left: `${position}%` }}
-                    >
-                      <Icon className="w-2.5 h-2.5 text-white" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="max-w-[220px] p-3">
-                    <div className="space-y-2">
-                      <div className="font-semibold flex items-center gap-2">
-                        <span className="text-lg">{config.emoji}</span>
-                        <Icon className={`w-4 h-4 ${config.color.split(' ')[1]}`} />
-                        {config.label}
-                      </div>
-                      <div className="flex items-center gap-2 text-sm font-mono bg-muted/50 rounded px-2 py-1">
-                        <div className={`w-2 h-2 rounded-full ${moment.player === 'white' ? 'bg-sky-400' : 'bg-rose-400'}`} />
-                        {moveNum}.{isWhiteMove ? '' : '..'} {moment.move}
-                      </div>
-                      <p className="text-xs text-muted-foreground leading-relaxed">
-                        {config.tactical}
-                      </p>
-                      <p className="text-[10px] text-primary italic">
-                        Click to jump to this moment
-                      </p>
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
+                <div key={`${moment.moveNumber}-${moment.type}-${idx}`} className="pointer-events-auto">
+                  <KeyMomentMarker
+                    moment={enhancedMoment}
+                    position={position}
+                    totalMoves={totalMoves}
+                    onClick={onMoveChange}
+                    size="md"
+                  />
+                </div>
               );
             })}
           </div>
