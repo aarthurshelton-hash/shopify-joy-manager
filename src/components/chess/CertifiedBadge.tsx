@@ -11,6 +11,7 @@ import {
   CheckCircle,
   Palette,
   Gamepad2,
+  Gem,
 } from 'lucide-react';
 import {
   Tooltip,
@@ -21,7 +22,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 
 interface CertifiedBadgeProps {
-  type: 'palette' | 'game' | 'genesis';
+  type: 'palette' | 'game' | 'genesis' | 'premium';
   name?: string;
   similarity?: number;
   matchType?: 'exact' | 'partial' | 'none';
@@ -29,9 +30,35 @@ interface CertifiedBadgeProps {
 }
 
 const BADGE_DATA = {
+  premium: {
+    icon: Gem,
+    label: 'Premium',
+    gradient: 'from-amber-400 via-yellow-500 to-amber-600',
+    glow: 'shadow-amber-500/40',
+    sellPoints: [
+      { icon: Crown, text: 'Official Game + Palette', value: 'Maximum Value' },
+      { icon: TrendingUp, text: 'Highest appreciation rate', value: '+35% annually' },
+      { icon: Shield, text: 'Double-certified authenticity', value: 'Verified' },
+      { icon: Star, text: 'Premium print quality', value: 'Museum grade' },
+    ],
+    description: 'This vision combines an officially curated En Pensent game AND palette, representing the highest tier of encryption value.',
+  },
+  genesis: {
+    icon: Sparkles,
+    label: 'Genesis',
+    gradient: 'from-violet-500 to-purple-600',
+    glow: 'shadow-violet-500/30',
+    sellPoints: [
+      { icon: Crown, text: 'Official game OR palette', value: 'Single certified' },
+      { icon: TrendingUp, text: 'Collector value appreciation', value: '+20% annually' },
+      { icon: Shield, text: 'Partial certification', value: 'Verified' },
+      { icon: Star, text: 'Enhanced print quality', value: 'Premium grade' },
+    ],
+    description: 'This vision uses either an officially curated En Pensent game OR palette, earning Genesis status with enhanced encryption value.',
+  },
   palette: {
     icon: Palette,
-    label: 'Certified Palette',
+    label: 'Official Palette',
     gradient: 'from-indigo-500 to-purple-600',
     glow: 'shadow-purple-500/30',
     sellPoints: [
@@ -54,19 +81,6 @@ const BADGE_DATA = {
       { icon: CheckCircle, text: 'PGN authenticity', value: 'Chessgames.com' },
     ],
     description: 'This visualization captures a legendary chess game, immortalized in chess history and verified against our famous games database.',
-  },
-  genesis: {
-    icon: Crown,
-    label: 'Exemplar',
-    gradient: 'from-yellow-400 to-amber-500',
-    glow: 'shadow-yellow-500/40',
-    sellPoints: [
-      { icon: Crown, text: 'Genesis collection', value: 'Limited edition' },
-      { icon: TrendingUp, text: 'Platform growth multiplier', value: '2x base score' },
-      { icon: Shield, text: 'Company seeded', value: 'Numbered series' },
-      { icon: Star, text: 'Rarity tier', value: 'Ultra rare' },
-    ],
-    description: 'Exemplar visions are company-seeded Genesis pieces with special rarity bonuses that appreciate as the platform grows.',
   },
 };
 
@@ -177,7 +191,9 @@ export const CertifiedBadge: React.FC<CertifiedBadgeProps> = ({
             <div className="pt-2 border-t border-border/50 text-center">
               <span className="text-[10px] text-primary italic flex items-center justify-center gap-1">
                 <Sparkles className="h-3 w-3" />
-                Certified visions retain +20% resale value
+                {type === 'premium' ? 'Premium visions retain +35% resale value' : 
+                 type === 'genesis' ? 'Genesis visions retain +20% resale value' :
+                 'Certified visions retain +20% resale value'}
               </span>
             </div>
           </div>
