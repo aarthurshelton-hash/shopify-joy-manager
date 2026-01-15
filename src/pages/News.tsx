@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
-import { Crown, Quote, Star, Newspaper, Rocket, Palette, Gamepad2, Users, Zap, Globe, BarChart3, Scan, BookOpen, Shield, Sparkles, Gift, Target, TrendingUp, Award, ArrowRight } from 'lucide-react';
+import { Crown, Quote, Star, Newspaper, Rocket, Palette, Gamepad2, Users, Zap, Globe, BarChart3, Scan, BookOpen, Shield, Sparkles, Gift, Target, TrendingUp, Award, ArrowRight, Rss } from 'lucide-react';
 import { useRandomGameArt } from '@/hooks/useRandomGameArt';
 import { gameImageImports } from '@/lib/chess/gameImages';
 
@@ -218,6 +218,17 @@ const News = () => {
             <p className="text-lg text-muted-foreground font-serif leading-relaxed">
               The latest features, updates, and stories from the En Pensent community.
             </p>
+            
+            {/* RSS Feed Link */}
+            <a 
+              href="/rss.xml" 
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-primary/30 bg-primary/5 text-primary text-sm font-display uppercase tracking-wider hover:bg-primary/10 transition-colors"
+            >
+              <Rss className="h-4 w-4" />
+              Subscribe via RSS
+            </a>
           </div>
           
           {/* Testimonials */}

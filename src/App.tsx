@@ -11,6 +11,7 @@ import { GlobalAlertsBanner } from "@/components/shared/GlobalAlertsBanner";
 import { BackToMarketplaceButton } from "@/components/marketplace/BackToMarketplaceButton";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { StructuredData } from "@/components/seo/StructuredData";
+import { DynamicMetaTags } from "@/components/seo/DynamicMetaTags";
 import Index from "./pages/Index";
 import MyPalettes from "./pages/MyPalettes";
 import MyVision from "./pages/MyVision";
@@ -67,6 +68,8 @@ const App = () => (
           <GlobalAlertsBanner />
           <BrowserRouter>
             <StructuredData />
+            <DynamicMetaTags />
+            <VisionRestorer />
             <VisionRestorer />
             <BackToMarketplaceButton />
             <Routes>

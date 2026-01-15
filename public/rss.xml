@@ -1,0 +1,275 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>En Pensent - Chess Art News</title>
+    <link>https://enpensent.com</link>
+    <description>Latest features, updates, and stories from En Pensent - transforming chess games into stunning generative art.</description>
+    <language>en-us</language>
+    <lastBuildDate>Wed, 15 Jan 2026 00:00:00 GMT</lastBuildDate>
+    <atom:link href="https://enpensent.com/rss.xml" rel="self" type="application/rss+xml"/>
+    <image>
+      <url>https://enpensent.com/favicon.png</url>
+      <title>En Pensent</title>
+      <link>https://enpensent.com</link>
+    </image>
+    <category>Chess</category>
+    <category>Art</category>
+    <category>Technology</category>
+    
+    <item>
+      <title>Stockfish 17 NNUE Integration</title>
+      <link>https://enpensent.com/play</link>
+      <guid isPermaLink="true">https://enpensent.com/news/stockfish-17-integration</guid>
+      <pubDate>Wed, 15 Jan 2026 00:00:00 GMT</pubDate>
+      <description>Real grandmaster-strength analysis with ~3200 ELO engine. Centipawn accuracy, win probability, depth 20+ evaluation. Play against or analyze with the world's strongest open-source engine.</description>
+      <content:encoded><![CDATA[
+        <p>We're excited to announce the integration of <strong>Stockfish 17 NNUE</strong> into En Pensent!</p>
+        <p>This brings grandmaster-strength analysis (~3200 ELO) directly to your browser:</p>
+        <ul>
+          <li>Centipawn accuracy evaluation</li>
+          <li>Win probability calculations</li>
+          <li>Depth 20+ analysis</li>
+          <li>5 difficulty levels for play mode</li>
+        </ul>
+        <p><a href="https://enpensent.com/play">Try it now →</a></p>
+      ]]></content:encoded>
+      <category>Feature</category>
+      <category>Analysis</category>
+    </item>
+    
+    <item>
+      <title>FEN Position Import/Export</title>
+      <link>https://enpensent.com/creative-mode</link>
+      <guid isPermaLink="true">https://enpensent.com/news/fen-import-export</guid>
+      <pubDate>Wed, 15 Jan 2026 00:00:00 GMT</pubDate>
+      <description>Import any chess position via FEN notation for instant visualization. Export final positions from any game. Perfect for puzzles, studies, and custom compositions.</description>
+      <content:encoded><![CDATA[
+        <p>FEN (Forsyth-Edwards Notation) support is now live!</p>
+        <p>You can now:</p>
+        <ul>
+          <li>Import any chess position directly</li>
+          <li>Visualize puzzle positions</li>
+          <li>Create art from endgame studies</li>
+          <li>Export positions from your games</li>
+        </ul>
+        <p><a href="https://enpensent.com/creative-mode">Start creating →</a></p>
+      ]]></content:encoded>
+      <category>Feature</category>
+    </item>
+    
+    <item>
+      <title>Natural Vision™ Recognition Launched</title>
+      <link>https://enpensent.com/vision-scanner</link>
+      <guid isPermaLink="true">https://enpensent.com/news/natural-vision-launch</guid>
+      <pubDate>Wed, 15 Jan 2026 00:00:00 GMT</pubDate>
+      <description>Our proprietary pattern recognition technology can now identify any En Pensent print and instantly display its game details, Stockfish analysis, and ownership history.</description>
+      <content:encoded><![CDATA[
+        <p>Introducing <strong>Natural Vision™</strong> - our proprietary print recognition technology.</p>
+        <p>Simply scan any En Pensent print with your phone to:</p>
+        <ul>
+          <li>View the complete game replay</li>
+          <li>Access Stockfish analysis</li>
+          <li>See ownership history</li>
+          <li>Verify authenticity</li>
+        </ul>
+        <p><a href="https://enpensent.com/vision-scanner">Try the scanner →</a></p>
+      ]]></content:encoded>
+      <category>Feature</category>
+      <category>Technology</category>
+    </item>
+    
+    <item>
+      <title>Carlsen in Color Book Pre-Orders Open</title>
+      <link>https://enpensent.com/book</link>
+      <guid isPermaLink="true">https://enpensent.com/news/carlsen-book-preorder</guid>
+      <pubDate>Wed, 15 Jan 2026 00:00:00 GMT</pubDate>
+      <description>100 of Magnus Carlsen's greatest games, each with AI-generated haiku poetry and Stockfish annotations. Limited first edition of 1,000 copies with exclusive collector's box.</description>
+      <content:encoded><![CDATA[
+        <p>Pre-orders are now open for <strong>"Carlsen in Color"</strong> - our flagship coffee table book.</p>
+        <p>Features:</p>
+        <ul>
+          <li>100 of Magnus Carlsen's greatest games</li>
+          <li>AI-generated haiku poetry for each game</li>
+          <li>Stockfish annotations</li>
+          <li>Limited edition of 1,000 copies</li>
+          <li>Exclusive collector's box</li>
+        </ul>
+        <p><a href="https://enpensent.com/book">Pre-order now →</a></p>
+      ]]></content:encoded>
+      <category>Product</category>
+      <category>Book</category>
+    </item>
+    
+    <item>
+      <title>Vision Marketplace Goes Live</title>
+      <link>https://enpensent.com/marketplace</link>
+      <guid isPermaLink="true">https://enpensent.com/news/marketplace-launch</guid>
+      <pubDate>Wed, 15 Jan 2026 00:00:00 GMT</pubDate>
+      <description>Trade, collect, and discover unique chess visualizations. Built-in wallet system, royalty tracking, and secure ownership transfers.</description>
+      <content:encoded><![CDATA[
+        <p>The <strong>Vision Marketplace</strong> is officially live!</p>
+        <p>Features include:</p>
+        <ul>
+          <li>Buy and sell unique Visions</li>
+          <li>Built-in wallet system</li>
+          <li>5% perpetual creator royalties</li>
+          <li>Secure ownership transfers</li>
+          <li>Price history tracking</li>
+        </ul>
+        <p><a href="https://enpensent.com/marketplace">Explore the marketplace →</a></p>
+      ]]></content:encoded>
+      <category>Feature</category>
+      <category>Marketplace</category>
+    </item>
+    
+    <item>
+      <title>AI Poetry &amp; Heatmap Analysis</title>
+      <link>https://enpensent.com</link>
+      <guid isPermaLink="true">https://enpensent.com/news/ai-poetry-heatmaps</guid>
+      <pubDate>Wed, 15 Jan 2026 00:00:00 GMT</pubDate>
+      <description>Every famous game features unique AI-generated poetry and Gemini-powered strategic insights. Visualize pressure zones, piece activity, and tactical patterns.</description>
+      <content:encoded><![CDATA[
+        <p>We've added <strong>AI-powered enhancements</strong> to every visualization:</p>
+        <ul>
+          <li>Unique haiku poetry for each game</li>
+          <li>Gemini-powered strategic insights</li>
+          <li>Pressure zone heatmaps</li>
+          <li>Piece activity visualization</li>
+          <li>Tactical pattern recognition</li>
+        </ul>
+        <p><a href="https://enpensent.com">Create your first Vision →</a></p>
+      ]]></content:encoded>
+      <category>Feature</category>
+      <category>AI</category>
+    </item>
+    
+    <item>
+      <title>Premium Framing Options</title>
+      <link>https://enpensent.com/order-print</link>
+      <guid isPermaLink="true">https://enpensent.com/news/premium-framing</guid>
+      <pubDate>Wed, 15 Jan 2026 00:00:00 GMT</pubDate>
+      <description>Museum-quality frames now available: Walnut, Matte Black, Natural Oak, and Gold Gilded. Ships worldwide with white-glove service.</description>
+      <content:encoded><![CDATA[
+        <p>Elevate your chess art with our new <strong>premium framing options</strong>:</p>
+        <ul>
+          <li>Walnut - classic warmth</li>
+          <li>Matte Black - modern elegance</li>
+          <li>Natural Oak - Scandinavian style</li>
+          <li>Gold Gilded - gallery presence</li>
+        </ul>
+        <p>All frames feature museum-quality glass and archival mounting.</p>
+        <p><a href="https://enpensent.com/order-print">Order a framed print →</a></p>
+      ]]></content:encoded>
+      <category>Product</category>
+      <category>Print</category>
+    </item>
+    
+    <item>
+      <title>Live Play Mode Released</title>
+      <link>https://enpensent.com/play</link>
+      <guid isPermaLink="true">https://enpensent.com/news/live-play-mode</guid>
+      <pubDate>Mon, 15 Dec 2025 00:00:00 GMT</pubDate>
+      <description>Play chess directly on En Pensent against opponents or Stockfish AI (5 difficulty levels). Watch your artwork generate in real-time as you make moves.</description>
+      <content:encoded><![CDATA[
+        <p><strong>Live Play Mode</strong> is here! Create art while you play:</p>
+        <ul>
+          <li>Play against Stockfish AI (5 difficulty levels)</li>
+          <li>Challenge friends online</li>
+          <li>Watch art generate in real-time</li>
+          <li>Automatic game saving</li>
+        </ul>
+        <p><a href="https://enpensent.com/play">Start playing →</a></p>
+      ]]></content:encoded>
+      <category>Feature</category>
+      <category>Play</category>
+    </item>
+    
+    <item>
+      <title>Education Fund Initiative</title>
+      <link>https://enpensent.com/education-fund</link>
+      <guid isPermaLink="true">https://enpensent.com/news/education-fund</guid>
+      <pubDate>Mon, 15 Dec 2025 00:00:00 GMT</pubDate>
+      <description>A portion of every sale now contributes to chess education programs in underserved communities worldwide.</description>
+      <content:encoded><![CDATA[
+        <p>We're proud to announce the <strong>En Pensent Chess Education Fund</strong>.</p>
+        <p>2% of all platform revenue supports:</p>
+        <ul>
+          <li>Chess programs in underserved schools</li>
+          <li>Youth tournament sponsorships</li>
+          <li>Chess equipment donations</li>
+          <li>Coaching scholarships</li>
+        </ul>
+        <p><a href="https://enpensent.com/education-fund">Learn more →</a></p>
+      ]]></content:encoded>
+      <category>Company</category>
+      <category>Charity</category>
+    </item>
+    
+    <item>
+      <title>75+ Historic Games Library</title>
+      <link>https://enpensent.com</link>
+      <guid isPermaLink="true">https://enpensent.com/news/historic-games-library</guid>
+      <pubDate>Sat, 15 Nov 2025 00:00:00 GMT</pubDate>
+      <description>Explore and visualize legendary games spanning 500+ years of chess history, from Ruy López to Gukesh's 2024 championship victory.</description>
+      <content:encoded><![CDATA[
+        <p>Our <strong>Famous Games Library</strong> now includes 75+ legendary games:</p>
+        <ul>
+          <li>The Immortal Game (1851)</li>
+          <li>The Opera Game (1858)</li>
+          <li>Kasparov vs. Deep Blue</li>
+          <li>Carlsen's World Championship victories</li>
+          <li>Gukesh's 2024 championship game</li>
+        </ul>
+        <p><a href="https://enpensent.com">Explore the library →</a></p>
+      ]]></content:encoded>
+      <category>Content</category>
+      <category>Games</category>
+    </item>
+    
+    <item>
+      <title>Visionary Membership Launch</title>
+      <link>https://enpensent.com/account</link>
+      <guid isPermaLink="true">https://enpensent.com/news/visionary-membership</guid>
+      <pubDate>Sat, 15 Nov 2025 00:00:00 GMT</pubDate>
+      <description>Premium tier unlocked: unlimited downloads, HD exports, Stockfish analysis, exclusive palettes, priority printing, and early access to new features.</description>
+      <content:encoded><![CDATA[
+        <p>Introducing <strong>Visionary Membership</strong> - our premium tier:</p>
+        <ul>
+          <li>Unlimited HD downloads</li>
+          <li>Animated GIF exports</li>
+          <li>Stockfish analysis on all games</li>
+          <li>Exclusive color palettes</li>
+          <li>Priority print processing</li>
+          <li>Early access to new features</li>
+          <li>Marketplace listing privileges</li>
+        </ul>
+        <p><a href="https://enpensent.com/account">Become a Visionary →</a></p>
+      ]]></content:encoded>
+      <category>Product</category>
+      <category>Membership</category>
+    </item>
+    
+    <item>
+      <title>16 Curated Color Palettes</title>
+      <link>https://enpensent.com/creative-mode</link>
+      <guid isPermaLink="true">https://enpensent.com/news/color-palettes</guid>
+      <pubDate>Wed, 15 Oct 2025 00:00:00 GMT</pubDate>
+      <description>From Japanese minimalism to Art Deco grandeur — each palette transforms your games into distinct visual experiences.</description>
+      <content:encoded><![CDATA[
+        <p>We've launched <strong>16 curated color palettes</strong>:</p>
+        <ul>
+          <li>Japanese - serene minimalism</li>
+          <li>Art Deco - geometric grandeur</li>
+          <li>Monochrome - timeless elegance</li>
+          <li>Neon - vibrant energy</li>
+          <li>And 12 more unique themes...</li>
+        </ul>
+        <p>Each palette completely transforms how your game visualization looks and feels.</p>
+        <p><a href="https://enpensent.com/creative-mode">Explore palettes →</a></p>
+      ]]></content:encoded>
+      <category>Feature</category>
+      <category>Design</category>
+    </item>
+    
+  </channel>
+</rss>
