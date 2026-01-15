@@ -853,6 +853,7 @@ const Index = () => {
                       darkMode: exportState?.darkMode || false,
                       withWatermark: !isPremium, // Add watermark for free users
                       highlightState,
+                      pgn: currentPgn, // Pass explicit PGN for piece rendering
                       capturedState: exportState ? {
                         currentMove: exportState.currentMove,
                         selectedPhase: 'all',
@@ -904,6 +905,7 @@ const Index = () => {
                       pieceOpacity: exportState.pieceOpacity,
                     } : undefined,
                     currentMoveNumber: exportState?.currentMove,
+                    pgn: currentPgn, // Pass explicit PGN for piece rendering
                   });
                 } else if (type === 'gif') {
                   const boardElement = visionBoardRef.current?.querySelector('[data-vision-board]') as HTMLElement;

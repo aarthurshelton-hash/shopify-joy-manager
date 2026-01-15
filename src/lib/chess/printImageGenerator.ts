@@ -55,11 +55,15 @@ function filterBoardToMove(board: SquareData[][], currentMove: number): SquareDa
  * This is used for Printify print orders - identical to the preview
  * Uses the PrintReadyVisualization component for consistent "trademark look"
  */
+interface PrintOptionsExtended extends PrintOptions {
+  pgn?: string; // Explicit PGN override for piece rendering
+}
+
 export async function generateCleanPrintImage(
   simulation: SimulationResult,
-  options: PrintOptions = {}
+  options: PrintOptionsExtended = {}
 ): Promise<string> {
-  const { darkMode = false, includeQR = false, shareId, capturedState, withWatermark = false, highlightState: providedHighlightState } = options;
+  const { darkMode = false, includeQR = false, shareId, capturedState, withWatermark = false, highlightState: providedHighlightState, pgn: explicitPgn } = options;
   const html2canvas = (await import('html2canvas')).default;
   
   // Create a temporary container for rendering
@@ -129,7 +133,7 @@ export async function generateCleanPrintImage(
           compact: false,
           highlightState,
           piecesState,
-          pgn: simulation.gameData.pgn,
+          pgn: explicitPgn || simulation.gameData.pgn,
           withWatermark, // Pass watermark flag to component
         })
       );
