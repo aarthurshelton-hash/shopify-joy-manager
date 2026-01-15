@@ -29,6 +29,7 @@ interface TrademarkExportOptions {
   currentMoveNumber?: number;
   highlightState?: {
     lockedPieces: Array<{ pieceType: string; pieceColor: string }>;
+    lockedSquares?: Array<{ square: string; pieces: Array<{ pieceType: string; pieceColor: string }> }>;
     compareMode: boolean;
   };
   piecesState?: {

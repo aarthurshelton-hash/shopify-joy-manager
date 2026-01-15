@@ -269,6 +269,7 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
   
   // Extract values from context
   const lockedPieces = context.lockedPieces;
+  const lockedSquares = context.lockedSquares;
   const highlightedPiece = context.highlightedPiece;
   const compareMode = context.compareMode;
   const setHoveredSquare = context.setHoveredSquare;
@@ -276,6 +277,7 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
   const hoveredAnnotation = context.hoveredAnnotation;
   const hoveredSquareFromContext = context.hoveredSquare;
   const toggleLockedPiece = context.toggleLockedPiece;
+  const toggleLockedSquare = context.toggleLockedSquare;
   const pieceArrows = context.pieceArrows;
   const setFollowPieceData = context.setFollowPieceData;
   const setPieceArrows = context.setPieceArrows;
@@ -620,17 +622,40 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
     setHoveredSquare(null);
     setHighlightedAnnotations([]);
   }, [setHoveredSquare, setHighlightedAnnotations]);
+
+  // Handle square click to toggle lock
+  const handleSquareClick = useCallback((rank: number, file: number) => {
+    const square = board[rank][file];
+    const squareName = `${String.fromCharCode(97 + file)}${rank + 1}`;
+    const pieces = getPiecesForSquare(square);
+    
+    if (pieces.length > 0) {
+      toggleLockedSquare(squareName, pieces);
+    }
+  }, [board, getPiecesForSquare, toggleLockedSquare]);
   
-  // Determine effective highlighting pieces - include pieces from hovered square for full board highlighting
+  // Determine effective highlighting pieces - include pieces from hovered/locked squares
   const effectiveHighlightPieces = useMemo(() => {
     // If we have locked pieces or legend hover, use those
     if (highlightedPieces.length > 0) return highlightedPieces;
+    // If there are locked squares, use the pieces from those squares
+    if (lockedSquares.length > 0) {
+      const piecesFromLockedSquares: HighlightedPiece[] = [];
+      for (const ls of lockedSquares) {
+        for (const p of ls.pieces) {
+          if (!piecesFromLockedSquares.some(ep => ep.pieceType === p.pieceType && ep.pieceColor === p.pieceColor)) {
+            piecesFromLockedSquares.push(p);
+          }
+        }
+      }
+      return piecesFromLockedSquares;
+    }
     // If a square is being hovered, use the pieces from that square to highlight all their visited squares
     if (hoveredSquareFromContext?.pieces && hoveredSquareFromContext.pieces.length > 0) {
       return hoveredSquareFromContext.pieces;
     }
     return [];
-  }, [highlightedPieces, hoveredSquareFromContext]);
+  }, [highlightedPieces, lockedSquares, hoveredSquareFromContext]);
   
   // Memoize board rendering for performance
   const boardElements = useMemo(() => {
@@ -643,6 +668,9 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
         const y = borderWidth + rowIndex * squareSize;
         const squareName = `${String.fromCharCode(97 + file)}${rank + 1}`;
         const isHovered = hoveredSquareLocal === squareName;
+        
+        // Check if this square is locked
+        const isLockedSquare = lockedSquares.some(ls => ls.square === squareName);
         
         // Check if this is the target square from a hovered move (timeline key moment)
         const isTargetSquareFromHoveredMove = hoveredMove?.targetSquare === squareName;
@@ -660,14 +688,14 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
           baseColor,
           effectiveHighlightPieces,
           compareMode,
-          isHovered || isTargetSquareFromHoveredMove,
+          isHovered || isTargetSquareFromHoveredMove || isLockedSquare,
           isHighlightedFromLegend
         );
       });
     });
-  }, [board, borderWidth, squareSize, effectiveHighlightPieces, compareMode, hoveredSquareLocal, hoveredAnnotation, hoveredMove]);
+  }, [board, borderWidth, squareSize, effectiveHighlightPieces, compareMode, hoveredSquareLocal, lockedSquares, hoveredAnnotation, hoveredMove]);
 
-  // Create invisible interaction layer for hover detection
+  // Create invisible interaction layer for hover detection and click locking
   const interactionSquares = useMemo(() => {
     return [...Array(8)].map((_, rowIndex) => {
       const rank = 7 - rowIndex;
@@ -676,6 +704,8 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
         const y = borderWidth + rowIndex * squareSize;
         const square = board[rank][file];
         const hasVisits = square.visits.length > 0;
+        const squareName = `${String.fromCharCode(97 + file)}${rank + 1}`;
+        const isLocked = lockedSquares.some(ls => ls.square === squareName);
         
         return (
           <rect
@@ -688,19 +718,22 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
             style={{ cursor: hasVisits ? 'pointer' : 'default' }}
             onMouseEnter={() => handleSquareHover(rank, file)}
             onMouseLeave={handleSquareLeave}
+            onClick={() => hasVisits && handleSquareClick(rank, file)}
             onTouchStart={(e) => {
               if (hasVisits) {
                 e.stopPropagation();
                 handleSquareHover(rank, file);
-                // Auto-clear after 2 seconds for mobile
-                setTimeout(handleSquareLeave, 2000);
+                // Auto-clear after 2 seconds for mobile (unless locked)
+                if (!isLocked) {
+                  setTimeout(handleSquareLeave, 2000);
+                }
               }
             }}
           />
         );
       });
     });
-  }, [board, borderWidth, squareSize, handleSquareHover, handleSquareLeave]);
+  }, [board, borderWidth, squareSize, lockedSquares, handleSquareHover, handleSquareLeave, handleSquareClick]);
   
   // Render chess pieces layer with animations
   const pieceElements = useMemo(() => {
