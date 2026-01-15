@@ -742,7 +742,7 @@ const Index = () => {
               board={simulation.board}
               gameData={simulation.gameData}
               totalMoves={simulation.totalMoves}
-              pgn={currentPgn}
+              pgn={currentPgn || simulation.gameData.pgn}
               context="generator"
               title={gameTitle}
               shareId={savedShareId}

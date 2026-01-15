@@ -357,28 +357,38 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
     
     // Validate PGN is a non-empty string
     if (!pgn || typeof pgn !== 'string') {
-      console.log('[InteractiveVisualizationBoard] No PGN for pieces');
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('[InteractiveVisualizationBoard] No PGN for pieces - pgn is:', typeof pgn);
+      }
       return [];
     }
     
     const trimmedPgn = pgn.trim();
-    if (trimmedPgn === '') {
-      console.log('[InteractiveVisualizationBoard] Empty PGN for pieces');
+    if (trimmedPgn === '' || trimmedPgn.length < 2) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('[InteractiveVisualizationBoard] Empty or too short PGN for pieces');
+      }
       return [];
     }
     
-    console.log('[InteractiveVisualizationBoard] Parsing PGN for pieces, length:', trimmedPgn.length, 'currentMove:', currentMoveNumber);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[InteractiveVisualizationBoard] Parsing PGN for pieces, length:', trimmedPgn.length, 'currentMove:', currentMoveNumber);
+    }
     
     try {
       // Use robust PGN parser
       const { success, moves: allMovesVerbose } = parsePgn(trimmedPgn);
       
       if (!success || allMovesVerbose.length === 0) {
-        console.log('[InteractiveVisualizationBoard] PGN parsing failed or no moves');
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('[InteractiveVisualizationBoard] PGN parsing failed or no moves found');
+        }
         return [];
       }
       
-      console.log('[InteractiveVisualizationBoard] Parsed', allMovesVerbose.length, 'moves successfully');
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[InteractiveVisualizationBoard] Parsed', allMovesVerbose.length, 'moves successfully');
+      }
       
       // Track piece origins - each piece gets a unique ID based on starting square
       const pieceOrigins = new Map<string, string>(); // current square -> origin ID
