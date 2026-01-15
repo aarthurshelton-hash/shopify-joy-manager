@@ -162,7 +162,12 @@ const GameView = () => {
   }, [returningFromOrder, capturedTimelineState, setReturningFromOrder, setCapturedTimelineState]);
 
   // Fetch game data by hash - checks session first, then database
+  // Uses retry mechanism to handle race condition with session store persistence
   useEffect(() => {
+    let retryCount = 0;
+    const maxRetries = 3;
+    const retryDelay = 50; // ms
+    
     const fetchGameByHash = async () => {
       if (!gameHash) {
         setError('Invalid game link');
@@ -170,6 +175,9 @@ const GameView = () => {
         return;
       }
 
+      // Check if this is from the generator - if so, we expect session data
+      const isFromGenerator = searchParams.get('src') === 'generator';
+      
       // First check if we have a freshly generated game in session storage
       if (sessionSimulation && sessionPgn) {
         const sessionGameHash = generateGameHash(sessionPgn);
@@ -189,7 +197,6 @@ const GameView = () => {
           }
           
           // Show success toast for new generation
-          const isFromGenerator = searchParams.get('src') === 'generator';
           if (isFromGenerator) {
             toast.success('Visualization generated!', {
               description: `${sessionSimulation.totalMoves} moves processed.`,
@@ -199,8 +206,49 @@ const GameView = () => {
           setLoading(false);
           return;
         }
+      } else if (isFromGenerator && retryCount < maxRetries) {
+        // Session data not ready yet - retry after a short delay
+        // This handles the race condition where navigation happens before persist completes
+        retryCount++;
+        setTimeout(() => {
+          // Re-read from store directly to get latest persisted state
+          const store = useSessionStore.getState();
+          if (store.currentSimulation && store.currentPgn) {
+            const storeGameHash = generateGameHash(store.currentPgn);
+            if (storeGameHash === gameHash) {
+              setIsFromSession(true);
+              setSessionBoard(store.currentSimulation.board);
+              setSessionGameData(store.currentSimulation.gameData);
+              setSessionTotalMoves(store.currentSimulation.totalMoves);
+              
+              const urlPalette = initialState.paletteId || 'modern';
+              setActivePaletteId(urlPalette);
+              if (urlPalette !== 'custom') {
+                setActivePalette(urlPalette as PaletteId);
+              }
+              
+              toast.success('Visualization generated!', {
+                description: `${store.currentSimulation.totalMoves} moves processed.`,
+              });
+              
+              setLoading(false);
+              return;
+            }
+          }
+          // If still no match after retries, continue to database fetch
+          if (retryCount >= maxRetries) {
+            continueWithDatabaseFetch();
+          } else {
+            fetchGameByHash();
+          }
+        }, retryDelay);
+        return;
       }
 
+      continueWithDatabaseFetch();
+    };
+    
+    const continueWithDatabaseFetch = async () => {
       try {
         // Fetch all saved visualizations and find ones matching this game hash
         const { data: allVisions, error: fetchError } = await supabase
@@ -218,108 +266,137 @@ const GameView = () => {
           const vizHash = generateGameHash(vizPgn);
           
           if (vizHash === gameHash || (gameHash === 'empty' && !vizPgn)) {
-            matchingVisions.push(viz as unknown as GameVision);
-          }
-        }
-
-        if (matchingVisions.length === 0) {
-          // No saved visualization found - check if session data is available as fallback
-          if (sessionSimulation && sessionPgn) {
-            setIsFromSession(true);
-            setSessionBoard(sessionSimulation.board);
-            setSessionGameData(sessionSimulation.gameData);
-            setSessionTotalMoves(sessionSimulation.totalMoves);
+            // Parse game_data to extract details
+            const parsedGameData = viz.game_data as {
+              board?: SquareData[][];
+              gameData?: GameData;
+              totalMoves?: number;
+              paletteId?: string;
+              whitePalette?: Record<string, string>;
+              blackPalette?: Record<string, string>;
+              pgn?: string;
+              white?: string;
+              black?: string;
+              event?: string;
+              date?: string;
+              result?: string;
+              moves?: string[];
+              visualizationState?: {
+                paletteId?: string;
+                darkMode?: boolean;
+              };
+            };
             
-            const urlPalette = initialState.paletteId || 'modern';
-            setActivePaletteId(urlPalette);
-            if (urlPalette !== 'custom') {
-              setActivePalette(urlPalette as PaletteId);
-            }
-            
-            setLoading(false);
-            return;
-          }
-          
-          setError('Game not found. Try generating a new visualization.');
-          setLoading(false);
-          return;
-        }
-
-        // Use the first (oldest/original) vision as primary
-        const primary = matchingVisions[0];
-        setPrimaryVision(primary);
-        setIsFromSession(false);
-
-        // Set active palette from URL or from primary vision
-        const urlPalette = initialState.paletteId;
-        const primaryPalette = primary.game_data?.visualizationState?.paletteId || 'modern';
-        const palette = urlPalette || primaryPalette;
-        setActivePaletteId(palette);
-        if (palette !== 'custom') {
-          setActivePalette(palette as PaletteId);
-        }
-
-        // Build palette variations from all matching visions
-        const variations: PaletteVariation[] = [];
-        const seenPalettes = new Set<string>();
-
-        for (const viz of matchingVisions) {
-          const paletteId = viz.game_data?.visualizationState?.paletteId || 'modern';
-          if (!seenPalettes.has(paletteId)) {
-            seenPalettes.add(paletteId);
-            
-            // Fetch owner profile
-            let ownerName: string | null = null;
-            if (viz.user_id) {
-              const { data: profile } = await supabase
-                .from('profiles')
-                .select('display_name')
-                .eq('user_id', viz.user_id)
-                .single();
-              ownerName = profile?.display_name || null;
-            }
-
-            // Check if listed on marketplace
-            const { data: listing } = await supabase
-              .from('visualization_listings')
-              .select('price_cents, status')
-              .eq('visualization_id', viz.id)
-              .eq('status', 'active')
-              .single();
-
-            variations.push({
+            matchingVisions.push({
               id: viz.id,
-              paletteId,
-              ownerId: viz.user_id,
-              ownerName,
-              isListed: !!listing,
-              price: listing?.price_cents,
+              title: viz.title,
+              pgn: viz.pgn || parsedGameData?.pgn || null,
+              image_path: viz.image_path,
+              public_share_id: viz.public_share_id,
+              user_id: viz.user_id,
+              created_at: viz.created_at,
+              game_data: {
+                white: parsedGameData?.white || parsedGameData?.gameData?.white,
+                black: parsedGameData?.black || parsedGameData?.gameData?.black,
+                event: parsedGameData?.event || parsedGameData?.gameData?.event,
+                date: parsedGameData?.date || parsedGameData?.gameData?.date,
+                result: parsedGameData?.result || parsedGameData?.gameData?.result,
+                moves: parsedGameData?.moves || parsedGameData?.gameData?.moves,
+                totalMoves: parsedGameData?.totalMoves,
+                board: parsedGameData?.board,
+                pgn: parsedGameData?.pgn,
+                visualizationState: parsedGameData?.visualizationState || {
+                  paletteId: parsedGameData?.paletteId,
+                },
+              },
             });
           }
         }
 
+        if (matchingVisions.length === 0) {
+          // No saved vision found - this might be a fresh game that needs to be simulated
+          // For now, show error since we don't have the PGN to regenerate
+          setError('Game not found');
+          setLoading(false);
+          return;
+        }
+
+        // Use the first (oldest) vision as the primary one
+        const primary = matchingVisions[0];
+        setPrimaryVision(primary);
+
+        // Build palette variations from all matching visions
+        const variations: PaletteVariation[] = matchingVisions.map(v => ({
+          id: v.id,
+          paletteId: v.game_data?.visualizationState?.paletteId || 'modern',
+          ownerId: v.user_id || null,
+          ownerName: null,
+          isListed: false,
+        }));
         setPaletteVariations(variations);
 
-        // Record view interaction and track for recently viewed
-        if (!viewRecordedRef.current) {
-          viewRecordedRef.current = true;
-          recordVisionInteraction(primary.id, 'view');
+        // Determine which palette to activate
+        const urlPalette = initialState.paletteId;
+        const primaryPaletteId = primary.game_data?.visualizationState?.paletteId || 'modern';
+        
+        if (urlPalette) {
+          // URL specified a palette - check if we have it
+          const hasVariation = variations.some(v => v.paletteId === urlPalette);
+          if (hasVariation) {
+            setActivePaletteId(urlPalette);
+            if (urlPalette !== 'custom') {
+              setActivePalette(urlPalette as PaletteId);
+            }
+          } else {
+            // Fall back to primary vision's palette
+            setActivePaletteId(primaryPaletteId);
+            if (primaryPaletteId !== 'custom') {
+              setActivePalette(primaryPaletteId as PaletteId);
+            }
+          }
+        } else {
+          // No URL palette - use primary's palette
+          setActivePaletteId(primaryPaletteId);
+          if (primaryPaletteId !== 'custom') {
+            setActivePalette(primaryPaletteId as PaletteId);
+          }
+        }
+
+        // Record view interaction and get score
+        if (primary.id) {
+          recordVisionInteraction(primary.id, 'view').catch(console.error);
           getVisionScore(primary.id).then(score => {
             if (score) setVisionScore(score);
-          });
+          }).catch(console.error);
           
-          // Track for recently viewed section
-          const primaryPaletteId = primary.game_data?.visualizationState?.paletteId || 'modern';
-          const ownerVariation = variations.find(v => v.paletteId === primaryPaletteId);
+          // Track in recently viewed
           useRecentlyViewedStore.getState().addRecentlyViewed({
             id: primary.id,
-            listingId: ownerVariation?.isListed ? undefined : undefined, // Will be populated from listing query
-            title: primary.title,
-            imagePath: primary.image_path,
-            ownerName: ownerVariation?.ownerName || undefined,
-            priceCents: ownerVariation?.price,
             gameHash: gameHash,
+            imagePath: primary.image_path,
+            title: primary.title,
           });
+        }
+        
+        // Check if current user owns this variation
+        if (user && activePaletteId) {
+          const ownerVariation = variations.find(v => 
+            v.paletteId === activePaletteId && v.ownerId === user.id
+          );
+          if (ownerVariation) {
+            setOrderData({
+              visualizationId: ownerVariation.id,
+              title: primary.title,
+              gameHash: gameHash,
+              gameData: {
+                white: primary.game_data?.white || 'Unknown',
+                black: primary.game_data?.black || 'Unknown',
+                event: primary.game_data?.event,
+                date: primary.game_data?.date,
+                result: primary.game_data?.result,
+              },
+            });
+          }
         }
       } catch (err) {
         console.error('Error fetching game:', err);
