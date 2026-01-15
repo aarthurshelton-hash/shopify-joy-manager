@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Slider } from '@/components/ui/slider';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { 
   BookOpen, 
@@ -28,45 +29,21 @@ import {
   Archive,
   ShoppingCart,
   ExternalLink,
-  Package
+  Package,
+  Crown,
+  Flame
 } from 'lucide-react';
-import { carlsenTop100, CarlsenGame } from '@/lib/book/carlsenGames';
-import { fischerTop100, FischerGame } from '@/lib/book/fischerGames';
+import { CarlsenGame } from '@/lib/book/carlsenGames';
+import { FischerGame } from '@/lib/book/fischerGames';
+import { BookConfig, BookType, BOOK_CONFIGS, getBookConfig, GameType } from '@/lib/book/bookConfig';
 import { BookSpread } from '@/components/book/BookSpread';
 import { simulateGame } from '@/lib/chess/gameSimulator';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { jsPDF } from 'jspdf';
-import carlsenCover from '@/assets/book/carlsen-cover.jpg';
-import { Crown, Flame } from 'lucide-react';
-
-// Book types
-type BookType = 'carlsen' | 'fischer';
-type GameType = CarlsenGame | FischerGame;
-
-const BOOK_CONFIG = {
-  carlsen: {
-    title: 'Carlsen in Color',
-    subtitle: '100 Masterpieces of Magnus Carlsen',
-    games: carlsenTop100,
-    palette: 'hotCold',
-    cover: carlsenCover,
-    icon: Crown,
-    color: 'amber',
-  },
-  fischer: {
-    title: 'Fischer in Color',
-    subtitle: "Bobby Fischer's 100 Greatest Games",
-    games: fischerTop100,
-    palette: 'egyptian',
-    cover: carlsenCover, // Will use Egyptian themed cover
-    icon: Flame,
-    color: 'amber',
-  },
-} as const;
 
 interface GeneratedSpread {
-  game: CarlsenGame;
+  game: GameType;
   haiku: string;
   visualizationImage: string;
   status: 'pending' | 'generating' | 'complete' | 'error';
@@ -84,14 +61,11 @@ const BookGenerator: React.FC = () => {
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
   
-  const [spreads, setSpreads] = useState<GeneratedSpread[]>(
-    carlsenTop100.map(game => ({
-      game,
-      haiku: '',
-      visualizationImage: '',
-      status: 'pending',
-    }))
-  );
+  // Book selection state
+  const [selectedBook, setSelectedBook] = useState<BookType>('carlsen');
+  const bookConfig = getBookConfig(selectedBook);
+  
+  const [spreads, setSpreads] = useState<GeneratedSpread[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -105,6 +79,21 @@ const BookGenerator: React.FC = () => {
   const [exportingIndex, setExportingIndex] = useState<number | null>(null);
   const [imageExportProgress, setImageExportProgress] = useState(0);
   const pauseRef = React.useRef(false);
+
+  // Initialize spreads when book changes
+  useEffect(() => {
+    const games = bookConfig.games;
+    setSpreads(
+      games.map(game => ({
+        game,
+        haiku: '',
+        visualizationImage: '',
+        status: 'pending',
+      }))
+    );
+    setPreviewIndex(0);
+    setCurrentIndex(0);
+  }, [selectedBook, bookConfig.games]);
 
   // Check admin authorization using has_role RPC
   useEffect(() => {
@@ -136,22 +125,24 @@ const BookGenerator: React.FC = () => {
     checkAuthorization();
   }, [user, authLoading]);
 
-  // Load saved progress on mount
+  // Load saved progress on mount or book change
   useEffect(() => {
-    if (isAuthorized && user) {
+    if (isAuthorized && user && spreads.length > 0) {
       loadSavedProgress();
     }
-  }, [isAuthorized, user]);
+  }, [isAuthorized, user, selectedBook]);
 
   const loadSavedProgress = async () => {
     if (!user) return;
     
     setIsLoadingProgress(true);
     try {
+      // Use book-specific key for game_title prefix
       const { data, error } = await supabase
         .from('book_generation_progress')
         .select('game_index, haiku, visualization_data, status')
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .like('game_title', `${selectedBook}:%`);
 
       if (error) throw error;
 
@@ -170,7 +161,7 @@ const BookGenerator: React.FC = () => {
           });
           return updated;
         });
-        toast.success(`Loaded ${data.length} saved spreads`);
+        toast.success(`Loaded ${data.length} saved spreads for ${bookConfig.title}`);
       }
     } catch (error) {
       console.error('Failed to load progress:', error);
@@ -195,11 +186,11 @@ const BookGenerator: React.FC = () => {
         return;
       }
 
-      // Upsert all completed spreads
+      // Upsert all completed spreads with book-specific prefix
       const upsertData = completedSpreads.map(({ spread, index }) => ({
         user_id: user.id,
         game_index: index,
-        game_title: spread.game.title,
+        game_title: `${selectedBook}:${spread.game.title}`,
         haiku: spread.haiku,
         visualization_data: spread.visualizationImage,
         status: spread.status,
@@ -234,7 +225,7 @@ const BookGenerator: React.FC = () => {
         .upsert({
           user_id: user.id,
           game_index: index,
-          game_title: spread.game.title,
+          game_title: `${selectedBook}:${spread.game.title}`,
           haiku: spread.haiku,
           visualization_data: spread.visualizationImage,
           status: spread.status,
@@ -252,9 +243,9 @@ const BookGenerator: React.FC = () => {
   const completedCount = spreads.filter(s => s.status === 'complete').length;
   const errorCount = spreads.filter(s => s.status === 'error').length;
   const generatingCount = spreads.filter(s => s.status === 'generating').length;
-  const progress = (completedCount / spreads.length) * 100;
+  const progress = spreads.length > 0 ? (completedCount / spreads.length) * 100 : 0;
 
-  const generateHaiku = async (game: CarlsenGame): Promise<string> => {
+  const generateHaiku = async (game: GameType): Promise<string> => {
     try {
       const { data, error } = await supabase.functions.invoke('generate-haiku', {
         body: {
@@ -276,11 +267,12 @@ const BookGenerator: React.FC = () => {
     }
   };
 
-  const generateVisualization = async (game: CarlsenGame): Promise<string> => {
+  const generateVisualization = async (game: GameType): Promise<string> => {
     try {
       const simulation = simulateGame(game.pgn);
       
       // Use the print image generator
+      // TODO: Add palette support to printImageGenerator for book-specific palettes
       const { generateCleanPrintImage } = await import('@/lib/chess/printImageGenerator');
       const imageDataUrl = await generateCleanPrintImage(simulation, {
         darkMode: false,
@@ -305,7 +297,6 @@ const BookGenerator: React.FC = () => {
     ));
 
     try {
-      // Generate haiku and visualization in parallel
       const [haiku, visualizationImage] = await Promise.all([
         generateHaiku(game),
         generateVisualization(game),
@@ -315,7 +306,6 @@ const BookGenerator: React.FC = () => {
         i === index ? { ...s, haiku, visualizationImage, status: 'complete' } : s
       ));
       
-      // Auto-save after batch generation
       if (autoSave) {
         setTimeout(() => saveSingleSpread(index), 100);
       }
@@ -330,7 +320,6 @@ const BookGenerator: React.FC = () => {
     }
   };
 
-  // Generate single spread for testing
   const generateSingleSpread = async (index: number) => {
     setGeneratingSingleIndex(index);
     setPreviewIndex(index);
@@ -347,12 +336,10 @@ const BookGenerator: React.FC = () => {
     setGeneratingSingleIndex(null);
   };
 
-  // Batch parallel generation with auto-save
   const startBatchGeneration = useCallback(async () => {
     setIsGenerating(true);
     pauseRef.current = false;
     
-    // Get indices of pending/error spreads
     const pendingIndices = spreads
       .map((s, i) => ({ status: s.status, index: i }))
       .filter(s => s.status === 'pending' || s.status === 'error')
@@ -360,7 +347,6 @@ const BookGenerator: React.FC = () => {
 
     toast.info(`Starting batch generation of ${pendingIndices.length} spreads (${batchSize} parallel)`);
 
-    // Process in batches
     for (let i = 0; i < pendingIndices.length; i += batchSize) {
       if (pauseRef.current) {
         toast.info('Generation paused - saving progress...');
@@ -371,10 +357,8 @@ const BookGenerator: React.FC = () => {
       const batch = pendingIndices.slice(i, i + batchSize);
       setCurrentIndex(batch[0]);
       
-      // Run batch in parallel with auto-save
       await Promise.all(batch.map(index => generateSpread(index, true)));
       
-      // Small delay between batches to avoid rate limiting
       if (i + batchSize < pendingIndices.length) {
         await new Promise(resolve => setTimeout(resolve, 300));
       }
@@ -383,7 +367,6 @@ const BookGenerator: React.FC = () => {
     setIsGenerating(false);
     
     if (!pauseRef.current) {
-      // Final save and count
       await saveProgressToDatabase();
       const newCompleted = spreads.filter(s => s.status === 'complete').length;
       toast.success(`Generation complete! ${newCompleted} spreads ready and saved.`);
@@ -397,8 +380,9 @@ const BookGenerator: React.FC = () => {
   };
 
   const resetGeneration = () => {
+    const games = bookConfig.games;
     setSpreads(
-      carlsenTop100.map(game => ({
+      games.map(game => ({
         game,
         haiku: '',
         visualizationImage: '',
@@ -410,16 +394,14 @@ const BookGenerator: React.FC = () => {
     setIsPaused(false);
   };
 
-  // Generate high-resolution 300 DPI spread image (3600x2520 for 12"x8.4" at 300 DPI)
   const generateHighResSpreadImage = async (spread: GeneratedSpread): Promise<string> => {
     const html2canvas = (await import('html2canvas')).default;
     
-    // Create a temporary container
     const container = document.createElement('div');
     container.style.position = 'absolute';
     container.style.left = '-9999px';
     container.style.top = '-9999px';
-    container.style.width = '1200px'; // Base width, will be scaled up
+    container.style.width = '1200px';
     document.body.appendChild(container);
     
     try {
@@ -434,7 +416,7 @@ const BookGenerator: React.FC = () => {
       await new Promise<void>((resolve) => {
         root.render(
           React.createElement(BookSpread, {
-            game: spread.game,
+            game: spread.game as CarlsenGame,
             haiku: spread.haiku,
             visualizationImage: spread.visualizationImage,
             pageNumber: spread.game.rank,
@@ -443,18 +425,16 @@ const BookGenerator: React.FC = () => {
         setTimeout(resolve, 200);
       });
       
-      // Wait for images to load
       await new Promise(resolve => setTimeout(resolve, 300));
       
-      // Capture at 3x scale for 300 DPI (standard screen is ~100 DPI)
       const canvas = await html2canvas(spreadElement, {
-        scale: 3, // 3x scale = ~300 DPI output
+        scale: 3,
         backgroundColor: '#F5F5DC',
         useCORS: true,
         allowTaint: true,
         logging: false,
         width: 1200,
-        height: 840, // 1.4:1 aspect ratio
+        height: 840,
       });
       
       const base64 = canvas.toDataURL('image/png', 1.0);
@@ -466,7 +446,6 @@ const BookGenerator: React.FC = () => {
     }
   };
 
-  // Export single spread as high-res image
   const exportSingleSpreadImage = async (index: number) => {
     const spread = spreads[index];
     if (spread.status !== 'complete') {
@@ -480,10 +459,9 @@ const BookGenerator: React.FC = () => {
     try {
       const imageData = await generateHighResSpreadImage(spread);
       
-      // Create download link
       const link = document.createElement('a');
       link.href = imageData;
-      link.download = `carlsen-spread-${String(spread.game.rank).padStart(3, '0')}-${spread.game.id}.png`;
+      link.download = `${selectedBook}-spread-${String(spread.game.rank).padStart(3, '0')}-${spread.game.id}.png`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -497,7 +475,6 @@ const BookGenerator: React.FC = () => {
     }
   };
 
-  // Export all completed spreads as individual high-res images
   const exportAllSpreadImages = async () => {
     const completedSpreads = spreads.filter(s => s.status === 'complete');
     
@@ -517,15 +494,13 @@ const BookGenerator: React.FC = () => {
         try {
           const imageData = await generateHighResSpreadImage(spread);
           
-          // Create download link
           const link = document.createElement('a');
           link.href = imageData;
-          link.download = `carlsen-spread-${String(spread.game.rank).padStart(3, '0')}-${spread.game.id}.png`;
+          link.download = `${selectedBook}-spread-${String(spread.game.rank).padStart(3, '0')}-${spread.game.id}.png`;
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
           
-          // Small delay between downloads to prevent browser issues
           await new Promise(resolve => setTimeout(resolve, 500));
         } catch (error) {
           console.error(`Failed to export spread ${spread.game.rank}:`, error);
@@ -544,7 +519,6 @@ const BookGenerator: React.FC = () => {
     }
   };
 
-  // Export all completed spreads as a single ZIP archive with cover and TOC
   const exportAsZip = async () => {
     const completedSpreads = spreads.filter(s => s.status === 'complete');
     
@@ -561,13 +535,12 @@ const BookGenerator: React.FC = () => {
       const JSZip = (await import('jszip')).default;
       const zip = new JSZip();
       
-      // Create main folder
-      const mainFolder = zip.folder('carlsen-in-color');
+      const folderName = selectedBook === 'fischer' ? 'fischer-in-color' : 'carlsen-in-color';
+      const mainFolder = zip.folder(folderName);
       const spreadsFolder = mainFolder?.folder('spreads');
       
-      // Add cover image
       try {
-        const coverResponse = await fetch(carlsenCover);
+        const coverResponse = await fetch(bookConfig.cover);
         const coverBlob = await coverResponse.blob();
         const coverBuffer = await coverBlob.arrayBuffer();
         mainFolder?.file('00-cover.jpg', coverBuffer);
@@ -575,15 +548,12 @@ const BookGenerator: React.FC = () => {
         console.warn('Could not add cover to ZIP:', coverError);
       }
       
-      // Generate Table of Contents (README.md)
       const tocContent = generateTableOfContents(completedSpreads);
       mainFolder?.file('README.md', tocContent);
       
-      // Generate metadata JSON
       const metadata = generateMetadataJson(completedSpreads);
       mainFolder?.file('metadata.json', JSON.stringify(metadata, null, 2));
       
-      // Add each spread
       for (let i = 0; i < completedSpreads.length; i++) {
         const spread = completedSpreads[i];
         
@@ -599,7 +569,6 @@ const BookGenerator: React.FC = () => {
         setImageExportProgress(((i + 1) / completedSpreads.length) * 100);
       }
       
-      // Generate ZIP file
       toast.info('Compressing archive...');
       const zipBlob = await zip.generateAsync({ 
         type: 'blob',
@@ -610,7 +579,7 @@ const BookGenerator: React.FC = () => {
       const url = URL.createObjectURL(zipBlob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `carlsen-in-color-complete-${new Date().toISOString().split('T')[0]}.zip`;
+      link.download = `${folderName}-complete-${new Date().toISOString().split('T')[0]}.zip`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -626,30 +595,32 @@ const BookGenerator: React.FC = () => {
     }
   };
 
-  // Generate Table of Contents markdown
   const generateTableOfContents = (completedSpreads: GeneratedSpread[]): string => {
     const now = new Date().toLocaleDateString('en-US', { 
       year: 'numeric', month: 'long', day: 'numeric' 
     });
     
-    let toc = `# Carlsen in Color
-## 100 Masterpieces of Magnus Carlsen
+    const playerName = selectedBook === 'fischer' ? 'Bobby Fischer' : 'Magnus Carlsen';
+    
+    let toc = `# ${bookConfig.title}
+## ${bookConfig.subtitle}
 
 **Generated:** ${now}
 **Format:** 300 DPI Print-Ready PNG (3600×2520px)
+**Color Palette:** ${bookConfig.paletteDisplayName}
 **Spreads Included:** ${completedSpreads.length}
 
 ---
 
 ## About This Collection
 
-This archive contains high-resolution book spreads from "Carlsen in Color," 
-a visual celebration of Magnus Carlsen's greatest chess games, rendered 
+This archive contains high-resolution book spreads from "${bookConfig.title}," 
+a visual celebration of ${playerName}'s greatest chess games, rendered 
 through the En Pensent visualization system with unique haiku poetry.
 
 Each spread features:
 - Left page: Original haiku inspired by the game
-- Right page: En Pensent visualization using the Hot & Cold palette
+- Right page: En Pensent visualization using the ${bookConfig.paletteDisplayName} palette
 
 ---
 
@@ -678,10 +649,10 @@ Each spread features:
 ## Order Physical Copies
 
 Visit [enpensent.com/shop](https://enpensent.com/shop) to order professionally 
-printed copies of "Carlsen in Color."
+printed copies of "${bookConfig.title}."
 
-- **Standard Edition (8.5"×11"):** $79.99
-- **Large Format (11"×14"):** $99.99
+- **Standard Edition (8.5"×11"):** ${bookConfig.standardPrice}
+- **Large Format (11"×14"):** ${bookConfig.largePrice}
 
 ---
 
@@ -691,13 +662,13 @@ printed copies of "Carlsen in Color."
     return toc;
   };
 
-  // Generate metadata JSON for each spread
   const generateMetadataJson = (completedSpreads: GeneratedSpread[]) => {
     return {
-      title: "Carlsen in Color: 100 Masterpieces of Magnus Carlsen",
+      title: `${bookConfig.title}: ${bookConfig.subtitle}`,
+      bookType: selectedBook,
       version: "1.0",
       generated: new Date().toISOString(),
-      palette: "Hot & Cold",
+      palette: bookConfig.paletteDisplayName,
       format: {
         resolution: "300 DPI",
         dimensions: "3600×2520px",
@@ -718,12 +689,12 @@ printed copies of "Carlsen in Color."
       })),
       ordering: {
         standardEdition: {
-          price: "$79.99",
+          price: bookConfig.standardPrice,
           size: "8.5×11 inches",
           weight: "2.5 lbs"
         },
         largeFormat: {
-          price: "$99.99", 
+          price: bookConfig.largePrice, 
           size: "11×14 inches",
           weight: "4 lbs"
         },
@@ -742,19 +713,18 @@ printed copies of "Carlsen in Color."
     toast.info('Generating PDF... This may take a few minutes.');
 
     try {
-      // A4 landscape for spreads (each spread = 2 pages side by side)
       const pdf = new jsPDF({
         orientation: 'landscape',
         unit: 'mm',
         format: 'a4',
       });
 
-      const pageWidth = 297; // A4 landscape width
-      const pageHeight = 210; // A4 landscape height
+      const pageWidth = 297;
+      const pageHeight = 210;
 
       // Add cover page
       const coverImg = new Image();
-      coverImg.src = carlsenCover;
+      coverImg.src = bookConfig.cover;
       await new Promise(resolve => {
         coverImg.onload = resolve;
         coverImg.onerror = resolve;
@@ -763,16 +733,15 @@ printed copies of "Carlsen in Color."
       if (coverImg.complete && coverImg.naturalWidth > 0) {
         pdf.addImage(coverImg, 'JPEG', 0, 0, pageWidth, pageHeight);
       } else {
-        // Fallback cover
-        pdf.setFillColor(245, 245, 220); // Bone white
+        pdf.setFillColor(245, 245, 220);
         pdf.rect(0, 0, pageWidth, pageHeight, 'F');
         pdf.setFont('times', 'bold');
         pdf.setFontSize(48);
         pdf.setTextColor(44, 44, 44);
-        pdf.text('Carlsen in Color', pageWidth / 2, pageHeight / 2 - 20, { align: 'center' });
+        pdf.text(bookConfig.title, pageWidth / 2, pageHeight / 2 - 20, { align: 'center' });
         pdf.setFont('times', 'italic');
         pdf.setFontSize(24);
-        pdf.text('100 Masterpieces of Magnus Carlsen', pageWidth / 2, pageHeight / 2 + 10, { align: 'center' });
+        pdf.text(bookConfig.subtitle, pageWidth / 2, pageHeight / 2 + 10, { align: 'center' });
       }
 
       // Add title page
@@ -782,14 +751,14 @@ printed copies of "Carlsen in Color."
       pdf.setFont('times', 'bold');
       pdf.setFontSize(36);
       pdf.setTextColor(44, 44, 44);
-      pdf.text('Carlsen in Color', pageWidth / 2, 60, { align: 'center' });
+      pdf.text(bookConfig.title, pageWidth / 2, 60, { align: 'center' });
       pdf.setFont('times', 'italic');
       pdf.setFontSize(18);
-      pdf.text('100 Masterpieces of Magnus Carlsen', pageWidth / 2, 80, { align: 'center' });
+      pdf.text(bookConfig.subtitle, pageWidth / 2, 80, { align: 'center' });
       pdf.setFont('times', 'normal');
       pdf.setFontSize(12);
       pdf.text('Visualized with the En Pensent System', pageWidth / 2, 100, { align: 'center' });
-      pdf.text('Hot & Cold Palette', pageWidth / 2, 115, { align: 'center' });
+      pdf.text(`${bookConfig.paletteDisplayName} Palette`, pageWidth / 2, 115, { align: 'center' });
 
       // Add legend page
       pdf.addPage();
@@ -801,20 +770,34 @@ printed copies of "Carlsen in Color."
       
       pdf.setFont('times', 'normal');
       pdf.setFontSize(12);
-      const legendText = [
-        'Each visualization maps the journey of every piece across the 64 squares.',
-        '',
-        'White pieces are shown in cool tones (blues, teals, purples).',
-        'Black pieces are shown in warm tones (reds, oranges, magentas).',
-        '',
-        'When multiple pieces visit the same square, their colors layer',
-        'creating a unique visual fingerprint of the game.',
-        '',
-        'The resulting abstract artwork captures the essence of each',
-        "masterpiece from Magnus Carlsen's legendary career.",
-      ];
       
-      legendText.forEach((line, i) => {
+      const legendDescription = selectedBook === 'fischer' 
+        ? [
+            'Each visualization maps the journey of every piece across the 64 squares.',
+            '',
+            'White pieces are shown in Egyptian gold tones (golds, ambers, bronzes).',
+            'Black pieces are shown in mystical tones (deep blues, purples, teals).',
+            '',
+            'When multiple pieces visit the same square, their colors layer',
+            'creating a unique visual fingerprint of the game.',
+            '',
+            'The resulting abstract artwork captures the essence of each',
+            "masterpiece from Bobby Fischer's legendary career.",
+          ]
+        : [
+            'Each visualization maps the journey of every piece across the 64 squares.',
+            '',
+            'White pieces are shown in cool tones (blues, teals, purples).',
+            'Black pieces are shown in warm tones (reds, oranges, magentas).',
+            '',
+            'When multiple pieces visit the same square, their colors layer',
+            'creating a unique visual fingerprint of the game.',
+            '',
+            'The resulting abstract artwork captures the essence of each',
+            "masterpiece from Magnus Carlsen's legendary career.",
+          ];
+      
+      legendDescription.forEach((line, i) => {
         pdf.text(line, pageWidth / 2, 60 + (i * 12), { align: 'center' });
       });
 
@@ -825,23 +808,19 @@ printed copies of "Carlsen in Color."
         const spread = completedSpreads[i];
         pdf.addPage();
         
-        // Bone white background
         pdf.setFillColor(245, 245, 220);
         pdf.rect(0, 0, pageWidth, pageHeight, 'F');
         
         const halfWidth = pageWidth / 2;
         
-        // LEFT PAGE - Haiku
         pdf.setDrawColor(200, 200, 200);
         pdf.line(halfWidth, 20, halfWidth, pageHeight - 20);
         
-        // Game title (small caps style)
         pdf.setFont('times', 'normal');
         pdf.setFontSize(10);
         pdf.setTextColor(107, 107, 107);
         pdf.text(spread.game.title.toUpperCase(), halfWidth / 2, 50, { align: 'center' });
         
-        // Haiku
         pdf.setFont('times', 'italic');
         pdf.setFontSize(18);
         pdf.setTextColor(44, 44, 44);
@@ -850,18 +829,15 @@ printed copies of "Carlsen in Color."
           pdf.text(line, halfWidth / 2, 85 + (lineIndex * 18), { align: 'center' });
         });
         
-        // Game info
         pdf.setFont('times', 'normal');
         pdf.setFontSize(10);
         pdf.setTextColor(107, 107, 107);
         pdf.text(`${spread.game.white} vs ${spread.game.black}`, halfWidth / 2, 150, { align: 'center' });
         pdf.text(`${spread.game.event}, ${spread.game.year}`, halfWidth / 2, 162, { align: 'center' });
         
-        // Page number (left)
         pdf.setFontSize(9);
         pdf.text(`${(i + 1) * 2}`, 20, pageHeight - 15);
         
-        // RIGHT PAGE - Visualization
         if (spread.visualizationImage) {
           try {
             const imgSize = Math.min(halfWidth - 30, pageHeight - 60);
@@ -877,13 +853,11 @@ printed copies of "Carlsen in Color."
           }
         }
         
-        // Rank badge
         pdf.setFont('times', 'bold');
         pdf.setFontSize(9);
         pdf.setTextColor(107, 107, 107);
         pdf.text(`#${spread.game.rank}`, pageWidth - 20, 25, { align: 'right' });
         
-        // Page number (right)
         pdf.text(`${(i + 1) * 2 + 1}`, pageWidth - 20, pageHeight - 15, { align: 'right' });
       }
 
@@ -898,10 +872,10 @@ printed copies of "Carlsen in Color."
       pdf.setFont('times', 'normal');
       pdf.setFontSize(10);
       const colophonText = [
-        'Carlsen in Color: 100 Masterpieces of Magnus Carlsen',
+        `${bookConfig.title}: ${bookConfig.subtitle}`,
         '',
         'Visualizations created with the En Pensent system',
-        'using the Hot & Cold color palette.',
+        `using the ${bookConfig.paletteDisplayName} color palette.`,
         '',
         'Haiku poetry generated with AI assistance.',
         '',
@@ -913,8 +887,8 @@ printed copies of "Carlsen in Color."
         pdf.text(line, pageWidth / 2, 90 + (i * 12), { align: 'center' });
       });
 
-      // Save PDF
-      pdf.save('Carlsen-in-Color.pdf');
+      const filename = selectedBook === 'fischer' ? 'Fischer-in-Color.pdf' : 'Carlsen-in-Color.pdf';
+      pdf.save(filename);
       toast.success('PDF exported successfully!');
     } catch (error) {
       console.error('PDF export failed:', error);
@@ -974,8 +948,8 @@ printed copies of "Carlsen in Color."
           <div className="flex items-center gap-3">
             <BookOpen className="w-8 h-8" />
             <div>
-              <h1 className="text-2xl font-serif font-bold">Carlsen in Color</h1>
-              <p className="text-sm text-[#6B6B6B]">Book Generator • CEO Access</p>
+              <h1 className="text-2xl font-serif font-bold">Book Generator</h1>
+              <p className="text-sm text-[#6B6B6B]">CEO Access • Admin Tools</p>
             </div>
           </div>
           
@@ -992,16 +966,55 @@ printed copies of "Carlsen in Color."
                 {generatingCount} In Progress
               </Badge>
             )}
-            {errorCount > 0 && (
-              <Badge variant="destructive">
-                {errorCount} Errors
-              </Badge>
-            )}
           </div>
         </div>
       </header>
 
       <div className="max-w-7xl mx-auto p-6">
+        {/* Book Selector Tabs */}
+        <Tabs value={selectedBook} onValueChange={(v) => setSelectedBook(v as BookType)} className="mb-6">
+          <TabsList className="grid w-full max-w-md grid-cols-2 bg-[#E8E8D8]">
+            <TabsTrigger 
+              value="carlsen" 
+              className="flex items-center gap-2 data-[state=active]:bg-amber-100 data-[state=active]:text-amber-900"
+              disabled={isGenerating}
+            >
+              <Crown className="w-4 h-4" />
+              Carlsen
+            </TabsTrigger>
+            <TabsTrigger 
+              value="fischer" 
+              className="flex items-center gap-2 data-[state=active]:bg-amber-100 data-[state=active]:text-amber-900"
+              disabled={isGenerating}
+            >
+              <Flame className="w-4 h-4" />
+              Fischer
+            </TabsTrigger>
+          </TabsList>
+          
+          {/* Book Info Banner */}
+          <div className={`mt-4 p-4 rounded-lg border ${
+            selectedBook === 'fischer' 
+              ? 'bg-gradient-to-r from-amber-100 to-yellow-50 border-amber-300' 
+              : 'bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200'
+          }`}>
+            <div className="flex items-center gap-3">
+              {selectedBook === 'fischer' ? (
+                <Flame className="w-8 h-8 text-amber-700" />
+              ) : (
+                <Crown className="w-8 h-8 text-amber-600" />
+              )}
+              <div>
+                <h2 className="text-xl font-serif font-bold text-[#2C2C2C]">{bookConfig.title}</h2>
+                <p className="text-sm text-[#6B6B6B]">
+                  {bookConfig.subtitle} • <span className="font-medium">{bookConfig.paletteDisplayName}</span> Palette
+                </p>
+              </div>
+            </div>
+            <p className="mt-2 text-sm text-[#6B6B6B]">{bookConfig.description}</p>
+          </div>
+        </Tabs>
+
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Control Panel */}
           <Card className="lg:col-span-1 bg-white/50 border-[#D4D4C4]">
@@ -1066,20 +1079,21 @@ printed copies of "Carlsen in Color."
                   </Button>
                 )}
                 
-                {/* Generate Single Spread Button */}
-                <Button 
-                  onClick={() => generateSingleSpread(previewIndex)}
-                  variant="outline"
-                  className="col-span-2 border-amber-600 text-amber-700 hover:bg-amber-50"
-                  disabled={isGenerating || generatingSingleIndex !== null || spreads[previewIndex]?.status === 'complete'}
-                >
-                  {generatingSingleIndex === previewIndex ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <PlayCircle className="w-4 h-4 mr-2" />
-                  )}
-                  Generate Single Spread #{previewIndex + 1}
-                </Button>
+                {currentSpread && (
+                  <Button 
+                    onClick={() => generateSingleSpread(previewIndex)}
+                    variant="outline"
+                    className="col-span-2 border-amber-600 text-amber-700 hover:bg-amber-50"
+                    disabled={isGenerating || generatingSingleIndex !== null || currentSpread.status === 'complete'}
+                  >
+                    {generatingSingleIndex === previewIndex ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <PlayCircle className="w-4 h-4 mr-2" />
+                    )}
+                    Generate Single Spread #{previewIndex + 1}
+                  </Button>
+                )}
                 
                 <Button 
                   onClick={resetGeneration}
@@ -1158,7 +1172,7 @@ printed copies of "Carlsen in Color."
                     variant="outline"
                     size="sm"
                     className="border-purple-400 text-purple-700 hover:bg-purple-100"
-                    disabled={isExportingImages || exportingIndex !== null || spreads[previewIndex]?.status !== 'complete'}
+                    disabled={isExportingImages || exportingIndex !== null || !currentSpread || currentSpread.status !== 'complete'}
                   >
                     {exportingIndex === previewIndex ? (
                       <Loader2 className="w-3 h-3 mr-1 animate-spin" />
@@ -1212,12 +1226,12 @@ printed copies of "Carlsen in Color."
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div className="p-2 bg-white/60 rounded">
                     <div className="font-medium text-amber-900">Standard</div>
-                    <div className="text-amber-700">8.5" × 11" • $79.99</div>
+                    <div className="text-amber-700">8.5" × 11" • {bookConfig.standardPrice}</div>
                     <div className="text-amber-600">~2.5 lbs</div>
                   </div>
                   <div className="p-2 bg-white/60 rounded">
                     <div className="font-medium text-amber-900">Large Format</div>
-                    <div className="text-amber-700">11" × 14" • $99.99</div>
+                    <div className="text-amber-700">11" × 14" • {bookConfig.largePrice}</div>
                     <div className="text-amber-600">~4 lbs</div>
                   </div>
                 </div>
@@ -1302,61 +1316,69 @@ printed copies of "Carlsen in Color."
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <BookOpen className="w-5 h-5" />
-                Spread Preview - #{currentSpread.game.rank}
+                Spread Preview {currentSpread ? `- #${currentSpread.game.rank}` : ''}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {/* Book Spread Preview */}
-              <div className="rounded-lg overflow-hidden shadow-xl border border-[#D4D4C4]">
-                <BookSpread
-                  game={currentSpread.game}
-                  haiku={currentSpread.haiku || 'Generating haiku...\nPoetry takes time to craft\nPatience, chess master'}
-                  visualizationImage={currentSpread.visualizationImage}
-                  pageNumber={currentSpread.game.rank}
-                />
-              </div>
-
-              {/* Spread Info */}
-              <div className="mt-4 grid md:grid-cols-2 gap-4">
-                <div className="p-4 rounded-lg bg-[#E8E8D8]">
-                  <div className="flex items-center gap-2 mb-2">
-                    <FileText className="w-4 h-4" />
-                    <span className="font-medium">Haiku Status</span>
+              {currentSpread ? (
+                <>
+                  {/* Book Spread Preview */}
+                  <div className="rounded-lg overflow-hidden shadow-xl border border-[#D4D4C4]">
+                    <BookSpread
+                      game={currentSpread.game as CarlsenGame}
+                      haiku={currentSpread.haiku || 'Generating haiku...\nPoetry takes time to craft\nPatience, chess master'}
+                      visualizationImage={currentSpread.visualizationImage}
+                      pageNumber={currentSpread.game.rank}
+                    />
                   </div>
-                  <p className="text-sm text-[#6B6B6B]">
-                    {currentSpread.haiku 
-                      ? 'Generated successfully' 
-                      : currentSpread.status === 'generating' 
-                        ? 'Generating...'
-                        : 'Pending'}
-                  </p>
-                </div>
-                <div className="p-4 rounded-lg bg-[#E8E8D8]">
-                  <div className="flex items-center gap-2 mb-2">
-                    <ImageIcon className="w-4 h-4" />
-                    <span className="font-medium">Visualization Status</span>
-                  </div>
-                  <p className="text-sm text-[#6B6B6B]">
-                    {currentSpread.visualizationImage 
-                      ? 'Rendered successfully' 
-                      : currentSpread.status === 'generating' 
-                        ? 'Rendering...'
-                        : 'Pending'}
-                  </p>
-                </div>
-              </div>
 
-              {/* Game Details */}
-              <div className="mt-4 p-4 rounded-lg bg-[#E8E8D8]">
-                <h4 className="font-medium mb-2">{currentSpread.game.title}</h4>
-                <p className="text-sm text-[#6B6B6B] mb-2">
-                  {currentSpread.game.white} vs {currentSpread.game.black}
-                </p>
-                <p className="text-sm text-[#6B6B6B] mb-2">
-                  {currentSpread.game.event}, {currentSpread.game.year} • {currentSpread.game.result}
-                </p>
-                <p className="text-sm italic">{currentSpread.game.significance}</p>
-              </div>
+                  {/* Spread Info */}
+                  <div className="mt-4 grid md:grid-cols-2 gap-4">
+                    <div className="p-4 rounded-lg bg-[#E8E8D8]">
+                      <div className="flex items-center gap-2 mb-2">
+                        <FileText className="w-4 h-4" />
+                        <span className="font-medium">Haiku Status</span>
+                      </div>
+                      <p className="text-sm text-[#6B6B6B]">
+                        {currentSpread.haiku 
+                          ? 'Generated successfully' 
+                          : currentSpread.status === 'generating' 
+                            ? 'Generating...'
+                            : 'Pending'}
+                      </p>
+                    </div>
+                    <div className="p-4 rounded-lg bg-[#E8E8D8]">
+                      <div className="flex items-center gap-2 mb-2">
+                        <ImageIcon className="w-4 h-4" />
+                        <span className="font-medium">Visualization Status</span>
+                      </div>
+                      <p className="text-sm text-[#6B6B6B]">
+                        {currentSpread.visualizationImage 
+                          ? 'Rendered successfully' 
+                          : currentSpread.status === 'generating' 
+                            ? 'Rendering...'
+                            : 'Pending'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Game Details */}
+                  <div className="mt-4 p-4 rounded-lg bg-[#E8E8D8]">
+                    <h4 className="font-medium mb-2">{currentSpread.game.title}</h4>
+                    <p className="text-sm text-[#6B6B6B] mb-2">
+                      {currentSpread.game.white} vs {currentSpread.game.black}
+                    </p>
+                    <p className="text-sm text-[#6B6B6B] mb-2">
+                      {currentSpread.game.event}, {currentSpread.game.year} • {currentSpread.game.result}
+                    </p>
+                    <p className="text-sm italic">{currentSpread.game.significance}</p>
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-center justify-center h-64 text-[#6B6B6B]">
+                  <p>Loading spreads...</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
