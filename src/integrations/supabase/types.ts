@@ -1890,6 +1890,7 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: Json
       }
+      get_user_statistics: { Args: { p_user_id: string }; Returns: Json }
       get_user_streak: { Args: { p_user_id: string }; Returns: Json }
       get_vision_economics: {
         Args: { p_visualization_id: string }
@@ -1920,6 +1921,14 @@ export type Database = {
         }
         Returns: string
       }
+      perform_data_maintenance: {
+        Args: {
+          p_days_to_keep_expired_offers?: number
+          p_days_to_keep_interactions?: number
+          p_days_to_keep_notifications?: number
+        }
+        Returns: Json
+      }
       process_marketplace_sale: {
         Args: {
           p_buyer_id: string
@@ -1927,6 +1936,15 @@ export type Database = {
           p_sale_price_cents: number
         }
         Returns: boolean
+      }
+      publish_listing_with_validation: {
+        Args: {
+          p_max_price_cents?: number
+          p_min_price_cents?: number
+          p_price_cents: number
+          p_visualization_id: string
+        }
+        Returns: Json
       }
       record_marketplace_economics: {
         Args: {
