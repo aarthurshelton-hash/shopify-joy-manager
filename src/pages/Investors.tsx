@@ -486,7 +486,7 @@ const Investors = () => {
               Join Our <span className="text-gold-gradient">Journey</span>
             </h1>
             <p className="text-lg text-muted-foreground font-serif leading-relaxed">
-              Partner with us as we redefine how the world celebrates chess.
+              Partner with us as we build the world's most advanced chess intelligence platform.
             </p>
           </div>
           
@@ -496,12 +496,14 @@ const Investors = () => {
             <p className="text-muted-foreground font-serif leading-relaxed">
               Chess is experiencing a renaissance. With over 800 million players worldwide and 
               unprecedented growth driven by streaming and competitive esports, the demand for 
-              chess-related products has never been higher.
+              chess-related products — and intelligent analysis — has never been higher.
             </p>
             <p className="text-muted-foreground font-serif leading-relaxed">
-              En Pensent sits at the intersection of art, technology, and the world's most 
-              enduring game. We're creating a new category of personalized, data-driven art 
-              that resonates with players of all skill levels.
+              En Pensent sits at the intersection of art, AI, and the world's most enduring game. 
+              Our unique combination of <strong>Stockfish 17 NNUE</strong>, <strong>Natural Vision™ pattern recognition</strong>, 
+              and comprehensive visual data creates an analytical foundation that no competitor can match. 
+              As our database grows, so does our ability to suggest optimal moves with unprecedented accuracy — 
+              potentially surpassing traditional chess engines through visual comprehension at scale.
             </p>
           </div>
           
@@ -518,8 +520,8 @@ const Investors = () => {
             
             <MetricCard
               icon={Zap}
-              title="Stockfish 17 Engine"
-              description="Real grandmaster-strength AI (~3200 ELO) with NNUE, depth 20+ analysis, and FEN position import/export."
+              title="Next-Gen Chess Intelligence"
+              description="Stockfish 17 NNUE (~3200 ELO) combined with visual pattern recognition — building a system that will suggest moves more accurately than any engine before."
               cta="Learn More"
               onClick={() => setActiveModal('technology')}
               backgroundImage={backgroundImages[1]}
@@ -545,8 +547,8 @@ const Investors = () => {
             
             <MetricCard
               icon={Database}
-              title="Data Insights"
-              description="Premium analytics and community insights as an exclusive membership benefit."
+              title="Massive Pattern Database"
+              description="Millions of cross-referenced visions building the world's largest chess visual comprehension system — evolving toward predictive intelligence."
               cta="View Data Strategy"
               onClick={() => setActiveModal('data')}
               backgroundImage={backgroundImages[4]}
@@ -743,9 +745,9 @@ const Investors = () => {
               
               <div className="space-y-6 py-4">
                 <div className="space-y-3">
-                  <h3 className="font-display font-bold uppercase tracking-wide text-primary">Proprietary Visualization Engine</h3>
+                  <h3 className="font-display font-bold uppercase tracking-wide text-primary">The Path to Chess Intelligence Supremacy</h3>
                   <p className="text-sm text-muted-foreground font-serif">
-                    Our core technology transforms chess game notation (PGN/FEN) into stunning visual artworks through a proprietary algorithm that encodes movement, strategy, and game dynamics.
+                    Our never-before-done combination of visual encryption and grandmaster-strength analysis creates the foundation for the world's most capable chess pattern recognition system. As our vision database grows to millions, our ability to suggest optimal moves will surpass traditional engines through visual comprehension at scale.
                   </p>
                 </div>
 
@@ -756,20 +758,20 @@ const Investors = () => {
                     <span className="px-2 py-0.5 text-xs bg-blue-500/20 text-blue-600 rounded-full font-display">~3200 ELO</span>
                   </div>
                   <p className="text-sm text-muted-foreground font-serif">
-                    <strong className="text-foreground">Grandmaster-strength analysis integrated directly into the platform.</strong> Real NNUE-powered evaluation with centipawn accuracy, win probability calculations, and depth 20+ analysis.
+                    <strong className="text-foreground">The foundation of our intelligence system.</strong> Real NNUE-powered evaluation combined with our visual pattern database creates analytical capabilities that no competitor can match.
                   </p>
                   <ul className="space-y-2">
                     <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
                       <ChevronRight className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
-                      <span><strong className="text-foreground">Play vs Stockfish</strong> — 5 difficulty levels from beginner to grandmaster</span>
+                      <span><strong className="text-foreground">Visual + Engine Fusion</strong> — pattern recognition meets centipawn accuracy</span>
                     </li>
                     <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
                       <ChevronRight className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
-                      <span><strong className="text-foreground">Move classification</strong> — Brilliant, Great, Good, Inaccuracy, Mistake, Blunder</span>
+                      <span><strong className="text-foreground">Evolving Intelligence</strong> — database grows smarter with every visualization</span>
                     </li>
                     <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
                       <ChevronRight className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
-                      <span><strong className="text-foreground">FEN import/export</strong> — analyze any position instantly</span>
+                      <span><strong className="text-foreground">Future Prediction</strong> — move suggestions that could surpass current reigning engines</span>
                     </li>
                   </ul>
                 </div>

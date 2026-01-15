@@ -416,7 +416,7 @@ const Index = () => {
                   {/* Premium badge */}
                   <div className="inline-flex items-center gap-1.5 md:gap-2 px-4 md:px-5 py-2 md:py-2.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs md:text-sm font-display uppercase tracking-widest backdrop-blur-sm">
                     <Crown className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                    Transform Chess Into Art
+                    The Future of Chess Intelligence
                   </div>
                   
                   {/* Main headline - Royal and powerful */}

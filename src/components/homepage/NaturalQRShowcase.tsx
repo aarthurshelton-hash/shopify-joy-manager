@@ -104,7 +104,7 @@ export const NaturalQRShowcase = forwardRef<HTMLElement, Record<string, never>>(
               className="text-muted-foreground text-lg max-w-2xl mx-auto"
             >
               Every visualization is visually encrypted with its own data — 
-              a unique fingerprint that our AI can recognize instantly.
+              powering the world's most advanced chess pattern recognition system.
             </motion.p>
           </div>
 
@@ -250,11 +250,11 @@ export const NaturalQRShowcase = forwardRef<HTMLElement, Record<string, never>>(
                     <Crown className="h-6 w-6 text-primary" />
                   </div>
                   <div>
-                    <h4 className="font-semibold mb-2">Early Visionary Advantage</h4>
+                    <h4 className="font-semibold mb-2">Building Chess Intelligence</h4>
                     <p className="text-sm text-muted-foreground leading-relaxed">
-                      Every scan, view, and engagement increases your Vision's score. 
-                      As our community grows, early visions become more valuable — 
-                      <span className="text-primary font-medium"> your art appreciates with our platform.</span>
+                      Every scan contributes to our growing pattern database. 
+                      As millions of visions are cross-referenced, our AI evolves — 
+                      <span className="text-primary font-medium"> eventually suggesting moves with accuracy surpassing traditional engines.</span>
                     </p>
                   </div>
                 </div>
@@ -262,12 +262,12 @@ export const NaturalQRShowcase = forwardRef<HTMLElement, Record<string, never>>(
                 <div className="relative z-10 mt-4 pt-4 border-t border-primary/20 flex items-center gap-4 text-sm">
                   <div className="flex items-center gap-1.5">
                     <Users className="h-4 w-4 text-primary" />
-                    <span className="text-muted-foreground">More Members</span>
+                    <span className="text-muted-foreground">More Patterns</span>
                   </div>
                   <span className="text-primary">→</span>
                   <div className="flex items-center gap-1.5">
                     <TrendingUp className="h-4 w-4 text-primary" />
-                    <span className="text-muted-foreground">Higher Vision Scores</span>
+                    <span className="text-muted-foreground">Smarter Predictions</span>
                   </div>
                 </div>
               </div>

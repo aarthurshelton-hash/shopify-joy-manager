@@ -102,25 +102,32 @@ export const PLATFORM_CAPABILITIES = {
 
 // Marketing copy - single source of truth
 export const MARKETING_COPY = {
-  tagline: 'Transform Chess Into Art',
+  tagline: 'The Future of Chess Intelligence',
   headline: 'Your Masterpieces, Forever Immortalized',
   description: 'Upload any chess game and transform it into a stunning visualization — where every piece tells its story through color and movement.',
   conceptDescription: '"En Pensent" — a play on the French chess term en passant — means "in thought." Every visualization captures the thinking behind the moves.',
-  naturalVision: 'Every En Pensent visualization is more than art — it\'s a scannable digital fingerprint that can be recognized and linked back to its complete game data.',
+  naturalVision: 'Every En Pensent visualization is more than art — it\'s a scannable digital fingerprint powering the world\'s most advanced chess pattern recognition system. Our visual encryption combined with Stockfish 17 creates an unmatched analytical foundation.',
   creatorEconomics: 'We believe in sustainable creator rewards. When others order prints of your visions, you earn royalties automatically.',
   educationFund: 'A portion of every sale contributes to chess education programs in underserved communities worldwide.',
+  futureVision: 'Through millions of cross-referenced visions and grandmaster-strength analysis, En Pensent is building the most comprehensive chess pattern recognition system ever created — where visual art meets predictive intelligence.',
+  competitiveEdge: 'Our unique combination of Stockfish 17 NNUE (~3200 ELO), Natural Vision™ pattern recognition, and comprehensive vision data creates an analytical foundation that will evolve to suggest optimal moves with unprecedented accuracy.',
 } as const;
 
 // Feature list for marketing pages
 export const FEATURE_LIST = [
   {
+    title: 'World\'s Most Advanced Pattern Recognition',
+    description: 'Our visual encryption system combined with Stockfish 17 NNUE creates an unprecedented chess intelligence platform — cross-referencing millions of patterns to deliver insights no other engine can match.',
+    category: 'technology',
+  },
+  {
     title: 'Stockfish 17 NNUE Integration',
-    description: `Real grandmaster-strength analysis with ~${PLATFORM_CAPABILITIES.engine.elo} ELO engine. Centipawn accuracy, win probability, depth ${PLATFORM_CAPABILITIES.analysis.depth}+ evaluation.`,
+    description: `Real grandmaster-strength analysis with ~${PLATFORM_CAPABILITIES.engine.elo} ELO engine. Centipawn accuracy, win probability, depth ${PLATFORM_CAPABILITIES.analysis.depth}+ evaluation — the foundation of our predictive intelligence.`,
     category: 'analysis',
   },
   {
     title: 'Natural Vision™ Recognition',
-    description: MARKETING_COPY.naturalVision,
+    description: 'Every visualization is a scannable digital fingerprint. Our AI-powered pattern recognition identifies games from images, building the largest visual chess database ever created.',
     category: 'technology',
   },
   {
@@ -139,8 +146,8 @@ export const FEATURE_LIST = [
     category: 'prints',
   },
   {
-    title: `${PLATFORM_CAPABILITIES.engine.elo} ELO Historic Games Library`,
-    description: `Explore ${PLATFORM_CAPABILITIES.engine.elo}+ legendary games spanning ${PLATFORM_CAPABILITIES.engine.elo}+ years of chess history.`,
-    category: 'content',
+    title: 'Evolving Chess Intelligence',
+    description: 'As our vision database grows, so does our analytical power. Each visualization contributes to a system that will eventually suggest optimal moves with accuracy surpassing traditional engines.',
+    category: 'innovation',
   },
 ] as const;

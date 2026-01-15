@@ -45,13 +45,15 @@ const About = () => {
                 Our Mission
               </h2>
               <p className="text-muted-foreground font-serif leading-relaxed mt-3">
-                At En Pensent, we believe every chess game tells a unique story — a narrative of strategy, 
-                sacrifice, and triumph. Our mission is to transform these invisible battles into stunning 
-                visual art that you can hold, display, and treasure forever.
+                At En Pensent, we're building the world's most advanced chess pattern recognition system — 
+                where visual art meets predictive intelligence. By combining Stockfish 17 NNUE with our 
+                proprietary visual encryption technology, we're creating a platform that will revolutionize 
+                how the world understands and plays chess.
               </p>
               <p className="text-muted-foreground font-serif leading-relaxed mt-3">
-                Whether it's a historic World Championship match, your first tournament victory, or a 
-                casual game with a friend, we immortalize the journey of every piece across the board.
+                Every visualization contributes to our growing database — millions of patterns that, when 
+                cross-referenced, will enable move suggestions more accurate than any system before. 
+                We immortalize the journey of every piece across the board while building the future of chess analytics.
               </p>
             </div>
           </div>
@@ -152,9 +154,9 @@ const About = () => {
               </div>
               
               <p className="text-muted-foreground font-serif leading-relaxed">
-                Every En Pensent visualization is more than art — it's a <strong className="text-foreground">scannable digital fingerprint</strong>. 
-                The unique pattern of colors and positions created by each game forms a natural visual signature 
-                that can be recognized and linked back to its complete game data.
+                Every En Pensent visualization is more than art — it's a <strong className="text-foreground">scannable digital fingerprint</strong> 
+                powering the world's most advanced chess pattern recognition system. Combined with our Stockfish 17 integration, 
+                this visual encryption creates an unprecedented analytical foundation that grows smarter with every visualization.
               </p>
               
               <div className="grid sm:grid-cols-3 gap-4 mt-6">
@@ -191,20 +193,21 @@ const About = () => {
               
               <div className="mt-6 p-4 rounded-lg bg-primary/5 border border-primary/20">
                 <h4 className="font-display text-sm font-bold uppercase text-primary mb-2">
-                  Physical-to-Digital Bridge
+                  The World's Largest Chess Pattern Database
                 </h4>
                 <p className="text-sm text-muted-foreground font-serif">
-                  Premium prints include a subtle gold QR code as a fallback, but the visualization itself 
-                  <em> is</em> the code. Every print becomes a gateway: scan it to reveal the complete game history, 
-                  move-by-move replay, creator profile, and real-time Vision Score analytics. 
-                  <strong className="text-foreground"> Art that remembers its story.</strong>
+                  Every visualization feeds into our growing intelligence system. While users can't cross-reference 
+                  millions of patterns at once, our AI continuously learns from the collective data. Combined with 
+                  Stockfish 17's grandmaster-strength analysis, we're building a system that will eventually suggest 
+                  optimal moves with <strong className="text-foreground">accuracy surpassing traditional engines</strong>.
                 </p>
               </div>
               
-              <div className="mt-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                <p className="text-sm font-serif text-amber-600">
-                  <strong>Coming Soon:</strong> Mobile camera scanning for instant vision recognition. 
-                  Point, scan, explore — no QR code needed.
+              <div className="mt-4 p-3 rounded-lg bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border border-blue-500/20">
+                <p className="text-sm font-serif text-blue-600">
+                  <strong>Our Vision:</strong> Through pattern recognition and visual comprehension at scale, 
+                  En Pensent aims to become the most capable chess analytics platform on earth — 
+                  where art meets intelligence.
                 </p>
               </div>
             </div>
