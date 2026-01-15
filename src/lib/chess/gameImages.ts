@@ -254,5 +254,11 @@ export const gameImageImports: Record<string, string> = {
   'carlsen-endgame-2015': carlsenEndgameMaster,
 };
 
+// Helper function to get game image by ID
+export function getGameImage(gameId: string | undefined): string | null {
+  if (!gameId) return null;
+  return gameImageImports[gameId] || null;
+}
+
 // Re-export Carlsen game images from dedicated file
 export { carlsenGameImages, getCarlsenGameImage, allCarlsenArtwork } from './carlsenGameImages';

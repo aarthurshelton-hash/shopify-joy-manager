@@ -310,6 +310,10 @@ const OrderPrint: React.FC = () => {
                 pgn: orderData.pgn || '',
                 gameTitle: orderData.title,
                 previewImageBase64: orderData.imagePath,
+                gameHash: orderData.gameHash,
+                gameId: orderData.gameId,
+                paletteId: orderData.paletteId,
+                gameData: orderData.gameData,
               }}
               simulation={simulationForCart}
               shareId={orderData.shareId}
