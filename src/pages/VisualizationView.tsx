@@ -284,10 +284,27 @@ const VisualizationView = () => {
           totalMoves,
         };
         
+        // Build captured state for preview with all current settings
+        const capturedState = exportState ? {
+          currentMove: exportState.currentMove,
+          selectedPhase: 'all' as const,
+          lockedPieces: exportState.lockedPieces,
+          compareMode: exportState.compareMode,
+          displayMode: 'standard' as const,
+          darkMode: exportState.darkMode,
+          showTerritory: false,
+          showHeatmaps: false,
+          showPieces: exportState.showPieces,
+          pieceOpacity: exportState.pieceOpacity,
+          capturedAt: new Date(),
+        } : undefined;
+        
         const base64Image = await generateCleanPrintImage(exportSimulation, {
           darkMode: exportState?.darkMode || false,
           withWatermark: !isPremium, // Add watermark for free users
           highlightState,
+          capturedState,
+          pgn: visualization.pgn || gameData.pgn || '',
         });
         
         // Convert base64 to blob for download
@@ -315,10 +332,17 @@ const VisualizationView = () => {
     
     if (type === 'hd') {
       downloadTrademarkHD({
-        board,
+        board: filteredBoard,
         gameData,
         title: visualization.title,
         darkMode: exportState?.darkMode || false,
+        highlightState,
+        piecesState: exportState ? {
+          showPieces: exportState.showPieces,
+          pieceOpacity: exportState.pieceOpacity,
+        } : undefined,
+        pgn: visualization.pgn || gameData.pgn || '',
+        currentMoveNumber: exportState?.currentMove,
       });
       return;
     }
