@@ -267,6 +267,32 @@ const Index = () => {
     setPendingResult({ result, pgn: cleanedPgn, title });
     setIsLoading(true);
   };
+
+  // Handle FEN position submission - converts FEN to a visualization
+  const handleFenSubmit = useCallback((fen: string, title?: string) => {
+    const positionTitle = title || 'Position';
+    
+    import('@/lib/chess/fenUtils').then(({ fenToVisualizationBoard }) => {
+      const board = fenToVisualizationBoard(fen);
+      
+      const result: SimulationResult = {
+        board,
+        gameData: {
+          white: 'Position',
+          black: 'Setup',
+          event: positionTitle,
+          date: new Date().toISOString().split('T')[0].replace(/-/g, '.'),
+          result: '*',
+          pgn: fen,
+          moves: [],
+        },
+        totalMoves: 0,
+      };
+      
+      setPendingResult({ result, pgn: fen, title: positionTitle });
+      setIsLoading(true);
+    });
+  }, []);
   
   const handleLoadingComplete = useCallback(() => {
     if (pendingResult) {
@@ -438,7 +464,7 @@ const Index = () => {
                 }`}
               >
                 {/* Upload form (contains Upload Your Game + Legendary Games) */}
-                <PgnUploader onPgnSubmit={handlePgnSubmit} />
+                <PgnUploader onPgnSubmit={handlePgnSubmit} onFenSubmit={handleFenSubmit} />
                 
                 {/* Palette selector */}
                 <PaletteSelector onPaletteChange={handlePaletteChange} />

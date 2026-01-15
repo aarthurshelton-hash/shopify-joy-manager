@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Upload, FileText, Crown, Sparkles, CheckCircle, XCircle, Loader2, Wrench, ArrowRight, ChevronLeft, ChevronRight, Search, X, Shuffle, Heart, Award, PenTool, Trophy, Star } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Upload, FileText, Crown, Sparkles, CheckCircle, XCircle, Loader2, Wrench, ArrowRight, ChevronLeft, ChevronRight, Search, X, Shuffle, Heart, Award, PenTool, Trophy, Star, Grid3X3 } from 'lucide-react';
 import uploadHeroArt from '@/assets/hero-chess-art.jpg';
 import { famousGames, carlsenLegendaryGames, FamousGame, getRandomFamousGame } from '@/lib/chess/famousGames';
 import { gameImageImports } from '@/lib/chess/gameImages';
@@ -14,12 +15,14 @@ import { toast } from 'sonner';
 import { useFavoriteGames } from '@/hooks/useFavoriteGames';
 import { useAuth } from '@/hooks/useAuth';
 import { incrementGamecardUsage } from '@/lib/analytics/financialTrends';
+import FenInput from './FenInput';
 
 const GAMES_PER_MOBILE_PAGE = 4;
 const GAMES_PER_DESKTOP_PAGE = 16;
 
 interface PgnUploaderProps {
   onPgnSubmit: (pgn: string, gameTitle?: string) => void;
+  onFenSubmit?: (fen: string, title?: string) => void;
 }
 
 // Custom hook for touch swipe detection
@@ -57,7 +60,8 @@ const useSwipe = (onSwipeLeft: () => void, onSwipeRight: () => void) => {
   return { onTouchStart, onTouchMove, onTouchEnd };
 };
 
-const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
+const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit, onFenSubmit }) => {
+  const [inputMode, setInputMode] = useState<'pgn' | 'fen'>('pgn');
   const [pgn, setPgn] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [selectedGame, setSelectedGame] = useState<FamousGame | null>(null);
@@ -725,15 +729,23 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
         
         {/* Content */}
         <div className="relative">
-          <div className="px-5 py-4 border-b border-border/50">
-            <h3 className="flex items-center gap-2 font-display text-base font-semibold">
-              <FileText className="h-4 w-4" />
-              Upload Your Game
-            </h3>
-            <p className="text-xs text-muted-foreground mt-0.5 font-serif">
-              Paste PGN notation or upload a .pgn file
-            </p>
-          </div>
+          {/* Input Mode Tabs */}
+          <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as 'pgn' | 'fen')} className="w-full">
+            <div className="px-5 py-4 border-b border-border/50">
+              <TabsList className="grid w-full grid-cols-2 h-10 bg-muted/30">
+                <TabsTrigger value="pgn" className="gap-2 text-sm data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                  <FileText className="h-4 w-4" />
+                  Game (PGN)
+                </TabsTrigger>
+                <TabsTrigger value="fen" className="gap-2 text-sm data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                  <Grid3X3 className="h-4 w-4" />
+                  Position (FEN)
+                </TabsTrigger>
+              </TabsList>
+            </div>
+
+            {/* PGN Tab Content */}
+            <TabsContent value="pgn" className="mt-0">
         <div className="p-4 space-y-4">
           {/* Drop zone */}
           <div
@@ -924,6 +936,20 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit }) => {
             </Button>
           </div>
         </div>
+            </TabsContent>
+
+            {/* FEN Tab Content */}
+            <TabsContent value="fen" className="mt-0 p-4">
+              {onFenSubmit ? (
+                <FenInput onFenSubmit={onFenSubmit} />
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Grid3X3 className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">FEN input not available in this context</p>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </div>
