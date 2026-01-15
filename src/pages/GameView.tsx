@@ -28,7 +28,7 @@ import AuthModal from '@/components/auth/AuthModal';
 import { PremiumUpgradeModal } from '@/components/premium';
 import { setActivePalette, PaletteId, PieceType } from '@/lib/chess/pieceColors';
 import { recordVisionInteraction, getVisionScore, VisionScore } from '@/lib/visualizations/visionScoring';
-import { extractMovesFromPgn, buildCanonicalShareUrl } from '@/lib/visualizations/gameCanonical';
+import { generateGameHash, extractMovesFromPgn, buildCanonicalShareUrl } from '@/lib/visualizations/gameCanonical';
 import { detectGameCard } from '@/lib/chess/gameCardDetection';
 
 interface GameVision {
@@ -78,6 +78,10 @@ const GameView = () => {
     setReturningFromOrder,
     returningFromOrder,
     capturedTimelineState,
+    currentSimulation: sessionSimulation,
+    currentPgn: sessionPgn,
+    currentGameTitle: sessionTitle,
+    clearSimulation,
   } = useSessionStore();
   const { setOrderData } = usePrintOrderStore();
   const { saveActiveVision, clearActiveVision } = useActiveVisionStore();
@@ -91,6 +95,12 @@ const GameView = () => {
   const [visionScore, setVisionScore] = useState<VisionScore | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showVisionaryModal, setShowVisionaryModal] = useState(false);
+  
+  // State for handling freshly generated (unsaved) games from session
+  const [isFromSession, setIsFromSession] = useState(false);
+  const [sessionBoard, setSessionBoard] = useState<SquareData[][] | null>(null);
+  const [sessionGameData, setSessionGameData] = useState<GameData | null>(null);
+  const [sessionTotalMoves, setSessionTotalMoves] = useState<number>(0);
   
   const viewRecordedRef = useRef(false);
 
@@ -150,13 +160,44 @@ const GameView = () => {
     }
   }, [returningFromOrder, capturedTimelineState, setReturningFromOrder, setCapturedTimelineState]);
 
-  // Fetch game data by hash
+  // Fetch game data by hash - checks session first, then database
   useEffect(() => {
     const fetchGameByHash = async () => {
       if (!gameHash) {
         setError('Invalid game link');
         setLoading(false);
         return;
+      }
+
+      // First check if we have a freshly generated game in session storage
+      if (sessionSimulation && sessionPgn) {
+        const sessionGameHash = generateGameHash(sessionPgn);
+        
+        if (sessionGameHash === gameHash) {
+          // This is a freshly generated game - use session data
+          setIsFromSession(true);
+          setSessionBoard(sessionSimulation.board);
+          setSessionGameData(sessionSimulation.gameData);
+          setSessionTotalMoves(sessionSimulation.totalMoves);
+          
+          // Set palette from URL or default
+          const urlPalette = initialState.paletteId || 'modern';
+          setActivePaletteId(urlPalette);
+          if (urlPalette !== 'custom') {
+            setActivePalette(urlPalette as PaletteId);
+          }
+          
+          // Show success toast for new generation
+          const isFromGenerator = searchParams.get('src') === 'generator';
+          if (isFromGenerator) {
+            toast.success('Visualization generated!', {
+              description: `${sessionSimulation.totalMoves} moves processed.`,
+            });
+          }
+          
+          setLoading(false);
+          return;
+        }
       }
 
       try {
@@ -173,26 +214,32 @@ const GameView = () => {
         
         for (const viz of allVisions || []) {
           const vizPgn = viz.pgn || (viz.game_data as { pgn?: string })?.pgn || '';
-          const moves = extractMovesFromPgn(vizPgn);
+          const vizHash = generateGameHash(vizPgn);
           
-          // Generate hash for comparison
-          let hash = 0;
-          let hash2 = 0;
-          for (let i = 0; i < moves.length; i++) {
-            const char = moves.charCodeAt(i);
-            hash = ((hash << 5) - hash + char) | 0;
-            hash2 = ((hash2 << 7) + hash2 + char) | 0;
-          }
-          const combined = Math.abs(hash) ^ Math.abs(hash2);
-          const vizHash = combined.toString(36);
-          
-          if (vizHash === gameHash || gameHash === 'empty' && !moves) {
+          if (vizHash === gameHash || (gameHash === 'empty' && !vizPgn)) {
             matchingVisions.push(viz as unknown as GameVision);
           }
         }
 
         if (matchingVisions.length === 0) {
-          setError('Game not found');
+          // No saved visualization found - check if session data is available as fallback
+          if (sessionSimulation && sessionPgn) {
+            setIsFromSession(true);
+            setSessionBoard(sessionSimulation.board);
+            setSessionGameData(sessionSimulation.gameData);
+            setSessionTotalMoves(sessionSimulation.totalMoves);
+            
+            const urlPalette = initialState.paletteId || 'modern';
+            setActivePaletteId(urlPalette);
+            if (urlPalette !== 'custom') {
+              setActivePalette(urlPalette as PaletteId);
+            }
+            
+            setLoading(false);
+            return;
+          }
+          
+          setError('Game not found. Try generating a new visualization.');
           setLoading(false);
           return;
         }
@@ -200,6 +247,7 @@ const GameView = () => {
         // Use the first (oldest/original) vision as primary
         const primary = matchingVisions[0];
         setPrimaryVision(primary);
+        setIsFromSession(false);
 
         // Set active palette from URL or from primary vision
         const urlPalette = initialState.paletteId;
@@ -268,10 +316,21 @@ const GameView = () => {
     };
 
     fetchGameByHash();
-  }, [gameHash, initialState.paletteId]);
+  }, [gameHash, initialState.paletteId, sessionSimulation, sessionPgn, searchParams]);
 
-  // Reconstruct board and game data
+  // Reconstruct board and game data - supports both saved and session-based games
   const { board, gameData, totalMoves, effectivePgn } = useMemo(() => {
+    // If from session (freshly generated), use session data
+    if (isFromSession && sessionBoard && sessionGameData) {
+      return {
+        board: sessionBoard,
+        gameData: sessionGameData,
+        totalMoves: sessionTotalMoves,
+        effectivePgn: sessionPgn || sessionGameData.pgn || '',
+      };
+    }
+    
+    // Otherwise use saved visualization data
     if (!primaryVision) {
       return {
         board: [] as SquareData[][],
@@ -570,7 +629,10 @@ const GameView = () => {
     );
   }
 
-  if (error || !primaryVision) {
+  // Check if we have valid data (either from DB or session)
+  const hasValidData = primaryVision || (isFromSession && sessionBoard);
+
+  if (error || !hasValidData) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
@@ -583,7 +645,7 @@ const GameView = () => {
               Game Not Found
             </h1>
             <p className="text-muted-foreground font-serif">
-              This game may not have been saved yet.
+              {error || 'This game may not have been saved yet.'}
             </p>
             <Link to="/">
               <Button variant="outline" className="gap-2">
@@ -597,6 +659,16 @@ const GameView = () => {
       </div>
     );
   }
+
+  // Determine display title
+  const displayTitle = isFromSession 
+    ? (sessionTitle || `${sessionGameData?.white || 'White'} vs ${sessionGameData?.black || 'Black'}`)
+    : primaryVision?.title || 'Visualization';
+  
+  // Determine context for UnifiedVisionExperience
+  const displayContext = isFromSession 
+    ? 'generator' as const
+    : (sourceContext.source || 'shared') as 'marketplace' | 'gallery' | 'shared' | 'postgame' | 'scanner' | 'generator';
 
   return (
     <div className="min-h-screen bg-background">
@@ -626,13 +698,20 @@ const GameView = () => {
             className="mb-8"
           >
             <h1 className="text-2xl md:text-3xl font-royal font-bold uppercase tracking-wide mb-2">
-              {primaryVision.title}
+              {displayTitle}
             </h1>
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <span className="flex items-center gap-1.5">
-                <Sparkles className="h-4 w-4 text-primary" />
-                {paletteVariations.length} palette{paletteVariations.length !== 1 ? 's' : ''} available
-              </span>
+              {isFromSession ? (
+                <span className="flex items-center gap-1.5">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  Freshly generated
+                </span>
+              ) : (
+                <span className="flex items-center gap-1.5">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  {paletteVariations.length} palette{paletteVariations.length !== 1 ? 's' : ''} available
+                </span>
+              )}
               {visionScore && (
                 <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-display uppercase tracking-wider">
                   Score: {visionScore.totalScore.toLocaleString()}
@@ -653,12 +732,13 @@ const GameView = () => {
               gameData={gameData}
               totalMoves={totalMoves}
               pgn={effectivePgn}
-              context={sourceContext.source || 'shared'}
+              context={displayContext}
               paletteId={activePaletteId}
               visualizationId={primaryVision?.id}
               isPremium={isPremium}
               onUpgradePrompt={() => setShowVisionaryModal(true)}
-              isOwner={primaryVision?.user_id === user?.id}
+              onBack={handleBackClick}
+              isOwner={isFromSession || primaryVision?.user_id === user?.id}
               visionScoreData={visionScore ? {
                 viewCount: visionScore.viewCount,
                 uniqueViewers: visionScore.uniqueViewers,
