@@ -13,12 +13,13 @@ import {
   DropdownMenuTrigger,
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
-import { User, LogOut, Palette, Settings, Crown, CreditCard, Image, Gamepad2, BarChart3, History, Paintbrush, Shield, ShieldCheck, Wrench, Database, Wallet, Banknote, Scale, Gift, LayoutDashboard, BookOpen, ImageIcon } from 'lucide-react';
+import { User, LogOut, Palette, Settings, Crown, CreditCard, Image, Gamepad2, BarChart3, History, Paintbrush, Shield, ShieldCheck, Wrench, Database, Wallet, Banknote, Scale, Gift, LayoutDashboard, BookOpen, ImageIcon, IdCard } from 'lucide-react';
 import AuthModal from './AuthModal';
 import MFASetup from './MFASetup';
 import PremiumBadge from '@/components/premium/PremiumBadge';
 import { VisionaryMembershipCard } from '@/components/premium';
 import { supabase } from '@/integrations/supabase/client';
+import CEOBusinessCard from '@/components/admin/CEOBusinessCard';
 
 const UserMenu: React.FC = () => {
   const { user, profile, isLoading, isPremium, isFreeAccount, mfaStatus, signOut, openCheckout, openCustomerPortal } = useAuth();
@@ -26,6 +27,7 @@ const UserMenu: React.FC = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showVisionaryModal, setShowVisionaryModal] = useState(false);
   const [showMFASetup, setShowMFASetup] = useState(false);
+  const [showCEOCard, setShowCEOCard] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [pendingWithdrawals, setPendingWithdrawals] = useState(0);
   const [pendingDMCA, setPendingDMCA] = useState(0);
@@ -352,6 +354,14 @@ const UserMenu: React.FC = () => {
                 <Crown className="h-3 w-3 ml-auto" />
               </DropdownMenuItem>
               <DropdownMenuItem 
+                onClick={() => setShowCEOCard(true)}
+                className="gap-2 cursor-pointer text-amber-500 font-semibold"
+              >
+                <IdCard className="h-4 w-4" />
+                CEO Business Card
+                <Crown className="h-3 w-3 ml-auto" />
+              </DropdownMenuItem>
+              <DropdownMenuItem 
                 onClick={() => navigate('/premium-analytics')}
                 className="gap-2 cursor-pointer text-amber-500 font-semibold"
               >
@@ -411,6 +421,8 @@ const UserMenu: React.FC = () => {
       </DropdownMenu>
 
       <MFASetup isOpen={showMFASetup} onClose={() => setShowMFASetup(false)} />
+      
+      <CEOBusinessCard isOpen={showCEOCard} onClose={() => setShowCEOCard(false)} />
       
       <VisionaryMembershipCard
         isOpen={showVisionaryModal}
