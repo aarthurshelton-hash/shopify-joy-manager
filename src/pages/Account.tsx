@@ -30,13 +30,15 @@ import {
   AlertCircle,
   CheckCircle,
   XCircle,
-  RefreshCw
+  RefreshCw,
+  BarChart3
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import AuthModal from '@/components/auth/AuthModal';
 import { VisionaryMembershipCard } from '@/components/premium';
 import { GracePeriodBanner } from '@/components/notifications/GracePeriodBanner';
+import { UserStatsDashboard } from '@/components/dashboard/UserStatsDashboard';
 
 const Account: React.FC = () => {
   const navigate = useNavigate();
@@ -323,10 +325,14 @@ const Account: React.FC = () => {
 
           {/* Tabs */}
           <Tabs defaultValue="profile" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="profile" className="gap-2">
                 <User className="h-4 w-4" />
                 <span className="hidden sm:inline">Profile</span>
+              </TabsTrigger>
+              <TabsTrigger value="stats" className="gap-2">
+                <BarChart3 className="h-4 w-4" />
+                <span className="hidden sm:inline">Stats</span>
               </TabsTrigger>
               <TabsTrigger value="security" className="gap-2">
                 <Shield className="h-4 w-4" />
@@ -337,6 +343,24 @@ const Account: React.FC = () => {
                 <span className="hidden sm:inline">Subscription</span>
               </TabsTrigger>
             </TabsList>
+
+            {/* Stats Tab */}
+            <TabsContent value="stats">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <BarChart3 className="h-5 w-5" />
+                    Your Statistics
+                  </CardTitle>
+                  <CardDescription>
+                    Overview of your activity, earnings, and engagement
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <UserStatsDashboard />
+                </CardContent>
+              </Card>
+            </TabsContent>
 
             {/* Profile Tab */}
             <TabsContent value="profile">
