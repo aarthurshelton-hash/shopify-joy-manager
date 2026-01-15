@@ -281,9 +281,12 @@ export const PuzzleBoard: React.FC<PuzzleBoardProps> = ({
           fen={game.fen()}
           onMove={handleMove}
           disabled={puzzleState !== 'playing'}
-          playerColor={playerColor as 'white' | 'black'}
+          isMyTurn={puzzleState === 'playing'}
+          myColor={playerColor === 'white' ? 'w' : 'b'}
+          whitePalette={{}}
+          blackPalette={{}}
+          movedSquares={new Set(lastMoveSquares)}
           getAvailableMoves={getAvailableMoves}
-          highlightSquares={lastMoveSquares}
         />
 
         {/* Result Overlay */}
