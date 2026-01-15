@@ -30,6 +30,7 @@ import { setActivePalette, PaletteId, PieceType } from '@/lib/chess/pieceColors'
 import { recordVisionInteraction, getVisionScore, VisionScore } from '@/lib/visualizations/visionScoring';
 import { generateGameHash, extractMovesFromPgn, buildCanonicalShareUrl } from '@/lib/visualizations/gameCanonical';
 import { detectGameCard } from '@/lib/chess/gameCardDetection';
+import { useRecentlyViewedStore } from '@/stores/recentlyViewedStore';
 
 interface GameVision {
   id: string;
@@ -299,12 +300,25 @@ const GameView = () => {
 
         setPaletteVariations(variations);
 
-        // Record view interaction
+        // Record view interaction and track for recently viewed
         if (!viewRecordedRef.current) {
           viewRecordedRef.current = true;
           recordVisionInteraction(primary.id, 'view');
           getVisionScore(primary.id).then(score => {
             if (score) setVisionScore(score);
+          });
+          
+          // Track for recently viewed section
+          const primaryPaletteId = primary.game_data?.visualizationState?.paletteId || 'modern';
+          const ownerVariation = variations.find(v => v.paletteId === primaryPaletteId);
+          useRecentlyViewedStore.getState().addRecentlyViewed({
+            id: primary.id,
+            listingId: ownerVariation?.isListed ? undefined : undefined, // Will be populated from listing query
+            title: primary.title,
+            imagePath: primary.image_path,
+            ownerName: ownerVariation?.ownerName || undefined,
+            priceCents: ownerVariation?.price,
+            gameHash: gameHash,
           });
         }
       } catch (err) {
