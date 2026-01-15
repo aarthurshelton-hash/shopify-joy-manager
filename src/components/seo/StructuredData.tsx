@@ -137,39 +137,93 @@ const FAQ_DATA = {
   ]
 };
 
-// Page-specific breadcrumb data
+// Comprehensive breadcrumb configuration with categories
+type BreadcrumbConfig = {
+  name: string;
+  parent?: string; // Parent path for nested breadcrumbs
+};
+
+const BREADCRUMB_MAP: Record<string, BreadcrumbConfig> = {
+  // Main sections
+  "/about": { name: "About" },
+  "/investors": { name: "Investors", parent: "/about" },
+  "/education-fund": { name: "Education Fund", parent: "/about" },
+  
+  // Marketplace & Trading
+  "/marketplace": { name: "Marketplace" },
+  "/shop": { name: "Shop", parent: "/marketplace" },
+  "/order-print": { name: "Order Print", parent: "/shop" },
+  
+  // Gallery & Collections
+  "/my-vision": { name: "My Gallery" },
+  "/my-palettes": { name: "My Palettes", parent: "/my-vision" },
+  "/creator-dashboard": { name: "Creator Dashboard", parent: "/my-vision" },
+  
+  // Creative Tools
+  "/creative-mode": { name: "Creative Mode" },
+  "/studio": { name: "Studio", parent: "/creative-mode" },
+  "/book": { name: "Book Generator", parent: "/creative-mode" },
+  
+  // Gaming & Competition
+  "/play": { name: "Play Chess" },
+  "/leaderboard": { name: "Leaderboard", parent: "/play" },
+  
+  // Discovery & Scanning
+  "/vision-scanner": { name: "Vision Scanner" },
+  
+  // News & Updates
+  "/news": { name: "News" },
+  
+  // Account & Settings
+  "/account": { name: "Account" },
+  "/premium": { name: "Premium", parent: "/account" },
+  "/analytics": { name: "Analytics", parent: "/account" },
+  "/premium-analytics": { name: "Premium Analytics", parent: "/analytics" },
+  "/profile": { name: "Profile", parent: "/account" },
+  
+  // Legal Pages
+  "/terms": { name: "Terms of Service" },
+  "/privacy": { name: "Privacy Policy" },
+  "/dmca": { name: "DMCA" }
+};
+
+// Build full breadcrumb trail including parent hierarchy
 const getBreadcrumbData = (pathname: string) => {
   const breadcrumbs: { name: string; url: string }[] = [
     { name: "Home", url: "https://enpensent.com" }
   ];
   
-  const pathMap: Record<string, string> = {
-    "/about": "About",
-    "/investors": "Investors",
-    "/marketplace": "Marketplace",
-    "/my-vision": "My Gallery",
-    "/my-palettes": "My Palettes",
-    "/creative-mode": "Creative Mode",
-    "/play": "Play Chess",
-    "/leaderboard": "Leaderboard",
-    "/vision-scanner": "Vision Scanner",
-    "/book": "Book Generator",
-    "/order-print": "Order Print",
-    "/education-fund": "Education Fund",
-    "/creator-dashboard": "Creator Dashboard",
-    "/news": "News",
-    "/analytics": "Analytics",
-    "/premium-analytics": "Premium Analytics",
-    "/account": "Account",
-    "/terms": "Terms of Service",
-    "/privacy": "Privacy Policy",
-    "/dmca": "DMCA"
-  };
-  
-  if (pathname !== "/" && pathMap[pathname]) {
-    breadcrumbs.push({
-      name: pathMap[pathname],
-      url: `https://enpensent.com${pathname}`
+  if (pathname === "/" || !BREADCRUMB_MAP[pathname]) {
+    // For home or unknown pages, just return home breadcrumb
+    if (pathname !== "/" && pathname.length > 1) {
+      // Generate breadcrumb from path for dynamic routes
+      const pathName = pathname.slice(1).split("-").map(
+        word => word.charAt(0).toUpperCase() + word.slice(1)
+      ).join(" ");
+      breadcrumbs.push({
+        name: pathName,
+        url: `https://enpensent.com${pathname}`
+      });
+    }
+  } else {
+    const config = BREADCRUMB_MAP[pathname];
+    
+    // Build parent chain
+    const chain: { name: string; path: string }[] = [];
+    let currentPath: string | undefined = pathname;
+    
+    while (currentPath && BREADCRUMB_MAP[currentPath]) {
+      const currentConfig = BREADCRUMB_MAP[currentPath];
+      chain.unshift({ name: currentConfig.name, path: currentPath });
+      currentPath = currentConfig.parent;
+    }
+    
+    // Add all breadcrumbs in order
+    chain.forEach(item => {
+      breadcrumbs.push({
+        name: item.name,
+        url: `https://enpensent.com${item.path}`
+      });
     });
   }
   
