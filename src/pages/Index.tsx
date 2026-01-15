@@ -301,24 +301,30 @@ const Index = () => {
   
   const handleLoadingComplete = useCallback(() => {
     if (pendingResult) {
-      setSimulation(pendingResult.result);
-      setCurrentPgn(pendingResult.pgn);
-      setGameTitle(pendingResult.title);
+      // Store simulation in session for GameView to pick up
+      setCurrentSimulation(pendingResult.result, pendingResult.pgn, pendingResult.title);
+      
+      // Generate the canonical URL and redirect to unified GameView
+      const { generateGameHash } = require('@/lib/visualizations/gameCanonical');
+      const gameHash = generateGameHash(pendingResult.pgn);
+      const paletteId = getActivePalette().id;
+      
+      // Build URL with palette param if not default
+      const urlParams = new URLSearchParams();
+      if (paletteId && paletteId !== 'modern') {
+        urlParams.set('p', paletteId);
+      }
+      urlParams.set('src', 'generator'); // Track that this came from generation
+      
+      const targetUrl = `/g/${gameHash}${urlParams.toString() ? `?${urlParams.toString()}` : ''}`;
+      
       setIsLoading(false);
       setPendingResult(null);
-      setHasUnsavedChanges(false); // Reset unsaved changes on new visualization
       
-      if (pendingResult.result.totalMoves > 0) {
-        toast.success('Visualization generated!', {
-          description: `${pendingResult.result.totalMoves} moves processed.`,
-        });
-      } else {
-        toast.info('Visualization created', {
-          description: 'No moves could be parsed, but showing the board layout.',
-        });
-      }
+      // Navigate to the unified GameView
+      navigate(targetUrl);
     }
-  }, [pendingResult]);
+  }, [pendingResult, navigate, setCurrentSimulation]);
   
   const handleReturnClick = () => {
     if (hasUnsavedChanges && !savedShareId) {
