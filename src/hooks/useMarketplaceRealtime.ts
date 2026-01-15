@@ -21,6 +21,7 @@ type VisionScoreChange = {
   view_count: number;
   download_hd_count: number;
   download_gif_count: number;
+  scan_count: number;
   print_order_count: number;
   print_revenue_cents: number;
   royalty_cents_earned: number;
