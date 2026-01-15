@@ -318,15 +318,21 @@ const OrderPrint: React.FC = () => {
                         moves: orderData.simulation!.gameData.moves,
                       }}
                       size={400}
-                      darkMode={darkMode}
+                      darkMode={orderData.capturedState?.darkMode ?? darkMode}
                       title={orderData.title}
                       compact={false}
+                      pgn={orderData.pgn}
                       highlightState={orderData.capturedState?.lockedPieces && orderData.capturedState.lockedPieces.length > 0 ? {
                         lockedPieces: orderData.capturedState.lockedPieces.map(p => ({
                           pieceType: p.pieceType as 'k' | 'q' | 'r' | 'b' | 'n' | 'p',
                           pieceColor: (p.pieceColor === 'white' ? 'w' : p.pieceColor === 'black' ? 'b' : p.pieceColor) as 'w' | 'b',
                         })),
                         compareMode: orderData.capturedState.compareMode || false,
+                      } : undefined}
+                      piecesState={orderData.capturedState?.showPieces ? {
+                        showPieces: true,
+                        pieceOpacity: orderData.capturedState.pieceOpacity ?? 0.7,
+                        currentMoveNumber: orderData.capturedState.currentMove,
                       } : undefined}
                     />
                   ) : hasEnPensentData ? (

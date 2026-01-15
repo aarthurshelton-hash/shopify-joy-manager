@@ -17,6 +17,7 @@ interface ExportState {
   darkMode: boolean;
   showPieces: boolean;
   pieceOpacity: number;
+  fen?: string; // Optional FEN for the current position
 }
 
 interface MiniPrintOrderSectionProps {

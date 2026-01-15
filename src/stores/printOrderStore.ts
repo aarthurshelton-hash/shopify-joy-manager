@@ -13,6 +13,8 @@ export interface CapturedVisualizationState {
   darkMode: boolean;
   showTerritory: boolean;
   showHeatmaps: boolean;
+  showPieces?: boolean;
+  pieceOpacity?: number;
   capturedAt: Date;
 }
 
@@ -22,6 +24,7 @@ export interface PrintOrderData {
   imagePath?: string;
   title: string;
   pgn?: string;
+  fen?: string; // NEW: Support FEN-only positions
   gameData: {
     white: string;
     black: string;
@@ -63,6 +66,8 @@ interface PrintOrderStore {
   clearOrderData: () => void;
   // Update just the preview image (after async generation)
   setPreviewImage: (imageBase64: string) => void;
+  // Update FEN for position-only orders
+  setFen: (fen: string) => void;
 }
 
 export const usePrintOrderStore = create<PrintOrderStore>((set) => ({
@@ -71,5 +76,8 @@ export const usePrintOrderStore = create<PrintOrderStore>((set) => ({
   clearOrderData: () => set({ orderData: null }),
   setPreviewImage: (imageBase64) => set((state) => ({
     orderData: state.orderData ? { ...state.orderData, previewImageBase64: imageBase64 } : null,
+  })),
+  setFen: (fen) => set((state) => ({
+    orderData: state.orderData ? { ...state.orderData, fen } : null,
   })),
 }));

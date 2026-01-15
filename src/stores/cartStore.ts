@@ -97,12 +97,16 @@ export interface CartItem {
     };
     // Game hash for canonical navigation
     gameHash?: string;
+    // FEN string for position-only visualizations
+    fen?: string;
     // Captured visualization state - ensures print matches exactly what user sees
     capturedState?: {
       currentMove: number;
       lockedPieces: Array<{ pieceType: string; pieceColor: string }>;
       compareMode: boolean;
       darkMode: boolean;
+      showPieces?: boolean;
+      pieceOpacity?: number;
     };
   };
 }
