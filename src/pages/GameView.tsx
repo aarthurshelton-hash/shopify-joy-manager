@@ -21,6 +21,8 @@ import UnifiedVisionExperience, { ExportState } from '@/components/chess/Unified
 import { useAuth } from '@/hooks/useAuth';
 import { useVisualizationExport } from '@/hooks/useVisualizationExport';
 import { useSessionStore } from '@/stores/sessionStore';
+import { useActiveVisionStore } from '@/stores/activeVisionStore';
+import { useVisualizationStateStore } from '@/stores/visualizationStateStore';
 import { usePrintOrderStore, PrintOrderData } from '@/stores/printOrderStore';
 import AuthModal from '@/components/auth/AuthModal';
 import { PremiumUpgradeModal } from '@/components/premium';
@@ -78,6 +80,8 @@ const GameView = () => {
     capturedTimelineState,
   } = useSessionStore();
   const { setOrderData } = usePrintOrderStore();
+  const { saveActiveVision, clearActiveVision } = useActiveVisionStore();
+  const visualizationState = useVisualizationStateStore();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -318,6 +322,50 @@ const GameView = () => {
     };
   }, [primaryVision]);
 
+  // Save active vision state for refresh persistence
+  useEffect(() => {
+    if (!gameHash || loading || !primaryVision) return;
+    
+    // Build the full route with current palette
+    const currentRoute = `/g/${gameHash}${activePaletteId ? `?p=${activePaletteId}` : ''}`;
+    
+    // Save state
+    saveActiveVision({
+      route: currentRoute,
+      gameHash,
+      paletteId: activePaletteId,
+      pgn: effectivePgn,
+      gameTitle: primaryVision?.title || '',
+      currentMove: visualizationState.currentMove,
+      selectedPhase: visualizationState.selectedPhase,
+      lockedPieces: visualizationState.lockedPieces,
+      compareMode: visualizationState.compareMode,
+      darkMode: visualizationState.darkMode,
+      showPieces: visualizationState.showPieces,
+      pieceOpacity: visualizationState.pieceOpacity,
+    });
+  }, [
+    gameHash, 
+    activePaletteId, 
+    loading,
+    primaryVision,
+    effectivePgn,
+    visualizationState.currentMove,
+    visualizationState.selectedPhase,
+    visualizationState.lockedPieces,
+    visualizationState.compareMode,
+    visualizationState.darkMode,
+    visualizationState.showPieces,
+    visualizationState.pieceOpacity,
+    saveActiveVision,
+  ]);
+
+  // Clear active vision when intentionally navigating away
+  const handleBackClick = useCallback(() => {
+    clearActiveVision();
+    navigate(backLink.href);
+  }, [clearActiveVision, navigate, backLink.href]);
+
   // Handle share with stateful URL
   const handleShare = useCallback(async (exportState?: ExportState) => {
     const url = buildCanonicalShareUrl(effectivePgn, activePaletteId, exportState ? {
@@ -556,19 +604,19 @@ const GameView = () => {
 
       <main className="container mx-auto px-4 py-8 md:py-16">
         <div className="max-w-4xl mx-auto">
-          {/* Back link */}
+          {/* Back link - clears active vision to prevent restore loop */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             className="mb-6"
           >
-            <Link
-              to={backLink.href}
+            <button
+              onClick={handleBackClick}
               className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               <ChevronLeft className="h-4 w-4" />
               <span className="font-serif">{backLink.label}</span>
-            </Link>
+            </button>
           </motion.div>
 
           {/* Title */}

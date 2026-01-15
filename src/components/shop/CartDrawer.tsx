@@ -30,6 +30,7 @@ import {
 import { useCartStore } from "@/stores/cartStore";
 import { useCurrencyStore } from "@/stores/currencyStore";
 import { usePrintOrderStore } from "@/stores/printOrderStore";
+import { useActiveVisionStore } from "@/stores/activeVisionStore";
 import { CurrencySelector } from "./CurrencySelector";
 import { CartItemThumbnail } from "./CartItemThumbnail";
 import { calculateDiscount, DISCOUNT_TIERS, ShippingRegion } from "@/lib/discounts";
