@@ -321,8 +321,13 @@ const Index = () => {
       setIsLoading(false);
       setPendingResult(null);
       
-      // Navigate to the unified GameView
-      navigate(targetUrl);
+      // Use requestAnimationFrame to ensure session store is persisted before navigation
+      // This fixes the race condition where navigation happens before Zustand persist completes
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          navigate(targetUrl);
+        });
+      });
     }
   }, [pendingResult, navigate, setCurrentSimulation]);
   
