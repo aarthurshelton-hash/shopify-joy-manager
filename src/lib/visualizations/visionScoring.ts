@@ -5,6 +5,7 @@ export interface VisionScore {
   viewCount: number;
   downloadHdCount: number;
   downloadGifCount: number;
+  scanCount: number;
   tradeCount: number;
   printOrderCount: number;
   printRevenueCents: number;
@@ -13,6 +14,9 @@ export interface VisionScore {
   updatedAt: string;
   royaltyCentsEarned: number;
   royaltyOrdersCount: number;
+  // Attribution tracking
+  gameId?: string;
+  paletteId?: string;
 }
 
 export interface VisionLeaderboardEntry extends VisionScore {
@@ -24,19 +28,25 @@ export interface VisionLeaderboardEntry extends VisionScore {
 
 /**
  * Scoring weights:
- * - View: 0.01 points
- * - HD Download: 0.10 points
- * - GIF Download: 0.25 points
- * - Trade: 1.00 point
- * - Print Order: 2.00 points + revenue in dollars
+ * - View: 0.01 points (passive engagement)
+ * - HD Download: 0.10 points (active engagement)
+ * - GIF Download: 0.25 points (animated export value)
+ * - Scan: 0.50 points (real-world validation - scanned via Natural Vision Scanner)
+ * - Trade: 1.00 point (marketplace activity)
+ * - Print Order: 2.00 points + revenue in dollars (proven demand)
+ * 
+ * Attribution bonuses:
+ * - Game attribution: Vision linked to famous game increases gamecard pool value
+ * - Palette attribution: Vision using palette increases palette pool value
  */
 export const SCORING_WEIGHTS = {
   view: 0.01,
   download_hd: 0.10,
   download_gif: 0.25,
+  scan: 0.50,             // Real-world presence validation
   trade: 1.00,
   print_order_base: 2.00,
-  print_dollar_multiplier: 1.00, // Each dollar spent = 1 point
+  print_dollar_multiplier: 1.00,
 };
 
 /**
@@ -109,7 +119,7 @@ async function getIpHash(): Promise<string | null> {
  */
 export async function recordVisionInteraction(
   visualizationId: string,
-  interactionType: 'view' | 'download_hd' | 'download_gif' | 'trade' | 'print_order',
+  interactionType: 'view' | 'download_hd' | 'download_gif' | 'scan' | 'trade' | 'print_order',
   valueCents: number = 0
 ): Promise<boolean> {
   try {
@@ -159,6 +169,7 @@ export async function getVisionScore(visualizationId: string): Promise<VisionSco
       viewCount: data.view_count,
       downloadHdCount: data.download_hd_count,
       downloadGifCount: data.download_gif_count,
+      scanCount: data.scan_count || 0,
       tradeCount: data.trade_count,
       printOrderCount: data.print_order_count,
       printRevenueCents: data.print_revenue_cents,
@@ -215,6 +226,7 @@ export async function getVisionLeaderboard(limit: number = 10): Promise<VisionLe
         viewCount: score.view_count,
         downloadHdCount: score.download_hd_count,
         downloadGifCount: score.download_gif_count,
+        scanCount: score.scan_count || 0,
         tradeCount: score.trade_count,
         printOrderCount: score.print_order_count,
         printRevenueCents: score.print_revenue_cents,
@@ -242,6 +254,7 @@ export async function getPlatformVisionStats(): Promise<{
   totalViews: number;
   totalDownloads: number;
   totalGifDownloads: number;
+  totalScans: number;
   totalTrades: number;
   totalPrintOrders: number;
   totalPrintRevenue: number;
@@ -251,7 +264,7 @@ export async function getPlatformVisionStats(): Promise<{
   try {
     const { data, error } = await supabase
       .from('vision_scores')
-      .select('view_count, download_hd_count, download_gif_count, trade_count, print_order_count, print_revenue_cents, total_score');
+      .select('view_count, download_hd_count, download_gif_count, scan_count, trade_count, print_order_count, print_revenue_cents, total_score');
 
     if (error) throw error;
 
@@ -259,6 +272,7 @@ export async function getPlatformVisionStats(): Promise<{
       totalViews: acc.totalViews + score.view_count,
       totalDownloads: acc.totalDownloads + score.download_hd_count,
       totalGifDownloads: acc.totalGifDownloads + score.download_gif_count,
+      totalScans: acc.totalScans + (score.scan_count || 0),
       totalTrades: acc.totalTrades + score.trade_count,
       totalPrintOrders: acc.totalPrintOrders + score.print_order_count,
       totalPrintRevenue: acc.totalPrintRevenue + score.print_revenue_cents,
@@ -267,6 +281,7 @@ export async function getPlatformVisionStats(): Promise<{
       totalViews: 0,
       totalDownloads: 0,
       totalGifDownloads: 0,
+      totalScans: 0,
       totalTrades: 0,
       totalPrintOrders: 0,
       totalPrintRevenue: 0,
@@ -287,6 +302,7 @@ export async function getPlatformVisionStats(): Promise<{
       totalViews: 0,
       totalDownloads: 0,
       totalGifDownloads: 0,
+      totalScans: 0,
       totalTrades: 0,
       totalPrintOrders: 0,
       totalPrintRevenue: 0,
@@ -440,6 +456,7 @@ export async function getUserPortfolioValue(
         viewCount: scoreData.view_count,
         downloadHdCount: scoreData.download_hd_count,
         downloadGifCount: scoreData.download_gif_count,
+        scanCount: scoreData.scan_count || 0,
         tradeCount: scoreData.trade_count,
         printOrderCount: scoreData.print_order_count,
         printRevenueCents: scoreData.print_revenue_cents,

@@ -317,6 +317,21 @@ Only respond with the JSON object, nothing else.`
           canonicalUrl += `?p=${paletteId}`;
         }
 
+        // Record scan interaction for scoring
+        try {
+          await supabase.rpc('record_vision_interaction', {
+            p_visualization_id: matchedViz.id,
+            p_user_id: null, // Will be handled client-side if user is logged in
+            p_interaction_type: 'scan',
+            p_value_cents: 0,
+            p_ip_hash: null
+          });
+          console.log(`Recorded scan interaction for vision: ${matchedViz.id}`);
+        } catch (scanError) {
+          console.error('Failed to record scan interaction:', scanError);
+          // Continue - don't fail the request
+        }
+
         return new Response(
           JSON.stringify({ 
             matched: true, 
