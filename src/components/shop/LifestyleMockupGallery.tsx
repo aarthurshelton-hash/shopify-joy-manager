@@ -15,6 +15,14 @@ import unframedCanvasLean from '@/assets/mockups/unframed-canvas-lean.jpg';
 import canvasMacroCloseup from '@/assets/mockups/canvas-macro-closeup.jpg';
 import handsCanvasPrint from '@/assets/mockups/hands-canvas-print.jpg';
 
+// Import lifestyle room mockups
+import bedroomNaturalFrame from '@/assets/mockups/bedroom-natural-frame.jpg';
+import restaurantBlackFrame from '@/assets/mockups/restaurant-black-frame.jpg';
+import galleryWallCollection from '@/assets/mockups/gallery-wall-collection.jpg';
+import hotelLobbyGold from '@/assets/mockups/hotel-lobby-gold.jpg';
+import studioLoftCanvas from '@/assets/mockups/studio-loft-canvas.jpg';
+import libraryWalnutFrame from '@/assets/mockups/library-walnut-frame.jpg';
+
 export interface MockupImage {
   id: string;
   src: string;
@@ -26,6 +34,7 @@ export interface MockupImage {
 }
 
 export const lifestyleMockups: MockupImage[] = [
+  // Product-focused mockups
   {
     id: 'natural-frame-canvas',
     src: naturalFrameCanvas,
@@ -94,6 +103,60 @@ export const lifestyleMockups: MockupImage[] = [
     setting: 'Product Demo',
     mood: 'Authentic Scale',
     description: 'Hands holding the canvas print showing thickness, wrapped edges and real-world scale',
+  },
+  // Lifestyle room mockups
+  {
+    id: 'bedroom-natural-frame',
+    src: bedroomNaturalFrame,
+    title: 'Bedroom Sanctuary',
+    setting: 'Modern Bedroom',
+    frame: 'Natural Wood',
+    mood: 'Peaceful',
+    description: 'Print as bedroom centerpiece above the bed with soft morning light illuminating the artwork',
+  },
+  {
+    id: 'restaurant-black-frame',
+    src: restaurantBlackFrame,
+    title: 'Fine Dining',
+    setting: 'Restaurant',
+    frame: 'Classic Black',
+    mood: 'Sophisticated',
+    description: 'Upscale restaurant with exposed brick, warm ambient lighting highlighting the framed art',
+  },
+  {
+    id: 'gallery-wall-collection',
+    src: galleryWallCollection,
+    title: 'Gallery Collection',
+    setting: 'Art Gallery',
+    frame: 'Gallery White',
+    mood: 'Museum Quality',
+    description: 'Multiple prints displayed in professional gallery setting with museum lighting',
+  },
+  {
+    id: 'hotel-lobby-gold',
+    src: hotelLobbyGold,
+    title: 'Luxury Hotel',
+    setting: 'Hotel Lobby',
+    frame: 'Champagne Gold',
+    mood: 'Prestigious',
+    description: 'Grand hotel lobby with marble surfaces and the gold-framed print as a statement piece',
+  },
+  {
+    id: 'studio-loft-canvas',
+    src: studioLoftCanvas,
+    title: 'Artist Loft',
+    setting: 'Creative Studio',
+    mood: 'Artistic',
+    description: 'Industrial loft workspace with large canvas print, natural light through warehouse windows',
+  },
+  {
+    id: 'library-walnut-frame',
+    src: libraryWalnutFrame,
+    title: 'Private Library',
+    setting: 'Home Study',
+    frame: 'Rich Walnut',
+    mood: 'Scholarly',
+    description: 'Classic study with dark wood bookshelves and the walnut-framed print as focal art',
   },
 ];
 
