@@ -1188,6 +1188,7 @@ export type Database = {
           id: string
           image_path: string
           is_private: boolean
+          original_creator_id: string | null
           pgn: string | null
           public_share_id: string | null
           title: string
@@ -1200,6 +1201,7 @@ export type Database = {
           id?: string
           image_path: string
           is_private?: boolean
+          original_creator_id?: string | null
           pgn?: string | null
           public_share_id?: string | null
           title: string
@@ -1212,6 +1214,7 @@ export type Database = {
           id?: string
           image_path?: string
           is_private?: boolean
+          original_creator_id?: string | null
           pgn?: string | null
           public_share_id?: string | null
           title?: string
@@ -2176,6 +2179,10 @@ export type Database = {
           p_visualization_id: string
         }
         Returns: Json
+      }
+      reclaim_orphaned_vision: {
+        Args: { p_visualization_id: string }
+        Returns: boolean
       }
       record_health_metric: {
         Args: {
