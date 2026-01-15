@@ -33,3 +33,10 @@ verify_jwt = false
 # Schedule: Run daily at 2:00 AM UTC
 [functions.check-grace-periods.schedule]
 cron = "0 2 * * *"
+
+[functions.data-maintenance]
+verify_jwt = false
+
+# Schedule: Run daily at 3:00 AM UTC (after grace period checks)
+[functions.data-maintenance.schedule]
+cron = "0 3 * * *"
