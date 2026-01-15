@@ -74,6 +74,7 @@ import PaletteOwnershipCard from './PaletteOwnershipCard';
 import { useAuth } from '@/hooks/useAuth';
 import MiniPrintOrderSection from './MiniPrintOrderSection';
 import { generateGameHash } from '@/lib/visualizations/gameCanonical';
+import ClaimVisionButton from '@/components/vision/ClaimVisionButton';
 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -1992,6 +1993,21 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                       <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30">
                         Listed on Marketplace
                       </Badge>
+                    )}
+
+                    {/* Claim Vision Button - Show for non-owners in marketplace/shared contexts */}
+                    {!localIsOwner && (context === 'marketplace' || context === 'shared' || context === 'gallery') && (
+                      <ClaimVisionButton
+                        pgn={effectivePgn}
+                        gameData={localGameData}
+                        paletteId={localPaletteId as PaletteId}
+                        visualizationId={localVisualizationId}
+                        isOwner={localIsOwner}
+                        isPremium={isPremium}
+                        onClaim={onSaveToGallery}
+                        onUpgradePrompt={onUpgradePrompt}
+                        compact
+                      />
                     )}
 
                     {/* Transfer to Creative Mode - Available in multiple contexts */}
