@@ -93,6 +93,8 @@ const Play = () => {
   const [isBotThinking, setIsBotThinking] = useState(false);
   const [botGameResult, setBotGameResult] = useState<'win' | 'loss' | 'draw' | null>(null);
   const [botMoveHistory, setBotMoveHistory] = useState<MoveHistoryEntry[]>([]);
+  const [botPlayerPalette, setBotPlayerPalette] = useState<PaletteId>('hotCold');
+  const [botBotPalette, setBotBotPalette] = useState<PaletteId>('hotCold');
   
   // En Pensent mode state
   const [enPensentEnabled, setEnPensentEnabled] = useState(true);
@@ -434,10 +436,17 @@ const Play = () => {
     setBotMovedSquares(new Set());
     setBotMoveHistory([]);
     setBotGameResult(null);
+    
+    // Player keeps their selected palette, bot gets random one
+    setBotPlayerPalette(selectedPalette);
+    const otherPalettes = colorPalettes.filter(p => p.id !== selectedPalette);
+    const randomBotPalette = otherPalettes[Math.floor(Math.random() * otherPalettes.length)];
+    setBotBotPalette(randomBotPalette.id);
+    
     setViewMode('bot-game');
     playSound('gameStart');
     haptics.gameStart();
-    toast.success(`Starting game vs ${BOT_DIFFICULTIES.find(d => d.id === botDifficulty)?.label} bot`);
+    toast.success(`Starting game vs ${BOT_DIFFICULTIES.find(d => d.id === botDifficulty)?.label} bot • Bot using ${randomBotPalette.name} palette`);
   };
 
   // Helper to extract piece info from a move for En Pensent tracking
@@ -658,30 +667,14 @@ const Play = () => {
                 </div>
                 {/* Play vs Bot - Mobile optimized */}
                 <div className="p-4 sm:p-6 rounded-lg border border-green-500/30 bg-gradient-to-r from-green-500/10 via-green-500/5 to-transparent space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <div className="flex items-center gap-3 sm:gap-4">
-                      <Bot className="h-6 w-6 sm:h-8 sm:w-8 text-green-500 flex-shrink-0" />
-                      <div>
-                        <h3 className="font-display font-bold uppercase tracking-wider text-sm sm:text-base">Practice vs Bot</h3>
-                        <p className="text-xs sm:text-sm text-muted-foreground font-serif">Free for everyone!</p>
-                      </div>
-                    </div>
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                      {/* Difficulty selector - full width on mobile */}
-                      <div className="grid grid-cols-3 gap-2 sm:flex sm:gap-2">
-                        {BOT_DIFFICULTIES.map(diff => (
-                          <button
-                            key={diff.id}
-                            onClick={() => setBotDifficulty(diff.id)}
-                            className={`px-3 py-2.5 sm:py-1.5 rounded-lg text-xs font-display transition-all touch-manipulation ${
-                              botDifficulty === diff.id
-                                ? 'bg-green-500 text-white'
-                                : 'bg-card/50 border border-border/50 text-muted-foreground active:bg-green-500/20'
-                            }`}
-                          >
-                            {diff.label}
-                          </button>
-                        ))}
+                  <div className="flex flex-col gap-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <div className="flex items-center gap-3 sm:gap-4">
+                        <Bot className="h-6 w-6 sm:h-8 sm:w-8 text-green-500 flex-shrink-0" />
+                        <div>
+                          <h3 className="font-display font-bold uppercase tracking-wider text-sm sm:text-base">Practice vs Bot</h3>
+                          <p className="text-xs sm:text-sm text-muted-foreground font-serif">Free for everyone! Watch your vision generate live.</p>
+                        </div>
                       </div>
                       <Button 
                         onClick={startBotGame} 
@@ -690,6 +683,58 @@ const Play = () => {
                         <Bot className="h-4 w-4" />
                         Play Bot
                       </Button>
+                    </div>
+                    
+                    {/* Difficulty selector */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-display uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                        <Swords className="h-3 w-3" />
+                        Difficulty
+                      </label>
+                      <div className="grid grid-cols-4 gap-2">
+                        {BOT_DIFFICULTIES.map(diff => (
+                          <button
+                            key={diff.id}
+                            onClick={() => setBotDifficulty(diff.id)}
+                            className={`px-2 py-2.5 rounded-lg text-xs font-display transition-all touch-manipulation text-center ${
+                              botDifficulty === diff.id
+                                ? 'bg-green-500 text-white'
+                                : 'bg-card/50 border border-border/50 text-muted-foreground active:bg-green-500/20'
+                            }`}
+                          >
+                            <div>{diff.label}</div>
+                            <div className="text-[10px] opacity-70">{diff.rating}</div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    {/* Your Palette selector for bot games */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-display uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                        <Palette className="h-3 w-3" />
+                        Your Palette (Bot gets random)
+                      </label>
+                      <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
+                        {colorPalettes.slice(0, 8).map(palette => (
+                          <button
+                            key={palette.id}
+                            onClick={() => setSelectedPalette(palette.id)}
+                            className={`p-1.5 rounded-lg border transition-all touch-manipulation ${
+                              selectedPalette === palette.id
+                                ? 'border-green-500 bg-green-500/10'
+                                : 'border-border/50 active:bg-green-500/5'
+                            }`}
+                          >
+                            <div className="flex gap-0.5 mb-0.5 justify-center">
+                              {Object.values(palette.white).slice(0, 3).map((color, i) => (
+                                <div key={i} className="w-2 h-2 rounded-sm" style={{ backgroundColor: color }} />
+                              ))}
+                            </div>
+                            <p className="text-[7px] sm:text-[8px] font-display truncate">{palette.name}</p>
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1230,8 +1275,8 @@ const Play = () => {
                       getAvailableMoves={getBotGameAvailableMoves}
                       isMyTurn={!isBotThinking && !botGameResult && botGame.turn() === 'w'}
                       myColor="w"
-                      whitePalette={colorPalettes.find(p => p.id === selectedPalette)?.white || colorPalettes[0].white}
-                      blackPalette={colorPalettes.find(p => p.id === selectedPalette)?.black || colorPalettes[0].black}
+                      whitePalette={colorPalettes.find(p => p.id === botPlayerPalette)?.white || colorPalettes[0].white}
+                      blackPalette={colorPalettes.find(p => p.id === botBotPalette)?.black || colorPalettes[0].black}
                       movedSquares={botMovedSquares}
                       disabled={isBotThinking || !!botGameResult}
                       enPensentEnabled={enPensentEnabled}
@@ -1243,8 +1288,8 @@ const Play = () => {
                     {enPensentEnabled && (
                       <div className="hidden lg:block">
                         <LiveColorLegend
-                          whitePalette={colorPalettes.find(p => p.id === selectedPalette)?.white || colorPalettes[0].white}
-                          blackPalette={colorPalettes.find(p => p.id === selectedPalette)?.black || colorPalettes[0].black}
+                          whitePalette={colorPalettes.find(p => p.id === botPlayerPalette)?.white || colorPalettes[0].white}
+                          blackPalette={colorPalettes.find(p => p.id === botBotPalette)?.black || colorPalettes[0].black}
                           moveHistory={botMoveHistory}
                           title="Live Legend"
                         />
@@ -1256,8 +1301,8 @@ const Play = () => {
                   {enPensentEnabled && (
                     <div className="lg:hidden">
                       <LiveColorLegend
-                        whitePalette={colorPalettes.find(p => p.id === selectedPalette)?.white || colorPalettes[0].white}
-                        blackPalette={colorPalettes.find(p => p.id === selectedPalette)?.black || colorPalettes[0].black}
+                        whitePalette={colorPalettes.find(p => p.id === botPlayerPalette)?.white || colorPalettes[0].white}
+                        blackPalette={colorPalettes.find(p => p.id === botBotPalette)?.black || colorPalettes[0].black}
                         moveHistory={botMoveHistory}
                         compact
                         title="Legend"
@@ -1336,12 +1381,12 @@ const Play = () => {
         moveHistory={viewMode === 'bot-game' ? botMoveHistory : multiplayerMoveHistory}
         whitePalette={
           viewMode === 'bot-game' 
-            ? colorPalettes.find(p => p.id === selectedPalette)?.white || colorPalettes[0].white
+            ? colorPalettes.find(p => p.id === botPlayerPalette)?.white || colorPalettes[0].white
             : gameState?.whitePalette || colorPalettes[0].white
         }
         blackPalette={
           viewMode === 'bot-game'
-            ? colorPalettes.find(p => p.id === selectedPalette)?.black || colorPalettes[0].black
+            ? colorPalettes.find(p => p.id === botBotPalette)?.black || colorPalettes[0].black
             : gameState?.blackPalette || colorPalettes[0].black
         }
         gameInfo={{
