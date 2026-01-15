@@ -1,10 +1,11 @@
 import { useMemo } from 'react';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
-import { Crown, Heart, Palette, Users, Lightbulb, Sparkles, Eye, ScanLine, QrCode, Camera, Fingerprint, DollarSign, Building2, PenTool } from 'lucide-react';
+import { Crown, Heart, Palette, Users, Lightbulb, Sparkles, Eye, ScanLine, QrCode, Camera, Fingerprint, DollarSign, Building2, PenTool, Frame } from 'lucide-react';
 import { useRandomGameArt } from '@/hooks/useRandomGameArt';
 import { Badge } from '@/components/ui/badge';
 import { RoyaltyCalculator } from '@/components/calculator/RoyaltyCalculator';
+import LifestyleMockupGallery from '@/components/shop/LifestyleMockupGallery';
 
 const About = () => {
   const backgroundImages = useRandomGameArt(6);
@@ -417,6 +418,18 @@ const About = () => {
           
           {/* Royalty Calculator */}
           <RoyaltyCalculator />
+
+          {/* Lifestyle Print Gallery - Full Grid */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Frame className="h-5 w-5 text-primary" />
+              <h2 className="text-2xl font-display font-bold uppercase tracking-wider">See Our Prints in Real Spaces</h2>
+            </div>
+            <p className="text-muted-foreground font-serif">
+              Explore how En Pensent visualizations look in various settings with our handcrafted frame options.
+            </p>
+            <LifestyleMockupGallery showTitle={false} />
+          </div>
           
           {/* Contact */}
           <div className="text-center p-8 rounded-lg border border-border/50 bg-card/50 space-y-4">

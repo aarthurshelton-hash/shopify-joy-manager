@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
 import { ProductSelector } from '@/components/shop/ProductSelector';
+import LifestyleMockupGallery from '@/components/shop/LifestyleMockupGallery';
 import { usePrintOrderStore, PrintOrderData } from '@/stores/printOrderStore';
 import { useCartStore } from '@/stores/cartStore';
 import PrintReadyVisualization from '@/components/chess/PrintReadyVisualization';
@@ -471,6 +472,16 @@ const OrderPrint: React.FC = () => {
             />
           </motion.div>
         </div>
+
+        {/* Lifestyle Mockup Gallery Section */}
+        <motion.section
+          className="mt-16 pt-12 border-t border-border/50"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+        >
+          <LifestyleMockupGallery showTitle={true} />
+        </motion.section>
       </main>
 
       <Footer />
