@@ -27,6 +27,7 @@ import { PremiumUpgradeModal } from '@/components/premium';
 import { setActivePalette, PaletteId, PieceType } from '@/lib/chess/pieceColors';
 import { recordVisionInteraction, getVisionScore, VisionScore } from '@/lib/visualizations/visionScoring';
 import { extractMovesFromPgn, buildCanonicalShareUrl } from '@/lib/visualizations/gameCanonical';
+import { detectGameCard } from '@/lib/chess/gameCardDetection';
 
 interface GameVision {
   id: string;
@@ -437,6 +438,12 @@ const GameView = () => {
       setSavedShareId(primaryVision.public_share_id || '');
       setReturningFromOrder(true);
 
+      // Detect famous game card for attribution
+      const gameCardMatch = detectGameCard(effectivePgn);
+      const detectedGameId = gameCardMatch.isMatch && gameCardMatch.matchedGame 
+        ? gameCardMatch.matchedGame.id 
+        : undefined;
+
       const orderData: PrintOrderData = {
         visualizationId: primaryVision.id,
         title: primaryVision.title,
@@ -453,6 +460,7 @@ const GameView = () => {
         returnPath: `/g/${gameHash}`,
         // Game metadata for cart display and navigation
         gameHash,
+        gameId: detectedGameId, // For game card art in cart
         paletteId: activePaletteId,
         pgn: effectivePgn,
         capturedState: exportState ? {
