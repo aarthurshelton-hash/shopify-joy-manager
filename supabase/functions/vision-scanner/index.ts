@@ -12,6 +12,68 @@ interface VisionMatch {
   title: string;
   confidence: number;
   image_url: string;
+  game_hash: string;
+  palette_id: string;
+}
+
+/**
+ * Generate a compact, URL-safe hash of the game moves
+ * This creates a canonical identifier for any game regardless of metadata
+ */
+function generateGameHash(pgn: string | undefined | null): string {
+  if (!pgn) return 'empty';
+  
+  // Extract only the moves from PGN (strip headers, comments, variations)
+  const movesOnly = extractMovesFromPgn(pgn);
+  if (!movesOnly) return 'empty';
+  
+  // Create a compact hash of the moves
+  return compactHash(movesOnly);
+}
+
+/**
+ * Extract just the moves from a PGN string
+ */
+function extractMovesFromPgn(pgn: string): string {
+  // Remove headers
+  let cleaned = pgn.replace(/\[[^\]]*\]/g, '');
+  
+  // Remove comments
+  cleaned = cleaned.replace(/\{[^}]*\}/g, '');
+  
+  // Remove variations
+  cleaned = cleaned.replace(/\([^)]*\)/g, '');
+  
+  // Remove move numbers
+  cleaned = cleaned.replace(/\d+\.\s*/g, '');
+  
+  // Remove result markers
+  cleaned = cleaned.replace(/1-0|0-1|1\/2-1\/2|\*/g, '');
+  
+  // Normalize whitespace
+  cleaned = cleaned.replace(/\s+/g, ' ').trim();
+  
+  return cleaned;
+}
+
+/**
+ * Create a compact URL-safe hash from a string
+ */
+function compactHash(str: string): string {
+  let hash = 0;
+  let hash2 = 0;
+  
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash + char) | 0;
+    hash2 = ((hash2 << 7) + hash2 + char) | 0;
+  }
+  
+  // Combine both hashes for better distribution
+  const combined = Math.abs(hash) ^ Math.abs(hash2);
+  
+  // Convert to base36 for compact URL-safe representation
+  return combined.toString(36);
 }
 
 serve(async (req) => {
@@ -20,10 +82,10 @@ serve(async (req) => {
   }
 
   try {
-    const { image_base64, image_url } = await req.json();
+    const { image_base64, image_url, image } = await req.json();
     
-    // Accept either base64 data or a URL
-    const imageInput = image_base64 || image_url;
+    // Accept either base64 data, URL, or legacy 'image' field
+    const imageInput = image_base64 || image_url || image;
     
     if (!imageInput) {
       return new Response(
@@ -57,13 +119,13 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Fetch all visualizations with their images for comparison
+    // Fetch all visualizations with their images and PGN for hash generation
     const { data: visualizations, error: fetchError } = await supabase
       .from("saved_visualizations")
-      .select("id, title, image_path, public_share_id, game_data")
+      .select("id, title, image_path, public_share_id, game_data, pgn")
       .not("public_share_id", "is", null)
       .order("created_at", { ascending: false })
-      .limit(100); // Limit for performance
+      .limit(200);
 
     if (fetchError) {
       throw fetchError;
@@ -80,25 +142,17 @@ serve(async (req) => {
     }
 
     // Build context about existing visualizations for the AI
+    // Include game hash for each visualization
     const vizDescriptions = visualizations.map((viz, index) => {
       const gameData = viz.game_data as any;
       const whitePlayer = gameData?.white || gameData?.gameInfo?.white || "Unknown";
       const blackPlayer = gameData?.black || gameData?.gameInfo?.black || "Unknown";
-      return `[${index}] ID: ${viz.public_share_id}, Title: "${viz.title}", Players: ${whitePlayer} vs ${blackPlayer}`;
+      const paletteId = gameData?.palette?.id || gameData?.paletteId || "modern";
+      const paletteName = gameData?.palette?.name || paletteId;
+      const gameHash = generateGameHash(viz.pgn);
+      
+      return `[${index}] Title: "${viz.title}", Players: ${whitePlayer} vs ${blackPlayer}, Palette: ${paletteName}, GameHash: ${gameHash}`;
     }).join("\n");
-
-    // Get public URLs for visualization images to send to AI
-    const vizWithUrls = await Promise.all(
-      visualizations.slice(0, 10).map(async (viz) => { // Limit to 10 for API constraints
-        const { data: urlData } = supabase.storage
-          .from("visualizations")
-          .getPublicUrl(viz.image_path);
-        return {
-          ...viz,
-          public_url: urlData.publicUrl
-        };
-      })
-    );
 
     // Use Lovable AI with vision capability to analyze the image
     const analysisResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -112,43 +166,57 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `You are an expert at analyzing En Pensent chess visualization art. These visualizations are unique 8x8 grid patterns where each square's color represents which chess piece last visited that square during a game.
+            content: `You are an expert visual cryptography decoder for En Pensent chess visualizations. 
 
-Key characteristics of En Pensent visualizations:
-- 8x8 grid layout (like a chessboard)
-- Each square has a solid color from a palette
-- The pattern is unique to each game's move history
-- Colors typically include variations for: King, Queen, Rook, Bishop, Knight, Pawns
-- May have a title, player names, and QR code overlay
+UNDERSTANDING THE VISUAL ENCRYPTION:
+Each En Pensent visualization is a unique "visual encryption" of a chess game. The 8x8 grid encodes:
+- Every square's color represents the LAST piece to visit that square
+- The complete color pattern is like a fingerprint unique to that game's move sequence
+- Different color palettes applied to the same game create different "visions" but share the same underlying encryption
 
-IMPORTANT IMAGE ANALYSIS INSTRUCTIONS:
-- The image may be a photograph of a print, a screenshot, or a photo of a screen
-- IGNORE background noise, fingers, desk surfaces, shadows, reflections, or other objects in the photo
-- FOCUS ONLY on finding the 8x8 colored grid pattern characteristic of En Pensent visualizations
-- The visualization may be at an angle, partially cropped, or have glare - still try to identify it
-- Look for ANY visible text like player names, game titles, or dates that could help identify the visualization
-- If you see multiple visualizations in the image, focus on the most prominent/largest one
-- Even if image quality is poor, attempt a match if you can discern the general color pattern
+VISUAL SIGNATURE ELEMENTS:
+1. COLOR PATTERN: The 8x8 grid of solid colors - this is the PRIMARY identifier
+2. PIECE COLORS: Each piece type has distinct colors (King=gold/orange, Queen=purple/magenta, Rook=blue, Bishop=green, Knight=teal, Pawn=red/brown variations)
+3. TEXT OVERLAY: Title, player names, event info often appear
+4. PALETTE STYLE: The color scheme (warm vs cool, vintage vs modern, etc.)
 
-Your task: Analyze the uploaded image and try to match it to one of the known visualizations.
+CRITICAL IMAGE ANALYSIS:
+- The image may be a PHOTOGRAPH of a physical print, screen, or artwork
+- IGNORE: backgrounds, fingers, desk surfaces, shadows, reflections, frames
+- FOCUS: Find and decode the 8x8 colored grid pattern
+- ANALYZE: The unique color distribution pattern (not just individual colors)
+- The pattern is INVARIANT - same game = same pattern, just different colors based on palette
 
-Known visualizations in database:
+DECRYPTION PROCESS:
+1. Locate the 8x8 grid in the image (may be angled, cropped, or have glare)
+2. Analyze the COLOR DISTRIBUTION pattern - which squares are "hot" (frequently visited)
+3. Look for characteristic game signatures (e.g., castled king patterns, central pawn structures)
+4. Match against known game patterns in the database
+5. Read any visible text for confirmation
+
+Known visualizations in database (your reference encryption library):
 ${vizDescriptions}
 
-If you can identify which visualization this is (by recognizing the color pattern, title text, or any identifying features), respond with ONLY a JSON object:
-{"matched": true, "index": <number>, "confidence": <0-100>, "reason": "<brief explanation>"}
+RESPONSE FORMAT - Reply with ONLY a JSON object:
 
-If you cannot match it to any known visualization:
-{"matched": false, "confidence": 0, "reason": "<why it couldn't be matched>"}
+If you can decode and match the visual encryption:
+{"matched": true, "index": <number>, "confidence": <0-100>, "decryption_notes": "<what patterns you identified>", "reason": "<brief match explanation>"}
 
-IMPORTANT: Only respond with the JSON object, no other text.`
+If the pattern doesn't match any known encryption:
+{"matched": false, "confidence": 0, "decryption_notes": "<what you observed>", "reason": "<why no match>", "is_valid_vision": <true if it looks like an En Pensent visualization>}
+
+Only respond with the JSON object, nothing else.`
           },
           {
             role: "user",
             content: [
               {
                 type: "text",
-                text: "Analyze this image and identify if it matches any En Pensent visualization in the database. This could be a photograph of a print, a screenshot, or a photo of a screen - ignore any background noise, fingers, or other objects. Focus on finding the 8x8 colored grid pattern and any visible text (title, player names) or QR codes. Match the color pattern to the known visualizations."
+                text: `Decode this image: Locate the visual encryption (8x8 color grid) and attempt to match it against the known game patterns. This could be a photograph of a print, a screen capture, or a photo of artwork. Ignore any background elements and focus on decrypting the color pattern fingerprint. Look for:
+1. The unique 8x8 color grid pattern
+2. Any visible text (title, players)
+3. Color palette characteristics
+4. Match against the known visual encryptions in the database.`
               },
               {
                 type: "image_url",
@@ -159,11 +227,11 @@ IMPORTANT: Only respond with the JSON object, no other text.`
             ]
           }
         ],
-        max_tokens: 500,
+        max_tokens: 600,
       }),
     });
 
-    console.log("AI request sent for image analysis");
+    console.log("AI request sent for visual encryption decoding");
 
     if (!analysisResponse.ok) {
       const errorText = await analysisResponse.text();
@@ -173,6 +241,13 @@ IMPORTANT: Only respond with the JSON object, no other text.`
         return new Response(
           JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      if (analysisResponse.status === 402) {
+        return new Response(
+          JSON.stringify({ error: "Service temporarily unavailable. Please try again later." }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
       
@@ -201,7 +276,7 @@ IMPORTANT: Only respond with the JSON object, no other text.`
       return new Response(
         JSON.stringify({ 
           matched: false, 
-          message: "Could not analyze the image. Please try a clearer photo.",
+          message: "Could not decode the visual encryption. Please try a clearer image.",
           raw_response: aiResponse
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -212,6 +287,11 @@ IMPORTANT: Only respond with the JSON object, no other text.`
       const matchedViz = visualizations[matchResult.index];
       
       if (matchedViz) {
+        // Generate the canonical game hash
+        const gameHash = generateGameHash(matchedViz.pgn);
+        const gameData = matchedViz.game_data as any;
+        const paletteId = gameData?.palette?.id || gameData?.paletteId || "modern";
+        
         // Use image_path directly if it's already a full URL, otherwise construct it
         let imageUrl = matchedViz.image_path;
         if (!imageUrl.startsWith("http")) {
@@ -220,20 +300,33 @@ IMPORTANT: Only respond with the JSON object, no other text.`
             .getPublicUrl(matchedViz.image_path);
           imageUrl = urlData.publicUrl;
         }
+
         const result: VisionMatch = {
           visualization_id: matchedViz.id,
           public_share_id: matchedViz.public_share_id,
           title: matchedViz.title,
           confidence: matchResult.confidence || 80,
-          image_url: imageUrl
+          image_url: imageUrl,
+          game_hash: gameHash,
+          palette_id: paletteId
         };
+
+        // Build canonical share URL with palette
+        let canonicalUrl = `/g/${gameHash}`;
+        if (paletteId && paletteId !== "modern") {
+          canonicalUrl += `?p=${paletteId}`;
+        }
 
         return new Response(
           JSON.stringify({ 
             matched: true, 
             vision: result,
+            decryption_notes: matchResult.decryption_notes,
             reason: matchResult.reason,
-            share_url: `/v/${matchedViz.public_share_id}`
+            share_url: canonicalUrl,
+            legacy_url: `/v/${matchedViz.public_share_id}`,
+            game_hash: gameHash,
+            palette_id: paletteId
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
@@ -244,7 +337,9 @@ IMPORTANT: Only respond with the JSON object, no other text.`
     return new Response(
       JSON.stringify({ 
         matched: false, 
-        message: matchResult.reason || "No matching visualization found. This may not be an En Pensent vision, or it may not be in our database yet.",
+        message: matchResult.reason || "No matching visual encryption found. This may not be an En Pensent vision, or it may not be in our database yet.",
+        is_valid_vision: matchResult.is_valid_vision || false,
+        decryption_notes: matchResult.decryption_notes,
         confidence: matchResult.confidence || 0
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
