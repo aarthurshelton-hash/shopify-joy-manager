@@ -20,6 +20,7 @@ import { BookShowcase } from '@/components/book/BookShowcase';
 import LifestyleMockupGallery from '@/components/shop/LifestyleMockupGallery';
 import { TrendingVisions } from '@/components/marketplace/TrendingVisions';
 import { ClaimableVisionsSection } from '@/components/marketplace/ClaimableVisionsSection';
+import { RecentlyViewedSection } from '@/components/marketplace/RecentlyViewedSection';
 import { TransferLimitBadge } from '@/components/marketplace/TransferLimitBadge';
 import EducationFundCard from '@/components/marketplace/EducationFundCard';
 import { useSessionStore } from '@/stores/sessionStore';
@@ -455,6 +456,9 @@ const Marketplace: React.FC = () => {
 
           {/* Browse Tab */}
           <TabsContent value="browse" className="space-y-6">
+            {/* Recently Viewed Section */}
+            <RecentlyViewedSection />
+            
             {/* Claimable Visions Section */}
             <ClaimableVisionsSection onClaim={refreshListings} />
 
