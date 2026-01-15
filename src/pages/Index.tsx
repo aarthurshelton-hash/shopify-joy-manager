@@ -12,6 +12,7 @@ import CreativeModeShowcase from '@/components/homepage/CreativeModeShowcase';
 import { NaturalQRShowcase } from '@/components/homepage/NaturalQRShowcase';
 import { BookShowcase } from '@/components/book/BookShowcase';
 import { EducationFundShowcase } from '@/components/homepage/EducationFundShowcase';
+import LifestyleMockupGallery from '@/components/shop/LifestyleMockupGallery';
 import { VisionaryMembershipCard } from '@/components/premium';
 import { simulateGame, SimulationResult } from '@/lib/chess/gameSimulator';
 import { Header } from '@/components/shop/Header';
@@ -665,6 +666,27 @@ const Index = () => {
 
             {/* Live Market Activity Widget */}
             <LiveMarketWidget />
+
+            {/* Lifestyle Mockup Gallery Showcase */}
+            <section className="py-16">
+              <div className="container mx-auto px-4">
+                <div className="max-w-6xl mx-auto">
+                  <div className="text-center mb-8">
+                    <h2 className="font-display text-3xl md:text-4xl font-bold mb-3">
+                      Your Art, <span className="text-gold-gradient">Any Space</span>
+                    </h2>
+                    <p className="text-muted-foreground font-serif max-w-2xl mx-auto">
+                      See how your chess visualizations transform any room with our museum-quality prints and handcrafted frames.
+                    </p>
+                  </div>
+                  <LifestyleMockupGallery 
+                    compact={true}
+                    autoplay={true}
+                    className="max-w-4xl mx-auto"
+                  />
+                </div>
+              </div>
+            </section>
 
             {/* Community Trending Widget */}
             <TrendingWidget />

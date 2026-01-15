@@ -17,6 +17,7 @@ import { RotatingArtBackground } from '@/components/shared/RotatingArtBackground
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
 import { BookShowcase } from '@/components/book/BookShowcase';
+import LifestyleMockupGallery from '@/components/shop/LifestyleMockupGallery';
 import { TrendingVisions } from '@/components/marketplace/TrendingVisions';
 import { ClaimableVisionsSection } from '@/components/marketplace/ClaimableVisionsSection';
 import { TransferLimitBadge } from '@/components/marketplace/TransferLimitBadge';
@@ -710,7 +711,12 @@ const Marketplace: React.FC = () => {
           )}
 
           {/* Transparency Tab */}
-          <TabsContent value="transparency" className="space-y-6">
+          <TabsContent value="transparency" className="space-y-8">
+            {/* Lifestyle Mockups - Showing print quality in real settings */}
+            <div className="py-6">
+              <h2 className="font-display text-xl font-bold text-center mb-6">Museum-Quality Prints in Your Space</h2>
+              <LifestyleMockupGallery compact={true} autoplay={true} className="max-w-4xl mx-auto" />
+            </div>
             <MarketplaceTransparency />
             <EducationFundCard />
           </TabsContent>
