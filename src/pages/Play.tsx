@@ -36,6 +36,7 @@ import { MoveHistoryEntry } from '@/components/chess/EnPensentOverlay';
 import { ExportVisualizationModal } from '@/components/chess/ExportVisualizationModal';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { getBotMove, getBotThinkingDelay, BOT_DIFFICULTIES, BotDifficulty } from '@/lib/chess/chessBot';
+import { getDrawToastMessage } from '@/lib/chess/drawReasons';
 import { useChessSounds } from '@/hooks/useChessSounds';
 import { useSoundStore } from '@/stores/soundStore';
 import { useHapticFeedback } from '@/hooks/useHapticFeedback';
@@ -515,7 +516,7 @@ const Play = () => {
         } else {
           setBotGameResult('draw');
           playSound('draw');
-          toast.info('Game drawn!');
+          toast.info(getDrawToastMessage(botGame));
         }
         return true;
       }
@@ -574,7 +575,7 @@ const Play = () => {
           } else {
             setBotGameResult('draw');
             playSound('draw');
-            toast.info('Game drawn!');
+            toast.info(getDrawToastMessage(botGame));
           }
         }
       }

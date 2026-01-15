@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { calculateGameRatingChanges } from '@/lib/chess/eloCalculator';
+import { getDrawToastMessage } from '@/lib/chess/drawReasons';
 import { useChessSounds } from '@/hooks/useChessSounds';
 import { useSoundStore } from '@/stores/soundStore';
 
@@ -451,7 +452,7 @@ export const useChessGame = (): UseChessGameReturn => {
         } else if (result === 'black_wins') {
           toast.success(myColor === 'b' ? 'You won!' : 'Black wins!');
         } else {
-          toast.info('Game drawn!');
+          toast.info(getDrawToastMessage(game));
         }
       }
 
