@@ -201,50 +201,23 @@ function pgnToMoves(pgn: string): string[] {
 }
 
 /**
- * Match opening from move sequence
+ * Match opening from move sequence using the comprehensive opening detector
  */
 export function detectOpening(moves: string[]): ChessOpening | undefined {
-  // Build move sequence strings of increasing length
-  const chess = new Chess();
-  const playedSequence: string[] = [];
+  // Use the new comprehensive opening detector
+  const { detectOpeningFromMoves } = require('./openingDetector');
+  const detected = detectOpeningFromMoves(moves);
   
-  for (const move of moves.slice(0, 20)) { // Only check first 20 moves for opening
-    try {
-      chess.move(move);
-      playedSequence.push(move);
-    } catch {
-      break;
-    }
-  }
+  if (!detected) return undefined;
   
-  // Find best matching opening (longest match wins)
-  let bestMatch: ChessOpening | undefined;
-  let bestMatchLength = 0;
-  
-  for (const opening of OPENINGS_DB) {
-    const openingMoves = pgnToMoves(opening.moves);
-    let matchCount = 0;
-    
-    for (let i = 0; i < openingMoves.length && i < playedSequence.length; i++) {
-      // Normalize move notation for comparison
-      const openingMove = openingMoves[i].replace(/[+#!?x]/g, '').toLowerCase();
-      const playedMove = playedSequence[i].replace(/[+#!?x]/g, '').toLowerCase();
-      
-      if (openingMove === playedMove) {
-        matchCount++;
-      } else {
-        break;
-      }
-    }
-    
-    // Require at least 2 moves to match, and match must cover full opening sequence
-    if (matchCount >= openingMoves.length && matchCount > bestMatchLength) {
-      bestMatch = opening;
-      bestMatchLength = matchCount;
-    }
-  }
-  
-  return bestMatch;
+  // Convert to legacy ChessOpening format for backwards compatibility
+  return {
+    eco: detected.eco,
+    name: detected.fullName,
+    moves: detected.moves,
+    description: detected.description,
+    category: detected.category === 'gambit' ? 'open' : detected.category,
+  };
 }
 
 /**
