@@ -41,8 +41,9 @@ export const RotatingArtBackground: React.FC<RotatingArtBackgroundProps> = ({
   return (
     <div 
       className={`absolute inset-0 overflow-hidden pointer-events-none select-none ${className}`} 
-      style={{ zIndex: -1 }}
+      style={{ zIndex: 0 }}
       aria-hidden="true"
+      data-background-layer="true"
     >
       {/* Background image with CSS transition - explicitly non-interactive */}
       <div

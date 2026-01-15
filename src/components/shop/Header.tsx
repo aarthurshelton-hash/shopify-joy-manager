@@ -36,8 +36,8 @@ export const Header = () => {
     }
   };
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/85">
-      <div className="container flex h-16 sm:h-18 md:h-20 items-center justify-between">
+    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/85 isolate">
+      <div className="container flex h-16 sm:h-18 md:h-20 items-center justify-between relative z-10">
         {/* Left side - Logo and navigation */}
         <div className="flex items-center gap-4 md:gap-8">
           {/* Logo link to homepage */}
@@ -61,12 +61,12 @@ export const Header = () => {
           </Link>
           
           {/* Desktop navigation links - show on lg+ */}
-          <nav className="hidden lg:flex items-center gap-4 xl:gap-6">
+          <nav className="hidden lg:flex items-center gap-4 xl:gap-6 relative z-20">
             {navLinks.map((link) => (
               <Link 
                 key={link.to}
                 to={link.to} 
-                className={`text-xs xl:text-sm font-medium transition-colors uppercase tracking-wider flex items-center gap-1.5 ${
+                className={`text-xs xl:text-sm font-medium transition-colors uppercase tracking-wider flex items-center gap-1.5 relative z-10 ${
                   link.highlight 
                     ? 'text-primary hover:text-primary/80' 
                     : 'text-muted-foreground hover:text-foreground'
