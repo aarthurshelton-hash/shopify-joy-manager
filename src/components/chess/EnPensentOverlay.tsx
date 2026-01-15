@@ -70,14 +70,17 @@ export const EnPensentOverlay: React.FC<EnPensentOverlayProps> = ({
     [moveHistory, whitePalette, blackPalette]
   );
 
-  if (!isEnabled || opacity === 0) {
+  if (!isEnabled) {
     return null;
   }
 
-  // Render nested rectangles for a single square
+  // Render solid color fills for a single square (trademark PrintReady style)
   const renderSquareVisualization = (square: string, colors: string[]) => {
     const { row, col } = squareToPosition(square, flipped);
     const maxLayers = Math.min(colors.length, 6);
+    
+    // Use full opacity for solid colors (trademark look)
+    const effectiveOpacity = opacity;
     
     return (
       <div
@@ -88,7 +91,7 @@ export const EnPensentOverlay: React.FC<EnPensentOverlayProps> = ({
           left: `${col * 12.5}%`,
           width: '12.5%',
           height: '12.5%',
-          opacity,
+          opacity: effectiveOpacity,
           pointerEvents: 'none',
         }}
       >
