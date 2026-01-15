@@ -10,6 +10,7 @@ import { VisionRestorer } from "@/components/shared/VisionRestorer";
 import { GlobalAlertsBanner } from "@/components/shared/GlobalAlertsBanner";
 import { BackToMarketplaceButton } from "@/components/marketplace/BackToMarketplaceButton";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { StructuredData } from "@/components/seo/StructuredData";
 import Index from "./pages/Index";
 import MyPalettes from "./pages/MyPalettes";
 import MyVision from "./pages/MyVision";
@@ -65,6 +66,7 @@ const App = () => (
           <LocationTracker />
           <GlobalAlertsBanner />
           <BrowserRouter>
+            <StructuredData />
             <VisionRestorer />
             <BackToMarketplaceButton />
             <Routes>
