@@ -21,6 +21,8 @@ interface PlayableChessBoardProps {
   enPensentEnabled?: boolean;
   enPensentOpacity?: number;
   moveHistory?: MoveHistoryEntry[];
+  // Show pieces overlay (like PrintReady)
+  showPieces?: boolean;
 }
 
 const PIECE_SYMBOLS: Record<string, string> = {
@@ -65,8 +67,9 @@ export const PlayableChessBoard = ({
   disabled = false,
   onMoveResult,
   enPensentEnabled = false,
-  enPensentOpacity = 0.7,
+  enPensentOpacity = 1, // Default to full opacity (solid, not translucent)
   moveHistory = [],
+  showPieces = true, // Default to showing pieces
 }: PlayableChessBoardProps) => {
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
   const [availableMoves, setAvailableMoves] = useState<Square[]>([]);
@@ -104,20 +107,11 @@ export const PlayableChessBoard = ({
     return map;
   }, [moveHistory]);
 
-  const getPieceColor = (piece: string, row: number, col: number): string => {
-    const square = indexToSquare(row, col);
-    const hasBeenMoved = movedSquares.has(square);
-    
-    // If square hasn't been moved to yet, return transparent/faded
-    if (!hasBeenMoved && movedSquares.size > 0) {
-      return 'rgba(128, 128, 128, 0.15)';
-    }
-    
+  // Get piece color - always return full color (pieces should always be visible)
+  const getPieceDisplayColor = (piece: string): string => {
     const isWhite = piece === piece.toUpperCase();
-    const pieceType = piece.toLowerCase() as PieceType;
-    const palette = isWhite ? whitePalette : blackPalette;
-    
-    return palette[pieceType] || '#888888';
+    // Use standard black/white piece colors for clear visibility
+    return isWhite ? '#1a1a1a' : '#f5f5f5';
   };
 
   const handleSquareInteraction = useCallback(async (row: number, col: number) => {
@@ -279,7 +273,7 @@ export const PlayableChessBoard = ({
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            className="absolute inset-0 flex items-center justify-center z-10"
+            className="absolute inset-0 flex items-center justify-center z-20"
           >
             {piece ? (
               <div className="absolute inset-1 sm:inset-1.5 rounded-full border-4 sm:border-[5px] border-primary/60" />
@@ -289,22 +283,21 @@ export const PlayableChessBoard = ({
           </motion.div>
         )}
 
-        {/* Piece - larger text for mobile touch targets */}
-        {piece && (
+        {/* Piece - always visible with standard colors when showPieces is true */}
+        {piece && showPieces && (
           <motion.div
             layout
             initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ 
-              scale: 1, 
-              opacity: hasBeenMoved || movedSquares.size === 0 ? 1 : 0.15 
-            }}
-            className="absolute inset-0 flex items-center justify-center"
+            animate={{ scale: 1, opacity: 1 }}
+            className="absolute inset-0 flex items-center justify-center z-10"
             style={{
-              color: getPieceColor(piece, actualRow, actualCol),
-              filter: hasBeenMoved || movedSquares.size === 0 ? 'none' : 'grayscale(100%)',
+              color: getPieceDisplayColor(piece),
+              textShadow: piece === piece.toUpperCase() 
+                ? '0 1px 2px rgba(0,0,0,0.3), 0 0 1px rgba(255,255,255,0.8)'
+                : '0 1px 2px rgba(0,0,0,0.5), 0 0 1px rgba(0,0,0,0.3)',
             }}
           >
-            <span className="text-[2.5rem] sm:text-4xl md:text-5xl lg:text-6xl select-none drop-shadow-md leading-none">
+            <span className="text-[2.5rem] sm:text-4xl md:text-5xl lg:text-6xl select-none drop-shadow-lg leading-none">
               {PIECE_SYMBOLS[piece]}
             </span>
           </motion.div>

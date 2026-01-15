@@ -99,7 +99,7 @@ const Play = () => {
   
   // En Pensent mode state
   const [enPensentEnabled, setEnPensentEnabled] = useState(true);
-  const [enPensentOpacity, setEnPensentOpacity] = useState(0.7);
+  const [showPieces, setShowPieces] = useState(true);
   
   // Multiplayer move history for En Pensent
   const [multiplayerMoveHistory, setMultiplayerMoveHistory] = useState<MoveHistoryEntry[]>([]);
@@ -1109,10 +1109,10 @@ const Play = () => {
                     {/* En Pensent Toggle - The Revolutionary Feature */}
                     <EnPensentControls
                       isEnabled={enPensentEnabled}
-                      opacity={enPensentOpacity}
                       onToggle={() => setEnPensentEnabled(!enPensentEnabled)}
-                      onOpacityChange={setEnPensentOpacity}
                       totalMoves={multiplayerMoveHistory.length}
+                      showPieces={showPieces}
+                      onShowPiecesToggle={() => setShowPieces(!showPieces)}
                     />
                     
                     {gameState.status === 'active' && (
@@ -1144,8 +1144,8 @@ const Play = () => {
                       movedSquares={movedSquares}
                       disabled={gameState.status !== 'active'}
                       enPensentEnabled={enPensentEnabled}
-                      enPensentOpacity={enPensentOpacity}
                       moveHistory={multiplayerMoveHistory}
+                      showPieces={showPieces}
                     />
                     
                     {/* Live Color Legend - The Legendary System */}
@@ -1252,10 +1252,10 @@ const Play = () => {
                     {/* En Pensent Toggle - The Revolutionary Feature */}
                     <EnPensentControls
                       isEnabled={enPensentEnabled}
-                      opacity={enPensentOpacity}
                       onToggle={() => setEnPensentEnabled(!enPensentEnabled)}
-                      onOpacityChange={setEnPensentOpacity}
                       totalMoves={botMoveHistory.length}
+                      showPieces={showPieces}
+                      onShowPiecesToggle={() => setShowPieces(!showPieces)}
                     />
                     
                     {!botGameResult && (
@@ -1281,8 +1281,8 @@ const Play = () => {
                       movedSquares={botMovedSquares}
                       disabled={isBotThinking || !!botGameResult}
                       enPensentEnabled={enPensentEnabled}
-                      enPensentOpacity={enPensentOpacity}
                       moveHistory={botMoveHistory}
+                      showPieces={showPieces}
                     />
                     
                     {/* Live Color Legend - The Legendary System */}
