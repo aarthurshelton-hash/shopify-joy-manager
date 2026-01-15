@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Loader2, Play, CheckCircle, XCircle, AlertTriangle, ArrowLeft, Package, Trash2, Palette } from 'lucide-react';
+import { Loader2, Play, CheckCircle, XCircle, AlertTriangle, ArrowLeft, Package, Trash2, Palette, Gem, Sparkles, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -18,6 +18,8 @@ import { createListing } from '@/lib/marketplace/marketplaceApi';
 import { Json } from '@/integrations/supabase/types';
 import { colorPalettes, PaletteId, setActivePalette, getPieceColor } from '@/lib/chess/pieceColors';
 import { generateGameHash } from '@/lib/visualizations/gameCanonical';
+import { VisionTier } from '@/lib/marketplace/paletteArtMap';
+import { detectOpeningFromPgn } from '@/lib/chess/openingDetector';
 
 // Official En Pensent palettes (excluding 'custom')
 const OFFICIAL_PALETTES = colorPalettes.filter(p => p.id !== 'custom');
@@ -86,6 +88,8 @@ interface SeedResult {
   paletteId?: string;
   paletteName?: string;
   gameHash?: string;
+  tier?: VisionTier;
+  openingName?: string;
 }
 
 // Calculate fungible base scores - Exemplars get slightly higher initial recognition
@@ -269,6 +273,13 @@ const AdminSeedMarketplace: React.FC = () => {
         await new Promise(resolve => setTimeout(resolve, 50));
       }
       
+      // Detect opening for display
+      const opening = detectOpeningFromPgn(game.pgn);
+      
+      // Determine tier: uses official game (famousGames) + official palette = Premium
+      // Since we're using famousGames and official palettes, all seeded visions are Premium
+      const tier: VisionTier = useOfficialPalette ? 'premium' : 'genesis';
+      
       return {
         title,
         success: true,
@@ -278,6 +289,8 @@ const AdminSeedMarketplace: React.FC = () => {
         paletteId: selectedPalette.id,
         paletteName: selectedPalette.name,
         gameHash: gameHash,
+        tier,
+        openingName: opening?.fullName,
       };
     } catch (error) {
       console.error('Failed to generate vision:', error);
@@ -647,11 +660,13 @@ const AdminSeedMarketplace: React.FC = () => {
                     <CheckCircle className="h-4 w-4" />
                     {successCount} successful
                   </span>
-                  <span className="flex items-center gap-1 text-amber-500">
-                    🏆 {exemplarSuccessCount} Exemplars
+                  <span className="flex items-center gap-1 text-purple-500">
+                    <Gem className="h-4 w-4" />
+                    {results.filter(r => r.success && r.tier === 'premium').length} Premium
                   </span>
                   <span className="flex items-center gap-1 text-blue-500">
-                    🎨 {successCount - exemplarSuccessCount} Creative
+                    <Sparkles className="h-4 w-4" />
+                    {results.filter(r => r.success && r.tier === 'genesis').length} Genesis
                   </span>
                   {failCount > 0 && (
                     <span className="flex items-center gap-1 text-red-500">
@@ -669,22 +684,38 @@ const AdminSeedMarketplace: React.FC = () => {
                       animate={{ opacity: 1, x: 0 }}
                       className={`text-sm p-2 rounded flex items-center justify-between gap-2 ${
                         result.success 
-                          ? result.isExemplar 
-                            ? 'bg-amber-500/10 text-amber-600' 
-                            : 'bg-green-500/10 text-green-600'
+                          ? result.tier === 'premium'
+                            ? 'bg-purple-500/10 border border-purple-500/20' 
+                            : 'bg-blue-500/10 border border-blue-500/20'
                           : 'bg-red-500/10 text-red-600'
                       }`}
                     >
-                      <div className="flex items-center gap-2">
-                        <span>{result.success ? (result.isExemplar ? '🏆' : '🎨') : '✗'}</span>
-                        <span>{result.title}</span>
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        {result.success ? (
+                          result.tier === 'premium' ? (
+                            <Gem className="h-4 w-4 text-purple-500 flex-shrink-0" />
+                          ) : (
+                            <Sparkles className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                          )
+                        ) : (
+                          <XCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                        )}
+                        <span className="truncate">{result.title}</span>
+                        {result.openingName && (
+                          <Badge variant="secondary" className="text-[9px] hidden sm:inline-flex">
+                            {result.openingName}
+                          </Badge>
+                        )}
                         {result.error && (
-                          <span className="text-xs ml-2 opacity-70">({result.error})</span>
+                          <span className="text-xs opacity-70">({result.error})</span>
                         )}
                       </div>
-                      {result.success && result.paletteName && (
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-[10px]">
+                      {result.success && (
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <Badge 
+                            variant="outline" 
+                            className={`text-[10px] ${result.tier === 'premium' ? 'border-purple-500/50' : 'border-blue-500/50'}`}
+                          >
                             <Palette className="h-2.5 w-2.5 mr-1" />
                             {result.paletteName}
                           </Badge>
