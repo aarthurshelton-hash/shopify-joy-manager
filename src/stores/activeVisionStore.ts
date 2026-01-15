@@ -58,7 +58,7 @@ export const useActiveVisionStore = create<ActiveVisionStore>()(
   persist(
     (set, get) => ({
       activeVision: null,
-      shouldRestoreOnMount: true,
+      shouldRestoreOnMount: false, // Disabled: users should always land on homepage
       
       saveActiveVision: (state) => {
         const now = Date.now();
@@ -68,7 +68,7 @@ export const useActiveVisionStore = create<ActiveVisionStore>()(
             savedAt: now,
             expiresAt: now + VISION_EXPIRY_MS,
           },
-          shouldRestoreOnMount: true,
+          shouldRestoreOnMount: false, // Never auto-restore
         });
       },
       
