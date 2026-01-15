@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, SlidersHorizontal, SortAsc, Crown, Gift, Calendar, TrendingUp, Tag } from 'lucide-react';
+import { Search, SlidersHorizontal, SortAsc, Crown, Gift, Calendar, TrendingUp, Tag, Gem, Sparkles } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,7 +20,7 @@ import { Label } from '@/components/ui/label';
 import { useRandomGameArt } from '@/hooks/useRandomGameArt';
 
 export type SortOption = 'newest' | 'oldest' | 'price-low' | 'price-high' | 'score' | 'name';
-export type CategoryFilter = 'all' | 'genesis' | 'free' | 'paid';
+export type CategoryFilter = 'all' | 'premium' | 'genesis' | 'free' | 'paid';
 
 interface MarketplaceFiltersProps {
   searchQuery: string;
@@ -60,7 +60,8 @@ export const MarketplaceFilters: React.FC<MarketplaceFiltersProps> = ({
 
   const categoryOptions: { value: CategoryFilter; label: string; icon: React.ReactNode }[] = [
     { value: 'all', label: 'All Visions', icon: null },
-    { value: 'genesis', label: 'Genesis Only', icon: <Crown className="h-3.5 w-3.5 text-amber-500" /> },
+    { value: 'premium', label: 'Premium', icon: <Gem className="h-3.5 w-3.5 text-amber-500" /> },
+    { value: 'genesis', label: 'Genesis', icon: <Sparkles className="h-3.5 w-3.5 text-violet-500" /> },
     { value: 'free', label: 'Free Gifts', icon: <Gift className="h-3.5 w-3.5 text-green-500" /> },
     { value: 'paid', label: 'For Sale', icon: <Tag className="h-3.5 w-3.5 text-primary" /> },
   ];
@@ -117,13 +118,13 @@ export const MarketplaceFilters: React.FC<MarketplaceFiltersProps> = ({
               
               <div className="flex items-center space-x-2">
                 <Checkbox
-                  id="genesis-only"
+                  id="certified-only"
                   checked={showGenesisOnly}
                   onCheckedChange={(checked) => onGenesisToggle(checked as boolean)}
                 />
-                <Label htmlFor="genesis-only" className="flex items-center gap-2 text-sm cursor-pointer">
-                  <Crown className="h-4 w-4 text-amber-500" />
-                  Genesis Visions Only
+                <Label htmlFor="certified-only" className="flex items-center gap-2 text-sm cursor-pointer">
+                  <Gem className="h-4 w-4 text-amber-500" />
+                  Certified Only (Premium + Genesis)
                 </Label>
               </div>
             </div>

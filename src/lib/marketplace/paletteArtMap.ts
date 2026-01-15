@@ -1,4 +1,5 @@
 // Map palette IDs to their corresponding AI-generated art images
+// and provide vision classification utilities
 import artdecoArt from '@/assets/palettes/artdeco.jpg';
 import autumnArt from '@/assets/palettes/autumn.jpg';
 import cosmicArt from '@/assets/palettes/cosmic.jpg';
@@ -16,6 +17,7 @@ import romanArt from '@/assets/palettes/roman.jpg';
 import tropicalArt from '@/assets/palettes/tropical.jpg';
 import vintageArt from '@/assets/palettes/vintage.jpg';
 import { colorPalettes, PaletteId, PieceType } from '@/lib/chess/pieceColors';
+import { detectGameCard } from '@/lib/chess/gameCardDetection';
 
 export const paletteArtMap: Record<string, string> = {
   hotCold: hotcoldArt,
@@ -57,18 +59,18 @@ export const paletteDisplayNames: Record<string, string> = {
   custom: 'Custom',
 };
 
-// Premium palettes that get special visual treatment
-export const premiumPaletteIds = [
-  'hotCold', 'japanese', 'nordic', 'artdeco', 'tropical', 'cyberpunk',
-  'autumn', 'ocean', 'desert', 'cosmic', 'vintage'
-];
-
-// All themed palettes (including base themes)
-export const themedPaletteIds = [
+// All official En Pensent palettes (non-custom palettes that ship with the platform)
+export const officialPaletteIds = [
   'hotCold', 'medieval', 'egyptian', 'roman', 'modern', 'greyscale',
   'japanese', 'nordic', 'artdeco', 'tropical', 'cyberpunk',
   'autumn', 'ocean', 'desert', 'cosmic', 'vintage'
 ];
+
+// Premium palettes that get special visual treatment (legacy - now all official palettes are equal)
+export const premiumPaletteIds = officialPaletteIds;
+
+// All themed palettes (same as official for consistency)
+export const themedPaletteIds = officialPaletteIds;
 
 export function getPaletteArt(paletteId: string | undefined): string | null {
   if (!paletteId) return null;
@@ -80,14 +82,91 @@ export function getPaletteDisplayName(paletteId: string | undefined): string | n
   return paletteDisplayNames[paletteId] || null;
 }
 
-export function isPremiumPalette(paletteId: string | undefined): boolean {
+// Check if palette is an official En Pensent palette
+export function isOfficialPalette(paletteId: string | undefined): boolean {
   if (!paletteId) return false;
-  return premiumPaletteIds.includes(paletteId);
+  return officialPaletteIds.includes(paletteId);
 }
 
+// Legacy function - now just checks if it's an official palette
+export function isPremiumPalette(paletteId: string | undefined): boolean {
+  return isOfficialPalette(paletteId);
+}
+
+// Legacy function - now just checks if it's an official palette
 export function isThemedPalette(paletteId: string | undefined): boolean {
-  if (!paletteId) return false;
-  return themedPaletteIds.includes(paletteId);
+  return isOfficialPalette(paletteId);
+}
+
+/**
+ * Vision Classification Types:
+ * - PREMIUM: Uses BOTH official game AND official palette (highest encryption value)
+ * - GENESIS: Uses EITHER official game OR official palette (one or the other)
+ * - STANDARD: Neither official game nor official palette (natural market value only)
+ */
+export type VisionTier = 'premium' | 'genesis' | 'standard';
+
+export interface VisionClassification {
+  tier: VisionTier;
+  hasOfficialGame: boolean;
+  hasOfficialPalette: boolean;
+  gameName?: string;
+  paletteName?: string;
+}
+
+/**
+ * Classify a vision based on its official game and palette usage
+ */
+export function classifyVision(
+  paletteId: string | undefined,
+  pgn: string | undefined
+): VisionClassification {
+  const hasOfficialPalette = isOfficialPalette(paletteId);
+  const paletteName = hasOfficialPalette ? getPaletteDisplayName(paletteId) || undefined : undefined;
+  
+  // Check for official game match
+  let hasOfficialGame = false;
+  let gameName: string | undefined;
+  
+  if (pgn) {
+    const gameMatch = detectGameCard(pgn);
+    if (gameMatch.isMatch && gameMatch.matchedGame) {
+      hasOfficialGame = true;
+      gameName = gameMatch.matchedGame.title;
+    }
+  }
+  
+  // Determine tier
+  let tier: VisionTier;
+  if (hasOfficialGame && hasOfficialPalette) {
+    tier = 'premium';
+  } else if (hasOfficialGame || hasOfficialPalette) {
+    tier = 'genesis';
+  } else {
+    tier = 'standard';
+  }
+  
+  return {
+    tier,
+    hasOfficialGame,
+    hasOfficialPalette,
+    gameName,
+    paletteName,
+  };
+}
+
+/**
+ * Quick check if a vision is Premium tier (both official game AND palette)
+ */
+export function isPremiumVision(paletteId: string | undefined, pgn: string | undefined): boolean {
+  return classifyVision(paletteId, pgn).tier === 'premium';
+}
+
+/**
+ * Quick check if a vision is Genesis tier (one official property, not both)
+ */
+export function isGenesisVision(paletteId: string | undefined, pgn: string | undefined): boolean {
+  return classifyVision(paletteId, pgn).tier === 'genesis';
 }
 
 /**
@@ -201,4 +280,27 @@ export function extractPaletteId(gameData: Record<string, unknown> | undefined):
   }
   
   return undefined;
+}
+
+// Extract PGN from game_data
+export function extractPgn(gameData: Record<string, unknown> | undefined): string | undefined {
+  if (!gameData) return undefined;
+  
+  if (typeof gameData.pgn === 'string') {
+    return gameData.pgn;
+  }
+  
+  return undefined;
+}
+
+/**
+ * Classify a vision directly from its game_data
+ */
+export function classifyVisionFromGameData(
+  gameData: Record<string, unknown> | undefined,
+  pgn?: string
+): VisionClassification {
+  const paletteId = extractPaletteId(gameData);
+  const effectivePgn = pgn || extractPgn(gameData);
+  return classifyVision(paletteId, effectivePgn);
 }

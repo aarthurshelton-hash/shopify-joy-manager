@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
-import { useSearchParams, useNavigate, Link } from 'react-router-dom';
-import { ShoppingBag, Gift, DollarSign, Loader2, Crown, Package, Shield, Palette, Sparkles, TrendingUp, Eye, Printer, ArrowRight, RefreshCw } from 'lucide-react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { ShoppingBag, Gift, DollarSign, Loader2, Crown, Package, Shield, Palette, Sparkles, TrendingUp, Eye, Printer, ArrowRight, RefreshCw, Gem } from 'lucide-react';
 import { ListingsGridSkeleton } from '@/components/marketplace/MarketplaceSkeletons';
 import { useRandomGameArt } from '@/hooks/useRandomGameArt';
 import { Card, CardContent } from '@/components/ui/card';
@@ -33,7 +33,7 @@ import {
   MarketplaceListing 
 } from '@/lib/marketplace/marketplaceApi';
 import { trackMarketplaceClick } from '@/lib/analytics/marketplaceAnalytics';
-import { isPremiumPalette, extractPaletteId, isThemedPalette, getPaletteArt, getPaletteDisplayName } from '@/lib/marketplace/paletteArtMap';
+import { extractPaletteId, extractPgn, getPaletteArt, getPaletteDisplayName, classifyVision, VisionTier } from '@/lib/marketplace/paletteArtMap';
 import { supabase } from '@/integrations/supabase/client';
 
 const ITEMS_PER_PAGE = 20;
@@ -315,18 +315,32 @@ const Marketplace: React.FC = () => {
       });
     }
 
-    // Category filter
-    if (category === 'genesis') {
-      result = result.filter((l) => l.visualization?.title?.includes('Exemplar'));
+    // Category filter using vision classification
+    if (category === 'premium' || category === 'genesis') {
+      result = result.filter((l) => {
+        const gameData = l.visualization?.game_data as Record<string, unknown> | undefined;
+        const paletteId = extractPaletteId(gameData);
+        const pgn = l.visualization?.pgn || extractPgn(gameData);
+        const classification = classifyVision(paletteId, pgn);
+        if (category === 'premium') return classification.tier === 'premium';
+        if (category === 'genesis') return classification.tier === 'genesis';
+        return true;
+      });
     } else if (category === 'free') {
       result = result.filter((l) => l.price_cents === 0);
     } else if (category === 'paid') {
       result = result.filter((l) => l.price_cents > 0);
     }
 
-    // Genesis only toggle (overrides category if set)
+    // Certified only toggle (Premium + Genesis)
     if (showGenesisOnly) {
-      result = result.filter((l) => l.visualization?.title?.includes('Exemplar'));
+      result = result.filter((l) => {
+        const gameData = l.visualization?.game_data as Record<string, unknown> | undefined;
+        const paletteId = extractPaletteId(gameData);
+        const pgn = l.visualization?.pgn || extractPgn(gameData);
+        const classification = classifyVision(paletteId, pgn);
+        return classification.tier === 'premium' || classification.tier === 'genesis';
+      });
     }
 
     // Sorting
@@ -500,12 +514,18 @@ const Marketplace: React.FC = () => {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                 {filteredListings.map((listing, index) => {
-                  const paletteId = extractPaletteId(listing.visualization?.game_data);
-                  const hasPremiumPalette = isPremiumPalette(paletteId);
-                  const hasThemedPalette = isThemedPalette(paletteId);
+                  const gameData = listing.visualization?.game_data as Record<string, unknown> | undefined;
+                  const paletteId = extractPaletteId(gameData);
+                  const pgn = listing.visualization?.pgn || extractPgn(gameData);
+                  const classification = classifyVision(paletteId, pgn);
                   const paletteArt = getPaletteArt(paletteId);
                   const paletteName = getPaletteDisplayName(paletteId);
                   const backgroundImage = paletteArt || gameArtImages[index % gameArtImages.length];
+                  
+                  // Determine card styling based on tier
+                  const isPremiumTier = classification.tier === 'premium';
+                  const isGenesisTier = classification.tier === 'genesis';
+                  const hasSpecialTier = isPremiumTier || isGenesisTier;
 
                   return (
                     <a 
@@ -523,19 +543,32 @@ const Marketplace: React.FC = () => {
                     >
                         <Card 
                           className={`overflow-hidden group hover:shadow-xl transition-all duration-300 relative cursor-pointer ${
-                            hasPremiumPalette
+                            isPremiumTier
                               ? 'border-amber-500/50 ring-1 ring-amber-500/20 hover:ring-amber-500/40'
-                              : hasThemedPalette
-                                ? 'border-primary/30 ring-1 ring-primary/10 hover:ring-primary/30'
+                              : isGenesisTier
+                                ? 'border-violet-500/40 ring-1 ring-violet-500/20 hover:ring-violet-500/40'
                                 : 'border-border/50'
                           }`}
                         >
                         {/* Premium Shimmer Effect */}
-                        {hasPremiumPalette && (
+                        {isPremiumTier && (
                           <div 
                             className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500"
                             style={{
                               background: 'linear-gradient(90deg, transparent 0%, rgba(251, 191, 36, 0.15) 25%, rgba(251, 191, 36, 0.3) 50%, rgba(251, 191, 36, 0.15) 75%, transparent 100%)',
+                              backgroundSize: '200% 100%',
+                              animation: 'shimmer 2s linear infinite',
+                              zIndex: 1,
+                            }}
+                          />
+                        )}
+                        
+                        {/* Genesis Shimmer Effect */}
+                        {isGenesisTier && !isPremiumTier && (
+                          <div 
+                            className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                            style={{
+                              background: 'linear-gradient(90deg, transparent 0%, rgba(139, 92, 246, 0.12) 25%, rgba(139, 92, 246, 0.25) 50%, rgba(139, 92, 246, 0.12) 75%, transparent 100%)',
                               backgroundSize: '200% 100%',
                               animation: 'shimmer 2s linear infinite',
                               zIndex: 1,
@@ -557,13 +590,22 @@ const Marketplace: React.FC = () => {
                             </div>
                           )}
                           
-                        {/* Premium Palette Badge with glow */}
-                        {hasPremiumPalette && (
+                        {/* Vision Tier Badge */}
+                        {isPremiumTier && (
                           <Badge 
-                            className="absolute bottom-3 left-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-black gap-1 shadow-lg shadow-amber-500/30 pointer-events-none"
+                            className="absolute bottom-3 left-3 bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-600 hover:from-amber-500 hover:to-amber-600 text-black gap-1 shadow-lg shadow-amber-500/30 pointer-events-none"
                           >
-                            <Palette className="h-3 w-3" />
-                            Premium Palette
+                            <Gem className="h-3 w-3" />
+                            Premium
+                          </Badge>
+                        )}
+                        
+                        {isGenesisTier && !isPremiumTier && (
+                          <Badge 
+                            className="absolute bottom-3 left-3 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white gap-1 shadow-lg shadow-violet-500/30 pointer-events-none"
+                          >
+                            <Sparkles className="h-3 w-3" />
+                            Genesis
                           </Badge>
                         )}
                         
@@ -575,15 +617,6 @@ const Marketplace: React.FC = () => {
                               variant="compact" 
                             />
                           </div>
-                        )}
-                        
-                        {/* Exemplar Badge */}
-                        {listing.visualization?.title?.includes('Exemplar') && (
-                          <Badge 
-                            className="absolute top-3 left-3 bg-amber-500/90 hover:bg-amber-500 text-black pointer-events-none"
-                          >
-                            🏆 Genesis
-                          </Badge>
                         )}
                         
                         {/* Price Badge */}
@@ -612,10 +645,11 @@ const Marketplace: React.FC = () => {
 
                         <CardContent 
                           className={`p-3 sm:p-4 relative overflow-hidden transition-all duration-300 group/content ${
-                            hasPremiumPalette ? 'bg-gradient-to-br from-amber-500/5 to-orange-500/5' : ''
+                            isPremiumTier ? 'bg-gradient-to-br from-amber-500/5 to-orange-500/5' : 
+                            isGenesisTier ? 'bg-gradient-to-br from-violet-500/5 to-purple-500/5' : ''
                           }`}
                           style={{
-                            backgroundImage: `linear-gradient(to bottom, hsl(var(--card)) 0%, hsl(var(--card) / ${hasPremiumPalette ? '0.82' : hasThemedPalette ? '0.88' : '0.92'}) 100%), url(${backgroundImage})`,
+                            backgroundImage: `linear-gradient(to bottom, hsl(var(--card)) 0%, hsl(var(--card) / ${isPremiumTier ? '0.82' : isGenesisTier ? '0.85' : '0.92'}) 100%), url(${backgroundImage})`,
                             backgroundSize: 'cover',
                             backgroundPosition: 'center',
                           }}
@@ -627,9 +661,11 @@ const Marketplace: React.FC = () => {
                             <Badge 
                               variant="secondary" 
                               className={`text-[10px] px-1.5 py-0.5 ${
-                                hasPremiumPalette 
+                                isPremiumTier 
                                   ? 'bg-gradient-to-r from-amber-500/90 to-orange-500/90 text-black border-0' 
-                                  : 'bg-card/90 backdrop-blur-sm'
+                                  : isGenesisTier
+                                    ? 'bg-gradient-to-r from-violet-500/90 to-purple-500/90 text-white border-0'
+                                    : 'bg-card/90 backdrop-blur-sm'
                               }`}
                             >
                               <Palette className="h-2.5 w-2.5 mr-1" />
@@ -645,16 +681,16 @@ const Marketplace: React.FC = () => {
                             <p className="text-xs sm:text-sm text-muted-foreground truncate">
                               by {listing.seller?.display_name || 'Anonymous'}
                             </p>
-                            {/* Vision Score indicator or Premium Palette indicator */}
-                            {hasPremiumPalette ? (
-                              <div className="flex items-center gap-1 text-xs text-amber-500" title={`Uses the ${paletteName} premium palette`}>
-                                <Palette className="h-3 w-3" />
+                            {/* Vision tier indicator */}
+                            {isPremiumTier ? (
+                              <div className="flex items-center gap-1 text-xs text-amber-500" title="Official Game + Palette">
+                                <Gem className="h-3 w-3" />
                                 <span className="hidden sm:inline">Premium</span>
                               </div>
-                            ) : hasThemedPalette ? (
-                              <div className="flex items-center gap-1 text-xs text-primary/70" title={`Uses the ${paletteName} palette`}>
-                                <Palette className="h-3 w-3" />
-                                <span className="hidden sm:inline">Themed</span>
+                            ) : isGenesisTier ? (
+                              <div className="flex items-center gap-1 text-xs text-violet-500" title={classification.hasOfficialGame ? 'Official Game' : 'Official Palette'}>
+                                <Sparkles className="h-3 w-3" />
+                                <span className="hidden sm:inline">Genesis</span>
                               </div>
                             ) : (
                               <div className="flex items-center gap-1 text-xs text-muted-foreground" title="Vision Score contributes to value">
