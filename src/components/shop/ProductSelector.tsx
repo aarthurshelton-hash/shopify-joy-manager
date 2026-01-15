@@ -115,6 +115,16 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
     return cartItems.filter(item => item.customPrintData?.frameStyle).length + (selectedFrame ? 1 : 0);
   }, [cartItems, selectedFrame]);
 
+  // Check if this exact vision is already in cart (same game + palette + size)
+  const cartItemsForThisVision = useMemo(() => {
+    return cartItems.filter(item => 
+      item.customPrintData?.gameHash === customPrintData.gameHash &&
+      item.customPrintData?.paletteId === customPrintData.paletteId
+    );
+  }, [cartItems, customPrintData.gameHash, customPrintData.paletteId]);
+  
+  const isInCart = cartItemsForThisVision.length > 0;
+
   useEffect(() => {
     loadProducts();
   }, []);
@@ -386,13 +396,21 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
   }
 
   return (
-    <Card>
+    <Card className={isInCart ? 'ring-2 ring-primary/30 ring-offset-2 ring-offset-background' : ''}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <ShoppingCart className="h-5 w-5" />
-            Order Your Print
-          </CardTitle>
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <ShoppingCart className="h-5 w-5" />
+              Order Your Print
+            </CardTitle>
+            {isInCart && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 text-primary border border-primary/20">
+                <Check className="h-3 w-3" />
+                In Cart
+              </span>
+            )}
+          </div>
           <CurrencySelector compact />
         </div>
       </CardHeader>
@@ -552,6 +570,11 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
               <>
                 <Check className="h-4 w-4" />
                 Added!
+              </>
+            ) : isInCart ? (
+              <>
+                <ShoppingCart className="h-4 w-4" />
+                Add Another
               </>
             ) : (
               <>
