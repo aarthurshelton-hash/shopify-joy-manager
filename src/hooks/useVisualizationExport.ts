@@ -34,6 +34,7 @@ interface TrademarkExportOptions {
     showPieces: boolean;
     pieceOpacity: number;
   };
+  pgn?: string; // Explicit PGN for piece position calculation
 }
 
 /**
@@ -190,6 +191,7 @@ export function useVisualizationExport(options: UseVisualizationExportOptions) {
           })),
           compareMode: exportOptions.highlightState.compareMode,
         } : undefined,
+        pgn: exportOptions.pgn || exportOptions.gameData.pgn, // Pass explicit PGN for pieces
       });
       
       // Apply invisible watermark with ownership data
