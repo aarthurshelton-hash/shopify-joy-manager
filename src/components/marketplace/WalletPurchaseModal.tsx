@@ -25,6 +25,7 @@ import { toast } from 'sonner';
 import { getUserWallet, formatBalance, purchaseWithWallet } from '@/lib/marketplace/walletApi';
 import { initiateDeposit } from '@/lib/marketplace/withdrawalApi';
 import { useNavigate } from 'react-router-dom';
+import { usePaymentRateLimit } from '@/hooks/useRateLimit';
 
 interface WalletPurchaseModalProps {
   open: boolean;
@@ -50,6 +51,7 @@ export const WalletPurchaseModal: React.FC<WalletPurchaseModalProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [purchaseComplete, setPurchaseComplete] = useState(false);
+  const { checkLimit, isLimited, retryAfter } = usePaymentRateLimit();
 
   // Calculate fees
   const platformFeeCents = Math.floor(priceCents * 0.05);
@@ -79,6 +81,12 @@ export const WalletPurchaseModal: React.FC<WalletPurchaseModalProps> = ({
       toast.error('Insufficient balance', {
         description: 'Please add funds to your wallet first',
       });
+      return;
+    }
+
+    // Check rate limit before proceeding
+    const allowed = await checkLimit();
+    if (!allowed) {
       return;
     }
 
@@ -272,10 +280,12 @@ export const WalletPurchaseModal: React.FC<WalletPurchaseModalProps> = ({
                   <Button
                     className="flex-1 gap-2"
                     onClick={handlePurchase}
-                    disabled={isPurchasing || isLoading}
+                    disabled={isPurchasing || isLoading || isLimited}
                   >
                     {isPurchasing ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : isLimited ? (
+                      `Try again in ${retryAfter}s`
                     ) : (
                       <>
                         <DollarSign className="h-4 w-4" />

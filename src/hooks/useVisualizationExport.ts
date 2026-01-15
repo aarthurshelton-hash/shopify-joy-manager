@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { SimulationResult, SquareData, GameData } from '@/lib/chess/gameSimulator';
 import { recordVisionInteraction } from '@/lib/visualizations/visionScoring';
 import { watermarkBase64Image } from '@/lib/chess/invisibleWatermark';
+import { checkRateLimit, getAnonymousIdentifier, RATE_LIMITS } from '@/lib/rateLimit';
 
 interface ExportState {
   isExportingHD: boolean;
@@ -150,6 +151,14 @@ export function useVisualizationExport(options: UseVisualizationExportOptions) {
       return false;
     }
 
+    // Check rate limit for downloads
+    const identifier = getAnonymousIdentifier();
+    const rateLimitResult = await checkRateLimit(identifier, 'download', RATE_LIMITS.download.maxRequests, RATE_LIMITS.download.windowSeconds);
+    if (!rateLimitResult.allowed) {
+      toast.error(`Too many downloads. Please wait ${rateLimitResult.retry_after} seconds.`);
+      return false;
+    }
+
     setState(prev => ({ ...prev, isExportingHD: true }));
     
     try {
@@ -257,6 +266,14 @@ export function useVisualizationExport(options: UseVisualizationExportOptions) {
   ): Promise<boolean> => {
     if (!isPremium) {
       onUpgradeRequired?.();
+      return false;
+    }
+
+    // Check rate limit for downloads
+    const identifier = getAnonymousIdentifier();
+    const rateLimitResult = await checkRateLimit(identifier, 'download', RATE_LIMITS.download.maxRequests, RATE_LIMITS.download.windowSeconds);
+    if (!rateLimitResult.allowed) {
+      toast.error(`Too many downloads. Please wait ${rateLimitResult.retry_after} seconds.`);
       return false;
     }
 
