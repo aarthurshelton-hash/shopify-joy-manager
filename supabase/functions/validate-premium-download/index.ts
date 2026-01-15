@@ -14,6 +14,8 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
 // Hardcoded visionary emails with permanent premium access
 const VISIONARY_EMAILS = [
   'a.arthur.shelton@gmail.com',
+  'info@mawuli.xyz',
+  'opecoreug@gmail.com', // Product Specialist Analyst - overseas marketplace testing
 ];
 
 serve(async (req) => {

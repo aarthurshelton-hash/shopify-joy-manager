@@ -16,6 +16,7 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
 const VISIONARY_EMAILS = [
   "a.arthur.shelton@gmail.com", // CEO Alec Arthur Shelton
   "info@mawuli.xyz", // Mawuli - Marketplace tester
+  "opecoreug@gmail.com", // Product Specialist Analyst - overseas marketplace testing
 ];
 
 // Premium product ID
