@@ -9,6 +9,11 @@ export interface LockedPiece {
   pieceColor: PieceColor;
 }
 
+export interface LockedSquare {
+  square: string;
+  pieces: LockedPiece[];
+}
+
 export interface CapturedVisualizationState {
   // Timeline state
   currentMove: number;
@@ -17,6 +22,7 @@ export interface CapturedVisualizationState {
   
   // Legend state
   lockedPieces: LockedPiece[];
+  lockedSquares: LockedSquare[];
   compareMode: boolean;
   highlightedPiece: LockedPiece | null;
   
@@ -44,6 +50,7 @@ interface VisualizationStateStore {
   currentMove: number;
   selectedPhase: GamePhase;
   lockedPieces: LockedPiece[];
+  lockedSquares: LockedSquare[];
   compareMode: boolean;
   displayMode: 'art' | 'analysis' | 'minimal';
   darkMode: boolean;
@@ -58,6 +65,7 @@ interface VisualizationStateStore {
   setCurrentMove: (move: number) => void;
   setSelectedPhase: (phase: GamePhase) => void;
   setLockedPieces: (pieces: LockedPiece[]) => void;
+  setLockedSquares: (squares: LockedSquare[]) => void;
   setCompareMode: (mode: boolean) => void;
   setDisplayMode: (mode: 'art' | 'analysis' | 'minimal') => void;
   setDarkMode: (dark: boolean) => void;
@@ -80,6 +88,7 @@ const initialState = {
   currentMove: Infinity,
   selectedPhase: 'all' as GamePhase,
   lockedPieces: [] as LockedPiece[],
+  lockedSquares: [] as LockedSquare[],
   compareMode: false,
   displayMode: 'art' as const,
   darkMode: false,
@@ -97,6 +106,7 @@ export const useVisualizationStateStore = create<VisualizationStateStore>()(
       setCurrentMove: (move) => set({ currentMove: move }),
       setSelectedPhase: (phase) => set({ selectedPhase: phase }),
       setLockedPieces: (pieces) => set({ lockedPieces: pieces }),
+      setLockedSquares: (squares) => set({ lockedSquares: squares }),
       setCompareMode: (mode) => set({ compareMode: mode }),
       setDisplayMode: (mode) => set({ displayMode: mode }),
       setDarkMode: (dark) => set({ darkMode: dark }),
@@ -112,6 +122,7 @@ export const useVisualizationStateStore = create<VisualizationStateStore>()(
           selectedPhase: state.selectedPhase,
           isPlaying: false, // Always pause for capture
           lockedPieces: [...state.lockedPieces],
+          lockedSquares: [...state.lockedSquares],
           compareMode: state.compareMode,
           highlightedPiece: null,
           displayMode: state.displayMode,
@@ -130,6 +141,7 @@ export const useVisualizationStateStore = create<VisualizationStateStore>()(
           currentMove: state.currentMove ?? initialState.currentMove,
           selectedPhase: state.selectedPhase ?? initialState.selectedPhase,
           lockedPieces: state.lockedPieces ?? initialState.lockedPieces,
+          lockedSquares: state.lockedSquares ?? initialState.lockedSquares,
           compareMode: state.compareMode ?? initialState.compareMode,
           displayMode: state.displayMode ?? initialState.displayMode,
           darkMode: state.darkMode ?? initialState.darkMode,
@@ -150,6 +162,7 @@ export const useVisualizationStateStore = create<VisualizationStateStore>()(
         currentMove: state.currentMove,
         selectedPhase: state.selectedPhase,
         lockedPieces: state.lockedPieces,
+        lockedSquares: state.lockedSquares,
         compareMode: state.compareMode,
         displayMode: state.displayMode,
         darkMode: state.darkMode,

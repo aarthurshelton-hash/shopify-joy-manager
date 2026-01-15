@@ -8,10 +8,16 @@ interface LockedPiece {
   pieceColor: string;
 }
 
+interface LockedSquare {
+  square: string;
+  pieces: LockedPiece[];
+}
+
 interface CapturedState {
   currentMove: number;
   selectedPhase: string;
   lockedPieces: LockedPiece[];
+  lockedSquares?: LockedSquare[];
   compareMode: boolean;
   displayMode: string;
   darkMode: boolean;
@@ -24,6 +30,7 @@ interface CapturedState {
 
 interface HighlightState {
   lockedPieces: { pieceType: PieceType; pieceColor: PieceColor }[];
+  lockedSquares?: { square: string; pieces: { pieceType: PieceType; pieceColor: PieceColor }[] }[];
   compareMode: boolean;
 }
 
@@ -102,12 +109,22 @@ export async function generateCleanPrintImage(
     container.appendChild(printContent);
     
     // Prepare highlight state for rendering - use provided or from captured state
-    // This ensures locked pieces and compare mode are captured exactly as displayed
+    // This ensures locked pieces, locked squares, and compare mode are captured exactly as displayed
     // Map pieceColor from 'white'/'black' strings to 'w'/'b' types if needed
-    const highlightState = providedHighlightState || (capturedState && capturedState.lockedPieces.length > 0 ? {
-      lockedPieces: capturedState.lockedPieces.map(p => ({
+    const hasLockedPieces = capturedState?.lockedPieces?.length ?? 0;
+    const hasLockedSquares = capturedState?.lockedSquares?.length ?? 0;
+    
+    const highlightState = providedHighlightState || ((hasLockedPieces > 0 || hasLockedSquares > 0) && capturedState ? {
+      lockedPieces: (capturedState.lockedPieces || []).map(p => ({
         pieceType: p.pieceType as PieceType,
         pieceColor: (p.pieceColor === 'white' ? 'w' : p.pieceColor === 'black' ? 'b' : p.pieceColor) as PieceColor,
+      })),
+      lockedSquares: (capturedState.lockedSquares || []).map(sq => ({
+        square: sq.square,
+        pieces: sq.pieces.map(p => ({
+          pieceType: p.pieceType as PieceType,
+          pieceColor: (p.pieceColor === 'white' ? 'w' : p.pieceColor === 'black' ? 'b' : p.pieceColor) as PieceColor,
+        })),
       })),
       compareMode: capturedState.compareMode,
     } : undefined);
