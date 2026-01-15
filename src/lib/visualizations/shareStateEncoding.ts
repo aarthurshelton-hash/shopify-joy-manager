@@ -14,6 +14,8 @@ export interface ShareableState {
   opacity?: number;
   // Locked pieces for highlighting
   locked?: Array<{ type: string; color: string }>;
+  // Locked squares for persistent square highlighting
+  lockedSquares?: Array<{ square: string; pieces: Array<{ type: string; color: string }> }>;
   // Compare mode
   compare?: boolean;
   // Territory/heatmap modes
@@ -55,6 +57,13 @@ export function encodeShareState(state: ShareableState): string {
   if (state.locked && state.locked.length > 0) {
     // Encode locked pieces as compact string: "wK,bQ" for white King, black Queen
     compact.l = state.locked.map(p => `${p.color}${p.type}`).join(',');
+  }
+  if (state.lockedSquares && state.lockedSquares.length > 0) {
+    // Encode locked squares as array: [{ s: "e4", p: "wK,bQ" }, ...]
+    compact.ls = state.lockedSquares.map(sq => ({
+      s: sq.square,
+      p: sq.pieces.map(p => `${p.color}${p.type}`).join(','),
+    }));
   }
   if (state.compare) {
     compact.c = 1;
@@ -119,6 +128,15 @@ export function decodeShareState(encoded: string | null): ShareableState {
         type: s.slice(1),
       }));
     }
+    if (compact.ls && Array.isArray(compact.ls)) {
+      state.lockedSquares = compact.ls.map((sq: { s: string; p: string }) => ({
+        square: sq.s,
+        pieces: sq.p.split(',').map((p: string) => ({
+          color: p[0],
+          type: p.slice(1),
+        })),
+      }));
+    }
     if (compact.c) {
       state.compare = true;
     }
@@ -174,6 +192,7 @@ export function shareableToFullState(
   selectedPhase: GamePhase;
   isPlaying: boolean;
   lockedPieces: Array<{ pieceType: PieceType; pieceColor: PieceColor }>;
+  lockedSquares: Array<{ square: string; pieces: Array<{ pieceType: PieceType; pieceColor: PieceColor }> }>;
   compareMode: boolean;
   highlightedPiece: null;
   displayMode: 'art' | 'analysis' | 'minimal';
@@ -194,6 +213,13 @@ export function shareableToFullState(
     lockedPieces: (state.locked ?? []).map(p => ({
       pieceType: p.type as PieceType,
       pieceColor: p.color as PieceColor,
+    })),
+    lockedSquares: (state.lockedSquares ?? []).map(sq => ({
+      square: sq.square,
+      pieces: sq.pieces.map(p => ({
+        pieceType: p.type as PieceType,
+        pieceColor: p.color as PieceColor,
+      })),
     })),
     compareMode: state.compare ?? false,
     highlightedPiece: null,
@@ -217,6 +243,7 @@ export function fullStateToShareable(state: {
   currentMove?: number;
   selectedPhase?: GamePhase;
   lockedPieces?: Array<{ pieceType: PieceType; pieceColor: PieceColor }>;
+  lockedSquares?: Array<{ square: string; pieces: Array<{ pieceType: PieceType; pieceColor: PieceColor }> }>;
   compareMode?: boolean;
   darkMode?: boolean;
   showTerritory?: boolean;
@@ -233,6 +260,13 @@ export function fullStateToShareable(state: {
     locked: state.lockedPieces?.length ? state.lockedPieces.map(p => ({
       type: p.pieceType,
       color: p.pieceColor,
+    })) : undefined,
+    lockedSquares: state.lockedSquares?.length ? state.lockedSquares.map(sq => ({
+      square: sq.square,
+      pieces: sq.pieces.map(p => ({
+        type: p.pieceType,
+        color: p.pieceColor,
+      })),
     })) : undefined,
     compare: state.compareMode || undefined,
     territory: state.showTerritory || undefined,

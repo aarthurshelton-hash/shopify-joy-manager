@@ -13,6 +13,7 @@ import { useLegendHighlight } from '@/contexts/LegendHighlightContext';
 interface ExportState {
   currentMove: number;
   lockedPieces: Array<{ pieceType: string; pieceColor: string }>;
+  lockedSquares: Array<{ square: string; pieces: Array<{ pieceType: string; pieceColor: string }> }>;
   compareMode: boolean;
   darkMode: boolean;
   showPieces: boolean;
@@ -54,7 +55,7 @@ export const MiniPrintOrderSection: React.FC<MiniPrintOrderSectionProps> = ({
   className = '',
 }) => {
   const { currentMove } = useTimeline();
-  const { lockedPieces, compareMode } = useLegendHighlight();
+  const { lockedPieces, lockedSquares, compareMode } = useLegendHighlight();
   const [selectedFrame, setSelectedFrame] = useState<FrameStyleOption | null>(MINI_FRAME_OPTIONS[0]);
   const [selectedSize, setSelectedSize] = useState(POPULAR_SIZES[0]);
   const [roomSetting] = useState<RoomSetting>('living');
@@ -65,6 +66,13 @@ export const MiniPrintOrderSection: React.FC<MiniPrintOrderSectionProps> = ({
       lockedPieces: lockedPieces.map(p => ({
         pieceType: p.pieceType,
         pieceColor: p.pieceColor,
+      })),
+      lockedSquares: lockedSquares.map(sq => ({
+        square: sq.square,
+        pieces: sq.pieces.map(p => ({
+          pieceType: p.pieceType,
+          pieceColor: p.pieceColor,
+        })),
       })),
       compareMode,
       darkMode,
@@ -87,11 +95,18 @@ export const MiniPrintOrderSection: React.FC<MiniPrintOrderSectionProps> = ({
 
   // Mini visualization for the mockup - captures exact current state including highlights and pieces
   const miniVisualization = useMemo(() => {
-    // Build highlight state from current locked pieces
-    const highlightState = lockedPieces.length > 0 ? {
+    // Build highlight state from current locked pieces and squares
+    const highlightState = (lockedPieces.length > 0 || lockedSquares.length > 0) ? {
       lockedPieces: lockedPieces.map(p => ({
         pieceType: p.pieceType,
         pieceColor: p.pieceColor,
+      })),
+      lockedSquares: lockedSquares.map(sq => ({
+        square: sq.square,
+        pieces: sq.pieces.map(p => ({
+          pieceType: p.pieceType,
+          pieceColor: p.pieceColor,
+        })),
       })),
       compareMode,
     } : undefined;
@@ -115,7 +130,7 @@ export const MiniPrintOrderSection: React.FC<MiniPrintOrderSectionProps> = ({
         pgn={gameData.pgn}
       />
     );
-  }, [filteredBoard, gameData, darkMode, lockedPieces, compareMode, showPieces, pieceOpacity, currentMove, totalMoves]);
+  }, [filteredBoard, gameData, darkMode, lockedPieces, lockedSquares, compareMode, showPieces, pieceOpacity, currentMove, totalMoves]);
 
   const framePrice = selectedFrame ? getBaseFramePrice(selectedSize.value as '8x10' | '11x14' | '16x20' | '18x24' | '24x36') : 0;
 

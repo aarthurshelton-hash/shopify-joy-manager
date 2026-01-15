@@ -85,6 +85,7 @@ import { PaletteAvailabilityInfo } from '@/lib/visualizations/paletteAvailabilit
 export interface ExportState {
   currentMove: number;
   lockedPieces: Array<{ pieceType: string; pieceColor: string }>;
+  lockedSquares: Array<{ square: string; pieces: Array<{ pieceType: string; pieceColor: string }> }>;
   compareMode: boolean;
   darkMode: boolean;
   showPieces: boolean;
@@ -942,7 +943,7 @@ const ExportActionButtons: React.FC<{
   pieceOpacity: number;
 }> = ({ onExport, isPremium = false, darkMode, totalMoves, showPieces, pieceOpacity }) => {
   const { currentMove } = useTimeline();
-  const { lockedPieces, compareMode } = useLegendHighlight();
+  const { lockedPieces, lockedSquares, compareMode } = useLegendHighlight();
   
   const handleExport = useCallback((type: 'hd' | 'gif' | 'print' | 'preview') => {
     const exportState: ExportState = {
@@ -951,13 +952,20 @@ const ExportActionButtons: React.FC<{
         pieceType: p.pieceType,
         pieceColor: p.pieceColor,
       })),
+      lockedSquares: lockedSquares.map(sq => ({
+        square: sq.square,
+        pieces: sq.pieces.map(p => ({
+          pieceType: p.pieceType,
+          pieceColor: p.pieceColor,
+        })),
+      })),
       compareMode,
       darkMode,
       showPieces,
       pieceOpacity,
     };
     onExport?.(type, exportState);
-  }, [onExport, currentMove, totalMoves, lockedPieces, compareMode, darkMode, showPieces, pieceOpacity]);
+  }, [onExport, currentMove, totalMoves, lockedPieces, lockedSquares, compareMode, darkMode, showPieces, pieceOpacity]);
 
   if (!onExport) return null;
 
@@ -1043,7 +1051,7 @@ const ShareButtonWithState: React.FC<{
   totalMoves: number;
 }> = ({ onShare, darkMode, showPieces, pieceOpacity, totalMoves }) => {
   const { currentMove } = useTimeline();
-  const { lockedPieces, compareMode } = useLegendHighlight();
+  const { lockedPieces, lockedSquares, compareMode } = useLegendHighlight();
   
   const handleClick = useCallback(() => {
     const exportState: ExportState = {
@@ -1052,13 +1060,20 @@ const ShareButtonWithState: React.FC<{
         pieceType: p.pieceType,
         pieceColor: p.pieceColor,
       })),
+      lockedSquares: lockedSquares.map(sq => ({
+        square: sq.square,
+        pieces: sq.pieces.map(p => ({
+          pieceType: p.pieceType,
+          pieceColor: p.pieceColor,
+        })),
+      })),
       compareMode,
       darkMode,
       showPieces,
       pieceOpacity,
     };
     onShare(exportState);
-  }, [onShare, currentMove, totalMoves, lockedPieces, compareMode, darkMode, showPieces, pieceOpacity]);
+  }, [onShare, currentMove, totalMoves, lockedPieces, lockedSquares, compareMode, darkMode, showPieces, pieceOpacity]);
   
   return (
     <Button 
