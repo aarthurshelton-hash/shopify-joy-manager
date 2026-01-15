@@ -46,7 +46,7 @@ export async function renderFrameToCanvas(
   const ReactDOM = await import('react-dom/client');
   const { default: ChessBoardVisualization } = await import('@/components/chess/ChessBoardVisualization');
   const { default: BoardCoordinateGuide } = await import('@/components/chess/BoardCoordinateGuide');
-  const { default: InteractiveVisualizationBoard } = await import('@/components/chess/InteractiveVisualizationBoard');
+  const { default: StaticPieceOverlay } = await import('@/components/chess/StaticPieceOverlay');
   
   // Filter board to current move
   const filteredBoard = filterBoardToMove(board, currentMove);
@@ -80,7 +80,7 @@ export async function renderFrameToCanvas(
     });
     container.appendChild(wrapper);
     
-    // Render the board - use InteractiveVisualizationBoard when showing pieces for proper overlay
+    // Render the board with optional piece overlay
     const boardContainer = document.createElement('div');
     boardContainer.style.position = 'relative';
     wrapper.appendChild(boardContainer);
@@ -88,35 +88,24 @@ export async function renderFrameToCanvas(
     const root = ReactDOM.createRoot(boardContainer);
     
     await new Promise<void>((resolve) => {
-      // Choose component based on whether pieces should be shown
-      if (showPieces && pgn) {
-        // Use InteractiveVisualizationBoard for piece overlay support
-        root.render(
-          React.createElement('div', { style: { position: 'relative' } },
-            showCoordinates && React.createElement(BoardCoordinateGuide, { size, position: 'inside' }),
-            React.createElement(InteractiveVisualizationBoard, {
-              board: filteredBoard,
-              size,
-              showPieces: true,
-              pieceOpacity,
-              currentMoveNumber: currentMove,
-              pgn,
-            })
-          )
-        );
-      } else {
-        // Use simple ChessBoardVisualization for faster rendering without pieces
-        root.render(
-          React.createElement('div', { style: { position: 'relative' } },
-            showCoordinates && React.createElement(BoardCoordinateGuide, { size, position: 'inside' }),
-            React.createElement(ChessBoardVisualization, {
-              board: filteredBoard,
-              size: size
-            })
-          )
-        );
-      }
-      setTimeout(resolve, showPieces ? 100 : 50); // Give more time for piece rendering
+      // Render board with optional static piece overlay (no context required)
+      root.render(
+        React.createElement('div', { style: { position: 'relative', width: size, height: size } },
+          showCoordinates && React.createElement(BoardCoordinateGuide, { size, position: 'inside' }),
+          React.createElement(ChessBoardVisualization, {
+            board: filteredBoard,
+            size: size
+          }),
+          // Add static piece overlay if enabled
+          showPieces && pgn && React.createElement(StaticPieceOverlay, {
+            pgn,
+            currentMoveNumber: currentMove,
+            size,
+            pieceOpacity,
+          })
+        )
+      );
+      setTimeout(resolve, showPieces ? 80 : 50);
     });
     
     // Add game info section if gameData provided

@@ -1,18 +1,12 @@
-import React, { useMemo } from 'react';
-import { Chess } from 'chess.js';
+import React from 'react';
 import ChessBoardVisualization from './ChessBoardVisualization';
 import GameInfoDisplay from './GameInfoDisplay';
 import { EnPensentOverlay, MoveHistoryEntry } from './EnPensentOverlay';
 import { SquareData } from '@/lib/chess/gameSimulator';
 import { PieceType, PieceColor } from '@/lib/chess/pieceColors';
 import { HighlightedPiece } from '@/contexts/LegendHighlightContext';
+import StaticPieceOverlay from './StaticPieceOverlay';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
-
-// Unicode chess piece characters
-const PIECE_SYMBOLS: Record<string, string> = {
-  'K': '♔', 'Q': '♕', 'R': '♖', 'B': '♗', 'N': '♘', 'P': '♙',
-  'k': '♚', 'q': '♛', 'r': '♜', 'b': '♝', 'n': '♞', 'p': '♟',
-};
 
 interface GameData {
   white: string;
@@ -106,55 +100,9 @@ export const PrintReadyVisualization: React.FC<PrintReadyVisualizationProps> = (
   // Scale factor for compact mode (wall mockup)
   const padding = compact ? 4 : 24;
   const boardSize = size - (padding * 2);
-  const squareSize = boardSize / 8;
 
-  // Calculate piece positions for overlay at the specific move number
-  const piecePositions = useMemo(() => {
-    if (!piecesState?.showPieces) return [];
-    
-    const pgnToUse = pgn || gameData.pgn;
-    if (!pgnToUse) return [];
-    
-    try {
-      // First load PGN to get all moves
-      const fullGame = new Chess();
-      fullGame.loadPgn(pgnToUse);
-      const allMoves = fullGame.history({ verbose: true });
-      
-      // Replay to the target move number
-      const chess = new Chess();
-      const targetMove = piecesState.currentMoveNumber ?? allMoves.length;
-      const movesToPlay = Math.min(targetMove, allMoves.length);
-      
-      for (let i = 0; i < movesToPlay; i++) {
-        chess.move(allMoves[i].san);
-      }
-      
-      const boardState = chess.board();
-      const pieces: { square: string; piece: string; color: 'w' | 'b'; row: number; col: number }[] = [];
-      
-      for (let rowIndex = 0; rowIndex < 8; rowIndex++) {
-        for (let file = 0; file < 8; file++) {
-          const piece = boardState[rowIndex]?.[file];
-          if (piece) {
-            const rank = 7 - rowIndex;
-            const square = `${String.fromCharCode(97 + file)}${rank + 1}`;
-            pieces.push({
-              square,
-              piece: piece.type,
-              color: piece.color,
-              row: rowIndex,
-              col: file,
-            });
-          }
-        }
-      }
-      return pieces;
-    } catch (e) {
-      console.error('Error parsing PGN for piece positions:', e);
-      return [];
-    }
-  }, [piecesState?.showPieces, piecesState?.currentMoveNumber, pgn, gameData.pgn]);
+  // Get effective PGN for piece overlay
+  const effectivePgn = pgn || gameData.pgn || '';
 
   // Render the chess board - either EnPensent overlay or standard visualization
   const renderBoard = () => {
@@ -209,39 +157,14 @@ export const PrintReadyVisualization: React.FC<PrintReadyVisualizationProps> = (
             overrideHighlightedPieces={overrideHighlightedPieces}
             overrideCompareMode={highlightState?.compareMode}
           />
-          {/* Pieces overlay */}
-          {piecesState?.showPieces && piecePositions.length > 0 && (
-            <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-              {piecePositions.map((p, idx) => {
-                const symbol = p.color === 'w' 
-                  ? PIECE_SYMBOLS[p.piece.toUpperCase()] 
-                  : PIECE_SYMBOLS[p.piece.toLowerCase()];
-                return (
-                  <div
-                    key={idx}
-                    style={{
-                      position: 'absolute',
-                      left: p.col * squareSize,
-                      top: p.row * squareSize,
-                      width: squareSize,
-                      height: squareSize,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: squareSize * 0.75,
-                      opacity: piecesState.pieceOpacity,
-                      color: p.color === 'w' ? '#ffffff' : '#1a1a1a',
-                      textShadow: p.color === 'w' 
-                        ? '0 1px 3px rgba(0,0,0,0.5), 0 0 1px rgba(0,0,0,0.8)' 
-                        : '0 1px 2px rgba(255,255,255,0.3)',
-                      fontFamily: 'serif',
-                    }}
-                  >
-                    {symbol}
-                  </div>
-                );
-              })}
-            </div>
+          {/* Pieces overlay using StaticPieceOverlay component */}
+          {piecesState?.showPieces && effectivePgn && (
+            <StaticPieceOverlay
+              pgn={effectivePgn}
+              currentMoveNumber={piecesState.currentMoveNumber}
+              size={boardSize}
+              pieceOpacity={piecesState.pieceOpacity}
+            />
           )}
         </div>
       );
