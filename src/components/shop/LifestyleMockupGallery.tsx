@@ -5,15 +5,15 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
-// Import product-focused mockup images
-import canvasTextureNaturalFrame from '@/assets/mockups/canvas-texture-natural-frame.jpg';
-import blackFrameProductDetail from '@/assets/mockups/black-frame-product-detail.jpg';
-import unframedCanvasDetail from '@/assets/mockups/unframed-canvas-detail.jpg';
-import goldFrameCornerDetail from '@/assets/mockups/gold-frame-corner-detail.jpg';
-import walnutFrameProduct from '@/assets/mockups/walnut-frame-product.jpg';
-import whiteFrameProduct from '@/assets/mockups/white-frame-product.jpg';
-import canvasMacroTexture from '@/assets/mockups/canvas-macro-texture.jpg';
-import handsHoldingCanvas from '@/assets/mockups/hands-holding-canvas.jpg';
+// Import product mockups using actual PrintReadyVisualization
+import naturalFrameCanvas from '@/assets/mockups/natural-frame-canvas.jpg';
+import blackFrameProduct from '@/assets/mockups/black-frame-product.jpg';
+import whiteFrameLifestyle from '@/assets/mockups/white-frame-lifestyle.jpg';
+import walnutFrameDetail from '@/assets/mockups/walnut-frame-detail.jpg';
+import goldFrameOffice from '@/assets/mockups/gold-frame-office.jpg';
+import unframedCanvasLean from '@/assets/mockups/unframed-canvas-lean.jpg';
+import canvasMacroCloseup from '@/assets/mockups/canvas-macro-closeup.jpg';
+import handsCanvasPrint from '@/assets/mockups/hands-canvas-print.jpg';
 
 export interface MockupImage {
   id: string;
@@ -27,73 +27,73 @@ export interface MockupImage {
 
 export const lifestyleMockups: MockupImage[] = [
   {
-    id: 'canvas-texture-natural',
-    src: canvasTextureNaturalFrame,
-    title: 'Canvas Texture Detail',
-    setting: 'Product Close-up',
+    id: 'natural-frame-canvas',
+    src: naturalFrameCanvas,
+    title: 'Natural Wood Frame',
+    setting: 'Wall Display',
     frame: 'Natural Wood',
-    mood: 'Artisan Quality',
-    description: 'Close-up showing visible canvas weave texture with natural wood frame edge and soft gallery lighting',
+    mood: 'Warm & Inviting',
+    description: 'Premium canvas print in natural oak frame showing visible canvas texture and warm gallery lighting',
   },
   {
     id: 'black-frame-product',
-    src: blackFrameProductDetail,
-    title: 'Black Frame Float Mount',
-    setting: 'Gallery Display',
-    frame: 'Classic Black',
-    mood: 'Sophisticated',
-    description: 'Elegant black floater frame with canvas depth, showing shadow and highlight on canvas surface',
-  },
-  {
-    id: 'unframed-canvas',
-    src: unframedCanvasDetail,
-    title: 'Gallery Wrap Canvas',
+    src: blackFrameProduct,
+    title: 'Classic Black Frame',
     setting: 'Product Shot',
-    mood: 'Modern',
-    description: 'Unframed gallery-wrapped canvas showing edge wrap finish and archival material quality',
+    frame: 'Classic Black',
+    mood: 'Modern Elegance',
+    description: 'Sleek matte black frame with canvas print, studio lighting highlighting canvas weave and clean frame lines',
   },
   {
-    id: 'gold-frame-corner',
-    src: goldFrameCornerDetail,
-    title: 'Champagne Gold Detail',
-    setting: 'Macro Detail',
-    frame: 'Champagne Gold',
-    mood: 'Luxurious',
-    description: 'Close-up of champagne gold frame corner showing metallic finish and craftsmanship where frame meets canvas',
-  },
-  {
-    id: 'walnut-frame-product',
-    src: walnutFrameProduct,
-    title: 'Rich Walnut Frame',
-    setting: 'Product Detail',
-    frame: 'Rich Walnut',
-    mood: 'Premium',
-    description: 'Walnut wood frame detail showing natural grain, finish quality and canvas material texture',
-  },
-  {
-    id: 'white-frame-product',
-    src: whiteFrameProduct,
+    id: 'white-frame-lifestyle',
+    src: whiteFrameLifestyle,
     title: 'Gallery White Frame',
-    setting: 'Clean Display',
+    setting: 'Living Room',
     frame: 'Gallery White',
-    mood: 'Museum Quality',
-    description: 'Clean white matte frame with monochrome visualization showing professional fine art presentation',
+    mood: 'Contemporary',
+    description: 'Clean white frame in elegant living space with natural light reflecting off premium canvas surface',
   },
   {
-    id: 'canvas-macro',
-    src: canvasMacroTexture,
-    title: 'Archival Canvas Macro',
-    setting: 'Extreme Close-up',
-    mood: 'Premium Materials',
-    description: 'Extreme macro showing archival canvas weave with vibrant ink saturation and surface texture',
+    id: 'walnut-frame-detail',
+    src: walnutFrameDetail,
+    title: 'Rich Walnut Frame',
+    setting: 'Dark Background',
+    frame: 'Rich Walnut',
+    mood: 'Luxurious',
+    description: 'Deep walnut wood grain frame with studio lighting showcasing print quality and craftsmanship',
   },
   {
-    id: 'hands-canvas',
-    src: handsHoldingCanvas,
+    id: 'gold-frame-office',
+    src: goldFrameOffice,
+    title: 'Champagne Gold Frame',
+    setting: 'Modern Office',
+    frame: 'Champagne Gold',
+    mood: 'Premium',
+    description: 'Elegant champagne gold frame in luxury office setting with metallic shimmer and canvas texture visible',
+  },
+  {
+    id: 'unframed-canvas-lean',
+    src: unframedCanvasLean,
+    title: 'Unframed Canvas',
+    setting: 'Leaning Display',
+    mood: 'Artist Studio',
+    description: 'Gallery-wrapped canvas print leaning against wall showing wrapped edges, thickness and canvas material quality',
+  },
+  {
+    id: 'canvas-macro-closeup',
+    src: canvasMacroCloseup,
+    title: 'Canvas Texture Detail',
+    setting: 'Macro Close-up',
+    mood: 'Material Quality',
+    description: 'Extreme macro showing individual canvas threads, ink saturation and archival print quality',
+  },
+  {
+    id: 'hands-canvas-print',
+    src: handsCanvasPrint,
     title: 'Canvas in Hand',
     setting: 'Product Demo',
-    mood: 'Authentic',
-    description: 'Hands holding unframed canvas showing edge thickness, gallery wrap quality and print scale',
+    mood: 'Authentic Scale',
+    description: 'Hands holding the canvas print showing thickness, wrapped edges and real-world scale',
   },
 ];
 
