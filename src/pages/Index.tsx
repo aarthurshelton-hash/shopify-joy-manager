@@ -716,23 +716,23 @@ const Index = () => {
                           </h3>
                           
                           <p className="text-base md:text-lg text-muted-foreground font-serif leading-relaxed max-w-2xl">
-                            Join an exclusive circle of chess art collectors. Unlock pristine HD downloads, 
-                            curate your personal gallery, and gain first access to limited edition gold & silver prints.
+                            Join an exclusive circle of chess art collectors. Unlock Stockfish 17 analysis (~3200 ELO), 
+                            pristine HD downloads, curate your personal gallery, and gain first access to limited edition prints.
                           </p>
                           
                           {/* Feature highlights */}
                           <div className="flex flex-wrap justify-center lg:justify-start gap-4 text-sm">
                             <div className="flex items-center gap-2 text-primary/80">
                               <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                              <span className="font-serif">Stockfish 17 engine</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-primary/80">
+                              <div className="w-1.5 h-1.5 rounded-full bg-primary" />
                               <span className="font-serif">Watermark-free exports</span>
                             </div>
                             <div className="flex items-center gap-2 text-primary/80">
                               <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                              <span className="font-serif">Unlimited gallery saves</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-primary/80">
-                              <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                              <span className="font-serif">Priority print access</span>
+                              <span className="font-serif">Vision ownership</span>
                             </div>
                           </div>
                           

@@ -346,19 +346,34 @@ const About = () => {
               <div className="p-4 rounded-lg bg-card/50 border border-border/50">
                 <h3 className="font-display font-bold text-sm uppercase tracking-wide text-primary">Visualization Engine</h3>
                 <p className="text-sm text-muted-foreground font-serif mt-1">
-                  Upload any PGN and watch your game transform into a unique piece of art in seconds. Each visualization is one-of-a-kind, encoded from your exact move sequence.
+                  Upload any PGN or FEN position and watch your game transform into a unique piece of art in seconds. Each visualization is one-of-a-kind, encoded from your exact move sequence.
+                </p>
+              </div>
+              <div className="p-4 rounded-lg bg-gradient-to-r from-blue-500/5 to-cyan-500/5 border border-blue-500/30">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-display font-bold text-sm uppercase tracking-wide text-blue-500">Stockfish 17 Analysis</h3>
+                  <Badge className="bg-blue-500/20 text-blue-600 border-blue-500/30 text-xs">~3200 ELO</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground font-serif mt-1">
+                  Real NNUE-powered analysis with centipawn accuracy, win probability calculations, and depth 20+ evaluation. Play against GM-strength AI or analyze any position with grandmaster-level insights.
                 </p>
               </div>
               <div className="p-4 rounded-lg bg-card/50 border border-border/50">
                 <h3 className="font-display font-bold text-sm uppercase tracking-wide text-primary">Play & Create</h3>
                 <p className="text-sm text-muted-foreground font-serif mt-1">
-                  Play live games against opponents or our AI bot. Your artwork generates in real-time as you play—watch strategy become art, move by move.
+                  Play live games against opponents or our Stockfish-powered AI bot (5 difficulty levels up to ~3200 ELO). Your artwork generates in real-time as you play—watch strategy become art, move by move.
                 </p>
               </div>
               <div className="p-4 rounded-lg bg-card/50 border border-border/50">
                 <h3 className="font-display font-bold text-sm uppercase tracking-wide text-primary">Creative Mode</h3>
                 <p className="text-sm text-muted-foreground font-serif mt-1">
-                  Full customization with 16 curated palettes and piece-by-piece color control. Design visualizations that match your aesthetic vision.
+                  Full customization with 16 curated palettes and piece-by-piece color control. Import/export FEN positions, design visualizations that match your aesthetic vision.
+                </p>
+              </div>
+              <div className="p-4 rounded-lg bg-card/50 border border-border/50">
+                <h3 className="font-display font-bold text-sm uppercase tracking-wide text-primary">75+ Historic Games Library</h3>
+                <p className="text-sm text-muted-foreground font-serif mt-1">
+                  Explore legendary games spanning 500+ years of chess history—from Ruy López (1575) to Gukesh's historic 2024 championship victory. Each curated with AI-generated poetry.
                 </p>
               </div>
               <div className="p-4 rounded-lg bg-card/50 border border-border/50">
@@ -370,10 +385,10 @@ const About = () => {
               <div className="p-4 rounded-lg bg-gradient-to-r from-primary/5 to-amber-500/5 border-2 border-primary/30">
                 <div className="flex items-center gap-2">
                   <h3 className="font-display font-bold text-sm uppercase tracking-wide text-primary">Natural Vision™</h3>
-                  <Badge className="bg-amber-500/20 text-amber-600 border-amber-500/30 text-xs">New</Badge>
+                  <Badge className="bg-amber-500/20 text-amber-600 border-amber-500/30 text-xs">Patented</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground font-serif mt-1">
-                  Every visualization is a scannable fingerprint. Point a camera at any print and instantly access the game's complete history, analytics, and Vision Score. Art that remembers its story.
+                  Every visualization is a scannable fingerprint. Point a camera at any print and instantly access the game's complete history, Stockfish analysis, and Vision Score. Art that remembers its story.
                 </p>
               </div>
               <div className="p-4 rounded-lg bg-card/50 border border-border/50">
@@ -394,7 +409,7 @@ const About = () => {
               <div className="p-4 rounded-lg bg-card/50 border border-border/50">
                 <h3 className="font-display font-bold text-sm uppercase tracking-wide text-primary">Visionary Premium</h3>
                 <p className="text-sm text-muted-foreground font-serif mt-1">
-                  $7/month membership: watermark-free HD downloads, personal gallery storage, priority print access, and marketplace selling privileges.
+                  $7/month membership: watermark-free HD downloads, personal gallery storage, priority print access, Stockfish analysis, and marketplace selling privileges.
                 </p>
               </div>
             </div>

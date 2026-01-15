@@ -94,19 +94,35 @@ const newsImages = Object.values(gameImageImports);
 const newsItems = [
   {
     date: "January 2026",
-    title: "Natural Vision™ Recognition Launched",
-    description: "Our proprietary pattern recognition technology can now identify any En Pensent print and instantly display its game details, provenance, and ownership history.",
-    icon: Scan,
-    link: "/vision-scanner",
+    title: "Stockfish 17 NNUE Integration",
+    description: "Real grandmaster-strength analysis with ~3200 ELO engine. Centipawn accuracy, win probability, depth 20+ evaluation. Play against or analyze with the world's strongest open-source engine.",
+    icon: Zap,
+    link: "/play",
     image: newsImages[0],
   },
   {
     date: "January 2026",
+    title: "FEN Position Import/Export",
+    description: "Import any chess position via FEN notation for instant visualization. Export final positions from any game. Perfect for puzzles, studies, and custom compositions.",
+    icon: Target,
+    link: "/creative",
+    image: newsImages[1],
+  },
+  {
+    date: "January 2026",
+    title: "Natural Vision™ Recognition Launched",
+    description: "Our proprietary pattern recognition technology can now identify any En Pensent print and instantly display its game details, Stockfish analysis, and ownership history.",
+    icon: Scan,
+    link: "/vision-scanner",
+    image: newsImages[2],
+  },
+  {
+    date: "January 2026",
     title: "Carlsen in Color Book Pre-Orders Open",
-    description: "100 of Magnus Carlsen's greatest games, each with AI-generated haiku poetry. Limited first edition of 1,000 copies with exclusive collector's box.",
+    description: "100 of Magnus Carlsen's greatest games, each with AI-generated haiku poetry and Stockfish annotations. Limited first edition of 1,000 copies with exclusive collector's box.",
     icon: BookOpen,
     link: "/book",
-    image: newsImages[1],
+    image: newsImages[3],
   },
   {
     date: "January 2026",
@@ -114,15 +130,15 @@ const newsItems = [
     description: "Trade, collect, and discover unique chess visualizations. Built-in wallet system, royalty tracking, and secure ownership transfers.",
     icon: TrendingUp,
     link: "/marketplace",
-    image: newsImages[2],
+    image: newsImages[4],
   },
   {
     date: "January 2026",
-    title: "AI Poetry Generation",
-    description: "Every famous game now features unique AI-generated poetry — haikus, couplets, and free verse that capture the essence of each battle.",
+    title: "AI Poetry & Heatmap Analysis",
+    description: "Every famous game features unique AI-generated poetry and Gemini-powered strategic insights. Visualize pressure zones, piece activity, and tactical patterns.",
     icon: Sparkles,
     link: "/",
-    image: newsImages[3],
+    image: newsImages[5],
   },
   {
     date: "January 2026",
@@ -130,15 +146,15 @@ const newsItems = [
     description: "Museum-quality frames now available: Walnut, Matte Black, Natural Oak, and Gold Gilded. Ships worldwide with white-glove service.",
     icon: Award,
     link: "/order-print",
-    image: newsImages[4],
+    image: newsImages[6],
   },
   {
     date: "December 2025",
     title: "Live Play Mode Released",
-    description: "Play chess directly on En Pensent against opponents or our AI bot. Watch your artwork generate in real-time as you make moves.",
+    description: "Play chess directly on En Pensent against opponents or Stockfish AI (5 difficulty levels). Watch your artwork generate in real-time as you make moves.",
     icon: Gamepad2,
     link: "/play",
-    image: newsImages[5],
+    image: newsImages[7],
   },
   {
     date: "December 2025",
@@ -146,23 +162,23 @@ const newsItems = [
     description: "A portion of every sale now contributes to chess education programs in underserved communities worldwide.",
     icon: Gift,
     link: "/education-fund",
-    image: newsImages[6],
+    image: newsImages[8],
   },
   {
     date: "November 2025",
     title: "75+ Historic Games Library",
-    description: "Explore and visualize legendary games spanning 500 years of chess history, from Ruy López to Magnus Carlsen's modern classics.",
+    description: "Explore and visualize legendary games spanning 500+ years of chess history, from Ruy López to Gukesh's 2024 championship victory.",
     icon: Globe,
     link: "/",
-    image: newsImages[7],
+    image: newsImages[9],
   },
   {
     date: "November 2025",
     title: "Visionary Membership Launch",
-    description: "Premium tier unlocked: unlimited downloads, HD exports, exclusive palettes, priority printing, and early access to new features.",
+    description: "Premium tier unlocked: unlimited downloads, HD exports, Stockfish analysis, exclusive palettes, priority printing, and early access to new features.",
     icon: Crown,
     link: "/account",
-    image: newsImages[8],
+    image: newsImages[10] || newsImages[0],
   },
   {
     date: "October 2025",
@@ -170,7 +186,7 @@ const newsItems = [
     description: "From Japanese minimalism to Art Deco grandeur — each palette transforms your games into distinct visual experiences.",
     icon: Palette,
     link: "/creative",
-    image: newsImages[9],
+    image: newsImages[11] || newsImages[1],
   },
 ];
 
@@ -327,8 +343,8 @@ const News = () => {
               
               <div className="flex gap-6 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory md:grid md:grid-cols-5 md:overflow-visible md:pb-0">
                 <div className="min-w-[120px] md:min-w-0 snap-start shrink-0">
-                  <p className="text-2xl md:text-3xl font-display font-bold text-primary">2,847</p>
-                  <p className="text-xs text-muted-foreground font-serif uppercase tracking-wide whitespace-nowrap">Active Visionaries</p>
+                  <p className="text-2xl md:text-3xl font-display font-bold text-primary">3,200</p>
+                  <p className="text-xs text-muted-foreground font-serif uppercase tracking-wide whitespace-nowrap">ELO Engine</p>
                 </div>
                 <div className="min-w-[120px] md:min-w-0 snap-start shrink-0">
                   <p className="text-2xl md:text-3xl font-display font-bold text-primary">75+</p>
@@ -339,12 +355,12 @@ const News = () => {
                   <p className="text-xs text-muted-foreground font-serif uppercase tracking-wide whitespace-nowrap">Color Palettes</p>
                 </div>
                 <div className="min-w-[120px] md:min-w-0 snap-start shrink-0">
-                  <p className="text-2xl md:text-3xl font-display font-bold text-primary">$19.8K</p>
-                  <p className="text-xs text-muted-foreground font-serif uppercase tracking-wide whitespace-nowrap">ARR</p>
+                  <p className="text-2xl md:text-3xl font-display font-bold text-primary">500+</p>
+                  <p className="text-xs text-muted-foreground font-serif uppercase tracking-wide whitespace-nowrap">Years of History</p>
                 </div>
                 <div className="min-w-[120px] md:min-w-0 snap-start shrink-0">
-                  <p className="text-2xl md:text-3xl font-display font-bold text-primary">95%</p>
-                  <p className="text-xs text-muted-foreground font-serif uppercase tracking-wide whitespace-nowrap">Gross Margin</p>
+                  <p className="text-2xl md:text-3xl font-display font-bold text-primary">∞</p>
+                  <p className="text-xs text-muted-foreground font-serif uppercase tracking-wide whitespace-nowrap">Unique Visions</p>
                 </div>
               </div>
             </div>
