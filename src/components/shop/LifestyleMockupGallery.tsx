@@ -5,15 +5,15 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
-// Import mockup images
-import livingRoomNaturalFrame from '@/assets/mockups/living-room-natural-frame.jpg';
-import officeBlackFrame from '@/assets/mockups/office-black-frame.jpg';
-import galleryWhiteFrames from '@/assets/mockups/gallery-white-frames.jpg';
-import diningWalnutFrame from '@/assets/mockups/dining-walnut-frame.jpg';
-import bedroomGoldFrame from '@/assets/mockups/bedroom-gold-frame.jpg';
-import unframedCanvasPrints from '@/assets/mockups/unframed-canvas-prints.jpg';
-import printDetailHands from '@/assets/mockups/print-detail-hands.jpg';
-import creativeStudioMixed from '@/assets/mockups/creative-studio-mixed.jpg';
+// Import product-focused mockup images
+import canvasTextureNaturalFrame from '@/assets/mockups/canvas-texture-natural-frame.jpg';
+import blackFrameProductDetail from '@/assets/mockups/black-frame-product-detail.jpg';
+import unframedCanvasDetail from '@/assets/mockups/unframed-canvas-detail.jpg';
+import goldFrameCornerDetail from '@/assets/mockups/gold-frame-corner-detail.jpg';
+import walnutFrameProduct from '@/assets/mockups/walnut-frame-product.jpg';
+import whiteFrameProduct from '@/assets/mockups/white-frame-product.jpg';
+import canvasMacroTexture from '@/assets/mockups/canvas-macro-texture.jpg';
+import handsHoldingCanvas from '@/assets/mockups/hands-holding-canvas.jpg';
 
 export interface MockupImage {
   id: string;
@@ -27,74 +27,73 @@ export interface MockupImage {
 
 export const lifestyleMockups: MockupImage[] = [
   {
-    id: 'living-natural',
-    src: livingRoomNaturalFrame,
-    title: 'Cozy Living Room',
-    setting: 'Living Room',
+    id: 'canvas-texture-natural',
+    src: canvasTextureNaturalFrame,
+    title: 'Canvas Texture Detail',
+    setting: 'Product Close-up',
     frame: 'Natural Wood',
-    mood: 'Warm & Inviting',
-    description: 'Natural wood frame in a Scandinavian-inspired living space with warm afternoon light',
+    mood: 'Artisan Quality',
+    description: 'Close-up showing visible canvas weave texture with natural wood frame edge and soft gallery lighting',
   },
   {
-    id: 'office-black',
-    src: officeBlackFrame,
-    title: 'Executive Office',
-    setting: 'Office',
+    id: 'black-frame-product',
+    src: blackFrameProductDetail,
+    title: 'Black Frame Float Mount',
+    setting: 'Gallery Display',
     frame: 'Classic Black',
     mood: 'Sophisticated',
-    description: 'Classic black frame in a sophisticated home office with dramatic lighting',
-  },
-  {
-    id: 'gallery-white',
-    src: galleryWhiteFrames,
-    title: 'Art Gallery',
-    setting: 'Gallery',
-    frame: 'Gallery White',
-    mood: 'Museum Quality',
-    description: 'Multiple pieces in gallery white frames with professional museum lighting',
-  },
-  {
-    id: 'dining-walnut',
-    src: diningWalnutFrame,
-    title: 'Elegant Dining',
-    setting: 'Dining Room',
-    frame: 'Rich Walnut',
-    mood: 'Luxurious',
-    description: 'Rich walnut frame in an elegant dining room with crystal chandelier',
-  },
-  {
-    id: 'bedroom-gold',
-    src: bedroomGoldFrame,
-    title: 'Boutique Bedroom',
-    setting: 'Bedroom',
-    frame: 'Champagne Gold',
-    mood: 'Romantic',
-    description: 'Ornate champagne gold frame above a luxury boutique-style bed',
+    description: 'Elegant black floater frame with canvas depth, showing shadow and highlight on canvas surface',
   },
   {
     id: 'unframed-canvas',
-    src: unframedCanvasPrints,
-    title: 'Canvas Collection',
-    setting: 'Studio',
-    mood: 'Artistic',
-    description: 'Multiple unframed canvas prints showcasing various sizes and color palettes',
+    src: unframedCanvasDetail,
+    title: 'Gallery Wrap Canvas',
+    setting: 'Product Shot',
+    mood: 'Modern',
+    description: 'Unframed gallery-wrapped canvas showing edge wrap finish and archival material quality',
   },
   {
-    id: 'print-detail',
-    src: printDetailHands,
-    title: 'Print Quality',
+    id: 'gold-frame-corner',
+    src: goldFrameCornerDetail,
+    title: 'Champagne Gold Detail',
+    setting: 'Macro Detail',
+    frame: 'Champagne Gold',
+    mood: 'Luxurious',
+    description: 'Close-up of champagne gold frame corner showing metallic finish and craftsmanship where frame meets canvas',
+  },
+  {
+    id: 'walnut-frame-product',
+    src: walnutFrameProduct,
+    title: 'Rich Walnut Frame',
     setting: 'Product Detail',
+    frame: 'Rich Walnut',
     mood: 'Premium',
-    description: 'Close-up showing museum-quality archival paper and vibrant color accuracy',
+    description: 'Walnut wood frame detail showing natural grain, finish quality and canvas material texture',
   },
   {
-    id: 'creative-studio',
-    src: creativeStudioMixed,
-    title: 'Creative Studio',
-    setting: 'Studio',
-    frame: 'Mixed Frames',
-    mood: 'Eclectic',
-    description: 'Gallery wall with mixed frame styles in a trendy creative studio space',
+    id: 'white-frame-product',
+    src: whiteFrameProduct,
+    title: 'Gallery White Frame',
+    setting: 'Clean Display',
+    frame: 'Gallery White',
+    mood: 'Museum Quality',
+    description: 'Clean white matte frame with monochrome visualization showing professional fine art presentation',
+  },
+  {
+    id: 'canvas-macro',
+    src: canvasMacroTexture,
+    title: 'Archival Canvas Macro',
+    setting: 'Extreme Close-up',
+    mood: 'Premium Materials',
+    description: 'Extreme macro showing archival canvas weave with vibrant ink saturation and surface texture',
+  },
+  {
+    id: 'hands-canvas',
+    src: handsHoldingCanvas,
+    title: 'Canvas in Hand',
+    setting: 'Product Demo',
+    mood: 'Authentic',
+    description: 'Hands holding unframed canvas showing edge thickness, gallery wrap quality and print scale',
   },
 ];
 
