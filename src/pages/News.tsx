@@ -337,30 +337,30 @@ const News = () => {
               <div className="flex items-center justify-center gap-2">
                 <Users className="h-6 w-6 text-primary" />
                 <h2 className="text-xl font-display font-bold uppercase tracking-wider">
-                  Growing Community
+                  Platform Capabilities
                 </h2>
               </div>
               
               <div className="flex gap-6 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory md:grid md:grid-cols-5 md:overflow-visible md:pb-0">
                 <div className="min-w-[120px] md:min-w-0 snap-start shrink-0">
-                  <p className="text-2xl md:text-3xl font-display font-bold text-primary">3,200</p>
-                  <p className="text-xs text-muted-foreground font-serif uppercase tracking-wide whitespace-nowrap">ELO Engine</p>
+                  <p className="text-2xl md:text-3xl font-display font-bold text-primary">~3,200</p>
+                  <p className="text-xs text-muted-foreground font-serif uppercase tracking-wide whitespace-nowrap">Stockfish 17 ELO</p>
                 </div>
                 <div className="min-w-[120px] md:min-w-0 snap-start shrink-0">
                   <p className="text-2xl md:text-3xl font-display font-bold text-primary">75+</p>
-                  <p className="text-xs text-muted-foreground font-serif uppercase tracking-wide whitespace-nowrap">Historic Games</p>
+                  <p className="text-xs text-muted-foreground font-serif uppercase tracking-wide whitespace-nowrap">Famous Games</p>
                 </div>
                 <div className="min-w-[120px] md:min-w-0 snap-start shrink-0">
                   <p className="text-2xl md:text-3xl font-display font-bold text-primary">16</p>
-                  <p className="text-xs text-muted-foreground font-serif uppercase tracking-wide whitespace-nowrap">Color Palettes</p>
+                  <p className="text-xs text-muted-foreground font-serif uppercase tracking-wide whitespace-nowrap">Curated Palettes</p>
                 </div>
                 <div className="min-w-[120px] md:min-w-0 snap-start shrink-0">
-                  <p className="text-2xl md:text-3xl font-display font-bold text-primary">500+</p>
-                  <p className="text-xs text-muted-foreground font-serif uppercase tracking-wide whitespace-nowrap">Years of History</p>
+                  <p className="text-2xl md:text-3xl font-display font-bold text-primary">5%</p>
+                  <p className="text-xs text-muted-foreground font-serif uppercase tracking-wide whitespace-nowrap">Marketplace Fee</p>
                 </div>
                 <div className="min-w-[120px] md:min-w-0 snap-start shrink-0">
-                  <p className="text-2xl md:text-3xl font-display font-bold text-primary">∞</p>
-                  <p className="text-xs text-muted-foreground font-serif uppercase tracking-wide whitespace-nowrap">Unique Visions</p>
+                  <p className="text-2xl md:text-3xl font-display font-bold text-primary">20%</p>
+                  <p className="text-xs text-muted-foreground font-serif uppercase tracking-wide whitespace-nowrap">Creator Royalty</p>
                 </div>
               </div>
             </div>
