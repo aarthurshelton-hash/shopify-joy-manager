@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -27,6 +27,7 @@ import { getWithdrawableBalance } from '@/lib/marketplace/withdrawalApi';
 import { formatDistanceToNow } from 'date-fns';
 import { WalletDepositModal } from './WalletDepositModal';
 import { WalletWithdrawModal } from './WalletWithdrawModal';
+import { useWalletRealtime } from '@/hooks/useWalletRealtime';
 
 interface WalletCardProps {
   compact?: boolean;
@@ -41,11 +42,7 @@ const WalletCard: React.FC<WalletCardProps> = ({ compact = false }) => {
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
 
-  useEffect(() => {
-    loadWalletData();
-  }, []);
-
-  const loadWalletData = async () => {
+  const loadWalletData = useCallback(async () => {
     setIsLoading(true);
     const [walletResult, transactionsResult, withdrawableResult] = await Promise.all([
       getUserWallet(),
@@ -61,7 +58,41 @@ const WalletCard: React.FC<WalletCardProps> = ({ compact = false }) => {
     }
     setWithdrawableBalance(withdrawableResult.data);
     setIsLoading(false);
-  };
+  }, []);
+
+  // Subscribe to real-time wallet updates
+  useWalletRealtime({
+    onWalletChange: (newWallet) => {
+      setWallet({
+        id: newWallet.id,
+        user_id: newWallet.user_id,
+        balance_cents: newWallet.balance_cents,
+        total_deposited_cents: newWallet.total_deposited_cents,
+        total_withdrawn_cents: newWallet.total_withdrawn_cents,
+        total_earned_cents: newWallet.total_earned_cents,
+        total_spent_cents: newWallet.total_spent_cents,
+        created_at: newWallet.created_at,
+        updated_at: newWallet.updated_at,
+      });
+      // Also refresh withdrawable balance when wallet changes
+      getWithdrawableBalance().then(result => {
+        setWithdrawableBalance(result.data);
+      });
+    },
+    onTransactionChange: () => {
+      // Reload transactions when new one arrives
+      getWalletTransactions(20).then(result => {
+        if (result.data) {
+          setTransactions(result.data);
+        }
+      });
+    },
+    enabled: true,
+  });
+
+  useEffect(() => {
+    loadWalletData();
+  }, [loadWalletData]);
 
   const getTransactionIcon = (type: WalletTransaction['transaction_type']) => {
     switch (type) {

@@ -52,7 +52,9 @@ export function useUserStatistics() {
       return data as unknown as UserStatistics;
     },
     enabled: !!user?.id,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    refetchOnWindowFocus: false,
+    staleTime: 1000 * 60 * 2, // 2 minutes - balance freshness with performance
+    gcTime: 1000 * 60 * 10, // 10 minutes garbage collection
+    refetchOnWindowFocus: true, // Refetch when user returns to tab
+    refetchOnReconnect: true, // Refetch when connection restored
   });
 }
