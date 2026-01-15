@@ -52,7 +52,8 @@ import GameInfoDisplay from './GameInfoDisplay';
 import InteractiveGameInfoDisplay from './InteractiveGameInfoDisplay';
 import VerticalTimelineSlider from './VerticalTimelineSlider';
 import ColorLegend from './ColorLegend';
-import { classifyMoves, getMoveQualitySummary, MOVE_QUALITY_INFO } from '@/lib/chess/moveQuality';
+import { classifyMoves, getMoveQualitySummary, MOVE_QUALITY_INFO, ClassifiedMove } from '@/lib/chess/moveQuality';
+import { MoveQualityTooltip, BookMovesCard, extractOpeningInfo } from './MoveQualityTooltip';
 import { ShowPiecesToggle } from './ShowPiecesToggle';
 import BoardCoordinateGuide from './BoardCoordinateGuide';
 import IntrinsicPaletteCard from './IntrinsicPaletteCard';
@@ -426,22 +427,33 @@ const AnalyticsPanel: React.FC<{
     return '';
   }, [pgn, gameData.pgn]);
   
-  // Calculate move quality summary - ensure we have valid PGN
-  const qualitySummary = React.useMemo(() => {
+  // Calculate move quality summary and classified moves - ensure we have valid PGN
+  const { qualitySummary, classifiedMoves } = React.useMemo(() => {
     if (!effectivePgn) {
-      return null;
+      return { qualitySummary: null, classifiedMoves: [] as ClassifiedMove[] };
     }
     try {
       const classified = classifyMoves(effectivePgn);
       if (classified.length === 0) {
-        return null;
+        return { qualitySummary: null, classifiedMoves: [] as ClassifiedMove[] };
       }
-      return getMoveQualitySummary(classified);
+      return { 
+        qualitySummary: getMoveQualitySummary(classified),
+        classifiedMoves: classified,
+      };
     } catch (e) {
       console.warn('Move quality analysis failed:', e);
-      return null;
+      return { qualitySummary: null, classifiedMoves: [] as ClassifiedMove[] };
     }
   }, [effectivePgn]);
+  
+  // Extract opening information for book move tooltips
+  const openingInfo = React.useMemo(() => {
+    if (!effectivePgn || classifiedMoves.length === 0) {
+      return null;
+    }
+    return extractOpeningInfo(effectivePgn, classifiedMoves);
+  }, [effectivePgn, classifiedMoves]);
   
   // Calculate estimated value - show even for new (unsaved) visions based on game complexity
   const baseEstimatedValue = visionScore ? calculateVisionValue(visionScore, membershipMultiplier) : 0;
@@ -680,35 +692,59 @@ const AnalyticsPanel: React.FC<{
                 </div>
               </div>
               
-              {/* Quality breakdown - show all categories */}
+              {/* Quality breakdown - show all categories with hover tooltips */}
               <div className="grid grid-cols-4 gap-2 text-center text-xs mb-3">
                 {/* Brilliant moves - always show if > 0 */}
                 {qualitySummary.brilliantCount > 0 && (
-                  <div className="p-2 rounded bg-cyan-500/10 border border-cyan-500/20">
-                    <p className="font-bold text-cyan-400">{qualitySummary.brilliantCount}</p>
-                    <p className="text-muted-foreground text-[10px]">Brilliant !!</p>
-                  </div>
+                  <MoveQualityTooltip 
+                    quality="brilliant" 
+                    count={qualitySummary.brilliantCount}
+                    classifiedMoves={classifiedMoves}
+                  >
+                    <div className="p-2 rounded bg-cyan-500/10 border border-cyan-500/20 cursor-help transition-all hover:bg-cyan-500/15 hover:border-cyan-500/30">
+                      <p className="font-bold text-cyan-400">{qualitySummary.brilliantCount}</p>
+                      <p className="text-muted-foreground text-[10px]">Brilliant !!</p>
+                    </div>
+                  </MoveQualityTooltip>
                 )}
                 {/* Great moves */}
                 {qualitySummary.greatCount > 0 && (
-                  <div className="p-2 rounded bg-green-500/10 border border-green-500/20">
-                    <p className="font-bold text-green-400">{qualitySummary.greatCount}</p>
-                    <p className="text-muted-foreground text-[10px]">Great !</p>
-                  </div>
+                  <MoveQualityTooltip 
+                    quality="great" 
+                    count={qualitySummary.greatCount}
+                    classifiedMoves={classifiedMoves}
+                  >
+                    <div className="p-2 rounded bg-green-500/10 border border-green-500/20 cursor-help transition-all hover:bg-green-500/15 hover:border-green-500/30">
+                      <p className="font-bold text-green-400">{qualitySummary.greatCount}</p>
+                      <p className="text-muted-foreground text-[10px]">Great !</p>
+                    </div>
+                  </MoveQualityTooltip>
                 )}
                 {/* Best moves */}
                 {qualitySummary.bestCount > 0 && (
-                  <div className="p-2 rounded bg-lime-500/10 border border-lime-500/20">
-                    <p className="font-bold text-lime-400">{qualitySummary.bestCount}</p>
-                    <p className="text-muted-foreground text-[10px]">Best ✓</p>
-                  </div>
+                  <MoveQualityTooltip 
+                    quality="best" 
+                    count={qualitySummary.bestCount}
+                    classifiedMoves={classifiedMoves}
+                  >
+                    <div className="p-2 rounded bg-lime-500/10 border border-lime-500/20 cursor-help transition-all hover:bg-lime-500/15 hover:border-lime-500/30">
+                      <p className="font-bold text-lime-400">{qualitySummary.bestCount}</p>
+                      <p className="text-muted-foreground text-[10px]">Best ✓</p>
+                    </div>
+                  </MoveQualityTooltip>
                 )}
                 {/* Good moves */}
                 {qualitySummary.goodCount > 0 && (
-                  <div className="p-2 rounded bg-gray-500/10 border border-gray-500/20">
-                    <p className="font-bold text-gray-400">{qualitySummary.goodCount}</p>
-                    <p className="text-muted-foreground text-[10px]">Good ○</p>
-                  </div>
+                  <MoveQualityTooltip 
+                    quality="good" 
+                    count={qualitySummary.goodCount}
+                    classifiedMoves={classifiedMoves}
+                  >
+                    <div className="p-2 rounded bg-gray-500/10 border border-gray-500/20 cursor-help transition-all hover:bg-gray-500/15 hover:border-gray-500/30">
+                      <p className="font-bold text-gray-400">{qualitySummary.goodCount}</p>
+                      <p className="text-muted-foreground text-[10px]">Good ○</p>
+                    </div>
+                  </MoveQualityTooltip>
                 )}
               </div>
               
@@ -716,33 +752,47 @@ const AnalyticsPanel: React.FC<{
               {(qualitySummary.inaccuracyCount > 0 || qualitySummary.mistakeCount > 0 || qualitySummary.blunderCount > 0) && (
                 <div className="grid grid-cols-3 gap-2 text-center text-xs mb-3">
                   {qualitySummary.inaccuracyCount > 0 && (
-                    <div className="p-2 rounded bg-yellow-500/10 border border-yellow-500/20">
-                      <p className="font-bold text-yellow-400">{qualitySummary.inaccuracyCount}</p>
-                      <p className="text-muted-foreground text-[10px]">Inaccuracy ?!</p>
-                    </div>
+                    <MoveQualityTooltip 
+                      quality="inaccuracy" 
+                      count={qualitySummary.inaccuracyCount}
+                      classifiedMoves={classifiedMoves}
+                    >
+                      <div className="p-2 rounded bg-yellow-500/10 border border-yellow-500/20 cursor-help transition-all hover:bg-yellow-500/15 hover:border-yellow-500/30">
+                        <p className="font-bold text-yellow-400">{qualitySummary.inaccuracyCount}</p>
+                        <p className="text-muted-foreground text-[10px]">Inaccuracy ?!</p>
+                      </div>
+                    </MoveQualityTooltip>
                   )}
                   {qualitySummary.mistakeCount > 0 && (
-                    <div className="p-2 rounded bg-orange-500/10 border border-orange-500/20">
-                      <p className="font-bold text-orange-400">{qualitySummary.mistakeCount}</p>
-                      <p className="text-muted-foreground text-[10px]">Mistake ?</p>
-                    </div>
+                    <MoveQualityTooltip 
+                      quality="mistake" 
+                      count={qualitySummary.mistakeCount}
+                      classifiedMoves={classifiedMoves}
+                    >
+                      <div className="p-2 rounded bg-orange-500/10 border border-orange-500/20 cursor-help transition-all hover:bg-orange-500/15 hover:border-orange-500/30">
+                        <p className="font-bold text-orange-400">{qualitySummary.mistakeCount}</p>
+                        <p className="text-muted-foreground text-[10px]">Mistake ?</p>
+                      </div>
+                    </MoveQualityTooltip>
                   )}
                   {qualitySummary.blunderCount > 0 && (
-                    <div className="p-2 rounded bg-red-500/10 border border-red-500/20">
-                      <p className="font-bold text-red-400">{qualitySummary.blunderCount}</p>
-                      <p className="text-muted-foreground text-[10px]">Blunder ??</p>
-                    </div>
+                    <MoveQualityTooltip 
+                      quality="blunder" 
+                      count={qualitySummary.blunderCount}
+                      classifiedMoves={classifiedMoves}
+                    >
+                      <div className="p-2 rounded bg-red-500/10 border border-red-500/20 cursor-help transition-all hover:bg-red-500/15 hover:border-red-500/30">
+                        <p className="font-bold text-red-400">{qualitySummary.blunderCount}</p>
+                        <p className="text-muted-foreground text-[10px]">Blunder ??</p>
+                      </div>
+                    </MoveQualityTooltip>
                   )}
                 </div>
               )}
               
               {/* Book moves - show if game has opening theory */}
-              {qualitySummary.bookCount > 0 && (
-                <div className="mb-3 p-2 rounded bg-emerald-500/10 border border-emerald-500/20 text-center">
-                  <span className="text-xs text-emerald-400">
-                    📖 {qualitySummary.bookCount} Opening Book Moves
-                  </span>
-                </div>
+              {qualitySummary.bookCount > 0 && openingInfo && (
+                <BookMovesCard count={qualitySummary.bookCount} openingInfo={openingInfo} />
               )}
               
               {/* Tactical event counts */}
