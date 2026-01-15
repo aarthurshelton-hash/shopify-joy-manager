@@ -19,7 +19,9 @@ import {
   Bookmark,
   Check,
   Crown,
-  Camera
+  Camera,
+  Copy,
+  FileText
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
@@ -34,6 +36,7 @@ import QRCode from 'qrcode';
 import { recordVisionInteraction } from '@/lib/visualizations/visionScoring';
 import { VisionaryMembershipCard } from '@/components/premium';
 import AuthModal from '@/components/auth/AuthModal';
+import { getBoardPositionFen, STARTING_FEN } from '@/lib/chess/fenUtils';
 
 interface ExportVisualizationModalProps {
   isOpen: boolean;
@@ -48,6 +51,7 @@ interface ExportVisualizationModalProps {
     totalMoves: number;
   };
   visualizationId?: string; // For tracking downloads
+  pgn?: string; // For FEN export
 }
 
 /**
@@ -61,6 +65,7 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
   blackPalette,
   gameInfo,
   visualizationId,
+  pgn,
 }) => {
   const navigate = useNavigate();
   const { user, isPremium } = useAuth();
@@ -350,6 +355,25 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
               )}
               {isPremium ? 'Download HD' : 'HD Download'}
               {!isPremium && <span className="text-xs opacity-75">Premium</span>}
+            </Button>
+          </div>
+
+          {/* FEN Export Button */}
+          <div className="flex justify-center">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 text-xs"
+              onClick={() => {
+                const fen = pgn ? getBoardPositionFen(pgn, gameInfo.totalMoves) : STARTING_FEN;
+                navigator.clipboard.writeText(fen);
+                toast.success('FEN copied to clipboard!', {
+                  description: 'You can paste this position in any chess software.',
+                });
+              }}
+            >
+              <FileText className="h-3 w-3" />
+              Copy Final Position (FEN)
             </Button>
           </div>
 

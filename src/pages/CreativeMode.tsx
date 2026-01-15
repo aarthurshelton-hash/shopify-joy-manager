@@ -5,7 +5,7 @@ import {
   Wand2, Download, Save, Trash2, 
   RotateCcw, Crown, Lock, Sparkles, Eye, Grid3X3, ArrowLeft,
   Upload, FolderOpen, Palette, Paintbrush, EyeOff, MousePointer2,
-  Undo2, Redo2
+  Undo2, Redo2, FileText, Copy, Check
 } from 'lucide-react';
 import { useUndoRedo, CreativeState } from '@/hooks/useUndoRedo';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -30,6 +30,7 @@ import { useNavigate } from 'react-router-dom';
 import ChessBoardVisualization from '@/components/chess/ChessBoardVisualization';
 import { LayerInspector } from '@/components/chess/LayerInspector';
 import { SimilarityWarning } from '@/components/chess/SimilarityWarning';
+import { validateFen, fenToPieceBoard, EXAMPLE_FENS } from '@/lib/chess/fenUtils';
 
 type PieceKey = 'K' | 'Q' | 'R' | 'B' | 'N' | 'P' | 'k' | 'q' | 'r' | 'b' | 'n' | 'p' | null;
 type EditMode = 'place' | 'paint' | 'erase';
@@ -790,6 +791,70 @@ const CreativeMode = () => {
                     <FolderOpen className="h-4 w-4" />
                     Import Vision
                   </Button>
+                  
+                  {/* FEN Import/Export */}
+                  <div className="space-y-2 p-2 rounded-lg bg-muted/30 border border-border/30">
+                    <label className="text-[10px] text-muted-foreground font-display uppercase tracking-wider flex items-center gap-1">
+                      <FileText className="h-3 w-3" />
+                      FEN Position
+                    </label>
+                    <Input
+                      placeholder="Paste FEN string..."
+                      className="text-xs h-8"
+                      onPaste={(e) => {
+                        const fen = e.clipboardData.getData('text');
+                        const validation = validateFen(fen);
+                        if (validation.isValid && isPremium) {
+                          const newBoard = fenToPieceBoard(fen);
+                          setPieceBoard(newBoard);
+                          setPaintData(new Map());
+                          setMoveCounter(1);
+                          pushState({ pieceBoard: newBoard, paintData: new Map(), moveCounter: 1 });
+                          toast.success('FEN position loaded!');
+                        } else if (!validation.isValid) {
+                          toast.error(validation.error || 'Invalid FEN');
+                        } else if (!isPremium) {
+                          setShowUpgradeModal(true);
+                        }
+                      }}
+                      disabled={!isPremium}
+                    />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full h-7 text-xs gap-1"
+                      onClick={() => {
+                        // Generate FEN from current board
+                        let fenRows: string[] = [];
+                        for (let rank = 0; rank < 8; rank++) {
+                          let row = '';
+                          let emptyCount = 0;
+                          for (let file = 0; file < 8; file++) {
+                            const piece = pieceBoard[rank][file];
+                            if (piece) {
+                              if (emptyCount > 0) {
+                                row += emptyCount;
+                                emptyCount = 0;
+                              }
+                              row += piece;
+                            } else {
+                              emptyCount++;
+                            }
+                          }
+                          if (emptyCount > 0) row += emptyCount;
+                          fenRows.push(row);
+                        }
+                        const fen = fenRows.join('/') + ' w - - 0 1';
+                        navigator.clipboard.writeText(fen);
+                        toast.success('FEN copied to clipboard!');
+                      }}
+                      disabled={!isPremium}
+                    >
+                      <Copy className="h-3 w-3" />
+                      Export FEN
+                    </Button>
+                  </div>
+                  
                   <div className="grid grid-cols-2 gap-2">
                     <Button 
                       variant="outline" 
