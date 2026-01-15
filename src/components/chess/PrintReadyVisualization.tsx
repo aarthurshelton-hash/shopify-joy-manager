@@ -27,6 +27,7 @@ interface EnPensentData {
 // Highlight state for export rendering
 interface HighlightState {
   lockedPieces: Array<{ pieceType: PieceType; pieceColor: PieceColor }>;
+  lockedSquares?: Array<{ square: string; pieces: Array<{ pieceType: PieceType; pieceColor: PieceColor }> }>;
   compareMode: boolean;
 }
 

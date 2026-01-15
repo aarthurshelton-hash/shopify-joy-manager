@@ -6,6 +6,12 @@ export interface HighlightedPiece {
   pieceColor: PieceColor;
 }
 
+// Locked square for persistent highlighting (similar to locked pieces)
+export interface LockedSquare {
+  square: string; // e.g., "e4"
+  pieces: HighlightedPiece[]; // Pieces that visited this square
+}
+
 // For reverse highlighting: hovering a square highlights relevant pieces
 export interface HoveredSquareInfo {
   square: string;
@@ -56,6 +62,7 @@ export interface HoveredMoveInfo {
 interface LegendHighlightContextValue {
   highlightedPiece: HighlightedPiece | null;
   lockedPieces: HighlightedPiece[];
+  lockedSquares: LockedSquare[]; // NEW: Locked squares for persistent highlighting
   compareMode: boolean;
   hoveredSquare: HoveredSquareInfo | null;
   // Annotation highlighting
@@ -68,6 +75,7 @@ interface LegendHighlightContextValue {
   hoveredMove: HoveredMoveInfo | null;
   setHighlightedPiece: (piece: HighlightedPiece | null) => void;
   toggleLockedPiece: (piece: HighlightedPiece) => void;
+  toggleLockedSquare: (square: string, pieces: HighlightedPiece[]) => void; // NEW
   toggleCompareMode: () => void;
   clearLock: () => void;
   setHoveredSquare: (info: HoveredSquareInfo | null) => void;
@@ -87,16 +95,19 @@ const LegendHighlightContext = createContext<LegendHighlightContextValue | undef
 interface LegendHighlightProviderProps {
   children: ReactNode;
   initialLockedPieces?: HighlightedPiece[];
+  initialLockedSquares?: LockedSquare[];
   initialCompareMode?: boolean;
 }
 
 export function LegendHighlightProvider({ 
   children, 
-  initialLockedPieces, 
+  initialLockedPieces,
+  initialLockedSquares, 
   initialCompareMode 
 }: LegendHighlightProviderProps) {
   const [highlightedPiece, setHighlightedPieceState] = useState<HighlightedPiece | null>(null);
   const [lockedPieces, setLockedPieces] = useState<HighlightedPiece[]>(initialLockedPieces ?? []);
+  const [lockedSquares, setLockedSquares] = useState<LockedSquare[]>(initialLockedSquares ?? []);
   const [compareMode, setCompareMode] = useState(initialCompareMode ?? false);
   const [hoveredSquare, setHoveredSquareState] = useState<HoveredSquareInfo | null>(null);
   const [hoveredAnnotation, setHoveredAnnotationState] = useState<HoveredAnnotation | null>(null);
@@ -180,6 +191,21 @@ export function LegendHighlightProvider({
     });
   }, [compareMode]);
 
+  // Toggle locked square - click to lock, click again to unlock
+  const toggleLockedSquare = useCallback((square: string, pieces: HighlightedPiece[]) => {
+    setLockedSquares(prev => {
+      const existingIndex = prev.findIndex(s => s.square === square);
+      
+      if (existingIndex !== -1) {
+        // Remove if already locked
+        return prev.filter((_, i) => i !== existingIndex);
+      }
+      
+      // Add new locked square (allow multiple squares)
+      return [...prev, { square, pieces }];
+    });
+  }, []);
+
   const toggleCompareMode = useCallback(() => {
     setCompareMode(prev => {
       if (prev) {
@@ -192,6 +218,7 @@ export function LegendHighlightProvider({
 
   const clearLock = useCallback(() => {
     setLockedPieces([]);
+    setLockedSquares([]);
     setHighlightedAnnotationsState([]);
     setFollowPieceDataState(null);
     setPieceArrowsState([]);
@@ -201,6 +228,7 @@ export function LegendHighlightProvider({
     <LegendHighlightContext.Provider value={{ 
       highlightedPiece: lockedPieces.length > 0 ? null : highlightedPiece, 
       lockedPieces,
+      lockedSquares,
       compareMode,
       hoveredSquare,
       hoveredAnnotation,
@@ -210,6 +238,7 @@ export function LegendHighlightProvider({
       hoveredMove,
       setHighlightedPiece, 
       toggleLockedPiece,
+      toggleLockedSquare,
       toggleCompareMode,
       clearLock,
       setHoveredSquare,
