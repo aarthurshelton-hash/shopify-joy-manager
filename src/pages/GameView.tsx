@@ -656,6 +656,9 @@ const GameView = () => {
               context={sourceContext.source || 'shared'}
               paletteId={activePaletteId}
               visualizationId={primaryVision?.id}
+              isPremium={isPremium}
+              onUpgradePrompt={() => setShowVisionaryModal(true)}
+              isOwner={primaryVision?.user_id === user?.id}
               visionScoreData={visionScore ? {
                 viewCount: visionScore.viewCount,
                 uniqueViewers: visionScore.uniqueViewers,

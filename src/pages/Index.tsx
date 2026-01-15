@@ -864,6 +864,8 @@ const Index = () => {
                       darkMode: exportState.darkMode,
                       showTerritory: false,
                       showHeatmaps: false,
+                      showPieces: exportState.showPieces,
+                      pieceOpacity: exportState.pieceOpacity,
                       capturedAt: new Date(),
                     } : undefined,
                   });

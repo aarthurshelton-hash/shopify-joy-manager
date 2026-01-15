@@ -389,6 +389,7 @@ const VisualizationView = () => {
         visualizationId: visualization.id,
         title: visualization.title,
         imagePath: visualization.image_path,
+        pgn: visualization.pgn || '', // Include PGN for piece rendering
         gameData: {
           white: gameData.white,
           black: gameData.black,
@@ -408,6 +409,8 @@ const VisualizationView = () => {
           darkMode: exportState.darkMode,
           showTerritory: false,
           showHeatmaps: false,
+          showPieces: exportState.showPieces,
+          pieceOpacity: exportState.pieceOpacity,
           capturedAt: new Date(),
         } : undefined,
       };
