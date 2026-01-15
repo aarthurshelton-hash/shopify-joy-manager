@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Crown, Mail, Globe, Phone, Linkedin, X, Download, Share2, Copy, Check } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { X, Download, Share2, Copy, Check } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 
 interface CEOBusinessCardProps {
   isOpen: boolean;
@@ -12,19 +11,20 @@ interface CEOBusinessCardProps {
 }
 
 const CEOBusinessCard: React.FC<CEOBusinessCardProps> = ({ isOpen, onClose }) => {
-  const [isFlipped, setIsFlipped] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
 
   const ceoInfo = {
-    name: 'Alec Arthur Shelton',
-    title: 'Founder & Chief Executive Officer',
+    phone: '212 555 3287',
     company: 'En Pensent',
-    tagline: 'Chess Art Prints',
+    companyTagline: 'Chess Art Prints',
+    firstName: 'Alec',
+    lastName: 'SHELTON',
+    title: 'Chief Executive Officer',
+    address: '358 Exchange Place, New York, N.Y. 10099',
+    fax: '212 555 6390',
+    telex: '10 4534',
     email: 'ceo@enpensent.com',
     website: 'www.enpensent.com',
-    phone: '+1 (555) EP-CHESS',
-    linkedin: 'linkedin.com/in/alec-shelton',
-    motto: '"Transforming Chess History Into Art"',
   };
 
   const handleCopy = async (text: string, label: string) => {
@@ -43,33 +43,26 @@ const CEOBusinessCard: React.FC<CEOBusinessCardProps> = ({ isOpen, onClose }) =>
 VERSION:3.0
 N:Shelton;Alec;Arthur;;
 FN:Alec Arthur Shelton
-TITLE:Founder & Chief Executive Officer
+TITLE:Chief Executive Officer
 ORG:En Pensent
 EMAIL:ceo@enpensent.com
 URL:https://www.enpensent.com
-NOTE:${ceoInfo.motto}
+TEL:+1 212 555 3287
+ADR:;;358 Exchange Place;New York;N.Y.;10099;USA
 END:VCARD`;
 
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'Alec Arthur Shelton - CEO, En Pensent',
-          text: `${ceoInfo.name}\n${ceoInfo.title}\n${ceoInfo.company}\n${ceoInfo.email}`,
+          title: 'Alec Shelton - CEO, En Pensent',
+          text: `${ceoInfo.firstName} ${ceoInfo.lastName}\n${ceoInfo.title}\n${ceoInfo.company}\n${ceoInfo.email}`,
           url: `https://${ceoInfo.website}`,
         });
       } catch {
-        // User cancelled or share failed
+        // User cancelled
       }
     } else {
-      // Fallback: download vCard
-      const blob = new Blob([vCardData], { type: 'text/vcard' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'alec-shelton-ceo.vcf';
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success('Contact card downloaded');
+      handleDownload();
     }
   };
 
@@ -78,11 +71,12 @@ END:VCARD`;
 VERSION:3.0
 N:Shelton;Alec;Arthur;;
 FN:Alec Arthur Shelton
-TITLE:Founder & Chief Executive Officer
+TITLE:Chief Executive Officer
 ORG:En Pensent
 EMAIL:ceo@enpensent.com
 URL:https://www.enpensent.com
-NOTE:${ceoInfo.motto}
+TEL:+1 212 555 3287
+ADR:;;358 Exchange Place;New York;N.Y.;10099;USA
 END:VCARD`;
 
     const blob = new Blob([vCardData], { type: 'text/vcard' });
@@ -103,176 +97,123 @@ END:VCARD`;
         </DialogHeader>
         
         <div className="relative">
-          {/* Card Container with 3D perspective */}
-          <div 
-            className="relative w-full aspect-[1.75/1] cursor-pointer perspective-1000"
-            onClick={() => setIsFlipped(!isFlipped)}
-            style={{ perspective: '1000px' }}
+          {/* Traditional Business Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: 'easeOut' }}
+            className="relative w-full aspect-[1.75/1] rounded-sm overflow-hidden shadow-2xl"
+            style={{
+              background: 'linear-gradient(135deg, #faf9f7 0%, #f5f4f0 50%, #ebe9e4 100%)',
+            }}
           >
-            <AnimatePresence mode="wait">
-              {!isFlipped ? (
-                /* Front of Card */
-                <motion.div
-                  key="front"
-                  initial={{ rotateY: 180, opacity: 0 }}
-                  animate={{ rotateY: 0, opacity: 1 }}
-                  exit={{ rotateY: -180, opacity: 0 }}
-                  transition={{ duration: 0.6, ease: 'easeInOut' }}
-                  className="absolute inset-0 rounded-2xl overflow-hidden"
-                  style={{ backfaceVisibility: 'hidden' }}
+            {/* Subtle paper texture overlay */}
+            <div 
+              className="absolute inset-0 opacity-30 pointer-events-none"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23noise)' opacity='0.08'/%3E%3C/svg%3E")`,
+              }}
+            />
+            
+            {/* Card Content - Traditional Layout */}
+            <div className="relative h-full px-8 sm:px-10 py-6 sm:py-8 flex flex-col justify-between select-none">
+              
+              {/* Top Row - Phone & Company */}
+              <div className="flex justify-between items-start">
+                {/* Phone - Top Left */}
+                <button 
+                  onClick={() => handleCopy(ceoInfo.phone, 'Phone')}
+                  className="text-[11px] sm:text-xs tracking-[0.15em] text-stone-600 hover:text-stone-900 transition-colors font-light"
+                  style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
                 >
-                  {/* Premium dark gradient background */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900" />
-                  
-                  {/* Gold foil accent */}
-                  <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400" />
-                  
-                  {/* Subtle pattern overlay */}
-                  <div className="absolute inset-0 opacity-5">
-                    <div className="absolute inset-0" style={{
-                      backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-                    }} />
-                  </div>
-                  
-                  {/* Card Content */}
-                  <div className="relative h-full p-6 sm:p-8 flex flex-col justify-between">
-                    {/* Top section - Logo and company */}
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        <img 
-                          src={enPensentLogo} 
-                          alt="En Pensent" 
-                          className="w-12 h-12 sm:w-14 sm:h-14 rounded-full object-cover ring-2 ring-amber-400/50 shadow-lg shadow-amber-400/20"
-                        />
-                        <div>
-                          <h3 className="text-lg sm:text-xl font-royal font-bold tracking-wider text-amber-400 uppercase">
-                            En Pensent
-                          </h3>
-                          <p className="text-[10px] sm:text-xs uppercase tracking-[0.2em] text-slate-400">
-                            {ceoInfo.tagline}
-                          </p>
-                        </div>
-                      </div>
-                      <Crown className="h-6 w-6 sm:h-8 sm:w-8 text-amber-400/80" />
-                    </div>
-                    
-                    {/* Bottom section - Name and title */}
-                    <div>
-                      <h2 className="text-2xl sm:text-3xl font-royal font-bold text-white tracking-wide mb-1">
-                        {ceoInfo.name}
-                      </h2>
-                      <p className="text-sm sm:text-base text-amber-400/90 font-medium tracking-wide">
-                        {ceoInfo.title}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {/* Flip hint */}
-                  <div className="absolute bottom-3 right-3 text-[10px] text-slate-500 flex items-center gap-1">
-                    <span>Tap to flip</span>
-                    <motion.div
-                      animate={{ rotateY: [0, 180, 360] }}
-                      transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
-                    >
-                      ↺
-                    </motion.div>
-                  </div>
-                </motion.div>
-              ) : (
-                /* Back of Card */
-                <motion.div
-                  key="back"
-                  initial={{ rotateY: -180, opacity: 0 }}
-                  animate={{ rotateY: 0, opacity: 1 }}
-                  exit={{ rotateY: 180, opacity: 0 }}
-                  transition={{ duration: 0.6, ease: 'easeInOut' }}
-                  className="absolute inset-0 rounded-2xl overflow-hidden"
-                  style={{ backfaceVisibility: 'hidden' }}
+                  {ceoInfo.phone}
+                  {copied === 'Phone' && <Check className="inline h-3 w-3 ml-1 text-green-600" />}
+                </button>
+                
+                {/* Company - Top Right */}
+                <div className="text-right">
+                  <p 
+                    className="text-[11px] sm:text-xs tracking-[0.2em] uppercase text-stone-700 font-medium"
+                    style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
+                  >
+                    {ceoInfo.company}
+                  </p>
+                  <p 
+                    className="text-[9px] sm:text-[10px] tracking-[0.18em] uppercase text-stone-500 font-light"
+                    style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
+                  >
+                    {ceoInfo.companyTagline}
+                  </p>
+                </div>
+              </div>
+              
+              {/* Center - Name & Title */}
+              <div className="text-center -mt-2">
+                <h2 
+                  className="text-lg sm:text-xl tracking-[0.25em] text-stone-800"
+                  style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
                 >
-                  {/* Back gradient */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-amber-50 via-white to-amber-50" />
-                  
-                  {/* Gold accent bottom */}
-                  <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400" />
-                  
-                  {/* Card Content */}
-                  <div className="relative h-full p-6 sm:p-8 flex flex-col justify-between">
-                    {/* Contact details */}
-                    <div className="space-y-3">
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); handleCopy(ceoInfo.email, 'Email'); }}
-                        className="flex items-center gap-3 text-slate-700 hover:text-amber-600 transition-colors group w-full text-left"
-                      >
-                        <Mail className="h-4 w-4 text-amber-500" />
-                        <span className="text-sm sm:text-base">{ceoInfo.email}</span>
-                        {copied === 'Email' ? (
-                          <Check className="h-3 w-3 ml-auto text-green-500" />
-                        ) : (
-                          <Copy className="h-3 w-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
-                        )}
-                      </button>
-                      
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); handleCopy(`https://${ceoInfo.website}`, 'Website'); }}
-                        className="flex items-center gap-3 text-slate-700 hover:text-amber-600 transition-colors group w-full text-left"
-                      >
-                        <Globe className="h-4 w-4 text-amber-500" />
-                        <span className="text-sm sm:text-base">{ceoInfo.website}</span>
-                        {copied === 'Website' ? (
-                          <Check className="h-3 w-3 ml-auto text-green-500" />
-                        ) : (
-                          <Copy className="h-3 w-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
-                        )}
-                      </button>
-                      
-                      <div className="flex items-center gap-3 text-slate-700">
-                        <Phone className="h-4 w-4 text-amber-500" />
-                        <span className="text-sm sm:text-base">{ceoInfo.phone}</span>
-                      </div>
-                      
-                      <div className="flex items-center gap-3 text-slate-700">
-                        <Linkedin className="h-4 w-4 text-amber-500" />
-                        <span className="text-sm sm:text-base">{ceoInfo.linkedin}</span>
-                      </div>
-                    </div>
-                    
-                    {/* Motto */}
-                    <p className="text-center text-sm sm:text-base italic text-slate-600 border-t border-amber-200 pt-4">
-                      {ceoInfo.motto}
-                    </p>
-                  </div>
-                  
-                  {/* Flip hint */}
-                  <div className="absolute bottom-3 right-3 text-[10px] text-slate-400 flex items-center gap-1">
-                    <span>Tap to flip</span>
-                    <motion.div
-                      animate={{ rotateY: [0, 180, 360] }}
-                      transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
-                    >
-                      ↺
-                    </motion.div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+                  <span className="font-normal">{ceoInfo.firstName}</span>
+                  {' '}
+                  <span className="font-medium uppercase tracking-[0.3em]">{ceoInfo.lastName}</span>
+                </h2>
+                <p 
+                  className="text-[10px] sm:text-xs tracking-[0.2em] uppercase text-stone-500 mt-1 font-light italic"
+                  style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
+                >
+                  {ceoInfo.title}
+                </p>
+              </div>
+              
+              {/* Bottom Row - Address & Details */}
+              <div className="text-center">
+                <p 
+                  className="text-[9px] sm:text-[10px] tracking-[0.1em] text-stone-500 font-light"
+                  style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
+                >
+                  <span>{ceoInfo.address}</span>
+                  <span className="mx-2 sm:mx-3">·</span>
+                  <span>Fax {ceoInfo.fax}</span>
+                  <span className="mx-2 sm:mx-3">·</span>
+                  <span>Telex {ceoInfo.telex}</span>
+                </p>
+              </div>
+            </div>
+            
+            {/* Subtle embossed edge effect */}
+            <div className="absolute inset-0 pointer-events-none border border-stone-200/50 rounded-sm" />
+          </motion.div>
           
           {/* Action buttons */}
-          <div className="flex items-center justify-center gap-3 mt-4">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="flex items-center justify-center gap-3 mt-5"
+          >
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleCopy(ceoInfo.email, 'Email')}
+              className="gap-2 bg-background/90 backdrop-blur border-border text-xs"
+            >
+              {copied === 'Email' ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
+              {ceoInfo.email}
+            </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={handleDownload}
-              className="gap-2 bg-background/80 backdrop-blur border-border"
+              className="gap-2 bg-background/90 backdrop-blur border-border"
             >
               <Download className="h-4 w-4" />
-              Save Contact
+              Save
             </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={handleShare}
-              className="gap-2 bg-background/80 backdrop-blur border-border"
+              className="gap-2 bg-background/90 backdrop-blur border-border"
             >
               <Share2 className="h-4 w-4" />
               Share
@@ -281,11 +222,11 @@ END:VCARD`;
               variant="ghost"
               size="icon"
               onClick={onClose}
-              className="bg-background/80 backdrop-blur"
+              className="bg-background/80 backdrop-blur h-8 w-8"
             >
               <X className="h-4 w-4" />
             </Button>
-          </div>
+          </motion.div>
         </div>
       </DialogContent>
     </Dialog>
