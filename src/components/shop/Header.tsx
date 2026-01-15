@@ -36,8 +36,11 @@ export const Header = () => {
     }
   };
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/85 isolate">
-      <div className="container flex h-16 sm:h-18 md:h-20 items-center justify-between relative z-10">
+    <header 
+      className="sticky top-0 w-full border-b border-border/40 bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/85"
+      style={{ zIndex: 9999, position: 'sticky', isolation: 'isolate' }}
+    >
+      <div className="container flex h-16 sm:h-18 md:h-20 items-center justify-between relative">
         {/* Left side - Logo and navigation */}
         <div className="flex items-center gap-4 md:gap-8">
           {/* Logo link to homepage */}
