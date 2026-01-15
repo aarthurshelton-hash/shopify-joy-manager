@@ -1,6 +1,7 @@
 import { Chess, Square, Move } from 'chess.js';
+import { getStockfishEngine } from '@/lib/chess/stockfishEngine';
 
-export type BotDifficulty = 'easy' | 'medium' | 'hard';
+export type BotDifficulty = 'easy' | 'medium' | 'hard' | 'stockfish';
 
 interface EvaluationResult {
   score: number;
@@ -270,6 +271,43 @@ function getHardMove(game: Chess): Move | null {
   return result.move;
 }
 
+// Get Stockfish-powered move (real engine analysis)
+async function getStockfishMove(game: Chess): Promise<Move | null> {
+  try {
+    const engine = getStockfishEngine();
+    const ready = await engine.waitReady();
+    
+    if (!ready) {
+      console.warn('Stockfish not ready, falling back to hard mode');
+      return getHardMove(game);
+    }
+    
+    const analysis = await engine.analyzePosition(game.fen(), { depth: 18, movetime: 1500 });
+    const bestMoveUci = analysis.bestMove;
+    
+    if (!bestMoveUci) {
+      return getHardMove(game);
+    }
+    
+    // Convert UCI to move object
+    const from = bestMoveUci.slice(0, 2) as Square;
+    const to = bestMoveUci.slice(2, 4) as Square;
+    const promotion = bestMoveUci.length > 4 ? bestMoveUci[4] : undefined;
+    
+    const moves = game.moves({ verbose: true });
+    const move = moves.find(m => 
+      m.from === from && 
+      m.to === to && 
+      (!promotion || m.promotion === promotion)
+    );
+    
+    return move || getHardMove(game);
+  } catch (e) {
+    console.error('Stockfish move error:', e);
+    return getHardMove(game);
+  }
+}
+
 // Main bot move function
 export function getBotMove(game: Chess, difficulty: BotDifficulty): Move | null {
   switch (difficulty) {
@@ -279,9 +317,20 @@ export function getBotMove(game: Chess, difficulty: BotDifficulty): Move | null 
       return getMediumMove(game);
     case 'hard':
       return getHardMove(game);
+    case 'stockfish':
+      // For sync API, fall back to hard - use getBotMoveAsync for Stockfish
+      return getHardMove(game);
     default:
       return getRandomMove(game);
   }
+}
+
+// Async bot move function (supports Stockfish)
+export async function getBotMoveAsync(game: Chess, difficulty: BotDifficulty): Promise<Move | null> {
+  if (difficulty === 'stockfish') {
+    return getStockfishMove(game);
+  }
+  return getBotMove(game, difficulty);
 }
 
 // Get thinking delay based on difficulty (for UX)
@@ -293,14 +342,17 @@ export function getBotThinkingDelay(difficulty: BotDifficulty): number {
       return 500 + Math.random() * 1000; // 500-1500ms
     case 'hard':
       return 800 + Math.random() * 1500; // 800-2300ms
+    case 'stockfish':
+      return 100; // Minimal delay, engine takes time itself
     default:
       return 500;
   }
 }
 
 // Difficulty descriptions
-export const BOT_DIFFICULTIES: { id: BotDifficulty; label: string; description: string; rating: string }[] = [
+export const BOT_DIFFICULTIES: { id: BotDifficulty; label: string; description: string; rating: string; enginePowered?: boolean }[] = [
   { id: 'easy', label: 'Beginner', description: 'Makes random moves, occasional captures', rating: '~800' },
   { id: 'medium', label: 'Club Player', description: 'Basic tactics and material awareness', rating: '~1400' },
   { id: 'hard', label: 'Master', description: 'Advanced evaluation, 4-ply search depth', rating: '~2000' },
+  { id: 'stockfish', label: 'Stockfish 16', description: 'Real NNUE engine, grandmaster strength', rating: '~3200', enginePowered: true },
 ];
