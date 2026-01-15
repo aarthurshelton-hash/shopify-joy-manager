@@ -155,6 +155,7 @@ export interface UnifiedVisionExperienceProps {
     totalScore: number;
     downloadHdCount: number;
     downloadGifCount: number;
+    scanCount?: number;
     tradeCount: number;
   } | null;
   
@@ -1081,6 +1082,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
       uniqueViewers: visionScoreData.uniqueViewers,
       downloadHdCount: visionScoreData.downloadHdCount,
       downloadGifCount: visionScoreData.downloadGifCount,
+      scanCount: visionScoreData.scanCount || 0,
       printOrderCount: visionScoreData.printOrderCount,
       printRevenueCents: visionScoreData.printRevenueCents,
       tradeCount: visionScoreData.tradeCount,

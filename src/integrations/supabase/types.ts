@@ -1535,6 +1535,7 @@ export type Database = {
           print_revenue_cents: number
           royalty_cents_earned: number
           royalty_orders_count: number
+          scan_count: number
           total_score: number
           trade_count: number
           unique_viewers: number
@@ -1550,6 +1551,7 @@ export type Database = {
           print_revenue_cents?: number
           royalty_cents_earned?: number
           royalty_orders_count?: number
+          scan_count?: number
           total_score?: number
           trade_count?: number
           unique_viewers?: number
@@ -1565,6 +1567,7 @@ export type Database = {
           print_revenue_cents?: number
           royalty_cents_earned?: number
           royalty_orders_count?: number
+          scan_count?: number
           total_score?: number
           trade_count?: number
           unique_viewers?: number
@@ -1784,17 +1787,30 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: number
       }
-      calculate_vision_score: {
-        Args: {
-          p_download_gif_count: number
-          p_download_hd_count: number
-          p_print_order_count: number
-          p_print_revenue_cents: number
-          p_trade_count: number
-          p_view_count: number
-        }
-        Returns: number
-      }
+      calculate_vision_score:
+        | {
+            Args: {
+              p_download_gif_count: number
+              p_download_hd_count: number
+              p_print_order_count: number
+              p_print_revenue_cents: number
+              p_trade_count: number
+              p_view_count: number
+            }
+            Returns: number
+          }
+        | {
+            Args: {
+              p_download_gif_count: number
+              p_download_hd_count: number
+              p_print_order_count: number
+              p_print_revenue_cents: number
+              p_scan_count?: number
+              p_trade_count: number
+              p_view_count: number
+            }
+            Returns: number
+          }
       can_transfer_visualization: {
         Args: { p_visualization_id: string }
         Returns: boolean
@@ -1954,9 +1970,9 @@ export type Database = {
       }
       record_vision_interaction: {
         Args: {
-          p_interaction_type: string
+          p_interaction_type?: string
           p_ip_hash?: string
-          p_user_id: string
+          p_user_id?: string
           p_value_cents?: number
           p_visualization_id: string
         }
