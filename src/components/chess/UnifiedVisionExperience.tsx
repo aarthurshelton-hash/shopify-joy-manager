@@ -179,6 +179,17 @@ const TimelineBoard: React.FC<{
 }> = ({ board, totalMoves, size, gameData, darkMode = false, title, showCoordinates = false, showPieces = false, pieceOpacity = 0.7, pgn }) => {
   const { currentMove, setCurrentMove } = useTimeline();
   
+  // Ensure PGN is available - prefer prop, fallback to gameData.pgn
+  const effectivePgnForBoard = useMemo(() => {
+    if (pgn && typeof pgn === 'string' && pgn.trim().length > 0) {
+      return pgn.trim();
+    }
+    if (gameData?.pgn && typeof gameData.pgn === 'string' && gameData.pgn.trim().length > 0) {
+      return gameData.pgn.trim();
+    }
+    return '';
+  }, [pgn, gameData?.pgn]);
+  
   const filteredBoard = useMemo(() => {
     if (currentMove >= totalMoves) return board;
     return board.map(rank =>
@@ -223,7 +234,7 @@ const TimelineBoard: React.FC<{
           size={size}
           showPieces={showPieces}
           pieceOpacity={pieceOpacity}
-          pgn={pgn}
+          pgn={effectivePgnForBoard}
           currentMoveNumber={currentMove}
           onFollowPieceActivated={handleFollowPieceActivated}
         />
@@ -1153,8 +1164,21 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
     
     for (const source of sources) {
       if (source && typeof source === 'string' && source.trim().length > 0) {
-        return source;
+        const trimmed = source.trim();
+        // Additional validation: ensure it's not just whitespace or invalid
+        if (trimmed.length >= 2) {
+          return trimmed;
+        }
       }
+    }
+    
+    // Debug: Log when no PGN is found
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('[UnifiedVisionExperience] No valid PGN found from sources:', {
+        propPgn: typeof pgn === 'string' ? `${pgn?.slice(0, 50)}...` : typeof pgn,
+        localPgn: typeof localGameData?.pgn === 'string' ? `${localGameData?.pgn?.slice(0, 50)}...` : typeof localGameData?.pgn,
+        gameDataPgn: typeof gameData?.pgn === 'string' ? `${gameData?.pgn?.slice(0, 50)}...` : typeof gameData?.pgn,
+      });
     }
     
     return '';
