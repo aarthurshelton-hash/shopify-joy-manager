@@ -244,6 +244,57 @@ export type Database = {
           },
         ]
       }
+      client_errors: {
+        Row: {
+          component_name: string | null
+          created_at: string | null
+          error_message: string
+          error_stack: string | null
+          error_type: string | null
+          first_occurred_at: string | null
+          id: string
+          last_occurred_at: string | null
+          metadata: Json | null
+          occurrence_count: number | null
+          resolved_at: string | null
+          url: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          component_name?: string | null
+          created_at?: string | null
+          error_message: string
+          error_stack?: string | null
+          error_type?: string | null
+          first_occurred_at?: string | null
+          id?: string
+          last_occurred_at?: string | null
+          metadata?: Json | null
+          occurrence_count?: number | null
+          resolved_at?: string | null
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          component_name?: string | null
+          created_at?: string | null
+          error_message?: string
+          error_stack?: string | null
+          error_type?: string | null
+          first_occurred_at?: string | null
+          id?: string
+          last_occurred_at?: string | null
+          metadata?: Json | null
+          occurrence_count?: number | null
+          resolved_at?: string | null
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       creative_designs: {
         Row: {
           created_at: string
@@ -1255,6 +1306,42 @@ export type Database = {
         }
         Relationships: []
       }
+      system_health_checks: {
+        Row: {
+          check_type: string
+          completed_at: string | null
+          created_at: string | null
+          details: Json | null
+          id: string
+          issues_fixed: number | null
+          issues_found: number | null
+          started_at: string | null
+          status: string
+        }
+        Insert: {
+          check_type: string
+          completed_at?: string | null
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          issues_fixed?: number | null
+          issues_found?: number | null
+          started_at?: string | null
+          status?: string
+        }
+        Update: {
+          check_type?: string
+          completed_at?: string | null
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          issues_fixed?: number | null
+          issues_found?: number | null
+          started_at?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       testimonials: {
         Row: {
           created_at: string
@@ -1851,6 +1938,7 @@ export type Database = {
           visualization_id: string
         }[]
       }
+      get_error_summary: { Args: { p_days?: number }; Returns: Json }
       get_funnel_stats: {
         Args: { days_back?: number }
         Returns: {
@@ -2004,8 +2092,21 @@ export type Database = {
           released_count: number
         }[]
       }
+      report_client_error: {
+        Args: {
+          p_component_name?: string
+          p_error_message: string
+          p_error_stack?: string
+          p_error_type?: string
+          p_metadata?: Json
+          p_url?: string
+          p_user_agent?: string
+        }
+        Returns: string
+      }
       snapshot_daily_financials: { Args: never; Returns: undefined }
       update_scan_streak: { Args: { p_user_id: string }; Returns: Json }
+      validate_and_fix_data_integrity: { Args: never; Returns: Json }
       validate_withdrawal_request: {
         Args: { p_amount_cents: number; p_user_id: string }
         Returns: {

@@ -23,7 +23,8 @@ import {
   Clock,
   DollarSign,
   Image,
-  Wrench
+  Wrench,
+  HeartPulse
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -45,6 +46,7 @@ import { AdminOrdersPanel } from '@/components/admin/AdminOrdersPanel';
 import { AdminSubscriptionsPanel } from '@/components/admin/AdminSubscriptionsPanel';
 import { AdminActivityFeed } from '@/components/admin/AdminActivityFeed';
 import { AdminMaintenancePanel } from '@/components/admin/AdminMaintenancePanel';
+import { AdminHealthPanel } from '@/components/admin/AdminHealthPanel';
 
 const AdminCEODashboard: React.FC = () => {
   const { user, isLoading: authLoading } = useAuth();
@@ -235,7 +237,7 @@ const AdminCEODashboard: React.FC = () => {
 
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7">
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="users" className="gap-2">
               <Users className="h-4 w-4" />
               <span className="hidden sm:inline">Users</span>
@@ -263,6 +265,10 @@ const AdminCEODashboard: React.FC = () => {
             <TabsTrigger value="maintenance" className="gap-2">
               <Wrench className="h-4 w-4" />
               <span className="hidden sm:inline">Maint.</span>
+            </TabsTrigger>
+            <TabsTrigger value="health" className="gap-2">
+              <HeartPulse className="h-4 w-4" />
+              <span className="hidden sm:inline">Health</span>
             </TabsTrigger>
           </TabsList>
 
@@ -296,6 +302,10 @@ const AdminCEODashboard: React.FC = () => {
 
           <TabsContent value="maintenance">
             <AdminMaintenancePanel />
+          </TabsContent>
+
+          <TabsContent value="health">
+            <AdminHealthPanel />
           </TabsContent>
         </Tabs>
 
