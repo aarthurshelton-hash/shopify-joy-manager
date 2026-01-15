@@ -163,6 +163,14 @@ export const RATE_LIMITS = {
   
   // Public endpoints
   publicView: { maxRequests: 200, windowSeconds: 60 },
+  
+  // Marketplace operations
+  listing: { maxRequests: 15, windowSeconds: 60 },
+  offer: { maxRequests: 20, windowSeconds: 60 },
+  
+  // Vision operations
+  save: { maxRequests: 10, windowSeconds: 60 },
+  scan: { maxRequests: 30, windowSeconds: 60 },
 } as const;
 
 /**

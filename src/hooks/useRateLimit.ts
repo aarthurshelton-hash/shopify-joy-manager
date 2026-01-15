@@ -127,3 +127,31 @@ export function useUploadRateLimit() {
     ...RATE_LIMITS.upload,
   });
 }
+
+export function useListingRateLimit() {
+  return useRateLimit({
+    endpoint: 'listing',
+    ...RATE_LIMITS.listing,
+  });
+}
+
+export function useSaveRateLimit() {
+  return useRateLimit({
+    endpoint: 'save',
+    ...RATE_LIMITS.save,
+  });
+}
+
+export function useOfferRateLimit() {
+  return useRateLimit({
+    endpoint: 'offer',
+    ...RATE_LIMITS.offer,
+  });
+}
+
+export function useScanRateLimit() {
+  return useRateLimit({
+    endpoint: 'scan',
+    ...RATE_LIMITS.scan,
+  });
+}
