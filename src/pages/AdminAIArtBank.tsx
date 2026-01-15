@@ -27,6 +27,24 @@ import {
 // Import AI art assets
 import uploadSectionHero from '@/assets/ai-art/upload-section-hero.jpg';
 
+// Import palette art assets
+import artdecoArt from '@/assets/palettes/artdeco.jpg';
+import autumnArt from '@/assets/palettes/autumn.jpg';
+import cosmicArt from '@/assets/palettes/cosmic.jpg';
+import cyberpunkArt from '@/assets/palettes/cyberpunk.jpg';
+import desertArt from '@/assets/palettes/desert.jpg';
+import egyptianArt from '@/assets/palettes/egyptian.jpg';
+import greyscaleArt from '@/assets/palettes/greyscale.jpg';
+import hotcoldArt from '@/assets/palettes/hotcold.jpg';
+import japaneseArt from '@/assets/palettes/japanese.jpg';
+import medievalArt from '@/assets/palettes/medieval.jpg';
+import modernArt from '@/assets/palettes/modern.jpg';
+import nordicArt from '@/assets/palettes/nordic.jpg';
+import oceanArt from '@/assets/palettes/ocean.jpg';
+import romanArt from '@/assets/palettes/roman.jpg';
+import tropicalArt from '@/assets/palettes/tropical.jpg';
+import vintageArt from '@/assets/palettes/vintage.jpg';
+
 interface AIArtItem {
   id: string;
   title: string;
@@ -40,6 +58,170 @@ interface AIArtItem {
   created_at: string;
   created_by: string | null;
 }
+
+// Palette art entries for color themes
+const PALETTE_ART_ENTRIES: Omit<AIArtItem, 'id' | 'created_at' | 'created_by'>[] = [
+  {
+    title: 'Hot & Cold',
+    description: 'Fire and ice theme representing the eternal battle between warmth and cool tones',
+    image_path: hotcoldArt,
+    prompt: 'Fire and ice chess theme, flames and frost merging',
+    category: 'palette',
+    tags: ['hot', 'cold', 'fire', 'ice', 'temperature'],
+    is_active: true,
+    usage_locations: ['Palette Selector', 'Creative Mode'],
+  },
+  {
+    title: 'Medieval',
+    description: 'Castle walls and armored knights in a medieval kingdom setting',
+    image_path: medievalArt,
+    prompt: 'Medieval castle and knights, royal chess atmosphere',
+    category: 'palette',
+    tags: ['medieval', 'castle', 'knights', 'kingdom', 'royal'],
+    is_active: true,
+    usage_locations: ['Palette Selector', 'Creative Mode'],
+  },
+  {
+    title: 'Egyptian',
+    description: 'Ancient pyramids and pharaohs in the golden sands of Egypt',
+    image_path: egyptianArt,
+    prompt: 'Egyptian pyramids and pharaohs, golden desert chess',
+    category: 'palette',
+    tags: ['egyptian', 'pyramid', 'pharaoh', 'gold', 'desert'],
+    is_active: true,
+    usage_locations: ['Palette Selector', 'Creative Mode'],
+  },
+  {
+    title: 'Roman Empire',
+    description: 'Gladiators and emperors in the grandeur of ancient Rome',
+    image_path: romanArt,
+    prompt: 'Roman colosseum and gladiators, imperial chess',
+    category: 'palette',
+    tags: ['roman', 'empire', 'gladiator', 'colosseum', 'ancient'],
+    is_active: true,
+    usage_locations: ['Palette Selector', 'Creative Mode'],
+  },
+  {
+    title: 'Modern',
+    description: 'Clean contemporary aesthetics with sleek geometric design',
+    image_path: modernArt,
+    prompt: 'Modern minimalist chess, clean geometric design',
+    category: 'palette',
+    tags: ['modern', 'minimalist', 'geometric', 'clean', 'contemporary'],
+    is_active: true,
+    usage_locations: ['Palette Selector', 'Creative Mode'],
+  },
+  {
+    title: 'Greyscale',
+    description: 'Timeless black and white photography aesthetic',
+    image_path: greyscaleArt,
+    prompt: 'Black and white chess, classic monochrome photography',
+    category: 'palette',
+    tags: ['greyscale', 'monochrome', 'black', 'white', 'classic'],
+    is_active: true,
+    usage_locations: ['Palette Selector', 'Creative Mode'],
+  },
+  {
+    title: 'Japanese',
+    description: 'Cherry blossoms and samurai in traditional Japanese aesthetics',
+    image_path: japaneseArt,
+    prompt: 'Japanese cherry blossoms and samurai, zen chess',
+    category: 'palette',
+    tags: ['japanese', 'cherry blossom', 'samurai', 'zen', 'traditional'],
+    is_active: true,
+    usage_locations: ['Palette Selector', 'Creative Mode'],
+  },
+  {
+    title: 'Nordic',
+    description: 'Vikings and northern lights in the frozen Nordic lands',
+    image_path: nordicArt,
+    prompt: 'Nordic vikings and aurora borealis, frost chess',
+    category: 'palette',
+    tags: ['nordic', 'viking', 'aurora', 'frost', 'scandinavia'],
+    is_active: true,
+    usage_locations: ['Palette Selector', 'Creative Mode'],
+  },
+  {
+    title: 'Art Deco',
+    description: 'Roaring twenties glamour with geometric luxury patterns',
+    image_path: artdecoArt,
+    prompt: 'Art deco 1920s glamour, geometric gold patterns chess',
+    category: 'palette',
+    tags: ['art deco', '1920s', 'glamour', 'gold', 'geometric'],
+    is_active: true,
+    usage_locations: ['Palette Selector', 'Creative Mode'],
+  },
+  {
+    title: 'Tropical',
+    description: 'Lush paradise with exotic flora and vibrant colors',
+    image_path: tropicalArt,
+    prompt: 'Tropical paradise, exotic flowers and palm chess',
+    category: 'palette',
+    tags: ['tropical', 'paradise', 'exotic', 'palm', 'vibrant'],
+    is_active: true,
+    usage_locations: ['Palette Selector', 'Creative Mode'],
+  },
+  {
+    title: 'Cyberpunk',
+    description: 'Neon-lit dystopian future with high-tech aesthetics',
+    image_path: cyberpunkArt,
+    prompt: 'Cyberpunk neon city, futuristic tech chess',
+    category: 'palette',
+    tags: ['cyberpunk', 'neon', 'futuristic', 'tech', 'dystopia'],
+    is_active: true,
+    usage_locations: ['Palette Selector', 'Creative Mode'],
+  },
+  {
+    title: 'Autumn',
+    description: 'Fall foliage with warm amber and golden leaves',
+    image_path: autumnArt,
+    prompt: 'Autumn fall leaves, warm golden forest chess',
+    category: 'palette',
+    tags: ['autumn', 'fall', 'leaves', 'golden', 'warm'],
+    is_active: true,
+    usage_locations: ['Palette Selector', 'Creative Mode'],
+  },
+  {
+    title: 'Ocean',
+    description: 'Deep sea mysteries with coral reefs and marine life',
+    image_path: oceanArt,
+    prompt: 'Ocean depths, coral reef underwater chess',
+    category: 'palette',
+    tags: ['ocean', 'sea', 'coral', 'underwater', 'marine'],
+    is_active: true,
+    usage_locations: ['Palette Selector', 'Creative Mode'],
+  },
+  {
+    title: 'Desert',
+    description: 'Golden dunes and ancient oases under blazing sun',
+    image_path: desertArt,
+    prompt: 'Desert dunes and oasis, golden sand chess',
+    category: 'palette',
+    tags: ['desert', 'dunes', 'sand', 'oasis', 'sun'],
+    is_active: true,
+    usage_locations: ['Palette Selector', 'Creative Mode'],
+  },
+  {
+    title: 'Cosmic',
+    description: 'Stars and galaxies in the infinite expanse of space',
+    image_path: cosmicArt,
+    prompt: 'Cosmic space galaxies, stellar nebula chess',
+    category: 'palette',
+    tags: ['cosmic', 'space', 'galaxy', 'stars', 'nebula'],
+    is_active: true,
+    usage_locations: ['Palette Selector', 'Creative Mode'],
+  },
+  {
+    title: 'Vintage',
+    description: 'Nostalgic retro aesthetics with sepia-toned elegance',
+    image_path: vintageArt,
+    prompt: 'Vintage retro sepia, nostalgic classic chess',
+    category: 'palette',
+    tags: ['vintage', 'retro', 'sepia', 'nostalgic', 'classic'],
+    is_active: true,
+    usage_locations: ['Palette Selector', 'Creative Mode'],
+  },
+];
 
 // Static art entries that are in the codebase
 const STATIC_ART_ENTRIES: Omit<AIArtItem, 'id' | 'created_at' | 'created_by'>[] = [
@@ -161,7 +343,7 @@ const AdminAIArtBank: React.FC = () => {
     return null;
   }
 
-  // Combine static and DB art items
+  // Combine static and DB art items (excluding palette art which has its own section)
   const allArtItems: AIArtItem[] = [
     ...STATIC_ART_ENTRIES.map((item, i) => ({
       ...item,
@@ -171,6 +353,9 @@ const AdminAIArtBank: React.FC = () => {
     })),
     ...dbArtItems,
   ];
+
+  // Total count including palette art
+  const totalAssetCount = allArtItems.length + PALETTE_ART_ENTRIES.length;
 
   return (
     <div className="min-h-screen bg-background">
@@ -208,19 +393,27 @@ const AdminAIArtBank: React.FC = () => {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
           <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
             <CardContent className="p-4">
-              <div className="text-2xl font-bold text-primary">{allArtItems.length}</div>
+              <div className="text-2xl font-bold text-primary">{totalAssetCount}</div>
               <div className="text-sm text-muted-foreground">Total Assets</div>
             </CardContent>
           </Card>
           <Card className="bg-gradient-to-br from-green-500/5 to-green-500/10 border-green-500/20">
             <CardContent className="p-4">
               <div className="text-2xl font-bold text-green-500">
-                {allArtItems.filter(a => a.is_active).length}
+                {allArtItems.filter(a => a.is_active).length + PALETTE_ART_ENTRIES.length}
               </div>
               <div className="text-sm text-muted-foreground">Active</div>
+            </CardContent>
+          </Card>
+          <Card className="bg-gradient-to-br from-violet-500/5 to-violet-500/10 border-violet-500/20">
+            <CardContent className="p-4">
+              <div className="text-2xl font-bold text-violet-500">
+                {PALETTE_ART_ENTRIES.length}
+              </div>
+              <div className="text-sm text-muted-foreground">Palette Art</div>
             </CardContent>
           </Card>
           <Card className="bg-gradient-to-br from-amber-500/5 to-amber-500/10 border-amber-500/20">
@@ -239,6 +432,56 @@ const AdminAIArtBank: React.FC = () => {
               <div className="text-sm text-muted-foreground">Database Assets</div>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Color Palettes Section */}
+        <div className="mb-12">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20">
+              <Palette className="h-5 w-5 text-violet-500" />
+            </div>
+            <h2 className="text-xl font-semibold">Color Palette Art</h2>
+            <Badge variant="secondary" className="text-xs">
+              {PALETTE_ART_ENTRIES.length} themes
+            </Badge>
+          </div>
+          
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            {PALETTE_ART_ENTRIES.map((item, i) => (
+              <Card 
+                key={`palette-${i}`}
+                className="overflow-hidden group hover:shadow-lg transition-all duration-300 hover:scale-[1.02]"
+              >
+                <div className="relative aspect-square overflow-hidden bg-muted">
+                  <img
+                    src={item.image_path}
+                    alt={item.title}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                  <div className="absolute bottom-0 left-0 right-0 p-3">
+                    <h3 className="font-semibold text-white text-sm">{item.title}</h3>
+                  </div>
+                  <Badge className="absolute top-2 left-2 bg-violet-500/90 text-white text-xs">
+                    Palette
+                  </Badge>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+
+        {/* Other Art Section */}
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-amber-500/20 to-orange-500/20">
+              <ImageIcon className="h-5 w-5 text-amber-500" />
+            </div>
+            <h2 className="text-xl font-semibold">Hero & Feature Art</h2>
+            <Badge variant="secondary" className="text-xs">
+              {STATIC_ART_ENTRIES.length + dbArtItems.length} assets
+            </Badge>
+          </div>
         </div>
 
         {/* Art Grid */}
