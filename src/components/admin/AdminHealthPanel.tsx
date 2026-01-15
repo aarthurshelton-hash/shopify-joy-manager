@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Activity, AlertCircle, CheckCircle, Clock, Play, RefreshCw, Shield } from 'lucide-react';
+import { Activity, AlertCircle, CheckCircle, Clock, Play, RefreshCw, Shield, TrendingUp } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { HealthTrendsDashboard } from './HealthTrendsDashboard';
 
 interface ErrorSummary {
   total_unresolved: number;
@@ -84,9 +86,18 @@ export function AdminHealthPanel() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Quick Actions */}
-      <Card>
+    <Tabs defaultValue="overview" className="space-y-6">
+      <TabsList>
+        <TabsTrigger value="overview">Overview</TabsTrigger>
+        <TabsTrigger value="trends">
+          <TrendingUp className="h-4 w-4 mr-2" />
+          Trends & Alerts
+        </TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="overview" className="space-y-6">
+        {/* Quick Actions */}
+        <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5" />
@@ -205,44 +216,49 @@ export function AdminHealthPanel() {
         </Card>
       </div>
 
-      {/* Top Errors */}
-      {errorSummary?.top_errors && errorSummary.top_errors.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Top Unresolved Errors</CardTitle>
-            <CardDescription>Most frequently occurring errors</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-[300px]">
-              <div className="space-y-3">
-                {errorSummary.top_errors.map((error) => (
-                  <div
-                    key={error.id}
-                    className="p-3 rounded-lg border bg-card"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{error.message}</p>
-                        {error.component && (
+        {/* Top Errors */}
+        {errorSummary?.top_errors && errorSummary.top_errors.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Top Unresolved Errors</CardTitle>
+              <CardDescription>Most frequently occurring errors</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-[300px]">
+                <div className="space-y-3">
+                  {errorSummary.top_errors.map((error) => (
+                    <div
+                      key={error.id}
+                      className="p-3 rounded-lg border bg-card"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{error.message}</p>
+                          {error.component && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Component: {error.component}
+                            </p>
+                          )}
+                        </div>
+                        <div className="text-right shrink-0">
+                          <Badge variant="destructive">{error.count}x</Badge>
                           <p className="text-xs text-muted-foreground mt-1">
-                            Component: {error.component}
+                            {new Date(error.last_seen).toLocaleString()}
                           </p>
-                        )}
-                      </div>
-                      <div className="text-right shrink-0">
-                        <Badge variant="destructive">{error.count}x</Badge>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {new Date(error.last_seen).toLocaleString()}
-                        </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </ScrollArea>
-          </CardContent>
-        </Card>
-      )}
-    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        )}
+      </TabsContent>
+
+      <TabsContent value="trends">
+        <HealthTrendsDashboard />
+      </TabsContent>
+    </Tabs>
   );
 }

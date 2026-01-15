@@ -711,6 +711,51 @@ export type Database = {
         }
         Relationships: []
       }
+      health_check_metrics: {
+        Row: {
+          api_requests: number | null
+          avg_response_time_ms: number | null
+          created_at: string
+          date: string
+          errors_reported: number | null
+          errors_resolved: number | null
+          hour: number
+          id: string
+          issues_fixed: number | null
+          issues_found: number | null
+          rate_limited_requests: number | null
+          uptime_percentage: number | null
+        }
+        Insert: {
+          api_requests?: number | null
+          avg_response_time_ms?: number | null
+          created_at?: string
+          date?: string
+          errors_reported?: number | null
+          errors_resolved?: number | null
+          hour?: number
+          id?: string
+          issues_fixed?: number | null
+          issues_found?: number | null
+          rate_limited_requests?: number | null
+          uptime_percentage?: number | null
+        }
+        Update: {
+          api_requests?: number | null
+          avg_response_time_ms?: number | null
+          created_at?: string
+          date?: string
+          errors_reported?: number | null
+          errors_resolved?: number | null
+          hour?: number
+          id?: string
+          issues_fixed?: number | null
+          issues_found?: number | null
+          rate_limited_requests?: number | null
+          uptime_percentage?: number | null
+        }
+        Relationships: []
+      }
       marketplace_offers: {
         Row: {
           buyer_id: string
@@ -1070,6 +1115,36 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limit_records: {
+        Row: {
+          blocked_until: string | null
+          created_at: string
+          endpoint: string
+          id: string
+          identifier: string
+          request_count: number | null
+          window_start: string
+        }
+        Insert: {
+          blocked_until?: string | null
+          created_at?: string
+          endpoint: string
+          id?: string
+          identifier: string
+          request_count?: number | null
+          window_start?: string
+        }
+        Update: {
+          blocked_until?: string | null
+          created_at?: string
+          endpoint?: string
+          id?: string
+          identifier?: string
+          request_count?: number | null
+          window_start?: string
+        }
+        Relationships: []
+      }
       saved_palettes: {
         Row: {
           black_colors: Json
@@ -1303,6 +1378,48 @@ export type Database = {
           notification_type?: string
           read_at?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      system_alerts: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          alert_type: string
+          created_at: string
+          id: string
+          message: string
+          metadata: Json | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string
+          title: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_type: string
+          created_at?: string
+          id?: string
+          message: string
+          metadata?: Json | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          title: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_type?: string
+          created_at?: string
+          id?: string
+          message?: string
+          metadata?: Json | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          title?: string
         }
         Relationships: []
       }
@@ -1870,6 +1987,7 @@ export type Database = {
       }
     }
     Functions: {
+      acknowledge_alert: { Args: { p_alert_id: string }; Returns: boolean }
       calculate_portfolio_value: {
         Args: { p_user_id: string }
         Returns: number
@@ -1906,12 +2024,32 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: boolean
       }
+      check_rate_limit: {
+        Args: {
+          p_endpoint: string
+          p_identifier: string
+          p_max_requests?: number
+          p_window_seconds?: number
+        }
+        Returns: Json
+      }
       check_scan_achievements: {
         Args: { p_user_id: string }
         Returns: {
           achievement_type: string
           just_earned: boolean
         }[]
+      }
+      cleanup_rate_limits: { Args: never; Returns: number }
+      create_system_alert: {
+        Args: {
+          p_alert_type: string
+          p_message: string
+          p_metadata?: Json
+          p_severity: string
+          p_title: string
+        }
+        Returns: string
       }
       create_withdrawal_request: {
         Args: {
@@ -1949,6 +2087,7 @@ export type Database = {
           unique_users: number
         }[]
       }
+      get_health_trends: { Args: { p_days?: number }; Returns: Json }
       get_or_create_wallet: {
         Args: { p_user_id: string }
         Returns: {
@@ -1972,6 +2111,10 @@ export type Database = {
       get_remaining_transfers: {
         Args: { p_visualization_id: string }
         Returns: number
+      }
+      get_system_alerts: {
+        Args: { p_include_resolved?: boolean; p_limit?: number }
+        Returns: Json
       }
       get_user_offense_count: { Args: { p_user_id: string }; Returns: number }
       get_user_portfolio_economics: {
@@ -2033,6 +2176,17 @@ export type Database = {
           p_visualization_id: string
         }
         Returns: Json
+      }
+      record_health_metric: {
+        Args: {
+          p_api_requests?: number
+          p_errors_reported?: number
+          p_errors_resolved?: number
+          p_issues_fixed?: number
+          p_issues_found?: number
+          p_rate_limited?: number
+        }
+        Returns: undefined
       }
       record_marketplace_economics: {
         Args: {
@@ -2104,6 +2258,7 @@ export type Database = {
         }
         Returns: string
       }
+      resolve_alert: { Args: { p_alert_id: string }; Returns: boolean }
       snapshot_daily_financials: { Args: never; Returns: undefined }
       update_scan_streak: { Args: { p_user_id: string }; Returns: Json }
       validate_and_fix_data_integrity: { Args: never; Returns: Json }
