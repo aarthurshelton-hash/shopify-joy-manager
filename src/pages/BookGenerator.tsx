@@ -31,12 +31,39 @@ import {
   Package
 } from 'lucide-react';
 import { carlsenTop100, CarlsenGame } from '@/lib/book/carlsenGames';
+import { fischerTop100, FischerGame } from '@/lib/book/fischerGames';
 import { BookSpread } from '@/components/book/BookSpread';
 import { simulateGame } from '@/lib/chess/gameSimulator';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { jsPDF } from 'jspdf';
 import carlsenCover from '@/assets/book/carlsen-cover.jpg';
+import { Crown, Flame } from 'lucide-react';
+
+// Book types
+type BookType = 'carlsen' | 'fischer';
+type GameType = CarlsenGame | FischerGame;
+
+const BOOK_CONFIG = {
+  carlsen: {
+    title: 'Carlsen in Color',
+    subtitle: '100 Masterpieces of Magnus Carlsen',
+    games: carlsenTop100,
+    palette: 'hotCold',
+    cover: carlsenCover,
+    icon: Crown,
+    color: 'amber',
+  },
+  fischer: {
+    title: 'Fischer in Color',
+    subtitle: "Bobby Fischer's 100 Greatest Games",
+    games: fischerTop100,
+    palette: 'egyptian',
+    cover: carlsenCover, // Will use Egyptian themed cover
+    icon: Flame,
+    color: 'amber',
+  },
+} as const;
 
 interface GeneratedSpread {
   game: CarlsenGame;
