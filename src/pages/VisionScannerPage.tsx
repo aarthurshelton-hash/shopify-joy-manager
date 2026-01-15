@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { motion } from "framer-motion";
-import { Camera, Upload, Scan, CheckCircle, XCircle, Loader2, ExternalLink, Sparkles, Play, BarChart3, ArrowRight, ArrowLeft, Fingerprint, TrendingUp, Crown, Users, Link2, WifiOff } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Camera, Upload, Scan, CheckCircle, XCircle, Loader2, ExternalLink, Sparkles, Play, BarChart3, ArrowRight, ArrowLeft, Fingerprint, TrendingUp, Crown, Users, Link2, WifiOff, Unlock, Lock, Eye, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -28,8 +28,14 @@ interface ScanResult {
     title: string;
     confidence: number;
     image_url: string;
+    game_hash?: string;
+    palette_id?: string;
   };
   share_url?: string;
+  game_hash?: string;
+  palette_id?: string;
+  decryption_notes?: string;
+  is_valid_vision?: boolean;
   reason?: string;
   message?: string;
   error?: string;
@@ -73,6 +79,9 @@ interface VisionScore {
   total_score: number;
 }
 
+// Decryption state phases
+type DecryptionPhase = 'idle' | 'scanning' | 'analyzing' | 'decrypting' | 'matched' | 'failed';
+
 // Sample visualization patterns for the demo
 const samplePatterns = [
   {
@@ -91,11 +100,12 @@ const samplePatterns = [
 ];
 
 const demoSteps = [
-  { icon: Camera, title: "Capture", desc: "Photograph any En Pensent vision print or screen" },
-  { icon: Fingerprint, title: "Analyze", desc: "AI reads the unique color fingerprint pattern" },
-  { icon: Link2, title: "Connect", desc: "Instantly link to the digital experience page" },
-  { icon: TrendingUp, title: "Score", desc: "Every scan increases the Vision Score" },
+  { icon: Eye, title: "Capture", desc: "Photograph any En Pensent vision print or screen" },
+  { icon: Lock, title: "Detect", desc: "AI identifies the visual encryption pattern" },
+  { icon: Unlock, title: "Decrypt", desc: "Color fingerprint decoded to identify game" },
+  { icon: Zap, title: "Connect", desc: "Instantly link to the unified game experience" },
 ];
+
 
 export default function VisionScannerPage() {
   const navigate = useNavigate();
@@ -109,6 +119,7 @@ export default function VisionScannerPage() {
   const { isOnline, pendingCount, syncing, cacheScan, syncPendingScans } = useOfflineScanCache(user?.id);
   
   const [scanning, setScanning] = useState(false);
+  const [decryptionPhase, setDecryptionPhase] = useState<DecryptionPhase>('idle');
   const [result, setResult] = useState<ScanResult | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [cameraActive, setCameraActive] = useState(false);
@@ -133,17 +144,29 @@ export default function VisionScannerPage() {
     }
   }, [scanning, result, cameraActive]);
 
+  // Decryption phase messages
+  const getDecryptionMessage = (phase: DecryptionPhase): string => {
+    switch (phase) {
+      case 'scanning': return 'Scanning for visual encryption...';
+      case 'analyzing': return 'Analyzing color fingerprint pattern...';
+      case 'decrypting': return 'Decrypting game signature...';
+      case 'matched': return 'Encryption key found!';
+      case 'failed': return 'No matching encryption detected';
+      default: return '';
+    }
+  };
+
   const processImage = async (imageData: string) => {
     setScanning(true);
+    setDecryptionPhase('scanning');
     setResult(null);
     setPreviewUrl(imageData);
 
     // Handle offline mode
     if (!isOnline) {
-      // Cache the scan for later sync
       if (user) {
         cacheScan({
-          matched: false, // We can't know if it matches when offline
+          matched: false,
           imagePreview: imageData.substring(0, 500),
         });
         toast.info("Scan saved offline", {
@@ -151,6 +174,7 @@ export default function VisionScannerPage() {
         });
       }
       setScanning(false);
+      setDecryptionPhase('failed');
       setResult({
         matched: false,
         reason: "You're offline. Scan saved locally and will sync when you're back online.",
@@ -159,6 +183,14 @@ export default function VisionScannerPage() {
     }
 
     try {
+      // Phase 1: Scanning
+      await new Promise(r => setTimeout(r, 400));
+      setDecryptionPhase('analyzing');
+      
+      // Phase 2: Analyzing
+      await new Promise(r => setTimeout(r, 300));
+      setDecryptionPhase('decrypting');
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/vision-scanner`,
         {
@@ -167,7 +199,7 @@ export default function VisionScannerPage() {
             Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ image: imageData }),
+          body: JSON.stringify({ image_base64: imageData }),
         }
       );
 
@@ -175,7 +207,7 @@ export default function VisionScannerPage() {
         throw new Error("Scan failed");
       }
 
-      const data = await response.json();
+      const data: ScanResult = await response.json();
       setResult(data);
       
       // Save to scan history and update streak
@@ -187,13 +219,13 @@ export default function VisionScannerPage() {
           data.vision?.confidence,
           imageData.substring(0, 500)
         );
-        setHistoryKey(prev => prev + 1); // Trigger history refresh
+        setHistoryKey(prev => prev + 1);
         
         // Update scan streak
         try {
           const streakResult = await updateScanStreak(user.id);
           if (streakResult?.new_day) {
-            setStreakKey(prev => prev + 1); // Trigger streak refresh
+            setStreakKey(prev => prev + 1);
             
             if (streakResult.streak_broken) {
               toast.info("Streak reset", {
@@ -215,7 +247,6 @@ export default function VisionScannerPage() {
             p_user_id: user.id 
           });
           
-          // Show toast for newly earned achievements
           const newAchievements = (achievements || []).filter((a: { just_earned: boolean }) => a.just_earned);
           if (newAchievements.length > 0) {
             toast.success("🏆 Achievement Unlocked!", {
@@ -229,24 +260,51 @@ export default function VisionScannerPage() {
       }
       
       if (data.matched && data.vision) {
+        setDecryptionPhase('matched');
         await fetchVisionData(data.vision.visualization_id);
         setShowExperience(true);
-        toast.success("Vision matched!", {
-          description: `Found: ${data.vision.title}`,
+        
+        toast.success("🔓 Visual encryption decrypted!", {
+          description: `Found: ${data.vision.title} (${data.vision.confidence}% confidence)`,
         });
+      } else {
+        setDecryptionPhase('failed');
+        if (data.is_valid_vision) {
+          toast.info("Vision detected but not in database", {
+            description: data.decryption_notes || "This appears to be an En Pensent visualization we haven't seen before.",
+          });
+        }
       }
     } catch (error) {
       console.error("Scan error:", error);
+      setDecryptionPhase('failed');
       setResult({
         matched: false,
         reason: "Failed to process image",
         error: String(error),
       });
-      toast.error("Scan failed", { description: "Please try again" });
+      toast.error("Decryption failed", { description: "Please try again with a clearer image" });
     } finally {
       setScanning(false);
     }
   };
+
+  // Navigate to canonical game URL
+  const handleOpenGameMenu = useCallback(() => {
+    if (result?.game_hash || result?.vision?.game_hash) {
+      const gameHash = result.game_hash || result.vision?.game_hash;
+      const paletteId = result.palette_id || result.vision?.palette_id;
+      
+      let url = `/g/${gameHash}`;
+      if (paletteId && paletteId !== 'modern') {
+        url += `?p=${paletteId}`;
+      }
+      navigate(url);
+    } else if (result?.share_url) {
+      // Fallback to share_url if available
+      navigate(result.share_url);
+    }
+  }, [result, navigate]);
 
   const fetchVisionData = async (visualizationId: string) => {
     try {
@@ -339,6 +397,7 @@ export default function VisionScannerPage() {
     setVisionScore(null);
     setShowExperience(false);
     setActiveTab("experience");
+    setDecryptionPhase('idle');
   };
 
   const handleViewVision = () => {
@@ -571,25 +630,142 @@ export default function VisionScannerPage() {
                     </div>
                   )}
 
-                  {scanning && (
-                    <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center">
-                      <div className="text-center">
-                        <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
-                        <p className="text-sm text-muted-foreground">Analyzing pattern...</p>
-                      </div>
-                    </div>
-                  )}
+                  {/* Decryption Overlay */}
+                  <AnimatePresence>
+                    {scanning && (
+                      <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute inset-0 bg-background/90 backdrop-blur-sm flex items-center justify-center"
+                      >
+                        <div className="text-center space-y-4">
+                          {/* Animated Lock Icon */}
+                          <motion.div
+                            animate={{ 
+                              scale: decryptionPhase === 'matched' ? [1, 1.2, 1] : 1,
+                              rotate: decryptionPhase === 'decrypting' ? [0, 5, -5, 0] : 0
+                            }}
+                            transition={{ duration: 0.5, repeat: decryptionPhase === 'decrypting' ? Infinity : 0 }}
+                          >
+                            {decryptionPhase === 'matched' ? (
+                              <Unlock className="h-16 w-16 text-green-500 mx-auto" />
+                            ) : (
+                              <Lock className="h-16 w-16 text-primary mx-auto" />
+                            )}
+                          </motion.div>
+                          
+                          {/* Phase Progress */}
+                          <div className="flex justify-center gap-2">
+                            {(['scanning', 'analyzing', 'decrypting'] as DecryptionPhase[]).map((phase, idx) => (
+                              <motion.div
+                                key={phase}
+                                className={`h-1.5 w-8 rounded-full ${
+                                  ['scanning', 'analyzing', 'decrypting', 'matched'].indexOf(decryptionPhase) >= idx
+                                    ? 'bg-primary'
+                                    : 'bg-muted'
+                                }`}
+                                animate={{
+                                  opacity: decryptionPhase === phase ? [0.5, 1, 0.5] : 1
+                                }}
+                                transition={{ duration: 0.8, repeat: decryptionPhase === phase ? Infinity : 0 }}
+                              />
+                            ))}
+                          </div>
+                          
+                          {/* Phase Message */}
+                          <motion.p 
+                            key={decryptionPhase}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="text-sm font-medium text-primary"
+                          >
+                            {getDecryptionMessage(decryptionPhase)}
+                          </motion.p>
+                          
+                          <p className="text-xs text-muted-foreground">
+                            Reading visual encryption pattern...
+                          </p>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
-                  {result && !result.matched && (
-                    <div className="absolute inset-0 bg-background/90 backdrop-blur-sm flex items-center justify-center p-6">
-                      <div className="text-center">
-                        <XCircle className="h-16 w-16 text-destructive mx-auto mb-4" />
-                        <h3 className="font-semibold mb-2">No Match Found</h3>
-                        <p className="text-sm text-muted-foreground mb-4">{result.reason || result.message}</p>
-                        <Button onClick={resetScan} variant="outline">Try Again</Button>
-                      </div>
-                    </div>
-                  )}
+                  {/* Match Success Overlay */}
+                  <AnimatePresence>
+                    {result?.matched && !scanning && (
+                      <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute inset-0 bg-background/90 backdrop-blur-sm flex items-center justify-center p-6"
+                      >
+                        <div className="text-center space-y-4">
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ type: "spring", damping: 15 }}
+                          >
+                            <CheckCircle className="h-16 w-16 text-green-500 mx-auto" />
+                          </motion.div>
+                          
+                          <div>
+                            <h3 className="font-bold text-lg mb-1">🔓 Decrypted!</h3>
+                            <p className="text-primary font-semibold">{result.vision?.title}</p>
+                            <Badge variant="secondary" className="mt-2">
+                              {result.vision?.confidence}% Match
+                            </Badge>
+                          </div>
+                          
+                          {result.decryption_notes && (
+                            <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+                              {result.decryption_notes}
+                            </p>
+                          )}
+                          
+                          <div className="flex gap-2 justify-center">
+                            <Button onClick={handleOpenGameMenu} className="gap-2">
+                              <ExternalLink className="h-4 w-4" />
+                              Open Game Menu
+                            </Button>
+                            <Button onClick={resetScan} variant="outline">
+                              Scan Another
+                            </Button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* No Match Overlay */}
+                  <AnimatePresence>
+                    {result && !result.matched && !scanning && (
+                      <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute inset-0 bg-background/90 backdrop-blur-sm flex items-center justify-center p-6"
+                      >
+                        <div className="text-center space-y-4">
+                          <XCircle className="h-16 w-16 text-destructive mx-auto" />
+                          <div>
+                            <h3 className="font-semibold mb-2">
+                              {result.is_valid_vision ? "Unknown Vision" : "No Match Found"}
+                            </h3>
+                            <p className="text-sm text-muted-foreground mb-2">
+                              {result.reason || result.message}
+                            </p>
+                            {result.decryption_notes && (
+                              <p className="text-xs text-muted-foreground/70 max-w-xs mx-auto">
+                                Detected: {result.decryption_notes}
+                              </p>
+                            )}
+                          </div>
+                          <Button onClick={resetScan} variant="outline">Try Again</Button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
 
                 <canvas ref={canvasRef} className="hidden" />
