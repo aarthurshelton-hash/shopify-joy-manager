@@ -48,7 +48,7 @@ export const Footer = () => {
           
           {/* Tagline */}
           <p className="text-sm sm:text-base text-muted-foreground font-serif italic text-center px-4">
-            Transform chess games into timeless art
+            The future of chess intelligence
           </p>
           
           {/* Links - visible on tablet+ */}
