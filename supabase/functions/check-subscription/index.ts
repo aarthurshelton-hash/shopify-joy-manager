@@ -15,6 +15,7 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
 // Founder/Visionary members with permanent premium access (no charge)
 const VISIONARY_EMAILS = [
   "a.arthur.shelton@gmail.com", // CEO Alec Arthur Shelton
+  "info@mawuli.xyz", // Mawuli - Marketplace tester
 ];
 
 // Premium product ID
