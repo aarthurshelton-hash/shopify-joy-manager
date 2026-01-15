@@ -518,8 +518,8 @@ const Investors = () => {
             
             <MetricCard
               icon={Zap}
-              title="Unique Technology"
-              description="Proprietary visualization algorithms that transform PGN data into stunning, one-of-a-kind art."
+              title="Stockfish 17 Engine"
+              description="Real grandmaster-strength AI (~3200 ELO) with NNUE, depth 20+ analysis, and FEN position import/export."
               cta="Learn More"
               onClick={() => setActiveModal('technology')}
               backgroundImage={backgroundImages[1]}
@@ -745,15 +745,40 @@ const Investors = () => {
                 <div className="space-y-3">
                   <h3 className="font-display font-bold uppercase tracking-wide text-primary">Proprietary Visualization Engine</h3>
                   <p className="text-sm text-muted-foreground font-serif">
-                    Our core technology transforms chess game notation (PGN) into stunning visual artworks through a proprietary algorithm that encodes movement, strategy, and game dynamics.
+                    Our core technology transforms chess game notation (PGN/FEN) into stunning visual artworks through a proprietary algorithm that encodes movement, strategy, and game dynamics.
                   </p>
+                </div>
+
+                {/* Stockfish Integration */}
+                <div className="p-4 rounded-lg bg-gradient-to-br from-blue-500/10 to-cyan-500/5 border-2 border-blue-500/30 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-display font-bold uppercase tracking-wide text-blue-500">Stockfish 17 NNUE Engine</h3>
+                    <span className="px-2 py-0.5 text-xs bg-blue-500/20 text-blue-600 rounded-full font-display">~3200 ELO</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground font-serif">
+                    <strong className="text-foreground">Grandmaster-strength analysis integrated directly into the platform.</strong> Real NNUE-powered evaluation with centipawn accuracy, win probability calculations, and depth 20+ analysis.
+                  </p>
+                  <ul className="space-y-2">
+                    <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
+                      <ChevronRight className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
+                      <span><strong className="text-foreground">Play vs Stockfish</strong> — 5 difficulty levels from beginner to grandmaster</span>
+                    </li>
+                    <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
+                      <ChevronRight className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
+                      <span><strong className="text-foreground">Move classification</strong> — Brilliant, Great, Good, Inaccuracy, Mistake, Blunder</span>
+                    </li>
+                    <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
+                      <ChevronRight className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
+                      <span><strong className="text-foreground">FEN import/export</strong> — analyze any position instantly</span>
+                    </li>
+                  </ul>
                 </div>
 
                 {/* Natural Vision - Flagship Innovation */}
                 <div className="p-4 rounded-lg bg-gradient-to-br from-primary/10 to-amber-500/5 border-2 border-primary/30 space-y-3">
                   <div className="flex items-center gap-2">
                     <h3 className="font-display font-bold uppercase tracking-wide text-primary">Natural Vision™</h3>
-                    <span className="px-2 py-0.5 text-xs bg-amber-500/20 text-amber-600 rounded-full font-display">Innovation</span>
+                    <span className="px-2 py-0.5 text-xs bg-amber-500/20 text-amber-600 rounded-full font-display">Patented</span>
                   </div>
                   <p className="text-sm text-muted-foreground font-serif">
                     <strong className="text-foreground">Every visualization is a scannable digital fingerprint.</strong> The unique color patterns created by each game form a natural visual signature that can be recognized and linked to complete game data—no QR code needed.
@@ -761,7 +786,7 @@ const Investors = () => {
                   <ul className="space-y-2">
                     <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
                       <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                      <span><strong className="text-foreground">Physical-to-digital bridge</strong> — scan any print to access game replay, analytics, and Vision Score</span>
+                      <span><strong className="text-foreground">Physical-to-digital bridge</strong> — scan any print to access Stockfish analysis and Vision Score</span>
                     </li>
                     <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
                       <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
@@ -779,19 +804,19 @@ const Investors = () => {
                   <ul className="space-y-2">
                     <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
                       <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                      <span><strong className="text-foreground">Color-coded movement encoding</strong> — each piece type has a unique color signature</span>
+                      <span><strong className="text-foreground">75+ curated historic games</strong> — 500+ years of chess history with AI poetry</span>
                     </li>
                     <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
                       <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                      <span><strong className="text-foreground">Motion-implied artworks</strong> — movement paths create dynamic visual flow</span>
+                      <span><strong className="text-foreground">16 artist-designed palettes</strong> — from Japanese minimalism to Cyberpunk</span>
                     </li>
                     <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
                       <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                      <span><strong className="text-foreground">Customizable palettes</strong> — users can personalize their artwork's color scheme</span>
+                      <span><strong className="text-foreground">Gemini AI heatmap analysis</strong> — strategic insights and grandmaster commentary</span>
                     </li>
                     <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
                       <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                      <span><strong className="text-foreground">High-resolution output</strong> — print-ready quality up to poster sizes</span>
+                      <span><strong className="text-foreground">High-resolution output</strong> — print-ready quality up to 24×36 poster sizes</span>
                     </li>
                   </ul>
                 </div>
@@ -799,7 +824,7 @@ const Investors = () => {
                 <div className="p-4 rounded-lg bg-primary/5 border border-primary/20 space-y-2">
                   <h3 className="font-display font-bold uppercase tracking-wide text-primary">Competitive Moat</h3>
                   <p className="text-sm text-muted-foreground font-serif">
-                    No existing product combines chess analysis with personalized art at this level. Our Natural Vision™ technology creates a unique physical-to-digital bridge—each visualization is both fine art and a functional data gateway. This positions En Pensent as the only platform where art literally stores and retrieves its own history.
+                    No existing product combines Stockfish-grade analysis with personalized art and vision trading. Our Natural Vision™ technology and real-time engine integration create a unique physical-to-digital ecosystem—each visualization is fine art, analytical tool, and tradeable asset.
                   </p>
                 </div>
               </div>
@@ -817,19 +842,27 @@ const Investors = () => {
               
               <div className="space-y-6 py-4">
                 <div className="space-y-3">
-                  <h3 className="font-display font-bold uppercase tracking-wide text-primary">Current Phase</h3>
+                  <h3 className="font-display font-bold uppercase tracking-wide text-primary">Current Phase (2026)</h3>
                   <ul className="space-y-2">
                     <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
                       <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                      Free digital visualization tool with PGN upload
+                      Free digital visualization tool with PGN/FEN upload
                     </li>
                     <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
                       <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                      6 poster sizes from $29–$69 USD
+                      Stockfish 17 NNUE engine integration (~3200 ELO)
                     </li>
                     <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
                       <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                      Library of legendary games for showcase
+                      6 poster sizes from $29–$69 USD with premium framing
+                    </li>
+                    <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
+                      <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                      75+ curated historic games with AI poetry & analysis
+                    </li>
+                    <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
+                      <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                      Vision Marketplace with 0% commission trading
                     </li>
                     <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
                       <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
@@ -864,7 +897,11 @@ const Investors = () => {
                   <ul className="space-y-1 mt-3">
                     <li className="flex items-start gap-2 text-xs text-muted-foreground font-serif">
                       <ChevronRight className="h-3 w-3 text-primary mt-0.5 shrink-0" />
-                      Watermark-free HD downloads
+                      Watermark-free HD downloads & GIF exports
+                    </li>
+                    <li className="flex items-start gap-2 text-xs text-muted-foreground font-serif">
+                      <ChevronRight className="h-3 w-3 text-primary mt-0.5 shrink-0" />
+                      Stockfish 17 analysis (~3200 ELO engine)
                     </li>
                     <li className="flex items-start gap-2 text-xs text-muted-foreground font-serif">
                       <ChevronRight className="h-3 w-3 text-primary mt-0.5 shrink-0" />
@@ -872,7 +909,7 @@ const Investors = () => {
                     </li>
                     <li className="flex items-start gap-2 text-xs text-muted-foreground font-serif">
                       <ChevronRight className="h-3 w-3 text-primary mt-0.5 shrink-0" />
-                      Priority access to limited edition prints
+                      Vision ownership & marketplace trading
                     </li>
                   </ul>
                 </div>
