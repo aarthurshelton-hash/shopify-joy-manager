@@ -370,9 +370,31 @@ const GameView = () => {
     if (type === 'preview') {
       try {
         const { generateCleanPrintImage } = await import('@/lib/chess/printImageGenerator');
+        
+        // Build captured state for preview with all current settings
+        const capturedState = exportState ? {
+          currentMove: exportState.currentMove,
+          selectedPhase: 'all' as const,
+          lockedPieces: exportState.lockedPieces,
+          compareMode: exportState.compareMode,
+          displayMode: 'standard' as const,
+          darkMode: exportState.darkMode,
+          showTerritory: false,
+          showHeatmaps: false,
+          showPieces: exportState.showPieces,
+          pieceOpacity: exportState.pieceOpacity,
+          capturedAt: new Date(),
+        } : undefined;
+        
         const base64Image = await generateCleanPrintImage(
           { board: filteredBoard, gameData, totalMoves },
-          { darkMode: exportState?.darkMode || false, withWatermark: !isPremium, highlightState }
+          { 
+            darkMode: exportState?.darkMode || false, 
+            withWatermark: !isPremium, 
+            highlightState,
+            capturedState,
+            pgn: effectivePgn,
+          }
         );
         const response = await fetch(base64Image);
         const blob = await response.blob();
@@ -399,6 +421,12 @@ const GameView = () => {
         title: primaryVision.title,
         darkMode: exportState?.darkMode || false,
         highlightState,
+        piecesState: exportState ? {
+          showPieces: exportState.showPieces,
+          pieceOpacity: exportState.pieceOpacity,
+        } : undefined,
+        pgn: effectivePgn,
+        currentMoveNumber: exportState?.currentMove,
       });
       return;
     }
