@@ -49,6 +49,34 @@ const PAGE_META: Record<string, PageMeta> = {
     title: "My Palettes - Custom Color Schemes",
     description: "Create and manage custom color palettes for your chess visualizations. Make your art truly unique.",
     image: "https://enpensent.com/og-palettes.png",
+    type: "website",
+    keywords: "custom color palettes, chess art colors, visualization themes"
+  },
+  "/premium": {
+    title: "Visionary Premium - Unlimited Chess Art",
+    description: "Unlock unlimited downloads, advanced analytics, and exclusive features with Visionary Premium membership.",
+    image: "https://enpensent.com/og-premium.png",
+    type: "website",
+    keywords: "premium membership, visionary subscription, chess art premium"
+  },
+  "/shop": {
+    title: "Shop - Chess Art Prints & Merchandise",
+    description: "Browse our collection of premium chess art prints, framed artwork, and exclusive merchandise.",
+    image: "https://enpensent.com/og-shop.png",
+    type: "website",
+    keywords: "chess art shop, buy chess prints, chess merchandise"
+  },
+  "/studio": {
+    title: "Creative Studio - Design Your Chess Art",
+    description: "Full creative control over your chess visualizations. Design, customize, and create unique artwork.",
+    image: "https://enpensent.com/og-studio.png",
+    type: "website",
+    keywords: "chess art studio, create chess visualization, custom chess art"
+  },
+  "/profile": {
+    title: "My Profile - En Pensent",
+    description: "View and manage your En Pensent profile, collection, and achievements.",
+    image: "https://enpensent.com/og-profile.png",
     type: "website"
   },
   "/creative-mode": {
