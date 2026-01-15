@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
-import { ShoppingBag, Gift, DollarSign, Loader2, Crown, Package, Shield, Palette, Sparkles, TrendingUp, Eye, Printer, ArrowRight } from 'lucide-react';
+import { ShoppingBag, Gift, DollarSign, Loader2, Crown, Package, Shield, Palette, Sparkles, TrendingUp, Eye, Printer, ArrowRight, RefreshCw } from 'lucide-react';
 import { ListingsGridSkeleton } from '@/components/marketplace/MarketplaceSkeletons';
 import { useRandomGameArt } from '@/hooks/useRandomGameArt';
 import { Card, CardContent } from '@/components/ui/card';
@@ -396,10 +396,22 @@ const Marketplace: React.FC = () => {
                 <p className="text-xs sm:text-sm text-muted-foreground uppercase tracking-wider">Vision Exchange</p>
               </div>
             </div>
-            <Badge variant="outline" className="gap-1.5 self-start sm:self-center sm:ml-4 bg-card/50 backdrop-blur-sm">
-              <Shield className="h-3.5 w-3.5" />
-              0% Commission
-            </Badge>
+            <div className="flex items-center gap-2 self-start sm:self-center sm:ml-4">
+              <Badge variant="outline" className="gap-1.5 bg-card/50 backdrop-blur-sm">
+                <Shield className="h-3.5 w-3.5" />
+                0% Commission
+              </Badge>
+              <Button
+                onClick={refreshListings}
+                variant="outline"
+                size="sm"
+                disabled={isLoading}
+                className="gap-2"
+              >
+                <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">Refresh</span>
+              </Button>
+            </div>
           </div>
           
           <p className="text-muted-foreground max-w-2xl text-sm sm:text-base leading-relaxed">
