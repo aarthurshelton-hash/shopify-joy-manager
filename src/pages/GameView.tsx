@@ -451,6 +451,10 @@ const GameView = () => {
         simulation: { board, gameData, totalMoves },
         shareId: primaryVision.public_share_id || undefined,
         returnPath: `/g/${gameHash}`,
+        // Game metadata for cart display and navigation
+        gameHash,
+        paletteId: activePaletteId,
+        pgn: effectivePgn,
         capturedState: exportState ? {
           currentMove: exportState.currentMove,
           selectedPhase: 'all',

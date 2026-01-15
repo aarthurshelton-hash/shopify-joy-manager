@@ -30,6 +30,11 @@ export interface PrintOrderData {
     result?: string;
   };
   
+  // Game metadata for cart display and navigation
+  gameHash?: string;
+  gameId?: string; // Famous game ID for game card art
+  paletteId?: string; // For palette banner in cart
+  
   // From En Pensent live game (Play page)
   moveHistory?: MoveHistoryEntry[];
   whitePalette?: Record<PieceType, string>;

@@ -87,6 +87,16 @@ export interface CartItem {
     visualizationId?: string; // For tracking and royalties
     gameId?: string; // For game pool attribution
     paletteId?: string; // For palette pool attribution
+    // Game data for display in cart
+    gameData?: {
+      white?: string;
+      black?: string;
+      event?: string;
+      date?: string;
+      result?: string;
+    };
+    // Game hash for canonical navigation
+    gameHash?: string;
     // Captured visualization state - ensures print matches exactly what user sees
     capturedState?: {
       currentMove: number;

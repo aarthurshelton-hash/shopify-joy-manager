@@ -24,6 +24,8 @@ import {
   Crown,
   ChevronRight,
   ArrowLeft,
+  Palette,
+  Swords,
 } from "lucide-react";
 import { useCartStore } from "@/stores/cartStore";
 import { useCurrencyStore } from "@/stores/currencyStore";
@@ -35,6 +37,8 @@ import { FRAME_SHIPPING_COST_EXPORT, FREE_SHIPPING_THRESHOLD_EXPORT } from "./Fr
 import { useAuth } from "@/hooks/useAuth";
 import { VisionaryMembershipCard } from "@/components/premium/VisionaryMembershipCard";
 import AuthModal from "@/components/auth/AuthModal";
+import { getPaletteArt, getPaletteDisplayName, isPremiumPalette } from "@/lib/marketplace/paletteArtMap";
+import { getGameImage } from "@/lib/chess/gameImages";
 
 export const CartDrawer = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -91,12 +95,15 @@ export const CartDrawer = () => {
   };
 
   const handleItemClick = (item: typeof items[0]) => {
-    // Navigate to vision detail if there's custom print data with a game title
-    if (item.customPrintData?.gameTitle) {
-      // Store the current location as the return path
+    // Navigate to vision detail if there's custom print data with game hash
+    if (item.customPrintData?.gameHash) {
+      setIsOpen(false);
+      // Navigate to canonical game URL with palette param
+      const paletteParam = item.customPrintData.paletteId ? `?p=${item.customPrintData.paletteId}` : '';
+      navigate(`/g/${item.customPrintData.gameHash}${paletteParam}`);
+    } else if (item.customPrintData?.gameTitle) {
+      // Fallback: Navigate to order-print page for items without gameHash
       const currentPath = location.pathname + location.search;
-      
-      // Get existing order data and update with return path
       const existingOrderData = usePrintOrderStore.getState().orderData;
       if (existingOrderData) {
         setOrderData({
@@ -104,9 +111,7 @@ export const CartDrawer = () => {
           returnPath: currentPath,
         });
       }
-      
       setIsOpen(false);
-      // Navigate to order-print page with the data
       navigate('/order-print');
     }
   };
@@ -198,87 +203,151 @@ export const CartDrawer = () => {
                   <div className="space-y-3">
                     {items.map((item) => {
                       const addOns = parseAddOns(item.variantTitle);
-                      const hasCustomPrint = !!item.customPrintData?.previewImageBase64;
+                      const hasCustomPrint = !!item.customPrintData?.previewImageBase64 || !!item.customPrintData?.gameHash;
                       // Check if this item is currently being viewed on order-print page
                       const isCurrentlyViewing = location.pathname === '/order-print' && hasCustomPrint;
+                      
+                      // Get palette and game art for banners
+                      const paletteArt = getPaletteArt(item.customPrintData?.paletteId);
+                      const paletteName = getPaletteDisplayName(item.customPrintData?.paletteId);
+                      const gameArt = getGameImage(item.customPrintData?.gameId);
+                      const isPremium = isPremiumPalette(item.customPrintData?.paletteId);
                       
                       return (
                         <div 
                           key={item.variantId} 
-                          className={`flex gap-3 p-3 rounded-lg transition-all ${
+                          className={`relative rounded-lg overflow-hidden transition-all ${
                             isCurrentlyViewing 
-                              ? 'bg-primary/10 border border-primary/30' 
-                              : 'bg-muted/50 hover:bg-muted/70'
-                          } ${hasCustomPrint ? 'cursor-pointer' : ''}`}
+                              ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' 
+                              : ''
+                          } ${hasCustomPrint ? 'cursor-pointer group' : ''}`}
                           onClick={() => hasCustomPrint && handleItemClick(item)}
                         >
-                          {/* Product Thumbnail - with frame mockup if framed */}
-                          <CartItemThumbnail
-                            previewImage={item.customPrintData?.previewImageBase64}
-                            productImage={item.product.node.images?.edges?.[0]?.node?.url}
-                            gameTitle={item.customPrintData?.gameTitle}
-                            frameStyle={item.customPrintData?.frameStyle}
-                            isActive={isCurrentlyViewing}
-                          />
+                          {/* Palette/Game Card Banner */}
+                          {(paletteArt || gameArt) && (
+                            <div className="relative h-12 w-full overflow-hidden">
+                              <img 
+                                src={paletteArt || gameArt} 
+                                alt={paletteName || 'Game'} 
+                                className="w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-opacity"
+                              />
+                              <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/40 to-transparent" />
+                              <div className="absolute inset-0 flex items-center px-3 gap-2">
+                                {paletteArt && (
+                                  <div className="flex items-center gap-1.5">
+                                    <Palette className="h-3 w-3 text-white/90" />
+                                    <span className="text-[10px] font-medium text-white/90">
+                                      {paletteName}
+                                    </span>
+                                    {isPremium && (
+                                      <Badge className="h-4 px-1 text-[8px] bg-gradient-to-r from-amber-500 to-amber-600 border-0">
+                                        Premium
+                                      </Badge>
+                                    )}
+                                  </div>
+                                )}
+                                {gameArt && !paletteArt && (
+                                  <div className="flex items-center gap-1.5">
+                                    <Swords className="h-3 w-3 text-white/90" />
+                                    <span className="text-[10px] font-medium text-white/90">
+                                      Famous Game
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
                           
-                          <div className="flex-1 min-w-0">
-                            {/* Game Title */}
-                            {item.customPrintData?.gameTitle && (
-                              <h4 className="font-medium text-sm truncate text-primary">
-                                {item.customPrintData.gameTitle}
-                              </h4>
-                            )}
+                          {/* Main Item Content */}
+                          <div className={`flex gap-3 p-3 ${
+                            isCurrentlyViewing 
+                              ? 'bg-primary/10' 
+                              : 'bg-muted/50 group-hover:bg-muted/70'
+                          }`}>
+                            {/* Product Thumbnail - with frame mockup if framed */}
+                            <CartItemThumbnail
+                              previewImage={item.customPrintData?.previewImageBase64}
+                              productImage={item.product.node.images?.edges?.[0]?.node?.url}
+                              gameTitle={item.customPrintData?.gameTitle}
+                              frameStyle={item.customPrintData?.frameStyle}
+                              isActive={isCurrentlyViewing}
+                            />
                             
-                            {/* Product & Size */}
-                            <p className="text-xs text-muted-foreground truncate">
-                              {item.product.node.title} • {item.selectedOptions.map(option => option.value).join(' ')}
-                            </p>
+                            <div className="flex-1 min-w-0">
+                              {/* Game Title */}
+                              {item.customPrintData?.gameTitle && (
+                                <h4 className="font-medium text-sm truncate text-primary">
+                                  {item.customPrintData.gameTitle}
+                                </h4>
+                              )}
+                              
+                              {/* Players if available */}
+                              {item.customPrintData?.gameData?.white && (
+                                <p className="text-[10px] text-muted-foreground truncate">
+                                  {item.customPrintData.gameData.white} vs {item.customPrintData.gameData.black}
+                                </p>
+                              )}
+                              
+                              {/* Product & Size */}
+                              <p className="text-xs text-muted-foreground truncate">
+                                {item.product.node.title} • {item.selectedOptions.map(option => option.value).join(' ')}
+                              </p>
+                              
+                              {/* Price */}
+                              <p className="font-semibold text-sm mt-1">
+                                {formatPrice(parseFloat(item.price.amount))}
+                              </p>
+                            </div>
                             
-                            {/* Price */}
-                            <p className="font-semibold text-sm mt-1">
-                              {formatPrice(parseFloat(item.price.amount))}
-                            </p>
-                          </div>
-                          
-                          <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                removeItem(item.variantId);
-                              }}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                            
-                            <div className="flex items-center gap-0.5">
+                            <div className="flex flex-col items-end gap-1 flex-shrink-0">
                               <Button
-                                variant="outline"
+                                variant="ghost"
                                 size="icon"
                                 className="h-6 w-6"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  updateQuantity(item.variantId, item.quantity - 1);
+                                  removeItem(item.variantId);
                                 }}
                               >
-                                <Minus className="h-3 w-3" />
+                                <Trash2 className="h-3 w-3" />
                               </Button>
-                              <span className="w-6 text-center text-xs">{item.quantity}</span>
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-6 w-6"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  updateQuantity(item.variantId, item.quantity + 1);
-                                }}
-                              >
-                                <Plus className="h-3 w-3" />
-                              </Button>
+                              
+                              <div className="flex items-center gap-0.5">
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  className="h-6 w-6"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    updateQuantity(item.variantId, item.quantity - 1);
+                                  }}
+                                >
+                                  <Minus className="h-3 w-3" />
+                                </Button>
+                                <span className="w-6 text-center text-xs">{item.quantity}</span>
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  className="h-6 w-6"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    updateQuantity(item.variantId, item.quantity + 1);
+                                  }}
+                                >
+                                  <Plus className="h-3 w-3" />
+                                </Button>
+                              </div>
                             </div>
                           </div>
+                          
+                          {/* Click hint */}
+                          {hasCustomPrint && (
+                            <div className="absolute bottom-1 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <span className="text-[9px] text-muted-foreground flex items-center gap-1">
+                                Click to view <ChevronRight className="h-2.5 w-2.5" />
+                              </span>
+                            </div>
+                          )}
                         </div>
                       );
                     })}

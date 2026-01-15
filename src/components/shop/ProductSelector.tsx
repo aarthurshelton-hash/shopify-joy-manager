@@ -49,6 +49,17 @@ interface ProductSelectorProps {
     pgn: string;
     gameTitle: string;
     previewImageBase64?: string;
+    // Optional metadata for cart display and navigation
+    gameHash?: string;
+    gameId?: string;
+    paletteId?: string;
+    gameData?: {
+      white?: string;
+      black?: string;
+      event?: string;
+      date?: string;
+      result?: string;
+    };
   };
   simulation?: SimulationResult;
   shareId?: string | null;
@@ -298,11 +309,17 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
         quantity: 1,
         selectedOptions: selectedVariant.selectedOptions,
         customPrintData: {
-          ...customPrintData,
+          pgn: customPrintData.pgn,
+          gameTitle: customPrintData.gameTitle,
           previewImageBase64, // For cart thumbnail display
           printImageUrl, // For Printify fulfillment
           frameStyle: selectedFrame?.id,
           includeInfoCard,
+          // Game metadata for cart display and navigation
+          gameHash: customPrintData.gameHash,
+          gameId: customPrintData.gameId,
+          paletteId: customPrintData.paletteId,
+          gameData: customPrintData.gameData,
           // Store captured state so the exact visual state can be reproduced
           capturedState: capturedState ? {
             currentMove: capturedState.currentMove,
