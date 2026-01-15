@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { Loader2, Mail, Lock, User, Phone, Crown, Sparkles, Gift, Check } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import MFAVerification from './MFAVerification';
+import { useAuthRateLimit } from '@/hooks/useRateLimit';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -33,9 +34,17 @@ const AuthModal = forwardRef<HTMLDivElement, AuthModalProps>(({ isOpen, onClose,
   const [isLoading, setIsLoading] = useState(false);
   const [showMFAVerification, setShowMFAVerification] = useState(false);
   const { signIn, signUp } = useAuth();
+  const { checkLimit, isLimited, retryAfter } = useAuthRateLimit();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Check rate limit before proceeding
+    const allowed = await checkLimit();
+    if (!allowed) {
+      return;
+    }
+    
     setIsLoading(true);
 
     try {
@@ -207,11 +216,13 @@ const AuthModal = forwardRef<HTMLDivElement, AuthModalProps>(({ isOpen, onClose,
 
             <Button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || isLimited}
               className="w-full btn-luxury"
             >
               {isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
+              ) : isLimited ? (
+                `Try again in ${retryAfter}s`
               ) : mode === 'signin' ? (
                 'Sign In'
               ) : (
