@@ -34,6 +34,7 @@ import { PaletteId, getActivePalette } from '@/lib/chess/pieceColors';
 import { useScrollAnimation, scrollAnimationClasses } from '@/hooks/useScrollAnimation';
 import { useSessionStore } from '@/stores/sessionStore';
 import { useVisualizationStateStore } from '@/stores/visualizationStateStore';
+import { useActiveVisionStore } from '@/stores/activeVisionStore';
 import { usePrintOrderStore } from '@/stores/printOrderStore';
 import AuthModal from '@/components/auth/AuthModal';
 import { useAuth } from '@/hooks/useAuth';
@@ -114,6 +115,9 @@ const Index = () => {
     setCompareMode, 
     setDarkMode 
   } = useVisualizationStateStore();
+
+  // Clear active vision when viewing Index (user is on homepage, not in a vision)
+  const { clearActiveVision } = useActiveVisionStore();
   
   // Restore visualization from session storage on mount (for returning from order page)
   useEffect(() => {

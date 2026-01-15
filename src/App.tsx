@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { LocationTracker } from "@/components/shared/LocationTracker";
+import { VisionRestorer } from "@/components/shared/VisionRestorer";
 import Index from "./pages/Index";
 import MyPalettes from "./pages/MyPalettes";
 import MyVision from "./pages/MyVision";
@@ -59,6 +60,7 @@ const App = () => (
         <InstallPrompt />
         <LocationTracker />
         <BrowserRouter>
+          <VisionRestorer />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/my-palettes" element={<MyPalettes />} />
