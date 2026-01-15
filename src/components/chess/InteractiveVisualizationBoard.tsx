@@ -279,9 +279,14 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
   const pieceArrows = context.pieceArrows;
   const setFollowPieceData = context.setFollowPieceData;
   const setPieceArrows = context.setPieceArrows;
+  const hoveredMove = context.hoveredMove; // For timeline key moment hover
 
   // Build highlighted pieces array from context state
   const highlightedPieces = useMemo(() => {
+    // If a move is being hovered from timeline, highlight that piece
+    if (hoveredMove?.piece) {
+      return [hoveredMove.piece];
+    }
     // If annotation is hovered, use its associated pieces
     if (hoveredAnnotation?.associatedPieces && hoveredAnnotation.associatedPieces.length > 0) {
       return hoveredAnnotation.associatedPieces;
@@ -294,7 +299,7 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
       return [highlightedPiece];
     }
     return [];
-  }, [lockedPieces, highlightedPiece, hoveredAnnotation]);
+  }, [lockedPieces, highlightedPiece, hoveredAnnotation, hoveredMove]);
   
   const squareSize = size / 8;
   const borderWidth = size * 0.02;
@@ -639,6 +644,9 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
         const squareName = `${String.fromCharCode(97 + file)}${rank + 1}`;
         const isHovered = hoveredSquareLocal === squareName;
         
+        // Check if this is the target square from a hovered move (timeline key moment)
+        const isTargetSquareFromHoveredMove = hoveredMove?.targetSquare === squareName;
+        
         // Check if this square has any of the effective highlighted pieces
         const isHighlightedFromLegend = effectiveHighlightPieces.length > 0 && square.visits.some(
           v => effectiveHighlightPieces.some(h => h.pieceType === v.piece && h.pieceColor === v.color)
@@ -652,12 +660,12 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
           baseColor,
           effectiveHighlightPieces,
           compareMode,
-          isHovered,
+          isHovered || isTargetSquareFromHoveredMove,
           isHighlightedFromLegend
         );
       });
     });
-  }, [board, borderWidth, squareSize, effectiveHighlightPieces, compareMode, hoveredSquareLocal, hoveredAnnotation]);
+  }, [board, borderWidth, squareSize, effectiveHighlightPieces, compareMode, hoveredSquareLocal, hoveredAnnotation, hoveredMove]);
 
   // Create invisible interaction layer for hover detection
   const interactionSquares = useMemo(() => {
