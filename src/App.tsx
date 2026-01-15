@@ -8,6 +8,7 @@ import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { LocationTracker } from "@/components/shared/LocationTracker";
 import { VisionRestorer } from "@/components/shared/VisionRestorer";
 import { GlobalAlertsBanner } from "@/components/shared/GlobalAlertsBanner";
+import { BackToMarketplaceButton } from "@/components/marketplace/BackToMarketplaceButton";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 import MyPalettes from "./pages/MyPalettes";
@@ -65,6 +66,7 @@ const App = () => (
           <GlobalAlertsBanner />
           <BrowserRouter>
             <VisionRestorer />
+            <BackToMarketplaceButton />
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/my-palettes" element={<MyPalettes />} />
