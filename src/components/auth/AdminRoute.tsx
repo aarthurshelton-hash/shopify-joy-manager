@@ -14,14 +14,15 @@ interface AdminRouteProps {
 }
 
 export function AdminRoute({ children, featureName = 'This feature' }: AdminRouteProps) {
-  const { user, isAdmin, isLoading } = useAuth();
+  const { user, isAdmin, isLoading, isCheckingAdmin } = useAuth();
   
-  if (isLoading) {
+  // Wait for both auth and admin check to complete
+  if (isLoading || isCheckingAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-4">
           <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-muted-foreground">Verifying access...</p>
+          <p className="text-muted-foreground">Verifying CEO access...</p>
         </div>
       </div>
     );
