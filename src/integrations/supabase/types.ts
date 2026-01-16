@@ -295,6 +295,48 @@ export type Database = {
         }
         Relationships: []
       }
+      color_flow_patterns: {
+        Row: {
+          archetype: string
+          characteristics: Json
+          created_at: string
+          created_by: string | null
+          fingerprint: string
+          game_metadata: Json | null
+          id: string
+          opening_eco: string | null
+          outcome: string
+          pgn_hash: string | null
+          total_moves: number
+        }
+        Insert: {
+          archetype: string
+          characteristics: Json
+          created_at?: string
+          created_by?: string | null
+          fingerprint: string
+          game_metadata?: Json | null
+          id?: string
+          opening_eco?: string | null
+          outcome: string
+          pgn_hash?: string | null
+          total_moves: number
+        }
+        Update: {
+          archetype?: string
+          characteristics?: Json
+          created_at?: string
+          created_by?: string | null
+          fingerprint?: string
+          game_metadata?: Json | null
+          id?: string
+          opening_eco?: string | null
+          outcome?: string
+          pgn_hash?: string | null
+          total_moves?: number
+        }
+        Relationships: []
+      }
       company_profit_pool: {
         Row: {
           created_at: string

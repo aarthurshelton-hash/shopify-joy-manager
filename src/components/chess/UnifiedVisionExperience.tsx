@@ -78,6 +78,7 @@ import { generateGameHash } from '@/lib/visualizations/gameCanonical';
 import ClaimVisionButton from '@/components/vision/ClaimVisionButton';
 import { OpeningBadge, OpeningMarketingCard } from './OpeningBadge';
 import { detectOpeningFromPgn, DetectedOpening } from '@/lib/chess/openingDetector';
+import { HybridPredictionPanel } from './HybridPredictionPanel';
 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -2249,6 +2250,13 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                   gameAnalysis={gameAnalysis}
                   pgn={effectivePgn}
                 />
+
+                {/* Hybrid Prediction Panel - Stockfish + Color Flow Analysis */}
+                {effectivePgn && (
+                  <div className="mt-6">
+                    <HybridPredictionPanel pgn={effectivePgn} />
+                  </div>
+                )}
 
                 {/* Marketplace Info - Show for all contexts when listed */}
                 {localIsListed && (
