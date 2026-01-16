@@ -1,6 +1,6 @@
 /**
  * Scalping Predictor Hook
- * Integrates tick stream with prediction engine and heartbeat
+ * Integrates tick stream with prediction engine, heartbeat, and self-evolution
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -12,6 +12,10 @@ import {
   type TickPrediction,
   type LearningState
 } from '@/lib/pensent-core/domains/finance/tickPredictionEngine';
+import { 
+  selfEvolvingSystem,
+  type EvolutionState 
+} from '@/lib/pensent-core/domains/finance/selfEvolvingSystem';
 
 export interface ScalpingConfig extends TickStreamConfig {
   predictionIntervalMs: number; // How often to generate new predictions
@@ -21,6 +25,9 @@ export interface ScalpingConfig extends TickStreamConfig {
 export interface ScalpingState {
   // Engine state
   learningState: LearningState;
+  
+  // Evolution state
+  evolutionState: EvolutionState;
   
   // Current prediction
   currentPrediction: TickPrediction | null;
@@ -75,6 +82,7 @@ export function useScalpingPredictor(config: ScalpingConfig) {
   
   const [scalpingState, setScalpingState] = useState<ScalpingState>({
     learningState: DEFAULT_LEARNING_STATE,
+    evolutionState: selfEvolvingSystem.getState(),
     currentPrediction: null,
     pendingPredictions: [],
     recentPredictions: [],
@@ -93,6 +101,9 @@ export function useScalpingPredictor(config: ScalpingConfig) {
     priceChange: 0,
     priceChangePercent: 0
   });
+  
+  // Track resolved predictions to feed evolution system
+  const lastResolvedCountRef = useRef(0);
   
   // Connect to tick stream
   const tickStream = useTickDataStream({
@@ -119,12 +130,42 @@ export function useScalpingPredictor(config: ScalpingConfig) {
         ? ((tick.price - startPriceRef.current) / startPriceRef.current) * 100 
         : 0;
       
-      // Update state with latest engine data
+      // Get recent predictions and feed resolved ones to evolution system
+      const recentPredictions = engineRef.current.getRecentPredictions(20);
+      const resolvedPredictions = recentPredictions.filter(p => p.wasCorrect !== undefined);
+      
+      // Process newly resolved predictions through evolution system
+      if (resolvedPredictions.length > lastResolvedCountRef.current) {
+        const newResolved = resolvedPredictions.slice(lastResolvedCountRef.current);
+        newResolved.forEach(pred => {
+        if (pred.wasCorrect !== undefined) {
+          // Map 'flat' to 'neutral' for evolution system
+          const mapDirection = (d: 'up' | 'down' | 'flat'): 'up' | 'down' | 'neutral' => 
+            d === 'flat' ? 'neutral' : d;
+          
+          selfEvolvingSystem.processOutcome({
+            predicted: mapDirection(pred.predictedDirection),
+            actual: mapDirection(pred.actualDirection || pred.predictedDirection),
+              confidence: pred.confidence,
+              marketConditions: {
+                correlationStrength: 0.5, // Would come from cross-market engine
+                volatility: pred.predictedMagnitude,
+                momentum: pred.predictedDirection === 'up' ? 0.5 : -0.5,
+                leadingSignals: 0.5
+              }
+            });
+          }
+        });
+        lastResolvedCountRef.current = resolvedPredictions.length;
+      }
+      
+      // Update state with latest engine data and evolution state
       setScalpingState(prev => ({
         ...prev,
         learningState: engineRef.current.getState(),
+        evolutionState: selfEvolvingSystem.getState(),
         pendingPredictions: engineRef.current.getPendingPredictions(),
-        recentPredictions: engineRef.current.getRecentPredictions(20),
+        recentPredictions,
         stats: engineRef.current.getStats(),
         tickCount: engineRef.current.getTickCount(),
         latestPrice: tick.price,
@@ -165,8 +206,10 @@ export function useScalpingPredictor(config: ScalpingConfig) {
   const reset = useCallback(() => {
     engineRef.current.reset();
     startPriceRef.current = null;
+    lastResolvedCountRef.current = 0;
     setScalpingState({
       learningState: DEFAULT_LEARNING_STATE,
+      evolutionState: selfEvolvingSystem.getState(),
       currentPrediction: null,
       pendingPredictions: [],
       recentPredictions: [],
