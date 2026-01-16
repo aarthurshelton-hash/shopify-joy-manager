@@ -50,3 +50,6 @@ cron = "0 */6 * * *"
 
 [functions.collect-error]
 verify_jwt = false
+
+[functions.analyze-repository]
+verify_jwt = false
