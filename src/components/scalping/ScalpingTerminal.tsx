@@ -1,13 +1,13 @@
 /**
  * Scalping Terminal
- * Full trading dashboard with real-time predictions
+ * Full trading dashboard with real-time predictions and cross-market analysis
  */
 
 import React, { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Play, Pause, RotateCcw, Settings, Zap, Activity,
-  TrendingUp, TrendingDown, Radio, Clock
+  TrendingUp, TrendingDown, Radio, Clock, Globe, Sparkles
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,12 +16,16 @@ import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { useScalpingPredictor } from '@/hooks/useScalpingPredictor';
+import { useMultiMarketStream } from '@/hooks/useMultiMarketStream';
 import { PredictionHUD } from './PredictionHUD';
 import { LearningStatePanel } from './LearningStatePanel';
 import { PredictionStream } from './PredictionStream';
 import { TickChart } from './TickChart';
+import { MarketTicker } from './MarketTicker';
+import { BigPicturePanel } from './BigPicturePanel';
 import { HeartbeatIndicator } from '@/components/pensent-code/HeartbeatIndicator';
 
 const SYMBOLS = ['SPY', 'QQQ', 'AAPL', 'NVDA', 'TSLA', 'MSFT', 'AMD', 'GOOGL'];
@@ -31,10 +35,14 @@ export const ScalpingTerminal: React.FC = () => {
   const [autoPredict, setAutoPredict] = useState(true);
   const [predictionInterval, setPredictionInterval] = useState(3000);
   const [showSettings, setShowSettings] = useState(false);
+  const [activeView, setActiveView] = useState<'focus' | 'bigpicture'>('bigpicture');
+  
+  // Multi-market stream for the bigger picture
+  const multiMarket = useMultiMarketStream();
   
   const predictor = useScalpingPredictor({
     symbol,
-    mode: 'demo', // Will be 'websocket' when real API connected
+    mode: 'demo',
     predictionIntervalMs: predictionInterval,
     autoPredict,
     demoVolatility: 0.0012,
@@ -56,11 +64,47 @@ export const ScalpingTerminal: React.FC = () => {
     setAutoPredict(!autoPredict);
   }, [autoPredict, predictor]);
   
+  // Boost indicator from cross-market analysis
+  const predictionBoost = multiMarket.bigPicture.predictionBoost;
+  const boostColor = predictionBoost >= 1.2 ? 'text-green-400' : 
+                     predictionBoost <= 0.8 ? 'text-red-400' : 'text-primary';
+  
   return (
     <div className="space-y-4">
+      {/* Live Market Ticker - All Asset Classes */}
+      <Card className="bg-card/30 border-primary/20">
+        <CardContent className="py-3">
+          <div className="flex items-center gap-3 mb-2">
+            <Globe className="w-4 h-4 text-primary" />
+            <span className="text-sm font-medium">Cross-Market Feed</span>
+            <Badge variant="outline" className="text-xs">
+              {multiMarket.ticksPerSecond} tps
+            </Badge>
+            {multiMarket.bigPicture.activeSignals.length > 0 && (
+              <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
+                <Zap className="w-3 h-3 mr-1" />
+                {multiMarket.bigPicture.activeSignals.length} signals
+              </Badge>
+            )}
+            <div className={cn("flex items-center gap-1 ml-auto", boostColor)}>
+              <Sparkles className="w-3 h-3" />
+              <span className="text-xs font-mono font-bold">{predictionBoost.toFixed(2)}x boost</span>
+            </div>
+          </div>
+          <MarketTicker snapshot={multiMarket.snapshot} />
+        </CardContent>
+      </Card>
+
       {/* Header with controls */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
+          <Tabs value={activeView} onValueChange={(v) => setActiveView(v as 'focus' | 'bigpicture')}>
+            <TabsList>
+              <TabsTrigger value="focus">Focus</TabsTrigger>
+              <TabsTrigger value="bigpicture">Big Picture</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          
           <Select value={symbol} onValueChange={handleSymbolChange}>
             <SelectTrigger className="w-32">
               <SelectValue />
@@ -150,125 +194,259 @@ export const ScalpingTerminal: React.FC = () => {
         </Card>
       )}
       
-      {/* Main dashboard */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Left column - Chart and HUD */}
-        <div className="lg:col-span-2 space-y-4">
-          {/* Price display */}
-          <Card className="bg-card/50 backdrop-blur">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <Activity className="w-5 h-5" />
-                  {symbol}
-                </CardTitle>
-                <div className="text-right">
-                  <div className="text-3xl font-mono font-bold">
-                    ${predictor.latestPrice?.toFixed(2) || '---'}
-                  </div>
-                  <div className={cn(
-                    "text-sm",
-                    predictor.priceChangePercent >= 0 ? "text-green-500" : "text-red-500"
-                  )}>
-                    {predictor.priceChangePercent >= 0 ? '+' : ''}
-                    {predictor.priceChangePercent.toFixed(3)}%
+      {/* Main dashboard - changes based on view */}
+      {activeView === 'focus' ? (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Left column - Chart and HUD */}
+          <div className="lg:col-span-2 space-y-4">
+            {/* Price display */}
+            <Card className="bg-card/50 backdrop-blur">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Activity className="w-5 h-5" />
+                    {symbol}
+                  </CardTitle>
+                  <div className="text-right">
+                    <div className="text-3xl font-mono font-bold">
+                      ${predictor.latestPrice?.toFixed(2) || '---'}
+                    </div>
+                    <div className={cn(
+                      "text-sm",
+                      predictor.priceChangePercent >= 0 ? "text-green-500" : "text-red-500"
+                    )}>
+                      {predictor.priceChangePercent >= 0 ? '+' : ''}
+                      {predictor.priceChangePercent.toFixed(3)}%
+                    </div>
                   </div>
                 </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <TickChart 
-                ticks={predictor.connected ? Array.from({ length: predictor.tickCount }).map((_, i) => ({
-                  price: predictor.latestPrice || 100,
-                  volume: 1000,
-                  timestamp: Date.now() - (predictor.tickCount - i) * 100
-                })) : []}
-                currentPrediction={predictor.currentPrediction ? {
-                  direction: predictor.currentPrediction.predictedDirection,
-                  priceAtPrediction: predictor.currentPrediction.priceAtPrediction,
-                  targetPrice: predictor.currentPrediction.targetPrice
-                } : null}
-                height={180}
-              />
-            </CardContent>
-          </Card>
+              </CardHeader>
+              <CardContent>
+                <TickChart 
+                  ticks={predictor.connected ? Array.from({ length: predictor.tickCount }).map((_, i) => ({
+                    price: predictor.latestPrice || 100,
+                    volume: 1000,
+                    timestamp: Date.now() - (predictor.tickCount - i) * 100
+                  })) : []}
+                  currentPrediction={predictor.currentPrediction ? {
+                    direction: predictor.currentPrediction.predictedDirection,
+                    priceAtPrediction: predictor.currentPrediction.priceAtPrediction,
+                    targetPrice: predictor.currentPrediction.targetPrice
+                  } : null}
+                  height={180}
+                />
+              </CardContent>
+            </Card>
+            
+            {/* Current prediction */}
+            <PredictionHUD 
+              prediction={predictor.currentPrediction}
+              latestPrice={predictor.latestPrice}
+            />
+            
+            {/* Prediction stream */}
+            <Card className="bg-card/50 backdrop-blur">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Clock className="w-5 h-5" />
+                  Prediction Stream
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <PredictionStream 
+                  pending={predictor.pendingPredictions}
+                  resolved={predictor.recentPredictions}
+                  maxHeight="300px"
+                />
+              </CardContent>
+            </Card>
+          </div>
           
-          {/* Current prediction */}
-          <PredictionHUD 
-            prediction={predictor.currentPrediction}
-            latestPrice={predictor.latestPrice}
-          />
+          {/* Right column - Learning state */}
+          <div className="space-y-4">
+            <LearningStatePanel 
+              state={predictor.learningState}
+              stats={predictor.stats}
+            />
+            
+            {/* Quick stats */}
+            <Card className="bg-card/50 backdrop-blur">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg">Session Stats</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Ticks Processed</span>
+                  <span className="font-mono">{predictor.tickCount}</span>
+                </div>
+                <Separator />
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Predictions Made</span>
+                  <span className="font-mono">{predictor.stats.totalPredictions}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Correct</span>
+                  <span className="font-mono text-green-500">
+                    {predictor.learningState.correctPredictions}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Win Rate</span>
+                  <span className={cn(
+                    "font-mono font-bold",
+                    predictor.stats.accuracy >= 55 ? "text-green-500" : 
+                    predictor.stats.accuracy >= 45 ? "text-yellow-500" : "text-red-500"
+                  )}>
+                    {predictor.stats.accuracy.toFixed(1)}%
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+            
+            {/* Manual prediction button */}
+            <Button 
+              className="w-full"
+              onClick={() => predictor.generatePrediction()}
+              disabled={!predictor.connected}
+            >
+              <Zap className="w-4 h-4 mr-2" />
+              Generate Prediction Now
+            </Button>
+          </div>
+        </div>
+      ) : (
+        /* Big Picture View - Cross-Market Analysis */
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+          {/* Left - Main chart and prediction */}
+          <div className="lg:col-span-2 space-y-4">
+            <Card className="bg-card/50 backdrop-blur">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Activity className="w-5 h-5" />
+                    {symbol} with Cross-Market Boost
+                  </CardTitle>
+                  <div className="flex items-center gap-3">
+                    <div className={cn("flex items-center gap-1 text-sm", boostColor)}>
+                      <Sparkles className="w-4 h-4" />
+                      <span className="font-mono font-bold">{predictionBoost.toFixed(2)}x</span>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-2xl font-mono font-bold">
+                        ${predictor.latestPrice?.toFixed(2) || '---'}
+                      </div>
+                      <div className={cn(
+                        "text-sm",
+                        predictor.priceChangePercent >= 0 ? "text-green-500" : "text-red-500"
+                      )}>
+                        {predictor.priceChangePercent >= 0 ? '+' : ''}
+                        {predictor.priceChangePercent.toFixed(3)}%
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <TickChart 
+                  ticks={predictor.connected ? Array.from({ length: predictor.tickCount }).map((_, i) => ({
+                    price: predictor.latestPrice || 100,
+                    volume: 1000,
+                    timestamp: Date.now() - (predictor.tickCount - i) * 100
+                  })) : []}
+                  currentPrediction={predictor.currentPrediction ? {
+                    direction: predictor.currentPrediction.predictedDirection,
+                    priceAtPrediction: predictor.currentPrediction.priceAtPrediction,
+                    targetPrice: predictor.currentPrediction.targetPrice
+                  } : null}
+                  height={200}
+                />
+              </CardContent>
+            </Card>
+            
+            <PredictionHUD 
+              prediction={predictor.currentPrediction}
+              latestPrice={predictor.latestPrice}
+            />
+            
+            <LearningStatePanel 
+              state={predictor.learningState}
+              stats={predictor.stats}
+            />
+          </div>
           
-          {/* Prediction stream */}
-          <Card className="bg-card/50 backdrop-blur">
+          {/* Center - Big Picture Panel */}
+          <Card className="bg-card/50 backdrop-blur lg:col-span-1">
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-lg">
-                <Clock className="w-5 h-5" />
-                Prediction Stream
+                <Globe className="w-5 h-5 text-primary" />
+                Big Picture
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <PredictionStream 
-                pending={predictor.pendingPredictions}
-                resolved={predictor.recentPredictions}
-                maxHeight="300px"
-              />
-            </CardContent>
-          </Card>
-        </div>
-        
-        {/* Right column - Learning state */}
-        <div className="space-y-4">
-          <LearningStatePanel 
-            state={predictor.learningState}
-            stats={predictor.stats}
-          />
-          
-          {/* Quick stats */}
-          <Card className="bg-card/50 backdrop-blur">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Session Stats</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Ticks Processed</span>
-                <span className="font-mono">{predictor.tickCount}</span>
-              </div>
-              <Separator />
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Predictions Made</span>
-                <span className="font-mono">{predictor.stats.totalPredictions}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Correct</span>
-                <span className="font-mono text-green-500">
-                  {predictor.learningState.correctPredictions}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Win Rate</span>
-                <span className={cn(
-                  "font-mono font-bold",
-                  predictor.stats.accuracy >= 55 ? "text-green-500" : 
-                  predictor.stats.accuracy >= 45 ? "text-yellow-500" : "text-red-500"
-                )}>
-                  {predictor.stats.accuracy.toFixed(1)}%
-                </span>
-              </div>
+            <CardContent className="p-0 h-[500px]">
+              <BigPicturePanel state={multiMarket.bigPicture} />
             </CardContent>
           </Card>
           
-          {/* Manual prediction button */}
-          <Button 
-            className="w-full"
-            onClick={() => predictor.generatePrediction()}
-            disabled={!predictor.connected}
-          >
-            <Zap className="w-4 h-4 mr-2" />
-            Generate Prediction Now
-          </Button>
+          {/* Right - Prediction Stream & Stats */}
+          <div className="space-y-4">
+            <Card className="bg-card/50 backdrop-blur">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Clock className="w-5 h-5" />
+                  Predictions
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <PredictionStream 
+                  pending={predictor.pendingPredictions}
+                  resolved={predictor.recentPredictions}
+                  maxHeight="250px"
+                />
+              </CardContent>
+            </Card>
+            
+            <Card className="bg-card/50 backdrop-blur">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg">Session Stats</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Markets Active</span>
+                  <span className="font-mono">6</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Cross-Market TPS</span>
+                  <span className="font-mono">{multiMarket.ticksPerSecond}</span>
+                </div>
+                <Separator />
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Predictions</span>
+                  <span className="font-mono">{predictor.stats.totalPredictions}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Win Rate</span>
+                  <span className={cn(
+                    "font-mono font-bold",
+                    predictor.stats.accuracy >= 55 ? "text-green-500" : 
+                    predictor.stats.accuracy >= 45 ? "text-yellow-500" : "text-red-500"
+                  )}>
+                    {predictor.stats.accuracy.toFixed(1)}%
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Button 
+              className="w-full"
+              onClick={() => predictor.generatePrediction()}
+              disabled={!predictor.connected}
+            >
+              <Zap className="w-4 h-4 mr-2" />
+              Generate Prediction
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
