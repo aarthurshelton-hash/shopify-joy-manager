@@ -36,7 +36,9 @@ import {
   RefreshCw,
   Folder,
   Play,
-  Pause
+  Pause,
+  Eye,
+  Clock
 } from "lucide-react";
 import { toast } from "sonner";
 import { 
@@ -46,6 +48,8 @@ import {
   SignatureOverlay 
 } from "@/components/pensent-ui";
 import { useLiveHeartbeat, formatNextPulse } from "@/hooks/useLiveHeartbeat";
+import { useCodebaseSync, codebaseSyncManager } from "@/hooks/useCodebaseSync";
+import { useUnifiedEvolution } from "@/hooks/useUnifiedEvolution";
 
 // Real file analysis data extracted from LIVE code content
 interface FileAnalysis {
@@ -260,13 +264,21 @@ const LiveCodebaseDebugger = ({
   // Get all file paths for modularization checking
   const allFilePaths = useMemo(() => Object.keys(rawModules).map(p => p.replace('/src/', 'src/')), []);
 
-  // Heartbeat for auto-refresh
+  // Codebase sync for cache invalidation and version tracking
+  const codebaseSync = useCodebaseSync();
+  
+  // Unified evolution for cross-domain synchronization
+  const evolution = useUnifiedEvolution();
+
+  // Heartbeat for auto-refresh with cache invalidation
   const heartbeat = useLiveHeartbeat({
     interval: heartbeatInterval,
     autoStart: autoStart,
     enabled: heartbeatEnabled,
     onPulse: async () => {
       if (!analysisInProgress.current && stage !== 'scanning') {
+        // Invalidate cache before each pulse to ensure fresh reads
+        codebaseSyncManager.invalidateCache();
         await runLiveAnalysis(true); // silent mode
       }
     }
@@ -287,11 +299,17 @@ const LiveCodebaseDebugger = ({
     if (analysisInProgress.current) return;
     analysisInProgress.current = true;
     
+    // Force cache invalidation to ensure fresh file reads
+    codebaseSyncManager.invalidateCache();
+    
     if (!silent) {
       setStage('scanning');
       setProgress(0);
       setScannedFiles([]);
       setResult(null);
+      toast.info(`Starting fresh analysis v${codebaseSyncManager.getVersion()}`, {
+        description: 'Cache invalidated, reading current state...'
+      });
     }
 
     const filePaths = Object.keys(rawModules);
@@ -475,13 +493,13 @@ const LiveCodebaseDebugger = ({
       },
       archetype: 'hybrid_innovation',
       archetypeDescription: 'Combines domain-specific implementations with a universal core SDK',
-      fingerprint: `EP-LIVE-${Date.now().toString(36).toUpperCase()}`,
+      fingerprint: `EP-LIVE-v${codebaseSyncManager.getVersion()}-${Date.now().toString(36).toUpperCase()}`,
       intensity: avgPatternDensity * 0.95,
       momentum: 0.88 + Math.random() * 0.1,
       prediction: {
         outcome: 'success',
         confidence: avgPatternDensity * 0.92,
-        reasoning: `LIVE analyzed ${filesToScan.length} files (${totalLines.toLocaleString()} LOC). ` +
+        reasoning: `LIVE v${codebaseSyncManager.getVersion()} analyzed ${filesToScan.length} files (${totalLines.toLocaleString()} LOC). ` +
           `Pattern density: ${(avgPatternDensity * 100).toFixed(1)}%. ` +
           `Modular SDK: ${hasSignatureModules ? '✓' : '✗'} signature, ${hasTrajectoryModules ? '✓' : '✗'} trajectory.`
       },
@@ -493,10 +511,41 @@ const LiveCodebaseDebugger = ({
       totalLinesOfCode: totalLines
     };
 
+    // Synchronize with codebase state manager
+    const allFileContents = new Map<string, string>();
+    filesToScan.forEach(f => {
+      if (f.actualContent) allFileContents.set(f.path, f.actualContent);
+    });
+    await codebaseSync.syncCodebaseState(allFileContents);
+    
+    // Project future state based on detected issues
+    codebaseSync.projectFutureState(detectedIssues);
+    
+    // Register with unified evolution system
+    await codebaseSync.registerWithEvolution({
+      archetype: analysisResult.archetype,
+      intensity: analysisResult.intensity,
+      issues: detectedIssues.length,
+      fingerprint: analysisResult.fingerprint
+    });
+    
+    // Emit evolution event for cross-domain sync
+    await evolution.onCodeAnalyzed({
+      archetype: analysisResult.archetype,
+      health: Math.round(avgPatternDensity * 100),
+      recommendations: detectedIssues.slice(0, 3).map(i => i.title)
+    });
+
     setResult(analysisResult);
     setStage('complete');
     setProgress(100);
     analysisInProgress.current = false;
+    
+    if (!silent) {
+      toast.success(`Analysis complete: v${codebaseSyncManager.getVersion()}`, {
+        description: `${filesToScan.length} files, ${detectedIssues.length} issues detected`
+      });
+    }
   };
 
   const getCategoryColor = (category: FileAnalysis['category']) => {
@@ -534,6 +583,18 @@ const LiveCodebaseDebugger = ({
               <Bug className="w-5 h-5 text-green-500" />
               Live Codebase Debugger
               <Badge variant="outline" className="ml-2 text-xs">PROOF OF CONCEPT</Badge>
+              {codebaseSync.syncStatus.isSynced && (
+                <Badge variant="outline" className="ml-1 text-xs bg-blue-500/10 text-blue-400 border-blue-500/30">
+                  <Eye className="w-3 h-3 mr-1" />
+                  v{codebaseSyncManager.getVersion()}
+                </Badge>
+              )}
+              {codebaseSync.syncStatus.isStale && (
+                <Badge variant="outline" className="ml-1 text-xs bg-yellow-500/10 text-yellow-400 border-yellow-500/30">
+                  <Clock className="w-3 h-3 mr-1" />
+                  Stale: {codebaseSync.syncStatus.staleDuration}s
+                </Badge>
+              )}
             </CardTitle>
             <p className="text-sm text-muted-foreground mt-1">
               Watch En Pensent analyze the Hybrid Chess Intelligence Platform codebase in real-time
@@ -991,6 +1052,60 @@ const LiveCodebaseDebugger = ({
               </div>
             )}
 
+            {/* Future State Projection */}
+            {codebaseSync.futureProjection && codebaseSync.futureProjection.predictedChanges.length > 0 && (
+              <Card className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border-purple-500/30">
+                <CardContent className="p-4">
+                  <h4 className="font-bold mb-3 flex items-center gap-2">
+                    <Eye className="w-5 h-5 text-purple-400" />
+                    Future State Projection
+                    <Badge className="bg-purple-500/20 text-purple-400 ml-auto">
+                      {Math.round(codebaseSync.futureProjection.confidenceScore * 100)}% confidence
+                    </Badge>
+                  </h4>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <div className="text-xs font-medium text-muted-foreground mb-1">Predicted Changes:</div>
+                      <ul className="text-sm space-y-1">
+                        {codebaseSync.futureProjection.predictedChanges.map((change, i) => (
+                          <li key={i} className="flex items-start gap-2">
+                            <TrendingUp className="w-3 h-3 mt-1 text-purple-400 flex-shrink-0" />
+                            <span>{change}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    
+                    {codebaseSync.futureProjection.suggestedPreemptiveActions.length > 0 && (
+                      <div>
+                        <div className="text-xs font-medium text-muted-foreground mb-1">Preemptive Actions:</div>
+                        <ul className="text-sm space-y-1">
+                          {codebaseSync.futureProjection.suggestedPreemptiveActions.map((action, i) => (
+                            <li key={i} className="flex items-start gap-2">
+                              <Zap className="w-3 h-3 mt-1 text-amber-400 flex-shrink-0" />
+                              <span className="text-muted-foreground">{action}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="text-muted-foreground">Impact:</span>
+                      <Badge variant="outline" className={
+                        codebaseSync.futureProjection.estimatedImpact === 'high' ? 'text-red-400 border-red-500/30' :
+                        codebaseSync.futureProjection.estimatedImpact === 'medium' ? 'text-yellow-400 border-yellow-500/30' :
+                        'text-green-400 border-green-500/30'
+                      }>
+                        {codebaseSync.futureProjection.estimatedImpact.toUpperCase()}
+                      </Badge>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Prediction */}
             <Card className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-green-500/30">
               <CardContent className="p-4">
@@ -1017,16 +1132,19 @@ const LiveCodebaseDebugger = ({
               </h4>
               <ul className="text-sm space-y-2 text-muted-foreground">
                 <li>✓ The system successfully extracted signatures from {result.totalFiles} real files</li>
+                <li>✓ Cache invalidation ensures fresh reads every analysis (v{codebaseSyncManager.getVersion()})</li>
                 <li>✓ Quadrant profile correctly identified Core SDK vs Domain vs UI distribution</li>
                 <li>✓ Archetype classification reflects actual codebase architecture</li>
                 <li>✓ Pattern density metrics are calculated from real file analysis</li>
                 <li>✓ <strong className="text-foreground">Detected {result.issues.length} actionable issues with fixes</strong></li>
-                <li>✓ <strong className="text-foreground">The system that predicts success... predicted its own success</strong></li>
+                <li>✓ <strong className="text-foreground">Future state projection with preemptive actions</strong></li>
+                <li>✓ <strong className="text-foreground">Synchronized with unified evolution system</strong></li>
               </ul>
             </div>
 
-            <Button onClick={() => { setStage('idle'); setResult(null); }} variant="outline" className="w-full">
-              Run Analysis Again
+            <Button onClick={() => { setStage('idle'); setResult(null); codebaseSyncManager.invalidateCache(); }} variant="outline" className="w-full gap-2">
+              <RefreshCw className="w-4 h-4" />
+              Run Fresh Analysis
             </Button>
           </motion.div>
         )}
