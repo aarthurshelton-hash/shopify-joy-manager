@@ -61,7 +61,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null);
-  const [isCheckingSubscription, setIsCheckingSubscription] = useState(false);
+  // Start as true to indicate we haven't finished initial check yet
+  const [isCheckingSubscription, setIsCheckingSubscription] = useState(true);
+  const [hasCompletedInitialCheck, setHasCompletedInitialCheck] = useState(false);
   const [mfaStatus, setMfaStatus] = useState<MFAStatus>({ enabled: false, factorId: null });
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -121,6 +123,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const checkSubscription = useCallback(async () => {
     if (!session?.access_token) {
       setSubscriptionStatus(null);
+      setIsCheckingSubscription(false);
+      setHasCompletedInitialCheck(true);
       return;
     }
 
@@ -147,6 +151,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSubscriptionStatus(null);
     } finally {
       setIsCheckingSubscription(false);
+      setHasCompletedInitialCheck(true);
     }
   }, [session?.access_token]);
 
@@ -342,6 +347,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSubscriptionStatus(null);
     setMfaStatus({ enabled: false, factorId: null });
     setIsAdmin(false);
+    setHasCompletedInitialCheck(false);
+    setIsCheckingSubscription(false);
   };
 
   const updateProfile = async (updates: Partial<Pick<Profile, 'display_name' | 'avatar_url'>>) => {
