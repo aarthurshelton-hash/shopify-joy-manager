@@ -101,8 +101,8 @@ const ChessLoadingAnimation: React.FC<ChessLoadingAnimationProps> = ({
         const isLight = (file + rank) % 2 === 1;
         
         // Quadrant-based intensity from En Pensent
-        const quadrant = file < 4 ? (rank < 4 ? 'q3' : 'q1') : (rank < 4 ? 'q4' : 'q2');
-        const quadrantWeight = pattern.quadrantWeights[quadrant as keyof typeof pattern.quadrantWeights] || 0.25;
+        const quadrantKey = file < 4 ? (rank < 4 ? 'q3' : 'q1') : (rank < 4 ? 'q4' : 'q2') as 'q1' | 'q2' | 'q3' | 'q4';
+        const quadrantWeight: number = pattern.quadrantWeights[quadrantKey] ?? 0.25;
         
         squares.push(
           <motion.div
