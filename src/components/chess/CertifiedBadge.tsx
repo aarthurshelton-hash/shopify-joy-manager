@@ -106,18 +106,22 @@ function extractCertificationSignature(type: 'palette' | 'game' | 'genesis' | 'p
   };
 
   const temporalFlow: TemporalFlow = {
-    opening: type === 'premium' ? 90 : 70,
-    midgame: type === 'genesis' ? 85 : 65,
-    endgame: type === 'game' ? 80 : 55,
+    opening: type === 'premium' ? 0.9 : 0.7,
+    middle: type === 'genesis' ? 0.85 : 0.65,
+    ending: type === 'game' ? 0.8 : 0.55,
+    trend: type === 'premium' ? 'accelerating' : 'stable',
+    momentum: type === 'premium' ? 0.8 : 0.3,
   };
 
   return {
     fingerprint: `cert-${type}-${Date.now()}`,
+    archetype: `certified_${type}`,
     quadrantProfile,
     temporalFlow,
-    intensity: typeIntensity[type],
-    dominantForce: type === 'premium' ? 'premium_certification' : 'standard_certification',
-    keywords: [`certified_${type}`, 'authenticity', 'collector_value'],
+    intensity: typeIntensity[type] / 100,
+    dominantForce: type === 'premium' ? 'primary' : 'secondary',
+    flowDirection: 'forward',
+    criticalMoments: [],
   };
 }
 

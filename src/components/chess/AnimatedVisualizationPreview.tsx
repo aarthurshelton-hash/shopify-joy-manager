@@ -105,18 +105,22 @@ function extractAnimationSignature(
 
   const progress = totalMoves > 0 ? currentMoveIndex / totalMoves : 0;
   const temporalFlow: TemporalFlow = {
-    opening: progress < 0.3 ? 80 : 30,
-    midgame: progress >= 0.3 && progress < 0.7 ? 80 : 30,
-    endgame: progress >= 0.7 ? 80 : 30,
+    opening: progress < 0.3 ? 0.8 : 0.3,
+    middle: progress >= 0.3 && progress < 0.7 ? 0.8 : 0.3,
+    ending: progress >= 0.7 ? 0.8 : 0.3,
+    trend: progress < 0.5 ? 'accelerating' : 'stable',
+    momentum: progress < 0.5 ? 0.5 : 0,
   };
 
   return {
     fingerprint: `anim-${currentMoveIndex}-${totalMoves}`,
+    archetype: 'animated_preview',
     quadrantProfile,
     temporalFlow,
-    intensity: Math.min(100, (totalVisits / 64) * 50),
-    dominantForce: q1 + q2 > q3 + q4 ? 'black_territory' : 'white_territory',
-    keywords: ['animated_preview', 'real_time', 'visualization'],
+    intensity: Math.min(1, (totalVisits / 64) * 0.5),
+    dominantForce: q1 + q2 > q3 + q4 ? 'primary' : 'secondary',
+    flowDirection: 'forward',
+    criticalMoments: [],
   };
 }
 
