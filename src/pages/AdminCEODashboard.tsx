@@ -319,12 +319,11 @@ const AdminCEODashboard: React.FC = () => {
         </Tabs>
 
         {/* User Detail Modal */}
-        {selectedUserId && (
-          <AdminUserDetailModal 
-            userId={selectedUserId}
-            onClose={() => setSelectedUserId(null)}
-          />
-        )}
+        <AdminUserDetailModal 
+          userId={selectedUserId}
+          open={!!selectedUserId}
+          onClose={() => setSelectedUserId(null)}
+        />
       </main>
 
       <Footer />
