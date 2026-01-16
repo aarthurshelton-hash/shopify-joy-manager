@@ -55,7 +55,7 @@ const Index = () => {
   const randomArts = useRandomGameArt(4); // 3 for feature cards + 1 for premium banner
   
   const navigate = useNavigate();
-  const { user, isPremium } = useAuth();
+  const { user, isPremium, isCheckingSubscription } = useAuth();
   const { setOrderData } = usePrintOrderStore();
   const visionBoardRef = useRef<HTMLDivElement>(null);
   
@@ -909,9 +909,12 @@ const Index = () => {
                       board: filteredBoard,
                     };
                     
+                    // Always apply watermark if not premium or still checking subscription status
+                    const shouldWatermark = !isPremium || isCheckingSubscription;
+                    
                     const base64Image = await generateCleanPrintImage(exportSimulation, {
                       darkMode: exportState?.darkMode || false,
-                      withWatermark: !isPremium, // Add watermark for free users
+                      withWatermark: shouldWatermark,
                       highlightState,
                       pgn: currentPgn, // Pass explicit PGN for piece rendering
                       capturedState: exportState ? {
@@ -943,7 +946,7 @@ const Index = () => {
                     URL.revokeObjectURL(url);
                     
                     toast.success('Preview downloaded!', {
-                      description: isPremium ? 'Full resolution image saved.' : 'Includes En Pensent branding.',
+                      description: shouldWatermark ? 'Includes En Pensent branding.' : 'Full resolution image saved.',
                     });
                   } catch (error) {
                     console.error('Preview download failed:', error);

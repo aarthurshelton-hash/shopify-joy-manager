@@ -45,7 +45,7 @@ interface ExtendedGameData {
 const MarketplaceVisionDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user, isPremium, isLoading: authLoading } = useAuth();
+  const { user, isPremium, isLoading: authLoading, isCheckingSubscription } = useAuth();
   const { 
     setCreativeModeTransfer,
     returningFromOrder,
@@ -321,9 +321,12 @@ const MarketplaceVisionDetail: React.FC = () => {
           capturedAt: new Date(),
         } : undefined;
         
+        // Always apply watermark if not premium or still checking subscription status
+        const shouldWatermark = !isPremium || isCheckingSubscription;
+        
         const base64Image = await generateCleanPrintImage(exportSimulation, {
           darkMode: exportState?.darkMode || false,
-          withWatermark: !isPremium, // Add watermark for free users
+          withWatermark: shouldWatermark,
           highlightState,
           capturedState,
           pgn: listing.visualization.pgn || vizData.gameData.pgn || '',
@@ -343,7 +346,7 @@ const MarketplaceVisionDetail: React.FC = () => {
         URL.revokeObjectURL(url);
         
         toast.success('Preview downloaded!', {
-          description: isPremium ? 'Full resolution image saved.' : 'Includes En Pensent branding.',
+          description: shouldWatermark ? 'Includes En Pensent branding.' : 'Full resolution image saved.',
         });
       } catch (error) {
         console.error('Preview download failed:', error);
