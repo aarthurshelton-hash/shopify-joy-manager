@@ -871,6 +871,9 @@ const Index = () => {
                   setReturningFromOrder(true);
                   
                   // Navigate to order print page with full simulation data
+                  const currentGameHash = currentPgn ? generateGameHash(currentPgn) : undefined;
+                  const currentPaletteId = getActivePalette().id;
+                  
                   setOrderData({
                     title: visualTitle,
                     pgn: currentPgn,
@@ -884,6 +887,9 @@ const Index = () => {
                     simulation: simulation, // Include full simulation for visualization
                     shareId: savedShareId || undefined,
                     returnPath: '/',
+                    // Game metadata for cart display and navigation
+                    gameHash: currentGameHash,
+                    paletteId: currentPaletteId,
                     // Include captured state so print matches exactly what user sees
                     capturedState: exportState ? {
                       currentMove: exportState.currentMove,

@@ -16,8 +16,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { useVisualizationExport } from '@/hooks/useVisualizationExport';
 import AuthModal from '@/components/auth/AuthModal';
 import { PremiumUpgradeModal } from '@/components/premium';
-import { setActivePalette, PaletteId, PieceType } from '@/lib/chess/pieceColors';
+import { setActivePalette, PaletteId, PieceType, getActivePalette } from '@/lib/chess/pieceColors';
 import { buildShareUrl, decodeShareState, ShareableState } from '@/lib/visualizations/shareStateEncoding';
+import { generateGameHash } from '@/lib/visualizations/gameCanonical';
 
 interface VisualizationData {
   id: string;
@@ -390,6 +391,9 @@ const VisualizationView = () => {
       setReturningFromOrder(true);
       
       // Navigate to order print page
+      const currentPaletteId = visualization.game_data?.visualizationState?.paletteId || getActivePalette().id;
+      const currentGameHash = visualization.pgn ? generateGameHash(visualization.pgn) : undefined;
+      
       const orderData: PrintOrderData = {
         visualizationId: visualization.id,
         title: visualization.title,
@@ -405,6 +409,9 @@ const VisualizationView = () => {
         simulation: { board, gameData, totalMoves },
         shareId: visualization.public_share_id,
         returnPath: `/v/${shareId}`,
+        // Game metadata for cart display and navigation
+        gameHash: currentGameHash,
+        paletteId: currentPaletteId,
         capturedState: exportState ? {
           currentMove: exportState.currentMove,
           selectedPhase: 'all',

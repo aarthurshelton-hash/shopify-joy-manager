@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { SquareData, GameData } from '@/lib/chess/gameSimulator';
-import { setActivePalette, PaletteId, PieceType, getCurrentPalette } from '@/lib/chess/pieceColors';
+import { setActivePalette, PaletteId, PieceType, getActivePalette } from '@/lib/chess/pieceColors';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,7 @@ import {
 } from '@/lib/marketplace/marketplaceApi';
 import { extractPaletteId, isPremiumPalette, getPaletteDisplayName } from '@/lib/marketplace/paletteArtMap';
 import WalletPurchaseModal from '@/components/marketplace/WalletPurchaseModal';
+import { generateGameHash } from '@/lib/visualizations/gameCanonical';
 
 interface ExtendedGameData {
   white?: string;
@@ -183,7 +184,7 @@ const MarketplaceVisionDetail: React.FC = () => {
       });
     };
 
-    const currentPalette = getCurrentPalette();
+    const currentPalette = getActivePalette();
     
     const transferData: CreativeModeTransfer = {
       board: parseFenToBoard(fen),
@@ -417,10 +418,16 @@ const MarketplaceVisionDetail: React.FC = () => {
       setReturningFromOrder(true);
       
       // Navigate to order print page
+      const storedPaletteId = (listing.visualization.game_data as ExtendedGameData)?.visualizationState?.paletteId;
+      const currentPaletteId = storedPaletteId || getActivePalette().id;
+      const vizPgn = listing.visualization.pgn || vizData.gameData.pgn;
+      const currentGameHash = vizPgn ? generateGameHash(vizPgn) : undefined;
+      
       const orderData: PrintOrderData = {
         visualizationId: listing.visualization.id,
         title: listing.visualization.title,
         imagePath: listing.visualization.image_path,
+        pgn: vizPgn, // Include PGN for piece rendering
         gameData: {
           white: vizData.gameData.white,
           black: vizData.gameData.black,
@@ -435,6 +442,9 @@ const MarketplaceVisionDetail: React.FC = () => {
         },
         shareId: vizDataCast.public_share_id,
         returnPath: `/marketplace/${id}`,
+        // Game metadata for cart display and navigation
+        gameHash: currentGameHash,
+        paletteId: currentPaletteId,
         capturedState: exportState ? {
           currentMove: exportState.currentMove,
           selectedPhase: 'all',
@@ -444,6 +454,8 @@ const MarketplaceVisionDetail: React.FC = () => {
           darkMode: exportState.darkMode,
           showTerritory: false,
           showHeatmaps: false,
+          showPieces: exportState.showPieces,
+          pieceOpacity: exportState.pieceOpacity,
           capturedAt: new Date(),
         } : undefined,
       };
