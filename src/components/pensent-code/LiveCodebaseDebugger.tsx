@@ -502,7 +502,7 @@ const LiveCodebaseDebugger = () => {
             </div>
             <h3 className="text-lg font-semibold mb-2">Analyze the Hybrid Chess Intelligence Platform</h3>
             <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-              This will scan {EN_PENSENT_CODEBASE_FILES.length} En Pensent source files, extract real pattern data, 
+              This will dynamically scan all En Pensent source files in real-time, extract live pattern data, 
               and prove the system can analyze its own code.
             </p>
             <Button size="lg" onClick={runLiveAnalysis} className="gap-2 bg-green-600 hover:bg-green-700">
@@ -886,7 +886,7 @@ const LiveCodebaseDebugger = () => {
                 What This Proves
               </h4>
               <ul className="text-sm space-y-2 text-muted-foreground">
-                <li>✓ The system successfully extracted signatures from {EN_PENSENT_CODEBASE_FILES.length} real files</li>
+                <li>✓ The system successfully extracted signatures from {result.totalFiles} real files</li>
                 <li>✓ Quadrant profile correctly identified Core SDK vs Domain vs UI distribution</li>
                 <li>✓ Archetype classification reflects actual codebase architecture</li>
                 <li>✓ Pattern density metrics are calculated from real file analysis</li>
