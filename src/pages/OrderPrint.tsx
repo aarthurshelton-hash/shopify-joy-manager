@@ -483,9 +483,21 @@ const OrderPrint: React.FC = () => {
               }}
               simulation={simulationForCart}
               shareId={orderData.shareId}
-              capturedState={{
+              capturedState={orderData.capturedState ? {
                 ...orderData.capturedState,
                 darkMode, // Use current page dark mode setting
+              } : {
+                currentMove: Infinity,
+                selectedPhase: 'all',
+                lockedPieces: [],
+                compareMode: false,
+                displayMode: 'standard',
+                darkMode,
+                showTerritory: false,
+                showHeatmaps: false,
+                showPieces: false,
+                pieceOpacity: 0.7,
+                capturedAt: new Date(),
               }}
               enPensentData={hasEnPensentData ? {
                 moveHistory: orderData.moveHistory!,

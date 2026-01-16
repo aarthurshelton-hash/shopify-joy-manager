@@ -30,6 +30,8 @@ interface CapturedState {
   darkMode: boolean;
   showTerritory: boolean;
   showHeatmaps: boolean;
+  showPieces?: boolean;
+  pieceOpacity?: number;
   capturedAt: Date;
 }
 
@@ -336,6 +338,8 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
             lockedPieces: capturedState.lockedPieces,
             compareMode: capturedState.compareMode,
             darkMode: capturedState.darkMode,
+            showPieces: capturedState.showPieces,
+            pieceOpacity: capturedState.pieceOpacity,
           } : undefined,
         },
       };
