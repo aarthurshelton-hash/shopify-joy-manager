@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { RepositoryAnalyzer } from '@/components/pensent-code/RepositoryAnalyzer';
 import { AnalysisResults } from '@/components/pensent-code/AnalysisResults';
@@ -6,9 +5,11 @@ import { PatentPendingBadge } from '@/components/pensent-code/PatentPendingBadge
 import { InventorCredits } from '@/components/pensent-code/InventorCredits';
 import { ProvenPredictions } from '@/components/pensent-code/ProvenPredictions';
 import { PricingSection } from '@/components/pensent-code/PricingSection';
+import HowItWorksVisual from '@/components/pensent-code/HowItWorksVisual';
+import SelfAnalysisDemo from '@/components/pensent-code/SelfAnalysisDemo';
 import { useCodeAnalysis } from '@/hooks/useCodeAnalysis';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Brain, GitBranch, Sparkles } from 'lucide-react';
+import { ArrowLeft, Brain, GitBranch, Sparkles, HelpCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function CodeAnalysis() {
@@ -38,11 +39,19 @@ export default function CodeAnalysis() {
               </div>
               <PatentPendingBadge />
             </div>
-            {result && (
-              <Button variant="outline" onClick={clearResult}>
-                Analyze Another
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+              <Link to="/why-this-matters">
+                <Button variant="ghost" size="sm">
+                  <HelpCircle className="h-4 w-4 mr-2" />
+                  Why This Matters
+                </Button>
+              </Link>
+              {result && (
+                <Button variant="outline" onClick={clearResult}>
+                  Analyze Another
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -103,25 +112,13 @@ export default function CodeAnalysis() {
               />
             </div>
 
-            {/* How It Works */}
+            {/* How It Works Visual Diagram */}
+            <HowItWorksVisual />
+
+            {/* Self-Analysis Demo - Meta Proof */}
             <div className="mt-16">
-              <h2 className="text-2xl font-bold text-center mb-8">How It Works</h2>
-              <div className="grid md:grid-cols-4 gap-4">
-                {[
-                  { step: 1, title: 'Input Repository', desc: 'Enter any GitHub repo URL' },
-                  { step: 2, title: 'Extract Signature', desc: 'Analyze commit patterns' },
-                  { step: 3, title: 'Match Archetypes', desc: 'Compare to known patterns' },
-                  { step: 4, title: 'Predict & Guide', desc: 'Get insights & recommendations' },
-                ].map((item) => (
-                  <div key={item.step} className="text-center">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center mx-auto mb-3">
-                      {item.step}
-                    </div>
-                    <h3 className="font-semibold mb-1">{item.title}</h3>
-                    <p className="text-sm text-muted-foreground">{item.desc}</p>
-                  </div>
-                ))}
-              </div>
+              <h2 className="text-2xl font-bold text-center mb-8">The Ultimate Proof: Self-Analysis</h2>
+              <SelfAnalysisDemo />
             </div>
 
             {/* Proven Predictions - Build Credibility */}

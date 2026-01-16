@@ -57,6 +57,7 @@ import CodeAnalysis from "./pages/CodeAnalysis";
 import AcademicPaper from "./pages/AcademicPaper";
 import SDKDocs from "./pages/SDKDocs";
 import SharedAnalysisReport from "./pages/SharedAnalysisReport";
+import WhyThisMatters from "./pages/WhyThisMatters";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -122,6 +123,7 @@ const App = () => (
               <Route path="/academic-paper" element={<AcademicPaper />} />
               <Route path="/sdk-docs" element={<SDKDocs />} />
               <Route path="/analysis/:id" element={<SharedAnalysisReport />} />
+              <Route path="/why-this-matters" element={<WhyThisMatters />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
