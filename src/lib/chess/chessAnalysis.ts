@@ -11,6 +11,7 @@
 
 import { Chess, Move, Square, PieceSymbol } from 'chess.js';
 import { PIECE_VALUES, PIECE_POINTS, ENDGAME_PIECE_VALUES, cpToWinProbability, calculateMoveAccuracy, classifyMoves, getMoveQualitySummary, MoveQualitySummary, ClassifiedMove } from './moveQuality';
+import { detectOpeningFromMoves } from './openingDetector';
 
 // Re-export for convenience
 export { PIECE_VALUES, PIECE_POINTS, ENDGAME_PIECE_VALUES, cpToWinProbability, calculateMoveAccuracy };
@@ -204,20 +205,24 @@ function pgnToMoves(pgn: string): string[] {
  * Match opening from move sequence using the comprehensive opening detector
  */
 export function detectOpening(moves: string[]): ChessOpening | undefined {
-  // Use the new comprehensive opening detector
-  const { detectOpeningFromMoves } = require('./openingDetector');
-  const detected = detectOpeningFromMoves(moves);
-  
-  if (!detected) return undefined;
-  
-  // Convert to legacy ChessOpening format for backwards compatibility
-  return {
-    eco: detected.eco,
-    name: detected.fullName,
-    moves: detected.moves,
-    description: detected.description,
-    category: detected.category === 'gambit' ? 'open' : detected.category,
-  };
+  // Use the comprehensive opening detector (imported at top of file)
+  try {
+    const detected = detectOpeningFromMoves(moves);
+    
+    if (!detected) return undefined;
+    
+    // Convert to legacy ChessOpening format for backwards compatibility
+    return {
+      eco: detected.eco,
+      name: detected.fullName,
+      moves: detected.moves,
+      description: detected.description,
+      category: detected.category === 'gambit' ? 'open' : detected.category,
+    };
+  } catch (e) {
+    console.warn('Opening detection failed:', e);
+    return undefined;
+  }
 }
 
 /**
@@ -635,52 +640,91 @@ function extractPhaseEvents(moves: string[], start: number, end: number): string
 
 /**
  * Main analysis function - analyzes a full game
+ * Returns null if analysis fails to prevent app crashes
  */
-export function analyzeGame(pgn: string): GameAnalysis {
-  const moves = pgnToMoves(pgn);
-  const totalMoves = moves.length;
-  
-  // Count captures and checks
-  let captureCount = 0;
-  let checkCount = 0;
-  
-  for (const move of moves) {
-    if (move.includes('x')) captureCount++;
-    if (move.includes('+') || move.includes('#')) checkCount++;
+export function analyzeGame(pgn: string): GameAnalysis | null {
+  try {
+    const moves = pgnToMoves(pgn);
+    const totalMoves = moves.length;
+    
+    // Return null for empty games
+    if (totalMoves === 0) {
+      return null;
+    }
+    
+    // Count captures and checks
+    let captureCount = 0;
+    let checkCount = 0;
+    
+    for (const move of moves) {
+      if (move.includes('x')) captureCount++;
+      if (move.includes('+') || move.includes('#')) checkCount++;
+    }
+    
+    // Classify move quality with error handling
+    let classifiedMoves: ClassifiedMove[] = [];
+    let moveQuality: MoveQualitySummary = {
+      totalMoves: 0,
+      brilliantCount: 0,
+      greatCount: 0,
+      bestCount: 0,
+      goodCount: 0,
+      bookCount: 0,
+      inaccuracyCount: 0,
+      mistakeCount: 0,
+      blunderCount: 0,
+      checkCount: 0,
+      checkmateCount: 0,
+      captureCount: 0,
+      castleCount: 0,
+      promotionCount: 0,
+      sacrificeCount: 0,
+      accuracy: 0,
+      whiteAccuracy: 0,
+      blackAccuracy: 0,
+      whiteMoves: [],
+      blackMoves: [],
+    };
+    
+    try {
+      classifiedMoves = classifyMoves(pgn);
+      moveQuality = getMoveQualitySummary(classifiedMoves);
+    } catch (e) {
+      console.warn('Move quality classification failed:', e);
+    }
+    
+    // Determine complexity - enhanced with brilliant/blunder data
+    let complexity: GameAnalysis['summary']['complexity'] = 'simple';
+    if (totalMoves > 40) complexity = 'moderate';
+    if (totalMoves > 60 && captureCount > 10) complexity = 'complex';
+    if (totalMoves > 80 && checkCount > 5) complexity = 'masterpiece';
+    if (moveQuality.brilliantCount >= 2) complexity = 'masterpiece';
+    
+    const analysis: GameAnalysis = {
+      opening: detectOpening(moves),
+      gambit: detectGambit(moves),
+      tactics: detectTactics(pgn),
+      specialMoves: detectSpecialMoves(pgn),
+      phases: detectGamePhases(totalMoves, moves),
+      moveQuality,
+      summary: {
+        totalMoves,
+        captureCount,
+        checkCount,
+        brilliantCount: moveQuality.brilliantCount,
+        blunderCount: moveQuality.blunderCount,
+        accuracy: moveQuality.accuracy,
+        materialBalance: 0, // Would require position analysis
+        longestForcingSequence: 0, // Would require deep analysis
+        complexity,
+      },
+    };
+    
+    return analysis;
+  } catch (e) {
+    console.error('Game analysis failed:', e);
+    return null;
   }
-  
-  // Classify move quality
-  const classifiedMoves = classifyMoves(pgn);
-  const moveQuality = getMoveQualitySummary(classifiedMoves);
-  
-  // Determine complexity - enhanced with brilliant/blunder data
-  let complexity: GameAnalysis['summary']['complexity'] = 'simple';
-  if (totalMoves > 40) complexity = 'moderate';
-  if (totalMoves > 60 && captureCount > 10) complexity = 'complex';
-  if (totalMoves > 80 && checkCount > 5) complexity = 'masterpiece';
-  if (moveQuality.brilliantCount >= 2) complexity = 'masterpiece';
-  
-  const analysis: GameAnalysis = {
-    opening: detectOpening(moves),
-    gambit: detectGambit(moves),
-    tactics: detectTactics(pgn),
-    specialMoves: detectSpecialMoves(pgn),
-    phases: detectGamePhases(totalMoves, moves),
-    moveQuality,
-    summary: {
-      totalMoves,
-      captureCount,
-      checkCount,
-      brilliantCount: moveQuality.brilliantCount,
-      blunderCount: moveQuality.blunderCount,
-      accuracy: moveQuality.accuracy,
-      materialBalance: 0, // Would require position analysis
-      longestForcingSequence: 0, // Would require deep analysis
-      complexity,
-    },
-  };
-  
-  return analysis;
 }
 
 /**
