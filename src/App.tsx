@@ -12,6 +12,7 @@ import { BackToMarketplaceButton } from "@/components/marketplace/BackToMarketpl
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { StructuredData } from "@/components/seo/StructuredData";
 import { DynamicMetaTags } from "@/components/seo/DynamicMetaTags";
+import { AdminRoute } from "@/components/auth/AdminRoute";
 import Index from "./pages/Index";
 import MyPalettes from "./pages/MyPalettes";
 import MyVision from "./pages/MyVision";
@@ -67,13 +68,16 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+import { UniversalHeartbeatProvider } from "@/providers/UniversalHeartbeatProvider";
+
 const App = () => (
   <ErrorBoundary componentName="App">
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
+        <UniversalHeartbeatProvider autoStart={true} interval={30000}>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
           <InstallPrompt />
           <LocationTracker />
           <GlobalAlertsBanner />
@@ -131,14 +135,18 @@ const App = () => (
               <Route path="/why-this-matters" element={<WhyThisMatters />} />
               <Route path="/investor-portal" element={<InvestorPortal />} />
               <Route path="/early-access" element={<EarlyAccess />} />
-              <Route path="/stock-predictions" element={<StockPredictions />} />
-              <Route path="/strategic-plan" element={<StrategicPlan />} />
-              <Route path="/trading" element={<ScalpingTerminalPage />} />
+              
+              {/* ADMIN ONLY - Private En Pensent Features */}
+              <Route path="/stock-predictions" element={<AdminRoute featureName="Stock Predictions"><StockPredictions /></AdminRoute>} />
+              <Route path="/strategic-plan" element={<AdminRoute featureName="Strategic Plan"><StrategicPlan /></AdminRoute>} />
+              <Route path="/trading" element={<AdminRoute featureName="Trading Terminal"><ScalpingTerminalPage /></AdminRoute>} />
+              
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
         </TooltipProvider>
+        </UniversalHeartbeatProvider>
       </AuthProvider>
     </QueryClientProvider>
   </ErrorBoundary>
