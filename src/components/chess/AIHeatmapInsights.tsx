@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Brain, Target, BarChart3, Trophy, Loader2, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { TemporalSignature, QuadrantProfile, TemporalFlow } from '@/lib/pensent-core/types';
+import { classifyUniversalArchetype } from '@/lib/pensent-core/archetype';
 
 interface PieceActivity {
   pieceType: string;
@@ -39,6 +41,69 @@ interface AIHeatmapInsightsProps {
   compact?: boolean;
 }
 
+// Extract temporal signature from piece activity for En Pensent pattern integration
+function extractTemporalSignature(
+  pieceActivity: PieceActivity[],
+  gameContext: GameContext,
+  territoryData?: { whiteControl: number; blackControl: number }
+): TemporalSignature {
+  // Calculate quadrant profile from piece activity distribution
+  const whitePieces = pieceActivity.filter(p => p.color === 'white');
+  const blackPieces = pieceActivity.filter(p => p.color === 'black');
+  
+  const whiteActivity = whitePieces.reduce((sum, p) => sum + p.count, 0);
+  const blackActivity = blackPieces.reduce((sum, p) => sum + p.count, 0);
+  const totalActivity = whiteActivity + blackActivity || 1;
+  
+  // Map piece activity to quadrant profile (q1-q4 representing board quadrants)
+  const q1 = Math.min(1, whiteActivity / 50);
+  const q2 = territoryData ? Math.min(1, territoryData.whiteControl / 32) : 0.5;
+  const q3 = Math.min(1, blackActivity / 50);
+  const q4 = territoryData ? Math.min(1, territoryData.blackControl / 32) : 0.5;
+  
+  const quadrantProfile: QuadrantProfile = { q1, q2, q3, q4 };
+  
+  // Build temporal flow from game progression
+  const gameProgress = gameContext.totalMoves / 80; // Normalize to typical game length
+  const temporalFlow: TemporalFlow = {
+    opening: gameProgress < 0.2 ? 0.8 : 0.3,
+    middle: gameProgress >= 0.2 && gameProgress < 0.6 ? 0.8 : 0.4,
+    ending: gameProgress >= 0.6 ? 0.8 : 0.2,
+    trend: whiteActivity > blackActivity * 1.2 ? 'accelerating' : 
+           blackActivity > whiteActivity * 1.2 ? 'declining' : 'stable',
+    momentum: (whiteActivity - blackActivity) / totalActivity
+  };
+  
+  // Calculate intensity from activity levels
+  const intensity = Math.min(1, totalActivity / 100);
+  
+  // Generate fingerprint from game context
+  const fingerprint = `heatmap_${gameContext.totalMoves}_${Math.round(intensity * 100)}`;
+  
+  // Determine dominant force
+  const dominantForce: 'primary' | 'secondary' | 'balanced' = 
+    whiteActivity > blackActivity * 1.1 ? 'primary' :
+    blackActivity > whiteActivity * 1.1 ? 'secondary' : 'balanced';
+  
+  // Build complete signature
+  const signature: TemporalSignature = {
+    quadrantProfile,
+    temporalFlow,
+    intensity,
+    fingerprint,
+    archetype: 'unknown', // Will be classified below
+    dominantForce,
+    flowDirection: temporalFlow.momentum > 0.2 ? 'forward' : 
+                   temporalFlow.momentum < -0.2 ? 'backward' : 'lateral',
+    criticalMoments: []
+  };
+  
+  // Classify archetype using En Pensent universal classifier
+  signature.archetype = classifyUniversalArchetype(signature);
+  
+  return signature;
+}
+
 const INSIGHT_ICONS = {
   commentary: Sparkles,
   strategic: Brain,
@@ -65,6 +130,15 @@ export const AIHeatmapInsights: React.FC<AIHeatmapInsightsProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeInsight, setActiveInsight] = useState<keyof AIInsights>('commentary');
+
+  // Extract En Pensent temporal signature for pattern analysis
+  const temporalSignature = useMemo(() => {
+    if (pieceActivity.length === 0) return null;
+    return extractTemporalSignature(pieceActivity, gameContext, territoryData);
+  }, [pieceActivity, gameContext, territoryData]);
+
+  // Derive game archetype from temporal signature
+  const gameArchetype = temporalSignature?.archetype ?? 'unknown';
 
   const fetchInsights = async () => {
     if (pieceActivity.length === 0) return;
