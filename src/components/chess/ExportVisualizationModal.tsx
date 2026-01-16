@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import html2canvas from 'html2canvas';
 import { 
@@ -21,7 +21,8 @@ import {
   Crown,
   Camera,
   Copy,
-  FileText
+  FileText,
+  Activity
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
@@ -38,6 +39,9 @@ import { recordVisionInteraction } from '@/lib/visualizations/visionScoring';
 import { VisionaryMembershipCard } from '@/components/premium';
 import AuthModal from '@/components/auth/AuthModal';
 import { getBoardPositionFen, STARTING_FEN } from '@/lib/chess/fenUtils';
+import { useEnPensentPatterns } from '@/hooks/useEnPensentPatterns';
+import type { TemporalSignature } from '@/lib/pensent-core/types/core';
+import { classifyUniversalArchetype } from '@/lib/pensent-core/archetype/universalClassifier';
 
 interface ExportVisualizationModalProps {
   isOpen: boolean;
@@ -53,6 +57,7 @@ interface ExportVisualizationModalProps {
   };
   visualizationId?: string; // For tracking downloads
   pgn?: string; // For FEN export and piece overlay
+  signature?: TemporalSignature | null; // En Pensent pattern integration
 }
 
 /**
@@ -67,6 +72,7 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
   gameInfo,
   visualizationId,
   pgn,
+  signature = null,
 }) => {
   const navigate = useNavigate();
   const { user, isPremium, isCheckingSubscription } = useAuth();
@@ -85,6 +91,13 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
   const [showVisionaryModal, setShowVisionaryModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+
+  // En Pensent pattern integration
+  const pattern = useEnPensentPatterns(signature);
+  const gameArchetype = useMemo(() => 
+    signature ? classifyUniversalArchetype(signature) : null,
+    [signature]
+  );
 
   // Wrapped setDarkMode to sync with store
   const setDarkMode = useCallback((value: boolean) => {
@@ -388,6 +401,9 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
                   style={{ fontFamily: "'Inter', sans-serif" }}
                 >
                   {gameInfo.totalMoves} moves • {gameInfo.result || 'Game Finished'}
+                  {gameArchetype && (
+                    <span className="ml-2 text-primary">• {gameArchetype}</span>
+                  )}
                 </p>
               </div>
             </div>

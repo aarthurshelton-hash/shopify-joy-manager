@@ -1,6 +1,8 @@
 import React, { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PieceType, PieceColor, getCurrentPalette } from '@/lib/chess/pieceColors';
+import { useEnPensentPatterns, getFlowAnimation } from '@/hooks/useEnPensentPatterns';
+import type { TemporalSignature } from '@/lib/pensent-core/types/core';
 
 export interface MoveHistoryEntry {
   square: string;
@@ -16,6 +18,7 @@ interface EnPensentOverlayProps {
   opacity: number;
   isEnabled: boolean;
   flipped?: boolean;
+  signature?: TemporalSignature | null;
 }
 
 // Parse square notation to grid position
@@ -70,11 +73,21 @@ export const EnPensentOverlay: React.FC<EnPensentOverlayProps> = ({
   opacity,
   isEnabled,
   flipped = false,
+  signature = null,
 }) => {
+  // En Pensent pattern integration
+  const pattern = useEnPensentPatterns(signature);
+  
   // Build color layers for each square
   const squareColorLayers = useMemo(() => 
     buildSquareColorLayers(moveHistory, whitePalette, blackPalette),
     [moveHistory, whitePalette, blackPalette]
+  );
+  
+  // Get flow animation based on pattern
+  const flowAnim = useMemo(() => 
+    getFlowAnimation(pattern.flowDirection, pattern.momentum),
+    [pattern.flowDirection, pattern.momentum]
   );
 
   if (!isEnabled) {
@@ -113,12 +126,19 @@ export const EnPensentOverlay: React.FC<EnPensentOverlayProps> = ({
               <motion.div
                 key={`${square}-layer-${layerIndex}`}
                 initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
+                animate={{ 
+                  scale: 1, 
+                  opacity: 1,
+                  x: signature ? flowAnim.x : [0, 0, 0],
+                  y: signature ? flowAnim.y : [0, 0, 0],
+                }}
                 transition={{
                   type: 'spring',
                   stiffness: 300,
                   damping: 20,
                   delay: layerIndex * 0.05,
+                  x: { duration: flowAnim.duration, repeat: Infinity },
+                  y: { duration: flowAnim.duration, repeat: Infinity },
                 }}
                 className="absolute"
                 style={{
@@ -128,6 +148,9 @@ export const EnPensentOverlay: React.FC<EnPensentOverlayProps> = ({
                   width: `${layerSize}%`,
                   height: `${layerSize}%`,
                   borderRadius: '2px',
+                  boxShadow: signature && pattern.intensity > 0.5 
+                    ? `0 0 ${4 * pattern.intensity}px ${pattern.dominantColor}40`
+                    : undefined,
                 }}
               />
             );
