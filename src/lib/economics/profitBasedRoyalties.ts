@@ -55,7 +55,7 @@ export const PROFIT_ECONOMICS = {
   // Platform retention - 83% of profit covers operations
   platformRetentionRate: 0.83,
   
-  // Value Appreciation Pool distribution
+  // Value Appreciation Pool distribution (from print orders)
   poolDistribution: {
     creatorRoyalty: 0.40,    // 40% to creator
     educationFund: 0.25,     // 25% to education
@@ -63,10 +63,27 @@ export const PROFIT_ECONOMICS = {
     gamecardPool: 0.15,      // 15% to legendary game cards
   },
   
+  // Marketplace 5% Fee Distribution (reinvested into value system)
+  // When a vision is sold, new value = sale price - 5%
+  // The 5% is reinvested into the attribution pools
+  marketplaceFeeDistribution: {
+    gamecardPool: 0.35,      // 35% to game attribution value
+    palettePool: 0.35,       // 35% to palette attribution value  
+    openingPool: 0.20,       // 20% to opening attribution value (NEW)
+    platformOps: 0.10,       // 10% to platform operations
+  },
+  
+  // Opening bonus values (percentage increase for recognized book openings)
+  openingBonuses: {
+    gambit: 15,              // Gambits get +15% value bonus
+    famous: 10,              // Openings with 3+ famous players get +10%
+    standard: 5,             // Any recognized opening gets +5%
+  },
+  
   // Estimated fulfillment costs by product type
   estimatedCosts: {
     print: {
-      '8x10': { fulfillment: 1200, shipping: 500 },    // ~$12 fulfillment + $5 shipping
+      '8x10': { fulfillment: 1200, shipping: 500 },
       '11x14': { fulfillment: 1500, shipping: 600 },
       '16x20': { fulfillment: 2200, shipping: 800 },
       '18x24': { fulfillment: 2800, shipping: 900 },
@@ -91,12 +108,38 @@ export const PROFIT_ECONOMICS = {
   // Platform transaction fees (~3% Stripe + variable Shopify)
   transactionFeeRate: 0.035, // 3.5% average
   
-  // Marketplace fee on vision sales
+  // Marketplace fee on vision sales - 5% reinvested into value pools
   marketplaceFee: 0.05, // 5%
   
   // Subscription contribution rate
   subscriptionContributionRate: 0.17, // 17% of $7 = $1.19/month
 };
+
+/**
+ * Calculate marketplace fee distribution for a sale
+ * The 5% fee is reinvested into games/palettes/openings attribution
+ */
+export function calculateMarketplaceFeeReinvestment(salePriceCents: number): {
+  totalFeeCents: number;
+  sellerReceivesCents: number;
+  gamecardPoolCents: number;
+  palettePoolCents: number;
+  openingPoolCents: number;
+  platformOpsCents: number;
+} {
+  const totalFeeCents = Math.round(salePriceCents * PROFIT_ECONOMICS.marketplaceFee);
+  const sellerReceivesCents = salePriceCents - totalFeeCents;
+  
+  const dist = PROFIT_ECONOMICS.marketplaceFeeDistribution;
+  return {
+    totalFeeCents,
+    sellerReceivesCents,
+    gamecardPoolCents: Math.round(totalFeeCents * dist.gamecardPool),
+    palettePoolCents: Math.round(totalFeeCents * dist.palettePool),
+    openingPoolCents: Math.round(totalFeeCents * dist.openingPool),
+    platformOpsCents: Math.round(totalFeeCents * dist.platformOps),
+  };
+}
 
 /**
  * Calculate profit distribution for an order
