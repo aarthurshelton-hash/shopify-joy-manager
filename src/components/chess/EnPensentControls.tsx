@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Eye, EyeOff, Sparkles, ChevronUp, ChevronDown } from 'lucide-react';
+import { Eye, EyeOff, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
@@ -8,14 +8,16 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useEnPensentPatterns } from '@/hooks/useEnPensentPatterns';
+import { TemporalSignature } from '@/lib/pensent-core/types/core';
 
 interface EnPensentControlsProps {
   isEnabled: boolean;
   onToggle: () => void;
   totalMoves: number;
-  // Show pieces toggle
   showPieces?: boolean;
   onShowPiecesToggle?: () => void;
+  signature?: TemporalSignature | null;
 }
 
 export const EnPensentControls: React.FC<EnPensentControlsProps> = ({
@@ -24,10 +26,12 @@ export const EnPensentControls: React.FC<EnPensentControlsProps> = ({
   totalMoves,
   showPieces = true,
   onShowPiecesToggle,
+  signature,
 }) => {
+  const pattern = useEnPensentPatterns(signature);
+  
   return (
     <div className="flex items-center gap-2">
-      {/* En Pensent (Visualization) Toggle */}
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -43,20 +47,22 @@ export const EnPensentControls: React.FC<EnPensentControlsProps> = ({
                   : 'bg-muted/80 text-muted-foreground hover:bg-muted border border-border/50'
                 }
               `}
+              style={isEnabled && signature ? {
+                background: `linear-gradient(135deg, ${pattern.dominantColor}, ${pattern.secondaryColor})`,
+                boxShadow: `0 4px 20px ${pattern.dominantColor}40`
+              } : undefined}
               whileTap={{ scale: 0.95 }}
             >
-              {/* Animated background glow when enabled */}
               {isEnabled && (
                 <motion.div
-                  className="absolute inset-0 bg-gradient-to-r from-primary/0 via-white/20 to-primary/0"
-                  animate={{
-                    x: ['-100%', '200%'],
+                  className="absolute inset-0"
+                  style={{
+                    background: signature 
+                      ? `linear-gradient(90deg, transparent, ${pattern.secondaryColor}40, transparent)`
+                      : 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)'
                   }}
-                  transition={{
-                    duration: 2,
-                    repeat: Infinity,
-                    repeatDelay: 3,
-                  }}
+                  animate={{ x: ['-100%', '200%'] }}
+                  transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
                 />
               )}
               
@@ -87,7 +93,6 @@ export const EnPensentControls: React.FC<EnPensentControlsProps> = ({
               <span className="relative z-10 hidden sm:inline">En Pensent</span>
               <span className="relative z-10 sm:hidden">Art</span>
               
-              {/* Move counter badge */}
               {isEnabled && totalMoves > 0 && (
                 <motion.span
                   initial={{ scale: 0 }}
@@ -105,7 +110,6 @@ export const EnPensentControls: React.FC<EnPensentControlsProps> = ({
         </Tooltip>
       </TooltipProvider>
 
-      {/* Show Pieces Toggle - Always available */}
       {onShowPiecesToggle && (
         <TooltipProvider>
           <Tooltip>

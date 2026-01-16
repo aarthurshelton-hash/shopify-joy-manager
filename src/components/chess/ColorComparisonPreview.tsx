@@ -1,7 +1,10 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import { PieceType } from '@/lib/chess/pieceColors';
 import { PaletteColors, colorDistance } from '@/lib/visualizations/similarityDetection';
 import { AlertTriangle, Check, X } from 'lucide-react';
+import { useEnPensentPatterns } from '@/hooks/useEnPensentPatterns';
+import { TemporalSignature } from '@/lib/pensent-core/types/core';
 
 const PIECE_TYPES: PieceType[] = ['k', 'q', 'r', 'b', 'n', 'p'];
 const PIECE_NAMES: Record<PieceType, string> = {
@@ -21,6 +24,7 @@ interface ColorComparisonPreviewProps {
   existingColors: PaletteColors;
   similarityThreshold?: number;
   ownerName?: string;
+  signature?: TemporalSignature | null;
 }
 
 const ColorComparisonPreview: React.FC<ColorComparisonPreviewProps> = ({
@@ -28,7 +32,9 @@ const ColorComparisonPreview: React.FC<ColorComparisonPreviewProps> = ({
   existingColors,
   similarityThreshold = 50,
   ownerName = 'Another collector',
+  signature,
 }) => {
+  const pattern = useEnPensentPatterns(signature);
   // Calculate which colors are too similar
   const colorMatches: Array<{
     side: 'white' | 'black';
@@ -68,7 +74,21 @@ const ColorComparisonPreview: React.FC<ColorComparisonPreviewProps> = ({
   const needToChange = Math.ceil(12 * 0.7) - (12 - similarCount); // Need at least 70% different
   
   return (
-    <div className="bg-background border rounded-lg p-4 space-y-4">
+    <motion.div 
+      className="bg-background border rounded-lg p-4 space-y-4"
+      style={{
+        borderColor: signature ? `${pattern.dominantColor}40` : undefined,
+        boxShadow: signature ? `0 0 ${15 * pattern.intensity}px ${pattern.dominantColor}20` : undefined
+      }}
+      animate={signature ? { 
+        boxShadow: [
+          `0 0 ${10 * pattern.intensity}px ${pattern.dominantColor}15`,
+          `0 0 ${20 * pattern.intensity}px ${pattern.dominantColor}25`,
+          `0 0 ${10 * pattern.intensity}px ${pattern.dominantColor}15`
+        ]
+      } : {}}
+      transition={{ duration: 3, repeat: Infinity }}
+    >
       {/* Header */}
       <div className="flex items-start gap-3">
         <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
@@ -80,6 +100,11 @@ const ColorComparisonPreview: React.FC<ColorComparisonPreviewProps> = ({
               <> Change at least <span className="font-semibold">{needToChange} more colors</span> for uniqueness.</>
             )}
           </p>
+          {signature && (
+            <p className="text-[10px] mt-1 opacity-60" style={{ color: pattern.dominantColor }}>
+              Pattern: {pattern.archetype} • Flow: {pattern.flowDirection}
+            </p>
+          )}
         </div>
       </div>
       
@@ -172,8 +197,18 @@ const ColorComparisonPreview: React.FC<ColorComparisonPreviewProps> = ({
           <Check className="h-3 w-3 text-green-500" />
           <span>Unique enough</span>
         </div>
+        {signature && (
+          <motion.div 
+            className="ml-auto flex items-center gap-1"
+            animate={{ opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          >
+            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: pattern.dominantColor }} />
+            <span style={{ color: pattern.secondaryColor }}>{pattern.archetype}</span>
+          </motion.div>
+        )}
       </div>
-    </div>
+    </motion.div>
   );
 };
 
