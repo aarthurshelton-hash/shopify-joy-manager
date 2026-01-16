@@ -165,8 +165,8 @@ const GameView = () => {
   // Uses retry mechanism to handle race condition with session store persistence
   useEffect(() => {
     let retryCount = 0;
-    const maxRetries = 3;
-    const retryDelay = 50; // ms
+    const maxRetries = 8; // Increased from 3 to handle slower persistence
+    const retryDelay = 100; // ms - increased from 50ms
     
     const fetchGameByHash = async () => {
       if (!gameHash) {
