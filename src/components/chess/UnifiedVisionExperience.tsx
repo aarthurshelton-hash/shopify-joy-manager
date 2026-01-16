@@ -79,6 +79,8 @@ import ClaimVisionButton from '@/components/vision/ClaimVisionButton';
 import { OpeningBadge, OpeningMarketingCard } from './OpeningBadge';
 import { detectOpeningFromPgn, DetectedOpening } from '@/lib/chess/openingDetector';
 import { HybridPredictionPanel } from './HybridPredictionPanel';
+import TrajectoryTimelineOverlay from './TrajectoryTimelineOverlay';
+import { useHybridPrediction } from '@/hooks/useHybridPrediction';
 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -281,11 +283,13 @@ const TimelineBoard: React.FC<{
   );
 };
 
-// Timeline controls with key moments
+// Timeline controls with key moments and trajectory overlay
 const TimelineControls: React.FC<{
   totalMoves: number;
   moves?: string[];
-}> = ({ totalMoves, moves }) => {
+  hybridPrediction?: import('@/lib/chess/hybridPrediction').HybridPrediction | null;
+  patternPrediction?: import('@/lib/chess/patternLearning').PatternPrediction | null;
+}> = ({ totalMoves, moves, hybridPrediction, patternPrediction }) => {
   const { currentMove, setCurrentMove, isPlaying, play, pause, setMaxMoves } = useTimeline();
   const progress = totalMoves > 0 ? (currentMove / totalMoves) * 100 : 0;
 
@@ -329,7 +333,20 @@ const TimelineControls: React.FC<{
         <span>{currentMove} / {totalMoves}</span>
       </div>
       
-      <Progress value={progress} className="h-2" />
+      {/* Progress bar with trajectory overlay */}
+      <div className="relative">
+        <Progress value={progress} className="h-2" />
+        {(hybridPrediction || patternPrediction) && (
+          <TrajectoryTimelineOverlay
+            hybridPrediction={hybridPrediction}
+            patternPrediction={patternPrediction}
+            totalMoves={totalMoves}
+            currentMove={currentMove}
+            orientation="horizontal"
+            className="h-6 -top-2"
+          />
+        )}
+      </div>
       
       <div className="flex items-center justify-center gap-1">
         <Button 
@@ -1154,6 +1171,13 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
   const [gameCardMatch, setGameCardMatch] = useState<GameCardMatch | null>(null);
   const [showPoetryModal, setShowPoetryModal] = useState(false);
   
+  // Hybrid prediction system for trajectory visualization
+  const { 
+    result: hybridResult, 
+    analyzeGame: runHybridAnalysis,
+    isAnalyzing: isHybridAnalyzing,
+  } = useHybridPrediction();
+  
   // Board display options - initialize from initialState if provided
   // Also sync with the global visualization state store for exports
   const {
@@ -1552,6 +1576,17 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
     }
   }, [effectivePgn]);
 
+  // Run hybrid prediction analysis for trajectory visualization
+  useEffect(() => {
+    if (effectivePgn && effectiveMoves.length > 0 && !hybridResult.hybridPrediction && !isHybridAnalyzing) {
+      // Delay to not block initial render
+      const timer = setTimeout(() => {
+        runHybridAnalysis(effectivePgn, { depth: 15 });
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [effectivePgn, effectiveMoves.length, hybridResult.hybridPrediction, isHybridAnalyzing, runHybridAnalysis]);
+
   // Restore palette if provided
   useEffect(() => {
     if (paletteId && paletteId !== 'custom') {
@@ -1896,6 +1931,8 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                         totalMoves={localTotalMoves} 
                         moves={effectiveMoves}
                         pgn={effectivePgn}
+                        hybridPrediction={hybridResult.hybridPrediction}
+                        patternPrediction={hybridResult.patternPrediction}
                       />
                     </div>
 
@@ -1944,6 +1981,8 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                     <TimelineControls 
                       totalMoves={localTotalMoves} 
                       moves={effectiveMoves}
+                      hybridPrediction={hybridResult.hybridPrediction}
+                      patternPrediction={hybridResult.patternPrediction}
                     />
                   </div>
 
