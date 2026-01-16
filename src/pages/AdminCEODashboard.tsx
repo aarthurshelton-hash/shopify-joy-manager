@@ -47,6 +47,7 @@ import { AdminSubscriptionsPanel } from '@/components/admin/AdminSubscriptionsPa
 import { AdminActivityFeed } from '@/components/admin/AdminActivityFeed';
 import { AdminMaintenancePanel } from '@/components/admin/AdminMaintenancePanel';
 import { AdminHealthPanel } from '@/components/admin/AdminHealthPanel';
+import { AdminEconomicsPanel } from '@/components/admin/AdminEconomicsPanel';
 
 const AdminCEODashboard: React.FC = () => {
   const { user, isLoading: authLoading } = useAuth();
@@ -237,10 +238,14 @@ const AdminCEODashboard: React.FC = () => {
 
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-8">
+          <TabsList className="grid w-full grid-cols-9">
             <TabsTrigger value="users" className="gap-2">
               <Users className="h-4 w-4" />
               <span className="hidden sm:inline">Users</span>
+            </TabsTrigger>
+            <TabsTrigger value="economics" className="gap-2">
+              <TrendingUp className="h-4 w-4" />
+              <span className="hidden sm:inline">Econ</span>
             </TabsTrigger>
             <TabsTrigger value="orders" className="gap-2">
               <ShoppingBag className="h-4 w-4" />
@@ -278,6 +283,10 @@ const AdminCEODashboard: React.FC = () => {
               setSearchQuery={setSearchQuery}
               onSelectUser={setSelectedUserId}
             />
+          </TabsContent>
+
+          <TabsContent value="economics">
+            <AdminEconomicsPanel />
           </TabsContent>
 
           <TabsContent value="orders">
