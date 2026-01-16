@@ -89,7 +89,7 @@ interface AnalysisResult {
 }
 
 // Dynamically discover all TypeScript/TSX files in the codebase at build time
-const allModules = import.meta.glob('/src/**/*.{ts,tsx}', { eager: false, query: '?raw' });
+const allModules = import.meta.glob('/src/**/*.{ts,tsx}', { eager: false });
 
 // Categorize a file based on its path
 const categorizeFile = (path: string): FileAnalysis['category'] => {
