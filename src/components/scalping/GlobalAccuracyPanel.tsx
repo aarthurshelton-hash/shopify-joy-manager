@@ -1,6 +1,7 @@
 /**
  * Global Accuracy Panel
  * Live, persistent accuracy tracking across all sessions
+ * Auto-updates with realtime subscriptions
  */
 
 import React, { useEffect, useState } from 'react';
@@ -8,13 +9,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Target, TrendingUp, TrendingDown, Activity, Zap, 
   Brain, Crosshair, Clock, BarChart3, Flame, 
-  Award, AlertTriangle
+  Award, AlertTriangle, Wifi, WifiOff
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { useTradingSessionStore, GlobalAccuracy } from '@/stores/tradingSessionStore';
+import { useRealtimeAccuracy } from '@/hooks/useRealtimeAccuracy';
 
 interface AccuracyGaugeProps {
   value: number;
@@ -114,18 +116,19 @@ export const GlobalAccuracyPanel: React.FC<GlobalAccuracyPanelProps> = ({
   showStreak = true
 }) => {
   const { globalAccuracy, evolutionState, liveMetrics, syncEvolutionState } = useTradingSessionStore();
+  const { isConnected, lastUpdate, updateCount } = useRealtimeAccuracy(true);
   const [pulseCount, setPulseCount] = useState(0);
   
-  // Sync evolution state periodically
+  // Sync evolution state continuously with realtime updates
   useEffect(() => {
     const interval = setInterval(() => {
       syncEvolutionState();
       setPulseCount(c => c + 1);
-    }, 1000);
+    }, 500); // Faster updates for realtime feel
     return () => clearInterval(interval);
   }, [syncEvolutionState]);
   
-  const isLive = liveMetrics.isStreaming;
+  const isLive = liveMetrics.isStreaming || isConnected;
   
   if (compact) {
     return (
@@ -212,6 +215,15 @@ export const GlobalAccuracyPanel: React.FC<GlobalAccuracyPanelProps> = ({
           </CardTitle>
           
           <div className="flex items-center gap-2">
+            {isConnected && (
+              <Badge 
+                variant="outline" 
+                className="text-xs border-blue-500/30 text-blue-400"
+              >
+                <Wifi className="w-3 h-3 mr-1" />
+                SYNCED
+              </Badge>
+            )}
             <Badge 
               variant="outline" 
               className={cn(

@@ -1,15 +1,16 @@
 /**
  * Stock Market Prediction Dashboard
  * En Pensent™ Finance Module - Proving Predictive Power
+ * All accuracy data auto-updates in realtime
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { TrendingUp, TrendingDown, Minus, RefreshCw, Target, BarChart3, Save, Layers, Trophy, History, Zap } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, RefreshCw, Target, BarChart3, Save, Layers, Trophy, History, Zap, Wifi } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { 
@@ -22,6 +23,7 @@ import { AccuracyLeaderboard } from '@/components/finance/AccuracyLeaderboard';
 import { CrossDomainAnalysis } from '@/components/finance/CrossDomainAnalysis';
 import { PredictionHistory } from '@/components/finance/PredictionHistory';
 import { ScalpingTerminal } from '@/components/scalping/ScalpingTerminal';
+import { useRealtimeAccuracy, subscribeToAccuracyUpdates } from '@/hooks/useRealtimeAccuracy';
 
 interface StockData {
   symbol: string;
@@ -41,6 +43,20 @@ const StockPredictionDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState('analyze');
   const [predictions, setPredictions] = useState<any[]>([]);
   const [accuracyStats, setAccuracyStats] = useState<any>({ archetypePerformance: {} });
+  
+  // Realtime accuracy hook for auto-updates
+  const { isConnected, updateCount, syncAccuracyData } = useRealtimeAccuracy(true);
+
+  // Auto-refresh on realtime updates
+  useEffect(() => {
+    const unsubscribe = subscribeToAccuracyUpdates((update) => {
+      if (update.type === 'prediction') {
+        loadPredictions();
+        loadAccuracyStats();
+      }
+    });
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
     loadStocks();
@@ -140,12 +156,21 @@ const StockPredictionDashboard: React.FC = () => {
   return (
     <div className="container mx-auto py-8 px-4">
       <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold mb-2">
-          <span className="text-primary">En Pensent™</span> Market Predictions
-        </h1>
+        <div className="flex items-center justify-center gap-2 mb-2">
+          <h1 className="text-4xl font-bold">
+            <span className="text-primary">En Pensent™</span> Market Predictions
+          </h1>
+          {isConnected && (
+            <Badge variant="outline" className="text-xs border-green-500/30 text-green-400">
+              <Wifi className="w-3 h-3 mr-1" />
+              LIVE
+            </Badge>
+          )}
+        </div>
         <p className="text-muted-foreground max-w-2xl mx-auto">
           Testing our temporal signature extraction on real market data. 
           Track predictions vs. outcomes to measure accuracy.
+          <span className="text-primary ml-1">Updates: {updateCount}</span>
         </p>
       </div>
 
