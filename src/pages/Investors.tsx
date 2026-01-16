@@ -11,6 +11,7 @@ import { useRandomGameArt } from '@/hooks/useRandomGameArt';
 import { BookShowcase } from '@/components/book/BookShowcase';
 import { generatePitchDeck } from '@/lib/pitchDeck/generatePitchDeck';
 import { generateTAMReport } from '@/lib/pitchDeck/generateTAMReport';
+import { StrategicPositioningBanner } from '@/components/marketing/StrategicPositioningBanner';
 import { toast } from 'sonner';
 
 type ModalType = 'market' | 'technology' | 'vision' | 'brand' | 'data' | null;
@@ -554,6 +555,9 @@ const Investors = () => {
               backgroundImage={backgroundImages[4]}
             />
           </div>
+
+          {/* Strategic Positioning Banner */}
+          <StrategicPositioningBanner variant="investor" className="mb-8" />
 
           {/* NEW: Featured Book Showcase for Investors */}
           <div className="space-y-4">

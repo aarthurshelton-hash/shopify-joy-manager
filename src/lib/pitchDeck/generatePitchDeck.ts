@@ -418,15 +418,15 @@ export async function generatePitchDeck(): Promise<Blob> {
   doc.setFont('helvetica', 'bold');
   centerText('COMPETITIVE MOAT', 100, 64, gold);
   
-  centerText('Why We Win', 160, 32);
+  centerText('Why This Can\'t Be Easily Replicated', 160, 32);
   
   const advantages = [
-    { title: 'First Mover', desc: 'Only platform combining generative art with chess heritage — no direct competitors', icon: '🏆' },
-    { title: 'Technology Stack', desc: 'Proprietary visualization algorithm + Natural Vision™ + Stockfish 17 integration', icon: '⚡' },
-    { title: 'Network Effects', desc: 'More users = more trades = more value = stronger pattern database', icon: '🔗' },
-    { title: 'Community Loyalty', desc: 'Education Fund creates goodwill; sustainable economics build trust', icon: '❤️' },
-    { title: 'Content Library', desc: '100+ curated famous games with unique haiku poetry — years of curation', icon: '📚' },
-    { title: 'Sustainable Model', desc: 'Profit-based royalties vs. unsustainable revenue-share — we\'re built to last', icon: '♻️' }
+    { title: 'Patent-Pending Algorithm', desc: 'Proprietary visual encryption — server-side, obfuscated, legally protected', icon: '🔒' },
+    { title: 'Novel Technology Fusion', desc: 'Stockfish 17 + color theory — unique combination that took years to perfect', icon: '⚡' },
+    { title: 'Growing Data Moat', desc: 'Millions of visual patterns cross-referenced — more data = smarter predictions', icon: '📊' },
+    { title: 'Natural Vision™', desc: 'Technically challenging reverse-lookup — camera to game in milliseconds', icon: '👁️' },
+    { title: 'Hustlenomics™ System', desc: 'Complex, battle-tested economic engine — sustainable creator rewards', icon: '💰' },
+    { title: 'Brand + Community', desc: 'Established trust and loyalty — reputation cannot be copied overnight', icon: '❤️' }
   ];
   
   advantages.forEach((adv, i) => {
@@ -446,6 +446,16 @@ export async function generatePitchDeck(): Promise<Blob> {
     doc.setTextColor(cream[0], cream[1], cream[2]);
     doc.text(descLines, x, y + 50);
   });
+  
+  // Strategic note at bottom
+  doc.setFillColor(30, 28, 26);
+  doc.roundedRect(margin + 100, 860, width - margin * 2 - 200, 120, 15, 15, 'F');
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(18);
+  doc.setTextColor(180, 180, 180);
+  const stratNote = 'We are aware of the acquisition histories of major chess platforms. En Pensent is designed to complement existing ecosystems — our technology creates new revenue streams without cannibalizing core chess products.';
+  const stratLines = doc.splitTextToSize(stratNote, width - margin * 2 - 280);
+  doc.text(stratLines, width / 2, 910, { align: 'center' });
 
   // ===== SLIDE 10: The Ask =====
   addSlide();

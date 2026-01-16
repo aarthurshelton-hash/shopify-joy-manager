@@ -77,6 +77,13 @@ export const Footer = forwardRef<HTMLElement, object>(function Footer(_props, re
               <Lock className="w-3 h-3" />
               <span>Patent Pending • Proprietary Technology</span>
             </div>
+            <div className="flex flex-wrap justify-center gap-1 mt-1">
+              <span className="text-[9px] text-muted-foreground/30">En Pensent™</span>
+              <span className="text-muted-foreground/20">•</span>
+              <span className="text-[9px] text-muted-foreground/30">Natural Vision™</span>
+              <span className="text-muted-foreground/20">•</span>
+              <span className="text-[9px] text-muted-foreground/30">Hustlenomics™</span>
+            </div>
           </div>
         </div>
       </div>

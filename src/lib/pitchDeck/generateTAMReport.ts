@@ -416,7 +416,7 @@ export async function generateTAMReport(): Promise<Blob> {
   addBullet('More creators = more content = more reasons to subscribe');
   addBullet('More prints = more real-world exposure = more organic discovery');
 
-  // ===== PAGE 8: Conclusion =====
+  // ===== PAGE 8: Investment Thesis =====
   doc.addPage();
   yPos = margin;
   
@@ -432,36 +432,42 @@ export async function generateTAMReport(): Promise<Blob> {
   
   yPos += 15;
   addSubheader('Competitive Moat');
-  addBullet('Proprietary visualization algorithm and palette system — years to replicate');
-  addBullet('Curated library of 100+ famous games with unique haiku poetry');
-  addBullet('Network effects: more users = more trades = more value = better AI');
-  addBullet('Education Fund creates goodwill and community loyalty');
+  addBullet('Proprietary visualization algorithm — server-side, obfuscated, patent-pending');
+  addBullet('Stockfish 17 + color theory fusion — novel combination, not obvious to replicate');
+  addBullet('Natural Vision™ scanner — technically challenging reverse-lookup technology');
+  addBullet('Growing data moat — millions of visual patterns cross-referenced');
+  addBullet('Established brand + community — trust and loyalty cannot be copied overnight');
   addBullet('Sustainable profit-based economics vs. unsustainable revenue-share models');
-  addBullet('Stockfish 17 + Natural Vision™ = unmatched analytical foundation');
+  
+  yPos += 15;
+  addSubheader('Strategic Value for Acquirers');
+  addBullet('Instant differentiation for major chess platforms through premium art vertical');
+  addBullet('Monetizes 150M+ user bases with museum-quality prints and digital ownership');
+  addBullet('Creates new revenue streams without cannibalizing core chess products');
+  addBullet('Enterprise-ready architecture designed for global scale integration');
   
   yPos += 15;
   addSubheader('Key Metrics to Watch');
   addBullet('Monthly Active Users (MAU) and DAU/MAU ratio (engagement)');
   addBullet('Premium conversion rate (target: 5-8% of registered users)');
   addBullet('Average Revenue Per User (ARPU) growth trajectory');
-  addBullet('Print order frequency and repeat purchase rate');
-  addBullet('Marketplace liquidity (trades per Vision per month)');
-  addBullet('Vision Score growth (engagement proxy)');
+  addBullet('Vision Score growth and marketplace liquidity');
   
-  yPos += 25;
+  yPos += 20;
   
   doc.setFillColor(gold[0], gold[1], gold[2]);
   doc.roundedRect(margin, yPos, contentWidth, 100, 5, 5, 'F');
   
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
+  doc.setFontSize(14);
   doc.setTextColor(255, 255, 255);
-  doc.text('$180M SOM by Year 5', margin + 15, yPos + 30);
+  doc.text('Strategic Partnership Opportunity', margin + 15, yPos + 25);
   
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(12);
-  doc.text('1M subscribers  •  $120 ARPU  •  95% digital margin  •  17% creator royalties', margin + 15, yPos + 55);
-  doc.text('$500K seed  •  40% product  •  30% growth  •  20% content  •  10% operations', margin + 15, yPos + 80);
+  doc.setFontSize(10);
+  doc.text('To reach full potential — processing millions of daily visualizations for 800M+ players —', margin + 15, yPos + 50);
+  doc.text('this technology requires enterprise-scale infrastructure. Acquisition-ready architecture.', margin + 15, yPos + 65);
+  doc.text('Contact: investors@enpensent.com', margin + 15, yPos + 85);
 
   // Footer on all pages
   const totalPages = doc.getNumberOfPages();
