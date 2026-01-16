@@ -37,6 +37,7 @@ interface AuthContextType {
   isPremium: boolean;
   isFreeAccount: boolean; // Has account but no premium subscription
   isAdmin: boolean;
+  isCheckingAdmin: boolean;
   subscriptionStatus: SubscriptionStatus | null;
   isCheckingSubscription: boolean;
   mfaStatus: MFAStatus;
@@ -66,6 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [hasCompletedInitialCheck, setHasCompletedInitialCheck] = useState(false);
   const [mfaStatus, setMfaStatus] = useState<MFAStatus>({ enabled: false, factorId: null });
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
 
   const isPremium = subscriptionStatus?.subscribed && subscriptionStatus?.productId === PREMIUM_PRODUCT_ID;
   // User has an account but no active premium subscription
@@ -73,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Check admin role
   const checkAdminRole = useCallback(async (userId: string) => {
+    setIsCheckingAdmin(true);
     try {
       const { data, error } = await supabase
         .from('user_roles')
@@ -84,6 +87,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsAdmin(!error && !!data);
     } catch {
       setIsAdmin(false);
+    } finally {
+      setIsCheckingAdmin(false);
     }
   }, []);
 
@@ -214,6 +219,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setProfile(null);
           setSubscriptionStatus(null);
           setIsAdmin(false);
+          setIsCheckingAdmin(false);
         }
         
         setIsLoading(false);
@@ -228,6 +234,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (currentSession?.user) {
         fetchProfile(currentSession.user.id);
         checkAdminRole(currentSession.user.id);
+      } else {
+        setIsCheckingAdmin(false);
       }
       
       setIsLoading(false);
@@ -347,6 +355,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSubscriptionStatus(null);
     setMfaStatus({ enabled: false, factorId: null });
     setIsAdmin(false);
+    setIsCheckingAdmin(false);
     setHasCompletedInitialCheck(false);
     setIsCheckingSubscription(false);
   };
@@ -375,6 +384,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isPremium,
       isFreeAccount,
       isAdmin,
+      isCheckingAdmin,
       subscriptionStatus,
       isCheckingSubscription,
       mfaStatus,
