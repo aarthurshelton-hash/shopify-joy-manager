@@ -6,6 +6,7 @@ import { useRandomGameArt } from '@/hooks/useRandomGameArt';
 import { Badge } from '@/components/ui/badge';
 import { RoyaltyCalculator } from '@/components/calculator/RoyaltyCalculator';
 import LifestyleMockupGallery from '@/components/shop/LifestyleMockupGallery';
+import { StrategicPositioningBanner } from '@/components/marketing/StrategicPositioningBanner';
 
 const About = () => {
   const backgroundImages = useRandomGameArt(6);
@@ -434,6 +435,9 @@ const About = () => {
             <LifestyleMockupGallery showTitle={false} />
           </div>
           
+          {/* Technology Protection Notice */}
+          <StrategicPositioningBanner variant="full" />
+
           {/* Contact */}
           <div className="text-center p-8 rounded-lg border border-border/50 bg-card/50 space-y-4">
             <h2 className="text-xl font-display font-bold uppercase tracking-wider">Get in Touch</h2>
@@ -441,6 +445,9 @@ const About = () => {
               Have questions, ideas, or partnership opportunities? We'd love to hear from you.
             </p>
             <p className="text-primary font-medium">hello@enpensent.com</p>
+            <p className="text-xs text-muted-foreground mt-2">
+              Strategic partnerships: <span className="text-primary">investors@enpensent.com</span>
+            </p>
           </div>
         </div>
       </main>

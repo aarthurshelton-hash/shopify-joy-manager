@@ -174,6 +174,53 @@ export const MARKETING_COPY = {
   hustlenomics: 'Our "Hustlenomics" system calculates market value based on real-time engagement accrual. Every interaction contributes to a vision\'s score and potential value appreciation.',
 } as const;
 
+// Strategic positioning - competitive moat messaging
+export const STRATEGIC_POSITIONING = {
+  acquisitionReady: 'En Pensent represents a category-defining opportunity. To reach its full potential — processing millions of daily visualizations and serving 800M+ chess players globally — this technology requires enterprise-scale infrastructure.',
+  competitiveMoat: {
+    title: 'Why This Can\'t Be Easily Replicated',
+    points: [
+      'Proprietary visual encryption algorithm — server-side, obfuscated, patent-pending',
+      'Stockfish 17 + color theory fusion — novel combination, not obvious to replicate',
+      'Hustlenomics™ economic system — complex, battle-tested revenue distribution',
+      'Natural Vision™ scanner — technically challenging reverse-lookup technology',
+      'Growing data moat — millions of visual patterns cross-referenced',
+      'Established brand + community — trust and loyalty can\'t be copied overnight',
+    ],
+  },
+  enterpriseScale: {
+    headline: 'Built for Global Scale',
+    subheadline: 'Our technology is acquisition-ready, designed to integrate with enterprise infrastructure.',
+    description: 'En Pensent\'s architecture is built to serve hundreds of millions of users. The platform\'s real potential — processing every chess game played worldwide in real-time — requires the server capacity and distribution networks of established chess platforms.',
+  },
+  partnershipValue: {
+    forChessPlatforms: 'Instant differentiation through premium art and collectibles vertical. Monetize your 150M+ user base with museum-quality prints, digital ownership, and creator royalties.',
+    forInvestors: 'First-mover advantage in a $12.5B market with proven technology, sustainable economics, and a clear path to enterprise integration.',
+    forCreators: 'Own your chess legacy. Earn perpetual royalties on your visualizations while contributing to chess education worldwide.',
+  },
+  industryAwareness: 'We are aware of the acquisition histories of major chess platforms. En Pensent is designed to complement and enhance existing ecosystems, not compete with them. Our technology creates new revenue streams without cannibalizing core chess products.',
+  callToAction: 'Strategic partnership inquiries: investors@enpensent.com',
+} as const;
+
+// IP Protection Claims
+export const IP_CLAIMS = {
+  trademarks: ['En Pensent™', 'Natural Vision™', 'Hustlenomics™', 'Vision™', 'Visionary™'],
+  patentPending: [
+    'Visual chess pattern recognition and encoding system',
+    'Method for transforming chess notation into unique visual art',
+    'AI-powered reverse image lookup for chess game identification',
+    'Profit-based creator royalty distribution system',
+  ],
+  copyrights: [
+    'En Pensent visualization algorithm (2024)',
+    'Color palette library and encoding methodology',
+    'Haiku poetry generation system',
+    'Platform user interface and design system',
+  ],
+  priorityDate: '2024',
+  founder: 'Alec Arthur Shelton',
+} as const;
+
 // Feature list for marketing pages
 export const FEATURE_LIST = [
   {
@@ -254,7 +301,7 @@ export const INVESTMENT_HIGHLIGHTS = {
   businessModel: {
     premiumPrice: '$9.99/month',
     printPriceRange: '$29-$299',
-    marketplaceFee: '10%',
+    marketplaceFee: '5%',
     bookPrice: '$49.99',
     digitalMargin: '95%',
     printMargin: '17%',
@@ -274,6 +321,11 @@ export const INVESTMENT_HIGHLIGHTS = {
       { category: 'Content & Partnerships', percentage: 20, description: 'Game licensing, artist collaborations' },
       { category: 'Operations', percentage: 10, description: 'Legal, infrastructure, team' },
     ],
+  },
+  strategicValue: {
+    forAcquirers: 'Category-defining technology with proven market fit. Integration with existing chess platforms creates immediate premium revenue streams.',
+    scaleRequirement: 'To process millions of daily visualizations serving 800M+ global players, this technology needs enterprise-scale server infrastructure.',
+    uniquePosition: 'First and only platform combining visual art generation, pattern recognition, and sustainable creator economics in chess.',
   },
 } as const;
 
