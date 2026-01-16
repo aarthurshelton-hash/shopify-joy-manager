@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { Chess, Square } from 'chess.js';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
 import { 
   Swords, Users, Zap, Clock, Crown, Copy, Share2, 
   Flag, Handshake, ChevronRight, Palette, Sparkles, Lock, TrendingUp,
-  Bot, User, ChevronLeft, Image, Eye, Timer
+  Bot, User, ChevronLeft, Image, Eye, Timer, BookOpen, ArrowRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
@@ -737,6 +737,44 @@ const Play = () => {
                         ))}
                       </div>
                     </div>
+                  </div>
+                </div>
+
+                {/* Opening Collections - Learn famous openings */}
+                <div className="p-4 sm:p-6 rounded-lg border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <BookOpen className="h-5 w-5 text-amber-500" />
+                      <div>
+                        <h3 className="font-display font-bold uppercase tracking-wider text-sm">Opening Encyclopedia</h3>
+                        <p className="text-xs text-muted-foreground">Master famous book openings</p>
+                      </div>
+                    </div>
+                    <Link to="/openings">
+                      <Button variant="outline" size="sm" className="gap-1 text-xs">
+                        Browse All
+                        <ArrowRight className="h-3 w-3" />
+                      </Button>
+                    </Link>
+                  </div>
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                    {[
+                      { name: "Queen's Gambit", icon: '👸', color: 'border-purple-500/40 bg-purple-500/10' },
+                      { name: 'Sicilian', icon: '🛡️', color: 'border-red-500/40 bg-red-500/10' },
+                      { name: 'Italian', icon: '🏛️', color: 'border-green-500/40 bg-green-500/10' },
+                      { name: "King's Gambit", icon: '⚔️', color: 'border-amber-500/40 bg-amber-500/10' },
+                      { name: 'Ruy Lopez', icon: '🇪🇸', color: 'border-blue-500/40 bg-blue-500/10' },
+                      { name: 'London', icon: '🎩', color: 'border-gray-500/40 bg-gray-500/10' },
+                    ].map((opening) => (
+                      <Link 
+                        key={opening.name}
+                        to={`/marketplace?opening=${encodeURIComponent(opening.name.toLowerCase())}`}
+                        className={`p-2 rounded-lg border ${opening.color} text-center hover:scale-105 transition-transform`}
+                      >
+                        <div className="text-lg mb-0.5">{opening.icon}</div>
+                        <p className="text-[9px] font-medium truncate">{opening.name}</p>
+                      </Link>
+                    ))}
                   </div>
                 </div>
 

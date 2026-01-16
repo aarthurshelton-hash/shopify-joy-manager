@@ -76,6 +76,8 @@ import { useAuth } from '@/hooks/useAuth';
 import MiniPrintOrderSection from './MiniPrintOrderSection';
 import { generateGameHash } from '@/lib/visualizations/gameCanonical';
 import ClaimVisionButton from '@/components/vision/ClaimVisionButton';
+import { OpeningBadge, OpeningMarketingCard } from './OpeningBadge';
+import { detectOpeningFromPgn, DetectedOpening } from '@/lib/chess/openingDetector';
 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -456,6 +458,16 @@ const AnalyticsPanel: React.FC<{
     return extractOpeningInfo(effectivePgn, classifiedMoves);
   }, [effectivePgn, classifiedMoves]);
   
+  // Detect opening with full marketing info
+  const detectedOpening = React.useMemo((): DetectedOpening | null => {
+    if (!effectivePgn) return null;
+    try {
+      return detectOpeningFromPgn(effectivePgn) || null;
+    } catch {
+      return null;
+    }
+  }, [effectivePgn]);
+  
   // Calculate estimated value - show even for new (unsaved) visions based on game complexity
   const baseEstimatedValue = visionScore ? calculateVisionValue(visionScore, membershipMultiplier) : 0;
   
@@ -534,8 +546,10 @@ const AnalyticsPanel: React.FC<{
             Deep Analysis
           </h3>
           
-          {/* Opening Detection */}
-          {gameAnalysis.opening && (
+          {/* Opening Detection with Marketing Info */}
+          {detectedOpening ? (
+            <OpeningMarketingCard opening={detectedOpening} showValue={true} />
+          ) : gameAnalysis.opening && (
             <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
               <div className="flex items-center gap-2 mb-1">
                 <Badge variant="outline" className="bg-blue-500/20 text-blue-600 border-blue-500/30">

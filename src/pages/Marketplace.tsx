@@ -97,6 +97,16 @@ const Marketplace: React.FC = () => {
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [category, setCategory] = useState<CategoryFilter>('all');
   const [showGenesisOnly, setShowGenesisOnly] = useState(false);
+  const [openingFilter, setOpeningFilter] = useState<string>('');
+
+  // Initialize opening filter from URL params
+  useEffect(() => {
+    const openingParam = searchParams.get('opening');
+    if (openingParam) {
+      setOpeningFilter(openingParam);
+      setSearchQuery(openingParam); // Also set as search query for filtering
+    }
+  }, [searchParams]);
 
   // Handle restoration toast when returning from order page
   useEffect(() => {
