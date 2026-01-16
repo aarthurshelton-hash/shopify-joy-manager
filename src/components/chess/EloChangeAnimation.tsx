@@ -32,9 +32,6 @@ export const EloChangeAnimation = ({
   const oldTier = getRatingTier(oldRating);
   const newTier = getRatingTier(newRating);
   const tierChanged = oldTier.name !== newTier.name;
-  const oldTier = getRatingTier(oldRating);
-  const newTier = getRatingTier(newRating);
-  const tierChanged = oldTier.name !== newTier.name;
 
   useEffect(() => {
     if (!show) {
