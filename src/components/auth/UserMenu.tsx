@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
-import { User, LogOut, Palette, Settings, Crown, CreditCard, Image, Gamepad2, BarChart3, History, Paintbrush, Shield, ShieldCheck, Wrench, Database, Wallet, Banknote, Scale, Gift, LayoutDashboard, BookOpen, ImageIcon, IdCard } from 'lucide-react';
+import { User, LogOut, Palette, Settings, Crown, CreditCard, Image, Gamepad2, BarChart3, History, Paintbrush, Shield, ShieldCheck, Wrench, Database, Wallet, Banknote, Scale, Gift, LayoutDashboard, BookOpen, ImageIcon, IdCard, LineChart, Zap, FileText, Code, Presentation, Sparkles } from 'lucide-react';
 import AuthModal from './AuthModal';
 import MFASetup from './MFASetup';
 import PremiumBadge from '@/components/premium/PremiumBadge';
@@ -367,6 +367,59 @@ const UserMenu: React.FC = () => {
               >
                 <BarChart3 className="h-4 w-4" />
                 Premium Analytics
+                <Crown className="h-3 w-3 ml-auto" />
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-xs text-amber-500 uppercase tracking-wider flex items-center gap-1">
+                <Zap className="h-3 w-3" />
+                En Pensent Engine
+              </DropdownMenuLabel>
+              <DropdownMenuItem 
+                onClick={() => navigate('/stock-predictions')}
+                className="gap-2 cursor-pointer text-amber-500 font-semibold"
+              >
+                <LineChart className="h-4 w-4" />
+                Stock Predictions
+                <Crown className="h-3 w-3 ml-auto" />
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => navigate('/trading')}
+                className="gap-2 cursor-pointer text-amber-500 font-semibold"
+              >
+                <Zap className="h-4 w-4" />
+                Trading Terminal
+                <Crown className="h-3 w-3 ml-auto" />
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => navigate('/strategic-plan')}
+                className="gap-2 cursor-pointer text-amber-500 font-semibold"
+              >
+                <FileText className="h-4 w-4" />
+                Strategic Plan
+                <Crown className="h-3 w-3 ml-auto" />
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => navigate('/code-analysis')}
+                className="gap-2 cursor-pointer text-amber-500 font-semibold"
+              >
+                <Code className="h-4 w-4" />
+                Code Analyzer
+                <Crown className="h-3 w-3 ml-auto" />
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => navigate('/showcase')}
+                className="gap-2 cursor-pointer text-amber-500 font-semibold"
+              >
+                <Presentation className="h-4 w-4" />
+                Showcase Tour
+                <Crown className="h-3 w-3 ml-auto" />
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => navigate('/investor-portal')}
+                className="gap-2 cursor-pointer text-amber-500 font-semibold"
+              >
+                <Sparkles className="h-4 w-4" />
+                Investor Portal
                 <Crown className="h-3 w-3 ml-auto" />
               </DropdownMenuItem>
             </>
