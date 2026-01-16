@@ -542,10 +542,26 @@ const AnalyticsPanel: React.FC<{
       {/* Deep Chess Analysis */}
       {gameAnalysis && (
         <div className="space-y-3">
-          <h3 className="font-display text-sm uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-            <BookOpen className="h-4 w-4" />
-            Deep Analysis
-          </h3>
+          <div className="flex items-center justify-between">
+            <h3 className="font-display text-sm uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+              <BookOpen className="h-4 w-4" />
+              Deep Analysis
+            </h3>
+            {/* Game Complexity Badge - moved here for visibility */}
+            {gameAnalysis.summary && (
+              <Badge 
+                variant="secondary" 
+                className={`text-[10px] ${
+                  gameAnalysis.summary.complexity === 'masterpiece' ? 'bg-amber-500/20 text-amber-600' :
+                  gameAnalysis.summary.complexity === 'complex' ? 'bg-purple-500/20 text-purple-600' :
+                  gameAnalysis.summary.complexity === 'moderate' ? 'bg-blue-500/20 text-blue-600' :
+                  'bg-green-500/20 text-green-600'
+                }`}
+              >
+                {gameAnalysis.summary.complexity}
+              </Badge>
+            )}
+          </div>
           
           {/* Opening Detection with Marketing Info */}
           {detectedOpening ? (
@@ -633,48 +649,7 @@ const AnalyticsPanel: React.FC<{
             </div>
           )}
 
-          {/* Game Stats from Analysis */}
-          {gameAnalysis.summary && (
-            <div className="p-3 rounded-lg bg-muted/50 border border-border/50">
-              <div className="flex items-center justify-between mb-2">
-                <Badge variant="outline">
-                  <TrendingUp className="h-3 w-3 mr-1" />
-                  Statistics
-                </Badge>
-                <Badge 
-                  variant="secondary" 
-                  className={`text-[10px] ${
-                    gameAnalysis.summary.complexity === 'masterpiece' ? 'bg-amber-500/20 text-amber-600' :
-                    gameAnalysis.summary.complexity === 'complex' ? 'bg-purple-500/20 text-purple-600' :
-                    gameAnalysis.summary.complexity === 'moderate' ? 'bg-blue-500/20 text-blue-600' :
-                    'bg-green-500/20 text-green-600'
-                  }`}
-                >
-                  {gameAnalysis.summary.complexity}
-                </Badge>
-              </div>
-              <div className="grid grid-cols-4 gap-2 text-center text-xs">
-                <div>
-                  <p className="font-bold">{gameAnalysis.summary.totalMoves}</p>
-                  <p className="text-muted-foreground">Moves</p>
-                </div>
-                <div>
-                  <p className="font-bold">{gameAnalysis.summary.captureCount}</p>
-                  <p className="text-muted-foreground">Captures</p>
-                </div>
-                <div>
-                  <p className="font-bold">{gameAnalysis.summary.checkCount}</p>
-                  <p className="text-muted-foreground">Checks</p>
-                </div>
-                <div>
-                  <p className="font-bold">{gameAnalysis.summary.materialBalance > 0 ? '+' : ''}{gameAnalysis.summary.materialBalance}</p>
-                  <p className="text-muted-foreground">Material</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Move Quality Metrics */}
+          {/* Move Quality Metrics - encompasses all statistics */}
           {qualitySummary && (
             <div className="p-3 rounded-lg bg-gradient-to-br from-cyan-500/10 via-transparent to-purple-500/10 border border-cyan-500/20">
               <div className="flex items-center justify-between mb-3">
