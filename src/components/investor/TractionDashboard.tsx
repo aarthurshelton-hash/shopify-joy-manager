@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
-import { Activity, Eye, Scan, GitBranch, TrendingUp, Database, Target, Zap } from 'lucide-react';
+import { Activity, Eye, Scan, GitBranch, TrendingUp, Database, Target, Zap, Radio } from 'lucide-react';
+import { useRealtimeAccuracyContext } from '@/providers/RealtimeAccuracyProvider';
 
 interface TractionMetrics {
   totalChessPatterns: number;
@@ -17,6 +18,7 @@ interface TractionMetrics {
 }
 
 export default function TractionDashboard() {
+  const { isConnected, updateCount } = useRealtimeAccuracyContext();
   const [metrics, setMetrics] = useState<TractionMetrics>({
     totalChessPatterns: 0,
     totalCodeAnalyses: 0,
@@ -28,54 +30,80 @@ export default function TractionDashboard() {
     activeUsers: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
-  useEffect(() => {
-    async function fetchMetrics() {
-      try {
-        // Fetch real data from various tables
-        const [
-          patternsRes,
-          codeRes,
-          visionsRes,
-          scansRes,
-          openingsRes,
-          usersRes,
-        ] = await Promise.all([
-          supabase.from('color_flow_patterns').select('id', { count: 'exact', head: true }),
-          supabase.from('code_repository_patterns').select('id', { count: 'exact', head: true }),
-          supabase.from('saved_visualizations').select('id', { count: 'exact', head: true }),
-          supabase.from('scan_history').select('id', { count: 'exact', head: true }),
-          supabase.from('opening_value_pool').select('id', { count: 'exact', head: true }),
-          supabase.from('profiles').select('id', { count: 'exact', head: true }),
-        ]);
+  const fetchMetrics = useCallback(async () => {
+    try {
+      // Fetch real data from various tables
+      const [
+        patternsRes,
+        codeRes,
+        visionsRes,
+        scansRes,
+        openingsRes,
+        usersRes,
+      ] = await Promise.all([
+        supabase.from('color_flow_patterns').select('id', { count: 'exact', head: true }),
+        supabase.from('code_repository_patterns').select('id', { count: 'exact', head: true }),
+        supabase.from('saved_visualizations').select('id', { count: 'exact', head: true }),
+        supabase.from('scan_history').select('id', { count: 'exact', head: true }),
+        supabase.from('opening_value_pool').select('id', { count: 'exact', head: true }),
+        supabase.from('profiles').select('id', { count: 'exact', head: true }),
+      ]);
 
-        // Get aggregated views from vision_scores
-        const viewsRes = await supabase
-          .from('vision_scores')
-          .select('view_count, scan_count');
-        
-        const totalViews = viewsRes.data?.reduce((acc, v) => acc + (v.view_count || 0), 0) || 0;
-        const totalScansFromScores = viewsRes.data?.reduce((acc, v) => acc + (v.scan_count || 0), 0) || 0;
+      // Get aggregated views from vision_scores
+      const viewsRes = await supabase
+        .from('vision_scores')
+        .select('view_count, scan_count');
+      
+      const totalViews = viewsRes.data?.reduce((acc, v) => acc + (v.view_count || 0), 0) || 0;
+      const totalScansFromScores = viewsRes.data?.reduce((acc, v) => acc + (v.scan_count || 0), 0) || 0;
 
-        setMetrics({
-          totalChessPatterns: patternsRes.count || 0,
-          totalCodeAnalyses: codeRes.count || 0,
-          totalVisions: visionsRes.count || 0,
-          totalScans: (scansRes.count || 0) + totalScansFromScores,
-          totalViews: totalViews,
-          weeklyGrowth: 23, // Placeholder - would calculate from time-series
-          uniqueOpenings: openingsRes.count || 0,
-          activeUsers: usersRes.count || 0,
-        });
-      } catch (error) {
-        console.error('Error fetching traction metrics:', error);
-      } finally {
-        setLoading(false);
-      }
+      setMetrics({
+        totalChessPatterns: patternsRes.count || 0,
+        totalCodeAnalyses: codeRes.count || 0,
+        totalVisions: visionsRes.count || 0,
+        totalScans: (scansRes.count || 0) + totalScansFromScores,
+        totalViews: totalViews,
+        weeklyGrowth: 23, // Placeholder - would calculate from time-series
+        uniqueOpenings: openingsRes.count || 0,
+        activeUsers: usersRes.count || 0,
+      });
+      setLastRefresh(new Date());
+    } catch (error) {
+      console.error('Error fetching traction metrics:', error);
+    } finally {
+      setLoading(false);
     }
-
-    fetchMetrics();
   }, []);
+
+  // Initial fetch
+  useEffect(() => {
+    fetchMetrics();
+  }, [fetchMetrics]);
+
+  // Re-fetch when realtime updates occur
+  useEffect(() => {
+    if (updateCount > 0) {
+      fetchMetrics();
+    }
+  }, [updateCount, fetchMetrics]);
+
+  // Set up realtime subscriptions for investor-relevant tables
+  useEffect(() => {
+    const channel = supabase
+      .channel('investor-traction-metrics')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'saved_visualizations' }, () => fetchMetrics())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'color_flow_patterns' }, () => fetchMetrics())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'code_repository_patterns' }, () => fetchMetrics())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'scan_history' }, () => fetchMetrics())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => fetchMetrics())
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchMetrics]);
 
   const metricCards = [
     {
@@ -130,6 +158,20 @@ export default function TractionDashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Live Status Indicator */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-muted'}`} />
+          <span className="text-xs text-muted-foreground">
+            {isConnected ? 'Live data synchronized' : 'Connecting...'}
+          </span>
+        </div>
+        <Badge variant="outline" className="gap-1 text-xs">
+          <Radio className="h-3 w-3" />
+          Updated {lastRefresh.toLocaleTimeString()}
+        </Badge>
+      </div>
+
       {/* Main Metrics Grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         {metricCards.map((metric, index) => (

@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -34,6 +35,35 @@ export interface UserStatistics {
 
 export function useUserStatistics() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  // Set up realtime subscriptions for statistics-related tables
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const channel = supabase
+      .channel(`user-stats-${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'saved_visualizations' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['user-statistics', user.id] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'visualization_listings' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['user-statistics', user.id] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'marketplace_offers' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['user-statistics', user.id] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_wallets' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['user-statistics', user.id] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'vision_scores' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['user-statistics', user.id] });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, queryClient]);
 
   return useQuery({
     queryKey: ['user-statistics', user?.id],
