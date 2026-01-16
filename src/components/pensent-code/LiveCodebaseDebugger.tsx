@@ -548,6 +548,66 @@ const LiveCodebaseDebugger = ({
     }
   };
 
+  // Generate a single comprehensive fix prompt from critical issues
+  const generateUnifiedFixPrompt = useCallback((issues: DetectedIssue[]): string => {
+    const criticalIssues = issues.filter(i => i.severity === 'critical' || i.severity === 'high');
+    if (criticalIssues.length === 0) return '';
+    
+    const issueGroups = {
+      complexity: criticalIssues.filter(i => i.type === 'complexity-hotspot'),
+      density: criticalIssues.filter(i => i.type === 'low-density'),
+      refactor: criticalIssues.filter(i => i.type === 'refactor-needed'),
+      coverage: criticalIssues.filter(i => i.type === 'missing-coverage')
+    };
+    
+    let prompt = `## Critical Codebase Improvements Required\n\n`;
+    prompt += `**Analysis Timestamp:** ${new Date().toISOString()}\n`;
+    prompt += `**Total Critical Issues:** ${criticalIssues.length}\n\n`;
+    prompt += `---\n\n`;
+    
+    // Complexity hotspots
+    if (issueGroups.complexity.length > 0) {
+      prompt += `### 1. COMPLEXITY HOTSPOTS (Refactor Priority)\n\n`;
+      issueGroups.complexity.forEach((issue, i) => {
+        prompt += `**${i + 1}. ${issue.file || 'Unknown file'}**\n`;
+        prompt += `- Problem: ${issue.description}\n`;
+        prompt += `- Fix: ${issue.fix}\n`;
+        prompt += `- Impact: ${issue.impact}\n\n`;
+      });
+    }
+    
+    // Low density files
+    if (issueGroups.density.length > 0) {
+      prompt += `### 2. LOW EN PENSENT INTEGRATION\n\n`;
+      prompt += `These files need En Pensent SDK integration:\n\n`;
+      issueGroups.density.forEach((issue, i) => {
+        prompt += `**${i + 1}. ${issue.file || 'Unknown file'}**\n`;
+        prompt += `- Current: ${issue.description}\n`;
+        prompt += `- Required: Import from \`@/lib/pensent-core\` and add TemporalSignature patterns\n\n`;
+      });
+    }
+    
+    // Refactoring needs
+    if (issueGroups.refactor.length > 0) {
+      prompt += `### 3. REFACTORING REQUIRED\n\n`;
+      issueGroups.refactor.forEach((issue, i) => {
+        prompt += `**${i + 1}. ${issue.title}**\n`;
+        prompt += `- ${issue.description}\n`;
+        prompt += `- Action: ${issue.fix}\n\n`;
+      });
+    }
+    
+    prompt += `---\n\n`;
+    prompt += `## Implementation Instructions\n\n`;
+    prompt += `1. Start with complexity hotspots - split large files into focused modules\n`;
+    prompt += `2. Add En Pensent SDK imports to low-density files\n`;
+    prompt += `3. Ensure each module exports TemporalSignature-compatible data\n`;
+    prompt += `4. Run the Live Codebase Debugger again to verify improvements\n\n`;
+    prompt += `**Expected Outcome:** Pattern density increase of +${Math.round(criticalIssues.length * 8)}%, complexity reduction of ~40%`;
+    
+    return prompt;
+  }, []);
+
   const getCategoryColor = (category: FileAnalysis['category']) => {
     switch (category) {
       case 'core-sdk': return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
@@ -1106,9 +1166,9 @@ const LiveCodebaseDebugger = ({
               </Card>
             )}
 
-            {/* Prediction */}
+            {/* Prediction with Unified Fix Prompt */}
             <Card className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-green-500/30">
-              <CardContent className="p-4">
+              <CardContent className="p-4 space-y-4">
                 <div className="flex gap-3">
                   <CheckCircle className="w-6 h-6 text-green-500 flex-shrink-0 mt-0.5" />
                   <div>
@@ -1121,6 +1181,54 @@ const LiveCodebaseDebugger = ({
                     <p className="text-sm text-muted-foreground">{result.prediction.reasoning}</p>
                   </div>
                 </div>
+                
+                {/* Unified Critical Fix Prompt */}
+                {result.issues.filter(i => i.severity === 'critical' || i.severity === 'high').length > 0 && (
+                  <div className="border-t border-green-500/20 pt-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h5 className="font-semibold text-sm flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-amber-400" />
+                        One-Click Fix: Critical Issues
+                      </h5>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        className="gap-2 bg-amber-600 hover:bg-amber-700"
+                        onClick={() => copyPromptToClipboard(
+                          generateUnifiedFixPrompt(result.issues), 
+                          'unified-fix'
+                        )}
+                      >
+                        {copiedPromptId === 'unified-fix' ? (
+                          <>
+                            <Check className="w-3 h-3" />
+                            Copied!
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3" />
+                            Copy Unified Prompt
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    <div 
+                      className="bg-muted/50 border border-amber-500/20 rounded-lg p-3 max-h-64 overflow-y-auto cursor-pointer hover:bg-muted/70 transition-colors"
+                      onClick={() => copyPromptToClipboard(
+                        generateUnifiedFixPrompt(result.issues), 
+                        'unified-fix'
+                      )}
+                    >
+                      <pre className="text-xs text-muted-foreground whitespace-pre-wrap font-mono">
+                        {generateUnifiedFixPrompt(result.issues)}
+                      </pre>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                      <Zap className="w-3 h-3 text-amber-400" />
+                      Paste this prompt to fix all {result.issues.filter(i => i.severity === 'critical' || i.severity === 'high').length} critical issues at once
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
