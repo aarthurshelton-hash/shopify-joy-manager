@@ -56,3 +56,6 @@ verify_jwt = false
 
 [functions.stock-data]
 verify_jwt = false
+
+[functions.resolve-predictions]
+verify_jwt = false

@@ -9,16 +9,18 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { TrendingUp, TrendingDown, Minus, RefreshCw, Target, BarChart3 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, RefreshCw, Target, BarChart3, Save, Layers, Trophy, History } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { 
-  extractMarketSignature, 
-  generatePrediction, 
   generateMultiTimeframePrediction,
+  generateBaselinePrediction,
   MARKET_ARCHETYPES 
 } from '@/lib/pensent-core/domains/finance';
-import type { CandleStick, StockPrediction } from '@/lib/pensent-core/domains/finance/types';
+import type { CandleStick } from '@/lib/pensent-core/domains/finance/types';
+import { AccuracyLeaderboard } from '@/components/finance/AccuracyLeaderboard';
+import { CrossDomainAnalysis } from '@/components/finance/CrossDomainAnalysis';
+import { PredictionHistory } from '@/components/finance/PredictionHistory';
 
 interface StockData {
   symbol: string;
@@ -35,10 +37,63 @@ const StockPredictionDashboard: React.FC = () => {
   const [prediction, setPrediction] = useState<ReturnType<typeof generateMultiTimeframePrediction> | null>(null);
   const [loading, setLoading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
+  const [activeTab, setActiveTab] = useState('analyze');
+  const [predictions, setPredictions] = useState<any[]>([]);
+  const [accuracyStats, setAccuracyStats] = useState<any>({ archetypePerformance: {} });
 
   useEffect(() => {
     loadStocks();
+    loadPredictions();
+    loadAccuracyStats();
   }, []);
+
+  const loadPredictions = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('resolve-predictions', {
+        body: { action: 'get_recent_predictions' }
+      });
+      if (!error && data?.predictions) {
+        setPredictions(data.predictions);
+      }
+    } catch (err) {
+      console.error('Failed to load predictions:', err);
+    }
+  };
+
+  const loadAccuracyStats = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('resolve-predictions', {
+        body: { action: 'get_accuracy_stats' }
+      });
+      if (!error && data) {
+        setAccuracyStats(data);
+      }
+    } catch (err) {
+      console.error('Failed to load accuracy stats:', err);
+    }
+  };
+
+  const savePrediction = async () => {
+    if (!prediction || !selectedStock) return;
+    
+    const baseline = generateBaselinePrediction(selectedStock.candles);
+    
+    try {
+      const { error } = await supabase.functions.invoke('resolve-predictions', {
+        body: { 
+          action: 'save_prediction',
+          prediction: prediction.longTerm,
+          baseline
+        }
+      });
+      
+      if (error) throw error;
+      toast.success('Prediction saved! It will be resolved after expiry.');
+      loadPredictions();
+    } catch (err) {
+      toast.error('Failed to save prediction');
+    }
+  };
 
   const loadStocks = async () => {
     setLoading(true);
@@ -93,6 +148,24 @@ const StockPredictionDashboard: React.FC = () => {
         </p>
       </div>
 
+      {/* Main Navigation Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
+        <TabsList className="grid grid-cols-4 w-full max-w-lg mx-auto">
+          <TabsTrigger value="analyze" className="flex items-center gap-1">
+            <Target className="w-4 h-4" /> Analyze
+          </TabsTrigger>
+          <TabsTrigger value="history" className="flex items-center gap-1">
+            <History className="w-4 h-4" /> History
+          </TabsTrigger>
+          <TabsTrigger value="leaderboard" className="flex items-center gap-1">
+            <Trophy className="w-4 h-4" /> Accuracy
+          </TabsTrigger>
+          <TabsTrigger value="correlation" className="flex items-center gap-1">
+            <Layers className="w-4 h-4" /> Cross-Domain
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="analyze">
       {/* Stock Selection */}
       <Card className="mb-6">
         <CardHeader className="flex flex-row items-center justify-between">
@@ -214,10 +287,33 @@ const StockPredictionDashboard: React.FC = () => {
                   );
                 })}
               </Tabs>
+
+              <Button onClick={savePrediction} className="w-full mt-4">
+                <Save className="w-4 h-4 mr-2" />
+                Save Prediction for Tracking
+              </Button>
+            </>
             ) : null}
           </CardContent>
         </Card>
       )}
+        </TabsContent>
+
+        <TabsContent value="history">
+          <PredictionHistory predictions={predictions} onRefresh={loadPredictions} />
+        </TabsContent>
+
+        <TabsContent value="leaderboard">
+          <AccuracyLeaderboard 
+            archetypePerformance={accuracyStats.archetypePerformance || {}}
+            overview={accuracyStats.overview}
+          />
+        </TabsContent>
+
+        <TabsContent value="correlation">
+          <CrossDomainAnalysis demoMode={true} />
+        </TabsContent>
+      </Tabs>
 
       {/* Disclaimer */}
       <p className="text-center text-xs text-muted-foreground mt-8">
