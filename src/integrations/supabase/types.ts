@@ -59,6 +59,42 @@ export type Database = {
         }
         Relationships: []
       }
+      auto_heal_runs: {
+        Row: {
+          completed_at: string | null
+          error_message: string | null
+          fixes_applied: number | null
+          fixes_generated: number | null
+          id: string
+          issues_detected: number | null
+          run_metadata: Json | null
+          started_at: string
+          status: string
+        }
+        Insert: {
+          completed_at?: string | null
+          error_message?: string | null
+          fixes_applied?: number | null
+          fixes_generated?: number | null
+          id?: string
+          issues_detected?: number | null
+          run_metadata?: Json | null
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          completed_at?: string | null
+          error_message?: string | null
+          fixes_applied?: number | null
+          fixes_generated?: number | null
+          id?: string
+          issues_detected?: number | null
+          run_metadata?: Json | null
+          started_at?: string
+          status?: string
+        }
+        Relationships: []
+      }
       banned_users: {
         Row: {
           banned_at: string
@@ -353,6 +389,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      code_issues: {
+        Row: {
+          auto_fixable: boolean | null
+          confidence: number
+          description: string
+          detected_at: string
+          file_path: string
+          fix_applied: boolean | null
+          id: string
+          issue_type: string
+          line_end: number | null
+          line_start: number | null
+          metadata: Json | null
+          resolved_at: string | null
+          severity: string
+        }
+        Insert: {
+          auto_fixable?: boolean | null
+          confidence?: number
+          description: string
+          detected_at?: string
+          file_path: string
+          fix_applied?: boolean | null
+          id?: string
+          issue_type: string
+          line_end?: number | null
+          line_start?: number | null
+          metadata?: Json | null
+          resolved_at?: string | null
+          severity?: string
+        }
+        Update: {
+          auto_fixable?: boolean | null
+          confidence?: number
+          description?: string
+          detected_at?: string
+          file_path?: string
+          fix_applied?: boolean | null
+          id?: string
+          issue_type?: string
+          line_end?: number | null
+          line_start?: number | null
+          metadata?: Json | null
+          resolved_at?: string | null
+          severity?: string
+        }
+        Relationships: []
       }
       code_prediction_outcomes: {
         Row: {
@@ -1469,6 +1553,62 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      pending_fixes: {
+        Row: {
+          ai_model: string | null
+          applied_at: string | null
+          approved_by: string | null
+          confidence: number
+          file_path: string
+          fix_prompt: string
+          fixed_code: string | null
+          generated_at: string
+          generation_metadata: Json | null
+          id: string
+          issue_id: string | null
+          original_code: string | null
+          status: string
+        }
+        Insert: {
+          ai_model?: string | null
+          applied_at?: string | null
+          approved_by?: string | null
+          confidence?: number
+          file_path: string
+          fix_prompt: string
+          fixed_code?: string | null
+          generated_at?: string
+          generation_metadata?: Json | null
+          id?: string
+          issue_id?: string | null
+          original_code?: string | null
+          status?: string
+        }
+        Update: {
+          ai_model?: string | null
+          applied_at?: string | null
+          approved_by?: string | null
+          confidence?: number
+          file_path?: string
+          fix_prompt?: string
+          fixed_code?: string | null
+          generated_at?: string
+          generation_metadata?: Json | null
+          id?: string
+          issue_id?: string | null
+          original_code?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pending_fixes_issue_id_fkey"
+            columns: ["issue_id"]
+            isOneToOne: false
+            referencedRelation: "code_issues"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       platform_financials: {
         Row: {

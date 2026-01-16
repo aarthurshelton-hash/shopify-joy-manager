@@ -65,3 +65,6 @@ verify_jwt = false
 
 [functions.market-collector.schedule]
 cron = "*/5 * * * *"
+
+[functions.auto-heal-codebase]
+verify_jwt = false
