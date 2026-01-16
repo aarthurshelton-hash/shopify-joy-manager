@@ -53,3 +53,6 @@ verify_jwt = false
 
 [functions.analyze-repository]
 verify_jwt = false
+
+[functions.create-analysis-payment]
+verify_jwt = false

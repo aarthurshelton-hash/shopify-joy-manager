@@ -4,6 +4,8 @@ import { RepositoryAnalyzer } from '@/components/pensent-code/RepositoryAnalyzer
 import { AnalysisResults } from '@/components/pensent-code/AnalysisResults';
 import { PatentPendingBadge } from '@/components/pensent-code/PatentPendingBadge';
 import { InventorCredits } from '@/components/pensent-code/InventorCredits';
+import { ProvenPredictions } from '@/components/pensent-code/ProvenPredictions';
+import { PricingSection } from '@/components/pensent-code/PricingSection';
 import { useCodeAnalysis } from '@/hooks/useCodeAnalysis';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Brain, GitBranch, Sparkles } from 'lucide-react';
@@ -121,6 +123,12 @@ export default function CodeAnalysis() {
                 ))}
               </div>
             </div>
+
+            {/* Proven Predictions - Build Credibility */}
+            <ProvenPredictions />
+
+            {/* Pricing Section */}
+            <PricingSection />
 
             {/* Inventor Credits */}
             <InventorCredits />
