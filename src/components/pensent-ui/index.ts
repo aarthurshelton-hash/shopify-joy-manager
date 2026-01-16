@@ -11,3 +11,5 @@ export { ArchetypeBadge, type ArchetypeBadgeProps, type ArchetypeCategory } from
 export { TemporalFlowChart, type TemporalFlowChartProps, type TemporalFlowData } from './TemporalFlowChart';
 export { QuadrantRadar, type QuadrantRadarProps, type QuadrantData } from './QuadrantRadar';
 export { SignatureOverlay, type SignatureOverlayProps, type SignatureData } from './SignatureOverlay';
+export { PredictionGauge, type PredictionGaugeProps } from './PredictionGauge';
+export { SignatureComparison, type SignatureComparisonProps } from './SignatureComparison';
