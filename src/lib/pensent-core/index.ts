@@ -45,11 +45,53 @@ export {
 export {
   generateTrajectoryPrediction,
   calculateTrajectoryDivergence,
-  assessTrajectorySustainability
+  assessTrajectorySustainability,
+  DEFAULT_PREDICTION_CONFIG,
+  type PredictionConfig
 } from './trajectoryPredictor';
 
+// Archetype Resolution
+export {
+  ArchetypeResolver,
+  createArchetypeResolver,
+  classifyUniversalArchetype,
+  calculateArchetypeSimilarity,
+  DEFAULT_MATCH_CRITERIA,
+  type ArchetypeMatchCriteria,
+  type ArchetypeMatchResult
+} from './archetypeResolver';
+
+// Visualization Primitives
+export {
+  quadrantToRadarData,
+  temporalFlowToChartData,
+  criticalMomentsToTimeline,
+  createIntensityGauge,
+  createConfidenceGauge,
+  signatureToVisualizationData,
+  getColorForValue,
+  getConfidenceColor,
+  getIntensityColor,
+  formatPercentage,
+  formatTrend,
+  formatArchetype,
+  formatFlowDirection,
+  formatDominantForce,
+  createStaggeredDelays,
+  DEFAULT_COLOR_SCALE,
+  DEFAULT_ANIMATION_CONFIG,
+  type TimeSeriesPoint,
+  type RadarChartData,
+  type HeatMapData,
+  type FlowChartData,
+  type GaugeData,
+  type SignatureVisualizationData,
+  type ColorScale,
+  type AnimationConfig
+} from './visualizationPrimitives';
+
 // Version
-export const PENSENT_CORE_VERSION = '1.0.0';
+export const PENSENT_CORE_VERSION = '1.1.0';
 
 /**
  * Create a new En Pensent engine for a domain

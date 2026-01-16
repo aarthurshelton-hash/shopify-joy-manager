@@ -1,7 +1,8 @@
 /**
  * En Pensent Core SDK - Trajectory Prediction
  * 
- * Universal algorithms for predicting future trajectories from pattern analysis
+ * Universal, domain-agnostic algorithms for predicting future trajectories
+ * from pattern analysis using only the base TemporalSignature interface.
  */
 
 import { 
@@ -17,33 +18,81 @@ import {
   calculateMatchConfidence 
 } from './patternMatcher';
 
+// ===================== CONFIGURATION =====================
+
+/**
+ * Domain-agnostic prediction configuration
+ */
+export interface PredictionConfig {
+  /** Weight for pattern match confidence in overall score */
+  matchConfidenceWeight: number;
+  /** Weight for archetype confidence in overall score */
+  archetypeConfidenceWeight: number;
+  /** Maximum lookahead horizon (in sequence units) */
+  maxLookahead: number;
+  /** Minimum sample size for reliable predictions */
+  minSampleSize: number;
+  /** Outcome key mappings for domain flexibility */
+  outcomeMapping?: {
+    primaryWin?: string[];
+    secondaryWin?: string[];
+    draw?: string[];
+  };
+}
+
+export const DEFAULT_PREDICTION_CONFIG: PredictionConfig = {
+  matchConfidenceWeight: 0.6,
+  archetypeConfidenceWeight: 0.4,
+  maxLookahead: 80,
+  minSampleSize: 5,
+  outcomeMapping: {
+    primaryWin: ['primary_wins', 'white_wins', 'success', 'win'],
+    secondaryWin: ['secondary_wins', 'black_wins', 'failure', 'loss'],
+    draw: ['draw', 'neutral', 'uncertain', 'tie']
+  }
+};
+
+// ===================== MAIN PREDICTION FUNCTIONS =====================
+
 /**
  * Generate trajectory prediction from pattern matches
+ * 
+ * This function is domain-agnostic and works with any TemporalSignature.
+ * It uses configurable outcome mappings to support different domains.
  */
 export function generateTrajectoryPrediction(
   currentSignature: TemporalSignature,
   matches: PatternMatch[],
   archetypeDefinition: ArchetypeDefinition | null,
   currentPosition: number,
-  totalExpectedLength: number
+  totalExpectedLength: number,
+  config: Partial<PredictionConfig> = {}
 ): TrajectoryPrediction {
+  const cfg = { ...DEFAULT_PREDICTION_CONFIG, ...config };
+  
   // Calculate outcome probabilities
   const outcomeProbabilities = calculateOutcomeProbabilities(matches);
   const mostLikely = getMostLikelyOutcome(matches);
   
-  // Calculate confidence
-  const matchConfidence = calculateMatchConfidence(matches);
+  // Calculate confidence using configurable weights
+  const matchConfidence = calculateMatchConfidence(matches, cfg.minSampleSize);
   const archetypeConfidence = archetypeDefinition?.confidence ?? 0.5;
-  const overallConfidence = (matchConfidence * 0.6) + (archetypeConfidence * 0.4);
+  const overallConfidence = 
+    (matchConfidence * cfg.matchConfidenceWeight) + 
+    (archetypeConfidence * cfg.archetypeConfidenceWeight);
   
-  // Determine win probabilities
-  const primaryWinProb = outcomeProbabilities['primary_wins'] ?? 
-                         outcomeProbabilities['white_wins'] ?? 
-                         outcomeProbabilities['success'] ?? 0.33;
-  const secondaryWinProb = outcomeProbabilities['secondary_wins'] ?? 
-                           outcomeProbabilities['black_wins'] ?? 
-                           outcomeProbabilities['failure'] ?? 0.33;
-  const drawProb = 1 - primaryWinProb - secondaryWinProb;
+  // Determine win probabilities using flexible outcome mapping
+  const primaryWinProb = findOutcomeProbability(
+    outcomeProbabilities, 
+    cfg.outcomeMapping?.primaryWin ?? []
+  ) ?? 0.33;
+  
+  const secondaryWinProb = findOutcomeProbability(
+    outcomeProbabilities, 
+    cfg.outcomeMapping?.secondaryWin ?? []
+  ) ?? 0.33;
+  
+  const drawProb = Math.max(0, 1 - primaryWinProb - secondaryWinProb);
   
   // Generate milestones based on signature analysis
   const milestones = generateMilestones(
@@ -64,7 +113,7 @@ export function generateTrajectoryPrediction(
   const remainingMoves = totalExpectedLength - currentPosition;
   const lookaheadHorizon = Math.min(
     remainingMoves,
-    Math.floor(80 * overallConfidence) // Up to 80 moves ahead at full confidence
+    Math.floor(cfg.maxLookahead * overallConfidence)
   );
   
   return {
@@ -72,12 +121,27 @@ export function generateTrajectoryPrediction(
     confidence: overallConfidence,
     primaryWinProbability: primaryWinProb,
     secondaryWinProbability: secondaryWinProb,
-    drawProbability: Math.max(0, drawProb),
+    drawProbability: drawProb,
     milestones,
     strategicGuidance,
     lookaheadHorizon,
     patternSampleSize: matches.length
   };
+}
+
+/**
+ * Find outcome probability from multiple possible keys
+ */
+function findOutcomeProbability(
+  probabilities: Record<string, number>,
+  keys: string[]
+): number | null {
+  for (const key of keys) {
+    if (probabilities[key] !== undefined) {
+      return probabilities[key];
+    }
+  }
+  return null;
 }
 
 /**
