@@ -10,7 +10,7 @@ import { useVisualizationStateStore } from '@/stores/visualizationStateStore';
 import { MoveHistoryEntry } from './EnPensentOverlay';
 import { 
   Sparkles, Eye, Lock, X, MapPin, Swords, GitCompare, 
-  Info, Crown, Shield, Crosshair, Target, ChevronDown, ChevronUp
+  Info, Crown, Shield, Crosshair, Target, ChevronDown, ChevronUp, Activity, TrendingUp
 } from 'lucide-react';
 import {
   Tooltip,
@@ -19,6 +19,8 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
+import { TemporalSignature, QuadrantProfile, TemporalFlow } from '@/lib/pensent-core/types';
+import { classifyUniversalArchetype } from '@/lib/pensent-core/archetype/universalClassifier';
 
 interface EnhancedLegendProps {
   whitePalette: Record<string, string>;
@@ -200,6 +202,76 @@ export const EnhancedLegend: React.FC<EnhancedLegendProps> = ({
     
     return mvp;
   }, [pieceActivity]);
+
+  // En Pensent: Extract temporal signature from piece activity
+  const temporalSignature = useMemo((): TemporalSignature | null => {
+    if (!board || board.length === 0) return null;
+    
+    // Calculate quadrant profile from board activity
+    const quadrantProfile: QuadrantProfile = { q1: 0, q2: 0, q3: 0, q4: 0 };
+    let totalVisits = 0;
+    let whiteVisits = 0;
+    let blackVisits = 0;
+    
+    for (let rank = 0; rank < 8; rank++) {
+      for (let file = 0; file < 8; file++) {
+        const square = board[rank]?.[file];
+        if (!square?.visits) continue;
+        
+        const visits = square.visits.length;
+        totalVisits += visits;
+        
+        for (const visit of square.visits) {
+          if (visit.color === 'w') whiteVisits++;
+          else blackVisits++;
+        }
+        
+        // Map to quadrants
+        if (rank < 4 && file < 4) quadrantProfile.q1 += visits;
+        else if (rank < 4 && file >= 4) quadrantProfile.q2 += visits;
+        else if (rank >= 4 && file < 4) quadrantProfile.q3 += visits;
+        else quadrantProfile.q4 += visits;
+      }
+    }
+    
+    // Normalize
+    if (totalVisits > 0) {
+      quadrantProfile.q1 /= totalVisits;
+      quadrantProfile.q2 /= totalVisits;
+      quadrantProfile.q3 /= totalVisits;
+      quadrantProfile.q4 /= totalVisits;
+    }
+    
+    const whitePercent = totalVisits > 0 ? whiteVisits / totalVisits : 0.5;
+    
+    const temporalFlow: TemporalFlow = {
+      opening: moveHistory.length > 0 ? Math.min(1, 10 / moveHistory.length) : 0,
+      middle: moveHistory.length > 10 ? Math.min(1, (moveHistory.length - 10) / 30) : 0,
+      ending: moveHistory.length > 40 ? Math.min(1, (moveHistory.length - 40) / 20) : 0,
+      trend: whitePercent > 0.55 ? 'accelerating' : whitePercent < 0.45 ? 'declining' : 'stable',
+      momentum: (whitePercent - 0.5) * 2,
+    };
+    
+    const intensity = Math.min(1, totalVisits / 200);
+    const dominantForce = whitePercent > 0.55 ? 'primary' : whitePercent < 0.45 ? 'secondary' : 'balanced';
+    
+    return {
+      fingerprint: `enhanced-${Date.now()}`,
+      archetype: 'unknown',
+      dominantForce,
+      flowDirection: temporalFlow.momentum > 0 ? 'forward' : temporalFlow.momentum < 0 ? 'backward' : 'lateral',
+      intensity,
+      quadrantProfile,
+      temporalFlow,
+      criticalMoments: [],
+    };
+  }, [board, moveHistory]);
+
+  // En Pensent: Classify game archetype
+  const gameArchetype = useMemo(() => {
+    if (!temporalSignature) return null;
+    return classifyUniversalArchetype(temporalSignature);
+  }, [temporalSignature]);
 
   // Calculate territory heatmap data from board (preferred) or moveHistory (fallback)
   const territoryData = useMemo(() => {

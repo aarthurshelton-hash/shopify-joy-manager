@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { getPieceColorLegend, getActivePalette, PieceType, PieceColor } from '@/lib/chess/pieceColors';
 import { useLegendHighlight } from '@/contexts/LegendHighlightContext';
 import { SquareData } from '@/lib/chess/gameSimulator';
-import { GitCompare, X, Swords, Grid3X3, Flame, ChevronLeft, ChevronRight, MapPin } from 'lucide-react';
+import { GitCompare, X, Swords, Grid3X3, Flame, ChevronLeft, ChevronRight, MapPin, TrendingUp, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
@@ -12,6 +12,8 @@ import {
 } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
 import { AIHeatmapInsights } from './AIHeatmapInsights';
+import { TemporalSignature, QuadrantProfile, TemporalFlow } from '@/lib/pensent-core/types';
+import { classifyUniversalArchetype } from '@/lib/pensent-core/archetype/universalClassifier';
 
 interface GameContext {
   whiteName?: string;
@@ -409,6 +411,72 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board, on
     
     return { overlapCount, piece1Only, piece2Only };
   }, [board, compareMode, lockedPieces]);
+
+  // En Pensent: Extract temporal signature from board activity
+  const temporalSignature = useMemo((): TemporalSignature | null => {
+    if (!board || !battleStats) return null;
+    
+    // Calculate quadrant profile from board activity
+    const quadrantProfile: QuadrantProfile = { q1: 0, q2: 0, q3: 0, q4: 0 };
+    let totalVisits = 0;
+    
+    for (let rank = 0; rank < 8; rank++) {
+      for (let file = 0; file < 8; file++) {
+        const visits = board[rank][file].visits.length;
+        totalVisits += visits;
+        
+        // Map to quadrants (q1=top-left, q2=top-right, q3=bottom-left, q4=bottom-right)
+        if (rank < 4 && file < 4) quadrantProfile.q1 += visits;
+        else if (rank < 4 && file >= 4) quadrantProfile.q2 += visits;
+        else if (rank >= 4 && file < 4) quadrantProfile.q3 += visits;
+        else quadrantProfile.q4 += visits;
+      }
+    }
+    
+    // Normalize quadrant values
+    if (totalVisits > 0) {
+      quadrantProfile.q1 /= totalVisits;
+      quadrantProfile.q2 /= totalVisits;
+      quadrantProfile.q3 /= totalVisits;
+      quadrantProfile.q4 /= totalVisits;
+    }
+    
+    // Calculate temporal flow based on game phases (approximate)
+    const moveCount = gameContext?.totalMoves || 0;
+    const temporalFlow: TemporalFlow = {
+      opening: moveCount > 0 ? Math.min(1, 10 / moveCount) : 0,
+      middle: moveCount > 10 ? Math.min(1, (moveCount - 10) / 30) : 0,
+      ending: moveCount > 40 ? Math.min(1, (moveCount - 40) / 20) : 0,
+      trend: battleStats.whitePercentage > 55 ? 'accelerating' : 
+             battleStats.blackPercentage > 55 ? 'declining' : 'stable',
+      momentum: (battleStats.whitePercentage - 50) / 50,
+    };
+    
+    // Calculate intensity from total activity
+    const intensity = Math.min(1, totalVisits / 200);
+    
+    // Determine dominant force
+    const dominantForce = battleStats.whitePercentage > 55 ? 'primary' : 
+                          battleStats.blackPercentage > 55 ? 'secondary' : 'balanced';
+    
+    return {
+      fingerprint: `chess-${Date.now()}`,
+      archetype: 'unknown', // Will be classified
+      dominantForce,
+      flowDirection: temporalFlow.momentum > 0 ? 'forward' : 
+                     temporalFlow.momentum < 0 ? 'backward' : 'lateral',
+      intensity,
+      quadrantProfile,
+      temporalFlow,
+      criticalMoments: [],
+    };
+  }, [board, battleStats, gameContext]);
+
+  // En Pensent: Classify archetype from signature
+  const gameArchetype = useMemo(() => {
+    if (!temporalSignature) return null;
+    return classifyUniversalArchetype(temporalSignature);
+  }, [temporalSignature]);
 
   // Build piece activity data for AI insights
   const pieceActivityForAI = useMemo(() => {

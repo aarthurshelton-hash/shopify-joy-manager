@@ -7,7 +7,9 @@ import {
 import { useLegendHighlight, HighlightedPiece } from '@/contexts/LegendHighlightContext';
 import { useVisualizationStateStore } from '@/stores/visualizationStateStore';
 import { MoveHistoryEntry } from './EnPensentOverlay';
-import { Sparkles, Eye, Lock, X, MapPin } from 'lucide-react';
+import { Sparkles, Eye, Lock, X, MapPin, Activity, TrendingUp } from 'lucide-react';
+import { TemporalSignature, QuadrantProfile, TemporalFlow } from '@/lib/pensent-core/types';
+import { classifyUniversalArchetype } from '@/lib/pensent-core/archetype/universalClassifier';
 
 interface LiveColorLegendProps {
   whitePalette: Record<string, string>;
@@ -137,6 +139,66 @@ export const LiveColorLegend: React.FC<LiveColorLegendProps> = ({
       blackPercent: Math.round((blackTotal / total) * 100),
     };
   }, [moveHistory]);
+
+  // En Pensent: Extract temporal signature from move history
+  const temporalSignature = useMemo((): TemporalSignature | null => {
+    if (moveHistory.length === 0) return null;
+    
+    // Calculate quadrant profile from move squares
+    const quadrantProfile: QuadrantProfile = { q1: 0, q2: 0, q3: 0, q4: 0 };
+    let totalMoves = moveHistory.length;
+    
+    for (const move of moveHistory) {
+      const file = move.square.charCodeAt(0) - 97;
+      const rank = parseInt(move.square[1]) - 1;
+      
+      if (file >= 0 && file < 8 && rank >= 0 && rank < 8) {
+        // Map to quadrants based on file and rank
+        if (rank >= 4 && file < 4) quadrantProfile.q1++;
+        else if (rank >= 4 && file >= 4) quadrantProfile.q2++;
+        else if (rank < 4 && file < 4) quadrantProfile.q3++;
+        else quadrantProfile.q4++;
+      }
+    }
+    
+    // Normalize
+    if (totalMoves > 0) {
+      quadrantProfile.q1 /= totalMoves;
+      quadrantProfile.q2 /= totalMoves;
+      quadrantProfile.q3 /= totalMoves;
+      quadrantProfile.q4 /= totalMoves;
+    }
+    
+    const whitePercent = territoryData.whitePercent / 100;
+    
+    const temporalFlow: TemporalFlow = {
+      opening: Math.min(1, 10 / totalMoves),
+      middle: totalMoves > 10 ? Math.min(1, (totalMoves - 10) / 30) : 0,
+      ending: totalMoves > 40 ? Math.min(1, (totalMoves - 40) / 20) : 0,
+      trend: whitePercent > 0.55 ? 'accelerating' : whitePercent < 0.45 ? 'declining' : 'stable',
+      momentum: (whitePercent - 0.5) * 2,
+    };
+    
+    const intensity = Math.min(1, totalMoves / 80);
+    const dominantForce = whitePercent > 0.55 ? 'primary' : whitePercent < 0.45 ? 'secondary' : 'balanced';
+    
+    return {
+      fingerprint: `live-${Date.now()}`,
+      archetype: 'unknown',
+      dominantForce,
+      flowDirection: temporalFlow.momentum > 0 ? 'forward' : temporalFlow.momentum < 0 ? 'backward' : 'lateral',
+      intensity,
+      quadrantProfile,
+      temporalFlow,
+      criticalMoments: [],
+    };
+  }, [moveHistory, territoryData]);
+
+  // En Pensent: Classify game archetype
+  const gameArchetype = useMemo(() => {
+    if (!temporalSignature) return null;
+    return classifyUniversalArchetype(temporalSignature);
+  }, [temporalSignature]);
 
   // Determine if any filtering is active
   const hasActiveFilter = hoveredSquare !== null || lockedPieces.length > 0 || highlightedPiece !== null;
