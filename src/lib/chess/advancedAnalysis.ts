@@ -14,6 +14,8 @@
  */
 
 import { Chess, Move, Square, PieceSymbol, Color } from 'chess.js';
+import { TemporalSignature, QuadrantProfile, TemporalFlow, CriticalMoment } from '@/lib/pensent-core/types';
+import { classifyUniversalArchetype } from '@/lib/pensent-core/archetype';
 
 // ===================== PIECE VALUES (STOCKFISH-INSPIRED) =====================
 
@@ -704,5 +706,143 @@ export function calculateGameScore(
       estimated: { white: whiteRating, black: blackRating },
       category,
     },
+  };
+}
+
+// ===================== EN PENSENT INTEGRATION =====================
+
+/**
+ * Extract En Pensent temporal signature from game analysis
+ * Enables cross-domain pattern matching and archetype classification
+ */
+export function extractGameSignature(
+  chess: Chess,
+  evaluation: PositionEvaluation
+): TemporalSignature {
+  const board = chess.board();
+  const history = chess.history();
+  const moveCount = history.length;
+  
+  // Calculate quadrant activity from piece positions
+  let q1 = 0, q2 = 0, q3 = 0, q4 = 0;
+  for (let rank = 0; rank < 8; rank++) {
+    for (let file = 0; file < 8; file++) {
+      const piece = board[rank][file];
+      if (piece) {
+        const pieceValue = CENTIPAWN_VALUES[piece.type] / 100;
+        const colorMultiplier = piece.color === 'w' ? 1 : 0.9;
+        const weight = pieceValue * colorMultiplier;
+        
+        if (rank < 4 && file < 4) q1 += weight;
+        else if (rank < 4 && file >= 4) q2 += weight;
+        else if (rank >= 4 && file < 4) q3 += weight;
+        else q4 += weight;
+      }
+    }
+  }
+  
+  // Normalize quadrant values
+  const maxQ = Math.max(q1, q2, q3, q4, 1);
+  const quadrantProfile: QuadrantProfile = {
+    q1: q1 / maxQ,
+    q2: q2 / maxQ,
+    q3: q3 / maxQ,
+    q4: q4 / maxQ,
+    center: Math.abs(evaluation.centerControl) / 100 + 0.5
+  };
+  
+  // Build temporal flow from evaluation components
+  const phase = evaluation.phase;
+  const temporalFlow: TemporalFlow = {
+    opening: phase === 'opening' ? 0.9 : 0.2,
+    middle: phase === 'middlegame' ? 0.9 : 0.3,
+    ending: phase === 'endgame' ? 0.9 : 0.1,
+    trend: evaluation.pieceActivity > 20 ? 'accelerating' : 
+           evaluation.pieceActivity < -20 ? 'declining' : 'stable',
+    momentum: evaluation.total / 500 // Normalize to -1 to 1 range
+  };
+  
+  // Calculate intensity from position activity
+  const intensity = Math.min(1, (Math.abs(evaluation.pieceActivity) + Math.abs(evaluation.threats)) / 100);
+  
+  // Generate fingerprint from FEN
+  const fen = chess.fen();
+  const fingerprint = `adv_${fen.split(' ')[0].replace(/\//g, '').slice(0, 16)}_${moveCount}`;
+  
+  // Determine dominant force from material balance
+  const dominantForce: 'primary' | 'secondary' | 'balanced' = 
+    evaluation.material > 100 ? 'primary' :
+    evaluation.material < -100 ? 'secondary' : 'balanced';
+  
+  // Detect critical moments
+  const criticalMoments: CriticalMoment[] = [];
+  
+  if (chess.inCheck()) {
+    criticalMoments.push({
+      index: moveCount,
+      type: 'check',
+      severity: 0.7,
+      description: 'King under attack'
+    });
+  }
+  
+  if (Math.abs(evaluation.threats) > 50) {
+    criticalMoments.push({
+      index: moveCount,
+      type: 'threat',
+      severity: Math.min(1, Math.abs(evaluation.threats) / 100),
+      description: 'Significant threats on the board'
+    });
+  }
+  
+  if (Math.abs(evaluation.kingSafety) > 40) {
+    criticalMoments.push({
+      index: moveCount,
+      type: 'king_safety',
+      severity: Math.min(1, Math.abs(evaluation.kingSafety) / 80),
+      description: 'King safety concerns'
+    });
+  }
+  
+  // Build signature
+  const signature: TemporalSignature = {
+    fingerprint,
+    archetype: 'unknown',
+    dominantForce,
+    flowDirection: temporalFlow.momentum > 0.2 ? 'forward' : 
+                   temporalFlow.momentum < -0.2 ? 'backward' : 'lateral',
+    intensity,
+    quadrantProfile,
+    temporalFlow,
+    criticalMoments,
+    domainData: {
+      fen,
+      evaluation,
+      phase,
+      moveCount
+    }
+  };
+  
+  // Classify archetype using universal classifier
+  signature.archetype = classifyUniversalArchetype(signature);
+  
+  return signature;
+}
+
+/**
+ * Analyze game with En Pensent pattern extraction
+ */
+export function analyzeWithPatterns(chess: Chess): {
+  evaluation: PositionEvaluation;
+  signature: TemporalSignature;
+  archetype: string;
+} {
+  const evaluation = evaluatePosition(chess);
+  const signature = extractGameSignature(chess, evaluation);
+  
+  return {
+    evaluation,
+    signature,
+    archetype: signature.archetype
   };
 }
