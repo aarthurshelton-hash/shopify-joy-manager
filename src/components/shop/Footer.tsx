@@ -12,8 +12,9 @@ import { Link, useLocation } from 'react-router-dom';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 import { toast } from 'sonner';
 import { Lock } from 'lucide-react';
+import React, { forwardRef } from 'react';
 
-export const Footer = () => {
+export const Footer = forwardRef<HTMLElement, object>(function Footer(_props, ref) {
   const location = useLocation();
   const isHomepage = location.pathname === '/';
 
@@ -26,7 +27,7 @@ export const Footer = () => {
   };
   
   return (
-    <footer className="border-t border-border/40 mt-16 sm:mt-20 bg-card/30">
+    <footer ref={ref} className="border-t border-border/40 mt-16 sm:mt-20 bg-card/30">
       <div className="container mx-auto px-4 py-8 sm:py-10 md:py-12">
         <div className="flex flex-col items-center space-y-4 sm:space-y-5">
           {/* Decorative divider */}
@@ -84,4 +85,6 @@ export const Footer = () => {
       <div className="h-safe-bottom" />
     </footer>
   );
-};
+});
+
+Footer.displayName = 'Footer';

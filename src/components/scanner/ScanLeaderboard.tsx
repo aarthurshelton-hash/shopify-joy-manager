@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, forwardRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Trophy, Medal, Award, Star, Crown, Target, Zap, Users, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -40,7 +40,7 @@ const ACHIEVEMENTS: Achievement[] = [
   { id: "scan_streak_100", type: "scan_streak_100", name: "Scanner Elite", description: "Complete 100 total scans", icon: Zap, color: "text-red-500", threshold: 100 },
 ];
 
-export function ScanLeaderboard() {
+export const ScanLeaderboard = forwardRef<HTMLDivElement, object>(function ScanLeaderboard(_props, ref) {
   const { user } = useAuth();
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [userAchievements, setUserAchievements] = useState<string[]>([]);
@@ -126,7 +126,7 @@ export function ScanLeaderboard() {
   }
 
   return (
-    <div className="rounded-xl bg-card border border-border overflow-hidden">
+    <div ref={ref} className="rounded-xl bg-card border border-border overflow-hidden">
       {/* Header */}
       <button
         onClick={() => setExpanded(!expanded)}
@@ -350,4 +350,6 @@ export function ScanLeaderboard() {
       </AnimatePresence>
     </div>
   );
-}
+});
+
+ScanLeaderboard.displayName = 'ScanLeaderboard';
