@@ -3,9 +3,10 @@
  * 
  * Provides rich hover tooltips for tactics, special moves, move quality, and phases.
  * Integrates with the timeline context to update board state on click.
+ * Enhanced with En Pensent pattern visualization.
  */
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   Tooltip,
   TooltipContent,
@@ -32,6 +33,8 @@ import {
 } from 'lucide-react';
 import { MoveQuality, MOVE_QUALITY_INFO } from '@/lib/chess/moveQuality';
 import { TacticalMotif, SpecialMove, GamePhase } from '@/lib/chess/chessAnalysis';
+import { useEnPensentPatterns } from '@/hooks/useEnPensentPatterns';
+import type { TemporalSignature } from '@/lib/pensent-core/types/core';
 
 // ===================== MOMENT TYPES =====================
 
@@ -252,6 +255,7 @@ interface TimelineMarkerProps {
   orientation: 'horizontal' | 'vertical';
   onClick: () => void;
   size?: 'sm' | 'md' | 'lg';
+  signature?: TemporalSignature | null;
 }
 
 export const TimelineMarker: React.FC<TimelineMarkerProps> = ({
@@ -259,10 +263,20 @@ export const TimelineMarker: React.FC<TimelineMarkerProps> = ({
   position,
   orientation,
   onClick,
-  size = 'md'
+  size = 'md',
+  signature = null,
 }) => {
+  // En Pensent pattern integration
+  const pattern = useEnPensentPatterns(signature);
+  
   const config = momentConfig[moment.type];
   const Icon = config.icon;
+  
+  // Enhanced styling based on pattern intensity
+  const intensityGlow = useMemo(() => {
+    if (!signature || pattern.intensity < 0.3) return '';
+    return `shadow-[0_0_${Math.round(pattern.intensity * 8)}px_${pattern.dominantColor}40]`;
+  }, [signature, pattern.intensity, pattern.dominantColor]);
   
   const sizeClasses = {
     sm: 'w-3 h-3',
@@ -294,7 +308,7 @@ export const TimelineMarker: React.FC<TimelineMarkerProps> = ({
             flex items-center justify-center cursor-pointer
             hover:scale-125 transition-all duration-200 shadow-lg ring-1 ring-black/20
             ${moment.player === 'white' ? 'ring-white/30' : 'ring-black/50'}
-            hover:ring-2 hover:ring-primary/50`}
+            hover:ring-2 hover:ring-primary/50 ${intensityGlow}`}
           style={positionStyle}
         >
           <Icon className={`${iconSizes[size]} text-white`} />

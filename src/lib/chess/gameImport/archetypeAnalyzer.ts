@@ -1,13 +1,17 @@
 /**
  * Archetype Analysis for Imported Games
  * Matches historical games to En Pensent pattern library
+ * Refactored to use modular signature extraction
  */
 
 import { Chess } from 'chess.js';
 import { classifyUniversalArchetype } from '@/lib/pensent-core/archetype/universalClassifier';
-import type { TemporalSignature, QuadrantProfile, TemporalFlow, CriticalMoment } from '@/lib/pensent-core/types/core';
+import type { TemporalSignature } from '@/lib/pensent-core/types/core';
 import type { LichessGame } from './lichessApi';
 import type { ChessComGame } from './chesscomApi';
+import { extractChessSignature, extractMovesFromPgn } from './signatureExtractor';
+
+// ===================== TYPES =====================
 
 export interface AnalyzedGame {
   id: string;
@@ -40,129 +44,29 @@ export interface GameAnalysisResult {
   winRateByArchetype: Record<string, number>;
 }
 
-/**
- * Convert a square string (e.g., "e4") to quadrant region
- */
-function squareToQuadrant(square: string): 'q1' | 'q2' | 'q3' | 'q4' {
-  const file = square.charCodeAt(0) - 97; // a=0, h=7
-  const rank = parseInt(square[1]) - 1; // 1=0, 8=7
-  
-  const isKingside = file >= 4;
-  const isWhiteSide = rank < 4;
-  
-  if (isKingside && !isWhiteSide) return 'q1'; // Top-right
-  if (!isKingside && !isWhiteSide) return 'q2'; // Top-left
-  if (!isKingside && isWhiteSide) return 'q3'; // Bottom-left
-  return 'q4'; // Bottom-right (kingside white)
-}
+// ===================== GAME ANALYSIS =====================
 
 /**
- * Extract temporal signature from chess move history
+ * Parse moves from a game and extract move history
  */
-function extractChessSignature(
-  moveHistory: Array<{ from: string; to: string; san: string }>,
-  finalFen: string
-): TemporalSignature {
-  const totalMoves = moveHistory.length;
+function parseMoves(moves: string[]): Array<{ from: string; to: string; san: string }> | null {
+  if (moves.length < 10) return null;
+
+  const chess = new Chess();
+  const moveHistory: Array<{ from: string; to: string; san: string }> = [];
   
-  // Calculate quadrant profile from move destinations
-  const quadrantCounts = { q1: 0, q2: 0, q3: 0, q4: 0 };
-  for (const move of moveHistory) {
-    const quad = squareToQuadrant(move.to);
-    quadrantCounts[quad]++;
-  }
-  const total = Math.max(1, Object.values(quadrantCounts).reduce((a, b) => a + b, 0));
-  
-  const quadrantProfile: QuadrantProfile = {
-    q1: quadrantCounts.q1 / total,
-    q2: quadrantCounts.q2 / total,
-    q3: quadrantCounts.q3 / total,
-    q4: quadrantCounts.q4 / total
-  };
-  
-  // Calculate temporal flow based on game phases
-  const openingMoves = moveHistory.slice(0, Math.min(10, totalMoves));
-  const middleMoves = moveHistory.slice(10, Math.min(30, totalMoves));
-  const endMoves = moveHistory.slice(30);
-  
-  const temporalFlow: TemporalFlow = {
-    opening: openingMoves.length / 10,
-    middle: middleMoves.length / 20,
-    ending: endMoves.length / Math.max(1, totalMoves - 30),
-    trend: totalMoves > 40 ? 'stable' : totalMoves > 25 ? 'accelerating' : 'volatile',
-    momentum: (endMoves.length - openingMoves.length) / Math.max(1, totalMoves) * 2
-  };
-  
-  // Detect critical moments (captures, checks, etc.)
-  const criticalMoments: CriticalMoment[] = [];
-  for (let i = 0; i < moveHistory.length; i++) {
-    const move = moveHistory[i];
-    if (move.san.includes('x') || move.san.includes('+') || move.san.includes('#')) {
-      criticalMoments.push({
-        index: i,
-        type: move.san.includes('#') ? 'checkmate' : move.san.includes('+') ? 'check' : 'capture',
-        severity: move.san.includes('#') ? 1 : move.san.includes('+') ? 0.7 : 0.4,
-        description: `Move ${i + 1}: ${move.san}`
-      });
+  for (const move of moves) {
+    try {
+      const result = chess.move(move);
+      if (result) {
+        moveHistory.push({ from: result.from, to: result.to, san: result.san });
+      }
+    } catch {
+      break;
     }
   }
-  
-  // Calculate intensity based on captures and checks
-  const intensity = Math.min(1, criticalMoments.length / (totalMoves * 0.3));
-  
-  // Determine dominant force
-  const whiteActivity = moveHistory.filter((_, i) => i % 2 === 0).length;
-  const blackActivity = moveHistory.filter((_, i) => i % 2 === 1).length;
-  const dominantForce = whiteActivity > blackActivity * 1.1 ? 'primary' : 
-                        blackActivity > whiteActivity * 1.1 ? 'secondary' : 'balanced';
-  
-  // Determine flow direction
-  const forwardness = (quadrantProfile.q1 + quadrantProfile.q2) - (quadrantProfile.q3 + quadrantProfile.q4);
-  const flowDirection = Math.abs(forwardness) < 0.15 ? 'chaotic' : 
-                        forwardness > 0 ? 'forward' : 'backward';
-  
-  // Generate fingerprint
-  const fingerprintData = `${totalMoves}-${intensity.toFixed(2)}-${Object.values(quadrantProfile).map(v => v.toFixed(2)).join('')}`;
-  let hash = 0;
-  for (let i = 0; i < fingerprintData.length; i++) {
-    hash = ((hash << 5) - hash) + fingerprintData.charCodeAt(i);
-    hash = hash & hash;
-  }
-  const fingerprint = `ep-${Math.abs(hash).toString(36)}`;
-  
-  return {
-    fingerprint,
-    archetype: '', // Will be set by classifier
-    dominantForce,
-    flowDirection,
-    intensity,
-    quadrantProfile,
-    temporalFlow,
-    criticalMoments: criticalMoments.slice(0, 10)
-  };
-}
 
-/**
- * Extract moves from PGN string
- */
-function extractMovesFromPgn(pgn: string): string[] {
-  // Remove comments and variations
-  let cleanPgn = pgn.replace(/\{[^}]*\}/g, '');
-  cleanPgn = cleanPgn.replace(/\([^)]*\)/g, '');
-  
-  // Extract moves section (after headers)
-  const movesMatch = cleanPgn.match(/\n\n(.+)$/s) || cleanPgn.match(/\n(.+)$/s);
-  const movesSection = movesMatch ? movesMatch[1] : cleanPgn;
-  
-  // Parse moves
-  const moves = movesSection
-    .replace(/\d+\.\s*/g, '')
-    .replace(/1-0|0-1|1\/2-1\/2|\*/g, '')
-    .trim()
-    .split(/\s+/)
-    .filter(m => m.length > 0 && !m.includes('.'));
-  
-  return moves;
+  return moveHistory.length >= 10 ? moveHistory : null;
 }
 
 /**
@@ -171,23 +75,11 @@ function extractMovesFromPgn(pgn: string): string[] {
 export function analyzeLichessGame(game: LichessGame): AnalyzedGame | null {
   try {
     const moves = game.moves ? game.moves.split(' ') : [];
-    if (moves.length < 10) return null;
+    const moveHistory = parseMoves(moves);
+    if (!moveHistory) return null;
 
     const chess = new Chess();
-    const moveHistory: Array<{ from: string; to: string; san: string }> = [];
-    
-    for (const move of moves) {
-      try {
-        const result = chess.move(move);
-        if (result) {
-          moveHistory.push({ from: result.from, to: result.to, san: result.san });
-        }
-      } catch {
-        break;
-      }
-    }
-
-    if (moveHistory.length < 10) return null;
+    moves.forEach(m => { try { chess.move(m); } catch {} });
 
     const signature = extractChessSignature(moveHistory, chess.fen());
     const archetype = classifyUniversalArchetype(signature);
@@ -218,29 +110,16 @@ export function analyzeLichessGame(game: LichessGame): AnalyzedGame | null {
 export function analyzeChessComGame(game: ChessComGame): AnalyzedGame | null {
   try {
     const moves = extractMovesFromPgn(game.pgn);
-    if (moves.length < 10) return null;
+    const moveHistory = parseMoves(moves);
+    if (!moveHistory) return null;
 
     const chess = new Chess();
-    const moveHistory: Array<{ from: string; to: string; san: string }> = [];
-    
-    for (const move of moves) {
-      try {
-        const result = chess.move(move);
-        if (result) {
-          moveHistory.push({ from: result.from, to: result.to, san: result.san });
-        }
-      } catch {
-        break;
-      }
-    }
-
-    if (moveHistory.length < 10) return null;
+    moves.forEach(m => { try { chess.move(m); } catch {} });
 
     const signature = extractChessSignature(moveHistory, chess.fen());
     const archetype = classifyUniversalArchetype(signature);
     signature.archetype = archetype;
 
-    // Extract opening from PGN if available
     const ecoMatch = game.pgn.match(/\[ECO "([^"]+)"\]/);
     const openingMatch = game.pgn.match(/\[Opening "([^"]+)"\]/);
 
@@ -263,6 +142,8 @@ export function analyzeChessComGame(game: ChessComGame): AnalyzedGame | null {
   }
 }
 
+// ===================== BATCH ANALYSIS =====================
+
 /**
  * Analyze multiple games and compute distributions
  */
@@ -276,7 +157,6 @@ export function analyzeGameBatch(games: AnalyzedGame[]): GameAnalysisResult {
     archetypeCounts[game.archetype].count++;
     archetypeCounts[game.archetype].intensitySum += game.signature.intensity;
     
-    // Count wins (if white won and it's a white archetype, etc.)
     if (game.result === '1-0' || game.result === '0-1') {
       archetypeCounts[game.archetype].wins++;
     }
