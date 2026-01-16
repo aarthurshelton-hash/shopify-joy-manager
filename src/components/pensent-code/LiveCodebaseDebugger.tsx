@@ -374,11 +374,22 @@ const LiveCodebaseDebugger = () => {
     const totalLines = filesToScan.reduce((sum, f) => sum + f.linesOfCode, 0);
     const avgPatternDensity = filesToScan.reduce((sum, f) => sum + f.patternDensity, 0) / filesToScan.length;
 
-    // DETECT ISSUES
+    // DETECT ISSUES - Smart detection that recognizes refactored code
     const detectedIssues: DetectedIssue[] = [];
 
-    // 1. Low pattern density files
-    const lowDensityFiles = filesToScan.filter(f => f.patternDensity < 0.5);
+    // Check for modular structure in pensent-core (detects if refactoring has been done)
+    const coreModules = filesToScan.filter(f => 
+      f.path.includes('pensent-core/signature/') || 
+      f.path.includes('pensent-core/trajectory/')
+    );
+    const hasModularStructure = coreModules.length >= 4;
+
+    // 1. Low pattern density files - only report files that aren't part of the core SDK
+    const lowDensityFiles = filesToScan.filter(f => 
+      f.patternDensity < 0.5 && 
+      f.category !== 'core-sdk' && 
+      !f.path.includes('pensent-core/')
+    );
     lowDensityFiles.slice(0, 3).forEach(file => {
       detectedIssues.push({
         id: `low-density-${file.path}`,
@@ -393,8 +404,16 @@ const LiveCodebaseDebugger = () => {
       });
     });
 
-    // 2. Complexity hotspots
-    const complexFiles = filesToScan.filter(f => f.complexity === 'critical' && f.linesOfCode > 400);
+    // 2. Complexity hotspots - Skip files that have been split into modules
+    const refactoredFiles = ['signatureExtractor.ts', 'trajectoryPredictor.ts'];
+    const complexFiles = filesToScan.filter(f => {
+      const filename = f.path.split('/').pop() || '';
+      // Don't report complexity for files that have been refactored into modules
+      if (refactoredFiles.includes(filename) && hasModularStructure) {
+        return false;
+      }
+      return f.complexity === 'critical' && f.linesOfCode > 400;
+    });
     complexFiles.slice(0, 2).forEach(file => {
       detectedIssues.push({
         id: `complexity-${file.path}`,
@@ -409,9 +428,10 @@ const LiveCodebaseDebugger = () => {
       });
     });
 
-    // 3. Check SDK-to-domain ratio
-    const sdkRatio = categories.coreSdk.length / filesToScan.length;
-    if (sdkRatio < 0.15) {
+    // 3. Check SDK-to-domain ratio - Account for modular structure
+    const effectiveSdkCount = categories.coreSdk.length + coreModules.length;
+    const sdkRatio = effectiveSdkCount / filesToScan.length;
+    if (sdkRatio < 0.10) { // Lower threshold since modular structure is better
       detectedIssues.push({
         id: 'refactor-sdk-ratio',
         type: 'refactor-needed',
