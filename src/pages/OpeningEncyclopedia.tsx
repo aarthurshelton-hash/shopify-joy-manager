@@ -2,11 +2,13 @@
  * Opening Encyclopedia - Browse all recognized chess openings
  * 
  * Displays the complete database of openings with marketing information,
- * famous players, and historical significance.
+ * famous players, and historical significance. Includes opening-specific
+ * collections linking to marketplace visions.
  */
 
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import { 
   BookOpen, 
   Search, 
@@ -20,6 +22,8 @@ import {
   Shield,
   Target,
   Shuffle,
+  ShoppingBag,
+  ArrowRight,
 } from 'lucide-react';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
@@ -43,6 +47,16 @@ interface OpeningEntry {
   famousPlayers?: string[];
   historicalSignificance?: string;
 }
+
+// Featured opening collections for marketplace
+const FEATURED_COLLECTIONS = [
+  { name: "Queen's Gambit", query: "queen's gambit", icon: '👸', color: 'from-purple-500/20 to-pink-500/20 border-purple-500/40' },
+  { name: 'Sicilian Defense', query: 'sicilian', icon: '🛡️', color: 'from-red-500/20 to-orange-500/20 border-red-500/40' },
+  { name: 'Italian Game', query: 'italian', icon: '🏛️', color: 'from-green-500/20 to-emerald-500/20 border-green-500/40' },
+  { name: "King's Gambit", query: "king's gambit", icon: '⚔️', color: 'from-amber-500/20 to-yellow-500/20 border-amber-500/40' },
+  { name: 'Ruy Lopez', query: 'ruy lopez', icon: '🇪🇸', color: 'from-blue-500/20 to-indigo-500/20 border-blue-500/40' },
+  { name: 'London System', query: 'london', icon: '🎩', color: 'from-gray-500/20 to-slate-500/20 border-gray-500/40' },
+];
 
 const CATEGORY_INFO: Record<CategoryFilter, { label: string; icon: React.ReactNode; color: string; description: string }> = {
   all: { label: 'All Openings', icon: <BookOpen className="h-4 w-4" />, color: 'text-foreground', description: 'Browse all recognized chess openings' },
@@ -162,6 +176,45 @@ const OpeningEncyclopedia: React.FC = () => {
               </div>
             </div>
           </motion.div>
+        </div>
+      </section>
+
+      {/* Opening Collections - Link to Marketplace */}
+      <section className="border-b border-border/40 py-8 bg-gradient-to-b from-transparent to-muted/20">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-display text-lg font-semibold flex items-center gap-2">
+              <ShoppingBag className="h-5 w-5 text-primary" />
+              Opening Collections
+            </h2>
+            <Link to="/marketplace">
+              <Button variant="ghost" size="sm" className="gap-1 text-xs">
+                View Marketplace
+                <ArrowRight className="h-3 w-3" />
+              </Button>
+            </Link>
+          </div>
+          <p className="text-sm text-muted-foreground mb-4">
+            Explore visions featuring famous book openings
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            {FEATURED_COLLECTIONS.map((collection) => (
+              <Link
+                key={collection.name}
+                to={`/marketplace?opening=${encodeURIComponent(collection.query)}`}
+              >
+                <motion.div
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className={`p-3 rounded-lg border bg-gradient-to-br ${collection.color} cursor-pointer transition-shadow hover:shadow-lg`}
+                >
+                  <div className="text-2xl mb-1">{collection.icon}</div>
+                  <p className="font-medium text-sm truncate">{collection.name}</p>
+                  <p className="text-[10px] text-muted-foreground">Browse collection →</p>
+                </motion.div>
+              </Link>
+            ))}
+          </div>
         </div>
       </section>
 

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { CartDrawer } from './CartDrawer';
 import { CurrencySelector } from './CurrencySelector';
-import { Menu, Gamepad2, Paintbrush, ShoppingBag } from 'lucide-react';
+import { Menu, Gamepad2, Paintbrush, ShoppingBag, BookOpen } from 'lucide-react';
 import UserMenu from '@/components/auth/UserMenu';
 import { useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ const navLinks = [
   { to: '/play', label: 'Play', icon: Gamepad2, highlight: true },
   { to: '/creative-mode', label: 'Create', icon: Paintbrush, highlight: true },
   { to: '/marketplace', label: 'Marketplace', icon: ShoppingBag, highlight: false },
+  { to: '/openings', label: 'Openings', icon: BookOpen, highlight: false },
   { to: '/about', label: 'About Us' },
   { to: '/news', label: 'News' },
   { to: '/investors', label: 'Investors' },
