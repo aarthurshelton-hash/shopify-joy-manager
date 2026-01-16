@@ -2,6 +2,8 @@ import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { RepositoryAnalyzer } from '@/components/pensent-code/RepositoryAnalyzer';
 import { AnalysisResults } from '@/components/pensent-code/AnalysisResults';
+import { PatentPendingBadge } from '@/components/pensent-code/PatentPendingBadge';
+import { InventorCredits } from '@/components/pensent-code/InventorCredits';
 import { useCodeAnalysis } from '@/hooks/useCodeAnalysis';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Brain, GitBranch, Sparkles } from 'lucide-react';
@@ -28,10 +30,11 @@ export default function CodeAnalysis() {
                   <Brain className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                  <h1 className="font-bold text-lg">En Pensent Code</h1>
-                  <p className="text-xs text-muted-foreground">Code Evolution Pattern Recognition</p>
+                  <h1 className="font-bold text-lg">En Pensent Code™</h1>
+                  <p className="text-xs text-muted-foreground">Universal Pattern Recognition Engine</p>
                 </div>
               </div>
+              <PatentPendingBadge />
             </div>
             {result && (
               <Button variant="outline" onClick={clearResult}>
@@ -58,7 +61,7 @@ export default function CodeAnalysis() {
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary mb-6"
               >
                 <Sparkles className="h-4 w-4" />
-                <span className="text-sm font-medium">Universal Pattern Recognition for Code</span>
+                <span className="text-sm font-medium">Universal Pattern Recognition • Patent Pending</span>
               </motion.div>
               
               <h1 className="text-4xl md:text-5xl font-bold mb-4">
@@ -66,9 +69,13 @@ export default function CodeAnalysis() {
                 <span className="text-primary">Trajectory</span>
               </h1>
               
-              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-4">
                 Analyze any GitHub repository to discover its development archetype, 
                 predict outcomes, and receive strategic recommendations.
+              </p>
+
+              <p className="text-sm text-muted-foreground/70">
+                Powered by En Pensent™ Temporal Signature™ Technology
               </p>
             </div>
 
@@ -114,6 +121,9 @@ export default function CodeAnalysis() {
                 ))}
               </div>
             </div>
+
+            {/* Inventor Credits */}
+            <InventorCredits />
           </motion.div>
         ) : (
           <motion.div
