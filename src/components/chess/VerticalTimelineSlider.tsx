@@ -17,14 +17,25 @@ import {
 } from '@/components/ui/tooltip';
 import { analyzeTimeline, getMomentCounts, TimelineAnalysisResult } from '@/lib/chess/timelineAnalysis';
 import { TimelineMarker, PhaseButton, momentConfig, phaseConfig } from './EnhancedTimelineMarker';
+import TrajectoryTimelineOverlay from './TrajectoryTimelineOverlay';
+import { HybridPrediction } from '@/lib/chess/hybridPrediction';
+import { PatternPrediction } from '@/lib/chess/patternLearning';
 
 interface VerticalTimelineSliderProps {
   totalMoves: number;
   moves?: string[];
   pgn?: string;
+  hybridPrediction?: HybridPrediction | null;
+  patternPrediction?: PatternPrediction | null;
 }
 
-const VerticalTimelineSlider: React.FC<VerticalTimelineSliderProps> = ({ totalMoves, moves = [], pgn }) => {
+const VerticalTimelineSlider: React.FC<VerticalTimelineSliderProps> = ({ 
+  totalMoves, 
+  moves = [], 
+  pgn,
+  hybridPrediction,
+  patternPrediction,
+}) => {
   const {
     currentMove,
     isPlaying,
@@ -378,7 +389,7 @@ const VerticalTimelineSlider: React.FC<VerticalTimelineSliderProps> = ({ totalMo
           </div>
         )}
 
-        {/* Vertical slider with moment markers */}
+        {/* Vertical slider with moment markers and trajectory overlay */}
         <div className="flex-1 flex items-center justify-center py-4 min-h-[200px]">
           <div className="relative h-full flex items-center gap-2">
             {/* Key moment markers on the left side with enhanced tooltips */}
@@ -395,18 +406,31 @@ const VerticalTimelineSlider: React.FC<VerticalTimelineSliderProps> = ({ totalMo
               ))}
             </div>
 
-            {/* Vertical slider */}
-            <div className="h-full flex flex-col items-center">
+            {/* Vertical slider with trajectory overlay */}
+            <div className="relative h-full flex flex-col items-center">
               <span className="text-[8px] text-muted-foreground mb-1">Start</span>
-              <Slider
-                value={[displayMove]}
-                min={range.start}
-                max={range.end}
-                step={1}
-                onValueChange={handleSliderChange}
-                orientation="vertical"
-                className="h-full"
-              />
+              <div className="relative h-full w-4">
+                <Slider
+                  value={[displayMove]}
+                  min={range.start}
+                  max={range.end}
+                  step={1}
+                  onValueChange={handleSliderChange}
+                  orientation="vertical"
+                  className="h-full"
+                />
+                {/* Trajectory prediction overlay */}
+                {(hybridPrediction || patternPrediction) && (
+                  <TrajectoryTimelineOverlay
+                    hybridPrediction={hybridPrediction}
+                    patternPrediction={patternPrediction}
+                    totalMoves={totalMoves}
+                    currentMove={displayMove}
+                    orientation="vertical"
+                    className="left-6"
+                  />
+                )}
+              </div>
               <span className="text-[8px] text-muted-foreground mt-1">{range.end}</span>
             </div>
           </div>
