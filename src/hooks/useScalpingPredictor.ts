@@ -143,7 +143,7 @@ export function useScalpingPredictor(config: ScalpingConfig) {
   }, []);
   
   // Heartbeat for auto-predictions
-  const { isAlive, pulse, start, stop, restart, pulseCount, nextPulseIn } = useLiveHeartbeat({
+  const { isAlive, pulse, start, stop, restart, pulseCount, nextPulseIn, isProcessing, lastPulse } = useLiveHeartbeat({
     interval: config.predictionIntervalMs,
     autoStart: config.autoPredict,
     enabled: config.autoPredict,
@@ -191,6 +191,8 @@ export function useScalpingPredictor(config: ScalpingConfig) {
     
     // Heartbeat state
     heartbeatAlive: isAlive,
+    isProcessing,
+    lastPulse,
     pulseCount,
     nextPulseIn,
     
