@@ -295,6 +295,190 @@ export type Database = {
         }
         Relationships: []
       }
+      code_commit_analysis: {
+        Row: {
+          additions: number
+          author: string | null
+          author_email: string | null
+          commit_hash: string
+          commit_message: string | null
+          commit_type: string
+          committed_at: string
+          created_at: string
+          deletions: number
+          file_categories: Json | null
+          files_changed: number
+          id: string
+          impact_score: number | null
+          repository_pattern_id: string | null
+        }
+        Insert: {
+          additions?: number
+          author?: string | null
+          author_email?: string | null
+          commit_hash: string
+          commit_message?: string | null
+          commit_type: string
+          committed_at: string
+          created_at?: string
+          deletions?: number
+          file_categories?: Json | null
+          files_changed?: number
+          id?: string
+          impact_score?: number | null
+          repository_pattern_id?: string | null
+        }
+        Update: {
+          additions?: number
+          author?: string | null
+          author_email?: string | null
+          commit_hash?: string
+          commit_message?: string | null
+          commit_type?: string
+          committed_at?: string
+          created_at?: string
+          deletions?: number
+          file_categories?: Json | null
+          files_changed?: number
+          id?: string
+          impact_score?: number | null
+          repository_pattern_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "code_commit_analysis_repository_pattern_id_fkey"
+            columns: ["repository_pattern_id"]
+            isOneToOne: false
+            referencedRelation: "code_repository_patterns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      code_prediction_outcomes: {
+        Row: {
+          actual_outcome: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          outcome_recorded_at: string | null
+          predicted_archetype: string
+          predicted_confidence: number
+          predicted_outcome: string
+          prediction_accuracy: number | null
+          repository_pattern_id: string | null
+        }
+        Insert: {
+          actual_outcome?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          outcome_recorded_at?: string | null
+          predicted_archetype: string
+          predicted_confidence: number
+          predicted_outcome: string
+          prediction_accuracy?: number | null
+          repository_pattern_id?: string | null
+        }
+        Update: {
+          actual_outcome?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          outcome_recorded_at?: string | null
+          predicted_archetype?: string
+          predicted_confidence?: number
+          predicted_outcome?: string
+          prediction_accuracy?: number | null
+          repository_pattern_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "code_prediction_outcomes_repository_pattern_id_fkey"
+            columns: ["repository_pattern_id"]
+            isOneToOne: false
+            referencedRelation: "code_repository_patterns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      code_repository_patterns: {
+        Row: {
+          analysis_period_end: string | null
+          analysis_period_start: string | null
+          analyzed_by: string | null
+          archetype: string
+          code_metrics: Json
+          created_at: string
+          critical_moments: Json
+          dominant_force: string
+          fingerprint: string
+          flow_direction: string
+          id: string
+          intensity: number
+          outcome_confidence: number | null
+          owner: string
+          predicted_outcome: string | null
+          quadrant_profile: Json
+          recommendations: Json | null
+          repository_name: string
+          repository_url: string
+          temporal_flow: Json
+          total_commits: number
+          total_contributors: number
+          updated_at: string
+        }
+        Insert: {
+          analysis_period_end?: string | null
+          analysis_period_start?: string | null
+          analyzed_by?: string | null
+          archetype: string
+          code_metrics: Json
+          created_at?: string
+          critical_moments?: Json
+          dominant_force: string
+          fingerprint: string
+          flow_direction: string
+          id?: string
+          intensity: number
+          outcome_confidence?: number | null
+          owner: string
+          predicted_outcome?: string | null
+          quadrant_profile: Json
+          recommendations?: Json | null
+          repository_name: string
+          repository_url: string
+          temporal_flow: Json
+          total_commits?: number
+          total_contributors?: number
+          updated_at?: string
+        }
+        Update: {
+          analysis_period_end?: string | null
+          analysis_period_start?: string | null
+          analyzed_by?: string | null
+          archetype?: string
+          code_metrics?: Json
+          created_at?: string
+          critical_moments?: Json
+          dominant_force?: string
+          fingerprint?: string
+          flow_direction?: string
+          id?: string
+          intensity?: number
+          outcome_confidence?: number | null
+          owner?: string
+          predicted_outcome?: string | null
+          quadrant_profile?: Json
+          recommendations?: Json | null
+          repository_name?: string
+          repository_url?: string
+          temporal_flow?: Json
+          total_commits?: number
+          total_contributors?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       color_flow_patterns: {
         Row: {
           archetype: string
