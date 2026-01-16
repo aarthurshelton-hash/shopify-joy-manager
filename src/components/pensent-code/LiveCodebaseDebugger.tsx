@@ -4,10 +4,11 @@
  * This component PROVES En Pensent works by analyzing 
  * the current En Pensent platform codebase in real-time.
  * 
- * Updated: 2025 - Now dynamically discovers and scans the ACTUAL live codebase
+ * CRITICAL UPDATE: Now reads ACTUAL file contents at runtime using import.meta.glob
+ * with ?raw query to get the source code text and analyze it live.
  */
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -41,14 +42,20 @@ import {
   SignatureOverlay 
 } from "@/components/pensent-ui";
 
-// Real file analysis data extracted from the codebase
+// Real file analysis data extracted from LIVE code content
 interface FileAnalysis {
   path: string;
   category: 'core-sdk' | 'chess-domain' | 'code-domain' | 'ui' | 'utils' | 'types' | 'hooks' | 'stores' | 'pages';
   linesOfCode: number;
   complexity: 'low' | 'medium' | 'high' | 'critical';
-  patternDensity: number; // 0-1, how much En Pensent logic
+  patternDensity: number; // 0-1, calculated from actual code content
   description: string;
+  // NEW: Live content analysis
+  actualContent?: string;
+  functionCount?: number;
+  exportCount?: number;
+  importCount?: number;
+  hasModularSubfolders?: boolean;
 }
 
 interface DetectedIssue {
@@ -60,7 +67,7 @@ interface DetectedIssue {
   description: string;
   fix: string;
   impact: string;
-  aiPrompt: string; // Auto-generated prompt for AI assistant
+  aiPrompt: string;
 }
 
 interface AnalysisResult {
@@ -88,8 +95,12 @@ interface AnalysisResult {
   totalLinesOfCode: number;
 }
 
-// Dynamically discover all TypeScript/TSX files in the codebase at build time
-const allModules = import.meta.glob('/src/**/*.{ts,tsx}', { eager: false });
+// Import all source files as RAW TEXT so we can analyze actual content
+const rawModules = import.meta.glob('/src/**/*.{ts,tsx}', { 
+  query: '?raw',
+  import: 'default',
+  eager: false 
+});
 
 // Categorize a file based on its path
 const categorizeFile = (path: string): FileAnalysis['category'] => {
@@ -106,200 +117,121 @@ const categorizeFile = (path: string): FileAnalysis['category'] => {
   return 'utils';
 };
 
-// Estimate complexity based on path and filename patterns
-const estimateComplexity = (path: string): FileAnalysis['complexity'] => {
-  const filename = path.split('/').pop() || '';
-  const cleanPath = path.toLowerCase();
+// LIVE: Analyze actual code content to determine complexity
+const analyzeComplexity = (content: string, path: string): FileAnalysis['complexity'] => {
+  const lines = content.split('\n').length;
+  const functionMatches = content.match(/(?:function\s+\w+|const\s+\w+\s*=\s*(?:async\s*)?\(|=>\s*{|\)\s*:\s*\w+\s*=>\s*{)/g) || [];
+  const conditionalMatches = content.match(/(?:if\s*\(|switch\s*\(|\?\s*[^:]+\s*:|&&|\|\|)/g) || [];
+  const loopMatches = content.match(/(?:for\s*\(|while\s*\(|\.forEach|\.map|\.filter|\.reduce)/g) || [];
   
-  // Critical complexity indicators
-  if (cleanPath.includes('signatureextractor') || cleanPath.includes('colorflowanalysis') ||
-      cleanPath.includes('trajectorypredictor') || cleanPath.includes('codeflowsignature') ||
-      cleanPath.includes('gamesimulator') || cleanPath.includes('engineanalysis')) {
-    return 'critical';
-  }
+  const functionCount = functionMatches.length;
+  const conditionalCount = conditionalMatches.length;
+  const loopCount = loopMatches.length;
   
-  // High complexity indicators
-  if (cleanPath.includes('adapter') || cleanPath.includes('analyzer') ||
-      cleanPath.includes('predicti') || cleanPath.includes('matcher') ||
-      cleanPath.includes('resolver') || filename.includes('Analysis')) {
-    return 'high';
-  }
+  // Calculate cyclomatic-like complexity score
+  const complexityScore = (conditionalCount * 2) + (loopCount * 3) + (functionCount * 0.5);
+  const linesPerFunction = functionCount > 0 ? lines / functionCount : lines;
   
-  // Low complexity indicators
-  if (cleanPath.includes('types') || cleanPath.includes('constants') ||
-      cleanPath.includes('index.ts') || cleanPath.includes('utils')) {
-    return 'low';
-  }
-  
-  return 'medium';
+  if (complexityScore > 100 || lines > 500 || linesPerFunction > 80) return 'critical';
+  if (complexityScore > 50 || lines > 300 || linesPerFunction > 50) return 'high';
+  if (complexityScore > 20 || lines > 150) return 'medium';
+  return 'low';
 };
 
-// Estimate pattern density based on file category and path
-const estimatePatternDensity = (path: string, category: FileAnalysis['category']): number => {
-  const cleanPath = path.toLowerCase();
+// LIVE: Calculate pattern density from actual code content
+const analyzePatternDensity = (content: string, category: FileAnalysis['category']): number => {
+  const pensentPatterns = [
+    /TemporalSignature/gi,
+    /QuadrantProfile/gi,
+    /DomainAdapter/gi,
+    /extractSignature/gi,
+    /generateTrajectory/gi,
+    /matchPatterns/gi,
+    /archetype/gi,
+    /fingerprint/gi,
+    /temporalFlow/gi,
+    /criticalMoment/gi,
+    /intensity/gi,
+    /momentum/gi,
+    /patternMatcher/gi,
+    /signatureExtractor/gi,
+    /trajectoryPredictor/gi,
+    /archetypeResolver/gi,
+    /visualizationPrimitives/gi,
+    /pensent-core/gi,
+    /pensent-ui/gi,
+    /ColorFlow/gi,
+    /CodeFlow/gi
+  ];
   
-  // Core SDK files have highest density
-  if (category === 'core-sdk') {
-    if (cleanPath.includes('types')) return 1.0;
-    if (cleanPath.includes('signature') || cleanPath.includes('extractor')) return 1.0;
-    if (cleanPath.includes('predictor') || cleanPath.includes('matcher')) return 0.95;
-    return 0.90;
-  }
-  
-  // Domain adapters have high density
-  if (category === 'chess-domain') {
-    if (cleanPath.includes('colorflow') || cleanPath.includes('adapter')) return 0.94;
-    if (cleanPath.includes('archetype') || cleanPath.includes('predicti')) return 0.88;
-    if (cleanPath.includes('engine')) return 0.72; // Stockfish integration is external
-    return 0.75;
-  }
-  
-  if (category === 'code-domain') {
-    if (cleanPath.includes('adapter') || cleanPath.includes('codeflow')) return 0.94;
-    if (cleanPath.includes('archetype')) return 0.92;
-    return 0.80;
-  }
-  
-  // UI visualization components
-  if (category === 'ui') {
-    if (cleanPath.includes('pensent-ui')) return 0.88;
-    if (cleanPath.includes('quadrant') || cleanPath.includes('temporal') || 
-        cleanPath.includes('archetype') || cleanPath.includes('prediction')) return 0.90;
-    if (cleanPath.includes('signature') || cleanPath.includes('visualization')) return 0.85;
-    return 0.68;
-  }
-  
-  // Other categories
-  if (category === 'stores') return 0.65;
-  if (category === 'hooks') return 0.60;
-  if (category === 'pages') return 0.55;
-  
-  return 0.50;
-};
-
-// Generate description based on path analysis
-const generateDescription = (path: string, category: FileAnalysis['category']): string => {
-  const filename = path.split('/').pop()?.replace(/\.(ts|tsx)$/, '') || '';
-  const cleanPath = path.toLowerCase();
-  
-  // Core SDK descriptions
-  if (category === 'core-sdk') {
-    if (cleanPath.includes('types')) return 'Universal types: TemporalSignature, QuadrantProfile, DomainAdapter';
-    if (cleanPath.includes('signatureextractor')) return 'Fingerprint generation, temporal flow, critical moment detection';
-    if (cleanPath.includes('patternmatcher')) return 'Signature similarity, pattern matching, outcome probability';
-    if (cleanPath.includes('trajectorypredictor')) return 'Trajectory prediction, milestone forecasting, strategic guidance';
-    if (cleanPath.includes('archetyperesolver')) return 'Universal archetype matching and classification';
-    if (cleanPath.includes('visualizationprimitives')) return 'Universal visualization data transforms';
-    if (cleanPath.includes('index')) return 'SDK entry point, createPensentEngine factory';
-    return 'Core SDK module';
-  }
-  
-  // Chess domain descriptions
-  if (category === 'chess-domain') {
-    if (cleanPath.includes('colorflow')) return 'Color Flow™ signatures, 12 strategic archetypes';
-    if (cleanPath.includes('gamesimulator')) return 'Move simulation, board state tracking';
-    if (cleanPath.includes('engineanalysis')) return 'Stockfish 17 NNUE integration, hybrid fusion';
-    if (cleanPath.includes('predicti')) return '80-move lookahead, trajectory prediction';
-    if (cleanPath.includes('opening')) return 'Opening pattern detection, ECO codes';
-    if (cleanPath.includes('archetype')) return 'Chess archetype definitions (12 types)';
-    return 'Chess domain module';
-  }
-  
-  // Code domain descriptions
-  if (category === 'code-domain') {
-    if (cleanPath.includes('codeflowsignature')) return 'Commit pattern extraction, code archetype classification';
-    if (cleanPath.includes('codeadapter')) return 'DomainAdapter for code analysis';
-    if (cleanPath.includes('types')) return 'CodeCommit, CodeFlowSignature, CODE_ARCHETYPE_DEFINITIONS';
-    if (cleanPath.includes('analyze-repository')) return 'GitHub API integration, commit analysis edge function';
-    return 'Code analysis module';
-  }
-  
-  // UI descriptions
-  if (category === 'ui') {
-    if (cleanPath.includes('quadrantradar')) return 'Animated radar chart for quadrant profile';
-    if (cleanPath.includes('temporalflowchart')) return 'Development momentum visualization';
-    if (cleanPath.includes('archetypebadge')) return 'Archetype display with color coding';
-    if (cleanPath.includes('predictiongauge')) return 'Circular confidence meter';
-    if (cleanPath.includes('signaturecomparison')) return 'Side-by-side TemporalSignature diff';
-    if (cleanPath.includes('signatureoverlay')) return 'Signature overlay visualization';
-    if (cleanPath.includes('analysisresults')) return 'Complete analysis results display';
-    return `${filename} visualization component`;
-  }
-  
-  // Other categories
-  if (category === 'stores') return `${filename} state management`;
-  if (category === 'hooks') return `${filename} React hook`;
-  if (category === 'pages') return `${filename} page component`;
-  
-  return `${filename} module`;
-};
-
-// Estimate lines of code based on complexity
-const estimateLinesOfCode = (complexity: FileAnalysis['complexity'], category: FileAnalysis['category']): number => {
-  const baseLines = {
-    'critical': 400 + Math.random() * 300,
-    'high': 200 + Math.random() * 200,
-    'medium': 100 + Math.random() * 100,
-    'low': 50 + Math.random() * 80
-  };
-  
-  const categoryMultiplier = {
-    'core-sdk': 1.1,
-    'chess-domain': 1.2,
-    'code-domain': 1.0,
-    'ui': 0.9,
-    'hooks': 0.7,
-    'stores': 0.8,
-    'pages': 0.9,
-    'types': 0.6,
-    'utils': 0.5
-  };
-  
-  return Math.round(baseLines[complexity] * (categoryMultiplier[category] || 1));
-};
-
-// Build file analysis from discovered modules
-const buildFileAnalyses = (): FileAnalysis[] => {
-  const files: FileAnalysis[] = [];
-  
-  for (const path of Object.keys(allModules)) {
-    const cleanPath = path.replace('/src/', 'src/');
-    const filename = cleanPath.split('/').pop() || '';
-    
-    // Skip test files, type definition files, and index barrel exports
-    if (filename.includes('.test.') || filename.includes('.spec.') || 
-        filename.includes('.d.ts') || filename === 'vite-env.d.ts') {
-      continue;
-    }
-    
-    // Skip integration/supabase auto-generated files
-    if (cleanPath.includes('/integrations/supabase/')) {
-      continue;
-    }
-    
-    const category = categorizeFile(cleanPath);
-    const complexity = estimateComplexity(cleanPath);
-    const patternDensity = estimatePatternDensity(cleanPath, category);
-    const linesOfCode = estimateLinesOfCode(complexity, category);
-    const description = generateDescription(cleanPath, category);
-    
-    files.push({
-      path: cleanPath,
-      category,
-      linesOfCode,
-      complexity,
-      patternDensity,
-      description
-    });
-  }
-  
-  // Sort by pattern density (highest first), then by category
-  return files.sort((a, b) => {
-    const categoryOrder = ['core-sdk', 'chess-domain', 'code-domain', 'ui', 'stores', 'hooks', 'pages', 'utils', 'types'];
-    const catDiff = categoryOrder.indexOf(a.category) - categoryOrder.indexOf(b.category);
-    if (catDiff !== 0) return catDiff;
-    return b.patternDensity - a.patternDensity;
+  let patternHits = 0;
+  pensentPatterns.forEach(pattern => {
+    const matches = content.match(pattern);
+    if (matches) patternHits += matches.length;
   });
+  
+  // Also check for core SDK imports
+  const hasCoreImport = /from\s+['"]@\/lib\/pensent-core/.test(content);
+  const hasPensentUIImport = /from\s+['"]@\/components\/pensent-ui/.test(content);
+  
+  const lines = content.split('\n').length;
+  const baseDensity = Math.min(patternHits / (lines * 0.1), 1);
+  
+  // Boost for files that import and use the SDK
+  let boost = 0;
+  if (hasCoreImport) boost += 0.15;
+  if (hasPensentUIImport) boost += 0.1;
+  if (category === 'core-sdk') boost += 0.2;
+  
+  return Math.min(baseDensity + boost, 1);
+};
+
+// LIVE: Generate description from actual content analysis
+const generateLiveDescription = (content: string, path: string, category: FileAnalysis['category']): string => {
+  const filename = path.split('/').pop()?.replace(/\.(ts|tsx)$/, '') || '';
+  
+  // Extract exports to understand what the file provides
+  const namedExports = content.match(/export\s+(?:const|function|class|interface|type)\s+(\w+)/g) || [];
+  const defaultExport = content.match(/export\s+default\s+(?:function\s+)?(\w+)?/);
+  
+  const exportNames = namedExports
+    .map(e => e.replace(/export\s+(?:const|function|class|interface|type)\s+/, ''))
+    .slice(0, 3);
+  
+  if (exportNames.length > 0) {
+    return `Exports: ${exportNames.join(', ')}${exportNames.length < namedExports.length ? ` (+${namedExports.length - exportNames.length} more)` : ''}`;
+  }
+  
+  if (defaultExport) {
+    return `Default export: ${defaultExport[1] || filename}`;
+  }
+  
+  // Fallback based on category
+  const categoryDescriptions: Record<string, string> = {
+    'core-sdk': 'Core SDK module',
+    'chess-domain': 'Chess domain module', 
+    'code-domain': 'Code analysis module',
+    'ui': 'UI component',
+    'hooks': 'React hook',
+    'stores': 'State store',
+    'pages': 'Page component',
+    'types': 'Type definitions',
+    'utils': 'Utility module'
+  };
+  
+  return categoryDescriptions[category] || 'Module';
+};
+
+// Check if a file has been properly modularized (has subfolders with modules)
+const checkModularization = (allPaths: string[], basePath: string): boolean => {
+  const filename = basePath.split('/').pop()?.replace(/\.(ts|tsx)$/, '') || '';
+  const directory = basePath.substring(0, basePath.lastIndexOf('/'));
+  
+  // Check if there's a subfolder with the same name as the file
+  const subfolderPath = `${directory}/${filename}/`;
+  const hasSubfolder = allPaths.some(p => p.startsWith(subfolderPath));
+  
+  return hasSubfolder;
 };
 
 const LiveCodebaseDebugger = () => {
@@ -310,8 +242,8 @@ const LiveCodebaseDebugger = () => {
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [copiedPromptId, setCopiedPromptId] = useState<string | null>(null);
   
-  // Dynamically discover files on component mount
-  const discoveredFiles = useMemo(() => buildFileAnalyses(), []);
+  // Get all file paths for modularization checking
+  const allFilePaths = useMemo(() => Object.keys(rawModules).map(p => p.replace('/src/', 'src/')), []);
 
   const copyPromptToClipboard = async (prompt: string, issueId: string) => {
     try {
@@ -325,45 +257,98 @@ const LiveCodebaseDebugger = () => {
   };
 
   const runLiveAnalysis = async () => {
-    const filesToScan = discoveredFiles;
-    
     setStage('scanning');
     setProgress(0);
     setScannedFiles([]);
     setResult(null);
 
-    // Stage 1: Scan files
-    for (let i = 0; i < filesToScan.length; i++) {
-      const file = filesToScan[i];
-      setCurrentFile(file);
-      setScannedFiles(prev => [...prev, file]);
-      setProgress(((i + 1) / filesToScan.length) * 25);
-      await new Promise(resolve => setTimeout(resolve, 80 + Math.random() * 40));
+    const filePaths = Object.keys(rawModules);
+    const analyzedFiles: FileAnalysis[] = [];
+
+    // Stage 1: LIVE scan - actually read each file's content
+    for (let i = 0; i < filePaths.length; i++) {
+      const path = filePaths[i];
+      const cleanPath = path.replace('/src/', 'src/');
+      const filename = cleanPath.split('/').pop() || '';
+      
+      // Skip test files, type definition files
+      if (filename.includes('.test.') || filename.includes('.spec.') || 
+          filename.includes('.d.ts') || filename === 'vite-env.d.ts') {
+        continue;
+      }
+      
+      // Skip integration/supabase auto-generated files
+      if (cleanPath.includes('/integrations/supabase/')) {
+        continue;
+      }
+
+      try {
+        // LIVE: Actually fetch and read the file content!
+        const content = await rawModules[path]() as string;
+        
+        const category = categorizeFile(cleanPath);
+        const complexity = analyzeComplexity(content, cleanPath);
+        const patternDensity = analyzePatternDensity(content, category);
+        const linesOfCode = content.split('\n').length;
+        const description = generateLiveDescription(content, cleanPath, category);
+        const hasModularSubfolders = checkModularization(allFilePaths, cleanPath);
+        
+        const fileAnalysis: FileAnalysis = {
+          path: cleanPath,
+          category,
+          linesOfCode,
+          complexity,
+          patternDensity,
+          description,
+          actualContent: content.substring(0, 500), // Store preview for debugging
+          hasModularSubfolders
+        };
+        
+        analyzedFiles.push(fileAnalysis);
+        setCurrentFile(fileAnalysis);
+        setScannedFiles(prev => [...prev, fileAnalysis]);
+        setProgress(((i + 1) / filePaths.length) * 40);
+        
+        // Small delay for UI feedback
+        await new Promise(resolve => setTimeout(resolve, 15));
+      } catch (err) {
+        console.warn(`Failed to analyze ${path}:`, err);
+      }
     }
+
+    // Sort files by category priority and pattern density
+    analyzedFiles.sort((a, b) => {
+      const categoryOrder = ['core-sdk', 'chess-domain', 'code-domain', 'ui', 'stores', 'hooks', 'pages', 'utils', 'types'];
+      const catDiff = categoryOrder.indexOf(a.category) - categoryOrder.indexOf(b.category);
+      if (catDiff !== 0) return catDiff;
+      return b.patternDensity - a.patternDensity;
+    });
+
+    const filesToScan = analyzedFiles;
 
     // Stage 2: Extract signatures
     setStage('extracting');
     setCurrentFile(null);
     for (let i = 0; i < 4; i++) {
-      setProgress(25 + (i + 1) * 5);
-      await new Promise(resolve => setTimeout(resolve, 150));
+      setProgress(40 + (i + 1) * 5);
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
 
     // Stage 3: Pattern matching
     setStage('matching');
     for (let i = 0; i < 5; i++) {
-      setProgress(45 + (i + 1) * 6);
-      await new Promise(resolve => setTimeout(resolve, 120));
+      setProgress(60 + (i + 1) * 4);
+      await new Promise(resolve => setTimeout(resolve, 80));
     }
 
     // Stage 4: Prediction
     setStage('predicting');
     for (let i = 0; i < 5; i++) {
-      setProgress(75 + (i + 1) * 5);
-      await new Promise(resolve => setTimeout(resolve, 100));
+      setProgress(80 + (i + 1) * 4);
+      await new Promise(resolve => setTimeout(resolve, 60));
     }
 
-    // Calculate real results from file data
+    // Calculate real results from LIVE analyzed file data
     const categories = {
       coreSdk: filesToScan.filter(f => f.category === 'core-sdk'),
       chessDomain: filesToScan.filter(f => f.category === 'chess-domain'),
@@ -374,46 +359,51 @@ const LiveCodebaseDebugger = () => {
     const totalLines = filesToScan.reduce((sum, f) => sum + f.linesOfCode, 0);
     const avgPatternDensity = filesToScan.reduce((sum, f) => sum + f.patternDensity, 0) / filesToScan.length;
 
-    // DETECT ISSUES - Smart detection that recognizes refactored code
+    // DETECT ISSUES - Using LIVE content analysis
     const detectedIssues: DetectedIssue[] = [];
 
-    // Check for modular structure in pensent-core (detects if refactoring has been done)
-    const coreModules = filesToScan.filter(f => 
-      f.path.includes('pensent-core/signature/') || 
-      f.path.includes('pensent-core/trajectory/')
-    );
-    const hasModularStructure = coreModules.length >= 4;
+    // Check for modular structure by looking at actual file paths
+    const signatureModules = filesToScan.filter(f => f.path.includes('pensent-core/signature/'));
+    const trajectoryModules = filesToScan.filter(f => f.path.includes('pensent-core/trajectory/'));
+    const hasSignatureModules = signatureModules.length >= 3;
+    const hasTrajectoryModules = trajectoryModules.length >= 3;
 
-    // 1. Low pattern density files - only report files that aren't part of the core SDK
+    // 1. Low pattern density files - based on LIVE analysis
     const lowDensityFiles = filesToScan.filter(f => 
-      f.patternDensity < 0.5 && 
+      f.patternDensity < 0.3 && 
       f.category !== 'core-sdk' && 
-      !f.path.includes('pensent-core/')
+      !f.path.includes('pensent-core/') &&
+      f.linesOfCode > 50 // Only flag files with substantial code
     );
     lowDensityFiles.slice(0, 3).forEach(file => {
       detectedIssues.push({
         id: `low-density-${file.path}`,
         type: 'low-density',
-        severity: file.patternDensity < 0.3 ? 'high' : 'medium',
+        severity: file.patternDensity < 0.15 ? 'high' : 'medium',
         file: file.path,
         title: `Low En Pensent Integration: ${file.path.split('/').pop()}`,
-        description: `This file has only ${Math.round(file.patternDensity * 100)}% pattern density.`,
-        fix: `Integrate TemporalSignature components and pattern visualization.`,
-        impact: `+${Math.round((0.8 - file.patternDensity) * 100)}% pattern coverage`,
-        aiPrompt: `In "${file.path}", integrate En Pensent patterns using the core SDK.`
+        description: `LIVE analysis: ${Math.round(file.patternDensity * 100)}% pattern density (${file.linesOfCode} LOC).`,
+        fix: `Add TemporalSignature patterns and SDK integration.`,
+        impact: `+${Math.round((0.6 - file.patternDensity) * 100)}% pattern coverage`,
+        aiPrompt: `In "${file.path}", integrate En Pensent patterns. Current density: ${Math.round(file.patternDensity * 100)}%.`
       });
     });
 
-    // 2. Complexity hotspots - Skip files that have been split into modules
-    const refactoredFiles = ['signatureExtractor.ts', 'trajectoryPredictor.ts'];
+    // 2. Complexity hotspots - based on LIVE LOC count and complexity analysis
     const complexFiles = filesToScan.filter(f => {
       const filename = f.path.split('/').pop() || '';
-      // Don't report complexity for files that have been refactored into modules
-      if (refactoredFiles.includes(filename) && hasModularStructure) {
-        return false;
-      }
-      return f.complexity === 'critical' && f.linesOfCode > 400;
+      
+      // Skip if file has been modularized (has subfolder with modules)
+      if (f.hasModularSubfolders) return false;
+      
+      // Skip signatureExtractor/trajectoryPredictor if their modules exist
+      if (filename === 'signatureExtractor.ts' && hasSignatureModules) return false;
+      if (filename === 'trajectoryPredictor.ts' && hasTrajectoryModules) return false;
+      
+      // Flag files that are actually large AND complex based on LIVE content
+      return f.complexity === 'critical' && f.linesOfCode > 300;
     });
+    
     complexFiles.slice(0, 2).forEach(file => {
       detectedIssues.push({
         id: `complexity-${file.path}`,
@@ -421,26 +411,26 @@ const LiveCodebaseDebugger = () => {
         severity: 'high',
         file: file.path,
         title: `Complexity Hotspot: ${file.path.split('/').pop()}`,
-        description: `${file.linesOfCode} lines with critical complexity.`,
+        description: `LIVE: ${file.linesOfCode} lines with ${file.complexity} complexity.`,
         fix: `Split into smaller modules under 200 LOC each.`,
         impact: `Reduces bug surface area by ~40%`,
-        aiPrompt: `Refactor "${file.path}" to reduce complexity.`
+        aiPrompt: `Refactor "${file.path}" to reduce complexity. Currently ${file.linesOfCode} lines.`
       });
     });
 
-    // 3. Check SDK-to-domain ratio - Account for modular structure
-    const effectiveSdkCount = categories.coreSdk.length + coreModules.length;
-    const sdkRatio = effectiveSdkCount / filesToScan.length;
-    if (sdkRatio < 0.10) { // Lower threshold since modular structure is better
+    // 3. SDK ratio check - using LIVE file counts
+    const coreModuleCount = signatureModules.length + trajectoryModules.length + categories.coreSdk.length;
+    const sdkRatio = coreModuleCount / filesToScan.length;
+    if (sdkRatio < 0.08 && !hasSignatureModules && !hasTrajectoryModules) {
       detectedIssues.push({
         id: 'refactor-sdk-ratio',
         type: 'refactor-needed',
         severity: 'low',
         title: 'Core SDK Underweight',
-        description: `Core SDK is only ${Math.round(sdkRatio * 100)}% of codebase.`,
-        fix: `Extract common patterns to core SDK.`,
+        description: `LIVE: Core SDK is ${Math.round(sdkRatio * 100)}% of ${filesToScan.length} files.`,
+        fix: `Extract common patterns to core SDK modules.`,
         impact: 'Faster new domain adapter development',
-        aiPrompt: `Improve the core SDK abstraction layer.`
+        aiPrompt: `Improve the core SDK abstraction layer. Add modular sub-folders.`
       });
     }
 
@@ -459,8 +449,9 @@ const LiveCodebaseDebugger = () => {
       prediction: {
         outcome: 'success',
         confidence: avgPatternDensity * 0.92,
-        reasoning: `Analyzed ${filesToScan.length} live files with ${(avgPatternDensity * 100).toFixed(0)}% avg pattern density. ` +
-          `Core SDK: ${categories.coreSdk.length}, Chess: ${categories.chessDomain.length}, Code: ${categories.codeDomain.length}, UI: ${categories.ui.length} files.`
+        reasoning: `LIVE analyzed ${filesToScan.length} files (${totalLines.toLocaleString()} LOC). ` +
+          `Pattern density: ${(avgPatternDensity * 100).toFixed(1)}%. ` +
+          `Modular SDK: ${hasSignatureModules ? '✓' : '✗'} signature, ${hasTrajectoryModules ? '✓' : '✗'} trajectory.`
       },
       criticalFiles: filesToScan.filter(f => f.complexity === 'critical').slice(0, 5),
       totalPatternDensity: avgPatternDensity,
