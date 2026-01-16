@@ -309,10 +309,11 @@ const LiveMarketWidget = forwardRef<HTMLElement, object>(function LiveMarketWidg
                   </div>
                   
                   <div className="space-y-2 max-h-[150px] overflow-y-auto">
-                    <AnimatePresence mode="popLayout">
+                    <AnimatePresence mode="popLayout" initial={false}>
                       {activities.map((activity) => (
                         <motion.div
                           key={activity.id}
+                          layout
                           initial={{ opacity: 0, y: -10 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: 10 }}
