@@ -50,6 +50,8 @@ import {
 import { useLiveHeartbeat, formatNextPulse } from "@/hooks/useLiveHeartbeat";
 import { useCodebaseSync, codebaseSyncManager } from "@/hooks/useCodebaseSync";
 import { useUnifiedEvolution } from "@/hooks/useUnifiedEvolution";
+import { AutoHealPanel } from "./AutoHealPanel";
+import { CodeIssue } from "@/hooks/useAutoHealSystem";
 
 // Real file analysis data extracted from LIVE code content
 interface FileAnalysis {
@@ -1232,6 +1234,27 @@ const LiveCodebaseDebugger = ({
               </CardContent>
             </Card>
 
+            {/* Self-Healing System Panel */}
+            <AutoHealPanel 
+              issues={result.issues.map((issue): CodeIssue => ({
+                file_path: issue.file || 'unknown',
+                issue_type: issue.type,
+                severity: issue.severity,
+                description: issue.description,
+                confidence: issue.severity === 'critical' ? 0.95 : 
+                           issue.severity === 'high' ? 0.85 : 
+                           issue.severity === 'medium' ? 0.7 : 0.5,
+                auto_fixable: issue.type === 'complexity-hotspot' || issue.type === 'refactor-needed',
+                metadata: {
+                  title: issue.title,
+                  fix: issue.fix,
+                  impact: issue.impact,
+                  aiPrompt: issue.aiPrompt
+                }
+              }))}
+              onScanComplete={() => codebaseSyncManager.invalidateCache()}
+            />
+
             {/* Proof Statement */}
             <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
               <h4 className="font-bold mb-2 flex items-center gap-2">
@@ -1247,6 +1270,7 @@ const LiveCodebaseDebugger = ({
                 <li>✓ <strong className="text-foreground">Detected {result.issues.length} actionable issues with fixes</strong></li>
                 <li>✓ <strong className="text-foreground">Future state projection with preemptive actions</strong></li>
                 <li>✓ <strong className="text-foreground">Synchronized with unified evolution system</strong></li>
+                <li>✓ <strong className="text-foreground">Self-healing system with auto-fix capabilities</strong></li>
               </ul>
             </div>
 
