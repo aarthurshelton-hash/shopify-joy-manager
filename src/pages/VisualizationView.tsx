@@ -48,7 +48,7 @@ const VisualizationView = () => {
   const { shareId } = useParams<{ shareId: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { user, isPremium } = useAuth();
+  const { user, isPremium, isCheckingSubscription } = useAuth();
   const { setOrderData } = usePrintOrderStore();
   const { 
     setCurrentSimulation, 
@@ -299,9 +299,12 @@ const VisualizationView = () => {
           capturedAt: new Date(),
         } : undefined;
         
+        // Always apply watermark if not premium or still checking subscription status
+        const shouldWatermark = !isPremium || isCheckingSubscription;
+        
         const base64Image = await generateCleanPrintImage(exportSimulation, {
           darkMode: exportState?.darkMode || false,
-          withWatermark: !isPremium, // Add watermark for free users
+          withWatermark: shouldWatermark,
           highlightState,
           capturedState,
           pgn: visualization.pgn || gameData.pgn || '',

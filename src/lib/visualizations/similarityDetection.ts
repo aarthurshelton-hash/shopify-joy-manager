@@ -14,6 +14,12 @@ import { GameData } from '@/lib/chess/gameSimulator';
 import { supabase } from '@/integrations/supabase/client';
 import { detectGameCard, GameCardMatch } from '@/lib/chess/gameCardDetection';
 
+// Admin user IDs whose seeded visions can be claimed by premium users
+// This supports the "starting phase" where genesis games are seeded for marketplace
+const GENESIS_CREATOR_IDS = [
+  '2029eb39-ff40-416f-8b07-f065964ff8eb', // a.arthur.shelton@gmail.com (primary admin)
+];
+
 // All piece types for comparison
 const PIECE_TYPES: PieceType[] = ['k', 'q', 'r', 'b', 'n', 'p'];
 const PIECE_COLORS: PieceColor[] = ['w', 'b'];
@@ -312,6 +318,7 @@ export interface SimilarityCheckResult {
     averageDistance: number;
     suspiciousColors: number;
   };
+  isGenesisClaimable?: boolean; // True if this is genesis content that can be claimed by premium users
 }
 
 /**
@@ -453,12 +460,35 @@ export async function checkVisualizationSimilarity(
       // 2. OR knockoff detected (colors deliberately tweaked to bypass detection)
       const shouldBlock = colorSimilarity >= 30 || isKnockoff;
       
+      // GENESIS PHASE: Allow claiming visions that are:
+      // 1. Unclaimed (user_id is null)
+      // 2. Or owned by a genesis creator (admin-seeded marketplace content)
+      // This enables premium users to claim genesis games during the starting phase
+      const isGenesisVision = !viz.user_id || GENESIS_CREATOR_IDS.includes(viz.user_id);
+      
       if (movesMatch && shouldBlock) {
+        // If this is a genesis vision, don't block - allow the claim
+        if (isGenesisVision && viz.user_id !== userId) {
+          // Return with a special flag indicating this is claimable genesis content
+          return {
+            isTooSimilar: false, // Don't block - it's genesis content
+            colorSimilarity,
+            movesMatch: true,
+            isIntrinsicPalette,
+            isIntrinsicGame,
+            matchedGameCard: matchedGameCard || undefined,
+            matchedPaletteId,
+            matchedPaletteSimilarity,
+            isGenesisClaimable: true, // Special flag for genesis content
+            existingVisualizationId: viz.id,
+          };
+        }
+        
         const ownedByCurrentUser = viz.user_id === userId;
         
         // Get owner's display name
         let ownerDisplayName: string | undefined;
-        if (!ownedByCurrentUser) {
+        if (!ownedByCurrentUser && viz.user_id) {
           const { data: profileData } = await supabase
             .from('profiles')
             .select('display_name')

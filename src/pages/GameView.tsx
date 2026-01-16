@@ -71,7 +71,7 @@ const GameView = () => {
   const { gameHash } = useParams<{ gameHash: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { user, isPremium } = useAuth();
+  const { user, isPremium, isCheckingSubscription } = useAuth();
   const {
     setCurrentSimulation,
     setSavedShareId,
@@ -588,11 +588,14 @@ const GameView = () => {
           capturedAt: new Date(),
         } : undefined;
         
+        // Always apply watermark if not premium or still checking subscription status
+        const shouldWatermark = !isPremium || isCheckingSubscription;
+        
         const base64Image = await generateCleanPrintImage(
           { board: filteredBoard, gameData, totalMoves },
           { 
             darkMode: exportState?.darkMode || false, 
-            withWatermark: !isPremium, 
+            withWatermark: shouldWatermark, 
             highlightState,
             capturedState,
             pgn: effectivePgn,
