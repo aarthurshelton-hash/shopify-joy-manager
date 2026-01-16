@@ -1,12 +1,15 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { motion } from 'framer-motion';
 import { whitePieceColors, blackPieceColors, PieceType } from '@/lib/chess/pieceColors';
+import { useEnPensentPatterns } from '@/hooks/useEnPensentPatterns';
+import { TemporalSignature, TemporalFlow, QuadrantProfile } from '@/lib/pensent-core/types/core';
 
 interface ChessLoadingAnimationProps {
   onComplete?: () => void;
   totalMoves?: number;
+  signature?: TemporalSignature | null;
 }
 
-// Simulated move sequence for the animation
 const ANIMATION_SEQUENCE: Array<{ square: string; piece: PieceType; isWhite: boolean }> = [
   { square: 'e2', piece: 'p', isWhite: true },
   { square: 'e4', piece: 'p', isWhite: true },
@@ -43,13 +46,28 @@ const ANIMATION_SEQUENCE: Array<{ square: string; piece: PieceType; isWhite: boo
 
 const ChessLoadingAnimation: React.FC<ChessLoadingAnimationProps> = ({ 
   onComplete,
-  totalMoves = ANIMATION_SEQUENCE.length
+  totalMoves = ANIMATION_SEQUENCE.length,
+  signature
 }) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [visitedSquares, setVisitedSquares] = useState<Map<string, Array<{ color: string; piece: PieceType }>>>(new Map());
   const [isComplete, setIsComplete] = useState(false);
+  
+  const pattern = useEnPensentPatterns(signature);
+  
+  // Calculate temporal flow phase based on progress
+  const temporalPhase = useMemo(() => {
+    const progress = currentStep / ANIMATION_SEQUENCE.length;
+    if (progress < 0.33) return 'opening';
+    if (progress < 0.66) return 'middle';
+    return 'ending';
+  }, [currentStep]);
 
   useEffect(() => {
+    const baseSpeed = 80;
+    const intensityVal = pattern.intensity ?? 0.5;
+    const speedMultiplier = intensityVal > 0.7 ? 0.7 : intensityVal < 0.3 ? 1.3 : 1;
+    
     const interval = setInterval(() => {
       if (currentStep < ANIMATION_SEQUENCE.length) {
         const move = ANIMATION_SEQUENCE[currentStep];
@@ -67,16 +85,13 @@ const ChessLoadingAnimation: React.FC<ChessLoadingAnimationProps> = ({
       } else {
         setIsComplete(true);
         clearInterval(interval);
-        setTimeout(() => {
-          onComplete?.();
-        }, 500);
+        setTimeout(() => onComplete?.(), 500);
       }
-    }, 80);
+    }, baseSpeed * speedMultiplier);
 
     return () => clearInterval(interval);
-  }, [currentStep, onComplete]);
+  }, [currentStep, onComplete, pattern.intensity]);
 
-  // Render the 8x8 grid
   const renderBoard = () => {
     const squares = [];
     for (let rank = 7; rank >= 0; rank--) {
@@ -85,27 +100,37 @@ const ChessLoadingAnimation: React.FC<ChessLoadingAnimationProps> = ({
         const visits = visitedSquares.get(squareName) || [];
         const isLight = (file + rank) % 2 === 1;
         
+        // Quadrant-based intensity from En Pensent
+        const quadrant = file < 4 ? (rank < 4 ? 'q3' : 'q1') : (rank < 4 ? 'q4' : 'q2');
+        const quadrantWeight = pattern.quadrantWeights[quadrant as keyof typeof pattern.quadrantWeights] || 0.25;
+        
         squares.push(
-          <div
+          <motion.div
             key={squareName}
             className="relative aspect-square"
             style={{
               backgroundColor: isLight ? '#FAFAF9' : '#2C2C2C',
             }}
+            animate={{
+              boxShadow: visits.length > 0 && signature 
+                ? `inset 0 0 ${quadrantWeight * 20}px ${pattern.dominantColor}30`
+                : 'none'
+            }}
           >
             {visits.map((visit, index) => (
-              <div
+              <motion.div
                 key={`${squareName}-${index}`}
-                className="absolute inset-0 animate-scale-in"
+                className="absolute inset-0"
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1 - index * 0.15, opacity: 0.85 }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
                 style={{
                   backgroundColor: visit.color,
-                  opacity: 0.85,
-                  transform: `scale(${1 - index * 0.15})`,
                   zIndex: index,
                 }}
               />
             ))}
-          </div>
+          </motion.div>
         );
       }
     }
@@ -114,44 +139,66 @@ const ChessLoadingAnimation: React.FC<ChessLoadingAnimationProps> = ({
 
   return (
     <div className="flex flex-col items-center justify-center space-y-8 py-12 animate-fade-in">
-      {/* Animated board */}
       <div className="relative">
-        <div 
+        <motion.div 
           className="grid grid-cols-8 gap-0 shadow-2xl rounded-sm overflow-hidden"
           style={{ width: 280, height: 280 }}
+          animate={{
+            boxShadow: signature 
+              ? `0 0 ${30 * pattern.intensity}px ${pattern.dominantColor}40`
+              : '0 0 30px rgba(180, 140, 100, 0.3)'
+          }}
         >
           {renderBoard()}
-        </div>
+        </motion.div>
         
-        {/* Subtle glow effect */}
-        <div 
-          className="absolute inset-0 rounded-sm pointer-events-none animate-pulse"
-          style={{
-            boxShadow: '0 0 30px rgba(180, 140, 100, 0.3)',
-          }}
-        />
+        {/* En Pensent temporal flow indicator */}
+        {signature && (
+          <motion.div
+            className="absolute -bottom-6 left-0 right-0 h-1 rounded-full overflow-hidden"
+            style={{ backgroundColor: `${pattern.secondaryColor}30` }}
+          >
+            <motion.div
+              className="h-full"
+              style={{ backgroundColor: pattern.dominantColor }}
+              animate={{ width: `${(currentStep / ANIMATION_SEQUENCE.length) * 100}%` }}
+            />
+          </motion.div>
+        )}
       </div>
 
-      {/* Progress indicator */}
       <div className="text-center space-y-3">
         <div className="flex items-center justify-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+          <motion.div 
+            className="w-2 h-2 rounded-full"
+            style={{ backgroundColor: pattern.dominantColor }}
+            animate={{ scale: [1, 1.2, 1], opacity: [1, 0.7, 1] }}
+            transition={{ duration: 1, repeat: Infinity }}
+          />
           <span className="text-sm font-medium text-muted-foreground">
-            {isComplete ? 'Finalizing...' : 'Replaying game'}
+            {isComplete ? 'Finalizing...' : `Replaying ${temporalPhase} phase`}
           </span>
-          <div className="w-2 h-2 rounded-full bg-primary animate-pulse" style={{ animationDelay: '0.3s' }} />
+          <motion.div 
+            className="w-2 h-2 rounded-full"
+            style={{ backgroundColor: pattern.secondaryColor }}
+            animate={{ scale: [1, 1.2, 1], opacity: [1, 0.7, 1] }}
+            transition={{ duration: 1, repeat: Infinity, delay: 0.3 }}
+          />
         </div>
         
-        {/* Progress bar */}
         <div className="w-48 h-1 bg-muted rounded-full overflow-hidden mx-auto">
-          <div
-            className="h-full bg-primary transition-all duration-100 ease-out"
-            style={{ width: `${(currentStep / ANIMATION_SEQUENCE.length) * 100}%` }}
+          <motion.div
+            className="h-full transition-all duration-100 ease-out"
+            style={{ 
+              width: `${(currentStep / ANIMATION_SEQUENCE.length) * 100}%`,
+              background: `linear-gradient(90deg, ${pattern.dominantColor}, ${pattern.secondaryColor})`
+            }}
           />
         </div>
         
         <p className="text-xs text-muted-foreground font-serif">
           Move {Math.min(currentStep, ANIMATION_SEQUENCE.length)} of {totalMoves}
+          {signature && <span className="ml-2 opacity-50">• {pattern.archetype}</span>}
         </p>
       </div>
     </div>
