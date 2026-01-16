@@ -19,6 +19,7 @@ import { ArchetypeDisplay } from './ArchetypeDisplay';
 import { CodeMetricsChart } from './CodeMetricsChart';
 import { RecommendationsPanel } from './RecommendationsPanel';
 import { ShareReportButton } from './ShareReportButton';
+import { SignatureVisualization } from './SignatureVisualization';
 import { CodeAnalysisResult, useCodeAnalysis } from '@/hooks/useCodeAnalysis';
 import { format } from 'date-fns';
 
@@ -123,6 +124,9 @@ export function AnalysisResults({ result, onSave }: AnalysisResultsProps) {
           </div>
         </CardContent>
       </Card>
+
+      {/* En Pensent Temporal Signature Visualization */}
+      <SignatureVisualization result={result} animated />
 
       {/* Archetype Display */}
       <ArchetypeDisplay
