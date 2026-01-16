@@ -16,6 +16,9 @@ export interface DetectedOpening {
   moveCount: number;
   category: 'open' | 'semi-open' | 'closed' | 'semi-closed' | 'flank' | 'irregular' | 'gambit';
   description: string;
+  marketingDescription?: string;
+  famousPlayers?: string[];
+  historicalSignificance?: string;
 }
 
 interface OpeningEntry {
@@ -25,13 +28,22 @@ interface OpeningEntry {
   moves: string;
   category: DetectedOpening['category'];
   description: string;
+  marketingDescription?: string;
+  famousPlayers?: string[];
+  historicalSignificance?: string;
 }
 
-// Comprehensive opening database with famous names
+// Comprehensive opening database with famous names and marketing data
 const OPENINGS_DATABASE: OpeningEntry[] = [
   // ========== OPEN GAMES (1.e4 e5) ==========
   // Italian Game Family
-  { eco: 'C50', name: 'Italian Game', moves: '1.e4 e5 2.Nf3 Nc6 3.Bc4', category: 'open', description: 'Classic opening targeting f7' },
+  { 
+    eco: 'C50', name: 'Italian Game', moves: '1.e4 e5 2.Nf3 Nc6 3.Bc4', category: 'open', 
+    description: 'Classic opening targeting f7',
+    marketingDescription: '🍕 The Italian Game - A Renaissance masterpiece that has withstood five centuries of chess evolution. The opening of choice for artistic players who appreciate classical beauty.',
+    famousPlayers: ['Greco', 'Morphy', 'Fischer', 'Caruana'],
+    historicalSignificance: 'One of the oldest recorded openings, dating back to the 16th century Italian masters.'
+  },
   { eco: 'C53', name: 'Giuoco Piano', moves: '1.e4 e5 2.Nf3 Nc6 3.Bc4 Bc5', category: 'open', description: 'The "quiet game" - solid development' },
   { eco: 'C54', name: 'Giuoco Piano', variation: 'Main Line', moves: '1.e4 e5 2.Nf3 Nc6 3.Bc4 Bc5 4.c3', category: 'open', description: 'Preparing d4 push' },
   { eco: 'C55', name: 'Two Knights Defense', moves: '1.e4 e5 2.Nf3 Nc6 3.Bc4 Nf6', category: 'open', description: 'Active defense, sharp play' },
@@ -39,6 +51,13 @@ const OPENINGS_DATABASE: OpeningEntry[] = [
   { eco: 'C51', name: 'Evans Gambit', moves: '1.e4 e5 2.Nf3 Nc6 3.Bc4 Bc5 4.b4', category: 'gambit', description: 'Aggressive pawn sacrifice for tempo' },
 
   // Ruy Lopez / Spanish Game Family
+  { 
+    eco: 'C60', name: 'Spanish Game', moves: '1.e4 e5 2.Nf3 Nc6 3.Bb5', category: 'open', 
+    description: 'The Spanish Game - most analyzed opening',
+    marketingDescription: '🏰 The Spanish Game (Ruy Lopez) - The royal weapon of world champions. Five centuries of theory have only deepened its strategic mysteries.',
+    famousPlayers: ['Lasker', 'Capablanca', 'Fischer', 'Karpov', 'Anand', 'Carlsen'],
+    historicalSignificance: 'Named after 16th century Spanish priest Ruy López de Segura. The most respected opening at the highest levels.'
+  },
   { eco: 'C60', name: 'Ruy Lopez', moves: '1.e4 e5 2.Nf3 Nc6 3.Bb5', category: 'open', description: 'The Spanish Game - most analyzed opening' },
   { eco: 'C65', name: 'Ruy Lopez', variation: 'Berlin Defense', moves: '1.e4 e5 2.Nf3 Nc6 3.Bb5 Nf6', category: 'open', description: 'The Berlin Wall - extremely solid' },
   { eco: 'C68', name: 'Ruy Lopez', variation: 'Exchange Variation', moves: '1.e4 e5 2.Nf3 Nc6 3.Bb5 a6 4.Bxc6', category: 'open', description: 'Doubled pawns but bishop pair' },
@@ -48,12 +67,24 @@ const OPENINGS_DATABASE: OpeningEntry[] = [
   { eco: 'C89', name: 'Marshall Attack', moves: '1.e4 e5 2.Nf3 Nc6 3.Bb5 a6 4.Ba4 Nf6 5.O-O Be7 6.Re1 b5 7.Bb3 O-O 8.c3 d5', category: 'gambit', description: 'Famous gambit for attack on white king' },
 
   // Scotch Game Family
-  { eco: 'C44', name: 'Scotch Game', moves: '1.e4 e5 2.Nf3 Nc6 3.d4', category: 'open', description: 'Immediate central confrontation' },
+  { 
+    eco: 'C44', name: 'Scotch Game', moves: '1.e4 e5 2.Nf3 Nc6 3.d4', category: 'open', 
+    description: 'Immediate central confrontation',
+    marketingDescription: '🥃 The Scotch Game - Bold and direct, favored by players who demand immediate action. Kasparov brought it back to elite play.',
+    famousPlayers: ['Kasparov', 'Caruana', 'Nakamura'],
+    historicalSignificance: 'Named after the 1824 correspondence match between Edinburgh and London chess clubs.'
+  },
   { eco: 'C45', name: 'Scotch Game', variation: 'Classical', moves: '1.e4 e5 2.Nf3 Nc6 3.d4 exd4 4.Nxd4', category: 'open', description: 'Recapturing with knight' },
   { eco: 'C44', name: 'Scotch Gambit', moves: '1.e4 e5 2.Nf3 Nc6 3.d4 exd4 4.Bc4', category: 'gambit', description: 'Gambit for rapid development' },
 
   // King's Gambit Family
-  { eco: 'C30', name: "King's Gambit", moves: '1.e4 e5 2.f4', category: 'gambit', description: 'Romantic era attacking opening' },
+  { 
+    eco: 'C30', name: "King's Gambit", moves: '1.e4 e5 2.f4', category: 'gambit', 
+    description: 'Romantic era attacking opening',
+    marketingDescription: '👑 The King\'s Gambit - The ultimate romantic gambit. Sacrificing the f-pawn for glory, this opening defined the golden age of chess.',
+    famousPlayers: ['Anderssen', 'Morphy', 'Spassky', 'Fischer', 'Short'],
+    historicalSignificance: 'The weapon of choice in the Romantic Era. Used in the famous "Immortal Game" and "Evergreen Game".'
+  },
   { eco: 'C33', name: "King's Gambit Accepted", moves: '1.e4 e5 2.f4 exf4', category: 'gambit', description: 'Taking the gambit pawn' },
   { eco: 'C30', name: "King's Gambit Declined", moves: '1.e4 e5 2.f4 Bc5', category: 'open', description: 'Declining the gambit' },
   { eco: 'C39', name: "King's Gambit", variation: 'Muzio Gambit', moves: '1.e4 e5 2.f4 exf4 3.Nf3 g5 4.Bc4 g4 5.O-O', category: 'gambit', description: 'Piece sacrifice for massive attack' },
@@ -65,9 +96,24 @@ const OPENINGS_DATABASE: OpeningEntry[] = [
   { eco: 'C21', name: 'Danish Gambit', moves: '1.e4 e5 2.d4 exd4 3.c3', category: 'gambit', description: 'Sacrificing two pawns for development' },
   { eco: 'C46', name: 'Four Knights Game', moves: '1.e4 e5 2.Nf3 Nc6 3.Nc3 Nf6', category: 'open', description: 'Symmetrical development' },
   { eco: 'C47', name: 'Four Knights', variation: 'Scotch Variation', moves: '1.e4 e5 2.Nf3 Nc6 3.Nc3 Nf6 4.d4', category: 'open', description: 'Adding d4 to Four Knights' },
+  
+  // Stafford Gambit (from the reference image)
+  {
+    eco: 'C42', name: 'Stafford Gambit', moves: '1.e4 e5 2.Nf3 Nf6 3.Nxe5 Nc6', category: 'gambit',
+    description: 'Dangerous trap-laden gambit',
+    marketingDescription: '🎯 The Stafford Gambit - The ultimate trickster opening. Loaded with deadly traps that have claimed countless victims.',
+    famousPlayers: ['Eric Rosen'],
+    historicalSignificance: 'Made famous in the internet era by IM Eric Rosen, creating chaos with deceptive simplicity.'
+  },
 
   // ========== SICILIAN DEFENSE (1.e4 c5) ==========
-  { eco: 'B20', name: 'Sicilian Defense', moves: '1.e4 c5', category: 'semi-open', description: 'Fighting response to 1.e4' },
+  { 
+    eco: 'B20', name: 'Sicilian Defense', moves: '1.e4 c5', category: 'semi-open', 
+    description: 'Fighting response to 1.e4',
+    marketingDescription: '🌋 The Sicilian Defense - The ultimate fighting defense. Asymmetrical, complex, and uncompromising. Chosen by champions who refuse to draw.',
+    famousPlayers: ['Fischer', 'Kasparov', 'Carlsen', 'Nakamura', 'Caruana'],
+    historicalSignificance: 'The most popular response to 1.e4 at all levels. Has decided more world championship games than any other opening.'
+  },
   { eco: 'B21', name: 'Sicilian Defense', variation: 'Grand Prix Attack', moves: '1.e4 c5 2.f4', category: 'semi-open', description: 'Aggressive anti-Sicilian' },
   { eco: 'B22', name: 'Sicilian Defense', variation: 'Alapin', moves: '1.e4 c5 2.c3', category: 'semi-open', description: 'Preparing d4 without Nc3' },
   { eco: 'B23', name: 'Sicilian Defense', variation: 'Closed', moves: '1.e4 c5 2.Nc3', category: 'semi-open', description: 'Delayed d4, flexible setup' },
@@ -82,7 +128,13 @@ const OPENINGS_DATABASE: OpeningEntry[] = [
   { eco: 'B84', name: 'Sicilian Scheveningen', variation: 'Classical', moves: '1.e4 c5 2.Nf3 d6 3.d4 cxd4 4.Nxd4 Nf6 5.Nc3 e6 6.Be2', category: 'semi-open', description: 'Main line Scheveningen' },
   { eco: 'B90', name: 'Sicilian Najdorf', moves: '1.e4 c5 2.Nf3 d6 3.d4 cxd4 4.Nxd4 Nf6 5.Nc3 a6', category: 'semi-open', description: 'The most popular Sicilian' },
   { eco: 'B96', name: 'Sicilian Najdorf', variation: 'Poisoned Pawn', moves: '1.e4 c5 2.Nf3 d6 3.d4 cxd4 4.Nxd4 Nf6 5.Nc3 a6 6.Bg5 e6 7.f4 Qb6', category: 'semi-open', description: 'Famous sharp line' },
-  { eco: 'B21', name: 'Smith-Morra Gambit', moves: '1.e4 c5 2.d4 cxd4 3.c3', category: 'gambit', description: 'Gambit against Sicilian' },
+  { 
+    eco: 'B21', name: 'Smith-Morra Gambit', moves: '1.e4 c5 2.d4 cxd4 3.c3', category: 'gambit', 
+    description: 'Gambit against Sicilian',
+    marketingDescription: '⚔️ The Smith-Morra Gambit - Sacrifice a pawn, gain a lead in development. The aggressive answer to the Sicilian that keeps opponents off-balance.',
+    famousPlayers: ['Ken Smith', 'Esserman'],
+    historicalSignificance: 'Popular among club players seeking to avoid heavy Sicilian theory while maintaining attacking chances.'
+  },
 
   // ========== FRENCH DEFENSE (1.e4 e6) ==========
   { eco: 'C00', name: 'French Defense', moves: '1.e4 e6', category: 'semi-open', description: 'Solid but cramped defense' },
@@ -93,7 +145,13 @@ const OPENINGS_DATABASE: OpeningEntry[] = [
   { eco: 'C15', name: 'French Defense', variation: 'Winawer', moves: '1.e4 e6 2.d4 d5 3.Nc3 Bb4', category: 'semi-open', description: 'Sharp and complex' },
 
   // ========== CARO-KANN DEFENSE (1.e4 c6) ==========
-  { eco: 'B10', name: 'Caro-Kann Defense', moves: '1.e4 c6', category: 'semi-open', description: 'Solid and reliable' },
+  { 
+    eco: 'B10', name: 'Caro-Kann Defense', moves: '1.e4 c6', category: 'semi-open', 
+    description: 'Solid and reliable',
+    marketingDescription: '🏛️ The Caro-Kann Defense - The fortress opening. Solid as stone, yet with hidden attacking venom. Chosen by positional masters.',
+    famousPlayers: ['Karpov', 'Capablanca', 'Petrosian', 'Anand'],
+    historicalSignificance: 'Named after Horatio Caro and Marcus Kann. A favorite of world champions seeking solidity with Black.'
+  },
   { eco: 'B12', name: 'Caro-Kann', variation: 'Advance Variation', moves: '1.e4 c6 2.d4 d5 3.e5', category: 'semi-open', description: 'Space advantage approach' },
   { eco: 'B13', name: 'Caro-Kann', variation: 'Exchange Variation', moves: '1.e4 c6 2.d4 d5 3.exd5 cxd5', category: 'semi-open', description: 'Symmetrical pawn structure' },
   { eco: 'B15', name: 'Caro-Kann', variation: 'Main Line', moves: '1.e4 c6 2.d4 d5 3.Nc3 dxe4 4.Nxe4', category: 'semi-open', description: 'Classical approach' },
@@ -101,12 +159,24 @@ const OPENINGS_DATABASE: OpeningEntry[] = [
   { eco: 'B18', name: 'Caro-Kann', variation: 'Classical', moves: '1.e4 c6 2.d4 d5 3.Nc3 dxe4 4.Nxe4 Bf5', category: 'semi-open', description: 'Developing the bad bishop' },
 
   // ========== SCANDINAVIAN DEFENSE (1.e4 d5) ==========
-  { eco: 'B01', name: 'Scandinavian Defense', moves: '1.e4 d5', category: 'semi-open', description: 'Immediate counter in center' },
+  { 
+    eco: 'B01', name: 'Scandinavian Defense', moves: '1.e4 d5', category: 'semi-open', 
+    description: 'Immediate counter in center',
+    marketingDescription: '🗡️ The Scandinavian Defense - Strike immediately! The fearless queen sortie that demands White prove their worth from move one.',
+    famousPlayers: ['Bent Larsen', 'Tiviakov', 'Anand'],
+    historicalSignificance: 'One of the oldest defenses to 1.e4, dating to the 15th century. Brought to elite level by Bent Larsen.'
+  },
   { eco: 'B01', name: 'Scandinavian Defense', variation: 'Main Line', moves: '1.e4 d5 2.exd5 Qxd5', category: 'semi-open', description: 'Queen comes out early' },
   { eco: 'B01', name: 'Scandinavian Defense', variation: 'Modern', moves: '1.e4 d5 2.exd5 Nf6', category: 'semi-open', description: 'Not taking back immediately' },
 
   // ========== ALEKHINE'S DEFENSE (1.e4 Nf6) ==========
-  { eco: 'B02', name: "Alekhine's Defense", moves: '1.e4 Nf6', category: 'semi-open', description: 'Provoke e5, attack White center' },
+  { 
+    eco: 'B02', name: "Alekhine's Defense", moves: '1.e4 Nf6', category: 'semi-open', 
+    description: 'Provoke e5, attack White center',
+    marketingDescription: '🔫 Alekhine\'s Defense - Named after the 4th World Champion. Provoke White to over-extend, then systematically destroy their center.',
+    famousPlayers: ['Alekhine', 'Fischer', 'Nakamura'],
+    historicalSignificance: 'Alexander Alekhine used this hypermodern defense to confound opponents who expected classical play.'
+  },
   { eco: 'B03', name: "Alekhine's Defense", variation: 'Four Pawns Attack', moves: '1.e4 Nf6 2.e5 Nd5 3.d4 d6 4.c4 Nb6 5.f4', category: 'semi-open', description: 'Aggressive pawn advance' },
   { eco: 'B04', name: "Alekhine's Defense", variation: 'Modern', moves: '1.e4 Nf6 2.e5 Nd5 3.d4 d6 4.Nf3', category: 'semi-open', description: 'Main line development' },
 
@@ -117,7 +187,13 @@ const OPENINGS_DATABASE: OpeningEntry[] = [
   { eco: 'B09', name: 'Pirc Defense', variation: 'Austrian Attack', moves: '1.e4 d6 2.d4 Nf6 3.Nc3 g6 4.f4', category: 'semi-open', description: 'Aggressive f4 push' },
 
   // ========== QUEEN'S GAMBIT (1.d4 d5 2.c4) ==========
-  { eco: 'D06', name: "Queen's Gambit", moves: '1.d4 d5 2.c4', category: 'closed', description: 'Classical opening for center control' },
+  { 
+    eco: 'D06', name: "Queen's Gambit", moves: '1.d4 d5 2.c4', category: 'closed', 
+    description: 'Classical opening for center control',
+    marketingDescription: '👸 The Queen\'s Gambit - The opening that launched a cultural phenomenon. Elegant, strategic, and timeless. The crown jewel of classical chess.',
+    famousPlayers: ['Lasker', 'Capablanca', 'Botvinnik', 'Kasparov', 'Carlsen'],
+    historicalSignificance: 'One of the oldest recorded openings. Made globally famous by the Netflix series, but respected for centuries by grandmasters.'
+  },
   { eco: 'D20', name: "Queen's Gambit Accepted", moves: '1.d4 d5 2.c4 dxc4', category: 'closed', description: 'Taking the gambit pawn' },
   { eco: 'D30', name: "Queen's Gambit Declined", moves: '1.d4 d5 2.c4 e6', category: 'closed', description: 'Solid defense, maintaining d5' },
   { eco: 'D31', name: "Queen's Gambit Declined", variation: 'Albin Counter-Gambit', moves: '1.d4 d5 2.c4 e5', category: 'gambit', description: 'Aggressive counter' },
@@ -133,6 +209,13 @@ const OPENINGS_DATABASE: OpeningEntry[] = [
 
   // ========== INDIAN DEFENSES ==========
   // King's Indian Defense
+  { 
+    eco: 'E60', name: "Indian Game", moves: '1.d4 Nf6 2.c4 g6', category: 'semi-closed', 
+    description: 'Hypermodern, fianchetto kingside',
+    marketingDescription: '🕉️ The Indian Game - A family of hypermodern defenses from the subcontinent. Flexible, dynamic, and full of hidden counterplay.',
+    famousPlayers: ['Nimzowitsch', 'Fischer', 'Kasparov', 'Giri'],
+    historicalSignificance: 'The Indian systems revolutionized chess theory in the 20th century, proving that controlling the center doesn\'t require occupying it.'
+  },
   { eco: 'E60', name: "King's Indian Defense", moves: '1.d4 Nf6 2.c4 g6', category: 'semi-closed', description: 'Hypermodern, fianchetto kingside' },
   { eco: 'E62', name: "King's Indian Defense", variation: 'Fianchetto', moves: '1.d4 Nf6 2.c4 g6 3.g3', category: 'semi-closed', description: 'Quiet, positional approach' },
   { eco: 'E70', name: "King's Indian Defense", variation: 'Classical', moves: '1.d4 Nf6 2.c4 g6 3.Nc3 Bg7 4.e4 d6 5.Nf3', category: 'semi-closed', description: 'Main line KID' },
@@ -172,7 +255,13 @@ const OPENINGS_DATABASE: OpeningEntry[] = [
 
   // ========== FLANK OPENINGS ==========
   // English Opening
-  { eco: 'A10', name: 'English Opening', moves: '1.c4', category: 'flank', description: 'Flexible flank opening' },
+  { 
+    eco: 'A10', name: 'English Opening', moves: '1.c4', category: 'flank', 
+    description: 'Flexible flank opening',
+    marketingDescription: '🇬🇧 The English Opening - The flexible weapon of positional masters. Delays commitment, maximizes options, dominates from the flanks.',
+    famousPlayers: ['Botvinnik', 'Kramnik', 'Caruana'],
+    historicalSignificance: 'Named for the English master Howard Staunton. The backbone of 1.c4 players seeking long-term positional advantage.'
+  },
   { eco: 'A16', name: 'English Opening', variation: 'Anglo-Indian', moves: '1.c4 Nf6 2.Nc3', category: 'flank', description: 'English with Indian setup' },
   { eco: 'A20', name: 'English Opening', variation: 'Reversed Sicilian', moves: '1.c4 e5', category: 'flank', description: 'Sicilian with colors reversed' },
   { eco: 'A30', name: 'English Opening', variation: 'Symmetrical', moves: '1.c4 c5', category: 'flank', description: 'Both sides play c-pawn' },
@@ -188,10 +277,22 @@ const OPENINGS_DATABASE: OpeningEntry[] = [
   // Other Flank Openings
   { eco: 'A00', name: 'Hungarian Opening', moves: '1.g3', category: 'flank', description: 'Flexible, kingside fianchetto' },
   { eco: 'A01', name: 'Larsen\'s Opening', moves: '1.b3', category: 'flank', description: 'Queenside fianchetto' },
-  { eco: 'A00', name: 'Grob Attack', moves: '1.g4', category: 'irregular', description: 'Eccentric opening' },
+  { 
+    eco: 'A00', name: 'Grob Attack', moves: '1.g4', category: 'irregular', 
+    description: 'Eccentric opening',
+    marketingDescription: '🗑️ The Grob Attack - The most audacious first move in chess. For those who dare to be different and embrace chaos from move one.',
+    famousPlayers: ['Henri Grob', 'Basman'],
+    historicalSignificance: 'Named after Swiss master Henri Grob. A psychological weapon that signals immediate aggression.'
+  },
 
   // ========== LONDON SYSTEM AND SIMILAR ==========
-  { eco: 'D00', name: 'London System', moves: '1.d4 d5 2.Bf4', category: 'closed', description: 'Solid, systematic setup' },
+  { 
+    eco: 'D00', name: 'London System', moves: '1.d4 d5 2.Bf4', category: 'closed', 
+    description: 'Solid, systematic setup',
+    marketingDescription: '🏛️ The London System - Named after the 1922 London tournament. Simple to learn, hard to beat. The workhorse of club chess.',
+    famousPlayers: ['Kamsky', 'Carlsen'],
+    historicalSignificance: 'Experienced a renaissance in modern chess due to its solid, low-theory nature.'
+  },
   { eco: 'D00', name: 'London System', variation: 'Main Line', moves: '1.d4 d5 2.Bf4 Nf6 3.e3', category: 'closed', description: 'Pyramidal pawn structure' },
   { eco: 'A45', name: 'Trompowsky Attack', moves: '1.d4 Nf6 2.Bg5', category: 'closed', description: 'Aggressive anti-Indian' },
   { eco: 'A46', name: 'Torre Attack', moves: '1.d4 Nf6 2.Nf3 e6 3.Bg5', category: 'closed', description: 'Pin knight, solid development' },
@@ -315,6 +416,9 @@ export function detectOpeningFromMoves(moves: string[]): DetectedOpening | undef
     moveCount: pgnToMoves(bestMatch.moves).length,
     category: bestMatch.category,
     description: bestMatch.description,
+    marketingDescription: bestMatch.marketingDescription,
+    famousPlayers: bestMatch.famousPlayers,
+    historicalSignificance: bestMatch.historicalSignificance,
   };
 }
 
