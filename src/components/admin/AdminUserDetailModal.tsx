@@ -34,18 +34,22 @@ import { supabase } from '@/integrations/supabase/client';
 import { format, formatDistanceToNow } from 'date-fns';
 
 interface AdminUserDetailModalProps {
-  userId: string;
+  userId: string | null;
+  open: boolean;
   onClose: () => void;
 }
 
 export const AdminUserDetailModal: React.FC<AdminUserDetailModalProps> = ({
   userId,
+  open,
   onClose,
 }) => {
   // Fetch complete user details
   const { data: userDetails, isLoading } = useQuery({
     queryKey: ['admin-user-detail', userId],
     queryFn: async () => {
+      if (!userId) return null;
+      
       // Get profile
       const { data: profile } = await supabase
         .from('profiles')
@@ -158,7 +162,7 @@ export const AdminUserDetailModal: React.FC<AdminUserDetailModalProps> = ({
   const isPremium = userDetails?.subscription?.subscription_status === 'active';
 
   return (
-    <Dialog open={!!userId} onOpenChange={() => onClose()}>
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-4">
