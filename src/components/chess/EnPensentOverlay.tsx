@@ -1,9 +1,8 @@
 import React, { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { SquareVisit } from '@/lib/chess/gameSimulator';
-import { boardColors, PieceType, PieceColor } from '@/lib/chess/pieceColors';
+import { PieceType, PieceColor, getCurrentPalette } from '@/lib/chess/pieceColors';
 
-interface MoveHistoryEntry {
+export interface MoveHistoryEntry {
   square: string;
   piece: PieceType;
   color: PieceColor;
@@ -30,7 +29,7 @@ const squareToPosition = (square: string, flipped: boolean): { row: number; col:
   return { row, col };
 };
 
-// Group moves by square and get color layers
+// Group moves by square and get color layers - uses provided palettes
 const buildSquareColorLayers = (
   moveHistory: MoveHistoryEntry[],
   whitePalette: Record<string, string>,
@@ -38,8 +37,16 @@ const buildSquareColorLayers = (
 ): Map<string, string[]> => {
   const squareLayers = new Map<string, string[]>();
   
+  // Validate palettes - fall back to current active palette if empty
+  const effectiveWhite = Object.keys(whitePalette).length > 0 
+    ? whitePalette 
+    : getCurrentPalette().white;
+  const effectiveBlack = Object.keys(blackPalette).length > 0 
+    ? blackPalette 
+    : getCurrentPalette().black;
+  
   for (const move of moveHistory) {
-    const palette = move.color === 'w' ? whitePalette : blackPalette;
+    const palette = move.color === 'w' ? effectiveWhite : effectiveBlack;
     const color = palette[move.piece] || '#888888';
     
     if (!squareLayers.has(move.square)) {
@@ -143,5 +150,3 @@ export const EnPensentOverlay: React.FC<EnPensentOverlayProps> = ({
     </div>
   );
 };
-
-export type { MoveHistoryEntry };
