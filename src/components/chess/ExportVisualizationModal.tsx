@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import html2canvas from 'html2canvas';
 import { 
@@ -80,16 +80,24 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
   } = useVisualizationStateStore();
   const { setCapturedTimelineState, setReturningFromOrder } = useSessionStore();
   const exportRef = useRef<HTMLDivElement>(null);
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkModeLocal] = useState(storeDarkMode);
   const [isDownloading, setIsDownloading] = useState(false);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
   const [showVisionaryModal, setShowVisionaryModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
-  // Sync dark mode with store
+  // Wrapped setDarkMode to sync with store
+  const setDarkMode = useCallback((value: boolean) => {
+    setDarkModeLocal(value);
+    setStoreDarkMode(value);
+  }, [setStoreDarkMode]);
+
+  // Sync local darkMode from store on modal open
   useEffect(() => {
-    setStoreDarkMode(darkMode);
-  }, [darkMode, setStoreDarkMode]);
+    if (isOpen) {
+      setDarkModeLocal(storeDarkMode);
+    }
+  }, [isOpen, storeDarkMode]);
 
   // Generate QR code on mount
   useEffect(() => {
