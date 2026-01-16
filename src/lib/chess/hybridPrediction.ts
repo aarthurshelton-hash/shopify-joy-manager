@@ -371,7 +371,7 @@ function generateTrajectoryPrediction(
       predictedOutcome = 'unclear';
     }
   } else {
-    predictedOutcome = signature.temporal.volatility > 50 ? 'unclear' : 'draw';
+    predictedOutcome = signature.temporalFlow.volatility > 50 ? 'unclear' : 'draw';
   }
   
   // Calculate horizon
