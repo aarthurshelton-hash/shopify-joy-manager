@@ -12,6 +12,16 @@ const logStep = (step: string, details?: unknown) => {
   console.log(`[MARKETPLACE-PURCHASE] ${step}${detailsStr}`);
 };
 
+// 5% marketplace fee distribution constants
+const MARKETPLACE_FEE_RATE = 0.05;
+const FEE_DISTRIBUTION = {
+  companyProfit: 0.25,  // 25% extractable cash reserve
+  gamecardPool: 0.25,   // 25% to game attribution
+  palettePool: 0.25,    // 25% to palette attribution
+  openingPool: 0.15,    // 15% to opening attribution
+  platformOps: 0.10,    // 10% to platform operations
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -50,7 +60,7 @@ serve(async (req) => {
     // Fetch the listing
     const { data: listing, error: listingError } = await supabaseClient
       .from('visualization_listings')
-      .select('*, saved_visualizations(id, title, image_path, user_id)')
+      .select('*, saved_visualizations(id, title, image_path, user_id, game_data)')
       .eq('id', listingId)
       .eq('status', 'active')
       .single();
@@ -66,6 +76,7 @@ serve(async (req) => {
     }
 
     const visualization = listing.saved_visualizations;
+    const priceCents = listing.price_cents || 0;
 
     // Check transfer rate limit (max 3 per 24 hours)
     const { data: canTransfer, error: transferCheckError } = await supabaseClient
@@ -83,8 +94,22 @@ serve(async (req) => {
     }
     logStep("Transfer limit check passed");
 
+    // Calculate economics
+    const totalFeeCents = Math.round(priceCents * MARKETPLACE_FEE_RATE);
+    const sellerReceivesCents = priceCents - totalFeeCents;
+    const companyProfitCents = Math.round(totalFeeCents * FEE_DISTRIBUTION.companyProfit);
+    const reinvestedCents = totalFeeCents - companyProfitCents;
+
+    logStep("Economics calculated", { 
+      priceCents, 
+      feeCents: totalFeeCents, 
+      sellerReceivesCents,
+      companyProfitCents, 
+      reinvestedCents 
+    });
+
     // If free (gift), transfer immediately
-    if (listing.price_cents === 0) {
+    if (priceCents === 0) {
       logStep("Free transfer - processing immediately");
 
       // Update the visualization owner
@@ -125,11 +150,25 @@ serve(async (req) => {
         logStep("Warning: Failed to record transfer", { error: recordError.message });
       }
 
+      // Record trade interaction
+      await supabaseClient.rpc('record_vision_interaction', {
+        p_visualization_id: listing.visualization_id,
+        p_user_id: user.id,
+        p_interaction_type: 'trade',
+        p_value_cents: 0,
+        p_ip_hash: null,
+      });
+
       logStep("Free transfer completed");
       return new Response(JSON.stringify({ 
         success: true, 
         message: "Visualization transferred successfully!",
-        visualizationId: listing.visualization_id
+        visualizationId: listing.visualization_id,
+        economics: {
+          priceCents: 0,
+          feeCents: 0,
+          sellerReceivesCents: 0,
+        }
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
@@ -160,6 +199,7 @@ serve(async (req) => {
 
     const sellerName = sellerProfile?.display_name || 'Collector';
 
+    // Create checkout with fee info in description
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
@@ -169,10 +209,10 @@ serve(async (req) => {
             currency: 'usd',
             product_data: {
               name: visualization.title || 'Chess Visualization',
-              description: `Ownership transfer from ${sellerName}`,
+              description: `Vision ownership transfer from ${sellerName}. Seller receives $${(sellerReceivesCents / 100).toFixed(2)} (95%). Platform fee: $${(totalFeeCents / 100).toFixed(2)} (5%) reinvested into value pools.`,
               images: visualization.image_path ? [visualization.image_path] : undefined,
             },
-            unit_amount: listing.price_cents,
+            unit_amount: priceCents,
           },
           quantity: 1,
         },
@@ -185,12 +225,26 @@ serve(async (req) => {
         buyer_id: user.id,
         visualization_id: listing.visualization_id,
         seller_id: listing.seller_id,
+        price_cents: priceCents.toString(),
+        fee_cents: totalFeeCents.toString(),
+        seller_receives_cents: sellerReceivesCents.toString(),
+        company_profit_cents: companyProfitCents.toString(),
+        reinvested_cents: reinvestedCents.toString(),
       },
     });
 
     logStep("Checkout session created", { sessionId: session.id });
 
-    return new Response(JSON.stringify({ url: session.url }), {
+    return new Response(JSON.stringify({ 
+      url: session.url,
+      economics: {
+        priceCents,
+        feeCents: totalFeeCents,
+        sellerReceivesCents,
+        companyProfitCents,
+        reinvestedCents,
+      }
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });

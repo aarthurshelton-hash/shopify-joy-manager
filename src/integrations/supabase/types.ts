@@ -295,6 +295,51 @@ export type Database = {
         }
         Relationships: []
       }
+      company_profit_pool: {
+        Row: {
+          created_at: string
+          extractable_profit_cents: number
+          gross_revenue_cents: number
+          id: string
+          net_profit_cents: number
+          notes: string | null
+          period_date: string
+          reinvested_cents: number
+          source_type: string
+          stripe_fees_cents: number
+          tax_collected_cents: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          extractable_profit_cents?: number
+          gross_revenue_cents?: number
+          id?: string
+          net_profit_cents?: number
+          notes?: string | null
+          period_date?: string
+          reinvested_cents?: number
+          source_type: string
+          stripe_fees_cents?: number
+          tax_collected_cents?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          extractable_profit_cents?: number
+          gross_revenue_cents?: number
+          id?: string
+          net_profit_cents?: number
+          notes?: string | null
+          period_date?: string
+          reinvested_cents?: number
+          source_type?: string
+          stripe_fees_cents?: number
+          tax_collected_cents?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       creative_designs: {
         Row: {
           created_at: string
@@ -852,6 +897,57 @@ export type Database = {
         }
         Relationships: []
       }
+      opening_value_pool: {
+        Row: {
+          base_value_cents: number
+          category: string
+          created_at: string
+          earned_value_cents: number
+          id: string
+          last_interaction_at: string | null
+          opening_eco: string
+          opening_name: string
+          total_interactions: number
+          total_marketplace_trades: number
+          total_print_orders: number
+          total_visions_using: number
+          updated_at: string
+          value_bonus_percent: number
+        }
+        Insert: {
+          base_value_cents?: number
+          category?: string
+          created_at?: string
+          earned_value_cents?: number
+          id?: string
+          last_interaction_at?: string | null
+          opening_eco: string
+          opening_name: string
+          total_interactions?: number
+          total_marketplace_trades?: number
+          total_print_orders?: number
+          total_visions_using?: number
+          updated_at?: string
+          value_bonus_percent?: number
+        }
+        Update: {
+          base_value_cents?: number
+          category?: string
+          created_at?: string
+          earned_value_cents?: number
+          id?: string
+          last_interaction_at?: string | null
+          opening_eco?: string
+          opening_name?: string
+          total_interactions?: number
+          total_marketplace_trades?: number
+          total_print_orders?: number
+          total_visions_using?: number
+          updated_at?: string
+          value_bonus_percent?: number
+        }
+        Relationships: []
+      }
       order_financials: {
         Row: {
           created_at: string
@@ -960,6 +1056,7 @@ export type Database = {
           palette_id: string
           palette_name: string
           total_interactions: number
+          total_marketplace_trades: number
           total_print_orders: number
           total_visions_using: number
           updated_at: string
@@ -973,6 +1070,7 @@ export type Database = {
           palette_id: string
           palette_name: string
           total_interactions?: number
+          total_marketplace_trades?: number
           total_print_orders?: number
           total_visions_using?: number
           updated_at?: string
@@ -986,6 +1084,7 @@ export type Database = {
           palette_id?: string
           palette_name?: string
           total_interactions?: number
+          total_marketplace_trades?: number
           total_print_orders?: number
           total_visions_using?: number
           updated_at?: string
@@ -1142,6 +1241,48 @@ export type Database = {
           identifier?: string
           request_count?: number | null
           window_start?: string
+        }
+        Relationships: []
+      }
+      revenue_stream_summary: {
+        Row: {
+          created_at: string
+          id: string
+          last_updated_at: string
+          reinvestment_rate: number
+          stream_type: string
+          total_extractable_cents: number
+          total_gross_revenue_cents: number
+          total_net_profit_cents: number
+          total_reinvested_cents: number
+          total_stripe_fees_cents: number
+          total_tax_collected_cents: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_updated_at?: string
+          reinvestment_rate?: number
+          stream_type: string
+          total_extractable_cents?: number
+          total_gross_revenue_cents?: number
+          total_net_profit_cents?: number
+          total_reinvested_cents?: number
+          total_stripe_fees_cents?: number
+          total_tax_collected_cents?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_updated_at?: string
+          reinvestment_rate?: number
+          stream_type?: string
+          total_extractable_cents?: number
+          total_gross_revenue_cents?: number
+          total_net_profit_cents?: number
+          total_reinvested_cents?: number
+          total_stripe_fees_cents?: number
+          total_tax_collected_cents?: number
         }
         Relationships: []
       }
@@ -1976,6 +2117,34 @@ export type Database = {
         }
         Relationships: []
       }
+      live_economics_summary: {
+        Row: {
+          active_gamecards: number | null
+          active_openings: number | null
+          active_palettes: number | null
+          gamecard_pool_total_cents: number | null
+          opening_pool_total_cents: number | null
+          palette_pool_total_cents: number | null
+          total_extractable_cents: number | null
+          total_gross_revenue_cents: number | null
+          total_net_profit_cents: number | null
+          total_reinvested_cents: number | null
+          total_stripe_fees_cents: number | null
+          total_tax_collected_cents: number | null
+          total_user_earnings_cents: number | null
+          total_wallet_balance_cents: number | null
+          wallets_with_balance: number | null
+        }
+        Relationships: []
+      }
+      profit_pools_summary: {
+        Row: {
+          metric: string | null
+          pool_type: string | null
+          value_cents: number | null
+        }
+        Relationships: []
+      }
       scan_leaderboard: {
         Row: {
           avatar_url: string | null
@@ -2235,6 +2404,39 @@ export type Database = {
         }
         Returns: Json
       }
+      record_product_revenue: {
+        Args: {
+          p_fulfillment_cents: number
+          p_game_id?: string
+          p_gross_cents: number
+          p_opening_eco?: string
+          p_order_type: string
+          p_palette_id?: string
+          p_stripe_fee_cents?: number
+          p_user_id: string
+          p_visualization_id: string
+        }
+        Returns: undefined
+      }
+      record_revenue_profit: {
+        Args: {
+          p_gross_revenue_cents: number
+          p_reinvested_cents?: number
+          p_source_type: string
+          p_stripe_fees_cents?: number
+          p_tax_collected_cents?: number
+        }
+        Returns: string
+      }
+      record_subscription_revenue: {
+        Args: {
+          p_amount_cents: number
+          p_stripe_fee_cents?: number
+          p_tax_cents?: number
+          p_user_id: string
+        }
+        Returns: undefined
+      }
       record_vision_interaction: {
         Args: {
           p_interaction_type?: string
@@ -2267,6 +2469,18 @@ export type Database = {
       }
       resolve_alert: { Args: { p_alert_id: string }; Returns: boolean }
       snapshot_daily_financials: { Args: never; Returns: undefined }
+      update_opening_pool: {
+        Args: {
+          p_category?: string
+          p_is_marketplace_trade?: boolean
+          p_is_print_order?: boolean
+          p_opening_eco: string
+          p_opening_name: string
+          p_value_bonus_percent?: number
+          p_value_cents?: number
+        }
+        Returns: undefined
+      }
       update_scan_streak: { Args: { p_user_id: string }; Returns: Json }
       validate_and_fix_data_integrity: { Args: never; Returns: Json }
       validate_withdrawal_request: {
