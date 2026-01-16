@@ -214,85 +214,86 @@ const StockPredictionDashboard: React.FC = () => {
                 <p>Extracting temporal signature...</p>
               </div>
             ) : prediction ? (
-              <Tabs defaultValue="consensus">
-                <TabsList className="grid grid-cols-4 w-full max-w-md mb-6">
-                  <TabsTrigger value="consensus">Consensus</TabsTrigger>
-                  <TabsTrigger value="short">1H</TabsTrigger>
-                  <TabsTrigger value="medium">4H</TabsTrigger>
-                  <TabsTrigger value="long">1D</TabsTrigger>
-                </TabsList>
+              <>
+                <Tabs defaultValue="consensus">
+                  <TabsList className="grid grid-cols-4 w-full max-w-md mb-6">
+                    <TabsTrigger value="consensus">Consensus</TabsTrigger>
+                    <TabsTrigger value="short">1H</TabsTrigger>
+                    <TabsTrigger value="medium">4H</TabsTrigger>
+                    <TabsTrigger value="long">1D</TabsTrigger>
+                  </TabsList>
 
-                <TabsContent value="consensus">
-                  <div className="text-center py-6">
-                    <div className="flex items-center justify-center gap-3 mb-4">
-                      <DirectionIcon direction={prediction.consensus === 'mixed' ? 'neutral' : prediction.consensus} />
-                      <span className="text-3xl font-bold capitalize">{prediction.consensus}</span>
-                    </div>
-                    <div className="mb-4">
-                      <p className="text-sm text-muted-foreground mb-2">Overall Confidence</p>
-                      <div className="flex items-center justify-center gap-3">
-                        <Progress value={prediction.overallConfidence} className="w-48" />
-                        <span className="font-bold">{prediction.overallConfidence}%</span>
+                  <TabsContent value="consensus">
+                    <div className="text-center py-6">
+                      <div className="flex items-center justify-center gap-3 mb-4">
+                        <DirectionIcon direction={prediction.consensus === 'mixed' ? 'neutral' : prediction.consensus} />
+                        <span className="text-3xl font-bold capitalize">{prediction.consensus}</span>
                       </div>
+                      <div className="mb-4">
+                        <p className="text-sm text-muted-foreground mb-2">Overall Confidence</p>
+                        <div className="flex items-center justify-center gap-3">
+                          <Progress value={prediction.overallConfidence} className="w-48" />
+                          <span className="font-bold">{prediction.overallConfidence}%</span>
+                        </div>
+                      </div>
+                      <Badge variant="outline" className="text-lg px-4 py-1">
+                        Archetype: {MARKET_ARCHETYPES[prediction.longTerm.archetype]?.name || prediction.longTerm.archetype}
+                      </Badge>
                     </div>
-                    <Badge variant="outline" className="text-lg px-4 py-1">
-                      Archetype: {MARKET_ARCHETYPES[prediction.longTerm.archetype]?.name || prediction.longTerm.archetype}
-                    </Badge>
-                  </div>
-                </TabsContent>
+                  </TabsContent>
 
-                {['short', 'medium', 'long'].map((term, idx) => {
-                  const pred = term === 'short' ? prediction.shortTerm : 
-                               term === 'medium' ? prediction.mediumTerm : prediction.longTerm;
-                  return (
-                    <TabsContent key={term} value={term}>
-                      <div className="grid md:grid-cols-2 gap-6">
-                        <div>
-                          <h4 className="font-semibold mb-3">Prediction</h4>
-                          <div className="space-y-3">
-                            <div className="flex justify-between">
-                              <span>Direction:</span>
-                              <span className="flex items-center gap-2">
-                                <DirectionIcon direction={pred.prediction.direction} />
-                                <span className="capitalize font-medium">{pred.prediction.direction}</span>
-                              </span>
+                  {['short', 'medium', 'long'].map((term) => {
+                    const pred = term === 'short' ? prediction.shortTerm : 
+                                 term === 'medium' ? prediction.mediumTerm : prediction.longTerm;
+                    return (
+                      <TabsContent key={term} value={term}>
+                        <div className="grid md:grid-cols-2 gap-6">
+                          <div>
+                            <h4 className="font-semibold mb-3">Prediction</h4>
+                            <div className="space-y-3">
+                              <div className="flex justify-between">
+                                <span>Direction:</span>
+                                <span className="flex items-center gap-2">
+                                  <DirectionIcon direction={pred.prediction.direction} />
+                                  <span className="capitalize font-medium">{pred.prediction.direction}</span>
+                                </span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Confidence:</span>
+                                <span className="font-medium">{pred.prediction.confidence}%</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Target Move:</span>
+                                <span className="font-medium">±{pred.prediction.targetMove}%</span>
+                              </div>
                             </div>
-                            <div className="flex justify-between">
-                              <span>Confidence:</span>
-                              <span className="font-medium">{pred.prediction.confidence}%</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Target Move:</span>
-                              <span className="font-medium">±{pred.prediction.targetMove}%</span>
+                          </div>
+                          <div>
+                            <h4 className="font-semibold mb-3">Signature</h4>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span>Archetype:</span>
+                                <Badge variant="secondary">{pred.archetype}</Badge>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Fingerprint:</span>
+                                <code className="text-xs bg-muted px-2 py-1 rounded">
+                                  {pred.signature.slice(0, 20)}...
+                                </code>
+                              </div>
                             </div>
                           </div>
                         </div>
-                        <div>
-                          <h4 className="font-semibold mb-3">Signature</h4>
-                          <div className="space-y-2 text-sm">
-                            <div className="flex justify-between">
-                              <span>Archetype:</span>
-                              <Badge variant="secondary">{pred.archetype}</Badge>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Fingerprint:</span>
-                              <code className="text-xs bg-muted px-2 py-1 rounded">
-                                {pred.signature.slice(0, 20)}...
-                              </code>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </TabsContent>
-                  );
-                })}
-              </Tabs>
+                      </TabsContent>
+                    );
+                  })}
+                </Tabs>
 
-              <Button onClick={savePrediction} className="w-full mt-4">
-                <Save className="w-4 h-4 mr-2" />
-                Save Prediction for Tracking
-              </Button>
-            </>
+                <Button onClick={savePrediction} className="w-full mt-4">
+                  <Save className="w-4 h-4 mr-2" />
+                  Save Prediction for Tracking
+                </Button>
+              </>
             ) : null}
           </CardContent>
         </Card>
