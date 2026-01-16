@@ -179,10 +179,25 @@ export async function storefrontApiRequest(query: string, variables: Record<stri
   return data;
 }
 
+// Simple in-memory cache for products
+let productsCache: { data: ShopifyProduct[]; timestamp: number } | null = null;
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 export async function fetchProducts(limit = 10): Promise<ShopifyProduct[]> {
+  // Check cache first
+  if (productsCache && Date.now() - productsCache.timestamp < CACHE_TTL) {
+    return productsCache.data;
+  }
+  
   const data = await storefrontApiRequest(STOREFRONT_QUERY, { first: limit });
   if (!data) return [];
-  return data.data.products.edges || [];
+  
+  const products = data.data.products.edges || [];
+  
+  // Cache the results
+  productsCache = { data: products, timestamp: Date.now() };
+  
+  return products;
 }
 
 export async function fetchProductByHandle(handle: string): Promise<ShopifyProduct['node'] | null> {
