@@ -59,6 +59,7 @@ import SDKDocs from "./pages/SDKDocs";
 import SharedAnalysisReport from "./pages/SharedAnalysisReport";
 import WhyThisMatters from "./pages/WhyThisMatters";
 import InvestorPortal from "./pages/InvestorPortal";
+import EarlyAccess from "./pages/EarlyAccess";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -126,6 +127,7 @@ const App = () => (
               <Route path="/analysis/:id" element={<SharedAnalysisReport />} />
               <Route path="/why-this-matters" element={<WhyThisMatters />} />
               <Route path="/investor-portal" element={<InvestorPortal />} />
+              <Route path="/early-access" element={<EarlyAccess />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
