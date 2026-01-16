@@ -25,8 +25,11 @@ import {
   Target,
   GitBranch,
   Activity,
-  Fingerprint
+  Fingerprint,
+  Copy,
+  Check
 } from "lucide-react";
+import { toast } from "sonner";
 import { 
   ArchetypeBadge, 
   TemporalFlowChart, 
@@ -53,6 +56,7 @@ interface DetectedIssue {
   description: string;
   fix: string;
   impact: string;
+  aiPrompt: string; // Auto-generated prompt for AI assistant
 }
 
 interface AnalysisResult {
@@ -198,6 +202,18 @@ const LiveCodebaseDebugger = () => {
   const [currentFile, setCurrentFile] = useState<FileAnalysis | null>(null);
   const [scannedFiles, setScannedFiles] = useState<FileAnalysis[]>([]);
   const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [copiedPromptId, setCopiedPromptId] = useState<string | null>(null);
+
+  const copyPromptToClipboard = async (prompt: string, issueId: string) => {
+    try {
+      await navigator.clipboard.writeText(prompt);
+      setCopiedPromptId(issueId);
+      toast.success("Prompt copied to clipboard!");
+      setTimeout(() => setCopiedPromptId(null), 2000);
+    } catch (err) {
+      toast.error("Failed to copy prompt");
+    }
+  };
 
   const runLiveAnalysis = async () => {
     setStage('scanning');
@@ -253,6 +269,14 @@ const LiveCodebaseDebugger = () => {
     // 1. Low pattern density files
     const lowDensityFiles = CHESS_CODEBASE_FILES.filter(f => f.patternDensity < 0.5);
     lowDensityFiles.forEach(file => {
+      const fixText = file.category === 'ui' 
+        ? `Integrate TemporalSignature display components. Add pattern visualization overlays and archetype badges.`
+        : `Wrap core logic with signature extraction. Export temporal flow data for cross-domain analysis.`;
+      
+      const aiPrompt = file.category === 'ui'
+        ? `In the file "${file.path}", integrate En Pensent TemporalSignature display components. Add pattern visualization overlays using the QuadrantRadar and TemporalFlowChart components. Include ArchetypeBadge to display detected archetypes. Import these from @/components/pensent-ui and wire them up to display the signature data.`
+        : `In the file "${file.path}", wrap the core logic with temporal signature extraction. Import signatureExtractor from @/lib/pensent-core/signatureExtractor and call extractSignature on the main data flow. Export the temporal flow data so other components can use it for cross-domain analysis.`;
+      
       detectedIssues.push({
         id: `low-density-${file.path}`,
         type: 'low-density',
@@ -260,10 +284,9 @@ const LiveCodebaseDebugger = () => {
         file: file.path,
         title: `Low En Pensent Integration: ${file.path.split('/').pop()}`,
         description: `This file has only ${Math.round(file.patternDensity * 100)}% pattern density. It's not fully leveraging the En Pensent temporal signature system.`,
-        fix: file.category === 'ui' 
-          ? `Integrate TemporalSignature display components. Add pattern visualization overlays and archetype badges.`
-          : `Wrap core logic with signature extraction. Export temporal flow data for cross-domain analysis.`,
-        impact: `+${Math.round((0.8 - file.patternDensity) * 100)}% pattern coverage improvement`
+        fix: fixText,
+        impact: `+${Math.round((0.8 - file.patternDensity) * 100)}% pattern coverage improvement`,
+        aiPrompt
       });
     });
 
@@ -281,7 +304,8 @@ const LiveCodebaseDebugger = () => {
         title: `Missing Domain Adapter: ${domain.name}`,
         description: `No adapter exists for ${domain.description}. The core SDK supports this domain but no implementation exists.`,
         fix: `Create src/lib/pensent-${domain.name}/ directory with: types.ts, ${domain.name}FlowSignature.ts, ${domain.name}Adapter.ts. Follow the chess/code adapter patterns.`,
-        impact: `Unlocks ${domain.name} market vertical (est. $2B TAM)`
+        impact: `Unlocks ${domain.name} market vertical (est. $2B TAM)`,
+        aiPrompt: `Create a new domain adapter for ${domain.name} (${domain.description}). Create these files:\n\n1. src/lib/pensent-${domain.name}/types.ts - Define ${domain.name}-specific types extending TemporalSignature from @/lib/pensent-core/types\n\n2. src/lib/pensent-${domain.name}/${domain.name}FlowSignature.ts - Implement signature extraction logic for ${domain.name} data, generating fingerprints, temporal flow, and quadrant profiles\n\n3. src/lib/pensent-${domain.name}/${domain.name}Adapter.ts - Create a DomainAdapter that connects ${domain.name} data to the core SDK\n\nFollow the existing patterns from src/lib/chess/ and src/lib/pensent-code/ adapters.`
       });
     });
 
@@ -296,7 +320,8 @@ const LiveCodebaseDebugger = () => {
         title: `Complexity Hotspot: ${file.path.split('/').pop()}`,
         description: `${file.linesOfCode} lines with critical complexity. High cognitive load and maintenance risk.`,
         fix: `Split into smaller modules:\n• Extract archetype definitions to separate file\n• Move helper functions to utils\n• Create dedicated test file\n• Consider breaking into 3-4 focused files under 200 LOC each`,
-        impact: `Reduces bug surface area by ~40%, improves onboarding time`
+        impact: `Reduces bug surface area by ~40%, improves onboarding time`,
+        aiPrompt: `Refactor the file "${file.path}" (${file.linesOfCode} lines) to reduce complexity:\n\n1. Extract all archetype/type definitions into a separate "${file.path.replace('.ts', '.types.ts').replace('.tsx', '.types.ts')}" file\n\n2. Move helper/utility functions to a dedicated utils file in the same directory\n\n3. Create a test file "${file.path.replace('.ts', '.test.ts').replace('.tsx', '.test.tsx')}" with unit tests for the main functions\n\n4. Split the main file into 3-4 focused modules, each under 200 lines of code\n\nMaintain all existing functionality and exports.`
       });
     });
 
@@ -310,7 +335,8 @@ const LiveCodebaseDebugger = () => {
         title: 'Insufficient UI Component Coverage',
         description: `Only ${uiFiles.length} UI files detected. The pattern visualization layer is underdeveloped relative to the SDK.`,
         fix: `Create dedicated visualization components:\n• TemporalFlowChart.tsx - animated timeline\n• QuadrantRadar.tsx - 4-axis radar chart\n• ArchetypeBadge.tsx - reusable archetype display\n• PredictionGauge.tsx - confidence meter\n• SignatureComparison.tsx - side-by-side diff`,
-        impact: 'Improves demo-ability and investor presentations'
+        impact: 'Improves demo-ability and investor presentations',
+        aiPrompt: `Create additional En Pensent visualization UI components in src/components/pensent-ui/:\n\n1. PredictionGauge.tsx - A circular confidence meter showing prediction confidence (0-100%) with animated fill, color gradient from red to green, and optional label\n\n2. SignatureComparison.tsx - A side-by-side diff component that takes two TemporalSignature objects and highlights differences in fingerprint, intensity, momentum, temporal flow, and quadrant profile\n\nUse framer-motion for animations, Tailwind for styling, and follow the existing patterns in ArchetypeBadge.tsx and QuadrantRadar.tsx. Export all new components from the index.ts barrel file.`
       });
     }
 
@@ -324,7 +350,8 @@ const LiveCodebaseDebugger = () => {
         title: 'No Test Files Detected',
         description: 'Zero test files found in the analyzed codebase. This is a critical gap for production readiness.',
         fix: `Priority test files to create:\n• signatureExtractor.test.ts - verify fingerprint generation\n• patternMatcher.test.ts - test similarity scoring\n• colorFlowAnalysis.test.ts - validate chess archetypes\n• trajectoryPredictor.test.ts - prediction accuracy tests`,
-        impact: 'Enables CI/CD, reduces regression risk by 80%'
+        impact: 'Enables CI/CD, reduces regression risk by 80%',
+        aiPrompt: `Create comprehensive test files for the En Pensent core SDK:\n\n1. src/lib/pensent-core/signatureExtractor.test.ts - Test fingerprint generation, temporal flow calculation, and critical moment detection. Mock sample input data and verify output signature shape.\n\n2. src/lib/pensent-core/patternMatcher.test.ts - Test similarity scoring between signatures, pattern matching accuracy, and archetype fuzzy matching.\n\n3. src/lib/chess/colorFlowAnalysis.test.ts - Test chess-specific signature extraction, verify all 12 archetypes are correctly identified from sample PGN games.\n\n4. src/lib/pensent-core/trajectoryPredictor.test.ts - Test outcome prediction, milestone forecasting, and confidence calculations.\n\nUse vitest as the test runner. Include edge cases and ensure >80% code coverage.`
       });
     }
 
@@ -338,7 +365,8 @@ const LiveCodebaseDebugger = () => {
         title: 'Core SDK Underweight',
         description: `Core SDK is only ${Math.round(sdkRatio * 100)}% of codebase. More domain-agnostic abstractions could improve reusability.`,
         fix: `Extract common patterns:\n• Move archetype matching logic to core\n• Create universal visualization primitives\n• Abstract prediction algorithms`,
-        impact: 'Faster new domain adapter development'
+        impact: 'Faster new domain adapter development',
+        aiPrompt: `Improve the core SDK abstraction layer in src/lib/pensent-core/:\n\n1. Extract common archetype matching logic from chess/code domains into a generic archetypeResolver.ts in pensent-core\n\n2. Create universal visualization primitives in a new visualizationPrimitives.ts file that can be used by any domain\n\n3. Abstract the prediction algorithms in trajectoryPredictor.ts to be more domain-agnostic, using only the base TemporalSignature interface\n\nEnsure backward compatibility with existing chess and code adapters.`
       });
     }
 
@@ -728,6 +756,40 @@ const LiveCodebaseDebugger = () => {
                                   HOW TO FIX
                                 </div>
                                 <p className="text-xs text-muted-foreground whitespace-pre-line">{issue.fix}</p>
+                              </div>
+
+                              {/* AI Prompt - Copyable */}
+                              <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <div className="text-xs font-medium text-primary flex items-center gap-1">
+                                    <Sparkles className="w-3 h-3" />
+                                    AI PROMPT (click to copy)
+                                  </div>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 px-2 text-xs gap-1"
+                                    onClick={() => copyPromptToClipboard(issue.aiPrompt, issue.id)}
+                                  >
+                                    {copiedPromptId === issue.id ? (
+                                      <>
+                                        <Check className="w-3 h-3 text-green-500" />
+                                        Copied!
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Copy className="w-3 h-3" />
+                                        Copy
+                                      </>
+                                    )}
+                                  </Button>
+                                </div>
+                                <div 
+                                  className="text-xs text-muted-foreground whitespace-pre-line bg-muted/30 rounded p-2 cursor-pointer hover:bg-muted/50 transition-colors max-h-32 overflow-y-auto"
+                                  onClick={() => copyPromptToClipboard(issue.aiPrompt, issue.id)}
+                                >
+                                  {issue.aiPrompt}
+                                </div>
                               </div>
                               
                               <div className="flex items-center gap-2 text-xs">
