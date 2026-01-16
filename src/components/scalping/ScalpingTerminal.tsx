@@ -3,11 +3,11 @@
  * Full trading dashboard with real-time predictions and cross-market analysis
  */
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Play, Pause, RotateCcw, Settings, Zap, Activity,
-  TrendingUp, TrendingDown, Radio, Clock, Globe, Sparkles, DollarSign
+  TrendingUp, TrendingDown, Radio, Clock, Globe, Sparkles, DollarSign, Target
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils';
 import { useScalpingPredictor } from '@/hooks/useScalpingPredictor';
 import { useMultiMarketStream } from '@/hooks/useMultiMarketStream';
 import { useSimulatedPositions } from '@/hooks/useSimulatedPositions';
+import { useTradingSessionStore } from '@/stores/tradingSessionStore';
 import { PredictionHUD } from './PredictionHUD';
 import { LearningStatePanel } from './LearningStatePanel';
 import { PredictionStream } from './PredictionStream';
@@ -28,6 +29,8 @@ import { TickChart } from './TickChart';
 import { MarketTicker } from './MarketTicker';
 import { BigPicturePanel } from './BigPicturePanel';
 import { PositionTracker } from './PositionTracker';
+import { GlobalAccuracyPanel } from './GlobalAccuracyPanel';
+import { SessionControl } from './SessionControl';
 import { HeartbeatIndicator } from '@/components/pensent-code/HeartbeatIndicator';
 
 const SYMBOLS = ['SPY', 'QQQ', 'AAPL', 'NVDA', 'TSLA', 'MSFT', 'AMD', 'GOOGL'];
@@ -37,13 +40,22 @@ export const ScalpingTerminal: React.FC = () => {
   const [autoPredict, setAutoPredict] = useState(true);
   const [predictionInterval, setPredictionInterval] = useState(3000);
   const [showSettings, setShowSettings] = useState(false);
-  const [activeView, setActiveView] = useState<'focus' | 'bigpicture' | 'positions'>('bigpicture');
+  const [activeView, setActiveView] = useState<'focus' | 'bigpicture' | 'positions' | 'evolution'>('bigpicture');
   
   // Multi-market stream for the bigger picture
   const multiMarket = useMultiMarketStream();
   
   // Simulated positions tracker
   const positionsTracker = useSimulatedPositions();
+  
+  // Global trading session store
+  const { 
+    currentSession,
+    recordPrediction,
+    updateLiveMetrics,
+    globalAccuracy,
+    evolutionState
+  } = useTradingSessionStore();
   
   const predictor = useScalpingPredictor({
     symbol,
@@ -53,6 +65,42 @@ export const ScalpingTerminal: React.FC = () => {
     demoVolatility: 0.0012,
     demoInterval: 150
   });
+  
+  // Sync prediction outcomes to global store
+  useEffect(() => {
+    const resolved = predictor.recentPredictions;
+    if (resolved.length === 0) return;
+    
+    const latest = resolved[0];
+    if (!latest.wasCorrect === undefined) return;
+    
+    // Record to global accuracy
+    const directionCorrect = latest.wasCorrect ?? false;
+    
+    recordPrediction({
+      predicted: latest.predictedDirection as 'up' | 'down' | 'neutral',
+      actual: (latest.actualDirection || latest.predictedDirection) as 'up' | 'down' | 'neutral',
+      confidence: latest.confidence,
+      directionCorrect,
+      magnitudeAccuracy: predictor.stats.accuracy / 100,
+      timingAccuracy: predictor.stats.recentAccuracy / 100,
+      marketConditions: {
+        correlationStrength: multiMarket.bigPicture.predictionBoost,
+        volatility: 0.5,
+        momentum: predictor.stats.currentStreak / 10,
+        leadingSignals: multiMarket.bigPicture.activeSignals.length / 10
+      }
+    });
+  }, [predictor.recentPredictions.length]);
+  
+  // Update live metrics
+  useEffect(() => {
+    updateLiveMetrics({
+      ticksProcessed: predictor.tickCount,
+      currentSymbol: symbol,
+      isStreaming: predictor.connected && autoPredict
+    });
+  }, [predictor.tickCount, symbol, predictor.connected, autoPredict, updateLiveMetrics]);
   
   const handleSymbolChange = useCallback((newSymbol: string) => {
     setSymbol(newSymbol);
@@ -87,6 +135,12 @@ export const ScalpingTerminal: React.FC = () => {
   
   return (
     <div className="space-y-4">
+      {/* Global Accuracy Bar - Always Visible */}
+      <GlobalAccuracyPanel compact showStreak />
+      
+      {/* Session Control - Compact */}
+      <SessionControl compact />
+      
       {/* Live Market Ticker - All Asset Classes */}
       <Card className="bg-card/30 border-primary/20">
         <CardContent className="py-3">
@@ -114,13 +168,17 @@ export const ScalpingTerminal: React.FC = () => {
       {/* Header with controls */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-        <Tabs value={activeView} onValueChange={(v) => setActiveView(v as 'focus' | 'bigpicture' | 'positions')}>
+        <Tabs value={activeView} onValueChange={(v) => setActiveView(v as 'focus' | 'bigpicture' | 'positions' | 'evolution')}>
             <TabsList>
               <TabsTrigger value="focus">Focus</TabsTrigger>
               <TabsTrigger value="bigpicture">Big Picture</TabsTrigger>
               <TabsTrigger value="positions" className="flex items-center gap-1">
                 <DollarSign className="w-3 h-3" />
-                Positions
+                Session
+              </TabsTrigger>
+              <TabsTrigger value="evolution" className="flex items-center gap-1">
+                <Target className="w-3 h-3" />
+                Evolution
               </TabsTrigger>
             </TabsList>
           </Tabs>
@@ -545,6 +603,12 @@ export const ScalpingTerminal: React.FC = () => {
               onUpdatePosition={positionsTracker.updatePosition}
             />
           </div>
+        </div>
+      ) : activeView === 'evolution' ? (
+        /* Evolution View - Full Global Accuracy & Self-Learning */
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <GlobalAccuracyPanel />
+          <SessionControl />
         </div>
       ) : null}
     </div>
