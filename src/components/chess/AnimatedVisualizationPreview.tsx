@@ -1,6 +1,12 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Chess, Square, Move } from 'chess.js';
 import { boardColors, getPieceColor, PieceType, PieceColor } from '@/lib/chess/pieceColors';
+import { 
+  TemporalSignature, 
+  QuadrantProfile, 
+  TemporalFlow 
+} from '@/lib/pensent-core/types';
+import { classifyUniversalArchetype } from '@/lib/pensent-core/archetype';
 
 interface SquareVisit {
   piece: PieceType;
@@ -20,17 +26,15 @@ interface AnimatedVisualizationPreviewProps {
   pgn: string;
   size?: number;
   className?: string;
-  animationSpeed?: number; // ms per move
+  animationSpeed?: number;
 }
 
-// Convert algebraic notation to file/rank indices
 function squareToIndices(square: Square): { file: number; rank: number } {
   const file = square.charCodeAt(0) - 'a'.charCodeAt(0);
   const rank = parseInt(square[1]) - 1;
   return { file, rank };
 }
 
-// Get all squares a piece passes through during a move
 function getPathSquares(from: Square, to: Square, pieceType: string): Square[] {
   const squares: Square[] = [];
   const fromIndices = squareToIndices(from);
@@ -39,7 +43,6 @@ function getPathSquares(from: Square, to: Square, pieceType: string): Square[] {
   const fileDir = Math.sign(toIndices.file - fromIndices.file);
   const rankDir = Math.sign(toIndices.rank - fromIndices.rank);
 
-  // Knights jump
   if (pieceType.toLowerCase() === 'n') {
     squares.push(to);
     return squares;
@@ -60,7 +63,6 @@ function getPathSquares(from: Square, to: Square, pieceType: string): Square[] {
   return squares;
 }
 
-// Parse moves from PGN
 function parseMovesFromPgn(pgn: string): Move[] {
   const chess = new Chess();
   try {
@@ -71,7 +73,53 @@ function parseMovesFromPgn(pgn: string): Move[] {
   }
 }
 
-// Render nested squares
+// Extract temporal signature from animation state
+function extractAnimationSignature(
+  board: SquareData[][],
+  currentMoveIndex: number,
+  totalMoves: number
+): TemporalSignature {
+  let q1 = 0, q2 = 0, q3 = 0, q4 = 0;
+  let totalVisits = 0;
+
+  for (let rank = 0; rank < 8; rank++) {
+    for (let file = 0; file < 8; file++) {
+      const visits = board[rank][file].visits.length;
+      totalVisits += visits;
+      
+      if (file < 4 && rank >= 4) q1 += visits;
+      else if (file >= 4 && rank >= 4) q2 += visits;
+      else if (file < 4 && rank < 4) q3 += visits;
+      else q4 += visits;
+    }
+  }
+
+  const normalize = (v: number) => Math.min(100, (v / Math.max(totalVisits, 1)) * 400);
+
+  const quadrantProfile: QuadrantProfile = {
+    q1: normalize(q1),
+    q2: normalize(q2),
+    q3: normalize(q3),
+    q4: normalize(q4),
+  };
+
+  const progress = totalMoves > 0 ? currentMoveIndex / totalMoves : 0;
+  const temporalFlow: TemporalFlow = {
+    opening: progress < 0.3 ? 80 : 30,
+    midgame: progress >= 0.3 && progress < 0.7 ? 80 : 30,
+    endgame: progress >= 0.7 ? 80 : 30,
+  };
+
+  return {
+    fingerprint: `anim-${currentMoveIndex}-${totalMoves}`,
+    quadrantProfile,
+    temporalFlow,
+    intensity: Math.min(100, (totalVisits / 64) * 50),
+    dominantForce: q1 + q2 > q3 + q4 ? 'black_territory' : 'white_territory',
+    keywords: ['animated_preview', 'real_time', 'visualization'],
+  };
+}
+
 const renderNestedSquares = (
   visits: SquareVisit[],
   x: number,
@@ -145,13 +193,11 @@ const AnimatedVisualizationPreview: React.FC<AnimatedVisualizationPreviewProps> 
   const moves = useMemo(() => parseMovesFromPgn(pgn), [pgn]);
   const [currentMoveIndex, setCurrentMoveIndex] = useState(0);
 
-  // Animate through moves continuously
   useEffect(() => {
     if (moves.length === 0) return;
 
     const interval = setInterval(() => {
       setCurrentMoveIndex((prev) => {
-        // Loop back to start after a pause at the end
         if (prev >= moves.length) {
           return 0;
         }
@@ -162,7 +208,6 @@ const AnimatedVisualizationPreview: React.FC<AnimatedVisualizationPreviewProps> 
     return () => clearInterval(interval);
   }, [moves.length, animationSpeed]);
 
-  // Build the board state up to current move
   const board = useMemo(() => {
     const boardState: SquareData[][] = [];
     for (let rank = 0; rank < 8; rank++) {
@@ -178,7 +223,6 @@ const AnimatedVisualizationPreview: React.FC<AnimatedVisualizationPreviewProps> 
       }
     }
 
-    // Apply moves up to current index
     for (let i = 0; i < Math.min(currentMoveIndex, moves.length); i++) {
       const move = moves[i];
       const pieceType = move.piece as PieceType;
@@ -200,6 +244,13 @@ const AnimatedVisualizationPreview: React.FC<AnimatedVisualizationPreviewProps> 
 
     return boardState;
   }, [currentMoveIndex, moves]);
+
+  // Extract En Pensent signature for current animation state
+  const { archetype } = useMemo(() => {
+    const sig = extractAnimationSignature(board, currentMoveIndex, moves.length);
+    const arch = classifyUniversalArchetype(sig);
+    return { signature: sig, archetype: arch };
+  }, [board, currentMoveIndex, moves.length]);
 
   const squareSize = size / 8;
   const borderWidth = size * 0.02;
@@ -233,6 +284,8 @@ const AnimatedVisualizationPreview: React.FC<AnimatedVisualizationPreviewProps> 
       xmlns="http://www.w3.org/2000/svg"
       className={className}
       style={{ display: 'block' }}
+      data-archetype={archetype}
+      data-move={currentMoveIndex}
     >
       <rect
         x={0}

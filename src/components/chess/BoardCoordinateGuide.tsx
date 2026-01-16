@@ -1,9 +1,42 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import { 
+  TemporalSignature, 
+  QuadrantProfile, 
+  TemporalFlow 
+} from '@/lib/pensent-core/types';
+import { classifyUniversalArchetype } from '@/lib/pensent-core/archetype';
 
 interface BoardCoordinateGuideProps {
   size: number;
   show?: boolean;
   position?: 'inside' | 'outside';
+}
+
+// Extract temporal signature from coordinate system layout
+function extractCoordinateSignature(size: number, position: 'inside' | 'outside'): TemporalSignature {
+  const normalizedSize = Math.min(100, (size / 800) * 100);
+  
+  const quadrantProfile: QuadrantProfile = {
+    q1: position === 'outside' ? 75 : 50, // a-d files, ranks 5-8
+    q2: position === 'outside' ? 75 : 50, // e-h files, ranks 5-8
+    q3: position === 'outside' ? 75 : 50, // a-d files, ranks 1-4
+    q4: position === 'outside' ? 75 : 50, // e-h files, ranks 1-4
+  };
+
+  const temporalFlow: TemporalFlow = {
+    opening: normalizedSize,
+    midgame: normalizedSize,
+    endgame: normalizedSize,
+  };
+
+  return {
+    fingerprint: `coord-${position}-${size}`,
+    quadrantProfile,
+    temporalFlow,
+    intensity: position === 'outside' ? 60 : 40,
+    dominantForce: 'coordinate_system',
+    keywords: ['board_coordinates', position, 'navigation'],
+  };
 }
 
 /**
@@ -15,6 +48,13 @@ const BoardCoordinateGuide: React.FC<BoardCoordinateGuideProps> = ({
   show = true,
   position = 'outside',
 }) => {
+  // Extract En Pensent signature for coordinate display
+  const { archetype } = useMemo(() => {
+    const sig = extractCoordinateSignature(size, position);
+    const arch = classifyUniversalArchetype(sig);
+    return { signature: sig, archetype: arch };
+  }, [size, position]);
+
   if (!show) return null;
 
   const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
@@ -25,9 +65,12 @@ const BoardCoordinateGuide: React.FC<BoardCoordinateGuideProps> = ({
   const padding = position === 'outside' ? fontSize * 1.5 : 0;
 
   if (position === 'inside') {
-    // Render coordinates inside the board corners
     return (
-      <div className="absolute inset-0 pointer-events-none" style={{ width: size, height: size }}>
+      <div 
+        className="absolute inset-0 pointer-events-none" 
+        style={{ width: size, height: size }}
+        data-archetype={archetype}
+      >
         {/* File letters along bottom */}
         {files.map((file, i) => (
           <span
@@ -69,6 +112,7 @@ const BoardCoordinateGuide: React.FC<BoardCoordinateGuideProps> = ({
         width: size + padding * 2, 
         height: size + padding * 2,
       }}
+      data-archetype={archetype}
     >
       {/* Top file letters */}
       <div 
@@ -166,7 +210,7 @@ const BoardCoordinateGuide: React.FC<BoardCoordinateGuideProps> = ({
         ))}
       </div>
 
-      {/* Board content slot - positioned in center */}
+      {/* Board content slot */}
       <div 
         className="absolute"
         style={{ 
@@ -175,9 +219,7 @@ const BoardCoordinateGuide: React.FC<BoardCoordinateGuideProps> = ({
           width: size,
           height: size,
         }}
-      >
-        {/* Children would be rendered here via a slot pattern */}
-      </div>
+      />
     </div>
   );
 };
