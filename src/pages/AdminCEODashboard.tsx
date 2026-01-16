@@ -8,38 +8,25 @@ import {
   Users, 
   ArrowLeft,
   RefreshCw,
-  Search,
   MapPin,
   TrendingUp,
-  Eye,
   ShoppingBag,
   Wallet,
-  Calendar,
   Activity,
-  Filter,
-  Download,
-  Mail,
-  Phone,
-  Clock,
-  DollarSign,
   Image,
   Wrench,
   HeartPulse
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AdminLocationAnalytics } from '@/components/admin/AdminLocationAnalytics';
 import { AdminSecurityAuditLog } from '@/components/admin/AdminSecurityAuditLog';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
-import { format, formatDistanceToNow } from 'date-fns';
 import { AdminUserDetailModal } from '@/components/admin/AdminUserDetailModal';
 import { AdminUserList } from '@/components/admin/AdminUserList';
 import { AdminOrdersPanel } from '@/components/admin/AdminOrdersPanel';
@@ -48,6 +35,7 @@ import { AdminActivityFeed } from '@/components/admin/AdminActivityFeed';
 import { AdminMaintenancePanel } from '@/components/admin/AdminMaintenancePanel';
 import { AdminHealthPanel } from '@/components/admin/AdminHealthPanel';
 import { AdminEconomicsPanel } from '@/components/admin/AdminEconomicsPanel';
+import { AdminUserCountBadge } from '@/components/admin/AdminUserCountBadge';
 
 const AdminCEODashboard: React.FC = () => {
   const { user, isLoading: authLoading } = useAuth();
@@ -73,14 +61,12 @@ const AdminCEODashboard: React.FC = () => {
       const [
         usersResult,
         premiumResult,
-        freeResult,
         visionsResult,
         ordersResult,
         walletsResult,
       ] = await Promise.all([
         supabase.from('profiles').select('id', { count: 'exact', head: true }),
         supabase.from('user_subscriptions').select('id', { count: 'exact', head: true }).eq('subscription_status', 'active'),
-        supabase.from('profiles').select('id', { count: 'exact', head: true }),
         supabase.from('saved_visualizations').select('id', { count: 'exact', head: true }),
         supabase.from('order_financials').select('gross_revenue_cents'),
         supabase.from('user_wallets').select('balance_cents'),
@@ -155,10 +141,13 @@ const AdminCEODashboard: React.FC = () => {
                 <h1 className="text-3xl font-bold">CEO Command Center</h1>
                 <p className="text-muted-foreground">Complete user & order management for Alec Arthur Shelton</p>
               </div>
-              <Badge className="ml-auto bg-amber-500/20 text-amber-600 border-amber-500/30">
-                <Shield className="h-3 w-3 mr-1" />
-                CEO Access
-              </Badge>
+              <div className="ml-auto flex items-center gap-2">
+                <AdminUserCountBadge />
+                <Badge className="bg-amber-500/20 text-amber-600 border-amber-500/30">
+                  <Shield className="h-3 w-3 mr-1" />
+                  CEO Access
+                </Badge>
+              </div>
             </div>
           </div>
         </motion.div>
