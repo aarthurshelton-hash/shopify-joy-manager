@@ -89,8 +89,12 @@ export const ScalpingTerminal: React.FC = () => {
         <div className="flex items-center gap-2">
           <HeartbeatIndicator 
             isAlive={predictor.heartbeatAlive}
+            isProcessing={predictor.isProcessing}
+            lastPulse={predictor.lastPulse}
             pulseCount={predictor.pulseCount}
             nextPulseIn={predictor.nextPulseIn}
+            showControls={false}
+            compact
           />
           
           <Button 
