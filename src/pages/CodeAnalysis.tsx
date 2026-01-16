@@ -8,6 +8,7 @@ import { PricingSection } from '@/components/pensent-code/PricingSection';
 import HowItWorksVisual from '@/components/pensent-code/HowItWorksVisual';
 import SelfAnalysisDemo from '@/components/pensent-code/SelfAnalysisDemo';
 import LiveCodebaseDebugger from '@/components/pensent-code/LiveCodebaseDebugger';
+import { AIConceptValidator } from '@/components/pensent-code/AIConceptValidator';
 import { useCodeAnalysis } from '@/hooks/useCodeAnalysis';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Brain, GitBranch, Sparkles, HelpCircle } from 'lucide-react';
@@ -121,6 +122,15 @@ export default function CodeAnalysis() {
 
             {/* How It Works Visual Diagram */}
             <HowItWorksVisual />
+
+            {/* AI CONCEPT VALIDATOR - Real-Time Proof */}
+            <div className="mt-16">
+              <h2 className="text-2xl font-bold text-center mb-4">🤖 AI Validation: Does It Make Sense?</h2>
+              <p className="text-center text-muted-foreground mb-8 max-w-2xl mx-auto">
+                Send our concept to an AI investor/analyst and see if it understands and vouches for En Pensent.
+              </p>
+              <AIConceptValidator />
+            </div>
 
             {/* LIVE DEBUGGING - Real Proof */}
             <div className="mt-16">
