@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { TrendingUp, TrendingDown, Minus, RefreshCw, Target, BarChart3, Save, Layers, Trophy, History } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, RefreshCw, Target, BarChart3, Save, Layers, Trophy, History, Zap } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { 
@@ -21,6 +21,7 @@ import type { CandleStick } from '@/lib/pensent-core/domains/finance/types';
 import { AccuracyLeaderboard } from '@/components/finance/AccuracyLeaderboard';
 import { CrossDomainAnalysis } from '@/components/finance/CrossDomainAnalysis';
 import { PredictionHistory } from '@/components/finance/PredictionHistory';
+import { ScalpingTerminal } from '@/components/scalping/ScalpingTerminal';
 
 interface StockData {
   symbol: string;
@@ -150,7 +151,10 @@ const StockPredictionDashboard: React.FC = () => {
 
       {/* Main Navigation Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
-        <TabsList className="grid grid-cols-4 w-full max-w-lg mx-auto">
+        <TabsList className="grid grid-cols-5 w-full max-w-2xl mx-auto">
+          <TabsTrigger value="scalping" className="flex items-center gap-1">
+            <Zap className="w-4 h-4" /> Scalping
+          </TabsTrigger>
           <TabsTrigger value="analyze" className="flex items-center gap-1">
             <Target className="w-4 h-4" /> Analyze
           </TabsTrigger>
@@ -164,6 +168,10 @@ const StockPredictionDashboard: React.FC = () => {
             <Layers className="w-4 h-4" /> Cross-Domain
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="scalping">
+          <ScalpingTerminal />
+        </TabsContent>
 
         <TabsContent value="analyze">
       {/* Stock Selection */}
