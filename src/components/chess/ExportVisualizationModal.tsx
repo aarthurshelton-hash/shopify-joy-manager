@@ -68,7 +68,7 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
   pgn,
 }) => {
   const navigate = useNavigate();
-  const { user, isPremium } = useAuth();
+  const { user, isPremium, isCheckingSubscription } = useAuth();
   const { setOrderData } = usePrintOrderStore();
   const { captureState, darkMode: storeDarkMode, setDarkMode: setStoreDarkMode } = useVisualizationStateStore();
   const { setCapturedTimelineState, setReturningFromOrder } = useSessionStore();
@@ -116,6 +116,10 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
     
     setIsDownloading(true);
     
+    // Determine if watermark should be applied
+    // Apply watermark for: non-premium users, during subscription check, or for preview downloads
+    const shouldWatermark = !isHD && (!isPremium || isCheckingSubscription);
+    
     try {
       // Wait for rendering
       await new Promise(resolve => setTimeout(resolve, 200));
@@ -128,6 +132,39 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
         logging: false,
       });
       
+      // Apply watermark for non-premium preview downloads
+      if (shouldWatermark) {
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          // Draw watermark text diagonally across the image
+          ctx.save();
+          ctx.globalAlpha = 0.15;
+          ctx.fillStyle = darkMode ? '#FFFFFF' : '#000000';
+          ctx.font = 'bold 32px Inter, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          
+          // Rotate and position watermark
+          const centerX = canvas.width / 2;
+          const centerY = canvas.height / 2;
+          ctx.translate(centerX, centerY);
+          ctx.rotate(-Math.PI / 6); // -30 degrees
+          
+          // Draw multiple lines of watermark
+          ctx.fillText('EN PENSENT', 0, -40);
+          ctx.fillText('enpensent.com', 0, 20);
+          
+          ctx.restore();
+          
+          // Add corner branding
+          ctx.globalAlpha = 0.6;
+          ctx.fillStyle = darkMode ? '#FFFFFF' : '#000000';
+          ctx.font = '14px Inter, sans-serif';
+          ctx.textAlign = 'right';
+          ctx.fillText('enpensent.com', canvas.width - 20, canvas.height - 20);
+        }
+      }
+      
       const dataUrl = canvas.toDataURL('image/png', 1.0);
       const filename = `EnPensent-${gameInfo.white}-vs-${gameInfo.black}-${darkMode ? 'dark' : 'light'}${isHD ? '-HD' : '-preview'}.png`;
       
@@ -136,7 +173,9 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
       link.download = filename;
       link.click();
       
-      toast.success(isHD ? 'HD image downloaded!' : 'Preview downloaded!');
+      toast.success(isHD ? 'HD image downloaded!' : 'Preview downloaded!', {
+        description: shouldWatermark ? 'Includes En Pensent branding.' : undefined,
+      });
       
       // Track HD download for vision scoring (only for HD, not preview)
       if (isHD && visualizationId) {
