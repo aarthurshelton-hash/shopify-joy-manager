@@ -64,6 +64,7 @@ import EarlyAccess from "./pages/EarlyAccess";
 import StockPredictions from "./pages/StockPredictions";
 import StrategicPlan from "./pages/StrategicPlan";
 import ScalpingTerminalPage from "./pages/ScalpingTerminalPage";
+import Showcase from "./pages/Showcase";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -135,6 +136,7 @@ const App = () => (
               <Route path="/why-this-matters" element={<WhyThisMatters />} />
               <Route path="/investor-portal" element={<InvestorPortal />} />
               <Route path="/early-access" element={<EarlyAccess />} />
+              <Route path="/showcase" element={<Showcase />} />
               
               {/* ADMIN ONLY - Private En Pensent Features */}
               <Route path="/stock-predictions" element={<AdminRoute featureName="Stock Predictions"><StockPredictions /></AdminRoute>} />
