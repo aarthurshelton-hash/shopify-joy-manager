@@ -664,6 +664,8 @@ const GameView = () => {
           })),
           compareMode: exportState.compareMode,
           darkMode: exportState.darkMode,
+          showPieces: exportState.showPieces,
+          pieceOpacity: exportState.pieceOpacity,
         });
       }
 

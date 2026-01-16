@@ -27,6 +27,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { MoveHistoryEntry, EnPensentOverlay } from './EnPensentOverlay';
+import StaticPieceOverlay from './StaticPieceOverlay';
 import { PieceType } from '@/lib/chess/pieceColors';
 import { usePrintOrderStore } from '@/stores/printOrderStore';
 import { useVisualizationStateStore } from '@/stores/visualizationStateStore';
@@ -51,7 +52,7 @@ interface ExportVisualizationModalProps {
     totalMoves: number;
   };
   visualizationId?: string; // For tracking downloads
-  pgn?: string; // For FEN export
+  pgn?: string; // For FEN export and piece overlay
 }
 
 /**
@@ -70,7 +71,13 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
   const navigate = useNavigate();
   const { user, isPremium, isCheckingSubscription } = useAuth();
   const { setOrderData } = usePrintOrderStore();
-  const { captureState, darkMode: storeDarkMode, setDarkMode: setStoreDarkMode } = useVisualizationStateStore();
+  const { 
+    captureState, 
+    darkMode: storeDarkMode, 
+    setDarkMode: setStoreDarkMode,
+    showPieces,
+    pieceOpacity,
+  } = useVisualizationStateStore();
   const { setCapturedTimelineState, setReturningFromOrder } = useSessionStore();
   const exportRef = useRef<HTMLDivElement>(null);
   const [darkMode, setDarkMode] = useState(false);
@@ -212,6 +219,8 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
       lockedPieces: capturedVisualizationState.lockedPieces,
       compareMode: capturedVisualizationState.compareMode,
       darkMode,
+      showPieces,
+      pieceOpacity,
     });
     setReturningFromOrder(true);
     
@@ -229,8 +238,11 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
       capturedState: {
         ...capturedVisualizationState,
         darkMode, // Use current modal dark mode setting
+        showPieces, // Include pieces state
+        pieceOpacity,
       },
       returnPath: window.location.pathname,
+      pgn, // Include PGN for piece overlay rendering
     });
     
     toast.success('Board state captured for print!', {
@@ -289,7 +301,7 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
             style={{ maxWidth: '420px' }}
           >
             {/* The En Pensent board visualization */}
-            <div className="relative w-64 h-64 md:w-80 md:h-80">
+            <div className="relative w-64 h-64 md:w-80 md:h-80" data-board-container="true">
               {/* Chess board grid */}
               <div className="absolute inset-0 grid grid-cols-8 grid-rows-8">
                 {Array.from({ length: 64 }).map((_, i) => {
@@ -314,6 +326,18 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
                 isEnabled={true}
                 flipped={false}
               />
+              
+              {/* Pieces overlay when enabled - rendered absolutely on top */}
+              {showPieces && pgn && (
+                <div className="absolute inset-0">
+                  <StaticPieceOverlay
+                    pgn={pgn}
+                    currentMoveNumber={gameInfo.totalMoves}
+                    size={typeof window !== 'undefined' && window.innerWidth >= 768 ? 320 : 256}
+                    pieceOpacity={pieceOpacity}
+                  />
+                </div>
+              )}
             </div>
 
             {/* Game Info - Trademark Style matching PrintPreview exactly */}
