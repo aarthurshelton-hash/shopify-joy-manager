@@ -1215,6 +1215,20 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
   const [mobileLegendExpanded, setMobileLegendExpanded] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   
+  // Sync initial state to store on mount so exports see correct values
+  useEffect(() => {
+    if (initialState?.pieces !== undefined) {
+      setStoreShowPieces(initialState.pieces);
+    }
+    if (initialState?.opacity !== undefined) {
+      setStorePieceOpacity(initialState.opacity);
+    }
+    if (initialState?.dark !== undefined) {
+      setStoreDarkMode(initialState.dark);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only on mount - intentionally ignoring dependencies
+  
   // Initial move position for TimelineProvider
   const initialMove = useMemo(() => {
     if (initialState?.move !== undefined && initialState.move > 0) {
