@@ -7,6 +7,7 @@ import { ProvenPredictions } from '@/components/pensent-code/ProvenPredictions';
 import { PricingSection } from '@/components/pensent-code/PricingSection';
 import HowItWorksVisual from '@/components/pensent-code/HowItWorksVisual';
 import SelfAnalysisDemo from '@/components/pensent-code/SelfAnalysisDemo';
+import LiveCodebaseDebugger from '@/components/pensent-code/LiveCodebaseDebugger';
 import { useCodeAnalysis } from '@/hooks/useCodeAnalysis';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Brain, GitBranch, Sparkles, HelpCircle } from 'lucide-react';
@@ -121,9 +122,18 @@ export default function CodeAnalysis() {
             {/* How It Works Visual Diagram */}
             <HowItWorksVisual />
 
+            {/* LIVE DEBUGGING - Real Proof */}
+            <div className="mt-16">
+              <h2 className="text-2xl font-bold text-center mb-4">🔴 Live Debugging: Proof It Works</h2>
+              <p className="text-center text-muted-foreground mb-8 max-w-2xl mx-auto">
+                Don't take our word for it. Watch En Pensent analyze its own chess codebase in real-time.
+              </p>
+              <LiveCodebaseDebugger />
+            </div>
+
             {/* Self-Analysis Demo - Meta Proof */}
             <div className="mt-16">
-              <h2 className="text-2xl font-bold text-center mb-8">The Ultimate Proof: Self-Analysis</h2>
+              <h2 className="text-2xl font-bold text-center mb-8">Meta-Analysis: Simulated Deep Dive</h2>
               <SelfAnalysisDemo />
             </div>
 
