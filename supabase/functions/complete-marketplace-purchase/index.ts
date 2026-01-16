@@ -12,6 +12,16 @@ const logStep = (step: string, details?: unknown) => {
   console.log(`[COMPLETE-MARKETPLACE-PURCHASE] ${step}${detailsStr}`);
 };
 
+// 5% marketplace fee distribution constants
+const MARKETPLACE_FEE_RATE = 0.05;
+const FEE_DISTRIBUTION = {
+  companyProfit: 0.25,  // 25% extractable cash reserve
+  gamecardPool: 0.25,   // 25% to game attribution
+  palettePool: 0.25,    // 25% to palette attribution
+  openingPool: 0.15,    // 15% to opening attribution
+  platformOps: 0.10,    // 10% to platform operations
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -108,6 +118,25 @@ serve(async (req) => {
 
     logStep("Payment verified", { sessionId: successfulSession.id });
 
+    const priceCents = listing.price_cents || 0;
+
+    // Calculate 5% fee and distribution
+    const totalFeeCents = Math.round(priceCents * MARKETPLACE_FEE_RATE);
+    const sellerReceivesCents = priceCents - totalFeeCents;
+    const companyProfitCents = Math.round(totalFeeCents * FEE_DISTRIBUTION.companyProfit);
+    const gamecardPoolCents = Math.round(totalFeeCents * FEE_DISTRIBUTION.gamecardPool);
+    const palettePoolCents = Math.round(totalFeeCents * FEE_DISTRIBUTION.palettePool);
+    const openingPoolCents = Math.round(totalFeeCents * FEE_DISTRIBUTION.openingPool);
+    const reinvestedCents = totalFeeCents - companyProfitCents;
+
+    logStep("Fee calculation", { 
+      priceCents, 
+      totalFeeCents, 
+      sellerReceivesCents,
+      companyProfitCents,
+      reinvestedCents
+    });
+
     // Transfer ownership
     const { error: transferError } = await supabaseClient
       .from('saved_visualizations')
@@ -148,7 +177,6 @@ serve(async (req) => {
     }
 
     // Record trade interaction for vision scoring
-    const priceCents = listing.price_cents || 0;
     await supabaseClient.rpc('record_vision_interaction', {
       p_visualization_id: listing.visualization_id,
       p_user_id: user.id,
@@ -157,7 +185,7 @@ serve(async (req) => {
       p_ip_hash: null,
     });
 
-    // Get game and palette info for economics
+    // Get game, palette, and opening info for attribution
     const { data: vizData } = await supabaseClient
       .from('saved_visualizations')
       .select('game_data')
@@ -166,25 +194,81 @@ serve(async (req) => {
 
     const gameId = vizData?.game_data?.id as string || null;
     const paletteId = vizData?.game_data?.palette?.id as string || null;
+    const openingEco = vizData?.game_data?.eco as string || vizData?.game_data?.opening?.eco as string || null;
 
-    // Record marketplace economics (profit distribution)
-    const { data: economicsResult, error: economicsError } = await supabaseClient.rpc(
-      'record_marketplace_economics',
-      {
-        p_listing_id: listingId,
-        p_visualization_id: listing.visualization_id,
-        p_seller_id: listing.seller_id,
-        p_buyer_id: user.id,
-        p_sale_price_cents: priceCents,
-        p_game_id: gameId,
-        p_palette_id: paletteId,
-      }
-    );
+    logStep("Attribution data", { gameId, paletteId, openingEco });
 
-    if (economicsError) {
-      logStep("Warning: Failed to record economics", { error: economicsError.message });
-    } else {
-      logStep("Marketplace economics recorded", economicsResult);
+    // Record company profit (25% of 5% fee - extractable cash reserve)
+    const { error: profitError } = await supabaseClient
+      .from('company_profit_pool')
+      .upsert({
+        source_type: 'marketplace',
+        period_date: new Date().toISOString().split('T')[0],
+        gross_revenue_cents: priceCents,
+        net_profit_cents: totalFeeCents,
+        extractable_profit_cents: companyProfitCents,
+        reinvested_cents: reinvestedCents,
+      }, {
+        onConflict: 'source_type,period_date',
+      });
+
+    if (profitError) {
+      logStep("Warning: Failed to record company profit", { error: profitError.message });
+    }
+
+    // Update gamecard pool if game exists
+    if (gameId) {
+      const gameTitle = vizData?.game_data?.event as string || gameId;
+      const { error: gcError } = await supabaseClient
+        .from('gamecard_value_pool')
+        .upsert({
+          game_id: gameId,
+          game_title: gameTitle,
+          earned_value_cents: gamecardPoolCents,
+          total_interactions: 1,
+          total_visions: 0,
+          total_print_orders: 0,
+          last_interaction_at: new Date().toISOString(),
+        }, { onConflict: 'game_id' });
+      if (gcError) logStep("Warning: gamecard pool update failed", { error: gcError.message });
+      else logStep("Gamecard pool updated", { gameId, cents: gamecardPoolCents });
+    }
+
+    // Update palette pool if palette exists
+    if (paletteId) {
+      const paletteName = vizData?.game_data?.palette?.name as string || paletteId;
+      const { error: ppError } = await supabaseClient
+        .from('palette_value_pool')
+        .upsert({
+          palette_id: paletteId,
+          palette_name: paletteName,
+          earned_value_cents: palettePoolCents,
+          total_interactions: 1,
+          total_visions_using: 0,
+          total_print_orders: 0,
+          last_interaction_at: new Date().toISOString(),
+        }, { onConflict: 'palette_id' });
+      if (ppError) logStep("Warning: palette pool update failed", { error: ppError.message });
+      else logStep("Palette pool updated", { paletteId, cents: palettePoolCents });
+    }
+
+    // Update opening pool if opening exists
+    if (openingEco) {
+      const openingName = vizData?.game_data?.opening?.name as string || openingEco;
+      const { error: opError } = await supabaseClient
+        .from('opening_value_pool')
+        .upsert({
+          opening_eco: openingEco,
+          opening_name: openingName,
+          earned_value_cents: openingPoolCents,
+          total_interactions: 1,
+          total_marketplace_trades: 1,
+          total_visions_using: 0,
+          total_print_orders: 0,
+          last_interaction_at: new Date().toISOString(),
+        }, { onConflict: 'opening_eco' });
+      if (opError) logStep("Warning: opening pool update failed", { error: opError.message });
+      else logStep("Opening pool updated", { openingEco, cents: openingPoolCents });
     }
 
     logStep("Trade interaction recorded", { visualizationId: listing.visualization_id, priceCents });
@@ -193,7 +277,14 @@ serve(async (req) => {
     return new Response(JSON.stringify({ 
       success: true, 
       message: "Visualization transferred successfully!",
-      visualizationId: listing.visualization_id
+      visualizationId: listing.visualization_id,
+      economics: {
+        priceCents,
+        feeCents: totalFeeCents,
+        sellerReceivesCents,
+        companyProfitCents,
+        reinvestedCents,
+      }
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
