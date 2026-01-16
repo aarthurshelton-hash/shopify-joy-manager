@@ -35,6 +35,8 @@ import {
 import { trackMarketplaceClick } from '@/lib/analytics/marketplaceAnalytics';
 import { extractPaletteId, extractPgn, getPaletteArt, getPaletteDisplayName, classifyVision, VisionTier } from '@/lib/marketplace/paletteArtMap';
 import { supabase } from '@/integrations/supabase/client';
+import { detectOpeningFromPgn, DetectedOpening } from '@/lib/chess/openingDetector';
+import { OpeningBadge } from '@/components/chess/OpeningBadge';
 
 const ITEMS_PER_PAGE = 20;
 
@@ -522,6 +524,9 @@ const Marketplace: React.FC = () => {
                   const paletteName = getPaletteDisplayName(paletteId);
                   const backgroundImage = paletteArt || gameArtImages[index % gameArtImages.length];
                   
+                  // Detect opening from PGN
+                  const detectedOpening = pgn ? detectOpeningFromPgn(pgn) : undefined;
+                  
                   // Determine card styling based on tier
                   const isPremiumTier = classification.tier === 'premium';
                   const isGenesisTier = classification.tier === 'genesis';
@@ -699,6 +704,13 @@ const Marketplace: React.FC = () => {
                               </div>
                             )}
                           </div>
+                          
+                          {/* Opening Badge - if detected */}
+                          {detectedOpening && (
+                            <div className="mb-2">
+                              <OpeningBadge opening={detectedOpening} variant="card" />
+                            </div>
+                          )}
                           
                           {/* Order Print CTA - Available to everyone */}
                           <button
