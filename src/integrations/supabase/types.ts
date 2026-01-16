@@ -1694,6 +1694,75 @@ export type Database = {
         }
         Relationships: []
       }
+      stock_predictions: {
+        Row: {
+          accuracy_score: number | null
+          actual_direction: string | null
+          actual_move: number | null
+          archetype: string
+          baseline_direction: string | null
+          baseline_was_correct: boolean | null
+          created_at: string
+          expires_at: string
+          id: string
+          outcome_price: number | null
+          predicted_confidence: number
+          predicted_direction: string
+          predicted_target_move: number
+          price_at_prediction: number
+          resolved_at: string | null
+          signature_fingerprint: string
+          symbol: string
+          time_horizon: string
+          user_id: string | null
+          was_correct: boolean | null
+        }
+        Insert: {
+          accuracy_score?: number | null
+          actual_direction?: string | null
+          actual_move?: number | null
+          archetype: string
+          baseline_direction?: string | null
+          baseline_was_correct?: boolean | null
+          created_at?: string
+          expires_at: string
+          id?: string
+          outcome_price?: number | null
+          predicted_confidence: number
+          predicted_direction: string
+          predicted_target_move: number
+          price_at_prediction: number
+          resolved_at?: string | null
+          signature_fingerprint: string
+          symbol: string
+          time_horizon: string
+          user_id?: string | null
+          was_correct?: boolean | null
+        }
+        Update: {
+          accuracy_score?: number | null
+          actual_direction?: string | null
+          actual_move?: number | null
+          archetype?: string
+          baseline_direction?: string | null
+          baseline_was_correct?: boolean | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          outcome_price?: number | null
+          predicted_confidence?: number
+          predicted_direction?: string
+          predicted_target_move?: number
+          price_at_prediction?: number
+          resolved_at?: string | null
+          signature_fingerprint?: string
+          symbol?: string
+          time_horizon?: string
+          user_id?: string | null
+          was_correct?: boolean | null
+        }
+        Relationships: []
+      }
       streak_rewards: {
         Row: {
           claimed_at: string
@@ -2363,6 +2432,20 @@ export type Database = {
         }
         Relationships: []
       }
+      prediction_accuracy_stats: {
+        Row: {
+          accuracy_percent: number | null
+          archetype: string | null
+          avg_accuracy_score: number | null
+          baseline_accuracy_percent: number | null
+          baseline_correct: number | null
+          correct_predictions: number | null
+          resolved_predictions: number | null
+          time_horizon: string | null
+          total_predictions: number | null
+        }
+        Relationships: []
+      }
       profit_pools_summary: {
         Row: {
           metric: string | null
@@ -2379,6 +2462,18 @@ export type Database = {
           total_scans: number | null
           total_successful_scans: number | null
           unique_visions_scanned: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
+      user_prediction_performance: {
+        Row: {
+          accuracy_percent: number | null
+          avg_accuracy_score: number | null
+          correct_predictions: number | null
+          last_prediction_at: string | null
+          resolved_predictions: number | null
+          total_predictions: number | null
           user_id: string | null
         }
         Relationships: []
