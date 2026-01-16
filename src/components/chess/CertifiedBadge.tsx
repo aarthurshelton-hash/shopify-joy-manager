@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
   Award,
@@ -7,7 +7,6 @@ import {
   TrendingUp,
   Star,
   Sparkles,
-  Info,
   CheckCircle,
   Palette,
   Gamepad2,
@@ -20,6 +19,12 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
+import { 
+  TemporalSignature, 
+  QuadrantProfile, 
+  TemporalFlow 
+} from '@/lib/pensent-core/types';
+import { classifyUniversalArchetype } from '@/lib/pensent-core/archetype';
 
 interface CertifiedBadgeProps {
   type: 'palette' | 'game' | 'genesis' | 'premium';
@@ -84,6 +89,38 @@ const BADGE_DATA = {
   },
 };
 
+// Extract temporal signature for certification archetype
+function extractCertificationSignature(type: 'palette' | 'game' | 'genesis' | 'premium'): TemporalSignature {
+  const typeIntensity = {
+    premium: 95,
+    genesis: 80,
+    game: 70,
+    palette: 60,
+  };
+
+  const quadrantProfile: QuadrantProfile = {
+    q1: type === 'premium' ? 95 : type === 'genesis' ? 80 : 60,
+    q2: type === 'game' ? 85 : 50,
+    q3: type === 'palette' ? 75 : 45,
+    q4: 40,
+  };
+
+  const temporalFlow: TemporalFlow = {
+    opening: type === 'premium' ? 90 : 70,
+    midgame: type === 'genesis' ? 85 : 65,
+    endgame: type === 'game' ? 80 : 55,
+  };
+
+  return {
+    fingerprint: `cert-${type}-${Date.now()}`,
+    quadrantProfile,
+    temporalFlow,
+    intensity: typeIntensity[type],
+    dominantForce: type === 'premium' ? 'premium_certification' : 'standard_certification',
+    keywords: [`certified_${type}`, 'authenticity', 'collector_value'],
+  };
+}
+
 export const CertifiedBadge: React.FC<CertifiedBadgeProps> = ({
   type,
   name,
@@ -93,6 +130,13 @@ export const CertifiedBadge: React.FC<CertifiedBadgeProps> = ({
 }) => {
   const data = BADGE_DATA[type];
   const Icon = data.icon;
+  
+  // Extract En Pensent signature for this certification type
+  const { signature, archetype } = useMemo(() => {
+    const sig = extractCertificationSignature(type);
+    const arch = classifyUniversalArchetype(sig);
+    return { signature: sig, archetype: arch };
+  }, [type]);
   
   const matchLabel = matchType === 'exact' ? 'Exact match' : matchType === 'partial' ? 'Partial match' : '';
   const matchColor = matchType === 'exact' ? 'text-green-400' : 'text-amber-400';
@@ -139,6 +183,11 @@ export const CertifiedBadge: React.FC<CertifiedBadgeProps> = ({
                 </span>
               )}
             </div>
+            {archetype && (
+              <div className="text-white/70 text-xs mt-1">
+                Pattern: {archetype} • Intensity: {signature.intensity}%
+              </div>
+            )}
           </div>
           
           <div className="p-3 space-y-3">
