@@ -82,6 +82,7 @@ import { detectOpeningFromPgn, DetectedOpening } from '@/lib/chess/openingDetect
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { PaletteAvailabilityInfo } from '@/lib/visualizations/paletteAvailability';
+import { useVisualizationStateStore } from '@/stores/visualizationStateStore';
 
 // Export state for capturing visualization in any configuration
 export interface ExportState {
@@ -1178,12 +1179,38 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
   const [showPoetryModal, setShowPoetryModal] = useState(false);
   
   // Board display options - initialize from initialState if provided
+  // Also sync with the global visualization state store for exports
+  const {
+    showPieces: storeShowPieces,
+    pieceOpacity: storePieceOpacity,
+    darkMode: storeDarkMode,
+    setShowPieces: setStoreShowPieces,
+    setPieceOpacity: setStorePieceOpacity,
+    setDarkMode: setStoreDarkMode,
+  } = useVisualizationStateStore();
+  
   const [showCoordinates, setShowCoordinates] = useState(true);
   const [showHeatmap, setShowHeatmap] = useState(initialState?.heatmaps ?? false);
-  const [showPieces, setShowPieces] = useState(initialState?.pieces ?? false);
-  const [pieceOpacity, setPieceOpacity] = useState(initialState?.opacity ?? 0.7);
+  const [showPieces, setShowPiecesLocal] = useState(initialState?.pieces ?? storeShowPieces ?? false);
+  const [pieceOpacity, setPieceOpacityLocal] = useState(initialState?.opacity ?? storePieceOpacity ?? 0.7);
   const [boardSize, setBoardSize] = useState(400);
-  const [darkMode, setDarkMode] = useState(initialState?.dark ?? false);
+  const [darkMode, setDarkModeLocal] = useState(initialState?.dark ?? storeDarkMode ?? false);
+  
+  // Sync local state to global store for export modal to read
+  const setShowPieces = useCallback((value: boolean) => {
+    setShowPiecesLocal(value);
+    setStoreShowPieces(value);
+  }, [setStoreShowPieces]);
+  
+  const setPieceOpacity = useCallback((value: number) => {
+    setPieceOpacityLocal(value);
+    setStorePieceOpacity(value);
+  }, [setStorePieceOpacity]);
+  
+  const setDarkMode = useCallback((value: boolean) => {
+    setDarkModeLocal(value);
+    setStoreDarkMode(value);
+  }, [setStoreDarkMode]);
   const [showLegend, setShowLegend] = useState(true);
   const [mobileLegendExpanded, setMobileLegendExpanded] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
