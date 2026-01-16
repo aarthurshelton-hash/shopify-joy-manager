@@ -40,6 +40,12 @@ export default function CodeAnalysis() {
               <PatentPendingBadge />
             </div>
             <div className="flex items-center gap-2">
+              <Link to="/investor-portal">
+                <Button variant="outline" size="sm" className="border-primary/50 text-primary">
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Investor Portal
+                </Button>
+              </Link>
               <Link to="/why-this-matters">
                 <Button variant="ghost" size="sm">
                   <HelpCircle className="h-4 w-4 mr-2" />
