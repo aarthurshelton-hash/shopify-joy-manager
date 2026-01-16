@@ -5,7 +5,7 @@
  * the actual chess codebase files in real-time.
  */
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,8 +24,15 @@ import {
   Brain,
   Target,
   GitBranch,
-  Activity
+  Activity,
+  Fingerprint
 } from "lucide-react";
+import { 
+  ArchetypeBadge, 
+  TemporalFlowChart, 
+  QuadrantRadar, 
+  SignatureOverlay 
+} from "@/components/pensent-ui";
 
 // Real file analysis data extracted from the codebase
 interface FileAnalysis {
@@ -500,36 +507,105 @@ const LiveCodebaseDebugger = () => {
               </Badge>
             </div>
 
-            {/* Quadrant Profile */}
-            <div>
-              <h4 className="font-medium mb-3 flex items-center gap-2">
-                <Target className="w-4 h-4" />
-                Codebase Quadrant Profile
-              </h4>
-              <div className="grid grid-cols-4 gap-2">
-                {Object.entries(result.quadrantProfile).map(([key, value]) => (
-                  <div key={key} className="bg-muted/30 rounded-lg p-3 text-center">
-                    <div className="text-xs text-muted-foreground uppercase mb-1">
-                      {key.replace(/([A-Z])/g, ' $1').trim()}
-                    </div>
-                    <div className="text-lg font-bold">{Math.round(value * 100)}%</div>
-                    <Progress value={value * 100} className="h-1 mt-2" />
-                  </div>
-                ))}
+            {/* NEW: Signature Overlay Preview */}
+            <div className="relative h-64 rounded-xl bg-gradient-to-br from-primary/5 via-background to-primary/10 border overflow-hidden">
+              <div className="absolute inset-0 flex items-center justify-center text-muted-foreground/30">
+                <Fingerprint className="w-32 h-32" />
               </div>
+              <SignatureOverlay
+                signature={{
+                  fingerprint: result.fingerprint,
+                  archetype: result.archetype,
+                  intensity: result.intensity,
+                  momentum: result.momentum,
+                  confidence: result.prediction.confidence,
+                  temporalFlow: {
+                    opening: result.quadrantProfile.coreSdk,
+                    midgame: result.quadrantProfile.chessDomain + result.quadrantProfile.codeDomain,
+                    endgame: result.quadrantProfile.ui
+                  },
+                  quadrantProfile: {
+                    q1: result.quadrantProfile.coreSdk,
+                    q2: result.quadrantProfile.chessDomain,
+                    q3: result.quadrantProfile.codeDomain,
+                    q4: result.quadrantProfile.ui
+                  }
+                }}
+                variant="compact"
+                position="top-left"
+              />
             </div>
 
-            {/* Archetype */}
+            {/* NEW: Enhanced Visualizations Row */}
+            <div className="grid grid-cols-2 gap-6">
+              {/* Quadrant Radar */}
+              <Card className="bg-background/50">
+                <CardContent className="p-4">
+                  <h4 className="font-medium mb-4 flex items-center gap-2">
+                    <Target className="w-4 h-4" />
+                    Quadrant Profile
+                  </h4>
+                  <div className="flex justify-center">
+                    <QuadrantRadar
+                      data={{
+                        q1: result.quadrantProfile.coreSdk,
+                        q2: result.quadrantProfile.chessDomain,
+                        q3: result.quadrantProfile.codeDomain,
+                        q4: result.quadrantProfile.ui
+                      }}
+                      labels={{
+                        q1: 'Core SDK',
+                        q2: 'Chess',
+                        q3: 'Code',
+                        q4: 'UI'
+                      }}
+                      size={180}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Temporal Flow */}
+              <Card className="bg-background/50">
+                <CardContent className="p-4">
+                  <h4 className="font-medium mb-4 flex items-center gap-2">
+                    <Activity className="w-4 h-4" />
+                    Temporal Flow
+                  </h4>
+                  <TemporalFlowChart
+                    data={{
+                      opening: result.quadrantProfile.coreSdk,
+                      midgame: (result.quadrantProfile.chessDomain + result.quadrantProfile.codeDomain) / 2,
+                      endgame: result.quadrantProfile.ui
+                    }}
+                    height={140}
+                    colorScheme="gradient"
+                  />
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* NEW: Archetype with Badge Component */}
             <Card className="bg-background/50">
               <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                    <GitBranch className="w-6 h-6 text-primary" />
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
+                    <GitBranch className="w-7 h-7 text-primary" />
                   </div>
-                  <div>
-                    <div className="text-sm text-muted-foreground">Detected Archetype</div>
-                    <div className="font-bold text-lg capitalize">{result.archetype.replace(/_/g, ' ')}</div>
-                    <div className="text-sm text-muted-foreground">{result.archetypeDescription}</div>
+                  <div className="flex-1">
+                    <div className="text-sm text-muted-foreground mb-1">Detected Archetype</div>
+                    <ArchetypeBadge 
+                      archetype={result.archetype} 
+                      category="code"
+                      size="lg" 
+                      showDescription 
+                    />
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm text-muted-foreground">Confidence</div>
+                    <div className="text-2xl font-bold text-primary">
+                      {Math.round(result.prediction.confidence * 100)}%
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -537,17 +613,17 @@ const LiveCodebaseDebugger = () => {
 
             {/* Metrics */}
             <div className="grid grid-cols-3 gap-4">
-              <div className="p-4 rounded-lg bg-muted/30 text-center">
+              <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20 text-center">
                 <Activity className="w-5 h-5 mx-auto mb-2 text-blue-400" />
                 <div className="text-2xl font-bold">{Math.round(result.intensity * 100)}%</div>
                 <div className="text-xs text-muted-foreground">Pattern Intensity</div>
               </div>
-              <div className="p-4 rounded-lg bg-muted/30 text-center">
+              <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20 text-center">
                 <TrendingUp className="w-5 h-5 mx-auto mb-2 text-green-400" />
                 <div className="text-2xl font-bold">{Math.round(result.momentum * 100)}%</div>
                 <div className="text-xs text-muted-foreground">Development Momentum</div>
               </div>
-              <div className="p-4 rounded-lg bg-muted/30 text-center">
+              <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20 text-center">
                 <Sparkles className="w-5 h-5 mx-auto mb-2 text-amber-400" />
                 <div className="text-2xl font-bold">{Math.round(result.totalPatternDensity * 100)}%</div>
                 <div className="text-xs text-muted-foreground">En Pensent Density</div>
