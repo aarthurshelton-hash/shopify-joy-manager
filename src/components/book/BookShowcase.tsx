@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, forwardRef } from 'react';
 import { motion } from 'framer-motion';
 import { 
   BookOpen, Crown, Award, Sparkles, ShoppingCart, ExternalLink, Eye, 
@@ -69,11 +69,11 @@ const BOOK_EDITIONS = {
 
 type EditionType = 'standard' | 'large';
 
-export const BookShowcase: React.FC<BookShowcaseProps> = ({
+export const BookShowcase = forwardRef<HTMLElement, BookShowcaseProps>(function BookShowcase({
   variant = 'featured',
   onOrderClick,
   showCTA = true,
-}) => {
+}, ref) {
   const [showPreview, setShowPreview] = useState(false);
   const [selectedEdition, setSelectedEdition] = useState<EditionType>('large');
   const addItem = useCartStore(state => state.addItem);
@@ -859,6 +859,8 @@ export const BookShowcase: React.FC<BookShowcaseProps> = ({
       {previewModalContent}
     </>
   );
-};
+});
+
+BookShowcase.displayName = 'BookShowcase';
 
 export default BookShowcase;

@@ -439,8 +439,12 @@ const GameView = () => {
     
     if (reconstructedBoard.length === 0 && pgn) {
       // Simulate game to get board
-      const simulation = simulateGame(pgn);
-      reconstructedBoard = simulation.board;
+      try {
+        const simulation = simulateGame(pgn);
+        reconstructedBoard = simulation.board;
+      } catch (e) {
+        console.error('Failed to simulate game:', e);
+      }
     }
 
     if (reconstructedBoard.length === 0) {
@@ -470,7 +474,7 @@ const GameView = () => {
       totalMoves: data.totalMoves || data.moves?.length || 0,
       effectivePgn: pgn,
     };
-  }, [primaryVision]);
+  }, [primaryVision, isFromSession, sessionBoard, sessionGameData, sessionTotalMoves, sessionPgn]);
 
   // Save active vision state for refresh persistence
   useEffect(() => {
