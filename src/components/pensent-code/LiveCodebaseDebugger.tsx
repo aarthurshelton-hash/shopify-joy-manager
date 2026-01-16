@@ -6,9 +6,11 @@
  * 
  * CRITICAL UPDATE: Now reads ACTUAL file contents at runtime using import.meta.glob
  * with ?raw query to get the source code text and analyze it live.
+ * 
+ * HEARTBEAT MODE: Auto-refreshes analysis periodically like a live heartbeat
  */
 
-import { useState, useMemo, useCallback, useRef } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,7 +34,9 @@ import {
   Copy,
   Check,
   RefreshCw,
-  Folder
+  Folder,
+  Play,
+  Pause
 } from "lucide-react";
 import { toast } from "sonner";
 import { 
@@ -41,6 +45,7 @@ import {
   QuadrantRadar, 
   SignatureOverlay 
 } from "@/components/pensent-ui";
+import { useLiveHeartbeat, formatNextPulse } from "@/hooks/useLiveHeartbeat";
 
 // Real file analysis data extracted from LIVE code content
 interface FileAnalysis {
@@ -234,16 +239,38 @@ const checkModularization = (allPaths: string[], basePath: string): boolean => {
   return hasSubfolder;
 };
 
-const LiveCodebaseDebugger = () => {
+interface LiveCodebaseDebuggerProps {
+  autoStart?: boolean;
+  heartbeatInterval?: number; // ms
+}
+
+const LiveCodebaseDebugger = ({ 
+  autoStart = false,
+  heartbeatInterval = 60000 // 1 minute default
+}: LiveCodebaseDebuggerProps) => {
   const [stage, setStage] = useState<'idle' | 'scanning' | 'extracting' | 'matching' | 'predicting' | 'complete'>('idle');
   const [progress, setProgress] = useState(0);
   const [currentFile, setCurrentFile] = useState<FileAnalysis | null>(null);
   const [scannedFiles, setScannedFiles] = useState<FileAnalysis[]>([]);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [copiedPromptId, setCopiedPromptId] = useState<string | null>(null);
+  const [heartbeatEnabled, setHeartbeatEnabled] = useState(autoStart);
+  const analysisInProgress = useRef(false);
   
   // Get all file paths for modularization checking
   const allFilePaths = useMemo(() => Object.keys(rawModules).map(p => p.replace('/src/', 'src/')), []);
+
+  // Heartbeat for auto-refresh
+  const heartbeat = useLiveHeartbeat({
+    interval: heartbeatInterval,
+    autoStart: autoStart,
+    enabled: heartbeatEnabled,
+    onPulse: async () => {
+      if (!analysisInProgress.current && stage !== 'scanning') {
+        await runLiveAnalysis(true); // silent mode
+      }
+    }
+  });
 
   const copyPromptToClipboard = async (prompt: string, issueId: string) => {
     try {
@@ -256,11 +283,16 @@ const LiveCodebaseDebugger = () => {
     }
   };
 
-  const runLiveAnalysis = async () => {
-    setStage('scanning');
-    setProgress(0);
-    setScannedFiles([]);
-    setResult(null);
+  const runLiveAnalysis = async (silent = false) => {
+    if (analysisInProgress.current) return;
+    analysisInProgress.current = true;
+    
+    if (!silent) {
+      setStage('scanning');
+      setProgress(0);
+      setScannedFiles([]);
+      setResult(null);
+    }
 
     const filePaths = Object.keys(rawModules);
     const analyzedFiles: FileAnalysis[] = [];
@@ -464,6 +496,7 @@ const LiveCodebaseDebugger = () => {
     setResult(analysisResult);
     setStage('complete');
     setProgress(100);
+    analysisInProgress.current = false;
   };
 
   const getCategoryColor = (category: FileAnalysis['category']) => {
@@ -485,17 +518,103 @@ const LiveCodebaseDebugger = () => {
     }
   };
 
+  // Auto-start on mount if configured
+  useEffect(() => {
+    if (autoStart && !result) {
+      runLiveAnalysis();
+    }
+  }, [autoStart]);
+
   return (
     <Card className="bg-gradient-to-br from-green-500/5 via-background to-emerald-500/10 border-green-500/20">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Bug className="w-5 h-5 text-green-500" />
-          Live Codebase Debugger
-          <Badge variant="outline" className="ml-2 text-xs">PROOF OF CONCEPT</Badge>
-        </CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Watch En Pensent analyze the Hybrid Chess Intelligence Platform codebase in real-time
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Bug className="w-5 h-5 text-green-500" />
+              Live Codebase Debugger
+              <Badge variant="outline" className="ml-2 text-xs">PROOF OF CONCEPT</Badge>
+            </CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              Watch En Pensent analyze the Hybrid Chess Intelligence Platform codebase in real-time
+            </p>
+          </div>
+          
+          {/* Heartbeat Indicator */}
+          <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
+            <motion.div
+              animate={heartbeat.isAlive ? {
+                scale: [1, 1.2, 1],
+                opacity: [1, 0.8, 1]
+              } : {}}
+              transition={{
+                duration: 1,
+                repeat: Infinity,
+                ease: "easeInOut"
+              }}
+              className={`relative w-6 h-6 rounded-full flex items-center justify-center ${
+                heartbeat.isAlive 
+                  ? heartbeat.isProcessing 
+                    ? 'bg-yellow-500/20' 
+                    : 'bg-green-500/20' 
+                  : 'bg-muted'
+              }`}
+            >
+              <Activity className={`w-4 h-4 ${
+                heartbeat.isAlive 
+                  ? heartbeat.isProcessing 
+                    ? 'text-yellow-500' 
+                    : 'text-green-500' 
+                  : 'text-muted-foreground'
+              }`} />
+              {heartbeat.isAlive && (
+                <motion.div
+                  animate={{ scale: [1, 2], opacity: [0.5, 0] }}
+                  transition={{ duration: 1.5, repeat: Infinity, ease: "easeOut" }}
+                  className="absolute inset-0 rounded-full border-2 border-green-500"
+                />
+              )}
+            </motion.div>
+            
+            <div className="text-xs">
+              <Badge 
+                variant={heartbeat.isAlive ? "default" : "secondary"} 
+                className={heartbeat.isAlive ? 'bg-green-500/20 text-green-400' : ''}
+              >
+                {heartbeat.isAlive ? 'LIVE' : 'PAUSED'}
+              </Badge>
+              {heartbeat.isAlive && !heartbeat.isProcessing && (
+                <span className="ml-2 text-muted-foreground">
+                  {formatNextPulse(heartbeat.nextPulseIn)}
+                </span>
+              )}
+            </div>
+            
+            <div className="flex gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => {
+                  setHeartbeatEnabled(!heartbeatEnabled);
+                  if (!heartbeatEnabled) heartbeat.start();
+                  else heartbeat.stop();
+                }}
+              >
+                {heartbeat.isAlive ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => runLiveAnalysis()}
+                disabled={heartbeat.isProcessing || stage === 'scanning'}
+              >
+                <RefreshCw className={`h-3 w-3 ${heartbeat.isProcessing || stage === 'scanning' ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
+          </div>
+        </div>
       </CardHeader>
       
       <CardContent className="space-y-6">
@@ -516,7 +635,7 @@ const LiveCodebaseDebugger = () => {
               This will dynamically scan all En Pensent source files in real-time, extract live pattern data, 
               and prove the system can analyze its own code.
             </p>
-            <Button size="lg" onClick={runLiveAnalysis} className="gap-2 bg-green-600 hover:bg-green-700">
+            <Button size="lg" onClick={() => runLiveAnalysis()} className="gap-2 bg-green-600 hover:bg-green-700">
               <Zap className="w-4 h-4" />
               Start Live Analysis
             </Button>
