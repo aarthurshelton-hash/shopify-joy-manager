@@ -3,11 +3,11 @@
  * Full trading dashboard with real-time predictions and cross-market analysis
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Play, Pause, RotateCcw, Settings, Zap, Activity,
-  TrendingUp, TrendingDown, Radio, Clock, Globe, Sparkles
+  TrendingUp, TrendingDown, Radio, Clock, Globe, Sparkles, DollarSign
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,12 +20,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { useScalpingPredictor } from '@/hooks/useScalpingPredictor';
 import { useMultiMarketStream } from '@/hooks/useMultiMarketStream';
+import { useSimulatedPositions } from '@/hooks/useSimulatedPositions';
 import { PredictionHUD } from './PredictionHUD';
 import { LearningStatePanel } from './LearningStatePanel';
 import { PredictionStream } from './PredictionStream';
 import { TickChart } from './TickChart';
 import { MarketTicker } from './MarketTicker';
 import { BigPicturePanel } from './BigPicturePanel';
+import { PositionTracker } from './PositionTracker';
 import { HeartbeatIndicator } from '@/components/pensent-code/HeartbeatIndicator';
 
 const SYMBOLS = ['SPY', 'QQQ', 'AAPL', 'NVDA', 'TSLA', 'MSFT', 'AMD', 'GOOGL'];
@@ -35,10 +37,13 @@ export const ScalpingTerminal: React.FC = () => {
   const [autoPredict, setAutoPredict] = useState(true);
   const [predictionInterval, setPredictionInterval] = useState(3000);
   const [showSettings, setShowSettings] = useState(false);
-  const [activeView, setActiveView] = useState<'focus' | 'bigpicture'>('bigpicture');
+  const [activeView, setActiveView] = useState<'focus' | 'bigpicture' | 'positions'>('bigpicture');
   
   // Multi-market stream for the bigger picture
   const multiMarket = useMultiMarketStream();
+  
+  // Simulated positions tracker
+  const positionsTracker = useSimulatedPositions();
   
   const predictor = useScalpingPredictor({
     symbol,
@@ -69,6 +74,17 @@ export const ScalpingTerminal: React.FC = () => {
   const boostColor = predictionBoost >= 1.2 ? 'text-green-400' : 
                      predictionBoost <= 0.8 ? 'text-red-400' : 'text-primary';
   
+  // Build correlated prices map from multi-market snapshot
+  const correlatedPrices = useMemo(() => {
+    const map = new Map<string, number>();
+    Object.entries(multiMarket.snapshot).forEach(([assetClass, data]) => {
+      if (data.symbol && data.price) {
+        map.set(data.symbol, data.price);
+      }
+    });
+    return map;
+  }, [multiMarket.snapshot]);
+  
   return (
     <div className="space-y-4">
       {/* Live Market Ticker - All Asset Classes */}
@@ -98,10 +114,14 @@ export const ScalpingTerminal: React.FC = () => {
       {/* Header with controls */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Tabs value={activeView} onValueChange={(v) => setActiveView(v as 'focus' | 'bigpicture')}>
+        <Tabs value={activeView} onValueChange={(v) => setActiveView(v as 'focus' | 'bigpicture' | 'positions')}>
             <TabsList>
               <TabsTrigger value="focus">Focus</TabsTrigger>
               <TabsTrigger value="bigpicture">Big Picture</TabsTrigger>
+              <TabsTrigger value="positions" className="flex items-center gap-1">
+                <DollarSign className="w-3 h-3" />
+                Positions
+              </TabsTrigger>
             </TabsList>
           </Tabs>
           
@@ -314,7 +334,7 @@ export const ScalpingTerminal: React.FC = () => {
             </Button>
           </div>
         </div>
-      ) : (
+      ) : activeView === 'bigpicture' ? (
         /* Big Picture View - Cross-Market Analysis */
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
           {/* Left - Main chart and prediction */}
@@ -446,7 +466,87 @@ export const ScalpingTerminal: React.FC = () => {
             </Button>
           </div>
         </div>
-      )}
+      ) : activeView === 'positions' ? (
+        /* Positions View - Simulated Trading with Correlative Data */
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Left - Main chart and price */}
+          <div className="lg:col-span-2 space-y-4">
+            <Card className="bg-card/50 backdrop-blur">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Activity className="w-5 h-5" />
+                    {symbol} - Live Price
+                  </CardTitle>
+                  <div className="text-right">
+                    <div className="text-3xl font-mono font-bold">
+                      ${predictor.latestPrice?.toFixed(2) || '---'}
+                    </div>
+                    <div className={cn(
+                      "text-sm",
+                      predictor.priceChangePercent >= 0 ? "text-green-500" : "text-red-500"
+                    )}>
+                      {predictor.priceChangePercent >= 0 ? '+' : ''}
+                      {predictor.priceChangePercent.toFixed(3)}%
+                    </div>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <TickChart 
+                  ticks={predictor.connected ? Array.from({ length: predictor.tickCount }).map((_, i) => ({
+                    price: predictor.latestPrice || 100,
+                    volume: 1000,
+                    timestamp: Date.now() - (predictor.tickCount - i) * 100
+                  })) : []}
+                  currentPrediction={predictor.currentPrediction ? {
+                    direction: predictor.currentPrediction.predictedDirection,
+                    priceAtPrediction: predictor.currentPrediction.priceAtPrediction,
+                    targetPrice: predictor.currentPrediction.targetPrice
+                  } : null}
+                  height={200}
+                />
+              </CardContent>
+            </Card>
+            
+            <PredictionHUD 
+              prediction={predictor.currentPrediction}
+              latestPrice={predictor.latestPrice}
+            />
+            
+            <Card className="bg-card/50 backdrop-blur">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Clock className="w-5 h-5" />
+                  Live Prediction Stream
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <PredictionStream 
+                  pending={predictor.pendingPredictions}
+                  resolved={predictor.recentPredictions}
+                  maxHeight="200px"
+                />
+              </CardContent>
+            </Card>
+          </div>
+          
+          {/* Right - Position Tracker */}
+          <div className="space-y-4">
+            <PositionTracker
+              openPositions={positionsTracker.openPositions}
+              closedPositions={positionsTracker.closedPositions}
+              stats={positionsTracker.stats}
+              currentSymbol={symbol}
+              currentPrice={predictor.latestPrice || 100}
+              correlatedPrices={correlatedPrices}
+              onOpenPosition={positionsTracker.openPosition}
+              onClosePosition={positionsTracker.closePosition}
+              onUpdatePosition={positionsTracker.updatePosition}
+            />
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 };
