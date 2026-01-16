@@ -59,7 +59,14 @@ const DEFAULT_LEARNING_STATE: LearningState = {
   adaptiveHorizonMs: 5000,
   volatilityState: 'medium',
   momentumBias: 0,
-  lastUpdate: Date.now()
+  lastUpdate: Date.now(),
+  multiLevel: {
+    direction: { correct: 0, total: 0, accuracy: 0 },
+    magnitude: { avgScore: 0, samples: 0 },
+    timing: { avgScore: 0, samples: 0 },
+    confidenceCalibration: { predicted: 0, actual: 0, calibrationError: 0 },
+    composite: { avgScore: 0, trend: 0 }
+  }
 };
 
 export function useScalpingPredictor(config: ScalpingConfig) {
