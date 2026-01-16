@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TrendingUp, TrendingDown, Minus, Trophy, Crown } from 'lucide-react';
 import { getRatingTier } from '@/lib/chess/eloCalculator';
+import { useEnPensentPatterns } from '@/hooks/useEnPensentPatterns';
+import { TemporalSignature } from '@/lib/pensent-core/types/core';
 
 interface EloChangeAnimationProps {
   oldRating: number;
@@ -9,6 +11,7 @@ interface EloChangeAnimationProps {
   isWin: boolean;
   isDraw: boolean;
   show: boolean;
+  signature?: TemporalSignature | null;
 }
 
 export const EloChangeAnimation = ({
@@ -17,12 +20,18 @@ export const EloChangeAnimation = ({
   isWin,
   isDraw,
   show,
+  signature,
 }: EloChangeAnimationProps) => {
   const [displayedRating, setDisplayedRating] = useState(oldRating);
   const [showChange, setShowChange] = useState(false);
   const [animationComplete, setAnimationComplete] = useState(false);
   
+  const pattern = useEnPensentPatterns(signature);
+  
   const change = newRating - oldRating;
+  const oldTier = getRatingTier(oldRating);
+  const newTier = getRatingTier(newRating);
+  const tierChanged = oldTier.name !== newTier.name;
   const oldTier = getRatingTier(oldRating);
   const newTier = getRatingTier(newRating);
   const tierChanged = oldTier.name !== newTier.name;
@@ -92,8 +101,26 @@ export const EloChangeAnimation = ({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.9, y: -20 }}
           transition={{ duration: 0.4, ease: 'easeOut' }}
-          className="p-6 rounded-xl border border-primary/30 bg-gradient-to-br from-primary/10 via-card to-primary/5 backdrop-blur-sm"
+          className="p-6 rounded-xl border border-primary/30 bg-gradient-to-br from-primary/10 via-card to-primary/5 backdrop-blur-sm relative overflow-hidden"
+          style={{
+            borderColor: signature ? `${pattern.dominantColor}40` : undefined,
+            boxShadow: signature ? `0 0 ${30 * pattern.intensity}px ${pattern.dominantColor}30` : undefined
+          }}
         >
+          {/* En Pensent background glow */}
+          {signature && (
+            <motion.div
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                background: `radial-gradient(circle at 50% 50%, ${pattern.dominantColor}15, transparent 70%)`
+              }}
+              animate={{
+                opacity: [0.3, 0.6, 0.3],
+                scale: [1, 1.1, 1]
+              }}
+              transition={{ duration: 3, repeat: Infinity }}
+            />
+          )}
           {/* Result Header */}
           <motion.div
             initial={{ opacity: 0, y: -10 }}
