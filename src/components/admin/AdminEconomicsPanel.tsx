@@ -1,9 +1,9 @@
-import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Crown, Users, Star, Sparkles, Shield, TrendingUp, Building, Palette, Gamepad2, BookOpen, DollarSign, Wallet } from 'lucide-react';
+import { Crown, Users, Star, Sparkles, Shield, TrendingUp, Building, Palette, Gamepad2, BookOpen, DollarSign, Wallet, Wifi, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 // Visionary emails with permanent premium - synced with edge functions
@@ -16,6 +16,7 @@ const VISIONARY_EMAILS = [
 const formatCents = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 
 export const AdminEconomicsPanel: React.FC = () => {
+  const queryClient = useQueryClient();
   // Fetch user breakdown
   const { data: userStats } = useQuery({
     queryKey: ['admin-economics-users'],
@@ -84,8 +85,45 @@ export const AdminEconomicsPanel: React.FC = () => {
         revenueStreams: revenueStreams.data || [],
       };
     },
-    refetchInterval: 30000, // Refresh every 30 seconds for live data
+    refetchInterval: 10000, // Refresh every 10 seconds for live data
+    staleTime: 5000,
   });
+
+  // Set up realtime subscriptions for instant updates
+  useEffect(() => {
+    const channels: ReturnType<typeof supabase.channel>[] = [];
+
+    const economicsChannel = supabase
+      .channel('economics-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'company_profit_pool' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['admin-live-profit-pools'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'palette_value_pool' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['admin-live-profit-pools'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'gamecard_value_pool' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['admin-live-profit-pools'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'opening_value_pool' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['admin-live-profit-pools'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_wallets' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['admin-live-profit-pools'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['admin-economics-users'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_subscriptions' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['admin-economics-users'] });
+      })
+      .subscribe();
+
+    channels.push(economicsChannel);
+
+    return () => {
+      channels.forEach(channel => supabase.removeChannel(channel));
+    };
+  }, [queryClient]);
 
   return (
     <div className="space-y-6">

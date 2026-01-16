@@ -70,12 +70,14 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 import { UniversalHeartbeatProvider } from "@/providers/UniversalHeartbeatProvider";
+import { RealtimeAccuracyProvider } from "@/providers/RealtimeAccuracyProvider";
 
 const App = () => (
   <ErrorBoundary componentName="App">
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <UniversalHeartbeatProvider autoStart={true} interval={30000}>
+        <RealtimeAccuracyProvider enabled={true}>
+          <UniversalHeartbeatProvider autoStart={true} interval={30000}>
           <TooltipProvider>
             <Toaster />
             <Sonner />
@@ -149,6 +151,7 @@ const App = () => (
           </BrowserRouter>
         </TooltipProvider>
         </UniversalHeartbeatProvider>
+        </RealtimeAccuracyProvider>
       </AuthProvider>
     </QueryClientProvider>
   </ErrorBoundary>
