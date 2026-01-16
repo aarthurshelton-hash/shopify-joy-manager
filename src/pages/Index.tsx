@@ -321,13 +321,12 @@ const Index = () => {
       setIsLoading(false);
       setPendingResult(null);
       
-      // Use requestAnimationFrame to ensure session store is persisted before navigation
-      // This fixes the race condition where navigation happens before Zustand persist completes
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          navigate(targetUrl);
-        });
-      });
+      // Use setTimeout to ensure session store is persisted before navigation
+      // Zustand persist is async and may not flush immediately
+      // 100ms gives time for sessionStorage write to complete
+      setTimeout(() => {
+        navigate(targetUrl);
+      }, 100);
     }
   }, [pendingResult, navigate, setCurrentSimulation]);
   
