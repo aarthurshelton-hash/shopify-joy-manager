@@ -15,7 +15,13 @@ import {
   Activity,
   Image,
   Wrench,
-  HeartPulse
+  HeartPulse,
+  Code,
+  Zap,
+  LineChart,
+  Presentation,
+  FileText,
+  Sparkles
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -36,6 +42,8 @@ import { AdminMaintenancePanel } from '@/components/admin/AdminMaintenancePanel'
 import { AdminHealthPanel } from '@/components/admin/AdminHealthPanel';
 import { AdminEconomicsPanel } from '@/components/admin/AdminEconomicsPanel';
 import { AdminUserCountBadge } from '@/components/admin/AdminUserCountBadge';
+import { AutoHealPanel } from '@/components/pensent-code/AutoHealPanel';
+import LiveCodebaseDebugger from '@/components/pensent-code/LiveCodebaseDebugger';
 
 const AdminCEODashboard: React.FC = () => {
   const { user, isLoading: authLoading } = useAuth();
@@ -225,9 +233,52 @@ const AdminCEODashboard: React.FC = () => {
           </Card>
         </div>
 
+        {/* Quick Links to CEO-Only Features */}
+        <div className="mb-8">
+          <h3 className="text-sm font-medium text-muted-foreground mb-3">CEO Quick Access</h3>
+          <div className="flex flex-wrap gap-2">
+            <Link to="/stock-predictions">
+              <Button variant="outline" size="sm" className="gap-2 border-amber-500/30 text-amber-500 hover:bg-amber-500/10">
+                <LineChart className="h-4 w-4" />
+                Stock Predictions
+              </Button>
+            </Link>
+            <Link to="/trading">
+              <Button variant="outline" size="sm" className="gap-2 border-amber-500/30 text-amber-500 hover:bg-amber-500/10">
+                <Zap className="h-4 w-4" />
+                Trading Terminal
+              </Button>
+            </Link>
+            <Link to="/strategic-plan">
+              <Button variant="outline" size="sm" className="gap-2 border-amber-500/30 text-amber-500 hover:bg-amber-500/10">
+                <FileText className="h-4 w-4" />
+                Strategic Plan
+              </Button>
+            </Link>
+            <Link to="/code-analysis">
+              <Button variant="outline" size="sm" className="gap-2 border-amber-500/30 text-amber-500 hover:bg-amber-500/10">
+                <Code className="h-4 w-4" />
+                Code Analyzer
+              </Button>
+            </Link>
+            <Link to="/showcase">
+              <Button variant="outline" size="sm" className="gap-2 border-amber-500/30 text-amber-500 hover:bg-amber-500/10">
+                <Presentation className="h-4 w-4" />
+                Showcase Tour
+              </Button>
+            </Link>
+            <Link to="/investor-portal">
+              <Button variant="outline" size="sm" className="gap-2 border-amber-500/30 text-amber-500 hover:bg-amber-500/10">
+                <Sparkles className="h-4 w-4" />
+                Investor Portal
+              </Button>
+            </Link>
+          </div>
+        </div>
+
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-9">
+          <TabsList className="grid w-full grid-cols-10">
             <TabsTrigger value="users" className="gap-2">
               <Users className="h-4 w-4" />
               <span className="hidden sm:inline">Users</span>
@@ -263,6 +314,10 @@ const AdminCEODashboard: React.FC = () => {
             <TabsTrigger value="health" className="gap-2">
               <HeartPulse className="h-4 w-4" />
               <span className="hidden sm:inline">Health</span>
+            </TabsTrigger>
+            <TabsTrigger value="codebase" className="gap-2 text-amber-500">
+              <Code className="h-4 w-4" />
+              <span className="hidden sm:inline">Code</span>
             </TabsTrigger>
           </TabsList>
 
@@ -304,6 +359,26 @@ const AdminCEODashboard: React.FC = () => {
 
           <TabsContent value="health">
             <AdminHealthPanel />
+          </TabsContent>
+
+          <TabsContent value="codebase">
+            <div className="space-y-6">
+              <div className="text-center mb-4">
+                <h2 className="text-2xl font-bold flex items-center justify-center gap-2">
+                  <Code className="h-6 w-6 text-amber-500" />
+                  Self-Healing Codebase System
+                </h2>
+                <p className="text-muted-foreground">
+                  Continuous analysis and auto-fix capabilities for the En Pensent platform
+                </p>
+              </div>
+              
+              {/* Auto-Heal Panel */}
+              <AutoHealPanel />
+              
+              {/* Live Codebase Debugger */}
+              <LiveCodebaseDebugger />
+            </div>
           </TabsContent>
         </Tabs>
 
