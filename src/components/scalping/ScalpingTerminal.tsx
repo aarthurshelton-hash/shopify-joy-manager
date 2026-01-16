@@ -615,6 +615,9 @@ export const ScalpingTerminal: React.FC = () => {
           <GlobalAccuracyPanel />
           <SessionControl />
         </div>
+      ) : activeView === 'learning' ? (
+        /* 24/7 Learning View - Background Market Analysis */
+        <MarketLearningDashboard />
       ) : null}
     </div>
   );

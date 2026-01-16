@@ -59,3 +59,9 @@ verify_jwt = false
 
 [functions.resolve-predictions]
 verify_jwt = false
+
+[functions.market-collector]
+verify_jwt = false
+
+[functions.market-collector.schedule]
+cron = "*/5 * * * *"
