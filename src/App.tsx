@@ -54,6 +54,9 @@ import AdminCEODashboard from "./pages/AdminCEODashboard";
 import AdminAIArtBank from "./pages/AdminAIArtBank";
 import OpeningEncyclopedia from "./pages/OpeningEncyclopedia";
 import CodeAnalysis from "./pages/CodeAnalysis";
+import AcademicPaper from "./pages/AcademicPaper";
+import SDKDocs from "./pages/SDKDocs";
+import SharedAnalysisReport from "./pages/SharedAnalysisReport";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -116,6 +119,9 @@ const App = () => (
               <Route path="/admin/ai-art-bank" element={<AdminAIArtBank />} />
               <Route path="/openings" element={<OpeningEncyclopedia />} />
               <Route path="/code-analysis" element={<CodeAnalysis />} />
+              <Route path="/academic-paper" element={<AcademicPaper />} />
+              <Route path="/sdk-docs" element={<SDKDocs />} />
+              <Route path="/analysis/:id" element={<SharedAnalysisReport />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

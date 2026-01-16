@@ -18,6 +18,7 @@ import {
 import { ArchetypeDisplay } from './ArchetypeDisplay';
 import { CodeMetricsChart } from './CodeMetricsChart';
 import { RecommendationsPanel } from './RecommendationsPanel';
+import { ShareReportButton } from './ShareReportButton';
 import { CodeAnalysisResult, useCodeAnalysis } from '@/hooks/useCodeAnalysis';
 import { format } from 'date-fns';
 
@@ -73,6 +74,7 @@ export function AnalysisResults({ result, onSave }: AnalysisResultsProps) {
               </CardDescription>
             </div>
             <div className="flex gap-2">
+              <ShareReportButton result={result} />
               <Button variant="outline" size="sm" onClick={handleExport}>
                 <Download className="h-4 w-4 mr-2" />
                 Export
