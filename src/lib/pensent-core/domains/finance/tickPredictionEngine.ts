@@ -22,11 +22,37 @@ export interface TickPrediction {
   horizonMs: number;
   priceAtPrediction: number;
   targetPrice?: number;
+  predictedMagnitude?: number; // Expected % move
   expiresAt: number;
   resolved?: boolean;
   wasCorrect?: boolean;
   actualDirection?: 'up' | 'down' | 'flat';
   actualPrice?: number;
+  // Multi-level accuracy scores (0-100 each)
+  accuracyLevels?: MultiLevelAccuracy;
+}
+
+/**
+ * Multi-level accuracy tracking
+ * Each prediction can be right/wrong on multiple dimensions
+ */
+export interface MultiLevelAccuracy {
+  direction: number;      // 0 or 100 - did we get direction right?
+  magnitude: number;      // 0-100 - how close was predicted vs actual move size?
+  timing: number;         // 0-100 - how well did timing work out?
+  confidence: number;     // 0-100 - was our confidence calibrated correctly?
+  composite: number;      // Weighted average of all levels
+}
+
+/**
+ * Aggregate multi-level performance over time
+ */
+export interface MultiLevelPerformance {
+  direction: { correct: number; total: number; accuracy: number };
+  magnitude: { avgScore: number; samples: number };
+  timing: { avgScore: number; samples: number };
+  confidenceCalibration: { predicted: number; actual: number; calibrationError: number };
+  composite: { avgScore: number; trend: number };
 }
 
 export interface LearningState {
@@ -41,6 +67,8 @@ export interface LearningState {
   volatilityState: 'low' | 'medium' | 'high' | 'extreme';
   momentumBias: number; // -1 to 1
   lastUpdate: number;
+  // Multi-level tracking
+  multiLevel: MultiLevelPerformance;
 }
 
 export interface EngineConfig {
@@ -87,7 +115,14 @@ export class TickPredictionEngine {
       adaptiveHorizonMs: 5000, // Start at 5 seconds
       volatilityState: 'medium',
       momentumBias: 0,
-      lastUpdate: Date.now()
+      lastUpdate: Date.now(),
+      multiLevel: {
+        direction: { correct: 0, total: 0, accuracy: 0 },
+        magnitude: { avgScore: 0, samples: 0 },
+        timing: { avgScore: 0, samples: 0 },
+        confidenceCalibration: { predicted: 0, actual: 0, calibrationError: 0 },
+        composite: { avgScore: 0, trend: 0 }
+      }
     };
   }
   
@@ -198,6 +233,7 @@ export class TickPredictionEngine {
       // Resolve this prediction
       const priceDiff = currentTick.price - pred.priceAtPrediction;
       const percentChange = (priceDiff / pred.priceAtPrediction) * 100;
+      const actualMagnitude = Math.abs(percentChange);
       
       // Determine actual direction (with threshold for "flat")
       let actualDirection: 'up' | 'down' | 'flat';
@@ -213,14 +249,18 @@ export class TickPredictionEngine {
       
       const wasCorrect = pred.predictedDirection === actualDirection;
       
+      // Calculate multi-level accuracy scores
+      const accuracyLevels = this.calculateMultiLevelAccuracy(pred, actualDirection, actualMagnitude, currentTick);
+      
       // Update prediction with results
       pred.resolved = true;
       pred.wasCorrect = wasCorrect;
       pred.actualDirection = actualDirection;
       pred.actualPrice = currentTick.price;
+      pred.accuracyLevels = accuracyLevels;
       
-      // Update learning state
-      this.updateLearningState(wasCorrect, pred);
+      // Update learning state with multi-level data
+      this.updateLearningState(wasCorrect, pred, accuracyLevels);
     }
     
     // Clean up old resolved predictions (keep last 100)
@@ -236,9 +276,71 @@ export class TickPredictionEngine {
   }
   
   /**
+   * Calculate multi-level accuracy for a resolved prediction
+   */
+  private calculateMultiLevelAccuracy(
+    prediction: TickPrediction,
+    actualDirection: 'up' | 'down' | 'flat',
+    actualMagnitude: number,
+    currentTick: Tick
+  ): MultiLevelAccuracy {
+    // Level 1: Direction accuracy (binary)
+    const directionScore = prediction.predictedDirection === actualDirection ? 100 : 0;
+    
+    // Level 2: Magnitude accuracy (how close was our predicted move?)
+    const predictedMagnitude = prediction.predictedMagnitude || 
+      (prediction.targetPrice 
+        ? Math.abs((prediction.targetPrice - prediction.priceAtPrediction) / prediction.priceAtPrediction) * 100
+        : 0);
+    
+    let magnitudeScore = 0;
+    if (predictedMagnitude > 0) {
+      const magnitudeError = Math.abs(actualMagnitude - predictedMagnitude);
+      // Score based on how close we were (100 if exact, decreasing with error)
+      magnitudeScore = Math.max(0, 100 - (magnitudeError / predictedMagnitude) * 100);
+    } else if (actualMagnitude < 0.01) {
+      // Both predicted and actual were essentially flat
+      magnitudeScore = 80;
+    }
+    
+    // Level 3: Timing accuracy (did the move happen within our horizon?)
+    // Check if we resolved close to when expected
+    const timingElapsed = Date.now() - prediction.timestamp;
+    const timingError = Math.abs(timingElapsed - prediction.horizonMs);
+    const timingTolerance = prediction.horizonMs * 0.3; // 30% tolerance
+    const timingScore = Math.max(0, 100 - (timingError / timingTolerance) * 50);
+    
+    // Level 4: Confidence calibration (when we say X% confident, are we right X% of the time?)
+    // This is tracked over multiple predictions, so we score this based on alignment
+    const wasCorrect = prediction.predictedDirection === actualDirection;
+    const confidenceAligned = wasCorrect ? prediction.confidence : (100 - prediction.confidence);
+    const confidenceScore = confidenceAligned;
+    
+    // Composite score (weighted average)
+    const composite = (
+      directionScore * 0.40 +  // Direction matters most
+      magnitudeScore * 0.25 +  // Magnitude is valuable
+      timingScore * 0.15 +     // Timing is helpful
+      confidenceScore * 0.20   // Confidence calibration is important
+    );
+    
+    return {
+      direction: directionScore,
+      magnitude: Math.round(magnitudeScore),
+      timing: Math.round(timingScore),
+      confidence: Math.round(confidenceScore),
+      composite: Math.round(composite)
+    };
+  }
+  
+  /**
    * Update learning state based on prediction outcome
    */
-  private updateLearningState(wasCorrect: boolean, prediction: TickPrediction): void {
+  private updateLearningState(
+    wasCorrect: boolean, 
+    prediction: TickPrediction, 
+    accuracyLevels?: MultiLevelAccuracy
+  ): void {
     const state = this.learningState;
     
     state.totalPredictions++;
@@ -260,6 +362,49 @@ export class TickPredictionEngine {
     }
     state.recentAccuracy = (this.recentResults.filter(r => r).length / this.recentResults.length) * 100;
     
+    // Update multi-level tracking
+    if (accuracyLevels) {
+      const ml = state.multiLevel;
+      
+      // Direction tracking
+      ml.direction.total++;
+      if (accuracyLevels.direction === 100) ml.direction.correct++;
+      ml.direction.accuracy = (ml.direction.correct / ml.direction.total) * 100;
+      
+      // Magnitude tracking (running average)
+      ml.magnitude.samples++;
+      ml.magnitude.avgScore = (
+        (ml.magnitude.avgScore * (ml.magnitude.samples - 1) + accuracyLevels.magnitude) / 
+        ml.magnitude.samples
+      );
+      
+      // Timing tracking (running average)
+      ml.timing.samples++;
+      ml.timing.avgScore = (
+        (ml.timing.avgScore * (ml.timing.samples - 1) + accuracyLevels.timing) / 
+        ml.timing.samples
+      );
+      
+      // Confidence calibration (track predicted vs actual)
+      ml.confidenceCalibration.predicted = (
+        (ml.confidenceCalibration.predicted * (state.totalPredictions - 1) + prediction.confidence) / 
+        state.totalPredictions
+      );
+      ml.confidenceCalibration.actual = (state.correctPredictions / state.totalPredictions) * 100;
+      ml.confidenceCalibration.calibrationError = Math.abs(
+        ml.confidenceCalibration.predicted - ml.confidenceCalibration.actual
+      );
+      
+      // Composite tracking with trend
+      const prevComposite = ml.composite.avgScore;
+      ml.composite.avgScore = (
+        (ml.composite.avgScore * (state.totalPredictions - 1) + accuracyLevels.composite) / 
+        state.totalPredictions
+      );
+      // Positive trend if improving
+      ml.composite.trend = ml.composite.avgScore - prevComposite;
+    }
+    
     // Adapt confidence multiplier based on recent performance
     if (state.recentAccuracy > 70) {
       state.confidenceMultiplier = Math.min(1.5, state.confidenceMultiplier + this.config.learningRate * 0.1);
@@ -267,15 +412,16 @@ export class TickPredictionEngine {
       state.confidenceMultiplier = Math.max(0.6, state.confidenceMultiplier - this.config.learningRate * 0.1);
     }
     
-    // Adapt prediction horizon based on accuracy
-    if (state.recentAccuracy > 65 && state.adaptiveHorizonMs > this.config.minHorizonMs) {
-      // If accurate, try shorter horizons for faster trading
+    // Adapt prediction horizon based on multi-level composite score
+    const compositeScore = state.multiLevel.composite.avgScore;
+    if (compositeScore > 65 && state.adaptiveHorizonMs > this.config.minHorizonMs) {
+      // If multi-level accurate, try shorter horizons for faster trading
       state.adaptiveHorizonMs = Math.max(
         this.config.minHorizonMs,
         state.adaptiveHorizonMs - 500
       );
-    } else if (state.recentAccuracy < 50 && state.adaptiveHorizonMs < this.config.maxHorizonMs) {
-      // If inaccurate, try longer horizons for stability
+    } else if (compositeScore < 45 && state.adaptiveHorizonMs < this.config.maxHorizonMs) {
+      // If multi-level inaccurate, try longer horizons for stability
       state.adaptiveHorizonMs = Math.min(
         this.config.maxHorizonMs,
         state.adaptiveHorizonMs + 500

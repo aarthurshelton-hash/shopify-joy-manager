@@ -128,6 +128,51 @@ export const LearningStatePanel: React.FC<LearningStatePanelProps> = ({ state, s
           </div>
         </div>
         
+        {/* Multi-level accuracy */}
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium text-muted-foreground">Multi-Level Accuracy</h4>
+          
+          <div className="flex items-center gap-2">
+            <Target className="w-4 h-4 text-blue-500" />
+            <span className="w-20 text-xs">Direction</span>
+            <Progress value={state.multiLevel.direction.accuracy} className="flex-1 h-2" />
+            <span className="text-xs w-12 text-right">{state.multiLevel.direction.accuracy.toFixed(0)}%</span>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <Activity className="w-4 h-4 text-purple-500" />
+            <span className="w-20 text-xs">Magnitude</span>
+            <Progress value={state.multiLevel.magnitude.avgScore} className="flex-1 h-2" />
+            <span className="text-xs w-12 text-right">{state.multiLevel.magnitude.avgScore.toFixed(0)}%</span>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <Zap className="w-4 h-4 text-yellow-500" />
+            <span className="w-20 text-xs">Timing</span>
+            <Progress value={state.multiLevel.timing.avgScore} className="flex-1 h-2" />
+            <span className="text-xs w-12 text-right">{state.multiLevel.timing.avgScore.toFixed(0)}%</span>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <Award className="w-4 h-4 text-primary" />
+            <span className="w-20 text-xs">Composite</span>
+            <Progress value={state.multiLevel.composite.avgScore} className="flex-1 h-2" />
+            <span className={cn(
+              "text-xs w-12 text-right font-bold",
+              state.multiLevel.composite.trend > 0 ? "text-green-400" : 
+              state.multiLevel.composite.trend < 0 ? "text-red-400" : ""
+            )}>
+              {state.multiLevel.composite.avgScore.toFixed(0)}%
+            </span>
+          </div>
+          
+          {state.multiLevel.confidenceCalibration.calibrationError > 0 && (
+            <div className="text-xs text-muted-foreground mt-1">
+              Calibration: {state.multiLevel.confidenceCalibration.calibrationError.toFixed(1)}% error
+            </div>
+          )}
+        </div>
+        
         {/* Adaptive parameters */}
         <div className="grid grid-cols-2 gap-3 text-sm">
           <div className="p-2 rounded bg-muted/30">
