@@ -42,7 +42,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { saveVisualization } from '@/lib/visualizations/visualizationStorage';
 import { useVisualizationExport } from '@/hooks/useVisualizationExport';
 import { useRandomGameArt } from '@/hooks/useRandomGameArt';
-import { buildCanonicalShareUrl } from '@/lib/visualizations/gameCanonical';
+import { buildCanonicalShareUrl, generateGameHash } from '@/lib/visualizations/gameCanonical';
 
 // Import AI-generated art
 import heroChessArt from '@/assets/ai-art/upload-section-hero.jpg';
@@ -306,7 +306,6 @@ const Index = () => {
       setCurrentSimulation(pendingResult.result, pendingResult.pgn, pendingResult.title);
       
       // Generate the canonical URL and redirect to unified GameView
-      const { generateGameHash } = require('@/lib/visualizations/gameCanonical');
       const gameHash = generateGameHash(pendingResult.pgn);
       const paletteId = getActivePalette().id;
       

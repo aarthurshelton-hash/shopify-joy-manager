@@ -142,29 +142,35 @@ export const useSessionStore = create<SessionState>()(
       
       // Set current visualization
       setCurrentSimulation: (simulation, pgn = '', title = '') => {
-        set({
-          currentSimulation: simulation,
-          currentPgn: pgn,
-          currentGameTitle: title,
-        });
-        // Force immediate sync write to sessionStorage
-        const state = get();
+        // Get existing state BEFORE the set call
+        const existingState = get();
+        
+        // Build the complete data to store FIRST (before set)
         const dataToStore = {
           state: {
             currentSimulation: simulation,
             currentPgn: pgn,
             currentGameTitle: title,
-            savedShareId: state.savedShareId,
-            capturedTimelineState: state.capturedTimelineState,
-            visualizationStateStack: state.visualizationStateStack,
-            creativeModeTransfer: state.creativeModeTransfer,
-            previousRoute: state.previousRoute,
-            navigationStack: state.navigationStack,
-            returningFromOrder: state.returningFromOrder,
+            savedShareId: existingState.savedShareId,
+            capturedTimelineState: existingState.capturedTimelineState,
+            visualizationStateStack: existingState.visualizationStateStack,
+            creativeModeTransfer: existingState.creativeModeTransfer,
+            previousRoute: existingState.previousRoute,
+            navigationStack: existingState.navigationStack,
+            returningFromOrder: existingState.returningFromOrder,
           },
           version: 0,
         };
+        
+        // Write to sessionStorage SYNCHRONOUSLY FIRST
         sessionStorage.setItem('en-pensent-session', JSON.stringify(dataToStore));
+        
+        // Then update Zustand state (this may be async internally)
+        set({
+          currentSimulation: simulation,
+          currentPgn: pgn,
+          currentGameTitle: title,
+        });
       },
       
       setSavedShareId: (shareId) => set({ savedShareId: shareId }),
