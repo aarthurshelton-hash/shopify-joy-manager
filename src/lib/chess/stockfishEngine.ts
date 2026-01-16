@@ -100,10 +100,11 @@ export class StockfishEngine {
   }
 
   private configure(): void {
-    // Set default options for optimal web performance
+    // Optimized settings for faster web performance
     this.sendCommand('setoption', { name: 'Threads', value: 1 });
-    this.sendCommand('setoption', { name: 'Hash', value: 16 }); // 16MB hash
+    this.sendCommand('setoption', { name: 'Hash', value: 64 }); // 64MB hash for better caching
     this.sendCommand('setoption', { name: 'MultiPV', value: 1 });
+    this.sendCommand('setoption', { name: 'Slow Mover', value: 10 }); // Faster time management
   }
 
   private sendCommand(command: string, options?: Record<string, any>): void {
@@ -221,15 +222,13 @@ export class StockfishEngine {
 
   /**
    * Analyze a position by FEN
+   * Optimized: uses EITHER depth OR movetime (not both) for faster analysis
    */
   async analyzePosition(
     fen: string, 
-    options: { depth?: number; movetime?: number } = {}
+    options: { depth?: number; movetime?: number; nodes?: number } = {}
   ): Promise<PositionAnalysis> {
     await this.waitReady();
-    
-    const depth = options.depth || 20;
-    const movetime = options.movetime || 2000;
     
     this.currentDepth = 0;
     
@@ -273,13 +272,20 @@ export class StockfishEngine {
         });
       });
       
-      // Go with depth or movetime
-      this.sendCommand('go', { depth, movetime });
+      // Use nodes for fastest consistent results, otherwise depth only (not both)
+      if (options.nodes) {
+        this.sendCommand('go', { nodes: options.nodes });
+      } else if (options.movetime) {
+        this.sendCommand('go', { movetime: options.movetime });
+      } else {
+        this.sendCommand('go', { depth: options.depth || 12 }); // Reduced default depth
+      }
     });
   }
 
   /**
    * Analyze a full game from PGN
+   * OPTIMIZED: Only analyzes position BEFORE each move (not after), uses previous eval
    */
   async analyzeGame(
     pgn: string, 
@@ -287,7 +293,7 @@ export class StockfishEngine {
   ): Promise<GameAnalysis> {
     await this.waitReady();
     
-    const depth = options.depth || 15;
+    const depth = options.depth || 10; // Reduced depth for faster analysis
     const chess = new Chess();
     
     try {
@@ -301,35 +307,39 @@ export class StockfishEngine {
     
     // Reset and analyze move by move
     chess.reset();
-    let previousEval = 0; // Starting position is roughly equal
+    
+    // Analyze starting position once
+    let previousAnalysis = await this.analyzePosition(chess.fen(), { depth, nodes: 50000 });
+    let previousEval = previousAnalysis.evaluation.score;
     
     for (let i = 0; i < history.length; i++) {
       const move = history[i];
       const fenBefore = chess.fen();
+      const isWhiteMove = chess.turn() === 'w';
       
-      // Get best move and eval before playing
-      const analysisBefore = await this.analyzePosition(fenBefore, { depth, movetime: 500 });
-      const evalBefore = analysisBefore.evaluation.score * (chess.turn() === 'w' ? 1 : -1);
+      // Use cached eval from previous iteration (much faster!)
+      const evalBefore = previousEval * (isWhiteMove ? 1 : -1);
+      const bestMoveBefore = previousAnalysis.bestMove;
+      const pvBefore = previousAnalysis.evaluation.pv;
       
       // Play the move
       chess.move(move);
-      const fenAfter = chess.fen();
       
-      // Get eval after the move
-      const analysisAfter = await this.analyzePosition(fenAfter, { depth, movetime: 500 });
-      const evalAfter = analysisAfter.evaluation.score * (chess.turn() === 'w' ? -1 : 1);
+      // Analyze the new position (this becomes the "before" for next move)
+      previousAnalysis = await this.analyzePosition(chess.fen(), { depth, nodes: 50000 });
+      previousEval = previousAnalysis.evaluation.score;
+      
+      // Get eval after from new position's perspective (flip sign)
+      const evalAfter = previousEval * (isWhiteMove ? -1 : 1);
       
       // Calculate centipawn loss (from the perspective of the player who moved)
-      const isWhiteMove = i % 2 === 0;
-      const cpLoss = isWhiteMove 
-        ? Math.max(0, evalBefore - evalAfter)
-        : Math.max(0, -evalBefore + evalAfter);
+      const cpLoss = Math.max(0, evalBefore - evalAfter);
       
       // Calculate accuracy
       const accuracy = this.calculateAccuracy(cpLoss);
       
       // Check if this was the best move
-      const wasBestMove = move.from + move.to === analysisBefore.bestMove.slice(0, 4);
+      const wasBestMove = move.from + move.to === bestMoveBefore.slice(0, 4);
       
       moves.push({
         san: move.san,
@@ -338,12 +348,10 @@ export class StockfishEngine {
         evalAfter: isWhiteMove ? evalAfter : -evalAfter,
         cpLoss,
         accuracy,
-        bestMove: analysisBefore.bestMove,
+        bestMove: bestMoveBefore,
         wasBestMove,
-        pvLine: analysisBefore.evaluation.pv,
+        pvLine: pvBefore,
       });
-      
-      previousEval = evalAfter;
       
       if (options.onProgress) {
         options.onProgress(i + 1, history.length);
@@ -366,7 +374,7 @@ export class StockfishEngine {
       whiteAccuracy: Math.round(whiteAccuracy * 10) / 10,
       blackAccuracy: Math.round(blackAccuracy * 10) / 10,
       averageDepth: depth,
-      engineVersion: 'Stockfish 16 NNUE WASM',
+      engineVersion: 'Stockfish 17 NNUE WASM',
     };
   }
 
@@ -411,7 +419,8 @@ export class StockfishEngine {
   async quickEval(fen: string): Promise<number> {
     await this.waitReady();
     
-    const analysis = await this.analyzePosition(fen, { depth: 10, movetime: 200 });
+    // Use node count for consistent fast evaluation
+    const analysis = await this.analyzePosition(fen, { nodes: 10000 });
     return analysis.evaluation.score;
   }
 
