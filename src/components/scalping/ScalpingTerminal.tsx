@@ -59,13 +59,22 @@ export const ScalpingTerminal: React.FC = () => {
   } = useTradingSessionStore();
   
   const predictor = useScalpingPredictor({
-    symbol,
+    symbol: symbol || 'SPY',
     mode: 'demo',
     predictionIntervalMs: predictionInterval,
     autoPredict,
     demoVolatility: 0.0012,
     demoInterval: 150
   });
+  
+  // Early return if predictor not ready
+  if (!predictor) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-muted-foreground">Loading trading engine...</div>
+      </div>
+    );
+  }
   
   // Sync prediction outcomes to global store
   useEffect(() => {

@@ -62,6 +62,7 @@ import InvestorPortal from "./pages/InvestorPortal";
 import EarlyAccess from "./pages/EarlyAccess";
 import StockPredictions from "./pages/StockPredictions";
 import StrategicPlan from "./pages/StrategicPlan";
+import ScalpingTerminalPage from "./pages/ScalpingTerminalPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -132,6 +133,7 @@ const App = () => (
               <Route path="/early-access" element={<EarlyAccess />} />
               <Route path="/stock-predictions" element={<StockPredictions />} />
               <Route path="/strategic-plan" element={<StrategicPlan />} />
+              <Route path="/trading" element={<ScalpingTerminalPage />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

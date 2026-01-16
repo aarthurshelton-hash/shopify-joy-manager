@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, forwardRef } from 'react';
 import { Palette, Check, Pencil, Save, Loader2, ChevronDown, Globe, User } from 'lucide-react';
 import { 
   colorPalettes, 
@@ -143,7 +143,7 @@ const generateRandomPalette = () => {
   return { white, black };
 };
 
-const PaletteSelector: React.FC<PaletteSelectorProps> = ({ onPaletteChange }) => {
+const PaletteSelector = forwardRef<HTMLDivElement, PaletteSelectorProps>(function PaletteSelector({ onPaletteChange }, ref) {
   const { user } = useAuth();
   const [activePaletteId, setActivePaletteId] = useState<PaletteId>(getActivePalette().id);
   const [customColors, setCustomColors] = useState(() => {
@@ -291,7 +291,7 @@ const PaletteSelector: React.FC<PaletteSelectorProps> = ({ onPaletteChange }) =>
   const isCustomActive = activePaletteId === 'custom';
   
   return (
-    <div className="rounded-lg border border-border/50 bg-card/50 overflow-hidden">
+    <div ref={ref} className="rounded-lg border border-border/50 bg-card/50 overflow-hidden">
       <div className="px-6 py-5 border-b border-border/50 flex items-center justify-between">
         <div>
           <h3 className="flex items-center gap-2 font-display text-lg font-semibold">
@@ -629,6 +629,8 @@ const PaletteSelector: React.FC<PaletteSelectorProps> = ({ onPaletteChange }) =>
       </Dialog>
     </div>
   );
-};
+});
+
+PaletteSelector.displayName = 'PaletteSelector';
 
 export default PaletteSelector;
