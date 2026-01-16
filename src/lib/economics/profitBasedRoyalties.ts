@@ -63,13 +63,15 @@ export const PROFIT_ECONOMICS = {
     gamecardPool: 0.15,      // 15% to legendary game cards
   },
   
-  // Marketplace 5% Fee Distribution (reinvested into value system)
+  // Marketplace 5% Fee Distribution
   // When a vision is sold, new value = sale price - 5%
-  // The 5% is reinvested into the attribution pools
+  // 25% of fee = company cash reserve (extractable profit)
+  // 75% of fee = reinvested into attribution value pools
   marketplaceFeeDistribution: {
-    gamecardPool: 0.35,      // 35% to game attribution value
-    palettePool: 0.35,       // 35% to palette attribution value  
-    openingPool: 0.20,       // 20% to opening attribution value (NEW)
+    companyProfit: 0.25,     // 25% company cash reserve (real money profit pool)
+    gamecardPool: 0.25,      // 25% to game attribution value
+    palettePool: 0.25,       // 25% to palette attribution value  
+    openingPool: 0.15,       // 15% to opening attribution value
     platformOps: 0.10,       // 10% to platform operations
   },
   
@@ -122,22 +124,35 @@ export const PROFIT_ECONOMICS = {
 export function calculateMarketplaceFeeReinvestment(salePriceCents: number): {
   totalFeeCents: number;
   sellerReceivesCents: number;
+  companyProfitCents: number;  // Raw cash reserve (extractable)
   gamecardPoolCents: number;
   palettePoolCents: number;
   openingPoolCents: number;
   platformOpsCents: number;
+  reinvestedCents: number;     // Total reinvested into value pools
 } {
   const totalFeeCents = Math.round(salePriceCents * PROFIT_ECONOMICS.marketplaceFee);
   const sellerReceivesCents = salePriceCents - totalFeeCents;
   
   const dist = PROFIT_ECONOMICS.marketplaceFeeDistribution;
+  const companyProfitCents = Math.round(totalFeeCents * dist.companyProfit);
+  const gamecardPoolCents = Math.round(totalFeeCents * dist.gamecardPool);
+  const palettePoolCents = Math.round(totalFeeCents * dist.palettePool);
+  const openingPoolCents = Math.round(totalFeeCents * dist.openingPool);
+  const platformOpsCents = Math.round(totalFeeCents * dist.platformOps);
+  
+  // Reinvested = everything except company profit
+  const reinvestedCents = gamecardPoolCents + palettePoolCents + openingPoolCents + platformOpsCents;
+  
   return {
     totalFeeCents,
     sellerReceivesCents,
-    gamecardPoolCents: Math.round(totalFeeCents * dist.gamecardPool),
-    palettePoolCents: Math.round(totalFeeCents * dist.palettePool),
-    openingPoolCents: Math.round(totalFeeCents * dist.openingPool),
-    platformOpsCents: Math.round(totalFeeCents * dist.platformOps),
+    companyProfitCents,
+    gamecardPoolCents,
+    palettePoolCents,
+    openingPoolCents,
+    platformOpsCents,
+    reinvestedCents,
   };
 }
 
