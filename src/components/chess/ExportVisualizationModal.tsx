@@ -168,10 +168,20 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
       const dataUrl = canvas.toDataURL('image/png', 1.0);
       const filename = `EnPensent-${gameInfo.white}-vs-${gameInfo.black}-${darkMode ? 'dark' : 'light'}${isHD ? '-HD' : '-preview'}.png`;
       
+      // More reliable download approach - convert to blob and use URL.createObjectURL
+      const response = await fetch(dataUrl);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      
       const link = document.createElement('a');
-      link.href = dataUrl;
+      link.href = blobUrl;
       link.download = filename;
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
+      
+      // Clean up blob URL after download starts
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
       
       toast.success(isHD ? 'HD image downloaded!' : 'Preview downloaded!', {
         description: shouldWatermark ? 'Includes En Pensent branding.' : undefined,

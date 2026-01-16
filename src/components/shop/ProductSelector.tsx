@@ -378,8 +378,20 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
   if (loading) {
     return (
       <Card className="border-dashed">
-        <CardContent className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <CardContent className="py-8 space-y-4">
+          <div className="flex items-center justify-center gap-3">
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            <span className="text-sm text-muted-foreground">Loading print options...</span>
+          </div>
+          {/* Skeleton for better UX */}
+          <div className="space-y-3">
+            <div className="h-24 bg-muted/30 rounded-lg animate-pulse" />
+            <div className="grid grid-cols-3 gap-2">
+              <div className="h-16 bg-muted/20 rounded animate-pulse" />
+              <div className="h-16 bg-muted/20 rounded animate-pulse" />
+              <div className="h-16 bg-muted/20 rounded animate-pulse" />
+            </div>
+          </div>
         </CardContent>
       </Card>
     );
