@@ -24,6 +24,8 @@ export interface CapturedTimelineState {
   lockedPieces: Array<{ pieceType: PieceType; pieceColor: PieceColor }>;
   compareMode: boolean;
   darkMode: boolean;
+  showPieces?: boolean;
+  pieceOpacity?: number;
 }
 
 /**
