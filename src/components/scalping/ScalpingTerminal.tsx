@@ -32,6 +32,7 @@ import { PositionTracker } from './PositionTracker';
 import { GlobalAccuracyPanel } from './GlobalAccuracyPanel';
 import { SessionControl } from './SessionControl';
 import { HeartbeatIndicator } from '@/components/pensent-code/HeartbeatIndicator';
+import { MarketLearningDashboard } from './MarketLearningDashboard';
 
 const SYMBOLS = ['SPY', 'QQQ', 'AAPL', 'NVDA', 'TSLA', 'MSFT', 'AMD', 'GOOGL'];
 
@@ -40,7 +41,7 @@ export const ScalpingTerminal: React.FC = () => {
   const [autoPredict, setAutoPredict] = useState(true);
   const [predictionInterval, setPredictionInterval] = useState(3000);
   const [showSettings, setShowSettings] = useState(false);
-  const [activeView, setActiveView] = useState<'focus' | 'bigpicture' | 'positions' | 'evolution'>('bigpicture');
+  const [activeView, setActiveView] = useState<'focus' | 'bigpicture' | 'positions' | 'evolution' | 'learning'>('bigpicture');
   
   // Multi-market stream for the bigger picture
   const multiMarket = useMultiMarketStream();
@@ -168,7 +169,7 @@ export const ScalpingTerminal: React.FC = () => {
       {/* Header with controls */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-        <Tabs value={activeView} onValueChange={(v) => setActiveView(v as 'focus' | 'bigpicture' | 'positions' | 'evolution')}>
+        <Tabs value={activeView} onValueChange={(v) => setActiveView(v as 'focus' | 'bigpicture' | 'positions' | 'evolution' | 'learning')}>
             <TabsList>
               <TabsTrigger value="focus">Focus</TabsTrigger>
               <TabsTrigger value="bigpicture">Big Picture</TabsTrigger>
@@ -179,6 +180,10 @@ export const ScalpingTerminal: React.FC = () => {
               <TabsTrigger value="evolution" className="flex items-center gap-1">
                 <Target className="w-3 h-3" />
                 Evolution
+              </TabsTrigger>
+              <TabsTrigger value="learning" className="flex items-center gap-1">
+                <Activity className="w-3 h-3" />
+                24/7 Learning
               </TabsTrigger>
             </TabsList>
           </Tabs>

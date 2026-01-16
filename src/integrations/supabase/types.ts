@@ -775,6 +775,48 @@ export type Database = {
         }
         Relationships: []
       }
+      evolution_state: {
+        Row: {
+          adaptation_history: Json | null
+          created_at: string
+          fitness_score: number | null
+          generation: number | null
+          genes: Json
+          id: string
+          last_mutation_at: string | null
+          learned_patterns: Json | null
+          state_type: string
+          total_predictions: number | null
+          updated_at: string
+        }
+        Insert: {
+          adaptation_history?: Json | null
+          created_at?: string
+          fitness_score?: number | null
+          generation?: number | null
+          genes: Json
+          id?: string
+          last_mutation_at?: string | null
+          learned_patterns?: Json | null
+          state_type?: string
+          total_predictions?: number | null
+          updated_at?: string
+        }
+        Update: {
+          adaptation_history?: Json | null
+          created_at?: string
+          fitness_score?: number | null
+          generation?: number | null
+          genes?: Json
+          id?: string
+          last_mutation_at?: string | null
+          learned_patterns?: Json | null
+          state_type?: string
+          total_predictions?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       favorite_games: {
         Row: {
           created_at: string
@@ -1024,6 +1066,117 @@ export type Database = {
           issues_found?: number | null
           rate_limited_requests?: number | null
           uptime_percentage?: number | null
+        }
+        Relationships: []
+      }
+      market_collection_status: {
+        Row: {
+          created_at: string
+          errors_today: number | null
+          id: string
+          is_collecting: boolean | null
+          last_tick_at: string | null
+          market_name: string
+          status: string | null
+          ticks_collected_today: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          errors_today?: number | null
+          id?: string
+          is_collecting?: boolean | null
+          last_tick_at?: string | null
+          market_name: string
+          status?: string | null
+          ticks_collected_today?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          errors_today?: number | null
+          id?: string
+          is_collecting?: boolean | null
+          last_tick_at?: string | null
+          market_name?: string
+          status?: string | null
+          ticks_collected_today?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      market_correlations: {
+        Row: {
+          calculated_at: string
+          confidence_interval: number | null
+          correlation_coefficient: number
+          created_at: string
+          id: string
+          lag_ms: number | null
+          sample_size: number
+          symbol_a: string
+          symbol_b: string
+          timeframe: string
+        }
+        Insert: {
+          calculated_at?: string
+          confidence_interval?: number | null
+          correlation_coefficient: number
+          created_at?: string
+          id?: string
+          lag_ms?: number | null
+          sample_size: number
+          symbol_a: string
+          symbol_b: string
+          timeframe: string
+        }
+        Update: {
+          calculated_at?: string
+          confidence_interval?: number | null
+          correlation_coefficient?: number
+          created_at?: string
+          id?: string
+          lag_ms?: number | null
+          sample_size?: number
+          symbol_a?: string
+          symbol_b?: string
+          timeframe?: string
+        }
+        Relationships: []
+      }
+      market_tick_history: {
+        Row: {
+          ask: number | null
+          bid: number | null
+          created_at: string
+          id: string
+          price: number
+          source: string | null
+          symbol: string
+          timestamp: string
+          volume: number | null
+        }
+        Insert: {
+          ask?: number | null
+          bid?: number | null
+          created_at?: string
+          id?: string
+          price: number
+          source?: string | null
+          symbol: string
+          timestamp?: string
+          volume?: number | null
+        }
+        Update: {
+          ask?: number | null
+          bid?: number | null
+          created_at?: string
+          id?: string
+          price?: number
+          source?: string | null
+          symbol?: string
+          timestamp?: string
+          volume?: number | null
         }
         Relationships: []
       }
@@ -1380,6 +1533,72 @@ export type Database = {
         }
         Relationships: []
       }
+      prediction_outcomes: {
+        Row: {
+          actual_direction: string | null
+          actual_magnitude: number | null
+          calibration_accuracy: number | null
+          composite_score: number | null
+          correlated_assets: Json | null
+          created_at: string
+          direction_correct: boolean | null
+          entry_price: number
+          exit_price: number | null
+          id: string
+          magnitude_accuracy: number | null
+          market_conditions: Json | null
+          predicted_confidence: number
+          predicted_direction: string
+          predicted_magnitude: number | null
+          prediction_horizon_ms: number
+          resolved_at: string | null
+          symbol: string
+          timing_accuracy: number | null
+        }
+        Insert: {
+          actual_direction?: string | null
+          actual_magnitude?: number | null
+          calibration_accuracy?: number | null
+          composite_score?: number | null
+          correlated_assets?: Json | null
+          created_at?: string
+          direction_correct?: boolean | null
+          entry_price: number
+          exit_price?: number | null
+          id?: string
+          magnitude_accuracy?: number | null
+          market_conditions?: Json | null
+          predicted_confidence: number
+          predicted_direction: string
+          predicted_magnitude?: number | null
+          prediction_horizon_ms: number
+          resolved_at?: string | null
+          symbol: string
+          timing_accuracy?: number | null
+        }
+        Update: {
+          actual_direction?: string | null
+          actual_magnitude?: number | null
+          calibration_accuracy?: number | null
+          composite_score?: number | null
+          correlated_assets?: Json | null
+          created_at?: string
+          direction_correct?: boolean | null
+          entry_price?: number
+          exit_price?: number | null
+          id?: string
+          magnitude_accuracy?: number | null
+          market_conditions?: Json | null
+          predicted_confidence?: number
+          predicted_direction?: string
+          predicted_magnitude?: number | null
+          prediction_horizon_ms?: number
+          resolved_at?: string | null
+          symbol?: string
+          timing_accuracy?: number | null
+        }
+        Relationships: []
+      }
       premium_analytics: {
         Row: {
           analytics_type: string
@@ -1648,6 +1867,63 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      security_accuracy_metrics: {
+        Row: {
+          best_timeframe_ms: number | null
+          calibration_accuracy: number | null
+          composite_accuracy: number | null
+          correct_predictions: number | null
+          correlation_strengths: Json | null
+          created_at: string
+          direction_accuracy: number | null
+          id: string
+          last_prediction_at: string | null
+          magnitude_accuracy: number | null
+          optimal_confidence_threshold: number | null
+          symbol: string
+          timing_accuracy: number | null
+          total_predictions: number | null
+          updated_at: string
+          volatility_profile: Json | null
+        }
+        Insert: {
+          best_timeframe_ms?: number | null
+          calibration_accuracy?: number | null
+          composite_accuracy?: number | null
+          correct_predictions?: number | null
+          correlation_strengths?: Json | null
+          created_at?: string
+          direction_accuracy?: number | null
+          id?: string
+          last_prediction_at?: string | null
+          magnitude_accuracy?: number | null
+          optimal_confidence_threshold?: number | null
+          symbol: string
+          timing_accuracy?: number | null
+          total_predictions?: number | null
+          updated_at?: string
+          volatility_profile?: Json | null
+        }
+        Update: {
+          best_timeframe_ms?: number | null
+          calibration_accuracy?: number | null
+          composite_accuracy?: number | null
+          correct_predictions?: number | null
+          correlation_strengths?: Json | null
+          created_at?: string
+          direction_accuracy?: number | null
+          id?: string
+          last_prediction_at?: string | null
+          magnitude_accuracy?: number | null
+          optimal_confidence_threshold?: number | null
+          symbol?: string
+          timing_accuracy?: number | null
+          total_predictions?: number | null
+          updated_at?: string
+          volatility_profile?: Json | null
+        }
+        Relationships: []
       }
       security_audit_log: {
         Row: {
@@ -1934,6 +2210,69 @@ export type Database = {
           status?: Database["public"]["Enums"]["testimonial_status"]
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      trading_session_reports: {
+        Row: {
+          accuracy_metrics: Json | null
+          best_trade_cents: number | null
+          created_at: string
+          end_time: string | null
+          ending_balance_cents: number | null
+          id: string
+          lessons_learned: Json | null
+          losing_trades: number | null
+          market_conditions: Json | null
+          securities_traded: Json | null
+          session_id: string
+          start_time: string
+          starting_balance_cents: number
+          total_pnl_cents: number | null
+          total_trades: number | null
+          user_id: string | null
+          winning_trades: number | null
+          worst_trade_cents: number | null
+        }
+        Insert: {
+          accuracy_metrics?: Json | null
+          best_trade_cents?: number | null
+          created_at?: string
+          end_time?: string | null
+          ending_balance_cents?: number | null
+          id?: string
+          lessons_learned?: Json | null
+          losing_trades?: number | null
+          market_conditions?: Json | null
+          securities_traded?: Json | null
+          session_id: string
+          start_time: string
+          starting_balance_cents?: number
+          total_pnl_cents?: number | null
+          total_trades?: number | null
+          user_id?: string | null
+          winning_trades?: number | null
+          worst_trade_cents?: number | null
+        }
+        Update: {
+          accuracy_metrics?: Json | null
+          best_trade_cents?: number | null
+          created_at?: string
+          end_time?: string | null
+          ending_balance_cents?: number | null
+          id?: string
+          lessons_learned?: Json | null
+          losing_trades?: number | null
+          market_conditions?: Json | null
+          securities_traded?: Json | null
+          session_id?: string
+          start_time?: string
+          starting_balance_cents?: number
+          total_pnl_cents?: number | null
+          total_trades?: number | null
+          user_id?: string | null
+          winning_trades?: number | null
+          worst_trade_cents?: number | null
         }
         Relationships: []
       }
