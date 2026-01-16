@@ -302,6 +302,7 @@ const Index = () => {
   const handleLoadingComplete = useCallback(() => {
     if (pendingResult) {
       // Store simulation in session for GameView to pick up
+      // setCurrentSimulation now synchronously writes to sessionStorage
       setCurrentSimulation(pendingResult.result, pendingResult.pgn, pendingResult.title);
       
       // Generate the canonical URL and redirect to unified GameView
@@ -321,12 +322,8 @@ const Index = () => {
       setIsLoading(false);
       setPendingResult(null);
       
-      // Use setTimeout to ensure session store is persisted before navigation
-      // Zustand persist is async and may not flush immediately
-      // 100ms gives time for sessionStorage write to complete
-      setTimeout(() => {
-        navigate(targetUrl);
-      }, 100);
+      // Navigate immediately - sessionStorage is now synchronously written
+      navigate(targetUrl);
     }
   }, [pendingResult, navigate, setCurrentSimulation]);
   
