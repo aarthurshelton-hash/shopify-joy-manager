@@ -13,6 +13,7 @@ import {
   Check,
   Palette,
   Swords,
+  BookOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -29,6 +30,8 @@ import { SquareData } from '@/lib/chess/gameSimulator';
 import { getPaletteArt, getPaletteDisplayName, isPremiumPalette } from '@/lib/marketplace/paletteArtMap';
 import { getGameImage } from '@/lib/chess/gameImages';
 import { detectGameCard, GameCardMatch } from '@/lib/chess/gameCardDetection';
+import { detectOpeningFromPgn } from '@/lib/chess/openingDetector';
+import { OpeningBadge, OpeningMarketingCard } from '@/components/chess/OpeningBadge';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 
 /**
@@ -144,6 +147,14 @@ const OrderPrint: React.FC = () => {
     return null;
   }, [orderData.pgn]);
   
+  // Detect opening from PGN
+  const detectedOpening = useMemo(() => {
+    if (orderData.pgn) {
+      return detectOpeningFromPgn(orderData.pgn);
+    }
+    return null;
+  }, [orderData.pgn]);
+  
   // Check if this item is already in cart
   const cartItems = useCartStore(state => state.items);
   const isInCart = useMemo(() => {
@@ -207,6 +218,17 @@ const OrderPrint: React.FC = () => {
                           Premium
                         </Badge>
                       )}
+                    </div>
+                  )}
+                  {detectedOpening && (
+                    <div className="flex items-center gap-2">
+                      <BookOpen className="h-4 w-4 text-white/90" />
+                      <span className="text-sm font-medium text-white/90">
+                        {detectedOpening.fullName}
+                      </span>
+                      <Badge className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-[10px] px-1.5 border-0">
+                        Book Opening
+                      </Badge>
                     </div>
                   )}
                 </div>
@@ -436,6 +458,11 @@ const OrderPrint: React.FC = () => {
                 </ul>
               </CardContent>
             </Card>
+            
+            {/* Opening Marketing Card - if detected */}
+            {detectedOpening && (
+              <OpeningMarketingCard opening={detectedOpening} showValue={true} />
+            )}
           </motion.div>
 
           {/* Product Selector Column */}

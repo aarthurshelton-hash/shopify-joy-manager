@@ -52,6 +52,7 @@ import DMCA from "./pages/DMCA";
 import PremiumAnalytics from "./pages/PremiumAnalytics";
 import AdminCEODashboard from "./pages/AdminCEODashboard";
 import AdminAIArtBank from "./pages/AdminAIArtBank";
+import OpeningEncyclopedia from "./pages/OpeningEncyclopedia";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -112,6 +113,7 @@ const App = () => (
               <Route path="/premium-analytics" element={<PremiumAnalytics />} />
               <Route path="/admin/ceo-dashboard" element={<AdminCEODashboard />} />
               <Route path="/admin/ai-art-bank" element={<AdminAIArtBank />} />
+              <Route path="/openings" element={<OpeningEncyclopedia />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
