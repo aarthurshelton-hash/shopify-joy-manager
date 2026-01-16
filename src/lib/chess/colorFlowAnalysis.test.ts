@@ -25,9 +25,10 @@ const createEmptyBoard = (): SquareData[][] => {
     board[rank] = [];
     for (let file = 0; file < 8; file++) {
       board[rank][file] = {
-        square: `${'abcdefgh'[file]}${rank + 1}`,
+        file,
+        rank,
         visits: [],
-        currentPiece: null
+        isLight: (file + rank) % 2 === 1
       };
     }
   }
@@ -40,13 +41,13 @@ const createMockGameData = (): GameData => ({
   black: 'Test Black',
   result: '*',
   event: 'Test Event',
-  site: 'Test Site',
-  date: '2024.01.01'
+  date: '2024.01.01',
+  moves: ['e4', 'e5', 'Nf3', 'Nc6']
 });
 
 const addVisits = (
   board: SquareData[][],
-  visits: Array<{ square: string; color: 'w' | 'b'; moveNumber: number; pieceType: string }>
+  visits: Array<{ square: string; color: 'w' | 'b'; moveNumber: number; piece: string }>
 ): void => {
   for (const visit of visits) {
     const file = visit.square.charCodeAt(0) - 97; // 'a' = 0
@@ -56,7 +57,8 @@ const addVisits = (
       board[rank][file].visits.push({
         color: visit.color,
         moveNumber: visit.moveNumber,
-        pieceType: visit.pieceType
+        piece: visit.piece as any,
+        hexColor: visit.color === 'w' ? '#ffffff' : '#000000'
       });
     }
   }
@@ -128,10 +130,10 @@ describe('colorFlowAnalysis', () => {
       
       // Add some basic visits
       addVisits(board, [
-        { square: 'e4', color: 'w', moveNumber: 1, pieceType: 'p' },
-        { square: 'e5', color: 'b', moveNumber: 1, pieceType: 'p' },
-        { square: 'f3', color: 'w', moveNumber: 2, pieceType: 'n' },
-        { square: 'c6', color: 'b', moveNumber: 2, pieceType: 'n' },
+        { square: 'e4', color: 'w', moveNumber: 1, piece: 'p' },
+        { square: 'e5', color: 'b', moveNumber: 1, piece: 'p' },
+        { square: 'f3', color: 'w', moveNumber: 2, piece: 'n' },
+        { square: 'c6', color: 'b', moveNumber: 2, piece: 'n' },
       ]);
       
       const signature = extractColorFlowSignature(board, gameData, 4);
@@ -155,10 +157,10 @@ describe('colorFlowAnalysis', () => {
       const gameData = createMockGameData();
       
       addVisits(board1, [
-        { square: 'e4', color: 'w', moveNumber: 1, pieceType: 'p' },
+        { square: 'e4', color: 'w', moveNumber: 1, piece: 'p' },
       ]);
       addVisits(board2, [
-        { square: 'd4', color: 'w', moveNumber: 1, pieceType: 'p' },
+        { square: 'd4', color: 'w', moveNumber: 1, piece: 'p' },
       ]);
       
       const sig1 = extractColorFlowSignature(board1, gameData, 1);
@@ -173,17 +175,17 @@ describe('colorFlowAnalysis', () => {
       
       // Simulate heavy kingside activity
       addVisits(board, [
-        { square: 'h5', color: 'w', moveNumber: 5, pieceType: 'q' },
-        { square: 'g5', color: 'w', moveNumber: 6, pieceType: 'n' },
-        { square: 'f6', color: 'w', moveNumber: 7, pieceType: 'b' },
-        { square: 'h6', color: 'w', moveNumber: 8, pieceType: 'r' },
-        { square: 'g7', color: 'w', moveNumber: 9, pieceType: 'q' },
-        { square: 'h7', color: 'w', moveNumber: 10, pieceType: 'r' },
-        { square: 'f7', color: 'w', moveNumber: 11, pieceType: 'b' },
-        { square: 'g8', color: 'w', moveNumber: 12, pieceType: 'n' },
+        { square: 'h5', color: 'w', moveNumber: 5, piece: 'q' },
+        { square: 'g5', color: 'w', moveNumber: 6, piece: 'n' },
+        { square: 'f6', color: 'w', moveNumber: 7, piece: 'b' },
+        { square: 'h6', color: 'w', moveNumber: 8, piece: 'r' },
+        { square: 'g7', color: 'w', moveNumber: 9, piece: 'q' },
+        { square: 'h7', color: 'w', moveNumber: 10, piece: 'r' },
+        { square: 'f7', color: 'w', moveNumber: 11, piece: 'b' },
+        { square: 'g8', color: 'w', moveNumber: 12, piece: 'n' },
         // High volatility
-        { square: 'h8', color: 'b', moveNumber: 13, pieceType: 'k' },
-        { square: 'h8', color: 'w', moveNumber: 14, pieceType: 'q' },
+        { square: 'h8', color: 'b', moveNumber: 13, piece: 'k' },
+        { square: 'h8', color: 'w', moveNumber: 14, piece: 'q' },
       ]);
       
       const signature = extractColorFlowSignature(board, gameData, 14);
@@ -199,16 +201,16 @@ describe('colorFlowAnalysis', () => {
       
       // Heavy center control
       addVisits(board, [
-        { square: 'd4', color: 'w', moveNumber: 1, pieceType: 'p' },
-        { square: 'e4', color: 'w', moveNumber: 2, pieceType: 'p' },
-        { square: 'd5', color: 'w', moveNumber: 3, pieceType: 'n' },
-        { square: 'e5', color: 'w', moveNumber: 4, pieceType: 'n' },
-        { square: 'd4', color: 'w', moveNumber: 5, pieceType: 'b' },
-        { square: 'e4', color: 'w', moveNumber: 6, pieceType: 'b' },
-        { square: 'd5', color: 'w', moveNumber: 7, pieceType: 'q' },
-        { square: 'e5', color: 'w', moveNumber: 8, pieceType: 'r' },
-        { square: 'd4', color: 'w', moveNumber: 9, pieceType: 'k' },
-        { square: 'e4', color: 'w', moveNumber: 10, pieceType: 'r' },
+        { square: 'd4', color: 'w', moveNumber: 1, piece: 'p' },
+        { square: 'e4', color: 'w', moveNumber: 2, piece: 'p' },
+        { square: 'd5', color: 'w', moveNumber: 3, piece: 'n' },
+        { square: 'e5', color: 'w', moveNumber: 4, piece: 'n' },
+        { square: 'd4', color: 'w', moveNumber: 5, piece: 'b' },
+        { square: 'e4', color: 'w', moveNumber: 6, piece: 'b' },
+        { square: 'd5', color: 'w', moveNumber: 7, piece: 'q' },
+        { square: 'e5', color: 'w', moveNumber: 8, piece: 'r' },
+        { square: 'd4', color: 'w', moveNumber: 9, piece: 'k' },
+        { square: 'e4', color: 'w', moveNumber: 10, piece: 'r' },
       ]);
       
       const signature = extractColorFlowSignature(board, gameData, 10);
@@ -222,14 +224,14 @@ describe('colorFlowAnalysis', () => {
       
       // Queenside activity
       addVisits(board, [
-        { square: 'a5', color: 'w', moveNumber: 5, pieceType: 'p' },
-        { square: 'b5', color: 'w', moveNumber: 6, pieceType: 'p' },
-        { square: 'c5', color: 'w', moveNumber: 7, pieceType: 'n' },
-        { square: 'a6', color: 'w', moveNumber: 8, pieceType: 'r' },
-        { square: 'b6', color: 'w', moveNumber: 9, pieceType: 'b' },
-        { square: 'a7', color: 'w', moveNumber: 10, pieceType: 'q' },
-        { square: 'b7', color: 'w', moveNumber: 11, pieceType: 'r' },
-        { square: 'c7', color: 'w', moveNumber: 12, pieceType: 'n' },
+        { square: 'a5', color: 'w', moveNumber: 5, piece: 'p' },
+        { square: 'b5', color: 'w', moveNumber: 6, piece: 'p' },
+        { square: 'c5', color: 'w', moveNumber: 7, piece: 'n' },
+        { square: 'a6', color: 'w', moveNumber: 8, piece: 'r' },
+        { square: 'b6', color: 'w', moveNumber: 9, piece: 'b' },
+        { square: 'a7', color: 'w', moveNumber: 10, piece: 'q' },
+        { square: 'b7', color: 'w', moveNumber: 11, piece: 'r' },
+        { square: 'c7', color: 'w', moveNumber: 12, piece: 'n' },
       ]);
       
       const signature = extractColorFlowSignature(board, gameData, 12);
@@ -244,21 +246,21 @@ describe('colorFlowAnalysis', () => {
       // Opening moves (1-10)
       for (let i = 1; i <= 10; i++) {
         addVisits(board, [
-          { square: `e${Math.min(4, i)}`, color: 'w', moveNumber: i, pieceType: 'p' },
+          { square: `e${Math.min(4, i)}`, color: 'w', moveNumber: i, piece: 'p' },
         ]);
       }
       
       // Middlegame moves (11-25)
       for (let i = 11; i <= 25; i++) {
         addVisits(board, [
-          { square: 'd5', color: 'w', moveNumber: i, pieceType: 'n' },
+          { square: 'd5', color: 'w', moveNumber: i, piece: 'n' },
         ]);
       }
       
       // Endgame moves (26+)
       for (let i = 26; i <= 40; i++) {
         addVisits(board, [
-          { square: 'a8', color: 'w', moveNumber: i, pieceType: 'k' },
+          { square: 'a8', color: 'w', moveNumber: i, piece: 'k' },
         ]);
       }
       
@@ -276,15 +278,15 @@ describe('colorFlowAnalysis', () => {
       
       // Create a dramatic shift at move 10
       for (let i = 1; i <= 9; i++) {
-        addVisits(board, [{ square: 'e4', color: 'w', moveNumber: i, pieceType: 'p' }]);
+        addVisits(board, [{ square: 'e4', color: 'w', moveNumber: i, piece: 'p' }]);
       }
       // Sudden surge of activity
       for (let i = 10; i <= 12; i++) {
         addVisits(board, [
-          { square: 'e4', color: 'b', moveNumber: i, pieceType: 'q' },
-          { square: 'd4', color: 'b', moveNumber: i, pieceType: 'r' },
-          { square: 'f4', color: 'b', moveNumber: i, pieceType: 'r' },
-          { square: 'c4', color: 'b', moveNumber: i, pieceType: 'b' },
+          { square: 'e4', color: 'b', moveNumber: i, piece: 'q' },
+          { square: 'd4', color: 'b', moveNumber: i, piece: 'r' },
+          { square: 'f4', color: 'b', moveNumber: i, piece: 'r' },
+          { square: 'c4', color: 'b', moveNumber: i, piece: 'b' },
         ]);
       }
       
@@ -312,7 +314,7 @@ describe('colorFlowAnalysis', () => {
       // Low volatility, many moves, gradual shifts
       for (let i = 1; i <= 50; i++) {
         const square = i % 2 === 0 ? 'c3' : 'c4';
-        addVisits(board, [{ square, color: 'w', moveNumber: i, pieceType: 'n' }]);
+        addVisits(board, [{ square, color: 'w', moveNumber: i, piece: 'n' }]);
       }
       
       const signature = extractColorFlowSignature(board, gameData, 50);
@@ -327,11 +329,11 @@ describe('colorFlowAnalysis', () => {
       
       // Minimal activity, late game, low volatility
       addVisits(board, [
-        { square: 'e1', color: 'w', moveNumber: 30, pieceType: 'k' },
-        { square: 'e2', color: 'w', moveNumber: 32, pieceType: 'k' },
-        { square: 'e3', color: 'w', moveNumber: 34, pieceType: 'k' },
-        { square: 'a7', color: 'w', moveNumber: 36, pieceType: 'p' },
-        { square: 'a8', color: 'w', moveNumber: 38, pieceType: 'p' },
+        { square: 'e1', color: 'w', moveNumber: 30, piece: 'k' },
+        { square: 'e2', color: 'w', moveNumber: 32, piece: 'k' },
+        { square: 'e3', color: 'w', moveNumber: 34, piece: 'k' },
+        { square: 'a7', color: 'w', moveNumber: 36, piece: 'p' },
+        { square: 'a8', color: 'w', moveNumber: 38, piece: 'p' },
       ]);
       
       const signature = extractColorFlowSignature(board, gameData, 45);
@@ -346,8 +348,8 @@ describe('colorFlowAnalysis', () => {
       // White dominant
       for (let i = 1; i <= 20; i++) {
         addVisits(board, [
-          { square: 'e4', color: 'w', moveNumber: i, pieceType: 'q' },
-          { square: 'd4', color: 'w', moveNumber: i, pieceType: 'r' },
+          { square: 'e4', color: 'w', moveNumber: i, piece: 'q' },
+          { square: 'd4', color: 'w', moveNumber: i, piece: 'r' },
         ]);
       }
       
@@ -363,8 +365,8 @@ describe('colorFlowAnalysis', () => {
       // Equal activity from both sides
       for (let i = 1; i <= 20; i++) {
         addVisits(board, [
-          { square: 'e4', color: 'w', moveNumber: i, pieceType: 'n' },
-          { square: 'e5', color: 'b', moveNumber: i, pieceType: 'n' },
+          { square: 'e4', color: 'w', moveNumber: i, piece: 'n' },
+          { square: 'e5', color: 'b', moveNumber: i, piece: 'n' },
         ]);
       }
       
@@ -383,7 +385,7 @@ describe('colorFlowAnalysis', () => {
       const gameData = createMockGameData();
       
       addVisits(board, [
-        { square: 'e4', color: 'w', moveNumber: 1, pieceType: 'p' },
+        { square: 'e4', color: 'w', moveNumber: 1, piece: 'p' },
       ]);
       
       const signature = extractColorFlowSignature(board, gameData, 1);
@@ -398,7 +400,7 @@ describe('colorFlowAnalysis', () => {
       
       for (let i = 1; i <= 30; i++) {
         addVisits(board, [
-          { square: 'd5', color: 'b', moveNumber: i, pieceType: 'q' },
+          { square: 'd5', color: 'b', moveNumber: i, piece: 'q' },
         ]);
       }
       
@@ -415,11 +417,11 @@ describe('colorFlowAnalysis', () => {
       for (let i = 1; i <= 20; i++) {
         const color = i % 2 === 0 ? 'w' : 'b';
         addVisits(board, [
-          { square: 'e4', color, moveNumber: i, pieceType: 'q' },
-          { square: 'd4', color, moveNumber: i, pieceType: 'r' },
-          { square: 'f4', color, moveNumber: i, pieceType: 'r' },
-          { square: 'c4', color, moveNumber: i, pieceType: 'n' },
-          { square: 'g4', color, moveNumber: i, pieceType: 'b' },
+          { square: 'e4', color, moveNumber: i, piece: 'q' },
+          { square: 'd4', color, moveNumber: i, piece: 'r' },
+          { square: 'f4', color, moveNumber: i, piece: 'r' },
+          { square: 'c4', color, moveNumber: i, piece: 'n' },
+          { square: 'g4', color, moveNumber: i, piece: 'b' },
         ]);
       }
       
@@ -440,9 +442,9 @@ describe('colorFlowAnalysis', () => {
       // Heavy kingside (e-h files)
       for (let i = 1; i <= 20; i++) {
         addVisits(board, [
-          { square: 'f4', color: 'w', moveNumber: i, pieceType: 'n' },
-          { square: 'g4', color: 'w', moveNumber: i, pieceType: 'b' },
-          { square: 'h4', color: 'w', moveNumber: i, pieceType: 'r' },
+          { square: 'f4', color: 'w', moveNumber: i, piece: 'n' },
+          { square: 'g4', color: 'w', moveNumber: i, piece: 'b' },
+          { square: 'h4', color: 'w', moveNumber: i, piece: 'r' },
         ]);
       }
       
@@ -458,9 +460,9 @@ describe('colorFlowAnalysis', () => {
       // Heavy queenside (a-d files)
       for (let i = 1; i <= 20; i++) {
         addVisits(board, [
-          { square: 'a4', color: 'w', moveNumber: i, pieceType: 'r' },
-          { square: 'b4', color: 'w', moveNumber: i, pieceType: 'n' },
-          { square: 'c4', color: 'w', moveNumber: i, pieceType: 'b' },
+          { square: 'a4', color: 'w', moveNumber: i, piece: 'r' },
+          { square: 'b4', color: 'w', moveNumber: i, piece: 'n' },
+          { square: 'c4', color: 'w', moveNumber: i, piece: 'b' },
         ]);
       }
       
@@ -475,14 +477,14 @@ describe('colorFlowAnalysis', () => {
       
       // Even distribution
       addVisits(board, [
-        { square: 'a4', color: 'w', moveNumber: 1, pieceType: 'n' },
-        { square: 'b4', color: 'w', moveNumber: 2, pieceType: 'n' },
-        { square: 'g4', color: 'w', moveNumber: 3, pieceType: 'n' },
-        { square: 'h4', color: 'w', moveNumber: 4, pieceType: 'n' },
-        { square: 'a5', color: 'b', moveNumber: 5, pieceType: 'n' },
-        { square: 'b5', color: 'b', moveNumber: 6, pieceType: 'n' },
-        { square: 'g5', color: 'b', moveNumber: 7, pieceType: 'n' },
-        { square: 'h5', color: 'b', moveNumber: 8, pieceType: 'n' },
+        { square: 'a4', color: 'w', moveNumber: 1, piece: 'n' },
+        { square: 'b4', color: 'w', moveNumber: 2, piece: 'n' },
+        { square: 'g4', color: 'w', moveNumber: 3, piece: 'n' },
+        { square: 'h4', color: 'w', moveNumber: 4, piece: 'n' },
+        { square: 'a5', color: 'b', moveNumber: 5, piece: 'n' },
+        { square: 'b5', color: 'b', moveNumber: 6, piece: 'n' },
+        { square: 'g5', color: 'b', moveNumber: 7, piece: 'n' },
+        { square: 'h5', color: 'b', moveNumber: 8, piece: 'n' },
       ]);
       
       const signature = extractColorFlowSignature(board, gameData, 8);
