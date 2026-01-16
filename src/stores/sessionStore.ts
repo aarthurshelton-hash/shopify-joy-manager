@@ -112,6 +112,19 @@ interface SessionState {
   clearSession: () => void;
 }
 
+// Synchronous storage wrapper that writes immediately
+const syncSessionStorage = {
+  getItem: (name: string): string | null => {
+    return sessionStorage.getItem(name);
+  },
+  setItem: (name: string, value: string): void => {
+    sessionStorage.setItem(name, value);
+  },
+  removeItem: (name: string): void => {
+    sessionStorage.removeItem(name);
+  },
+};
+
 export const useSessionStore = create<SessionState>()(
   persist(
     (set, get) => ({
@@ -128,11 +141,31 @@ export const useSessionStore = create<SessionState>()(
       returningFromOrder: false,
       
       // Set current visualization
-      setCurrentSimulation: (simulation, pgn = '', title = '') => set({
-        currentSimulation: simulation,
-        currentPgn: pgn,
-        currentGameTitle: title,
-      }),
+      setCurrentSimulation: (simulation, pgn = '', title = '') => {
+        set({
+          currentSimulation: simulation,
+          currentPgn: pgn,
+          currentGameTitle: title,
+        });
+        // Force immediate sync write to sessionStorage
+        const state = get();
+        const dataToStore = {
+          state: {
+            currentSimulation: simulation,
+            currentPgn: pgn,
+            currentGameTitle: title,
+            savedShareId: state.savedShareId,
+            capturedTimelineState: state.capturedTimelineState,
+            visualizationStateStack: state.visualizationStateStack,
+            creativeModeTransfer: state.creativeModeTransfer,
+            previousRoute: state.previousRoute,
+            navigationStack: state.navigationStack,
+            returningFromOrder: state.returningFromOrder,
+          },
+          version: 0,
+        };
+        sessionStorage.setItem('en-pensent-session', JSON.stringify(dataToStore));
+      },
       
       setSavedShareId: (shareId) => set({ savedShareId: shareId }),
       
@@ -229,7 +262,7 @@ export const useSessionStore = create<SessionState>()(
     }),
     {
       name: 'en-pensent-session',
-      storage: createJSONStorage(() => sessionStorage),
+      storage: createJSONStorage(() => syncSessionStorage),
       partialize: (state) => ({
         // Persist simulation for navigation back to visualization
         currentSimulation: state.currentSimulation,
