@@ -15,10 +15,12 @@ import { SubscriptionNotificationBell } from '@/components/notifications/Subscri
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 
 
+// PUBLIC navigation links - only shows public features
+// Trading, Stock Predictions, Strategic Plan are ADMIN ONLY
 const navLinks = [
   { to: '/play', label: 'Play', icon: Gamepad2, highlight: true },
   { to: '/creative-mode', label: 'Create', icon: Paintbrush, highlight: true },
-  { to: '/trading', label: 'Trading', icon: TrendingUp, highlight: true },
+  { to: '/code-analysis', label: 'Code Analysis', icon: TrendingUp, highlight: true },
   { to: '/marketplace', label: 'Marketplace', icon: ShoppingBag, highlight: false },
   { to: '/openings', label: 'Openings', icon: BookOpen, highlight: false },
   { to: '/about', label: 'About Us' },
