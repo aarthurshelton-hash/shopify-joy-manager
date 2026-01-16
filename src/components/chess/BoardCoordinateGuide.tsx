@@ -25,17 +25,21 @@ function extractCoordinateSignature(size: number, position: 'inside' | 'outside'
 
   const temporalFlow: TemporalFlow = {
     opening: normalizedSize,
-    midgame: normalizedSize,
-    endgame: normalizedSize,
+    middle: normalizedSize,
+    ending: normalizedSize,
+    trend: 'stable',
+    momentum: 0,
   };
 
   return {
     fingerprint: `coord-${position}-${size}`,
+    archetype: 'coordinate_guide',
     quadrantProfile,
     temporalFlow,
-    intensity: position === 'outside' ? 60 : 40,
-    dominantForce: 'coordinate_system',
-    keywords: ['board_coordinates', position, 'navigation'],
+    intensity: position === 'outside' ? 0.6 : 0.4,
+    dominantForce: 'balanced',
+    flowDirection: 'lateral',
+    criticalMoments: [],
   };
 }
 
