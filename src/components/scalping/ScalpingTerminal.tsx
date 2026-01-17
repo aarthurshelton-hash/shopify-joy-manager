@@ -503,7 +503,7 @@ export const ScalpingTerminal: React.FC = () => {
           </div>
         </div>
       ) : activeView === 'bigpicture' ? (
-        <BigPicturePanel state={multiMarket.bigPicture} />
+        <BigPicturePanel state={multiMarket?.bigPicture ?? null} />
       ) : activeView === 'positions' ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <SessionControl />
