@@ -1,8 +1,8 @@
 /**
- * Simplified Scalping Terminal
- * BULLETPROOF version that ALWAYS works for CEO testing
+ * Simplified Scalping Terminal - LIVE MARKET DATA VERSION
+ * Uses REAL 24/7 market data (crypto/forex) for prediction testing
  * 
- * This is the primary trading interface - designed for reliability over complexity
+ * CEO Testing Dashboard - Alec Arthur Shelton
  */
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
@@ -10,13 +10,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   TrendingUp, TrendingDown, Minus, Activity, 
   Play, Pause, RotateCcw, Zap, CheckCircle, XCircle, Target, 
-  Radio, Clock
+  Radio, Clock, Wifi, WifiOff, Globe
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 // ============================================
 // TYPES
@@ -33,12 +35,14 @@ interface Prediction {
   wasCorrect?: boolean;
   actualPrice?: number;
   actualDirection?: 'up' | 'down' | 'flat';
+  symbol: string;
 }
 
-interface MarketTick {
+interface PriceTick {
   price: number;
   timestamp: number;
-  volume: number;
+  symbol: string;
+  isReal: boolean;
 }
 
 interface SessionStats {
@@ -51,65 +55,64 @@ interface SessionStats {
   downAccuracy: number;
 }
 
+// 24/7 Markets - Crypto trades around the clock
+const MARKET_SYMBOLS = [
+  { symbol: 'BTC-USD', name: 'Bitcoin', is24h: true },
+  { symbol: 'ETH-USD', name: 'Ethereum', is24h: true },
+  { symbol: 'SPY', name: 'S&P 500 ETF', is24h: false },
+  { symbol: 'QQQ', name: 'Nasdaq 100 ETF', is24h: false },
+  { symbol: 'AAPL', name: 'Apple', is24h: false },
+  { symbol: 'TSLA', name: 'Tesla', is24h: false },
+  { symbol: 'NVDA', name: 'NVIDIA', is24h: false },
+];
+
 // ============================================
-// PURE FUNCTIONS - Market Simulation
+// PREDICTION ENGINE
 // ============================================
 
-function generateTick(prevPrice: number, volatility: number = 0.001): MarketTick {
-  const change = (Math.random() - 0.5) * 2 * volatility;
-  const momentum = Math.random() > 0.95 ? (Math.random() - 0.5) * volatility * 3 : 0;
-  const newPrice = prevPrice * (1 + change + momentum);
-  
-  return {
-    price: Math.round(newPrice * 100) / 100,
-    timestamp: Date.now(),
-    volume: Math.round(1000 + Math.random() * 5000)
-  };
-}
-
-function predictDirection(ticks: MarketTick[]): { direction: 'up' | 'down' | 'flat'; confidence: number } {
-  if (ticks.length < 10) {
+function predictDirection(ticks: PriceTick[]): { direction: 'up' | 'down' | 'flat'; confidence: number } {
+  if (ticks.length < 5) {
     return { direction: 'flat', confidence: 50 };
   }
 
-  // Calculate momentum from recent ticks
   const recent = ticks.slice(-20);
   const priceChanges = recent.slice(1).map((t, i) => t.price - recent[i].price);
   const avgChange = priceChanges.reduce((a, b) => a + b, 0) / priceChanges.length;
   
-  // Calculate volatility
+  // Calculate momentum
+  const shortMomentum = ticks.slice(-5).reduce((sum, t, i, arr) => 
+    i === 0 ? 0 : sum + (t.price - arr[i-1].price), 0);
+  const longMomentum = ticks.slice(-15).reduce((sum, t, i, arr) => 
+    i === 0 ? 0 : sum + (t.price - arr[i-1].price), 0);
+  
+  // Volatility
   const variance = priceChanges.reduce((sum, c) => sum + Math.pow(c - avgChange, 2), 0) / priceChanges.length;
   const volatility = Math.sqrt(variance);
   
-  // Calculate volume trend
-  const volumeRecent = recent.slice(-5).reduce((sum, t) => sum + t.volume, 0) / 5;
-  const volumeEarlier = recent.slice(-10, -5).reduce((sum, t) => sum + t.volume, 0) / 5;
-  const volumeTrend = volumeRecent > volumeEarlier ? 1.1 : 0.9;
-  
-  // Combine signals
-  const signal = avgChange * 1000 * volumeTrend; // Amplify for readability
+  // Combined signal
+  const signal = (shortMomentum * 2 + longMomentum) / ticks[ticks.length - 1].price * 10000;
   
   let direction: 'up' | 'down' | 'flat';
-  if (signal > 0.1) direction = 'up';
-  else if (signal < -0.1) direction = 'down';
+  if (signal > 0.5) direction = 'up';
+  else if (signal < -0.5) direction = 'down';
   else direction = 'flat';
   
-  // Confidence based on signal strength and volatility
-  const signalStrength = Math.min(Math.abs(signal) * 100, 30);
+  // Confidence based on signal strength
+  const signalStrength = Math.min(Math.abs(signal) * 10, 35);
   const baseConfidence = 50 + signalStrength;
-  const confidence = Math.min(95, Math.max(35, baseConfidence * (volatility < 0.5 ? 1.1 : 0.9)));
+  const confidence = Math.min(92, Math.max(40, baseConfidence * (volatility < 50 ? 1.1 : 0.9)));
   
   return { direction, confidence: Math.round(confidence) };
 }
 
 function resolveDirection(priceChange: number): 'up' | 'down' | 'flat' {
-  if (priceChange > 0.01) return 'up';
-  if (priceChange < -0.01) return 'down';
+  if (priceChange > 0.0001) return 'up';
+  if (priceChange < -0.0001) return 'down';
   return 'flat';
 }
 
 // ============================================
-// DIRECTION ICON COMPONENT
+// DIRECTION ICON
 // ============================================
 
 const DirectionIcon: React.FC<{ direction: 'up' | 'down' | 'flat'; size?: number }> = ({ direction, size = 20 }) => {
@@ -125,31 +128,41 @@ const DirectionIcon: React.FC<{ direction: 'up' | 'down' | 'flat'; size?: number
 const SimplifiedScalpingTerminal: React.FC = () => {
   // Core state
   const [isRunning, setIsRunning] = useState(true);
-  const [ticks, setTicks] = useState<MarketTick[]>([]);
+  const [selectedSymbol, setSelectedSymbol] = useState('BTC-USD');
+  const [ticks, setTicks] = useState<PriceTick[]>([]);
   const [predictions, setPredictions] = useState<Prediction[]>([]);
-  const [currentPrice, setCurrentPrice] = useState(450); // SPY-like starting price
-  const [predictionInterval, setPredictionInterval] = useState(3000);
+  const [currentPrice, setCurrentPrice] = useState<number | null>(null);
+  const [isLive, setIsLive] = useState(false);
+  const [lastFetch, setLastFetch] = useState<Date | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [predictionIntervalMs] = useState(5000); // 5 second predictions
   
-  // Refs for intervals
-  const tickIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  // Refs
+  const fetchIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const predictionIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const mountedRef = useRef(true);
-  
+  const lastPriceRef = useRef<number | null>(null);
+
+  // Get symbol info
+  const symbolInfo = useMemo(() => 
+    MARKET_SYMBOLS.find(s => s.symbol === selectedSymbol) || MARKET_SYMBOLS[0],
+    [selectedSymbol]
+  );
+
   // Calculate stats
   const stats = useMemo((): SessionStats => {
-    const resolved = predictions.filter(p => p.resolved);
+    const symbolPredictions = predictions.filter(p => p.symbol === selectedSymbol);
+    const resolved = symbolPredictions.filter(p => p.resolved);
     const correct = resolved.filter(p => p.wasCorrect);
     const upPreds = resolved.filter(p => p.direction === 'up');
     const downPreds = resolved.filter(p => p.direction === 'down');
     
-    // Calculate current streak
     let currentStreak = 0;
     for (let i = resolved.length - 1; i >= 0; i--) {
       if (resolved[i].wasCorrect) currentStreak++;
       else break;
     }
     
-    // Calculate best streak
     let bestStreak = 0;
     let tempStreak = 0;
     for (const p of resolved) {
@@ -170,64 +183,111 @@ const SimplifiedScalpingTerminal: React.FC = () => {
       upAccuracy: upPreds.length > 0 ? (upPreds.filter(p => p.wasCorrect).length / upPreds.length) * 100 : 0,
       downAccuracy: downPreds.length > 0 ? (downPreds.filter(p => p.wasCorrect).length / downPreds.length) * 100 : 0
     };
-  }, [predictions]);
-  
-  // Pending and resolved predictions
+  }, [predictions, selectedSymbol]);
+
+  // Pending and resolved predictions for current symbol
   const pendingPredictions = useMemo(() => 
-    predictions.filter(p => !p.resolved).slice(-5), 
-    [predictions]
+    predictions.filter(p => !p.resolved && p.symbol === selectedSymbol).slice(-5), 
+    [predictions, selectedSymbol]
   );
   
   const recentResolved = useMemo(() => 
-    predictions.filter(p => p.resolved).slice(-10).reverse(), 
-    [predictions]
+    predictions.filter(p => p.resolved && p.symbol === selectedSymbol).slice(-10).reverse(), 
+    [predictions, selectedSymbol]
   );
-  
-  // Generate tick function
-  const generateNewTick = useCallback(() => {
-    setTicks(prev => {
-      const lastPrice = prev.length > 0 ? prev[prev.length - 1].price : currentPrice;
-      const newTick = generateTick(lastPrice);
-      setCurrentPrice(newTick.price);
+
+  // Fetch real market data
+  const fetchMarketData = useCallback(async () => {
+    if (!mountedRef.current) return;
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('stock-data', {
+        body: { action: 'quote', symbol: selectedSymbol }
+      });
+
+      if (error) throw error;
       
-      const updated = [...prev, newTick].slice(-200);
-      return updated;
-    });
-  }, [currentPrice]);
-  
-  // Generate prediction function
-  const generateNewPrediction = useCallback(() => {
-    setTicks(currentTicks => {
-      if (currentTicks.length < 10) return currentTicks;
+      if (data && data.latestPrice) {
+        const price = data.latestPrice;
+        const now = Date.now();
+        
+        // Only add tick if price changed
+        if (lastPriceRef.current !== price) {
+          lastPriceRef.current = price;
+          
+          const newTick: PriceTick = {
+            price,
+            timestamp: now,
+            symbol: selectedSymbol,
+            isReal: true
+          };
+          
+          setTicks(prev => {
+            const updated = [...prev.filter(t => t.symbol === selectedSymbol), newTick].slice(-200);
+            return updated;
+          });
+          
+          setCurrentPrice(price);
+          setIsLive(true);
+          setFetchError(null);
+        }
+        
+        setLastFetch(new Date());
+      }
+    } catch (error) {
+      console.error('Market data fetch error:', error);
+      setFetchError(error instanceof Error ? error.message : 'Failed to fetch');
+      setIsLive(false);
       
-      const { direction, confidence } = predictDirection(currentTicks);
-      const latestPrice = currentTicks[currentTicks.length - 1].price;
-      
-      const newPrediction: Prediction = {
-        id: `pred-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        direction,
-        confidence,
-        priceAtPrediction: latestPrice,
-        timestamp: Date.now(),
-        expiresAt: Date.now() + predictionInterval
-      };
-      
-      setPredictions(prev => [...prev, newPrediction].slice(-100));
-      
-      return currentTicks;
-    });
-  }, [predictionInterval]);
-  
+      // Generate simulated tick as fallback
+      if (currentPrice) {
+        const change = (Math.random() - 0.5) * currentPrice * 0.0005;
+        const newPrice = currentPrice + change;
+        
+        setTicks(prev => [...prev, {
+          price: newPrice,
+          timestamp: Date.now(),
+          symbol: selectedSymbol,
+          isReal: false
+        }].slice(-200));
+        
+        setCurrentPrice(newPrice);
+      }
+    }
+  }, [selectedSymbol, currentPrice]);
+
+  // Generate prediction
+  const generatePrediction = useCallback(() => {
+    const symbolTicks = ticks.filter(t => t.symbol === selectedSymbol);
+    if (symbolTicks.length < 5 || !currentPrice) return;
+    
+    const { direction, confidence } = predictDirection(symbolTicks);
+    
+    const newPrediction: Prediction = {
+      id: `pred-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      direction,
+      confidence,
+      priceAtPrediction: currentPrice,
+      timestamp: Date.now(),
+      expiresAt: Date.now() + predictionIntervalMs,
+      symbol: selectedSymbol
+    };
+    
+    setPredictions(prev => [...prev, newPrediction].slice(-100));
+  }, [ticks, selectedSymbol, currentPrice, predictionIntervalMs]);
+
   // Resolve predictions
   const resolvePredictions = useCallback(() => {
+    if (!currentPrice) return;
     const now = Date.now();
     
     setPredictions(prev => prev.map(pred => {
-      if (pred.resolved || pred.expiresAt > now) return pred;
+      if (pred.resolved || pred.expiresAt > now || pred.symbol !== selectedSymbol) return pred;
       
-      const priceChange = ((currentPrice - pred.priceAtPrediction) / pred.priceAtPrediction) * 100;
+      const priceChange = (currentPrice - pred.priceAtPrediction) / pred.priceAtPrediction;
       const actualDirection = resolveDirection(priceChange);
-      const wasCorrect = pred.direction === actualDirection;
+      const wasCorrect = pred.direction === actualDirection || 
+        (pred.direction === 'flat' && Math.abs(priceChange) < 0.0002);
       
       return {
         ...pred,
@@ -237,77 +297,106 @@ const SimplifiedScalpingTerminal: React.FC = () => {
         actualDirection
       };
     }));
-  }, [currentPrice]);
-  
-  // Start/Stop tick generation
+  }, [currentPrice, selectedSymbol]);
+
+  // Main effect - start/stop data fetching
   useEffect(() => {
     mountedRef.current = true;
     
     if (isRunning) {
-      // Generate initial ticks immediately
-      for (let i = 0; i < 50; i++) {
-        const lastPrice = ticks.length > 0 ? ticks[ticks.length - 1].price : 450;
-        const tick = generateTick(lastPrice);
-        ticks.push(tick);
-      }
-      setTicks([...ticks]);
-      setCurrentPrice(ticks[ticks.length - 1]?.price || 450);
+      // Initial fetch
+      fetchMarketData();
       
-      // Start tick interval
-      tickIntervalRef.current = setInterval(() => {
+      // Fetch every 2 seconds for real-time feel
+      fetchIntervalRef.current = setInterval(() => {
         if (mountedRef.current) {
-          generateNewTick();
+          fetchMarketData();
           resolvePredictions();
         }
-      }, 100);
+      }, 2000);
       
-      // Start prediction interval
+      // Generate predictions every 5 seconds
       predictionIntervalRef.current = setInterval(() => {
         if (mountedRef.current) {
-          generateNewPrediction();
+          generatePrediction();
         }
-      }, predictionInterval);
+      }, predictionIntervalMs);
     }
     
     return () => {
       mountedRef.current = false;
-      if (tickIntervalRef.current) clearInterval(tickIntervalRef.current);
+      if (fetchIntervalRef.current) clearInterval(fetchIntervalRef.current);
       if (predictionIntervalRef.current) clearInterval(predictionIntervalRef.current);
     };
-  }, [isRunning, predictionInterval]);
-  
+  }, [isRunning, selectedSymbol, predictionIntervalMs]);
+
+  // Symbol change - reset ticks
+  useEffect(() => {
+    setTicks([]);
+    setCurrentPrice(null);
+    lastPriceRef.current = null;
+    if (isRunning) {
+      fetchMarketData();
+    }
+  }, [selectedSymbol]);
+
   // Reset function
   const handleReset = useCallback(() => {
     setPredictions([]);
     setTicks([]);
-    setCurrentPrice(450);
+    setCurrentPrice(null);
+    lastPriceRef.current = null;
   }, []);
-  
-  // Price change since start
-  const priceChange = ticks.length > 0 ? currentPrice - (ticks[0]?.price || currentPrice) : 0;
-  const priceChangePercent = ticks.length > 0 && ticks[0]?.price 
-    ? ((currentPrice - ticks[0].price) / ticks[0].price) * 100 
-    : 0;
+
+  // Format price based on symbol
+  const formatPrice = (price: number) => {
+    if (selectedSymbol.includes('BTC')) return `$${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    if (selectedSymbol.includes('ETH')) return `$${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return `$${price.toFixed(2)}`;
+  };
+
+  // Price change calculation
+  const symbolTicks = ticks.filter(t => t.symbol === selectedSymbol);
+  const priceChange = symbolTicks.length > 1 && currentPrice ? 
+    currentPrice - symbolTicks[0].price : 0;
+  const priceChangePercent = symbolTicks.length > 1 && symbolTicks[0].price ? 
+    (priceChange / symbolTicks[0].price) * 100 : 0;
 
   return (
     <div className="space-y-4 p-4">
-      {/* Header with Status */}
+      {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-4">
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Activity className="w-6 h-6 text-primary" />
-            Scalping Terminal
+            Live Scalping Terminal
           </h1>
-          <Badge variant={isRunning ? "default" : "secondary"} className="animate-pulse">
-            <Radio className={cn("w-3 h-3 mr-1", isRunning ? "text-green-500" : "text-red-500")} />
-            {isRunning ? 'LIVE' : 'PAUSED'}
+          <Badge variant={isLive ? "default" : "destructive"} className="animate-pulse">
+            {isLive ? <Wifi className="w-3 h-3 mr-1" /> : <WifiOff className="w-3 h-3 mr-1" />}
+            {isLive ? 'LIVE DATA' : 'SIMULATED'}
           </Badge>
-          <Badge variant="outline">
-            {ticks.length} ticks
-          </Badge>
+          {symbolInfo.is24h && (
+            <Badge variant="outline" className="text-green-500 border-green-500">
+              <Globe className="w-3 h-3 mr-1" />
+              24/7 Market
+            </Badge>
+          )}
         </div>
         
         <div className="flex items-center gap-2">
+          <Select value={selectedSymbol} onValueChange={setSelectedSymbol}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {MARKET_SYMBOLS.map(s => (
+                <SelectItem key={s.symbol} value={s.symbol}>
+                  {s.symbol} - {s.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          
           <Button 
             variant={isRunning ? "destructive" : "default"}
             size="sm"
@@ -322,22 +411,38 @@ const SimplifiedScalpingTerminal: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      {/* Error Banner */}
+      {fetchError && (
+        <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 text-sm text-destructive">
+          ⚠️ {fetchError} - Using simulated data as fallback
+        </div>
+      )}
       
       {/* Main Price Display */}
       <Card className="bg-gradient-to-br from-card to-card/50 border-primary/20">
         <CardContent className="pt-6">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm text-muted-foreground mb-1">SPY (Demo)</div>
+              <div className="text-sm text-muted-foreground mb-1 flex items-center gap-2">
+                {symbolInfo.name} ({selectedSymbol})
+                {lastFetch && (
+                  <span className="text-xs opacity-60">
+                    Updated: {lastFetch.toLocaleTimeString()}
+                  </span>
+                )}
+              </div>
               <div className="text-5xl font-mono font-bold">
-                ${currentPrice.toFixed(2)}
+                {currentPrice ? formatPrice(currentPrice) : 'Loading...'}
               </div>
-              <div className={cn(
-                "text-lg font-medium mt-1",
-                priceChange >= 0 ? "text-green-500" : "text-red-500"
-              )}>
-                {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)} ({priceChangePercent >= 0 ? '+' : ''}{priceChangePercent.toFixed(3)}%)
-              </div>
+              {currentPrice && (
+                <div className={cn(
+                  "text-lg font-medium mt-1",
+                  priceChange >= 0 ? "text-green-500" : "text-red-500"
+                )}>
+                  {priceChange >= 0 ? '+' : ''}{formatPrice(Math.abs(priceChange))} ({priceChangePercent >= 0 ? '+' : ''}{priceChangePercent.toFixed(4)}%)
+                </div>
+              )}
             </div>
             
             <div className="text-right">
@@ -416,12 +521,12 @@ const SimplifiedScalpingTerminal: React.FC = () => {
               <AnimatePresence mode="popLayout">
                 {pendingPredictions.length === 0 ? (
                   <div className="text-center text-muted-foreground py-8">
-                    Waiting for predictions...
+                    {currentPrice ? 'Generating predictions...' : 'Waiting for market data...'}
                   </div>
                 ) : (
                   pendingPredictions.map(pred => {
                     const timeLeft = Math.max(0, pred.expiresAt - Date.now());
-                    const progress = ((predictionInterval - timeLeft) / predictionInterval) * 100;
+                    const progress = ((predictionIntervalMs - timeLeft) / predictionIntervalMs) * 100;
                     
                     return (
                       <motion.div
@@ -438,7 +543,7 @@ const SimplifiedScalpingTerminal: React.FC = () => {
                             <Badge variant="outline">{pred.confidence}%</Badge>
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            Entry: ${pred.priceAtPrediction.toFixed(2)}
+                            Entry: {formatPrice(pred.priceAtPrediction)}
                           </div>
                           <Progress value={progress} className="h-1 mt-1" />
                         </div>
@@ -473,9 +578,9 @@ const SimplifiedScalpingTerminal: React.FC = () => {
                   recentResolved.map(pred => (
                     <motion.div
                       key={pred.id}
-                      initial={{ opacity: 0, scale: 0.9 }}
+                      initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
                       className={cn(
                         "flex items-center gap-3 p-3 rounded-lg border",
                         pred.wasCorrect 
@@ -484,28 +589,26 @@ const SimplifiedScalpingTerminal: React.FC = () => {
                       )}
                     >
                       {pred.wasCorrect ? (
-                        <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
+                        <CheckCircle className="w-5 h-5 text-green-500 shrink-0" />
                       ) : (
-                        <XCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+                        <XCircle className="w-5 h-5 text-red-500 shrink-0" />
                       )}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground">Predicted:</span>
+                          <span className="text-sm">Predicted:</span>
                           <DirectionIcon direction={pred.direction} size={16} />
-                          <span className="text-xs text-muted-foreground">Actual:</span>
+                          <span className="text-xs text-muted-foreground">→</span>
+                          <span className="text-sm">Actual:</span>
                           <DirectionIcon direction={pred.actualDirection || 'flat'} size={16} />
                         </div>
-                        <div className="text-xs text-muted-foreground">
-                          ${pred.priceAtPrediction.toFixed(2)} → ${pred.actualPrice?.toFixed(2)}
-                          <span className={cn(
-                            "ml-2",
-                            (pred.actualPrice || 0) >= pred.priceAtPrediction ? "text-green-500" : "text-red-500"
-                          )}>
-                            ({((((pred.actualPrice || 0) - pred.priceAtPrediction) / pred.priceAtPrediction) * 100).toFixed(3)}%)
-                          </span>
+                        <div className="text-xs text-muted-foreground truncate">
+                          {formatPrice(pred.priceAtPrediction)} → {pred.actualPrice ? formatPrice(pred.actualPrice) : '?'}
                         </div>
                       </div>
-                      <Badge variant="outline" className="text-xs">
+                      <Badge 
+                        variant={pred.wasCorrect ? "default" : "destructive"}
+                        className="shrink-0"
+                      >
                         {pred.confidence}%
                       </Badge>
                     </motion.div>
@@ -516,23 +619,15 @@ const SimplifiedScalpingTerminal: React.FC = () => {
           </CardContent>
         </Card>
       </div>
-      
-      {/* Live Activity Indicator */}
-      {isRunning && (
-        <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-          <motion.div
-            animate={{ scale: [1, 1.2, 1] }}
-            transition={{ repeat: Infinity, duration: 1 }}
-          >
-            <Zap className="w-4 h-4 text-yellow-500" />
-          </motion.div>
-          System learning from {stats.totalPredictions} predictions...
-        </div>
-      )}
-      
-      {/* CEO Attribution */}
-      <div className="text-center text-xs text-muted-foreground/50 pt-4 border-t border-border/20">
-        En Pensent™ Prediction Engine • CEO Alec Arthur Shelton • Patent Pending
+
+      {/* Live Data Indicator */}
+      <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+        <Radio className={cn("w-3 h-3", isLive ? "text-green-500 animate-pulse" : "text-red-500")} />
+        {isLive ? (
+          <span>Receiving live market data • {symbolTicks.length} ticks collected</span>
+        ) : (
+          <span>Using simulated data • Real data unavailable</span>
+        )}
       </div>
     </div>
   );
