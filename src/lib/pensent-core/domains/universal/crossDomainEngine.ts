@@ -39,6 +39,10 @@ import { molecularAdapter, generateMarketMolecularData } from './adapters/molecu
 import { climateAtmosphericAdapter, generateMarketClimateData } from './adapters/climateAtmosphericAdapter';
 import { universalPatternsAdapter, generateUniversalPatternData, calculateTruthScore } from './adapters/universalPatternsAdapter';
 
+// Human Behavioral Dynamics Adapters (19 total domains)
+import { competitiveDynamicsAdapter } from './adapters/competitiveDynamicsAdapter';
+import { humanAttractionAdapter } from './adapters/humanAttractionAdapter';
+
 class CrossDomainEngine {
   private state: UniversalEngineState;
   private correlationHistory: Map<string, number[]> = new Map();
