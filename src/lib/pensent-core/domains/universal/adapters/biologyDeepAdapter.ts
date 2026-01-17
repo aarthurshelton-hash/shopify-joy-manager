@@ -12,9 +12,9 @@
  * Inventor: Alec Arthur Shelton
  */
 
-import type { UniversalSignal } from '../types';
+import type { DomainSignature } from '../types';
 
-type TemporalSignature = UniversalSignal['signature'];
+type TemporalSignature = DomainSignature;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // DNA - THE CODE OF LIFE
@@ -345,11 +345,11 @@ export interface BiologyDeepData {
 
 export function extractBiologyDeepSignature(data: BiologyDeepData): TemporalSignature {
   // Cell cycle to market phase
-  const cellCycleMap: Record<string, { expansion: number; contraction: number; order: number; chaos: number }> = {
-    G1: { expansion: 0.6, contraction: 0.4, order: 0.7, chaos: 0.3 },
-    S: { expansion: 0.7, contraction: 0.3, order: 0.6, chaos: 0.4 },
-    G2: { expansion: 0.8, contraction: 0.2, order: 0.5, chaos: 0.5 },
-    M: { expansion: 0.9, contraction: 0.1, order: 0.2, chaos: 0.8 },
+  const cellCycleMap: Record<string, { aggressive: number; defensive: number; tactical: number; strategic: number }> = {
+    G1: { aggressive: 0.4, defensive: 0.6, tactical: 0.3, strategic: 0.7 },
+    S: { aggressive: 0.5, defensive: 0.5, tactical: 0.4, strategic: 0.6 },
+    G2: { aggressive: 0.6, defensive: 0.4, tactical: 0.5, strategic: 0.5 },
+    M: { aggressive: 0.9, defensive: 0.1, tactical: 0.8, strategic: 0.2 },
   };
   const cellState = cellCycleMap[data.cellCyclePhase];
   
@@ -372,34 +372,33 @@ export function extractBiologyDeepSignature(data: BiologyDeepData): TemporalSign
   };
   
   const quadrantProfile = {
-    expansion: cellState.expansion || 0.5,
-    contraction: 1 - (cellState.expansion || 0.5),
-    order: cellState.order || (1 - data.mutationRate),
-    chaos: cellState.chaos || data.mutationRate,
+    aggressive: cellState.aggressive || 0.5,
+    defensive: 1 - (cellState.aggressive || 0.5),
+    tactical: cellState.tactical || (data.mutationRate),
+    strategic: cellState.strategic || (1 - data.mutationRate),
   };
   
   const forces = Object.entries(quadrantProfile);
   forces.sort((a, b) => b[1] - a[1]);
-  const dominantForce = forces[0][0] as 'expansion' | 'contraction' | 'order' | 'chaos';
+  const dominantForce = forces[0][0] as 'aggressive' | 'defensive' | 'tactical' | 'strategic';
   
   const intensity = (brainwaveIntensity[data.brainwaveState] + data.heartRateVariability) / 2;
   
   return {
-    fingerprint: `BIO-${data.cellCyclePhase}-${data.brainwaveState}`,
-    dominantForce,
-    intensity,
-    flowDirection: evolutionFlow as 'ascending' | 'descending' | 'oscillating' | 'stable',
+    domain: 'bio',
     quadrantProfile,
     temporalFlow: {
       early: isPeakHours ? 0.8 : 0.3,
       mid: data.heartRateVariability,
       late: isAwakeHours ? 0.7 : 0.2,
     },
-    criticalMoments: [{
-      position: data.circadianHour / 24,
-      type: isPeakHours ? 'peak' : 'trough',
-      significance: intensity,
-    }],
+    intensity,
+    momentum: brainwaveIntensity[data.brainwaveState],
+    volatility: data.mutationRate,
+    dominantFrequency: data.circadianHour / 24,
+    harmonicResonance: data.heartRateVariability,
+    phaseAlignment: data.respiratoryRatio,
+    extractedAt: Date.now(),
   };
 }
 

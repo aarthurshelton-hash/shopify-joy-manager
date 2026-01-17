@@ -12,9 +12,9 @@
  * Inventor: Alec Arthur Shelton
  */
 
-import type { UniversalSignal } from '../types';
+import type { DomainSignature } from '../types';
 
-type TemporalSignature = UniversalSignal['signature'];
+type TemporalSignature = DomainSignature;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // CELESTIAL CYCLES - THE COSMIC CLOCK
@@ -312,26 +312,26 @@ export function extractCosmicSignature(data: CosmicData): TemporalSignature {
   const seasonalBias = isWinterQuarter ? 0.7 : isSummerQuarter ? 0.4 : 0.5;
   
   // Stellar archetype mapping
-  const stellarArchetypes: Record<string, { expansion: number; contraction: number; order: number; chaos: number }> = {
-    mainSequence: { expansion: 0.6, contraction: 0.4, order: 0.8, chaos: 0.2 },
-    redGiant: { expansion: 0.9, contraction: 0.1, order: 0.4, chaos: 0.6 },
-    supernova: { expansion: 0.2, contraction: 0.8, order: 0.05, chaos: 0.95 },
-    neutronStar: { expansion: 0.3, contraction: 0.7, order: 0.9, chaos: 0.1 },
-    blackHole: { expansion: 0.05, contraction: 0.95, order: 0.6, chaos: 0.4 },
+  const stellarArchetypes: Record<string, { aggressive: number; defensive: number; tactical: number; strategic: number }> = {
+    mainSequence: { aggressive: 0.4, defensive: 0.6, tactical: 0.5, strategic: 0.8 },
+    redGiant: { aggressive: 0.9, defensive: 0.1, tactical: 0.6, strategic: 0.4 },
+    supernova: { aggressive: 0.8, defensive: 0.2, tactical: 0.95, strategic: 0.05 },
+    neutronStar: { aggressive: 0.3, defensive: 0.7, tactical: 0.4, strategic: 0.9 },
+    blackHole: { aggressive: 0.05, defensive: 0.95, tactical: 0.4, strategic: 0.6 },
   };
   
-  const archetype = stellarArchetypes[data.currentStellarArchetype] || { expansion: 0.5, contraction: 0.5, order: 0.5, chaos: 0.5 };
+  const archetype = stellarArchetypes[data.currentStellarArchetype] || { aggressive: 0.5, defensive: 0.5, tactical: 0.5, strategic: 0.5 };
   
   const quadrantProfile = {
-    expansion: archetype.expansion || (lunarSentiment > 0.6 ? 0.7 : 0.3),
-    contraction: archetype.contraction || (lunarSentiment < 0.4 ? 0.7 : 0.3),
-    order: archetype.order || (1 - solarVolatility),
-    chaos: archetype.chaos || solarVolatility,
+    aggressive: archetype.aggressive || (lunarSentiment > 0.6 ? 0.7 : 0.3),
+    defensive: archetype.defensive || (lunarSentiment < 0.4 ? 0.7 : 0.3),
+    tactical: archetype.tactical || (1 - solarVolatility),
+    strategic: archetype.strategic || solarVolatility,
   };
   
   const forces = Object.entries(quadrantProfile);
   forces.sort((a, b) => b[1] - a[1]);
-  const dominantForce = forces[0][0] as 'expansion' | 'contraction' | 'order' | 'chaos';
+  const dominantForce = forces[0][0] as 'aggressive' | 'defensive' | 'tactical' | 'strategic';
   
   const intensity = (lunarSentiment + data.cosmicExpansionRate + data.galacticAlignment) / 3;
   
@@ -341,21 +341,20 @@ export function extractCosmicSignature(data: CosmicData): TemporalSignature {
     solarVolatility > 0.7 ? 'oscillating' : 'stable';
   
   return {
-    fingerprint: `COSMIC-${data.currentStellarArchetype}-L${Math.floor(data.lunarPhase)}`,
-    dominantForce,
-    intensity,
-    flowDirection: flowDirection as 'ascending' | 'descending' | 'oscillating' | 'stable',
+    domain: 'bio', // Using closest available domain type
     quadrantProfile,
     temporalFlow: {
       early: seasonalBias,
       mid: lunarSentiment,
       late: data.cosmicExpansionRate,
     },
-    criticalMoments: [{
-      position: data.lunarPhase / 29.53,
-      type: lunarSentiment > 0.8 ? 'peak' : lunarSentiment < 0.4 ? 'trough' : 'inflection',
-      significance: solarVolatility,
-    }],
+    intensity,
+    momentum: lunarSentiment,
+    volatility: solarVolatility,
+    dominantFrequency: data.lunarPhase / 29.53,
+    harmonicResonance: data.galacticAlignment,
+    phaseAlignment: data.cosmicExpansionRate,
+    extractedAt: Date.now(),
   };
 }
 

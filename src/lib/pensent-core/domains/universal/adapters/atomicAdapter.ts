@@ -12,9 +12,9 @@
  * Inventor: Alec Arthur Shelton
  */
 
-import type { UniversalSignal } from '../types';
+import type { DomainSignature } from '../types';
 
-type TemporalSignature = UniversalSignal['signature'];
+type TemporalSignature = DomainSignature;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // PERIODIC TABLE AS TEMPORAL PATTERN MAP
@@ -274,12 +274,12 @@ export function extractAtomicSignature(data: AtomicData): TemporalSignature {
   
   // Calculate quadrant profile based on atomic properties
   const quadrantProfile = {
-    expansion: data.reactivityPotential * 0.8 + (1 - data.stabilityIndex) * 0.2,
-    contraction: data.stabilityIndex * 0.8 + (1 - data.reactivityPotential) * 0.2,
-    order: data.quantumState.orbitalType === 's' ? 0.9 : 
+    aggressive: data.reactivityPotential * 0.8 + (1 - data.stabilityIndex) * 0.2,
+    defensive: data.stabilityIndex * 0.8 + (1 - data.reactivityPotential) * 0.2,
+    tactical: data.quantumState.orbitalType === 's' ? 0.9 : 
            data.quantumState.orbitalType === 'p' ? 0.7 :
            data.quantumState.orbitalType === 'd' ? 0.4 : 0.2,
-    chaos: 1 - (data.quantumState.orbitalType === 's' ? 0.9 : 
+    strategic: 1 - (data.quantumState.orbitalType === 's' ? 0.9 : 
                 data.quantumState.orbitalType === 'p' ? 0.7 :
                 data.quantumState.orbitalType === 'd' ? 0.4 : 0.2),
   };
@@ -287,7 +287,7 @@ export function extractAtomicSignature(data: AtomicData): TemporalSignature {
   // Determine dominant force
   const forces = Object.entries(quadrantProfile);
   forces.sort((a, b) => b[1] - a[1]);
-  const dominantForce = forces[0][0] as 'expansion' | 'contraction' | 'order' | 'chaos';
+  const dominantForce = forces[0][0] as 'aggressive' | 'defensive' | 'tactical' | 'strategic';
   
   // Calculate intensity from energy and reactivity
   const intensity = (data.spectralEnergy + data.reactivityPotential) / 2;
@@ -297,21 +297,20 @@ export function extractAtomicSignature(data: AtomicData): TemporalSignature {
                         spin.direction === 'short' ? 'descending' : 'oscillating';
   
   return {
-    fingerprint: `ATOMIC-${data.elementGroup}-${data.quantumState.principalLevel}${data.quantumState.orbitalType}`,
-    dominantForce,
-    intensity,
-    flowDirection: flowDirection as 'ascending' | 'descending' | 'oscillating' | 'stable',
+    domain: 'bio', // Using closest available domain type
     quadrantProfile,
     temporalFlow: {
       early: data.reactivityPotential,
       mid: data.spectralEnergy,
       late: data.stabilityIndex,
     },
-    criticalMoments: [{
-      position: data.spectralEnergy,
-      type: intensity > 0.7 ? 'peak' : intensity < 0.3 ? 'trough' : 'inflection',
-      significance: intensity,
-    }],
+    intensity,
+    momentum: data.spectralEnergy,
+    volatility: data.reactivityPotential,
+    dominantFrequency: data.resonanceFrequency,
+    harmonicResonance: data.stabilityIndex,
+    phaseAlignment: (data.quantumState.principalLevel / 5),
+    extractedAt: Date.now(),
   };
 }
 
