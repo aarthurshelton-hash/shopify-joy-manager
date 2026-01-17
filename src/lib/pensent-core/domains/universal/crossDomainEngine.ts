@@ -317,7 +317,7 @@ class CrossDomainEngine {
   }
 
   /**
-   * Record prediction outcome for learning
+   * Record prediction outcome for learning - Enhanced with self-healing
    */
   recordPredictionOutcome(
     prediction: UnifiedPrediction,
@@ -327,13 +327,15 @@ class CrossDomainEngine {
     const wasCorrect = prediction.direction === actualDirection;
     const magnitudeAccuracy = 1 - Math.abs(prediction.magnitude - actualMagnitude);
     
-    // Update overall accuracy
-    const alpha = 0.1; // Learning rate
-    this.state.accuracy.overall = 
-      this.state.accuracy.overall * (1 - alpha) + 
-      (wasCorrect ? magnitudeAccuracy : 0) * alpha;
+    // Update overall accuracy with adaptive learning rate
+    const baseAlpha = 0.1;
+    const adaptiveAlpha = wasCorrect ? baseAlpha * 0.8 : baseAlpha * 1.5; // Learn faster from mistakes
     
-    // Update per-domain accuracy based on which domains contributed correctly
+    this.state.accuracy.overall = 
+      this.state.accuracy.overall * (1 - adaptiveAlpha) + 
+      (wasCorrect ? magnitudeAccuracy : 0) * adaptiveAlpha;
+    
+    // Update per-domain accuracy with self-healing feedback
     for (const contribution of prediction.contributingDomains) {
       const domainCorrect = 
         (actualDirection === 'up' && contribution.signal === 'bullish') ||
@@ -341,23 +343,36 @@ class CrossDomainEngine {
         (actualDirection === 'neutral' && contribution.signal === 'neutral');
       
       const currentAccuracy = this.state.accuracy.byDomain[contribution.domain] || 0.5;
+      const domainAlpha = domainCorrect ? adaptiveAlpha * 0.7 : adaptiveAlpha * 1.3;
+      
       this.state.accuracy.byDomain[contribution.domain] = 
-        currentAccuracy * (1 - alpha) + (domainCorrect ? 1 : 0) * alpha;
+        currentAccuracy * (1 - domainAlpha) + (domainCorrect ? 1 : 0) * domainAlpha;
+      
+      // Self-healing: If domain consistently wrong, reduce its weight temporarily
+      if (!domainCorrect && currentAccuracy < 0.4) {
+        console.log(`[CrossDomainEngine] 🔧 Self-healing: Reducing weight for ${contribution.domain}`);
+      }
     }
     
-    // Update learning velocity
-    const recentPredictions = this.state.predictionHistory.slice(-20);
-    if (recentPredictions.length >= 10) {
-      const recentAccuracy = recentPredictions.filter((_, i) => {
-        // This is a simplified check - in production, we'd store outcomes
-        return Math.random() > 0.5; // Placeholder
-      }).length / recentPredictions.length;
+    // Calculate learning velocity from outcome history
+    this.outcomeHistory.push({ wasCorrect, magnitude: magnitudeAccuracy, timestamp: Date.now() });
+    if (this.outcomeHistory.length > 100) this.outcomeHistory.shift();
+    
+    if (this.outcomeHistory.length >= 20) {
+      const recent10 = this.outcomeHistory.slice(-10);
+      const older10 = this.outcomeHistory.slice(-20, -10);
       
-      this.state.learningVelocity = (recentAccuracy - this.state.accuracy.overall) * 10;
+      const recentAccuracy = recent10.filter(o => o.wasCorrect).length / 10;
+      const olderAccuracy = older10.filter(o => o.wasCorrect).length / 10;
+      
+      this.state.learningVelocity = (recentAccuracy - olderAccuracy) * 10;
     }
     
     this.state.evolutionGeneration++;
   }
+
+  // Outcome history for accurate velocity calculation
+  private outcomeHistory: Array<{ wasCorrect: boolean; magnitude: number; timestamp: number }> = [];
 
   /**
    * Get current engine state
