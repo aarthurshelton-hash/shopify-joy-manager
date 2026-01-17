@@ -92,60 +92,76 @@ const App = () => (
             <VisionRestorer />
             <BackToMarketplaceButton />
             <Routes>
+              {/* ===== PUBLIC ROUTES - Chess Visualization & Code Analyzer ===== */}
               <Route path="/" element={<Index />} />
               <Route path="/my-palettes" element={<MyPalettes />} />
               <Route path="/my-vision" element={<MyVision />} />
               <Route path="/my-vision/:id" element={<GalleryDetailRedirect />} />
               <Route path="/about" element={<About />} />
-              <Route path="/investors" element={<Investors />} />
-              <Route path="/analytics" element={<Analytics />} />
-              <Route path="/leaderboard" element={<Leaderboard />} />
               <Route path="/play" element={<Play />} />
               <Route path="/creative-mode" element={<CreativeMode />} />
               <Route path="/game-history" element={<GameHistory />} />
-              <Route path="/news" element={<News />} />
-              <Route path="/qr-preview" element={<QRMockup />} />
               <Route path="/v/:shareId" element={<VisualizationRedirect />} />
               <Route path="/g/:gameHash" element={<GameView />} />
-              <Route path="/order-print" element={<OrderPrint />} />
-              <Route path="/marketplace" element={<Marketplace />} />
-              <Route path="/marketplace/:id" element={<MarketplaceDetailRedirect />} />
-              <Route path="/admin/seed-marketplace" element={<AdminSeedMarketplace />} />
-              <Route path="/admin/palettes" element={<PaletteAdminPage />} />
-              <Route path="/admin/moderation" element={<AdminModeration />} />
-              <Route path="/admin/economics" element={<AdminEconomics />} />
-              <Route path="/admin/withdrawals" element={<AdminWithdrawals />} />
-              <Route path="/admin/dmca" element={<AdminDMCA />} />
-              <Route path="/admin/watermark-verification" element={<AdminWatermarkVerification />} />
-              <Route path="/admin/batch-watermark-verification" element={<AdminBatchWatermarkVerification />} />
+              <Route path="/openings" element={<OpeningEncyclopedia />} />
+              <Route path="/code-analysis" element={<CodeAnalysis />} />
+              <Route path="/analysis/:id" element={<SharedAnalysisReport />} />
               <Route path="/account" element={<Account />} />
-              <Route path="/book" element={<BookGenerator />} />
-              <Route path="/education-fund" element={<EducationFund />} />
-              <Route path="/creator-dashboard" element={<CreatorDashboard />} />
-              <Route path="/vision-scanner" element={<VisionScannerPage />} />
               <Route path="/terms" element={<TermsOfService />} />
               <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/dmca" element={<DMCA />} />
               <Route path="/dmca/counter-notification" element={<DMCACounterNotification />} />
               <Route path="/dmca/status" element={<DMCAStatusTracking />} />
-              <Route path="/premium-analytics" element={<PremiumAnalytics />} />
-              <Route path="/admin/ceo-dashboard" element={<AdminCEODashboard />} />
-              <Route path="/admin/ai-art-bank" element={<AdminAIArtBank />} />
-              <Route path="/openings" element={<OpeningEncyclopedia />} />
-              <Route path="/code-analysis" element={<CodeAnalysis />} />
-              <Route path="/academic-paper" element={<AcademicPaper />} />
-              <Route path="/sdk-docs" element={<SDKDocs />} />
-              <Route path="/analysis/:id" element={<SharedAnalysisReport />} />
-              <Route path="/why-this-matters" element={<WhyThisMatters />} />
-              <Route path="/investor-portal" element={<InvestorPortal />} />
-              <Route path="/early-access" element={<EarlyAccess />} />
-              <Route path="/showcase" element={<Showcase />} />
               
-              {/* ADMIN ONLY - Private En Pensent Features */}
+              {/* ===== CEO ONLY - All Business & Proprietary Features ===== */}
+              {/* Alec Arthur Shelton (a.arthur.shelton@gmail.com) exclusive access */}
+              
+              {/* Marketplace & Commerce */}
+              <Route path="/marketplace" element={<AdminRoute featureName="Marketplace"><Marketplace /></AdminRoute>} />
+              <Route path="/marketplace/:id" element={<AdminRoute featureName="Marketplace"><MarketplaceDetailRedirect /></AdminRoute>} />
+              <Route path="/order-print" element={<AdminRoute featureName="Print Orders"><OrderPrint /></AdminRoute>} />
+              <Route path="/book" element={<AdminRoute featureName="Book Generator"><BookGenerator /></AdminRoute>} />
+              
+              {/* Analytics & Dashboards */}
+              <Route path="/analytics" element={<AdminRoute featureName="Analytics"><Analytics /></AdminRoute>} />
+              <Route path="/leaderboard" element={<AdminRoute featureName="Leaderboard"><Leaderboard /></AdminRoute>} />
+              <Route path="/premium-analytics" element={<AdminRoute featureName="Premium Analytics"><PremiumAnalytics /></AdminRoute>} />
+              <Route path="/creator-dashboard" element={<AdminRoute featureName="Creator Dashboard"><CreatorDashboard /></AdminRoute>} />
+              
+              {/* Business & Investor Pages */}
+              <Route path="/investors" element={<AdminRoute featureName="Investors"><Investors /></AdminRoute>} />
+              <Route path="/investor-portal" element={<AdminRoute featureName="Investor Portal"><InvestorPortal /></AdminRoute>} />
+              <Route path="/education-fund" element={<AdminRoute featureName="Education Fund"><EducationFund /></AdminRoute>} />
+              <Route path="/news" element={<AdminRoute featureName="News"><News /></AdminRoute>} />
+              <Route path="/why-this-matters" element={<AdminRoute featureName="Why This Matters"><WhyThisMatters /></AdminRoute>} />
+              <Route path="/early-access" element={<AdminRoute featureName="Early Access"><EarlyAccess /></AdminRoute>} />
+              <Route path="/showcase" element={<AdminRoute featureName="Showcase"><Showcase /></AdminRoute>} />
+              <Route path="/qr-preview" element={<AdminRoute featureName="QR Preview"><QRMockup /></AdminRoute>} />
+              
+              {/* Academic & Documentation */}
+              <Route path="/academic-paper" element={<AdminRoute featureName="Academic Paper"><AcademicPaper /></AdminRoute>} />
+              <Route path="/sdk-docs" element={<AdminRoute featureName="SDK Documentation"><SDKDocs /></AdminRoute>} />
+              
+              {/* Vision Scanner */}
+              <Route path="/vision-scanner" element={<AdminRoute featureName="Vision Scanner"><VisionScannerPage /></AdminRoute>} />
+              
+              {/* En Pensent Proprietary Trading & Predictions */}
               <Route path="/stock-predictions" element={<AdminRoute featureName="Stock Predictions"><StockPredictions /></AdminRoute>} />
               <Route path="/strategic-plan" element={<AdminRoute featureName="Strategic Plan"><StrategicPlan /></AdminRoute>} />
               <Route path="/trading" element={<AdminRoute featureName="Trading Terminal"><ScalpingTerminalPage /></AdminRoute>} />
-              <Route path="/admin/system-vitals" element={<AdminSystemVitals />} />
+              
+              {/* Admin Control Center */}
+              <Route path="/admin/ceo-dashboard" element={<AdminRoute featureName="CEO Dashboard"><AdminCEODashboard /></AdminRoute>} />
+              <Route path="/admin/system-vitals" element={<AdminRoute featureName="System Vitals"><AdminSystemVitals /></AdminRoute>} />
+              <Route path="/admin/seed-marketplace" element={<AdminRoute featureName="Seed Marketplace"><AdminSeedMarketplace /></AdminRoute>} />
+              <Route path="/admin/palettes" element={<AdminRoute featureName="Palette Admin"><PaletteAdminPage /></AdminRoute>} />
+              <Route path="/admin/moderation" element={<AdminRoute featureName="Moderation"><AdminModeration /></AdminRoute>} />
+              <Route path="/admin/economics" element={<AdminRoute featureName="Economics"><AdminEconomics /></AdminRoute>} />
+              <Route path="/admin/withdrawals" element={<AdminRoute featureName="Withdrawals"><AdminWithdrawals /></AdminRoute>} />
+              <Route path="/admin/dmca" element={<AdminRoute featureName="DMCA Admin"><AdminDMCA /></AdminRoute>} />
+              <Route path="/admin/watermark-verification" element={<AdminRoute featureName="Watermark Verification"><AdminWatermarkVerification /></AdminRoute>} />
+              <Route path="/admin/batch-watermark-verification" element={<AdminRoute featureName="Batch Watermark Verification"><AdminBatchWatermarkVerification /></AdminRoute>} />
+              <Route path="/admin/ai-art-bank" element={<AdminRoute featureName="AI Art Bank"><AdminAIArtBank /></AdminRoute>} />
               
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
