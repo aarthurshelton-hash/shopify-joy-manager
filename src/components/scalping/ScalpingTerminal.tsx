@@ -67,22 +67,15 @@ export const ScalpingTerminal: React.FC = () => {
     demoInterval: 150
   });
   
-  // Early return if predictor not ready
-  if (!predictor) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <div className="text-muted-foreground">Loading trading engine...</div>
-      </div>
-    );
-  }
-  
-  // Sync prediction outcomes to global store
+  // Sync prediction outcomes to global store - moved BEFORE any conditional returns
   useEffect(() => {
+    if (!predictor) return;
+    
     const resolved = predictor.recentPredictions;
     if (resolved.length === 0) return;
     
     const latest = resolved[0];
-    if (!latest.wasCorrect === undefined) return;
+    if (latest.wasCorrect === undefined) return;
     
     // Record to global accuracy
     const directionCorrect = latest.wasCorrect ?? false;
@@ -101,24 +94,28 @@ export const ScalpingTerminal: React.FC = () => {
         leadingSignals: multiMarket.bigPicture.activeSignals.length / 10
       }
     });
-  }, [predictor.recentPredictions.length]);
+  }, [predictor, predictor?.recentPredictions?.length, recordPrediction, multiMarket.bigPicture.predictionBoost, multiMarket.bigPicture.activeSignals.length]);
   
-  // Update live metrics
+  // Update live metrics - moved BEFORE any conditional returns
   useEffect(() => {
+    if (!predictor) return;
+    
     updateLiveMetrics({
       ticksProcessed: predictor.tickCount,
       currentSymbol: symbol,
       isStreaming: predictor.connected && autoPredict
     });
-  }, [predictor.tickCount, symbol, predictor.connected, autoPredict, updateLiveMetrics]);
+  }, [predictor, predictor?.tickCount, symbol, predictor?.connected, autoPredict, updateLiveMetrics]);
   
   const handleSymbolChange = useCallback((newSymbol: string) => {
+    if (!predictor) return;
     setSymbol(newSymbol);
     predictor.reset();
     predictor.reconnect();
   }, [predictor]);
   
   const toggleAutoPredict = useCallback(() => {
+    if (!predictor) return;
     if (autoPredict) {
       predictor.stopHeartbeat();
     } else {
@@ -126,11 +123,6 @@ export const ScalpingTerminal: React.FC = () => {
     }
     setAutoPredict(!autoPredict);
   }, [autoPredict, predictor]);
-  
-  // Boost indicator from cross-market analysis
-  const predictionBoost = multiMarket.bigPicture.predictionBoost;
-  const boostColor = predictionBoost >= 1.2 ? 'text-green-400' : 
-                     predictionBoost <= 0.8 ? 'text-red-400' : 'text-primary';
   
   // Build correlated prices map from multi-market snapshot
   const correlatedPrices = useMemo(() => {
@@ -143,6 +135,20 @@ export const ScalpingTerminal: React.FC = () => {
     return map;
   }, [multiMarket.snapshot]);
   
+  // Boost indicator from cross-market analysis
+  const predictionBoost = multiMarket.bigPicture.predictionBoost;
+  const boostColor = predictionBoost >= 1.2 ? 'text-green-400' : 
+                     predictionBoost <= 0.8 ? 'text-red-400' : 'text-primary';
+  
+  // Early return if predictor not ready - AFTER all hooks
+  if (!predictor) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-muted-foreground">Loading trading engine...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {/* Global Accuracy Bar - Always Visible */}
