@@ -1,10 +1,12 @@
 /**
  * Multi-Market Data Stream Hook
- * Connects to multiple asset class feeds simultaneously
+ * Connects to multiple asset class feeds via Multi-Broker Aggregator
+ * Uses real market data from Alpaca, Polygon, Binance, Finnhub, Twelve Data, Tradier
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { crossMarketEngine, type MarketTick, type AssetClass, type BigPictureState, type MarketSnapshot } from '@/lib/pensent-core/domains/finance/crossMarketEngine';
+import { multiBrokerAdapter } from '@/lib/pensent-core/domains/universal/adapters/multiBrokerAdapter';
 
 export interface MarketConfig {
   symbol: string;
@@ -44,18 +46,25 @@ const DEFAULT_MARKETS: MarketConfig[] = [
     correlation: [{ with: 'bond', factor: 0.2 }]
   },
   { 
-    symbol: 'DXY', 
+    symbol: 'EUR/USD', 
     assetClass: 'forex', 
-    basePrice: 104, 
+    basePrice: 1.08, 
     volatility: 0.0005,
     correlation: [{ with: 'commodity', factor: -0.4 }]
   },
   { 
-    symbol: 'BTC', 
+    symbol: 'BTC/USD', 
     assetClass: 'crypto', 
-    basePrice: 42000, 
+    basePrice: 95000, 
     volatility: 0.002,
     correlation: [{ with: 'equity', factor: 0.6 }]
+  },
+  { 
+    symbol: 'ETH/USD', 
+    assetClass: 'crypto', 
+    basePrice: 3200, 
+    volatility: 0.0025,
+    correlation: [{ with: 'crypto', factor: 0.85 }]
   }
 ];
 
@@ -65,6 +74,8 @@ export interface MultiMarketState {
   snapshot: MarketSnapshot;
   bigPicture: BigPictureState;
   ticksPerSecond: number;
+  realDataSources: string[];
+  consensusConfidence: number;
 }
 
 export function useMultiMarketStream(markets: MarketConfig[] = DEFAULT_MARKETS) {
@@ -80,7 +91,9 @@ export function useMultiMarketStream(markets: MarketConfig[] = DEFAULT_MARKETS) 
       crypto: null
     },
     bigPicture: crossMarketEngine.getState(),
-    ticksPerSecond: 0
+    ticksPerSecond: 0,
+    realDataSources: [],
+    consensusConfidence: 0
   });
 
   const pricesRef = useRef<Map<AssetClass, number>>(new Map());
@@ -89,6 +102,7 @@ export function useMultiMarketStream(markets: MarketConfig[] = DEFAULT_MARKETS) 
   const tpsIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const mountedRef = useRef(true);
   const isStartedRef = useRef(false);
+  const lastRealDataRef = useRef<Map<string, { price: number; timestamp: number }>>(new Map());
 
   // Initialize prices
   useEffect(() => {
@@ -97,13 +111,78 @@ export function useMultiMarketStream(markets: MarketConfig[] = DEFAULT_MARKETS) 
     });
   }, [markets]);
 
-  const generateTick = useCallback((market: MarketConfig, sharedMomentum: number): MarketTick => {
+  // Convert asset class to multi-broker format
+  const assetClassToBrokerType = (assetClass: AssetClass): 'stock' | 'forex' | 'crypto' => {
+    switch (assetClass) {
+      case 'equity': return 'stock';
+      case 'forex': return 'forex';
+      case 'crypto': return 'crypto';
+      case 'future':
+      case 'commodity': 
+      case 'bond':
+      default: return 'stock';
+    }
+  };
+
+  // Fetch real data from multi-broker aggregator
+  const fetchRealData = useCallback(async (market: MarketConfig): Promise<MarketTick | null> => {
+    try {
+      const brokerType = assetClassToBrokerType(market.assetClass);
+      const data = await multiBrokerAdapter.fetchAggregatedData(market.symbol, brokerType);
+      
+      if (!data || !data.consensus.price) {
+        return null;
+      }
+
+      // Store last real data
+      lastRealDataRef.current.set(market.symbol, {
+        price: data.consensus.price,
+        timestamp: data.timestamp
+      });
+
+      const previousPrice = pricesRef.current.get(market.assetClass) || market.basePrice;
+      const change = data.consensus.price - previousPrice;
+      const changePercent = (change / previousPrice) * 100;
+
+      // Update price ref
+      pricesRef.current.set(market.assetClass, data.consensus.price);
+
+      // Update state with source info
+      setState(prev => ({
+        ...prev,
+        realDataSources: data.sources,
+        consensusConfidence: data.consensus.confidence
+      }));
+
+      return {
+        symbol: market.symbol,
+        assetClass: market.assetClass,
+        price: data.consensus.price,
+        change: Math.round(change * 100) / 100,
+        changePercent: Math.round(changePercent * 10000) / 10000,
+        volume: data.ticks.reduce((sum, t) => sum + (t.volume || 0), 0) || Math.round(1000 + Math.random() * 10000),
+        timestamp: data.timestamp
+      };
+    } catch (error) {
+      console.error(`[MultiMarketStream] Failed to fetch ${market.symbol}:`, error);
+      return null;
+    }
+  }, []);
+
+  // Generate simulated tick as fallback
+  const generateSimulatedTick = useCallback((market: MarketConfig, sharedMomentum: number): MarketTick => {
     const currentPrice = pricesRef.current.get(market.assetClass) || market.basePrice;
+    
+    // Check if we have recent real data to interpolate from
+    const lastReal = lastRealDataRef.current.get(market.symbol);
+    const basePrice = lastReal && (Date.now() - lastReal.timestamp < 60000) 
+      ? lastReal.price 
+      : currentPrice;
     
     // Base random walk
     let priceChange = (Math.random() - 0.5) * 2 * market.volatility;
     
-    // Add shared market momentum (all markets somewhat correlated during big moves)
+    // Add shared market momentum
     priceChange += sharedMomentum * 0.3;
     
     // Add correlation effects
@@ -111,7 +190,6 @@ export function useMultiMarketStream(markets: MarketConfig[] = DEFAULT_MARKETS) 
       market.correlation.forEach(corr => {
         const correlatedPrice = pricesRef.current.get(corr.with);
         if (correlatedPrice) {
-          // Add correlated movement
           const correlatedChange = (Math.random() - 0.5) * market.volatility * corr.factor;
           priceChange += correlatedChange;
         }
@@ -123,11 +201,11 @@ export function useMultiMarketStream(markets: MarketConfig[] = DEFAULT_MARKETS) 
       priceChange += (Math.random() - 0.5) * market.volatility * 5;
     }
     
-    const newPrice = currentPrice * (1 + priceChange);
+    const newPrice = basePrice * (1 + priceChange);
     pricesRef.current.set(market.assetClass, newPrice);
     
-    const change = newPrice - currentPrice;
-    const changePercent = (change / currentPrice) * 100;
+    const change = newPrice - basePrice;
+    const changePercent = (change / basePrice) * 100;
     
     return {
       symbol: market.symbol,
@@ -143,12 +221,14 @@ export function useMultiMarketStream(markets: MarketConfig[] = DEFAULT_MARKETS) 
   const startStreams = useCallback(() => {
     if (isStartedRef.current) return;
     
-    // Clear any existing intervals
     intervalsRef.current.forEach(clearInterval);
     intervalsRef.current = [];
 
-    console.log('[MultiMarketStream] Starting all market streams...');
+    console.log('[MultiMarketStream] Starting multi-broker data streams...');
     isStartedRef.current = true;
+
+    // Initialize adapter
+    multiBrokerAdapter.initialize();
 
     // Shared momentum for market-wide moves
     let sharedMomentum = 0;
@@ -156,36 +236,45 @@ export function useMultiMarketStream(markets: MarketConfig[] = DEFAULT_MARKETS) 
     // Update shared momentum periodically
     const momentumInterval = setInterval(() => {
       if (!mountedRef.current) return;
-      // Momentum mean-reverts but can spike
       sharedMomentum = sharedMomentum * 0.95 + (Math.random() - 0.5) * 0.002;
       if (Math.random() > 0.99) {
-        sharedMomentum += (Math.random() - 0.5) * 0.01; // Occasional market-wide shock
+        sharedMomentum += (Math.random() - 0.5) * 0.01;
       }
     }, 500);
     intervalsRef.current.push(momentumInterval);
 
-    // Create intervals for each market with different frequencies
-    const frequencies: Record<AssetClass, number> = {
-      equity: 150,    // Fast - main focus
-      future: 100,    // Fastest - leads
-      bond: 300,      // Slower
-      commodity: 250, // Medium
-      forex: 200,     // Medium
-      crypto: 180     // Fast
+    // Frequencies for different data types
+    const realDataFrequencies: Record<AssetClass, number> = {
+      equity: 5000,     // 5s - rate limit friendly
+      future: 5000,     // 5s
+      bond: 10000,      // 10s - slower moving
+      commodity: 5000,  // 5s
+      forex: 3000,      // 3s - more active
+      crypto: 2000      // 2s - 24/7, fastest
     };
 
-    // Generate initial ticks for all markets immediately
-    try {
-      markets.forEach(market => {
-        const tick = generateTick(market, 0);
-        crossMarketEngine.processTick(tick);
-      });
+    const simulatedFrequencies: Record<AssetClass, number> = {
+      equity: 150,
+      future: 100,
+      bond: 300,
+      commodity: 250,
+      forex: 200,
+      crypto: 180
+    };
 
-      // Set initial state with snapshot
-      const initialSnapshot = crossMarketEngine.getSnapshot();
-      const initialBigPicture = crossMarketEngine.getState();
+    // Initial fetch of real data
+    const initializeRealData = async () => {
+      console.log('[MultiMarketStream] Fetching initial real data...');
+      for (const market of markets) {
+        const tick = await fetchRealData(market);
+        if (tick && mountedRef.current) {
+          crossMarketEngine.processTick(tick);
+        }
+      }
       
       if (mountedRef.current) {
+        const initialSnapshot = crossMarketEngine.getSnapshot();
+        const initialBigPicture = crossMarketEngine.getState();
         setState(prev => ({
           ...prev,
           connected: true,
@@ -193,19 +282,45 @@ export function useMultiMarketStream(markets: MarketConfig[] = DEFAULT_MARKETS) 
           bigPicture: initialBigPicture
         }));
       }
-    } catch (error) {
-      console.error('[MultiMarketStream] Error during initialization:', error);
-    }
+    };
 
+    initializeRealData();
+
+    // Set up real data polling for each market
     markets.forEach(market => {
-      const interval = setInterval(() => {
+      const realInterval = setInterval(async () => {
         if (!mountedRef.current) return;
         
         try {
-          const tick = generateTick(market, sharedMomentum);
+          const tick = await fetchRealData(market);
+          if (tick) {
+            tickCountRef.current++;
+            const bigPicture = crossMarketEngine.processTick(tick);
+            const snapshot = crossMarketEngine.getSnapshot();
+            
+            setState(prev => ({
+              ...prev,
+              snapshot,
+              bigPicture
+            }));
+          }
+        } catch (error) {
+          console.error('[MultiMarketStream] Real data fetch error:', error);
+        }
+      }, realDataFrequencies[market.assetClass] || 5000);
+      
+      intervalsRef.current.push(realInterval);
+    });
+
+    // Simulated high-frequency interpolation between real ticks
+    markets.forEach(market => {
+      const simulatedInterval = setInterval(() => {
+        if (!mountedRef.current) return;
+        
+        try {
+          const tick = generateSimulatedTick(market, sharedMomentum);
           tickCountRef.current++;
           
-          // Process through cross-market engine
           const bigPicture = crossMarketEngine.processTick(tick);
           const snapshot = crossMarketEngine.getSnapshot();
           
@@ -215,15 +330,15 @@ export function useMultiMarketStream(markets: MarketConfig[] = DEFAULT_MARKETS) 
             bigPicture
           }));
         } catch (error) {
-          console.error('[MultiMarketStream] Error processing tick:', error);
+          console.error('[MultiMarketStream] Simulated tick error:', error);
         }
-      }, frequencies[market.assetClass] || 200);
+      }, simulatedFrequencies[market.assetClass] || 200);
       
-      intervalsRef.current.push(interval);
+      intervalsRef.current.push(simulatedInterval);
     });
 
-    console.log('[MultiMarketStream] All market streams started');
-  }, [markets, generateTick]);
+    console.log('[MultiMarketStream] Multi-broker streams started');
+  }, [markets, fetchRealData, generateSimulatedTick]);
 
   // Track TPS
   useEffect(() => {
@@ -248,7 +363,6 @@ export function useMultiMarketStream(markets: MarketConfig[] = DEFAULT_MARKETS) 
   useEffect(() => {
     mountedRef.current = true;
     
-    // Small delay to ensure component is fully mounted
     const startTimer = setTimeout(() => {
       startStreams();
     }, 50);

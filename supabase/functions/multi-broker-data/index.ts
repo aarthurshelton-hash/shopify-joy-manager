@@ -135,32 +135,47 @@ async function fetchPolygon(symbol: string): Promise<MarketTick | null> {
   return null;
 }
 
-// Binance API (Crypto)
+// Binance API (Crypto) - No API key needed for public endpoints!
 async function fetchBinance(symbol: string): Promise<MarketTick | null> {
   try {
-    // Binance uses format like BTCUSDT
-    const binanceSymbol = symbol.replace('/', '').replace('-', '').toUpperCase();
+    // Convert symbol to Binance format:
+    // BTC/USD -> BTCUSDT, ETH/USD -> ETHUSDT, SOL/USD -> SOLUSDT
+    let binanceSymbol = symbol.toUpperCase();
+    
+    // Remove separators
+    binanceSymbol = binanceSymbol.replace(/[\/\-]/g, '');
+    
+    // Convert USD to USDT (Binance uses USDT pairs)
+    if (binanceSymbol.endsWith('USD') && !binanceSymbol.endsWith('USDT')) {
+      binanceSymbol = binanceSymbol.replace('USD', 'USDT');
+    }
+    
+    console.log(`[Binance] Converting ${symbol} -> ${binanceSymbol}`);
     
     const response = await fetch(
       `https://api.binance.com/api/v3/ticker/bookTicker?symbol=${binanceSymbol}`
     );
 
     if (!response.ok) {
-      console.log(`[Binance] Error: ${response.status}`);
+      const errorText = await response.text();
+      console.log(`[Binance] Error ${response.status}: ${errorText.substring(0, 100)}`);
       return null;
     }
 
     const data = await response.json();
+    const price = (parseFloat(data.bidPrice) + parseFloat(data.askPrice)) / 2;
+    console.log(`[Binance] ✓ ${symbol} = $${price.toFixed(2)}`);
+    
     return {
       symbol,
-      price: (parseFloat(data.bidPrice) + parseFloat(data.askPrice)) / 2,
+      price,
       bid: parseFloat(data.bidPrice),
       ask: parseFloat(data.askPrice),
       timestamp: Date.now(),
       source: 'binance',
     };
   } catch (err) {
-    console.error('[Binance] Error:', err);
+    console.error('[Binance] Exception:', err);
   }
   return null;
 }
