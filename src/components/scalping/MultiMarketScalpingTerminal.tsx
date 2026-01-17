@@ -201,8 +201,9 @@ const MultiMarketScalpingTerminal: React.FC = () => {
   const [expandedCategory, setExpandedCategory] = useState<string | null>('crypto');
   const [selectedSymbol, setSelectedSymbol] = useState<MarketSymbol | null>(null);
   const [customBetAmount, setCustomBetAmount] = useState<number>(20); // $20 default bet
+  const [isLoadingPortfolio, setIsLoadingPortfolio] = useState(true);
   
-  // Portfolio state
+  // Portfolio state - will be synced from database
   const [portfolio, setPortfolio] = useState<PortfolioState>({
     balance: STARTING_BALANCE,
     startingBalance: STARTING_BALANCE,
@@ -225,6 +226,118 @@ const MultiMarketScalpingTerminal: React.FC = () => {
   const mountedRef = useRef(true);
   const fetchIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const predictionIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Load portfolio from database on mount
+  useEffect(() => {
+    const loadPortfolioFromDB = async () => {
+      try {
+        // Load portfolio balance
+        const { data: portfolioData, error: portfolioError } = await supabase
+          .from('portfolio_balance')
+          .select('*')
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .single();
+        
+        if (portfolioError && portfolioError.code !== 'PGRST116') {
+          console.error('Failed to load portfolio:', portfolioError);
+        }
+        
+        // Load trade history for stats
+        const { data: tradesData, error: tradesError } = await supabase
+          .from('autonomous_trades')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(100);
+        
+        if (tradesError) {
+          console.error('Failed to load trades:', tradesError);
+        }
+        
+        // Load evolution state from database
+        const { data: evolutionData, error: evolutionError } = await supabase
+          .from('evolution_state')
+          .select('*')
+          .eq('state_type', 'primary')
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .single();
+        
+        if (evolutionError && evolutionError.code !== 'PGRST116') {
+          console.error('Failed to load evolution state:', evolutionError);
+        }
+        
+        // Calculate stats from trades
+        const closedTrades = tradesData?.filter(t => t.status === 'closed') || [];
+        const winningTrades = closedTrades.filter(t => (t.pnl || 0) > 0).length;
+        const losingTrades = closedTrades.filter(t => (t.pnl || 0) <= 0).length;
+        const totalPnL = closedTrades.reduce((sum, t) => sum + (t.pnl || 0), 0);
+        const bestTrade = closedTrades.reduce((max, t) => Math.max(max, t.pnl || 0), 0);
+        const worstTrade = closedTrades.reduce((min, t) => Math.min(min, t.pnl || 0), 0);
+        
+        // Update portfolio with real data
+        if (portfolioData || closedTrades.length > 0) {
+          setPortfolio({
+            balance: portfolioData?.balance || STARTING_BALANCE,
+            startingBalance: STARTING_BALANCE,
+            totalTrades: portfolioData?.total_trades || closedTrades.length,
+            winningTrades: portfolioData?.winning_trades || winningTrades,
+            losingTrades: losingTrades,
+            totalPnL: totalPnL,
+            bestTrade: bestTrade,
+            worstTrade: worstTrade,
+            currentStreak: 0, // Would need additional calculation
+            bestStreak: 0,
+            peakBalance: portfolioData?.peak_balance || STARTING_BALANCE,
+            troughBalance: portfolioData?.trough_balance || STARTING_BALANCE,
+          });
+        }
+        
+        // Update evolution state if available
+        if (evolutionData) {
+          const genes = evolutionData.genes as Record<string, number>;
+          setEvolutionSummary({
+            generation: evolutionData.generation || 0,
+            fitness: evolutionData.fitness_score || 0,
+            velocity: 0,
+            topGenes: Object.entries(genes || {})
+              .sort((a, b) => (b[1] as number) - (a[1] as number))
+              .slice(0, 5)
+              .map(([name, value]) => ({ name, value: value as number, impact: (value as number) * 0.1 })),
+            patternCount: (evolutionData.learned_patterns as Array<unknown> || []).length,
+            bestPatternAccuracy: evolutionData.fitness_score || 0,
+          });
+        }
+        
+      } catch (err) {
+        console.error('Error loading portfolio from database:', err);
+      } finally {
+        setIsLoadingPortfolio(false);
+      }
+    };
+    
+    loadPortfolioFromDB();
+  }, []);
+  
+  // Sync portfolio changes to database
+  const syncPortfolioToDB = useCallback(async (newPortfolio: PortfolioState) => {
+    try {
+      await supabase
+        .from('portfolio_balance')
+        .upsert({
+          id: 'a72170ff-70ad-4da2-b54d-dd2c315a2fa6', // Use existing ID
+          balance: newPortfolio.balance,
+          peak_balance: newPortfolio.peakBalance,
+          trough_balance: newPortfolio.troughBalance,
+          total_trades: newPortfolio.totalTrades,
+          winning_trades: newPortfolio.winningTrades,
+          target_balance: 10000,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'id' });
+    } catch (err) {
+      console.error('Failed to sync portfolio to DB:', err);
+    }
+  }, []);
   
   // Computed values
   const growthPercent = useMemo(() => 
@@ -471,7 +584,12 @@ const MultiMarketScalpingTerminal: React.FC = () => {
     }));
     
     setPortfolio(portfolioUpdates);
-  }, [quotes, portfolio]);
+    
+    // Sync to database if there were any updates
+    if (portfolioUpdates.totalTrades !== portfolio.totalTrades) {
+      syncPortfolioToDB(portfolioUpdates);
+    }
+  }, [quotes, portfolio, syncPortfolioToDB]);
   
   // Main effect - data fetching and prediction loop
   useEffect(() => {
