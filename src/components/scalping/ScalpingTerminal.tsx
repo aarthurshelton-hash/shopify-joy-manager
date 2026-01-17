@@ -163,43 +163,36 @@ const ScalpingTerminal: React.FC = () => {
     };
   }, []);
 
-  // Mark as ready with robust detection and fallback
+  // Mark as ready with AGGRESSIVE initialization - demo mode MUST work
   useEffect(() => {
+    // Immediate activation in 500ms - don't wait for connections in demo mode
+    const immediateTimer = setTimeout(() => {
+      if (mountedRef.current && !isReady) {
+        console.log('[ScalpingTerminal] Quick activation - demo mode ready');
+        setInitStatus('Demo mode active');
+        setIsReady(true);
+      }
+    }, 500);
+    
+    return () => clearTimeout(immediateTimer);
+  }, [isReady]);
+  
+  // Update status messages based on connection state
+  useEffect(() => {
+    if (isReady) return; // Don't update status once ready
+    
     const predictorConnected = predictor?.connected ?? false;
     const multiMarketConnected = multiMarket?.connected ?? false;
     
-    // Update status messages
-    if (!predictorConnected && !multiMarketConnected) {
-      setInitStatus('Starting market streams...');
-    } else if (predictorConnected && !multiMarketConnected) {
-      setInitStatus('Predictor ready, connecting markets...');
-    } else if (!predictorConnected && multiMarketConnected) {
-      setInitStatus('Markets connected, starting predictor...');
-    } else {
+    if (predictorConnected && multiMarketConnected) {
       setInitStatus('All systems ready');
+    } else if (predictorConnected) {
+      setInitStatus('Predictor ready...');
+    } else if (multiMarketConnected) {
+      setInitStatus('Markets connected...');
+    } else {
+      setInitStatus('Starting demo mode...');
     }
-    
-    // Set ready when both are connected
-    if (predictorConnected && multiMarketConnected && !isReady) {
-      const timer = setTimeout(() => {
-        if (mountedRef.current) {
-          console.log('[ScalpingTerminal] All systems connected - activating');
-          setIsReady(true);
-        }
-      }, 300);
-      return () => clearTimeout(timer);
-    }
-    
-    // Fallback: Force ready after 2 seconds - demo mode should always work
-    const fallbackTimer = setTimeout(() => {
-      if (mountedRef.current && !isReady) {
-        console.log('[ScalpingTerminal] Fallback activation - forcing ready state');
-        setInitStatus('Activating (demo mode)...');
-        setIsReady(true);
-      }
-    }, 2000);
-    
-    return () => clearTimeout(fallbackTimer);
   }, [predictor?.connected, multiMarket?.connected, isReady]);
 
   // Sync prediction outcomes to global store
