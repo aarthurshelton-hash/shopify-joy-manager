@@ -60,14 +60,15 @@ const ScalpingTerminal: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [activeView, setActiveView] = useState<'focus' | 'bigpicture' | 'positions' | 'evolution' | 'learning'>('bigpicture');
   const [isReady, setIsReady] = useState(false);
-  const [initStatus, setInitStatus] = useState('Starting streams...');
+  const [initStatus, setInitStatus] = useState('Initializing...');
+  const mountedRef = React.useRef(true);
   
   // All hooks called unconditionally at top level
   const multiMarket = useMultiMarketStream();
   const positionsTracker = useSimulatedPositions();
   const tradingStore = useTradingSessionStore();
   
-  // Memoize config to prevent unnecessary re-renders
+  // Stable config that only changes when needed
   const predictorConfig = useMemo(() => ({
     symbol: symbol || 'SPY',
     mode: 'demo' as const,
@@ -154,35 +155,52 @@ const ScalpingTerminal: React.FC = () => {
     return map;
   }, [multiMarket?.snapshot]);
 
-  // Mark as ready once systems are connected - with timeout fallback
+  // Track mount state
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  // Mark as ready with robust detection and fallback
   useEffect(() => {
     const predictorConnected = predictor?.connected ?? false;
     const multiMarketConnected = multiMarket?.connected ?? false;
     
-    if (predictorConnected) {
-      setInitStatus('Predictor connected, waiting for market data...');
-    }
-    if (multiMarketConnected) {
-      setInitStatus('Market feeds connected, calibrating...');
+    // Update status messages
+    if (!predictorConnected && !multiMarketConnected) {
+      setInitStatus('Starting market streams...');
+    } else if (predictorConnected && !multiMarketConnected) {
+      setInitStatus('Predictor ready, connecting markets...');
+    } else if (!predictorConnected && multiMarketConnected) {
+      setInitStatus('Markets connected, starting predictor...');
+    } else {
+      setInitStatus('All systems ready');
     }
     
-    if (predictorConnected && multiMarketConnected) {
-      setInitStatus('All systems ready');
-      // Small delay to allow initial data to flow
-      const timer = setTimeout(() => setIsReady(true), 500);
+    // Set ready when both are connected
+    if (predictorConnected && multiMarketConnected && !isReady) {
+      const timer = setTimeout(() => {
+        if (mountedRef.current) {
+          console.log('[ScalpingTerminal] All systems connected - activating');
+          setIsReady(true);
+        }
+      }, 300);
       return () => clearTimeout(timer);
     }
     
-    // Fallback: Force ready after 3 seconds even if not fully connected
-    // Demo mode should always connect quickly
+    // Fallback: Force ready after 2 seconds - demo mode should always work
     const fallbackTimer = setTimeout(() => {
-      console.log('[ScalpingTerminal] Fallback activation triggered');
-      setInitStatus('Activating in demo mode...');
-      setIsReady(true);
-    }, 3000);
+      if (mountedRef.current && !isReady) {
+        console.log('[ScalpingTerminal] Fallback activation - forcing ready state');
+        setInitStatus('Activating (demo mode)...');
+        setIsReady(true);
+      }
+    }, 2000);
     
     return () => clearTimeout(fallbackTimer);
-  }, [predictor?.connected, multiMarket?.connected]);
+  }, [predictor?.connected, multiMarket?.connected, isReady]);
 
   // Sync prediction outcomes to global store
   useEffect(() => {

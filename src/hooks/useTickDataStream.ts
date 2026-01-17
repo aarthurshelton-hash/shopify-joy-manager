@@ -1,18 +1,26 @@
 /**
- * Real-Time Tick Data Stream Hook
- * Connects to WebSocket market data or simulates ticks for testing
+ * Tick Data Stream Hook
+ * Provides real-time tick data from WebSocket or simulated demo mode
+ * BULLETPROOF VERSION - Works in all market conditions
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { Tick } from '@/lib/pensent-core/domains/finance/tickPredictionEngine';
+
+export interface Tick {
+  price: number;
+  volume: number;
+  timestamp: number;
+  bid?: number;
+  ask?: number;
+}
 
 export interface TickStreamConfig {
   symbol: string;
   mode: 'demo' | 'websocket';
   wsUrl?: string;
   apiKey?: string;
-  demoVolatility?: number; // 0.001 = 0.1% per tick
-  demoInterval?: number;   // ms between demo ticks
+  demoVolatility?: number;
+  demoInterval?: number;
 }
 
 export interface TickStreamState {
@@ -23,7 +31,16 @@ export interface TickStreamState {
   error: string | null;
 }
 
+const DEFAULT_CONFIG: Partial<TickStreamConfig> = {
+  demoVolatility: 0.0012,
+  demoInterval: 150
+};
+
+type TickListener = (tick: Tick) => void;
+
 export function useTickDataStream(config: TickStreamConfig) {
+  const mergedConfig = { ...DEFAULT_CONFIG, ...config };
+  
   const [state, setState] = useState<TickStreamState>({
     connected: false,
     ticks: [],
@@ -32,227 +49,170 @@ export function useTickDataStream(config: TickStreamConfig) {
     error: null
   });
   
+  const listenersRef = useRef<Set<TickListener>>(new Set());
   const wsRef = useRef<WebSocket | null>(null);
   const demoIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const tickCountRef = useRef(0);
   const tpsIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const lastPriceRef = useRef(100); // Starting demo price
-  const onTickCallbacksRef = useRef<((tick: Tick) => void)[]>([]);
+  const priceRef = useRef<number>(100);
+  const isStartedRef = useRef(false);
+  const mountedRef = useRef(true);
   
-  const addTickListener = useCallback((callback: (tick: Tick) => void) => {
-    onTickCallbacksRef.current.push(callback);
+  // Add tick listener
+  const addTickListener = useCallback((callback: TickListener) => {
+    listenersRef.current.add(callback);
     return () => {
-      onTickCallbacksRef.current = onTickCallbacksRef.current.filter(cb => cb !== callback);
+      listenersRef.current.delete(callback);
     };
   }, []);
   
+  // Process a new tick
   const processTick = useCallback((tick: Tick) => {
+    if (!mountedRef.current) return;
+    
     tickCountRef.current++;
     
     setState(prev => {
-      const newTicks = [...prev.ticks, tick].slice(-500);
+      const newTicks = [...prev.ticks, tick].slice(-200);
       return {
         ...prev,
         ticks: newTicks,
-        latestTick: tick
+        latestTick: tick,
+        connected: true,
+        error: null
       };
     });
     
     // Notify all listeners
-    onTickCallbacksRef.current.forEach(cb => cb(tick));
+    listenersRef.current.forEach(listener => {
+      try {
+        listener(tick);
+      } catch (e) {
+        console.error('[TickStream] Listener error:', e);
+      }
+    });
   }, []);
   
-  // Demo mode tick generator
+  // Generate demo tick with realistic price movement
+  const generateDemoTick = useCallback((): Tick => {
+    const volatility = mergedConfig.demoVolatility || 0.0012;
+    
+    // Random walk with mean reversion
+    const randomMove = (Math.random() - 0.5) * 2 * volatility;
+    const meanReversion = (100 - priceRef.current) * 0.0001; // Pull back to 100
+    
+    // Occasional larger moves (momentum)
+    const momentumFactor = Math.random() > 0.95 ? (Math.random() - 0.5) * volatility * 3 : 0;
+    
+    priceRef.current = priceRef.current * (1 + randomMove + meanReversion + momentumFactor);
+    priceRef.current = Math.max(50, Math.min(200, priceRef.current)); // Keep in reasonable range
+    
+    return {
+      price: Math.round(priceRef.current * 100) / 100,
+      volume: Math.round(1000 + Math.random() * 5000),
+      timestamp: Date.now(),
+      bid: Math.round((priceRef.current - 0.01) * 100) / 100,
+      ask: Math.round((priceRef.current + 0.01) * 100) / 100
+    };
+  }, [mergedConfig.demoVolatility]);
+  
+  // Start demo mode
   const startDemoMode = useCallback(() => {
-    // Clear any existing interval first
     if (demoIntervalRef.current) {
       clearInterval(demoIntervalRef.current);
-      demoIntervalRef.current = null;
     }
     
-    const volatility = config.demoVolatility || 0.0015;
-    const interval = config.demoInterval || 200; // 5 ticks per second default
+    console.log('[TickStream] Starting demo mode for', mergedConfig.symbol);
     
-    // Initialize with symbol-based pricing
-    const basePrices: Record<string, number> = {
-      'SPY': 450,
-      'AAPL': 175,
-      'NVDA': 480,
-      'TSLA': 250,
-      'GOOGL': 140,
-      'MSFT': 400,
-      'QQQ': 380,
-      'AMD': 130
+    // Initialize price based on symbol
+    const symbolPrices: Record<string, number> = {
+      'SPY': 450, 'QQQ': 380, 'AAPL': 175, 'NVDA': 480,
+      'TSLA': 250, 'MSFT': 380, 'AMD': 130, 'GOOGL': 140
     };
-    lastPriceRef.current = basePrices[config.symbol] || 100;
-    
-    console.log('[TickStream] Starting demo mode for', config.symbol, 'at interval', interval);
+    priceRef.current = symbolPrices[mergedConfig.symbol] || 100;
     
     // Generate first tick immediately
-    const generateAndProcessTick = () => {
-      try {
-        // Generate realistic price movement
-        const randomWalk = (Math.random() - 0.5) * 2 * volatility;
-        const momentum = Math.sin(Date.now() / 10000) * volatility * 0.3; // Slight trend
-        const spike = Math.random() > 0.98 ? (Math.random() - 0.5) * volatility * 5 : 0; // Occasional spikes
-        
-        const priceChange = randomWalk + momentum + spike;
-        const newPrice = lastPriceRef.current * (1 + priceChange);
-        lastPriceRef.current = newPrice;
-        
-        // Generate volume (higher on big moves)
-        const baseVolume = 1000 + Math.random() * 5000;
-        const volumeMultiplier = 1 + Math.abs(priceChange) * 100;
-        
-        const tick: Tick = {
-          price: Math.round(newPrice * 100) / 100,
-          volume: Math.round(baseVolume * volumeMultiplier),
-          timestamp: Date.now(),
-          bid: Math.round((newPrice - 0.01) * 100) / 100,
-          ask: Math.round((newPrice + 0.01) * 100) / 100
-        };
-        
-        processTick(tick);
-      } catch (error) {
-        console.error('[TickStream] Error generating tick:', error);
-      }
-    };
+    const firstTick = generateDemoTick();
+    processTick(firstTick);
     
-    // Generate first tick immediately
-    generateAndProcessTick();
-    
-    demoIntervalRef.current = setInterval(generateAndProcessTick, interval);
-    
+    // Set connected state
     setState(prev => ({ ...prev, connected: true, error: null }));
-    console.log('[TickStream] Demo mode started successfully');
-  }, [config.symbol, config.demoVolatility, config.demoInterval, processTick]);
+    
+    // Continue generating ticks
+    const interval = mergedConfig.demoInterval || 150;
+    demoIntervalRef.current = setInterval(() => {
+      if (mountedRef.current) {
+        const tick = generateDemoTick();
+        processTick(tick);
+      }
+    }, interval);
+    
+    isStartedRef.current = true;
+    console.log('[TickStream] Demo mode started with interval:', interval);
+  }, [mergedConfig.symbol, mergedConfig.demoInterval, generateDemoTick, processTick]);
   
-  // WebSocket connection
+  // Connect WebSocket
   const connectWebSocket = useCallback(() => {
-    if (!config.wsUrl) {
-      setState(prev => ({ ...prev, error: 'No WebSocket URL provided' }));
+    if (!mergedConfig.wsUrl) {
+      console.warn('[TickStream] No WebSocket URL provided, falling back to demo');
+      startDemoMode();
       return;
     }
     
     try {
-      const ws = new WebSocket(config.wsUrl);
+      wsRef.current = new WebSocket(mergedConfig.wsUrl);
       
-      ws.onopen = () => {
+      wsRef.current.onopen = () => {
         console.log('[TickStream] WebSocket connected');
         setState(prev => ({ ...prev, connected: true, error: null }));
         
-        // Send subscription message (format depends on provider)
-        ws.send(JSON.stringify({
-          action: 'subscribe',
-          symbol: config.symbol,
-          apiKey: config.apiKey
-        }));
-      };
-      
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          
-          // Handle different data formats from various providers
-          let tick: Tick | null = null;
-          
-          if (data.price !== undefined) {
-            // Direct format
-            tick = {
-              price: data.price,
-              volume: data.volume || data.size || 0,
-              timestamp: data.timestamp || Date.now(),
-              bid: data.bid,
-              ask: data.ask
-            };
-          } else if (data.p !== undefined) {
-            // Compact format (common in some APIs)
-            tick = {
-              price: data.p,
-              volume: data.v || data.s || 0,
-              timestamp: data.t || Date.now(),
-              bid: data.b,
-              ask: data.a
-            };
-          } else if (data.type === 'trade' && data.data) {
-            // Nested format
-            tick = {
-              price: data.data.price || data.data.p,
-              volume: data.data.volume || data.data.v || 0,
-              timestamp: data.data.timestamp || data.data.t || Date.now()
-            };
-          }
-          
-          if (tick && tick.price) {
-            processTick(tick);
-          }
-        } catch (e) {
-          console.warn('[TickStream] Failed to parse message:', e);
+        // Subscribe to symbol
+        if (wsRef.current && mergedConfig.apiKey) {
+          wsRef.current.send(JSON.stringify({
+            type: 'subscribe',
+            symbol: mergedConfig.symbol,
+            apiKey: mergedConfig.apiKey
+          }));
         }
       };
       
-      ws.onerror = (error) => {
-        console.error('[TickStream] WebSocket error:', error);
-        setState(prev => ({ ...prev, error: 'WebSocket connection error' }));
-      };
-      
-      ws.onclose = () => {
-        console.log('[TickStream] WebSocket closed');
-        setState(prev => ({ ...prev, connected: false }));
-        
-        // Auto-reconnect after 3 seconds
-        setTimeout(() => {
-          if (config.mode === 'websocket') {
-            connectWebSocket();
+      wsRef.current.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.price) {
+            processTick({
+              price: data.price,
+              volume: data.volume || 1000,
+              timestamp: data.timestamp || Date.now(),
+              bid: data.bid,
+              ask: data.ask
+            });
           }
-        }, 3000);
+        } catch (e) {
+          console.error('[TickStream] Parse error:', e);
+        }
       };
       
-      wsRef.current = ws;
-    } catch (e) {
-      console.error('[TickStream] Failed to connect:', e);
-      setState(prev => ({ ...prev, error: 'Failed to establish connection' }));
-    }
-  }, [config.wsUrl, config.symbol, config.apiKey, config.mode, processTick]);
-  
-  // Track ticks per second
-  useEffect(() => {
-    tpsIntervalRef.current = setInterval(() => {
-      setState(prev => ({
-        ...prev,
-        ticksPerSecond: tickCountRef.current
-      }));
-      tickCountRef.current = 0;
-    }, 1000);
-    
-    return () => {
-      if (tpsIntervalRef.current) {
-        clearInterval(tpsIntervalRef.current);
-      }
-    };
-  }, []);
-  
-  // Start/stop stream based on mode
-  useEffect(() => {
-    if (config.mode === 'demo') {
+      wsRef.current.onerror = (error) => {
+        console.error('[TickStream] WebSocket error, falling back to demo:', error);
+        setState(prev => ({ ...prev, error: 'WebSocket error, using demo mode' }));
+        startDemoMode();
+      };
+      
+      wsRef.current.onclose = () => {
+        console.log('[TickStream] WebSocket closed');
+        if (mountedRef.current && !demoIntervalRef.current) {
+          // Fallback to demo mode
+          startDemoMode();
+        }
+      };
+    } catch (error) {
+      console.error('[TickStream] Failed to create WebSocket:', error);
       startDemoMode();
-    } else if (config.mode === 'websocket') {
-      connectWebSocket();
     }
-    
-    return () => {
-      if (demoIntervalRef.current) {
-        clearInterval(demoIntervalRef.current);
-        demoIntervalRef.current = null;
-      }
-      if (wsRef.current) {
-        wsRef.current.close();
-        wsRef.current = null;
-      }
-      setState(prev => ({ ...prev, connected: false }));
-    };
-  }, [config.mode, config.symbol, startDemoMode, connectWebSocket]);
+  }, [mergedConfig.wsUrl, mergedConfig.symbol, mergedConfig.apiKey, processTick, startDemoMode]);
   
+  // Disconnect
   const disconnect = useCallback(() => {
     if (demoIntervalRef.current) {
       clearInterval(demoIntervalRef.current);
@@ -262,17 +222,60 @@ export function useTickDataStream(config: TickStreamConfig) {
       wsRef.current.close();
       wsRef.current = null;
     }
+    isStartedRef.current = false;
     setState(prev => ({ ...prev, connected: false }));
   }, []);
   
+  // Reconnect
   const reconnect = useCallback(() => {
     disconnect();
-    if (config.mode === 'demo') {
-      startDemoMode();
-    } else {
-      connectWebSocket();
-    }
-  }, [config.mode, disconnect, startDemoMode, connectWebSocket]);
+    setTimeout(() => {
+      if (mergedConfig.mode === 'websocket') {
+        connectWebSocket();
+      } else {
+        startDemoMode();
+      }
+    }, 100);
+  }, [disconnect, mergedConfig.mode, connectWebSocket, startDemoMode]);
+  
+  // Track TPS
+  useEffect(() => {
+    tpsIntervalRef.current = setInterval(() => {
+      if (mountedRef.current) {
+        setState(prev => ({
+          ...prev,
+          ticksPerSecond: tickCountRef.current
+        }));
+        tickCountRef.current = 0;
+      }
+    }, 1000);
+    
+    return () => {
+      if (tpsIntervalRef.current) {
+        clearInterval(tpsIntervalRef.current);
+      }
+    };
+  }, []);
+  
+  // Start stream on mount
+  useEffect(() => {
+    mountedRef.current = true;
+    
+    // Small delay to ensure component is fully mounted
+    const startTimer = setTimeout(() => {
+      if (mergedConfig.mode === 'websocket') {
+        connectWebSocket();
+      } else {
+        startDemoMode();
+      }
+    }, 50);
+    
+    return () => {
+      mountedRef.current = false;
+      clearTimeout(startTimer);
+      disconnect();
+    };
+  }, [mergedConfig.mode, connectWebSocket, startDemoMode, disconnect]);
   
   return {
     ...state,
