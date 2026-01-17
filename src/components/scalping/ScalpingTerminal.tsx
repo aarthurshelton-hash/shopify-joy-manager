@@ -1,13 +1,14 @@
 /**
  * Scalping Terminal
  * Full trading dashboard with real-time predictions and cross-market analysis
+ * Integrated with Universal Heartbeat - CEO Alec Arthur Shelton exclusive
  */
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Play, Pause, RotateCcw, Settings, Zap, Activity,
-  TrendingUp, TrendingDown, Radio, Clock, Globe, Sparkles, DollarSign, Target
+  TrendingUp, TrendingDown, Radio, Clock, Globe, Sparkles, DollarSign, Target, AlertCircle
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,7 +17,7 @@ import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { useScalpingPredictor } from '@/hooks/useScalpingPredictor';
 import { useMultiMarketStream } from '@/hooks/useMultiMarketStream';
@@ -36,27 +37,33 @@ import { MarketLearningDashboard } from './MarketLearningDashboard';
 
 const SYMBOLS = ['SPY', 'QQQ', 'AAPL', 'NVDA', 'TSLA', 'MSFT', 'AMD', 'GOOGL'];
 
+// Safe loading component
+const LoadingTerminal = () => (
+  <div className="flex flex-col items-center justify-center p-8 gap-4">
+    <motion.div
+      animate={{ rotate: 360 }}
+      transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+    >
+      <Activity className="w-8 h-8 text-primary" />
+    </motion.div>
+    <div className="text-muted-foreground">Initializing Trading Engine...</div>
+    <div className="text-xs text-muted-foreground">Connecting to market feeds</div>
+  </div>
+);
+
 export const ScalpingTerminal: React.FC = () => {
+  // State declarations - all at top level, unconditionally
   const [symbol, setSymbol] = useState('SPY');
   const [autoPredict, setAutoPredict] = useState(true);
   const [predictionInterval, setPredictionInterval] = useState(3000);
   const [showSettings, setShowSettings] = useState(false);
   const [activeView, setActiveView] = useState<'focus' | 'bigpicture' | 'positions' | 'evolution' | 'learning'>('bigpicture');
+  const [isReady, setIsReady] = useState(false);
   
-  // Multi-market stream for the bigger picture
+  // All hooks called unconditionally at top level
   const multiMarket = useMultiMarketStream();
-  
-  // Simulated positions tracker
   const positionsTracker = useSimulatedPositions();
-  
-  // Global trading session store
-  const { 
-    currentSession,
-    recordPrediction,
-    updateLiveMetrics,
-    globalAccuracy,
-    evolutionState
-  } = useTradingSessionStore();
+  const tradingStore = useTradingSessionStore();
   
   const predictor = useScalpingPredictor({
     symbol: symbol || 'SPY',
@@ -67,54 +74,118 @@ export const ScalpingTerminal: React.FC = () => {
     demoInterval: 150
   });
   
-  // Safe accessors for potentially undefined values
-  const activeSignals = multiMarket?.bigPicture?.activeSignals ?? [];
-  const predictionBoost = multiMarket?.bigPicture?.predictionBoost ?? 1.0;
-  const recentPredictions = predictor?.recentPredictions ?? [];
-  const predictorStats = predictor?.stats ?? { 
-    totalPredictions: 0,
-    accuracy: 0, 
-    recentAccuracy: 0, 
-    currentStreak: 0,
-    bestStreak: 0,
-    upPredictions: { total: 0, correct: 0, accuracy: 0 },
-    downPredictions: { total: 0, correct: 0, accuracy: 0 },
-    flatPredictions: { total: 0, correct: 0, accuracy: 0 }
-  };
-  // Use predictor.learningState directly since it's always defined by the hook
-  const safeLearningState = predictor?.learningState;
+  // Safe destructuring with defaults
+  const { 
+    recordPrediction = () => {},
+    updateLiveMetrics = () => {},
+    evolutionState = { 
+      metrics: { 
+        generationNumber: 1, 
+        learningVelocity: 0, 
+        currentFitness: 0.5, 
+        peakFitness: 0.5,
+        totalPredictions: 0,
+        successfulEvolutions: 0,
+        startedAt: Date.now(),
+        adaptationRate: 0.1
+      }, 
+      patternLibrary: [],
+      genes: [],
+      correlationMemory: [],
+      adaptiveThresholds: { confidenceBoost: 0, horizonAdjust: 0, volatilityScale: 1 },
+      recentMutations: []
+    }
+  } = tradingStore || {};
   
-  // Sync prediction outcomes to global store - with safe null checks
+  // Safe accessors with null checks - using useMemo for stability
+  const activeSignals = useMemo(() => 
+    multiMarket?.bigPicture?.activeSignals ?? [], 
+    [multiMarket?.bigPicture?.activeSignals]
+  );
+  
+  const predictionBoost = useMemo(() => 
+    multiMarket?.bigPicture?.predictionBoost ?? 1.0, 
+    [multiMarket?.bigPicture?.predictionBoost]
+  );
+  
+  const recentPredictions = useMemo(() => 
+    predictor?.recentPredictions ?? [], 
+    [predictor?.recentPredictions]
+  );
+  
+  const predictorStats = useMemo(() => 
+    predictor?.stats ?? { 
+      totalPredictions: 0,
+      accuracy: 0, 
+      recentAccuracy: 0, 
+      currentStreak: 0,
+      bestStreak: 0,
+      upPredictions: { total: 0, correct: 0, accuracy: 0 },
+      downPredictions: { total: 0, correct: 0, accuracy: 0 },
+      flatPredictions: { total: 0, correct: 0, accuracy: 0 }
+    }, 
+    [predictor?.stats]
+  );
+  
+  const safeLearningState = useMemo(() => 
+    predictor?.learningState ?? null, 
+    [predictor?.learningState]
+  );
+
+  // Build correlated prices map from multi-market snapshot
+  const correlatedPrices = useMemo(() => {
+    const map = new Map<string, number>();
+    if (!multiMarket?.snapshot) return map;
+    
+    try {
+      Object.entries(multiMarket.snapshot).forEach(([, data]) => {
+        if (data?.symbol && data?.price) {
+          map.set(data.symbol, data.price);
+        }
+      });
+    } catch (error) {
+      console.error('[ScalpingTerminal] Error building correlated prices:', error);
+    }
+    return map;
+  }, [multiMarket?.snapshot]);
+
+  // Mark as ready once predictor is connected
+  useEffect(() => {
+    if (predictor?.connected && multiMarket?.connected) {
+      setIsReady(true);
+    }
+  }, [predictor?.connected, multiMarket?.connected]);
+
+  // Sync prediction outcomes to global store
   useEffect(() => {
     if (!predictor || recentPredictions.length === 0) return;
     
-    const latest = recentPredictions[0];
-    if (!latest || latest.wasCorrect === undefined) return;
-    
-    // Record to global accuracy
-    const directionCorrect = latest.wasCorrect ?? false;
-    
     try {
+      const latest = recentPredictions[0];
+      if (!latest || latest.wasCorrect === undefined) return;
+      
+      const directionCorrect = latest.wasCorrect ?? false;
+      
       recordPrediction({
         predicted: latest.predictedDirection as 'up' | 'down' | 'neutral',
         actual: (latest.actualDirection || latest.predictedDirection) as 'up' | 'down' | 'neutral',
-        confidence: latest.confidence,
+        confidence: latest.confidence ?? 0.5,
         directionCorrect,
-        magnitudeAccuracy: predictorStats.accuracy / 100,
-        timingAccuracy: predictorStats.recentAccuracy / 100,
+        magnitudeAccuracy: (predictorStats.accuracy ?? 0) / 100,
+        timingAccuracy: (predictorStats.recentAccuracy ?? 0) / 100,
         marketConditions: {
-          correlationStrength: predictionBoost,
+          correlationStrength: predictionBoost ?? 1,
           volatility: 0.5,
-          momentum: predictorStats.currentStreak / 10,
-          leadingSignals: activeSignals.length / 10
+          momentum: (predictorStats.currentStreak ?? 0) / 10,
+          leadingSignals: (activeSignals?.length ?? 0) / 10
         }
       });
     } catch (error) {
       console.error('[ScalpingTerminal] Error recording prediction:', error);
     }
-  }, [predictor, recentPredictions.length, recordPrediction, predictionBoost, activeSignals.length, predictorStats]);
+  }, [recentPredictions, recordPrediction, predictionBoost, activeSignals, predictorStats, predictor]);
   
-  // Update live metrics - with safe null checks
+  // Update live metrics
   useEffect(() => {
     if (!predictor) return;
     
@@ -129,24 +200,27 @@ export const ScalpingTerminal: React.FC = () => {
     }
   }, [predictor, predictor?.tickCount, symbol, predictor?.connected, autoPredict, updateLiveMetrics]);
   
+  // Handlers with safe checks
   const handleSymbolChange = useCallback((newSymbol: string) => {
-    if (!predictor) return;
     setSymbol(newSymbol);
-    try {
-      predictor.reset();
-      predictor.reconnect();
-    } catch (error) {
-      console.error('[ScalpingTerminal] Error changing symbol:', error);
+    if (predictor) {
+      try {
+        predictor.reset();
+        predictor.reconnect();
+      } catch (error) {
+        console.error('[ScalpingTerminal] Error changing symbol:', error);
+      }
     }
   }, [predictor]);
   
   const toggleAutoPredict = useCallback(() => {
-    if (!predictor) return;
     try {
-      if (autoPredict) {
-        predictor.stopHeartbeat();
-      } else {
-        predictor.startHeartbeat();
+      if (predictor) {
+        if (autoPredict) {
+          predictor.stopHeartbeat();
+        } else {
+          predictor.startHeartbeat();
+        }
       }
       setAutoPredict(!autoPredict);
     } catch (error) {
@@ -154,34 +228,13 @@ export const ScalpingTerminal: React.FC = () => {
     }
   }, [autoPredict, predictor]);
   
-  // Build correlated prices map from multi-market snapshot
-  const correlatedPrices = useMemo(() => {
-    const map = new Map<string, number>();
-    if (!multiMarket?.snapshot) return map;
-    
-    try {
-      Object.entries(multiMarket.snapshot).forEach(([assetClass, data]) => {
-        if (data?.symbol && data?.price) {
-          map.set(data.symbol, data.price);
-        }
-      });
-    } catch (error) {
-      console.error('[ScalpingTerminal] Error building correlated prices:', error);
-    }
-    return map;
-  }, [multiMarket?.snapshot]);
-  
   // Boost indicator from cross-market analysis
   const boostColor = predictionBoost >= 1.2 ? 'text-green-400' : 
                      predictionBoost <= 0.8 ? 'text-red-400' : 'text-primary';
   
-  // Show loading state if predictor is not ready
-  if (!predictor || !multiMarket) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <div className="text-muted-foreground">Loading trading engine...</div>
-      </div>
-    );
+  // Show loading state if systems aren't ready
+  if (!predictor || !multiMarket || !isReady) {
+    return <LoadingTerminal />;
   }
 
   return (
@@ -199,7 +252,7 @@ export const ScalpingTerminal: React.FC = () => {
             <Globe className="w-4 h-4 text-primary" />
             <span className="text-sm font-medium">Cross-Market Feed</span>
             <Badge variant="outline" className="text-xs">
-              {multiMarket.ticksPerSecond} tps
+              {multiMarket.ticksPerSecond ?? 0} tps
             </Badge>
             {activeSignals.length > 0 && (
               <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
@@ -217,9 +270,9 @@ export const ScalpingTerminal: React.FC = () => {
       </Card>
 
       {/* Header with controls */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-        <Tabs value={activeView} onValueChange={(v) => setActiveView(v as 'focus' | 'bigpicture' | 'positions' | 'evolution' | 'learning')}>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-4 flex-wrap">
+          <Tabs value={activeView} onValueChange={(v) => setActiveView(v as typeof activeView)}>
             <TabsList>
               <TabsTrigger value="focus">Focus</TabsTrigger>
               <TabsTrigger value="bigpicture">Big Picture</TabsTrigger>
@@ -258,18 +311,18 @@ export const ScalpingTerminal: React.FC = () => {
               {predictor.connected ? 'Connected' : 'Disconnected'}
             </span>
             <Badge variant="outline" className="text-xs">
-              {predictor.ticksPerSecond} tps
+              {predictor.ticksPerSecond ?? 0} tps
             </Badge>
           </div>
         </div>
         
         <div className="flex items-center gap-2">
           <HeartbeatIndicator 
-            isAlive={predictor.heartbeatAlive}
-            isProcessing={predictor.isProcessing}
-            lastPulse={predictor.lastPulse}
-            pulseCount={predictor.pulseCount}
-            nextPulseIn={predictor.nextPulseIn}
+            isAlive={predictor.heartbeatAlive ?? false}
+            isProcessing={predictor.isProcessing ?? false}
+            lastPulse={predictor.lastPulse ?? null}
+            pulseCount={predictor.pulseCount ?? 0}
+            nextPulseIn={predictor.nextPulseIn ?? 0}
             showControls={false}
             compact
           />
@@ -285,7 +338,7 @@ export const ScalpingTerminal: React.FC = () => {
           <Button 
             variant="outline" 
             size="sm"
-            onClick={predictor.reset}
+            onClick={() => predictor.reset()}
           >
             <RotateCcw className="w-4 h-4" />
           </Button>
@@ -346,20 +399,20 @@ export const ScalpingTerminal: React.FC = () => {
                     </div>
                     <div className={cn(
                       "text-sm",
-                      predictor.priceChangePercent >= 0 ? "text-green-500" : "text-red-500"
+                      (predictor.priceChangePercent ?? 0) >= 0 ? "text-green-500" : "text-red-500"
                     )}>
-                      {predictor.priceChangePercent >= 0 ? '+' : ''}
-                      {predictor.priceChangePercent.toFixed(3)}%
+                      {(predictor.priceChangePercent ?? 0) >= 0 ? '+' : ''}
+                      {(predictor.priceChangePercent ?? 0).toFixed(3)}%
                     </div>
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
                 <TickChart 
-                  ticks={predictor.connected ? Array.from({ length: predictor.tickCount }).map((_, i) => ({
+                  ticks={predictor.connected ? Array.from({ length: Math.min(predictor.tickCount ?? 0, 100) }).map((_, i) => ({
                     price: predictor.latestPrice || 100,
                     volume: 1000,
-                    timestamp: Date.now() - (predictor.tickCount - i) * 100
+                    timestamp: Date.now() - ((predictor.tickCount ?? 0) - i) * 100
                   })) : []}
                   currentPrediction={predictor.currentPrediction ? {
                     direction: predictor.currentPrediction.predictedDirection,
@@ -373,8 +426,8 @@ export const ScalpingTerminal: React.FC = () => {
             
             {/* Current prediction */}
             <PredictionHUD 
-              prediction={predictor.currentPrediction}
-              latestPrice={predictor.latestPrice}
+              prediction={predictor.currentPrediction ?? null}
+              latestPrice={predictor.latestPrice ?? null}
             />
             
             {/* Prediction stream */}
@@ -387,8 +440,8 @@ export const ScalpingTerminal: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <PredictionStream 
-                  pending={predictor.pendingPredictions}
-                  resolved={predictor.recentPredictions}
+                  pending={predictor.pendingPredictions ?? []}
+                  resolved={predictor.recentPredictions ?? []}
                   maxHeight="300px"
                 />
               </CardContent>
@@ -412,7 +465,7 @@ export const ScalpingTerminal: React.FC = () => {
               <CardContent className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Ticks Processed</span>
-                  <span className="font-mono">{predictor.tickCount}</span>
+                  <span className="font-mono">{predictor.tickCount ?? 0}</span>
                 </div>
                 <Separator />
                 <div className="flex justify-between">
@@ -450,227 +503,72 @@ export const ScalpingTerminal: React.FC = () => {
           </div>
         </div>
       ) : activeView === 'bigpicture' ? (
-        /* Big Picture View - Cross-Market Analysis */
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-          {/* Left - Main chart and prediction */}
-          <div className="lg:col-span-2 space-y-4">
-            <Card className="bg-card/50 backdrop-blur">
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2">
-                    <Activity className="w-5 h-5" />
-                    {symbol} with Cross-Market Boost
-                  </CardTitle>
-                  <div className="flex items-center gap-3">
-                    <div className={cn("flex items-center gap-1 text-sm", boostColor)}>
-                      <Sparkles className="w-4 h-4" />
-                      <span className="font-mono font-bold">{predictionBoost.toFixed(2)}x</span>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-mono font-bold">
-                        ${predictor.latestPrice?.toFixed(2) || '---'}
-                      </div>
-                      <div className={cn(
-                        "text-sm",
-                        predictor.priceChangePercent >= 0 ? "text-green-500" : "text-red-500"
-                      )}>
-                        {predictor.priceChangePercent >= 0 ? '+' : ''}
-                        {predictor.priceChangePercent.toFixed(3)}%
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <TickChart 
-                  ticks={predictor.connected ? Array.from({ length: predictor.tickCount }).map((_, i) => ({
-                    price: predictor.latestPrice || 100,
-                    volume: 1000,
-                    timestamp: Date.now() - (predictor.tickCount - i) * 100
-                  })) : []}
-                  currentPrediction={predictor.currentPrediction ? {
-                    direction: predictor.currentPrediction.predictedDirection,
-                    priceAtPrediction: predictor.currentPrediction.priceAtPrediction,
-                    targetPrice: predictor.currentPrediction.targetPrice
-                  } : null}
-                  height={200}
-                />
-              </CardContent>
-            </Card>
-            
-            <PredictionHUD 
-              prediction={predictor.currentPrediction}
-              latestPrice={predictor.latestPrice}
-            />
-            
-            {safeLearningState && (
-              <LearningStatePanel 
-                state={safeLearningState}
-                stats={predictorStats}
-              />
-            )}
-          </div>
-          
-          {/* Center - Big Picture Panel */}
-          <Card className="bg-card/50 backdrop-blur lg:col-span-1">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Globe className="w-5 h-5 text-primary" />
-                Big Picture
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0 h-[500px]">
-              <BigPicturePanel state={multiMarket.bigPicture} />
-            </CardContent>
-          </Card>
-          
-          {/* Right - Prediction Stream & Stats */}
-          <div className="space-y-4">
-            <Card className="bg-card/50 backdrop-blur">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Clock className="w-5 h-5" />
-                  Predictions
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <PredictionStream 
-                  pending={predictor.pendingPredictions}
-                  resolved={predictor.recentPredictions}
-                  maxHeight="250px"
-                />
-              </CardContent>
-            </Card>
-            
-            <Card className="bg-card/50 backdrop-blur">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Session Stats</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Markets Active</span>
-                  <span className="font-mono">6</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Cross-Market TPS</span>
-                  <span className="font-mono">{multiMarket.ticksPerSecond}</span>
-                </div>
-                <Separator />
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Predictions</span>
-                  <span className="font-mono">{predictorStats.totalPredictions}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Win Rate</span>
-                  <span className={cn(
-                    "font-mono font-bold",
-                    predictorStats.accuracy >= 55 ? "text-green-500" : 
-                    predictorStats.accuracy >= 45 ? "text-yellow-500" : "text-red-500"
-                  )}>
-                    {predictorStats.accuracy.toFixed(1)}%
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Button 
-              className="w-full"
-              onClick={() => predictor.generatePrediction()}
-              disabled={!predictor.connected}
-            >
-              <Zap className="w-4 h-4 mr-2" />
-              Generate Prediction
-            </Button>
-          </div>
-        </div>
+        <BigPicturePanel state={multiMarket.bigPicture} />
       ) : activeView === 'positions' ? (
-        /* Positions View - Simulated Trading with Correlative Data */
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Left - Main chart and price */}
-          <div className="lg:col-span-2 space-y-4">
-            <Card className="bg-card/50 backdrop-blur">
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2">
-                    <Activity className="w-5 h-5" />
-                    {symbol} - Live Price
-                  </CardTitle>
-                  <div className="text-right">
-                    <div className="text-3xl font-mono font-bold">
-                      ${predictor.latestPrice?.toFixed(2) || '---'}
-                    </div>
-                    <div className={cn(
-                      "text-sm",
-                      predictor.priceChangePercent >= 0 ? "text-green-500" : "text-red-500"
-                    )}>
-                      {predictor.priceChangePercent >= 0 ? '+' : ''}
-                      {predictor.priceChangePercent.toFixed(3)}%
-                    </div>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <TickChart 
-                  ticks={predictor.connected ? Array.from({ length: predictor.tickCount }).map((_, i) => ({
-                    price: predictor.latestPrice || 100,
-                    volume: 1000,
-                    timestamp: Date.now() - (predictor.tickCount - i) * 100
-                  })) : []}
-                  currentPrediction={predictor.currentPrediction ? {
-                    direction: predictor.currentPrediction.predictedDirection,
-                    priceAtPrediction: predictor.currentPrediction.priceAtPrediction,
-                    targetPrice: predictor.currentPrediction.targetPrice
-                  } : null}
-                  height={200}
-                />
-              </CardContent>
-            </Card>
-            
-            <PredictionHUD 
-              prediction={predictor.currentPrediction}
-              latestPrice={predictor.latestPrice}
-            />
-            
-            <Card className="bg-card/50 backdrop-blur">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Clock className="w-5 h-5" />
-                  Live Prediction Stream
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <PredictionStream 
-                  pending={predictor.pendingPredictions}
-                  resolved={predictor.recentPredictions}
-                  maxHeight="200px"
-                />
-              </CardContent>
-            </Card>
-          </div>
-          
-          {/* Right - Position Tracker */}
-          <div className="space-y-4">
-            <PositionTracker
-              openPositions={positionsTracker.openPositions}
-              closedPositions={positionsTracker.closedPositions}
-              stats={positionsTracker.stats}
-              currentSymbol={symbol}
-              currentPrice={predictor.latestPrice || 100}
-              correlatedPrices={correlatedPrices}
-              onOpenPosition={positionsTracker.openPosition}
-              onClosePosition={positionsTracker.closePosition}
-              onUpdatePosition={positionsTracker.updatePosition}
-            />
-          </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <SessionControl />
+          <PositionTracker
+            openPositions={positionsTracker.openPositions}
+            closedPositions={positionsTracker.closedPositions}
+            stats={positionsTracker.stats}
+            currentSymbol={symbol}
+            currentPrice={predictor.latestPrice ?? 100}
+            correlatedPrices={correlatedPrices}
+            onOpenPosition={(sym, dir, price, corrPrices) => {
+              positionsTracker.openPosition(sym, dir, price, corrPrices);
+            }}
+            onClosePosition={(posId, closePrice) => {
+              positionsTracker.closePosition(posId, closePrice);
+            }}
+            onUpdatePosition={(posId, price, corrPrices) => {
+              positionsTracker.updatePosition(posId, price, corrPrices);
+            }}
+          />
         </div>
       ) : activeView === 'evolution' ? (
-        /* Evolution View - Full Global Accuracy & Self-Learning */
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <GlobalAccuracyPanel />
-          <SessionControl />
+          <GlobalAccuracyPanel showStreak />
+          <Card className="bg-card/50 backdrop-blur">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Target className="w-5 h-5" />
+                Evolution Engine
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-center">
+                <div className="p-3 bg-muted/30 rounded-lg">
+                  <div className="text-2xl font-mono font-bold text-primary">
+                    {evolutionState?.metrics?.generationNumber ?? 1}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Generation</div>
+                </div>
+                <div className="p-3 bg-muted/30 rounded-lg">
+                  <div className={cn(
+                    "text-2xl font-mono font-bold",
+                    (evolutionState?.metrics?.learningVelocity ?? 0) > 0 ? "text-green-400" : "text-red-400"
+                  )}>
+                    {((evolutionState?.metrics?.learningVelocity ?? 0) * 100).toFixed(1)}%
+                  </div>
+                  <div className="text-xs text-muted-foreground">Learning Velocity</div>
+                </div>
+                <div className="p-3 bg-muted/30 rounded-lg">
+                  <div className="text-2xl font-mono font-bold">
+                    {((evolutionState?.metrics?.currentFitness ?? 0.5) * 100).toFixed(0)}%
+                  </div>
+                  <div className="text-xs text-muted-foreground">Current Fitness</div>
+                </div>
+                <div className="p-3 bg-muted/30 rounded-lg">
+                  <div className="text-2xl font-mono font-bold text-yellow-400">
+                    {evolutionState?.patternLibrary?.length ?? 0}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Learned Patterns</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       ) : activeView === 'learning' ? (
-        /* 24/7 Learning View - Background Market Analysis */
         <MarketLearningDashboard />
       ) : null}
     </div>
