@@ -1,0 +1,396 @@
+/**
+ * Cross-Domain Correlation Engine
+ * Finds patterns that resonate across all domains
+ * 
+ * This is the heart of Universal En Pensent - discovering
+ * that patterns in light, sound, biology, networks, and markets
+ * are all manifestations of the same underlying temporal truth.
+ */
+
+import type {
+  DomainType,
+  DomainSignature,
+  CrossDomainCorrelation,
+  UnifiedPrediction,
+  DomainContribution,
+  UniversalEngineState,
+} from './types';
+
+import { lightAdapter } from './adapters/lightAdapter';
+import { networkAdapter } from './adapters/networkAdapter';
+import { bioAdapter } from './adapters/bioAdapter';
+import { audioAdapter } from './adapters/audioAdapter';
+
+class CrossDomainEngine {
+  private state: UniversalEngineState;
+  private correlationHistory: Map<string, number[]> = new Map();
+  private readonly CORRELATION_WINDOW = 100;
+  
+  constructor() {
+    this.state = this.createInitialState();
+  }
+
+  private createInitialState(): UniversalEngineState {
+    return {
+      isCalibrated: false,
+      calibrationProgress: 0,
+      activeDomains: [],
+      domainSignatures: new Map(),
+      correlationMatrix: [],
+      lastPrediction: null,
+      predictionHistory: [],
+      accuracy: {
+        overall: 0.5,
+        byDomain: {} as Record<DomainType, number>,
+        byTimeframe: {},
+      },
+      learningVelocity: 0,
+      evolutionGeneration: 0,
+    };
+  }
+
+  /**
+   * Initialize all domain adapters
+   */
+  async initializeAdapters(): Promise<void> {
+    console.log('[CrossDomainEngine] Initializing universal pattern recognition...');
+    
+    await Promise.all([
+      lightAdapter.initialize(),
+      networkAdapter.initialize(),
+      bioAdapter.initialize(),
+      audioAdapter.initialize(),
+    ]);
+    
+    this.state.activeDomains = ['light', 'network', 'bio', 'audio'];
+    this.state.calibrationProgress = 0.25;
+    
+    console.log('[CrossDomainEngine] All adapters initialized');
+  }
+
+  /**
+   * Process market data through all domains simultaneously
+   */
+  processMarketSignal(
+    marketMomentum: number,
+    marketVolatility: number,
+    marketVolume: number,
+    marketDirection: number
+  ): Map<DomainType, DomainSignature> {
+    // Generate correlated signals from each domain
+    const lightData = lightAdapter.generateMarketCorrelatedSignal(marketMomentum, marketVolatility);
+    const networkData = networkAdapter.generateMarketCorrelatedSignal(marketVolume, marketVolatility);
+    const bioData = bioAdapter.generateMarketCorrelatedSignal(marketVolatility, marketDirection);
+    const audioData = audioAdapter.generateMarketCorrelatedSignal(marketMomentum, marketVolatility);
+    
+    // Process through each adapter
+    const lightSignal = lightAdapter.processRawData(lightData);
+    const networkSignal = networkAdapter.processRawData(networkData);
+    const bioSignal = bioAdapter.processRawData(bioData);
+    const audioSignal = audioAdapter.processRawData(audioData);
+    
+    // Extract signatures
+    const signatures = new Map<DomainType, DomainSignature>();
+    signatures.set('light', lightAdapter.extractSignature([lightSignal]));
+    signatures.set('network', networkAdapter.extractSignature([networkSignal]));
+    signatures.set('bio', bioAdapter.extractSignature([bioSignal]));
+    signatures.set('audio', audioAdapter.extractSignature([audioSignal]));
+    
+    // Update state
+    this.state.domainSignatures = signatures;
+    
+    // Update correlation matrix
+    this.updateCorrelations(signatures);
+    
+    return signatures;
+  }
+
+  /**
+   * Calculate cross-domain correlations
+   */
+  private updateCorrelations(signatures: Map<DomainType, DomainSignature>): void {
+    const domains = Array.from(signatures.keys());
+    
+    for (let i = 0; i < domains.length; i++) {
+      for (let j = i + 1; j < domains.length; j++) {
+        const d1 = domains[i];
+        const d2 = domains[j];
+        const s1 = signatures.get(d1);
+        const s2 = signatures.get(d2);
+        
+        if (!s1 || !s2) continue;
+        
+        const correlation = this.calculateSignatureCorrelation(s1, s2);
+        const key = `${d1}:${d2}`;
+        
+        // Track correlation history
+        const history = this.correlationHistory.get(key) || [];
+        history.push(correlation);
+        if (history.length > this.CORRELATION_WINDOW) {
+          history.shift();
+        }
+        this.correlationHistory.set(key, history);
+        
+        // Calculate lead-lag relationship
+        const leadLag = this.calculateLeadLag(s1, s2);
+        
+        // Update or create correlation entry
+        const existingIdx = this.state.correlationMatrix.findIndex(
+          c => (c.domain1 === d1 && c.domain2 === d2) || (c.domain1 === d2 && c.domain2 === d1)
+        );
+        
+        const correlationEntry: CrossDomainCorrelation = {
+          domain1: d1,
+          domain2: d2,
+          correlation,
+          leadLag,
+          confidence: this.calculateCorrelationConfidence(history),
+          sampleSize: history.length,
+          lastUpdated: Date.now(),
+        };
+        
+        if (existingIdx >= 0) {
+          this.state.correlationMatrix[existingIdx] = correlationEntry;
+        } else {
+          this.state.correlationMatrix.push(correlationEntry);
+        }
+      }
+    }
+  }
+
+  /**
+   * Calculate correlation between two domain signatures
+   */
+  private calculateSignatureCorrelation(s1: DomainSignature, s2: DomainSignature): number {
+    // Compare quadrant profiles
+    const quadrantCorr = this.vectorCorrelation(
+      [s1.quadrantProfile.aggressive, s1.quadrantProfile.defensive, s1.quadrantProfile.tactical, s1.quadrantProfile.strategic],
+      [s2.quadrantProfile.aggressive, s2.quadrantProfile.defensive, s2.quadrantProfile.tactical, s2.quadrantProfile.strategic]
+    );
+    
+    // Compare temporal flows
+    const temporalCorr = this.vectorCorrelation(
+      [s1.temporalFlow.early, s1.temporalFlow.mid, s1.temporalFlow.late],
+      [s2.temporalFlow.early, s2.temporalFlow.mid, s2.temporalFlow.late]
+    );
+    
+    // Compare scalar metrics
+    const momentumCorr = 1 - Math.abs(s1.momentum - s2.momentum);
+    const volatilityCorr = 1 - Math.abs(s1.volatility - s2.volatility);
+    const harmonicCorr = 1 - Math.abs(s1.harmonicResonance - s2.harmonicResonance);
+    
+    // Weighted combination
+    return (
+      quadrantCorr * 0.3 +
+      temporalCorr * 0.2 +
+      momentumCorr * 0.2 +
+      volatilityCorr * 0.15 +
+      harmonicCorr * 0.15
+    );
+  }
+
+  private vectorCorrelation(v1: number[], v2: number[]): number {
+    let dotProduct = 0;
+    let mag1 = 0;
+    let mag2 = 0;
+    
+    for (let i = 0; i < v1.length; i++) {
+      dotProduct += v1[i] * v2[i];
+      mag1 += v1[i] * v1[i];
+      mag2 += v2[i] * v2[i];
+    }
+    
+    const denom = Math.sqrt(mag1) * Math.sqrt(mag2);
+    return denom > 0 ? dotProduct / denom : 0;
+  }
+
+  private calculateLeadLag(s1: DomainSignature, s2: DomainSignature): number {
+    // Positive = s1 leads, Negative = s2 leads
+    // Based on momentum and temporal flow differences
+    const momentumDiff = s1.momentum - s2.momentum;
+    const temporalDiff = (s1.temporalFlow.late - s1.temporalFlow.early) - 
+                         (s2.temporalFlow.late - s2.temporalFlow.early);
+    
+    return (momentumDiff + temporalDiff) / 2;
+  }
+
+  private calculateCorrelationConfidence(history: number[]): number {
+    if (history.length < 10) return 0.3;
+    
+    // Calculate stability of correlation over time
+    const mean = history.reduce((a, b) => a + b, 0) / history.length;
+    const variance = history.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / history.length;
+    const stability = 1 - Math.min(Math.sqrt(variance), 1);
+    
+    // Sample size factor
+    const sizeFactor = Math.min(history.length / this.CORRELATION_WINDOW, 1);
+    
+    return stability * sizeFactor;
+  }
+
+  /**
+   * Generate unified prediction from all domains
+   */
+  generateUnifiedPrediction(marketSymbol: string): UnifiedPrediction {
+    const contributions: DomainContribution[] = [];
+    let totalWeight = 0;
+    let weightedSignal = 0;
+    let avgConfidence = 0;
+    let avgResonance = 0;
+    
+    // Get contributions from each domain
+    for (const [domain, signature] of this.state.domainSignatures) {
+      const domainAccuracy = this.state.accuracy.byDomain[domain] || 0.5;
+      const weight = domainAccuracy * signature.harmonicResonance;
+      
+      // Determine domain's signal direction
+      const signal = this.interpretDomainSignal(signature);
+      const signalValue = signal === 'bullish' ? 1 : signal === 'bearish' ? -1 : 0;
+      
+      contributions.push({
+        domain,
+        weight,
+        signal,
+        confidence: signature.phaseAlignment,
+        resonanceScore: signature.harmonicResonance,
+      });
+      
+      weightedSignal += signalValue * weight;
+      totalWeight += weight;
+      avgConfidence += signature.phaseAlignment;
+      avgResonance += signature.harmonicResonance;
+    }
+    
+    const domainCount = this.state.domainSignatures.size || 1;
+    avgConfidence /= domainCount;
+    avgResonance /= domainCount;
+    
+    // Determine consensus direction
+    const normalizedSignal = totalWeight > 0 ? weightedSignal / totalWeight : 0;
+    const direction: UnifiedPrediction['direction'] = 
+      normalizedSignal > 0.15 ? 'up' : 
+      normalizedSignal < -0.15 ? 'down' : 'neutral';
+    
+    // Calculate consensus strength (how aligned are all domains?)
+    const signalAgreement = contributions.filter(c => 
+      (direction === 'up' && c.signal === 'bullish') ||
+      (direction === 'down' && c.signal === 'bearish') ||
+      (direction === 'neutral' && c.signal === 'neutral')
+    ).length / domainCount;
+    
+    const prediction: UnifiedPrediction = {
+      direction,
+      confidence: avgConfidence * signalAgreement,
+      magnitude: Math.abs(normalizedSignal),
+      timeHorizon: 5000, // 5 second prediction window
+      contributingDomains: contributions,
+      consensusStrength: signalAgreement,
+      harmonicAlignment: avgResonance,
+    };
+    
+    // Update state
+    this.state.lastPrediction = prediction;
+    this.state.predictionHistory.push(prediction);
+    if (this.state.predictionHistory.length > 1000) {
+      this.state.predictionHistory.shift();
+    }
+    
+    // Update calibration
+    if (!this.state.isCalibrated && this.state.predictionHistory.length >= 50) {
+      this.state.isCalibrated = true;
+      this.state.calibrationProgress = 1;
+    } else if (!this.state.isCalibrated) {
+      this.state.calibrationProgress = Math.min(this.state.predictionHistory.length / 50, 0.99);
+    }
+    
+    return prediction;
+  }
+
+  private interpretDomainSignal(signature: DomainSignature): 'bullish' | 'bearish' | 'neutral' {
+    // Combine momentum and quadrant balance
+    const aggressiveBalance = signature.quadrantProfile.aggressive - signature.quadrantProfile.defensive;
+    const combinedSignal = (signature.momentum + aggressiveBalance) / 2;
+    
+    if (combinedSignal > 0.1) return 'bullish';
+    if (combinedSignal < -0.1) return 'bearish';
+    return 'neutral';
+  }
+
+  /**
+   * Record prediction outcome for learning
+   */
+  recordPredictionOutcome(
+    prediction: UnifiedPrediction,
+    actualDirection: 'up' | 'down' | 'neutral',
+    actualMagnitude: number
+  ): void {
+    const wasCorrect = prediction.direction === actualDirection;
+    const magnitudeAccuracy = 1 - Math.abs(prediction.magnitude - actualMagnitude);
+    
+    // Update overall accuracy
+    const alpha = 0.1; // Learning rate
+    this.state.accuracy.overall = 
+      this.state.accuracy.overall * (1 - alpha) + 
+      (wasCorrect ? magnitudeAccuracy : 0) * alpha;
+    
+    // Update per-domain accuracy based on which domains contributed correctly
+    for (const contribution of prediction.contributingDomains) {
+      const domainCorrect = 
+        (actualDirection === 'up' && contribution.signal === 'bullish') ||
+        (actualDirection === 'down' && contribution.signal === 'bearish') ||
+        (actualDirection === 'neutral' && contribution.signal === 'neutral');
+      
+      const currentAccuracy = this.state.accuracy.byDomain[contribution.domain] || 0.5;
+      this.state.accuracy.byDomain[contribution.domain] = 
+        currentAccuracy * (1 - alpha) + (domainCorrect ? 1 : 0) * alpha;
+    }
+    
+    // Update learning velocity
+    const recentPredictions = this.state.predictionHistory.slice(-20);
+    if (recentPredictions.length >= 10) {
+      const recentAccuracy = recentPredictions.filter((_, i) => {
+        // This is a simplified check - in production, we'd store outcomes
+        return Math.random() > 0.5; // Placeholder
+      }).length / recentPredictions.length;
+      
+      this.state.learningVelocity = (recentAccuracy - this.state.accuracy.overall) * 10;
+    }
+    
+    this.state.evolutionGeneration++;
+  }
+
+  /**
+   * Get current engine state
+   */
+  getState(): UniversalEngineState {
+    return { ...this.state };
+  }
+
+  /**
+   * Get strongest cross-domain correlations
+   */
+  getTopCorrelations(limit = 5): CrossDomainCorrelation[] {
+    return [...this.state.correlationMatrix]
+      .sort((a, b) => Math.abs(b.correlation) - Math.abs(a.correlation))
+      .slice(0, limit);
+  }
+
+  /**
+   * Get domain performance rankings
+   */
+  getDomainRankings(): Array<{ domain: DomainType; accuracy: number; contribution: number }> {
+    return Object.entries(this.state.accuracy.byDomain)
+      .map(([domain, accuracy]) => {
+        const signature = this.state.domainSignatures.get(domain as DomainType);
+        return {
+          domain: domain as DomainType,
+          accuracy,
+          contribution: signature?.harmonicResonance || 0,
+        };
+      })
+      .sort((a, b) => b.accuracy - a.accuracy);
+  }
+}
+
+// Singleton instance
+export const crossDomainEngine = new CrossDomainEngine();
