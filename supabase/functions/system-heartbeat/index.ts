@@ -17,6 +17,39 @@ const CRYPTO_SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT'];
 const FOREX_SYMBOLS = ['EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CAD'];
 const STOCK_SYMBOLS = ['AAPL', 'TSLA', 'NVDA', 'SPY', 'QQQ', 'MSFT'];
 
+// Market hours check (all times in UTC)
+function isMarketOpen(assetClass: 'crypto' | 'forex' | 'stock'): boolean {
+  const now = new Date();
+  const utcHour = now.getUTCHours();
+  const utcDay = now.getUTCDay(); // 0 = Sunday, 6 = Saturday
+  
+  switch (assetClass) {
+    case 'crypto':
+      // Crypto trades 24/7/365
+      return true;
+    case 'forex':
+      // Forex: Sunday 5pm EST (22:00 UTC) to Friday 5pm EST (22:00 UTC)
+      // Closed Saturday all day and Sunday until 22:00 UTC
+      if (utcDay === 6) return false; // Saturday - closed
+      if (utcDay === 0 && utcHour < 22) return false; // Sunday before 22:00 UTC - closed
+      return true;
+    case 'stock':
+      // US Stock Market: Mon-Fri 9:30am-4:00pm EST (14:30-21:00 UTC)
+      if (utcDay === 0 || utcDay === 6) return false; // Weekend - closed
+      if (utcHour < 14 || utcHour >= 21) return false; // Outside hours
+      if (utcHour === 14 && now.getUTCMinutes() < 30) return false; // Before 14:30
+      return true;
+    default:
+      return false;
+  }
+}
+
+function getAssetClass(symbol: string): 'crypto' | 'forex' | 'stock' {
+  if (CRYPTO_SYMBOLS.some(s => s.replace('USDT', '') === symbol || s === symbol)) return 'crypto';
+  if (FOREX_SYMBOLS.some(s => s.replace('/', '') === symbol || s === symbol)) return 'forex';
+  return 'stock';
+}
+
 interface TickData {
   symbol: string;
   price: number;
@@ -126,59 +159,54 @@ async function fetchFinnhubPrices(): Promise<TickData[]> {
   return ticks;
 }
 
-// Fallback for when APIs fail
-function generateFallbackTick(symbol: string, lastPrice?: number): TickData {
-  const basePrices: Record<string, number> = {
-    'BTC': 105000, 'ETH': 3800, 'SOL': 210, 'BNB': 720,
-    'EURUSD': 1.0285, 'GBPUSD': 1.2180, 'USDJPY': 156.2, 'USDCAD': 1.4380,
-    'AAPL': 228, 'TSLA': 420, 'NVDA': 138, 'SPY': 598, 'QQQ': 518, 'MSFT': 428
-  };
-  
-  const volatility = symbol.includes('BTC') ? 0.002 : 0.0005;
-  const basePrice = lastPrice || basePrices[symbol] || 100;
-  const change = (Math.random() - 0.5) * 2 * volatility * basePrice;
-  const newPrice = Math.max(0.01, basePrice + change);
-  
-  return {
-    symbol,
-    price: Number(newPrice.toFixed(symbol.includes('USD') && !symbol.includes('BTC') ? 4 : 2)),
-    volume: Math.floor(Math.random() * 10000) + 1000,
-    bid: Number((newPrice * 0.9999).toFixed(4)),
-    ask: Number((newPrice * 1.0001).toFixed(4)),
-    timestamp: new Date().toISOString(),
-    source: 'fallback'
-  };
-}
+// NO FALLBACK - We only use real data!
+// Removed generateFallbackTick function - no simulated data allowed
 
-// Collect all market data with fallbacks
-async function collectMarketData(lastPrices: Record<string, number>): Promise<TickData[]> {
+// Collect ONLY real market data from OPEN markets
+async function collectMarketData(_lastPrices: Record<string, number>): Promise<TickData[]> {
   const allTicks: TickData[] = [];
   const collectedSymbols = new Set<string>();
   
-  const [binanceTicks, twelveDataTicks, finnhubTicks] = await Promise.all([
-    fetchBinancePrices(),
-    fetchTwelveDataPrices(),
-    fetchFinnhubPrices()
-  ]);
+  // Check which markets are open
+  const cryptoOpen = isMarketOpen('crypto');
+  const forexOpen = isMarketOpen('forex');
+  const stockOpen = isMarketOpen('stock');
   
-  for (const tick of [...binanceTicks, ...twelveDataTicks, ...finnhubTicks]) {
-    if (!collectedSymbols.has(tick.symbol)) {
-      allTicks.push(tick);
-      collectedSymbols.add(tick.symbol);
+  console.log(`[Market Hours] Crypto: ${cryptoOpen}, Forex: ${forexOpen}, Stock: ${stockOpen}`);
+  
+  // Only fetch from open markets
+  const fetchPromises: Promise<TickData[]>[] = [];
+  
+  if (cryptoOpen) {
+    fetchPromises.push(fetchBinancePrices());
+  }
+  
+  if (forexOpen || stockOpen) {
+    fetchPromises.push(fetchTwelveDataPrices());
+  }
+  
+  if (stockOpen) {
+    fetchPromises.push(fetchFinnhubPrices());
+  }
+  
+  const results = await Promise.all(fetchPromises);
+  
+  for (const tickArray of results) {
+    for (const tick of tickArray) {
+      // Double-check: only add if the market for this symbol is actually open
+      const assetClass = getAssetClass(tick.symbol);
+      const marketOpen = isMarketOpen(assetClass);
+      
+      if (marketOpen && !collectedSymbols.has(tick.symbol) && tick.source !== 'fallback') {
+        allTicks.push(tick);
+        collectedSymbols.add(tick.symbol);
+        console.log(`[REAL DATA] ${tick.symbol}: $${tick.price} from ${tick.source}`);
+      }
     }
   }
   
-  const allExpectedSymbols = [
-    ...CRYPTO_SYMBOLS.map(s => s.replace('USDT', '')),
-    ...FOREX_SYMBOLS.map(s => s.replace('/', '')),
-    ...STOCK_SYMBOLS
-  ];
-  
-  for (const symbol of allExpectedSymbols) {
-    if (!collectedSymbols.has(symbol)) {
-      allTicks.push(generateFallbackTick(symbol, lastPrices[symbol]));
-    }
-  }
+  // NO FALLBACK DATA - we only learn from reality
+  console.log(`[Market Data] Collected ${allTicks.length} REAL ticks (no simulated data)`);
   
   return allTicks;
 }
@@ -281,7 +309,7 @@ Deno.serve(async (req) => {
     }
 
     // ========================================
-    // PHASE 2: GENERATE PREDICTIONS (every 12th call ~60s)
+    // PHASE 2: GENERATE PREDICTIONS (only on OPEN markets with REAL data)
     // ========================================
     if (action === 'full_cycle' || action === 'predict') {
       const { data: evolution } = await supabase
@@ -293,67 +321,87 @@ Deno.serve(async (req) => {
       const genes = evolution?.genes || { confidenceThreshold: 0.6 };
       const predictions = [];
       
-      // Generate 1-3 predictions per cycle using collected symbols
-      const numPredictions = Math.floor(Math.random() * 3) + 1;
-      const allSymbols = [
-        ...CRYPTO_SYMBOLS.map(s => s.replace('USDT', '')),
-        ...FOREX_SYMBOLS.map(s => s.replace('/', '')),
-        ...STOCK_SYMBOLS
-      ];
-      const symbols = [...allSymbols].sort(() => Math.random() - 0.5).slice(0, numPredictions);
+      // Only predict on OPEN markets
+      const openSymbols: string[] = [];
       
-      for (const symbol of symbols) {
-        const { data: recentTicks } = await supabase
-          .from('market_tick_history')
-          .select('price')
-          .eq('symbol', symbol)
-          .order('timestamp', { ascending: false })
-          .limit(20);
+      if (isMarketOpen('crypto')) {
+        openSymbols.push(...CRYPTO_SYMBOLS.map(s => s.replace('USDT', '')));
+      }
+      if (isMarketOpen('forex')) {
+        openSymbols.push(...FOREX_SYMBOLS.map(s => s.replace('/', '')));
+      }
+      if (isMarketOpen('stock')) {
+        openSymbols.push(...STOCK_SYMBOLS);
+      }
+      
+      console.log(`[Predictions] Open markets have ${openSymbols.length} symbols: ${openSymbols.join(', ')}`);
+      
+      if (openSymbols.length === 0) {
+        console.log('[Predictions] No markets open - skipping prediction generation');
+        results.predict = { success: true, predictions: 0, reason: 'no_open_markets' };
+      } else {
+        // Generate 1-3 predictions per cycle using ONLY open market symbols
+        const numPredictions = Math.min(Math.floor(Math.random() * 3) + 1, openSymbols.length);
+        const symbols = [...openSymbols].sort(() => Math.random() - 0.5).slice(0, numPredictions);
         
-        if (recentTicks && recentTicks.length >= 5) {
-          const prices = recentTicks.map(t => t.price);
-          const avgPrice = prices.reduce((a, b) => a + b, 0) / prices.length;
-          const lastPrice = prices[0];
-          const momentum = (lastPrice - avgPrice) / avgPrice;
+        for (const symbol of symbols) {
+          // Only use REAL data (source != 'fallback')
+          const { data: recentTicks } = await supabase
+            .from('market_tick_history')
+            .select('price, source')
+            .eq('symbol', symbol)
+            .neq('source', 'fallback')
+            .order('timestamp', { ascending: false })
+            .limit(20);
           
-          // Calculate trend strength and volatility
-          const priceChanges = prices.slice(0, -1).map((p, i) => (p - prices[i + 1]) / prices[i + 1]);
-          const avgChange = priceChanges.reduce((a, b) => a + b, 0) / priceChanges.length;
-          const volatility = Math.sqrt(priceChanges.reduce((sum, c) => sum + Math.pow(c - avgChange, 2), 0) / priceChanges.length);
-          
-          // Trend direction from recent movement
-          const trendStrength = Math.abs(momentum) / Math.max(volatility, 0.0001);
-          const predictedDirection = momentum > 0 ? 'up' : momentum < 0 ? 'down' : 'flat';
-          
-          // Confidence based on trend clarity (always above threshold for active trading)
-          const baseConfidence = 0.55 + Math.min(0.35, trendStrength * 0.1);
-          const confidence = Math.min(0.92, Math.max(0.6, baseConfidence));
-          
-          // Always generate prediction if we have enough data
-          predictions.push({
-            symbol,
-            entry_price: lastPrice,
-            predicted_direction: predictedDirection,
-            predicted_magnitude: Math.abs(momentum) + volatility,
-            predicted_confidence: confidence,
-            prediction_horizon_ms: 60000, // 1 minute
-            market_conditions: { momentum, volatility, trendStrength }
-          });
+          if (recentTicks && recentTicks.length >= 5) {
+            const prices = recentTicks.map(t => t.price);
+            const avgPrice = prices.reduce((a, b) => a + b, 0) / prices.length;
+            const lastPrice = prices[0];
+            const momentum = (lastPrice - avgPrice) / avgPrice;
+            
+            // Calculate trend strength and volatility
+            const priceChanges = prices.slice(0, -1).map((p, i) => (p - prices[i + 1]) / prices[i + 1]);
+            const avgChange = priceChanges.reduce((a, b) => a + b, 0) / priceChanges.length;
+            const volatility = Math.sqrt(priceChanges.reduce((sum, c) => sum + Math.pow(c - avgChange, 2), 0) / priceChanges.length);
+            
+            // Trend direction from recent movement
+            const trendStrength = Math.abs(momentum) / Math.max(volatility, 0.0001);
+            const predictedDirection = momentum > 0 ? 'up' : momentum < 0 ? 'down' : 'flat';
+            
+            // Confidence based on trend clarity
+            const baseConfidence = 0.55 + Math.min(0.35, trendStrength * 0.1);
+            const confidence = Math.min(0.92, Math.max(0.6, baseConfidence));
+            
+            predictions.push({
+              symbol,
+              entry_price: lastPrice,
+              predicted_direction: predictedDirection,
+              predicted_magnitude: Math.abs(momentum) + volatility,
+              predicted_confidence: confidence,
+              prediction_horizon_ms: 60000, // 1 minute
+              market_conditions: { momentum, volatility, trendStrength, realDataOnly: true }
+            });
+            
+            console.log(`[Prediction] ${symbol}: ${predictedDirection} @ ${confidence.toFixed(2)} confidence (REAL data only)`);
+          } else {
+            console.log(`[Prediction] ${symbol}: Insufficient real data (${recentTicks?.length || 0} ticks)`);
+          }
         }
-      }
-      
-      if (predictions.length > 0) {
-        const { error } = await supabase.from('prediction_outcomes').insert(predictions);
-        if (!error) {
-          await supabase.rpc('pulse_vital', { 
-            p_vital_name: 'prediction-engine', 
-            p_status: 'healthy',
-            p_metadata: { predictionsGenerated: predictions.length }
-          });
+        
+        if (predictions.length > 0) {
+          const { error } = await supabase.from('prediction_outcomes').insert(predictions);
+          if (!error) {
+            await supabase.rpc('pulse_vital', { 
+              p_vital_name: 'prediction-engine', 
+              p_status: 'healthy',
+              p_metadata: { predictionsGenerated: predictions.length, realDataOnly: true }
+            });
+          }
         }
+        
+        results.predict = { success: true, predictions: predictions.length, openMarkets: openSymbols.length };
       }
-      
-      results.predict = { success: true, predictions: predictions.length };
     }
 
     // ========================================
@@ -495,7 +543,7 @@ Deno.serve(async (req) => {
         }
       }
       
-      // Open new trades based on high-confidence predictions
+      // Open new trades based on high-confidence predictions (REAL DATA ONLY)
       const { data: recentHighConfidencePredictions } = await supabase
         .from('prediction_outcomes')
         .select('*')
@@ -508,6 +556,13 @@ Deno.serve(async (req) => {
       const maxRiskPerTrade = currentBalance * 0.05; // 5% max risk per trade
       
       for (const pred of recentHighConfidencePredictions || []) {
+        // Only trade if the market is OPEN
+        const assetClass = getAssetClass(pred.symbol);
+        if (!isMarketOpen(assetClass)) {
+          console.log(`[Trade] Skipping ${pred.symbol} - market closed`);
+          continue;
+        }
+        
         // Check if we already have a trade for this prediction
         const { data: existingTrade } = await supabase
           .from('autonomous_trades')
@@ -517,11 +572,12 @@ Deno.serve(async (req) => {
           .single();
         
         if (!existingTrade && pred.predicted_direction !== 'flat') {
-          // Get current price for the symbol
+          // Get current REAL price for the symbol (no fallback)
           const { data: currentTick } = await supabase
             .from('market_tick_history')
-            .select('price')
+            .select('price, source')
             .eq('symbol', pred.symbol)
+            .neq('source', 'fallback')
             .order('timestamp', { ascending: false })
             .limit(1)
             .single();
