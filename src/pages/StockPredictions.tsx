@@ -22,7 +22,7 @@ import type { CandleStick } from '@/lib/pensent-core/domains/finance/types';
 import { AccuracyLeaderboard } from '@/components/finance/AccuracyLeaderboard';
 import { CrossDomainAnalysis } from '@/components/finance/CrossDomainAnalysis';
 import { PredictionHistory } from '@/components/finance/PredictionHistory';
-import { ScalpingTerminal } from '@/components/scalping/ScalpingTerminal';
+import SimplifiedScalpingTerminal from '@/components/scalping/SimplifiedScalpingTerminal';
 import { useRealtimeAccuracy, subscribeToAccuracyUpdates } from '@/hooks/useRealtimeAccuracy';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
@@ -197,7 +197,7 @@ const StockPredictionDashboard: React.FC = () => {
 
         <TabsContent value="scalping">
           <ErrorBoundary componentName="ScalpingTerminal">
-            <ScalpingTerminal />
+            <SimplifiedScalpingTerminal />
           </ErrorBoundary>
         </TabsContent>
 
