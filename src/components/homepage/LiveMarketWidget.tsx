@@ -4,7 +4,7 @@ import {
   Activity, TrendingUp, DollarSign, Palette, Crown, 
   Gamepad2, ChevronRight, Sparkles, ArrowUpRight, ArrowDownRight
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -309,31 +309,27 @@ const LiveMarketWidget = forwardRef<HTMLElement, object>(function LiveMarketWidg
                   </div>
                   
                   <div className="space-y-2 max-h-[150px] overflow-y-auto">
-                    <AnimatePresence mode="popLayout" initial={false}>
-                      {activities.map((activity) => (
-                        <motion.div
-                          key={activity.id}
-                          layout
-                          initial={{ opacity: 0, y: -10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: 10 }}
-                          className="flex items-center gap-2 p-2 rounded-lg bg-card/30 border border-border/20"
-                        >
-                          {getActivityIcon(activity.type)}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs truncate">{activity.description}</p>
-                            {activity.value && (
-                              <p className="text-[10px] text-primary font-medium">
-                                ${activity.value.toFixed(2)}
-                              </p>
-                            )}
-                          </div>
-                          <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                            {formatTimeAgo(activity.timestamp)}
-                          </span>
-                        </motion.div>
-                      ))}
-                    </AnimatePresence>
+                    {activities.map((activity) => (
+                      <motion.div
+                        key={activity.id}
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="flex items-center gap-2 p-2 rounded-lg bg-card/30 border border-border/20"
+                      >
+                        {getActivityIcon(activity.type)}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs truncate">{activity.description}</p>
+                          {activity.value && (
+                            <p className="text-[10px] text-primary font-medium">
+                              ${activity.value.toFixed(2)}
+                            </p>
+                          )}
+                        </div>
+                        <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                          {formatTimeAgo(activity.timestamp)}
+                        </span>
+                      </motion.div>
+                    ))}
                   </div>
                 </div>
               </div>
