@@ -20,6 +20,8 @@ import { lightAdapter } from './adapters/lightAdapter';
 import { networkAdapter } from './adapters/networkAdapter';
 import { bioAdapter } from './adapters/bioAdapter';
 import { audioAdapter } from './adapters/audioAdapter';
+import { musicAdapter } from './adapters/musicAdapter';
+import { soulAdapter } from './adapters/soulAdapter';
 
 class CrossDomainEngine {
   private state: UniversalEngineState;
@@ -51,25 +53,30 @@ class CrossDomainEngine {
 
   /**
    * Initialize all domain adapters
+   * Light, Network, Bio, Audio + Music (Heart) + Soul (Spirit)
    */
   async initializeAdapters(): Promise<void> {
     console.log('[CrossDomainEngine] Initializing universal pattern recognition...');
+    console.log('[CrossDomainEngine] 🫀 Heart (Music) + 👻 Soul (Spirit) domains activated');
     
     await Promise.all([
       lightAdapter.initialize(),
       networkAdapter.initialize(),
       bioAdapter.initialize(),
       audioAdapter.initialize(),
+      musicAdapter.initialize(),
+      soulAdapter.initialize(),
     ]);
     
-    this.state.activeDomains = ['light', 'network', 'bio', 'audio'];
-    this.state.calibrationProgress = 0.25;
+    this.state.activeDomains = ['light', 'network', 'bio', 'audio', 'music', 'soul'];
+    this.state.calibrationProgress = 0.35; // More domains = more calibration needed
     
-    console.log('[CrossDomainEngine] All adapters initialized');
+    console.log('[CrossDomainEngine] All 6 domains synchronized - Universal consciousness active');
   }
 
   /**
-   * Process market data through all domains simultaneously
+   * Process market data through all 6 domains simultaneously
+   * Including Music (Heart) and Soul (Spirit)
    */
   processMarketSignal(
     marketMomentum: number,
@@ -83,18 +90,28 @@ class CrossDomainEngine {
     const bioData = bioAdapter.generateMarketCorrelatedSignal(marketVolatility, marketDirection);
     const audioData = audioAdapter.generateMarketCorrelatedSignal(marketMomentum, marketVolatility);
     
+    // 🫀 Music (Heart) - Temporal rhythm patterns
+    const musicData = musicAdapter.generateMarketCorrelatedMusicData(marketMomentum, marketVolatility, marketVolume);
+    
+    // 👻 Soul (Spirit) - Cultural/archetypal patterns
+    const soulData = soulAdapter.generateMarketCorrelatedSoulData(marketDirection, marketVolatility, marketVolume);
+    
     // Process through each adapter
     const lightSignal = lightAdapter.processRawData(lightData);
     const networkSignal = networkAdapter.processRawData(networkData);
     const bioSignal = bioAdapter.processRawData(bioData);
     const audioSignal = audioAdapter.processRawData(audioData);
+    const musicSignal = musicAdapter.processRawData(musicData);
+    const soulSignal = soulAdapter.processRawData(soulData);
     
-    // Extract signatures
+    // Extract signatures from all 6 domains
     const signatures = new Map<DomainType, DomainSignature>();
     signatures.set('light', lightAdapter.extractSignature([lightSignal]));
     signatures.set('network', networkAdapter.extractSignature([networkSignal]));
     signatures.set('bio', bioAdapter.extractSignature([bioSignal]));
     signatures.set('audio', audioAdapter.extractSignature([audioSignal]));
+    signatures.set('music', musicAdapter.extractSignature([musicSignal]));
+    signatures.set('soul', soulAdapter.extractSignature([soulSignal]));
     
     // Update state
     this.state.domainSignatures = signatures;
