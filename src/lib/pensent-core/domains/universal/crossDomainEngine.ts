@@ -1,14 +1,23 @@
 /**
- * Cross-Domain Correlation Engine
- * Finds patterns that resonate across all 21 domains
+ * Cross-Domain Correlation Engine v8.0
+ * Finds patterns that resonate across all 21 domains + 9 advanced modules
  * 
  * This is the heart of Universal En Pensent - discovering
  * that patterns in light, sound, biology, networks, markets,
  * language, and geology are all manifestations of the same underlying temporal truth.
  * 
+ * CORE INSIGHT: The relationship between temporal patterns and fundamental data 
+ * structure is DYNAMIC. The "=" sign in "pattern = structure" constantly changes value.
+ * Sometimes correlation IS causation, sometimes it isn't. The Dynamic Equivalence
+ * Tracker monitors WHEN that relationship holds true.
+ * 
  * SELF-LEARNING: Calibration curve adjusts confidence based on historical accuracy
  * SELF-HEALING: Convergence tracking identifies and weights reliable domain combinations  
  * SELF-EVOLVING: Phase synchronization detects optimal prediction windows
+ * 
+ * ANTI-OVERFITTING: All modules use regularization factors (0.8-0.9) to prevent
+ * fitting to noise. The engine blends multiple independent signals with
+ * skepticism-weighted consensus.
  */
 
 import type {
@@ -47,26 +56,59 @@ import { universalPatternsAdapter, generateUniversalPatternData, calculateTruthS
 import { competitiveDynamicsAdapter } from './adapters/competitiveDynamicsAdapter';
 import { humanAttractionAdapter } from './adapters/humanAttractionAdapter';
 
-// NEW: Linguistic & Geological Adapters (21 total domains)
+// Linguistic & Geological Adapters (21 total domains)
 import { linguisticSemanticAdapter, generateLinguisticData, extractLinguisticSignature, calculateLinguisticTruthScore } from './adapters/linguisticSemanticAdapter';
 import { geologicalTectonicAdapter, generateGeologicalData, extractGeologicalSignature, calculateGeologicalTruthScore } from './adapters/geologicalTectonicAdapter';
 
-// NEW: Proof-Strengthening Modules
+// Proof-Strengthening Modules (Original 4)
 import { convergenceTracker, type ConvergenceEvent } from './modules/convergenceTracker';
 import { calibrationTracker, type CalibrationMetrics } from './modules/calibrationCurve';
 import { sacredGeometry, analyzeGeometry, type GeometricAnalysis } from './modules/sacredGeometry';
 import { phaseSynchronizationDetector, type PhaseCoherence } from './modules/phaseSynchronization';
 
+// NEW: Advanced Analysis Modules (9 new modules)
+import { entropyFlowDetector, type EntropyFlow, type SystemEntropyState } from './modules/entropyFlowDetector';
+import { archetypalResonanceMatrix, type ArchetypeSignature } from './modules/archetypalResonanceMatrix';
+import { quantumProbabilityCloudGenerator, type ProbabilityCloud } from './modules/quantumProbabilityClouds';
+import { morphicFieldAdapter, type MorphicFieldState } from './modules/morphicFieldAdapter';
+import { emotionalContagionMapper, type ContagionState } from './modules/emotionalContagionMapper';
+import { fractalTimeCompressor, type FractalState } from './modules/fractalTimeCompression';
+import { inverseNoiseAmplifier, type InverseNoiseState } from './modules/inverseNoiseAmplifier';
+import { biorhythmLunarSync, type BiorhythmLunarState } from './modules/biorhythmLunarSync';
+import { dynamicEquivalenceTracker, type DynamicEquivalenceState } from './modules/dynamicEquivalenceTracker';
+
+// Extended state for advanced modules
+interface AdvancedModuleState {
+  entropy: SystemEntropyState | null;
+  archetype: ArchetypeSignature | null;
+  probabilityCloud: ProbabilityCloud | null;
+  morphicField: MorphicFieldState | null;
+  emotionalContagion: ContagionState | null;
+  fractalTime: FractalState | null;
+  inverseNoise: InverseNoiseState | null;
+  biorhythmLunar: BiorhythmLunarState | null;
+  dynamicEquivalence: DynamicEquivalenceState | null;
+}
+
 class CrossDomainEngine {
   private state: UniversalEngineState;
+  private advancedState: AdvancedModuleState;
   private correlationHistory: Map<string, number[]> = new Map();
   private readonly CORRELATION_WINDOW = 100;
   private priceHistory: number[] = [];
+  private volumeHistory: number[] = [];
   private swingHigh: number = 0;
   private swingLow: number = Infinity;
   
+  // Multi-timeframe data for fractal analysis
+  private minuteData: number[] = [];
+  private hourData: number[] = [];
+  private dayData: number[] = [];
+  private weekData: number[] = [];
+  
   constructor() {
     this.state = this.createInitialState();
+    this.advancedState = this.createAdvancedState();
   }
 
   private createInitialState(): UniversalEngineState {
@@ -87,20 +129,45 @@ class CrossDomainEngine {
       evolutionGeneration: 0,
     };
   }
+  
+  private createAdvancedState(): AdvancedModuleState {
+    return {
+      entropy: null,
+      archetype: null,
+      probabilityCloud: null,
+      morphicField: null,
+      emotionalContagion: null,
+      fractalTime: null,
+      inverseNoise: null,
+      biorhythmLunar: null,
+      dynamicEquivalence: null,
+    };
+  }
 
   /**
-   * Initialize ALL 21 domain adapters
+   * Initialize ALL 21 domain adapters + 9 advanced modules
    * Core: Light, Network, Bio, Audio, Music (Heart), Soul (Spirit)
    * Deep Science: Atomic, Cosmic, BiologyDeep, Mathematical, Molecular, Climate
    * Natural Intelligence: Consciousness, Botanical, Mycelium
    * Human Behavioral: Competitive Dynamics, Human Attraction
    * Language & Earth: Linguistic/Semantic, Geological/Tectonic
-   * Universal: Pattern synthesis with truth filtering
+   * 
+   * Advanced Modules (NEW):
+   * - Entropy Flow Detector (information entropy across domains)
+   * - Archetypal Resonance Matrix (narrative patterns)
+   * - Quantum Probability Clouds (probability distributions)
+   * - Morphic Field Adapter (pattern propagation)
+   * - Emotional Contagion Mapper (fear/greed R0 values)
+   * - Fractal Time Compression (self-similar patterns)
+   * - Inverse Noise Amplifier (predicting order from noise)
+   * - Biorhythm Lunar Sync (lunar/biological rhythms)
+   * - Dynamic Equivalence Tracker (pattern=structure relationship)
    */
   async initializeAdapters(): Promise<void> {
-    console.log('[CrossDomainEngine] 🌌 Initializing 21-domain universal pattern recognition...');
+    console.log('[CrossDomainEngine] 🌌 Initializing 21-domain + 9-module universal pattern recognition v8.0...');
     console.log('[CrossDomainEngine] 🫀 Heart (Music) + 👻 Soul (Spirit) + 🧬 DNA + ⚛️ Atomic + 🌿 Botanical activated');
     console.log('[CrossDomainEngine] ⚔️ Competitive + 💕 Attraction + 📖 Linguistic + 🌍 Geological activated');
+    console.log('[CrossDomainEngine] 🔮 Entropy + Archetype + Quantum + Morphic + Contagion + Fractal + Noise + Lunar + Equivalence ACTIVATED');
     
     await Promise.all([
       lightAdapter.initialize(),
@@ -120,14 +187,18 @@ class CrossDomainEngine {
       'satellite', // Phase synchronization cosmic cycles
       'market',    // Competitive dynamics, market cycles
     ];
-    this.state.calibrationProgress = 0.20; // More domains = more calibration needed
+    this.state.calibrationProgress = 0.15; // More modules = more calibration needed
     
     // Initialize proof-strengthening modules
     phaseSynchronizationDetector.updateCyclePhases();
     
-    console.log('[CrossDomainEngine] ✅ All 21 domains synchronized - Universal consciousness FULLY active');
+    // Initialize biorhythm/lunar state
+    this.advancedState.biorhythmLunar = biorhythmLunarSync.getState();
+    
+    console.log('[CrossDomainEngine] ✅ All 21 domains + 9 advanced modules synchronized');
     console.log('[CrossDomainEngine] 🔬 Truth filters + Calibration curves + Convergence tracking ENGAGED');
-    console.log('[CrossDomainEngine] 📐 Sacred geometry + Phase synchronization ACTIVE');
+    console.log('[CrossDomainEngine] 📐 Sacred geometry + Phase synchronization + Dynamic Equivalence ACTIVE');
+    console.log('[CrossDomainEngine] ⚠️ Anti-overfitting regularization factors: 0.8-0.9 across all modules');
   }
 
   /**
@@ -325,9 +396,106 @@ class CrossDomainEngine {
       console.log(`[CrossDomainEngine] 🌙 Phase lock: ${phaseCoherence.cycleCount} cycles synchronized at phase ${phaseCoherence.dominantPhase.toFixed(2)}`);
     }
     
+    // ========== NEW: ADVANCED MODULE PROCESSING (9 modules) ==========
+    // Each module has built-in regularization to prevent overfitting
+    
+    // 1. ENTROPY FLOW DETECTOR - Track information entropy across domains
+    for (const [domain, sig] of signatures) {
+      entropyFlowDetector.recordDomainEntropy(domain, [sig.momentum, sig.volatility, sig.harmonicResonance, sig.intensity]);
+    }
+    this.advancedState.entropy = entropyFlowDetector.getSystemEntropyState();
+    const entropyFlows = entropyFlowDetector.detectEntropyFlows();
+    if (entropyFlows.length > 0 && entropyFlows[0].confidence > 0.6) {
+      console.log(`[CrossDomainEngine] 🌊 Entropy flow: ${entropyFlows[0].flowDirection} from ${entropyFlows[0].fromDomain} to ${entropyFlows[0].toDomain}`);
+    }
+    
+    // 2. ARCHETYPAL RESONANCE - Detect narrative patterns
+    if (this.priceHistory.length >= 20) {
+      this.advancedState.archetype = archetypalResonanceMatrix.detectArchetype(
+        this.priceHistory,
+        this.volumeHistory.length >= 20 ? this.volumeHistory : this.priceHistory,
+        marketMomentum
+      );
+      if (this.advancedState.archetype) {
+        console.log(`[CrossDomainEngine] 📖 Archetype: ${this.advancedState.archetype.archetype} phase ${this.advancedState.archetype.phase.toFixed(2)} -> ${this.advancedState.archetype.priceImplication}`);
+      }
+    }
+    
+    // 3. MORPHIC FIELD - Track pattern propagation
+    const morphicSignature = Array.from(signatures.values()).slice(0, 5).map(s => s.momentum);
+    morphicFieldAdapter.recordObservation('primary_market', morphicSignature);
+    this.advancedState.morphicField = morphicFieldAdapter.getFieldState();
+    
+    // 4. EMOTIONAL CONTAGION - Fear/greed viral spread
+    const emotionMetrics = emotionalContagionMapper.detectEmotion(
+      marketMomentum * 0.1, // Price change proxy
+      marketVolatility,
+      marketVolume,
+      marketMomentum // Sentiment proxy
+    );
+    this.advancedState.emotionalContagion = emotionalContagionMapper.getContagionState();
+    if (this.advancedState.emotionalContagion.isViral) {
+      console.log(`[CrossDomainEngine] 😱 Emotional contagion: ${this.advancedState.emotionalContagion.dominantEmotion} R0=${this.advancedState.emotionalContagion.contagionR0.toFixed(2)}`);
+    }
+    
+    // 5. FRACTAL TIME COMPRESSION - Multi-timeframe pattern matching
+    // Update timeframe data (simulated compression)
+    this.minuteData.push(currentPrice || marketMomentum);
+    if (this.minuteData.length > 100) this.minuteData.shift();
+    if (this.minuteData.length % 60 === 0) {
+      this.hourData.push(this.minuteData[this.minuteData.length - 1]);
+      if (this.hourData.length > 100) this.hourData.shift();
+    }
+    if (this.hourData.length % 24 === 0 && this.hourData.length > 0) {
+      this.dayData.push(this.hourData[this.hourData.length - 1]);
+      if (this.dayData.length > 100) this.dayData.shift();
+    }
+    if (this.dayData.length % 7 === 0 && this.dayData.length > 0) {
+      this.weekData.push(this.dayData[this.dayData.length - 1]);
+      if (this.weekData.length > 100) this.weekData.shift();
+    }
+    
+    if (this.minuteData.length >= 20) {
+      this.advancedState.fractalTime = fractalTimeCompressor.analyzeFractals(
+        this.minuteData,
+        this.hourData.length >= 5 ? this.hourData : this.minuteData,
+        this.dayData.length >= 5 ? this.dayData : this.minuteData,
+        this.weekData.length >= 5 ? this.weekData : this.minuteData
+      );
+      if (this.advancedState.fractalTime.crossTimescaleCoherence > 0.6) {
+        console.log(`[CrossDomainEngine] 🔮 Fractal coherence: ${(this.advancedState.fractalTime.crossTimescaleCoherence * 100).toFixed(1)}% across timescales`);
+      }
+    }
+    
+    // 6. INVERSE NOISE AMPLIFIER - Predict order from chaos patterns
+    if (this.priceHistory.length >= 20) {
+      this.advancedState.inverseNoise = inverseNoiseAmplifier.getInverseNoiseState(
+        this.priceHistory,
+        this.volumeHistory.length >= 20 ? this.volumeHistory : this.priceHistory
+      );
+      if (this.advancedState.inverseNoise.recentAnomalies.length > 0) {
+        const anomaly = this.advancedState.inverseNoise.recentAnomalies[0];
+        console.log(`[CrossDomainEngine] 📊 Noise anomaly: ${anomaly.type} (predictive value: ${(anomaly.predictiveValue * 100).toFixed(0)}%)`);
+      }
+    }
+    
+    // 7. BIORHYTHM LUNAR SYNC - Lunar and biological cycles
+    this.advancedState.biorhythmLunar = biorhythmLunarSync.getState();
+    
+    // 8. DYNAMIC EQUIVALENCE TRACKER - Core insight: pattern=structure is dynamic
+    // This is the key innovation - track when patterns actually equal underlying structure
+    this.advancedState.dynamicEquivalence = dynamicEquivalenceTracker.getState();
+    if (this.advancedState.dynamicEquivalence.insights.length > 0) {
+      console.log(`[CrossDomainEngine] ⚖️ Dynamic Equivalence: ${this.advancedState.dynamicEquivalence.insights[0]}`);
+    }
+    
     // Update state
     this.state.domainSignatures = signatures;
     this.updateCorrelations(signatures);
+    
+    // Track volume for advanced analysis
+    this.volumeHistory.push(marketVolume);
+    if (this.volumeHistory.length > 200) this.volumeHistory.shift();
     
     return signatures;
   }
@@ -476,8 +644,14 @@ class CrossDomainEngine {
   }
 
   /**
-   * Generate unified prediction from all 21 domains
-   * Enhanced with calibration curve, convergence, and phase synchronization
+   * Generate unified prediction from all 21 domains + 9 advanced modules
+   * Enhanced with calibration, convergence, phase sync, and dynamic equivalence
+   * 
+   * ANTI-OVERFITTING: Multiple regularization layers prevent fitting to noise:
+   * 1. Each module has 0.8-0.9 regularization factor
+   * 2. Confidence cap at 95% (never too certain)
+   * 3. Dynamic equivalence tracks when patterns actually matter
+   * 4. Quantum probability clouds capture uncertainty
    */
   generateUnifiedPrediction(marketSymbol: string): UnifiedPrediction {
     const contributions: DomainContribution[] = [];
@@ -515,7 +689,7 @@ class CrossDomainEngine {
     
     // Determine consensus direction
     const normalizedSignal = totalWeight > 0 ? weightedSignal / totalWeight : 0;
-    const direction: UnifiedPrediction['direction'] = 
+    let direction: UnifiedPrediction['direction'] = 
       normalizedSignal > 0.15 ? 'up' : 
       normalizedSignal < -0.15 ? 'down' : 'neutral';
     
@@ -538,24 +712,147 @@ class CrossDomainEngine {
     const calibrationAdvice = calibrationTracker.getCalibrationAdvice();
     if (calibrationAdvice.status !== 'insufficient_data') {
       truthAdjustedConfidence *= calibrationAdvice.adjustmentFactor;
-      if (calibrationAdvice.adjustmentFactor !== 1.0) {
-        console.log(`[CrossDomainEngine] 📊 Calibration adjustment: ${calibrationAdvice.status} - factor ${calibrationAdvice.adjustmentFactor.toFixed(2)}`);
-      }
     }
     
     // === CONVERGENCE BOOST - Higher confidence when domains converge improbably ===
     if (this.lastConvergenceEvent && this.lastConvergenceEvent.statisticalImprobability > 0.9) {
-      truthAdjustedConfidence = Math.min(0.95, truthAdjustedConfidence * 1.15);
-      console.log(`[CrossDomainEngine] 🔄 Convergence boost applied: ${this.lastConvergenceEvent.alignmentCount} domains aligned`);
+      truthAdjustedConfidence = Math.min(0.95, truthAdjustedConfidence * 1.1);
     }
     
     // === PHASE SYNCHRONIZATION BOOST - Higher confidence during phase lock ===
     if (this.currentPhaseCoherence?.isSignificant) {
-      const syncBoost = 1 + (this.currentPhaseCoherence.overallCoherence - 0.5) * 0.2;
+      const syncBoost = 1 + (this.currentPhaseCoherence.overallCoherence - 0.5) * 0.15;
       truthAdjustedConfidence = Math.min(0.95, truthAdjustedConfidence * syncBoost);
     }
     
-    const finalConfidence = Math.min(truthAdjustedConfidence, 0.95); // Cap at 95%
+    // ========== ADVANCED MODULE INTEGRATION (9 modules) ==========
+    // Each applies its own regularization to prevent overfitting
+    
+    // 1. ENTROPY MODIFIER - Lower entropy = higher confidence
+    const entropyModifier = entropyFlowDetector.getConfidenceModifier();
+    truthAdjustedConfidence *= entropyModifier;
+    
+    // 2. ARCHETYPAL MODIFIER - Narrative pattern strength
+    if (this.advancedState.archetype) {
+      const archetypeModifier = archetypalResonanceMatrix.getConfidenceModifier(this.advancedState.archetype);
+      truthAdjustedConfidence *= archetypeModifier;
+      
+      // Archetype can influence direction prediction
+      if (this.advancedState.archetype.strength > 0.6) {
+        const archetypeDirection = this.advancedState.archetype.priceImplication;
+        if (archetypeDirection === 'bullish' && direction === 'neutral') direction = 'up';
+        if (archetypeDirection === 'bearish' && direction === 'neutral') direction = 'down';
+      }
+    }
+    
+    // 3. MORPHIC FIELD MODIFIER - Pattern propagation coherence
+    const morphicModifier = morphicFieldAdapter.getConfidenceModifier();
+    truthAdjustedConfidence *= morphicModifier;
+    
+    // 4. EMOTIONAL CONTAGION - Fear/greed viral patterns
+    if (this.advancedState.emotionalContagion) {
+      const emotionPrediction = emotionalContagionMapper.getPrediction();
+      // Blend emotional prediction with domain consensus
+      if (emotionPrediction.confidence > 0.5) {
+        truthAdjustedConfidence *= (0.9 + emotionPrediction.confidence * 0.2);
+        // Strong emotional signal can override weak consensus
+        if (emotionPrediction.confidence > 0.7 && signalAgreement < 0.5) {
+          direction = emotionPrediction.direction;
+        }
+      }
+    }
+    
+    // 5. FRACTAL TIME MODIFIER - Cross-timescale coherence
+    if (this.advancedState.fractalTime) {
+      const fractalModifier = fractalTimeCompressor.getConfidenceModifier(
+        this.advancedState.fractalTime.crossTimescaleCoherence
+      );
+      truthAdjustedConfidence *= fractalModifier;
+      
+      // Strong fractal alignment reinforces prediction
+      if (this.advancedState.fractalTime.crossTimescaleCoherence > 0.7) {
+        if (this.advancedState.fractalTime.suggestedDirection === direction) {
+          truthAdjustedConfidence = Math.min(0.95, truthAdjustedConfidence * 1.1);
+        }
+      }
+    }
+    
+    // 6. INVERSE NOISE - Predict order from chaos patterns
+    if (this.advancedState.inverseNoise) {
+      const noiseProfile = this.advancedState.inverseNoise.currentProfile;
+      // Low noise + high SNR = confidence boost
+      if (noiseProfile.level < 0.3 && noiseProfile.signalToNoise > 2) {
+        truthAdjustedConfidence *= 1.1;
+      }
+      // Noise collapse often precedes big moves - increase attention
+      if (this.advancedState.inverseNoise.noiseOrderCycle === 'chaos_to_order') {
+        truthAdjustedConfidence *= 1.05;
+      }
+    }
+    
+    // 7. BIORHYTHM/LUNAR - Natural cycle alignment
+    if (this.advancedState.biorhythmLunar) {
+      const lunarModifier = biorhythmLunarSync.getConfidenceModifier();
+      // Apply lunar modifier conservatively (speculative)
+      truthAdjustedConfidence *= (0.95 + lunarModifier * 0.05);
+      
+      // Blend lunar prediction with very low weight
+      const lunarPred = this.advancedState.biorhythmLunar.prediction;
+      if (lunarPred.direction !== 'neutral' && lunarPred.confidence > 0.5 && direction === 'neutral') {
+        // Only nudge neutral predictions
+        direction = lunarPred.direction;
+        truthAdjustedConfidence *= 0.9; // Reduce confidence for lunar-driven prediction
+      }
+    }
+    
+    // 8. DYNAMIC EQUIVALENCE - THE KEY INSIGHT
+    // Adjust based on whether pattern=structure relationship is currently valid
+    if (this.advancedState.dynamicEquivalence) {
+      const deState = this.advancedState.dynamicEquivalence;
+      truthAdjustedConfidence *= deState.confidenceModifier;
+      
+      // If in contrarian mode, consider inverting prediction
+      if (deState.optimalStrategy === 'contrarian' && deState.currentState.stability > 0.7) {
+        console.log('[CrossDomainEngine] ⚖️ Contrarian mode active - inverse relationship detected');
+        // Don't actually invert automatically - just reduce confidence
+        truthAdjustedConfidence *= 0.85;
+      }
+      
+      // Use dynamic blend weights
+      // These weights are learned from outcomes - trust what's working
+      const blendedSignal = dynamicEquivalenceTracker.blendPredictions(
+        normalizedSignal, // Pattern-based
+        this.advancedState.emotionalContagion ? 
+          (this.advancedState.emotionalContagion.dominantEmotion === 'greed' ? 0.3 : 
+           this.advancedState.emotionalContagion.dominantEmotion === 'fear' ? -0.3 : 0) : 0 // Fundamental proxy
+      );
+      
+      // Update direction based on blended signal
+      if (Math.abs(blendedSignal - normalizedSignal) > 0.1) {
+        direction = blendedSignal > 0.15 ? 'up' : blendedSignal < -0.15 ? 'down' : 'neutral';
+      }
+    }
+    
+    // 9. QUANTUM PROBABILITY CLOUD - Generate probability distribution
+    const predictionSources = contributions.map(c => ({
+      value: c.signal === 'bullish' ? 0.1 : c.signal === 'bearish' ? -0.1 : 0,
+      confidence: c.confidence,
+      source: c.domain,
+    }));
+    
+    const probabilityCloud = quantumProbabilityCloudGenerator.generateCloud(
+      predictionSources,
+      this.currentNoiseLevel
+    );
+    this.advancedState.probabilityCloud = probabilityCloud;
+    
+    // Use cloud characteristics to adjust confidence
+    const cloudModifier = quantumProbabilityCloudGenerator.getConfidenceModifier(probabilityCloud);
+    truthAdjustedConfidence *= cloudModifier;
+    
+    // ========== FINAL CONFIDENCE CALCULATION ==========
+    // Cap at 95% - never be too certain (anti-hubris)
+    const finalConfidence = Math.min(truthAdjustedConfidence, 0.95);
     
     const prediction: UnifiedPrediction = {
       direction,
@@ -563,7 +860,7 @@ class CrossDomainEngine {
       magnitude: Math.abs(normalizedSignal),
       timeHorizon: 5000, // 5 second prediction window
       contributingDomains: contributions,
-      consensusStrength: signalAgreement * this.currentTruthScore, // Truth-weighted consensus
+      consensusStrength: signalAgreement * this.currentTruthScore,
       harmonicAlignment: avgResonance,
     };
     
@@ -575,6 +872,8 @@ class CrossDomainEngine {
       prediction.timeHorizon
     );
     (prediction as any).calibrationId = calibrationId;
+    (prediction as any).probabilityCloud = probabilityCloud;
+    (prediction as any).advancedModuleState = { ...this.advancedState };
     
     // Update state
     this.state.lastPrediction = prediction;
@@ -583,17 +882,22 @@ class CrossDomainEngine {
       this.state.predictionHistory.shift();
     }
     
-    // Update calibration progress based on multiple proof mechanisms
+    // Update calibration progress based on ALL proof mechanisms
     const convergenceStats = convergenceTracker.getAccuracyStats();
     const calibrationMetrics = calibrationTracker.getCalibrationMetrics();
     const phaseStats = phaseSynchronizationDetector.getAccuracyStats();
+    const fractalAccuracy = fractalTimeCompressor.getAccuracy();
+    const noiseStats = inverseNoiseAmplifier.getAccuracyStats();
     
-    const proofDataPoints = convergenceStats.resolvedEvents + calibrationMetrics.resolvedPredictions + phaseStats.resolvedEvents;
+    const proofDataPoints = convergenceStats.resolvedEvents + 
+                           calibrationMetrics.resolvedPredictions + 
+                           phaseStats.resolvedEvents;
     
     if (!this.state.isCalibrated && proofDataPoints >= 50) {
       this.state.isCalibrated = true;
       this.state.calibrationProgress = 1;
       console.log('[CrossDomainEngine] ✅ CALIBRATED: 50+ proof data points collected across all mechanisms');
+      console.log(`[CrossDomainEngine] 📊 Fractal accuracy: ${(fractalAccuracy * 100).toFixed(1)}%, Noise accuracy: ${(noiseStats.overall * 100).toFixed(1)}%`);
     } else if (!this.state.isCalibrated) {
       this.state.calibrationProgress = Math.min(proofDataPoints / 50, 0.99);
     }
@@ -784,3 +1088,16 @@ export const crossDomainEngine = new CrossDomainEngine();
 
 // Export proof modules for external access
 export { convergenceTracker, calibrationTracker, sacredGeometry, phaseSynchronizationDetector };
+
+// Export advanced modules for external access
+export { 
+  entropyFlowDetector, 
+  archetypalResonanceMatrix, 
+  quantumProbabilityCloudGenerator,
+  morphicFieldAdapter,
+  emotionalContagionMapper,
+  fractalTimeCompressor,
+  inverseNoiseAmplifier,
+  biorhythmLunarSync,
+  dynamicEquivalenceTracker
+};
