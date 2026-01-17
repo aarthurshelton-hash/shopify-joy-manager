@@ -35,7 +35,7 @@ import { SessionControl } from './SessionControl';
 import { HeartbeatIndicator } from '@/components/pensent-code/HeartbeatIndicator';
 import { MarketLearningDashboard } from './MarketLearningDashboard';
 
-const SYMBOLS = ['SPY', 'QQQ', 'AAPL', 'NVDA', 'TSLA', 'MSFT', 'AMD', 'GOOGL'];
+const SYMBOLS = ['SPY', 'QQQ', 'AAPL', 'NVDA', 'TSLA', 'MSFT', 'AMD', 'GOOGL', 'BTC', 'ETH', 'GLD', 'TLT', 'UUP', 'ES'];
 
 // Safe loading component
 const LoadingTerminal = ({ status }: { status: string }) => (
@@ -301,10 +301,14 @@ const ScalpingTerminal: React.FC = () => {
             )}
             <div className={cn("flex items-center gap-1 ml-auto", boostColor)}>
               <Sparkles className="w-3 h-3" />
-              <span className="text-xs font-mono font-bold">{predictionBoost.toFixed(2)}x boost</span>
-            </div>
+            <span className="text-xs font-mono font-bold">{predictionBoost.toFixed(2)}x boost</span>
           </div>
-          <MarketTicker snapshot={multiMarket.snapshot} />
+        </div>
+        <MarketTicker 
+          snapshot={multiMarket.snapshot} 
+          onSymbolClick={handleSymbolChange}
+          focusedSymbol={symbol}
+        />
         </CardContent>
       </Card>
 
@@ -467,6 +471,9 @@ const ScalpingTerminal: React.FC = () => {
             <PredictionHUD 
               prediction={predictor.currentPrediction ?? null}
               latestPrice={predictor.latestPrice ?? null}
+              symbol={symbol}
+              simulatedBalance={tradingStore?.currentSession?.currentBalance ?? 1000}
+              targetBalance={10000}
             />
             
             {/* Prediction stream */}
