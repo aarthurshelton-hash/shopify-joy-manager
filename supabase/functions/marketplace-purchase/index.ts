@@ -12,6 +12,13 @@ const logStep = (step: string, details?: unknown) => {
   console.log(`[MARKETPLACE-PURCHASE] ${step}${detailsStr}`);
 };
 
+// Visionary members with permanent premium access (bypasses Stripe check)
+const VISIONARY_EMAILS = [
+  "a.arthur.shelton@gmail.com", // CEO Alec Arthur Shelton
+  "info@mawuli.xyz",            // Marketplace tester
+  "opecoreug@gmail.com",        // Product Specialist Analyst
+];
+
 // 5% marketplace fee distribution constants
 const MARKETPLACE_FEE_RATE = 0.05;
 const FEE_DISTRIBUTION = {
@@ -46,10 +53,19 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
-    // Check if buyer has premium subscription
-    const { data: isPremium } = await supabaseClient.rpc('is_premium_user', { p_user_id: user.id });
-    if (!isPremium) {
-      throw new Error("Premium membership required to acquire visions");
+    // Check if user is a Visionary member (permanent premium bypass)
+    const isVisionary = VISIONARY_EMAILS.some(
+      email => email.toLowerCase() === user.email?.toLowerCase()
+    );
+    
+    if (isVisionary) {
+      logStep("Visionary member - premium access granted", { email: user.email });
+    } else {
+      // Check if buyer has premium subscription via database
+      const { data: isPremium } = await supabaseClient.rpc('is_premium_user', { p_user_id: user.id });
+      if (!isPremium) {
+        throw new Error("Premium membership required to acquire visions");
+      }
     }
     logStep("Premium status verified");
 
