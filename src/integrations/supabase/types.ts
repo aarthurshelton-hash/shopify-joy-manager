@@ -95,6 +95,63 @@ export type Database = {
         }
         Relationships: []
       }
+      autonomous_trades: {
+        Row: {
+          actual_direction: string | null
+          created_at: string
+          direction: string
+          entry_price: number
+          entry_time: string
+          exit_price: number | null
+          exit_time: string | null
+          id: string
+          pnl: number | null
+          pnl_percent: number | null
+          predicted_confidence: number
+          predicted_direction: string
+          prediction_id: string | null
+          shares: number
+          status: string
+          symbol: string
+        }
+        Insert: {
+          actual_direction?: string | null
+          created_at?: string
+          direction: string
+          entry_price: number
+          entry_time?: string
+          exit_price?: number | null
+          exit_time?: string | null
+          id?: string
+          pnl?: number | null
+          pnl_percent?: number | null
+          predicted_confidence: number
+          predicted_direction: string
+          prediction_id?: string | null
+          shares: number
+          status?: string
+          symbol: string
+        }
+        Update: {
+          actual_direction?: string | null
+          created_at?: string
+          direction?: string
+          entry_price?: number
+          entry_time?: string
+          exit_price?: number | null
+          exit_time?: string | null
+          id?: string
+          pnl?: number | null
+          pnl_percent?: number | null
+          predicted_confidence?: number
+          predicted_direction?: string
+          prediction_id?: string | null
+          shares?: number
+          status?: string
+          symbol?: string
+        }
+        Relationships: []
+      }
       banned_users: {
         Row: {
           banned_at: string
@@ -1670,6 +1727,45 @@ export type Database = {
           stripe_fees_cents?: number
           subscription_revenue_cents?: number
           updated_at?: string
+        }
+        Relationships: []
+      }
+      portfolio_balance: {
+        Row: {
+          balance: number
+          created_at: string
+          id: string
+          last_trade_at: string | null
+          peak_balance: number
+          target_balance: number
+          total_trades: number
+          trough_balance: number
+          updated_at: string
+          winning_trades: number
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          id?: string
+          last_trade_at?: string | null
+          peak_balance?: number
+          target_balance?: number
+          total_trades?: number
+          trough_balance?: number
+          updated_at?: string
+          winning_trades?: number
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          id?: string
+          last_trade_at?: string | null
+          peak_balance?: number
+          target_balance?: number
+          total_trades?: number
+          trough_balance?: number
+          updated_at?: string
+          winning_trades?: number
         }
         Relationships: []
       }

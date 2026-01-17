@@ -5,7 +5,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { TrendingUp, TrendingDown, Minus, Clock, Zap } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Clock, Zap, Target, DollarSign } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { TickPrediction } from '@/lib/pensent-core/domains/finance/tickPredictionEngine';
 
@@ -13,15 +13,24 @@ interface PredictionHUDProps {
   prediction: TickPrediction | null;
   latestPrice: number | null;
   className?: string;
+  symbol?: string;
+  simulatedBalance?: number;
+  targetBalance?: number;
 }
 
 export const PredictionHUD: React.FC<PredictionHUDProps> = ({
   prediction,
   latestPrice,
-  className
+  className,
+  symbol = 'SPY',
+  simulatedBalance = 1000,
+  targetBalance = 10000
 }) => {
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [priceDelta, setPriceDelta] = useState(0);
+  
+  const progressToTarget = Math.min((simulatedBalance / targetBalance) * 100, 100);
+  const growthPercent = ((simulatedBalance - 1000) / 1000) * 100;
   
   useEffect(() => {
     if (!prediction) return;
@@ -41,10 +50,18 @@ export const PredictionHUD: React.FC<PredictionHUDProps> = ({
   if (!prediction) {
     return (
       <div className={cn(
-        "flex items-center justify-center p-6 rounded-lg border border-dashed border-muted-foreground/30",
+        "flex flex-col items-center justify-center p-6 rounded-lg border border-dashed border-muted-foreground/30 gap-3",
         className
       )}>
-        <span className="text-muted-foreground">Awaiting prediction...</span>
+        <div className="flex items-center gap-2">
+          <Target className="w-5 h-5 text-primary animate-pulse" />
+          <span className="text-lg font-bold">{symbol}</span>
+        </div>
+        <span className="text-muted-foreground">Analyzing market patterns...</span>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <DollarSign className="w-3 h-3" />
+          <span>${simulatedBalance.toFixed(2)} → ${targetBalance.toLocaleString()} Goal</span>
+        </div>
       </div>
     );
   }
@@ -99,8 +116,20 @@ export const PredictionHUD: React.FC<PredictionHUDProps> = ({
         className
       )}
     >
-      {/* Progress bar */}
-      <div className="absolute bottom-0 left-0 h-1 bg-muted">
+      {/* $1K → $10K Progress bar */}
+      <div className="absolute top-0 left-0 right-0 h-1.5 bg-muted/30">
+        <motion.div
+          className="h-full bg-gradient-to-r from-green-500 via-yellow-500 to-green-400"
+          style={{ width: `${progressToTarget}%` }}
+          transition={{ duration: 0.3 }}
+        />
+        <div className="absolute right-2 -top-5 text-[10px] font-mono text-muted-foreground">
+          ${simulatedBalance.toFixed(0)} / ${targetBalance.toLocaleString()} ({growthPercent >= 0 ? '+' : ''}{growthPercent.toFixed(1)}%)
+        </div>
+      </div>
+      
+      {/* Prediction countdown progress bar */}
+      <div className="absolute bottom-0 left-0 right-0 h-1 bg-muted">
         <motion.div
           className={cn("h-full", config.color.replace('text-', 'bg-'))}
           style={{ width: `${progress}%` }}
@@ -108,7 +137,13 @@ export const PredictionHUD: React.FC<PredictionHUDProps> = ({
         />
       </div>
       
-      <div className="flex items-center gap-4">
+      {/* Symbol badge */}
+      <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded bg-background/50 border border-border/50">
+        <Target className="w-3 h-3 text-primary" />
+        <span className="text-xs font-bold">{symbol}</span>
+      </div>
+      
+      <div className="flex items-center gap-4 mt-4">
         {/* Direction indicator */}
         <motion.div
           animate={{ 

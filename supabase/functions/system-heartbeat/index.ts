@@ -429,6 +429,170 @@ Deno.serve(async (req) => {
     }
 
     // ========================================
+    // PHASE 3.5: AUTONOMOUS TRADING SIMULATION ($1K → $10K)
+    // ========================================
+    if (action === 'full_cycle' || action === 'trade') {
+      // Get current portfolio balance
+      const { data: portfolio } = await supabase
+        .from('portfolio_balance')
+        .select('*')
+        .limit(1)
+        .single();
+      
+      let currentBalance = portfolio?.balance || 1000;
+      const targetBalance = portfolio?.target_balance || 10000;
+      
+      // Check for open trades and close them based on prediction resolution
+      const { data: openTrades } = await supabase
+        .from('autonomous_trades')
+        .select('*')
+        .eq('status', 'open');
+      
+      let tradesClosedThisCycle = 0;
+      let pnlThisCycle = 0;
+      let winsThisCycle = 0;
+      
+      for (const trade of openTrades || []) {
+        // Get current price for this symbol
+        const { data: currentTick } = await supabase
+          .from('market_tick_history')
+          .select('price')
+          .eq('symbol', trade.symbol)
+          .order('timestamp', { ascending: false })
+          .limit(1)
+          .single();
+        
+        if (currentTick) {
+          const currentPrice = currentTick.price;
+          const entryTime = new Date(trade.entry_time).getTime();
+          const holdTime = Date.now() - entryTime;
+          
+          // Close trade after 60 seconds (scalping timeframe)
+          if (holdTime > 60000) {
+            const pnl = trade.direction === 'long'
+              ? (currentPrice - trade.entry_price) * trade.shares
+              : (trade.entry_price - currentPrice) * trade.shares;
+            const pnlPercent = (pnl / (trade.entry_price * trade.shares)) * 100;
+            const actualDirection = currentPrice > trade.entry_price ? 'up' : currentPrice < trade.entry_price ? 'down' : 'flat';
+            
+            await supabase
+              .from('autonomous_trades')
+              .update({
+                exit_price: currentPrice,
+                exit_time: new Date().toISOString(),
+                actual_direction: actualDirection,
+                pnl,
+                pnl_percent: pnlPercent,
+                status: 'closed'
+              })
+              .eq('id', trade.id);
+            
+            currentBalance += pnl;
+            tradesClosedThisCycle++;
+            pnlThisCycle += pnl;
+            if (pnl > 0) winsThisCycle++;
+          }
+        }
+      }
+      
+      // Open new trades based on high-confidence predictions
+      const { data: recentHighConfidencePredictions } = await supabase
+        .from('prediction_outcomes')
+        .select('*')
+        .gte('predicted_confidence', 0.65)
+        .is('resolved_at', null)
+        .order('created_at', { ascending: false })
+        .limit(3);
+      
+      let tradesOpenedThisCycle = 0;
+      const maxRiskPerTrade = currentBalance * 0.05; // 5% max risk per trade
+      
+      for (const pred of recentHighConfidencePredictions || []) {
+        // Check if we already have a trade for this prediction
+        const { data: existingTrade } = await supabase
+          .from('autonomous_trades')
+          .select('id')
+          .eq('prediction_id', pred.id)
+          .limit(1)
+          .single();
+        
+        if (!existingTrade && pred.predicted_direction !== 'flat') {
+          // Get current price for the symbol
+          const { data: currentTick } = await supabase
+            .from('market_tick_history')
+            .select('price')
+            .eq('symbol', pred.symbol)
+            .order('timestamp', { ascending: false })
+            .limit(1)
+            .single();
+          
+          if (currentTick) {
+            const entryPrice = currentTick.price;
+            const shares = Math.floor(maxRiskPerTrade / entryPrice * 10) / 10; // Round to 0.1
+            
+            if (shares > 0) {
+              await supabase
+                .from('autonomous_trades')
+                .insert({
+                  symbol: pred.symbol,
+                  direction: pred.predicted_direction === 'up' ? 'long' : 'short',
+                  entry_price: entryPrice,
+                  shares,
+                  predicted_direction: pred.predicted_direction,
+                  predicted_confidence: pred.predicted_confidence,
+                  prediction_id: pred.id
+                });
+              
+              tradesOpenedThisCycle++;
+            }
+          }
+        }
+      }
+      
+      // Update portfolio balance
+      if (tradesClosedThisCycle > 0) {
+        await supabase
+          .from('portfolio_balance')
+          .update({
+            balance: currentBalance,
+            peak_balance: Math.max(portfolio?.peak_balance || 1000, currentBalance),
+            trough_balance: Math.min(portfolio?.trough_balance || 1000, currentBalance),
+            total_trades: (portfolio?.total_trades || 0) + tradesClosedThisCycle,
+            winning_trades: (portfolio?.winning_trades || 0) + winsThisCycle,
+            last_trade_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', portfolio?.id);
+        
+        // Log progress
+        const progress = ((currentBalance - 1000) / (targetBalance - 1000)) * 100;
+        console.log(`[AUTONOMOUS] Balance: $${currentBalance.toFixed(2)} | Progress: ${progress.toFixed(1)}% | Trades: ${tradesClosedThisCycle} closed, ${tradesOpenedThisCycle} opened`);
+      }
+      
+      await supabase.rpc('pulse_vital', { 
+        p_vital_name: 'autonomous-trading', 
+        p_status: currentBalance >= 1000 ? 'healthy' : 'degraded',
+        p_value: currentBalance,
+        p_metadata: { 
+          balance: currentBalance, 
+          target: targetBalance, 
+          progress: ((currentBalance / targetBalance) * 100).toFixed(2),
+          openTrades: (openTrades?.length || 0) - tradesClosedThisCycle + tradesOpenedThisCycle
+        }
+      });
+      
+      results.trade = { 
+        success: true, 
+        balance: currentBalance,
+        target: targetBalance,
+        progress: ((currentBalance / targetBalance) * 100).toFixed(2) + '%',
+        opened: tradesOpenedThisCycle,
+        closed: tradesClosedThisCycle,
+        pnl: pnlThisCycle
+      };
+    }
+
+    // ========================================
     // PHASE 4: CALCULATE CORRELATIONS (every 12th call ~60s)
     // ========================================
     if (action === 'full_cycle' || action === 'correlate') {
