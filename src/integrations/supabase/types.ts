@@ -916,51 +916,6 @@ export type Database = {
         }
         Relationships: []
       }
-      en_pensent_memory: {
-        Row: {
-          access_count: number | null
-          category: string
-          content: Json
-          created_at: string
-          created_by: string
-          id: string
-          importance: number
-          last_accessed_at: string | null
-          related_memories: string[] | null
-          tags: string[] | null
-          title: string
-          updated_at: string
-        }
-        Insert: {
-          access_count?: number | null
-          category: string
-          content?: Json
-          created_at?: string
-          created_by?: string
-          id?: string
-          importance?: number
-          last_accessed_at?: string | null
-          related_memories?: string[] | null
-          tags?: string[] | null
-          title: string
-          updated_at?: string
-        }
-        Update: {
-          access_count?: number | null
-          category?: string
-          content?: Json
-          created_at?: string
-          created_by?: string
-          id?: string
-          importance?: number
-          last_accessed_at?: string | null
-          related_memories?: string[] | null
-          tags?: string[] | null
-          title?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       evolution_state: {
         Row: {
           adaptation_history: Json | null
