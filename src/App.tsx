@@ -65,6 +65,7 @@ import StockPredictions from "./pages/StockPredictions";
 import StrategicPlan from "./pages/StrategicPlan";
 import ScalpingTerminalPage from "./pages/ScalpingTerminalPage";
 import Showcase from "./pages/Showcase";
+import AdminSystemVitals from "./pages/AdminSystemVitals";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -144,6 +145,7 @@ const App = () => (
               <Route path="/stock-predictions" element={<AdminRoute featureName="Stock Predictions"><StockPredictions /></AdminRoute>} />
               <Route path="/strategic-plan" element={<AdminRoute featureName="Strategic Plan"><StrategicPlan /></AdminRoute>} />
               <Route path="/trading" element={<AdminRoute featureName="Trading Terminal"><ScalpingTerminalPage /></AdminRoute>} />
+              <Route path="/admin/system-vitals" element={<AdminSystemVitals />} />
               
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />

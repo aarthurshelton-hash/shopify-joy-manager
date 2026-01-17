@@ -2955,13 +2955,11 @@ export type Database = {
       }
       prediction_accuracy_stats: {
         Row: {
-          accuracy_percent: number | null
+          accuracy_percentage: number | null
           archetype: string | null
           avg_accuracy_score: number | null
-          baseline_accuracy_percent: number | null
-          baseline_correct: number | null
+          avg_confidence: number | null
           correct_predictions: number | null
-          resolved_predictions: number | null
           time_horizon: string | null
           total_predictions: number | null
         }
@@ -2989,11 +2987,11 @@ export type Database = {
       }
       user_prediction_performance: {
         Row: {
-          accuracy_percent: number | null
-          avg_accuracy_score: number | null
+          accuracy_percentage: number | null
+          avg_confidence: number | null
           correct_predictions: number | null
+          first_prediction_at: string | null
           last_prediction_at: string | null
-          resolved_predictions: number | null
           total_predictions: number | null
           user_id: string | null
         }
