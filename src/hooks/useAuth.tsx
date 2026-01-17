@@ -73,10 +73,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // User has an account but no active premium subscription
   const isFreeAccount = !!user && !isPremium;
 
-  // Check admin role
-  const checkAdminRole = useCallback(async (userId: string) => {
+  // CEO email - hardcoded for guaranteed access
+  const CEO_EMAIL = 'a.arthur.shelton@gmail.com';
+
+  // Check admin role (with CEO email fallback)
+  const checkAdminRole = useCallback(async (userId: string, userEmail?: string | null) => {
     setIsCheckingAdmin(true);
     try {
+      // CEO email gets automatic admin access
+      if (userEmail?.toLowerCase() === CEO_EMAIL.toLowerCase()) {
+        setIsAdmin(true);
+        setIsCheckingAdmin(false);
+        
+        // Also ensure the admin role exists in database (fire and forget)
+        supabase.functions.invoke('grant-ceo-admin').catch(() => {});
+        return;
+      }
+      
+      // Check database for admin role
       const { data, error } = await supabase
         .from('user_roles')
         .select('role')
@@ -213,7 +227,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Use setTimeout to avoid potential deadlock with Supabase client
           setTimeout(() => {
             fetchProfile(currentSession.user.id);
-            checkAdminRole(currentSession.user.id);
+            checkAdminRole(currentSession.user.id, currentSession.user.email);
           }, 0);
         } else {
           setProfile(null);
@@ -233,7 +247,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (currentSession?.user) {
         fetchProfile(currentSession.user.id);
-        checkAdminRole(currentSession.user.id);
+        checkAdminRole(currentSession.user.id, currentSession.user.email);
       } else {
         setIsCheckingAdmin(false);
       }
