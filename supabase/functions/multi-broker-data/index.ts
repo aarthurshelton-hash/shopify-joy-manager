@@ -38,6 +38,75 @@ interface AggregatedData {
   timestamp: number;
 }
 
+// Interactive Brokers (IBKR) Client Portal API
+// Note: IBKR requires TWS/Gateway running locally OR Client Portal OAuth
+async function fetchIBKR(symbol: string, assetType: 'stock' | 'crypto' | 'forex' | 'futures'): Promise<MarketTick | null> {
+  const clientId = Deno.env.get('IBKR_CLIENT_ID');
+  const clientSecret = Deno.env.get('IBKR_CLIENT_SECRET');
+  
+  if (!clientId || !clientSecret) {
+    console.log('[IBKR] Missing credentials');
+    return null;
+  }
+
+  try {
+    // IBKR Client Portal Gateway endpoint (local or cloud gateway)
+    // For production, this would use IBKR's OAuth flow
+    const baseUrl = 'https://localhost:5000/v1/api'; // Local gateway
+    
+    // Convert symbol to IBKR format
+    let ibkrSymbol = symbol.toUpperCase().replace('/', '');
+    let secType = 'STK';
+    let exchange = 'SMART';
+    
+    switch (assetType) {
+      case 'crypto':
+        secType = 'CRYPTO';
+        exchange = 'PAXOS';
+        break;
+      case 'forex':
+        secType = 'CASH';
+        exchange = 'IDEALPRO';
+        break;
+      case 'futures':
+        secType = 'FUT';
+        exchange = 'CME';
+        break;
+    }
+
+    // IBKR market data snapshot request
+    const response = await fetch(`${baseUrl}/iserver/marketdata/snapshot?conids=${ibkrSymbol}&fields=31,84,86`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        // OAuth token would go here in production
+      },
+    });
+
+    if (!response.ok) {
+      console.log(`[IBKR] Error: ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json();
+    if (data && data[0]) {
+      const quote = data[0];
+      return {
+        symbol,
+        price: parseFloat(quote['31'] || quote.lastPrice || 0),
+        bid: parseFloat(quote['84'] || 0),
+        ask: parseFloat(quote['86'] || 0),
+        timestamp: Date.now(),
+        source: 'ibkr',
+      };
+    }
+  } catch (err) {
+    // IBKR requires local gateway - fallback silently in edge function context
+    console.log('[IBKR] Gateway not available (expected in cloud context)');
+  }
+  return null;
+}
+
 // Alpaca API
 async function fetchAlpaca(symbol: string, assetType: 'stock' | 'crypto'): Promise<MarketTick | null> {
   const apiKey = Deno.env.get('ALPACA_API_KEY');
@@ -323,9 +392,9 @@ async function fetchTradier(symbol: string): Promise<MarketTick | null> {
   return null;
 }
 
-// Aggregate data from all sources
-async function aggregateMarketData(symbol: string, assetType: 'stock' | 'crypto' | 'forex'): Promise<AggregatedData> {
-  console.log(`[Aggregator] Fetching ${symbol} (${assetType}) from all sources...`);
+// Aggregate data from all sources including IBKR
+async function aggregateMarketData(symbol: string, assetType: 'stock' | 'crypto' | 'forex' | 'futures'): Promise<AggregatedData> {
+  console.log(`[Aggregator] Fetching ${symbol} (${assetType}) from all sources (including IBKR)...`);
   
   const ticks: MarketTick[] = [];
   const sources: string[] = [];
@@ -335,12 +404,21 @@ async function aggregateMarketData(symbol: string, assetType: 'stock' | 'crypto'
   // Fetch from all sources in parallel
   const fetchPromises: Promise<void>[] = [];
 
-  // Alpaca
+  // IBKR (supports all asset types - Canadian friendly!)
   fetchPromises.push(
-    fetchAlpaca(symbol, assetType === 'crypto' ? 'crypto' : 'stock').then(tick => {
-      if (tick) { ticks.push(tick); sources.push('alpaca'); }
+    fetchIBKR(symbol, assetType).then(tick => {
+      if (tick) { ticks.push(tick); sources.push('ibkr'); }
     })
   );
+
+  // Alpaca (stocks and crypto)
+  if (assetType === 'stock' || assetType === 'crypto') {
+    fetchPromises.push(
+      fetchAlpaca(symbol, assetType === 'crypto' ? 'crypto' : 'stock').then(tick => {
+        if (tick) { ticks.push(tick); sources.push('alpaca'); }
+      })
+    );
+  }
 
   // Polygon (stocks only)
   if (assetType === 'stock') {
@@ -360,21 +438,25 @@ async function aggregateMarketData(symbol: string, assetType: 'stock' | 'crypto'
     );
   }
 
-  // Finnhub
-  fetchPromises.push(
-    fetchFinnhub(symbol).then(result => {
-      if (result.tick) { ticks.push(result.tick); sources.push('finnhub'); }
-      if (result.sentiment) { sentiment = result.sentiment; }
-    })
-  );
+  // Finnhub (stocks - sentiment)
+  if (assetType === 'stock') {
+    fetchPromises.push(
+      fetchFinnhub(symbol).then(result => {
+        if (result.tick) { ticks.push(result.tick); sources.push('finnhub'); }
+        if (result.sentiment) { sentiment = result.sentiment; }
+      })
+    );
+  }
 
-  // Twelve Data
-  fetchPromises.push(
-    fetchTwelveData(symbol).then(result => {
-      if (result.tick) { ticks.push(result.tick); sources.push('twelvedata'); }
-      if (result.technicals) { technicals = result.technicals; }
-    })
-  );
+  // Twelve Data (stocks + forex)
+  if (assetType === 'stock' || assetType === 'forex') {
+    fetchPromises.push(
+      fetchTwelveData(symbol).then(result => {
+        if (result.tick) { ticks.push(result.tick); sources.push('twelvedata'); }
+        if (result.technicals) { technicals = result.technicals; }
+      })
+    );
+  }
 
   // Tradier (stocks/options)
   if (assetType === 'stock') {
@@ -393,7 +475,7 @@ async function aggregateMarketData(symbol: string, assetType: 'stock' | 'crypto'
   const priceVariance = prices.length > 1 
     ? Math.sqrt(prices.reduce((sum, p) => sum + Math.pow(p - avgPrice, 2), 0) / prices.length) / avgPrice
     : 0;
-  const confidence = prices.length > 0 ? Math.min(1, (1 - priceVariance) * (sources.length / 5)) : 0;
+  const confidence = prices.length > 0 ? Math.min(1, (1 - priceVariance) * (sources.length / 6)) : 0; // Updated for 6 sources
 
   return {
     symbol,
@@ -436,7 +518,9 @@ serve(async (req) => {
           data,
           meta: {
             sourcesAvailable: data.sources.length,
+            sourcesUsed: data.sources,
             consensusConfidence: data.consensus.confidence,
+            ibkrEnabled: data.sources.includes('ibkr'),
           },
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

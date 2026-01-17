@@ -24,12 +24,27 @@ interface TradingSession {
 
 interface EngineStatus {
   paperMode: boolean;
+  preferredBroker: 'alpaca' | 'ibkr';
+  // Alpaca broker status
   alpacaConnected: boolean;
   alpacaBalance: number;
   alpacaPositions: number;
+  // IBKR broker status (Canadian-friendly)
+  ibkrConnected: boolean;
+  ibkrBalance: number;
+  ibkrPositions: number;
+  // Evolution
   evolutionGeneration: number;
   systemFitness: number;
   overallAccuracy: number;
+  // Instruments (expanded with IBKR support)
+  instruments: {
+    CRYPTO: string[];
+    FUTURES: string[];
+    STOCKS: string[];
+    FOREX: string[];
+    TSX: string[];
+  };
   topPerformers: Array<{ symbol: string; accuracy: string }>;
   recentSessions: Array<{
     id: string;
@@ -43,6 +58,7 @@ interface EngineStatus {
     MAX_POSITION_SIZE_PERCENT: number;
     SCALP_HORIZON_MS: number;
     PAPER_MODE: boolean;
+    PREFERRED_BROKER: 'alpaca' | 'ibkr';
   };
 }
 
@@ -196,10 +212,11 @@ export function useAutonomousTradingEngine() {
   const toggleLiveMode = useCallback(async (enable: boolean) => {
     if (enable) {
       // Confirm before enabling live mode
+      const brokerName = status?.preferredBroker === 'ibkr' ? 'IBKR' : 'Alpaca';
       const confirmed = window.confirm(
-        '⚠️ WARNING: You are about to enable LIVE TRADING.\n\n' +
-        'This will use REAL MONEY from your connected Alpaca account.\n\n' +
-        'Are you absolutely sure you want to proceed?'
+        `⚠️ WARNING: You are about to enable LIVE TRADING.\n\n` +
+        `This will use REAL MONEY from your connected ${brokerName} account.\n\n` +
+        `Are you absolutely sure you want to proceed?`
       );
       if (!confirmed) return false;
     }
