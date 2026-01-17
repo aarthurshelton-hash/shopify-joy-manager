@@ -9,7 +9,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Shield, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import SimplifiedScalpingTerminal from '@/components/scalping/SimplifiedScalpingTerminal';
+import MultiMarketScalpingTerminal from '@/components/scalping/MultiMarketScalpingTerminal';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 const ScalpingTerminalPage: React.FC = () => {
@@ -55,7 +55,7 @@ const ScalpingTerminalPage: React.FC = () => {
       {/* Main Content */}
       <div className="container mx-auto px-4 py-6">
         <ErrorBoundary componentName="ScalpingTerminal">
-          <SimplifiedScalpingTerminal />
+          <MultiMarketScalpingTerminal />
         </ErrorBoundary>
       </div>
 
