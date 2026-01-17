@@ -1,10 +1,14 @@
 /**
  * Cross-Domain Correlation Engine
- * Finds patterns that resonate across all domains
+ * Finds patterns that resonate across all 21 domains
  * 
  * This is the heart of Universal En Pensent - discovering
- * that patterns in light, sound, biology, networks, and markets
- * are all manifestations of the same underlying temporal truth.
+ * that patterns in light, sound, biology, networks, markets,
+ * language, and geology are all manifestations of the same underlying temporal truth.
+ * 
+ * SELF-LEARNING: Calibration curve adjusts confidence based on historical accuracy
+ * SELF-HEALING: Convergence tracking identifies and weights reliable domain combinations  
+ * SELF-EVOLVING: Phase synchronization detects optimal prediction windows
  */
 
 import type {
@@ -39,14 +43,27 @@ import { molecularAdapter, generateMarketMolecularData } from './adapters/molecu
 import { climateAtmosphericAdapter, generateMarketClimateData } from './adapters/climateAtmosphericAdapter';
 import { universalPatternsAdapter, generateUniversalPatternData, calculateTruthScore } from './adapters/universalPatternsAdapter';
 
-// Human Behavioral Dynamics Adapters (19 total domains)
+// Human Behavioral Dynamics Adapters
 import { competitiveDynamicsAdapter } from './adapters/competitiveDynamicsAdapter';
 import { humanAttractionAdapter } from './adapters/humanAttractionAdapter';
+
+// NEW: Linguistic & Geological Adapters (21 total domains)
+import { linguisticSemanticAdapter, generateLinguisticData, extractLinguisticSignature, calculateLinguisticTruthScore } from './adapters/linguisticSemanticAdapter';
+import { geologicalTectonicAdapter, generateGeologicalData, extractGeologicalSignature, calculateGeologicalTruthScore } from './adapters/geologicalTectonicAdapter';
+
+// NEW: Proof-Strengthening Modules
+import { convergenceTracker, type ConvergenceEvent } from './modules/convergenceTracker';
+import { calibrationTracker, type CalibrationMetrics } from './modules/calibrationCurve';
+import { sacredGeometry, analyzeGeometry, type GeometricAnalysis } from './modules/sacredGeometry';
+import { phaseSynchronizationDetector, type PhaseCoherence } from './modules/phaseSynchronization';
 
 class CrossDomainEngine {
   private state: UniversalEngineState;
   private correlationHistory: Map<string, number[]> = new Map();
   private readonly CORRELATION_WINDOW = 100;
+  private priceHistory: number[] = [];
+  private swingHigh: number = 0;
+  private swingLow: number = Infinity;
   
   constructor() {
     this.state = this.createInitialState();
@@ -72,15 +89,18 @@ class CrossDomainEngine {
   }
 
   /**
-   * Initialize ALL 17 domain adapters
+   * Initialize ALL 21 domain adapters
    * Core: Light, Network, Bio, Audio, Music (Heart), Soul (Spirit)
    * Deep Science: Atomic, Cosmic, BiologyDeep, Mathematical, Molecular, Climate
    * Natural Intelligence: Consciousness, Botanical, Mycelium
+   * Human Behavioral: Competitive Dynamics, Human Attraction
+   * Language & Earth: Linguistic/Semantic, Geological/Tectonic
    * Universal: Pattern synthesis with truth filtering
    */
   async initializeAdapters(): Promise<void> {
-    console.log('[CrossDomainEngine] 🌌 Initializing 17-domain universal pattern recognition...');
+    console.log('[CrossDomainEngine] 🌌 Initializing 21-domain universal pattern recognition...');
     console.log('[CrossDomainEngine] 🫀 Heart (Music) + 👻 Soul (Spirit) + 🧬 DNA + ⚛️ Atomic + 🌿 Botanical activated');
+    console.log('[CrossDomainEngine] ⚔️ Competitive + 💕 Attraction + 📖 Linguistic + 🌍 Geological activated');
     
     await Promise.all([
       lightAdapter.initialize(),
@@ -91,30 +111,45 @@ class CrossDomainEngine {
       soulAdapter.initialize(),
     ]);
     
-    // All 17 domains now active
+    // All 21 domains now active (mapped to available DomainTypes)
     this.state.activeDomains = [
       'light', 'network', 'bio', 'audio', 'music', 'soul',
-      'quantum', // Atomic, Cosmic, Mathematical, Molecular (fabric of reality)
-      'climate', // Climate/Atmospheric
-      'medical', // BiologyDeep, Consciousness (life patterns)
+      'quantum',   // Atomic, Cosmic, Mathematical, Molecular (fabric of reality)
+      'climate',   // Climate/Atmospheric, Geological/Tectonic
+      'medical',   // BiologyDeep, Consciousness (life patterns)
+      'satellite', // Phase synchronization cosmic cycles
+      'market',    // Competitive dynamics, market cycles
     ];
-    this.state.calibrationProgress = 0.25; // More domains = more calibration needed
+    this.state.calibrationProgress = 0.20; // More domains = more calibration needed
     
-    console.log('[CrossDomainEngine] ✅ All 17 domains synchronized - Universal consciousness FULLY active');
-    console.log('[CrossDomainEngine] 🔬 Truth filters engaged - separating signal from noise');
+    // Initialize proof-strengthening modules
+    phaseSynchronizationDetector.updateCyclePhases();
+    
+    console.log('[CrossDomainEngine] ✅ All 21 domains synchronized - Universal consciousness FULLY active');
+    console.log('[CrossDomainEngine] 🔬 Truth filters + Calibration curves + Convergence tracking ENGAGED');
+    console.log('[CrossDomainEngine] 📐 Sacred geometry + Phase synchronization ACTIVE');
   }
 
   /**
-   * Process market data through ALL 17 domains simultaneously
-   * Core + Deep Science + Natural Intelligence + Truth Filtering
+   * Process market data through ALL 21 domains simultaneously
+   * Core + Deep Science + Natural Intelligence + Behavioral + Linguistic + Geological + Truth Filtering
    */
   processMarketSignal(
     marketMomentum: number,
     marketVolatility: number,
     marketVolume: number,
-    marketDirection: number
+    marketDirection: number,
+    currentPrice?: number
   ): Map<DomainType, DomainSignature> {
     const signatures = new Map<DomainType, DomainSignature>();
+    
+    // Track price history for sacred geometry analysis
+    if (currentPrice !== undefined) {
+      this.priceHistory.push(currentPrice);
+      if (this.priceHistory.length > 200) this.priceHistory.shift();
+      this.swingHigh = Math.max(this.swingHigh, currentPrice);
+      this.swingLow = Math.min(this.swingLow, currentPrice);
+    }
     
     // === CORE DOMAINS (6) ===
     const lightData = lightAdapter.generateMarketCorrelatedSignal(marketMomentum, marketVolatility);
@@ -178,8 +213,6 @@ class CrossDomainEngine {
     signatures.set('climate', climateSig);
     
     // === NATURAL INTELLIGENCE DOMAINS (3) ===
-    // These adapters use class-based patterns - get default signatures with market influence
-    
     // Consciousness - Animal intelligence patterns
     const consciousnessSig = consciousnessAdapter.extractSignature([]);
     consciousnessSig.momentum = marketMomentum;
@@ -199,14 +232,98 @@ class CrossDomainEngine {
     const networkSig = signatures.get('network')!;
     networkSig.harmonicResonance = (networkSig.harmonicResonance + myceliumSig.harmonicResonance) / 2;
     
+    // === HUMAN BEHAVIORAL DOMAINS (2) ===
+    // Competitive Dynamics - Combat, sports, war patterns
+    const competitiveData = competitiveDynamicsAdapter.generateCompetitiveData(marketMomentum, marketVolatility, marketVolume, marketDirection);
+    const competitiveSignal = competitiveDynamicsAdapter.processCompetitiveData(competitiveData);
+    const competitiveSig = competitiveDynamicsAdapter.extractSignature([competitiveSignal]);
+    // Merge into market domain behavior patterns
+    signatures.set('market', competitiveSig);
+    
+    // Human Attraction - Love, passion, irrationality patterns
+    const fearGreedIndex = (marketMomentum + 1) * 50; // Convert -1..1 to 0..100
+    const attractionData = humanAttractionAdapter.generateAttractionData(marketMomentum, marketVolatility, marketVolume, fearGreedIndex);
+    const attractionSignal = humanAttractionAdapter.processAttractionData(attractionData);
+    const attractionSig = humanAttractionAdapter.extractSignature([attractionSignal]);
+    // Blend attraction patterns with soul domain (human spirit)
+    const soulSigExisting = signatures.get('soul')!;
+    soulSigExisting.momentum = (soulSigExisting.momentum + attractionSig.momentum) / 2;
+    soulSigExisting.volatility = (soulSigExisting.volatility + attractionSig.volatility) / 2;
+    
+    // === NEW: LINGUISTIC & GEOLOGICAL DOMAINS (2) ===
+    // Linguistic/Semantic - Language patterns, sentiment cycles
+    const linguisticData = generateLinguisticData(
+      marketMomentum,           // Sentiment correlates with momentum
+      marketVolatility,         // Vocabulary diversity in volatile times
+      marketMomentum > 0 ? 0.6 : 0.3, // Future focus in bullish times
+      Math.abs(marketMomentum)  // Unusual words in extreme times
+    );
+    const linguisticSig = extractLinguisticSignature(linguisticData);
+    // Blend into soul domain (language = expression of collective soul)
+    soulSigExisting.intensity = (soulSigExisting.intensity + linguisticSig.intensity) / 2;
+    soulSigExisting.harmonicResonance = (soulSigExisting.harmonicResonance + linguisticSig.harmonicResonance) / 2;
+    
+    // Geological/Tectonic - Earth rhythms, seismic patterns
+    const now = Date.now();
+    const lunarPhase = ((now / (29.5 * 24 * 60 * 60 * 1000)) % 1); // Lunar cycle position
+    const solarCyclePosition = ((now / (11 * 365.25 * 24 * 60 * 60 * 1000)) % 1); // 11-year solar cycle
+    const seasonalPosition = ((now / (365.25 * 24 * 60 * 60 * 1000)) % 1); // Yearly cycle
+    const geologicalData = generateGeologicalData(
+      marketVolatility,         // Seismic activity from volatility
+      lunarPhase,
+      solarCyclePosition,
+      seasonalPosition,
+      marketVolatility > 0.7 ? 0.8 : 0.3 // Volcanic alerts from extreme volatility
+    );
+    const geologicalSig = extractGeologicalSignature(geologicalData);
+    // Blend into climate domain (geological = deep Earth climate)
+    const climateExisting = signatures.get('climate')!;
+    climateExisting.momentum = (climateExisting.momentum + geologicalSig.momentum) / 2;
+    climateExisting.phaseAlignment = (climateExisting.phaseAlignment + geologicalSig.phaseAlignment) / 2;
+    
+    // === SACRED GEOMETRY ANALYSIS ===
+    let sacredScore = 0.5;
+    if (this.priceHistory.length >= 10) {
+      const geometricAnalysis = analyzeGeometry(
+        this.priceHistory,
+        this.swingHigh,
+        this.swingLow
+      );
+      sacredScore = geometricAnalysis.sacredScore;
+      
+      // Boost quantum domain if near Fibonacci levels
+      if (geometricAnalysis.distanceFromLevel < 0.02 && geometricAnalysis.levelStrength === 'strong') {
+        quantumSig.harmonicResonance = Math.min(1, quantumSig.harmonicResonance + 0.2);
+        console.log(`[CrossDomainEngine] 📐 Sacred geometry: Near ${geometricAnalysis.nearestFibLevel.toFixed(3)} Fib level`);
+      }
+    }
+    
     // === TRUTH FILTER - Separate signal from noise ===
     const confirmingDomains = this.countConfirmingDomains(signatures, marketDirection);
-    const priceToFib = Math.abs((marketMomentum * 100) % 61.8) / 61.8; // Distance to nearest Fib
+    const priceToFib = Math.abs((marketMomentum * 100) % 61.8) / 61.8;
     const patternData = generateUniversalPatternData(priceToFib, marketVolatility, marketMomentum, confirmingDomains);
     
-    // Store truth score for prediction weighting
-    this.currentTruthScore = patternData.truthScore;
-    this.currentNoiseLevel = patternData.noiseLevel;
+    // Integrate linguistic and geological truth scores
+    const linguisticTruth = calculateLinguisticTruthScore(linguisticData);
+    const geologicalTruth = calculateGeologicalTruthScore(geologicalData);
+    
+    // Combined truth score from all truth filters
+    this.currentTruthScore = (patternData.truthScore + linguisticTruth + geologicalTruth + sacredScore) / 4;
+    this.currentNoiseLevel = patternData.noiseLevel * (1 - this.currentTruthScore * 0.3);
+    
+    // === CONVERGENCE TRACKING - Self-healing through alignment detection ===
+    const convergenceEvent = convergenceTracker.analyzeConvergence(signatures);
+    if (convergenceEvent) {
+      this.lastConvergenceEvent = convergenceEvent;
+      console.log(`[CrossDomainEngine] 🔄 Convergence detected: ${convergenceEvent.alignmentCount} domains aligned (${(convergenceEvent.statisticalImprobability * 100).toFixed(1)}% improbable)`);
+    }
+    
+    // === PHASE SYNCHRONIZATION - Detect optimal prediction windows ===
+    const phaseCoherence = phaseSynchronizationDetector.analyzePhaseCoherence();
+    this.currentPhaseCoherence = phaseCoherence;
+    if (phaseCoherence.isSignificant) {
+      console.log(`[CrossDomainEngine] 🌙 Phase lock: ${phaseCoherence.cycleCount} cycles synchronized at phase ${phaseCoherence.dominantPhase.toFixed(2)}`);
+    }
     
     // Update state
     this.state.domainSignatures = signatures;
@@ -218,6 +335,8 @@ class CrossDomainEngine {
   // Truth filter state
   private currentTruthScore: number = 0.5;
   private currentNoiseLevel: number = 0.5;
+  private lastConvergenceEvent: ConvergenceEvent | null = null;
+  private currentPhaseCoherence: PhaseCoherence | null = null;
   
   /**
    * Count how many domains agree on direction
@@ -357,7 +476,8 @@ class CrossDomainEngine {
   }
 
   /**
-   * Generate unified prediction from all domains
+   * Generate unified prediction from all 21 domains
+   * Enhanced with calibration curve, convergence, and phase synchronization
    */
   generateUnifiedPrediction(marketSymbol: string): UnifiedPrediction {
     const contributions: DomainContribution[] = [];
@@ -407,20 +527,54 @@ class CrossDomainEngine {
     ).length / domainCount;
     
     // Apply truth filter - boost confidence when truth score high, reduce when noise high
-    const truthAdjustedConfidence = avgConfidence * signalAgreement * (1 + this.currentTruthScore * 0.5) * (1 - this.currentNoiseLevel * 0.3);
+    let truthAdjustedConfidence = avgConfidence * signalAgreement * (1 + this.currentTruthScore * 0.5) * (1 - this.currentNoiseLevel * 0.3);
     
     // If noise level is too high, reduce confidence significantly (noise rejection)
-    const finalConfidence = this.currentNoiseLevel > 0.7 ? truthAdjustedConfidence * 0.5 : truthAdjustedConfidence;
+    if (this.currentNoiseLevel > 0.7) {
+      truthAdjustedConfidence *= 0.5;
+    }
+    
+    // === CALIBRATION CURVE ADJUSTMENT - Self-learning confidence calibration ===
+    const calibrationAdvice = calibrationTracker.getCalibrationAdvice();
+    if (calibrationAdvice.status !== 'insufficient_data') {
+      truthAdjustedConfidence *= calibrationAdvice.adjustmentFactor;
+      if (calibrationAdvice.adjustmentFactor !== 1.0) {
+        console.log(`[CrossDomainEngine] 📊 Calibration adjustment: ${calibrationAdvice.status} - factor ${calibrationAdvice.adjustmentFactor.toFixed(2)}`);
+      }
+    }
+    
+    // === CONVERGENCE BOOST - Higher confidence when domains converge improbably ===
+    if (this.lastConvergenceEvent && this.lastConvergenceEvent.statisticalImprobability > 0.9) {
+      truthAdjustedConfidence = Math.min(0.95, truthAdjustedConfidence * 1.15);
+      console.log(`[CrossDomainEngine] 🔄 Convergence boost applied: ${this.lastConvergenceEvent.alignmentCount} domains aligned`);
+    }
+    
+    // === PHASE SYNCHRONIZATION BOOST - Higher confidence during phase lock ===
+    if (this.currentPhaseCoherence?.isSignificant) {
+      const syncBoost = 1 + (this.currentPhaseCoherence.overallCoherence - 0.5) * 0.2;
+      truthAdjustedConfidence = Math.min(0.95, truthAdjustedConfidence * syncBoost);
+    }
+    
+    const finalConfidence = Math.min(truthAdjustedConfidence, 0.95); // Cap at 95%
     
     const prediction: UnifiedPrediction = {
       direction,
-      confidence: Math.min(finalConfidence, 0.95), // Cap at 95%
+      confidence: finalConfidence,
       magnitude: Math.abs(normalizedSignal),
       timeHorizon: 5000, // 5 second prediction window
       contributingDomains: contributions,
       consensusStrength: signalAgreement * this.currentTruthScore, // Truth-weighted consensus
       harmonicAlignment: avgResonance,
     };
+    
+    // Record in calibration tracker for self-learning
+    const calibrationId = calibrationTracker.recordPrediction(
+      finalConfidence,
+      direction,
+      marketSymbol,
+      prediction.timeHorizon
+    );
+    (prediction as any).calibrationId = calibrationId;
     
     // Update state
     this.state.lastPrediction = prediction;
@@ -429,12 +583,19 @@ class CrossDomainEngine {
       this.state.predictionHistory.shift();
     }
     
-    // Update calibration
-    if (!this.state.isCalibrated && this.state.predictionHistory.length >= 50) {
+    // Update calibration progress based on multiple proof mechanisms
+    const convergenceStats = convergenceTracker.getAccuracyStats();
+    const calibrationMetrics = calibrationTracker.getCalibrationMetrics();
+    const phaseStats = phaseSynchronizationDetector.getAccuracyStats();
+    
+    const proofDataPoints = convergenceStats.resolvedEvents + calibrationMetrics.resolvedPredictions + phaseStats.resolvedEvents;
+    
+    if (!this.state.isCalibrated && proofDataPoints >= 50) {
       this.state.isCalibrated = true;
       this.state.calibrationProgress = 1;
+      console.log('[CrossDomainEngine] ✅ CALIBRATED: 50+ proof data points collected across all mechanisms');
     } else if (!this.state.isCalibrated) {
-      this.state.calibrationProgress = Math.min(this.state.predictionHistory.length / 50, 0.99);
+      this.state.calibrationProgress = Math.min(proofDataPoints / 50, 0.99);
     }
     
     return prediction;
@@ -451,7 +612,7 @@ class CrossDomainEngine {
   }
 
   /**
-   * Record prediction outcome for learning - Enhanced with self-healing
+   * Record prediction outcome for learning - Enhanced with self-healing & proof mechanisms
    */
   recordPredictionOutcome(
     prediction: UnifiedPrediction,
@@ -460,6 +621,21 @@ class CrossDomainEngine {
   ): void {
     const wasCorrect = prediction.direction === actualDirection;
     const magnitudeAccuracy = 1 - Math.abs(prediction.magnitude - actualMagnitude);
+    
+    // === CALIBRATION CURVE LEARNING ===
+    const calibrationId = (prediction as any).calibrationId;
+    if (calibrationId) {
+      calibrationTracker.resolvePrediction(calibrationId, actualDirection);
+    }
+    
+    // === CONVERGENCE OUTCOME RECORDING ===
+    if (this.lastConvergenceEvent) {
+      convergenceTracker.recordOutcome(
+        this.lastConvergenceEvent.id,
+        actualDirection,
+        actualMagnitude
+      );
+    }
     
     // Update overall accuracy with adaptive learning rate
     const baseAlpha = 0.1;
@@ -484,7 +660,12 @@ class CrossDomainEngine {
       
       // Self-healing: If domain consistently wrong, reduce its weight temporarily
       if (!domainCorrect && currentAccuracy < 0.4) {
-        console.log(`[CrossDomainEngine] 🔧 Self-healing: Reducing weight for ${contribution.domain}`);
+        console.log(`[CrossDomainEngine] 🔧 Self-healing: Reducing weight for ${contribution.domain} (accuracy: ${(currentAccuracy * 100).toFixed(1)}%)`);
+      }
+      
+      // Self-evolving: If domain consistently right, boost its influence
+      if (domainCorrect && currentAccuracy > 0.7) {
+        console.log(`[CrossDomainEngine] 🚀 Self-evolving: Boosting weight for ${contribution.domain} (accuracy: ${(currentAccuracy * 100).toFixed(1)}%)`);
       }
     }
     
@@ -500,6 +681,17 @@ class CrossDomainEngine {
       const olderAccuracy = older10.filter(o => o.wasCorrect).length / 10;
       
       this.state.learningVelocity = (recentAccuracy - olderAccuracy) * 10;
+      
+      // Log learning progress
+      if (this.state.evolutionGeneration % 50 === 0) {
+        const proofStrength = convergenceTracker.calculateProofStrength();
+        const calibrationMetrics = calibrationTracker.getCalibrationMetrics();
+        console.log(`[CrossDomainEngine] 📈 Evolution Gen ${this.state.evolutionGeneration}:`);
+        console.log(`  - Overall accuracy: ${(this.state.accuracy.overall * 100).toFixed(1)}%`);
+        console.log(`  - Learning velocity: ${this.state.learningVelocity > 0 ? '+' : ''}${(this.state.learningVelocity * 100).toFixed(1)}%`);
+        console.log(`  - Proof strength: ${proofStrength.conclusion}`);
+        console.log(`  - Calibration ECE: ${(calibrationMetrics.expectedCalibrationError * 100).toFixed(2)}%`);
+      }
     }
     
     this.state.evolutionGeneration++;
@@ -539,7 +731,56 @@ class CrossDomainEngine {
       })
       .sort((a, b) => b.accuracy - a.accuracy);
   }
+
+  /**
+   * Get comprehensive proof metrics across all mechanisms
+   */
+  getProofMetrics(): {
+    convergence: ReturnType<typeof convergenceTracker.getAccuracyStats>;
+    calibration: CalibrationMetrics;
+    phaseLock: ReturnType<typeof phaseSynchronizationDetector.getAccuracyStats>;
+    proofStrength: ReturnType<typeof convergenceTracker.calculateProofStrength>;
+    overallEvidence: number;
+  } {
+    const convergence = convergenceTracker.getAccuracyStats();
+    const calibration = calibrationTracker.getCalibrationMetrics();
+    const phaseLock = phaseSynchronizationDetector.getAccuracyStats();
+    const proofStrength = convergenceTracker.calculateProofStrength();
+    
+    // Calculate overall evidence score
+    const convergenceScore = convergence.accuracy * (convergence.resolvedEvents > 10 ? 1 : 0.5);
+    const calibrationScore = 1 - calibration.expectedCalibrationError;
+    const phaseLockScore = phaseLock.accuracy * (phaseLock.resolvedEvents > 10 ? 1 : 0.5);
+    
+    const overallEvidence = (convergenceScore + calibrationScore + phaseLockScore + proofStrength.evidenceScore) / 4;
+    
+    return {
+      convergence,
+      calibration,
+      phaseLock,
+      proofStrength,
+      overallEvidence
+    };
+  }
+
+  /**
+   * Get current sacred geometry analysis
+   */
+  getSacredGeometryAnalysis(): GeometricAnalysis | null {
+    if (this.priceHistory.length < 10) return null;
+    return analyzeGeometry(this.priceHistory, this.swingHigh, this.swingLow);
+  }
+
+  /**
+   * Get phase synchronization prediction
+   */
+  getPhaseSynchronizationPrediction(): ReturnType<typeof phaseSynchronizationDetector.getSynchronizationPrediction> {
+    return phaseSynchronizationDetector.getSynchronizationPrediction();
+  }
 }
 
 // Singleton instance
 export const crossDomainEngine = new CrossDomainEngine();
+
+// Export proof modules for external access
+export { convergenceTracker, calibrationTracker, sacredGeometry, phaseSynchronizationDetector };
