@@ -505,7 +505,7 @@ async function runAutonomousTradingCycle(
     const signal = generateUniversalSignal(marketData, evolutionState, correlations || []);
     signalsGenerated++;
 
-    // Log signal for learning
+// Log signal with enhanced evidence trail for patent/investor proof
     await supabase.from('prediction_outcomes').insert({
       symbol: instrument.symbol,
       entry_price: marketData.price,
@@ -513,13 +513,40 @@ async function runAutonomousTradingCycle(
       predicted_confidence: signal.confidence,
       predicted_magnitude: signal.magnitude,
       prediction_horizon_ms: signal.timeHorizon,
+      engine_version: '8.0-universal',
+      domain_contributions: signal.domainContributions,
       market_conditions: {
         spread: marketData.spread,
         sentiment: marketData.sentiment?.score,
         rsi: marketData.technicals?.rsi,
         domainContributions: signal.domainContributions,
         consensusStrength: signal.consensusStrength,
+        harmonicAlignment: signal.harmonicAlignment,
+        evolutionGeneration: evolutionState?.generation,
+        evolutionFitness: evolutionState?.fitness_score,
+        dataSource: 'multi-broker-aggregator',
       },
+    });
+
+    // Also log to evidence audit trail
+    await supabase.from('trading_evidence_log').insert({
+      evidence_type: 'prediction',
+      evidence_id: `pred-${Date.now()}-${instrument.symbol}`,
+      symbol: instrument.symbol,
+      predicted_direction: signal.direction,
+      confidence: signal.confidence,
+      magnitude: signal.magnitude,
+      time_horizon_ms: signal.timeHorizon,
+      domain_contributions: signal.domainContributions,
+      market_price: marketData.price,
+      market_spread: marketData.spread,
+      data_source: 'multi-broker-aggregator',
+      evolution_generation: evolutionState?.generation,
+      evolution_fitness: evolutionState?.fitness_score,
+      genes_hash: evolutionState?.genes ? JSON.stringify(evolutionState.genes).slice(0, 32) : null,
+      session_id: session.id,
+      engine_version: '8.0-universal',
+      paper_mode: CONFIG.PAPER_MODE,
     });
 
     // Check if signal meets trading criteria
