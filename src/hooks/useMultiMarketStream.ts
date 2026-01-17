@@ -143,6 +143,8 @@ export function useMultiMarketStream(markets: MarketConfig[] = DEFAULT_MARKETS) 
     intervalsRef.current.forEach(clearInterval);
     intervalsRef.current = [];
 
+    console.log('[MultiMarketStream] Starting all market streams...');
+
     // Shared momentum for market-wide moves
     let sharedMomentum = 0;
 
@@ -166,26 +168,50 @@ export function useMultiMarketStream(markets: MarketConfig[] = DEFAULT_MARKETS) 
       crypto: 180     // Fast
     };
 
+    // Generate initial ticks for all markets immediately
+    markets.forEach(market => {
+      try {
+        const tick = generateTick(market, 0);
+        crossMarketEngine.processTick(tick);
+      } catch (error) {
+        console.error('[MultiMarketStream] Error generating initial tick:', error);
+      }
+    });
+
+    // Set initial state with snapshot
+    const initialSnapshot = crossMarketEngine.getSnapshot();
+    const initialBigPicture = crossMarketEngine.getState();
+    setState(prev => ({
+      ...prev,
+      connected: true,
+      snapshot: initialSnapshot,
+      bigPicture: initialBigPicture
+    }));
+
     markets.forEach(market => {
       const interval = setInterval(() => {
-        const tick = generateTick(market, sharedMomentum);
-        tickCountRef.current++;
-        
-        // Process through cross-market engine
-        const bigPicture = crossMarketEngine.processTick(tick);
-        const snapshot = crossMarketEngine.getSnapshot();
-        
-        setState(prev => ({
-          ...prev,
-          snapshot,
-          bigPicture
-        }));
+        try {
+          const tick = generateTick(market, sharedMomentum);
+          tickCountRef.current++;
+          
+          // Process through cross-market engine
+          const bigPicture = crossMarketEngine.processTick(tick);
+          const snapshot = crossMarketEngine.getSnapshot();
+          
+          setState(prev => ({
+            ...prev,
+            snapshot,
+            bigPicture
+          }));
+        } catch (error) {
+          console.error('[MultiMarketStream] Error processing tick:', error);
+        }
       }, frequencies[market.assetClass] || 200);
       
       intervalsRef.current.push(interval);
     });
 
-    setState(prev => ({ ...prev, connected: true }));
+    console.log('[MultiMarketStream] All market streams started');
   }, [markets, generateTick]);
 
   // Track TPS

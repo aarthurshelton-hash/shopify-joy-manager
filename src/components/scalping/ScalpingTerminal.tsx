@@ -38,8 +38,8 @@ import { MarketLearningDashboard } from './MarketLearningDashboard';
 const SYMBOLS = ['SPY', 'QQQ', 'AAPL', 'NVDA', 'TSLA', 'MSFT', 'AMD', 'GOOGL'];
 
 // Safe loading component
-const LoadingTerminal = () => (
-  <div className="flex flex-col items-center justify-center p-8 gap-4">
+const LoadingTerminal = ({ status }: { status: string }) => (
+  <div className="flex flex-col items-center justify-center p-8 gap-4 min-h-[400px]">
     <motion.div
       animate={{ rotate: 360 }}
       transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
@@ -47,7 +47,8 @@ const LoadingTerminal = () => (
       <Activity className="w-8 h-8 text-primary" />
     </motion.div>
     <div className="text-muted-foreground">Initializing Trading Engine...</div>
-    <div className="text-xs text-muted-foreground">Connecting to market feeds</div>
+    <div className="text-xs text-muted-foreground">{status}</div>
+    <div className="text-xs text-muted-foreground/60">Demo mode activating automatically</div>
   </div>
 );
 
@@ -59,20 +60,24 @@ const ScalpingTerminal: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [activeView, setActiveView] = useState<'focus' | 'bigpicture' | 'positions' | 'evolution' | 'learning'>('bigpicture');
   const [isReady, setIsReady] = useState(false);
+  const [initStatus, setInitStatus] = useState('Starting streams...');
   
   // All hooks called unconditionally at top level
   const multiMarket = useMultiMarketStream();
   const positionsTracker = useSimulatedPositions();
   const tradingStore = useTradingSessionStore();
   
-  const predictor = useScalpingPredictor({
+  // Memoize config to prevent unnecessary re-renders
+  const predictorConfig = useMemo(() => ({
     symbol: symbol || 'SPY',
-    mode: 'demo',
+    mode: 'demo' as const,
     predictionIntervalMs: predictionInterval,
     autoPredict,
     demoVolatility: 0.0012,
     demoInterval: 150
-  });
+  }), [symbol, predictionInterval, autoPredict]);
+  
+  const predictor = useScalpingPredictor(predictorConfig);
   
   // Safe destructuring with defaults
   const { 
@@ -149,11 +154,34 @@ const ScalpingTerminal: React.FC = () => {
     return map;
   }, [multiMarket?.snapshot]);
 
-  // Mark as ready once predictor is connected
+  // Mark as ready once systems are connected - with timeout fallback
   useEffect(() => {
-    if (predictor?.connected && multiMarket?.connected) {
-      setIsReady(true);
+    const predictorConnected = predictor?.connected ?? false;
+    const multiMarketConnected = multiMarket?.connected ?? false;
+    
+    if (predictorConnected) {
+      setInitStatus('Predictor connected, waiting for market data...');
     }
+    if (multiMarketConnected) {
+      setInitStatus('Market feeds connected, calibrating...');
+    }
+    
+    if (predictorConnected && multiMarketConnected) {
+      setInitStatus('All systems ready');
+      // Small delay to allow initial data to flow
+      const timer = setTimeout(() => setIsReady(true), 500);
+      return () => clearTimeout(timer);
+    }
+    
+    // Fallback: Force ready after 3 seconds even if not fully connected
+    // Demo mode should always connect quickly
+    const fallbackTimer = setTimeout(() => {
+      console.log('[ScalpingTerminal] Fallback activation triggered');
+      setInitStatus('Activating in demo mode...');
+      setIsReady(true);
+    }, 3000);
+    
+    return () => clearTimeout(fallbackTimer);
   }, [predictor?.connected, multiMarket?.connected]);
 
   // Sync prediction outcomes to global store
@@ -234,7 +262,7 @@ const ScalpingTerminal: React.FC = () => {
   
   // Show loading state if systems aren't ready
   if (!predictor || !multiMarket || !isReady) {
-    return <LoadingTerminal />;
+    return <LoadingTerminal status={initStatus} />;
   }
 
   return (
