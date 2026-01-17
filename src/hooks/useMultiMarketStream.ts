@@ -87,6 +87,8 @@ export function useMultiMarketStream(markets: MarketConfig[] = DEFAULT_MARKETS) 
   const intervalsRef = useRef<NodeJS.Timeout[]>([]);
   const tickCountRef = useRef(0);
   const tpsIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const mountedRef = useRef(true);
+  const isStartedRef = useRef(false);
 
   // Initialize prices
   useEffect(() => {
@@ -139,17 +141,21 @@ export function useMultiMarketStream(markets: MarketConfig[] = DEFAULT_MARKETS) 
   }, []);
 
   const startStreams = useCallback(() => {
+    if (isStartedRef.current) return;
+    
     // Clear any existing intervals
     intervalsRef.current.forEach(clearInterval);
     intervalsRef.current = [];
 
     console.log('[MultiMarketStream] Starting all market streams...');
+    isStartedRef.current = true;
 
     // Shared momentum for market-wide moves
     let sharedMomentum = 0;
 
     // Update shared momentum periodically
     const momentumInterval = setInterval(() => {
+      if (!mountedRef.current) return;
       // Momentum mean-reverts but can spike
       sharedMomentum = sharedMomentum * 0.95 + (Math.random() - 0.5) * 0.002;
       if (Math.random() > 0.99) {
@@ -169,27 +175,32 @@ export function useMultiMarketStream(markets: MarketConfig[] = DEFAULT_MARKETS) 
     };
 
     // Generate initial ticks for all markets immediately
-    markets.forEach(market => {
-      try {
+    try {
+      markets.forEach(market => {
         const tick = generateTick(market, 0);
         crossMarketEngine.processTick(tick);
-      } catch (error) {
-        console.error('[MultiMarketStream] Error generating initial tick:', error);
-      }
-    });
+      });
 
-    // Set initial state with snapshot
-    const initialSnapshot = crossMarketEngine.getSnapshot();
-    const initialBigPicture = crossMarketEngine.getState();
-    setState(prev => ({
-      ...prev,
-      connected: true,
-      snapshot: initialSnapshot,
-      bigPicture: initialBigPicture
-    }));
+      // Set initial state with snapshot
+      const initialSnapshot = crossMarketEngine.getSnapshot();
+      const initialBigPicture = crossMarketEngine.getState();
+      
+      if (mountedRef.current) {
+        setState(prev => ({
+          ...prev,
+          connected: true,
+          snapshot: initialSnapshot,
+          bigPicture: initialBigPicture
+        }));
+      }
+    } catch (error) {
+      console.error('[MultiMarketStream] Error during initialization:', error);
+    }
 
     markets.forEach(market => {
       const interval = setInterval(() => {
+        if (!mountedRef.current) return;
+        
         try {
           const tick = generateTick(market, sharedMomentum);
           tickCountRef.current++;
@@ -217,11 +228,13 @@ export function useMultiMarketStream(markets: MarketConfig[] = DEFAULT_MARKETS) 
   // Track TPS
   useEffect(() => {
     tpsIntervalRef.current = setInterval(() => {
-      setState(prev => ({
-        ...prev,
-        ticksPerSecond: tickCountRef.current
-      }));
-      tickCountRef.current = 0;
+      if (mountedRef.current) {
+        setState(prev => ({
+          ...prev,
+          ticksPerSecond: tickCountRef.current
+        }));
+        tickCountRef.current = 0;
+      }
     }, 1000);
 
     return () => {
@@ -233,11 +246,19 @@ export function useMultiMarketStream(markets: MarketConfig[] = DEFAULT_MARKETS) 
 
   // Start streams on mount
   useEffect(() => {
-    startStreams();
+    mountedRef.current = true;
+    
+    // Small delay to ensure component is fully mounted
+    const startTimer = setTimeout(() => {
+      startStreams();
+    }, 50);
 
     return () => {
+      mountedRef.current = false;
+      clearTimeout(startTimer);
       intervalsRef.current.forEach(clearInterval);
       intervalsRef.current = [];
+      isStartedRef.current = false;
       setState(prev => ({ ...prev, connected: false }));
     };
   }, [startStreams]);
@@ -245,12 +266,16 @@ export function useMultiMarketStream(markets: MarketConfig[] = DEFAULT_MARKETS) 
   const disconnect = useCallback(() => {
     intervalsRef.current.forEach(clearInterval);
     intervalsRef.current = [];
+    isStartedRef.current = false;
     setState(prev => ({ ...prev, connected: false }));
   }, []);
 
   const reconnect = useCallback(() => {
     disconnect();
-    startStreams();
+    setTimeout(() => {
+      isStartedRef.current = false;
+      startStreams();
+    }, 100);
   }, [disconnect, startStreams]);
 
   return {
