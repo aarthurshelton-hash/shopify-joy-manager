@@ -258,7 +258,7 @@ const MultiMarketScalpingTerminal: React.FC = () => {
         const { data: evolutionData, error: evolutionError } = await supabase
           .from('evolution_state')
           .select('*')
-          .eq('state_type', 'primary')
+          .eq('state_type', 'global')
           .order('updated_at', { ascending: false })
           .limit(1)
           .single();
@@ -317,6 +317,64 @@ const MultiMarketScalpingTerminal: React.FC = () => {
     };
     
     loadPortfolioFromDB();
+    
+    // Subscribe to real-time updates for evolution and portfolio
+    const evolutionChannel = supabase
+      .channel('evolution-updates')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'evolution_state' },
+        (payload) => {
+          const data = payload.new as { 
+            generation?: number; 
+            fitness_score?: number; 
+            genes?: Record<string, number>;
+            total_predictions?: number;
+            learned_patterns?: unknown[];
+          };
+          if (data && data.generation) {
+            setEvolutionSummary({
+              generation: data.generation || 0,
+              fitness: data.fitness_score || 0,
+              velocity: 0,
+              topGenes: Object.entries(data.genes || {})
+                .sort((a, b) => (b[1] as number) - (a[1] as number))
+                .slice(0, 5)
+                .map(([name, value]) => ({ name, value: value as number, impact: (value as number) * 0.1 })),
+              patternCount: (data.learned_patterns as Array<unknown> || []).length,
+              bestPatternAccuracy: data.fitness_score || 0,
+            });
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'portfolio_balance' },
+        (payload) => {
+          const data = payload.new as {
+            balance?: number;
+            peak_balance?: number;
+            trough_balance?: number;
+            total_trades?: number;
+            winning_trades?: number;
+          };
+          if (data && data.balance !== undefined) {
+            setPortfolio(prev => ({
+              ...prev,
+              balance: data.balance || prev.balance,
+              peakBalance: data.peak_balance || prev.peakBalance,
+              troughBalance: data.trough_balance || prev.troughBalance,
+              totalTrades: data.total_trades || prev.totalTrades,
+              winningTrades: data.winning_trades || prev.winningTrades,
+            }));
+          }
+        }
+      )
+      .subscribe();
+    
+    return () => {
+      supabase.removeChannel(evolutionChannel);
+    };
   }, []);
   
   // Sync portfolio changes to database
