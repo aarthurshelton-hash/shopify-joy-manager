@@ -64,6 +64,12 @@ export function useTickDataStream(config: TickStreamConfig) {
   
   // Demo mode tick generator
   const startDemoMode = useCallback(() => {
+    // Clear any existing interval first
+    if (demoIntervalRef.current) {
+      clearInterval(demoIntervalRef.current);
+      demoIntervalRef.current = null;
+    }
+    
     const volatility = config.demoVolatility || 0.0015;
     const interval = config.demoInterval || 200; // 5 ticks per second default
     
@@ -80,32 +86,45 @@ export function useTickDataStream(config: TickStreamConfig) {
     };
     lastPriceRef.current = basePrices[config.symbol] || 100;
     
-    demoIntervalRef.current = setInterval(() => {
-      // Generate realistic price movement
-      const randomWalk = (Math.random() - 0.5) * 2 * volatility;
-      const momentum = Math.sin(Date.now() / 10000) * volatility * 0.3; // Slight trend
-      const spike = Math.random() > 0.98 ? (Math.random() - 0.5) * volatility * 5 : 0; // Occasional spikes
-      
-      const priceChange = randomWalk + momentum + spike;
-      const newPrice = lastPriceRef.current * (1 + priceChange);
-      lastPriceRef.current = newPrice;
-      
-      // Generate volume (higher on big moves)
-      const baseVolume = 1000 + Math.random() * 5000;
-      const volumeMultiplier = 1 + Math.abs(priceChange) * 100;
-      
-      const tick: Tick = {
-        price: Math.round(newPrice * 100) / 100,
-        volume: Math.round(baseVolume * volumeMultiplier),
-        timestamp: Date.now(),
-        bid: Math.round((newPrice - 0.01) * 100) / 100,
-        ask: Math.round((newPrice + 0.01) * 100) / 100
-      };
-      
-      processTick(tick);
-    }, interval);
+    console.log('[TickStream] Starting demo mode for', config.symbol, 'at interval', interval);
+    
+    // Generate first tick immediately
+    const generateAndProcessTick = () => {
+      try {
+        // Generate realistic price movement
+        const randomWalk = (Math.random() - 0.5) * 2 * volatility;
+        const momentum = Math.sin(Date.now() / 10000) * volatility * 0.3; // Slight trend
+        const spike = Math.random() > 0.98 ? (Math.random() - 0.5) * volatility * 5 : 0; // Occasional spikes
+        
+        const priceChange = randomWalk + momentum + spike;
+        const newPrice = lastPriceRef.current * (1 + priceChange);
+        lastPriceRef.current = newPrice;
+        
+        // Generate volume (higher on big moves)
+        const baseVolume = 1000 + Math.random() * 5000;
+        const volumeMultiplier = 1 + Math.abs(priceChange) * 100;
+        
+        const tick: Tick = {
+          price: Math.round(newPrice * 100) / 100,
+          volume: Math.round(baseVolume * volumeMultiplier),
+          timestamp: Date.now(),
+          bid: Math.round((newPrice - 0.01) * 100) / 100,
+          ask: Math.round((newPrice + 0.01) * 100) / 100
+        };
+        
+        processTick(tick);
+      } catch (error) {
+        console.error('[TickStream] Error generating tick:', error);
+      }
+    };
+    
+    // Generate first tick immediately
+    generateAndProcessTick();
+    
+    demoIntervalRef.current = setInterval(generateAndProcessTick, interval);
     
     setState(prev => ({ ...prev, connected: true, error: null }));
+    console.log('[TickStream] Demo mode started successfully');
   }, [config.symbol, config.demoVolatility, config.demoInterval, processTick]);
   
   // WebSocket connection
