@@ -375,6 +375,14 @@ const UserMenu: React.FC = () => {
                 En Pensent Engine
               </DropdownMenuLabel>
               <DropdownMenuItem 
+                onClick={() => navigate('/admin/system-vitals')}
+                className="gap-2 cursor-pointer text-amber-500 font-semibold bg-amber-500/10"
+              >
+                <Zap className="h-4 w-4 animate-pulse" />
+                System Vitals (LIVE)
+                <Crown className="h-3 w-3 ml-auto" />
+              </DropdownMenuItem>
+              <DropdownMenuItem 
                 onClick={() => navigate('/stock-predictions')}
                 className="gap-2 cursor-pointer text-amber-500 font-semibold"
               >
