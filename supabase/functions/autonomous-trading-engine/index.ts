@@ -3,7 +3,7 @@
  * 
  * 24/7 Fully Autonomous Trading with:
  * - All En Pensent domains feeding predictions
- * - Multi-broker execution (Alpaca for now)
+ * - Multi-broker execution (Alpaca + IBKR for Canadian support)
  * - Real-time evolution and learning
  * - Paper/Live mode toggle
  * - 5% max risk per trade
@@ -26,13 +26,16 @@ const CONFIG = {
   SCALP_HORIZON_MS: 30000, // 30 second scalps
   EVOLUTION_INTERVAL_MS: 60000, // Evolve every minute
   PAPER_MODE: true, // Start in simulation mode
+  PREFERRED_BROKER: 'alpaca' as 'alpaca' | 'ibkr', // Can switch to ibkr for Canadian
 };
 
-// Supported instruments
+// Supported instruments (expanded for IBKR)
 const INSTRUMENTS = {
   CRYPTO: ['BTC/USD', 'ETH/USD', 'SOL/USD'],
-  FUTURES: ['ES', 'NQ', 'GC', 'CL'],
+  FUTURES: ['ES', 'NQ', 'GC', 'CL', 'MES', 'MNQ'], // Added micro futures
   STOCKS: ['SPY', 'QQQ', 'AAPL', 'TSLA', 'NVDA'],
+  FOREX: ['EUR/USD', 'GBP/USD', 'USD/CAD', 'USD/JPY'], // IBKR forex
+  TSX: ['XIU.TO', 'ZSP.TO', 'VFV.TO'], // Canadian ETFs via IBKR
 };
 
 interface Position {
@@ -78,6 +81,105 @@ interface UniversalSignal {
   };
   consensusStrength: number;
   harmonicAlignment: number;
+}
+
+// Interactive Brokers (IBKR) order execution
+async function executeIBKROrder(
+  symbol: string,
+  side: 'buy' | 'sell',
+  quantity: number,
+  orderType: 'market' | 'limit' = 'market',
+  limitPrice?: number
+): Promise<{ orderId: string; status: string } | null> {
+  const clientId = Deno.env.get('IBKR_CLIENT_ID');
+  const clientSecret = Deno.env.get('IBKR_CLIENT_SECRET');
+  
+  if (!clientId || !clientSecret) {
+    console.log('[IBKR] No credentials - skipping');
+    return null;
+  }
+
+  try {
+    // IBKR Client Portal Gateway (requires local gateway or cloud setup)
+    const baseUrl = CONFIG.PAPER_MODE 
+      ? 'https://localhost:5000/v1/api' // Paper
+      : 'https://localhost:5000/v1/api'; // Live uses same gateway
+
+    // In production, you'd resolve conId via /iserver/secdef/search first
+    const ibkrSymbol = symbol.replace('/', '');
+    
+    const orderPayload = {
+      orders: [{
+        conid: ibkrSymbol, // Would be actual conId
+        orderType: orderType === 'market' ? 'MKT' : 'LMT',
+        side: side.toUpperCase(),
+        quantity: quantity,
+        tif: 'GTC',
+        ...(orderType === 'limit' && limitPrice ? { price: limitPrice } : {}),
+      }]
+    };
+
+    const response = await fetch(`${baseUrl}/iserver/account/orders`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(orderPayload),
+    });
+
+    if (!response.ok) {
+      console.log(`[IBKR] Order failed: ${response.status}`);
+      return null;
+    }
+
+    const result = await response.json();
+    console.log(`[IBKR] ✓ Order placed: ${side} ${quantity} ${symbol}`);
+    
+    return {
+      orderId: result[0]?.order_id || 'ibkr-' + Date.now(),
+      status: 'submitted',
+    };
+  } catch (err) {
+    console.log('[IBKR] Order error (gateway not available)');
+    return null;
+  }
+}
+
+// Get IBKR account info
+async function getIBKRAccount(): Promise<{ balance: number; positions: any[] } | null> {
+  const clientId = Deno.env.get('IBKR_CLIENT_ID');
+  const clientSecret = Deno.env.get('IBKR_CLIENT_SECRET');
+  
+  if (!clientId || !clientSecret) return null;
+
+  try {
+    const baseUrl = 'https://localhost:5000/v1/api';
+    
+    const [accountRes, positionsRes] = await Promise.all([
+      fetch(`${baseUrl}/portfolio/accounts`),
+      fetch(`${baseUrl}/portfolio/positions/0`),
+    ]);
+
+    if (!accountRes.ok) return null;
+
+    const accounts = await accountRes.json();
+    const positions = positionsRes.ok ? await positionsRes.json() : [];
+    
+    // Get first account's balance
+    const accountId = accounts[0]?.accountId;
+    if (!accountId) return null;
+
+    const summaryRes = await fetch(`${baseUrl}/portfolio/${accountId}/summary`);
+    const summary = summaryRes.ok ? await summaryRes.json() : {};
+
+    return {
+      balance: summary.netliquidation?.amount || 0,
+      positions,
+    };
+  } catch (err) {
+    console.log('[IBKR] Account fetch failed (gateway not available)');
+    return null;
+  }
 }
 
 // Alpaca trading execution
@@ -183,6 +285,52 @@ async function getAlpacaAccount(): Promise<{ balance: number; positions: any[] }
     console.error('[Alpaca] Account fetch error:', err);
     return null;
   }
+}
+
+// Unified broker execution - tries preferred broker first, then fallback
+async function executeBrokerOrder(
+  symbol: string,
+  side: 'buy' | 'sell',
+  quantity: number,
+  orderType: 'market' | 'limit' = 'market',
+  limitPrice?: number
+): Promise<{ orderId: string; status: string; broker: string } | null> {
+  // Try IBKR first if preferred (for Canadian users)
+  if (CONFIG.PREFERRED_BROKER === 'ibkr') {
+    const ibkrOrder = await executeIBKROrder(symbol, side, quantity, orderType, limitPrice);
+    if (ibkrOrder) return { ...ibkrOrder, broker: 'ibkr' };
+  }
+  
+  // Try Alpaca
+  const alpacaOrder = await executeAlpacaOrder(symbol, side, quantity, orderType, limitPrice);
+  if (alpacaOrder) return { ...alpacaOrder, broker: 'alpaca' };
+  
+  // Fallback to IBKR if not preferred but Alpaca failed
+  if (CONFIG.PREFERRED_BROKER !== 'ibkr') {
+    const ibkrOrder = await executeIBKROrder(symbol, side, quantity, orderType, limitPrice);
+    if (ibkrOrder) return { ...ibkrOrder, broker: 'ibkr' };
+  }
+  
+  return null;
+}
+
+// Get unified account info from available broker
+async function getBrokerAccount(): Promise<{ balance: number; positions: any[]; broker: string } | null> {
+  // Try preferred broker first
+  if (CONFIG.PREFERRED_BROKER === 'ibkr') {
+    const ibkr = await getIBKRAccount();
+    if (ibkr) return { ...ibkr, broker: 'ibkr' };
+  }
+  
+  const alpaca = await getAlpacaAccount();
+  if (alpaca) return { ...alpaca, broker: 'alpaca' };
+  
+  if (CONFIG.PREFERRED_BROKER !== 'ibkr') {
+    const ibkr = await getIBKRAccount();
+    if (ibkr) return { ...ibkr, broker: 'ibkr' };
+  }
+  
+  return null;
 }
 
 // Get real market data from multi-broker aggregator
@@ -399,8 +547,8 @@ async function runAutonomousTradingCycle(
     const side = signal.direction === 'up' ? 'buy' : 'sell';
     
     if (!CONFIG.PAPER_MODE) {
-      // Real execution via Alpaca
-      const order = await executeAlpacaOrder(
+      // Real execution via unified broker (IBKR or Alpaca)
+      const order = await executeBrokerOrder(
         instrument.symbol,
         side,
         quantity,
@@ -408,6 +556,7 @@ async function runAutonomousTradingCycle(
       );
       
       if (!order) continue;
+      console.log(`[AutoTrade] Executed via ${order.broker}`);
     }
 
     // Record position
@@ -478,7 +627,7 @@ async function runAutonomousTradingCycle(
       // Execute close order if live
       if (!CONFIG.PAPER_MODE) {
         const closeSide = position.side === 'long' ? 'sell' : 'buy';
-        await executeAlpacaOrder(position.symbol, closeSide, position.quantity, 'market');
+        await executeBrokerOrder(position.symbol, closeSide, position.quantity, 'market');
       }
 
       console.log(`[AutoTrade] Position closed: ${position.symbol} | PnL: $${pnl.toFixed(2)}`);
@@ -539,12 +688,13 @@ Deno.serve(async (req) => {
         lastActivityAt: new Date().toISOString(),
       };
 
-      // Get real balance if live mode
+      // Get real balance if live mode from any available broker
       if (session.isLive) {
-        const account = await getAlpacaAccount();
+        const account = await getBrokerAccount();
         if (account) {
           session.startBalance = account.balance;
           session.currentBalance = account.balance;
+          console.log(`[AutoTrade] Connected to ${account.broker} with $${account.balance.toFixed(2)}`);
         }
       }
 
@@ -636,12 +786,14 @@ Deno.serve(async (req) => {
         { data: evolution },
         { data: metrics },
         { data: recentSessions },
-        alpacaAccount,
+        brokerAccount,
+        ibkrAccount,
       ] = await Promise.all([
         supabase.from('evolution_state').select('*').eq('state_type', 'global').single(),
         supabase.from('security_accuracy_metrics').select('*').order('composite_accuracy', { ascending: false }).limit(10),
         supabase.from('trading_session_reports').select('*').order('start_time', { ascending: false }).limit(5),
         getAlpacaAccount(),
+        getIBKRAccount(),
       ]);
 
       const overallAccuracy = metrics && metrics.length > 0
@@ -652,12 +804,21 @@ Deno.serve(async (req) => {
         success: true,
         status: {
           paperMode: CONFIG.PAPER_MODE,
-          alpacaConnected: !!alpacaAccount,
-          alpacaBalance: alpacaAccount?.balance || 0,
-          alpacaPositions: alpacaAccount?.positions?.length || 0,
+          preferredBroker: CONFIG.PREFERRED_BROKER,
+          // Alpaca status
+          alpacaConnected: !!brokerAccount,
+          alpacaBalance: brokerAccount?.balance || 0,
+          alpacaPositions: brokerAccount?.positions?.length || 0,
+          // IBKR status
+          ibkrConnected: !!ibkrAccount,
+          ibkrBalance: ibkrAccount?.balance || 0,
+          ibkrPositions: ibkrAccount?.positions?.length || 0,
+          // Evolution
           evolutionGeneration: evolution?.generation || 0,
           systemFitness: evolution?.fitness_score || 0,
           overallAccuracy,
+          // Supported instruments (expanded for IBKR)
+          instruments: INSTRUMENTS,
           topPerformers: metrics?.slice(0, 5).map((m: any) => ({
             symbol: m.symbol,
             accuracy: (m.composite_accuracy * 100).toFixed(1) + '%',
