@@ -199,6 +199,8 @@ const MultiMarketScalpingTerminal: React.FC = () => {
   const [isLive, setIsLive] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [expandedCategory, setExpandedCategory] = useState<string | null>('crypto');
+  const [selectedSymbol, setSelectedSymbol] = useState<MarketSymbol | null>(null);
+  const [customBetAmount, setCustomBetAmount] = useState<number>(20); // $20 default bet
   
   // Portfolio state
   const [portfolio, setPortfolio] = useState<PortfolioState>({
@@ -260,6 +262,48 @@ const MultiMarketScalpingTerminal: React.FC = () => {
     
     return stats;
   }, [predictions]);
+  
+  // Symbol-specific stats
+  const symbolStats = useMemo(() => {
+    const stats: Record<string, { total: number; correct: number; pnl: number; history: Prediction[] }> = {};
+    
+    for (const pred of predictions.filter(p => p.resolved)) {
+      if (!stats[pred.symbol]) {
+        stats[pred.symbol] = { total: 0, correct: 0, pnl: 0, history: [] };
+      }
+      stats[pred.symbol].total++;
+      if (pred.wasCorrect) stats[pred.symbol].correct++;
+      stats[pred.symbol].pnl += pred.pnl || 0;
+      stats[pred.symbol].history.push(pred);
+    }
+    
+    return stats;
+  }, [predictions]);
+  
+  // Manual trade on selected symbol
+  const executeManualTrade = useCallback((direction: 'up' | 'down') => {
+    if (!selectedSymbol || portfolio.balance <= 0 || customBetAmount <= 0) return;
+    
+    const quote = quotes[selectedSymbol.symbol];
+    if (!quote) return;
+    
+    const betAmount = Math.min(customBetAmount, portfolio.balance);
+    const { confidence } = predictDirection(selectedSymbol.symbol);
+    
+    const prediction: Prediction = {
+      id: `manual-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      symbol: selectedSymbol.symbol,
+      category: selectedSymbol.category,
+      direction,
+      confidence,
+      priceAtPrediction: quote.price,
+      timestamp: Date.now(),
+      expiresAt: Date.now() + PREDICTION_INTERVAL,
+      betAmount,
+    };
+    
+    setPredictions(prev => [...prev, prediction].slice(-200));
+  }, [selectedSymbol, quotes, portfolio.balance, customBetAmount]);
 
   // Fetch available symbols
   useEffect(() => {
@@ -699,8 +743,19 @@ const MultiMarketScalpingTerminal: React.FC = () => {
                 .filter(s => s.category === category)
                 .map(symbol => {
                   const quote = quotes[symbol.symbol];
+                  const stats = symbolStats[symbol.symbol];
+                  const isSelected = selectedSymbol?.symbol === symbol.symbol;
+                  const accuracy = stats && stats.total > 0 ? (stats.correct / stats.total) * 100 : null;
+                  
                   return (
-                    <Card key={symbol.symbol} className="bg-card/50">
+                    <Card 
+                      key={symbol.symbol} 
+                      className={cn(
+                        "bg-card/50 cursor-pointer transition-all hover:scale-[1.02] hover:border-primary/50",
+                        isSelected && "ring-2 ring-primary border-primary"
+                      )}
+                      onClick={() => setSelectedSymbol(isSelected ? null : symbol)}
+                    >
                       <CardContent className="pt-4">
                         <div className="flex items-center justify-between mb-2">
                           <span className="font-mono font-medium text-sm">{symbol.symbol}</span>
@@ -725,6 +780,15 @@ const MultiMarketScalpingTerminal: React.FC = () => {
                         <div className="text-xs text-muted-foreground truncate mt-1">
                           {symbol.name}
                         </div>
+                        {/* Show accuracy if we have trades */}
+                        {accuracy !== null && (
+                          <div className={cn(
+                            "text-xs font-semibold mt-2 pt-2 border-t border-border/50",
+                            accuracy >= 55 ? "text-green-500" : accuracy >= 45 ? "text-yellow-500" : "text-red-500"
+                          )}>
+                            {accuracy.toFixed(0)}% accuracy • {stats.total} trades
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   );
@@ -733,6 +797,182 @@ const MultiMarketScalpingTerminal: React.FC = () => {
           </TabsContent>
         ))}
       </Tabs>
+      
+      {/* Selected Symbol Trading Panel */}
+      <AnimatePresence>
+        {selectedSymbol && quotes[selectedSymbol.symbol] && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+          >
+            <Card className="border-primary/50 bg-gradient-to-br from-primary/5 to-card">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-3">
+                    <Zap className="w-5 h-5 text-primary" />
+                    Trade {selectedSymbol.symbol}
+                    <Badge>{selectedSymbol.name}</Badge>
+                  </CardTitle>
+                  <Button variant="ghost" size="sm" onClick={() => setSelectedSymbol(null)}>
+                    ✕
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Live Price & Prediction */}
+                  <div className="space-y-4">
+                    <div>
+                      <div className="text-sm text-muted-foreground mb-1">Live Price</div>
+                      <div className="text-3xl font-mono font-bold">
+                        {formatPrice(quotes[selectedSymbol.symbol].price, selectedSymbol.symbol)}
+                      </div>
+                      <div className={cn(
+                        "text-sm font-medium",
+                        quotes[selectedSymbol.symbol].changePercent >= 0 ? "text-green-500" : "text-red-500"
+                      )}>
+                        {quotes[selectedSymbol.symbol].changePercent >= 0 ? '+' : ''}
+                        {quotes[selectedSymbol.symbol].changePercent.toFixed(3)}%
+                      </div>
+                    </div>
+                    
+                    {/* AI Prediction */}
+                    {(() => {
+                      const pred = predictDirection(selectedSymbol.symbol);
+                      return (
+                        <div className="p-3 rounded-lg bg-card border">
+                          <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                            <Brain className="w-3 h-3" />
+                            AI Prediction
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <DirectionIcon direction={pred.direction} size={24} />
+                            <span className="text-xl font-bold capitalize">{pred.direction}</span>
+                            <Badge variant="outline" className="ml-auto">
+                              {pred.confidence}% confidence
+                            </Badge>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                  
+                  {/* Trade Controls */}
+                  <div className="space-y-4">
+                    <div>
+                      <div className="text-sm text-muted-foreground mb-2">Bet Amount ($)</div>
+                      <div className="flex gap-2">
+                        {[10, 20, 50, 100].map(amount => (
+                          <Button
+                            key={amount}
+                            variant={customBetAmount === amount ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setCustomBetAmount(amount)}
+                            disabled={amount > portfolio.balance}
+                          >
+                            ${amount}
+                          </Button>
+                        ))}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Available: ${portfolio.balance.toFixed(2)}
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-3">
+                      <Button
+                        size="lg"
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                        onClick={() => executeManualTrade('up')}
+                        disabled={portfolio.balance < customBetAmount}
+                      >
+                        <TrendingUp className="w-5 h-5 mr-2" />
+                        LONG
+                      </Button>
+                      <Button
+                        size="lg"
+                        className="bg-red-600 hover:bg-red-700 text-white"
+                        onClick={() => executeManualTrade('down')}
+                        disabled={portfolio.balance < customBetAmount}
+                      >
+                        <TrendingDown className="w-5 h-5 mr-2" />
+                        SHORT
+                      </Button>
+                    </div>
+                    
+                    <div className="text-xs text-center text-muted-foreground">
+                      Win: +{((WIN_MULTIPLIER - 1) * 100).toFixed(0)}% • Resolves in {PREDICTION_INTERVAL / 1000}s
+                    </div>
+                  </div>
+                  
+                  {/* Symbol Stats */}
+                  <div className="space-y-3">
+                    <div className="text-sm text-muted-foreground">Your {selectedSymbol.symbol} History</div>
+                    {symbolStats[selectedSymbol.symbol] ? (
+                      <>
+                        <div className="grid grid-cols-3 gap-2 text-center">
+                          <div className="p-2 rounded bg-card border">
+                            <div className="text-lg font-bold">
+                              {symbolStats[selectedSymbol.symbol].total}
+                            </div>
+                            <div className="text-xs text-muted-foreground">Trades</div>
+                          </div>
+                          <div className="p-2 rounded bg-card border">
+                            <div className={cn(
+                              "text-lg font-bold",
+                              (symbolStats[selectedSymbol.symbol].correct / symbolStats[selectedSymbol.symbol].total) >= 0.55 
+                                ? "text-green-500" : "text-red-500"
+                            )}>
+                              {((symbolStats[selectedSymbol.symbol].correct / symbolStats[selectedSymbol.symbol].total) * 100).toFixed(0)}%
+                            </div>
+                            <div className="text-xs text-muted-foreground">Accuracy</div>
+                          </div>
+                          <div className="p-2 rounded bg-card border">
+                            <div className={cn(
+                              "text-lg font-bold",
+                              symbolStats[selectedSymbol.symbol].pnl >= 0 ? "text-green-500" : "text-red-500"
+                            )}>
+                              {formatMoney(symbolStats[selectedSymbol.symbol].pnl)}
+                            </div>
+                            <div className="text-xs text-muted-foreground">P&L</div>
+                          </div>
+                        </div>
+                        
+                        {/* Recent trades for this symbol */}
+                        <div className="space-y-1 max-h-32 overflow-y-auto">
+                          {symbolStats[selectedSymbol.symbol].history.slice(-5).reverse().map(trade => (
+                            <div key={trade.id} className="flex items-center justify-between text-xs p-1 rounded bg-card/50">
+                              <div className="flex items-center gap-1">
+                                {trade.wasCorrect ? (
+                                  <CheckCircle className="w-3 h-3 text-green-500" />
+                                ) : (
+                                  <XCircle className="w-3 h-3 text-red-500" />
+                                )}
+                                <DirectionIcon direction={trade.direction} size={12} />
+                              </div>
+                              <span className={cn(
+                                "font-mono",
+                                (trade.pnl || 0) >= 0 ? "text-green-500" : "text-red-500"
+                              )}>
+                                {formatMoney(trade.pnl || 0)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-center text-muted-foreground py-4">
+                        No trades yet on {selectedSymbol.symbol}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
       
       {/* Category Performance */}
       <Card>
