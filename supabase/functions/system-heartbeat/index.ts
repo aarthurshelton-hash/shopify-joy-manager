@@ -500,14 +500,17 @@ Deno.serve(async (req) => {
       
       const { data: recentPredictions } = await supabase
         .from('prediction_outcomes')
-        .select('composite_score, direction_correct')
-        .not('resolved_at', 'is', null)
-        .order('resolved_at', { ascending: false })
+        .select('composite_score, direction_correct, resolved_at')
+        .order('resolved_at', { ascending: false, nullsFirst: false })
         .limit(100);
       
-      if (recentPredictions && recentPredictions.length >= 10) {
-        const avgScore = recentPredictions.reduce((sum, p) => sum + (p.composite_score || 0), 0) / recentPredictions.length;
-        const directionAccuracy = recentPredictions.filter(p => p.direction_correct).length / recentPredictions.length;
+      // Filter for resolved predictions only
+      const resolvedPredictions = (recentPredictions || []).filter(p => p.resolved_at !== null);
+      
+      
+      if (resolvedPredictions && resolvedPredictions.length >= 5) {
+        const avgScore = resolvedPredictions.reduce((sum, p) => sum + (p.composite_score || 0), 0) / resolvedPredictions.length;
+        const directionAccuracy = resolvedPredictions.filter(p => p.direction_correct).length / resolvedPredictions.length;
         
         const defaultGenes = {
           directionWeight: 0.4,
@@ -529,7 +532,7 @@ Deno.serve(async (req) => {
             generation: (evolution?.generation || 0) + 1,
             fitness_score: avgScore,
             genes: mutatedGenes,
-            total_predictions: (evolution?.total_predictions || 0) + recentPredictions.length,
+            total_predictions: (evolution?.total_predictions || 0) + resolvedPredictions.length,
             last_mutation_at: new Date().toISOString(),
             learned_patterns: evolution?.learned_patterns || [],
             adaptation_history: [
