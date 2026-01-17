@@ -14,14 +14,22 @@ export interface UniversalSignal {
 }
 
 export type DomainType = 
-  | 'chess'
-  | 'market' 
-  | 'code'
-  | 'light'
-  | 'network'
-  | 'bio'
-  | 'audio'
-  | 'satellite';
+  | 'chess'      // The Brain - Strategic patterns
+  | 'market'     // The Nervous System - Responsive signals
+  | 'code'       // The Blood - Life force flow
+  | 'light'      // Vision - Electromagnetic perception
+  | 'network'    // Connectivity - Data flow patterns
+  | 'bio'        // Life rhythms - Biological cycles
+  | 'audio'      // Hearing - Sound wave patterns
+  | 'music'      // The Heart - Musical temporal patterns
+  | 'soul'       // The Spirit - Language, culture, archetypes
+  | 'satellite'  // Orbital - Space-based observation
+  // Future domains (Phase 2+)
+  | 'photonic'   // Light-based computing
+  | 'medical'    // Diagnostic patterns
+  | 'climate'    // Environmental cycles
+  | 'energy'     // Power grid patterns
+  | 'quantum';   // Quantum state patterns
 
 export interface DomainSignature {
   domain: DomainType;

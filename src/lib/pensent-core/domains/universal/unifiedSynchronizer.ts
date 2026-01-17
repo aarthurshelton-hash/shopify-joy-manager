@@ -66,10 +66,17 @@ class UnifiedSynchronizer {
         network: 0.5,
         bio: 0.5,
         audio: 0.5,
-        chess: 0.5,
-        market: 0.5,
-        code: 0.5,
+        music: 0.5,      // 🫀 Heart
+        soul: 0.5,       // 👻 Spirit
+        chess: 0.5,      // 🧠 Brain
+        market: 0.5,     // ⚡ Nervous System
+        code: 0.5,       // 🩸 Blood
         satellite: 0.5,
+        photonic: 0.5,   // Future domains
+        medical: 0.5,
+        climate: 0.5,
+        energy: 0.5,
+        quantum: 0.5,
       },
     };
   }
