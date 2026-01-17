@@ -24,6 +24,7 @@ import { CrossDomainAnalysis } from '@/components/finance/CrossDomainAnalysis';
 import { PredictionHistory } from '@/components/finance/PredictionHistory';
 import { ScalpingTerminal } from '@/components/scalping/ScalpingTerminal';
 import { useRealtimeAccuracy, subscribeToAccuracyUpdates } from '@/hooks/useRealtimeAccuracy';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 interface StockData {
   symbol: string;
@@ -195,7 +196,9 @@ const StockPredictionDashboard: React.FC = () => {
         </TabsList>
 
         <TabsContent value="scalping">
-          <ScalpingTerminal />
+          <ErrorBoundary componentName="ScalpingTerminal">
+            <ScalpingTerminal />
+          </ErrorBoundary>
         </TabsContent>
 
         <TabsContent value="analyze">

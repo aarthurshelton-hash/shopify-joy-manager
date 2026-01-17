@@ -67,81 +67,116 @@ export const ScalpingTerminal: React.FC = () => {
     demoInterval: 150
   });
   
-  // Sync prediction outcomes to global store - moved BEFORE any conditional returns
+  // Safe accessors for potentially undefined values
+  const activeSignals = multiMarket?.bigPicture?.activeSignals ?? [];
+  const predictionBoost = multiMarket?.bigPicture?.predictionBoost ?? 1.0;
+  const recentPredictions = predictor?.recentPredictions ?? [];
+  const predictorStats = predictor?.stats ?? { 
+    totalPredictions: 0,
+    accuracy: 0, 
+    recentAccuracy: 0, 
+    currentStreak: 0,
+    bestStreak: 0,
+    upPredictions: { total: 0, correct: 0, accuracy: 0 },
+    downPredictions: { total: 0, correct: 0, accuracy: 0 },
+    flatPredictions: { total: 0, correct: 0, accuracy: 0 }
+  };
+  // Use predictor.learningState directly since it's always defined by the hook
+  const safeLearningState = predictor?.learningState;
+  
+  // Sync prediction outcomes to global store - with safe null checks
   useEffect(() => {
-    if (!predictor) return;
+    if (!predictor || recentPredictions.length === 0) return;
     
-    const resolved = predictor.recentPredictions;
-    if (resolved.length === 0) return;
-    
-    const latest = resolved[0];
-    if (latest.wasCorrect === undefined) return;
+    const latest = recentPredictions[0];
+    if (!latest || latest.wasCorrect === undefined) return;
     
     // Record to global accuracy
     const directionCorrect = latest.wasCorrect ?? false;
     
-    recordPrediction({
-      predicted: latest.predictedDirection as 'up' | 'down' | 'neutral',
-      actual: (latest.actualDirection || latest.predictedDirection) as 'up' | 'down' | 'neutral',
-      confidence: latest.confidence,
-      directionCorrect,
-      magnitudeAccuracy: predictor.stats.accuracy / 100,
-      timingAccuracy: predictor.stats.recentAccuracy / 100,
-      marketConditions: {
-        correlationStrength: multiMarket.bigPicture.predictionBoost,
-        volatility: 0.5,
-        momentum: predictor.stats.currentStreak / 10,
-        leadingSignals: multiMarket.bigPicture.activeSignals.length / 10
-      }
-    });
-  }, [predictor, predictor?.recentPredictions?.length, recordPrediction, multiMarket.bigPicture.predictionBoost, multiMarket.bigPicture.activeSignals.length]);
+    try {
+      recordPrediction({
+        predicted: latest.predictedDirection as 'up' | 'down' | 'neutral',
+        actual: (latest.actualDirection || latest.predictedDirection) as 'up' | 'down' | 'neutral',
+        confidence: latest.confidence,
+        directionCorrect,
+        magnitudeAccuracy: predictorStats.accuracy / 100,
+        timingAccuracy: predictorStats.recentAccuracy / 100,
+        marketConditions: {
+          correlationStrength: predictionBoost,
+          volatility: 0.5,
+          momentum: predictorStats.currentStreak / 10,
+          leadingSignals: activeSignals.length / 10
+        }
+      });
+    } catch (error) {
+      console.error('[ScalpingTerminal] Error recording prediction:', error);
+    }
+  }, [predictor, recentPredictions.length, recordPrediction, predictionBoost, activeSignals.length, predictorStats]);
   
-  // Update live metrics - moved BEFORE any conditional returns
+  // Update live metrics - with safe null checks
   useEffect(() => {
     if (!predictor) return;
     
-    updateLiveMetrics({
-      ticksProcessed: predictor.tickCount,
-      currentSymbol: symbol,
-      isStreaming: predictor.connected && autoPredict
-    });
+    try {
+      updateLiveMetrics({
+        ticksProcessed: predictor.tickCount ?? 0,
+        currentSymbol: symbol,
+        isStreaming: (predictor.connected ?? false) && autoPredict
+      });
+    } catch (error) {
+      console.error('[ScalpingTerminal] Error updating live metrics:', error);
+    }
   }, [predictor, predictor?.tickCount, symbol, predictor?.connected, autoPredict, updateLiveMetrics]);
   
   const handleSymbolChange = useCallback((newSymbol: string) => {
     if (!predictor) return;
     setSymbol(newSymbol);
-    predictor.reset();
-    predictor.reconnect();
+    try {
+      predictor.reset();
+      predictor.reconnect();
+    } catch (error) {
+      console.error('[ScalpingTerminal] Error changing symbol:', error);
+    }
   }, [predictor]);
   
   const toggleAutoPredict = useCallback(() => {
     if (!predictor) return;
-    if (autoPredict) {
-      predictor.stopHeartbeat();
-    } else {
-      predictor.startHeartbeat();
+    try {
+      if (autoPredict) {
+        predictor.stopHeartbeat();
+      } else {
+        predictor.startHeartbeat();
+      }
+      setAutoPredict(!autoPredict);
+    } catch (error) {
+      console.error('[ScalpingTerminal] Error toggling auto predict:', error);
     }
-    setAutoPredict(!autoPredict);
   }, [autoPredict, predictor]);
   
   // Build correlated prices map from multi-market snapshot
   const correlatedPrices = useMemo(() => {
     const map = new Map<string, number>();
-    Object.entries(multiMarket.snapshot).forEach(([assetClass, data]) => {
-      if (data.symbol && data.price) {
-        map.set(data.symbol, data.price);
-      }
-    });
+    if (!multiMarket?.snapshot) return map;
+    
+    try {
+      Object.entries(multiMarket.snapshot).forEach(([assetClass, data]) => {
+        if (data?.symbol && data?.price) {
+          map.set(data.symbol, data.price);
+        }
+      });
+    } catch (error) {
+      console.error('[ScalpingTerminal] Error building correlated prices:', error);
+    }
     return map;
-  }, [multiMarket.snapshot]);
+  }, [multiMarket?.snapshot]);
   
   // Boost indicator from cross-market analysis
-  const predictionBoost = multiMarket.bigPicture.predictionBoost;
   const boostColor = predictionBoost >= 1.2 ? 'text-green-400' : 
                      predictionBoost <= 0.8 ? 'text-red-400' : 'text-primary';
   
-  // Early return if predictor not ready - AFTER all hooks
-  if (!predictor) {
+  // Show loading state if predictor is not ready
+  if (!predictor || !multiMarket) {
     return (
       <div className="flex items-center justify-center p-8">
         <div className="text-muted-foreground">Loading trading engine...</div>
@@ -166,10 +201,10 @@ export const ScalpingTerminal: React.FC = () => {
             <Badge variant="outline" className="text-xs">
               {multiMarket.ticksPerSecond} tps
             </Badge>
-            {multiMarket.bigPicture.activeSignals.length > 0 && (
+            {activeSignals.length > 0 && (
               <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
                 <Zap className="w-3 h-3 mr-1" />
-                {multiMarket.bigPicture.activeSignals.length} signals
+                {activeSignals.length} signals
               </Badge>
             )}
             <div className={cn("flex items-center gap-1 ml-auto", boostColor)}>
@@ -362,10 +397,12 @@ export const ScalpingTerminal: React.FC = () => {
           
           {/* Right column - Learning state */}
           <div className="space-y-4">
-            <LearningStatePanel 
-              state={predictor.learningState}
-              stats={predictor.stats}
-            />
+            {safeLearningState && (
+              <LearningStatePanel 
+                state={safeLearningState}
+                stats={predictorStats}
+              />
+            )}
             
             {/* Quick stats */}
             <Card className="bg-card/50 backdrop-blur">
@@ -380,22 +417,22 @@ export const ScalpingTerminal: React.FC = () => {
                 <Separator />
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Predictions Made</span>
-                  <span className="font-mono">{predictor.stats.totalPredictions}</span>
+                  <span className="font-mono">{predictorStats.totalPredictions ?? 0}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Correct</span>
                   <span className="font-mono text-green-500">
-                    {predictor.learningState.correctPredictions}
+                    {safeLearningState?.correctPredictions ?? 0}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Win Rate</span>
                   <span className={cn(
                     "font-mono font-bold",
-                    predictor.stats.accuracy >= 55 ? "text-green-500" : 
-                    predictor.stats.accuracy >= 45 ? "text-yellow-500" : "text-red-500"
+                    (predictorStats.accuracy ?? 0) >= 55 ? "text-green-500" : 
+                    (predictorStats.accuracy ?? 0) >= 45 ? "text-yellow-500" : "text-red-500"
                   )}>
-                    {predictor.stats.accuracy.toFixed(1)}%
+                    {(predictorStats.accuracy ?? 0).toFixed(1)}%
                   </span>
                 </div>
               </CardContent>
@@ -466,10 +503,12 @@ export const ScalpingTerminal: React.FC = () => {
               latestPrice={predictor.latestPrice}
             />
             
-            <LearningStatePanel 
-              state={predictor.learningState}
-              stats={predictor.stats}
-            />
+            {safeLearningState && (
+              <LearningStatePanel 
+                state={safeLearningState}
+                stats={predictorStats}
+              />
+            )}
           </div>
           
           {/* Center - Big Picture Panel */}
@@ -519,16 +558,16 @@ export const ScalpingTerminal: React.FC = () => {
                 <Separator />
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Predictions</span>
-                  <span className="font-mono">{predictor.stats.totalPredictions}</span>
+                  <span className="font-mono">{predictorStats.totalPredictions}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Win Rate</span>
                   <span className={cn(
                     "font-mono font-bold",
-                    predictor.stats.accuracy >= 55 ? "text-green-500" : 
-                    predictor.stats.accuracy >= 45 ? "text-yellow-500" : "text-red-500"
+                    predictorStats.accuracy >= 55 ? "text-green-500" : 
+                    predictorStats.accuracy >= 45 ? "text-yellow-500" : "text-red-500"
                   )}>
-                    {predictor.stats.accuracy.toFixed(1)}%
+                    {predictorStats.accuracy.toFixed(1)}%
                   </span>
                 </div>
               </CardContent>
