@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 // CEO email - the only person who can be auto-granted admin
-const CEO_EMAIL = 'alec@enpensent.com';
+const CEO_EMAIL = 'a.arthur.shelton@gmail.com';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
