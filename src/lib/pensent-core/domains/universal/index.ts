@@ -15,3 +15,4 @@ export * from './adapters/lightAdapter';
 export * from './adapters/networkAdapter';
 export * from './adapters/bioAdapter';
 export * from './adapters/audioAdapter';
+export * from './adapters/multiBrokerAdapter';

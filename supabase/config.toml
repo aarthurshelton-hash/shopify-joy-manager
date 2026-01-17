@@ -68,3 +68,6 @@ cron = "*/5 * * * *"
 
 [functions.auto-heal-codebase]
 verify_jwt = false
+
+[functions.multi-broker-data]
+verify_jwt = false
