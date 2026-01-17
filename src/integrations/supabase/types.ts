@@ -1823,16 +1823,21 @@ export type Database = {
           correlated_assets: Json | null
           created_at: string
           direction_correct: boolean | null
+          domain_contributions: Json | null
+          engine_version: string | null
           entry_price: number
           exit_price: number | null
+          genes_hash: string | null
           id: string
           magnitude_accuracy: number | null
           market_conditions: Json | null
+          paper_mode: boolean | null
           predicted_confidence: number
           predicted_direction: string
           predicted_magnitude: number | null
           prediction_horizon_ms: number
           resolved_at: string | null
+          session_id: string | null
           symbol: string
           timing_accuracy: number | null
         }
@@ -1844,16 +1849,21 @@ export type Database = {
           correlated_assets?: Json | null
           created_at?: string
           direction_correct?: boolean | null
+          domain_contributions?: Json | null
+          engine_version?: string | null
           entry_price: number
           exit_price?: number | null
+          genes_hash?: string | null
           id?: string
           magnitude_accuracy?: number | null
           market_conditions?: Json | null
+          paper_mode?: boolean | null
           predicted_confidence: number
           predicted_direction: string
           predicted_magnitude?: number | null
           prediction_horizon_ms: number
           resolved_at?: string | null
+          session_id?: string | null
           symbol: string
           timing_accuracy?: number | null
         }
@@ -1865,16 +1875,21 @@ export type Database = {
           correlated_assets?: Json | null
           created_at?: string
           direction_correct?: boolean | null
+          domain_contributions?: Json | null
+          engine_version?: string | null
           entry_price?: number
           exit_price?: number | null
+          genes_hash?: string | null
           id?: string
           magnitude_accuracy?: number | null
           market_conditions?: Json | null
+          paper_mode?: boolean | null
           predicted_confidence?: number
           predicted_direction?: string
           predicted_magnitude?: number | null
           prediction_horizon_ms?: number
           resolved_at?: string | null
+          session_id?: string | null
           symbol?: string
           timing_accuracy?: number | null
         }
@@ -2533,6 +2548,102 @@ export type Database = {
           status?: Database["public"]["Enums"]["testimonial_status"]
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      trading_evidence_log: {
+        Row: {
+          actual_direction: string | null
+          confidence: number | null
+          created_at: string
+          data_source: string | null
+          domain_contributions: Json | null
+          engine_version: string | null
+          entry_price: number | null
+          evidence_id: string
+          evidence_type: string
+          evolution_fitness: number | null
+          evolution_generation: number | null
+          exit_price: number | null
+          genes_hash: string | null
+          id: string
+          magnitude: number | null
+          market_price: number | null
+          market_spread: number | null
+          paper_mode: boolean | null
+          pnl: number | null
+          pnl_percent: number | null
+          predicted_direction: string | null
+          quantity: number | null
+          record_hash: string | null
+          resolved_at: string | null
+          session_id: string | null
+          side: string | null
+          symbol: string | null
+          time_horizon_ms: number | null
+          was_correct: boolean | null
+        }
+        Insert: {
+          actual_direction?: string | null
+          confidence?: number | null
+          created_at?: string
+          data_source?: string | null
+          domain_contributions?: Json | null
+          engine_version?: string | null
+          entry_price?: number | null
+          evidence_id: string
+          evidence_type: string
+          evolution_fitness?: number | null
+          evolution_generation?: number | null
+          exit_price?: number | null
+          genes_hash?: string | null
+          id?: string
+          magnitude?: number | null
+          market_price?: number | null
+          market_spread?: number | null
+          paper_mode?: boolean | null
+          pnl?: number | null
+          pnl_percent?: number | null
+          predicted_direction?: string | null
+          quantity?: number | null
+          record_hash?: string | null
+          resolved_at?: string | null
+          session_id?: string | null
+          side?: string | null
+          symbol?: string | null
+          time_horizon_ms?: number | null
+          was_correct?: boolean | null
+        }
+        Update: {
+          actual_direction?: string | null
+          confidence?: number | null
+          created_at?: string
+          data_source?: string | null
+          domain_contributions?: Json | null
+          engine_version?: string | null
+          entry_price?: number | null
+          evidence_id?: string
+          evidence_type?: string
+          evolution_fitness?: number | null
+          evolution_generation?: number | null
+          exit_price?: number | null
+          genes_hash?: string | null
+          id?: string
+          magnitude?: number | null
+          market_price?: number | null
+          market_spread?: number | null
+          paper_mode?: boolean | null
+          pnl?: number | null
+          pnl_percent?: number | null
+          predicted_direction?: string | null
+          quantity?: number | null
+          record_hash?: string | null
+          resolved_at?: string | null
+          session_id?: string | null
+          side?: string | null
+          symbol?: string | null
+          time_horizon_ms?: number | null
+          was_correct?: boolean | null
         }
         Relationships: []
       }
