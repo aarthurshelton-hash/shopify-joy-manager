@@ -51,7 +51,7 @@ const LoadingTerminal = () => (
   </div>
 );
 
-export const ScalpingTerminal: React.FC = () => {
+const ScalpingTerminal: React.FC = () => {
   // State declarations - all at top level, unconditionally
   const [symbol, setSymbol] = useState('SPY');
   const [autoPredict, setAutoPredict] = useState(true);
@@ -574,3 +574,5 @@ export const ScalpingTerminal: React.FC = () => {
     </div>
   );
 };
+
+export { ScalpingTerminal };
