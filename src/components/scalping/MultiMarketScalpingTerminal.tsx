@@ -13,7 +13,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   TrendingUp, TrendingDown, Minus, Activity, Play, Pause, RotateCcw, 
   Zap, CheckCircle, XCircle, Target, Wifi, WifiOff, Globe, DollarSign,
-  BarChart3, Clock, Award, Flame, Percent, ChevronDown, ChevronUp
+  BarChart3, Clock, Award, Flame, Percent, ChevronDown, ChevronUp, Brain
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,7 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
+import { selfEvolvingSystem } from '@/lib/pensent-core/domains/finance/selfEvolvingSystem';
 
 // ============================================
 // TYPES
@@ -215,6 +216,9 @@ const MultiMarketScalpingTerminal: React.FC = () => {
     troughBalance: STARTING_BALANCE,
   });
   
+  // Evolution state from selfEvolvingSystem
+  const [evolutionSummary, setEvolutionSummary] = useState(selfEvolvingSystem.getEvolutionSummary());
+  
   // Refs
   const mountedRef = useRef(true);
   const fetchIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -362,6 +366,33 @@ const MultiMarketScalpingTerminal: React.FC = () => {
       // Determine if prediction was correct
       const wasCorrect = pred.direction === actualDirection || 
         (pred.direction === 'flat' && Math.abs(priceChange) < 0.0002);
+      
+      // ========================================
+      // FEED OUTCOME TO SELF-EVOLVING SYSTEM
+      // ========================================
+      // Map 'flat' to 'neutral' for the evolution system
+      const mapDirection = (dir: 'up' | 'down' | 'flat'): 'up' | 'down' | 'neutral' => 
+        dir === 'flat' ? 'neutral' : dir;
+      
+      selfEvolvingSystem.processOutcome({
+        predicted: mapDirection(pred.direction),
+        actual: mapDirection(actualDirection),
+        confidence: pred.confidence / 100,
+        marketConditions: {
+          correlationStrength: Math.abs(priceChange) * 100, // Derive from price movement
+          volatility: Math.abs(priceChange),
+          momentum: priceChange > 0 ? 1 : priceChange < 0 ? -1 : 0,
+          leadingSignals: pred.confidence / 100
+        }
+      });
+      
+      // Update evolution summary
+      setEvolutionSummary(selfEvolvingSystem.getEvolutionSummary());
+      
+      // Update correlation memory for cross-market learning
+      if (pred.category) {
+        selfEvolvingSystem.updateCorrelationMemory(pred.symbol, pred.category, priceChange);
+      }
       
       // Calculate P&L
       let pnl = 0;
@@ -594,6 +625,58 @@ const MultiMarketScalpingTerminal: React.FC = () => {
               value={Math.min(100, Math.max(0, growthPercent))} 
               className="h-2"
             />
+          </div>
+        </CardContent>
+      </Card>
+      
+      {/* Self-Evolving AI Status */}
+      <Card className="border-cyan-500/30 bg-gradient-to-r from-cyan-950/20 to-purple-950/20">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Brain className="w-4 h-4 text-cyan-400" />
+            En Pensent Self-Evolving AI
+            <Badge variant="outline" className="ml-auto text-xs">
+              Gen {evolutionSummary.generation}
+            </Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+            <div>
+              <div className="text-xs text-muted-foreground">Fitness</div>
+              <div className="text-lg font-bold text-cyan-400">
+                {(evolutionSummary.fitness * 100).toFixed(1)}%
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Learning Velocity</div>
+              <div className={cn(
+                "text-lg font-bold",
+                evolutionSummary.velocity > 0 ? "text-green-400" : "text-red-400"
+              )}>
+                {evolutionSummary.velocity > 0 ? '+' : ''}{(evolutionSummary.velocity * 100).toFixed(2)}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Learned Patterns</div>
+              <div className="text-lg font-bold text-purple-400">
+                {evolutionSummary.patternCount}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Best Pattern Accuracy</div>
+              <div className="text-lg font-bold text-amber-400">
+                {(evolutionSummary.bestPatternAccuracy * 100).toFixed(1)}%
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Top Gene</div>
+              {evolutionSummary.topGenes[0] && (
+                <div className="text-sm font-medium text-muted-foreground">
+                  {evolutionSummary.topGenes[0].name}: {evolutionSummary.topGenes[0].value.toFixed(2)}
+                </div>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
