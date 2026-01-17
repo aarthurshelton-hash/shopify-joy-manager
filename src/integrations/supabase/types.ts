@@ -2314,6 +2314,48 @@ export type Database = {
         }
         Relationships: []
       }
+      system_vitals: {
+        Row: {
+          created_at: string | null
+          id: string
+          last_pulse_at: string | null
+          last_value: number | null
+          metadata: Json | null
+          pulse_count: number | null
+          status: string | null
+          target_value: number | null
+          updated_at: string | null
+          vital_name: string
+          vital_type: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          last_pulse_at?: string | null
+          last_value?: number | null
+          metadata?: Json | null
+          pulse_count?: number | null
+          status?: string | null
+          target_value?: number | null
+          updated_at?: string | null
+          vital_name: string
+          vital_type?: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          last_pulse_at?: string | null
+          last_value?: number | null
+          metadata?: Json | null
+          pulse_count?: number | null
+          status?: string | null
+          target_value?: number | null
+          updated_at?: string | null
+          vital_name?: string
+          vital_type?: string
+        }
+        Relationships: []
+      }
       testimonials: {
         Row: {
           created_at: string
@@ -3088,6 +3130,21 @@ export type Database = {
         Args: { p_include_resolved?: boolean; p_limit?: number }
         Returns: Json
       }
+      get_system_vitals: {
+        Args: never
+        Returns: {
+          is_healthy: boolean
+          last_pulse_at: string
+          last_value: number
+          metadata: Json
+          pulse_count: number
+          seconds_since_pulse: number
+          status: string
+          target_value: number
+          vital_name: string
+          vital_type: string
+        }[]
+      }
       get_user_offense_count: { Args: { p_user_id: string }; Returns: number }
       get_user_portfolio_economics: {
         Args: { p_user_id: string }
@@ -3148,6 +3205,15 @@ export type Database = {
           p_visualization_id: string
         }
         Returns: Json
+      }
+      pulse_vital: {
+        Args: {
+          p_metadata?: Json
+          p_status?: string
+          p_value?: number
+          p_vital_name: string
+        }
+        Returns: undefined
       }
       reclaim_orphaned_vision: {
         Args: { p_visualization_id: string }
