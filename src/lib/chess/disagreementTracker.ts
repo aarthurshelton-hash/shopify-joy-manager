@@ -45,6 +45,7 @@ export async function getDisagreementCases(limit = 50): Promise<DisagreementCase
     .from('chess_prediction_attempts')
     .select('*')
     .neq('hybrid_prediction', 'stockfish_prediction') // They disagreed
+    .neq('stockfish_prediction', 'unknown') // Exclude corrupted legacy data
     .order('created_at', { ascending: false })
     .limit(limit);
 
@@ -94,6 +95,7 @@ export async function getHybridBreakthroughs(limit = 20): Promise<DisagreementCa
     .select('*')
     .eq('hybrid_correct', true)
     .eq('stockfish_correct', false)
+    .neq('stockfish_prediction', 'unknown') // Exclude corrupted legacy data
     .order('created_at', { ascending: false })
     .limit(limit);
 
@@ -125,11 +127,12 @@ export async function getHybridBreakthroughs(limit = 20): Promise<DisagreementCa
  * Calculate disagreement statistics
  */
 export async function getDisagreementStats(): Promise<DisagreementStats> {
-  // Get all disagreement cases
+  // Get all disagreement cases (exclude corrupted legacy data)
   const { data: disagreements, error } = await supabase
     .from('chess_prediction_attempts')
     .select('*')
-    .neq('hybrid_prediction', 'stockfish_prediction');
+    .neq('hybrid_prediction', 'stockfish_prediction')
+    .neq('stockfish_prediction', 'unknown');
 
   if (error || !disagreements) {
     return {
