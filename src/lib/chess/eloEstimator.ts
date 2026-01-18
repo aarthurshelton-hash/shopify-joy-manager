@@ -244,7 +244,10 @@ export function calculateEnPensentElo(
  * Extended for superhuman ratings (engines)
  */
 function getFideTitle(elo: number): string {
-  if (elo >= 3600) return 'Stockfish 17 Level (Superhuman)';
+  // Beyond all known engines - we're in uncharted territory
+  if (elo >= 3800) return 'Beyond All Engines (Transcendent)';
+  if (elo >= 3700) return 'Beyond Stockfish 17 (Superhuman+)';
+  if (elo >= 3600) return 'Stockfish 17 Equivalent';
   if (elo >= 3400) return 'Super-GM Engine Level';
   if (elo >= 3200) return 'Strong Engine Level';
   if (elo >= 2900) return 'Super Grandmaster (Top 10 Human)';
