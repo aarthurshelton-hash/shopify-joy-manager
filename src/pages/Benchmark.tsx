@@ -17,6 +17,12 @@ import { AuthenticityDashboard } from '@/components/chess/AuthenticityDashboard'
 import { useHybridBenchmark } from '@/hooks/useHybridBenchmark';
 import { useStockfishAnalysis } from '@/hooks/useStockfishAnalysis';
 import { StockfishIntelligencePanel } from '@/components/chess/StockfishIntelligencePanel';
+import { LiveEloPanel } from '@/components/chess/LiveEloPanel';
+import { 
+  createInitialEloState, 
+  calculateEloFromBenchmark,
+  type LiveEloState 
+} from '@/lib/chess/liveEloTracker';
 
 interface CumulativeStats {
   totalRuns: number;
@@ -57,6 +63,10 @@ export default function Benchmark() {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number>(0);
 
+  // Live ELO State
+  const [liveEloState, setLiveEloState] = useState<LiveEloState>(createInitialEloState());
+  const [isLiveElo, setIsLiveElo] = useState(false);
+
   // Maximum Depth Mode State
   const [benchmarkMode, setBenchmarkMode] = useState<'cloud' | 'local'>('cloud');
   const [localDepth, setLocalDepth] = useState(60); // Maximum depth for local WASM
@@ -72,6 +82,29 @@ export default function Benchmark() {
     result: localResult,
     error: localError 
   } = useHybridBenchmark();
+
+  // Update ELO state when local result changes
+  useEffect(() => {
+    if (localResult) {
+      const bothCorrect = localResult.totalGames - localResult.hybridWins - localResult.stockfishWins;
+      const newEloState = calculateEloFromBenchmark(
+        localResult.hybridAccuracy,
+        localResult.stockfishAccuracy,
+        localResult.hybridWins,
+        localResult.stockfishWins,
+        bothCorrect,
+        localResult.totalGames,
+        localResult.averageDepth
+      );
+      setLiveEloState(newEloState);
+      setIsLiveElo(false);
+    }
+  }, [localResult]);
+
+  // Set live mode when running
+  useEffect(() => {
+    setIsLiveElo(isRunning || isLocalRunning);
+  }, [isRunning, isLocalRunning]);
 
   // Fetch latest benchmark results and check API on mount
   useEffect(() => {
@@ -100,6 +133,20 @@ export default function Benchmark() {
           setCumulativeStats(stats);
           setLatestBenchmark(latest);
           setIsLoadingLatest(false);
+          
+          // Initialize ELO state from latest benchmark if available
+          if (latest) {
+            const initialElo = calculateEloFromBenchmark(
+              latest.hybrid_accuracy,
+              latest.stockfish_accuracy,
+              latest.hybrid_wins,
+              latest.stockfish_wins,
+              latest.both_correct,
+              latest.total_games,
+              35 // Assume cloud depth
+            );
+            setLiveEloState(initialElo);
+          }
           
           if (available) {
             setInitPhase('Stockfish 17 via Lichess Cloud ready!');
@@ -218,6 +265,19 @@ export default function Benchmark() {
       const newStats = await getCumulativeStats();
       setCumulativeStats(newStats);
       
+      // Update Live ELO State from cloud benchmark
+      const newEloState = calculateEloFromBenchmark(
+        benchmarkResult.hybridAccuracy,
+        benchmarkResult.stockfishAccuracy,
+        benchmarkResult.hybridWins,
+        benchmarkResult.stockfishWins,
+        benchmarkResult.predictionPoints.filter(p => p.hybridCorrect && p.stockfishCorrect).length,
+        benchmarkResult.completedGames,
+        35 // Cloud API average depth
+      );
+      setLiveEloState(newEloState);
+      setIsLiveElo(false);
+      
       setStatus(`Completed! Analyzed ${benchmarkResult.completedGames} FRESH games. Results saved for learning.`);
     } catch (error) {
       console.error('Benchmark failed:', error);
@@ -305,6 +365,13 @@ export default function Benchmark() {
           </TabsContent>
 
           <TabsContent value="benchmark" className="mt-6 space-y-8">
+
+        {/* Live ELO Panel - Always visible */}
+        <LiveEloPanel 
+          eloState={liveEloState} 
+          currentDepth={benchmarkMode === 'local' ? localDepth : 35}
+          isLive={isLiveElo}
+        />
 
         {/* Cumulative Stats - Historical Performance */}
         {cumulativeStats && cumulativeStats.totalRuns > 0 && (
