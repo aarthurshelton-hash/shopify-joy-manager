@@ -63,7 +63,7 @@ export default function Benchmark() {
   const [gameCount, setGameCount] = useState(10);
   
   // Hooks for local WASM benchmark
-  const { isReady: wasmReady, engineVersion } = useStockfishAnalysis();
+  const { isReady: wasmReady, engineVersion, loadingProgress: wasmLoadingProgress, error: wasmError } = useStockfishAnalysis();
   const { 
     runBenchmark: runLocalBenchmark, 
     abort: abortLocalBenchmark,
@@ -76,9 +76,10 @@ export default function Benchmark() {
   // Fetch latest benchmark results and check API on mount
   useEffect(() => {
     let cancelled = false;
+    let retryTimeout: NodeJS.Timeout | null = null;
     
-    const initialize = async () => {
-      setInitPhase('Loading latest benchmark state...');
+    const initialize = async (attempt = 1) => {
+      setInitPhase(attempt > 1 ? `Retrying connection (attempt ${attempt})...` : 'Loading latest benchmark state...');
       setIsLoadingLatest(true);
       
       try {
@@ -99,20 +100,37 @@ export default function Benchmark() {
           setCumulativeStats(stats);
           setLatestBenchmark(latest);
           setIsLoadingLatest(false);
-          setInitPhase(available ? 'Stockfish 17 via Lichess Cloud ready!' : 'API unavailable - check connection');
+          
+          if (available) {
+            setInitPhase('Stockfish 17 via Lichess Cloud ready!');
+          } else if (attempt < 3) {
+            // Retry up to 3 times with increasing delay
+            setInitPhase(`Lichess Cloud not responding, retrying in ${attempt * 2}s...`);
+            retryTimeout = setTimeout(() => initialize(attempt + 1), attempt * 2000);
+          } else {
+            setInitPhase('Cloud API unavailable - try Maximum Depth mode instead');
+          }
         }
       } catch (err) {
         console.error('[Benchmark] Init error:', err);
         if (!cancelled) {
           setIsLoadingLatest(false);
-          setInitPhase('Initialization failed - try again');
+          if (attempt < 3) {
+            setInitPhase(`Connection failed, retrying (${attempt}/3)...`);
+            retryTimeout = setTimeout(() => initialize(attempt + 1), attempt * 2000);
+          } else {
+            setInitPhase('Initialization failed - refresh to try again');
+          }
         }
       }
     };
     
     initialize();
     
-    return () => { cancelled = true; };
+    return () => { 
+      cancelled = true; 
+      if (retryTimeout) clearTimeout(retryTimeout);
+    };
   }, []);
 
   // Timer for elapsed time
@@ -369,12 +387,20 @@ export default function Benchmark() {
         )}
 
         {/* API Status */}
-        <Card className={`border ${apiReady ? 'border-green-500/50 bg-green-500/5' : 'border-yellow-500/50 bg-yellow-500/5'}`}>
+        <Card className={`border ${
+          apiReady 
+            ? 'border-green-500/50 bg-green-500/5' 
+            : initPhase.includes('unavailable') || initPhase.includes('failed')
+              ? 'border-red-500/50 bg-red-500/5'
+              : 'border-yellow-500/50 bg-yellow-500/5'
+        }`}>
           <CardContent className="py-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 {apiReady ? (
-                  <Cloud className="h-5 w-5 text-green-500" />
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                ) : initPhase.includes('unavailable') || initPhase.includes('failed') ? (
+                  <XCircle className="h-5 w-5 text-red-500" />
                 ) : (
                   <Loader2 className="h-5 w-5 animate-spin text-yellow-500" />
                 )}
@@ -384,9 +410,12 @@ export default function Benchmark() {
               </div>
               <Badge variant={apiReady ? 'default' : 'secondary'} className="gap-1">
                 <Cloud className="h-3 w-3" />
-                {apiReady ? 'Stockfish 17 Ready' : 'Loading'}
+                {apiReady ? 'Stockfish 17 Ready' : initPhase.includes('unavailable') ? 'Offline' : 'Connecting'}
               </Badge>
             </div>
+            {!apiReady && !initPhase.includes('unavailable') && !initPhase.includes('failed') && (
+              <Progress value={initPhase.includes('Retrying') ? 50 : 25} className="h-1 mt-2" />
+            )}
           </CardContent>
         </Card>
 
@@ -450,10 +479,31 @@ export default function Benchmark() {
                   <span className="text-sm font-medium">Maximum Depth Settings</span>
                   {wasmReady ? (
                     <Badge className="bg-green-500 text-xs">{engineVersion}</Badge>
+                  ) : wasmError ? (
+                    <Badge variant="destructive" className="text-xs">Error</Badge>
                   ) : (
-                    <Badge variant="secondary" className="text-xs">Loading Engine...</Badge>
+                    <Badge variant="secondary" className="text-xs flex items-center gap-1">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Loading {wasmLoadingProgress}%
+                    </Badge>
                   )}
                 </div>
+                
+                {/* WASM Loading Progress */}
+                {!wasmReady && !wasmError && (
+                  <div className="space-y-2">
+                    <Progress value={wasmLoadingProgress} className="h-2" />
+                    <p className="text-xs text-muted-foreground">
+                      Initializing Stockfish 17.1 WASM engine...
+                    </p>
+                  </div>
+                )}
+                
+                {wasmError && (
+                  <div className="p-3 bg-destructive/10 border border-destructive/20 rounded text-sm text-destructive">
+                    {wasmError} - Try refreshing the page
+                  </div>
+                )}
                 
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
@@ -559,12 +609,17 @@ export default function Benchmark() {
                   wasmReady ? (
                     <span className="flex items-center gap-2 text-green-600">
                       <CheckCircle className="h-4 w-4" />
-                      Local Stockfish WASM ready (100% depth coverage)
+                      Stockfish 17.1 WASM ready (100% depth coverage)
+                    </span>
+                  ) : wasmError ? (
+                    <span className="flex items-center gap-2 text-red-600">
+                      <XCircle className="h-4 w-4" />
+                      Engine failed to load - refresh to retry
                     </span>
                   ) : (
                     <span className="flex items-center gap-2 text-yellow-600">
-                      <AlertCircle className="h-4 w-4" />
-                      Loading Stockfish WASM engine...
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Loading Stockfish WASM ({wasmLoadingProgress}%)...
                     </span>
                   )
                 ) : !apiReady ? (

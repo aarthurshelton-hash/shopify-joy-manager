@@ -106,26 +106,28 @@ self.onmessage = function(e) {
 
 // Initialize Stockfish using the lite-single WASM version
 async function initStockfish() {
-  postStatus('Initializing Stockfish 17 WASM (lite-single)...');
+  postStatus('Initializing Stockfish 17.1 WASM (lite-single)...');
   
   try {
     // Import the Stockfish lite-single version (no CORS required)
+    postStatus('Loading Stockfish module...');
     importScripts('./stockfish-17.1-lite-single.js');
     
     if (typeof Stockfish === 'function') {
       // Stockfish constructor exists - use it
-      postStatus('Loading Stockfish WASM module...');
+      postStatus('Creating Stockfish WASM instance...');
       stockfish = await Stockfish();
       
+      postStatus('Setting up message handlers...');
       stockfish.addMessageListener((line) => {
         postUci(line);
         
         if (line === 'uciok') {
-          postStatus('Stockfish 17 UCI initialized');
+          postStatus('Stockfish 17.1 UCI protocol ready');
         } else if (line === 'readyok') {
           if (!isReady) {
             isReady = true;
-            postStatus('Stockfish 17 WASM ready!');
+            postStatus('Stockfish 17.1 WASM ready!');
             postReady();
             processQueue();
           }
@@ -133,10 +135,12 @@ async function initStockfish() {
       });
       
       // Start UCI handshake
+      postStatus('Starting UCI handshake...');
       stockfish.postMessage('uci');
       
       // Wait a bit then send isready
       setTimeout(() => {
+        postStatus('Checking engine readiness...');
         stockfish.postMessage('isready');
       }, 200);
       
@@ -145,8 +149,11 @@ async function initStockfish() {
     }
   } catch (e) {
     postError(`Stockfish WASM initialization failed: ${e.message}`);
-    postStatus('Failed to load Stockfish WASM - check console');
+    postStatus(`Failed to load Stockfish WASM: ${e.message}`);
     console.error('[Stockfish Worker] Init error:', e);
+    
+    // Try to signal ready=false after error
+    self.postMessage({ type: 'ready', data: false });
   }
 }
 

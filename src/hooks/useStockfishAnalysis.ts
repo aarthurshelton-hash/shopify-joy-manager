@@ -39,6 +39,7 @@ export interface UseStockfishAnalysisReturn {
   
   // Engine info
   engineVersion: string;
+  loadingProgress: number;
 }
 
 export function useStockfishAnalysis(): UseStockfishAnalysisReturn {
@@ -48,27 +49,53 @@ export function useStockfishAnalysis(): UseStockfishAnalysisReturn {
   const [currentAnalysis, setCurrentAnalysis] = useState<PositionAnalysis | null>(null);
   const [gameAnalysis, setGameAnalysis] = useState<GameAnalysis | null>(null);
   const [progress, setProgress] = useState<{ current: number; total: number } | null>(null);
+  const [engineVersion, setEngineVersion] = useState('Stockfish 17.1 WASM');
+  const [loadingProgress, setLoadingProgress] = useState(0);
   
   const engineRef = useRef<StockfishEngine | null>(null);
   const mountedRef = useRef(true);
+  const initAttemptRef = useRef(0);
 
-  // Initialize engine on mount
+  // Initialize engine on mount with retry logic
   useEffect(() => {
     mountedRef.current = true;
     
     const initEngine = async () => {
       try {
+        console.log('[StockfishHook] Starting engine initialization...');
+        setLoadingProgress(10);
+        
         const engine = getStockfishEngine();
         engineRef.current = engine;
+        setLoadingProgress(30);
         
-        const ready = await engine.waitReady();
+        // Poll for readiness with progress updates
+        const ready = await engine.waitReady((progress) => {
+          if (mountedRef.current) {
+            setLoadingProgress(30 + Math.floor(progress * 70));
+          }
+        });
+        
         if (mountedRef.current) {
           setIsReady(ready);
-          if (!ready) {
-            setError('Stockfish failed to initialize');
+          setLoadingProgress(100);
+          
+          if (ready) {
+            console.log('[StockfishHook] Engine ready!');
+            setEngineVersion('Stockfish 17.1 WASM');
+          } else {
+            // Retry once after a short delay
+            initAttemptRef.current++;
+            if (initAttemptRef.current < 2) {
+              console.log('[StockfishHook] Retrying initialization...');
+              setTimeout(initEngine, 1000);
+            } else {
+              setError('Stockfish failed to initialize after retries');
+            }
           }
         }
       } catch (e) {
+        console.error('[StockfishHook] Init error:', e);
         if (mountedRef.current) {
           setError(e instanceof Error ? e.message : 'Unknown error');
         }
@@ -196,7 +223,8 @@ export function useStockfishAnalysis(): UseStockfishAnalysisReturn {
     currentAnalysis,
     gameAnalysis,
     progress,
-    engineVersion: 'Stockfish 16 NNUE WASM',
+    engineVersion,
+    loadingProgress,
   };
 }
 

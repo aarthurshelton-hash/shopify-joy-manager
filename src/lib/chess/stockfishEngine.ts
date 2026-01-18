@@ -202,10 +202,13 @@ export class StockfishEngine {
   // ===================== PUBLIC API =====================
 
   /**
-   * Wait for engine to be ready
+   * Wait for engine to be ready with optional progress callback
    */
-  async waitReady(): Promise<boolean> {
-    if (this.isReady) return true;
+  async waitReady(onProgress?: (progress: number) => void): Promise<boolean> {
+    if (this.isReady) {
+      onProgress?.(1);
+      return true;
+    }
     
     return new Promise((resolve) => {
       let attempts = 0;
@@ -213,9 +216,13 @@ export class StockfishEngine {
       
       const checkReady = setInterval(() => {
         attempts++;
+        const progress = attempts / maxAttempts;
+        onProgress?.(progress);
+        
         if (this.isReady) {
           clearInterval(checkReady);
           console.log('[Stockfish] Engine ready after', attempts * 100, 'ms');
+          onProgress?.(1);
           resolve(true);
         } else if (attempts >= maxAttempts) {
           clearInterval(checkReady);
@@ -380,7 +387,7 @@ export class StockfishEngine {
       whiteAccuracy: Math.round(whiteAccuracy * 10) / 10,
       blackAccuracy: Math.round(blackAccuracy * 10) / 10,
       averageDepth: depth,
-      engineVersion: 'Stockfish 17 NNUE WASM',
+      engineVersion: 'Stockfish 17.1 NNUE WASM',
     };
   }
 
@@ -480,7 +487,7 @@ export class StockfishEngine {
    */
   get info(): { version: string; available: boolean } {
     return {
-      version: 'Stockfish 16 NNUE WASM',
+      version: 'Stockfish 17.1 NNUE WASM',
       available: this.available,
     };
   }
