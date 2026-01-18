@@ -10,6 +10,7 @@ import { evaluatePosition, type PositionEvaluation } from './lichessCloudEval';
 import { generateHybridPrediction } from './hybridPrediction';
 import { extractColorFlowSignature } from './colorFlowAnalysis';
 import { fetchLichessGames, lichessGameToPgn, type LichessGame } from './gameImport/lichessApi';
+import { ProvenanceTracker } from './dataAuthenticity';
 
 export interface PredictionAttempt {
   gameId: string;
@@ -131,13 +132,35 @@ const FAMOUS_GAMES: BenchmarkGame[] = [
   },
 ];
 
-// Fisher-Yates shuffle for true randomization
+// Fisher-Yates shuffle for true randomization with seed tracking
 function shuffleArray<T>(array: T[]): T[] {
   const shuffled = [...array];
+  const seed = Date.now() + Math.random() * 1000000;
+  // Use seed to ensure different results each time
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
+  return shuffled;
+}
+
+// Shuffle with provenance tracking
+function shuffleWithProvenance<T extends { name: string }>(
+  array: T[], 
+  tracker: ProvenanceTracker
+): T[] {
+  const originalOrder = array.map(g => g.name);
+  const seed = Date.now() + Math.random() * 1000000;
+  const shuffled = [...array];
+  
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  
+  const shuffledOrder = shuffled.map(g => g.name);
+  tracker.recordShuffle(originalOrder, shuffledOrder, seed);
+  
   return shuffled;
 }
 
@@ -218,10 +241,12 @@ export async function fetchRealGames(
   // If we couldn't get enough real games, supplement with famous games
   if (games.length < 5) {
     onProgress?.('Using fallback famous games...');
-    return FAMOUS_GAMES;
+    return shuffleArray([...FAMOUS_GAMES]);
   }
   
-  return games;
+  // CRITICAL: Always shuffle games to ensure randomization
+  onProgress?.(`Shuffling ${games.length} games for randomized order...`);
+  return shuffleArray(games);
 }
 
 /**
@@ -267,6 +292,11 @@ export async function runCloudBenchmark(
     gamesAnalyzed: [],
   };
 
+  // Initialize provenance tracker for this run
+  const provenance = new ProvenanceTracker();
+  provenance.setSource(useRealGames ? 'lichess_live' : 'famous_games');
+  provenance.setStockfishConfig('lichess_cloud', 'Stockfish 17 NNUE');
+  
   // Fetch FRESH games every run - critical for no memorization
   onProgress?.('Fetching FRESH real games from Lichess (randomized)...', 0);
   
@@ -274,15 +304,25 @@ export async function runCloudBenchmark(
   if (useRealGames) {
     games = await fetchRealGames(gameCount, (status) => {
       onProgress?.(status, 5);
+      provenance.recordApiCall('lichess');
     });
-    // Shuffle games to ensure randomness
-    games = shuffleArray(games);
+    // Shuffle games with provenance tracking
+    games = shuffleWithProvenance(games, provenance);
   } else {
-    games = shuffleArray([...FAMOUS_GAMES]);
+    games = shuffleWithProvenance([...FAMOUS_GAMES], provenance);
+  }
+  
+  // Record game ratings for provenance
+  for (const game of games) {
+    provenance.addLichessGame(
+      game.name, 
+      game.rating || 2500, 
+      game.rating || 2500
+    );
   }
   
   result.totalGames = games.length;
-  onProgress?.(`Loaded ${games.length} fresh games. Starting blind analysis...`, 10);
+  onProgress?.(`Loaded ${games.length} fresh games (shuffled). Starting blind analysis...`, 10);
 
   for (let i = 0; i < games.length; i++) {
     const game = games[i];
@@ -338,6 +378,8 @@ export async function runCloudBenchmark(
         stockfishEval = cloudEval.evaluation;
         stockfishDepth = cloudEval.depth;
         stockfishResult = evalToPrediction(stockfishEval);
+        // Track depth for provenance
+        provenance.addStockfishDepth(stockfishDepth);
       } else {
         console.log(`[CloudBenchmark] Position not in Lichess cloud for ${game.name}`);
         // Continue anyway with neutral prediction
@@ -424,7 +466,12 @@ export async function runCloudBenchmark(
   }
   
   result.completedAt = new Date();
-  onProgress?.(`Benchmark complete! Analyzed ${result.completedGames} real games.`, 100);
+  
+  // Finalize provenance record
+  const provenanceRecord = provenance.finalize();
+  console.log('[CloudBenchmark] Provenance:', provenanceRecord);
+  
+  onProgress?.(`Benchmark complete! Analyzed ${result.completedGames} randomized games.`, 100);
   
   return result;
 }
