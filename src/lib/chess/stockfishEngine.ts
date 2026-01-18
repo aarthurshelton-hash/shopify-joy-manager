@@ -208,18 +208,21 @@ export class StockfishEngine {
     if (this.isReady) return true;
     
     return new Promise((resolve) => {
+      let attempts = 0;
+      const maxAttempts = 300; // 30 seconds max
+      
       const checkReady = setInterval(() => {
+        attempts++;
         if (this.isReady) {
           clearInterval(checkReady);
+          console.log('[Stockfish] Engine ready after', attempts * 100, 'ms');
           resolve(true);
+        } else if (attempts >= maxAttempts) {
+          clearInterval(checkReady);
+          console.warn('[Stockfish] Engine timeout after 30 seconds');
+          resolve(false);
         }
       }, 100);
-      
-      // Timeout after 10 seconds
-      setTimeout(() => {
-        clearInterval(checkReady);
-        resolve(this.isReady);
-      }, 10000);
     });
   }
 
