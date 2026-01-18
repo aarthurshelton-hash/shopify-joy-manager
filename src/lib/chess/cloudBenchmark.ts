@@ -202,29 +202,52 @@ function normalCdf(z: number): number {
 
 /**
  * Fetch real games from Lichess top players
+ * CRITICAL: Uses random time windows to ensure DIFFERENT games each run
  */
 export async function fetchRealGames(
   count: number = 50,
   onProgress?: (status: string) => void
 ): Promise<BenchmarkGame[]> {
   const games: BenchmarkGame[] = [];
-  const gamesPerPlayer = Math.ceil(count / TOP_PLAYERS.length);
+  const gamesPerPlayer = Math.ceil((count * 2) / TOP_PLAYERS.length); // Fetch extra for filtering
   
-  for (const player of TOP_PLAYERS) {
+  // CRITICAL FIX: Randomize which time period we fetch from
+  // This ensures each benchmark run gets DIFFERENT games
+  const now = Date.now();
+  const oneYearAgo = now - (365 * 24 * 60 * 60 * 1000);
+  const twoYearsAgo = now - (2 * 365 * 24 * 60 * 60 * 1000);
+  
+  // Random time window: pick a random end point within the last 2 years
+  // This prevents always getting the same "most recent" games
+  const randomOffset = Math.floor(Math.random() * (now - oneYearAgo));
+  const untilTimestamp = now - randomOffset;
+  const sinceTimestamp = Math.max(twoYearsAgo, untilTimestamp - (180 * 24 * 60 * 60 * 1000)); // 6 month window
+  
+  // Shuffle players order to add more randomness
+  const shuffledPlayers = shuffleArray([...TOP_PLAYERS]);
+  
+  onProgress?.(`Fetching games from random time window (${new Date(sinceTimestamp).toLocaleDateString()} - ${new Date(untilTimestamp).toLocaleDateString()})...`);
+  
+  for (const player of shuffledPlayers) {
     if (games.length >= count) break;
     
-    onProgress?.(`Fetching games from ${player}...`);
+    onProgress?.(`Fetching games from ${player} (${games.length}/${count} collected)...`);
     
     try {
       const result = await fetchLichessGames(player, {
         max: gamesPerPlayer,
+        since: sinceTimestamp,
+        until: untilTimestamp,
         rated: true,
         opening: true,
         moves: true,
         pgnInJson: true,
       });
       
-      for (const lichessGame of result.games) {
+      // Shuffle this player's games too before processing
+      const playerGames = shuffleArray([...result.games]);
+      
+      for (const lichessGame of playerGames) {
         if (games.length >= count) break;
         
         // Only use decisive games (not draws for clearer testing)
@@ -232,6 +255,13 @@ export async function fetchRealGames(
         
         // Skip games that are too short
         if (!lichessGame.moves || lichessGame.moves.split(' ').length < 30) continue;
+        
+        // Skip if we already have a game with very similar ID (dedup)
+        const gameKey = `${lichessGame.players.white.user?.name}-${lichessGame.players.black.user?.name}-${lichessGame.createdAt}`;
+        if (games.some(g => g.name.includes(lichessGame.players.white.user?.name || '') && 
+                           g.name.includes(lichessGame.players.black.user?.name || ''))) {
+          continue; // Avoid duplicate matchups in same run
+        }
         
         const pgn = lichessGameToPgn(lichessGame);
         const whiteName = lichessGame.players.white.user?.name || 'Anonymous';
@@ -262,8 +292,8 @@ export async function fetchRealGames(
     return shuffleArray([...FAMOUS_GAMES]);
   }
   
-  // CRITICAL: Always shuffle games to ensure randomization
-  onProgress?.(`Shuffling ${games.length} games for randomized order...`);
+  // CRITICAL: Final shuffle to ensure randomization
+  onProgress?.(`Shuffling ${games.length} unique games for randomized order...`);
   return shuffleArray(games);
 }
 
