@@ -36,20 +36,53 @@ export interface PositionEvaluation {
   winProbability: number;
 }
 
-// Rate limiting
+// Rate limiting with exponential backoff
 let lastRequestTime = 0;
-const MIN_REQUEST_INTERVAL = 3000; // 3 seconds between requests (20/min safe limit)
+let currentBackoffMs = 0;
+let rateLimitResetTime = 0;
+const MIN_REQUEST_INTERVAL = 4000; // 4 seconds between requests (15/min safe limit)
+const MAX_BACKOFF_MS = 60000; // Max 60 second backoff
 
-async function rateLimitedFetch(url: string): Promise<Response> {
+export function getRateLimitStatus(): { isLimited: boolean; resetInMs: number } {
   const now = Date.now();
-  const timeSinceLastRequest = now - lastRequestTime;
+  if (rateLimitResetTime > now) {
+    return { isLimited: true, resetInMs: rateLimitResetTime - now };
+  }
+  return { isLimited: false, resetInMs: 0 };
+}
+
+async function rateLimitedFetch(url: string, retries = 3): Promise<Response> {
+  // Check if we're in a backoff period
+  const now = Date.now();
+  if (rateLimitResetTime > now) {
+    const waitTime = rateLimitResetTime - now;
+    console.log(`[LichessCloud] Rate limited, waiting ${Math.ceil(waitTime / 1000)}s...`);
+    await new Promise(resolve => setTimeout(resolve, waitTime));
+  }
   
+  const timeSinceLastRequest = Date.now() - lastRequestTime;
   if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
     await new Promise(resolve => setTimeout(resolve, MIN_REQUEST_INTERVAL - timeSinceLastRequest));
   }
   
   lastRequestTime = Date.now();
-  return fetch(url);
+  const response = await fetch(url);
+  
+  // Handle rate limiting with exponential backoff
+  if (response.status === 429 && retries > 0) {
+    currentBackoffMs = currentBackoffMs === 0 ? 5000 : Math.min(currentBackoffMs * 2, MAX_BACKOFF_MS);
+    rateLimitResetTime = Date.now() + currentBackoffMs;
+    console.log(`[LichessCloud] 429 Rate limited, backing off for ${currentBackoffMs / 1000}s...`);
+    await new Promise(resolve => setTimeout(resolve, currentBackoffMs));
+    return rateLimitedFetch(url, retries - 1);
+  }
+  
+  // Reset backoff on success
+  if (response.ok) {
+    currentBackoffMs = 0;
+  }
+  
+  return response;
 }
 
 /**
@@ -154,14 +187,21 @@ export async function evaluatePositions(
 /**
  * Check if Lichess API is available
  */
-export async function checkLichessAvailability(): Promise<boolean> {
+export async function checkLichessAvailability(): Promise<{ available: boolean; rateLimited: boolean; resetInMs?: number }> {
+  // Check if we're currently rate limited
+  const limitStatus = getRateLimitStatus();
+  if (limitStatus.isLimited) {
+    return { available: false, rateLimited: true, resetInMs: limitStatus.resetInMs };
+  }
+  
   try {
     // Test with starting position (always in database)
     const startingFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
     const result = await evaluatePosition(startingFen);
-    return result !== null;
+    return { available: result !== null, rateLimited: false };
   } catch {
-    return false;
+    const newLimitStatus = getRateLimitStatus();
+    return { available: false, rateLimited: newLimitStatus.isLimited, resetInMs: newLimitStatus.resetInMs };
   }
 }
 
