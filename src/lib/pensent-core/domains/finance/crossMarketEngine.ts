@@ -1,7 +1,7 @@
 /**
  * Cross-Market Correlation Engine
- * Refactored into modular components with Speedrun Glitch Detection
- * and Consciousness Resonance integration
+ * Refactored into modular components with Speedrun Glitch Detection,
+ * Consciousness Resonance, and Cultural Arbitrage integration
  */
 
 export * from './crossMarket/types';
@@ -17,6 +17,7 @@ import { detectSignals } from './crossMarket/signalDetector';
 import { calculateMetrics, calculatePredictionBoost } from './crossMarket/metricsCalculator';
 import { speedrunGlitchDetector, SpeedrunState, MarketGlitch } from './speedrunGlitchDetector';
 import { consciousnessResonanceDetector, ResonanceState } from './consciousnessResonanceDetector';
+import { culturalArbitrageEngine, CulturalArbitrageOpportunity } from './culturalArbitrageEngine';
 
 // Extended state including new detectors
 export interface EnhancedBigPictureState extends BigPictureState {
