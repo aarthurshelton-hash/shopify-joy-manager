@@ -1,20 +1,13 @@
 /**
- * Stockfish Web Worker - Self-contained Engine
+ * Stockfish 17.1 Web Worker
  * 
- * Uses a robust blob-based loading approach to bypass CORS restrictions.
- * Tries multiple CDN sources with fallback.
+ * Loads Stockfish 17.1 Lite (single-threaded) from same-origin files.
+ * No CORS issues since files are served from the same domain.
  */
 
 let engine = null;
 let isReady = false;
 let pendingCommands = [];
-
-// CDN sources to try (in order)
-const CDN_SOURCES = [
-  'https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.js',
-  'https://cdn.jsdelivr.net/npm/stockfish.js@10.0.2/stockfish.js',
-  'https://unpkg.com/stockfish.js@10.0.2/stockfish.js'
-];
 
 function postStatus(message) {
   self.postMessage({ type: 'status', data: message });
@@ -22,94 +15,6 @@ function postStatus(message) {
 
 function postError(message) {
   self.postMessage({ type: 'error', data: message });
-}
-
-// Fetch script from URL and return as blob URL
-async function fetchAsBlob(url) {
-  const response = await fetch(url, { 
-    mode: 'cors',
-    cache: 'force-cache'
-  });
-  
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}`);
-  }
-  
-  const text = await response.text();
-  const blob = new Blob([text], { type: 'application/javascript' });
-  return URL.createObjectURL(blob);
-}
-
-// Try to load engine from multiple sources
-async function loadEngineFromCDN() {
-  for (const url of CDN_SOURCES) {
-    try {
-      postStatus(`Trying ${url.split('/')[2]}...`);
-      const blobUrl = await fetchAsBlob(url);
-      importScripts(blobUrl);
-      URL.revokeObjectURL(blobUrl);
-      return true;
-    } catch (err) {
-      console.log(`[Worker] Failed to load from ${url}:`, err.message);
-    }
-  }
-  return false;
-}
-
-// Initialize engine using the global STOCKFISH function
-function initializeEngine() {
-  postStatus('Initializing Stockfish engine...');
-  
-  // stockfish.js exports STOCKFISH as global
-  if (typeof STOCKFISH === 'function') {
-    engine = STOCKFISH();
-    setupEngineListeners();
-    return true;
-  }
-  
-  // Check for Stockfish (capital S)
-  if (typeof Stockfish === 'function') {
-    engine = Stockfish();
-    setupEngineListeners();
-    return true;
-  }
-  
-  return false;
-}
-
-function setupEngineListeners() {
-  if (!engine) {
-    postError('Engine object is null');
-    return;
-  }
-  
-  // Set up message listener
-  if (typeof engine.onmessage !== 'undefined') {
-    engine.onmessage = function(msg) {
-      const data = typeof msg === 'string' ? msg : (msg.data || msg);
-      self.postMessage({ type: 'uci', data: String(data) });
-      
-      if (String(data) === 'uciok') {
-        isReady = true;
-        self.postMessage({ type: 'ready' });
-        processPendingCommands();
-      }
-    };
-  } else if (engine.addMessageListener) {
-    engine.addMessageListener(function(msg) {
-      self.postMessage({ type: 'uci', data: msg });
-      
-      if (msg === 'uciok') {
-        isReady = true;
-        self.postMessage({ type: 'ready' });
-        processPendingCommands();
-      }
-    });
-  }
-  
-  // Start UCI protocol
-  sendToEngine('uci');
-  postStatus('Stockfish ready, awaiting UCI response...');
 }
 
 function processPendingCommands() {
@@ -127,8 +32,47 @@ function sendToEngine(cmd) {
   
   if (engine.postMessage) {
     engine.postMessage(cmd);
-  } else if (typeof engine === 'function') {
-    engine(cmd);
+  }
+}
+
+function setupEngineListeners() {
+  if (!engine) {
+    postError('Engine object is null');
+    return;
+  }
+  
+  postStatus('Setting up Stockfish 17.1 message handlers...');
+  
+  // Stockfish 17 uses addMessageListener
+  if (engine.addMessageListener) {
+    engine.addMessageListener(function(msg) {
+      self.postMessage({ type: 'uci', data: msg });
+      
+      if (msg === 'uciok') {
+        isReady = true;
+        self.postMessage({ type: 'ready' });
+        processPendingCommands();
+      }
+    });
+  } else if (typeof engine.onmessage !== 'undefined') {
+    engine.onmessage = function(msg) {
+      const data = typeof msg === 'string' ? msg : (msg.data || msg);
+      self.postMessage({ type: 'uci', data: String(data) });
+      
+      if (String(data) === 'uciok') {
+        isReady = true;
+        self.postMessage({ type: 'ready' });
+        processPendingCommands();
+      }
+    };
+  }
+  
+  // Start UCI protocol
+  if (engine.postMessage) {
+    engine.postMessage('uci');
+    postStatus('Stockfish 17.1 initializing...');
+  } else {
+    postError('Engine has no postMessage method');
   }
 }
 
@@ -175,25 +119,36 @@ self.onmessage = function(e) {
   }
 };
 
-// Start initialization
+// Initialize Stockfish 17
 async function init() {
-  postStatus('Loading Stockfish engine...');
+  postStatus('Loading Stockfish 17.1...');
   
   try {
-    const loaded = await loadEngineFromCDN();
+    // Import the Stockfish 17 script from same origin
+    importScripts('/stockfish-17.js');
     
-    if (!loaded) {
-      postError('Failed to load Stockfish from all CDN sources');
-      return;
-    }
+    postStatus('Script loaded, initializing engine...');
     
-    const initialized = initializeEngine();
-    
-    if (!initialized) {
-      postError('Failed to initialize Stockfish engine - no STOCKFISH function found');
+    // Stockfish 17 exports a Stockfish function that returns a promise
+    if (typeof Stockfish === 'function') {
+      const result = Stockfish();
+      
+      // Handle both promise and direct return
+      if (result && typeof result.then === 'function') {
+        engine = await result;
+      } else {
+        engine = result;
+      }
+      
+      setupEngineListeners();
+    } else if (typeof STOCKFISH === 'function') {
+      engine = STOCKFISH();
+      setupEngineListeners();
+    } else {
+      postError('No Stockfish constructor found after import');
     }
   } catch (err) {
-    postError('Initialization failed: ' + err.message);
+    postError('Failed to load Stockfish 17: ' + err.message);
     console.error('[Worker] Init error:', err);
   }
 }
