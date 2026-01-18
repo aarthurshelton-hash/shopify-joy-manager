@@ -1,42 +1,34 @@
 /**
- * Stockfish Web Worker - Local Engine
- * Uses locally bundled stockfish.js (no CORS issues)
+ * Stockfish Web Worker - Direct Engine Loader
+ * Imports the engine and bridges UCI communication
  */
 
 let engine = null;
+let isReady = false;
 
-// Import local stockfish engine (same origin = no CORS)
+// Import the engine script
 try {
   importScripts('./stockfish-engine.js');
-  
-  if (typeof STOCKFISH === 'function') {
-    engine = STOCKFISH();
-    
-    engine.addMessageListener(function(msg) {
-      self.postMessage({ type: 'uci', data: msg });
-      if (msg === 'uciok') {
-        self.postMessage({ type: 'ready' });
-      }
-    });
-    
-    // Initialize UCI protocol
-    engine.postMessage('uci');
-    self.postMessage({ type: 'status', data: 'Stockfish 10 loaded!' });
-  } else {
-    self.postMessage({ type: 'error', data: 'STOCKFISH function not found' });
-  }
 } catch (err) {
-  self.postMessage({ type: 'error', data: 'Failed to load engine: ' + err.message });
+  self.postMessage({ type: 'error', data: 'Failed to import engine: ' + err.message });
 }
 
-// Handle commands from main thread
+// Handle messages from main thread - just forward as UCI strings
 self.onmessage = function(e) {
-  if (!engine) {
-    self.postMessage({ type: 'error', data: 'Engine not ready' });
+  const msg = e.data;
+  
+  // Handle string messages (UCI commands)
+  if (typeof msg === 'string') {
+    if (engine && engine.postMessage) {
+      engine.postMessage(msg);
+    } else {
+      self.postMessage({ type: 'error', data: 'Engine not initialized' });
+    }
     return;
   }
   
-  const { command, options } = e.data;
+  // Handle structured messages for backward compatibility
+  const { command, options } = msg;
   let cmd = command;
   
   if (command === 'position') {
@@ -57,5 +49,98 @@ self.onmessage = function(e) {
     }
   }
   
-  engine.postMessage(cmd);
+  if (engine && engine.postMessage) {
+    engine.postMessage(cmd);
+  } else {
+    self.postMessage({ type: 'error', data: 'Engine not ready' });
+  }
 };
+
+// The engine should automatically initialize itself
+// We need to set up message handling
+if (typeof Stockfish === 'function') {
+  // Modern Stockfish.js exports a Stockfish function
+  try {
+    const sf = Stockfish();
+    if (sf.then) {
+      // It's a promise
+      sf.then(function(e) {
+        engine = e;
+        setupEngine();
+      }).catch(function(err) {
+        self.postMessage({ type: 'error', data: 'Promise rejected: ' + err.message });
+      });
+    } else {
+      engine = sf;
+      setupEngine();
+    }
+  } catch (err) {
+    self.postMessage({ type: 'error', data: 'Stockfish() failed: ' + err.message });
+  }
+} else if (typeof STOCKFISH === 'function') {
+  // Older stockfish.js uses STOCKFISH
+  try {
+    engine = STOCKFISH();
+    setupEngine();
+  } catch (err) {
+    self.postMessage({ type: 'error', data: 'STOCKFISH() failed: ' + err.message });
+  }
+} else {
+  // The engine might set up onmessage itself
+  self.postMessage({ type: 'status', data: 'Waiting for engine to initialize...' });
+  
+  // Check if there's an onmessage handler the engine is expecting
+  setTimeout(function checkEngine() {
+    if (typeof Stockfish === 'function' || typeof STOCKFISH === 'function') {
+      if (typeof Stockfish === 'function') {
+        const sf = Stockfish();
+        if (sf.then) {
+          sf.then(function(e) {
+            engine = e;
+            setupEngine();
+          });
+        } else {
+          engine = sf;
+          setupEngine();
+        }
+      } else {
+        engine = STOCKFISH();
+        setupEngine();
+      }
+    } else {
+      self.postMessage({ type: 'error', data: 'No Stockfish or STOCKFISH function found' });
+    }
+  }, 100);
+}
+
+function setupEngine() {
+  if (!engine) return;
+  
+  self.postMessage({ type: 'status', data: 'Setting up engine...' });
+  
+  // Handle messages from the engine
+  if (engine.addMessageListener) {
+    engine.addMessageListener(function(msg) {
+      self.postMessage({ type: 'uci', data: msg });
+      if (msg === 'uciok') {
+        isReady = true;
+        self.postMessage({ type: 'ready' });
+      }
+    });
+  } else if (engine.onmessage !== undefined) {
+    engine.onmessage = function(msg) {
+      const data = typeof msg === 'string' ? msg : msg.data;
+      self.postMessage({ type: 'uci', data: data });
+      if (data === 'uciok') {
+        isReady = true;
+        self.postMessage({ type: 'ready' });
+      }
+    };
+  }
+  
+  // Send UCI init command
+  if (engine.postMessage) {
+    engine.postMessage('uci');
+    self.postMessage({ type: 'status', data: 'Stockfish 17 Lite initializing...' });
+  }
+}
