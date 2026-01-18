@@ -3,78 +3,48 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Brain, Cpu, Trophy, Play, Loader2, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
-import { runQuickBenchmark, FAMOUS_GAMES_BENCHMARK, type BenchmarkResult, type PredictionAttempt } from '@/lib/chess/benchmark';
-import { getStockfishEngine } from '@/lib/chess/stockfishEngine';
+import { Brain, Cpu, Trophy, Play, Loader2, Clock, CheckCircle, XCircle, AlertCircle, Cloud } from 'lucide-react';
+import { runCloudBenchmark, FAMOUS_GAMES, type BenchmarkResult, type PredictionAttempt } from '@/lib/chess/cloudBenchmark';
+import { checkLichessAvailability } from '@/lib/chess/lichessCloudEval';
 
 export default function Benchmark() {
   const [isRunning, setIsRunning] = useState(false);
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState('');
-  const [currentGameIndex, setCurrentGameIndex] = useState(0);
+  const [currentGame, setCurrentGame] = useState('');
   const [elapsedTime, setElapsedTime] = useState(0);
   const [result, setResult] = useState<BenchmarkResult | null>(null);
   const [liveAttempts, setLiveAttempts] = useState<PredictionAttempt[]>([]);
-  const [engineReady, setEngineReady] = useState(false);
-  const [initPhase, setInitPhase] = useState('');
+  const [apiReady, setApiReady] = useState(false);
+  const [initPhase, setInitPhase] = useState('Checking Lichess API...');
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number>(0);
 
-  // Check engine status on mount with polling
+  // Check Lichess API availability on mount
   useEffect(() => {
     let cancelled = false;
-    let pollInterval: NodeJS.Timeout | null = null;
     
-    const checkEngine = async () => {
-      setInitPhase('Initializing Stockfish worker...');
-      console.log('[Benchmark] Starting engine check...');
+    const checkApi = async () => {
+      setInitPhase('Checking Lichess Cloud API...');
       
       try {
-        const engine = getStockfishEngine();
+        const available = await checkLichessAvailability();
         
-        // Poll every 500ms for status updates
-        let attempts = 0;
-        const maxAttempts = 30; // 15 seconds max wait
-        
-        pollInterval = setInterval(() => {
-          attempts++;
-          const ready = engine.available;
-          console.log(`[Benchmark] Poll ${attempts}: ready=${ready}`);
-          
-          if (ready && !cancelled) {
-            setEngineReady(true);
-            setInitPhase('Stockfish 10 ready!');
-            if (pollInterval) clearInterval(pollInterval);
-          } else if (attempts >= maxAttempts && !cancelled) {
-            setInitPhase('Engine load timeout - please refresh');
-            if (pollInterval) clearInterval(pollInterval);
-          } else if (!cancelled) {
-            setInitPhase(`Loading Stockfish... (${attempts}s)`);
-          }
-        }, 500);
-        
-        // Also await the engine
-        const ready = await engine.waitReady();
         if (!cancelled) {
-          if (pollInterval) clearInterval(pollInterval);
-          setEngineReady(ready);
-          setInitPhase(ready ? 'Stockfish 10 ready!' : 'Engine failed to load - try refreshing');
-          console.log('[Benchmark] Final engine status:', ready);
+          setApiReady(available);
+          setInitPhase(available ? 'Stockfish 17 via Lichess Cloud ready!' : 'API unavailable - check connection');
         }
       } catch (err) {
-        console.error('[Benchmark] Engine init error:', err);
+        console.error('[Benchmark] API check error:', err);
         if (!cancelled) {
-          setInitPhase('Engine error - try refreshing');
+          setInitPhase('API check failed - try again');
         }
       }
     };
     
-    checkEngine();
+    checkApi();
     
-    return () => {
-      cancelled = true;
-      if (pollInterval) clearInterval(pollInterval);
-    };
+    return () => { cancelled = true; };
   }, []);
 
   // Timer for elapsed time
@@ -101,59 +71,39 @@ export default function Benchmark() {
   };
 
   const runBenchmark = async () => {
-    console.log('[Benchmark] Starting benchmark...');
+    console.log('[Benchmark] Starting cloud benchmark...');
     setIsRunning(true);
     setProgress(0);
-    setStatus('Initializing Stockfish 17 engine...');
+    setStatus('Connecting to Lichess Cloud API...');
     setResult(null);
     setLiveAttempts([]);
-    setCurrentGameIndex(0);
+    setCurrentGame('');
     setElapsedTime(0);
 
     try {
-      // Make sure engine is ready
-      console.log('[Benchmark] Waiting for engine...');
-      const engine = getStockfishEngine();
-      const ready = await engine.waitReady();
-      console.log('[Benchmark] Engine ready:', ready);
-      
-      if (!ready) {
-        setStatus('Error: Stockfish engine failed to initialize');
-        setIsRunning(false);
-        return;
-      }
-
-      setStatus('Engine ready. Starting game analysis...');
-      console.log('[Benchmark] Preparing games...');
-      
-      const games = FAMOUS_GAMES_BENCHMARK.map(g => ({
-        pgn: g.pgn,
-        result: g.result,
-      }));
-
-      console.log('[Benchmark] Running benchmark on', games.length, 'games');
-
-      // Enhanced progress callback that updates live results
-      const benchmarkResult = await runQuickBenchmark(
-        games,
+      const benchmarkResult = await runCloudBenchmark(
+        FAMOUS_GAMES,
         20, // Predict at move 20
-        18, // Stockfish depth 18
-        (statusText, prog) => {
-          console.log('[Benchmark] Progress:', statusText, prog.toFixed(1) + '%');
+        (statusText, prog, attempt) => {
+          console.log('[Benchmark]', statusText, prog.toFixed(1) + '%');
           setStatus(statusText);
           setProgress(prog);
           
-          // Parse game index from status
-          const match = statusText.match(/game (\d+)/i);
+          // Extract game name from status
+          const match = statusText.match(/(?:Analyzing|Evaluating|Completed):\s*(.+?)(?:\.\.\.)?$/);
           if (match) {
-            setCurrentGameIndex(parseInt(match[1]) - 1);
+            setCurrentGame(match[1]);
+          }
+          
+          // Add completed attempts to live view
+          if (attempt) {
+            setLiveAttempts(prev => [...prev, attempt]);
           }
         }
       );
 
-      // Set live attempts as results come in
-      setLiveAttempts(benchmarkResult.predictionPoints);
       setResult(benchmarkResult);
+      setStatus(`Completed! Analyzed ${benchmarkResult.completedGames} games.`);
     } catch (error) {
       console.error('Benchmark failed:', error);
       setStatus(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -173,7 +123,6 @@ export default function Benchmark() {
   const stockfishCorrect = result?.predictionPoints.filter(p => p.stockfishCorrect).length ?? 0;
   const hybridCorrect = result?.predictionPoints.filter(p => p.hybridCorrect).length ?? 0;
 
-  // Estimate remaining time based on progress
   const estimatedTotalTime = progress > 0 ? Math.ceil(elapsedTime / (progress / 100)) : 0;
   const remainingTime = Math.max(0, estimatedTotalTime - elapsedTime);
 
@@ -189,26 +138,27 @@ export default function Benchmark() {
             Real predictions • Real games • Real results
           </p>
           <p className="text-sm text-muted-foreground/70 italic">
-            Testing against {FAMOUS_GAMES_BENCHMARK.length} famous historical games with known outcomes
+            Testing against {FAMOUS_GAMES.length} famous historical games with known outcomes
           </p>
         </div>
 
-        {/* Engine Status */}
-        <Card className={`border ${engineReady ? 'border-green-500/50 bg-green-500/5' : 'border-yellow-500/50 bg-yellow-500/5'}`}>
+        {/* API Status */}
+        <Card className={`border ${apiReady ? 'border-green-500/50 bg-green-500/5' : 'border-yellow-500/50 bg-yellow-500/5'}`}>
           <CardContent className="py-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                {engineReady ? (
-                  <CheckCircle className="h-5 w-5 text-green-500" />
+                {apiReady ? (
+                  <Cloud className="h-5 w-5 text-green-500" />
                 ) : (
                   <Loader2 className="h-5 w-5 animate-spin text-yellow-500" />
                 )}
                 <span className="font-medium">
-                  {engineReady ? 'Stockfish 17 WASM Ready' : initPhase || 'Loading engine...'}
+                  {initPhase}
                 </span>
               </div>
-              <Badge variant={engineReady ? 'default' : 'secondary'}>
-                {engineReady ? 'Ready' : 'Loading'}
+              <Badge variant={apiReady ? 'default' : 'secondary'} className="gap-1">
+                <Cloud className="h-3 w-3" />
+                {apiReady ? 'Stockfish 17 Ready' : 'Loading'}
               </Badge>
             </div>
           </CardContent>
@@ -226,18 +176,18 @@ export default function Benchmark() {
             <div className="flex items-center gap-4">
               <Button 
                 onClick={runBenchmark} 
-                disabled={isRunning || !engineReady}
+                disabled={isRunning || !apiReady}
                 size="lg"
                 className="gap-2"
               >
                 {isRunning ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
-                ) : !engineReady ? (
+                ) : !apiReady ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <Play className="h-4 w-4" />
                 )}
-                {isRunning ? 'Analyzing...' : !engineReady ? 'Loading Engine...' : 'Run Real Benchmark'}
+                {isRunning ? 'Analyzing...' : !apiReady ? 'Connecting...' : 'Run Benchmark'}
               </Button>
               <div className="text-sm text-muted-foreground">
                 {isRunning ? (
@@ -246,20 +196,22 @@ export default function Benchmark() {
                     Elapsed: {formatTime(elapsedTime)}
                     {progress > 5 && ` • Est. remaining: ${formatTime(remainingTime)}`}
                   </span>
-                ) : !engineReady ? (
+                ) : !apiReady ? (
                   <span className="flex items-center gap-2 text-yellow-600">
                     <AlertCircle className="h-4 w-4" />
-                    Please wait for Stockfish WASM to load...
+                    Connecting to Lichess Cloud (Stockfish 17)...
                   </span>
                 ) : (
-                  'Analyzes each game position with Stockfish depth 18'
+                  <span className="flex items-center gap-2">
+                    <Cloud className="h-4 w-4" />
+                    Uses Lichess Cloud for Stockfish 17 evaluation
+                  </span>
                 )}
               </div>
             </div>
 
             {isRunning && (
               <div className="space-y-4">
-                {/* Main progress bar */}
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="font-medium">{status}</span>
@@ -268,43 +220,32 @@ export default function Benchmark() {
                   <Progress value={progress} className="h-3" />
                 </div>
 
-                {/* Current game being analyzed */}
-                {currentGameIndex < FAMOUS_GAMES_BENCHMARK.length && (
+                {currentGame && (
                   <Card className="bg-muted/30 border-dashed">
                     <CardContent className="py-4">
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="font-semibold text-sm">
-                            Currently analyzing: {FAMOUS_GAMES_BENCHMARK[currentGameIndex]?.name}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {FAMOUS_GAMES_BENCHMARK[currentGameIndex]?.year} • 
-                            {' '}{FAMOUS_GAMES_BENCHMARK[currentGameIndex]?.white} vs {FAMOUS_GAMES_BENCHMARK[currentGameIndex]?.black}
+                            Currently analyzing: {currentGame}
                           </p>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                          <span className="text-xs text-muted-foreground">
-                            Game {currentGameIndex + 1} of {FAMOUS_GAMES_BENCHMARK.length}
-                          </span>
-                        </div>
+                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
                       </div>
                     </CardContent>
                   </Card>
                 )}
 
-                {/* Expected time estimate */}
                 <div className="grid grid-cols-3 gap-4 text-center text-sm">
                   <div className="p-2 bg-muted/30 rounded">
-                    <p className="text-2xl font-bold text-primary">{FAMOUS_GAMES_BENCHMARK.length}</p>
+                    <p className="text-2xl font-bold text-primary">{FAMOUS_GAMES.length}</p>
                     <p className="text-xs text-muted-foreground">Games to Analyze</p>
                   </div>
                   <div className="p-2 bg-muted/30 rounded">
-                    <p className="text-2xl font-bold text-orange-500">~15-30s</p>
-                    <p className="text-xs text-muted-foreground">Per Game (Depth 18)</p>
+                    <p className="text-2xl font-bold text-orange-500">~3s</p>
+                    <p className="text-xs text-muted-foreground">Per Game (Rate Limited)</p>
                   </div>
                   <div className="p-2 bg-muted/30 rounded">
-                    <p className="text-2xl font-bold text-green-500">~5-10 min</p>
+                    <p className="text-2xl font-bold text-green-500">~30s</p>
                     <p className="text-xs text-muted-foreground">Total Expected</p>
                   </div>
                 </div>
@@ -312,6 +253,32 @@ export default function Benchmark() {
             )}
           </CardContent>
         </Card>
+
+        {/* Live Results */}
+        {liveAttempts.length > 0 && !result && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Live Results ({liveAttempts.length} / {FAMOUS_GAMES.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {liveAttempts.slice(-3).map((attempt, i) => (
+                  <div key={i} className="flex items-center justify-between p-2 bg-muted/30 rounded text-sm">
+                    <span className="font-medium">{attempt.gameName}</span>
+                    <div className="flex gap-4">
+                      <span className={attempt.stockfishCorrect ? 'text-green-500' : 'text-red-500'}>
+                        SF17: {attempt.stockfishCorrect ? '✓' : '✗'}
+                      </span>
+                      <span className={attempt.hybridCorrect ? 'text-green-500' : 'text-red-500'}>
+                        Hybrid: {attempt.hybridCorrect ? '✓' : '✗'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Results */}
         {result && (
@@ -341,7 +308,7 @@ export default function Benchmark() {
                   </div>
                   <div>
                     <p className="text-muted-foreground">Method</p>
-                    <p className="font-semibold">Centipawn Eval</p>
+                    <p className="font-semibold">Lichess Cloud</p>
                   </div>
                 </div>
               </CardContent>
@@ -419,69 +386,35 @@ export default function Benchmark() {
         {result && result.predictionPoints.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>Individual Game Predictions (Real Data)</CardTitle>
+              <CardTitle>Individual Game Results</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2 max-h-[500px] overflow-y-auto">
-                {result.predictionPoints.map((attempt, i) => {
-                  const game = FAMOUS_GAMES_BENCHMARK[i];
-                  return (
-                    <div 
-                      key={i} 
-                      className="flex items-center justify-between p-4 bg-muted/30 rounded-lg"
-                    >
-                      <div className="flex-1">
-                        <p className="font-medium">{game?.name || `Game ${i + 1}`}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {game?.year} • {game?.white} vs {game?.black}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Archetype: <span className="text-primary">{attempt.hybridArchetype}</span> • 
-                          SF Eval: <span className="font-mono">{attempt.stockfishEval > 0 ? '+' : ''}{attempt.stockfishEval}</span> cp
+              <div className="space-y-2">
+                {result.predictionPoints.map((attempt, i) => (
+                  <div key={i} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                    <div>
+                      <p className="font-medium">{attempt.gameName}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Actual: {attempt.actualResult.replace('_', ' ')} • 
+                        Archetype: {attempt.hybridArchetype}
+                      </p>
+                    </div>
+                    <div className="flex gap-6 text-sm">
+                      <div className="text-center">
+                        <p className="text-xs text-muted-foreground">SF17 (D{attempt.stockfishDepth})</p>
+                        <p className={`font-bold ${attempt.stockfishCorrect ? 'text-green-500' : 'text-red-500'}`}>
+                          {attempt.stockfishCorrect ? '✓ Correct' : '✗ Wrong'}
                         </p>
                       </div>
-                      <div className="flex items-center gap-6">
-                        {/* Actual Result */}
-                        <div className="text-center min-w-[80px]">
-                          <p className="text-xs text-muted-foreground mb-1">Actual</p>
-                          <Badge variant="outline" className="text-xs">
-                            {attempt.actualResult === 'white_wins' ? 'White' : attempt.actualResult === 'black_wins' ? 'Black' : 'Draw'}
-                          </Badge>
-                        </div>
-                        
-                        {/* Stockfish Prediction */}
-                        <div className="text-center min-w-[90px]">
-                          <p className="text-xs text-muted-foreground mb-1">Stockfish</p>
-                          <div className="flex items-center gap-1">
-                            {attempt.stockfishCorrect ? (
-                              <CheckCircle className="h-4 w-4 text-green-500" />
-                            ) : (
-                              <XCircle className="h-4 w-4 text-red-500" />
-                            )}
-                            <Badge variant={attempt.stockfishCorrect ? 'default' : 'destructive'} className="text-xs">
-                              {attempt.stockfishPrediction === 'white_wins' ? 'W' : attempt.stockfishPrediction === 'black_wins' ? 'B' : 'D'}
-                            </Badge>
-                          </div>
-                        </div>
-                        
-                        {/* Hybrid Prediction */}
-                        <div className="text-center min-w-[90px]">
-                          <p className="text-xs text-muted-foreground mb-1">En Pensent</p>
-                          <div className="flex items-center gap-1">
-                            {attempt.hybridCorrect ? (
-                              <CheckCircle className="h-4 w-4 text-green-500" />
-                            ) : (
-                              <XCircle className="h-4 w-4 text-red-500" />
-                            )}
-                            <Badge variant={attempt.hybridCorrect ? 'default' : 'destructive'} className="text-xs">
-                              {attempt.hybridPrediction === 'white_wins' ? 'W' : attempt.hybridPrediction === 'black_wins' ? 'B' : 'D'}
-                            </Badge>
-                          </div>
-                        </div>
+                      <div className="text-center">
+                        <p className="text-xs text-muted-foreground">Hybrid</p>
+                        <p className={`font-bold ${attempt.hybridCorrect ? 'text-green-500' : 'text-red-500'}`}>
+                          {attempt.hybridCorrect ? '✓ Correct' : '✗ Wrong'}
+                        </p>
                       </div>
                     </div>
-                  );
-                })}
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
@@ -490,10 +423,11 @@ export default function Benchmark() {
         {/* Methodology Note */}
         <Card className="border-dashed">
           <CardContent className="py-4">
-            <p className="text-sm text-muted-foreground text-center">
-              <strong>Methodology:</strong> Each game is analyzed at move 20 with Stockfish depth 18 (~50,000-80,000 nodes). 
-              Both systems predict the final outcome (white wins, black wins, or draw), which is compared against the 
-              historical result. All data is real—no simulation, no shortcuts.
+            <p className="text-sm text-muted-foreground">
+              <strong>Methodology:</strong> Both systems analyze the same position at move 20 of each game. 
+              Stockfish 17's evaluation is retrieved via Lichess Cloud API (typically depth 30+). 
+              The En Pensent Hybrid system combines Color Flow™ pattern recognition with strategic trajectory analysis.
+              The winner is the system with more correct predictions of the actual game outcome.
             </p>
           </CardContent>
         </Card>
