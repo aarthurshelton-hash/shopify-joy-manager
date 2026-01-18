@@ -140,6 +140,20 @@ export function EloDepthDashboard() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* FIDE Reference - Stockfish Official */}
+            <div className="text-center p-6 bg-muted/50 rounded-xl border border-muted">
+              <div className="text-sm text-muted-foreground mb-2">FIDE Reference: Stockfish 17</div>
+              <div className="text-5xl font-bold text-muted-foreground">
+                3600
+              </div>
+              <Badge variant="outline" className="mt-2">
+                CCRL/TCEC Official Rating
+              </Badge>
+              <div className="text-xs text-muted-foreground mt-2">
+                World's Strongest Engine
+              </div>
+            </div>
+
             {/* Our ELO */}
             <div className="text-center p-6 bg-gradient-to-br from-primary/20 to-primary/5 rounded-xl border border-primary/30">
               <div className="text-sm text-muted-foreground mb-2">En Pensent (Prediction)</div>
@@ -149,31 +163,23 @@ export function EloDepthDashboard() {
               <Badge className="mt-2" variant="secondary">
                 {eloEstimate?.humanEquivalent || 'Calculating...'}
               </Badge>
-            </div>
-
-            {/* Stockfish ELO */}
-            <div className="text-center p-6 bg-muted/50 rounded-xl border border-muted">
-              <div className="text-sm text-muted-foreground mb-2">Stockfish 17 (Playing)</div>
-              <div className="text-5xl font-bold text-muted-foreground">
-                3600
-              </div>
-              <Badge variant="outline" className="mt-2">
-                FIDE-Equivalent (CCRL/TCEC)
-              </Badge>
               <div className="text-xs text-muted-foreground mt-2">
-                Prediction ELO: {eloEstimate?.stockfishPredictionElo || '—'}
+                SF Prediction ELO: {Math.round(eloEstimate?.stockfishPredictionElo || 0)}
               </div>
             </div>
 
             {/* Advantage */}
             <div className="text-center p-6 bg-gradient-to-br from-green-500/20 to-green-500/5 rounded-xl border border-green-500/30">
-              <div className="text-sm text-muted-foreground mb-2">ELO Advantage</div>
+              <div className="text-sm text-muted-foreground mb-2">Prediction Advantage</div>
               <div className={`text-5xl font-bold ${(eloEstimate?.eloAdvantage || 0) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                {(eloEstimate?.eloAdvantage || 0) >= 0 ? '+' : ''}{eloEstimate?.eloAdvantage || 0}
+                {(eloEstimate?.eloAdvantage || 0) >= 0 ? '+' : ''}{Math.round(eloEstimate?.eloAdvantage || 0)}
               </div>
               <Badge variant="outline" className="mt-2 border-green-500/50 text-green-500">
                 {(eloEstimate?.eloAdvantage || 0) > 0 ? 'Superior' : 'Growing'}
               </Badge>
+              <div className="text-xs text-muted-foreground mt-2">
+                vs SF Prediction (not Playing)
+              </div>
             </div>
           </div>
 
