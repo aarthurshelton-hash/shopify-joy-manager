@@ -221,6 +221,75 @@ export type Database = {
         }
         Relationships: []
       }
+      chess_benchmark_results: {
+        Row: {
+          archetype_performance: Json | null
+          both_correct: number
+          both_wrong: number
+          completed_games: number
+          confidence: number | null
+          created_at: string
+          data_source: string
+          duration_ms: number | null
+          games_analyzed: string[]
+          hybrid_accuracy: number
+          hybrid_version: string | null
+          hybrid_wins: number
+          id: string
+          p_value: number | null
+          prediction_move_number: number
+          run_id: string
+          stockfish_accuracy: number
+          stockfish_version: string | null
+          stockfish_wins: number
+          total_games: number
+        }
+        Insert: {
+          archetype_performance?: Json | null
+          both_correct?: number
+          both_wrong?: number
+          completed_games: number
+          confidence?: number | null
+          created_at?: string
+          data_source: string
+          duration_ms?: number | null
+          games_analyzed?: string[]
+          hybrid_accuracy: number
+          hybrid_version?: string | null
+          hybrid_wins?: number
+          id?: string
+          p_value?: number | null
+          prediction_move_number?: number
+          run_id: string
+          stockfish_accuracy: number
+          stockfish_version?: string | null
+          stockfish_wins?: number
+          total_games: number
+        }
+        Update: {
+          archetype_performance?: Json | null
+          both_correct?: number
+          both_wrong?: number
+          completed_games?: number
+          confidence?: number | null
+          created_at?: string
+          data_source?: string
+          duration_ms?: number | null
+          games_analyzed?: string[]
+          hybrid_accuracy?: number
+          hybrid_version?: string | null
+          hybrid_wins?: number
+          id?: string
+          p_value?: number | null
+          prediction_move_number?: number
+          run_id?: string
+          stockfish_accuracy?: number
+          stockfish_version?: string | null
+          stockfish_wins?: number
+          total_games?: number
+        }
+        Relationships: []
+      }
       chess_games: {
         Row: {
           black_palette: Json | null
@@ -333,6 +402,83 @@ export type Database = {
             columns: ["game_id"]
             isOneToOne: false
             referencedRelation: "chess_games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chess_prediction_attempts: {
+        Row: {
+          actual_result: string
+          benchmark_id: string | null
+          created_at: string
+          fen: string
+          game_id: string
+          game_name: string
+          hybrid_archetype: string | null
+          hybrid_confidence: number | null
+          hybrid_correct: boolean
+          hybrid_prediction: string
+          id: string
+          lesson_learned: Json | null
+          move_number: number
+          pgn: string | null
+          position_hash: string | null
+          stockfish_confidence: number | null
+          stockfish_correct: boolean
+          stockfish_depth: number | null
+          stockfish_eval: number | null
+          stockfish_prediction: string
+        }
+        Insert: {
+          actual_result: string
+          benchmark_id?: string | null
+          created_at?: string
+          fen: string
+          game_id: string
+          game_name: string
+          hybrid_archetype?: string | null
+          hybrid_confidence?: number | null
+          hybrid_correct: boolean
+          hybrid_prediction: string
+          id?: string
+          lesson_learned?: Json | null
+          move_number: number
+          pgn?: string | null
+          position_hash?: string | null
+          stockfish_confidence?: number | null
+          stockfish_correct: boolean
+          stockfish_depth?: number | null
+          stockfish_eval?: number | null
+          stockfish_prediction: string
+        }
+        Update: {
+          actual_result?: string
+          benchmark_id?: string | null
+          created_at?: string
+          fen?: string
+          game_id?: string
+          game_name?: string
+          hybrid_archetype?: string | null
+          hybrid_confidence?: number | null
+          hybrid_correct?: boolean
+          hybrid_prediction?: string
+          id?: string
+          lesson_learned?: Json | null
+          move_number?: number
+          pgn?: string | null
+          position_hash?: string | null
+          stockfish_confidence?: number | null
+          stockfish_correct?: boolean
+          stockfish_depth?: number | null
+          stockfish_eval?: number | null
+          stockfish_prediction?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chess_prediction_attempts_benchmark_id_fkey"
+            columns: ["benchmark_id"]
+            isOneToOne: false
+            referencedRelation: "chess_benchmark_results"
             referencedColumns: ["id"]
           },
         ]
