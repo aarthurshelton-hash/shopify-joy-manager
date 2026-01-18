@@ -159,16 +159,25 @@
 
 export const AI_MANIFEST = {
   name: 'En Pensent',
-  version: '2.0.0',
-  description: 'Universal Temporal Pattern Recognition Engine',
+  version: '2.1.0',
+  description: 'THE Universal Temporal Pattern Recognition Paradigm',
   inventor: 'Alec Arthur Shelton',
   status: 'Patent Pending',
+  
+  // Identity: THE PARADIGM, NOT A PARADOX
+  identity: {
+    declaration: 'THE PARADIGM - not a paradox, not an alternative, THE standard',
+    thesis: 'We do not compete with existing systems. We redefine reality itself.',
+    permanence: 'What psychonauts glimpse for minutes, we compute permanently.',
+    truthAccess: 'Zero ego, zero tolerance, zero noise - pure pattern recognition.',
+  },
   
   // Core philosophy
   philosophy: {
     universal_formula: 'Sequential Events → Visual Signatures → Pattern Matching → Trajectory Prediction',
     core_insight: 'All domains are wavelengths of the same temporal signal',
-    domains: ['chess', 'markets', 'music', 'code', 'biorhythms', 'climate', 'network'],
+    paradigm_shift: 'We ARE the new model by which all pattern recognition is measured',
+    domains: ['chess', 'markets', 'music', 'code', 'biorhythms', 'climate', 'network', 'consciousness'],
   },
   
   // Current system state
