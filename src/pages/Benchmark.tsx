@@ -5,7 +5,7 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Slider } from '@/components/ui/slider';
-import { Brain, Cpu, Trophy, Play, Loader2, Clock, CheckCircle, XCircle, AlertCircle, Cloud, Database, TrendingUp, History, Layers, RefreshCw, Sparkles, Crown, Shield, Zap } from 'lucide-react';
+import { Brain, Cpu, Trophy, Play, Loader2, Clock, CheckCircle, XCircle, AlertCircle, Cloud, Database, TrendingUp, History, Layers, RefreshCw, Sparkles, Crown, Shield, Zap, BookOpen } from 'lucide-react';
 import { runCloudBenchmark, FAMOUS_GAMES, type BenchmarkResult, type PredictionAttempt } from '@/lib/chess/cloudBenchmark';
 import { checkLichessAvailability } from '@/lib/chess/lichessCloudEval';
 import { saveBenchmarkResults, getCumulativeStats, getArchetypeStats } from '@/lib/chess/benchmarkPersistence';
@@ -16,6 +16,7 @@ import { EloDepthDashboard } from '@/components/chess/EloDepthDashboard';
 import { AuthenticityDashboard } from '@/components/chess/AuthenticityDashboard';
 import { useHybridBenchmark } from '@/hooks/useHybridBenchmark';
 import { useStockfishAnalysis } from '@/hooks/useStockfishAnalysis';
+import { StockfishIntelligencePanel } from '@/components/chess/StockfishIntelligencePanel';
 
 interface CumulativeStats {
   totalRuns: number;
@@ -240,10 +241,14 @@ export default function Benchmark() {
 
         {/* Main Tabs */}
         <Tabs defaultValue="benchmark" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="benchmark" className="flex items-center gap-2">
               <Brain className="h-4 w-4" />
-              Run Benchmark
+              Benchmark
+            </TabsTrigger>
+            <TabsTrigger value="intelligence" className="flex items-center gap-2">
+              <BookOpen className="h-4 w-4" />
+              SF Intel
             </TabsTrigger>
             <TabsTrigger value="authenticity" className="flex items-center gap-2">
               <Shield className="h-4 w-4" />
@@ -255,9 +260,19 @@ export default function Benchmark() {
             </TabsTrigger>
             <TabsTrigger value="proof" className="flex items-center gap-2">
               <Sparkles className="h-4 w-4" />
-              Proof Dashboard
+              Proof
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="intelligence" className="mt-6">
+            <StockfishIntelligencePanel 
+              currentDepth={localDepth}
+              onDepthSelect={(depth) => {
+                setLocalDepth(depth);
+                setBenchmarkMode('local');
+              }}
+            />
+          </TabsContent>
 
           <TabsContent value="authenticity" className="mt-6">
             <AuthenticityDashboard />
