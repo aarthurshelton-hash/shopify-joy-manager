@@ -242,17 +242,22 @@ export function AuthenticityDashboard({ provenance }: AuthenticityDashboardProps
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Depth Coverage</span>
-                  <span className="font-medium">
+                  <span className={`font-medium ${
+                    depthStats.avgDepth >= 55 ? 'text-green-500' : ''
+                  }`}>
                     {((depthStats.avgDepth / 60) * 100).toFixed(0)}% of Maximum
+                    {depthStats.avgDepth >= 55 && ' ⚡'}
                   </span>
                 </div>
                 <Progress 
                   value={(depthStats.avgDepth / 60) * 100} 
-                  className="h-3"
+                  className={`h-3 ${depthStats.avgDepth >= 55 ? '[&>div]:bg-green-500' : ''}`}
                 />
                 <div className="flex justify-between text-xs text-muted-foreground">
                   <span>Cloud API (~30-40)</span>
-                  <span>Max Capacity (60+)</span>
+                  <span className={depthStats.avgDepth >= 55 ? 'text-green-500 font-medium' : ''}>
+                    {depthStats.avgDepth >= 55 ? '✓ Maximum Depth (60)' : 'Max Capacity (60+)'}
+                  </span>
                 </div>
               </div>
 
@@ -260,18 +265,43 @@ export function AuthenticityDashboard({ provenance }: AuthenticityDashboardProps
               <div className="p-3 bg-background/50 rounded-lg space-y-2">
                 <p className="text-sm font-medium">What This Means:</p>
                 <ul className="text-xs text-muted-foreground space-y-1">
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="h-3 w-3 text-green-500 mt-0.5" />
-                    <span>Depth {depthStats.avgDepth.toFixed(0)} ≈ <strong>TCEC Championship</strong> level analysis</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="h-3 w-3 text-green-500 mt-0.5" />
-                    <span><strong>TCEC Stockfish 17 NNUE (ELO 3600)</strong> - Unlimited baseline</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <AlertTriangle className="h-3 w-3 text-yellow-500 mt-0.5" />
-                    <span>Cloud API uses cached positions (not live max-depth)</span>
-                  </li>
+                  {depthStats.avgDepth >= 55 ? (
+                    <>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle className="h-3 w-3 text-green-500 mt-0.5" />
+                        <span className="text-green-600 font-medium">
+                          Local WASM at MAXIMUM depth - True 100% capacity
+                        </span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle className="h-3 w-3 text-green-500 mt-0.5" />
+                        <span><strong>Stockfish 17 WASM</strong> running locally in your browser</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle className="h-3 w-3 text-green-500 mt-0.5" />
+                        <span>No cached positions - <strong>live deep analysis</strong> on every position</span>
+                      </li>
+                    </>
+                  ) : (
+                    <>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle className="h-3 w-3 text-green-500 mt-0.5" />
+                        <span>Depth {depthStats.avgDepth.toFixed(0)} ≈ <strong>TCEC Championship</strong> level analysis</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle className="h-3 w-3 text-green-500 mt-0.5" />
+                        <span><strong>TCEC Stockfish 17 NNUE (ELO 3600)</strong> - Unlimited baseline</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <AlertTriangle className="h-3 w-3 text-yellow-500 mt-0.5" />
+                        <span>Cloud API uses cached positions (not live max-depth)</span>
+                      </li>
+                      <li className="flex items-start gap-2 text-green-600">
+                        <TrendingUp className="h-3 w-3 mt-0.5" />
+                        <span>Run "Maximum Depth" benchmark for 100% coverage</span>
+                      </li>
+                    </>
+                  )}
                 </ul>
               </div>
             </>

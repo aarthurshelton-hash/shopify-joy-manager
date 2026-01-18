@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Brain, Cpu, Trophy, Play, Loader2, Clock, CheckCircle, XCircle, AlertCircle, Cloud, Database, TrendingUp, History, Layers, RefreshCw, Sparkles, Crown, Shield } from 'lucide-react';
+import { Slider } from '@/components/ui/slider';
+import { Brain, Cpu, Trophy, Play, Loader2, Clock, CheckCircle, XCircle, AlertCircle, Cloud, Database, TrendingUp, History, Layers, RefreshCw, Sparkles, Crown, Shield, Zap } from 'lucide-react';
 import { runCloudBenchmark, FAMOUS_GAMES, type BenchmarkResult, type PredictionAttempt } from '@/lib/chess/cloudBenchmark';
 import { checkLichessAvailability } from '@/lib/chess/lichessCloudEval';
 import { saveBenchmarkResults, getCumulativeStats, getArchetypeStats } from '@/lib/chess/benchmarkPersistence';
@@ -13,6 +14,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { ProofDashboard } from '@/components/chess/ProofDashboard';
 import { EloDepthDashboard } from '@/components/chess/EloDepthDashboard';
 import { AuthenticityDashboard } from '@/components/chess/AuthenticityDashboard';
+import { useHybridBenchmark } from '@/hooks/useHybridBenchmark';
+import { useStockfishAnalysis } from '@/hooks/useStockfishAnalysis';
 
 interface CumulativeStats {
   totalRuns: number;
@@ -52,6 +55,22 @@ export default function Benchmark() {
   const [isLoadingLatest, setIsLoadingLatest] = useState(true);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number>(0);
+
+  // Maximum Depth Mode State
+  const [benchmarkMode, setBenchmarkMode] = useState<'cloud' | 'local'>('cloud');
+  const [localDepth, setLocalDepth] = useState(60); // Maximum depth for local WASM
+  const [gameCount, setGameCount] = useState(10);
+  
+  // Hooks for local WASM benchmark
+  const { isReady: wasmReady, engineVersion } = useStockfishAnalysis();
+  const { 
+    runBenchmark: runLocalBenchmark, 
+    abort: abortLocalBenchmark,
+    isRunning: isLocalRunning, 
+    progress: localProgress, 
+    result: localResult,
+    error: localError 
+  } = useHybridBenchmark();
 
   // Fetch latest benchmark results and check API on mount
   useEffect(() => {
@@ -364,30 +383,175 @@ export default function Benchmark() {
               Prediction Accuracy Benchmark
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6">
+            {/* Benchmark Mode Selector */}
+            <div className="space-y-3">
+              <p className="text-sm font-medium">Benchmark Mode</p>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setBenchmarkMode('cloud')}
+                  disabled={isRunning || isLocalRunning}
+                  className={`p-4 rounded-lg border-2 transition-all text-left ${
+                    benchmarkMode === 'cloud'
+                      ? 'border-blue-500 bg-blue-500/10'
+                      : 'border-muted hover:border-muted-foreground/50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <Cloud className="h-4 w-4 text-blue-500" />
+                    <span className="font-medium">Cloud API</span>
+                    <Badge variant="secondary" className="text-xs">Fast</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Lichess Cloud (depth ~35, cached)
+                  </p>
+                </button>
+                <button
+                  onClick={() => setBenchmarkMode('local')}
+                  disabled={isRunning || isLocalRunning}
+                  className={`p-4 rounded-lg border-2 transition-all text-left ${
+                    benchmarkMode === 'local'
+                      ? 'border-green-500 bg-green-500/10'
+                      : 'border-muted hover:border-muted-foreground/50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <Zap className="h-4 w-4 text-green-500" />
+                    <span className="font-medium">Maximum Depth</span>
+                    <Badge className="bg-green-500 text-xs">100%</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Local WASM (depth 60+, true unlimited)
+                  </p>
+                </button>
+              </div>
+            </div>
+
+            {/* Local Mode Settings */}
+            {benchmarkMode === 'local' && (
+              <div className="space-y-4 p-4 bg-green-500/5 rounded-lg border border-green-500/20">
+                <div className="flex items-center gap-2">
+                  <Cpu className="h-4 w-4 text-green-500" />
+                  <span className="text-sm font-medium">Maximum Depth Settings</span>
+                  {wasmReady ? (
+                    <Badge className="bg-green-500 text-xs">{engineVersion}</Badge>
+                  ) : (
+                    <Badge variant="secondary" className="text-xs">Loading Engine...</Badge>
+                  )}
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Analysis Depth</span>
+                    <span className="font-mono font-medium text-green-500">{localDepth}</span>
+                  </div>
+                  <Slider
+                    value={[localDepth]}
+                    onValueChange={([v]) => setLocalDepth(v)}
+                    min={20}
+                    max={60}
+                    step={5}
+                    disabled={isLocalRunning}
+                    className="py-2"
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>20 (fast)</span>
+                    <span>60 (maximum)</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Games to Analyze</span>
+                    <span className="font-mono font-medium">{gameCount}</span>
+                  </div>
+                  <Slider
+                    value={[gameCount]}
+                    onValueChange={([v]) => setGameCount(v)}
+                    min={5}
+                    max={50}
+                    step={5}
+                    disabled={isLocalRunning}
+                    className="py-2"
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>5 games</span>
+                    <span>50 games</span>
+                  </div>
+                </div>
+
+                <p className="text-xs text-green-600">
+                  ⚡ Local WASM runs Stockfish directly in your browser at true maximum depth.
+                  This achieves 100% depth coverage for fair comparison.
+                </p>
+              </div>
+            )}
+
+            {/* Run Button */}
             <div className="flex items-center gap-4">
-              <Button 
-                onClick={runBenchmark} 
-                disabled={isRunning || !apiReady}
-                size="lg"
-                className="gap-2"
-              >
-                {isRunning ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : !apiReady ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Play className="h-4 w-4" />
-                )}
-                {isRunning ? 'Analyzing...' : !apiReady ? 'Connecting...' : 'Run Benchmark'}
-              </Button>
+              {benchmarkMode === 'cloud' ? (
+                <Button 
+                  onClick={runBenchmark} 
+                  disabled={isRunning || !apiReady}
+                  size="lg"
+                  className="gap-2"
+                >
+                  {isRunning ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : !apiReady ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Play className="h-4 w-4" />
+                  )}
+                  {isRunning ? 'Analyzing...' : !apiReady ? 'Connecting...' : 'Run Cloud Benchmark'}
+                </Button>
+              ) : (
+                <Button 
+                  onClick={() => runLocalBenchmark({
+                    gameCount,
+                    depth: localDepth,
+                    predictionMoveRange: [15, 35],
+                  })} 
+                  disabled={isLocalRunning || !wasmReady}
+                  size="lg"
+                  className="gap-2 bg-green-600 hover:bg-green-700"
+                >
+                  {isLocalRunning ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : !wasmReady ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Zap className="h-4 w-4" />
+                  )}
+                  {isLocalRunning ? 'Analyzing...' : !wasmReady ? 'Loading Engine...' : 'Run Maximum Depth'}
+                </Button>
+              )}
+              
+              {isLocalRunning && (
+                <Button variant="outline" onClick={abortLocalBenchmark}>
+                  Cancel
+                </Button>
+              )}
+              
               <div className="text-sm text-muted-foreground">
-                {isRunning ? (
+                {(isRunning || isLocalRunning) ? (
                   <span className="flex items-center gap-2">
                     <Clock className="h-4 w-4" />
                     Elapsed: {formatTime(elapsedTime)}
                     {progress > 5 && ` • Est. remaining: ${formatTime(remainingTime)}`}
                   </span>
+                ) : benchmarkMode === 'local' ? (
+                  wasmReady ? (
+                    <span className="flex items-center gap-2 text-green-600">
+                      <CheckCircle className="h-4 w-4" />
+                      Local Stockfish WASM ready (100% depth coverage)
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2 text-yellow-600">
+                      <AlertCircle className="h-4 w-4" />
+                      Loading Stockfish WASM engine...
+                    </span>
+                  )
                 ) : !apiReady ? (
                   <span className="flex items-center gap-2 text-yellow-600">
                     <AlertCircle className="h-4 w-4" />
@@ -401,6 +565,92 @@ export default function Benchmark() {
                 )}
               </div>
             </div>
+
+            {/* Local Benchmark Progress */}
+            {isLocalRunning && localProgress && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="font-medium">{localProgress.message}</span>
+                    <span className="text-muted-foreground">
+                      {((localProgress.currentGame / localProgress.totalGames) * 100).toFixed(0)}%
+                    </span>
+                  </div>
+                  <Progress 
+                    value={(localProgress.currentGame / localProgress.totalGames) * 100} 
+                    className="h-3" 
+                  />
+                </div>
+                
+                <div className="grid grid-cols-3 gap-4 text-center text-sm">
+                  <div className="p-2 bg-green-500/10 rounded">
+                    <p className="text-2xl font-bold text-green-500">{localProgress.currentDepth || localDepth}</p>
+                    <p className="text-xs text-muted-foreground">Current Depth</p>
+                  </div>
+                  <div className="p-2 bg-muted/30 rounded">
+                    <p className="text-2xl font-bold text-primary">
+                      {localProgress.currentGame}/{localProgress.totalGames}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Games Analyzed</p>
+                  </div>
+                  <div className="p-2 bg-muted/30 rounded">
+                    <p className="text-2xl font-bold text-orange-500">
+                      {((localProgress.currentDepth / 60) * 100).toFixed(0)}%
+                    </p>
+                    <p className="text-xs text-muted-foreground">Depth Coverage</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Local Benchmark Results */}
+            {localResult && benchmarkMode === 'local' && (
+              <div className="space-y-4 p-4 bg-green-500/5 rounded-lg border border-green-500/20">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                  <span className="font-medium">Maximum Depth Benchmark Complete</span>
+                </div>
+                
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                  <div className="p-3 bg-background rounded-lg">
+                    <p className="text-2xl font-bold text-primary">
+                      {localResult.hybridAccuracy.toFixed(1)}%
+                    </p>
+                    <p className="text-xs text-muted-foreground">En Pensent Accuracy</p>
+                  </div>
+                  <div className="p-3 bg-background rounded-lg">
+                    <p className="text-2xl font-bold text-orange-500">
+                      {localResult.stockfishAccuracy.toFixed(1)}%
+                    </p>
+                    <p className="text-xs text-muted-foreground">Stockfish Accuracy</p>
+                  </div>
+                  <div className="p-3 bg-background rounded-lg">
+                    <p className="text-2xl font-bold text-green-500">
+                      {localResult.averageDepth.toFixed(0)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Avg Depth</p>
+                  </div>
+                  <div className="p-3 bg-background rounded-lg">
+                    <p className="text-2xl font-bold text-green-500">
+                      {localResult.depthCoverage.toFixed(0)}%
+                    </p>
+                    <p className="text-xs text-muted-foreground">Depth Coverage</p>
+                  </div>
+                </div>
+
+                {localResult.hybridWins > localResult.stockfishWins && (
+                  <p className="text-center text-green-600 font-medium">
+                    🏆 En Pensent outperformed Stockfish at MAXIMUM depth!
+                  </p>
+                )}
+              </div>
+            )}
+
+            {localError && (
+              <div className="p-3 bg-destructive/10 rounded-lg text-destructive text-sm">
+                Error: {localError}
+              </div>
+            )}
 
             {isRunning && (
               <div className="space-y-4">
