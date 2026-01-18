@@ -66,6 +66,7 @@ import StrategicPlan from "./pages/StrategicPlan";
 import ScalpingTerminalPage from "./pages/ScalpingTerminalPage";
 import Showcase from "./pages/Showcase";
 import AdminSystemVitals from "./pages/AdminSystemVitals";
+import Benchmark from "./pages/Benchmark";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -149,6 +150,7 @@ const App = () => (
               <Route path="/stock-predictions" element={<AdminRoute featureName="Stock Predictions"><StockPredictions /></AdminRoute>} />
               <Route path="/strategic-plan" element={<AdminRoute featureName="Strategic Plan"><StrategicPlan /></AdminRoute>} />
               <Route path="/trading" element={<AdminRoute featureName="Trading Terminal"><ScalpingTerminalPage /></AdminRoute>} />
+              <Route path="/benchmark" element={<AdminRoute featureName="Benchmark"><Benchmark /></AdminRoute>} />
               
               {/* Admin Control Center */}
               <Route path="/admin/ceo-dashboard" element={<AdminRoute featureName="CEO Dashboard"><AdminCEODashboard /></AdminRoute>} />
