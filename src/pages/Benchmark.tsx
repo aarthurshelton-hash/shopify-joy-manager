@@ -20,17 +20,61 @@ export default function Benchmark() {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number>(0);
 
-  // Check engine status on mount
+  // Check engine status on mount with polling
   useEffect(() => {
+    let cancelled = false;
+    let pollInterval: NodeJS.Timeout | null = null;
+    
     const checkEngine = async () => {
-      setInitPhase('Loading Stockfish WASM engine...');
-      const engine = getStockfishEngine();
-      const ready = await engine.waitReady();
-      setEngineReady(ready);
-      setInitPhase(ready ? 'Engine ready' : 'Engine failed to load');
-      console.log('[Benchmark] Stockfish engine ready:', ready);
+      setInitPhase('Initializing Stockfish worker...');
+      console.log('[Benchmark] Starting engine check...');
+      
+      try {
+        const engine = getStockfishEngine();
+        
+        // Poll every 500ms for status updates
+        let attempts = 0;
+        const maxAttempts = 30; // 15 seconds max wait
+        
+        pollInterval = setInterval(() => {
+          attempts++;
+          const ready = engine.available;
+          console.log(`[Benchmark] Poll ${attempts}: ready=${ready}`);
+          
+          if (ready && !cancelled) {
+            setEngineReady(true);
+            setInitPhase('Stockfish 10 ready!');
+            if (pollInterval) clearInterval(pollInterval);
+          } else if (attempts >= maxAttempts && !cancelled) {
+            setInitPhase('Engine load timeout - please refresh');
+            if (pollInterval) clearInterval(pollInterval);
+          } else if (!cancelled) {
+            setInitPhase(`Loading Stockfish... (${attempts}s)`);
+          }
+        }, 500);
+        
+        // Also await the engine
+        const ready = await engine.waitReady();
+        if (!cancelled) {
+          if (pollInterval) clearInterval(pollInterval);
+          setEngineReady(ready);
+          setInitPhase(ready ? 'Stockfish 10 ready!' : 'Engine failed to load - try refreshing');
+          console.log('[Benchmark] Final engine status:', ready);
+        }
+      } catch (err) {
+        console.error('[Benchmark] Engine init error:', err);
+        if (!cancelled) {
+          setInitPhase('Engine error - try refreshing');
+        }
+      }
     };
+    
     checkEngine();
+    
+    return () => {
+      cancelled = true;
+      if (pollInterval) clearInterval(pollInterval);
+    };
   }, []);
 
   // Timer for elapsed time
