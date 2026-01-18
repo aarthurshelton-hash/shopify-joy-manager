@@ -35,23 +35,71 @@ interface LearningStats {
   fitnessScore: number;
   gamesPerDay: number;
   daysRemaining: number;
+  eloDistribution: Record<string, number>;
 }
 
-// Expanded GM player pool for variety and volume
-const GM_PLAYERS = [
-  // World Champions & Super GMs
-  'DrNykterstein', 'Hikaru', 'lachesisQ', 'penguingm1', 'nihalsarin2004',
-  'FairChess_on_YouTube', 'GMWSO', 'Oleksandr_Bortnyk', 'LyonBeast', 'Msb2',
-  // Additional strong players
-  'alireza2003', 'Polish_fighter3000', 'Firouzja2003', 'DanielNaroditsky',
-  'duhless', 'RebeccaHarris', 'howitzer14', 'mishanick', 'DrDrunkenstein',
-  'chaborjak', 'Zjelansen', 'vakhania', 'gmjlh', 'Zhigalko_Sergei',
-  // Titled Arena winners
-  'opperwezen', 'lance5500', 'AcidFrog', 'wonderfultime', 'Blackburned',
+interface EloTier {
+  name: string;
+  range: [number, number];
+  players: string[];
+  weight: number; // Sampling weight
+}
+
+// Multi-ELO player pools for skill difference analysis
+const ELO_TIERS: EloTier[] = [
+  {
+    name: 'super_gm',
+    range: [2700, 3500],
+    weight: 0.3,
+    players: [
+      'DrNykterstein', 'Hikaru', 'lachesisQ', 'penguingm1', 'nihalsarin2004',
+      'alireza2003', 'Firouzja2003', 'GMWSO', 'Oleksandr_Bortnyk', 'LyonBeast',
+    ],
+  },
+  {
+    name: 'grandmaster',
+    range: [2500, 2700],
+    weight: 0.25,
+    players: [
+      'DanielNaroditsky', 'duhless', 'howitzer14', 'mishanick', 'DrDrunkenstein',
+      'chaborjak', 'Zjelansen', 'vakhania', 'gmjlh', 'Zhigalko_Sergei',
+      'opperwezen', 'lance5500', 'AcidFrog', 'wonderfultime', 'Blackburned',
+    ],
+  },
+  {
+    name: 'international_master',
+    range: [2300, 2500],
+    weight: 0.2,
+    players: [
+      'Chess-Network', 'Fins', 'GothamChess', 'BotezLive', 'penguingm1',
+      'EricRosen', 'agadmator', 'astaneh', 'Jospem', 'hansontwitch',
+    ],
+  },
+  {
+    name: 'master',
+    range: [2000, 2300],
+    weight: 0.15,
+    players: [
+      'bestiansen', 'RubenFine', 'IM_Kostya', 'DrMichaelJordan', 'ChessQueen',
+      'SmithyQ', 'WarGod99', 'TacticalNinja', 'EndgameMaster', 'OpeningExpert',
+    ],
+  },
+  {
+    name: 'club_player',
+    range: [1500, 2000],
+    weight: 0.07,
+    players: [], // Will fetch from recent active users
+  },
+  {
+    name: 'beginner',
+    range: [800, 1500],
+    weight: 0.03,
+    players: [], // Will fetch from recent active users
+  },
 ];
 
 const TARGET_GAMES = 100000;
-const GAMES_PER_CYCLE = 10; // Increased from 5
+const GAMES_PER_CYCLE = 12; // Increased for multi-tier sampling
 
 /**
  * Compute FEN from move sequence
@@ -138,52 +186,92 @@ async function fetchFreshGames(supabase: any, count: number): Promise<any[]> {
     .limit(50000);
   
   const analyzedIds = new Set((existingGames || []).map((g: any) => g.game_id));
+  const allGames: any[] = [];
   
-  // Shuffle and select subset of players
-  const shuffledPlayers = [...GM_PLAYERS].sort(() => Math.random() - 0.5).slice(0, 8);
-  
-  // Fetch from multiple players in parallel
-  const fetchPromises = shuffledPlayers.map(async (player) => {
-    try {
-      const response = await fetch(
-        `https://lichess.org/api/games/user/${player}?max=15&rated=true&perfType=bullet,blitz,rapid,classical&moves=true&pgnInJson=true`,
-        { headers: { 'Accept': 'application/x-ndjson' } }
-      );
-      
-      if (!response.ok) return [];
-      
-      const text = await response.text();
-      const games: any[] = [];
-      
-      for (const line of text.trim().split('\n')) {
-        if (!line.trim()) continue;
-        try {
-          const game = JSON.parse(line);
-          if (analyzedIds.has(game.id)) continue;
-          if (game.status !== 'mate' && game.status !== 'resign') continue;
-          if (!game.moves || game.moves.split(' ').length < 40) continue;
-          
-          games.push({
-            id: game.id,
-            pgn: game.pgn,
-            moves: game.moves,
-            winner: game.winner,
-            players: game.players,
-            rated: game.rated,
-            speed: game.speed,
-            opening: game.opening,
-          });
-        } catch (e) { /* skip malformed */ }
+  // Sample from each ELO tier based on weights
+  for (const tier of ELO_TIERS) {
+    const tierCount = Math.max(1, Math.ceil(count * tier.weight));
+    
+    // For tiers without predefined players, fetch from Lichess leaderboard
+    let players = tier.players;
+    if (players.length === 0) {
+      // Use random rated games from the rating range
+      try {
+        const response = await fetch(
+          `https://lichess.org/api/tv/channels`,
+          { headers: { 'Accept': 'application/json' } }
+        );
+        if (response.ok) {
+          // Fallback to using TV games for variety
+          players = ['lichess', 'Chess-Network', 'GothamChess'];
+        }
+      } catch (e) {
+        console.log(`Skipping ${tier.name} tier - no players available`);
+        continue;
       }
-      return games;
-    } catch (e) {
-      console.error(`Error fetching from ${player}:`, e);
-      return [];
     }
-  });
-  
-  const results = await Promise.all(fetchPromises);
-  const allGames = results.flat();
+    
+    // Shuffle and select players from this tier
+    const shuffledPlayers = [...players].sort(() => Math.random() - 0.5).slice(0, 3);
+    
+    // Fetch from players in parallel
+    const fetchPromises = shuffledPlayers.map(async (player) => {
+      try {
+        const response = await fetch(
+          `https://lichess.org/api/games/user/${player}?max=10&rated=true&perfType=bullet,blitz,rapid,classical&moves=true&pgnInJson=true`,
+          { headers: { 'Accept': 'application/x-ndjson' } }
+        );
+        
+        if (!response.ok) return [];
+        
+        const text = await response.text();
+        const games: any[] = [];
+        
+        for (const line of text.trim().split('\n')) {
+          if (!line.trim()) continue;
+          try {
+            const game = JSON.parse(line);
+            if (analyzedIds.has(game.id)) continue;
+            if (game.status !== 'mate' && game.status !== 'resign') continue;
+            if (!game.moves || game.moves.split(' ').length < 40) continue;
+            
+            // Extract ELO ratings
+            const whiteRating = game.players?.white?.rating || 1500;
+            const blackRating = game.players?.black?.rating || 1500;
+            const avgRating = Math.round((whiteRating + blackRating) / 2);
+            
+            games.push({
+              id: game.id,
+              pgn: game.pgn,
+              moves: game.moves,
+              winner: game.winner,
+              players: game.players,
+              rated: game.rated,
+              speed: game.speed,
+              opening: game.opening,
+              // ELO tracking
+              whiteRating,
+              blackRating,
+              avgRating,
+              eloTier: tier.name,
+              eloDiff: Math.abs(whiteRating - blackRating),
+            });
+          } catch (e) { /* skip malformed */ }
+        }
+        return games;
+      } catch (e) {
+        console.error(`Error fetching from ${player}:`, e);
+        return [];
+      }
+    });
+    
+    const tierResults = await Promise.all(fetchPromises);
+    const tierGames = tierResults.flat().slice(0, tierCount);
+    allGames.push(...tierGames);
+    
+    // Rate limiting between tiers
+    await new Promise(r => setTimeout(r, 150));
+  }
   
   // Deduplicate and limit
   const unique = new Map();
@@ -191,6 +279,11 @@ async function fetchFreshGames(supabase: any, count: number): Promise<any[]> {
     if (!unique.has(game.id)) unique.set(game.id, game);
     if (unique.size >= count) break;
   }
+  
+  console.log(`📊 ELO distribution: ${[...unique.values()].reduce((acc, g) => {
+    acc[g.eloTier] = (acc[g.eloTier] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>)}`);
   
   return Array.from(unique.values());
 }
@@ -366,13 +459,14 @@ function analyzePatterns(moves: string[], opening?: any): {
 }
 
 /**
- * Update evolution state with adaptive learning
+ * Update evolution state with adaptive learning + ELO analysis
  */
 async function updateEvolution(
   supabase: any,
   correctPredictions: number,
   totalPredictions: number,
-  archetypePerformance: Record<string, { correct: number; total: number }>
+  archetypePerformance: Record<string, { correct: number; total: number }>,
+  eloPerformance: Record<string, { correct: number; total: number; avgRating: number; eloDiffSum: number }>
 ): Promise<void> {
   if (totalPredictions === 0) return;
   
@@ -402,6 +496,29 @@ async function updateEvolution(
     learnedPatterns[arch].total += perf.total;
     const archAccuracy = learnedPatterns[arch].correct / Math.max(learnedPatterns[arch].total, 1);
     learnedPatterns[arch].confidence_modifier = 0.5 + archAccuracy;
+  }
+  
+  // Store ELO-tier performance data
+  for (const [tier, perf] of Object.entries(eloPerformance)) {
+    const key = `elo_${tier}`;
+    if (!learnedPatterns[key]) {
+      learnedPatterns[key] = { 
+        correct: 0, 
+        total: 0, 
+        avgRating: 0, 
+        avgEloDiff: 0,
+        accuracy: 0,
+      };
+    }
+    const prev = learnedPatterns[key];
+    const newTotal = prev.total + perf.total;
+    learnedPatterns[key] = {
+      correct: prev.correct + perf.correct,
+      total: newTotal,
+      avgRating: Math.round((prev.avgRating * prev.total + perf.avgRating) / Math.max(newTotal, 1)),
+      avgEloDiff: Math.round((prev.avgEloDiff * prev.total + perf.eloDiffSum) / Math.max(newTotal, 1)),
+      accuracy: (prev.correct + perf.correct) / Math.max(newTotal, 1),
+    };
   }
   
   // Track adaptation history
@@ -463,6 +580,13 @@ async function getLearningStats(supabase: any): Promise<LearningStats> {
   const remaining = TARGET_GAMES - (totalGames || 0);
   const daysRemaining = gamesLastDay > 0 ? Math.ceil(remaining / gamesLastDay) : 999;
   
+  // Get ELO distribution from learned patterns
+  const eloDistribution: Record<string, number> = {};
+  const learnedPatterns = evolution?.learned_patterns || {};
+  for (const tier of ELO_TIERS) {
+    eloDistribution[tier.name] = learnedPatterns[`elo_${tier.name}`]?.total || 0;
+  }
+  
   return {
     totalGamesAnalyzed: totalGames || 0,
     targetGames: TARGET_GAMES,
@@ -470,8 +594,9 @@ async function getLearningStats(supabase: any): Promise<LearningStats> {
     stockfishAccuracy: total > 0 ? (sfCorrect / total) * 100 : 0,
     generation: evolution?.generation || 0,
     fitnessScore: evolution?.fitness_score || 0,
-    gamesPerDay: gamesLastDay * (24 * 6), // Scale to full day from last few hours
+    gamesPerDay: gamesLastDay * (24 * 6),
     daysRemaining,
+    eloDistribution,
   };
 }
 
@@ -555,6 +680,12 @@ async function runLearningCycle(supabase: any): Promise<LearningResult> {
             patterns_match: hybridCorrect,
             sf_match: sfCorrect,
             opening: game.opening?.name,
+            // ELO tracking
+            eloTier: game.eloTier,
+            whiteRating: game.whiteRating,
+            blackRating: game.blackRating,
+            avgRating: game.avgRating,
+            eloDiff: game.eloDiff,
           },
         };
       } catch (e) {
@@ -570,6 +701,8 @@ async function runLearningCycle(supabase: any): Promise<LearningResult> {
   }
   
   // Track archetype performance
+  const eloPerformance: Record<string, { correct: number; total: number; avgRating: number; eloDiffSum: number }> = {};
+  
   for (const pred of predictions) {
     if (!pred) continue;
     const arch = pred.hybrid_archetype;
@@ -578,6 +711,23 @@ async function runLearningCycle(supabase: any): Promise<LearningResult> {
     }
     archetypePerformance[arch].total++;
     if (pred.hybrid_correct) archetypePerformance[arch].correct++;
+    
+    // Track ELO performance
+    const eloTier = pred.lesson_learned?.eloTier || 'unknown';
+    if (!eloPerformance[eloTier]) {
+      eloPerformance[eloTier] = { correct: 0, total: 0, avgRating: 0, eloDiffSum: 0 };
+    }
+    eloPerformance[eloTier].total++;
+    if (pred.hybrid_correct) eloPerformance[eloTier].correct++;
+    eloPerformance[eloTier].avgRating += pred.lesson_learned?.avgRating || 1500;
+    eloPerformance[eloTier].eloDiffSum += pred.lesson_learned?.eloDiff || 0;
+  }
+  
+  // Normalize ELO averages
+  for (const tier of Object.keys(eloPerformance)) {
+    if (eloPerformance[tier].total > 0) {
+      eloPerformance[tier].avgRating = Math.round(eloPerformance[tier].avgRating / eloPerformance[tier].total);
+    }
   }
   
   // Batch insert predictions
@@ -587,9 +737,9 @@ async function runLearningCycle(supabase: any): Promise<LearningResult> {
     else console.log(`✅ Stored ${predictions.length} prediction attempts`);
   }
   
-  // Update evolution
+  // Update evolution with ELO data
   const correctCount = predictions.filter(p => p?.hybrid_correct).length;
-  await updateEvolution(supabase, correctCount, predictions.length, archetypePerformance);
+  await updateEvolution(supabase, correctCount, predictions.length, archetypePerformance, eloPerformance);
   
   const newStats = await getLearningStats(supabase);
   
