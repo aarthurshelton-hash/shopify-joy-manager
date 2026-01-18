@@ -153,13 +153,16 @@ export function EloDepthDashboard() {
 
             {/* Stockfish ELO */}
             <div className="text-center p-6 bg-muted/50 rounded-xl border border-muted">
-              <div className="text-sm text-muted-foreground mb-2">Stockfish 17 (Prediction)</div>
+              <div className="text-sm text-muted-foreground mb-2">Stockfish 17 (Playing)</div>
               <div className="text-5xl font-bold text-muted-foreground">
-                {eloEstimate?.stockfishPredictionElo || '—'}
+                3600
               </div>
               <Badge variant="outline" className="mt-2">
-                Position Evaluation
+                FIDE-Equivalent (CCRL/TCEC)
               </Badge>
+              <div className="text-xs text-muted-foreground mt-2">
+                Prediction ELO: {eloEstimate?.stockfishPredictionElo || '—'}
+              </div>
             </div>
 
             {/* Advantage */}
