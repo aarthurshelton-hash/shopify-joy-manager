@@ -229,6 +229,7 @@ export type Database = {
           completed_games: number
           confidence: number | null
           created_at: string
+          data_quality_tier: string | null
           data_source: string
           duration_ms: number | null
           games_analyzed: string[]
@@ -240,6 +241,7 @@ export type Database = {
           prediction_move_number: number
           run_id: string
           stockfish_accuracy: number
+          stockfish_mode: string | null
           stockfish_version: string | null
           stockfish_wins: number
           total_games: number
@@ -251,6 +253,7 @@ export type Database = {
           completed_games: number
           confidence?: number | null
           created_at?: string
+          data_quality_tier?: string | null
           data_source: string
           duration_ms?: number | null
           games_analyzed?: string[]
@@ -262,6 +265,7 @@ export type Database = {
           prediction_move_number?: number
           run_id: string
           stockfish_accuracy: number
+          stockfish_mode?: string | null
           stockfish_version?: string | null
           stockfish_wins?: number
           total_games: number
@@ -273,6 +277,7 @@ export type Database = {
           completed_games?: number
           confidence?: number | null
           created_at?: string
+          data_quality_tier?: string | null
           data_source?: string
           duration_ms?: number | null
           games_analyzed?: string[]
@@ -284,6 +289,7 @@ export type Database = {
           prediction_move_number?: number
           run_id?: string
           stockfish_accuracy?: number
+          stockfish_mode?: string | null
           stockfish_version?: string | null
           stockfish_wins?: number
           total_games?: number
@@ -411,6 +417,7 @@ export type Database = {
           actual_result: string
           benchmark_id: string | null
           created_at: string
+          data_quality_tier: string | null
           fen: string
           game_id: string
           game_name: string
@@ -433,6 +440,7 @@ export type Database = {
           actual_result: string
           benchmark_id?: string | null
           created_at?: string
+          data_quality_tier?: string | null
           fen: string
           game_id: string
           game_name: string
@@ -455,6 +463,7 @@ export type Database = {
           actual_result?: string
           benchmark_id?: string | null
           created_at?: string
+          data_quality_tier?: string | null
           fen?: string
           game_id?: string
           game_name?: string

@@ -32,6 +32,7 @@ export function AuthenticityDashboard({ provenance }: AuthenticityDashboardProps
     maxDepth: number;
     totalPositions: number;
   } | null>(null);
+  const [dataQualityTier, setDataQualityTier] = useState<string>('legacy');
 
   useEffect(() => {
     fetchLatestData();
@@ -39,12 +40,24 @@ export function AuthenticityDashboard({ provenance }: AuthenticityDashboardProps
 
   const fetchLatestData = async () => {
     try {
-      // Get latest benchmark with depth info
+      // Get latest benchmark with depth info and quality tier
       const { data: attempts } = await supabase
         .from('chess_prediction_attempts')
-        .select('stockfish_depth, created_at, game_name')
+        .select('stockfish_depth, created_at, game_name, data_quality_tier')
         .order('created_at', { ascending: false })
         .limit(100);
+
+      // Get latest benchmark result for quality tier
+      const { data: benchmarkResult } = await supabase
+        .from('chess_benchmark_results')
+        .select('data_quality_tier, stockfish_mode, stockfish_version')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (benchmarkResult?.data_quality_tier) {
+        setDataQualityTier(benchmarkResult.data_quality_tier);
+      }
 
       if (attempts && attempts.length > 0) {
         const depths = attempts
@@ -64,6 +77,12 @@ export function AuthenticityDashboard({ provenance }: AuthenticityDashboardProps
         const uniqueGames = [...new Set(attempts.map(a => a.game_name))];
         const latestTime = new Date(attempts[0].created_at);
         
+        // Determine quality tier from attempts
+        const attemptTier = attempts[0].data_quality_tier || 'legacy';
+        if (attemptTier !== 'legacy') {
+          setDataQualityTier(attemptTier);
+        }
+        
         setLatestProvenance({
           runId: `db_${Date.now()}`,
           timestamp: latestTime.toLocaleString(),
@@ -80,7 +99,7 @@ export function AuthenticityDashboard({ provenance }: AuthenticityDashboardProps
           minRating: 2600,
           maxRating: 3000,
           stockfishSource: 'lichess_cloud',
-          stockfishVersion: 'TCEC Stockfish 17 NNUE (ELO 3600)',
+          stockfishVersion: benchmarkResult?.stockfish_version || 'TCEC Stockfish 17 NNUE (ELO 3600)',
           stockfishDepths: depths,
           averageDepth: depths.reduce((a, b) => a + b, 0) / depths.length,
           maxDepthReached: Math.max(...depths),
@@ -148,6 +167,32 @@ export function AuthenticityDashboard({ provenance }: AuthenticityDashboardProps
               </p>
             </div>
           )}
+          
+          {/* Data Quality Tier Indicator */}
+          <div className="mt-4 flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Data Quality:</span>
+            <Badge 
+              variant={dataQualityTier === 'tcec_calibrated' ? 'default' : 'secondary'}
+              className={dataQualityTier === 'tcec_calibrated' 
+                ? 'bg-green-500 hover:bg-green-600' 
+                : dataQualityTier === 'legacy' 
+                  ? 'bg-yellow-500 hover:bg-yellow-600 text-yellow-950' 
+                  : ''
+              }
+            >
+              {dataQualityTier === 'tcec_calibrated' 
+                ? '✓ TCEC Calibrated' 
+                : dataQualityTier === 'tcec_unlimited'
+                  ? '✓✓ TCEC Unlimited'
+                  : '⚠ Legacy Data'
+              }
+            </Badge>
+            {dataQualityTier === 'legacy' && (
+              <span className="text-xs text-yellow-600">
+                (Pre-calibration - run new benchmark for accurate comparison)
+              </span>
+            )}
+          </div>
         </CardContent>
       </Card>
 
