@@ -732,13 +732,13 @@ export default function Benchmark() {
         <Card className="border-dashed">
           <CardContent className="py-4 space-y-2">
             <p className="text-sm text-muted-foreground">
-              <strong>Methodology:</strong> Both systems analyze the same position at FIXED move 20 (no information leak about game length). 
-              Stockfish 16+ NNUE evaluation via Lichess Cloud API (depth 40+, the strongest publicly available).
-              FRESH games fetched each run - randomized, no memorization possible.
+              <strong>Methodology:</strong> Both systems analyze the same position at a RANDOMIZED move point (moves 15-35, preventing pattern memorization). 
+              TCEC Stockfish 17 Unlimited (ELO 3600) serves as tactical ground truth.
+              Games sampled across 6 ELO tiers (800-3500) with weighted distribution for comprehensive coverage.
             </p>
             <p className="text-sm text-muted-foreground">
-              <strong>Fairness:</strong> Neither system sees moves beyond the prediction point. Both predict blind.
-              Results saved to database for continuous learning and accuracy improvement.
+              <strong>Fairness:</strong> Neither system sees moves beyond the prediction point. Both predict blind at identical synchronized positions.
+              Data quality tiers: 'tcec_unlimited' (highest), 'tcec_calibrated', 'legacy'. Results persist to database for continuous learning.
             </p>
             {savedRunId && (
               <p className="text-xs text-green-500 flex items-center gap-1">
