@@ -15,6 +15,7 @@ export interface PredictionAttempt {
   gameId: string;
   gameName: string;
   moveNumber: number;
+  gameMoveCount: number; // Total moves in the game (for horizon analysis)
   fen: string;
   pgn: string;
   
@@ -355,6 +356,7 @@ export async function runCloudBenchmark(
         gameId,
         gameName: game.name,
         moveNumber: movesToPlay,
+        gameMoveCount: history.length, // Track total game length for horizon analysis
         fen,
         pgn: truncatedPgn,
         stockfishEval,
