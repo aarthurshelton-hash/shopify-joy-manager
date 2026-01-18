@@ -72,6 +72,7 @@ export class ProvenanceTracker {
   private gameIds: string[] = [];
   private ratings: number[] = [];
   private depths: number[] = [];
+  private randomMoveNumbers: number[] = [];
   
   constructor() {
     this.startTime = Date.now();
@@ -79,6 +80,28 @@ export class ProvenanceTracker {
     this.record.fetchedAt = this.startTime;
     this.record.timestamp = new Date(this.startTime).toLocaleString();
     this.record.isoTimestamp = new Date(this.startTime).toISOString();
+  }
+  
+  /**
+   * Track randomized move number used for prediction
+   */
+  addRandomMoveNumber(moveNumber: number): void {
+    this.randomMoveNumbers.push(moveNumber);
+  }
+  
+  /**
+   * Get move number statistics
+   */
+  getMoveNumberStats(): { min: number; max: number; avg: number; moves: number[] } {
+    if (this.randomMoveNumbers.length === 0) {
+      return { min: 20, max: 20, avg: 20, moves: [] };
+    }
+    return {
+      min: Math.min(...this.randomMoveNumbers),
+      max: Math.max(...this.randomMoveNumbers),
+      avg: Math.round(this.randomMoveNumbers.reduce((a, b) => a + b, 0) / this.randomMoveNumbers.length),
+      moves: [...this.randomMoveNumbers],
+    };
   }
   
   /**
