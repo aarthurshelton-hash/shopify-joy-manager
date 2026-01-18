@@ -3,8 +3,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Brain, Cpu, Trophy, Play, Loader2, Clock, CheckCircle, XCircle, Minus } from 'lucide-react';
+import { Brain, Cpu, Trophy, Play, Loader2, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { runQuickBenchmark, FAMOUS_GAMES_BENCHMARK, type BenchmarkResult, type PredictionAttempt } from '@/lib/chess/benchmark';
+import { getStockfishEngine } from '@/lib/chess/stockfishEngine';
 
 export default function Benchmark() {
   const [isRunning, setIsRunning] = useState(false);
@@ -14,8 +15,23 @@ export default function Benchmark() {
   const [elapsedTime, setElapsedTime] = useState(0);
   const [result, setResult] = useState<BenchmarkResult | null>(null);
   const [liveAttempts, setLiveAttempts] = useState<PredictionAttempt[]>([]);
+  const [engineReady, setEngineReady] = useState(false);
+  const [initPhase, setInitPhase] = useState('');
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number>(0);
+
+  // Check engine status on mount
+  useEffect(() => {
+    const checkEngine = async () => {
+      setInitPhase('Loading Stockfish WASM engine...');
+      const engine = getStockfishEngine();
+      const ready = await engine.waitReady();
+      setEngineReady(ready);
+      setInitPhase(ready ? 'Engine ready' : 'Engine failed to load');
+      console.log('[Benchmark] Stockfish engine ready:', ready);
+    };
+    checkEngine();
+  }, []);
 
   // Timer for elapsed time
   useEffect(() => {
@@ -41,6 +57,7 @@ export default function Benchmark() {
   };
 
   const runBenchmark = async () => {
+    console.log('[Benchmark] Starting benchmark...');
     setIsRunning(true);
     setProgress(0);
     setStatus('Initializing Stockfish 17 engine...');
@@ -50,10 +67,27 @@ export default function Benchmark() {
     setElapsedTime(0);
 
     try {
+      // Make sure engine is ready
+      console.log('[Benchmark] Waiting for engine...');
+      const engine = getStockfishEngine();
+      const ready = await engine.waitReady();
+      console.log('[Benchmark] Engine ready:', ready);
+      
+      if (!ready) {
+        setStatus('Error: Stockfish engine failed to initialize');
+        setIsRunning(false);
+        return;
+      }
+
+      setStatus('Engine ready. Starting game analysis...');
+      console.log('[Benchmark] Preparing games...');
+      
       const games = FAMOUS_GAMES_BENCHMARK.map(g => ({
         pgn: g.pgn,
         result: g.result,
       }));
+
+      console.log('[Benchmark] Running benchmark on', games.length, 'games');
 
       // Enhanced progress callback that updates live results
       const benchmarkResult = await runQuickBenchmark(
@@ -61,6 +95,7 @@ export default function Benchmark() {
         20, // Predict at move 20
         18, // Stockfish depth 18
         (statusText, prog) => {
+          console.log('[Benchmark] Progress:', statusText, prog.toFixed(1) + '%');
           setStatus(statusText);
           setProgress(prog);
           
@@ -114,6 +149,27 @@ export default function Benchmark() {
           </p>
         </div>
 
+        {/* Engine Status */}
+        <Card className={`border ${engineReady ? 'border-green-500/50 bg-green-500/5' : 'border-yellow-500/50 bg-yellow-500/5'}`}>
+          <CardContent className="py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {engineReady ? (
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                ) : (
+                  <Loader2 className="h-5 w-5 animate-spin text-yellow-500" />
+                )}
+                <span className="font-medium">
+                  {engineReady ? 'Stockfish 17 WASM Ready' : initPhase || 'Loading engine...'}
+                </span>
+              </div>
+              <Badge variant={engineReady ? 'default' : 'secondary'}>
+                {engineReady ? 'Ready' : 'Loading'}
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Control Panel */}
         <Card className="border-primary/20">
           <CardHeader>
@@ -126,16 +182,18 @@ export default function Benchmark() {
             <div className="flex items-center gap-4">
               <Button 
                 onClick={runBenchmark} 
-                disabled={isRunning}
+                disabled={isRunning || !engineReady}
                 size="lg"
                 className="gap-2"
               >
                 {isRunning ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
+                ) : !engineReady ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <Play className="h-4 w-4" />
                 )}
-                {isRunning ? 'Analyzing...' : 'Run Real Benchmark'}
+                {isRunning ? 'Analyzing...' : !engineReady ? 'Loading Engine...' : 'Run Real Benchmark'}
               </Button>
               <div className="text-sm text-muted-foreground">
                 {isRunning ? (
@@ -143,6 +201,11 @@ export default function Benchmark() {
                     <Clock className="h-4 w-4" />
                     Elapsed: {formatTime(elapsedTime)}
                     {progress > 5 && ` • Est. remaining: ${formatTime(remainingTime)}`}
+                  </span>
+                ) : !engineReady ? (
+                  <span className="flex items-center gap-2 text-yellow-600">
+                    <AlertCircle className="h-4 w-4" />
+                    Please wait for Stockfish WASM to load...
                   </span>
                 ) : (
                   'Analyzes each game position with Stockfish depth 18'
