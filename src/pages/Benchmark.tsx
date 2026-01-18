@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Brain, Cpu, Trophy, Play, Loader2, Clock, CheckCircle, XCircle, AlertCircle, Cloud, Database, TrendingUp, History, Layers, RefreshCw, Sparkles, Crown } from 'lucide-react';
+import { Brain, Cpu, Trophy, Play, Loader2, Clock, CheckCircle, XCircle, AlertCircle, Cloud, Database, TrendingUp, History, Layers, RefreshCw, Sparkles, Crown, Shield } from 'lucide-react';
 import { runCloudBenchmark, FAMOUS_GAMES, type BenchmarkResult, type PredictionAttempt } from '@/lib/chess/cloudBenchmark';
 import { checkLichessAvailability } from '@/lib/chess/lichessCloudEval';
 import { saveBenchmarkResults, getCumulativeStats, getArchetypeStats } from '@/lib/chess/benchmarkPersistence';
@@ -12,6 +12,7 @@ import { calculateDepthMetricsFromBenchmark, type DepthMetrics } from '@/lib/che
 import { supabase } from '@/integrations/supabase/client';
 import { ProofDashboard } from '@/components/chess/ProofDashboard';
 import { EloDepthDashboard } from '@/components/chess/EloDepthDashboard';
+import { AuthenticityDashboard } from '@/components/chess/AuthenticityDashboard';
 
 interface CumulativeStats {
   totalRuns: number;
@@ -220,10 +221,14 @@ export default function Benchmark() {
 
         {/* Main Tabs */}
         <Tabs defaultValue="benchmark" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="benchmark" className="flex items-center gap-2">
               <Brain className="h-4 w-4" />
               Run Benchmark
+            </TabsTrigger>
+            <TabsTrigger value="authenticity" className="flex items-center gap-2">
+              <Shield className="h-4 w-4" />
+              Authenticity
             </TabsTrigger>
             <TabsTrigger value="elo" className="flex items-center gap-2">
               <Crown className="h-4 w-4" />
@@ -234,6 +239,10 @@ export default function Benchmark() {
               Proof Dashboard
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="authenticity" className="mt-6">
+            <AuthenticityDashboard />
+          </TabsContent>
 
           <TabsContent value="elo" className="mt-6">
             <EloDepthDashboard />
@@ -445,15 +454,29 @@ export default function Benchmark() {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {liveAttempts.slice(-3).map((attempt, i) => (
+                {liveAttempts.slice(-5).map((attempt, i) => (
                   <div key={i} className="flex items-center justify-between p-2 bg-muted/30 rounded text-sm">
-                    <span className="font-medium">{attempt.gameName}</span>
-                    <div className="flex gap-4">
-                      <span className={attempt.stockfishCorrect ? 'text-green-500' : 'text-red-500'}>
-                        SF17: {attempt.stockfishCorrect ? '✓' : '✗'}
+                    <div className="flex-1 min-w-0">
+                      <span className="font-medium truncate block">{attempt.gameName}</span>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Cpu className="h-3 w-3" />
+                          Depth: {attempt.stockfishDepth || 'N/A'}
+                        </span>
+                        <span>•</span>
+                        <span>Eval: {attempt.stockfishEval > 0 ? '+' : ''}{attempt.stockfishEval}</span>
+                        <span>•</span>
+                        <span>{attempt.hybridArchetype}</span>
+                      </div>
+                    </div>
+                    <div className="flex gap-3 shrink-0">
+                      <span className={`flex items-center gap-1 ${attempt.stockfishCorrect ? 'text-green-500' : 'text-red-500'}`}>
+                        {attempt.stockfishCorrect ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                        SF17
                       </span>
-                      <span className={attempt.hybridCorrect ? 'text-green-500' : 'text-red-500'}>
-                        Hybrid: {attempt.hybridCorrect ? '✓' : '✗'}
+                      <span className={`flex items-center gap-1 ${attempt.hybridCorrect ? 'text-green-500' : 'text-red-500'}`}>
+                        {attempt.hybridCorrect ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                        En Pensent
                       </span>
                     </div>
                   </div>
