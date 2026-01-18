@@ -71,10 +71,10 @@ export default function Benchmark() {
   };
 
   const runBenchmark = async () => {
-    console.log('[Benchmark] Starting cloud benchmark...');
+    console.log('[Benchmark] Starting cloud benchmark with REAL Lichess games...');
     setIsRunning(true);
     setProgress(0);
-    setStatus('Connecting to Lichess Cloud API...');
+    setStatus('Fetching real games from Lichess top players...');
     setResult(null);
     setLiveAttempts([]);
     setCurrentGame('');
@@ -82,8 +82,11 @@ export default function Benchmark() {
 
     try {
       const benchmarkResult = await runCloudBenchmark(
-        FAMOUS_GAMES,
-        20, // Predict at move 20
+        {
+          gameCount: 50, // Analyze 50 real games
+          predictionMoveNumber: 20,
+          useRealGames: true, // Use REAL Lichess games!
+        },
         (statusText, prog, attempt) => {
           console.log('[Benchmark]', statusText, prog.toFixed(1) + '%');
           setStatus(statusText);
@@ -103,7 +106,7 @@ export default function Benchmark() {
       );
 
       setResult(benchmarkResult);
-      setStatus(`Completed! Analyzed ${benchmarkResult.completedGames} games.`);
+      setStatus(`Completed! Analyzed ${benchmarkResult.completedGames} REAL games from Lichess.`);
     } catch (error) {
       console.error('Benchmark failed:', error);
       setStatus(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -138,7 +141,7 @@ export default function Benchmark() {
             Real predictions • Real games • Real results
           </p>
           <p className="text-sm text-muted-foreground/70 italic">
-            Testing against {FAMOUS_GAMES.length} famous historical games with known outcomes
+            Testing against 50+ real games from top Lichess players (Magnus, Hikaru, Firouzja & more)
           </p>
         </div>
 
