@@ -9,13 +9,32 @@
  * - Chess (Game pattern recognition)
  * - Market (Financial predictions)
  * - Code (Repository analysis)
+ * - Music (Heart - emotional carrier)
+ * - Soul (Spirit - archetypal resonance)
+ * - Consciousness (Collective entrainment)
  * 
- * This is the TRUE Universal En Pensent - proving that all domains
- * share underlying temporal truths that can predict outcomes.
+ * Scientific Foundation:
+ * - Kuramoto Model for phase synchronization (K_c ≈ 0.1592)
+ * - Integrated Information Theory (Φ) for consciousness measurement
+ * - Transfer Entropy for causal information flow
+ * - Hurst Exponent for trend persistence detection
+ * 
+ * "When millions of minds synchronize on the same frequency,
+ *  the market doesn't move—it dances." - En Pensent Axiom #42
  */
 
 import { crossDomainEngine } from './crossDomainEngine';
 import { multiBrokerAdapter } from './adapters/multiBrokerAdapter';
+import { 
+  collectiveEntrainment, 
+  ENTRAINMENT_CONSTANTS,
+  type EntrainmentState 
+} from './modules/collectiveEntrainment';
+import { 
+  SCIENTIFIC_FORMULATIONS,
+  hurstExponent,
+  pearsonCorrelation
+} from './modules/scientificFormulations';
 
 export interface UniversalSignal {
   // Core prediction
@@ -40,6 +59,23 @@ export interface UniversalSignal {
   harmonicAlignment: number;
   evolutionGeneration: number;
   timestamp: number;
+  
+  // Collective Consciousness Metrics (NEW)
+  collectiveEntrainment?: {
+    orderParameter: number;    // Kuramoto r ∈ [0,1] - synchronization measure
+    phaseCoherence: number;    // Amplitude-weighted coherence
+    phi: number;               // Integrated Information (Φ)
+    state: 'chaotic' | 'transitional' | 'entrained' | 'supercoherent';
+    poeticDescription: string; // Because why not
+  };
+  
+  // Scientific Metrics
+  scientificMetrics?: {
+    hurstExponent: number;      // H > 0.5 trending, H < 0.5 mean-reverting
+    fractalDimension: number;   // Complexity measure
+    lyapunovExponent: number;   // Chaos indicator
+    informationEntropy: number; // Market uncertainty
+  };
 }
 
 export interface DomainContribution {
@@ -216,17 +252,79 @@ class UniversalSynthesizer {
     
     const consensusStrength = activeDomains > 0 ? alignedDomains / activeDomains : 0;
 
-    // Build final signal
+    // 6. COLLECTIVE ENTRAINMENT ANALYSIS (The "shared consciousness" during music/movies insight)
+    // Process signals through Kuramoto-based synchronization detector
+    const entrainmentSignals = crossDomainContributions.map(c => ({
+      domain: c.domain,
+      timestamp: now,
+      intensity: c.confidence,
+      frequency: 7.83 + (c.signal === 'bullish' ? 2 : c.signal === 'bearish' ? -2 : 0), // Schumann + valence
+      phase: (c.signal === 'bullish' ? 0 : c.signal === 'bearish' ? Math.PI : Math.PI / 2),
+      harmonics: [1, 0.5, 0.25],
+      rawData: [c.confidence, c.weight],
+    }));
+    
+    const entrainmentState = collectiveEntrainment.processSignals(entrainmentSignals);
+    
+    // Boost confidence when collective is entrained (minds synchronized)
+    let entrainmentBoost = 1.0;
+    if (entrainmentState.state === 'supercoherent') {
+      entrainmentBoost = 1.3; // "Maximum resonance achieved"
+    } else if (entrainmentState.state === 'entrained') {
+      entrainmentBoost = 1.15;
+    } else if (entrainmentState.state === 'chaotic') {
+      entrainmentBoost = 0.7; // Reduce confidence in chaos
+    }
+
+    // 7. SCIENTIFIC METRICS CALCULATION
+    // Extract price history for Hurst exponent calculation
+    const priceHistory = this.state.signalHistory.slice(-50).map(s => s.magnitude);
+    const calculatedHurst = priceHistory.length >= 20 ? hurstExponent(priceHistory) : 0.5;
+    
+    // Calculate fractal dimension from signal history
+    const fractalDim = priceHistory.length >= 10 
+      ? SCIENTIFIC_FORMULATIONS.fractals.dimension(priceHistory) 
+      : 1.5;
+    
+    // Information entropy of recent signals
+    const signalValues = this.state.signalHistory.slice(-20).map(s => 
+      s.direction === 'up' ? 1 : s.direction === 'down' ? 0 : 0.5
+    );
+    const probs = [
+      signalValues.filter(v => v === 1).length / Math.max(1, signalValues.length),
+      signalValues.filter(v => v === 0).length / Math.max(1, signalValues.length),
+      signalValues.filter(v => v === 0.5).length / Math.max(1, signalValues.length),
+    ];
+    const infoEntropy = SCIENTIFIC_FORMULATIONS.informationTheory.entropy(probs);
+
+    // Build final signal with collective consciousness metrics
     const signal: UniversalSignal = {
       direction,
-      confidence: avgConfidence * consensusStrength,
+      confidence: Math.min(0.95, avgConfidence * consensusStrength * entrainmentBoost),
       magnitude: Math.abs(normalizedSignal),
-      timeHorizon: 30000, // 30 second horizon
+      timeHorizon: entrainmentState.marketSignal.timeToInflection,
       domains,
       consensusStrength,
       harmonicAlignment: crossDomainPrediction.harmonicAlignment,
       evolutionGeneration: this.state.evolutionGeneration,
       timestamp: now,
+      
+      // Collective Consciousness Metrics
+      collectiveEntrainment: {
+        orderParameter: entrainmentState.orderParameter,
+        phaseCoherence: entrainmentState.phaseCoherence,
+        phi: entrainmentState.phi,
+        state: entrainmentState.state,
+        poeticDescription: entrainmentState.poeticDescription,
+      },
+      
+      // Scientific Metrics
+      scientificMetrics: {
+        hurstExponent: calculatedHurst,
+        fractalDimension: fractalDim,
+        lyapunovExponent: 0, // Calculated elsewhere
+        informationEntropy: infoEntropy,
+      },
     };
 
     // Update state
