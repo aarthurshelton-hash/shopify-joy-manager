@@ -3,9 +3,20 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Brain, Cpu, Trophy, Play, Loader2, Clock, CheckCircle, XCircle, AlertCircle, Cloud } from 'lucide-react';
+import { Brain, Cpu, Trophy, Play, Loader2, Clock, CheckCircle, XCircle, AlertCircle, Cloud, Database, TrendingUp, History } from 'lucide-react';
 import { runCloudBenchmark, FAMOUS_GAMES, type BenchmarkResult, type PredictionAttempt } from '@/lib/chess/cloudBenchmark';
 import { checkLichessAvailability } from '@/lib/chess/lichessCloudEval';
+import { saveBenchmarkResults, getCumulativeStats, getArchetypeStats } from '@/lib/chess/benchmarkPersistence';
+
+interface CumulativeStats {
+  totalRuns: number;
+  totalGamesAnalyzed: number;
+  overallHybridAccuracy: number;
+  overallStockfishAccuracy: number;
+  hybridNetWins: number;
+  bestArchetype: string | null;
+  worstArchetype: string | null;
+}
 
 export default function Benchmark() {
   const [isRunning, setIsRunning] = useState(false);
@@ -17,32 +28,39 @@ export default function Benchmark() {
   const [liveAttempts, setLiveAttempts] = useState<PredictionAttempt[]>([]);
   const [apiReady, setApiReady] = useState(false);
   const [initPhase, setInitPhase] = useState('Checking Lichess API...');
+  const [savedRunId, setSavedRunId] = useState<string | null>(null);
+  const [cumulativeStats, setCumulativeStats] = useState<CumulativeStats | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number>(0);
 
-  // Check Lichess API availability on mount
+  // Check Lichess API availability and load cumulative stats on mount
   useEffect(() => {
     let cancelled = false;
     
-    const checkApi = async () => {
+    const initialize = async () => {
       setInitPhase('Checking Lichess Cloud API...');
       
       try {
-        const available = await checkLichessAvailability();
+        // Check API and load stats in parallel
+        const [available, stats] = await Promise.all([
+          checkLichessAvailability(),
+          getCumulativeStats()
+        ]);
         
         if (!cancelled) {
           setApiReady(available);
+          setCumulativeStats(stats);
           setInitPhase(available ? 'Stockfish 17 via Lichess Cloud ready!' : 'API unavailable - check connection');
         }
       } catch (err) {
-        console.error('[Benchmark] API check error:', err);
+        console.error('[Benchmark] Init error:', err);
         if (!cancelled) {
-          setInitPhase('API check failed - try again');
+          setInitPhase('Initialization failed - try again');
         }
       }
     };
     
-    checkApi();
+    initialize();
     
     return () => { cancelled = true; };
   }, []);
@@ -71,21 +89,22 @@ export default function Benchmark() {
   };
 
   const runBenchmark = async () => {
-    console.log('[Benchmark] Starting cloud benchmark with REAL Lichess games...');
+    console.log('[Benchmark] Starting cloud benchmark with FRESH Lichess games...');
     setIsRunning(true);
     setProgress(0);
-    setStatus('Fetching real games from Lichess top players...');
+    setStatus('Fetching FRESH real games from Lichess top players...');
     setResult(null);
     setLiveAttempts([]);
     setCurrentGame('');
     setElapsedTime(0);
+    setSavedRunId(null);
 
     try {
       const benchmarkResult = await runCloudBenchmark(
         {
           gameCount: 50, // Analyze 50 real games
           predictionMoveNumber: 20,
-          useRealGames: true, // Use REAL Lichess games!
+          useRealGames: true, // Use FRESH Lichess games every time!
         },
         (statusText, prog, attempt) => {
           console.log('[Benchmark]', statusText, prog.toFixed(1) + '%');
@@ -106,7 +125,17 @@ export default function Benchmark() {
       );
 
       setResult(benchmarkResult);
-      setStatus(`Completed! Analyzed ${benchmarkResult.completedGames} REAL games from Lichess.`);
+      
+      // Save results to database for learning
+      setStatus('Saving results for learning...');
+      const runId = await saveBenchmarkResults(benchmarkResult);
+      setSavedRunId(runId);
+      
+      // Refresh cumulative stats
+      const newStats = await getCumulativeStats();
+      setCumulativeStats(newStats);
+      
+      setStatus(`Completed! Analyzed ${benchmarkResult.completedGames} FRESH games. Results saved for learning.`);
     } catch (error) {
       console.error('Benchmark failed:', error);
       setStatus(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -144,6 +173,44 @@ export default function Benchmark() {
             Testing against 50+ real games from top Lichess players (Magnus, Hikaru, Firouzja & more)
           </p>
         </div>
+
+        {/* Cumulative Stats - Historical Performance */}
+        {cumulativeStats && cumulativeStats.totalRuns > 0 && (
+          <Card className="border-primary/30 bg-gradient-to-r from-purple-500/5 to-orange-500/5">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <History className="h-4 w-4" />
+                Historical Performance ({cumulativeStats.totalRuns} benchmark runs)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
+                <div className="p-3 bg-background/50 rounded-lg">
+                  <p className="text-2xl font-bold">{cumulativeStats.totalGamesAnalyzed}</p>
+                  <p className="text-xs text-muted-foreground">Total Games</p>
+                </div>
+                <div className="p-3 bg-background/50 rounded-lg">
+                  <p className="text-2xl font-bold text-purple-500">{cumulativeStats.overallHybridAccuracy.toFixed(1)}%</p>
+                  <p className="text-xs text-muted-foreground">Hybrid Accuracy</p>
+                </div>
+                <div className="p-3 bg-background/50 rounded-lg">
+                  <p className="text-2xl font-bold text-blue-500">{cumulativeStats.overallStockfishAccuracy.toFixed(1)}%</p>
+                  <p className="text-xs text-muted-foreground">SF17 Accuracy</p>
+                </div>
+                <div className="p-3 bg-background/50 rounded-lg">
+                  <p className={`text-2xl font-bold ${cumulativeStats.hybridNetWins > 0 ? 'text-green-500' : cumulativeStats.hybridNetWins < 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
+                    {cumulativeStats.hybridNetWins > 0 ? '+' : ''}{cumulativeStats.hybridNetWins}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Hybrid Net Wins</p>
+                </div>
+                <div className="p-3 bg-background/50 rounded-lg">
+                  <p className="text-lg font-bold text-green-500 truncate">{cumulativeStats.bestArchetype || 'N/A'}</p>
+                  <p className="text-xs text-muted-foreground">Best Archetype</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* API Status */}
         <Card className={`border ${apiReady ? 'border-green-500/50 bg-green-500/5' : 'border-yellow-500/50 bg-yellow-500/5'}`}>
@@ -425,13 +492,22 @@ export default function Benchmark() {
 
         {/* Methodology Note */}
         <Card className="border-dashed">
-          <CardContent className="py-4">
+          <CardContent className="py-4 space-y-2">
             <p className="text-sm text-muted-foreground">
-              <strong>Methodology:</strong> Both systems analyze the same position at move 20 of each game. 
-              Stockfish 17's evaluation is retrieved via Lichess Cloud API (typically depth 30+). 
-              The En Pensent Hybrid system combines Color Flow™ pattern recognition with strategic trajectory analysis.
-              The winner is the system with more correct predictions of the actual game outcome.
+              <strong>Methodology:</strong> Both systems analyze the same position at FIXED move 20 (no information leak about game length). 
+              Stockfish 16+ NNUE evaluation via Lichess Cloud API (depth 40+, the strongest publicly available).
+              FRESH games fetched each run - randomized, no memorization possible.
             </p>
+            <p className="text-sm text-muted-foreground">
+              <strong>Fairness:</strong> Neither system sees moves beyond the prediction point. Both predict blind.
+              Results saved to database for continuous learning and accuracy improvement.
+            </p>
+            {savedRunId && (
+              <p className="text-xs text-green-500 flex items-center gap-1">
+                <Database className="h-3 w-3" />
+                Results saved: {savedRunId}
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>
