@@ -24,6 +24,7 @@ export type DomainType =
   | 'music'      // The Heart - Musical temporal patterns
   | 'soul'       // The Spirit - Language, culture, archetypes
   | 'satellite'  // Orbital - Space-based observation
+  | 'temporal-consciousness'  // Time perception across consciousness types
   // Future domains (Phase 2+)
   | 'photonic'   // Light-based computing
   | 'medical'    // Diagnostic patterns
