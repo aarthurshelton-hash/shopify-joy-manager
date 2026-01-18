@@ -15,13 +15,14 @@
  */
 
 import { Chess } from 'chess.js';
-import { getStockfishEngine } from '../stockfishEngine';
 import { 
   extractColorFlowSignature, 
   predictFromColorFlow,
   ARCHETYPE_DEFINITIONS
 } from '../colorFlowAnalysis';
 import { simulateGame } from '../gameSimulator';
+import { evaluatePosition, PositionEvaluation } from '../lichessCloudEval';
+import { PositionAnalysis } from '../stockfishEngine';
 
 // Re-export types
 export * from './types';
@@ -33,6 +34,38 @@ import { fuseRecommendations } from './fusedRecommendation';
 import { generateTrajectoryPrediction } from './trajectoryPrediction';
 import { calculateHybridConfidence, calculateCombinedScore } from './confidenceCalculator';
 import { HybridPrediction } from './types';
+
+/**
+ * Convert Lichess Cloud evaluation to PositionAnalysis format
+ */
+function cloudEvalToPositionAnalysis(
+  cloudEval: PositionEvaluation | null,
+  fen: string
+): PositionAnalysis {
+  const cp = cloudEval?.evaluation ?? 0;
+  const isMate = cloudEval?.isMate ?? false;
+  const mateIn = cloudEval?.mateIn;
+  
+  return {
+    fen,
+    bestMove: cloudEval?.bestMove ?? 'e2e4',
+    ponder: cloudEval?.pv?.[1] ?? undefined,
+    evaluation: {
+      score: cp,
+      scoreType: isMate ? 'mate' : 'cp',
+      mateIn: mateIn ?? undefined,
+      depth: cloudEval?.depth ?? 20,
+      nodes: 50000,
+      nps: 0,
+      time: 0,
+      pv: cloudEval?.pv ?? [],
+    },
+    winProbability: cloudEval?.winProbability ?? 50,
+    isCheckmate: false,
+    isStalemate: false,
+    isDraw: false,
+  };
+}
 
 /**
  * Generate a hybrid prediction combining Stockfish tactics with Color Flow strategy
@@ -57,9 +90,9 @@ export async function generateHybridPrediction(
   // Step 2: Extract Color Flow Signature
   const colorSignature = extractColorFlowSignature(board, gameData, totalMoves);
   
-  options.onProgress?.('Analyzing current position with Stockfish', 30);
+  options.onProgress?.('Analyzing current position with Lichess Cloud', 30);
   
-  // Step 3: Get current position for Stockfish analysis
+  // Step 3: Get current position for analysis
   const chess = new Chess();
   try {
     chess.loadPgn(pgn);
@@ -68,10 +101,11 @@ export async function generateHybridPrediction(
   }
   const currentFen = chess.fen();
   
-  // Step 4: Run Stockfish tactical analysis
-  const engine = getStockfishEngine();
-  await engine.waitReady();
-  const positionAnalysis = await engine.analyzePosition(currentFen, { depth, nodes: 80000 });
+  // Step 4: Get Stockfish evaluation from Lichess Cloud API
+  const cloudEval = await evaluatePosition(currentFen);
+  
+  // Convert to PositionAnalysis format expected by other functions
+  const positionAnalysis = cloudEvalToPositionAnalysis(cloudEval, currentFen);
   
   options.onProgress?.('Fusing tactical and strategic analysis', 60);
   
