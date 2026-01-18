@@ -3,11 +3,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Brain, Cpu, Trophy, Play, Loader2, Clock, CheckCircle, XCircle, AlertCircle, Cloud, Database, TrendingUp, History, Layers } from 'lucide-react';
+import { Brain, Cpu, Trophy, Play, Loader2, Clock, CheckCircle, XCircle, AlertCircle, Cloud, Database, TrendingUp, History, Layers, RefreshCw } from 'lucide-react';
 import { runCloudBenchmark, FAMOUS_GAMES, type BenchmarkResult, type PredictionAttempt } from '@/lib/chess/cloudBenchmark';
 import { checkLichessAvailability } from '@/lib/chess/lichessCloudEval';
 import { saveBenchmarkResults, getCumulativeStats, getArchetypeStats } from '@/lib/chess/benchmarkPersistence';
 import { calculateDepthMetricsFromBenchmark, type DepthMetrics } from '@/lib/chess/depthAnalysis';
+import { supabase } from '@/integrations/supabase/client';
 
 interface CumulativeStats {
   totalRuns: number;
@@ -17,6 +18,17 @@ interface CumulativeStats {
   hybridNetWins: number;
   bestArchetype: string | null;
   worstArchetype: string | null;
+}
+
+interface LatestBenchmark {
+  id: string;
+  created_at: string;
+  hybrid_accuracy: number;
+  stockfish_accuracy: number;
+  total_games: number;
+  hybrid_wins: number;
+  stockfish_wins: number;
+  both_correct: number;
 }
 
 export default function Benchmark() {
@@ -32,31 +44,43 @@ export default function Benchmark() {
   const [savedRunId, setSavedRunId] = useState<string | null>(null);
   const [cumulativeStats, setCumulativeStats] = useState<CumulativeStats | null>(null);
   const [depthMetrics, setDepthMetrics] = useState<DepthMetrics | null>(null);
+  const [latestBenchmark, setLatestBenchmark] = useState<LatestBenchmark | null>(null);
+  const [isLoadingLatest, setIsLoadingLatest] = useState(true);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number>(0);
 
-  // Check Lichess API availability and load cumulative stats on mount
+  // Fetch latest benchmark results and check API on mount
   useEffect(() => {
     let cancelled = false;
     
     const initialize = async () => {
-      setInitPhase('Checking Lichess Cloud API...');
+      setInitPhase('Loading latest benchmark state...');
+      setIsLoadingLatest(true);
       
       try {
-        // Check API and load stats in parallel
-        const [available, stats] = await Promise.all([
+        // Fetch latest benchmark, cumulative stats, and check API in parallel
+        const [available, stats, { data: latest }] = await Promise.all([
           checkLichessAvailability(),
-          getCumulativeStats()
+          getCumulativeStats(),
+          supabase
+            .from('chess_benchmark_results')
+            .select('id, created_at, hybrid_accuracy, stockfish_accuracy, total_games, hybrid_wins, stockfish_wins, both_correct')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single()
         ]);
         
         if (!cancelled) {
           setApiReady(available);
           setCumulativeStats(stats);
+          setLatestBenchmark(latest);
+          setIsLoadingLatest(false);
           setInitPhase(available ? 'Stockfish 17 via Lichess Cloud ready!' : 'API unavailable - check connection');
         }
       } catch (err) {
         console.error('[Benchmark] Init error:', err);
         if (!cancelled) {
+          setIsLoadingLatest(false);
           setInitPhase('Initialization failed - try again');
         }
       }
@@ -225,6 +249,48 @@ export default function Benchmark() {
                   <p className="text-xs text-muted-foreground">Best Archetype</p>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Latest Benchmark State - Show when no active result */}
+        {!result && !isRunning && latestBenchmark && (
+          <Card className="border-green-500/30 bg-gradient-to-r from-green-500/5 to-emerald-500/5">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  Latest Benchmark Result
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  {new Date(latestBenchmark.created_at).toLocaleString()}
+                </span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                <div className="p-3 bg-background/50 rounded-lg">
+                  <p className="text-3xl font-bold text-purple-500">{latestBenchmark.hybrid_accuracy.toFixed(1)}%</p>
+                  <p className="text-xs text-muted-foreground">En Pensent</p>
+                </div>
+                <div className="p-3 bg-background/50 rounded-lg">
+                  <p className="text-3xl font-bold text-blue-500">{latestBenchmark.stockfish_accuracy.toFixed(1)}%</p>
+                  <p className="text-xs text-muted-foreground">Stockfish 17</p>
+                </div>
+                <div className="p-3 bg-background/50 rounded-lg">
+                  <p className="text-2xl font-bold">{latestBenchmark.total_games}</p>
+                  <p className="text-xs text-muted-foreground">Games Analyzed</p>
+                </div>
+                <div className="p-3 bg-background/50 rounded-lg">
+                  <p className={`text-2xl font-bold ${latestBenchmark.hybrid_wins > latestBenchmark.stockfish_wins ? 'text-green-500' : 'text-red-500'}`}>
+                    +{latestBenchmark.hybrid_wins - latestBenchmark.stockfish_wins}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Net Advantage</p>
+                </div>
+              </div>
+              <p className="text-center text-xs text-muted-foreground mt-3">
+                Run a new benchmark to test with fresh grandmaster games
+              </p>
             </CardContent>
           </Card>
         )}
