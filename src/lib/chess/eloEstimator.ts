@@ -46,6 +46,14 @@ export interface EloEstimate {
   
   // Market ELO (treating market as opponent)
   marketBattleElo?: number;
+  
+  // Time control adjustments (FIDE uses different K-factors by time control)
+  timeControlAdjustments?: {
+    bullet: number;    // Faster = higher variance
+    blitz: number;
+    rapid: number;
+    classical: number;
+  };
 }
 
 export interface DepthEloMetrics {
@@ -208,14 +216,25 @@ export function calculateEnPensentElo(
   const ratingTier = getRatingTier(enPensentElo);
   const humanEquivalent = getFideTitle(enPensentElo);
   
+  // Time control adjustments using FIDE methodology
+  // FIDE applies different K-factors; we apply ELO variance by time control
+  // Faster time controls = more variance = potential for higher/lower ratings
+  const timeControlAdjustments = {
+    bullet: Math.round(enPensentElo * 0.95),    // 5% lower (more random)
+    blitz: Math.round(enPensentElo * 0.98),     // 2% lower
+    rapid: Math.round(enPensentElo * 1.00),     // baseline
+    classical: Math.round(enPensentElo * 1.02), // 2% higher (more accurate)
+  };
+  
   return {
     enPensentElo,
-    stockfishPredictionElo,
-    eloAdvantage: enPensentElo - stockfishPredictionElo,
-    performanceRating,
+    stockfishPredictionElo: Math.round(stockfishPredictionElo),
+    eloAdvantage: Math.round(enPensentElo - stockfishPredictionElo),
+    performanceRating: Math.round(performanceRating),
     confidenceRange,
     humanEquivalent,
     ratingTier,
+    timeControlAdjustments,
   };
 }
 
