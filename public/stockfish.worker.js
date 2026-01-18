@@ -1,91 +1,76 @@
 /**
- * Stockfish Web Worker - Embedded UCI Engine
- * 
- * Uses a lightweight stockfish.js build that works in workers.
+ * Stockfish Web Worker - Minimal Implementation
+ * Uses stockfish.js lite single-threaded version (no CORS required)
  */
+
+// The stockfish lite single-threaded version works without SharedArrayBuffer/CORS
+const STOCKFISH_CDN = 'https://cdn.jsdelivr.net/npm/stockfish@17.1.0/src/stockfish-17.1-lite-single-03e3232.js';
 
 let engine = null;
 let ready = false;
-let outputBuffer = [];
 
-// Use Lichess's stockfish.js which is designed for web workers
-const STOCKFISH_URL = 'https://lichess1.org/assets/_qGqxVU/compiled/stockfish.js';
-
-async function init() {
-  try {
-    self.postMessage({ type: 'status', data: 'Initializing Stockfish...' });
-    
-    // Fetch the stockfish script
-    const response = await fetch(STOCKFISH_URL);
-    if (!response.ok) throw new Error('Failed to fetch stockfish');
-    
-    const code = await response.text();
-    
-    // Create and evaluate
-    const fn = new Function(code + '\n;return Stockfish;');
-    const StockfishFactory = fn();
-    
-    if (typeof StockfishFactory === 'function') {
-      engine = StockfishFactory();
-      
-      // Set up message handler
-      engine.addMessageListener((line) => {
-        self.postMessage({ type: 'uci', data: line });
-        
-        if (line === 'uciok') {
-          ready = true;
-          self.postMessage({ type: 'ready' });
-        }
-      });
-      
-      // Initialize UCI
-      engine.postMessage('uci');
-      self.postMessage({ type: 'status', data: 'Stockfish loaded successfully!' });
-      return;
-    }
-  } catch (e) {
-    console.error('Primary load failed:', e);
+// Simple message handler
+function handleMessage(msg) {
+  self.postMessage({ type: 'uci', data: msg });
+  if (msg === 'uciok') {
+    ready = true;
+    self.postMessage({ type: 'ready' });
   }
-  
-  // Fallback: Try alternative CDN with importScripts
-  try {
-    self.postMessage({ type: 'status', data: 'Trying fallback...' });
-    importScripts('https://cdn.jsdelivr.net/npm/stockfish.js@10.0.2/stockfish.js');
-    
-    if (typeof STOCKFISH === 'function') {
-      engine = STOCKFISH();
-      
-      engine.addMessageListener((line) => {
-        self.postMessage({ type: 'uci', data: line });
-        if (line === 'uciok') {
-          ready = true;
-          self.postMessage({ type: 'ready' });
-        }
-      });
-      
-      engine.postMessage('uci');
-      self.postMessage({ type: 'status', data: 'Stockfish 10 loaded!' });
-      return;
-    }
-  } catch (e) {
-    console.error('Fallback failed:', e);
-  }
-  
-  self.postMessage({ type: 'error', data: 'Failed to load Stockfish engine' });
 }
 
-// Start initialization
+// Initialize using importScripts (works in classic workers)
+async function init() {
+  try {
+    self.postMessage({ type: 'status', data: 'Loading Stockfish 17 Lite...' });
+    
+    // Classic worker can use importScripts
+    importScripts(STOCKFISH_CDN);
+    
+    // After import, Stockfish should be available
+    if (typeof Stockfish === 'function') {
+      engine = await Stockfish();
+      
+      if (engine.addMessageListener) {
+        engine.addMessageListener(handleMessage);
+      } else if (typeof engine.listen === 'function') {
+        engine.listen(handleMessage);
+      } else {
+        // Direct postMessage style
+        const origPost = engine.postMessage.bind(engine);
+        engine.onmessage = (e) => handleMessage(typeof e === 'string' ? e : e.data);
+      }
+      
+      engine.postMessage('uci');
+      self.postMessage({ type: 'status', data: 'Stockfish 17 Lite ready!' });
+      return;
+    }
+    
+    // Fallback - STOCKFISH global
+    if (typeof STOCKFISH === 'function') {
+      engine = STOCKFISH();
+      engine.addMessageListener(handleMessage);
+      engine.postMessage('uci');
+      self.postMessage({ type: 'status', data: 'Stockfish ready!' });
+      return;
+    }
+    
+    throw new Error('Stockfish function not found after import');
+  } catch (err) {
+    console.error('Stockfish init error:', err);
+    self.postMessage({ type: 'error', data: 'Failed to load: ' + err.message });
+  }
+}
+
 init();
 
 // Handle commands from main thread
 self.onmessage = function(e) {
   if (!engine) {
-    self.postMessage({ type: 'error', data: 'Engine not ready' });
+    self.postMessage({ type: 'error', data: 'Engine not initialized' });
     return;
   }
   
   const { command, options } = e.data;
-  
   let cmd = command;
   
   if (command === 'position') {
