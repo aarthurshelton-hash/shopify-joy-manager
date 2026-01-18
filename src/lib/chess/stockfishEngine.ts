@@ -81,21 +81,24 @@ export class StockfishEngine {
         const { type, data } = e.data;
         
         if (type === 'ready') {
+          console.log('[Stockfish] Engine ready!');
           this.isReady = true;
           this.configure();
         } else if (type === 'uci') {
           this.handleUciMessage(data);
         } else if (type === 'error') {
-          console.error('Stockfish error:', data);
+          console.error('[Stockfish] Error:', data);
+        } else if (type === 'status') {
+          console.log('[Stockfish]', data);
         }
       };
       
       this.worker.onerror = (e) => {
-        console.error('Stockfish worker error:', e);
+        console.error('[Stockfish] Worker error:', e);
         this.isReady = false;
       };
     } catch (error) {
-      console.error('Failed to create Stockfish worker:', error);
+      console.error('[Stockfish] Failed to create worker:', error);
     }
   }
 
