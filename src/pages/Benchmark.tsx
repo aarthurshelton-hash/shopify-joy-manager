@@ -3,10 +3,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Brain, Cpu, Trophy, Play, Loader2, Clock, CheckCircle, XCircle, AlertCircle, Cloud, Database, TrendingUp, History } from 'lucide-react';
+import { Brain, Cpu, Trophy, Play, Loader2, Clock, CheckCircle, XCircle, AlertCircle, Cloud, Database, TrendingUp, History, Layers } from 'lucide-react';
 import { runCloudBenchmark, FAMOUS_GAMES, type BenchmarkResult, type PredictionAttempt } from '@/lib/chess/cloudBenchmark';
 import { checkLichessAvailability } from '@/lib/chess/lichessCloudEval';
 import { saveBenchmarkResults, getCumulativeStats, getArchetypeStats } from '@/lib/chess/benchmarkPersistence';
+import { calculateDepthMetricsFromBenchmark, type DepthMetrics } from '@/lib/chess/depthAnalysis';
 
 interface CumulativeStats {
   totalRuns: number;
@@ -30,6 +31,7 @@ export default function Benchmark() {
   const [initPhase, setInitPhase] = useState('Checking Lichess API...');
   const [savedRunId, setSavedRunId] = useState<string | null>(null);
   const [cumulativeStats, setCumulativeStats] = useState<CumulativeStats | null>(null);
+  const [depthMetrics, setDepthMetrics] = useState<DepthMetrics | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number>(0);
 
@@ -98,6 +100,7 @@ export default function Benchmark() {
     setCurrentGame('');
     setElapsedTime(0);
     setSavedRunId(null);
+    setDepthMetrics(null);
 
     try {
       const benchmarkResult = await runCloudBenchmark(
@@ -125,6 +128,20 @@ export default function Benchmark() {
       );
 
       setResult(benchmarkResult);
+      
+      // Calculate depth metrics from results
+      const depthData = calculateDepthMetricsFromBenchmark(
+        benchmarkResult.predictionPoints.map(p => ({
+          stockfishDepth: p.stockfishDepth,
+          stockfishCorrect: p.stockfishCorrect,
+          hybridCorrect: p.hybridCorrect,
+          hybridConfidence: p.hybridConfidence,
+          hybridArchetype: p.hybridArchetype,
+          moveNumber: p.moveNumber,
+          gameMoveCount: p.gameMoveCount,
+        }))
+      );
+      setDepthMetrics(depthData);
       
       // Save results to database for learning
       setStatus('Saving results for learning...');
@@ -447,6 +464,108 @@ export default function Benchmark() {
                   <p className="text-2xl font-bold">{formatTime(elapsedTime)}</p>
                   <p className="text-sm text-muted-foreground">Total Time</p>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Depth Analysis - "Moves Ahead" Comparison */}
+        {result && depthMetrics && (
+          <Card className="border-purple-500/30 bg-gradient-to-r from-purple-500/5 to-blue-500/5">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Layers className="h-5 w-5 text-purple-500" />
+                Depth Analysis: "Moves Ahead" Comparison
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Main Depth Comparison */}
+              <div className="grid grid-cols-2 gap-6">
+                <div className="text-center p-6 bg-blue-500/10 rounded-lg border border-blue-500/30">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <Cpu className="h-5 w-5 text-blue-500" />
+                    <span className="font-semibold text-blue-500">Stockfish 17</span>
+                  </div>
+                  <p className="text-4xl font-bold text-blue-500">{depthMetrics.stockfishDepth}</p>
+                  <p className="text-sm text-muted-foreground">plies deep</p>
+                  <p className="text-lg font-medium text-blue-400 mt-2">
+                    ~{Math.floor(depthMetrics.stockfishDepth / 2)} moves ahead
+                  </p>
+                </div>
+                <div className="text-center p-6 bg-purple-500/10 rounded-lg border border-purple-500/30">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <Brain className="h-5 w-5 text-purple-500" />
+                    <span className="font-semibold text-purple-500">En Pensent</span>
+                  </div>
+                  <p className="text-4xl font-bold text-purple-500">{depthMetrics.enPensentEffectiveDepth}</p>
+                  <p className="text-sm text-muted-foreground">effective plies</p>
+                  <p className="text-lg font-medium text-purple-400 mt-2">
+                    ~{Math.floor(depthMetrics.enPensentEffectiveDepth / 2)} moves ahead
+                  </p>
+                </div>
+              </div>
+
+              {/* Depth Advantage Summary */}
+              <div className="text-center p-4 bg-gradient-to-r from-purple-500/20 to-blue-500/20 rounded-lg">
+                <p className="text-lg font-medium">
+                  {depthMetrics.depthAdvantage > 0 ? (
+                    <span className="text-green-500">
+                      En Pensent sees <strong>{depthMetrics.depthAdvantage} plies</strong> (~{Math.floor(depthMetrics.depthAdvantage / 2)} moves) <strong>DEEPER</strong>
+                    </span>
+                  ) : depthMetrics.depthAdvantage < 0 ? (
+                    <span className="text-red-500">
+                      Stockfish searches <strong>{-depthMetrics.depthAdvantage} plies</strong> deeper
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">Equal effective depth</span>
+                  )}
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Depth ratio: <strong>{depthMetrics.depthRatio.toFixed(2)}x</strong> | 
+                  Pattern equivalent: <strong>{depthMetrics.patternDepthEquivalent} plies</strong>
+                </p>
+              </div>
+
+              {/* Horizon Accuracy Breakdown */}
+              {depthMetrics.horizonAccuracy.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-sm">Accuracy by Prediction Horizon:</h4>
+                  <div className="space-y-2">
+                    {depthMetrics.horizonAccuracy.map((horizon, i) => (
+                      <div key={i} className="grid grid-cols-[80px_1fr_80px] gap-2 items-center text-sm">
+                        <span className="text-muted-foreground">{horizon.movesAhead}+ moves:</span>
+                        <div className="flex gap-1 h-4">
+                          <div 
+                            className="bg-purple-500 rounded-sm" 
+                            style={{ width: `${horizon.accuracy}%` }}
+                            title={`En Pensent: ${horizon.accuracy.toFixed(1)}%`}
+                          />
+                          <div 
+                            className="bg-blue-500/50 rounded-sm" 
+                            style={{ width: `${horizon.stockfishAccuracyAtHorizon}%` }}
+                            title={`Stockfish: ${horizon.stockfishAccuracyAtHorizon.toFixed(1)}%`}
+                          />
+                        </div>
+                        <span className={horizon.accuracy > horizon.stockfishAccuracyAtHorizon ? 'text-green-500' : 'text-blue-500'}>
+                          EP: {horizon.accuracy.toFixed(0)}% / SF: {horizon.stockfishAccuracyAtHorizon.toFixed(0)}%
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Max accurate horizon: <strong>{depthMetrics.maxAccurateHorizon} moves</strong> ({'>'} 60% accuracy) | 
+                    Confidence: <strong>{depthMetrics.depthConfidence.toFixed(1)}%</strong>
+                  </p>
+                </div>
+              )}
+
+              {/* Interpretation */}
+              <div className="p-4 bg-muted/30 rounded-lg text-sm text-muted-foreground">
+                <p>
+                  <strong>How this works:</strong> Stockfish searches {depthMetrics.stockfishDepth} plies deep using brute-force tree search.
+                  En Pensent achieves equivalent {depthMetrics.enPensentEffectiveDepth}-ply accuracy through <em>pattern recognition</em> — 
+                  recognizing game trajectories that indicate outcomes many moves in the future without explicit search.
+                </p>
               </div>
             </CardContent>
           </Card>
