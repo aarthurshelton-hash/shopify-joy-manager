@@ -94,7 +94,7 @@ export async function saveBenchmarkResults(result: BenchmarkResult): Promise<str
       ? result.completedAt.getTime() - result.startedAt.getTime()
       : 0;
 
-    // Insert main benchmark result
+    // Insert main benchmark result with TCEC calibration markers
     const { data: benchmarkData, error: benchmarkError } = await supabase
       .from('chess_benchmark_results')
       .insert({
@@ -114,8 +114,10 @@ export async function saveBenchmarkResults(result: BenchmarkResult): Promise<str
         archetype_performance: result.archetypePerformance,
         games_analyzed: result.gamesAnalyzed,
         duration_ms: durationMs,
-        stockfish_version: 'SF16+ NNUE via Lichess Cloud (depth 40+)',
-        hybrid_version: 'En Pensent Hybrid v1.0 (Color Flow + Cloud SF)',
+        stockfish_version: 'TCEC Stockfish 17 NNUE (ELO 3600) Unlimited',
+        hybrid_version: 'En Pensent Hybrid v2.0 (TCEC Calibrated)',
+        data_quality_tier: 'tcec_calibrated',
+        stockfish_mode: 'tcec_unlimited',
       })
       .select('id')
       .single();
@@ -147,6 +149,7 @@ export async function saveBenchmarkResults(result: BenchmarkResult): Promise<str
       hybrid_correct: attempt.hybridCorrect,
       position_hash: hashPosition(attempt.fen),
       lesson_learned: JSON.parse(JSON.stringify(analyzeLessonLearned(attempt))),
+      data_quality_tier: 'tcec_calibrated',
     }));
 
     const { error: attemptsError } = await supabase
