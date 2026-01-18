@@ -9,3 +9,5 @@ export { UnifiedProofDashboard } from './UnifiedProofDashboard';
 export { CulturalArbitragePanel } from './CulturalArbitragePanel';
 export { PhotonicCoherencePanel } from './PhotonicCoherencePanel';
 export { CrossDomainCorrelationsPanel } from './CrossDomainCorrelationsPanel';
+export { StyleProfilePanel } from './StyleProfilePanel';
+export { MethodologyPanel } from './MethodologyPanel';
