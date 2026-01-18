@@ -223,12 +223,13 @@ export function verifyProvenance(record: DataProvenanceRecord): {
   const gameIds = record.uniqueGameIds || [];
   const ratings = record.gameRatings || [];
   
-  // Check data consistency instead of relying solely on hash
+  // Check data consistency - be lenient for DB-reconstructed records
+  // Key checks: must have game IDs, valid rating, and valid timestamp
   const hasConsistentData = 
     gameIds.length > 0 &&
-    ratings.length > 0 &&
     record.averageRating > 0 &&
-    record.fetchedAt > 0;
+    record.fetchedAt > 0 &&
+    (ratings.length > 0 || gameIds.length > 0); // Either ratings OR gameIds is sufficient
   
   // If we have a hash, try to verify it
   if (record.dataHash) {
