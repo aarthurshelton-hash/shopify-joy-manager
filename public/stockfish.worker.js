@@ -1,15 +1,21 @@
 /**
- * Stockfish Web Worker - Runtime CDN Loader
+ * Stockfish Web Worker - Self-contained Engine
  * 
- * This worker fetches and executes Stockfish from a CDN at runtime,
- * avoiding CORS issues that occur with importScripts.
+ * Uses a robust blob-based loading approach to bypass CORS restrictions.
+ * Tries multiple CDN sources with fallback.
  */
 
 let engine = null;
 let isReady = false;
 let pendingCommands = [];
 
-// Post status to main thread
+// CDN sources to try (in order)
+const CDN_SOURCES = [
+  'https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.js',
+  'https://cdn.jsdelivr.net/npm/stockfish.js@10.0.2/stockfish.js',
+  'https://unpkg.com/stockfish.js@10.0.2/stockfish.js'
+];
+
 function postStatus(message) {
   self.postMessage({ type: 'status', data: message });
 }
@@ -18,95 +24,92 @@ function postError(message) {
   self.postMessage({ type: 'error', data: message });
 }
 
-// Initialize the engine by fetching and evaluating the script
-async function initEngine() {
-  postStatus('Fetching Stockfish engine...');
+// Fetch script from URL and return as blob URL
+async function fetchAsBlob(url) {
+  const response = await fetch(url, { 
+    mode: 'cors',
+    cache: 'force-cache'
+  });
   
-  try {
-    // Fetch the engine script as text
-    const response = await fetch('https://unpkg.com/stockfish@17.1.0/src/stockfish-17.1-lite-single-03e3232.js');
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch engine: ${response.status}`);
-    }
-    
-    const scriptText = await response.text();
-    postStatus('Engine script loaded, initializing...');
-    
-    // Create a blob URL and import it (this avoids CORS issues)
-    const blob = new Blob([scriptText], { type: 'application/javascript' });
-    const blobUrl = URL.createObjectURL(blob);
-    
-    // Import the blob URL
-    importScripts(blobUrl);
-    URL.revokeObjectURL(blobUrl);
-    
-    postStatus('Script imported, looking for Stockfish function...');
-    
-    // Find the Stockfish constructor
-    if (typeof Stockfish === 'function') {
-      postStatus('Found Stockfish() function');
-      const result = Stockfish();
-      
-      if (result && result.then) {
-        // It's a promise
-        engine = await result;
-      } else {
-        engine = result;
-      }
-    } else if (typeof STOCKFISH === 'function') {
-      postStatus('Found STOCKFISH() function');
-      engine = STOCKFISH();
-    } else {
-      throw new Error('No Stockfish or STOCKFISH function found after script load');
-    }
-    
-    setupEngine();
-    
-  } catch (error) {
-    postError('Failed to initialize: ' + error.message);
-    console.error('[Worker] Init error:', error);
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
   }
+  
+  const text = await response.text();
+  const blob = new Blob([text], { type: 'application/javascript' });
+  return URL.createObjectURL(blob);
 }
 
-function setupEngine() {
+// Try to load engine from multiple sources
+async function loadEngineFromCDN() {
+  for (const url of CDN_SOURCES) {
+    try {
+      postStatus(`Trying ${url.split('/')[2]}...`);
+      const blobUrl = await fetchAsBlob(url);
+      importScripts(blobUrl);
+      URL.revokeObjectURL(blobUrl);
+      return true;
+    } catch (err) {
+      console.log(`[Worker] Failed to load from ${url}:`, err.message);
+    }
+  }
+  return false;
+}
+
+// Initialize engine using the global STOCKFISH function
+function initializeEngine() {
+  postStatus('Initializing Stockfish engine...');
+  
+  // stockfish.js exports STOCKFISH as global
+  if (typeof STOCKFISH === 'function') {
+    engine = STOCKFISH();
+    setupEngineListeners();
+    return true;
+  }
+  
+  // Check for Stockfish (capital S)
+  if (typeof Stockfish === 'function') {
+    engine = Stockfish();
+    setupEngineListeners();
+    return true;
+  }
+  
+  return false;
+}
+
+function setupEngineListeners() {
   if (!engine) {
-    postError('Engine is null after setup');
+    postError('Engine object is null');
     return;
   }
   
-  postStatus('Setting up engine message handlers...');
-  
-  // Set up message listener from engine
-  if (engine.addMessageListener) {
-    engine.addMessageListener(function(msg) {
-      self.postMessage({ type: 'uci', data: msg });
-      if (msg === 'uciok') {
-        isReady = true;
-        self.postMessage({ type: 'ready' });
-        // Process any pending commands
-        processPendingCommands();
-      }
-    });
-  } else if (typeof engine.onmessage !== 'undefined') {
+  // Set up message listener
+  if (typeof engine.onmessage !== 'undefined') {
     engine.onmessage = function(msg) {
-      const data = typeof msg === 'string' ? msg : msg.data;
-      self.postMessage({ type: 'uci', data: data });
-      if (data === 'uciok') {
+      const data = typeof msg === 'string' ? msg : (msg.data || msg);
+      self.postMessage({ type: 'uci', data: String(data) });
+      
+      if (String(data) === 'uciok') {
         isReady = true;
         self.postMessage({ type: 'ready' });
         processPendingCommands();
       }
     };
+  } else if (engine.addMessageListener) {
+    engine.addMessageListener(function(msg) {
+      self.postMessage({ type: 'uci', data: msg });
+      
+      if (msg === 'uciok') {
+        isReady = true;
+        self.postMessage({ type: 'ready' });
+        processPendingCommands();
+      }
+    });
   }
   
-  // Send UCI initialization
-  if (engine.postMessage) {
-    engine.postMessage('uci');
-    postStatus('Stockfish 17.1 Lite initializing...');
-  } else {
-    postError('Engine has no postMessage method');
-  }
+  // Start UCI protocol
+  sendToEngine('uci');
+  postStatus('Stockfish ready, awaiting UCI response...');
 }
 
 function processPendingCommands() {
@@ -117,10 +120,15 @@ function processPendingCommands() {
 }
 
 function sendToEngine(cmd) {
-  if (engine && engine.postMessage) {
+  if (!engine) {
+    postError('Engine not initialized');
+    return;
+  }
+  
+  if (engine.postMessage) {
     engine.postMessage(cmd);
-  } else {
-    postError('Cannot send command - engine not ready');
+  } else if (typeof engine === 'function') {
+    engine(cmd);
   }
 }
 
@@ -168,4 +176,26 @@ self.onmessage = function(e) {
 };
 
 // Start initialization
-initEngine();
+async function init() {
+  postStatus('Loading Stockfish engine...');
+  
+  try {
+    const loaded = await loadEngineFromCDN();
+    
+    if (!loaded) {
+      postError('Failed to load Stockfish from all CDN sources');
+      return;
+    }
+    
+    const initialized = initializeEngine();
+    
+    if (!initialized) {
+      postError('Failed to initialize Stockfish engine - no STOCKFISH function found');
+    }
+  } catch (err) {
+    postError('Initialization failed: ' + err.message);
+    console.error('[Worker] Init error:', err);
+  }
+}
+
+init();
