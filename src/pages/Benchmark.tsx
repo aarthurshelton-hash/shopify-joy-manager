@@ -54,6 +54,8 @@ export default function Benchmark() {
   const [result, setResult] = useState<BenchmarkResult | null>(null);
   const [liveAttempts, setLiveAttempts] = useState<PredictionAttempt[]>([]);
   const [apiReady, setApiReady] = useState(false);
+  const [rateLimited, setRateLimited] = useState(false);
+  const [rateLimitResetMs, setRateLimitResetMs] = useState(0);
   const [initPhase, setInitPhase] = useState('Checking Lichess API...');
   const [savedRunId, setSavedRunId] = useState<string | null>(null);
   const [cumulativeStats, setCumulativeStats] = useState<CumulativeStats | null>(null);
@@ -129,7 +131,11 @@ export default function Benchmark() {
         ]);
         
         if (!cancelled) {
-          setApiReady(available);
+          setApiReady(available.available);
+          setRateLimited(available.rateLimited);
+          if (available.resetInMs) {
+            setRateLimitResetMs(available.resetInMs);
+          }
           setCumulativeStats(stats);
           setLatestBenchmark(latest);
           setIsLoadingLatest(false);
@@ -148,8 +154,11 @@ export default function Benchmark() {
             setLiveEloState(initialElo);
           }
           
-          if (available) {
+          if (available.available) {
             setInitPhase('Stockfish 17 via Lichess Cloud ready!');
+          } else if (available.rateLimited) {
+            const waitSecs = Math.ceil((available.resetInMs || 30000) / 1000);
+            setInitPhase(`Rate limited - API available in ~${waitSecs}s. Try Maximum Depth mode.`);
           } else if (attempt < 3) {
             // Retry up to 3 times with increasing delay
             setInitPhase(`Lichess Cloud not responding, retrying in ${attempt * 2}s...`);
@@ -466,6 +475,8 @@ export default function Benchmark() {
               <div className="flex items-center gap-2">
                 {apiReady ? (
                   <CheckCircle className="h-5 w-5 text-green-500" />
+                ) : rateLimited ? (
+                  <Clock className="h-5 w-5 text-orange-500" />
                 ) : initPhase.includes('unavailable') || initPhase.includes('failed') ? (
                   <XCircle className="h-5 w-5 text-red-500" />
                 ) : (
@@ -475,13 +486,21 @@ export default function Benchmark() {
                   {initPhase}
                 </span>
               </div>
-              <Badge variant={apiReady ? 'default' : 'secondary'} className="gap-1">
+              <Badge 
+                variant={apiReady ? 'default' : 'secondary'} 
+                className={`gap-1 ${rateLimited ? 'bg-orange-500/20 text-orange-400 border-orange-500/50' : ''}`}
+              >
                 <Cloud className="h-3 w-3" />
-                {apiReady ? 'Stockfish 17 Ready' : initPhase.includes('unavailable') ? 'Offline' : 'Connecting'}
+                {apiReady ? 'Stockfish 17 Ready' : rateLimited ? 'Rate Limited' : initPhase.includes('unavailable') ? 'Offline' : 'Connecting'}
               </Badge>
             </div>
             {!apiReady && !initPhase.includes('unavailable') && !initPhase.includes('failed') && (
-              <Progress value={initPhase.includes('Retrying') ? 50 : 25} className="h-1 mt-2" />
+              <Progress value={rateLimited ? 75 : initPhase.includes('Retrying') ? 50 : 25} className="h-1 mt-2" />
+            )}
+            {rateLimited && (
+              <p className="text-xs text-orange-400 mt-1">
+                Too many requests. Use Maximum Depth mode while waiting.
+              </p>
             )}
           </CardContent>
         </Card>
