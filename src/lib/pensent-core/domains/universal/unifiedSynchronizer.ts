@@ -72,6 +72,7 @@ class UnifiedSynchronizer {
         market: 0.5,     // ⚡ Nervous System
         code: 0.5,       // 🩸 Blood
         satellite: 0.5,
+        'temporal-consciousness': 0.5, // ⏱️ Time Perception
         photonic: 0.5,   // Future domains
         medical: 0.5,
         climate: 0.5,
