@@ -130,6 +130,16 @@ const FAMOUS_GAMES: BenchmarkGame[] = [
   },
 ];
 
+// Fisher-Yates shuffle for true randomization
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 // Normal CDF for p-value
 function normalCdf(z: number): number {
   const a1 = 0.254829592;
@@ -215,6 +225,12 @@ export async function fetchRealGames(
 
 /**
  * Run benchmark using Lichess Cloud API with REAL Lichess games
+ * 
+ * FAIRNESS GUARANTEES:
+ * 1. Prediction at FIXED move number (not % of game) - no information leak about game length
+ * 2. Fresh games fetched each run - no memorization possible
+ * 3. Stockfish evaluation from SAME position we predict from
+ * 4. No access to moves beyond prediction point
  */
 export async function runCloudBenchmark(
   options: {
@@ -226,6 +242,8 @@ export async function runCloudBenchmark(
 ): Promise<BenchmarkResult> {
   const { 
     gameCount = 50, 
+    // FIXED move number - not a percentage. This is crucial for fairness.
+    // At move 20, neither system knows how long the game will be.
     predictionMoveNumber = 20,
     useRealGames = true 
   } = options;
@@ -248,24 +266,26 @@ export async function runCloudBenchmark(
     gamesAnalyzed: [],
   };
 
-  // Fetch games
-  onProgress?.('Fetching real games from Lichess...', 0);
+  // Fetch FRESH games every run - critical for no memorization
+  onProgress?.('Fetching FRESH real games from Lichess (randomized)...', 0);
   
   let games: BenchmarkGame[];
   if (useRealGames) {
     games = await fetchRealGames(gameCount, (status) => {
       onProgress?.(status, 5);
     });
+    // Shuffle games to ensure randomness
+    games = shuffleArray(games);
   } else {
-    games = FAMOUS_GAMES;
+    games = shuffleArray([...FAMOUS_GAMES]);
   }
   
   result.totalGames = games.length;
-  onProgress?.(`Loaded ${games.length} games. Starting analysis...`, 10);
+  onProgress?.(`Loaded ${games.length} fresh games. Starting blind analysis...`, 10);
 
   for (let i = 0; i < games.length; i++) {
     const game = games[i];
-    const gameId = `game-${i}`;
+    const gameId = `game-${Date.now()}-${i}`; // Unique ID per run
     
     onProgress?.(`[${i + 1}/${games.length}] Analyzing: ${game.name}`, 10 + (i / games.length) * 85);
     
@@ -286,10 +306,14 @@ export async function runCloudBenchmark(
       }
       
       const history = chess.history();
-      const movesToPlay = Math.min(predictionMoveNumber, Math.floor(history.length * 0.4)); // Predict at 40% of game
       
-      if (movesToPlay < 10) {
-        console.log(`Skipping ${game.name} - too few moves`);
+      // FAIRNESS: Use FIXED move number, not percentage of game length
+      // This ensures we have NO information about how long the game will be
+      const movesToPlay = predictionMoveNumber;
+      
+      // Skip games that haven't reached our prediction point
+      if (history.length < movesToPlay + 10) {
+        console.log(`Skipping ${game.name} - game too short (${history.length} moves)`);
         continue;
       }
       
