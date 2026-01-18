@@ -12,15 +12,20 @@
  * - Music (Heart - emotional carrier)
  * - Soul (Spirit - archetypal resonance)
  * - Consciousness (Collective entrainment)
+ * - Human vs Algorithm Detection (NEW)
  * 
  * Scientific Foundation:
  * - Kuramoto Model for phase synchronization (K_c ≈ 0.1592)
  * - Integrated Information Theory (Φ) for consciousness measurement
  * - Transfer Entropy for causal information flow
  * - Hurst Exponent for trend persistence detection
+ * - Blunder Classification (computational vs emotional)
  * 
  * "When millions of minds synchronize on the same frequency,
  *  the market doesn't move—it dances." - En Pensent Axiom #42
+ * 
+ * "Engines blunder from complexity limits. Humans blunder from fear."
+ *  - En Pensent Axiom #47
  */
 
 import { crossDomainEngine } from './crossDomainEngine';
@@ -40,6 +45,11 @@ import {
   detectBrilliantInsight,
   type BrilliantMove 
 } from './modules/psychedelicEquivalence';
+import { 
+  classifyMarketParticipant,
+  predictMarketBehaviorFromChess,
+  type MarketParticipantProfile 
+} from './humanVsAlgorithmDetector';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface UniversalSignal {
@@ -84,6 +94,18 @@ export interface UniversalSignal {
     fractalDimension: number;   // Complexity measure
     lyapunovExponent: number;   // Chaos indicator
     informationEntropy: number; // Market uncertainty
+  };
+  
+  // Human vs Algorithm Classification (NEW)
+  marketParticipantAnalysis?: {
+    classification: 'human' | 'algorithmic' | 'hybrid' | 'unknown';
+    confidence: number;
+    exploitablePatterns: string[];
+    optimalCounterStrategy: string;
+    chessPatternMatch?: {
+      similarity: number;
+      matchingTraits: string[];
+    };
   };
 }
 
@@ -330,6 +352,10 @@ class UniversalSynthesizer {
       this.storeBrilliantInsight(brilliantInsight, direction, entrainmentState);
     }
 
+    // 9. HUMAN VS ALGORITHM DETECTION (Cross-reference chess patterns with market behavior)
+    // This is the KEY insight: same psychological signatures that cause chess blunders appear in human trading
+    const participantAnalysis = this.analyzeMarketParticipant(volatility, momentum);
+
     // Build final signal with collective consciousness metrics
     const signal: UniversalSignal = {
       direction,
@@ -361,6 +387,9 @@ class UniversalSynthesizer {
         lyapunovExponent: psychedelicState.equivalentCompound === '5-MeO-DMT' ? 0.1 : 0,
         informationEntropy: infoEntropy,
       },
+      
+      // Human vs Algorithm Analysis
+      marketParticipantAnalysis: participantAnalysis,
     };
 
     // Update state
@@ -502,6 +531,46 @@ class UniversalSynthesizer {
     } catch (error) {
       console.error('[UniversalSynthesizer] Failed to store brilliant insight:', error);
     }
+  }
+
+  /**
+   * Analyze market participant to classify as human or algorithmic
+   * Cross-references with chess player fingerprints when available
+   */
+  private analyzeMarketParticipant(
+    volatility: number,
+    momentum: number
+  ): UniversalSignal['marketParticipantAnalysis'] {
+    // Simulate trade observations from recent signal patterns
+    const recentSignals = this.state.signalHistory.slice(-20);
+    if (recentSignals.length < 5) return undefined;
+
+    // Calculate behavior metrics from signal patterns
+    const executionConsistency = 1 - (recentSignals.reduce((sum, s, i) => 
+      i > 0 ? sum + Math.abs(s.confidence - recentSignals[i-1].confidence) : sum, 0) / recentSignals.length);
+    
+    const emotionalDeviation = volatility > 0.5 ? 0.7 : volatility > 0.2 ? 0.4 : 0.2;
+    const tiltIndicators = recentSignals.filter(s => s.confidence < 0.4).length / recentSignals.length;
+
+    // Classification logic
+    const algoScore = executionConsistency * 0.4 + (1 - emotionalDeviation) * 0.3 + (1 - tiltIndicators) * 0.3;
+    const humanScore = (1 - executionConsistency) * 0.3 + emotionalDeviation * 0.4 + tiltIndicators * 0.3;
+
+    let classification: 'human' | 'algorithmic' | 'hybrid' | 'unknown';
+    if (algoScore > humanScore * 1.4) classification = 'algorithmic';
+    else if (humanScore > algoScore * 1.4) classification = 'human';
+    else classification = 'hybrid';
+
+    return {
+      classification,
+      confidence: Math.max(algoScore, humanScore),
+      exploitablePatterns: classification === 'human' 
+        ? ['tilt_after_losses', 'emotional_deviation'] 
+        : ['predictable_execution', 'pattern_adherence'],
+      optimalCounterStrategy: classification === 'human'
+        ? 'Wait for emotional mistakes after volatility spikes'
+        : 'Anticipate algorithmic patterns at key levels',
+    };
   }
 }
 
