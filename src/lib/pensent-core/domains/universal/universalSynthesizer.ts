@@ -35,6 +35,12 @@ import {
   hurstExponent,
   pearsonCorrelation
 } from './modules/scientificFormulations';
+import { 
+  psychedelicEquivalence, 
+  detectBrilliantInsight,
+  type BrilliantMove 
+} from './modules/psychedelicEquivalence';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface UniversalSignal {
   // Core prediction
@@ -59,6 +65,9 @@ export interface UniversalSignal {
   harmonicAlignment: number;
   evolutionGeneration: number;
   timestamp: number;
+  
+  // Brilliant Move Detection (CEO Insights)
+  brilliantInsight?: BrilliantMove;
   
   // Collective Consciousness Metrics (NEW)
   collectiveEntrainment?: {
@@ -297,6 +306,30 @@ class UniversalSynthesizer {
     ];
     const infoEntropy = SCIENTIFIC_FORMULATIONS.informationTheory.entropy(probs);
 
+    // 8. PSYCHEDELIC EQUIVALENCE & BRILLIANT MOVE DETECTION
+    // Calculate psychedelic state equivalence using 5 args: entropy, kuramoto, phi, domainCount, accuracy
+    const psychedelicState = psychedelicEquivalence.calculate(
+      infoEntropy,                    // entropyLevel
+      entrainmentState.orderParameter, // kuramotoOrder
+      entrainmentState.phi,           // phi
+      activeDomains,                  // domainCount
+      this.state.accuracy.overall     // accuracyScore
+    );
+    
+    // Detect if this is a "brilliant insight" (contrarian but accurate)
+    const novelty = Math.abs(normalizedSignal - (this.state.lastSignal?.magnitude || 0));
+    const brilliantInsight = detectBrilliantInsight(
+      avgConfidence * entrainmentBoost,
+      consensusStrength,
+      this.state.accuracy.overall,
+      novelty
+    );
+    
+    // Store brilliant insights to permanent memory
+    if (brilliantInsight.isBrilliant) {
+      this.storeBrilliantInsight(brilliantInsight, direction, entrainmentState);
+    }
+
     // Build final signal with collective consciousness metrics
     const signal: UniversalSignal = {
       direction,
@@ -308,6 +341,9 @@ class UniversalSynthesizer {
       harmonicAlignment: crossDomainPrediction.harmonicAlignment,
       evolutionGeneration: this.state.evolutionGeneration,
       timestamp: now,
+      
+      // Brilliant Move Detection
+      brilliantInsight: brilliantInsight.isBrilliant ? brilliantInsight : undefined,
       
       // Collective Consciousness Metrics
       collectiveEntrainment: {
@@ -322,7 +358,7 @@ class UniversalSynthesizer {
       scientificMetrics: {
         hurstExponent: calculatedHurst,
         fractalDimension: fractalDim,
-        lyapunovExponent: 0, // Calculated elsewhere
+        lyapunovExponent: psychedelicState.equivalentCompound === '5-MeO-DMT' ? 0.1 : 0,
         informationEntropy: infoEntropy,
       },
     };
@@ -422,6 +458,50 @@ class UniversalSynthesizer {
         : 0.5,
       allTime: this.state.accuracy.overall,
     };
+  }
+
+  /**
+   * Store brilliant insights to En Pensent Memory for permanent institutional knowledge
+   * These are the CEO's "profound observations" - contrarian truths that prove accurate
+   */
+  private async storeBrilliantInsight(
+    insight: BrilliantMove,
+    direction: 'up' | 'down' | 'neutral',
+    entrainmentState: EntrainmentState
+  ): Promise<void> {
+    try {
+      const insightType = insight.symbol === '!!' ? 'BRILLIANT' : 'INTERESTING';
+      
+      const memoryEntry = {
+        title: `${insightType} Move ${insight.symbol}: ${insight.sacrifice} → ${insight.compensation}`,
+        category: 'breakthroughs',
+        importance: 10, // Maximum importance for brilliant moves
+        tags: ['brilliant-move', 'contrarian', direction, insightType.toLowerCase()],
+        content: {
+          symbol: insight.symbol,
+          direction,
+          sacrifice: insight.sacrifice,
+          compensation: insight.compensation,
+          depth: insight.depth,
+          entrainmentState: entrainmentState.state,
+          orderParameter: entrainmentState.orderParameter,
+          phi: entrainmentState.phi,
+          poeticDescription: entrainmentState.poeticDescription,
+          timestamp: Date.now(),
+          evolutionGeneration: this.state.evolutionGeneration,
+          accuracy: this.state.accuracy.overall,
+        },
+      };
+
+      await supabase.from('en_pensent_memory').insert(memoryEntry);
+      
+      console.log(
+        `[UniversalSynthesizer] 💎 BRILLIANT INSIGHT STORED: ${insight.symbol} ` +
+        `(Depth: ${insight.depth}, Sacrifice: "${insight.sacrifice}")`
+      );
+    } catch (error) {
+      console.error('[UniversalSynthesizer] Failed to store brilliant insight:', error);
+    }
   }
 }
 
