@@ -103,12 +103,12 @@ export class ProvenanceTracker {
   }
   
   /**
-   * Record shuffle operation
+   * Record shuffle operation with proper seed tracking
    */
-  recordShuffle(originalOrder: string[], shuffledOrder: string[]): void {
-    this.record.shuffleSeed = Math.random();
-    this.record.originalOrder = originalOrder;
-    this.record.shuffledOrder = shuffledOrder;
+  recordShuffle(originalOrder: string[], shuffledOrder: string[], seed?: number): void {
+    this.record.shuffleSeed = seed ?? Date.now() + Math.random();
+    this.record.originalOrder = [...originalOrder];
+    this.record.shuffledOrder = [...shuffledOrder];
   }
   
   /**
