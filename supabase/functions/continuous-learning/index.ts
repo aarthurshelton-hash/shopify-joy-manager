@@ -730,11 +730,49 @@ async function runLearningCycle(supabase: any): Promise<LearningResult> {
     }
   }
   
-  // Batch insert predictions
+  // Batch insert predictions and patterns
   if (predictions.length > 0) {
+    // Insert prediction attempts
     const { error } = await supabase.from('chess_prediction_attempts').insert(predictions);
     if (error) console.error('Insert error:', error);
     else console.log(`✅ Stored ${predictions.length} prediction attempts`);
+    
+    // Extract and save Color Flow patterns for pattern learning
+    const patterns = predictions.map(pred => ({
+      fingerprint: `${pred.hybrid_archetype}-${pred.lesson_learned?.flowDirection || 'balanced'}-${pred.move_number}`,
+      archetype: pred.hybrid_archetype,
+      outcome: pred.actual_result,
+      total_moves: pred.move_number * 2,
+      characteristics: {
+        intensity: pred.lesson_learned?.intensity || 50,
+        flowDirection: pred.lesson_learned?.flowDirection || 'balanced',
+        centerControl: pred.lesson_learned?.signature?.centerControl || 0,
+        kingsideActivity: pred.lesson_learned?.signature?.kingsideActivity || 0,
+        queensideActivity: pred.lesson_learned?.signature?.queensideActivity || 0,
+        exchanges: pred.lesson_learned?.signature?.exchanges || 0,
+        checks: pred.lesson_learned?.signature?.checks || 0,
+        eloTier: pred.lesson_learned?.eloTier,
+        avgRating: pred.lesson_learned?.avgRating,
+        eloDiff: pred.lesson_learned?.eloDiff,
+      },
+      game_metadata: {
+        gameId: pred.game_id,
+        gameName: pred.game_name,
+        opening: pred.lesson_learned?.opening,
+        whiteRating: pred.lesson_learned?.whiteRating,
+        blackRating: pred.lesson_learned?.blackRating,
+      },
+      opening_eco: pred.lesson_learned?.signature?.openingEco,
+      pgn_hash: pred.game_id, // Use game ID as unique hash
+    }));
+    
+    // Upsert patterns (avoid duplicates)
+    const { error: patternError } = await supabase
+      .from('color_flow_patterns')
+      .upsert(patterns, { onConflict: 'pgn_hash' });
+    
+    if (patternError) console.error('Pattern insert error:', patternError);
+    else console.log(`🎨 Saved ${patterns.length} Color Flow patterns`);
   }
   
   // Update evolution with ELO data
