@@ -637,16 +637,21 @@ async function runLearningCycle(supabase: any): Promise<LearningResult> {
         const moves = game.moves.split(' ');
         if (moves.length < 40) return null;
         
-        const moveNumber = 20;
-        const first20Moves = moves.slice(0, moveNumber * 2);
+        // RANDOMIZED move number for each game (15-35 range, never past 50% of game)
+        // This prevents overfitting to any specific game phase
+        const minMove = 15;
+        const maxMove = Math.min(35, Math.floor(moves.length / 4)); // Each full move = 2 half moves
+        const moveNumber = minMove + Math.floor(Math.random() * (maxMove - minMove + 1));
         
-        // Compute actual FEN
+        const firstNMoves = moves.slice(0, moveNumber * 2);
+        
+        // Compute actual FEN at randomized position
         const fen = computeFEN(moves, moveNumber);
         
         // Get evaluations in parallel
         const [sfEval, pattern] = await Promise.all([
           getStockfishEval(fen),
-          Promise.resolve(analyzePatterns(first20Moves, game.opening)),
+          Promise.resolve(analyzePatterns(firstNMoves, game.opening)),
         ]);
         
         const actualResult = game.winner === 'white' ? 'white_wins' : 
@@ -659,7 +664,7 @@ async function runLearningCycle(supabase: any): Promise<LearningResult> {
           game_id: game.id,
           game_name: `${game.players?.white?.user?.name || 'W'} vs ${game.players?.black?.user?.name || 'B'}`,
           fen,
-          move_number: moveNumber,
+          move_number: moveNumber, // Now randomized per game
           pgn: game.pgn?.substring(0, 500),
           hybrid_prediction: pattern.prediction,
           hybrid_confidence: pattern.confidence,

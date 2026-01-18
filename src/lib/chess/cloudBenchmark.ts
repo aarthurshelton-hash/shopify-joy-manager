@@ -286,9 +286,9 @@ export async function runCloudBenchmark(
 ): Promise<BenchmarkResult> {
   const { 
     gameCount = 50, 
-    // FIXED move number - not a percentage. This is crucial for fairness.
-    // At move 20, neither system knows how long the game will be.
-    predictionMoveNumber = 20,
+    // RANDOMIZED move number for each game - prevents overfitting to specific positions
+    // Range: 15-35 moves, ensuring enough game context but before many decisive moments
+    predictionMoveNumber, // If provided, use fixed; otherwise randomize per game
     useRealGames = true 
   } = options;
   
@@ -366,15 +366,21 @@ export async function runCloudBenchmark(
       
       const history = chess.history();
       
-      // FAIRNESS: Use FIXED move number, not percentage of game length
-      // This ensures we have NO information about how long the game will be
-      const movesToPlay = predictionMoveNumber;
+      // FAIRNESS: Either use provided fixed move number, or RANDOMIZE per game
+      // Randomization prevents overfitting to any specific game phase
+      // Range: 15-35 ensures meaningful pattern data while remaining blind to game length
+      const minMove = 15;
+      const maxMove = Math.min(35, Math.floor(history.length * 0.5)); // Never past 50% of game
+      const movesToPlay = predictionMoveNumber || (minMove + Math.floor(Math.random() * (maxMove - minMove + 1)));
       
-      // Skip games that haven't reached our prediction point
+      // Skip games that haven't reached our minimum prediction point
       if (history.length < movesToPlay + 10) {
         console.log(`Skipping ${game.name} - game too short (${history.length} moves)`);
         continue;
       }
+      
+      // Track randomization for reproducibility
+      provenance.addRandomMoveNumber(movesToPlay);
       
       chess.reset();
       for (let j = 0; j < movesToPlay; j++) {
