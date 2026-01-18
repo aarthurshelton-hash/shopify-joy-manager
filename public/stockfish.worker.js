@@ -1,117 +1,108 @@
 /**
- * Stockfish Web Worker
+ * Stockfish Web Worker - Embedded UCI Engine
  * 
- * Runs Stockfish WASM in a separate thread for non-blocking chess analysis.
- * Uses stockfish.js from a CORS-friendly CDN.
+ * Uses a lightweight stockfish.js build that works in workers.
  */
 
-let stockfish = null;
-let isReady = false;
-let initAttempts = 0;
-const MAX_ATTEMPTS = 3;
+let engine = null;
+let ready = false;
+let outputBuffer = [];
 
-// Multiple CDN sources for reliability
-const STOCKFISH_SOURCES = [
-  'https://unpkg.com/stockfish.js@10.0.2/stockfish.js',
-  'https://cdn.jsdelivr.net/npm/stockfish.js@10.0.2/stockfish.js',
-];
+// Use Lichess's stockfish.js which is designed for web workers
+const STOCKFISH_URL = 'https://lichess1.org/assets/_qGqxVU/compiled/stockfish.js';
 
-async function loadStockfish() {
-  for (const source of STOCKFISH_SOURCES) {
-    try {
-      self.postMessage({ type: 'status', data: `Loading from ${source}...` });
-      importScripts(source);
+async function init() {
+  try {
+    self.postMessage({ type: 'status', data: 'Initializing Stockfish...' });
+    
+    // Fetch the stockfish script
+    const response = await fetch(STOCKFISH_URL);
+    if (!response.ok) throw new Error('Failed to fetch stockfish');
+    
+    const code = await response.text();
+    
+    // Create and evaluate
+    const fn = new Function(code + '\n;return Stockfish;');
+    const StockfishFactory = fn();
+    
+    if (typeof StockfishFactory === 'function') {
+      engine = StockfishFactory();
       
-      if (typeof STOCKFISH === 'function') {
-        stockfish = STOCKFISH();
+      // Set up message handler
+      engine.addMessageListener((line) => {
+        self.postMessage({ type: 'uci', data: line });
         
-        stockfish.addMessageListener((message) => {
-          self.postMessage({ type: 'uci', data: message });
-          
-          if (message === 'uciok') {
-            isReady = true;
-            self.postMessage({ type: 'ready' });
-          }
-        });
-        
-        // Send UCI init command
-        stockfish.postMessage('uci');
-        self.postMessage({ type: 'status', data: 'Stockfish loaded successfully!' });
-        return true;
-      }
-    } catch (error) {
-      console.warn(`Failed to load from ${source}:`, error);
-      self.postMessage({ type: 'status', data: `Failed: ${source}, trying next...` });
+        if (line === 'uciok') {
+          ready = true;
+          self.postMessage({ type: 'ready' });
+        }
+      });
+      
+      // Initialize UCI
+      engine.postMessage('uci');
+      self.postMessage({ type: 'status', data: 'Stockfish loaded successfully!' });
+      return;
     }
+  } catch (e) {
+    console.error('Primary load failed:', e);
   }
-  return false;
+  
+  // Fallback: Try alternative CDN with importScripts
+  try {
+    self.postMessage({ type: 'status', data: 'Trying fallback...' });
+    importScripts('https://cdn.jsdelivr.net/npm/stockfish.js@10.0.2/stockfish.js');
+    
+    if (typeof STOCKFISH === 'function') {
+      engine = STOCKFISH();
+      
+      engine.addMessageListener((line) => {
+        self.postMessage({ type: 'uci', data: line });
+        if (line === 'uciok') {
+          ready = true;
+          self.postMessage({ type: 'ready' });
+        }
+      });
+      
+      engine.postMessage('uci');
+      self.postMessage({ type: 'status', data: 'Stockfish 10 loaded!' });
+      return;
+    }
+  } catch (e) {
+    console.error('Fallback failed:', e);
+  }
+  
+  self.postMessage({ type: 'error', data: 'Failed to load Stockfish engine' });
 }
 
-// Initialize
-loadStockfish().then(success => {
-  if (!success) {
-    self.postMessage({ type: 'error', data: 'Failed to load Stockfish from all sources' });
-  }
-});
+// Start initialization
+init();
 
-// Handle incoming messages
+// Handle commands from main thread
 self.onmessage = function(e) {
-  const { command, options } = e.data;
-  
-  if (!stockfish) {
-    self.postMessage({ type: 'error', data: 'Stockfish not initialized yet' });
+  if (!engine) {
+    self.postMessage({ type: 'error', data: 'Engine not ready' });
     return;
   }
   
-  switch (command) {
-    case 'uci':
-      stockfish.postMessage('uci');
-      break;
-      
-    case 'isready':
-      stockfish.postMessage('isready');
-      break;
-      
-    case 'setoption':
-      if (options?.name && options?.value !== undefined) {
-        stockfish.postMessage(`setoption name ${options.name} value ${options.value}`);
-      }
-      break;
-      
-    case 'position':
-      if (options?.fen) {
-        stockfish.postMessage(`position fen ${options.fen}`);
-      } else if (options?.startpos) {
-        const moves = options.moves ? ` moves ${options.moves}` : '';
-        stockfish.postMessage(`position startpos${moves}`);
-      }
-      break;
-      
-    case 'go':
-      let goCommand = 'go';
-      if (options?.depth) goCommand += ` depth ${options.depth}`;
-      if (options?.movetime) goCommand += ` movetime ${options.movetime}`;
-      if (options?.nodes) goCommand += ` nodes ${options.nodes}`;
-      if (options?.infinite) goCommand += ' infinite';
-      stockfish.postMessage(goCommand);
-      break;
-      
-    case 'stop':
-      stockfish.postMessage('stop');
-      break;
-      
-    case 'quit':
-      stockfish.postMessage('quit');
-      break;
-      
-    case 'eval':
-      stockfish.postMessage('eval');
-      break;
-      
-    default:
-      // Send raw UCI command
-      if (typeof command === 'string') {
-        stockfish.postMessage(command);
-      }
+  const { command, options } = e.data;
+  
+  let cmd = command;
+  
+  if (command === 'position') {
+    if (options?.fen) {
+      cmd = `position fen ${options.fen}`;
+    } else if (options?.startpos) {
+      cmd = options.moves ? `position startpos moves ${options.moves}` : 'position startpos';
+    }
+  } else if (command === 'go') {
+    cmd = 'go';
+    if (options?.depth) cmd += ` depth ${options.depth}`;
+    if (options?.movetime) cmd += ` movetime ${options.movetime}`;
+    if (options?.nodes) cmd += ` nodes ${options.nodes}`;
+    if (options?.infinite) cmd += ' infinite';
+  } else if (command === 'setoption') {
+    cmd = `setoption name ${options?.name} value ${options?.value}`;
   }
+  
+  engine.postMessage(cmd);
 };
