@@ -3,12 +3,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Brain, Cpu, Trophy, Play, Loader2, Clock, CheckCircle, XCircle, AlertCircle, Cloud, Database, TrendingUp, History, Layers, RefreshCw } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Brain, Cpu, Trophy, Play, Loader2, Clock, CheckCircle, XCircle, AlertCircle, Cloud, Database, TrendingUp, History, Layers, RefreshCw, Sparkles } from 'lucide-react';
 import { runCloudBenchmark, FAMOUS_GAMES, type BenchmarkResult, type PredictionAttempt } from '@/lib/chess/cloudBenchmark';
 import { checkLichessAvailability } from '@/lib/chess/lichessCloudEval';
 import { saveBenchmarkResults, getCumulativeStats, getArchetypeStats } from '@/lib/chess/benchmarkPersistence';
 import { calculateDepthMetricsFromBenchmark, type DepthMetrics } from '@/lib/chess/depthAnalysis';
 import { supabase } from '@/integrations/supabase/client';
+import { ProofDashboard } from '@/components/chess/ProofDashboard';
 
 interface CumulativeStats {
   totalRuns: number;
@@ -214,6 +216,25 @@ export default function Benchmark() {
             Testing against 50+ real games from top Lichess players (Magnus, Hikaru, Firouzja & more)
           </p>
         </div>
+
+        {/* Main Tabs */}
+        <Tabs defaultValue="benchmark" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="benchmark" className="flex items-center gap-2">
+              <Brain className="h-4 w-4" />
+              Run Benchmark
+            </TabsTrigger>
+            <TabsTrigger value="proof" className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4" />
+              Proof Dashboard
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="proof" className="mt-6">
+            <ProofDashboard />
+          </TabsContent>
+
+          <TabsContent value="benchmark" className="mt-6 space-y-8">
 
         {/* Cumulative Stats - Historical Performance */}
         {cumulativeStats && cumulativeStats.totalRuns > 0 && (
@@ -695,6 +716,8 @@ export default function Benchmark() {
             )}
           </CardContent>
         </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
