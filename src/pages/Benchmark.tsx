@@ -46,7 +46,7 @@ interface LatestBenchmark {
   created_at: string;
   hybrid_accuracy: number;
   stockfish_accuracy: number;
-  total_games: number;
+  completed_games: number; // FIXED: Use completed_games (actual analyzed count)
   hybrid_wins: number;
   stockfish_wins: number;
   both_correct: number;
@@ -203,7 +203,7 @@ export default function Benchmark() {
           getCumulativeStats(),
           supabase
             .from('chess_benchmark_results')
-            .select('id, created_at, hybrid_accuracy, stockfish_accuracy, total_games, hybrid_wins, stockfish_wins, both_correct')
+            .select('id, created_at, hybrid_accuracy, stockfish_accuracy, completed_games, hybrid_wins, stockfish_wins, both_correct')
             .order('created_at', { ascending: false })
             .limit(1)
             .single()
@@ -229,7 +229,7 @@ export default function Benchmark() {
               stats.stockfishWins,
               stats.bothCorrect,
               stats.validPredictionCount,
-              40 // Average depth estimate
+              40
             );
             setLiveEloState(cumulativeElo);
             console.log('[Benchmark] ELO calculated from CUMULATIVE data:', {
@@ -247,7 +247,7 @@ export default function Benchmark() {
               latest.hybrid_wins,
               latest.stockfish_wins,
               latest.both_correct,
-              latest.total_games,
+              latest.completed_games,
               35
             );
             setLiveEloState(initialElo);
@@ -556,7 +556,7 @@ export default function Benchmark() {
                   <p className="text-xs text-muted-foreground">Stockfish 17</p>
                 </div>
                 <div className="p-3 bg-background/50 rounded-lg">
-                  <p className="text-2xl font-bold">{latestBenchmark.total_games}</p>
+                  <p className="text-2xl font-bold">{latestBenchmark.completed_games}</p>
                   <p className="text-xs text-muted-foreground">Games Analyzed</p>
                 </div>
                 <div className="p-3 bg-background/50 rounded-lg">
