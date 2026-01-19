@@ -32,6 +32,8 @@ interface CumulativeStats {
   hybridNetWins: number;
   bestArchetype: string | null;
   worstArchetype: string | null;
+  validPredictionCount: number;
+  invalidPredictionCount: number;
 }
 
 interface LatestBenchmark {
@@ -85,21 +87,42 @@ export default function Benchmark() {
     error: localError 
   } = useHybridBenchmark();
 
-  // Update ELO state when local result changes
+  // Update ELO state when local result changes - fetch CUMULATIVE stats
   useEffect(() => {
     if (localResult) {
-      const bothCorrect = localResult.totalGames - localResult.hybridWins - localResult.stockfishWins;
-      const newEloState = calculateEloFromBenchmark(
-        localResult.hybridAccuracy,
-        localResult.stockfishAccuracy,
-        localResult.hybridWins,
-        localResult.stockfishWins,
-        bothCorrect,
-        localResult.totalGames,
-        localResult.averageDepth
-      );
-      setLiveEloState(newEloState);
-      setIsLiveElo(false);
+      // Fetch cumulative stats to calculate ELO from ALL historical data
+      const updateCumulativeElo = async () => {
+        const newStats = await getCumulativeStats();
+        setCumulativeStats(newStats);
+        
+        if (newStats && newStats.validPredictionCount > 0) {
+          const hybridWins = newStats.hybridNetWins > 0 ? newStats.hybridNetWins : 0;
+          const stockfishWins = newStats.hybridNetWins < 0 ? Math.abs(newStats.hybridNetWins) : 0;
+          const bothCorrect = Math.round(Math.min(
+            newStats.overallHybridAccuracy, 
+            newStats.overallStockfishAccuracy
+          ) * newStats.validPredictionCount / 100);
+          
+          const cumulativeElo = calculateEloFromBenchmark(
+            newStats.overallHybridAccuracy,
+            newStats.overallStockfishAccuracy,
+            hybridWins,
+            stockfishWins,
+            bothCorrect,
+            newStats.validPredictionCount,
+            localResult.averageDepth
+          );
+          setLiveEloState(cumulativeElo);
+          console.log('[Benchmark] Updated CUMULATIVE ELO after local run:', {
+            totalGames: newStats.validPredictionCount,
+            hybridNetWins: newStats.hybridNetWins,
+            calculatedElo: cumulativeElo.enPensentElo
+          });
+        }
+        setIsLiveElo(false);
+      };
+      
+      updateCumulativeElo();
     }
   }, [localResult]);
 
@@ -140,8 +163,35 @@ export default function Benchmark() {
           setLatestBenchmark(latest);
           setIsLoadingLatest(false);
           
-          // Initialize ELO state from latest benchmark if available
-          if (latest) {
+          // Initialize ELO state from CUMULATIVE stats (all historical data)
+          // This ensures ELO builds on every benchmark run
+          if (stats && stats.totalGamesAnalyzed > 0) {
+            // Calculate from cumulative data - THIS IS WHERE ELO ACCUMULATES
+            const totalCorrect = Math.round(stats.overallHybridAccuracy * stats.validPredictionCount / 100);
+            const sfCorrect = Math.round(stats.overallStockfishAccuracy * stats.validPredictionCount / 100);
+            const hybridWins = stats.hybridNetWins > 0 ? stats.hybridNetWins : 0;
+            const stockfishWins = stats.hybridNetWins < 0 ? Math.abs(stats.hybridNetWins) : 0;
+            const bothCorrect = Math.min(totalCorrect, sfCorrect);
+            
+            const cumulativeElo = calculateEloFromBenchmark(
+              stats.overallHybridAccuracy,
+              stats.overallStockfishAccuracy,
+              hybridWins,
+              stockfishWins,
+              bothCorrect,
+              stats.validPredictionCount,
+              40 // Average depth estimate
+            );
+            setLiveEloState(cumulativeElo);
+            console.log('[Benchmark] ELO calculated from CUMULATIVE data:', {
+              totalGames: stats.validPredictionCount,
+              hybridAccuracy: stats.overallHybridAccuracy,
+              stockfishAccuracy: stats.overallStockfishAccuracy,
+              hybridNetWins: stats.hybridNetWins,
+              calculatedElo: cumulativeElo.enPensentElo
+            });
+          } else if (latest) {
+            // Fallback to latest benchmark if no cumulative stats
             const initialElo = calculateEloFromBenchmark(
               latest.hybrid_accuracy,
               latest.stockfish_accuracy,
@@ -149,7 +199,7 @@ export default function Benchmark() {
               latest.stockfish_wins,
               latest.both_correct,
               latest.total_games,
-              35 // Assume cloud depth
+              35
             );
             setLiveEloState(initialElo);
           }
@@ -274,17 +324,32 @@ export default function Benchmark() {
       const newStats = await getCumulativeStats();
       setCumulativeStats(newStats);
       
-      // Update Live ELO State from cloud benchmark
-      const newEloState = calculateEloFromBenchmark(
-        benchmarkResult.hybridAccuracy,
-        benchmarkResult.stockfishAccuracy,
-        benchmarkResult.hybridWins,
-        benchmarkResult.stockfishWins,
-        benchmarkResult.predictionPoints.filter(p => p.hybridCorrect && p.stockfishCorrect).length,
-        benchmarkResult.completedGames,
-        35 // Cloud API average depth
-      );
-      setLiveEloState(newEloState);
+      // Update Live ELO State from CUMULATIVE stats (not just this run)
+      // This ensures ELO truly accumulates across all runs
+      if (newStats && newStats.validPredictionCount > 0) {
+        const hybridWins = newStats.hybridNetWins > 0 ? newStats.hybridNetWins : 0;
+        const stockfishWins = newStats.hybridNetWins < 0 ? Math.abs(newStats.hybridNetWins) : 0;
+        const bothCorrect = Math.round(Math.min(
+          newStats.overallHybridAccuracy, 
+          newStats.overallStockfishAccuracy
+        ) * newStats.validPredictionCount / 100);
+        
+        const cumulativeElo = calculateEloFromBenchmark(
+          newStats.overallHybridAccuracy,
+          newStats.overallStockfishAccuracy,
+          hybridWins,
+          stockfishWins,
+          bothCorrect,
+          newStats.validPredictionCount,
+          35 // Average depth
+        );
+        setLiveEloState(cumulativeElo);
+        console.log('[Benchmark] Updated CUMULATIVE ELO after run:', {
+          totalGames: newStats.validPredictionCount,
+          hybridNetWins: newStats.hybridNetWins,
+          calculatedElo: cumulativeElo.enPensentElo
+        });
+      }
       setIsLiveElo(false);
       
       setStatus(`Completed! Analyzed ${benchmarkResult.completedGames} FRESH games. Results saved for learning.`);
