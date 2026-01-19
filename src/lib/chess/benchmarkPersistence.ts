@@ -62,21 +62,22 @@ export async function getAlreadyAnalyzedData(): Promise<{
 
 /**
  * Check if a specific position has already been analyzed.
+ * SYNCHRONOUS for in-memory check, fires background reaffirmation.
  * When a duplicate is found, we reaffirm our existing knowledge
  * (increment confidence) without re-analyzing - Stockfish doesn't 
  * have this compounding advantage.
  */
-export async function isPositionAlreadyAnalyzed(
+export function isPositionAlreadyAnalyzed(
   fen: string, 
   analyzedData: { positionHashes: Set<string>; fenStrings: Set<string> },
   reaffirmOnDuplicate: boolean = true
-): Promise<boolean> {
+): boolean {
   const hash = hashPosition(fen);
   const isDuplicate = analyzedData.positionHashes.has(hash) || analyzedData.fenStrings.has(fen);
   
   if (isDuplicate && reaffirmOnDuplicate) {
-    // Reaffirm existing knowledge - increment confidence for this pattern
-    await reaffirmExistingPrediction(fen, hash);
+    // Fire-and-forget reaffirmation - don't block the check
+    reaffirmExistingPrediction(fen, hash).catch(() => {});
   }
   
   return isDuplicate;
