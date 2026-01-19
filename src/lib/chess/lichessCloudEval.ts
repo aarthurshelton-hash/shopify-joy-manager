@@ -1,8 +1,8 @@
 /**
- * Lichess Cloud Evaluation API
+ * Lichess Cloud Evaluation API (via Edge Function)
  * 
  * Uses Lichess's cloud evaluation service which runs Stockfish 17 NNUE.
- * This provides reliable, high-quality analysis without local WASM issues.
+ * Proxied through Edge Function to avoid CORS issues in production.
  * 
  * API: https://lichess.org/api#tag/Analysis/operation/apiCloudEval
  * 
@@ -36,12 +36,8 @@ export interface PositionEvaluation {
   winProbability: number;
 }
 
-// Rate limiting with exponential backoff
-let lastRequestTime = 0;
-let currentBackoffMs = 0;
+// Rate limiting state (local tracking)
 let rateLimitResetTime = 0;
-const MIN_REQUEST_INTERVAL = 4000; // 4 seconds between requests (15/min safe limit)
-const MAX_BACKOFF_MS = 60000; // Max 60 second backoff
 
 export function getRateLimitStatus(): { isLimited: boolean; resetInMs: number } {
   const now = Date.now();
@@ -51,39 +47,20 @@ export function getRateLimitStatus(): { isLimited: boolean; resetInMs: number } 
   return { isLimited: false, resetInMs: 0 };
 }
 
-async function rateLimitedFetch(url: string, retries = 3): Promise<Response> {
-  // Check if we're in a backoff period
-  const now = Date.now();
-  if (rateLimitResetTime > now) {
-    const waitTime = rateLimitResetTime - now;
-    console.log(`[LichessCloud] Rate limited, waiting ${Math.ceil(waitTime / 1000)}s...`);
-    await new Promise(resolve => setTimeout(resolve, waitTime));
-  }
-  
-  const timeSinceLastRequest = Date.now() - lastRequestTime;
-  if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
-    await new Promise(resolve => setTimeout(resolve, MIN_REQUEST_INTERVAL - timeSinceLastRequest));
-  }
-  
-  lastRequestTime = Date.now();
-  const response = await fetch(url);
-  
-  // Handle rate limiting with exponential backoff
-  if (response.status === 429 && retries > 0) {
-    currentBackoffMs = currentBackoffMs === 0 ? 5000 : Math.min(currentBackoffMs * 2, MAX_BACKOFF_MS);
-    rateLimitResetTime = Date.now() + currentBackoffMs;
-    console.log(`[LichessCloud] 429 Rate limited, backing off for ${currentBackoffMs / 1000}s...`);
-    await new Promise(resolve => setTimeout(resolve, currentBackoffMs));
-    return rateLimitedFetch(url, retries - 1);
-  }
-  
-  // Reset backoff on success
-  if (response.ok) {
-    currentBackoffMs = 0;
-  }
-  
-  return response;
-}
+// Edge function endpoint
+const getEdgeFunctionUrl = () => {
+  const url = import.meta.env.VITE_SUPABASE_URL;
+  return `${url}/functions/v1/lichess-cloud-eval`;
+};
+
+const getHeaders = () => {
+  const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${key}`,
+    'apikey': key
+  };
+};
 
 /**
  * Convert centipawns to win probability (Lichess formula)
@@ -111,28 +88,36 @@ function uciToSan(fen: string, uci: string): string {
 }
 
 /**
- * Evaluate a position using Lichess Cloud Eval (Stockfish 17)
+ * Evaluate a position using Lichess Cloud Eval (Stockfish 17) via Edge Function
  */
 export async function evaluatePosition(fen: string, multiPv: number = 1): Promise<PositionEvaluation | null> {
   try {
-    // Normalize FEN for API (remove move clocks for cache hits)
-    const fenParts = fen.split(' ');
-    const normalizedFen = fenParts.slice(0, 4).join(' ');
+    const response = await fetch(getEdgeFunctionUrl(), {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ fen, multiPv })
+    });
     
-    const url = `https://lichess.org/api/cloud-eval?fen=${encodeURIComponent(fen)}&multiPv=${multiPv}`;
-    
-    const response = await rateLimitedFetch(url);
-    
-    if (!response.ok) {
-      if (response.status === 404) {
-        // Position not in cloud database - that's okay
-        console.log('[LichessCloud] Position not in database:', fen);
-        return null;
+    if (response.status === 429) {
+      const data = await response.json();
+      if (data.resetInMs) {
+        rateLimitResetTime = Date.now() + data.resetInMs;
       }
-      throw new Error(`Lichess API error: ${response.status}`);
+      console.warn('[LichessCloud] Rate limited');
+      return null;
     }
     
-    const data: CloudEvaluation = await response.json();
+    if (!response.ok) {
+      console.error('[LichessCloud] API error:', response.status);
+      return null;
+    }
+    
+    const data = await response.json();
+    
+    if (data.notFound) {
+      console.log('[LichessCloud] Position not in database:', fen);
+      return null;
+    }
     
     if (!data.pvs || data.pvs.length === 0) {
       return null;
@@ -185,23 +170,40 @@ export async function evaluatePositions(
 }
 
 /**
- * Check if Lichess API is available
+ * Check if Lichess API is available via Edge Function
  */
 export async function checkLichessAvailability(): Promise<{ available: boolean; rateLimited: boolean; resetInMs?: number }> {
-  // Check if we're currently rate limited
+  // Check if we're currently rate limited locally
   const limitStatus = getRateLimitStatus();
   if (limitStatus.isLimited) {
     return { available: false, rateLimited: true, resetInMs: limitStatus.resetInMs };
   }
   
   try {
-    // Test with starting position (always in database)
-    const startingFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
-    const result = await evaluatePosition(startingFen);
-    return { available: result !== null, rateLimited: false };
-  } catch {
-    const newLimitStatus = getRateLimitStatus();
-    return { available: false, rateLimited: newLimitStatus.isLimited, resetInMs: newLimitStatus.resetInMs };
+    const response = await fetch(getEdgeFunctionUrl(), {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ action: 'check' })
+    });
+    
+    if (!response.ok) {
+      return { available: false, rateLimited: false };
+    }
+    
+    const data = await response.json();
+    
+    if (data.rateLimited && data.resetInMs) {
+      rateLimitResetTime = Date.now() + data.resetInMs;
+    }
+    
+    return { 
+      available: data.available, 
+      rateLimited: data.rateLimited || false,
+      resetInMs: data.resetInMs 
+    };
+  } catch (error) {
+    console.error('[LichessCloud] Availability check error:', error);
+    return { available: false, rateLimited: false };
   }
 }
 
