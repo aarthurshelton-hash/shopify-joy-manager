@@ -20,7 +20,10 @@ import {
   TrendingUp, 
   AlertTriangle,
   Sparkles,
-  Activity
+  Activity,
+  Clock,
+  Calendar,
+  Timer
 } from 'lucide-react';
 import {
   getDisagreementStats,
@@ -29,8 +32,10 @@ import {
   DisagreementStats,
   formatEval,
   getDisagreementInsight,
+  formatTimeControl,
 } from '@/lib/chess/disagreementTracker';
 import { getCumulativeStats } from '@/lib/chess/benchmarkPersistence';
+import { format, parseISO, isValid } from 'date-fns';
 
 interface CumulativeStats {
   totalRuns: number;
@@ -193,49 +198,81 @@ export function ProofDashboard() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {breakthroughs.map((case_, index) => (
-                    <motion.div
-                      key={case_.id}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      className="p-4 bg-gradient-to-r from-green-500/10 to-transparent rounded-lg border border-green-500/20"
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <Badge variant="outline" className="bg-green-500/20 text-green-400 border-green-500/30">
-                            {case_.significance === 'breakthrough' ? '🌟 BREAKTHROUGH' : '✓ Notable'}
-                          </Badge>
-                          <p className="text-sm font-medium mt-1">{case_.gameName}</p>
+                  {breakthroughs.map((case_, index) => {
+                    const timeControlInfo = formatTimeControl(case_.timeControl);
+                    const analysisDate = case_.createdAt ? parseISO(case_.createdAt) : null;
+                    const gameDate = case_.gameDate ? parseISO(case_.gameDate) : null;
+                    
+                    return (
+                      <motion.div
+                        key={case_.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                        className="p-4 bg-gradient-to-r from-green-500/10 to-transparent rounded-lg border border-green-500/20"
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Badge variant="outline" className="bg-green-500/20 text-green-400 border-green-500/30">
+                                {case_.significance === 'breakthrough' ? '🌟 BREAKTHROUGH' : '✓ Notable'}
+                              </Badge>
+                              <Badge variant="outline" className={`${timeControlInfo.color} border-current/30 bg-current/10`}>
+                                {timeControlInfo.icon} {timeControlInfo.label}
+                              </Badge>
+                              {(case_.whiteElo || case_.blackElo) && (
+                                <Badge variant="outline" className="text-muted-foreground">
+                                  ~{Math.round(((case_.whiteElo || 0) + (case_.blackElo || 0)) / 2)} ELO
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-sm font-medium mt-1">{case_.gameName}</p>
+                          </div>
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                            Move {case_.moveNumber}
+                          </span>
                         </div>
-                        <span className="text-xs text-muted-foreground">
-                          Move {case_.moveNumber}
-                        </span>
-                      </div>
-                      
-                      <div className="grid grid-cols-3 gap-2 text-xs mt-3">
-                        <div className="text-center p-2 bg-destructive/10 rounded">
-                          <p className="text-muted-foreground">Stockfish</p>
-                          <p className="font-mono font-bold text-destructive">{formatEval(case_.stockfishEval)}</p>
-                          <p className="text-destructive">→ {case_.stockfishPrediction}</p>
-                        </div>
-                        <div className="text-center p-2 bg-green-500/10 rounded">
-                          <p className="text-muted-foreground">Hybrid</p>
-                          <p className="font-bold text-green-400">{case_.hybridArchetype}</p>
-                          <p className="text-green-400">→ {case_.hybridPrediction}</p>
-                        </div>
-                        <div className="text-center p-2 bg-primary/10 rounded">
-                          <p className="text-muted-foreground">Actual</p>
-                          <p className="font-bold text-primary">{case_.actualResult}</p>
-                          <p className="text-primary">✓ Hybrid correct</p>
-                        </div>
-                      </div>
 
-                      <p className="text-xs text-muted-foreground mt-3 italic">
-                        {getDisagreementInsight(case_)}
-                      </p>
-                    </motion.div>
-                  ))}
+                        {/* Date Information */}
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground mb-3 flex-wrap">
+                          {gameDate && isValid(gameDate) && (
+                            <div className="flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />
+                              <span>Played: {format(gameDate, 'MMM d, yyyy')}</span>
+                            </div>
+                          )}
+                          {analysisDate && isValid(analysisDate) && (
+                            <div className="flex items-center gap-1">
+                              <Timer className="w-3 h-3 text-primary" />
+                              <span className="text-primary">Analyzed: {format(analysisDate, 'MMM d, yyyy h:mm a')}</span>
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="grid grid-cols-3 gap-2 text-xs">
+                          <div className="text-center p-2 bg-destructive/10 rounded">
+                            <p className="text-muted-foreground">Stockfish</p>
+                            <p className="font-mono font-bold text-destructive">{formatEval(case_.stockfishEval)}</p>
+                            <p className="text-destructive">→ {case_.stockfishPrediction}</p>
+                          </div>
+                          <div className="text-center p-2 bg-green-500/10 rounded">
+                            <p className="text-muted-foreground">Hybrid</p>
+                            <p className="font-bold text-green-400">{case_.hybridArchetype}</p>
+                            <p className="text-green-400">→ {case_.hybridPrediction}</p>
+                          </div>
+                          <div className="text-center p-2 bg-primary/10 rounded">
+                            <p className="text-muted-foreground">Actual</p>
+                            <p className="font-bold text-primary">{case_.actualResult}</p>
+                            <p className="text-primary">✓ Hybrid correct</p>
+                          </div>
+                        </div>
+
+                        <p className="text-xs text-muted-foreground mt-3 italic">
+                          {getDisagreementInsight(case_)}
+                        </p>
+                      </motion.div>
+                    );
+                  })}
                 </div>
               )}
             </ScrollArea>
