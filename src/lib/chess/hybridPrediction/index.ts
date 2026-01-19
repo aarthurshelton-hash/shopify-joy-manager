@@ -12,6 +12,9 @@
  * - Hybrid: "Play e4 (tactics) as part of the kingside attack trajectory (strategy)"
  * 
  * This creates predictions neither engine could make alone.
+ * 
+ * CRITICAL: Loads historical learned patterns from 802+ validated positions
+ * to ensure predictions leverage ALL accumulated knowledge.
  */
 
 import { Chess } from 'chess.js';
@@ -23,6 +26,7 @@ import {
 import { simulateGame } from '../gameSimulator';
 import { evaluatePosition, PositionEvaluation } from '../lichessCloudEval';
 import { PositionAnalysis } from '../stockfishEngine';
+import { loadLearnedPatterns } from '../patternLearning/persistentPatternLoader';
 
 // Re-export types
 export * from './types';
@@ -34,6 +38,9 @@ import { fuseRecommendations } from './fusedRecommendation';
 import { generateTrajectoryPrediction } from './trajectoryPrediction';
 import { calculateHybridConfidence, calculateCombinedScore } from './confidenceCalculator';
 import { HybridPrediction } from './types';
+
+// Track if patterns have been loaded this session
+let patternsLoadedThisSession = false;
 
 /**
  * Convert Lichess Cloud evaluation to PositionAnalysis format
@@ -78,6 +85,19 @@ export async function generateHybridPrediction(
   } = {}
 ): Promise<HybridPrediction> {
   const depth = options.depth || 18;
+  
+  // CRITICAL: Load learned patterns from database on first prediction
+  // This ensures all 802+ validated positions are used for pattern matching
+  if (!patternsLoadedThisSession) {
+    options.onProgress?.('Loading historical patterns from database', 2);
+    try {
+      const { loaded, hybridWins, totalAccuracy } = await loadLearnedPatterns();
+      console.log(`[HybridEngine] Loaded ${loaded} historical patterns (${hybridWins} breakthrough cases, ${totalAccuracy.toFixed(1)}% accuracy)`);
+      patternsLoadedThisSession = true;
+    } catch (e) {
+      console.warn('[HybridEngine] Could not load historical patterns:', e);
+    }
+  }
   
   options.onProgress?.('Simulating game visualization', 5);
   
