@@ -430,12 +430,20 @@ export function useHybridBenchmark() {
         try {
           const { moves, result: gameResult, fen, moveNumber } = parsePGN(game.pgn, predictionMoveRange);
           
-          if (moves.length < 30) continue;
+          if (moves.length < 30) {
+            console.log(`[Skip] Game has only ${moves.length} moves, need 30+`);
+            continue;
+          }
+          
+          if (!gameResult || gameResult === '*') {
+            console.log(`[Skip] Game has no valid result: ${gameResult}`);
+            continue;
+          }
           
           // CRITICAL: Cross-run deduplication check
           if (isPositionAlreadyAnalyzed(fen, analyzedData)) {
             skippedDuplicates++;
-            console.log(`[Dedup] Skipping position at move ${moveNumber} - already analyzed`);
+            console.log(`[Dedup] Skipping position at move ${moveNumber} - already analyzed (${skippedDuplicates} total dupes)`);
             continue;
           }
           
@@ -702,6 +710,7 @@ export function useHybridBenchmark() {
 
 // Fetch games from Lichess via Edge Function (avoids CORS issues in production)
 // CRITICAL: Each benchmark run must use FRESH, UNIQUE games for scientific validity
+// Returns ALL valid games - let the caller handle deduplication against DB
 async function fetchLichessGames(count: number): Promise<{ pgn: string; timeControl?: string; whiteElo?: number; blackElo?: number }[]> {
   // EXPANDED player pool - 30+ top GMs for maximum variety
   const topPlayers = [
@@ -749,25 +758,27 @@ async function fetchLichessGames(count: number): Promise<{ pgn: string; timeCont
   const until = since + (30 * 24 * 60 * 60 * 1000); // 30-day window
   
   const games: { pgn: string; timeControl?: string; whiteElo?: number; blackElo?: number }[] = [];
-  const gameIds = new Set<string>(); // Deduplicate by game ID
+  const gameIds = new Set<string>(); // Deduplicate by game ID within this fetch
   const shuffledPlayers = topPlayers.sort(() => Math.random() - 0.5);
   let fetchErrors = 0;
   let rateLimitedPlayers = 0;
+  let shortGamesSkipped = 0;
+  let invalidPgnSkipped = 0;
   
-  // Take random subset of players (15-20) for variety
-  const selectedPlayers = shuffledPlayers.slice(0, 15 + Math.floor(Math.random() * 5));
+  // CRITICAL FIX: Fetch from ALL players, don't stop early
+  // We need a large buffer since many games will be duplicates in the DB
+  const selectedPlayers = shuffledPlayers.slice(0, Math.min(25, shuffledPlayers.length));
   
   console.log(`[Benchmark] Fetching FRESH games from ${selectedPlayers.length} random GMs`);
   console.log(`[Benchmark] Time window: ${new Date(since).toISOString()} to ${new Date(until).toISOString()}`);
-  console.log(`[Benchmark] Target: ${count} unique games`);
+  console.log(`[Benchmark] Target buffer: ${count * 5} games (to account for deduplication)`);
   
   // Use Edge Function to fetch games (bypasses CORS in production)
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
   
+  // CRITICAL FIX: Don't break early - collect as many games as possible
   for (const player of selectedPlayers) {
-    if (games.length >= count) break;
-    
     // If too many players are rate limited, wait and try again
     if (rateLimitedPlayers >= 3) {
       console.warn(`[Benchmark] Multiple rate limits detected, waiting 15s before continuing...`);
@@ -776,7 +787,7 @@ async function fetchLichessGames(count: number): Promise<{ pgn: string; timeCont
     }
     
     try {
-      console.log(`[Benchmark] Fetching games for ${player}...`);
+      console.log(`[Benchmark] Fetching games for ${player}... (${games.length} collected so far)`);
       
       const response = await fetch(`${supabaseUrl}/functions/v1/lichess-games`, {
         method: 'POST',
@@ -789,7 +800,7 @@ async function fetchLichessGames(count: number): Promise<{ pgn: string; timeCont
           player,
           since,
           until,
-          max: 25
+          max: 50 // Increased from 25 to get more games per player
         })
       });
       
@@ -804,28 +815,38 @@ async function fetchLichessGames(count: number): Promise<{ pgn: string; timeCont
         const data = await response.json();
         const fetchedGames = data.games || [];
         
-        console.log(`[Benchmark] Got ${fetchedGames.length} games for ${player}`);
+        console.log(`[Benchmark] Got ${fetchedGames.length} raw games for ${player}`);
         rateLimitedPlayers = 0; // Reset on success
         
         for (const game of fetchedGames) {
-          if (games.length >= count) break;
+          // Validate game has required data
+          const pgn = game.pgn || game.moves;
+          if (!pgn || typeof pgn !== 'string') {
+            invalidPgnSkipped++;
+            continue;
+          }
           
-          const gameId = game.id || `${game.createdAt}_${game.moves?.slice(0, 20)}`;
+          // Quick check for minimum moves BEFORE adding
+          const moveCount = (pgn.match(/\d+\./g) || []).length;
+          if (moveCount < 20) { // 20 full moves = 40 half-moves minimum
+            shortGamesSkipped++;
+            continue;
+          }
+          
+          const gameId = game.id || `${game.createdAt}_${pgn.slice(0, 30)}`;
           if (gameIds.has(gameId)) continue;
           
           gameIds.add(gameId);
           games.push({
-            pgn: game.pgn || game.moves,
+            pgn,
             timeControl: game.timeControl,
             whiteElo: game.whiteElo,
             blackElo: game.blackElo,
           });
         }
         
-        // Early log of progress
-        if (games.length > 0 && games.length % 25 === 0) {
-          console.log(`[Benchmark] Progress: ${games.length}/${count} games collected`);
-        }
+        // Log progress
+        console.log(`[Benchmark] Progress: ${games.length} valid games collected (${shortGamesSkipped} short, ${invalidPgnSkipped} invalid)`);
       } else {
         console.warn(`[Benchmark] Failed to fetch for ${player}: ${response.status}`);
         fetchErrors++;
@@ -836,19 +857,16 @@ async function fetchLichessGames(count: number): Promise<{ pgn: string; timeCont
     }
     
     // Rate limiting protection - increase delay between players
-    await new Promise(resolve => setTimeout(resolve, 1200 + Math.random() * 800));
+    await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 1000));
   }
   
-  console.log(`[Benchmark] Fetched ${games.length} UNIQUE games (${gameIds.size} IDs, ${fetchErrors} errors)`);
+  console.log(`[Benchmark] FINAL: Fetched ${games.length} VALID games (${gameIds.size} unique IDs)`);
+  console.log(`[Benchmark] Skipped: ${shortGamesSkipped} short games, ${invalidPgnSkipped} invalid PGNs, ${fetchErrors} errors`);
   console.log(`[Benchmark] Window: ${new Date(since).toLocaleDateString()} - ${new Date(until).toLocaleDateString()}`);
   
   // If we didn't get enough games but have some, continue with what we have
   if (games.length === 0 && fetchErrors > 0) {
     throw new Error('Failed to fetch games from Lichess - possibly rate limited. Please try again in a few minutes.');
-  }
-  
-  if (games.length < count && games.length > 0) {
-    console.warn(`[Benchmark] Only got ${games.length}/${count} games, continuing with available data`);
   }
   
   // Final shuffle for randomization
