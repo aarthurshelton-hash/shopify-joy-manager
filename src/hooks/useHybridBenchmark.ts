@@ -326,8 +326,8 @@ export function useHybridBenchmark() {
         message: `Found ${analyzedData.positionHashes.size} existing positions. Fetching new GM games...` 
       }));
       
-      // Fetch MORE games than needed to account for duplicates
-      const fetchMultiplier = 3;
+      // Fetch MORE games than needed to account for duplicates and rate limits
+      const fetchMultiplier = 5; // Increased from 3 for more buffer
       const games = await fetchLichessGames(gameCount * fetchMultiplier);
       if (games.length === 0) {
         throw new Error('No games fetched from Lichess');
@@ -680,8 +680,9 @@ async function fetchLichessGames(count: number): Promise<{ pgn: string; timeCont
       });
       
       if (response.status === 429) {
-        console.warn(`[Benchmark] Rate limited for ${player}, waiting 5s...`);
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        console.warn(`[Benchmark] Rate limited for ${player}, waiting 10s and retrying...`);
+        await new Promise(resolve => setTimeout(resolve, 10000)); // Wait longer
+        fetchErrors++;
         continue;
       }
       
@@ -704,7 +705,11 @@ async function fetchLichessGames(count: number): Promise<{ pgn: string; timeCont
             whiteElo: game.whiteElo,
             blackElo: game.blackElo,
           });
-          console.log(`[Benchmark] Added game ${gameId}: ${game.moveCount} moves, ${game.status}, ${game.timeControl || 'unknown'} time control`);
+        }
+        
+        // Early log of progress
+        if (games.length > 0 && games.length % 25 === 0) {
+          console.log(`[Benchmark] Progress: ${games.length}/${count} games collected`);
         }
       } else {
         console.warn(`[Benchmark] Failed to fetch for ${player}: ${response.status}`);
@@ -715,8 +720,8 @@ async function fetchLichessGames(count: number): Promise<{ pgn: string; timeCont
       fetchErrors++;
     }
     
-    // Rate limiting protection
-    await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 500));
+    // Rate limiting protection - increase delay between players
+    await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 700));
   }
   
   console.log(`[Benchmark] Fetched ${games.length} UNIQUE games (${gameIds.size} IDs, ${fetchErrors} errors)`);

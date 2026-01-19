@@ -74,7 +74,7 @@ export default function Benchmark() {
   // Maximum Depth Mode State
   const [benchmarkMode, setBenchmarkMode] = useState<'cloud' | 'local'>('cloud');
   const [localDepth, setLocalDepth] = useState(60); // Maximum depth for local WASM
-  const [gameCount, setGameCount] = useState(10);
+  const [gameCount, setGameCount] = useState(25); // Increased default for better batches
   
   // Hooks for local WASM benchmark
   const { isReady: wasmReady, engineVersion, loadingProgress: wasmLoadingProgress, error: wasmError } = useStockfishAnalysis();
@@ -1062,12 +1062,12 @@ export default function Benchmark() {
           </Card>
         )}
 
-        {/* Results - Show cumulative stats by default, session result when available */}
-        {(result || cumulativeStats) && (
+        {/* Results - ALWAYS show cumulative stats from database, session adds to it */}
+        {cumulativeStats && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Stockfish Card */}
+            {/* Stockfish Card - ALWAYS shows cumulative */}
             <Card className={`border-2 transition-all ${
-              (result ? winner === 'stockfish' : false) ? 'border-green-500 bg-green-500/5' : 'border-muted'
+              cumulativeStats.hybridNetWins < 0 ? 'border-green-500 bg-green-500/5' : 'border-muted'
             }`}>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
@@ -1075,15 +1075,13 @@ export default function Benchmark() {
                     <Cpu className="h-6 w-6 text-blue-500" />
                     Stockfish 17
                   </div>
-                  {result && winner === 'stockfish' && <Badge className="bg-green-500">WINNER</Badge>}
+                  {cumulativeStats.hybridNetWins < 0 && <Badge className="bg-green-500">LEADING</Badge>}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="text-center">
                   <div className="text-5xl font-bold text-blue-500">
-                    {result 
-                      ? result.stockfishAccuracy.toFixed(1) 
-                      : cumulativeStats?.overallStockfishAccuracy.toFixed(1) || '0.0'}%
+                    {cumulativeStats.overallStockfishAccuracy.toFixed(1)}%
                   </div>
                   <p className="text-muted-foreground">Prediction Accuracy</p>
                 </div>
@@ -1091,11 +1089,7 @@ export default function Benchmark() {
                   <div>
                     <p className="text-muted-foreground">Correct</p>
                     <p className="font-semibold">
-                      {result 
-                        ? `${stockfishCorrect} / ${result.completedGames}`
-                        : cumulativeStats 
-                          ? `${Math.round(cumulativeStats.overallStockfishAccuracy * cumulativeStats.validPredictionCount / 100)} / ${cumulativeStats.validPredictionCount}`
-                          : '0 / 0'}
+                      {Math.round(cumulativeStats.overallStockfishAccuracy * cumulativeStats.validPredictionCount / 100)} / {cumulativeStats.validPredictionCount}
                     </p>
                   </div>
                   <div>
@@ -1106,10 +1100,9 @@ export default function Benchmark() {
               </CardContent>
             </Card>
 
-            {/* Hybrid Card */}
+            {/* Hybrid Card - ALWAYS shows cumulative */}
             <Card className={`border-2 transition-all ${
-              (result ? winner === 'hybrid' : (cumulativeStats?.hybridNetWins || 0) > 0) 
-                ? 'border-green-500 bg-green-500/5' : 'border-muted'
+              cumulativeStats.hybridNetWins > 0 ? 'border-green-500 bg-green-500/5' : 'border-muted'
             }`}>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
@@ -1117,18 +1110,15 @@ export default function Benchmark() {
                     <Brain className="h-6 w-6 text-purple-500" />
                     En Pensent Hybrid
                   </div>
-                  {result && winner === 'hybrid' && <Badge className="bg-green-500">WINNER</Badge>}
-                  {!result && (cumulativeStats?.hybridNetWins || 0) > 0 && (
-                    <Badge className="bg-green-500">LEADING +{cumulativeStats?.hybridNetWins}</Badge>
+                  {cumulativeStats.hybridNetWins > 0 && (
+                    <Badge className="bg-green-500">LEADING +{cumulativeStats.hybridNetWins}</Badge>
                   )}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="text-center">
                   <div className="text-5xl font-bold text-purple-500">
-                    {result 
-                      ? result.hybridAccuracy.toFixed(1)
-                      : cumulativeStats?.overallHybridAccuracy.toFixed(1) || '0.0'}%
+                    {cumulativeStats.overallHybridAccuracy.toFixed(1)}%
                   </div>
                   <p className="text-muted-foreground">Prediction Accuracy</p>
                 </div>
@@ -1136,11 +1126,7 @@ export default function Benchmark() {
                   <div>
                     <p className="text-muted-foreground">Correct</p>
                     <p className="font-semibold">
-                      {result 
-                        ? `${hybridCorrect} / ${result.completedGames}`
-                        : cumulativeStats 
-                          ? `${Math.round(cumulativeStats.overallHybridAccuracy * cumulativeStats.validPredictionCount / 100)} / ${cumulativeStats.validPredictionCount}`
-                          : '0 / 0'}
+                      {Math.round(cumulativeStats.overallHybridAccuracy * cumulativeStats.validPredictionCount / 100)} / {cumulativeStats.validPredictionCount}
                     </p>
                   </div>
                   <div>
@@ -1153,36 +1139,37 @@ export default function Benchmark() {
           </div>
         )}
 
-        {/* Statistical Summary - Show cumulative by default */}
-        {(result || cumulativeStats) && (
+        {/* Statistical Summary - ALWAYS show cumulative data */}
+        {cumulativeStats && (
           <Card>
             <CardHeader>
-              <CardTitle>Statistical Analysis</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                Statistical Analysis
+                <Badge variant="secondary" className="ml-2">
+                  <Database className="h-3 w-3 mr-1" />
+                  Cumulative
+                </Badge>
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 <div className="text-center p-4 bg-muted/50 rounded-lg">
                   <p className="text-2xl font-bold">
-                    {result?.completedGames || cumulativeStats?.validPredictionCount || 0}
+                    {cumulativeStats.validPredictionCount}
                   </p>
                   <p className="text-sm text-muted-foreground">Games Analyzed</p>
                 </div>
                 <div className="text-center p-4 bg-muted/50 rounded-lg">
                   <p className="text-2xl font-bold">
-                    {result?.confidence?.toFixed(1) || 
-                     (cumulativeStats && cumulativeStats.validPredictionCount > 30 
-                       ? Math.min(99.9, 50 + (cumulativeStats.validPredictionCount / 50)).toFixed(1) 
-                       : '0.0')}%
+                    {cumulativeStats.validPredictionCount > 30 
+                      ? Math.min(99.9, 50 + (cumulativeStats.validPredictionCount / 50)).toFixed(1) 
+                      : '0.0'}%
                   </p>
                   <p className="text-sm text-muted-foreground">Statistical Confidence</p>
                 </div>
                 <div className="text-center p-4 bg-muted/50 rounded-lg">
                   {(() => {
-                    const advantage = result 
-                      ? result.hybridAccuracy - result.stockfishAccuracy
-                      : cumulativeStats 
-                        ? cumulativeStats.overallHybridAccuracy - cumulativeStats.overallStockfishAccuracy
-                        : 0;
+                    const advantage = cumulativeStats.overallHybridAccuracy - cumulativeStats.overallStockfishAccuracy;
                     return (
                       <p className={`text-2xl font-bold ${advantage > 0 ? 'text-green-500' : 'text-red-500'}`}>
                         {advantage > 0 ? '+' : ''}{advantage.toFixed(1)}%
@@ -1193,16 +1180,13 @@ export default function Benchmark() {
                 </div>
                 <div className="text-center p-4 bg-muted/50 rounded-lg">
                   <p className="text-2xl font-bold">
-                    {result?.bothCorrect || 
-                     (cumulativeStats 
-                       ? Math.round(Math.min(cumulativeStats.overallHybridAccuracy, cumulativeStats.overallStockfishAccuracy) * cumulativeStats.validPredictionCount / 100)
-                       : 0)}
+                    {Math.round(Math.min(cumulativeStats.overallHybridAccuracy, cumulativeStats.overallStockfishAccuracy) * cumulativeStats.validPredictionCount / 100)}
                   </p>
                   <p className="text-sm text-muted-foreground">Both Correct</p>
                 </div>
                 <div className="text-center p-4 bg-muted/50 rounded-lg">
-                  <p className="text-2xl font-bold">{result ? formatTime(elapsedTime) : '∞'}</p>
-                  <p className="text-sm text-muted-foreground">Total Time</p>
+                  <p className="text-2xl font-bold">{cumulativeStats.totalRuns}</p>
+                  <p className="text-sm text-muted-foreground">Benchmark Runs</p>
                 </div>
               </div>
             </CardContent>
