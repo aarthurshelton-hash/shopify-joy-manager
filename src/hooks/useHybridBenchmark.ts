@@ -347,17 +347,6 @@ export function useHybridBenchmark() {
         message: `Found ${analyzedData.positionHashes.size} existing positions. Fetching new GM games...` 
       }));
       
-      // Fetch MORE games than needed to account for duplicates and rate limits
-      // Higher multiplier ensures we can meet the target even with heavy deduplication
-      const fetchMultiplier = 8; // Increased from 5 for more buffer
-      const targetFetch = Math.max(gameCount * fetchMultiplier, 150); // Minimum 150 games
-      const games = await fetchLichessGames(targetFetch);
-      if (games.length === 0) {
-        throw new Error('No games fetched from Lichess');
-      }
-      
-      console.log(`[Benchmark] Fetched ${games.length} games, targeting ${gameCount} unique positions`);
-      
       const runId = crypto.randomUUID();
       const attempts: any[] = [];
       let hybridCorrect = 0;
@@ -367,20 +356,53 @@ export function useHybridBenchmark() {
       const depths: number[] = [];
       let analyzedCount = 0;
       
-      // Process each game until we hit target count
-      const gamesAvailable = games.length;
-      for (let i = 0; i < gamesAvailable && analyzedCount < gameCount; i++) {
-        if (abortRef.current) break;
+      // PERSISTENT RETRY LOOP: Keep fetching and processing until we hit target count
+      // This ensures the user always gets the exact number of games they requested
+      let totalFetchAttempts = 0;
+      const maxFetchAttempts = 10; // Safety limit to prevent infinite loops
+      let allGames: { pgn: string; timeControl?: string; whiteElo?: number; blackElo?: number }[] = [];
+      let gameIndex = 0;
+      
+      while (analyzedCount < gameCount && totalFetchAttempts < maxFetchAttempts && !abortRef.current) {
+        // Fetch more games if we've exhausted our current batch
+        if (gameIndex >= allGames.length) {
+          totalFetchAttempts++;
+          const gamesNeeded = (gameCount - analyzedCount) * 8; // 8x multiplier for buffer
+          const targetFetch = Math.max(gamesNeeded, 100);
+          
+          setProgress(prev => ({ 
+            ...prev!, 
+            message: `Batch ${totalFetchAttempts}: Fetching ~${targetFetch} fresh games... (${analyzedCount}/${gameCount} complete)` 
+          }));
+          
+          console.log(`[Benchmark] Fetch attempt ${totalFetchAttempts}: Need ${gameCount - analyzedCount} more positions, fetching ${targetFetch} games...`);
+          
+          const newGames = await fetchLichessGames(targetFetch);
+          if (newGames.length === 0 && totalFetchAttempts >= 3) {
+            console.warn(`[Benchmark] No new games fetched after ${totalFetchAttempts} attempts`);
+            break; // Give up after 3 failed fetches
+          }
+          
+          allGames = newGames;
+          gameIndex = 0;
+          console.log(`[Benchmark] Batch ${totalFetchAttempts}: Got ${newGames.length} games`);
+        }
         
-        const game = games[i];
-        const gamesLeft = gamesAvailable - i - 1;
+        if (gameIndex >= allGames.length) {
+          console.warn(`[Benchmark] Exhausted all fetch attempts`);
+          break;
+        }
+        
+        const game = allGames[gameIndex];
+        gameIndex++;
+        const gamesLeftInBatch = allGames.length - gameIndex;
         
         setProgress({
           currentGame: analyzedCount + 1,
           totalGames: gameCount,
           currentPhase: 'analyzing',
           currentDepth: 0,
-          message: `Position ${analyzedCount + 1}/${gameCount} (${skippedDuplicates} duplicates skipped, ${gamesLeft} games remaining)`,
+          message: `Position ${analyzedCount + 1}/${gameCount} (${skippedDuplicates} duplicates skipped, batch ${totalFetchAttempts}, ${gamesLeftInBatch} remaining)`,
           enPensentModulesActive: EN_PENSENT_ADAPTERS
         });
         
@@ -511,11 +533,11 @@ export function useHybridBenchmark() {
           
         } catch (e) {
           const errorMsg = e instanceof Error ? e.message : String(e);
-          console.error(`[Benchmark] Error processing game ${i}:`, errorMsg);
+          console.error(`[Benchmark] Error processing game ${gameIndex}:`, errorMsg);
           // Continue to next game instead of stopping
           setProgress(prev => ({
             ...prev!,
-            message: `Error on game ${i + 1}: ${errorMsg.substring(0, 50)}... Continuing...`
+            message: `Error on position ${analyzedCount + 1}: ${errorMsg.substring(0, 50)}... Continuing...`
           }));
         }
       }
