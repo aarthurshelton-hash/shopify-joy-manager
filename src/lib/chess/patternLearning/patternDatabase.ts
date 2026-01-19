@@ -102,6 +102,20 @@ export class PatternDatabase {
     };
   }
 
+  /**
+   * Inject a learned pattern from the database (for persistent knowledge loading)
+   */
+  injectLearnedPattern(record: PatternRecord): void {
+    // Skip if already exists
+    if (this.patterns.has(record.id)) return;
+    
+    this.patterns.set(record.id, record);
+    
+    const existing = this.archetypeIndex.get(record.archetype) || [];
+    existing.push(record);
+    this.archetypeIndex.set(record.archetype, existing);
+  }
+
   clear(): void {
     this.patterns.clear();
     this.archetypeIndex.clear();

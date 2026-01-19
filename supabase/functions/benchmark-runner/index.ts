@@ -162,7 +162,59 @@ async function evaluatePosition(fen: string): Promise<any> {
   return null;
 }
 
+// Historical archetype accuracy data (loaded from database)
+interface ArchetypeStats {
+  accuracy: number;
+  sampleSize: number;
+  beatsStockfishRate: number;
+}
+
+let historicalStats: Map<string, ArchetypeStats> = new Map();
+let statsLoaded = false;
+
+// Load historical archetype performance from database
+async function loadHistoricalStats(supabase: any): Promise<void> {
+  if (statsLoaded) return;
+  
+  console.log("[BenchmarkRunner] Loading historical archetype performance...");
+  
+  const { data, error } = await supabase
+    .from('chess_prediction_attempts')
+    .select('hybrid_archetype, hybrid_correct, stockfish_correct');
+  
+  if (error || !data) {
+    console.warn("[BenchmarkRunner] Could not load historical stats:", error);
+    return;
+  }
+  
+  // Aggregate by archetype
+  const stats: Record<string, { correct: number; total: number; beatsStockfish: number }> = {};
+  
+  for (const row of data) {
+    const arch = row.hybrid_archetype || 'unknown';
+    if (!stats[arch]) {
+      stats[arch] = { correct: 0, total: 0, beatsStockfish: 0 };
+    }
+    stats[arch].total++;
+    if (row.hybrid_correct) stats[arch].correct++;
+    if (row.hybrid_correct && !row.stockfish_correct) stats[arch].beatsStockfish++;
+  }
+  
+  // Convert to map
+  for (const [arch, s] of Object.entries(stats)) {
+    historicalStats.set(arch, {
+      accuracy: s.total > 0 ? s.correct / s.total : 0.5,
+      sampleSize: s.total,
+      beatsStockfishRate: s.total > 0 ? s.beatsStockfish / s.total : 0,
+    });
+  }
+  
+  statsLoaded = true;
+  console.log(`[BenchmarkRunner] Loaded stats for ${historicalStats.size} archetypes from ${data.length} predictions`);
+}
+
 // Advanced Color Flow analysis with trajectory detection
+// NOW USES HISTORICAL ACCURACY TO CALIBRATE PREDICTIONS
 function analyzeColorFlow(moves: string[], moveNumber: number): { archetype: string; confidence: number; prediction: string } {
   const predictionMoves = moves.slice(0, moveNumber);
   const moveCount = predictionMoves.length;
@@ -198,29 +250,44 @@ function analyzeColorFlow(moves: string[], moveNumber: number): { archetype: str
   
   // Determine archetype
   let archetype = "balanced";
-  let confidence = 0.55;
+  let baseConfidence = 0.55;
   
   const captureRatio = captures / moveCount;
   const pawnRatio = pawnMoves / moveCount;
   
   if (captureRatio > 0.35) {
     archetype = "tactical_storm";
-    confidence = 0.72;
+    baseConfidence = 0.72;
   } else if (captureRatio > 0.25 && checks > 2) {
     archetype = "aggressive_attack";
-    confidence = 0.70;
+    baseConfidence = 0.70;
   } else if (pawnRatio > 0.28) {
     archetype = "positional_grind";
-    confidence = 0.68;
+    baseConfidence = 0.68;
   } else if (hasKingsideCastling && queenMoves > 3) {
     archetype = "kingside_pressure";
-    confidence = 0.67;
+    baseConfidence = 0.67;
   } else if (hasQueensideCastling) {
     archetype = "queenside_expansion";
-    confidence = 0.65;
+    baseConfidence = 0.65;
   } else if (promotions > 0) {
     archetype = "endgame_conversion";
-    confidence = 0.75;
+    baseConfidence = 0.75;
+  }
+  
+  // CALIBRATE CONFIDENCE USING HISTORICAL ACCURACY
+  const historicalData = historicalStats.get(archetype);
+  let confidence = baseConfidence;
+  
+  if (historicalData && historicalData.sampleSize >= 5) {
+    // Blend base confidence with historical accuracy
+    const historicalWeight = Math.min(0.5, historicalData.sampleSize / 100);
+    confidence = baseConfidence * (1 - historicalWeight) + historicalData.accuracy * historicalWeight;
+    
+    // Boost confidence if we historically beat Stockfish on this archetype
+    if (historicalData.beatsStockfishRate > 0.1) {
+      confidence = Math.min(0.9, confidence * (1 + historicalData.beatsStockfishRate * 0.3));
+    }
   }
   
   // Make prediction based on momentum and trajectory
@@ -399,6 +466,9 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
     }
+
+    // Load historical archetype performance for calibrated predictions
+    await loadHistoricalStats(supabase);
 
     // Get ALL existing position hashes for deduplication using pagination
     // CRITICAL: Must fetch ALL positions, not limited to 1000 or 10000
