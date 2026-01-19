@@ -1,5 +1,5 @@
 /**
- * Stockfish Web Worker Bridge
+ * Stockfish 17.1 Web Worker Bridge
  * 
  * CRITICAL METHODOLOGY NOTE FOR EN PENSENT BENCHMARKS:
  * =====================================================
@@ -8,20 +8,9 @@
  * 1. PURE STOCKFISH: Raw tactical evaluation only
  * 2. EN PENSENT HYBRID: Stockfish evaluation + Temporal Pattern Recognition
  * 
- * We are NOT testing "better Stockfish vs worse Stockfish".
- * We are testing whether ADDING En Pensent's pattern wavelength recognition
- * to the SAME Stockfish evaluation produces better game outcome predictions.
- * 
- * The hypothesis: Pure calculation misses strategic patterns that
- * En Pensent's temporal signature analysis can detect.
- * 
- * Engine: Stockfish 10 ASM.js (ELO ~3000)
+ * Engine: Stockfish 17.1 NNUE (ELO ~3600)
  * This provides the tactical baseline for both benchmark sides.
  */
-
-// The stockfish-engine.min.js is a complete self-contained Web Worker script
-// It listens for postMessage and uses postMessage internally for UCI output
-// We need to create it as a nested worker and bridge messages
 
 var engine = null;
 var isReady = false;
@@ -29,7 +18,7 @@ var messageQueue = [];
 var initStartTime = Date.now();
 var initAttempts = 0;
 var MAX_INIT_ATTEMPTS = 3;
-var INIT_TIMEOUT = 20000; // 20 seconds per attempt
+var INIT_TIMEOUT = 30000; // 30 seconds per attempt
 
 function postStatus(message) {
   postMessage({ type: 'status', data: message });
@@ -49,90 +38,112 @@ function postUci(line) {
 
 function initEngine() {
   initAttempts++;
-  postStatus('Loading Stockfish engine (attempt ' + initAttempts + '/' + MAX_INIT_ATTEMPTS + ')...');
+  postStatus('Loading Stockfish 17.1 NNUE engine (attempt ' + initAttempts + '/' + MAX_INIT_ATTEMPTS + ')...');
   
   try {
-    // Create a new worker from the stockfish engine script
-    // The stockfish-engine.min.js IS a complete worker that accepts UCI commands via postMessage
-    engine = new Worker('./stockfish-engine.min.js');
+    // Try loading the lite single-threaded version first (no CORS needed)
+    // Falls back to stockfish-engine.min.js (Stockfish 10 ASM.js)
+    var enginePaths = [
+      './stockfish-17.1-lite.js',
+      './stockfish-engine.min.js'
+    ];
     
-    var uciOkReceived = false;
-    var initTimeoutId = null;
+    var currentPathIndex = 0;
     
-    engine.onmessage = function(e) {
-      var line = typeof e.data === 'string' ? e.data : String(e.data);
-      
-      // Forward UCI output to main thread
-      postUci(line);
-      
-      // Detect UCI protocol ready
-      if (line === 'uciok') {
-        uciOkReceived = true;
-        postStatus('Stockfish UCI protocol ready');
-        // Request readiness confirmation
-        engine.postMessage('isready');
+    function tryLoadEngine() {
+      if (currentPathIndex >= enginePaths.length) {
+        postError('Failed to load any Stockfish engine after trying all paths');
+        return;
       }
       
-      // Detect engine fully ready
-      if (line === 'readyok') {
-        if (!isReady) {
-          isReady = true;
+      var path = enginePaths[currentPathIndex];
+      postStatus('Trying to load: ' + path);
+      
+      try {
+        engine = new Worker(path);
+        
+        var uciOkReceived = false;
+        var initTimeoutId = null;
+        
+        engine.onmessage = function(e) {
+          var line = typeof e.data === 'string' ? e.data : String(e.data);
+          
+          // Forward UCI output to main thread
+          postUci(line);
+          
+          // Detect UCI protocol ready
+          if (line === 'uciok') {
+            uciOkReceived = true;
+            postStatus('Stockfish UCI protocol ready');
+            engine.postMessage('isready');
+          }
+          
+          // Detect engine fully ready
+          if (line === 'readyok') {
+            if (!isReady) {
+              isReady = true;
+              if (initTimeoutId) {
+                clearTimeout(initTimeoutId);
+                initTimeoutId = null;
+              }
+              var initTime = Date.now() - initStartTime;
+              var version = path.includes('17.1') ? 'Stockfish 17.1 NNUE (ELO ~3600)' : 'Stockfish 10 ASM.js (ELO ~3000)';
+              postStatus(version + ' ready! Init: ' + initTime + 'ms');
+              postReady();
+              processQueue();
+            }
+          }
+        };
+        
+        engine.onerror = function(e) {
+          var errorMsg = e.message || 'Unknown worker error';
+          console.error('[Stockfish Worker] Engine error:', e);
+          
           if (initTimeoutId) {
             clearTimeout(initTimeoutId);
             initTimeoutId = null;
           }
-          var initTime = Date.now() - initStartTime;
-          postStatus('Stockfish 10 ready! (ELO ~3000 - Same engine for both benchmark sides) - Init: ' + initTime + 'ms');
-          postReady();
-          processQueue();
-        }
-      }
-    };
-    
-    engine.onerror = function(e) {
-      var errorMsg = e.message || 'Unknown worker error';
-      console.error('[Stockfish Worker] Engine error:', e);
-      
-      if (initTimeoutId) {
-        clearTimeout(initTimeoutId);
-        initTimeoutId = null;
-      }
-      
-      if (initAttempts < MAX_INIT_ATTEMPTS && !isReady) {
-        postStatus('Engine error, retrying... (' + errorMsg + ')');
-        if (engine) {
-          try { engine.terminate(); } catch(ex) {}
-          engine = null;
-        }
-        setTimeout(initEngine, 1000);
-      } else if (!isReady) {
-        postError('Stockfish engine failed after ' + MAX_INIT_ATTEMPTS + ' attempts: ' + errorMsg);
-      }
-    };
-    
-    // Set timeout for initialization
-    initTimeoutId = setTimeout(function() {
-      if (!isReady) {
-        if (initAttempts < MAX_INIT_ATTEMPTS) {
-          postStatus('Initialization timeout, retrying...');
-          if (engine) {
-            try { engine.terminate(); } catch(ex) {}
-            engine = null;
+          
+          // Try next path
+          if (!isReady) {
+            currentPathIndex++;
+            if (engine) {
+              try { engine.terminate(); } catch(ex) {}
+              engine = null;
+            }
+            setTimeout(tryLoadEngine, 500);
           }
-          initEngine();
-        } else {
-          postError('Stockfish engine initialization timeout after all retries');
-        }
+        };
+        
+        // Set timeout for initialization
+        initTimeoutId = setTimeout(function() {
+          if (!isReady) {
+            currentPathIndex++;
+            postStatus('Timeout on ' + path + ', trying next...');
+            if (engine) {
+              try { engine.terminate(); } catch(ex) {}
+              engine = null;
+            }
+            tryLoadEngine();
+          }
+        }, INIT_TIMEOUT);
+        
+        // Start UCI handshake after a brief delay
+        setTimeout(function() {
+          if (engine && !isReady) {
+            postStatus('Sending UCI handshake to ' + path + '...');
+            engine.postMessage('uci');
+          }
+        }, 500);
+        
+      } catch (err) {
+        console.error('[Stockfish Worker] Error loading ' + path + ':', err);
+        currentPathIndex++;
+        setTimeout(tryLoadEngine, 500);
       }
-    }, INIT_TIMEOUT);
+    }
     
-    // Start UCI handshake after a brief delay
-    setTimeout(function() {
-      if (engine && !isReady) {
-        postStatus('Sending UCI handshake...');
-        engine.postMessage('uci');
-      }
-    }, 500);
+    tryLoadEngine();
     
   } catch (err) {
     console.error('[Stockfish Worker] Init error:', err);
@@ -210,7 +221,6 @@ function processCommand(command, options) {
       break;
       
     default:
-      // Pass through raw UCI commands
       if (typeof command === 'string') {
         uciCommand = command;
       }
