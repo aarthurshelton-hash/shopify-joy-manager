@@ -25,6 +25,28 @@ import { analyzeTimeControlProfile, StyleProfile, TimeControlElo } from '@/lib/p
 import { buildFingerprint, PlayerFingerprint, GameData } from '@/lib/pensent-core/domains/chess/playerFingerprint';
 import { getAlreadyAnalyzedData, isPositionAlreadyAnalyzed, hashPosition } from '@/lib/chess/benchmarkPersistence';
 
+interface LichessGameData {
+  pgn: string;
+  // Time control context
+  timeControl?: string;
+  clockInitial?: number;
+  clockIncrement?: number;
+  // Player context
+  whiteName?: string;
+  blackName?: string;
+  whiteElo?: number;
+  blackElo?: number;
+  whiteTitle?: string;
+  blackTitle?: string;
+  // Temporal context
+  playedAt?: string;
+  gameYear?: number;
+  gameMonth?: number;
+  // Opening context
+  openingEco?: string;
+  openingName?: string;
+}
+
 // ALL 25 domain adapters for maximum scope
 const DOMAIN_ADAPTERS = [
   'atomic', 'audio', 'bio', 'biologyDeep', 'botanical', 
@@ -58,10 +80,25 @@ export interface LivePredictionData {
   stockfishDepth: number;
   stockfishCorrect: boolean;
   actualResult: string;
+  // FULL TEMPORAL CONTEXT
   timeControl?: string;
+  playedAt?: string;        // ISO date string when game was played
+  gameYear?: number;        // Year the game was played
+  gameMonth?: number;       // Month (1-12)
+  // PLAYER CONTEXT
+  whiteName?: string;       // White player's username
+  blackName?: string;       // Black player's username
   whiteElo?: number;
   blackElo?: number;
-  timestamp: number;
+  whiteTitle?: string;      // GM, IM, FM, etc.
+  blackTitle?: string;
+  // OPENING CONTEXT
+  openingEco?: string;      // ECO code (e.g., "B50")
+  openingName?: string;     // Opening name
+  // CLOCK CONTEXT
+  clockInitial?: number;    // Initial time in seconds
+  clockIncrement?: number;  // Increment in seconds
+  timestamp: number;        // When we analyzed it
 }
 
 export interface BenchmarkResult {
@@ -360,7 +397,7 @@ export function useHybridBenchmark() {
       // This ensures the user always gets the exact number of games they requested
       let totalFetchAttempts = 0;
       const maxFetchAttempts = 10; // Safety limit to prevent infinite loops
-      let allGames: { pgn: string; timeControl?: string; whiteElo?: number; blackElo?: number }[] = [];
+      let allGames: LichessGameData[] = [];
       let gameIndex = 0;
       
       let consecutiveEmptyBatches = 0;
@@ -508,12 +545,19 @@ export function useHybridBenchmark() {
           if (!hybridIsCorrect && !stockfishIsCorrect) bothWrong++;
           
           const attemptId = crypto.randomUUID();
+          
+          // Build rich game name with player info if available
+          const whiteName = game.whiteName || 'Unknown';
+          const blackName = game.blackName || 'Unknown';
+          const gameYear = game.gameYear || new Date().getFullYear();
+          const gameName = `${whiteName} vs ${blackName} (${gameYear})`;
+          
           const attemptData = {
             game_id: attemptId,
-            game_name: `GM Game ${attempts.length + 1}`,
+            game_name: gameName,
             fen,
             move_number: moveNumber,
-            position_hash: positionHash, // Include for verification
+            position_hash: positionHash,
             hybrid_prediction: colorFlow.prediction,
             hybrid_confidence: colorFlow.confidence,
             hybrid_archetype: colorFlow.archetype,
@@ -524,20 +568,20 @@ export function useHybridBenchmark() {
             stockfish_eval: stockfish.evaluation,
             stockfish_correct: stockfishIsCorrect,
             actual_result: gameResult,
-            data_quality_tier: 'tcec_unlimited', // Maximum depth = unlimited tier
+            data_quality_tier: 'tcec_unlimited',
             pgn: game.pgn.substring(0, 1000),
-            time_control: game.timeControl || null, // Store time control
-            white_elo: game.whiteElo || null,       // Store ELO
+            time_control: game.timeControl || null,
+            white_elo: game.whiteElo || null,
             black_elo: game.blackElo || null,
           };
           
           attempts.push(attemptData);
           
-          // Stream live prediction to callback
+          // Stream live prediction with FULL CONTEXT
           if (onPrediction) {
             const livePrediction: LivePredictionData = {
               id: attemptId,
-              gameName: attemptData.game_name,
+              gameName,
               moveNumber,
               fen,
               hybridPrediction: colorFlow.prediction,
@@ -549,9 +593,24 @@ export function useHybridBenchmark() {
               stockfishDepth: stockfish.depth,
               stockfishCorrect: stockfishIsCorrect,
               actualResult: gameResult,
+              // FULL TEMPORAL CONTEXT
               timeControl: game.timeControl,
+              playedAt: game.playedAt,
+              gameYear: game.gameYear,
+              gameMonth: game.gameMonth,
+              // PLAYER CONTEXT
+              whiteName: game.whiteName,
+              blackName: game.blackName,
               whiteElo: game.whiteElo,
               blackElo: game.blackElo,
+              whiteTitle: game.whiteTitle,
+              blackTitle: game.blackTitle,
+              // OPENING CONTEXT
+              openingEco: game.openingEco,
+              openingName: game.openingName,
+              // CLOCK CONTEXT
+              clockInitial: game.clockInitial,
+              clockIncrement: game.clockIncrement,
               timestamp: Date.now(),
             };
             onPrediction(livePrediction);
@@ -709,8 +768,9 @@ export function useHybridBenchmark() {
 
 // Fetch games from Lichess via Edge Function (avoids CORS issues in production)
 // CRITICAL: Each benchmark run must use FRESH, UNIQUE games for scientific validity
-// Returns ALL valid games - let the caller handle deduplication against DB
-async function fetchLichessGames(count: number): Promise<{ pgn: string; timeControl?: string; whiteElo?: number; blackElo?: number }[]> {
+// Returns ALL valid games with FULL METADATA - let the caller handle deduplication against DB
+
+async function fetchLichessGames(count: number): Promise<LichessGameData[]> {
   // MASSIVE player pool - 60+ GMs spanning Lichess history (2010-present)
   // With 14 years of history, we have access to MILLIONS of unique positions
   const topPlayers = [
@@ -792,7 +852,7 @@ async function fetchLichessGames(count: number): Promise<{ pgn: string; timeCont
   const since = lichessStart + randomStartOffset;
   const until = since + (60 * 24 * 60 * 60 * 1000); // 60-day window (doubled for more games)
   
-  const games: { pgn: string; timeControl?: string; whiteElo?: number; blackElo?: number }[] = [];
+  const games: LichessGameData[] = [];
   const gameIds = new Set<string>(); // Deduplicate by game ID within this fetch
   const shuffledPlayers = topPlayers.sort(() => Math.random() - 0.5);
   let fetchErrors = 0;
@@ -872,9 +932,24 @@ async function fetchLichessGames(count: number): Promise<{ pgn: string; timeCont
           gameIds.add(gameId);
           games.push({
             pgn,
+            // Time control context
             timeControl: game.timeControl,
+            clockInitial: game.clockInitial,
+            clockIncrement: game.clockIncrement,
+            // Player context
+            whiteName: game.whiteName,
+            blackName: game.blackName,
             whiteElo: game.whiteElo,
             blackElo: game.blackElo,
+            whiteTitle: game.whiteTitle,
+            blackTitle: game.blackTitle,
+            // Temporal context
+            playedAt: game.playedAt,
+            gameYear: game.gameYear,
+            gameMonth: game.gameMonth,
+            // Opening context
+            openingEco: game.openingEco,
+            openingName: game.openingName,
           });
         }
         
