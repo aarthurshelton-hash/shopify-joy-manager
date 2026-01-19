@@ -318,19 +318,29 @@ function parsePGNAndGetFEN(pgn: string, moveNumber: number): { moves: string[]; 
 
 // Normalize FEN to position-only part (ignore move clocks)
 function normalizeFen(fen: string): string {
+  // Handle moves: format - keep as-is for move-based FENs
+  if (fen.startsWith('moves:')) {
+    return fen;
+  }
   return fen.split(' ').slice(0, 4).join(' ');
 }
 
 // Generate position hash for deduplication - MUST match frontend algorithm!
+// Uses 16-char hex hash for uniqueness
 function generatePositionHash(fen: string): string {
   const positionPart = normalizeFen(fen);
-  // djb2 hash - matches src/lib/chess/benchmarkPersistence.ts
-  let hash = 5381;
+  
+  // djb2 x2 hash for 16-char output - matches src/lib/chess/benchmarkPersistence.ts
+  let hash1 = 5381;
+  let hash2 = 52711;
   for (let i = 0; i < positionPart.length; i++) {
-    hash = ((hash << 5) + hash) + positionPart.charCodeAt(i);
-    hash = hash >>> 0; // Ensure unsigned
+    const char = positionPart.charCodeAt(i);
+    hash1 = ((hash1 << 5) + hash1) ^ char;
+    hash2 = ((hash2 << 5) + hash2) ^ char;
+    hash1 = hash1 >>> 0;
+    hash2 = hash2 >>> 0;
   }
-  return hash.toString(16).padStart(8, '0');
+  return hash1.toString(16).padStart(8, '0') + hash2.toString(16).padStart(8, '0');
 }
 
 serve(async (req) => {
@@ -471,8 +481,8 @@ serve(async (req) => {
         const parsed = parsePGNAndGetFEN(game.pgn, moveNumber);
         if (!parsed) continue;
         
-        // Check for duplicate position using the move sequence hash
-        const positionHash = parsed.moveHash;
+        // Check for duplicate position using consistent hash algorithm
+        const positionHash = generatePositionHash(parsed.fen);
         if (existingHashes.has(positionHash)) {
           skippedDuplicates++;
           continue;

@@ -17,22 +17,33 @@ import type { BenchmarkResult, PredictionAttempt } from './cloudBenchmark';
  * Removes move clocks which don't affect position identity
  */
 export function normalizeFen(fen: string): string {
+  // Handle moves: format from edge function - extract move sequence
+  if (fen.startsWith('moves:')) {
+    return fen; // Already normalized for move-based FENs
+  }
   return fen.split(' ').slice(0, 4).join(' ');
 }
 
 /**
  * Generate a unique hash for a chess position
- * Uses FEN position part only (ignoring move counters) for consistent matching
+ * Uses SHA256-like hash of normalized FEN (first 16 chars)
+ * This MUST match the database hash format for deduplication
  */
 export function hashPosition(fen: string): string {
   const positionPart = normalizeFen(fen);
-  // djb2 hash - must stay consistent, we also check normalized FEN
-  let hash = 5381;
+  
+  // Use SHA256-like hash (matches database migration)
+  // Simple but consistent hash - djb2 with 16-char hex output
+  let hash1 = 5381;
+  let hash2 = 52711;
   for (let i = 0; i < positionPart.length; i++) {
-    hash = ((hash << 5) + hash) + positionPart.charCodeAt(i);
-    hash = hash >>> 0; // Ensure unsigned
+    const char = positionPart.charCodeAt(i);
+    hash1 = ((hash1 << 5) + hash1) ^ char;
+    hash2 = ((hash2 << 5) + hash2) ^ char;
+    hash1 = hash1 >>> 0;
+    hash2 = hash2 >>> 0;
   }
-  return hash.toString(16).padStart(8, '0');
+  return hash1.toString(16).padStart(8, '0') + hash2.toString(16).padStart(8, '0');
 }
 
 /**
