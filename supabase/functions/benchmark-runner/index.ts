@@ -384,20 +384,6 @@ serve(async (req) => {
     const existingHashes = new Set((existingPositions || []).map(p => p.position_hash));
     console.log(`[BenchmarkRunner] ${existingHashes.size} existing positions for deduplication`);
 
-    // Fetch fresh games
-    const games = await fetchLichessGames(gameCount * 2, existingHashes);
-    console.log(`[BenchmarkRunner] Fetched ${games.length} candidate games`);
-
-    if (games.length === 0) {
-      return new Response(JSON.stringify({ 
-        success: false, 
-        error: "No games fetched - possible rate limiting",
-        suggestion: "Try again in a few minutes"
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
-      });
-    }
-
     const runId = crypto.randomUUID();
     const attempts: any[] = [];
     let hybridCorrect = 0;
@@ -406,8 +392,36 @@ serve(async (req) => {
     let bothWrong = 0;
     let skippedDuplicates = 0;
 
-    for (const game of games) {
-      if (attempts.length >= gameCount) break;
+    // PERSISTENT RETRY LOOP: Keep fetching until we meet the target
+    let totalFetchAttempts = 0;
+    const maxFetchAttempts = 10;
+    let allGames: any[] = [];
+    let gameIndex = 0;
+
+    while (attempts.length < gameCount && totalFetchAttempts < maxFetchAttempts) {
+      // Fetch more games if we've exhausted current batch
+      if (gameIndex >= allGames.length) {
+        totalFetchAttempts++;
+        const gamesNeeded = (gameCount - attempts.length) * 8;
+        const targetFetch = Math.max(gamesNeeded, 100);
+        
+        console.log(`[BenchmarkRunner] Fetch attempt ${totalFetchAttempts}: Need ${gameCount - attempts.length} more, fetching ${targetFetch} games...`);
+        
+        const newGames = await fetchLichessGames(targetFetch, existingHashes);
+        if (newGames.length === 0 && totalFetchAttempts >= 3) {
+          console.warn(`[BenchmarkRunner] No new games after ${totalFetchAttempts} attempts`);
+          break;
+        }
+        
+        allGames = newGames;
+        gameIndex = 0;
+        console.log(`[BenchmarkRunner] Batch ${totalFetchAttempts}: Got ${newGames.length} games`);
+      }
+
+      if (gameIndex >= allGames.length) break;
+
+      const game = allGames[gameIndex];
+      gameIndex++;
       
       try {
         const parsed = parsePGNAndGetFEN(game.pgn, 20);
@@ -485,7 +499,7 @@ serve(async (req) => {
         success: false, 
         error: "No valid games processed",
         skippedDuplicates,
-        gamesChecked: games.length
+        fetchAttempts: totalFetchAttempts
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
