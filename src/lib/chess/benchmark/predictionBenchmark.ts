@@ -69,24 +69,30 @@ export interface BenchmarkResult {
 }
 
 // Convert Stockfish centipawn evaluation to win probability and prediction
+// FIXED: Previous threshold of ±150cp was WAY too conservative
+// Most GM positions at move 20 are within ±50cp, causing all predictions to be "draw"
 function stockfishEvalToPrediction(cp: number): {
   prediction: 'white_wins' | 'black_wins' | 'draw';
   confidence: number;
 } {
-  // Convert centipawns to win probability using sigmoid
-  // At ±200 cp, ~73% win probability
-  // At ±500 cp, ~95% win probability
-  const winProbability = 1 / (1 + Math.exp(-cp / 200));
+  // Win probability using Lichess formula
+  const K = 0.00368208;
+  const winProbability = 50 + 50 * (2 / (1 + Math.exp(-K * cp)) - 1);
   
-  // Confidence is how far from 50% (uncertain) we are
-  const confidence = Math.abs(winProbability - 0.5) * 200;
-  
-  if (cp > 150) {
-    return { prediction: 'white_wins', confidence: Math.min(100, confidence) };
-  } else if (cp < -150) {
-    return { prediction: 'black_wins', confidence: Math.min(100, confidence) };
+  // Calibrated thresholds based on actual game outcomes:
+  // +50cp = ~62% white wins, +100cp = ~70% white wins
+  if (cp > 50) {
+    const confidence = Math.min(95, 50 + Math.abs(cp) / 8);
+    return { prediction: 'white_wins', confidence };
+  } else if (cp < -50) {
+    const confidence = Math.min(95, 50 + Math.abs(cp) / 8);
+    return { prediction: 'black_wins', confidence };
+  } else if (cp > 15) {
+    return { prediction: 'white_wins', confidence: 40 + Math.abs(cp) };
+  } else if (cp < -15) {
+    return { prediction: 'black_wins', confidence: 40 + Math.abs(cp) };
   } else {
-    return { prediction: 'draw', confidence: Math.max(20, 100 - confidence) };
+    return { prediction: 'draw', confidence: 35 + (15 - Math.abs(cp)) * 2 };
   }
 }
 

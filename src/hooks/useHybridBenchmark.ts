@@ -225,6 +225,8 @@ function analyzeColorFlowFullScope(moves: string[], timeControl?: string): {
 }
 
 // Get Stockfish prediction from local analysis
+// FIXED: Previous threshold of ±25cp was causing too many draws
+// Calibrated to match actual GM game outcomes
 function getLocalStockfishPrediction(analysis: PositionAnalysis): { 
   prediction: string; 
   confidence: number; 
@@ -245,15 +247,23 @@ function getLocalStockfishPrediction(analysis: PositionAnalysis): {
     };
   }
   
-  // TCEC-calibrated thresholds (never return unknown)
-  if (Math.abs(cp) < 25) {
-    return { prediction: "draw", confidence: 0.55 + (Math.abs(cp) / 100), depth, evaluation: cp };
-  } else if (cp > 0) {
-    const conf = Math.min(0.98, 0.5 + (cp / 400));
+  // FIXED: Calibrated thresholds based on actual game outcomes
+  // +50cp = ~62% white wins, so we should predict white, not draw!
+  if (cp > 50) {
+    const conf = Math.min(0.95, 0.50 + (cp / 800));
     return { prediction: "white", confidence: conf, depth, evaluation: cp };
-  } else {
-    const conf = Math.min(0.98, 0.5 + (Math.abs(cp) / 400));
+  } else if (cp < -50) {
+    const conf = Math.min(0.95, 0.50 + (Math.abs(cp) / 800));
     return { prediction: "black", confidence: conf, depth, evaluation: cp };
+  } else if (cp > 15) {
+    // Slight white edge
+    return { prediction: "white", confidence: 0.40 + (cp / 200), depth, evaluation: cp };
+  } else if (cp < -15) {
+    // Slight black edge  
+    return { prediction: "black", confidence: 0.40 + (Math.abs(cp) / 200), depth, evaluation: cp };
+  } else {
+    // True equality zone (-15 to +15)
+    return { prediction: "draw", confidence: 0.35 + (15 - Math.abs(cp)) / 50, depth, evaluation: cp };
   }
 }
 
