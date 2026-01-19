@@ -37,26 +37,45 @@ export async function getAlreadyAnalyzedData(): Promise<{
   gameIds: Set<string>;
   fenStrings: Set<string>;
 }> {
-  const { data, error } = await supabase
-    .from('chess_prediction_attempts')
-    .select('position_hash, game_id, fen');
-
-  if (error || !data) {
-    console.warn('[Dedup] Could not fetch existing positions:', error);
-    return { positionHashes: new Set(), gameIds: new Set(), fenStrings: new Set() };
-  }
-
   const positionHashes = new Set<string>();
   const gameIds = new Set<string>();
   const fenStrings = new Set<string>();
 
-  for (const row of data) {
-    if (row.position_hash) positionHashes.add(row.position_hash);
-    if (row.game_id) gameIds.add(row.game_id);
-    if (row.fen) fenStrings.add(row.fen);
+  // CRITICAL: Paginate through ALL records to bypass 1000 row limit
+  // Without this, we'd only load 1000 positions and re-analyze old duplicates
+  let from = 0;
+  const pageSize = 1000;
+  let hasMore = true;
+  let totalFetched = 0;
+
+  while (hasMore) {
+    const { data, error } = await supabase
+      .from('chess_prediction_attempts')
+      .select('position_hash, game_id, fen')
+      .range(from, from + pageSize - 1);
+
+    if (error) {
+      console.warn('[Dedup] Error fetching positions:', error);
+      break;
+    }
+
+    if (!data || data.length === 0) {
+      hasMore = false;
+      break;
+    }
+
+    for (const row of data) {
+      if (row.position_hash) positionHashes.add(row.position_hash);
+      if (row.game_id) gameIds.add(row.game_id);
+      if (row.fen) fenStrings.add(row.fen);
+    }
+
+    totalFetched += data.length;
+    from += pageSize;
+    hasMore = data.length === pageSize;
   }
 
-  console.log(`[Dedup] Loaded ${positionHashes.size} unique positions, ${gameIds.size} unique games already analyzed`);
+  console.log(`[Dedup] Loaded ALL ${positionHashes.size} unique positions, ${gameIds.size} unique games from ${totalFetched} records`);
   return { positionHashes, gameIds, fenStrings };
 }
 
