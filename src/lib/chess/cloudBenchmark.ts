@@ -397,8 +397,13 @@ export async function runCloudBenchmark(
   
   let games: BenchmarkGame[];
   if (useRealGames) {
-    // Request MORE games than needed to account for duplicates being skipped
-    const fetchMultiplier = skipDuplicates ? 3 : 1; // Fetch 3x to have enough after filtering
+    // Request MUCH MORE games than needed to account for:
+    // 1. Cross-run deduplication (already analyzed positions)
+    // 2. Games too short (<25 moves)
+    // 3. Positions not in Lichess cloud database
+    // 4. Parse errors
+    // 8x multiplier ensures we almost always hit target count
+    const fetchMultiplier = skipDuplicates ? 8 : 2;
     games = await fetchRealGames(gameCount * fetchMultiplier, (status) => {
       onProgress?.(status, 5);
       provenance.recordApiCall('lichess');
