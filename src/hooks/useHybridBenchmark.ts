@@ -54,6 +54,7 @@ export interface BenchmarkResult {
   maxDepth: number;
   minDepth: number;
   depthCoverage: number; // Percentage of maximum (60)
+  depthAccuracy: number; // Percentage of positions that reached requested depth
   // Full-scope En Pensent integration
   enPensentCapacity: number; // Percentage of En Pensent systems active (100% = 25 adapters)
   archetypesDetected: string[];
@@ -367,15 +368,27 @@ export function useHybridBenchmark() {
           // Full-scope Color Flow prediction with all 25 adapters
           const colorFlow = analyzeColorFlowFullScope(moves.slice(0, moveNumber));
           
-          // LOCAL Stockfish analysis at MAXIMUM DEPTH
+          // LOCAL Stockfish analysis at MAXIMUM DEPTH with verification
           setProgress(prev => ({
             ...prev!,
             currentDepth: 0,
-            message: `Game ${i + 1}: Analyzing with local Stockfish at depth ${depth}...`
+            message: `Game ${analyzedCount + 1}: Analyzing with local Stockfish at depth ${depth} (VERIFIED)...`
           }));
           
-          const analysis = await engine.analyzePosition(fen, { depth });
+          // Use requireExactDepth for Maximum Depth benchmarks
+          const isMaxDepthMode = depth >= 40;
+          const analysis = await engine.analyzePosition(fen, { 
+            depth, 
+            requireExactDepth: isMaxDepthMode 
+          });
           const stockfish = getLocalStockfishPrediction(analysis);
+          
+          // Log depth verification for audit trail
+          const depthReached = analysis.evaluation.depth;
+          const depthRatio = (depthReached / depth) * 100;
+          if (depthRatio < 95 && isMaxDepthMode) {
+            console.warn(`[Depth Audit] Position ${analyzedCount + 1}: Only reached ${depthReached}/${depth} (${depthRatio.toFixed(1)}%)`);
+          }
           
           depths.push(stockfish.depth);
           
@@ -432,9 +445,15 @@ export function useHybridBenchmark() {
       const hybridWins = attempts.filter(a => a.hybrid_correct && !a.stockfish_correct).length;
       const stockfishWins = attempts.filter(a => !a.hybrid_correct && a.stockfish_correct).length;
       const avgDepth = depths.reduce((a, b) => a + b, 0) / depths.length;
-      const maxDepth = Math.max(...depths);
-      const minDepth = Math.min(...depths);
+      const maxDepthReached = Math.max(...depths);
+      const minDepthReached = Math.min(...depths);
       const depthCoverage = (avgDepth / MAX_DEPTH_CAPACITY) * 100;
+      
+      // Calculate depth accuracy: % of positions that reached >= 95% of requested depth
+      const requestedDepth = depth;
+      const depthThreshold = requestedDepth * 0.95;
+      const positionsAtFullDepth = depths.filter(d => d >= depthThreshold).length;
+      const depthAccuracy = (positionsAtFullDepth / depths.length) * 100;
       
       // Save to database
       setProgress(prev => ({
@@ -491,15 +510,18 @@ export function useHybridBenchmark() {
         hybridWins,
         stockfishWins,
         averageDepth: avgDepth,
-        maxDepth,
-        minDepth,
+        maxDepth: maxDepthReached,
+        minDepth: minDepthReached,
         depthCoverage,
+        depthAccuracy, // NEW: percentage of positions at full requested depth
         enPensentCapacity: 100, // Full scope = 100%
         archetypesDetected,
         playerFingerprints: attempts.length, // Each game contributes to fingerprint data
         timeControlProfiles: 6, // All time control categories analyzed
         adaptersActive: [...DOMAIN_ADAPTERS] // All 25 adapters active
       };
+      
+      console.log(`[Benchmark Complete] Depth accuracy: ${depthAccuracy.toFixed(1)}% of positions reached ≥95% of requested depth ${requestedDepth}`);
       
       setResult(finalResult);
       setProgress({
