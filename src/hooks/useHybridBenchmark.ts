@@ -591,7 +591,7 @@ export function useHybridBenchmark() {
   };
 }
 
-// Fetch games from Lichess with RANDOMIZED timestamps and expanded player pool
+// Fetch games from Lichess via Edge Function (avoids CORS issues in production)
 // CRITICAL: Each benchmark run must use FRESH, UNIQUE games for scientific validity
 async function fetchLichessGames(count: number): Promise<string[]> {
   // EXPANDED player pool - 30+ top GMs for maximum variety
@@ -651,28 +651,29 @@ async function fetchLichessGames(count: number): Promise<string[]> {
   console.log(`[Benchmark] Time window: ${new Date(since).toISOString()} to ${new Date(until).toISOString()}`);
   console.log(`[Benchmark] Target: ${count} unique games`);
   
+  // Use Edge Function to fetch games (bypasses CORS in production)
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  
   for (const player of selectedPlayers) {
     if (games.length >= count) break;
     
     try {
       console.log(`[Benchmark] Fetching games for ${player}...`);
       
-      // Use randomized time window + random offset for pagination variety
-      const randomOffset = Math.floor(Math.random() * 50); // Skip 0-50 games
-      const url = `https://lichess.org/api/games/user/${player}?` + 
-        `max=25&` + // Fetch more per player
-        `rated=true&` +
-        `perfType=bullet,blitz,rapid,classical&` +
-        `moves=true&` +
-        `pgnInJson=true&` +
-        `since=${since}&` +
-        `until=${until}&` +
-        `sort=dateDesc`; // Most recent first within window
-      
-      const response = await fetch(url, {
+      const response = await fetch(`${supabaseUrl}/functions/v1/lichess-games`, {
+        method: 'POST',
         headers: {
-          "Accept": "application/x-ndjson"
-        }
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseKey}`,
+          'apikey': supabaseKey
+        },
+        body: JSON.stringify({
+          player,
+          since,
+          until,
+          max: 25
+        })
       });
       
       if (response.status === 429) {
@@ -682,36 +683,20 @@ async function fetchLichessGames(count: number): Promise<string[]> {
       }
       
       if (response.ok) {
-        const text = await response.text();
-        const lines = text.trim().split("\n").filter(l => l);
+        const data = await response.json();
+        const fetchedGames = data.games || [];
         
-        // Skip random offset games for variety
-        const startIdx = Math.min(randomOffset, Math.max(0, lines.length - 10));
-        const selectedLines = lines.slice(startIdx);
+        console.log(`[Benchmark] Got ${fetchedGames.length} games for ${player}`);
         
-        console.log(`[Benchmark] Got ${lines.length} games for ${player}, using from index ${startIdx}`);
-        
-        for (const line of selectedLines) {
+        for (const game of fetchedGames) {
           if (games.length >= count) break;
-          try {
-            const game = JSON.parse(line);
-            
-            // Ensure unique game by ID and valid completion status
-            const gameId = game.id || `${game.createdAt}_${game.moves?.slice(0, 20)}`;
-            if (gameIds.has(gameId)) continue;
-            
-            if (game.moves && (game.status === "mate" || game.status === "resign" || game.status === "stalemate")) {
-              // Verify minimum game length for meaningful analysis
-              const moveCount = game.moves.split(' ').length;
-              if (moveCount >= 40) { // At least 20 full moves
-                gameIds.add(gameId);
-                games.push(game.pgn || game.moves);
-                console.log(`[Benchmark] Added game ${gameId}: ${moveCount} moves, ${game.status}`);
-              }
-            }
-          } catch (parseError) {
-            // Skip malformed lines
-          }
+          
+          const gameId = game.id || `${game.createdAt}_${game.moves?.slice(0, 20)}`;
+          if (gameIds.has(gameId)) continue;
+          
+          gameIds.add(gameId);
+          games.push(game.pgn || game.moves);
+          console.log(`[Benchmark] Added game ${gameId}: ${game.moveCount} moves, ${game.status}`);
         }
       } else {
         console.warn(`[Benchmark] Failed to fetch for ${player}: ${response.status}`);
