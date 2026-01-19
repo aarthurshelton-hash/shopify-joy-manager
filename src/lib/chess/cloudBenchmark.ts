@@ -392,53 +392,70 @@ export async function runCloudBenchmark(
     onProgress?.(`Found ${analyzedData.positionHashes.size} unique positions already analyzed. Will skip duplicates.`, 2);
   }
   
-  // Fetch FRESH games every run - critical for no memorization
-  onProgress?.('Fetching FRESH real games from Lichess (randomized)...', 3);
-  
-  let games: BenchmarkGame[];
-  if (useRealGames) {
-    // Request MUCH MORE games than needed to account for:
-    // 1. Cross-run deduplication (already analyzed positions)
-    // 2. Games too short (<25 moves)
-    // 3. Positions not in Lichess cloud database
-    // 4. Parse errors
-    // 8x multiplier ensures we almost always hit target count
-    const fetchMultiplier = skipDuplicates ? 8 : 2;
-    games = await fetchRealGames(gameCount * fetchMultiplier, (status) => {
-      onProgress?.(status, 5);
-      provenance.recordApiCall('lichess');
-    });
-    // Shuffle games with provenance tracking
-    games = shuffleWithProvenance(games, provenance);
-  } else {
-    games = shuffleWithProvenance([...FAMOUS_GAMES], provenance);
-  }
-  
-  // Record game ratings for provenance
-  for (const game of games) {
-    provenance.addLichessGame(
-      game.name, 
-      game.rating || 2500,
-      game.rating || 2500
-    );
-  }
-  
-  result.totalGames = games.length;
-  onProgress?.(`Loaded ${games.length} fresh games (shuffled). Starting blind analysis with deduplication...`, 10);
-
   // Track how many unique new games we've analyzed
   let analyzedCount = 0;
   const targetCount = gameCount;
+  
+  // PERSISTENT RETRY LOOP: Keep fetching until we meet target count
+  let totalFetchAttempts = 0;
+  const maxFetchAttempts = 10;
+  let allGames: BenchmarkGame[] = [];
+  let gameIndex = 0;
+  
+  onProgress?.('Fetching FRESH real games from Lichess (randomized)...', 3);
 
-  for (let i = 0; i < games.length && analyzedCount < targetCount; i++) {
-    const game = games[i];
-    const gameId = `${game.source || 'game'}-${Date.now()}-${i}`; // Unique ID including source
+  // PERSISTENT RETRY LOOP: Keep fetching and processing until we hit target count
+  while (analyzedCount < targetCount && totalFetchAttempts < maxFetchAttempts) {
+    // Fetch more games if we've exhausted current batch
+    if (gameIndex >= allGames.length) {
+      totalFetchAttempts++;
+      const gamesNeeded = (targetCount - analyzedCount) * 8; // 8x multiplier for buffer
+      const targetFetch = Math.max(gamesNeeded, 100);
+      
+      onProgress?.(`Batch ${totalFetchAttempts}: Fetching ~${targetFetch} fresh games... (${analyzedCount}/${targetCount} complete)`, 5);
+      
+      let newGames: BenchmarkGame[];
+      if (useRealGames) {
+        newGames = await fetchRealGames(targetFetch, (status) => {
+          onProgress?.(status, 5);
+          provenance.recordApiCall('lichess');
+        });
+        newGames = shuffleWithProvenance(newGames, provenance);
+      } else {
+        newGames = shuffleWithProvenance([...FAMOUS_GAMES], provenance);
+      }
+      
+      if (newGames.length === 0 && totalFetchAttempts >= 3) {
+        console.warn(`[CloudBenchmark] No new games after ${totalFetchAttempts} attempts`);
+        break;
+      }
+      
+      // Record game ratings for provenance
+      for (const game of newGames) {
+        provenance.addLichessGame(
+          game.name, 
+          game.rating || 2500,
+          game.rating || 2500
+        );
+      }
+      
+      allGames = newGames;
+      gameIndex = 0;
+      console.log(`[CloudBenchmark] Batch ${totalFetchAttempts}: Got ${newGames.length} games`);
+    }
     
-    // Early exit if we've hit target
-    if (analyzedCount >= targetCount) break;
+    if (gameIndex >= allGames.length) {
+      console.warn(`[CloudBenchmark] Exhausted all fetch attempts`);
+      break;
+    }
+    
+    const game = allGames[gameIndex];
+    gameIndex++;
+    const gameId = `${game.source || 'game'}-${Date.now()}-${gameIndex}`; // Unique ID including source
+    const gamesLeftInBatch = allGames.length - gameIndex;
     
     const progressPercent = 10 + (analyzedCount / targetCount) * 85;
-    onProgress?.(`[${analyzedCount + 1}/${targetCount}] Analyzing: ${game.name}`, progressPercent);
+    onProgress?.(`[${analyzedCount + 1}/${targetCount}] Analyzing: ${game.name} (batch ${totalFetchAttempts}, ${gamesLeftInBatch} remaining)`, progressPercent);
     
     try {
       const chess = new Chess();
@@ -513,7 +530,7 @@ export async function runCloudBenchmark(
       provenance.addStockfishDepth(stockfishDepth);
       
       // Get En Pensent Hybrid prediction
-      onProgress?.(`[En Pensent] Analyzing temporal patterns...`, 10 + ((i + 0.6) / games.length) * 85);
+      onProgress?.(`[En Pensent] Analyzing temporal patterns...`, 10 + ((analyzedCount + 0.6) / targetCount) * 85);
       const hybridResult = await generateHybridPrediction(truncatedPgn, { depth: 10 });
       
       const probs = hybridResult.trajectoryPrediction.outcomeProbabilities;
@@ -578,6 +595,9 @@ export async function runCloudBenchmark(
       console.error(`Error analyzing ${game.name}:`, error);
     }
   }
+  
+  // CRITICAL FIX: Set totalGames to actual analyzed count, not fetched count
+  result.totalGames = result.completedGames;
   
   // Calculate final statistics
   const sfCorrect = result.predictionPoints.filter(p => p.stockfishCorrect).length;
