@@ -363,6 +363,8 @@ export function useHybridBenchmark() {
       let allGames: { pgn: string; timeControl?: string; whiteElo?: number; blackElo?: number }[] = [];
       let gameIndex = 0;
       
+      let consecutiveEmptyBatches = 0;
+      
       while (analyzedCount < gameCount && totalFetchAttempts < maxFetchAttempts && !abortRef.current) {
         // Fetch more games if we've exhausted our current batch
         if (gameIndex >= allGames.length) {
@@ -377,20 +379,39 @@ export function useHybridBenchmark() {
           
           console.log(`[Benchmark] Fetch attempt ${totalFetchAttempts}: Need ${gameCount - analyzedCount} more positions, fetching ${targetFetch} games...`);
           
-          const newGames = await fetchLichessGames(targetFetch);
-          if (newGames.length === 0 && totalFetchAttempts >= 3) {
-            console.warn(`[Benchmark] No new games fetched after ${totalFetchAttempts} attempts`);
-            break; // Give up after 3 failed fetches
+          try {
+            const newGames = await fetchLichessGames(targetFetch);
+            if (newGames.length === 0) {
+              consecutiveEmptyBatches++;
+              console.warn(`[Benchmark] Empty batch ${consecutiveEmptyBatches}/3`);
+              if (consecutiveEmptyBatches >= 3) {
+                console.warn(`[Benchmark] No new games fetched after ${consecutiveEmptyBatches} consecutive empty batches`);
+                break;
+              }
+              // Wait before retry on empty batch
+              await new Promise(resolve => setTimeout(resolve, 5000));
+              continue;
+            }
+            
+            consecutiveEmptyBatches = 0; // Reset on success
+            allGames = newGames;
+            gameIndex = 0;
+            console.log(`[Benchmark] Batch ${totalFetchAttempts}: Got ${newGames.length} games`);
+          } catch (fetchError) {
+            console.error(`[Benchmark] Fetch error:`, fetchError);
+            consecutiveEmptyBatches++;
+            if (consecutiveEmptyBatches >= 3) {
+              console.warn(`[Benchmark] Stopping after ${consecutiveEmptyBatches} consecutive failures`);
+              break;
+            }
+            await new Promise(resolve => setTimeout(resolve, 10000)); // Wait 10s on error
+            continue;
           }
-          
-          allGames = newGames;
-          gameIndex = 0;
-          console.log(`[Benchmark] Batch ${totalFetchAttempts}: Got ${newGames.length} games`);
         }
         
         if (gameIndex >= allGames.length) {
-          console.warn(`[Benchmark] Exhausted all fetch attempts`);
-          break;
+          console.warn(`[Benchmark] Exhausted all games in current batch, fetching more...`);
+          continue; // Loop back to fetch more
         }
         
         const game = allGames[gameIndex];
@@ -544,8 +565,17 @@ export function useHybridBenchmark() {
       
       console.log(`[Dedup] Benchmark complete: ${analyzedCount} unique positions analyzed, ${skippedDuplicates} duplicates skipped`);
       
+      // Report if we stopped early
+      if (analyzedCount < gameCount && analyzedCount > 0) {
+        console.warn(`[Benchmark] Completed with ${analyzedCount}/${gameCount} positions (rate limiting or data exhaustion)`);
+        setProgress(prev => ({
+          ...prev!,
+          message: `Completed ${analyzedCount}/${gameCount} positions (API limits reached). Saving results...`
+        }));
+      }
+      
       if (attempts.length === 0) {
-        throw new Error('No valid games processed');
+        throw new Error('No valid games processed. Lichess API may be rate limiting - try again in a few minutes.');
       }
       
       // Calculate stats
@@ -722,6 +752,7 @@ async function fetchLichessGames(count: number): Promise<{ pgn: string; timeCont
   const gameIds = new Set<string>(); // Deduplicate by game ID
   const shuffledPlayers = topPlayers.sort(() => Math.random() - 0.5);
   let fetchErrors = 0;
+  let rateLimitedPlayers = 0;
   
   // Take random subset of players (15-20) for variety
   const selectedPlayers = shuffledPlayers.slice(0, 15 + Math.floor(Math.random() * 5));
@@ -736,6 +767,13 @@ async function fetchLichessGames(count: number): Promise<{ pgn: string; timeCont
   
   for (const player of selectedPlayers) {
     if (games.length >= count) break;
+    
+    // If too many players are rate limited, wait and try again
+    if (rateLimitedPlayers >= 3) {
+      console.warn(`[Benchmark] Multiple rate limits detected, waiting 15s before continuing...`);
+      await new Promise(resolve => setTimeout(resolve, 15000));
+      rateLimitedPlayers = 0; // Reset counter after wait
+    }
     
     try {
       console.log(`[Benchmark] Fetching games for ${player}...`);
@@ -756,8 +794,8 @@ async function fetchLichessGames(count: number): Promise<{ pgn: string; timeCont
       });
       
       if (response.status === 429) {
-        console.warn(`[Benchmark] Rate limited for ${player}, waiting 10s and retrying...`);
-        await new Promise(resolve => setTimeout(resolve, 10000)); // Wait longer
+        console.warn(`[Benchmark] Rate limited for ${player}, will retry later...`);
+        rateLimitedPlayers++;
         fetchErrors++;
         continue;
       }
@@ -767,6 +805,7 @@ async function fetchLichessGames(count: number): Promise<{ pgn: string; timeCont
         const fetchedGames = data.games || [];
         
         console.log(`[Benchmark] Got ${fetchedGames.length} games for ${player}`);
+        rateLimitedPlayers = 0; // Reset on success
         
         for (const game of fetchedGames) {
           if (games.length >= count) break;
@@ -797,14 +836,19 @@ async function fetchLichessGames(count: number): Promise<{ pgn: string; timeCont
     }
     
     // Rate limiting protection - increase delay between players
-    await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 700));
+    await new Promise(resolve => setTimeout(resolve, 1200 + Math.random() * 800));
   }
   
   console.log(`[Benchmark] Fetched ${games.length} UNIQUE games (${gameIds.size} IDs, ${fetchErrors} errors)`);
   console.log(`[Benchmark] Window: ${new Date(since).toLocaleDateString()} - ${new Date(until).toLocaleDateString()}`);
   
+  // If we didn't get enough games but have some, continue with what we have
   if (games.length === 0 && fetchErrors > 0) {
     throw new Error('Failed to fetch games from Lichess - possibly rate limited. Please try again in a few minutes.');
+  }
+  
+  if (games.length < count && games.length > 0) {
+    console.warn(`[Benchmark] Only got ${games.length}/${count} games, continuing with available data`);
   }
   
   // Final shuffle for randomization
