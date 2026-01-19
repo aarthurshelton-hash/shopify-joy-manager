@@ -27,10 +27,18 @@ import { getAlreadyAnalyzedData, isPositionAlreadyAnalyzed, hashPosition } from 
 
 interface LichessGameData {
   pgn: string;
+  // GAME MODE CONTEXT (Critical for archetypal cross-referencing)
+  gameMode?: string;                // Primary mode: bullet/blitz/rapid/classical
+  speed?: string;                   // Lichess speed category
+  perf?: string;                    // Performance category
+  rated?: boolean;                  // Was this rated?
+  variant?: string;                 // Chess variant (standard, chess960, etc.)
+  source?: string;                  // How game started (lobby, friend, tournament)
   // Time control context
   timeControl?: string;
   clockInitial?: number;
   clockIncrement?: number;
+  clockTotalTime?: number;          // Estimated total time for comparison
   // Player context
   whiteName?: string;
   blackName?: string;
@@ -38,13 +46,21 @@ interface LichessGameData {
   blackElo?: number;
   whiteTitle?: string;
   blackTitle?: string;
+  whiteProvisional?: boolean;
+  blackProvisional?: boolean;
   // Temporal context
   playedAt?: string;
   gameYear?: number;
   gameMonth?: number;
+  gameDayOfWeek?: number;           // Day of week (0=Sun, 6=Sat)
+  gameHour?: number;                // Hour (0-23) for cognitive window analysis
   // Opening context
   openingEco?: string;
   openingName?: string;
+  openingPly?: number;
+  // Termination context
+  termination?: string;             // How game ended
+  lastMoveAt?: number;
 }
 
 // ALL 25 domain adapters for maximum scope
@@ -80,11 +96,18 @@ export interface LivePredictionData {
   stockfishDepth: number;
   stockfishCorrect: boolean;
   actualResult: string;
+  // GAME MODE CONTEXT (Critical for archetypal cross-referencing)
+  gameMode?: string;        // Primary mode: bullet/blitz/rapid/classical  
+  speed?: string;           // Lichess speed category
+  rated?: boolean;          // Was this rated?
+  variant?: string;         // Chess variant
   // FULL TEMPORAL CONTEXT
   timeControl?: string;
   playedAt?: string;        // ISO date string when game was played
   gameYear?: number;        // Year the game was played
   gameMonth?: number;       // Month (1-12)
+  gameDayOfWeek?: number;   // Day of week for pattern detection
+  gameHour?: number;        // Hour for cognitive window analysis
   // PLAYER CONTEXT
   whiteName?: string;       // White player's username
   blackName?: string;       // Black player's username
@@ -95,9 +118,13 @@ export interface LivePredictionData {
   // OPENING CONTEXT
   openingEco?: string;      // ECO code (e.g., "B50")
   openingName?: string;     // Opening name
+  openingPly?: number;      // Moves in the opening
   // CLOCK CONTEXT
   clockInitial?: number;    // Initial time in seconds
   clockIncrement?: number;  // Increment in seconds
+  clockTotalTime?: number;  // Estimated total game time
+  // TERMINATION CONTEXT
+  termination?: string;     // How game ended (mate, resign, timeout, etc.)
   timestamp: number;        // When we analyzed it
 }
 
@@ -577,7 +604,7 @@ export function useHybridBenchmark() {
           
           attempts.push(attemptData);
           
-          // Stream live prediction with FULL CONTEXT
+          // Stream live prediction with FULL UNIVERSAL CONTEXT
           if (onPrediction) {
             const livePrediction: LivePredictionData = {
               id: attemptId,
@@ -593,11 +620,18 @@ export function useHybridBenchmark() {
               stockfishDepth: stockfish.depth,
               stockfishCorrect: stockfishIsCorrect,
               actualResult: gameResult,
+              // GAME MODE CONTEXT (Critical for archetypal cross-referencing)
+              gameMode: game.gameMode || game.timeControl,
+              speed: game.speed,
+              rated: game.rated,
+              variant: game.variant,
               // FULL TEMPORAL CONTEXT
               timeControl: game.timeControl,
               playedAt: game.playedAt,
               gameYear: game.gameYear,
               gameMonth: game.gameMonth,
+              gameDayOfWeek: game.gameDayOfWeek,
+              gameHour: game.gameHour,
               // PLAYER CONTEXT
               whiteName: game.whiteName,
               blackName: game.blackName,
@@ -608,9 +642,13 @@ export function useHybridBenchmark() {
               // OPENING CONTEXT
               openingEco: game.openingEco,
               openingName: game.openingName,
+              openingPly: game.openingPly,
               // CLOCK CONTEXT
               clockInitial: game.clockInitial,
               clockIncrement: game.clockIncrement,
+              clockTotalTime: game.clockTotalTime,
+              // TERMINATION CONTEXT
+              termination: game.termination,
               timestamp: Date.now(),
             };
             onPrediction(livePrediction);
