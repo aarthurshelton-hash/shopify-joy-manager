@@ -3,6 +3,7 @@
  * Continuously adapts and improves based on prediction outcomes
  * 
  * Refactored: Modular architecture with separated concerns
+ * Enhanced: Anomaly Harvester integration for productive bug detection
  */
 
 import {
@@ -15,14 +16,17 @@ import {
 import { DEFAULT_GENES, updateGenePerformance, mutateGenes, getGeneValue } from './evolution/geneManager';
 import { learnFromOutcome, getBestPatterns } from './evolution/patternLearner';
 import { DEFAULT_THRESHOLDS, adaptThresholds } from './evolution/thresholdAdapter';
+import { anomalyHarvester, HarvestedAnomaly, AnomalyType } from './evolution/anomalyHarvester';
 
 // Re-export types for backwards compatibility
 export * from './evolution/types';
+export { anomalyHarvester, type HarvestedAnomaly, type AnomalyType } from './evolution/anomalyHarvester';
 
 class SelfEvolvingSystem {
   private state: EvolutionState;
   private fitnessHistory: number[] = [];
   private readonly maxHistorySize = 1000;
+  private previousFitness: number = 0.5;
 
   constructor() {
     this.state = this.createInitialState();
@@ -53,6 +57,17 @@ class SelfEvolvingSystem {
     
     const wasCorrect = prediction.predicted === prediction.actual;
     const fitness = this.calculateFitness(wasCorrect, prediction.confidence);
+    
+    // ANOMALY HARVESTING: Detect productive bugs before updating state
+    const anomaly = anomalyHarvester.harvestFromOutcome(
+      prediction,
+      wasCorrect,
+      fitness,
+      this.previousFitness
+    );
+    
+    // Store previous fitness for next comparison
+    this.previousFitness = this.state.metrics.currentFitness;
     
     this.updateFitnessHistory(fitness);
     this.updateCurrentFitness(fitness);
@@ -112,9 +127,22 @@ class SelfEvolvingSystem {
     
     if (!shouldEvolve) return;
     
+    const fitnessBefore = this.state.metrics.currentFitness;
     const mutations = mutateGenes(this.state.genes, this.state.metrics.currentFitness);
     this.state.recentMutations.push(...mutations);
     this.state.recentMutations = this.state.recentMutations.slice(-20);
+    
+    // ANOMALY HARVESTING: Check each mutation for productive bugs
+    mutations.forEach(mutation => {
+      // Estimate fitness change from mutation (simplified)
+      const fitnessAfter = this.state.metrics.currentFitness;
+      anomalyHarvester.harvestFromMutation(
+        mutation.gene,
+        mutation.newValue - mutation.previousValue,
+        fitnessBefore,
+        fitnessAfter
+      );
+    });
     
     this.state.metrics.generationNumber++;
     this.state.metrics.successfulEvolutions++;
@@ -166,8 +194,14 @@ class SelfEvolvingSystem {
     topGenes: Array<{ name: string; value: number; impact: number }>;
     patternCount: number;
     bestPatternAccuracy: number;
+    anomalyHarvest: {
+      totalAnomalies: number;
+      topPatterns: string[];
+      recentInsights: string[];
+    };
   } {
     const bestPattern = this.getBestPatterns(1)[0];
+    const anomalySummary = anomalyHarvester.getEvolutionarySummary();
     
     return {
       generation: this.state.metrics.generationNumber,
@@ -178,8 +212,44 @@ class SelfEvolvingSystem {
         .slice(0, 3)
         .map(g => ({ name: g.name, value: g.value, impact: g.performanceImpact })),
       patternCount: this.state.patternLibrary.length,
-      bestPatternAccuracy: bestPattern?.successRate ?? 0
+      bestPatternAccuracy: bestPattern?.successRate ?? 0,
+      anomalyHarvest: {
+        totalAnomalies: anomalySummary.totalAnomalies,
+        topPatterns: anomalySummary.topPatterns,
+        recentInsights: anomalySummary.recentInsights
+      }
     };
+  }
+
+  /**
+   * Record cross-domain resonance as a productive anomaly
+   */
+  recordCrossDomainResonance(
+    domain1: string,
+    domain2: string,
+    correlationStrength: number,
+    insight: string
+  ): HarvestedAnomaly | null {
+    return anomalyHarvester.harvestCrossDomainResonance(
+      domain1,
+      domain2,
+      correlationStrength,
+      insight
+    );
+  }
+
+  /**
+   * Get anomalies ready for persistence to en_pensent_memory
+   */
+  getAnomaliesForMemory(minImportance: number = 7): HarvestedAnomaly[] {
+    return anomalyHarvester.getAnomaliesForMemory(minImportance);
+  }
+
+  /**
+   * Get exploitable patterns discovered through anomaly harvesting
+   */
+  getExploitablePatterns(limit: number = 5) {
+    return anomalyHarvester.getTopExploitablePatterns(limit);
   }
 }
 
