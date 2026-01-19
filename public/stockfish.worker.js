@@ -1,11 +1,15 @@
 /**
- * Stockfish Web Worker - Real WASM Implementation
+ * Stockfish Web Worker - Maximum Compatibility Version
  * 
- * Uses Stockfish 10 WASM from cdnjs (proven stable for web workers).
- * Communicates via UCI protocol.
+ * Uses Stockfish 10 ASM.js (pure JavaScript, no external WASM files needed).
+ * This version works in all browsers without CORS headers.
+ * 
+ * Strength: ~3000 ELO (Stockfish 10 level)
  */
 
-let stockfishWorker = null;
+// Import the self-contained Stockfish engine
+importScripts('./stockfish-10.js');
+
 let isReady = false;
 let messageQueue = [];
 
@@ -25,10 +29,35 @@ function postReady() {
   self.postMessage({ type: 'ready', data: true });
 }
 
-// Process a UCI command
-function processCommand(command, options = {}) {
-  if (!stockfishWorker) return;
+// Handle UCI output from Stockfish
+Module['print'] = function(line) {
+  postUci(line);
   
+  if (line === 'uciok') {
+    postStatus('Stockfish 10 UCI protocol ready');
+  } else if (line === 'readyok') {
+    if (!isReady) {
+      isReady = true;
+      postStatus('Stockfish 10 ready! (ELO ~3000)');
+      postReady();
+      processQueue();
+    }
+  }
+};
+
+Module['printErr'] = function(line) {
+  console.error('[Stockfish stderr]', line);
+};
+
+// Send a UCI command to Stockfish
+function sendCommand(cmd) {
+  if (typeof Module !== 'undefined' && Module.ccall) {
+    Module.ccall('uci_command', 'number', ['string'], [cmd]);
+  }
+}
+
+// Process a high-level command
+function processCommand(command, options = {}) {
   let uciCommand = '';
   
   switch (command) {
@@ -86,7 +115,7 @@ function processCommand(command, options = {}) {
   }
   
   if (uciCommand) {
-    stockfishWorker.postMessage(uciCommand);
+    sendCommand(uciCommand);
   }
 }
 
@@ -110,135 +139,14 @@ self.onmessage = function(e) {
   processCommand(command, options);
 };
 
-// Initialize Stockfish using the WASM worker file
-async function initStockfish() {
-  postStatus('Initializing Stockfish WASM engine...');
-  
-  try {
-    // Create the stockfish worker using the wasm.js file
-    // This file is a self-contained worker that loads its own WASM
-    postStatus('Loading Stockfish WASM worker...');
-    stockfishWorker = new Worker('./stockfish.wasm.js');
-    
-    // Handle messages from stockfish
-    stockfishWorker.onmessage = function(e) {
-      const line = typeof e.data === 'string' ? e.data : String(e.data);
-      
-      postUci(line);
-      
-      if (line === 'uciok') {
-        postStatus('Stockfish UCI protocol ready');
-      } else if (line === 'readyok') {
-        if (!isReady) {
-          isReady = true;
-          postStatus('Stockfish WASM ready!');
-          postReady();
-          processQueue();
-        }
-      }
-    };
-    
-    stockfishWorker.onerror = function(e) {
-      postError(`Stockfish worker error: ${e.message || 'Unknown error'}`);
-      console.error('[Stockfish Inner Worker] Error:', e);
-      // Don't give up - try fallback
-      tryFallbackEngine();
-    };
-    
-    // Start UCI handshake after a brief delay
-    setTimeout(() => {
-      postStatus('Starting UCI handshake...');
-      stockfishWorker.postMessage('uci');
-    }, 100);
-    
-    // Check readiness
-    setTimeout(() => {
-      postStatus('Checking engine readiness...');
-      stockfishWorker.postMessage('isready');
-    }, 500);
-    
-    // Timeout safety - if not ready after 10 seconds, try fallback
-    setTimeout(() => {
-      if (!isReady) {
-        postStatus('WASM timeout - switching to fallback mode...');
-        tryFallbackEngine();
-      }
-    }, 10000);
-    
-  } catch (e) {
-    postError(`Stockfish initialization failed: ${e.message}`);
-    postStatus(`Failed to load Stockfish: ${e.message}`);
-    console.error('[Stockfish Worker] Init error:', e);
-    tryFallbackEngine();
-  }
-}
+// Initialize when the module is ready
+Module['onRuntimeInitialized'] = function() {
+  postStatus('Stockfish 10 ASM.js initialized');
+  // Start UCI handshake
+  sendCommand('uci');
+  setTimeout(() => {
+    sendCommand('isready');
+  }, 100);
+};
 
-// Fallback to a basic evaluation engine when WASM fails
-function tryFallbackEngine() {
-  if (isReady) return; // Already ready from main engine
-  
-  postStatus('Starting fallback evaluation engine...');
-  
-  isReady = true;
-  postReady();
-  
-  // Simple piece value evaluator
-  const pieceValues = { p: 100, n: 320, b: 330, r: 500, q: 900, k: 0 };
-  
-  function evaluateFen(fen) {
-    const position = fen.split(' ')[0];
-    let score = 0;
-    
-    for (const char of position) {
-      const piece = char.toLowerCase();
-      if (pieceValues[piece] !== undefined) {
-        score += char === char.toUpperCase() ? pieceValues[piece] : -pieceValues[piece];
-      }
-    }
-    
-    // Add small randomness for variety in move selection
-    score += Math.floor(Math.random() * 20) - 10;
-    
-    return score;
-  }
-  
-  // Override the processCommand for fallback mode
-  const originalOnMessage = self.onmessage;
-  self.onmessage = function(e) {
-    const { command, options } = e.data;
-    
-    if (command === 'uci' || command === 'ucinewgame') {
-      postUci('id name Stockfish Fallback');
-      postUci('id author En Pensent Fallback Engine');
-      postUci('uciok');
-    } else if (command === 'isready') {
-      postUci('readyok');
-    } else if (command === 'position') {
-      // Store position for later evaluation
-      self.currentFen = options.fen || 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
-    } else if (command === 'go') {
-      const depth = options.depth || 20;
-      const fen = self.currentFen || 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
-      const score = evaluateFen(fen);
-      
-      // Simulate thinking with info outputs
-      for (let d = 1; d <= Math.min(depth, 20); d++) {
-        setTimeout(() => {
-          postUci(`info depth ${d} score cp ${score} nodes ${d * 10000} pv e2e4`);
-        }, d * 50);
-      }
-      
-      // Send bestmove after "thinking"
-      setTimeout(() => {
-        postUci('bestmove e2e4 ponder e7e5');
-      }, Math.min(depth, 20) * 50 + 100);
-    } else if (command === 'stop') {
-      postUci('bestmove e2e4');
-    }
-  };
-  
-  postStatus('Fallback engine ready (limited depth)');
-}
-
-// Start initialization
-initStockfish();
+postStatus('Loading Stockfish 10 ASM.js engine...');
