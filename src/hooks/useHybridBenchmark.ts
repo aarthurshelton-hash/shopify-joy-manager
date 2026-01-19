@@ -27,6 +27,8 @@ import { getAlreadyAnalyzedData, isPositionAlreadyAnalyzed, hashPosition } from 
 
 interface LichessGameData {
   pgn: string;
+  // CRITICAL: Lichess game ID for cross-run deduplication
+  lichessId?: string;               // The actual Lichess game ID (e.g., "abc123XY")
   // GAME MODE CONTEXT (Critical for archetypal cross-referencing)
   gameMode?: string;                // Primary mode: bullet/blitz/rapid/classical
   speed?: string;                   // Lichess speed category
@@ -406,9 +408,12 @@ export function useHybridBenchmark() {
       const analyzedData = await getAlreadyAnalyzedData();
       let skippedDuplicates = 0;
       
+      console.log(`[Dedup] Loaded ${analyzedData.positionHashes.size} position hashes, ${analyzedData.gameIds.size} game IDs for deduplication`);
+      console.log(`[Dedup] Sample game IDs:`, Array.from(analyzedData.gameIds).slice(0, 5));
+      
       setProgress(prev => ({ 
         ...prev!, 
-        message: `Found ${analyzedData.positionHashes.size} existing positions. Fetching new GM games...` 
+        message: `Found ${analyzedData.positionHashes.size} positions, ${analyzedData.gameIds.size} games. Fetching fresh GM games...` 
       }));
       
       const runId = crypto.randomUUID();
@@ -577,11 +582,21 @@ export function useHybridBenchmark() {
           // Build rich game name with player info if available
           const whiteName = game.whiteName || 'Unknown';
           const blackName = game.blackName || 'Unknown';
-          const gameYear = game.gameYear || new Date().getFullYear();
-          const gameName = `${whiteName} vs ${blackName} (${gameYear})`;
+          const whiteEloDisplay = game.whiteElo ? ` (${game.whiteElo})` : '';
+          const blackEloDisplay = game.blackElo ? ` (${game.blackElo})` : '';
+          const gameName = `${whiteName}${whiteEloDisplay} vs ${blackName}${blackEloDisplay}`;
+          
+          // CRITICAL: Use the LICHESS GAME ID for deduplication, not a random UUID
+          // This enables cross-run game-level deduplication since the same game
+          // from Lichess will always have the same ID
+          const lichessGameId = game.lichessId || `lichess-${Date.now()}-${gameIndex}`;
+          
+          // Add to analyzed data immediately so we don't re-analyze this game
+          analyzedData.gameIds.add(lichessGameId);
+          console.log(`[Analyze] Processing game ${lichessGameId} - position at move ${moveNumber}`);
           
           const attemptData = {
-            game_id: attemptId,
+            game_id: lichessGameId, // Use Lichess ID for cross-run deduplication
             game_name: gameName,
             fen,
             move_number: moveNumber,
@@ -980,19 +995,29 @@ async function fetchLichessGames(
             continue;
           }
           
-          const gameId = game.id || `${game.createdAt}_${pgn.slice(0, 30)}`;
-          if (gameIds.has(gameId)) continue;
-          
-          // CRITICAL: Pre-filter against already-analyzed games BEFORE adding to collection
-          // This is the fix - skip games whose ID we've already processed in previous runs
-          if (analyzedData?.gameIds.has(gameId)) {
-            alreadyAnalyzedSkipped++;
+          // CRITICAL: Use the actual Lichess game ID for deduplication
+          // This ID is unique and persistent across all fetches
+          const lichessGameId = game.id;
+          if (!lichessGameId) {
+            console.warn(`[Benchmark] Game missing ID, skipping...`);
             continue;
           }
           
-          gameIds.add(gameId);
+          // Skip if we've already seen this game in current batch
+          if (gameIds.has(lichessGameId)) continue;
+          
+          // CRITICAL: Pre-filter against already-analyzed games BEFORE adding to collection
+          // This is the key fix - skip games we've already processed in previous benchmark runs
+          if (analyzedData?.gameIds.has(lichessGameId)) {
+            alreadyAnalyzedSkipped++;
+            console.log(`[Dedup] Skipping already-analyzed game: ${lichessGameId}`);
+            continue;
+          }
+          
+          gameIds.add(lichessGameId);
           games.push({
             pgn,
+            lichessId: lichessGameId, // CRITICAL: Store the actual Lichess ID
             // Time control context
             timeControl: game.timeControl,
             clockInitial: game.clockInitial,
