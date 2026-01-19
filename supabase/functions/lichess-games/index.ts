@@ -81,6 +81,20 @@ serve(async (req) => {
 
 ${game.moves} ${resultTag}`;
 
+            // Extract time control from speed field
+            let timeControl = 'classical';
+            if (game.speed === 'bullet' || game.speed === 'ultraBullet') {
+              timeControl = 'bullet';
+            } else if (game.speed === 'blitz') {
+              timeControl = 'blitz';
+            } else if (game.speed === 'rapid') {
+              timeControl = 'rapid';
+            } else if (game.speed === 'classical' || game.speed === 'correspondence') {
+              timeControl = 'classical';
+            } else if (game.perf) {
+              timeControl = game.perf;
+            }
+            
             games.push({
               id: game.id,
               pgn: fullPgn,
@@ -89,7 +103,10 @@ ${game.moves} ${resultTag}`;
               winner: game.winner,
               result: resultTag,
               moveCount,
-              createdAt: game.createdAt
+              createdAt: game.createdAt,
+              timeControl, // NEW: Include time control category
+              whiteElo: game.players?.white?.rating,
+              blackElo: game.players?.black?.rating,
             });
           }
         }

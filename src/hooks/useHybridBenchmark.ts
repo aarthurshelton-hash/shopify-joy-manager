@@ -358,7 +358,7 @@ export function useHybridBenchmark() {
         });
         
         try {
-          const { moves, result: gameResult, fen, moveNumber } = parsePGN(game, predictionMoveRange);
+          const { moves, result: gameResult, fen, moveNumber } = parsePGN(game.pgn, predictionMoveRange);
           
           if (moves.length < 30) continue;
           
@@ -447,7 +447,10 @@ export function useHybridBenchmark() {
             stockfish_correct: stockfishIsCorrect,
             actual_result: gameResult,
             data_quality_tier: 'tcec_unlimited', // Maximum depth = unlimited tier
-            pgn: game.substring(0, 1000),
+            pgn: game.pgn.substring(0, 1000),
+            time_control: game.timeControl || null, // NEW: Store time control
+            white_elo: game.whiteElo || null,       // NEW: Store ELO
+            black_elo: game.blackElo || null,
           });
           
           analyzedCount++; // Increment unique game counter
@@ -593,7 +596,7 @@ export function useHybridBenchmark() {
 
 // Fetch games from Lichess via Edge Function (avoids CORS issues in production)
 // CRITICAL: Each benchmark run must use FRESH, UNIQUE games for scientific validity
-async function fetchLichessGames(count: number): Promise<string[]> {
+async function fetchLichessGames(count: number): Promise<{ pgn: string; timeControl?: string; whiteElo?: number; blackElo?: number }[]> {
   // EXPANDED player pool - 30+ top GMs for maximum variety
   const topPlayers = [
     // Super GMs (2750+)
@@ -639,7 +642,7 @@ async function fetchLichessGames(count: number): Promise<string[]> {
   const since = threeMonthsAgo - randomStartOffset;
   const until = since + (30 * 24 * 60 * 60 * 1000); // 30-day window
   
-  const games: string[] = [];
+  const games: { pgn: string; timeControl?: string; whiteElo?: number; blackElo?: number }[] = [];
   const gameIds = new Set<string>(); // Deduplicate by game ID
   const shuffledPlayers = topPlayers.sort(() => Math.random() - 0.5);
   let fetchErrors = 0;
@@ -695,8 +698,13 @@ async function fetchLichessGames(count: number): Promise<string[]> {
           if (gameIds.has(gameId)) continue;
           
           gameIds.add(gameId);
-          games.push(game.pgn || game.moves);
-          console.log(`[Benchmark] Added game ${gameId}: ${game.moveCount} moves, ${game.status}`);
+          games.push({
+            pgn: game.pgn || game.moves,
+            timeControl: game.timeControl,
+            whiteElo: game.whiteElo,
+            blackElo: game.blackElo,
+          });
+          console.log(`[Benchmark] Added game ${gameId}: ${game.moveCount} moves, ${game.status}, ${game.timeControl || 'unknown'} time control`);
         }
       } else {
         console.warn(`[Benchmark] Failed to fetch for ${player}: ${response.status}`);
