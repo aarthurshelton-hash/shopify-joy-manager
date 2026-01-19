@@ -63,21 +63,37 @@ serve(async (req) => {
     for (const line of lines) {
       try {
         const game = JSON.parse(line);
-        if (game.moves && (game.status === 'mate' || game.status === 'resign' || game.status === 'stalemate')) {
+        // Accept ALL finished games (mate, resign, stalemate, timeout, outoftime, draw, etc.)
+        const validStatus = ['mate', 'resign', 'stalemate', 'timeout', 'outoftime', 'draw', 'agreed'];
+        if (game.moves && (validStatus.includes(game.status) || game.winner)) {
           const moveCount = game.moves.split(' ').length;
-          if (moveCount >= 40) {
+          // Accept games with at least 10 half-moves (5 full moves each side)
+          if (moveCount >= 10) {
             // Determine result string from winner/status
             let resultTag = '1/2-1/2';
             if (game.winner === 'white') resultTag = '1-0';
             else if (game.winner === 'black') resultTag = '0-1';
             
-            // Build proper PGN if not provided (pgn field may be missing)
-            const fullPgn = game.pgn || `[Event "Lichess Game"]
-[Site "lichess.org"]
-[Date "${new Date(game.createdAt).toISOString().split('T')[0].replace(/-/g, '.')}"]
-[White "${game.players?.white?.user?.name || 'Unknown'}"]
-[Black "${game.players?.black?.user?.name || 'Unknown'}"]
+            // Extract player names
+            const whiteName = game.players?.white?.user?.name || game.players?.white?.user?.id || 'Unknown';
+            const blackName = game.players?.black?.user?.name || game.players?.black?.user?.id || 'Unknown';
+            
+            // Extract game date (createdAt is in milliseconds)
+            const gameDate = new Date(game.createdAt);
+            const formattedDate = gameDate.toISOString().split('T')[0].replace(/-/g, '.');
+            
+            // Build proper PGN with FULL metadata
+            const fullPgn = game.pgn || `[Event "Lichess ${game.speed || 'Game'}"]
+[Site "lichess.org/${game.id}"]
+[Date "${formattedDate}"]
+[White "${whiteName}"]
+[Black "${blackName}"]
+[WhiteElo "${game.players?.white?.rating || '?'}"]
+[BlackElo "${game.players?.black?.rating || '?'}"]
 [Result "${resultTag}"]
+[TimeControl "${game.clock?.initial || 0}+${game.clock?.increment || 0}"]
+[ECO "${game.opening?.eco || '?'}"]
+[Opening "${game.opening?.name || 'Unknown'}"]
 
 ${game.moves} ${resultTag}`;
 
@@ -103,10 +119,26 @@ ${game.moves} ${resultTag}`;
               winner: game.winner,
               result: resultTag,
               moveCount,
-              createdAt: game.createdAt,
-              timeControl, // NEW: Include time control category
+              // FULL TEMPORAL CONTEXT
+              createdAt: game.createdAt,          // Timestamp in ms
+              playedAt: gameDate.toISOString(),   // ISO string for display
+              gameYear: gameDate.getFullYear(),   // Year for era analysis
+              gameMonth: gameDate.getMonth() + 1, // Month (1-12)
+              // TIME CONTROL CONTEXT  
+              timeControl,
+              clockInitial: game.clock?.initial,   // Starting time in seconds
+              clockIncrement: game.clock?.increment, // Increment in seconds
+              // PLAYER CONTEXT
+              whiteName,
+              blackName,
               whiteElo: game.players?.white?.rating,
               blackElo: game.players?.black?.rating,
+              whiteTitle: game.players?.white?.user?.title, // GM, IM, FM, etc.
+              blackTitle: game.players?.black?.user?.title,
+              // OPENING CONTEXT
+              openingEco: game.opening?.eco,
+              openingName: game.opening?.name,
+              openingPly: game.opening?.ply, // How many moves in the opening
             });
           }
         }
