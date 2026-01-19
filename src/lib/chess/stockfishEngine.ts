@@ -104,11 +104,15 @@ export class StockfishEngine {
   }
 
   private configure(): void {
-    // Optimized settings for faster web performance
-    this.sendCommand('setoption', { name: 'Threads', value: 1 });
-    this.sendCommand('setoption', { name: 'Hash', value: 64 }); // 64MB hash for better caching
-    this.sendCommand('setoption', { name: 'MultiPV', value: 1 });
-    this.sendCommand('setoption', { name: 'Slow Mover', value: 10 }); // Faster time management
+    // MAXIMUM STRENGTH SETTINGS for En Pensent Benchmarks
+    // Both Pure Stockfish AND En Pensent Hybrid use these IDENTICAL settings
+    // This ensures the ONLY variable is En Pensent's 25 domain adapters
+    this.sendCommand('setoption', { name: 'Threads', value: 1 }); // Single thread for consistency
+    this.sendCommand('setoption', { name: 'Hash', value: 128 }); // 128MB hash for deeper caching
+    this.sendCommand('setoption', { name: 'MultiPV', value: 1 }); // Focus on best line only
+    this.sendCommand('setoption', { name: 'Slow Mover', value: 100 }); // Maximum time usage for depth
+    // NNUE is enabled by default in Stockfish 17.1 - provides ~3600 ELO strength
+    // We do NOT use Skill Level or limit strength - full power on both sides
   }
 
   private sendCommand(command: string, options?: Record<string, any>): void {

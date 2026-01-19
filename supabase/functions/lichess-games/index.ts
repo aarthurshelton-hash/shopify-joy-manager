@@ -124,10 +124,20 @@ ${game.moves} ${resultTag}`;
               playedAt: gameDate.toISOString(),   // ISO string for display
               gameYear: gameDate.getFullYear(),   // Year for era analysis
               gameMonth: gameDate.getMonth() + 1, // Month (1-12)
+              gameDayOfWeek: gameDate.getDay(),   // Day of week (0=Sun, 6=Sat)
+              gameHour: gameDate.getHours(),      // Hour (0-23) - timezone inference
+              // GAME MODE CONTEXT (Critical for archetypal understanding)
+              gameMode: timeControl,              // Primary mode: bullet/blitz/rapid/classical
+              speed: game.speed,                  // Lichess speed category
+              perf: game.perf || game.speed,      // Performance category
+              rated: game.rated ?? true,          // Was this a rated game?
+              variant: game.variant || 'standard', // Chess variant (standard, chess960, etc.)
+              source: game.source || 'lobby',     // How game was started
               // TIME CONTROL CONTEXT  
               timeControl,
               clockInitial: game.clock?.initial,   // Starting time in seconds
               clockIncrement: game.clock?.increment, // Increment in seconds
+              clockTotalTime: (game.clock?.initial || 0) + (40 * (game.clock?.increment || 0)), // Estimated total time
               // PLAYER CONTEXT
               whiteName,
               blackName,
@@ -135,10 +145,15 @@ ${game.moves} ${resultTag}`;
               blackElo: game.players?.black?.rating,
               whiteTitle: game.players?.white?.user?.title, // GM, IM, FM, etc.
               blackTitle: game.players?.black?.user?.title,
+              whiteProvisional: game.players?.white?.provisional, // Is rating provisional?
+              blackProvisional: game.players?.black?.provisional,
               // OPENING CONTEXT
               openingEco: game.opening?.eco,
               openingName: game.opening?.name,
               openingPly: game.opening?.ply, // How many moves in the opening
+              // TERMINATION CONTEXT
+              termination: game.status,           // How game ended (mate, resign, timeout, etc.)
+              lastMoveAt: game.lastMoveAt,        // When the final move was made
             });
           }
         }
