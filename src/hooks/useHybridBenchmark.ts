@@ -910,16 +910,24 @@ async function fetchLichessGames(count: number): Promise<LichessGameData[]> {
   const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
   
   // CRITICAL FIX: Don't break early - collect as many games as possible
+  // Add substantial delay between requests to respect Lichess rate limits
+  let requestDelay = 3500; // Start with 3.5s between requests
+  
   for (const player of selectedPlayers) {
-    // If too many players are rate limited, wait and try again
-    if (rateLimitedPlayers >= 3) {
-      console.warn(`[Benchmark] Multiple rate limits detected, waiting 15s before continuing...`);
-      await new Promise(resolve => setTimeout(resolve, 15000));
+    // If too many players are rate limited, wait longer and increase base delay
+    if (rateLimitedPlayers >= 2) {
+      const waitTime = Math.min(60000, 20000 * rateLimitedPlayers); // Up to 60s
+      console.warn(`[Benchmark] Rate limits detected (${rateLimitedPlayers}), waiting ${waitTime/1000}s...`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+      requestDelay = Math.min(8000, requestDelay + 1500); // Increase base delay
       rateLimitedPlayers = 0; // Reset counter after wait
     }
     
+    // Always wait between requests to avoid hitting limits
+    await new Promise(resolve => setTimeout(resolve, requestDelay));
+    
     try {
-      console.log(`[Benchmark] Fetching games for ${player}... (${games.length} collected so far)`);
+      console.log(`[Benchmark] Fetching games for ${player}... (${games.length} collected, delay: ${requestDelay}ms)`);
       
       const response = await fetch(`${supabaseUrl}/functions/v1/lichess-games`, {
         method: 'POST',
@@ -932,14 +940,15 @@ async function fetchLichessGames(count: number): Promise<LichessGameData[]> {
           player,
           since,
           until,
-          max: 50 // Increased from 25 to get more games per player
+          max: 30 // Reduced to be gentler on API
         })
       });
       
       if (response.status === 429) {
-        console.warn(`[Benchmark] Rate limited for ${player}, will retry later...`);
+        console.warn(`[Benchmark] Rate limited for ${player}, backing off...`);
         rateLimitedPlayers++;
         fetchErrors++;
+        requestDelay = Math.min(10000, requestDelay + 2000); // Increase delay on rate limit
         continue;
       }
       
