@@ -462,48 +462,102 @@ export default function Benchmark() {
           </Card>
         )}
 
-        {/* API Status */}
-        <Card className={`border ${
-          apiReady 
-            ? 'border-green-500/50 bg-green-500/5' 
-            : initPhase.includes('unavailable') || initPhase.includes('failed')
-              ? 'border-red-500/50 bg-red-500/5'
-              : 'border-yellow-500/50 bg-yellow-500/5'
-        }`}>
-          <CardContent className="py-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                {apiReady ? (
-                  <CheckCircle className="h-5 w-5 text-green-500" />
-                ) : rateLimited ? (
-                  <Clock className="h-5 w-5 text-orange-500" />
-                ) : initPhase.includes('unavailable') || initPhase.includes('failed') ? (
-                  <XCircle className="h-5 w-5 text-red-500" />
-                ) : (
-                  <Loader2 className="h-5 w-5 animate-spin text-yellow-500" />
-                )}
-                <span className="font-medium">
-                  {initPhase}
-                </span>
+        {/* Engine Status - Changes based on benchmark mode */}
+        {benchmarkMode === 'local' ? (
+          // LOCAL WASM Engine Status
+          <Card className={`border ${
+            wasmReady 
+              ? 'border-green-500/50 bg-green-500/5' 
+              : wasmError
+                ? 'border-red-500/50 bg-red-500/5'
+                : 'border-yellow-500/50 bg-yellow-500/5'
+          }`}>
+            <CardContent className="py-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {wasmReady ? (
+                    <CheckCircle className="h-5 w-5 text-green-500" />
+                  ) : wasmError ? (
+                    <XCircle className="h-5 w-5 text-red-500" />
+                  ) : (
+                    <Loader2 className="h-5 w-5 animate-spin text-yellow-500" />
+                  )}
+                  <span className="font-medium">
+                    {wasmReady 
+                      ? `Stockfish 17.1 WASM Ready - ${localDepth} ply depth` 
+                      : wasmError 
+                        ? 'WASM Engine failed to load' 
+                        : `Loading Stockfish WASM engine (${wasmLoadingProgress}%)...`
+                    }
+                  </span>
+                </div>
+                <Badge 
+                  variant={wasmReady ? 'default' : 'secondary'} 
+                  className={`gap-1 ${wasmReady ? 'bg-green-500/20 text-green-400 border-green-500/50' : ''}`}
+                >
+                  <Zap className="h-3 w-3" />
+                  {wasmReady ? '100% Depth' : wasmError ? 'Error' : 'Loading'}
+                </Badge>
               </div>
-              <Badge 
-                variant={apiReady ? 'default' : 'secondary'} 
-                className={`gap-1 ${rateLimited ? 'bg-orange-500/20 text-orange-400 border-orange-500/50' : ''}`}
-              >
-                <Cloud className="h-3 w-3" />
-                {apiReady ? 'Stockfish 17 Ready' : rateLimited ? 'Rate Limited' : initPhase.includes('unavailable') ? 'Offline' : 'Connecting'}
-              </Badge>
-            </div>
-            {!apiReady && !initPhase.includes('unavailable') && !initPhase.includes('failed') && (
-              <Progress value={rateLimited ? 75 : initPhase.includes('Retrying') ? 50 : 25} className="h-1 mt-2" />
-            )}
-            {rateLimited && (
-              <p className="text-xs text-orange-400 mt-1">
-                Too many requests. Use Maximum Depth mode while waiting.
-              </p>
-            )}
-          </CardContent>
-        </Card>
+              {!wasmReady && !wasmError && (
+                <Progress value={wasmLoadingProgress || 25} className="h-1 mt-2" />
+              )}
+              {wasmReady && (
+                <p className="text-xs text-green-400 mt-1">
+                  Local engine running at maximum capacity - no cloud connection needed
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          // CLOUD API Status
+          <Card className={`border ${
+            apiReady 
+              ? 'border-green-500/50 bg-green-500/5' 
+              : initPhase.includes('unavailable') || initPhase.includes('failed')
+                ? 'border-red-500/50 bg-red-500/5'
+                : 'border-yellow-500/50 bg-yellow-500/5'
+          }`}>
+            <CardContent className="py-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {apiReady ? (
+                    <CheckCircle className="h-5 w-5 text-green-500" />
+                  ) : rateLimited ? (
+                    <Clock className="h-5 w-5 text-orange-500" />
+                  ) : initPhase.includes('unavailable') || initPhase.includes('failed') ? (
+                    <XCircle className="h-5 w-5 text-red-500" />
+                  ) : (
+                    <Loader2 className="h-5 w-5 animate-spin text-yellow-500" />
+                  )}
+                  <span className="font-medium">
+                    {initPhase}
+                  </span>
+                </div>
+                <Badge 
+                  variant={apiReady ? 'default' : 'secondary'} 
+                  className={`gap-1 ${rateLimited ? 'bg-orange-500/20 text-orange-400 border-orange-500/50' : ''}`}
+                >
+                  <Cloud className="h-3 w-3" />
+                  {apiReady ? 'Stockfish 17 Ready' : rateLimited ? 'Rate Limited' : initPhase.includes('unavailable') ? 'Offline' : 'Connecting'}
+                </Badge>
+              </div>
+              {!apiReady && !initPhase.includes('unavailable') && !initPhase.includes('failed') && (
+                <Progress value={rateLimited ? 75 : initPhase.includes('Retrying') ? 50 : 25} className="h-1 mt-2" />
+              )}
+              {rateLimited && (
+                <p className="text-xs text-orange-400 mt-1">
+                  Too many requests. Use Maximum Depth mode while waiting.
+                </p>
+              )}
+              {!apiReady && !rateLimited && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Switch to Maximum Depth mode for instant local analysis
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Control Panel */}
         <Card className="border-primary/20">
