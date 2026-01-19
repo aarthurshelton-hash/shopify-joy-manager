@@ -41,6 +41,27 @@ export interface HybridBenchmarkConfig {
   gameCount: number;
   depth: number; // Local WASM depth - can go to 60+
   predictionMoveRange: [number, number]; // Randomized prediction point
+  onPrediction?: (prediction: LivePredictionData) => void; // Callback for live streaming
+}
+
+export interface LivePredictionData {
+  id: string;
+  gameName: string;
+  moveNumber: number;
+  fen: string;
+  hybridPrediction: string;
+  hybridArchetype: string;
+  hybridConfidence: number;
+  hybridCorrect: boolean;
+  stockfishPrediction: string;
+  stockfishEval: number;
+  stockfishDepth: number;
+  stockfishCorrect: boolean;
+  actualResult: string;
+  timeControl?: string;
+  whiteElo?: number;
+  blackElo?: number;
+  timestamp: number;
 }
 
 export interface BenchmarkResult {
@@ -277,7 +298,7 @@ export function useHybridBenchmark() {
   const abortRef = useRef(false);
 
   const runBenchmark = useCallback(async (config: HybridBenchmarkConfig) => {
-    const { gameCount, depth, predictionMoveRange } = config;
+    const { gameCount, depth, predictionMoveRange, onPrediction } = config;
     
     setIsRunning(true);
     setError(null);
@@ -430,8 +451,9 @@ export function useHybridBenchmark() {
           if (hybridIsCorrect && stockfishIsCorrect) bothCorrect++;
           if (!hybridIsCorrect && !stockfishIsCorrect) bothWrong++;
           
-          attempts.push({
-            game_id: crypto.randomUUID(),
+          const attemptId = crypto.randomUUID();
+          const attemptData = {
+            game_id: attemptId,
             game_name: `GM Game ${attempts.length + 1}`,
             fen,
             move_number: moveNumber,
@@ -448,10 +470,36 @@ export function useHybridBenchmark() {
             actual_result: gameResult,
             data_quality_tier: 'tcec_unlimited', // Maximum depth = unlimited tier
             pgn: game.pgn.substring(0, 1000),
-            time_control: game.timeControl || null, // NEW: Store time control
-            white_elo: game.whiteElo || null,       // NEW: Store ELO
+            time_control: game.timeControl || null, // Store time control
+            white_elo: game.whiteElo || null,       // Store ELO
             black_elo: game.blackElo || null,
-          });
+          };
+          
+          attempts.push(attemptData);
+          
+          // Stream live prediction to callback
+          if (onPrediction) {
+            const livePrediction: LivePredictionData = {
+              id: attemptId,
+              gameName: attemptData.game_name,
+              moveNumber,
+              fen,
+              hybridPrediction: colorFlow.prediction,
+              hybridArchetype: colorFlow.archetype,
+              hybridConfidence: colorFlow.confidence,
+              hybridCorrect: hybridIsCorrect,
+              stockfishPrediction: stockfish.prediction,
+              stockfishEval: stockfish.evaluation,
+              stockfishDepth: stockfish.depth,
+              stockfishCorrect: stockfishIsCorrect,
+              actualResult: gameResult,
+              timeControl: game.timeControl,
+              whiteElo: game.whiteElo,
+              blackElo: game.blackElo,
+              timestamp: Date.now(),
+            };
+            onPrediction(livePrediction);
+          }
           
           analyzedCount++; // Increment unique game counter
           
