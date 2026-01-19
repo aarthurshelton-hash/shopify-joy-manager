@@ -253,7 +253,7 @@ export async function getBenchmarkHistory(limit: number = 20): Promise<{
 
 /**
  * Get archetype performance statistics across all benchmarks
- * FIXED: Filters out legacy 'unknown' Stockfish predictions that corrupt accuracy stats
+ * Uses pagination to fetch ALL records beyond 1000 row limit
  */
 export async function getArchetypeStats(): Promise<Record<string, {
   totalPredictions: number;
@@ -262,14 +262,6 @@ export async function getArchetypeStats(): Promise<Record<string, {
   stockfishBeats: number;
   hybridBeats: number;
 }>> {
-  const { data, error } = await supabase
-    .from('chess_prediction_attempts')
-    .select('hybrid_archetype, hybrid_correct, stockfish_correct, stockfish_prediction');
-
-  if (error || !data) {
-    return {};
-  }
-
   const stats: Record<string, {
     totalPredictions: number;
     correctPredictions: number;
@@ -278,38 +270,55 @@ export async function getArchetypeStats(): Promise<Record<string, {
     hybridBeats: number;
   }> = {};
 
-  for (const attempt of data) {
-    // CRITICAL FIX: Filter out legacy 'unknown' Stockfish predictions
-    // These were caused by a bug in older code and corrupt accuracy calculations
-    const hasValidStockfishPrediction = attempt.stockfish_prediction && 
-      attempt.stockfish_prediction !== 'unknown' &&
-      ['white_wins', 'black_wins', 'draw', 'white', 'black'].includes(attempt.stockfish_prediction);
-    
-    const arch = attempt.hybrid_archetype || 'Unknown';
-    if (!stats[arch]) {
-      stats[arch] = {
-        totalPredictions: 0,
-        correctPredictions: 0,
-        accuracy: 0,
-        stockfishBeats: 0,
-        hybridBeats: 0,
-      };
+  // Paginate through all records to bypass 1000 row limit
+  let from = 0;
+  const pageSize = 1000;
+  let hasMore = true;
+
+  while (hasMore) {
+    const { data, error } = await supabase
+      .from('chess_prediction_attempts')
+      .select('hybrid_archetype, hybrid_correct, stockfish_correct, stockfish_prediction')
+      .range(from, from + pageSize - 1);
+
+    if (error || !data || data.length === 0) {
+      hasMore = false;
+      break;
     }
 
-    stats[arch].totalPredictions++;
-    if (attempt.hybrid_correct) {
-      stats[arch].correctPredictions++;
-    }
-    
-    // Only count SF comparison if we have a valid SF prediction
-    if (hasValidStockfishPrediction) {
-      if (attempt.hybrid_correct && !attempt.stockfish_correct) {
-        stats[arch].hybridBeats++;
+    for (const attempt of data) {
+      const hasValidStockfishPrediction = attempt.stockfish_prediction && 
+        attempt.stockfish_prediction !== 'unknown' &&
+        ['white_wins', 'black_wins', 'draw', 'white', 'black'].includes(attempt.stockfish_prediction);
+      
+      const arch = attempt.hybrid_archetype || 'Unknown';
+      if (!stats[arch]) {
+        stats[arch] = {
+          totalPredictions: 0,
+          correctPredictions: 0,
+          accuracy: 0,
+          stockfishBeats: 0,
+          hybridBeats: 0,
+        };
       }
-      if (attempt.stockfish_correct && !attempt.hybrid_correct) {
-        stats[arch].stockfishBeats++;
+
+      stats[arch].totalPredictions++;
+      if (attempt.hybrid_correct) {
+        stats[arch].correctPredictions++;
+      }
+      
+      if (hasValidStockfishPrediction) {
+        if (attempt.hybrid_correct && !attempt.stockfish_correct) {
+          stats[arch].hybridBeats++;
+        }
+        if (attempt.stockfish_correct && !attempt.hybrid_correct) {
+          stats[arch].stockfishBeats++;
+        }
       }
     }
+
+    from += pageSize;
+    hasMore = data.length === pageSize;
   }
 
   // Calculate accuracies
@@ -382,7 +391,7 @@ export async function getHybridFailurePatterns(limit: number = 50): Promise<{
 
 /**
  * Calculate cumulative statistics across all runs
- * FIXED: Filters out legacy 'unknown' predictions and recalculates accuracy properly
+ * FIXED: Uses aggregation query to handle unlimited data (no row limits)
  */
 export async function getCumulativeStats(): Promise<{
   totalRuns: number;
@@ -395,55 +404,78 @@ export async function getCumulativeStats(): Promise<{
   validPredictionCount: number;
   invalidPredictionCount: number;
 }> {
-  // Get individual predictions for accurate recalculation
-  const { data: predictions } = await supabase
+  // Use RPC or direct count/aggregate to bypass row limits
+  // Fetch aggregated stats directly from DB to avoid 1000 row limit
+  const { count: totalPredictions } = await supabase
     .from('chess_prediction_attempts')
-    .select('hybrid_correct, stockfish_correct, stockfish_prediction, hybrid_archetype');
+    .select('*', { count: 'exact', head: true });
+  
+  // Get valid predictions count (with proper stockfish prediction)
+  const { count: validCount } = await supabase
+    .from('chess_prediction_attempts')
+    .select('*', { count: 'exact', head: true })
+    .not('stockfish_prediction', 'is', null)
+    .neq('stockfish_prediction', 'unknown');
+  
+  // Get hybrid correct count
+  const { count: hybridCorrectCount } = await supabase
+    .from('chess_prediction_attempts')
+    .select('*', { count: 'exact', head: true })
+    .eq('hybrid_correct', true)
+    .not('stockfish_prediction', 'is', null)
+    .neq('stockfish_prediction', 'unknown');
+  
+  // Get stockfish correct count
+  const { count: sfCorrectCount } = await supabase
+    .from('chess_prediction_attempts')
+    .select('*', { count: 'exact', head: true })
+    .eq('stockfish_correct', true)
+    .not('stockfish_prediction', 'is', null)
+    .neq('stockfish_prediction', 'unknown');
+  
+  // Get hybrid wins (hybrid correct AND stockfish wrong)
+  const { count: hybridWins } = await supabase
+    .from('chess_prediction_attempts')
+    .select('*', { count: 'exact', head: true })
+    .eq('hybrid_correct', true)
+    .eq('stockfish_correct', false)
+    .not('stockfish_prediction', 'is', null)
+    .neq('stockfish_prediction', 'unknown');
+  
+  // Get stockfish wins (stockfish correct AND hybrid wrong)
+  const { count: sfWins } = await supabase
+    .from('chess_prediction_attempts')
+    .select('*', { count: 'exact', head: true })
+    .eq('hybrid_correct', false)
+    .eq('stockfish_correct', true)
+    .not('stockfish_prediction', 'is', null)
+    .neq('stockfish_prediction', 'unknown');
   
   const { data: benchmarks } = await supabase
     .from('chess_benchmark_results')
-    .select('completed_games, hybrid_accuracy, stockfish_accuracy, hybrid_wins, stockfish_wins');
+    .select('id');
 
   const archetypeStats = await getArchetypeStats();
+
+  const validPredictions = validCount || 0;
+  const invalidPredictions = (totalPredictions || 0) - validPredictions;
+  const hybridCorrect = hybridCorrectCount || 0;
+  const sfCorrect = sfCorrectCount || 0;
+  const hybridWinsTotal = hybridWins || 0;
+  const sfWinsTotal = sfWins || 0;
 
   if (!benchmarks || benchmarks.length === 0) {
     return {
       totalRuns: 0,
-      totalGamesAnalyzed: 0,
-      overallHybridAccuracy: 0,
-      overallStockfishAccuracy: 0,
-      hybridNetWins: 0,
+      totalGamesAnalyzed: totalPredictions || 0,
+      overallHybridAccuracy: validPredictions > 0 ? (hybridCorrect / validPredictions) * 100 : 0,
+      overallStockfishAccuracy: validPredictions > 0 ? (sfCorrect / validPredictions) * 100 : 0,
+      hybridNetWins: hybridWinsTotal - sfWinsTotal,
       bestArchetype: null,
       worstArchetype: null,
-      validPredictionCount: 0,
-      invalidPredictionCount: 0,
+      validPredictionCount: validPredictions,
+      invalidPredictionCount: invalidPredictions,
     };
-  }
-
-  // CRITICAL: Recalculate from individual predictions, filtering invalid data
-  let validPredictions = 0;
-  let invalidPredictions = 0;
-  let hybridCorrectCount = 0;
-  let stockfishCorrectCount = 0;
-  let hybridWinsCount = 0;
-  let stockfishWinsCount = 0;
-  
-  if (predictions) {
-    for (const p of predictions) {
-      const hasValidSF = p.stockfish_prediction && 
-        p.stockfish_prediction !== 'unknown' &&
-        ['white_wins', 'black_wins', 'draw', 'white', 'black'].includes(p.stockfish_prediction);
-      
-      if (hasValidSF) {
-        validPredictions++;
-        if (p.hybrid_correct) hybridCorrectCount++;
-        if (p.stockfish_correct) stockfishCorrectCount++;
-        if (p.hybrid_correct && !p.stockfish_correct) hybridWinsCount++;
-        if (!p.hybrid_correct && p.stockfish_correct) stockfishWinsCount++;
-      } else {
-        invalidPredictions++;
-      }
-    }
   }
 
   // Find best/worst archetypes
@@ -467,10 +499,10 @@ export async function getCumulativeStats(): Promise<{
 
   return {
     totalRuns: benchmarks.length,
-    totalGamesAnalyzed: validPredictions + invalidPredictions,
-    overallHybridAccuracy: validPredictions > 0 ? (hybridCorrectCount / validPredictions) * 100 : 0,
-    overallStockfishAccuracy: validPredictions > 0 ? (stockfishCorrectCount / validPredictions) * 100 : 0,
-    hybridNetWins: hybridWinsCount - stockfishWinsCount,
+    totalGamesAnalyzed: totalPredictions || 0,
+    overallHybridAccuracy: validPredictions > 0 ? (hybridCorrect / validPredictions) * 100 : 0,
+    overallStockfishAccuracy: validPredictions > 0 ? (sfCorrect / validPredictions) * 100 : 0,
+    hybridNetWins: hybridWinsTotal - sfWinsTotal,
     bestArchetype: bestArch,
     worstArchetype: worstArch,
     validPredictionCount: validPredictions,
