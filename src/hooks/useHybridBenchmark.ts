@@ -430,8 +430,9 @@ export function useHybridBenchmark() {
         try {
           const { moves, result: gameResult, fen, moveNumber } = parsePGN(game.pgn, predictionMoveRange);
           
-          if (moves.length < 30) {
-            console.log(`[Skip] Game has only ${moves.length} moves, need 30+`);
+          // Minimum 10 moves to have meaningful position
+          if (moves.length < 10) {
+            console.log(`[Skip] Game has only ${moves.length} moves, need 10+ for analysis`);
             continue;
           }
           
@@ -893,10 +894,12 @@ function parsePGN(pgn: string, moveRange: [number, number]): {
     .split(/\s+/)
     .filter(m => m && !m.match(/^\d+\./) && !m.match(/^[01]-[01]$/) && !m.match(/^1\/2-1\/2$/));
   
-  // Randomized prediction point (capped at 50% of game length)
-  const maxMove = Math.min(moveRange[1], Math.floor(moves.length * 0.5));
-  const minMove = Math.max(moveRange[0], 10);
-  const moveNumber = minMove + Math.floor(Math.random() * (maxMove - minMove + 1));
+  // Adaptive prediction point - works with ANY game length
+  // For short games, analyze earlier; for long games, use requested range
+  const availableRange = Math.floor(moves.length * 0.6); // Can go up to 60% into game
+  const maxMove = Math.min(moveRange[1], availableRange, moves.length - 2);
+  const minMove = Math.min(moveRange[0], Math.max(5, Math.floor(moves.length * 0.2))); // At least 20% in, minimum move 5
+  const moveNumber = Math.max(minMove, minMove + Math.floor(Math.random() * Math.max(1, maxMove - minMove + 1)));
   
   // Generate actual FEN at the prediction point
   const chess = new Chess();
