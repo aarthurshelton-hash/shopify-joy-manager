@@ -5,6 +5,14 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Simple in-memory cache for rate limit protection (5-minute TTL)
+const cache = new Map<string, { data: unknown; timestamp: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+// Track last request time for throttling
+let lastRequestTime = 0;
+const MIN_REQUEST_INTERVAL = 2000; // 2 seconds between requests
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -20,6 +28,26 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Create cache key
+    const cacheKey = `${player}-${since}-${until}-${max}`;
+    const cached = cache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      console.log(`[Lichess Games] Cache hit for ${player}`);
+      return new Response(
+        JSON.stringify(cached.data),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json', 'X-Cache': 'HIT' } }
+      );
+    }
+
+    // Server-side throttle: wait if needed
+    const now = Date.now();
+    const timeSinceLastRequest = now - lastRequestTime;
+    if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
+      const waitTime = MIN_REQUEST_INTERVAL - timeSinceLastRequest;
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+    }
+    lastRequestTime = Date.now();
 
     console.log(`[Lichess Games] Fetching games for ${player} (since: ${new Date(since).toISOString()}, until: ${new Date(until).toISOString()})`);
 
@@ -164,9 +192,21 @@ ${game.moves} ${resultTag}`;
 
     console.log(`[Lichess Games] Fetched ${games.length} valid games for ${player}`);
 
+    // Cache successful response
+    const responseData = { games, count: games.length };
+    cache.set(cacheKey, { data: responseData, timestamp: Date.now() });
+    
+    // Clean up old cache entries periodically
+    if (cache.size > 100) {
+      const cutoff = Date.now() - CACHE_TTL;
+      for (const [key, value] of cache.entries()) {
+        if (value.timestamp < cutoff) cache.delete(key);
+      }
+    }
+
     return new Response(
-      JSON.stringify({ games, count: games.length }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify(responseData),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json', 'X-Cache': 'MISS' } }
     );
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Internal server error';
