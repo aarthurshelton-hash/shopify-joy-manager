@@ -110,8 +110,9 @@ async function initStockfish() {
   
   try {
     // Import the Stockfish lite-single version (no CORS required)
+    // Using the hashed filename from the npm package
     postStatus('Loading Stockfish module...');
-    importScripts('./stockfish-17.1-lite-single.js');
+    importScripts('./stockfish-17.1-lite-single-03e3232.js');
     
     if (typeof Stockfish === 'function') {
       // Stockfish constructor exists - use it
