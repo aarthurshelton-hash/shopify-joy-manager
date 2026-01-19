@@ -591,43 +591,92 @@ export function useHybridBenchmark() {
   };
 }
 
-// Fetch games from Lichess with improved error handling
+// Fetch games from Lichess with RANDOMIZED timestamps and expanded player pool
+// CRITICAL: Each benchmark run must use FRESH, UNIQUE games for scientific validity
 async function fetchLichessGames(count: number): Promise<string[]> {
+  // EXPANDED player pool - 30+ top GMs for maximum variety
   const topPlayers = [
+    // Super GMs (2750+)
     "DrNykterstein", // Magnus Carlsen
-    "Hikaru",
-    "nihalsarin2004",
-    "FairChess_on_YouTube",
-    "GMWSO",
-    "LyonBeast",
-    "Polish_fighter3000",
-    "Msb2",
-    "Vladimirovich9000",
-    "PinIsMightier"
+    "Hikaru", // Hikaru Nakamura  
+    "nihalsarin2004", // Nihal Sarin
+    "FairChess_on_YouTube", // Alireza Firouzja
+    "GMWSO", // Wesley So
+    "LyonBeast", // Maxime Vachier-Lagrave
+    "Polish_fighter3000", // Jan-Krzysztof Duda
+    "Msb2", // Anish Giri
+    "Vladimirovich9000", // Ian Nepomniachtchi
+    "PinIsMightier", // GM account
+    // Additional strong GMs (2600+)
+    "Fins", // John Bartholomew
+    "GMBenjaminFinegold",
+    "DanielNaroditsky",
+    "ChessNetwork",
+    "EricRosen", 
+    "GMHansen",
+    "chaboribra", // Ding Liren sometimes uses
+    "opperwezen", // Jorden van Foreest
+    "Ssjlegend", // Samuel Sevian
+    "LiamE", // Liem Le Quang
+    "BogdanDeac",
+    "mishanick", // Alexander Grischuk
+    "sergey_kasparov",
+    "GM_Boris_Chatalbashev",
+    "DrDrunkenstein", // Magnus secondary
+    "penguingm1", // Andrew Tang
+    "Zhigalko_Sergei",
+    "alexandr_fier",
+    "Vladislav_Artemiev"
   ];
   
+  // CRITICAL: Randomize time window for each run to get different games
+  const now = Date.now();
+  const oneYearAgo = now - (365 * 24 * 60 * 60 * 1000);
+  const threeMonthsAgo = now - (90 * 24 * 60 * 60 * 1000);
+  
+  // Random window within the past year - ensures different games each run
+  const randomStartOffset = Math.floor(Math.random() * (oneYearAgo - threeMonthsAgo));
+  const since = threeMonthsAgo - randomStartOffset;
+  const until = since + (30 * 24 * 60 * 60 * 1000); // 30-day window
+  
   const games: string[] = [];
+  const gameIds = new Set<string>(); // Deduplicate by game ID
   const shuffledPlayers = topPlayers.sort(() => Math.random() - 0.5);
   let fetchErrors = 0;
   
-  console.log(`[Benchmark] Fetching games from ${shuffledPlayers.length} players, target: ${count} games`);
+  // Take random subset of players (15-20) for variety
+  const selectedPlayers = shuffledPlayers.slice(0, 15 + Math.floor(Math.random() * 5));
   
-  for (const player of shuffledPlayers) {
+  console.log(`[Benchmark] Fetching FRESH games from ${selectedPlayers.length} random GMs`);
+  console.log(`[Benchmark] Time window: ${new Date(since).toISOString()} to ${new Date(until).toISOString()}`);
+  console.log(`[Benchmark] Target: ${count} unique games`);
+  
+  for (const player of selectedPlayers) {
     if (games.length >= count) break;
     
     try {
       console.log(`[Benchmark] Fetching games for ${player}...`);
-      const response = await fetch(
-        `https://lichess.org/api/games/user/${player}?max=10&rated=true&perfType=bullet,blitz,rapid,classical&moves=true&pgnInJson=true`,
-        {
-          headers: {
-            "Accept": "application/x-ndjson"
-          }
+      
+      // Use randomized time window + random offset for pagination variety
+      const randomOffset = Math.floor(Math.random() * 50); // Skip 0-50 games
+      const url = `https://lichess.org/api/games/user/${player}?` + 
+        `max=25&` + // Fetch more per player
+        `rated=true&` +
+        `perfType=bullet,blitz,rapid,classical&` +
+        `moves=true&` +
+        `pgnInJson=true&` +
+        `since=${since}&` +
+        `until=${until}&` +
+        `sort=dateDesc`; // Most recent first within window
+      
+      const response = await fetch(url, {
+        headers: {
+          "Accept": "application/x-ndjson"
         }
-      );
+      });
       
       if (response.status === 429) {
-        console.warn(`[Benchmark] Rate limited by Lichess for ${player}, waiting 5 seconds...`);
+        console.warn(`[Benchmark] Rate limited for ${player}, waiting 5s...`);
         await new Promise(resolve => setTimeout(resolve, 5000));
         continue;
       }
@@ -636,38 +685,55 @@ async function fetchLichessGames(count: number): Promise<string[]> {
         const text = await response.text();
         const lines = text.trim().split("\n").filter(l => l);
         
-        console.log(`[Benchmark] Got ${lines.length} games for ${player}`);
+        // Skip random offset games for variety
+        const startIdx = Math.min(randomOffset, Math.max(0, lines.length - 10));
+        const selectedLines = lines.slice(startIdx);
         
-        for (const line of lines) {
+        console.log(`[Benchmark] Got ${lines.length} games for ${player}, using from index ${startIdx}`);
+        
+        for (const line of selectedLines) {
           if (games.length >= count) break;
           try {
             const game = JSON.parse(line);
+            
+            // Ensure unique game by ID and valid completion status
+            const gameId = game.id || `${game.createdAt}_${game.moves?.slice(0, 20)}`;
+            if (gameIds.has(gameId)) continue;
+            
             if (game.moves && (game.status === "mate" || game.status === "resign" || game.status === "stalemate")) {
-              games.push(game.pgn || game.moves);
+              // Verify minimum game length for meaningful analysis
+              const moveCount = game.moves.split(' ').length;
+              if (moveCount >= 40) { // At least 20 full moves
+                gameIds.add(gameId);
+                games.push(game.pgn || game.moves);
+                console.log(`[Benchmark] Added game ${gameId}: ${moveCount} moves, ${game.status}`);
+              }
             }
           } catch (parseError) {
             // Skip malformed lines
           }
         }
       } else {
-        console.warn(`[Benchmark] Failed to fetch games for ${player}: ${response.status}`);
+        console.warn(`[Benchmark] Failed to fetch for ${player}: ${response.status}`);
         fetchErrors++;
       }
     } catch (e) {
-      console.error(`[Benchmark] Error fetching games for ${player}:`, e);
+      console.error(`[Benchmark] Error for ${player}:`, e);
       fetchErrors++;
     }
     
-    // Small delay between players to avoid rate limiting
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // Rate limiting protection
+    await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 500));
   }
   
-  console.log(`[Benchmark] Fetched ${games.length} total games (${fetchErrors} errors)`);
+  console.log(`[Benchmark] Fetched ${games.length} UNIQUE games (${gameIds.size} IDs, ${fetchErrors} errors)`);
+  console.log(`[Benchmark] Window: ${new Date(since).toLocaleDateString()} - ${new Date(until).toLocaleDateString()}`);
   
   if (games.length === 0 && fetchErrors > 0) {
     throw new Error('Failed to fetch games from Lichess - possibly rate limited. Please try again in a few minutes.');
   }
   
+  // Final shuffle for randomization
   return games.sort(() => Math.random() - 0.5);
 }
 
