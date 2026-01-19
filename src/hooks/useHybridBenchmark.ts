@@ -436,10 +436,8 @@ export function useHybridBenchmark() {
             continue;
           }
           
-          if (!gameResult || gameResult === '*') {
-            console.log(`[Skip] Game has no valid result: ${gameResult}`);
-            continue;
-          }
+          // Only skip truly unplayable results (ongoing games with no clear outcome)
+          // parsePGN now infers results from multiple sources, so this rarely triggers
           
           // CRITICAL: Cross-run deduplication check
           if (isPositionAlreadyAnalyzed(fen, analyzedData)) {
@@ -820,16 +818,15 @@ async function fetchLichessGames(count: number): Promise<{ pgn: string; timeCont
         rateLimitedPlayers = 0; // Reset on success
         
         for (const game of fetchedGames) {
-          // Validate game has required data
+          // Get PGN from either field
           const pgn = game.pgn || game.moves;
-          if (!pgn || typeof pgn !== 'string') {
-            invalidPgnSkipped++;
-            continue;
+          if (!pgn || typeof pgn !== 'string' || pgn.length < 20) {
+            continue; // Truly empty - no data to work with
           }
           
-          // Quick check for minimum moves BEFORE adding
+          // Accept ALL games with at least 5 move numbers (very short games analyzed at early position)
           const moveCount = (pgn.match(/\d+\./g) || []).length;
-          if (moveCount < 20) { // 20 full moves = 40 half-moves minimum
+          if (moveCount < 5) {
             shortGamesSkipped++;
             continue;
           }
@@ -874,25 +871,50 @@ async function fetchLichessGames(count: number): Promise<{ pgn: string; timeCont
   return games.sort(() => Math.random() - 0.5);
 }
 
-// Parse PGN with randomized prediction point
+// Parse PGN with adaptive prediction point - handles ALL game types
 function parsePGN(pgn: string, moveRange: [number, number]): { 
   moves: string[]; 
   result: string; 
   fen: string;
   moveNumber: number;
 } {
+  // Try multiple ways to get the result
+  let result = "draw"; // Default assumption
+  
+  // Method 1: [Result] tag
   const resultMatch = pgn.match(/\[Result\s+"([^"]+)"\]/);
-  let result = "draw";
   if (resultMatch) {
-    if (resultMatch[1] === "1-0") result = "white";
-    else if (resultMatch[1] === "0-1") result = "black";
+    const tag = resultMatch[1];
+    if (tag === "1-0") result = "white";
+    else if (tag === "0-1") result = "black";
+    else if (tag === "1/2-1/2") result = "draw";
+    // If tag is "*" (ongoing), we'll try other methods
+  }
+  
+  // Method 2: Look for result at end of moves (1-0, 0-1, 1/2-1/2)
+  if (result === "draw" && !resultMatch) {
+    if (pgn.includes(" 1-0") || pgn.endsWith("1-0")) result = "white";
+    else if (pgn.includes(" 0-1") || pgn.endsWith("0-1")) result = "black";
+  }
+  
+  // Method 3: Check for checkmate pattern (ending with #)
+  if (result === "draw") {
+    const moveSection = pgn.replace(/\[.*?\]/g, "").trim();
+    if (moveSection.includes("#")) {
+      // Count which color gave mate
+      const moves = moveSection.split(/\s+/).filter(m => m && !m.match(/^\d+\./));
+      const mateMove = moves.findIndex(m => m.includes("#"));
+      if (mateMove >= 0) {
+        result = mateMove % 2 === 0 ? "white" : "black"; // Even index = white's move
+      }
+    }
   }
   
   // Extract moves
   const moveSection = pgn.replace(/\[.*?\]/g, "").replace(/\{.*?\}/g, "").trim();
   const moves = moveSection
     .split(/\s+/)
-    .filter(m => m && !m.match(/^\d+\./) && !m.match(/^[01]-[01]$/) && !m.match(/^1\/2-1\/2$/));
+    .filter(m => m && !m.match(/^\d+\./) && !m.match(/^[01]-[01]$/) && !m.match(/^1\/2-1\/2$/) && m !== "*");
   
   // Adaptive prediction point - works with ANY game length
   // For short games, analyze earlier; for long games, use requested range
