@@ -38,6 +38,12 @@ export interface PositionEvaluation {
 
 // Rate limiting state (local tracking)
 let rateLimitResetTime = 0;
+let lastRequestTime = 0;
+const MIN_REQUEST_INTERVAL = 3500; // 3.5s between requests (stays under 20/min limit)
+
+// In-memory cache for evaluated positions
+const positionCache = new Map<string, PositionEvaluation>();
+const CACHE_MAX_SIZE = 500;
 
 export function getRateLimitStatus(): { isLimited: boolean; resetInMs: number } {
   const now = Date.now();
@@ -45,6 +51,47 @@ export function getRateLimitStatus(): { isLimited: boolean; resetInMs: number } 
     return { isLimited: true, resetInMs: rateLimitResetTime - now };
   }
   return { isLimited: false, resetInMs: 0 };
+}
+
+/**
+ * Throttle requests to stay under rate limit
+ */
+async function throttleRequest(): Promise<void> {
+  const now = Date.now();
+  const timeSinceLastRequest = now - lastRequestTime;
+  
+  if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
+    const waitTime = MIN_REQUEST_INTERVAL - timeSinceLastRequest;
+    await new Promise(resolve => setTimeout(resolve, waitTime));
+  }
+  
+  lastRequestTime = Date.now();
+}
+
+/**
+ * Get cached evaluation if available
+ */
+export function getCachedEvaluation(fen: string): PositionEvaluation | null {
+  return positionCache.get(fen) || null;
+}
+
+/**
+ * Cache an evaluation result
+ */
+function cacheEvaluation(fen: string, evaluation: PositionEvaluation): void {
+  // Evict oldest entries if cache is full
+  if (positionCache.size >= CACHE_MAX_SIZE) {
+    const firstKey = positionCache.keys().next().value;
+    if (firstKey) positionCache.delete(firstKey);
+  }
+  positionCache.set(fen, evaluation);
+}
+
+/**
+ * Clear the position cache
+ */
+export function clearEvaluationCache(): void {
+  positionCache.clear();
 }
 
 // Edge function endpoint
@@ -89,9 +136,29 @@ function uciToSan(fen: string, uci: string): string {
 
 /**
  * Evaluate a position using Lichess Cloud Eval (Stockfish 17) via Edge Function
+ * Includes throttling and caching for rate limit management
  */
-export async function evaluatePosition(fen: string, multiPv: number = 1): Promise<PositionEvaluation | null> {
+export async function evaluatePosition(fen: string, multiPv: number = 1, skipCache: boolean = false): Promise<PositionEvaluation | null> {
+  // Check cache first
+  if (!skipCache) {
+    const cached = getCachedEvaluation(fen);
+    if (cached) {
+      console.log('[LichessCloud] Cache hit for position');
+      return cached;
+    }
+  }
+  
+  // Check if we're rate limited
+  const limitStatus = getRateLimitStatus();
+  if (limitStatus.isLimited) {
+    console.warn(`[LichessCloud] Rate limited, ${Math.ceil(limitStatus.resetInMs / 1000)}s remaining`);
+    return null;
+  }
+  
   try {
+    // Throttle to stay under rate limit
+    await throttleRequest();
+    
     const response = await fetch(getEdgeFunctionUrl(), {
       method: 'POST',
       headers: getHeaders(),
@@ -100,10 +167,9 @@ export async function evaluatePosition(fen: string, multiPv: number = 1): Promis
     
     if (response.status === 429) {
       const data = await response.json();
-      if (data.resetInMs) {
-        rateLimitResetTime = Date.now() + data.resetInMs;
-      }
-      console.warn('[LichessCloud] Rate limited');
+      const resetMs = data.resetInMs || 60000; // Default 60s if not provided
+      rateLimitResetTime = Date.now() + resetMs;
+      console.warn(`[LichessCloud] Rate limited, reset in ${Math.ceil(resetMs / 1000)}s`);
       return null;
     }
     
@@ -115,7 +181,7 @@ export async function evaluatePosition(fen: string, multiPv: number = 1): Promis
     const data = await response.json();
     
     if (data.notFound) {
-      console.log('[LichessCloud] Position not in database:', fen);
+      console.log('[LichessCloud] Position not in database:', fen.substring(0, 40));
       return null;
     }
     
@@ -130,7 +196,7 @@ export async function evaluatePosition(fen: string, multiPv: number = 1): Promis
     const isMate = mainLine.mate !== undefined;
     const evaluation = isMate ? (mainLine.mate! > 0 ? 10000 : -10000) : (mainLine.cp || 0);
     
-    return {
+    const result: PositionEvaluation = {
       fen: data.fen,
       bestMove: bestMoveUci,
       bestMoveSan: uciToSan(fen, bestMoveUci),
@@ -141,6 +207,11 @@ export async function evaluatePosition(fen: string, multiPv: number = 1): Promis
       pv: moves,
       winProbability: cpToWinProbability(evaluation),
     };
+    
+    // Cache the result
+    cacheEvaluation(fen, result);
+    
+    return result;
   } catch (error) {
     console.error('[LichessCloud] Evaluation error:', error);
     return null;
