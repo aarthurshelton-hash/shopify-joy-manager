@@ -453,6 +453,9 @@ export async function getCumulativeStats(): Promise<{
   overallHybridAccuracy: number;
   overallStockfishAccuracy: number;
   hybridNetWins: number;
+  hybridWins: number;
+  stockfishWins: number;
+  bothCorrect: number;
   bestArchetype: string | null;
   worstArchetype: string | null;
   validPredictionCount: number;
@@ -505,6 +508,15 @@ export async function getCumulativeStats(): Promise<{
     .not('stockfish_prediction', 'is', null)
     .neq('stockfish_prediction', 'unknown');
   
+  // Get both correct count (draws)
+  const { count: bothCorrectCount } = await supabase
+    .from('chess_prediction_attempts')
+    .select('*', { count: 'exact', head: true })
+    .eq('hybrid_correct', true)
+    .eq('stockfish_correct', true)
+    .not('stockfish_prediction', 'is', null)
+    .neq('stockfish_prediction', 'unknown');
+  
   const { data: benchmarks } = await supabase
     .from('chess_benchmark_results')
     .select('id');
@@ -517,6 +529,7 @@ export async function getCumulativeStats(): Promise<{
   const sfCorrect = sfCorrectCount || 0;
   const hybridWinsTotal = hybridWins || 0;
   const sfWinsTotal = sfWins || 0;
+  const bothCorrectTotal = bothCorrectCount || 0;
 
   if (!benchmarks || benchmarks.length === 0) {
     return {
@@ -525,6 +538,9 @@ export async function getCumulativeStats(): Promise<{
       overallHybridAccuracy: validPredictions > 0 ? (hybridCorrect / validPredictions) * 100 : 0,
       overallStockfishAccuracy: validPredictions > 0 ? (sfCorrect / validPredictions) * 100 : 0,
       hybridNetWins: hybridWinsTotal - sfWinsTotal,
+      hybridWins: hybridWinsTotal,
+      stockfishWins: sfWinsTotal,
+      bothCorrect: bothCorrectTotal,
       bestArchetype: null,
       worstArchetype: null,
       validPredictionCount: validPredictions,
@@ -557,6 +573,9 @@ export async function getCumulativeStats(): Promise<{
     overallHybridAccuracy: validPredictions > 0 ? (hybridCorrect / validPredictions) * 100 : 0,
     overallStockfishAccuracy: validPredictions > 0 ? (sfCorrect / validPredictions) * 100 : 0,
     hybridNetWins: hybridWinsTotal - sfWinsTotal,
+    hybridWins: hybridWinsTotal,
+    stockfishWins: sfWinsTotal,
+    bothCorrect: bothCorrectTotal,
     bestArchetype: bestArch,
     worstArchetype: worstArch,
     validPredictionCount: validPredictions,
