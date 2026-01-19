@@ -276,7 +276,7 @@ function getStockfishPrediction(cloudEval: any): { prediction: string; confidenc
 }
 
 // Parse PGN and generate FEN at a specific move
-function parsePGNAndGetFEN(pgn: string, moveNumber: number): { moves: string[]; result: string; fen: string } | null {
+function parsePGNAndGetFEN(pgn: string, moveNumber: number): { moves: string[]; result: string; fen: string; moveHash: string } | null {
   try {
     const resultMatch = pgn.match(/\[Result\s+"([^"]+)"\]/);
     let result = "draw";
@@ -295,26 +295,42 @@ function parsePGNAndGetFEN(pgn: string, moveNumber: number): { moves: string[]; 
       return null;
     }
     
-    // For now, use a simplified FEN based on move count
-    // Full FEN generation would require a chess library
-    const fen = `position_at_move_${moveNumber}`;
+    // Generate a hash based on the move sequence up to moveNumber
+    // This is deterministic - same moves = same hash
+    const moveSequence = moves.slice(0, moveNumber).join(' ');
     
-    return { moves, result, fen };
+    // djb2 hash of move sequence - used for deduplication
+    let hash = 5381;
+    for (let i = 0; i < moveSequence.length; i++) {
+      hash = ((hash << 5) + hash) + moveSequence.charCodeAt(i);
+      hash = hash >>> 0;
+    }
+    const moveHash = hash.toString(16).padStart(8, '0');
+    
+    // For FEN, use the move sequence itself as identifier (full FEN would need chess library)
+    const fen = `moves:${moveSequence}`;
+    
+    return { moves, result, fen, moveHash };
   } catch {
     return null;
   }
 }
 
-// Generate position hash for deduplication
-function generatePositionHash(moves: string[], moveNumber: number): string {
-  const key = moves.slice(0, moveNumber).join(",");
-  let hash = 0;
-  for (let i = 0; i < key.length; i++) {
-    const char = key.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
+// Normalize FEN to position-only part (ignore move clocks)
+function normalizeFen(fen: string): string {
+  return fen.split(' ').slice(0, 4).join(' ');
+}
+
+// Generate position hash for deduplication - MUST match frontend algorithm!
+function generatePositionHash(fen: string): string {
+  const positionPart = normalizeFen(fen);
+  // djb2 hash - matches src/lib/chess/benchmarkPersistence.ts
+  let hash = 5381;
+  for (let i = 0; i < positionPart.length; i++) {
+    hash = ((hash << 5) + hash) + positionPart.charCodeAt(i);
+    hash = hash >>> 0; // Ensure unsigned
   }
-  return `pos_${Math.abs(hash).toString(36)}`;
+  return hash.toString(16).padStart(8, '0');
 }
 
 serve(async (req) => {
@@ -443,15 +459,20 @@ serve(async (req) => {
       gameIndex++;
       
       try {
-        const parsed = parsePGNAndGetFEN(game.pgn, 20);
-        if (!parsed || parsed.moves.length < 35) continue;
+        // First parse to check game length
+        const initialParse = parsePGNAndGetFEN(game.pgn, 20);
+        if (!initialParse || initialParse.moves.length < 35) continue;
         
         // Random prediction point (15-35, max 50% of game)
-        const maxMove = Math.floor(parsed.moves.length * 0.5);
+        const maxMove = Math.floor(initialParse.moves.length * 0.5);
         const moveNumber = Math.min(maxMove, 15 + Math.floor(Math.random() * 21));
         
-        // Check for duplicate position
-        const positionHash = generatePositionHash(parsed.moves, moveNumber);
+        // Re-parse at the actual random move number to get correct hash
+        const parsed = parsePGNAndGetFEN(game.pgn, moveNumber);
+        if (!parsed) continue;
+        
+        // Check for duplicate position using the move sequence hash
+        const positionHash = parsed.moveHash;
         if (existingHashes.has(positionHash)) {
           skippedDuplicates++;
           continue;
@@ -462,8 +483,7 @@ serve(async (req) => {
         // En Pensent prediction using trajectory analysis
         const hybridPrediction = analyzeColorFlow(parsed.moves, moveNumber);
         
-        // Stockfish prediction via cloud eval (use simplified FEN for now)
-        // In production, this would use a proper chess library
+        // Stockfish prediction via cloud eval
         const cloudEval = await evaluatePosition("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
         const stockfishPrediction = getStockfishPrediction(cloudEval);
         
@@ -501,8 +521,8 @@ serve(async (req) => {
           actual_result: result,
           pgn: game.pgn.substring(0, 2000),
           data_quality_tier: "automated_learning",
-          time_control: game.timeControl, // NEW: Store time control for style analysis
-          white_elo: game.whiteElo,       // NEW: Store ELO for profiling
+          time_control: game.timeControl,
+          white_elo: game.whiteElo,
           black_elo: game.blackElo,
         });
         

@@ -13,19 +13,26 @@ import { supabase } from '@/integrations/supabase/client';
 import type { BenchmarkResult, PredictionAttempt } from './cloudBenchmark';
 
 /**
+ * Normalize FEN to position-only part for consistent matching
+ * Removes move clocks which don't affect position identity
+ */
+export function normalizeFen(fen: string): string {
+  return fen.split(' ').slice(0, 4).join(' ');
+}
+
+/**
  * Generate a unique hash for a chess position
  * Uses FEN position part only (ignoring move counters) for consistent matching
  */
 export function hashPosition(fen: string): string {
-  // Use the position part only (ignore move clocks for matching)
-  const positionPart = fen.split(' ').slice(0, 4).join(' ');
-  let hash = 0;
+  const positionPart = normalizeFen(fen);
+  // djb2 hash - must stay consistent, we also check normalized FEN
+  let hash = 5381;
   for (let i = 0; i < positionPart.length; i++) {
-    const char = positionPart.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
+    hash = ((hash << 5) + hash) + positionPart.charCodeAt(i);
+    hash = hash >>> 0; // Ensure unsigned
   }
-  return Math.abs(hash).toString(16);
+  return hash.toString(16).padStart(8, '0');
 }
 
 /**
@@ -67,7 +74,8 @@ export async function getAlreadyAnalyzedData(): Promise<{
     for (const row of data) {
       if (row.position_hash) positionHashes.add(row.position_hash);
       if (row.game_id) gameIds.add(row.game_id);
-      if (row.fen) fenStrings.add(row.fen);
+      // Store NORMALIZED fen for consistent matching
+      if (row.fen) fenStrings.add(normalizeFen(row.fen));
     }
 
     totalFetched += data.length;
@@ -92,7 +100,10 @@ export function isPositionAlreadyAnalyzed(
   reaffirmOnDuplicate: boolean = true
 ): boolean {
   const hash = hashPosition(fen);
-  const isDuplicate = analyzedData.positionHashes.has(hash) || analyzedData.fenStrings.has(fen);
+  const normalizedFen = normalizeFen(fen);
+  
+  // Check BOTH hash AND normalized FEN for maximum duplicate detection
+  const isDuplicate = analyzedData.positionHashes.has(hash) || analyzedData.fenStrings.has(normalizedFen);
   
   if (isDuplicate && reaffirmOnDuplicate) {
     // Fire-and-forget reaffirmation - don't block the check
