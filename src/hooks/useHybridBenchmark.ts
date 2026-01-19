@@ -444,7 +444,8 @@ export function useHybridBenchmark() {
           console.log(`[Benchmark] Fetch attempt ${totalFetchAttempts}: Need ${gameCount - analyzedCount} more positions, fetching ${targetFetch} games...`);
           
           try {
-            const newGames = await fetchLichessGames(targetFetch);
+            // CRITICAL: Pass analyzedData to pre-filter at fetch time
+            const newGames = await fetchLichessGames(targetFetch, analyzedData);
             if (newGames.length === 0) {
               consecutiveEmptyBatches++;
               console.warn(`[Benchmark] Empty batch ${consecutiveEmptyBatches}/3`);
@@ -806,9 +807,12 @@ export function useHybridBenchmark() {
 
 // Fetch games from Lichess via Edge Function (avoids CORS issues in production)
 // CRITICAL: Each benchmark run must use FRESH, UNIQUE games for scientific validity
-// Returns ALL valid games with FULL METADATA - let the caller handle deduplication against DB
+// Pre-filters against analyzedData to ONLY return truly new games
 
-async function fetchLichessGames(count: number): Promise<LichessGameData[]> {
+async function fetchLichessGames(
+  count: number, 
+  analyzedData?: { positionHashes: Set<string>; gameIds: Set<string>; fenStrings: Set<string> }
+): Promise<LichessGameData[]> {
   // MASSIVE player pool - 60+ GMs spanning Lichess history (2010-present)
   // With 14 years of history, we have access to MILLIONS of unique positions
   const topPlayers = [
@@ -897,12 +901,15 @@ async function fetchLichessGames(count: number): Promise<LichessGameData[]> {
   let rateLimitedPlayers = 0;
   let shortGamesSkipped = 0;
   let invalidPgnSkipped = 0;
+  let alreadyAnalyzedSkipped = 0; // Track pre-filtered games
   
   // Fetch from ALL players in the pool - we have 14 years of data
   const selectedPlayers = shuffledPlayers.slice(0, Math.min(30, shuffledPlayers.length));
   
+  const hasDeduplicationData = analyzedData && analyzedData.gameIds.size > 0;
   console.log(`[Benchmark] Fetching from FULL LICHESS HISTORY (2010-present)`);
   console.log(`[Benchmark] ${selectedPlayers.length} GMs, window: ${new Date(since).toISOString()} to ${new Date(until).toISOString()}`);
+  console.log(`[Benchmark] Pre-filter active: ${hasDeduplicationData ? `YES (${analyzedData.gameIds.size} known game IDs, ${analyzedData.positionHashes.size} known positions)` : 'NO - first run'}`);
   console.log(`[Benchmark] Target buffer: ${count * 5} games (to account for deduplication)`);
   
   // Use Edge Function to fetch games (bypasses CORS in production)
@@ -976,6 +983,13 @@ async function fetchLichessGames(count: number): Promise<LichessGameData[]> {
           const gameId = game.id || `${game.createdAt}_${pgn.slice(0, 30)}`;
           if (gameIds.has(gameId)) continue;
           
+          // CRITICAL: Pre-filter against already-analyzed games BEFORE adding to collection
+          // This is the fix - skip games whose ID we've already processed in previous runs
+          if (analyzedData?.gameIds.has(gameId)) {
+            alreadyAnalyzedSkipped++;
+            continue;
+          }
+          
           gameIds.add(gameId);
           games.push({
             pgn,
@@ -1015,8 +1029,9 @@ async function fetchLichessGames(count: number): Promise<LichessGameData[]> {
     await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 1000));
   }
   
-  console.log(`[Benchmark] FINAL: Fetched ${games.length} VALID games (${gameIds.size} unique IDs)`);
-  console.log(`[Benchmark] Skipped: ${shortGamesSkipped} short games, ${invalidPgnSkipped} invalid PGNs, ${fetchErrors} errors`);
+  console.log(`[Benchmark] FINAL: Fetched ${games.length} NEW games (${gameIds.size} unique IDs)`);
+  console.log(`[Benchmark] Pre-filtered: ${alreadyAnalyzedSkipped} already-analyzed games, ${shortGamesSkipped} short games, ${invalidPgnSkipped} invalid PGNs`);
+  console.log(`[Benchmark] Fetch errors: ${fetchErrors}`);
   console.log(`[Benchmark] Window: ${new Date(since).toLocaleDateString()} - ${new Date(until).toLocaleDateString()}`);
   
   // If we didn't get enough games but have some, continue with what we have
