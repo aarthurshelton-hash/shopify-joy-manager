@@ -66,11 +66,28 @@ serve(async (req) => {
         if (game.moves && (game.status === 'mate' || game.status === 'resign' || game.status === 'stalemate')) {
           const moveCount = game.moves.split(' ').length;
           if (moveCount >= 40) {
+            // Determine result string from winner/status
+            let resultTag = '1/2-1/2';
+            if (game.winner === 'white') resultTag = '1-0';
+            else if (game.winner === 'black') resultTag = '0-1';
+            
+            // Build proper PGN if not provided (pgn field may be missing)
+            const fullPgn = game.pgn || `[Event "Lichess Game"]
+[Site "lichess.org"]
+[Date "${new Date(game.createdAt).toISOString().split('T')[0].replace(/-/g, '.')}"]
+[White "${game.players?.white?.user?.name || 'Unknown'}"]
+[Black "${game.players?.black?.user?.name || 'Unknown'}"]
+[Result "${resultTag}"]
+
+${game.moves} ${resultTag}`;
+
             games.push({
               id: game.id,
-              pgn: game.pgn,
+              pgn: fullPgn,
               moves: game.moves,
               status: game.status,
+              winner: game.winner,
+              result: resultTag,
               moveCount,
               createdAt: game.createdAt
             });
