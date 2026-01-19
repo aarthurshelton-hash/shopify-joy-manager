@@ -374,15 +374,34 @@ serve(async (req) => {
       });
     }
 
-    // Get existing position hashes for deduplication
-    const { data: existingPositions } = await supabase
-      .from("chess_prediction_attempts")
-      .select("position_hash")
-      .not("position_hash", "is", null)
-      .limit(10000);
+    // Get ALL existing position hashes for deduplication using pagination
+    // CRITICAL: Must fetch ALL positions, not limited to 1000 or 10000
+    const existingHashes = new Set<string>();
+    let from = 0;
+    const pageSize = 1000;
+    let hasMore = true;
     
-    const existingHashes = new Set((existingPositions || []).map(p => p.position_hash));
-    console.log(`[BenchmarkRunner] ${existingHashes.size} existing positions for deduplication`);
+    while (hasMore) {
+      const { data: existingPositions, error } = await supabase
+        .from("chess_prediction_attempts")
+        .select("position_hash")
+        .not("position_hash", "is", null)
+        .range(from, from + pageSize - 1);
+      
+      if (error || !existingPositions || existingPositions.length === 0) {
+        hasMore = false;
+        break;
+      }
+      
+      for (const p of existingPositions) {
+        if (p.position_hash) existingHashes.add(p.position_hash);
+      }
+      
+      from += pageSize;
+      hasMore = existingPositions.length === pageSize;
+    }
+    
+    console.log(`[BenchmarkRunner] Loaded ALL ${existingHashes.size} existing positions for deduplication`);
 
     const runId = crypto.randomUUID();
     const attempts: any[] = [];
