@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -14,10 +14,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { ProofDashboard } from '@/components/chess/ProofDashboard';
 import { EloDepthDashboard } from '@/components/chess/EloDepthDashboard';
 import { AuthenticityDashboard } from '@/components/chess/AuthenticityDashboard';
-import { useHybridBenchmark } from '@/hooks/useHybridBenchmark';
+import { useHybridBenchmark, type LivePredictionData } from '@/hooks/useHybridBenchmark';
 import { useStockfishAnalysis } from '@/hooks/useStockfishAnalysis';
 import { StockfishIntelligencePanel } from '@/components/chess/StockfishIntelligencePanel';
 import { LiveEloPanel } from '@/components/chess/LiveEloPanel';
+import { LivePredictionStream, type LivePrediction } from '@/components/chess/LivePredictionStream';
 import { 
   createInitialEloState, 
   calculateEloFromBenchmark,
@@ -74,6 +75,9 @@ export default function Benchmark() {
   const [liveEloState, setLiveEloState] = useState<LiveEloState>(createInitialEloState());
   const [isLiveElo, setIsLiveElo] = useState(false);
 
+  // Live Prediction Stream State
+  const [livePredictions, setLivePredictions] = useState<LivePrediction[]>([]);
+
   // Maximum Depth Mode State
   const [benchmarkMode, setBenchmarkMode] = useState<'cloud' | 'local'>('cloud');
   const [localDepth, setLocalDepth] = useState(60); // Maximum depth for local WASM
@@ -89,6 +93,14 @@ export default function Benchmark() {
     result: localResult,
     error: localError 
   } = useHybridBenchmark();
+
+  // Handle live prediction callback
+  const handleLivePrediction = useCallback((prediction: LivePredictionData) => {
+    const livePred: LivePrediction = {
+      ...prediction,
+    };
+    setLivePredictions(prev => [...prev, livePred]);
+  }, []);
 
   // Update ELO state when local result changes - fetch CUMULATIVE stats
   useEffect(() => {
@@ -803,11 +815,15 @@ export default function Benchmark() {
                 </Button>
               ) : (
                 <Button 
-                  onClick={() => runLocalBenchmark({
-                    gameCount,
-                    depth: localDepth,
-                    predictionMoveRange: [15, 35],
-                  })} 
+                  onClick={() => {
+                    setLivePredictions([]); // Clear previous predictions
+                    runLocalBenchmark({
+                      gameCount,
+                      depth: localDepth,
+                      predictionMoveRange: [15, 35],
+                      onPrediction: handleLivePrediction,
+                    });
+                  }} 
                   disabled={isLocalRunning || !wasmReady}
                   size="lg"
                   className="gap-2 bg-green-600 hover:bg-green-700"
@@ -902,6 +918,15 @@ export default function Benchmark() {
                   </div>
                 </div>
               </div>
+            )}
+
+            {/* Live Prediction Stream - Shows real-time results during benchmark */}
+            {(isLocalRunning || livePredictions.length > 0) && benchmarkMode === 'local' && (
+              <LivePredictionStream 
+                predictions={livePredictions}
+                isRunning={isLocalRunning}
+                maxDisplay={15}
+              />
             )}
 
             {/* Local Benchmark Results */}

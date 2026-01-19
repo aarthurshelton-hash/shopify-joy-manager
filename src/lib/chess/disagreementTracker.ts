@@ -25,11 +25,19 @@ function extractGameDateFromPgn(pgn: string | null): string | null {
 
 /**
  * Format time control for display
+ * Handles various formats from Lichess API (speed field)
  */
-export function formatTimeControl(tc: string | null): { label: string; color: string; icon: string } {
-  switch (tc?.toLowerCase()) {
+export function formatTimeControl(tc: string | null | undefined): { label: string; color: string; icon: string } {
+  if (!tc) {
+    return { label: 'Unknown', color: 'text-muted-foreground', icon: '🎯' };
+  }
+  
+  const normalized = tc.toLowerCase().trim();
+  
+  switch (normalized) {
     case 'bullet':
-    case 'ultraBullet':
+    case 'ultrabullet':
+    case 'hyperbullet':
       return { label: 'Bullet', color: 'text-red-400', icon: '⚡' };
     case 'blitz':
       return { label: 'Blitz', color: 'text-orange-400', icon: '🔥' };
@@ -37,9 +45,18 @@ export function formatTimeControl(tc: string | null): { label: string; color: st
       return { label: 'Rapid', color: 'text-blue-400', icon: '⏱️' };
     case 'classical':
     case 'correspondence':
+    case 'standard':
       return { label: 'Classical', color: 'text-green-400', icon: '♟️' };
     default:
-      return { label: tc || 'Unknown', color: 'text-muted-foreground', icon: '🎯' };
+      // If it looks like a time control string (e.g., "3+0", "10+5")
+      if (/^\d+\+?\d*$/.test(normalized)) {
+        const baseTime = parseInt(normalized.split('+')[0]);
+        if (baseTime <= 2) return { label: 'Bullet', color: 'text-red-400', icon: '⚡' };
+        if (baseTime <= 5) return { label: 'Blitz', color: 'text-orange-400', icon: '🔥' };
+        if (baseTime <= 15) return { label: 'Rapid', color: 'text-blue-400', icon: '⏱️' };
+        return { label: 'Classical', color: 'text-green-400', icon: '♟️' };
+      }
+      return { label: tc, color: 'text-muted-foreground', icon: '🎯' };
   }
 }
 
