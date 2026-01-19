@@ -1,15 +1,16 @@
 /**
- * Stockfish WASM Engine Integration
+ * Stockfish Engine Integration
  * 
- * Provides real Stockfish analysis via WebAssembly running in a Web Worker.
- * Compatible with Stockfish 16 NNUE for grandmaster-level evaluation.
+ * CRITICAL METHODOLOGY FOR EN PENSENT BENCHMARKS:
+ * ================================================
+ * This engine is used by BOTH sides of the benchmark:
+ * 1. Pure Stockfish: Raw tactical evaluation only
+ * 2. En Pensent Hybrid: Stockfish + Temporal Pattern Recognition
  * 
- * Features:
- * - Non-blocking analysis via Web Worker
- * - Real centipawn evaluation
- * - Principal Variation (PV) lines
- * - Multi-depth analysis
- * - Mate detection
+ * We are NOT comparing different Stockfish versions.
+ * We test if ADDING pattern recognition improves predictions.
+ * 
+ * Engine: Stockfish 10 (~ELO 3000)
  */
 
 import { Chess } from 'chess.js';

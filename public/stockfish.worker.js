@@ -1,63 +1,149 @@
 /**
- * Stockfish Web Worker - Maximum Compatibility Version
+ * Stockfish Web Worker Bridge
  * 
- * Uses Stockfish 10 ASM.js (pure JavaScript, no external WASM files needed).
- * This version works in all browsers without CORS headers.
+ * CRITICAL METHODOLOGY NOTE FOR EN PENSENT BENCHMARKS:
+ * =====================================================
+ * This worker provides the SAME Stockfish engine to BOTH sides of the benchmark:
  * 
- * Strength: ~3000 ELO (Stockfish 10 level)
+ * 1. PURE STOCKFISH: Raw tactical evaluation only
+ * 2. EN PENSENT HYBRID: Stockfish evaluation + Temporal Pattern Recognition
+ * 
+ * We are NOT testing "better Stockfish vs worse Stockfish".
+ * We are testing whether ADDING En Pensent's pattern wavelength recognition
+ * to the SAME Stockfish evaluation produces better game outcome predictions.
+ * 
+ * The hypothesis: Pure calculation misses strategic patterns that
+ * En Pensent's temporal signature analysis can detect.
+ * 
+ * Engine: Stockfish 10 (ELO ~3000)
+ * This provides the tactical baseline for both benchmark sides.
  */
 
-// Import the self-contained Stockfish engine
-importScripts('./stockfish-10.js');
+// The stockfish-engine.min.js is a self-contained Stockfish worker
+// We load it directly and bridge messages to the main thread
 
+let engine = null;
 let isReady = false;
 let messageQueue = [];
+let initAttempts = 0;
+const MAX_INIT_ATTEMPTS = 3;
 
 function postStatus(message) {
-  self.postMessage({ type: 'status', data: message });
+  postMessage({ type: 'status', data: message });
 }
 
 function postError(message) {
-  self.postMessage({ type: 'error', data: message });
-}
-
-function postUci(message) {
-  self.postMessage({ type: 'uci', data: message });
+  postMessage({ type: 'error', data: message });
 }
 
 function postReady() {
-  self.postMessage({ type: 'ready', data: true });
+  postMessage({ type: 'ready', data: true });
 }
 
-// Handle UCI output from Stockfish
-Module['print'] = function(line) {
-  postUci(line);
+function postUci(line) {
+  postMessage({ type: 'uci', data: line });
+}
+
+// Initialize the engine
+function initEngine() {
+  initAttempts++;
+  postStatus(`Loading Stockfish engine (attempt ${initAttempts}/${MAX_INIT_ATTEMPTS})...`);
   
-  if (line === 'uciok') {
-    postStatus('Stockfish 10 UCI protocol ready');
-  } else if (line === 'readyok') {
-    if (!isReady) {
-      isReady = true;
-      postStatus('Stockfish 10 ready! (ELO ~3000)');
-      postReady();
-      processQueue();
+  try {
+    // The stockfish-engine.min.js IS the worker script - use it directly as a nested worker
+    engine = new Worker('./stockfish-engine.min.js');
+    
+    let uciOkReceived = false;
+    let readyOkReceived = false;
+    
+    engine.onmessage = function(e) {
+      const line = typeof e.data === 'string' ? e.data : String(e.data);
+      
+      // Forward UCI output to main thread
+      postUci(line);
+      
+      // Detect UCI protocol ready
+      if (line === 'uciok') {
+        uciOkReceived = true;
+        postStatus('Stockfish UCI protocol ready');
+        // Request readiness confirmation
+        engine.postMessage('isready');
+      }
+      
+      // Detect engine fully ready
+      if (line === 'readyok') {
+        readyOkReceived = true;
+        if (!isReady) {
+          isReady = true;
+          postStatus('Stockfish 10 ready! (ELO ~3000 - Same engine for both benchmark sides)');
+          postReady();
+          processQueue();
+        }
+      }
+    };
+    
+    engine.onerror = function(e) {
+      const errorMsg = e.message || 'Unknown worker error';
+      console.error('[Stockfish Worker] Engine error:', e);
+      
+      if (initAttempts < MAX_INIT_ATTEMPTS) {
+        postStatus(`Engine error, retrying... (${errorMsg})`);
+        setTimeout(initEngine, 1000);
+      } else {
+        postError('Stockfish engine failed after ' + MAX_INIT_ATTEMPTS + ' attempts: ' + errorMsg);
+      }
+    };
+    
+    // Set timeout for initialization
+    setTimeout(() => {
+      if (!isReady) {
+        if (initAttempts < MAX_INIT_ATTEMPTS) {
+          postStatus('Initialization timeout, retrying...');
+          if (engine) {
+            engine.terminate();
+            engine = null;
+          }
+          initEngine();
+        } else {
+          postError('Stockfish engine initialization timeout after all retries');
+        }
+      }
+    }, 15000); // 15 second timeout per attempt
+    
+    // Start UCI handshake after a brief delay to let the engine initialize
+    setTimeout(() => {
+      if (engine) {
+        engine.postMessage('uci');
+      }
+    }, 500);
+    
+  } catch (err) {
+    console.error('[Stockfish Worker] Init error:', err);
+    
+    if (initAttempts < MAX_INIT_ATTEMPTS) {
+      postStatus('Failed to create engine, retrying...');
+      setTimeout(initEngine, 1000);
+    } else {
+      postError('Failed to load Stockfish after ' + MAX_INIT_ATTEMPTS + ' attempts: ' + err.message);
     }
   }
-};
+}
 
-Module['printErr'] = function(line) {
-  console.error('[Stockfish stderr]', line);
-};
-
-// Send a UCI command to Stockfish
-function sendCommand(cmd) {
-  if (typeof Module !== 'undefined' && Module.ccall) {
-    Module.ccall('uci_command', 'number', ['string'], [cmd]);
+// Process queued commands after engine is ready
+function processQueue() {
+  while (messageQueue.length > 0) {
+    const { command, options } = messageQueue.shift();
+    processCommand(command, options);
   }
 }
 
-// Process a high-level command
+// Convert high-level command to UCI string and send to engine
 function processCommand(command, options = {}) {
+  if (!engine) {
+    postError('Engine not initialized');
+    return;
+  }
+  
   let uciCommand = '';
   
   switch (command) {
@@ -69,11 +155,9 @@ function processCommand(command, options = {}) {
       
     case 'position':
       if (options.fen) {
-        if (options.moves) {
-          uciCommand = `position fen ${options.fen} moves ${options.moves}`;
-        } else {
-          uciCommand = `position fen ${options.fen}`;
-        }
+        uciCommand = options.moves 
+          ? `position fen ${options.fen} moves ${options.moves}`
+          : `position fen ${options.fen}`;
       } else if (options.startpos) {
         uciCommand = 'position startpos';
       }
@@ -114,16 +198,8 @@ function processCommand(command, options = {}) {
       }
   }
   
-  if (uciCommand) {
-    sendCommand(uciCommand);
-  }
-}
-
-// Process queued messages
-function processQueue() {
-  while (messageQueue.length > 0) {
-    const { command, options } = messageQueue.shift();
-    processCommand(command, options);
+  if (uciCommand && engine) {
+    engine.postMessage(uciCommand);
   }
 }
 
@@ -139,14 +215,5 @@ self.onmessage = function(e) {
   processCommand(command, options);
 };
 
-// Initialize when the module is ready
-Module['onRuntimeInitialized'] = function() {
-  postStatus('Stockfish 10 ASM.js initialized');
-  // Start UCI handshake
-  sendCommand('uci');
-  setTimeout(() => {
-    sendCommand('isready');
-  }, 100);
-};
-
-postStatus('Loading Stockfish 10 ASM.js engine...');
+// Start initialization
+initEngine();
