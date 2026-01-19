@@ -1022,15 +1022,15 @@ export default function Benchmark() {
 
                 <div className="grid grid-cols-3 gap-4 text-center text-sm">
                   <div className="p-2 bg-muted/30 rounded">
-                    <p className="text-2xl font-bold text-primary">{FAMOUS_GAMES.length}</p>
-                    <p className="text-xs text-muted-foreground">Games to Analyze</p>
+                    <p className="text-2xl font-bold text-primary">{gameCount}</p>
+                    <p className="text-xs text-muted-foreground">Positions to Analyze</p>
                   </div>
                   <div className="p-2 bg-muted/30 rounded">
                     <p className="text-2xl font-bold text-orange-500">~3s</p>
-                    <p className="text-xs text-muted-foreground">Per Game (Rate Limited)</p>
+                    <p className="text-xs text-muted-foreground">Per Position</p>
                   </div>
                   <div className="p-2 bg-muted/30 rounded">
-                    <p className="text-2xl font-bold text-green-500">~30s</p>
+                    <p className="text-2xl font-bold text-green-500">~{Math.round(gameCount * 3 / 60)}m</p>
                     <p className="text-xs text-muted-foreground">Total Expected</p>
                   </div>
                 </div>
@@ -1043,7 +1043,7 @@ export default function Benchmark() {
         {liveAttempts.length > 0 && !result && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm">Live Results ({liveAttempts.length} / {FAMOUS_GAMES.length})</CardTitle>
+              <CardTitle className="text-sm">Live Results ({liveAttempts.length} / {gameCount})</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
