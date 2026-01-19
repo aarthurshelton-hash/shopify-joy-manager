@@ -348,11 +348,15 @@ export function useHybridBenchmark() {
       }));
       
       // Fetch MORE games than needed to account for duplicates and rate limits
-      const fetchMultiplier = 5; // Increased from 3 for more buffer
-      const games = await fetchLichessGames(gameCount * fetchMultiplier);
+      // Higher multiplier ensures we can meet the target even with heavy deduplication
+      const fetchMultiplier = 8; // Increased from 5 for more buffer
+      const targetFetch = Math.max(gameCount * fetchMultiplier, 150); // Minimum 150 games
+      const games = await fetchLichessGames(targetFetch);
       if (games.length === 0) {
         throw new Error('No games fetched from Lichess');
       }
+      
+      console.log(`[Benchmark] Fetched ${games.length} games, targeting ${gameCount} unique positions`);
       
       const runId = crypto.randomUUID();
       const attempts: any[] = [];
@@ -364,17 +368,19 @@ export function useHybridBenchmark() {
       let analyzedCount = 0;
       
       // Process each game until we hit target count
-      for (let i = 0; i < games.length && analyzedCount < gameCount; i++) {
+      const gamesAvailable = games.length;
+      for (let i = 0; i < gamesAvailable && analyzedCount < gameCount; i++) {
         if (abortRef.current) break;
         
         const game = games[i];
+        const gamesLeft = gamesAvailable - i - 1;
         
         setProgress({
           currentGame: analyzedCount + 1,
           totalGames: gameCount,
           currentPhase: 'analyzing',
           currentDepth: 0,
-          message: `Analyzing game ${analyzedCount + 1}/${gameCount} with ${EN_PENSENT_ADAPTERS} adapters at depth ${depth}... (${skippedDuplicates} duplicates skipped)`,
+          message: `Position ${analyzedCount + 1}/${gameCount} (${skippedDuplicates} duplicates skipped, ${gamesLeft} games remaining)`,
           enPensentModulesActive: EN_PENSENT_ADAPTERS
         });
         
