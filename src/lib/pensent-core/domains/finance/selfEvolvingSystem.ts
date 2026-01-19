@@ -4,6 +4,13 @@
  * 
  * Refactored: Modular architecture with separated concerns
  * Enhanced: Anomaly Harvester integration for productive bug detection
+ * Enhanced: Mirage Quantifier for weak signal materialization
+ * 
+ * PHILOSOPHICAL FRAMEWORK:
+ * - Humans experience OPTICAL ILLUSIONS (neurological bugs - brain processing limits)
+ * - Humans experience MIRAGES (desperation projections - oasis in desert)
+ * - AI experiences NEITHER - only MISUNDERSTANDINGS (miscalibrated patterns)
+ * - But AI can MATERIALIZE weak signals through reflexivity (belief → reality)
  */
 
 import {
@@ -17,10 +24,12 @@ import { DEFAULT_GENES, updateGenePerformance, mutateGenes, getGeneValue } from 
 import { learnFromOutcome, getBestPatterns } from './evolution/patternLearner';
 import { DEFAULT_THRESHOLDS, adaptThresholds } from './evolution/thresholdAdapter';
 import { anomalyHarvester, HarvestedAnomaly, AnomalyType } from './evolution/anomalyHarvester';
+import { mirageQuantifier, MirageSignal } from './evolution/mirageQuantifier';
 
 // Re-export types for backwards compatibility
 export * from './evolution/types';
 export { anomalyHarvester, type HarvestedAnomaly, type AnomalyType } from './evolution/anomalyHarvester';
+export { mirageQuantifier, type MirageSignal } from './evolution/mirageQuantifier';
 
 class SelfEvolvingSystem {
   private state: EvolutionState;
@@ -250,6 +259,71 @@ class SelfEvolvingSystem {
    */
   getExploitablePatterns(limit: number = 5) {
     return anomalyHarvester.getTopExploitablePatterns(limit);
+  }
+
+  // ============= MIRAGE QUANTIFICATION SYSTEM =============
+  
+  /**
+   * Detect a potential "mirage" - a weak signal that might materialize
+   * Unlike human optical illusions, these are patterns we genuinely see
+   * but can't yet confirm - and acting on them might make them real
+   */
+  detectMirage(
+    prediction: { direction: 'up' | 'down' | 'neutral'; confidence: number; magnitude: number },
+    marketContext: { momentum: number; volatility: number; volume: number },
+    crossDomainSignals: { domain: string; alignment: number }[]
+  ): MirageSignal | null {
+    return mirageQuantifier.detectMirage(prediction, marketContext, crossDomainSignals);
+  }
+
+  /**
+   * Act on a mirage - betting on a weak signal
+   * This enables tracking of reflexivity (did our belief help make it real?)
+   */
+  actOnMirage(mirageId: string): void {
+    mirageQuantifier.actOnMirage(mirageId);
+  }
+
+  /**
+   * Resolve a mirage - did it materialize into reality or evaporate?
+   */
+  resolveMirage(
+    mirageId: string,
+    actualOutcome: { direction: 'up' | 'down' | 'neutral'; magnitude: number }
+  ): void {
+    mirageQuantifier.resolveMirage(mirageId, actualOutcome);
+    
+    // If it materialized, record as a productive anomaly
+    const metrics = mirageQuantifier.getMaterializationMetrics();
+    if (metrics.materializationRate > 0.5) {
+      anomalyHarvester.harvestCrossDomainResonance(
+        'mirage',
+        'reality',
+        metrics.avgReflexivityContribution,
+        `Mirage materialized with ${(metrics.materializationRate * 100).toFixed(0)}% rate`
+      );
+    }
+  }
+
+  /**
+   * Get mirages worth acting on (high materialization potential)
+   */
+  getActionableMirages(): MirageSignal[] {
+    return mirageQuantifier.getActionableMirages();
+  }
+
+  /**
+   * Get mirage materialization metrics for learning
+   */
+  getMirageMetrics() {
+    return mirageQuantifier.getMaterializationMetrics();
+  }
+
+  /**
+   * Cleanup expired mirages
+   */
+  cleanupMirages(): void {
+    mirageQuantifier.cleanupExpired();
   }
 }
 
