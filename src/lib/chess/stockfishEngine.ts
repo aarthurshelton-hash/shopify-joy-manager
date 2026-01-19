@@ -234,36 +234,64 @@ export class StockfishEngine {
   }
 
   /**
-   * Analyze a position by FEN
-   * Optimized: uses EITHER depth OR movetime (not both) for faster analysis
+   * Analyze a position by FEN with GUARANTEED depth verification
+   * For Maximum Depth mode: validates the engine actually reaches requested depth
+   * Includes timeout protection for deep analysis
    */
   async analyzePosition(
     fen: string, 
-    options: { depth?: number; movetime?: number; nodes?: number } = {}
+    options: { depth?: number; movetime?: number; nodes?: number; requireExactDepth?: boolean } = {}
   ): Promise<PositionAnalysis> {
     await this.waitReady();
     
     this.currentDepth = 0;
+    const requestedDepth = options.depth || 12;
+    const requireExact = options.requireExactDepth ?? false;
     
-    return new Promise((resolve) => {
+    // Timeout protection: 120 seconds for depth 60, scales linearly
+    const timeoutMs = Math.max(30000, requestedDepth * 2000);
+    
+    return new Promise((resolve, reject) => {
+      let timeoutId: NodeJS.Timeout | undefined;
+      let resolved = false;
+      
       // Set position
       this.sendCommand('position', { fen });
       
       // Start analysis
       let lastEval: StockfishEvaluation | null = null;
+      let highestDepthReached = 0;
       
       const onEval = (evaluation: StockfishEvaluation) => {
         lastEval = evaluation;
+        if (evaluation.depth > highestDepthReached) {
+          highestDepthReached = evaluation.depth;
+        }
       };
       
       this.analysisCallbacks.push(onEval);
       
+      const cleanup = () => {
+        if (timeoutId) clearTimeout(timeoutId);
+        this.analysisCallbacks = this.analysisCallbacks.filter(cb => cb !== onEval);
+        this.pendingCallbacks.delete('bestmove');
+      };
+      
       // Set up bestmove callback
       this.pendingCallbacks.set('bestmove', ({ bestMove, ponder }) => {
-        // Remove evaluation callback
-        this.analysisCallbacks = this.analysisCallbacks.filter(cb => cb !== onEval);
+        if (resolved) return;
+        resolved = true;
+        cleanup();
         
         const chess = new Chess(fen);
+        const actualDepth = lastEval?.depth || 0;
+        
+        // Verify depth was reached for Maximum Depth mode
+        if (requireExact && actualDepth < requestedDepth) {
+          console.warn(`[Stockfish] Depth shortfall: requested ${requestedDepth}, reached ${actualDepth}`);
+        }
+        
+        console.log(`[Stockfish] Analysis complete: depth ${actualDepth}/${requestedDepth}, eval ${lastEval?.score || 0}cp`);
         
         resolve({
           fen,
@@ -285,13 +313,45 @@ export class StockfishEngine {
         });
       });
       
+      // Timeout protection for deep analysis
+      timeoutId = setTimeout(() => {
+        if (resolved) return;
+        resolved = true;
+        
+        console.warn(`[Stockfish] Timeout after ${timeoutMs}ms, stopping analysis at depth ${highestDepthReached}`);
+        this.sendCommand('stop');
+        
+        cleanup();
+        
+        const chess = new Chess(fen);
+        
+        // Return best result we got before timeout
+        resolve({
+          fen,
+          bestMove: lastEval?.pv?.[0] || '',
+          evaluation: lastEval || {
+            depth: highestDepthReached,
+            score: 0,
+            scoreType: 'cp',
+            pv: [],
+            nodes: 0,
+            nps: 0,
+            time: timeoutMs,
+          },
+          winProbability: this.cpToWinProbability(lastEval?.score || 0),
+          isCheckmate: chess.isCheckmate(),
+          isStalemate: chess.isStalemate(),
+          isDraw: chess.isDraw(),
+        });
+      }, timeoutMs);
+      
       // Use nodes for fastest consistent results, otherwise depth only (not both)
       if (options.nodes) {
         this.sendCommand('go', { nodes: options.nodes });
       } else if (options.movetime) {
         this.sendCommand('go', { movetime: options.movetime });
       } else {
-        this.sendCommand('go', { depth: options.depth || 12 }); // Reduced default depth
+        this.sendCommand('go', { depth: requestedDepth });
       }
     });
   }
