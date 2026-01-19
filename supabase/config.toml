@@ -74,3 +74,15 @@ verify_jwt = false
 
 [functions.multi-broker-data]
 verify_jwt = false
+
+[functions.benchmark-runner]
+verify_jwt = false
+
+[functions.benchmark-runner.schedule]
+cron = "0 */4 * * *"
+
+[functions.lichess-cloud-eval]
+verify_jwt = false
+
+[functions.lichess-games]
+verify_jwt = false
