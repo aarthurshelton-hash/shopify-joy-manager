@@ -91,6 +91,23 @@ async function fetchLichessGames(count: number, existingFens: Set<string>): Prom
 
 ${game.moves} ${resultTag}`;
                 
+                // Extract time control from game speed
+                let timeControl = 'classical';
+                if (game.speed === 'bullet' || game.speed === 'ultraBullet') {
+                  timeControl = 'bullet';
+                } else if (game.speed === 'blitz') {
+                  timeControl = 'blitz';
+                } else if (game.speed === 'rapid') {
+                  timeControl = 'rapid';
+                } else if (game.speed === 'classical' || game.speed === 'correspondence') {
+                  timeControl = 'classical';
+                } else if (game.perf) {
+                  // Fallback to perf type if speed not available
+                  timeControl = game.perf === 'bullet' ? 'bullet' : 
+                                game.perf === 'blitz' ? 'blitz' : 
+                                game.perf === 'rapid' ? 'rapid' : 'classical';
+                }
+                
                 games.push({
                   id: game.id,
                   pgn,
@@ -101,6 +118,7 @@ ${game.moves} ${resultTag}`;
                   moveCount,
                   whiteElo: game.players?.white?.rating || 2500,
                   blackElo: game.players?.black?.rating || 2500,
+                  timeControl, // NEW: Track time control category
                 });
               }
             }
@@ -450,6 +468,9 @@ serve(async (req) => {
           actual_result: result,
           pgn: game.pgn.substring(0, 2000),
           data_quality_tier: "automated_learning",
+          time_control: game.timeControl, // NEW: Store time control for style analysis
+          white_elo: game.whiteElo,       // NEW: Store ELO for profiling
+          black_elo: game.blackElo,
         });
         
       } catch (e) {

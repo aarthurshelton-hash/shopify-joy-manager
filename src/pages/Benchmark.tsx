@@ -131,6 +131,57 @@ export default function Benchmark() {
     setIsLiveElo(isRunning || isLocalRunning);
   }, [isRunning, isLocalRunning]);
 
+  // REALTIME: Subscribe to chess benchmark updates for auto-updating ELO
+  useEffect(() => {
+    const channel = supabase
+      .channel('benchmark-realtime')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'chess_benchmark_results' },
+        async (payload) => {
+          console.log('[Benchmark] Realtime: New benchmark result detected!', payload.new);
+          
+          // Refetch cumulative stats to update ELO
+          const newStats = await getCumulativeStats();
+          setCumulativeStats(newStats);
+          
+          if (newStats && newStats.validPredictionCount > 0) {
+            const hybridWins = newStats.hybridNetWins > 0 ? newStats.hybridNetWins : 0;
+            const stockfishWins = newStats.hybridNetWins < 0 ? Math.abs(newStats.hybridNetWins) : 0;
+            const bothCorrect = Math.round(Math.min(
+              newStats.overallHybridAccuracy, 
+              newStats.overallStockfishAccuracy
+            ) * newStats.validPredictionCount / 100);
+            
+            const cumulativeElo = calculateEloFromBenchmark(
+              newStats.overallHybridAccuracy,
+              newStats.overallStockfishAccuracy,
+              hybridWins,
+              stockfishWins,
+              bothCorrect,
+              newStats.validPredictionCount,
+              40
+            );
+            setLiveEloState(cumulativeElo);
+            console.log('[Benchmark] Realtime ELO update:', cumulativeElo.enPensentElo);
+          }
+          
+          // Also update latest benchmark
+          const latest = payload.new as LatestBenchmark;
+          setLatestBenchmark(latest);
+        }
+      )
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('[Benchmark] Realtime subscription active - ELO will auto-update!');
+        }
+      });
+    
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+  
   // Fetch latest benchmark results and check API on mount
   useEffect(() => {
     let cancelled = false;

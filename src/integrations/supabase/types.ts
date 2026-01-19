@@ -416,6 +416,7 @@ export type Database = {
         Row: {
           actual_result: string
           benchmark_id: string | null
+          black_elo: number | null
           created_at: string
           data_quality_tier: string | null
           fen: string
@@ -435,10 +436,13 @@ export type Database = {
           stockfish_depth: number | null
           stockfish_eval: number | null
           stockfish_prediction: string
+          time_control: string | null
+          white_elo: number | null
         }
         Insert: {
           actual_result: string
           benchmark_id?: string | null
+          black_elo?: number | null
           created_at?: string
           data_quality_tier?: string | null
           fen: string
@@ -458,10 +462,13 @@ export type Database = {
           stockfish_depth?: number | null
           stockfish_eval?: number | null
           stockfish_prediction: string
+          time_control?: string | null
+          white_elo?: number | null
         }
         Update: {
           actual_result?: string
           benchmark_id?: string | null
+          black_elo?: number | null
           created_at?: string
           data_quality_tier?: string | null
           fen?: string
@@ -481,6 +488,8 @@ export type Database = {
           stockfish_depth?: number | null
           stockfish_eval?: number | null
           stockfish_prediction?: string
+          time_control?: string | null
+          white_elo?: number | null
         }
         Relationships: [
           {
