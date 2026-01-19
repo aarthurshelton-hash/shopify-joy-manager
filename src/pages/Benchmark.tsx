@@ -330,7 +330,7 @@ export default function Benchmark() {
     try {
       const benchmarkResult = await runCloudBenchmark(
         {
-          gameCount: 50, // Analyze 50 real games
+          gameCount: gameCount, // Use the slider value!
           predictionMoveNumber: 20,
           useRealGames: true, // Use FRESH Lichess games every time!
         },
@@ -722,6 +722,30 @@ export default function Benchmark() {
               </div>
             </div>
 
+            {/* Shared Positions Slider - shown for BOTH modes */}
+            <div className="space-y-2 p-4 bg-muted/30 rounded-lg border border-border">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Unique Positions to Analyze</span>
+                <span className="font-mono font-medium text-primary">{gameCount}</span>
+              </div>
+              <Slider
+                value={[gameCount]}
+                onValueChange={([v]) => setGameCount(v)}
+                min={10}
+                max={100}
+                step={10}
+                disabled={isRunning || isLocalRunning}
+                className="py-2"
+              />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>10 (quick)</span>
+                <span>100 (thorough)</span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Fetches ~8x more games to find unique positions (after deduplication)
+              </p>
+            </div>
+
             {/* Local Mode Settings */}
             {benchmarkMode === 'local' && (
               <div className="space-y-4 p-4 bg-green-500/5 rounded-lg border border-green-500/20">
@@ -776,28 +800,6 @@ export default function Benchmark() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Unique Positions to Analyze</span>
-                    <span className="font-mono font-medium text-green-500">{gameCount}</span>
-                  </div>
-                  <Slider
-                    value={[gameCount]}
-                    onValueChange={([v]) => setGameCount(v)}
-                    min={10}
-                    max={100}
-                    step={10}
-                    disabled={isLocalRunning}
-                    className="py-2"
-                  />
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>10 (quick)</span>
-                    <span>100 (thorough)</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Fetches ~8x more games to find unique positions (after deduplication)
-                  </p>
-                </div>
 
                 <p className="text-xs text-green-600">
                   ⚡ Local WASM runs Stockfish directly in your browser at true maximum depth.
