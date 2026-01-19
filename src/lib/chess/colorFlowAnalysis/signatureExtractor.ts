@@ -242,6 +242,7 @@ function findCriticalMoments(board: SquareData[][], totalMoves: number): Critica
 
 /**
  * Classify the game into a strategic archetype based on color patterns
+ * FIX: Diversified classification to prevent collapse to single archetype
  */
 function classifyArchetype(
   quadrant: QuadrantProfile,
@@ -249,46 +250,60 @@ function classifyArchetype(
   moments: CriticalMoment[],
   totalMoves: number
 ): StrategicArchetype {
-  if (Math.abs(quadrant.kingsideBlack) > 60 && temporal.volatility > 40) {
+  // Priority-ordered classification with stricter criteria
+  
+  // 1. Kingside attack - requires high kingside activity AND volatility
+  if (Math.abs(quadrant.kingsideBlack) > 60 && temporal.volatility > 45) {
     return 'kingside_attack';
   }
   
-  if (Math.abs(quadrant.queensideBlack) > 60 || Math.abs(quadrant.queensideWhite) > 60) {
+  // 2. Queenside expansion - requires clear queenside dominance
+  if (Math.abs(quadrant.queensideBlack) > 55 || Math.abs(quadrant.queensideWhite) > 55) {
     return 'queenside_expansion';
   }
   
-  if (Math.abs(quadrant.center) > 70) {
+  // 3. Central domination - requires very high center control
+  if (Math.abs(quadrant.center) > 65) {
     return 'central_domination';
   }
   
-  if (totalMoves > 40 && temporal.endgame !== 0 && temporal.volatility < 30) {
-    return 'endgame_technique';
-  }
-  
-  if (temporal.volatility > 60 && moments.length >= 3) {
-    return 'open_tactical';
-  }
-  
-  if (temporal.volatility < 25 && totalMoves > 30) {
-    return 'closed_maneuvering';
-  }
-  
-  if (Math.abs(temporal.middlegame) < 20 && temporal.volatility < 40) {
-    return 'prophylactic_defense';
-  }
-  
-  if (quadrant.center > 40 && temporal.volatility < 50) {
-    return 'piece_harmony';
-  }
-  
+  // 4. Sacrificial attack - multiple big shifts
   if (moments.length >= 4 && moments.some(m => m.shiftMagnitude > 5)) {
     return 'sacrificial_attack';
   }
   
-  if (temporal.endgame > temporal.opening && temporal.volatility < 40) {
+  // 5. Open tactical - high volatility with many moments
+  if (temporal.volatility > 55 && moments.length >= 3) {
+    return 'open_tactical';
+  }
+  
+  // 6. Endgame technique - late game with low volatility
+  if (totalMoves > 40 && Math.abs(temporal.endgame) > 20 && temporal.volatility < 35) {
+    return 'endgame_technique';
+  }
+  
+  // 7. Closed maneuvering - very low volatility in long games
+  if (temporal.volatility < 20 && totalMoves > 35) {
+    return 'closed_maneuvering';
+  }
+  
+  // 8. Positional squeeze - endgame stronger than opening with moderate volatility
+  if (temporal.endgame > temporal.opening + 15 && temporal.volatility < 45) {
     return 'positional_squeeze';
   }
   
+  // 9. Piece harmony - balanced center with moderate volatility
+  if (quadrant.center > 35 && quadrant.center < 60 && temporal.volatility >= 30 && temporal.volatility <= 50) {
+    return 'piece_harmony';
+  }
+  
+  // 10. Prophylactic defense - ONLY for truly quiet positions
+  // Stricter criteria: low middlegame activity AND low volatility AND shorter games
+  if (Math.abs(temporal.middlegame) < 15 && temporal.volatility < 25 && totalMoves < 35) {
+    return 'prophylactic_defense';
+  }
+  
+  // Default to unknown rather than prophylactic_defense
   return 'unknown';
 }
 
