@@ -1,13 +1,22 @@
 /**
  * Maximum Depth Stockfish Analysis
  * 
- * Uses local Stockfish WASM at MAXIMUM capacity for true ELO 3600 comparison.
- * Unlike Lichess Cloud (cached positions), this runs unlimited depth analysis.
+ * CRITICAL METHODOLOGY NOTE:
+ * ===========================
+ * This module provides the SAME Stockfish engine to BOTH sides of the benchmark:
  * 
- * Key differences from Cloud:
- * - Configurable depth up to 60+ (vs cached ~30-40)
- * - Fresh analysis every time (no cache hits)
- * - True maximum capacity Stockfish 17 NNUE
+ * 1. PURE STOCKFISH: Raw tactical centipawn evaluation only
+ * 2. EN PENSENT HYBRID: Stockfish evaluation + Temporal Pattern Recognition
+ * 
+ * We are NOT testing "better Stockfish vs worse Stockfish".
+ * We are testing whether ADDING En Pensent's pattern wavelength recognition
+ * to the SAME Stockfish evaluation produces better predictions.
+ * 
+ * The hypothesis: Pure calculation misses strategic patterns that
+ * En Pensent's temporal signature analysis can detect.
+ * 
+ * Engine: Stockfish 10 ASM.js (~ELO 3000)
+ * This provides the tactical baseline for both benchmark sides.
  */
 
 import { getStockfishEngine, type PositionAnalysis } from './stockfishEngine';
