@@ -10,6 +10,39 @@
 
 import { supabase } from '@/integrations/supabase/client';
 
+/**
+ * Extract game date from PGN [Date] tag
+ */
+function extractGameDateFromPgn(pgn: string | null): string | null {
+  if (!pgn) return null;
+  const match = pgn.match(/\[Date\s+"(\d{4}\.\d{2}\.\d{2})"\]/);
+  if (match) {
+    // Convert YYYY.MM.DD to ISO date format
+    return match[1].replace(/\./g, '-');
+  }
+  return null;
+}
+
+/**
+ * Format time control for display
+ */
+export function formatTimeControl(tc: string | null): { label: string; color: string; icon: string } {
+  switch (tc?.toLowerCase()) {
+    case 'bullet':
+    case 'ultraBullet':
+      return { label: 'Bullet', color: 'text-red-400', icon: '⚡' };
+    case 'blitz':
+      return { label: 'Blitz', color: 'text-orange-400', icon: '🔥' };
+    case 'rapid':
+      return { label: 'Rapid', color: 'text-blue-400', icon: '⏱️' };
+    case 'classical':
+    case 'correspondence':
+      return { label: 'Classical', color: 'text-green-400', icon: '♟️' };
+    default:
+      return { label: tc || 'Unknown', color: 'text-muted-foreground', icon: '🎯' };
+  }
+}
+
 export interface DisagreementCase {
   id: string;
   fen: string;
@@ -23,9 +56,15 @@ export interface DisagreementCase {
   stockfishCorrect: boolean;
   hybridArchetype: string | null;
   hybridConfidence: number | null;
-  createdAt: string;
+  createdAt: string; // When we analyzed it
   significance: 'breakthrough' | 'notable' | 'minor';
   evalMagnitude: number; // How "confident" Stockfish was in wrong direction
+  // Game metadata
+  timeControl: string | null; // bullet, blitz, rapid, classical
+  whiteElo: number | null;
+  blackElo: number | null;
+  pgn: string | null; // Contains original game date
+  gameDate: string | null; // Extracted from PGN [Date] tag
 }
 
 export interface DisagreementStats {
@@ -66,6 +105,9 @@ export async function getDisagreementCases(limit = 50): Promise<DisagreementCase
       significance = 'notable';
     }
 
+    // Extract game date from PGN [Date] tag
+    const gameDate = extractGameDateFromPgn(row.pgn);
+
     return {
       id: row.id,
       fen: row.fen,
@@ -82,6 +124,11 @@ export async function getDisagreementCases(limit = 50): Promise<DisagreementCase
       createdAt: row.created_at,
       significance,
       evalMagnitude,
+      timeControl: row.time_control,
+      whiteElo: row.white_elo,
+      blackElo: row.black_elo,
+      pgn: row.pgn,
+      gameDate,
     };
   });
 }
@@ -104,23 +151,31 @@ export async function getHybridBreakthroughs(limit = 20): Promise<DisagreementCa
     return [];
   }
 
-  return (data || []).map(row => ({
-    id: row.id,
-    fen: row.fen,
-    gameName: row.game_name,
-    moveNumber: row.move_number,
-    stockfishEval: row.stockfish_eval || 0,
-    stockfishPrediction: row.stockfish_prediction,
-    hybridPrediction: row.hybrid_prediction,
-    actualResult: row.actual_result,
-    hybridCorrect: row.hybrid_correct,
-    stockfishCorrect: row.stockfish_correct,
-    hybridArchetype: row.hybrid_archetype,
-    hybridConfidence: row.hybrid_confidence,
-    createdAt: row.created_at,
-    significance: Math.abs(row.stockfish_eval || 0) > 200 ? 'breakthrough' as const : 'notable' as const,
-    evalMagnitude: Math.abs(row.stockfish_eval || 0),
-  }));
+  return (data || []).map(row => {
+    const gameDate = extractGameDateFromPgn(row.pgn);
+    return {
+      id: row.id,
+      fen: row.fen,
+      gameName: row.game_name,
+      moveNumber: row.move_number,
+      stockfishEval: row.stockfish_eval || 0,
+      stockfishPrediction: row.stockfish_prediction,
+      hybridPrediction: row.hybrid_prediction,
+      actualResult: row.actual_result,
+      hybridCorrect: row.hybrid_correct,
+      stockfishCorrect: row.stockfish_correct,
+      hybridArchetype: row.hybrid_archetype,
+      hybridConfidence: row.hybrid_confidence,
+      createdAt: row.created_at,
+      significance: Math.abs(row.stockfish_eval || 0) > 200 ? 'breakthrough' as const : 'notable' as const,
+      evalMagnitude: Math.abs(row.stockfish_eval || 0),
+      timeControl: row.time_control,
+      whiteElo: row.white_elo,
+      blackElo: row.black_elo,
+      pgn: row.pgn,
+      gameDate,
+    };
+  });
 }
 
 /**
