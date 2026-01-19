@@ -82,7 +82,7 @@ export default function Benchmark() {
   // Maximum Depth Mode State
   const [benchmarkMode, setBenchmarkMode] = useState<'cloud' | 'local'>('cloud');
   const [localDepth, setLocalDepth] = useState(60); // Maximum depth for local WASM
-  const [gameCount, setGameCount] = useState(25); // Increased default for better batches
+  const [gameCount, setGameCount] = useState(30); // Default: 30 unique positions
   
   // Hooks for local WASM benchmark
   const { isReady: wasmReady, engineVersion, loadingProgress: wasmLoadingProgress, error: wasmError } = useStockfishAnalysis();
@@ -778,22 +778,25 @@ export default function Benchmark() {
 
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Games to Analyze</span>
-                    <span className="font-mono font-medium">{gameCount}</span>
+                    <span className="text-muted-foreground">Unique Positions to Analyze</span>
+                    <span className="font-mono font-medium text-green-500">{gameCount}</span>
                   </div>
                   <Slider
                     value={[gameCount]}
                     onValueChange={([v]) => setGameCount(v)}
-                    min={5}
-                    max={50}
-                    step={5}
+                    min={10}
+                    max={100}
+                    step={10}
                     disabled={isLocalRunning}
                     className="py-2"
                   />
                   <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>5 games</span>
-                    <span>50 games</span>
+                    <span>10 (quick)</span>
+                    <span>100 (thorough)</span>
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    Fetches ~8x more games to find unique positions (after deduplication)
+                  </p>
                 </div>
 
                 <p className="text-xs text-green-600">
