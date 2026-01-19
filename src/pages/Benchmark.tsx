@@ -30,6 +30,9 @@ interface CumulativeStats {
   overallHybridAccuracy: number;
   overallStockfishAccuracy: number;
   hybridNetWins: number;
+  hybridWins: number;
+  stockfishWins: number;
+  bothCorrect: number;
   bestArchetype: string | null;
   worstArchetype: string | null;
   validPredictionCount: number;
@@ -96,19 +99,12 @@ export default function Benchmark() {
         setCumulativeStats(newStats);
         
         if (newStats && newStats.validPredictionCount > 0) {
-          const hybridWins = newStats.hybridNetWins > 0 ? newStats.hybridNetWins : 0;
-          const stockfishWins = newStats.hybridNetWins < 0 ? Math.abs(newStats.hybridNetWins) : 0;
-          const bothCorrect = Math.round(Math.min(
-            newStats.overallHybridAccuracy, 
-            newStats.overallStockfishAccuracy
-          ) * newStats.validPredictionCount / 100);
-          
           const cumulativeElo = calculateEloFromBenchmark(
             newStats.overallHybridAccuracy,
             newStats.overallStockfishAccuracy,
-            hybridWins,
-            stockfishWins,
-            bothCorrect,
+            newStats.hybridWins,
+            newStats.stockfishWins,
+            newStats.bothCorrect,
             newStats.validPredictionCount,
             localResult.averageDepth
           );
@@ -146,19 +142,12 @@ export default function Benchmark() {
           setCumulativeStats(newStats);
           
           if (newStats && newStats.validPredictionCount > 0) {
-            const hybridWins = newStats.hybridNetWins > 0 ? newStats.hybridNetWins : 0;
-            const stockfishWins = newStats.hybridNetWins < 0 ? Math.abs(newStats.hybridNetWins) : 0;
-            const bothCorrect = Math.round(Math.min(
-              newStats.overallHybridAccuracy, 
-              newStats.overallStockfishAccuracy
-            ) * newStats.validPredictionCount / 100);
-            
             const cumulativeElo = calculateEloFromBenchmark(
               newStats.overallHybridAccuracy,
               newStats.overallStockfishAccuracy,
-              hybridWins,
-              stockfishWins,
-              bothCorrect,
+              newStats.hybridWins,
+              newStats.stockfishWins,
+              newStats.bothCorrect,
               newStats.validPredictionCount,
               40
             );
@@ -217,19 +206,12 @@ export default function Benchmark() {
           // Initialize ELO state from CUMULATIVE stats (all historical data)
           // This ensures ELO builds on every benchmark run
           if (stats && stats.totalGamesAnalyzed > 0) {
-            // Calculate from cumulative data - THIS IS WHERE ELO ACCUMULATES
-            const totalCorrect = Math.round(stats.overallHybridAccuracy * stats.validPredictionCount / 100);
-            const sfCorrect = Math.round(stats.overallStockfishAccuracy * stats.validPredictionCount / 100);
-            const hybridWins = stats.hybridNetWins > 0 ? stats.hybridNetWins : 0;
-            const stockfishWins = stats.hybridNetWins < 0 ? Math.abs(stats.hybridNetWins) : 0;
-            const bothCorrect = Math.min(totalCorrect, sfCorrect);
-            
             const cumulativeElo = calculateEloFromBenchmark(
               stats.overallHybridAccuracy,
               stats.overallStockfishAccuracy,
-              hybridWins,
-              stockfishWins,
-              bothCorrect,
+              stats.hybridWins,
+              stats.stockfishWins,
+              stats.bothCorrect,
               stats.validPredictionCount,
               40 // Average depth estimate
             );
@@ -378,19 +360,12 @@ export default function Benchmark() {
       // Update Live ELO State from CUMULATIVE stats (not just this run)
       // This ensures ELO truly accumulates across all runs
       if (newStats && newStats.validPredictionCount > 0) {
-        const hybridWins = newStats.hybridNetWins > 0 ? newStats.hybridNetWins : 0;
-        const stockfishWins = newStats.hybridNetWins < 0 ? Math.abs(newStats.hybridNetWins) : 0;
-        const bothCorrect = Math.round(Math.min(
-          newStats.overallHybridAccuracy, 
-          newStats.overallStockfishAccuracy
-        ) * newStats.validPredictionCount / 100);
-        
         const cumulativeElo = calculateEloFromBenchmark(
           newStats.overallHybridAccuracy,
           newStats.overallStockfishAccuracy,
-          hybridWins,
-          stockfishWins,
-          bothCorrect,
+          newStats.hybridWins,
+          newStats.stockfishWins,
+          newStats.bothCorrect,
           newStats.validPredictionCount,
           35 // Average depth
         );
