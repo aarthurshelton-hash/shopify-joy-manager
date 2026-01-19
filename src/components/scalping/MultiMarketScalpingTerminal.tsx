@@ -306,6 +306,7 @@ const MultiMarketScalpingTerminal: React.FC = () => {
               .map(([name, value]) => ({ name, value: value as number, impact: (value as number) * 0.1 })),
             patternCount: (evolutionData.learned_patterns as Array<unknown> || []).length,
             bestPatternAccuracy: evolutionData.fitness_score || 0,
+            anomalyHarvest: { totalAnomalies: 0, topPatterns: [], recentInsights: [] }
           });
         }
         
@@ -343,6 +344,7 @@ const MultiMarketScalpingTerminal: React.FC = () => {
                 .map(([name, value]) => ({ name, value: value as number, impact: (value as number) * 0.1 })),
               patternCount: (data.learned_patterns as Array<unknown> || []).length,
               bestPatternAccuracy: data.fitness_score || 0,
+              anomalyHarvest: { totalAnomalies: 0, topPatterns: [], recentInsights: [] }
             });
           }
         }
