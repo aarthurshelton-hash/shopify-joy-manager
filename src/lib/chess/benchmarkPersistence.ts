@@ -6,6 +6,7 @@
  * 2. Pattern learning from predictions
  * 3. Archetype-specific refinement
  * 4. Public proof of our claims
+ * 5. Cross-run deduplication for data integrity
  */
 
 import { supabase } from '@/integrations/supabase/client';
@@ -13,8 +14,9 @@ import type { BenchmarkResult, PredictionAttempt } from './cloudBenchmark';
 
 /**
  * Generate a unique hash for a chess position
+ * Uses FEN position part only (ignoring move counters) for consistent matching
  */
-function hashPosition(fen: string): string {
+export function hashPosition(fen: string): string {
   // Use the position part only (ignore move clocks for matching)
   const positionPart = fen.split(' ').slice(0, 4).join(' ');
   let hash = 0;
@@ -24,6 +26,59 @@ function hashPosition(fen: string): string {
     hash = hash & hash;
   }
   return Math.abs(hash).toString(16);
+}
+
+/**
+ * Fetch all previously analyzed position hashes and game IDs
+ * Used for cross-run deduplication to ensure every benchmark uses unique positions
+ */
+export async function getAlreadyAnalyzedData(): Promise<{
+  positionHashes: Set<string>;
+  gameIds: Set<string>;
+  fenStrings: Set<string>;
+}> {
+  const { data, error } = await supabase
+    .from('chess_prediction_attempts')
+    .select('position_hash, game_id, fen');
+
+  if (error || !data) {
+    console.warn('[Dedup] Could not fetch existing positions:', error);
+    return { positionHashes: new Set(), gameIds: new Set(), fenStrings: new Set() };
+  }
+
+  const positionHashes = new Set<string>();
+  const gameIds = new Set<string>();
+  const fenStrings = new Set<string>();
+
+  for (const row of data) {
+    if (row.position_hash) positionHashes.add(row.position_hash);
+    if (row.game_id) gameIds.add(row.game_id);
+    if (row.fen) fenStrings.add(row.fen);
+  }
+
+  console.log(`[Dedup] Loaded ${positionHashes.size} unique positions, ${gameIds.size} unique games already analyzed`);
+  return { positionHashes, gameIds, fenStrings };
+}
+
+/**
+ * Check if a specific position has already been analyzed
+ */
+export function isPositionAlreadyAnalyzed(
+  fen: string, 
+  analyzedData: { positionHashes: Set<string>; fenStrings: Set<string> }
+): boolean {
+  const hash = hashPosition(fen);
+  return analyzedData.positionHashes.has(hash) || analyzedData.fenStrings.has(fen);
+}
+
+/**
+ * Check if a specific game has already been analyzed
+ */
+export function isGameAlreadyAnalyzed(
+  gameId: string, 
+  analyzedData: { gameIds: Set<string> }
+): boolean {
+  return analyzedData.gameIds.has(gameId);
 }
 
 /**

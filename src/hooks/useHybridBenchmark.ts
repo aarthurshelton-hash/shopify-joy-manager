@@ -23,6 +23,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Chess } from 'chess.js';
 import { analyzeTimeControlProfile, StyleProfile, TimeControlElo } from '@/lib/pensent-core/domains/chess/timeControlStyleProfiler';
 import { buildFingerprint, PlayerFingerprint, GameData } from '@/lib/pensent-core/domains/chess/playerFingerprint';
+import { getAlreadyAnalyzedData, isPositionAlreadyAnalyzed, hashPosition } from '@/lib/chess/benchmarkPersistence';
 
 // ALL 25 domain adapters for maximum scope
 const DOMAIN_ADAPTERS = [
@@ -303,10 +304,21 @@ export function useHybridBenchmark() {
       // Fetch games from Lichess
       setProgress(prev => ({ 
         ...prev!, 
-        message: 'Fetching GM games from Lichess...' 
+        message: 'Loading previously analyzed positions for deduplication...' 
       }));
       
-      const games = await fetchLichessGames(gameCount);
+      // CRITICAL: Load already-analyzed data for cross-run deduplication
+      const analyzedData = await getAlreadyAnalyzedData();
+      let skippedDuplicates = 0;
+      
+      setProgress(prev => ({ 
+        ...prev!, 
+        message: `Found ${analyzedData.positionHashes.size} existing positions. Fetching new GM games...` 
+      }));
+      
+      // Fetch MORE games than needed to account for duplicates
+      const fetchMultiplier = 3;
+      const games = await fetchLichessGames(gameCount * fetchMultiplier);
       if (games.length === 0) {
         throw new Error('No games fetched from Lichess');
       }
@@ -318,19 +330,20 @@ export function useHybridBenchmark() {
       let bothCorrect = 0;
       let bothWrong = 0;
       const depths: number[] = [];
+      let analyzedCount = 0;
       
-      // Process each game
-      for (let i = 0; i < games.length; i++) {
+      // Process each game until we hit target count
+      for (let i = 0; i < games.length && analyzedCount < gameCount; i++) {
         if (abortRef.current) break;
         
         const game = games[i];
         
         setProgress({
-          currentGame: i + 1,
-          totalGames: games.length,
+          currentGame: analyzedCount + 1,
+          totalGames: gameCount,
           currentPhase: 'analyzing',
           currentDepth: 0,
-          message: `Analyzing game ${i + 1}/${games.length} with ${EN_PENSENT_ADAPTERS} adapters at depth ${depth}...`,
+          message: `Analyzing game ${analyzedCount + 1}/${gameCount} with ${EN_PENSENT_ADAPTERS} adapters at depth ${depth}... (${skippedDuplicates} duplicates skipped)`,
           enPensentModulesActive: EN_PENSENT_ADAPTERS
         });
         
@@ -338,6 +351,18 @@ export function useHybridBenchmark() {
           const { moves, result: gameResult, fen, moveNumber } = parsePGN(game, predictionMoveRange);
           
           if (moves.length < 30) continue;
+          
+          // CRITICAL: Cross-run deduplication check
+          if (isPositionAlreadyAnalyzed(fen, analyzedData)) {
+            skippedDuplicates++;
+            console.log(`[Dedup] Skipping position at move ${moveNumber} - already analyzed`);
+            continue;
+          }
+          
+          // Add to in-memory set to prevent within-run duplicates
+          const positionHash = hashPosition(fen);
+          analyzedData.positionHashes.add(positionHash);
+          analyzedData.fenStrings.add(fen);
           
           // Full-scope Color Flow prediction with all 25 adapters
           const colorFlow = analyzeColorFlowFullScope(moves.slice(0, moveNumber));
@@ -372,6 +397,7 @@ export function useHybridBenchmark() {
             game_name: `GM Game ${attempts.length + 1}`,
             fen,
             move_number: moveNumber,
+            position_hash: positionHash, // Include for verification
             hybrid_prediction: colorFlow.prediction,
             hybrid_confidence: colorFlow.confidence,
             hybrid_archetype: colorFlow.archetype,
@@ -386,10 +412,14 @@ export function useHybridBenchmark() {
             pgn: game.substring(0, 1000),
           });
           
+          analyzedCount++; // Increment unique game counter
+          
         } catch (e) {
           console.error('Error processing game:', e);
         }
       }
+      
+      console.log(`[Dedup] Benchmark complete: ${analyzedCount} unique positions analyzed, ${skippedDuplicates} duplicates skipped`);
       
       if (attempts.length === 0) {
         throw new Error('No valid games processed');
