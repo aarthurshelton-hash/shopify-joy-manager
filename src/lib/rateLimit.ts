@@ -171,6 +171,9 @@ export const RATE_LIMITS = {
   // Vision operations
   save: { maxRequests: 10, windowSeconds: 60 },
   scan: { maxRequests: 30, windowSeconds: 60 },
+  
+  // Benchmark operations (CPU-intensive, limit concurrent runs)
+  benchmark: { maxRequests: 5, windowSeconds: 300 }, // 5 runs per 5 minutes
 } as const;
 
 /**
