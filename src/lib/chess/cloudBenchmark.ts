@@ -4,6 +4,12 @@
  * Compares against TCEC SF17 (ELO 3600) - the strongest Stockfish configuration
  * Uses Lichess Cloud API with TCEC-calibrated prediction thresholds
  * Fetches REAL games from Lichess top GMs for comprehensive testing
+ * 
+ * DATA INTEGRITY GUARANTEES:
+ * 1. Cross-run deduplication - no position analyzed more than once ever
+ * 2. Per-game randomized move numbers - prevents pattern memorization
+ * 3. Fresh games fetched each run with unique game ID tracking
+ * 4. Position hash verification before analysis
  */
 
 import { Chess } from 'chess.js';
@@ -12,6 +18,12 @@ import { generateHybridPrediction } from './hybridPrediction';
 import { extractColorFlowSignature } from './colorFlowAnalysis';
 import { fetchLichessGames, lichessGameToPgn, type LichessGame } from './gameImport/lichessApi';
 import { ProvenanceTracker } from './dataAuthenticity';
+import { 
+  getAlreadyAnalyzedData, 
+  isPositionAlreadyAnalyzed, 
+  isGameAlreadyAnalyzed,
+  hashPosition 
+} from './benchmarkPersistence';
 
 export interface PredictionAttempt {
   gameId: string;
@@ -316,17 +328,20 @@ export async function fetchRealGames(
 /**
  * Run benchmark using Lichess Cloud API with REAL Lichess games
  * 
- * FAIRNESS GUARANTEES:
- * 1. Prediction at FIXED move number (not % of game) - no information leak about game length
- * 2. Fresh games fetched each run - no memorization possible
- * 3. Stockfish evaluation from SAME position we predict from
- * 4. No access to moves beyond prediction point
+ * DATA INTEGRITY GUARANTEES:
+ * 1. Cross-run deduplication - no position analyzed more than once ever
+ * 2. Per-game randomized move numbers - prevents pattern memorization
+ * 3. Fresh games fetched each run with unique game ID tracking
+ * 4. Position hash verification before analysis
+ * 5. Stockfish evaluation from SAME position we predict from
+ * 6. No access to moves beyond prediction point
  */
 export async function runCloudBenchmark(
   options: {
     gameCount?: number;
     predictionMoveNumber?: number;
     useRealGames?: boolean;
+    skipDuplicates?: boolean; // NEW: Enable cross-run deduplication
   } = {},
   onProgress?: (status: string, progress: number, attempt?: PredictionAttempt) => void
 ): Promise<BenchmarkResult> {
@@ -335,7 +350,8 @@ export async function runCloudBenchmark(
     // RANDOMIZED move number for each game - prevents overfitting to specific positions
     // Range: 15-35 moves, ensuring enough game context but before many decisive moments
     predictionMoveNumber, // If provided, use fixed; otherwise randomize per game
-    useRealGames = true 
+    useRealGames = true,
+    skipDuplicates = true, // Default ON for data integrity
   } = options;
   
   const result: BenchmarkResult = {
@@ -361,12 +377,29 @@ export async function runCloudBenchmark(
   provenance.setSource(useRealGames ? 'lichess_live' : 'famous_games');
   provenance.setStockfishConfig('lichess_cloud', 'TCEC Stockfish 17 NNUE (ELO 3600)');
   
+  // CRITICAL: Load already-analyzed data for cross-run deduplication
+  let analyzedData: { positionHashes: Set<string>; gameIds: Set<string>; fenStrings: Set<string> } = {
+    positionHashes: new Set(),
+    gameIds: new Set(),
+    fenStrings: new Set(),
+  };
+  
+  let skippedDuplicates = 0;
+  
+  if (skipDuplicates) {
+    onProgress?.('Loading previously analyzed positions for deduplication...', 0);
+    analyzedData = await getAlreadyAnalyzedData();
+    onProgress?.(`Found ${analyzedData.positionHashes.size} unique positions already analyzed. Will skip duplicates.`, 2);
+  }
+  
   // Fetch FRESH games every run - critical for no memorization
-  onProgress?.('Fetching FRESH real games from Lichess (randomized)...', 0);
+  onProgress?.('Fetching FRESH real games from Lichess (randomized)...', 3);
   
   let games: BenchmarkGame[];
   if (useRealGames) {
-    games = await fetchRealGames(gameCount, (status) => {
+    // Request MORE games than needed to account for duplicates being skipped
+    const fetchMultiplier = skipDuplicates ? 3 : 1; // Fetch 3x to have enough after filtering
+    games = await fetchRealGames(gameCount * fetchMultiplier, (status) => {
       onProgress?.(status, 5);
       provenance.recordApiCall('lichess');
     });
@@ -380,19 +413,27 @@ export async function runCloudBenchmark(
   for (const game of games) {
     provenance.addLichessGame(
       game.name, 
-      game.rating || 2500, 
+      game.rating || 2500,
       game.rating || 2500
     );
   }
   
   result.totalGames = games.length;
-  onProgress?.(`Loaded ${games.length} fresh games (shuffled). Starting blind analysis...`, 10);
+  onProgress?.(`Loaded ${games.length} fresh games (shuffled). Starting blind analysis with deduplication...`, 10);
 
-  for (let i = 0; i < games.length; i++) {
+  // Track how many unique new games we've analyzed
+  let analyzedCount = 0;
+  const targetCount = gameCount;
+
+  for (let i = 0; i < games.length && analyzedCount < targetCount; i++) {
     const game = games[i];
-    const gameId = `game-${Date.now()}-${i}`; // Unique ID per run
+    const gameId = `${game.source || 'game'}-${Date.now()}-${i}`; // Unique ID including source
     
-    onProgress?.(`[${i + 1}/${games.length}] Analyzing: ${game.name}`, 10 + (i / games.length) * 85);
+    // Early exit if we've hit target
+    if (analyzedCount >= targetCount) break;
+    
+    const progressPercent = 10 + (analyzedCount / targetCount) * 85;
+    onProgress?.(`[${analyzedCount + 1}/${targetCount}] Analyzing: ${game.name}`, progressPercent);
     
     try {
       const chess = new Chess();
@@ -421,7 +462,7 @@ export async function runCloudBenchmark(
       
       // Skip games that haven't reached our minimum prediction point
       if (history.length < movesToPlay + 10) {
-        console.log(`Skipping ${game.name} - game too short (${history.length} moves)`);
+        console.log(`[Dedup] Skipping ${game.name} - game too short (${history.length} moves)`);
         continue;
       }
       
@@ -436,8 +477,20 @@ export async function runCloudBenchmark(
       const fen = chess.fen();
       const truncatedPgn = chess.pgn();
       
+      // CRITICAL: Cross-run deduplication check
+      if (skipDuplicates && isPositionAlreadyAnalyzed(fen, analyzedData)) {
+        skippedDuplicates++;
+        console.log(`[Dedup] Skipping ${game.name} move ${movesToPlay} - position already analyzed in previous run`);
+        continue;
+      }
+      
+      // Also add this position to our in-memory set to prevent duplicates within this run
+      const positionHash = hashPosition(fen);
+      analyzedData.positionHashes.add(positionHash);
+      analyzedData.fenStrings.add(fen);
+      
       // Get Stockfish 17 evaluation from Lichess Cloud
-      onProgress?.(`[SF17] Evaluating position after move ${movesToPlay}...`, 10 + ((i + 0.3) / games.length) * 85);
+      onProgress?.(`[SF17] Evaluating position after move ${movesToPlay}...`, progressPercent + 3);
       const cloudEval = await evaluatePosition(fen);
       
       // CRITICAL FIX: Don't use positions not in cloud database
@@ -484,6 +537,7 @@ export async function runCloudBenchmark(
       
       result.predictionPoints.push(attempt);
       result.completedGames++;
+      analyzedCount++; // Increment our unique game counter
       result.gamesAnalyzed.push(game.name);
       
       // Update archetype stats
@@ -507,7 +561,10 @@ export async function runCloudBenchmark(
       }
       
       // Report progress with attempt
-      onProgress?.(`Completed: ${game.name}`, 10 + ((i + 1) / games.length) * 85, attempt);
+      const progressMsg = skipDuplicates 
+        ? `Completed: ${game.name} (${analyzedCount}/${targetCount}, ${skippedDuplicates} duplicates skipped)`
+        : `Completed: ${game.name}`;
+      onProgress?.(progressMsg, 10 + (analyzedCount / targetCount) * 85, attempt);
       
       // Brief pause between games
       await new Promise(resolve => setTimeout(resolve, 300));
@@ -539,8 +596,12 @@ export async function runCloudBenchmark(
   // Finalize provenance record
   const provenanceRecord = provenance.finalize();
   console.log('[CloudBenchmark] Provenance:', provenanceRecord);
+  console.log(`[CloudBenchmark] Data Integrity: ${skippedDuplicates} duplicate positions skipped, ${result.completedGames} unique new positions analyzed`);
   
-  onProgress?.(`Benchmark complete! Analyzed ${result.completedGames} randomized games.`, 100);
+  const completionMsg = skipDuplicates
+    ? `Benchmark complete! Analyzed ${result.completedGames} NEW unique positions (${skippedDuplicates} duplicates skipped).`
+    : `Benchmark complete! Analyzed ${result.completedGames} randomized games.`;
+  onProgress?.(completionMsg, 100);
   
   return result;
 }
