@@ -141,7 +141,7 @@ export function isGameAlreadyAnalyzed(
  * This compounds our knowledge without re-analyzing - we already know
  * the outcome, Stockfish doesn't have this memory advantage.
  */
-async function reaffirmExistingPrediction(fen: string, hash: string): Promise<void> {
+export async function reaffirmExistingPrediction(fen: string, hash: string): Promise<void> {
   try {
     // Find the existing prediction for this position
     const { data: existing } = await supabase

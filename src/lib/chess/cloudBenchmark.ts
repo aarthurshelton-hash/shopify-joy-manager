@@ -20,9 +20,9 @@ import { fetchLichessGames, lichessGameToPgn, type LichessGame } from './gameImp
 import { ProvenanceTracker } from './dataAuthenticity';
 import { 
   getAlreadyAnalyzedData, 
-  isPositionAlreadyAnalyzed, 
   isGameAlreadyAnalyzed,
-  hashPosition 
+  hashPosition,
+  reaffirmExistingPrediction 
 } from './benchmarkPersistence';
 
 export interface PredictionAttempt {
@@ -387,9 +387,9 @@ export async function runCloudBenchmark(
   let skippedDuplicates = 0;
   
   if (skipDuplicates) {
-    onProgress?.('Loading previously analyzed positions for deduplication...', 0);
+    onProgress?.('Loading previously analyzed games for deduplication...', 0);
     analyzedData = await getAlreadyAnalyzedData();
-    onProgress?.(`Found ${analyzedData.positionHashes.size} unique positions already analyzed. Will skip duplicates.`, 2);
+    onProgress?.(`Found ${analyzedData.gameIds.size} games already analyzed. Same positions from NEW games = valuable data!`, 2);
   }
   
   // Track how many unique new games we've analyzed
@@ -451,8 +451,18 @@ export async function runCloudBenchmark(
     
     const game = allGames[gameIndex];
     gameIndex++;
-    const gameId = `${game.source || 'game'}-${Date.now()}-${gameIndex}`; // Unique ID including source
+    // CRITICAL: Use game name + timestamp as unique identifier
+    // This ensures we only skip the EXACT same game file, not similar games
+    const gameId = `${game.name.replace(/\s+/g, '_').toLowerCase()}-${game.source || 'game'}-${totalFetchAttempts}-${gameIndex}`;
     const gamesLeftInBatch = allGames.length - gameIndex;
+    
+    // GAME-LEVEL deduplication (not position level)
+    // Skip if this exact game has been analyzed before
+    if (skipDuplicates && isGameAlreadyAnalyzed(gameId, analyzedData)) {
+      console.log(`[Dedup] Skipping already-analyzed game: ${gameId}`);
+      skippedDuplicates++;
+      continue;
+    }
     
     const progressPercent = 10 + (analyzedCount / targetCount) * 85;
     onProgress?.(`[${analyzedCount + 1}/${targetCount}] Analyzing: ${game.name} (batch ${totalFetchAttempts}, ${gamesLeftInBatch} remaining)`, progressPercent);
@@ -499,17 +509,22 @@ export async function runCloudBenchmark(
       const fen = chess.fen();
       const truncatedPgn = chess.pgn();
       
-      // CRITICAL: Cross-run deduplication check
-      if (skipDuplicates && isPositionAlreadyAnalyzed(fen, analyzedData)) {
-        skippedDuplicates++;
-        console.log(`[Dedup] Skipping ${game.name} move ${movesToPlay} - position already analyzed in previous run`);
-        continue;
+      // Track position for pattern strength (cross-reference, NOT skip)
+      // CRITICAL INSIGHT: Same position from DIFFERENT games is VALUABLE data
+      // This strengthens our pattern recognition when we see familiar positions
+      const positionHash = hashPosition(fen);
+      const isKnownPosition = analyzedData.positionHashes.has(positionHash);
+      
+      if (isKnownPosition) {
+        console.log(`[Pattern] Recognized position from NEW game ${game.name} - strengthening pattern database`);
+        // Fire background reaffirmation to boost confidence in known patterns
+        reaffirmExistingPrediction(fen, positionHash).catch(() => {});
       }
       
-      // Also add this position to our in-memory set to prevent duplicates within this run
-      const positionHash = hashPosition(fen);
+      // Add to in-memory sets for this run
       analyzedData.positionHashes.add(positionHash);
       analyzedData.fenStrings.add(fen);
+      analyzedData.gameIds.add(gameId); // Mark this game as analyzed
       
       // Get Stockfish 17 evaluation from Lichess Cloud
       onProgress?.(`[SF17] Evaluating position after move ${movesToPlay}...`, progressPercent + 3);

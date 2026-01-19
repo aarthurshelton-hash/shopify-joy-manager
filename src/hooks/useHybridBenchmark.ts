@@ -23,7 +23,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Chess } from 'chess.js';
 import { analyzeTimeControlProfile, StyleProfile, TimeControlElo } from '@/lib/pensent-core/domains/chess/timeControlStyleProfiler';
 import { buildFingerprint, PlayerFingerprint, GameData } from '@/lib/pensent-core/domains/chess/playerFingerprint';
-import { getAlreadyAnalyzedData, isPositionAlreadyAnalyzed, hashPosition } from '@/lib/chess/benchmarkPersistence';
+import { getAlreadyAnalyzedData, hashPosition, reaffirmExistingPrediction } from '@/lib/chess/benchmarkPersistence';
 
 interface LichessGameData {
   pgn: string;
@@ -408,12 +408,12 @@ export function useHybridBenchmark() {
       const analyzedData = await getAlreadyAnalyzedData();
       let skippedDuplicates = 0;
       
-      console.log(`[Dedup] Loaded ${analyzedData.positionHashes.size} position hashes, ${analyzedData.gameIds.size} game IDs for deduplication`);
+console.log(`[Dedup] Loaded ${analyzedData.gameIds.size} analyzed games (position hashes for cross-reference only)`);
       console.log(`[Dedup] Sample game IDs:`, Array.from(analyzedData.gameIds).slice(0, 5));
       
       setProgress(prev => ({ 
         ...prev!, 
-        message: `Found ${analyzedData.positionHashes.size} positions, ${analyzedData.gameIds.size} games. Fetching fresh GM games...` 
+        message: `Found ${analyzedData.gameIds.size} analyzed games. Fetching fresh GM games (same positions from new games = valuable data)...` 
       }));
       
       const runId = crypto.randomUUID();
@@ -509,15 +509,31 @@ export function useHybridBenchmark() {
           // Only skip truly unplayable results (ongoing games with no clear outcome)
           // parsePGN now infers results from multiple sources, so this rarely triggers
           
-          // CRITICAL: Cross-run deduplication check
-          if (isPositionAlreadyAnalyzed(fen, analyzedData)) {
+          // Generate position hash for learning cross-reference (NOT deduplication)
+          // CRITICAL INSIGHT: Same position from DIFFERENT games is VALUABLE data
+          // The more times we see a position across unique games, the stronger our pattern recognition
+          // Only skip if we've already analyzed THIS EXACT GAME (same lichessId) in a previous run
+          const positionHash = hashPosition(fen);
+          const lichessGameId = game.lichessId || `unknown-${Date.now()}`;
+          
+          // Check if this exact game was already analyzed (by lichessId, not by position)
+          // This prevents re-analyzing the same game file, but allows analyzing
+          // identical positions that occur in DIFFERENT games (valuable pattern data)
+          if (analyzedData.gameIds.has(lichessGameId)) {
             skippedDuplicates++;
-            console.log(`[Dedup] Skipping position at move ${moveNumber} - already analyzed (${skippedDuplicates} total dupes)`);
+            console.log(`[Dedup] Skipping game ${lichessGameId} at move ${moveNumber} - already analyzed this game (${skippedDuplicates} total dupes)`);
             continue;
           }
           
-          // Add to in-memory set to prevent within-run duplicates
-          const positionHash = hashPosition(fen);
+          // Track position frequency for pattern strength (cross-reference, not skip)
+          const isKnownPosition = analyzedData.positionHashes.has(positionHash);
+          if (isKnownPosition) {
+            console.log(`[Pattern] Recognized position from NEW game - strengthening pattern database`);
+            // Fire background reaffirmation to boost confidence in known patterns
+            reaffirmExistingPrediction(fen, positionHash).catch(() => {});
+          }
+          
+          // Add to in-memory sets for this run
           analyzedData.positionHashes.add(positionHash);
           analyzedData.fenStrings.add(fen);
           
@@ -586,17 +602,16 @@ export function useHybridBenchmark() {
           const blackEloDisplay = game.blackElo ? ` (${game.blackElo})` : '';
           const gameName = `${whiteName}${whiteEloDisplay} vs ${blackName}${blackEloDisplay}`;
           
-          // CRITICAL: Use the LICHESS GAME ID for deduplication, not a random UUID
-          // This enables cross-run game-level deduplication since the same game
-          // from Lichess will always have the same ID
-          const lichessGameId = game.lichessId || `lichess-${Date.now()}-${gameIndex}`;
+          // The lichessGameId was already extracted above during the dedup check
+          // Use it for saving to database
+          const gameIdForDb = lichessGameId;
           
           // Add to analyzed data immediately so we don't re-analyze this game
-          analyzedData.gameIds.add(lichessGameId);
-          console.log(`[Analyze] Processing game ${lichessGameId} - position at move ${moveNumber}`);
+          analyzedData.gameIds.add(gameIdForDb);
+          console.log(`[Analyze] Processing game ${gameIdForDb} - position at move ${moveNumber}`);
           
           const attemptData = {
-            game_id: lichessGameId, // Use Lichess ID for cross-run deduplication
+            game_id: gameIdForDb, // Use Lichess ID for cross-run deduplication
             game_name: gameName,
             fen,
             move_number: moveNumber,
