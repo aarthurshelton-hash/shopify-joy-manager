@@ -155,3 +155,10 @@ export function useScanRateLimit() {
     ...RATE_LIMITS.scan,
   });
 }
+
+export function useBenchmarkRateLimit() {
+  return useRateLimit({
+    endpoint: 'benchmark',
+    ...RATE_LIMITS.benchmark,
+  });
+}
