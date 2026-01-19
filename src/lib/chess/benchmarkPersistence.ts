@@ -61,24 +61,77 @@ export async function getAlreadyAnalyzedData(): Promise<{
 }
 
 /**
- * Check if a specific position has already been analyzed
+ * Check if a specific position has already been analyzed.
+ * When a duplicate is found, we reaffirm our existing knowledge
+ * (increment confidence) without re-analyzing - Stockfish doesn't 
+ * have this compounding advantage.
  */
-export function isPositionAlreadyAnalyzed(
+export async function isPositionAlreadyAnalyzed(
   fen: string, 
-  analyzedData: { positionHashes: Set<string>; fenStrings: Set<string> }
-): boolean {
+  analyzedData: { positionHashes: Set<string>; fenStrings: Set<string> },
+  reaffirmOnDuplicate: boolean = true
+): Promise<boolean> {
   const hash = hashPosition(fen);
-  return analyzedData.positionHashes.has(hash) || analyzedData.fenStrings.has(fen);
+  const isDuplicate = analyzedData.positionHashes.has(hash) || analyzedData.fenStrings.has(fen);
+  
+  if (isDuplicate && reaffirmOnDuplicate) {
+    // Reaffirm existing knowledge - increment confidence for this pattern
+    await reaffirmExistingPrediction(fen, hash);
+  }
+  
+  return isDuplicate;
 }
 
 /**
- * Check if a specific game has already been analyzed
+ * Check if a specific game has already been analyzed.
+ * Note: Same position in different games (different timestamps) = different games.
+ * We only dedupe on exact game_id match.
  */
 export function isGameAlreadyAnalyzed(
   gameId: string, 
   analyzedData: { gameIds: Set<string> }
 ): boolean {
   return analyzedData.gameIds.has(gameId);
+}
+
+/**
+ * Reaffirm existing prediction data when we encounter a duplicate.
+ * This compounds our knowledge without re-analyzing - we already know
+ * the outcome, Stockfish doesn't have this memory advantage.
+ */
+async function reaffirmExistingPrediction(fen: string, hash: string): Promise<void> {
+  try {
+    // Find the existing prediction for this position
+    const { data: existing } = await supabase
+      .from('chess_prediction_attempts')
+      .select('id, hybrid_confidence, hybrid_correct, lesson_learned')
+      .or(`position_hash.eq.${hash},fen.eq.${fen}`)
+      .limit(1)
+      .single();
+    
+    if (existing) {
+      // Boost confidence slightly for validated patterns (max 0.99)
+      const boostedConfidence = Math.min(0.99, (existing.hybrid_confidence || 0.5) + 0.01);
+      
+      // Update with reaffirmed confidence
+      await supabase
+        .from('chess_prediction_attempts')
+        .update({ 
+          hybrid_confidence: boostedConfidence,
+          lesson_learned: {
+            ...(existing.lesson_learned as Record<string, unknown> || {}),
+            reaffirmed_count: ((existing.lesson_learned as Record<string, unknown>)?.reaffirmed_count as number || 0) + 1,
+            last_reaffirmed: new Date().toISOString()
+          }
+        })
+        .eq('id', existing.id);
+      
+      console.log(`[Reaffirm] Position ${hash.slice(0, 8)}... reaffirmed (conf: ${boostedConfidence.toFixed(3)})`);
+    }
+  } catch (error) {
+    // Silent fail - reaffirmation is enhancement, not critical
+    console.debug('[Reaffirm] Could not reaffirm position:', error);
+  }
 }
 
 /**
