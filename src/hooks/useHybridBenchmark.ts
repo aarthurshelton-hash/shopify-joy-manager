@@ -711,10 +711,12 @@ export function useHybridBenchmark() {
 // CRITICAL: Each benchmark run must use FRESH, UNIQUE games for scientific validity
 // Returns ALL valid games - let the caller handle deduplication against DB
 async function fetchLichessGames(count: number): Promise<{ pgn: string; timeControl?: string; whiteElo?: number; blackElo?: number }[]> {
-  // EXPANDED player pool - 30+ top GMs for maximum variety
+  // MASSIVE player pool - 60+ GMs spanning Lichess history (2010-present)
+  // With 14 years of history, we have access to MILLIONS of unique positions
   const topPlayers = [
-    // Super GMs (2750+)
+    // Super GMs (2750+) - Current Elite
     "DrNykterstein", // Magnus Carlsen
+    "DrDrunkenstein", // Magnus secondary
     "Hikaru", // Hikaru Nakamura  
     "nihalsarin2004", // Nihal Sarin
     "FairChess_on_YouTube", // Alireza Firouzja
@@ -723,38 +725,72 @@ async function fetchLichessGames(count: number): Promise<{ pgn: string; timeCont
     "Polish_fighter3000", // Jan-Krzysztof Duda
     "Msb2", // Anish Giri
     "Vladimirovich9000", // Ian Nepomniachtchi
-    "PinIsMightier", // GM account
-    // Additional strong GMs (2600+)
+    "chaboribra", // Ding Liren
+    
+    // Elite GMs (2700+)
+    "opperwezen", // Jorden van Foreest
+    "Ssjlegend", // Samuel Sevian
+    "BogdanDeac",
+    "mishanick", // Alexander Grischuk
+    "Vladislav_Artemiev",
+    "penguingm1", // Andrew Tang (bullet king)
+    "Zhigalko_Sergei",
+    "GMKrikor", // Krikor Mekhitarian
+    "Lachesisq", // Dmitry Andreikin
+    "Lovlas", // Arik Braun
+    "gmaniruddha", // Anirudh Bartakke
+    "DoktorAtom", // Shakhriyar Mamedyarov
+    
+    // Strong GMs (2600+)
     "Fins", // John Bartholomew
     "GMBenjaminFinegold",
     "DanielNaroditsky",
-    "ChessNetwork",
     "EricRosen", 
     "GMHansen",
-    "chaboribra", // Ding Liren sometimes uses
-    "opperwezen", // Jorden van Foreest
-    "Ssjlegend", // Samuel Sevian
     "LiamE", // Liem Le Quang
-    "BogdanDeac",
-    "mishanick", // Alexander Grischuk
-    "sergey_kasparov",
-    "GM_Boris_Chatalbashev",
-    "DrDrunkenstein", // Magnus secondary
-    "penguingm1", // Andrew Tang
-    "Zhigalko_Sergei",
     "alexandr_fier",
-    "Vladislav_Artemiev"
+    "akshaychandra", // Akshay Chandra
+    "RebeccaHarris",
+    "PinIsMightier",
+    "RoadToGM",
+    
+    // Historical GMs (Active 2010-2020)
+    "Crazychessplaya", // Early Lichess GM
+    "Konavets",
+    "Kingscrusher", // Tryfon Gavriel
+    "chessbrah", // Eric Hansen
+    "ChessNetwork",
+    "STL_Sam", // Sam Shankland
+    "GMPTTRN", // Pavel Tregubov
+    "Chesstoday",
+    "GMBiloPhotos",
+    "sergeigm",
+    
+    // International GMs (Diverse styles)
+    "GM_Boris_Chatalbashev",
+    "sergey_kasparov",
+    "RaunakSadhwani2005", // Raunak Sadhwani
+    "Arjun_Erigaisi", // Arjun Erigaisi
+    "parhamov", // Parham Maghsoodloo
+    "NihalSarin", // Secondary account
+    "HansNiemann",
+    "ChristopherYoo",
+    "gmMikalGolubyev",
+    "gmfederico"
   ];
   
   // CRITICAL: Randomize time window for each run to get different games
   const now = Date.now();
-  const oneYearAgo = now - (365 * 24 * 60 * 60 * 1000);
-  const threeMonthsAgo = now - (90 * 24 * 60 * 60 * 1000);
   
-  // Random window within the past year - ensures different games each run
-  const randomStartOffset = Math.floor(Math.random() * (oneYearAgo - threeMonthsAgo));
-  const since = threeMonthsAgo - randomStartOffset;
-  const until = since + (30 * 24 * 60 * 60 * 1000); // 30-day window
+  // FULL LICHESS HISTORY: From 2010 (Lichess founding) to now
+  // This gives us access to 14+ years of GM games - millions of positions
+  const lichessStart = new Date('2010-01-01').getTime();
+  const fourteenYearsSpan = now - lichessStart;
+  
+  // Random window anywhere in Lichess history - 60-day windows for variety
+  const randomStartOffset = Math.floor(Math.random() * (fourteenYearsSpan - (60 * 24 * 60 * 60 * 1000)));
+  const since = lichessStart + randomStartOffset;
+  const until = since + (60 * 24 * 60 * 60 * 1000); // 60-day window (doubled for more games)
   
   const games: { pgn: string; timeControl?: string; whiteElo?: number; blackElo?: number }[] = [];
   const gameIds = new Set<string>(); // Deduplicate by game ID within this fetch
@@ -764,12 +800,11 @@ async function fetchLichessGames(count: number): Promise<{ pgn: string; timeCont
   let shortGamesSkipped = 0;
   let invalidPgnSkipped = 0;
   
-  // CRITICAL FIX: Fetch from ALL players, don't stop early
-  // We need a large buffer since many games will be duplicates in the DB
-  const selectedPlayers = shuffledPlayers.slice(0, Math.min(25, shuffledPlayers.length));
+  // Fetch from ALL players in the pool - we have 14 years of data
+  const selectedPlayers = shuffledPlayers.slice(0, Math.min(30, shuffledPlayers.length));
   
-  console.log(`[Benchmark] Fetching FRESH games from ${selectedPlayers.length} random GMs`);
-  console.log(`[Benchmark] Time window: ${new Date(since).toISOString()} to ${new Date(until).toISOString()}`);
+  console.log(`[Benchmark] Fetching from FULL LICHESS HISTORY (2010-present)`);
+  console.log(`[Benchmark] ${selectedPlayers.length} GMs, window: ${new Date(since).toISOString()} to ${new Date(until).toISOString()}`);
   console.log(`[Benchmark] Target buffer: ${count * 5} games (to account for deduplication)`);
   
   // Use Edge Function to fetch games (bypasses CORS in production)
