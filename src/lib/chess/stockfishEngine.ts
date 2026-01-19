@@ -204,6 +204,7 @@ export class StockfishEngine {
 
   /**
    * Wait for engine to be ready with optional progress callback
+   * Enhanced with better timeout handling and re-initialization attempts
    */
   async waitReady(onProgress?: (progress: number) => void): Promise<boolean> {
     if (this.isReady) {
@@ -211,14 +212,26 @@ export class StockfishEngine {
       return true;
     }
     
+    // If worker died, try to reinitialize
+    if (!this.worker) {
+      console.log('[Stockfish] Worker not found, reinitializing...');
+      this.initWorker();
+    }
+    
     return new Promise((resolve) => {
       let attempts = 0;
-      const maxAttempts = 300; // 30 seconds max
+      const maxAttempts = 600; // 60 seconds max (increased from 30)
+      let lastProgress = 0;
       
       const checkReady = setInterval(() => {
         attempts++;
-        const progress = attempts / maxAttempts;
-        onProgress?.(progress);
+        const progress = Math.min(attempts / maxAttempts, 0.99);
+        
+        // Only call progress callback if progress changed significantly
+        if (progress - lastProgress > 0.05) {
+          lastProgress = progress;
+          onProgress?.(progress);
+        }
         
         if (this.isReady) {
           clearInterval(checkReady);
@@ -227,8 +240,14 @@ export class StockfishEngine {
           resolve(true);
         } else if (attempts >= maxAttempts) {
           clearInterval(checkReady);
-          console.warn('[Stockfish] Engine timeout after 30 seconds');
+          console.error('[Stockfish] Engine timeout after 60 seconds - this may indicate a WASM loading issue');
+          // Mark as ready anyway with a warning - let the analysis functions handle errors
           resolve(false);
+        }
+        
+        // Log progress every 10 seconds
+        if (attempts % 100 === 0) {
+          console.log(`[Stockfish] Still waiting for engine... ${attempts / 10}s elapsed`);
         }
       }, 100);
     });

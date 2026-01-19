@@ -287,7 +287,7 @@ export function useHybridBenchmark() {
     const engine = getStockfishEngine();
     
     try {
-      // Wait for engine to be ready
+      // Wait for engine to be ready with progress feedback
       setProgress({ 
         currentGame: 0, 
         totalGames: gameCount, 
@@ -297,10 +297,19 @@ export function useHybridBenchmark() {
         enPensentModulesActive: EN_PENSENT_ADAPTERS
       });
       
-      const ready = await engine.waitReady();
+      console.log('[Benchmark] Starting engine initialization...');
+      const ready = await engine.waitReady((progress) => {
+        setProgress(prev => ({
+          ...prev!,
+          message: `Loading Stockfish engine... ${Math.round(progress * 100)}%`
+        }));
+      });
+      
       if (!ready) {
-        throw new Error('Stockfish engine failed to initialize');
+        throw new Error('Stockfish engine failed to initialize. Please refresh the page and try again.');
       }
+      
+      console.log('[Benchmark] Engine ready, fetching games...');
       
       // Fetch games from Lichess
       setProgress(prev => ({ 
@@ -372,23 +381,39 @@ export function useHybridBenchmark() {
           setProgress(prev => ({
             ...prev!,
             currentDepth: 0,
-            message: `Game ${analyzedCount + 1}: Analyzing with local Stockfish at depth ${depth} (VERIFIED)...`
+            message: `Game ${analyzedCount + 1}: Analyzing with local Stockfish at depth ${depth}...`
           }));
           
           // Use requireExactDepth for Maximum Depth benchmarks
           const isMaxDepthMode = depth >= 40;
-          const analysis = await engine.analyzePosition(fen, { 
+          
+          // Add timeout protection for individual position analysis
+          const analysisTimeout = new Promise<null>((resolve) => 
+            setTimeout(() => resolve(null), 120000) // 2 minute timeout per position
+          );
+          
+          const analysisPromise = engine.analyzePosition(fen, { 
             depth, 
             requireExactDepth: isMaxDepthMode 
           });
+          
+          const analysis = await Promise.race([analysisPromise, analysisTimeout]);
+          
+          if (!analysis) {
+            console.warn(`[Benchmark] Analysis timeout for game ${analyzedCount + 1}, skipping...`);
+            continue;
+          }
+          
           const stockfish = getLocalStockfishPrediction(analysis);
           
           // Log depth verification for audit trail
           const depthReached = analysis.evaluation.depth;
-          const depthRatio = (depthReached / depth) * 100;
-          if (depthRatio < 95 && isMaxDepthMode) {
+          const depthRatio = depthReached > 0 ? (depthReached / depth) * 100 : 0;
+          if (depthRatio < 95 && isMaxDepthMode && depthReached > 0) {
             console.warn(`[Depth Audit] Position ${analyzedCount + 1}: Only reached ${depthReached}/${depth} (${depthRatio.toFixed(1)}%)`);
           }
+          
+          console.log(`[Benchmark] Game ${analyzedCount + 1} complete: depth ${depthReached}, eval ${stockfish.evaluation}cp`);
           
           depths.push(stockfish.depth);
           
@@ -428,7 +453,13 @@ export function useHybridBenchmark() {
           analyzedCount++; // Increment unique game counter
           
         } catch (e) {
-          console.error('Error processing game:', e);
+          const errorMsg = e instanceof Error ? e.message : String(e);
+          console.error(`[Benchmark] Error processing game ${i}:`, errorMsg);
+          // Continue to next game instead of stopping
+          setProgress(prev => ({
+            ...prev!,
+            message: `Error on game ${i + 1}: ${errorMsg.substring(0, 50)}... Continuing...`
+          }));
         }
       }
       
@@ -560,7 +591,7 @@ export function useHybridBenchmark() {
   };
 }
 
-// Fetch games from Lichess
+// Fetch games from Lichess with improved error handling
 async function fetchLichessGames(count: number): Promise<string[]> {
   const topPlayers = [
     "DrNykterstein", // Magnus Carlsen
@@ -577,13 +608,17 @@ async function fetchLichessGames(count: number): Promise<string[]> {
   
   const games: string[] = [];
   const shuffledPlayers = topPlayers.sort(() => Math.random() - 0.5);
+  let fetchErrors = 0;
+  
+  console.log(`[Benchmark] Fetching games from ${shuffledPlayers.length} players, target: ${count} games`);
   
   for (const player of shuffledPlayers) {
     if (games.length >= count) break;
     
     try {
+      console.log(`[Benchmark] Fetching games for ${player}...`);
       const response = await fetch(
-        `https://lichess.org/api/games/user/${player}?max=5&rated=true&perfType=bullet,blitz,rapid,classical&moves=true&pgnInJson=true`,
+        `https://lichess.org/api/games/user/${player}?max=10&rated=true&perfType=bullet,blitz,rapid,classical&moves=true&pgnInJson=true`,
         {
           headers: {
             "Accept": "application/x-ndjson"
@@ -591,9 +626,17 @@ async function fetchLichessGames(count: number): Promise<string[]> {
         }
       );
       
+      if (response.status === 429) {
+        console.warn(`[Benchmark] Rate limited by Lichess for ${player}, waiting 5 seconds...`);
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        continue;
+      }
+      
       if (response.ok) {
         const text = await response.text();
         const lines = text.trim().split("\n").filter(l => l);
+        
+        console.log(`[Benchmark] Got ${lines.length} games for ${player}`);
         
         for (const line of lines) {
           if (games.length >= count) break;
@@ -602,12 +645,27 @@ async function fetchLichessGames(count: number): Promise<string[]> {
             if (game.moves && (game.status === "mate" || game.status === "resign" || game.status === "stalemate")) {
               games.push(game.pgn || game.moves);
             }
-          } catch {}
+          } catch (parseError) {
+            // Skip malformed lines
+          }
         }
+      } else {
+        console.warn(`[Benchmark] Failed to fetch games for ${player}: ${response.status}`);
+        fetchErrors++;
       }
     } catch (e) {
-      console.error(`Error fetching games for ${player}:`, e);
+      console.error(`[Benchmark] Error fetching games for ${player}:`, e);
+      fetchErrors++;
     }
+    
+    // Small delay between players to avoid rate limiting
+    await new Promise(resolve => setTimeout(resolve, 500));
+  }
+  
+  console.log(`[Benchmark] Fetched ${games.length} total games (${fetchErrors} errors)`);
+  
+  if (games.length === 0 && fetchErrors > 0) {
+    throw new Error('Failed to fetch games from Lichess - possibly rate limited. Please try again in a few minutes.');
   }
   
   return games.sort(() => Math.random() - 0.5);
