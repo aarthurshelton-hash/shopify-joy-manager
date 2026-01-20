@@ -272,10 +272,11 @@ export async function fetchRealGames(
   
   console.log(`[v6.3 INFINITE] Target: ${targetGames} fresh games, DB has ${dbSize} analyzed`);
   
-  // INFINITE POOL: Lichess has games since 2010 - that's 14+ years of data
+  // OPTIMIZED POOL: Focus on 2018-present where GM data density is highest
+  // Earlier years (2010-2017) have sparse data and cause empty fetches
   const now = Date.now();
-  const lichessEpoch = new Date('2010-01-01').getTime(); // Lichess founding
-  const totalHistoryMs = now - lichessEpoch;
+  const dataRichEpoch = new Date('2018-01-01').getTime(); // GM activity peak starts ~2018
+  const totalHistoryMs = now - dataRichEpoch;
   
   // Try multiple completely random time windows until we have enough games
   let attempts = 0;
@@ -284,8 +285,8 @@ export async function fetchRealGames(
   while (games.length < targetGames && attempts < maxAttempts) {
     attempts++;
     
-    // COMPLETELY RANDOM time window across ALL of Lichess history
-    const randomStart = lichessEpoch + Math.floor(Math.random() * (totalHistoryMs - 90 * 24 * 60 * 60 * 1000));
+    // COMPLETELY RANDOM time window across data-rich years (2018+)
+    const randomStart = dataRichEpoch + Math.floor(Math.random() * (totalHistoryMs - 90 * 24 * 60 * 60 * 1000));
     const windowSize = 90 * 24 * 60 * 60 * 1000; // 90-day windows
     const sinceTimestamp = randomStart;
     const untilTimestamp = Math.min(now, randomStart + windowSize);
