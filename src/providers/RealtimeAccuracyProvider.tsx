@@ -1,16 +1,24 @@
 /**
- * Realtime Accuracy Provider
+ * Realtime Accuracy Provider v6.63
  * Wraps the app to provide platform-wide accuracy auto-updates
  * Ensures all numerical data across En Pensent syncs in realtime
+ * NOW includes chess_prediction_attempts for FIDE ELO accuracy
  */
 
 import React, { createContext, useContext, ReactNode, useEffect } from 'react';
-import { useRealtimeAccuracy, RealtimeAccuracyState, subscribeToAccuracyUpdates, AccuracyUpdate } from '@/hooks/useRealtimeAccuracy';
+import { 
+  useRealtimeAccuracy, 
+  RealtimeAccuracyState, 
+  subscribeToAccuracyUpdates, 
+  AccuracyUpdate,
+  ChessCumulativeStats 
+} from '@/hooks/useRealtimeAccuracy';
 import { useTradingSessionStore } from '@/stores/tradingSessionStore';
 
 interface RealtimeAccuracyContextValue extends RealtimeAccuracyState {
   syncAccuracyData: () => Promise<void>;
   subscribeToUpdates: (listener: (update: AccuracyUpdate) => void) => () => void;
+  chessStats: ChessCumulativeStats | null;
 }
 
 const RealtimeAccuracyContext = createContext<RealtimeAccuracyContextValue | null>(null);

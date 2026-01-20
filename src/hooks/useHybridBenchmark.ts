@@ -1,8 +1,9 @@
 /**
- * Hybrid Benchmark Hook - HIGH VOLUME v6.47
- * VERSION: 6.47-HIGHVOL (2026-01-20)
+ * Hybrid Benchmark Hook - HIGH VOLUME v6.63
+ * VERSION: 6.63-REALTIME-SYNC (2026-01-20)
  * 
- * v6.47 CHANGES:
+ * v6.63 CHANGES:
+ * - REALTIME SYNC: Chess stats now invalidate cache on save for instant UI updates
  * - PARALLEL FETCHING: Fetch from multiple players simultaneously
  * - HIGHER TARGETS: Request 200+ games per batch
  * - DEEPER HISTORY: Go back years instead of weeks
@@ -16,9 +17,9 @@
  * - Chess.com: -50 offset (closer to FIDE)
  */
 
-// v6.62-WINDOW-FIX: Prime-based time window rotation prevents cache collisions
-const BENCHMARK_VERSION = "6.62-WINDOW-FIX";
-console.log(`[v6.62] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.63-REALTIME-SYNC: Invalidate chess stats cache on save
+const BENCHMARK_VERSION = "6.63-REALTIME-SYNC";
+console.log(`[v6.63] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -28,6 +29,7 @@ import { analyzeTimeControlProfile, StyleProfile, TimeControlElo } from '@/lib/p
 import { buildFingerprint, PlayerFingerprint, GameData } from '@/lib/pensent-core/domains/chess/playerFingerprint';
 import { getAlreadyAnalyzedData, hashPosition, reaffirmExistingPrediction } from '@/lib/chess/benchmarkPersistence';
 import { fetchMultiSourceGames, getSourceStats, type UnifiedGameData } from '@/lib/chess/gameImport/multiSourceFetcher';
+import { invalidateChessStatsCache } from './useRealtimeAccuracy';
 
 // Platform-specific ELO calibration factors (Platform → FIDE approximation)
 export const PLATFORM_ELO_CALIBRATION = {
@@ -692,14 +694,17 @@ export function useHybridBenchmark() {
               benchmark_id: benchmarkId,
             });
             if (insertError && !insertError.message?.includes('duplicate')) {
-              console.error(`[v6.43] Failed to save ${attempt.game_id}:`, insertError.message);
+              console.error(`[v6.63] Failed to save ${attempt.game_id}:`, insertError.message);
+            } else {
+              // v6.63: Invalidate cache on successful save for realtime UI sync
+              invalidateChessStatsCache();
             }
           }
           
           lastSaveIndex = attempts.length;
-          console.log(`[v6.43] ✅ Incremental save complete`);
+          console.log(`[v6.63] ✅ Incremental save complete`);
         } catch (saveErr) {
-          console.error(`[v6.43] ❌ Incremental save failed:`, saveErr);
+          console.error(`[v6.63] ❌ Incremental save failed:`, saveErr);
         }
       }
       
@@ -1166,10 +1171,13 @@ export function useHybridBenchmark() {
                 });
                 // Silently ignore duplicate errors
                 if (insertErr && !insertErr.message?.includes('duplicate')) {
-                  console.error(`[v6.43] Insert error:`, insertErr.message);
+                  console.error(`[v6.63] Insert error:`, insertErr.message);
+                } else {
+                  // v6.63: Invalidate cache for realtime sync
+                  invalidateChessStatsCache();
                 }
               }
-              console.log(`[v6.43] ✅ Emergency saved ${attempts.length} predictions`);
+              console.log(`[v6.63] ✅ Emergency saved ${attempts.length} predictions`);
             }
           }
         } catch (saveError) {
