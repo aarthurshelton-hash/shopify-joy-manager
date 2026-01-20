@@ -1,11 +1,11 @@
-# Memory: features/universal-engine/v6-isolated-session-deduplication
+# Memory: features/universal-engine/v6-freeflow-session-logic-unified
 Updated: now
 
-The 'v6.21-FREEFLOW' system fixes consecutive benchmark batch fetching by **completely removing deduplication from the fetch layer**:
+The 'v6.22-CLEAN' benchmark architecture maximizes game absorption by **completely removing ALL deduplication logic from `fetchLichessGames`**:
 
-1. **Free Fetching**: `fetchLichessGames()` is called with NO deduplication data at all - it returns all games it finds from the Lichess API
-2. **Queue Deduplication**: The `existingIds` Set filters out games already in `allGames` queue (prevents within-run queue duplicates)
-3. **DB Check at Prediction Time**: Games are checked against `analyzedData.gameIds` (DB) only when about to predict, not during fetching
-4. **Session Tracking for Logging**: `sessionSeenIds` tracks fetched games for informational purposes only, not for filtering
+1. **Clean Function Signature**: `fetchLichessGames(count: number)` - no longer accepts `analyzedData` parameter
+2. **No Internal DB Check**: Removed `if (analyzedData?.gameIds?.has(lichessGameId)) continue;` line that was filtering games at fetch time
+3. **DB Check at Prediction Time Only**: Games are checked against `analyzedData.gameIds` in the main prediction loop (line ~544), not during fetching
+4. **Queue Deduplication**: Only filters duplicates within the current `allGames` queue using `existingIds` Set
 
-The key insight: passing `sessionSeenIds` to `fetchLichessGames` caused it to filter out ALL previously fetched games in subsequent batches, resulting in empty batch returns. By removing this filtering, each batch now returns fresh games from new random time windows.
+The key bug was that even when not passing `analyzedData` as a parameter, the function referenced it via closure from outer scope, causing all DB games to be filtered during fetch. Now fetch truly returns ALL games from the API.
