@@ -510,12 +510,6 @@ export function useHybridBenchmark() {
           // Only skip truly unplayable results (ongoing games with no clear outcome)
           // parsePGN now infers results from multiple sources, so this rarely triggers
           
-          // Generate position hash for learning cross-reference (NOT deduplication)
-          // CRITICAL INSIGHT: Same position from DIFFERENT games is VALUABLE data
-          // The more times we see a position across unique games, the stronger our pattern recognition
-          // Only skip if we've already analyzed THIS EXACT GAME (same lichessId) in a previous run
-          const positionHash = hashPosition(fen);
-          
           // CRITICAL: Use the REAL 8-character Lichess ID (e.g., "ZhoooCoY")
           // This ID links directly to lichess.org/{id} for verification
           const lichessGameId = game.lichessId;
@@ -526,29 +520,30 @@ export function useHybridBenchmark() {
             continue;
           }
           
-          // CRITICAL FIX: Use POSITION HASH as PRIMARY deduplication key
-          // This catches duplicates regardless of whether they have real Lichess IDs or synthetic IDs
-          // Same chess position = same analysis, no need to re-run Stockfish
-          if (analyzedData.positionHashes.has(positionHash)) {
-            skippedDuplicates++;
-            console.log(`[Dedup] Skipping duplicate POSITION (hash: ${positionHash.slice(0,8)}...) - already analyzed`);
-            // Fire background reaffirmation to boost confidence
-            reaffirmExistingPrediction(fen, positionHash).catch(() => {});
-            continue;
-          }
-          
-          // SECONDARY: Also skip if we've seen this exact Lichess game ID
-          // (handles case where same game might appear from different player searches)
+          // GAME-BASED DEDUPLICATION ONLY
+          // We ONLY skip games we've already analyzed (same Lichess game ID)
+          // Same POSITION in different games is VALUABLE - strengthens pattern recognition!
           if (analyzedData.gameIds.has(lichessGameId)) {
             skippedDuplicates++;
-            console.log(`[Dedup] Skipping game ${lichessGameId} - already in database`);
+            console.log(`[Dedup] Skipping game ${lichessGameId} - already predicted (verify: https://lichess.org/${lichessGameId})`);
             continue;
           }
           
-          // Add to in-memory sets for this run (prevent within-run duplicates)
+          // Add to in-memory set for this run (prevent within-run duplicates)
+          analyzedData.gameIds.add(lichessGameId);
+          
+          // Generate position hash for LEARNING (cross-reference patterns, NOT deduplication)
+          // If we see the same position in a new game, that's an ADVANTAGE for pattern confidence
+          const positionHash = hashPosition(fen);
+          const isKnownPosition = analyzedData.positionHashes.has(positionHash);
+          if (isKnownPosition) {
+            // BOOST: We've seen this position before in a DIFFERENT game!
+            // This strengthens our pattern confidence - fire reaffirmation
+            console.log(`[Pattern Boost] Position seen in another game - reaffirming pattern (hash: ${positionHash.slice(0,8)}...)`);
+            reaffirmExistingPrediction(fen, positionHash).catch(() => {});
+          }
           analyzedData.positionHashes.add(positionHash);
           analyzedData.fenStrings.add(fen);
-          analyzedData.gameIds.add(lichessGameId);
           
           // Full-scope Color Flow prediction with all 25 adapters
           const colorFlow = analyzeColorFlowFullScope(moves.slice(0, moveNumber));
@@ -1042,14 +1037,12 @@ async function fetchLichessGames(
           // Skip if we've already seen this game in current batch
           if (gameIds.has(lichessGameId)) continue;
           
-          // CRITICAL FIX: Check BOTH real Lichess IDs AND legacy gameIds
-          // analyzedData.gameIds contains ALL IDs (synthetic + real)
-          // The main loop will do position-hash based deduplication for legacy records
-          const isKnownGame = analyzedData?.gameIds.has(lichessGameId) || 
-                              (analyzedData as any)?.realLichessIds?.has(lichessGameId);
+          // GAME-BASED DEDUPLICATION: Only skip games we've already analyzed
+          // Position-based deduplication is WRONG - same position in different games is valuable!
+          const isKnownGame = analyzedData?.gameIds.has(lichessGameId);
           if (isKnownGame) {
             alreadyAnalyzedSkipped++;
-            console.log(`[Dedup] Pre-filter: game ${lichessGameId} already in database`);
+            console.log(`[Dedup] Pre-filter: game ${lichessGameId} already predicted`);
             continue;
           }
           

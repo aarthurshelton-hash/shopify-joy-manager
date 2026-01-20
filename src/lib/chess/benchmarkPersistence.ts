@@ -47,26 +47,27 @@ export function hashPosition(fen: string): string {
 }
 
 /**
- * Fetch all previously analyzed position hashes and game IDs
- * Used for cross-run deduplication to ensure every benchmark uses unique positions
+ * Fetch all previously analyzed GAMES (not positions)
  * 
- * CRITICAL: Deduplication now uses POSITION HASHES as primary key (not game IDs)
- * This ensures we don't re-analyze the same chess position regardless of
- * whether it was stored with a legacy synthetic ID or a real Lichess ID.
+ * CRITICAL INSIGHT: Deduplication is GAME-BASED ONLY
+ * - Same position in DIFFERENT games = VALUABLE (strengthens pattern recognition)
+ * - Same GAME (same Lichess ID) = SKIP (already predicted)
+ * 
+ * We ONLY deduplicate by Lichess game ID to ensure we never analyze the same 
+ * game twice, but identical positions appearing in different games are welcome.
  */
 export async function getAlreadyAnalyzedData(): Promise<{
-  positionHashes: Set<string>;
-  gameIds: Set<string>;
-  fenStrings: Set<string>;
-  realLichessIds: Set<string>; // Only valid 8-char alphanumeric IDs
+  gameIds: Set<string>;          // All game IDs (for deduplication)
+  realLichessIds: Set<string>;   // Only valid 8-char alphanumeric Lichess IDs
+  positionHashes: Set<string>;   // For pattern learning cross-reference (NOT deduplication)
+  fenStrings: Set<string>;       // For pattern learning (NOT deduplication)
 }> {
-  const positionHashes = new Set<string>();
   const gameIds = new Set<string>();
-  const fenStrings = new Set<string>();
   const realLichessIds = new Set<string>();
+  const positionHashes = new Set<string>(); // For learning, NOT deduplication
+  const fenStrings = new Set<string>();     // For learning, NOT deduplication
 
   // CRITICAL: Paginate through ALL records to bypass 1000 row limit
-  // Without this, we'd only load 1000 positions and re-analyze old duplicates
   let from = 0;
   const pageSize = 1000;
   let hasMore = true;
@@ -81,7 +82,7 @@ export async function getAlreadyAnalyzedData(): Promise<{
       .range(from, from + pageSize - 1);
 
     if (error) {
-      console.warn('[Dedup] Error fetching positions:', error);
+      console.warn('[Dedup] Error fetching games:', error);
       break;
     }
 
@@ -91,14 +92,11 @@ export async function getAlreadyAnalyzedData(): Promise<{
     }
 
     for (const row of data) {
-      // Position hash is the PRIMARY deduplication key
-      if (row.position_hash) positionHashes.add(row.position_hash);
-      
-      // Store ALL game IDs (both formats) for backward compatibility
+      // Store ALL game IDs for deduplication
       if (row.game_id) {
         gameIds.add(row.game_id);
         
-        // Also track ONLY real 8-char Lichess IDs separately
+        // Track REAL 8-char Lichess IDs separately
         const isRealLichessId = row.game_id.length === 8 && /^[a-zA-Z0-9]+$/.test(row.game_id);
         if (isRealLichessId) {
           realLichessIds.add(row.game_id);
@@ -108,7 +106,8 @@ export async function getAlreadyAnalyzedData(): Promise<{
         }
       }
       
-      // Store NORMALIZED fen for consistent matching
+      // Position data for pattern learning (NOT used for deduplication)
+      if (row.position_hash) positionHashes.add(row.position_hash);
       if (row.fen) fenStrings.add(normalizeFen(row.fen));
     }
 
@@ -117,9 +116,10 @@ export async function getAlreadyAnalyzedData(): Promise<{
     hasMore = data.length === pageSize;
   }
 
-  console.log(`[Dedup] Loaded ${positionHashes.size} positions, ${realIdCount} real Lichess IDs, ${syntheticCount} legacy IDs from ${totalFetched} records`);
-  console.log(`[Dedup] PRIMARY deduplication: position_hash (${positionHashes.size} unique positions)`);
-  return { positionHashes, gameIds, fenStrings, realLichessIds };
+  console.log(`[Dedup] Loaded ${realIdCount} real Lichess games, ${syntheticCount} legacy IDs from ${totalFetched} total records`);
+  console.log(`[Dedup] GAME-BASED deduplication: Only skip games we've already analyzed (${gameIds.size} unique games)`);
+  console.log(`[Dedup] Position patterns available for learning: ${positionHashes.size} (NOT used for deduplication)`);
+  return { gameIds, realLichessIds, positionHashes, fenStrings };
 }
 
 /**
