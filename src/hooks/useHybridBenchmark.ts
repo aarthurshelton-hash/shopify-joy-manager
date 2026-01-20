@@ -16,8 +16,8 @@
  * - Chess.com: -50 offset (closer to FIDE)
  */
 
-// v6.51-CLOSURE-FIX: Fixed allGames array mutation inside fetchMoreGames closure
-const BENCHMARK_VERSION = "6.51-CLOSURE-FIX";
+// v6.52-BATCHFIX: Fixed batch continuation logic when fetches return 0 after filtering
+const BENCHMARK_VERSION = "6.52-BATCHFIX";
 console.log(`[v6.51] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
@@ -697,19 +697,30 @@ export function useHybridBenchmark() {
           }
           
           const newCount = await fetchMoreGames();
+          
+          // v6.52-BATCHFIX: Better handling of batch results
           if (newCount === 0) {
             emptyBatchStreak++;
-            console.warn(`[v6.43] Empty batch #${emptyBatchStreak}/${MAX_EMPTY_BATCHES}`);
+            console.warn(`[v6.52] Empty batch #${emptyBatchStreak}/${MAX_EMPTY_BATCHES}`);
+            
             if (emptyBatchStreak >= MAX_EMPTY_BATCHES) {
-              console.warn(`[v6.43] Too many empty batches, saving partial results and stopping.`);
-              // v6.43: Save what we have before breaking
+              console.warn(`[v6.52] Too many empty batches, saving partial results and stopping.`);
               await saveIncrementalResults();
               break;
             }
-            continue;
+            
+            // v6.52: DON'T continue - let the loop naturally check if we got games
+            // The fetchMoreGames might have added games but returned 0 due to filtering
+            // If gameQueue.length > gameIndex, we actually DO have games to process
+            if (gameIndex >= gameQueue.length) {
+              // Truly empty - wait and try next batch
+              continue;
+            }
+            // Otherwise fall through to process what we have
+          } else {
+            emptyBatchStreak = 0;
           }
-          emptyBatchStreak = 0;
-          // Fall through to process newly fetched games
+          // Fall through to process games (newly fetched OR remaining)
         }
         
         // v6.33: Check bounds again after potential fetch
