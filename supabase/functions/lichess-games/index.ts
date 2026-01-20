@@ -1,5 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
+/**
+ * Lichess Games Fetcher v6.67-RATELIMIT-MEMORY
+ * 
+ * Server-side rate limit tracking ensures we don't hammer the API
+ * after receiving a 429. The cooldown is remembered across requests.
+ */
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -9,17 +16,32 @@ const corsHeaders = {
 const cache = new Map<string, { data: unknown; timestamp: number }>();
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes (longer to reduce repeated hits)
 
-// Track last request time for throttling with exponential backoff
+// v6.67-RATELIMIT-MEMORY: Track rate limit state across requests
 let lastRequestTime = 0;
 let baseInterval = 2500; // Start at 2.5 seconds
 let consecutiveRequests = 0;
-let lastRateLimitTime = 0;
+let rateLimitedUntil = 0; // v6.67: Timestamp when rate limit expires
+
+// v6.67: Check if we're still in rate limit cooldown
+function isRateLimited(): { limited: boolean; remainingMs: number } {
+  const now = Date.now();
+  if (rateLimitedUntil > now) {
+    return { limited: true, remainingMs: rateLimitedUntil - now };
+  }
+  return { limited: false, remainingMs: 0 };
+}
+
+// v6.67: Record when we get rate limited
+function recordRateLimit(retryAfterSeconds: number): void {
+  rateLimitedUntil = Date.now() + (retryAfterSeconds * 1000);
+  console.log(`[Lichess Games v6.67] Rate limit recorded, expires at ${new Date(rateLimitedUntil).toISOString()}`);
+}
 
 // Dynamic interval: increases after rate limits, decreases after successful requests
 function getRequestInterval(): number {
-  const timeSinceRateLimit = Date.now() - lastRateLimitTime;
-  // If we hit a rate limit recently (last 60s), use longer intervals
-  if (timeSinceRateLimit < 60000) {
+  const timeSinceRateLimit = Date.now() - rateLimitedUntil;
+  // If cooldown just expired (last 60s), use longer intervals to be safe
+  if (timeSinceRateLimit < 60000 && timeSinceRateLimit > 0) {
     return Math.min(baseInterval * 2, 10000); // Max 10s
   }
   // After 5+ consecutive successful requests, reduce interval
@@ -37,6 +59,31 @@ serve(async (req) => {
 
   try {
     const { player, since, until, max = 25 } = await req.json();
+
+    // v6.67: Check if we're in rate limit cooldown BEFORE making any API calls
+    const rateLimitStatus = isRateLimited();
+    if (rateLimitStatus.limited) {
+      const remainingSec = Math.ceil(rateLimitStatus.remainingMs / 1000);
+      console.log(`[Lichess Games v6.67] Rate limit active, ${remainingSec}s remaining - returning early`);
+      return new Response(
+        JSON.stringify({ 
+          games: [], 
+          count: 0,
+          rateLimited: true, 
+          resetInMs: rateLimitStatus.remainingMs,
+          error: 'Rate limited',
+          message: `API cooldown: ${remainingSec}s remaining. Will auto-resume.`
+        }),
+        { 
+          status: 429, 
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'application/json',
+            'Retry-After': String(remainingSec)
+          } 
+        }
+      );
+    }
 
     if (!player) {
       return new Response(
@@ -89,13 +136,28 @@ serve(async (req) => {
     });
 
     if (response.status === 429) {
-      console.warn(`[Lichess Games] Rate limited for ${player} - increasing backoff`);
-      lastRateLimitTime = Date.now();
-      baseInterval = Math.min(baseInterval * 1.5, 10000); // Increase base interval, max 10s
+      const retryAfter = parseInt(response.headers.get('Retry-After') || '60');
+      recordRateLimit(retryAfter); // v6.67: Remember this rate limit
+      baseInterval = Math.min(baseInterval * 1.5, 10000); // Increase base interval
       consecutiveRequests = 0;
+      console.warn(`[Lichess Games v6.67] Rate limited for ${player} - cooldown set to ${retryAfter}s`);
       return new Response(
-        JSON.stringify({ error: 'Rate limited', retryAfter: 60, backoffMs: baseInterval }),
-        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '60' } }
+        JSON.stringify({ 
+          games: [],
+          count: 0,
+          error: 'Rate limited', 
+          rateLimited: true,
+          retryAfter, 
+          resetInMs: retryAfter * 1000 
+        }),
+        { 
+          status: 429, 
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'application/json', 
+            'Retry-After': String(retryAfter)
+          } 
+        }
       );
     }
 

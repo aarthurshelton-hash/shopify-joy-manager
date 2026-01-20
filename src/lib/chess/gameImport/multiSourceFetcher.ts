@@ -1,14 +1,14 @@
 /**
- * Multi-Source Game Fetcher v2.0 - HIGH VOLUME
- * VERSION: 6.64-SYNC-FIX (2026-01-20)
+ * Multi-Source Game Fetcher v6.67-RATELIMIT-MEMORY
+ * VERSION: 6.67-RATELIMIT-MEMORY (2026-01-20)
  * 
- * v6.64 CHANGES:
- * - SYNC FIX: Works with improved realtime updates
+ * v6.67 CHANGES:
+ * - RATELIMIT-MEMORY: Server-side cooldown tracking in Edge Function
+ * - Client stops making requests when server signals rate limit
+ * - Prevents spamming API during cooldown period
  * 
- * v6.62 CHANGES:
- * - WINDOW FIX: Use larger prime-based offsets to prevent time window collisions
- * - Each batch explores genuinely different historical periods
- * - Randomization uses batch-seeded approach for reproducibility with variety
+ * v6.66 CHANGES:
+ * - QUEUE-DEDUP: Track queued game IDs to prevent re-fetching
  * 
  * SOURCES:
  * - Lichess (via Edge Function proxy) - 5+ billion games
@@ -272,7 +272,7 @@ async function fetchFromChessCom(
 
 /**
  * Fetch games from Lichess (via Edge Function) - HIGH VOLUME
- * v6.59-VERIFIED-POOL: Smart time windows focused on recent high-activity periods
+ * v6.67-RATELIMIT-MEMORY: Respects server-side rate limit memory
  */
 async function fetchFromLichess(
   targetCount: number,
@@ -285,6 +285,10 @@ async function fetchFromLichess(
   
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  
+  // v6.67: Client-side rate limit tracking to avoid spamming during cooldown
+  let serverRateLimited = false;
+  let serverResetMs = 0;
   
   // v6.62: Prime-based rotation to maximize player coverage
   const startOffset = (batchNumber * 17) % LICHESS_TOP_PLAYERS.length;
@@ -311,9 +315,17 @@ async function fetchFromLichess(
   
   for (const chunk of playerChunks) {
     if (games.length >= targetCount) break;
+    
+    // v6.67: If server is rate limited, stop making requests until cooldown expires
+    if (serverRateLimited) {
+      console.warn(`[Lichess v6.67] Server rate limited, waiting ${Math.ceil(serverResetMs / 1000)}s before resuming`);
+      errors.push(`[Lichess] Server rate limited - will resume in ${Math.ceil(serverResetMs / 1000)}s`);
+      break; // Exit loop - don't spam the server
+    }
+    
     if (rateLimitHits >= 3) {
       const waitTime = Math.min(backoffMs * Math.pow(1.5, rateLimitHits), 20000);
-      console.warn(`[Lichess v6.59] Rate limit backoff: ${waitTime}ms`);
+      console.warn(`[Lichess v6.67] Local rate limit backoff: ${waitTime}ms`);
       await new Promise(r => setTimeout(r, waitTime));
       rateLimitHits = 0;
     }
@@ -321,6 +333,11 @@ async function fetchFromLichess(
     // v6.62-WINDOW-FIX: Use prime-based offsets to prevent cache collisions
     // Each batch explores genuinely different time periods
     const chunkPromises = chunk.map(async (player, idx) => {
+      // v6.67: Skip if we already know server is rate limited
+      if (serverRateLimited) {
+        return { player, rateLimit: true, resetMs: serverResetMs };
+      }
+      
       const now = Date.now();
       const oneDay = 24 * 60 * 60 * 1000;
       
@@ -348,7 +365,15 @@ async function fetchFromLichess(
         });
         
         if (response.status === 429) {
-          return { player, rateLimit: true };
+          // v6.67: Parse the server's rate limit response
+          try {
+            const data = await response.json();
+            if (data.resetInMs) {
+              serverRateLimited = true;
+              serverResetMs = data.resetInMs;
+            }
+          } catch { /* ignore parse errors */ }
+          return { player, rateLimit: true, resetMs: serverResetMs };
         }
         
         if (!response.ok) {
@@ -356,6 +381,14 @@ async function fetchFromLichess(
         }
         
         const data = await response.json();
+        
+        // v6.67: Check if response indicates rate limiting even with 200 status
+        if (data.rateLimited && data.resetInMs) {
+          serverRateLimited = true;
+          serverResetMs = data.resetInMs;
+          return { player, rateLimit: true, resetMs: serverResetMs };
+        }
+        
         return { player, games: data.games || [] };
       } catch (e) {
         return { player, error: e instanceof Error ? e.message : 'Unknown error' };
@@ -368,7 +401,8 @@ async function fetchFromLichess(
       if ('rateLimit' in res && res.rateLimit) {
         rateLimitHits++;
         backoffMs = Math.min(backoffMs * 1.5, 10000); // Increase backoff
-        errors.push(`[Lichess ${res.player}] Rate limited (backoff: ${backoffMs}ms)`);
+        const resetInfo = 'resetMs' in res ? ` (server cooldown: ${Math.ceil((res.resetMs || 0) / 1000)}s)` : '';
+        errors.push(`[Lichess ${res.player}] Rate limited${resetInfo}`);
         continue;
       }
       
