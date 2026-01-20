@@ -11,9 +11,9 @@
  * That's it. No over-engineering.
  */
 
-// v6.25-DATAWEIGHT: Weight time windows toward data-rich years (2020-2025)
-const BENCHMARK_VERSION = "6.25-DATAWEIGHT";
-console.log(`[v6.25] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.26-FREEFLOW: Maximum fresh game absorption with deferred deduplication
+const BENCHMARK_VERSION = "6.26-FREEFLOW";
+console.log(`[v6.26] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -439,53 +439,50 @@ export function useHybridBenchmark() {
       const depths: number[] = [];
       let predictedCount = 0;
       
-      // v6.24-SESSFIX: Fixed session tracking + truly random windows
-      console.log(`[v6.24] ========================================`);
-      console.log(`[v6.24] STARTING BENCHMARK WITH SESSION FIX`);
-      console.log(`[v6.24] Target: ${gameCount} predictions`);
-      console.log(`[v6.24] DB has ${analyzedData.gameIds.size} games (checked at prediction stage only)`);
-      console.log(`[v6.24] ========================================`);
+      // v6.26-FREEFLOW: Maximum fresh game absorption
+      console.log(`[v6.26] ========================================`);
+      console.log(`[v6.26] STARTING FREEFLOW BENCHMARK`);
+      console.log(`[v6.26] Target: ${gameCount} predictions`);
+      console.log(`[v6.26] DB has ${analyzedData.gameIds.size} games`);
+      console.log(`[v6.26] Deduplication ONLY at prediction stage`);
+      console.log(`[v6.26] ========================================`);
       
-      // v6.24: Session tracking is ONLY for cross-batch deduplication, NOT self-filtering
-      // predictedIds tracks games we've SUCCESSFULLY predicted (not just fetched)
+      // v6.26: predictedIds tracks games we've SUCCESSFULLY predicted this session
       const predictedIds = new Set<string>();
-      const queriedPlayersThisSession = new Set<string>(); // Track queried players to rotate
       
-      // v6.5: Track all games across multiple fetch batches
+      // v6.26: Track all games across multiple fetch batches
       let allGames: any[] = [];
       let gameIndex = 0;
       let batchNumber = 0;
-      const maxBatches = Math.max(20, Math.ceil(gameCount / 5));
+      const maxBatches = Math.max(30, Math.ceil(gameCount / 3)); // More batches allowed
       
-      // Initial fetch - more aggressive for first batch
-      const fetchCount = Math.max(gameCount * 3, 50);
+      // v6.26: Request MORE games per batch to ensure we get enough fresh ones
+      const fetchCount = Math.max(gameCount * 5, 100);
       
       async function fetchMoreGames() {
         batchNumber++;
-        console.log(`[v6.24] ========== BATCH ${batchNumber} ==========`);
-        console.log(`[v6.24] Queue has ${allGames.length} games, processed ${gameIndex}`);
-        console.log(`[v6.24] Players queried this session: ${queriedPlayersThisSession.size}`);
+        console.log(`[v6.26] ========== BATCH ${batchNumber}/${maxBatches} ==========`);
+        console.log(`[v6.26] Queue: ${allGames.length}, Processed: ${gameIndex}, Predicted: ${predictedCount}`);
         setProgress(prev => ({ 
           ...prev!, 
-          message: `Fetching batch ${batchNumber} (queue: ${allGames.length}, predicted: ${predictedCount})...` 
+          message: `Fetching batch ${batchNumber} (predicted: ${predictedCount}/${gameCount})...` 
         }));
         
-        // v6.24-SESSFIX: Pass batch number + queried players for rotation
-        const newGames = await fetchLichessGames(fetchCount, batchNumber, queriedPlayersThisSession);
-        console.log(`[v6.24] Batch ${batchNumber}: Got ${newGames.length} fresh games from Lichess`);
+        // v6.26-FREEFLOW: Simple batch number, no player rotation tracking
+        const newGames = await fetchLichessGames(fetchCount, batchNumber);
+        console.log(`[v6.26] Batch ${batchNumber}: Fetched ${newGames.length} games from API`);
         
-        // v6.24: NO session tracking of fetched games here - that was causing the bug!
-        
-        // Filter out games already in queue (within this run)
+        // v6.26: Only filter games already in THIS session's queue
         const existingIds = new Set(allGames.map(g => g.lichessId));
         const trulyNewGames = newGames.filter(g => !existingIds.has(g.lichessId));
         
-        if (newGames.length !== trulyNewGames.length) {
-          console.log(`[v6.24] ⚠️ ${newGames.length - trulyNewGames.length} queue dupes filtered`);
+        const queueDupes = newGames.length - trulyNewGames.length;
+        if (queueDupes > 0) {
+          console.log(`[v6.26] Filtered ${queueDupes} queue dupes, adding ${trulyNewGames.length} new`);
         }
         
         allGames = [...allGames, ...trulyNewGames];
-        console.log(`[v6.24] Queue now has ${allGames.length} games, index at ${gameIndex}`);
+        console.log(`[v6.26] Queue now: ${allGames.length} games`);
         return trulyNewGames.length;
       }
       
@@ -500,24 +497,25 @@ export function useHybridBenchmark() {
       // Track skip reasons for debugging
       let skipStats = { invalidId: 0, dbDupe: 0, shortGame: 0, timeout: 0, parseError: 0 };
       
-      // v6.14 PERSISTENT REFETCH: Keep trying until we hit target OR truly exhausted
+      // v6.26 PERSISTENT REFETCH: Keep trying until we hit target OR truly exhausted
       let emptyBatchStreak = 0;
-      const MAX_EMPTY_BATCHES = 5; // Give up after 5 consecutive empty fetches
+      const MAX_EMPTY_BATCHES = 8; // More persistence for fresh games
       
       while (predictedCount < gameCount && !abortRef.current && batchNumber < maxBatches) {
         // Check if we need more games
         if (gameIndex >= allGames.length) {
-          console.log(`[v6.25] Exhausted queue at index ${gameIndex}, need more games (${predictedCount}/${gameCount} predictions)`);
-          console.log(`[v6.25] SKIP STATS: invalid=${skipStats.invalidId}, dbDupe=${skipStats.dbDupe}, short=${skipStats.shortGame}, timeout=${skipStats.timeout}, parse=${skipStats.parseError}`);
+          console.log(`[v6.26] Exhausted queue at index ${gameIndex}, need more games (${predictedCount}/${gameCount} predictions)`);
+          console.log(`[v6.26] SKIP STATS: invalid=${skipStats.invalidId}, dbDupe=${skipStats.dbDupe}, short=${skipStats.shortGame}, timeout=${skipStats.timeout}, parse=${skipStats.parseError}`);
           const newCount = await fetchMoreGames();
           if (newCount === 0) {
             emptyBatchStreak++;
-            console.warn(`[v6.25] Empty batch #${emptyBatchStreak}/${MAX_EMPTY_BATCHES} (predicted ${predictedIds.size} this session)`);
+            console.warn(`[v6.26] Empty batch #${emptyBatchStreak}/${MAX_EMPTY_BATCHES}`);
             if (emptyBatchStreak >= MAX_EMPTY_BATCHES) {
-              console.warn(`[v6.25] Too many empty batches, stopping.`);
+              console.warn(`[v6.26] Too many empty batches, stopping.`);
               break;
             }
-            // Keep trying! Don't break on first empty batch
+            // Wait a bit before retry to avoid rate limiting
+            await new Promise(r => setTimeout(r, 3000));
             continue;
           }
           emptyBatchStreak = 0; // Reset streak on successful fetch
@@ -530,22 +528,18 @@ export function useHybridBenchmark() {
         
         // Simple validation
         if (!lichessId || lichessId.length !== 8) {
-          console.log(`[v6.25] Skip invalid ID: ${lichessId}`);
           skipStats.invalidId++;
           continue;
         }
         
-        // v6.25: Check against DB at prediction time
+        // v6.26: Check against DB at prediction time ONLY
         if (analyzedData.gameIds.has(lichessId)) {
-          // Don't spam console for expected DB dupes
           skipStats.dbDupe++;
           continue;
         }
         
-        // v6.25: Only skip if we've ALREADY PREDICTED this game this session
+        // v6.26: Only skip if we've ALREADY PREDICTED this game this session
         if (predictedIds.has(lichessId)) {
-          console.log(`[v6.25] Skip already predicted this session: ${lichessId}`);
-          skipStats.dbDupe++;
           continue;
         }
         
@@ -876,18 +870,17 @@ export function useHybridBenchmark() {
   };
 }
 
-// v6.23-ADAPTIVE: Batch-aware fetching with player rotation
+// v6.26-FREEFLOW: Simple fetch with truly random time windows
 async function fetchLichessGames(
   count: number, 
-  batchNumber: number = 1, 
-  queriedPlayers: Set<string> = new Set()
+  batchNumber: number = 1
 ): Promise<LichessGameData[]> {
   const targetGames = count;
-  const gamesPerPlayer = Math.max(50, Math.ceil(targetGames / 2));
+  const gamesPerPlayer = Math.max(50, Math.ceil(targetGames / 3));
   
-  console.log(`[v6.23 FETCH] Batch ${batchNumber}: Requesting ${targetGames} fresh games`);
+  console.log(`[v6.26 FETCH] Batch ${batchNumber}: Requesting ${targetGames} fresh games`);
   
-  // v6.18: MASSIVELY EXPANDED player pool - 60+ players for infinite fresh data
+  // v6.26: Expanded player pool - 60+ players for maximum variety
   const topPlayers = [
     // Current Elite
     "DrNykterstein", "Hikaru", "nihalsarin2004", "GMWSO", "LyonBeast",
@@ -900,7 +893,7 @@ async function fetchLichessGames(
     "chesswarrior7197", "MagnusCarlsen", "AnishGiri", "VladimirKramnik",
     "SethiChess", "duhless", "howitzer14", "rajabboy", "Jospem", "Alireza2003",
     "lance5500", "Navaraok", "Nodirbek2004", "VincentKeymer2004", "WesleyS8",
-    // Additional Top Players - v6.18 expansion
+    // Additional Top Players
     "DrMikeLikesChess", "gmrobinsonelwog", "NeverEnough", "pengcheng2004",
     "Svidler", "lovlas", "alireza2006", "taniasachdev", "JW_Praggnanandhaa",
     "nepoking", "BakhtiyarIbadov", "RockingGuyMD", "Vladimiro_Kramnik",
@@ -914,42 +907,30 @@ async function fetchLichessGames(
   const games: LichessGameData[] = [];
   const gameIds = new Set<string>();
   
-  // v6.23-ADAPTIVE: Rotate through players - skip recently queried ones
-  // Filter out players we've already queried this session
-  const freshPlayers = topPlayers.filter(p => !queriedPlayers.has(p));
+  // v6.26-FREEFLOW: Truly random shuffle every batch - NO player tracking
+  const shuffledPlayers = [...topPlayers].sort(() => Math.random() - 0.5);
   
-  // If we've exhausted all players, reset and use all again (with different time windows)
-  const availablePlayers = freshPlayers.length > 5 ? freshPlayers : topPlayers;
-  
-  // v6.23: Use batch number as seed offset for deterministic but varied shuffling
-  const shuffledPlayers = [...availablePlayers].sort((a, b) => {
-    const hashA = (a.charCodeAt(0) * batchNumber + a.length) % 1000;
-    const hashB = (b.charCodeAt(0) * batchNumber + b.length) % 1000;
-    return hashA - hashB;
-  });
-  
-  console.log(`[v6.23 FETCH] ${freshPlayers.length} fresh players available, using ${shuffledPlayers.length}`);
-  console.log(`[v6.23 FETCH] First 5 players: ${shuffledPlayers.slice(0, 5).join(', ')}`);
+  console.log(`[v6.26 FETCH] Using ${shuffledPlayers.length} players (random order each batch)`);
+  console.log(`[v6.26 FETCH] First 5: ${shuffledPlayers.slice(0, 5).join(', ')}`);
   
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
   
-  // v6.25-DATAWEIGHT: Weight time windows toward data-rich years (2020-2025)
-  // 70% chance recent years (2022-2025), 30% chance older (2020-2021)
+  // v6.26-FREEFLOW: Truly random time windows weighted toward recent years
   function getRandomTimeWindow(): { since: number; until: number } {
     const now = Date.now();
     
-    // v6.25: Weighted random toward recent years where data is densest
+    // Weight toward recent years (more games available)
     let targetYear: number;
     const roll = Math.random();
-    if (roll < 0.4) {
-      // 40% chance: 2024-2025 (most active)
+    if (roll < 0.5) {
+      // 50% chance: 2024-2025 (most active)
       targetYear = 2024 + Math.floor(Math.random() * 2);
-    } else if (roll < 0.75) {
-      // 35% chance: 2022-2023
+    } else if (roll < 0.8) {
+      // 30% chance: 2022-2023
       targetYear = 2022 + Math.floor(Math.random() * 2);
     } else {
-      // 25% chance: 2020-2021
+      // 20% chance: 2020-2021
       targetYear = 2020 + Math.floor(Math.random() * 2);
     }
     
@@ -957,33 +938,32 @@ async function fetchLichessGames(
     const targetDay = 1 + Math.floor(Math.random() * 28);
     
     const windowStart = new Date(targetYear, targetMonth, targetDay).getTime();
-    const windowDuration = 14 * 24 * 60 * 60 * 1000; // 2 weeks
+    // Use 3-week windows for more games
+    const windowDuration = 21 * 24 * 60 * 60 * 1000;
     return { since: windowStart, until: Math.min(now, windowStart + windowDuration) };
   }
   
   let rateLimitCount = 0;
-  let playerIndex = 0;
+  let playersQueried = 0;
+  const maxPlayersPerBatch = Math.min(15, shuffledPlayers.length); // Query more players per batch
   
   for (const player of shuffledPlayers) {
-    if (games.length >= targetGames) break;
-    
-    // v6.23: Mark player as queried for rotation tracking
-    queriedPlayers.add(player);
-    playerIndex++;
+    if (games.length >= targetGames || playersQueried >= maxPlayersPerBatch) break;
+    playersQueried++;
     
     // Rate limit backoff
     if (rateLimitCount >= 2) {
-      console.warn(`[v6.24] Rate limited ${rateLimitCount}x, waiting 20s...`);
-      await new Promise(r => setTimeout(r, 20000));
+      console.warn(`[v6.26] Rate limited ${rateLimitCount}x, waiting 15s...`);
+      await new Promise(r => setTimeout(r, 15000));
       rateLimitCount = 0;
     }
     
-    // v6.24: 2s delay between requests
-    await new Promise(r => setTimeout(r, 2000));
+    // v6.26: 2.5s delay between requests for stability
+    await new Promise(r => setTimeout(r, 2500));
     
-    // v6.24: Truly random time window
+    // v6.26: Truly random time window
     const { since, until } = getRandomTimeWindow();
-    console.log(`[v6.24] ${player}: ${new Date(since).toISOString().split('T')[0]} to ${new Date(until).toISOString().split('T')[0]}`);
+    console.log(`[v6.26] ${player}: ${new Date(since).toISOString().split('T')[0]} to ${new Date(until).toISOString().split('T')[0]}`);
     
     try {
       const response = await fetch(`${supabaseUrl}/functions/v1/lichess-games`, {
@@ -998,12 +978,12 @@ async function fetchLichessGames(
       
       if (response.status === 429) {
         rateLimitCount++;
-        console.warn(`[v6.24] 429 for ${player}, will retry later`);
+        console.warn(`[v6.26] 429 for ${player}, will retry later`);
         continue;
       }
       
       if (!response.ok) {
-        console.warn(`[v6.24] ${player}: HTTP ${response.status}`);
+        console.warn(`[v6.26] ${player}: HTTP ${response.status}`);
         continue;
       }
       
@@ -1011,11 +991,11 @@ async function fetchLichessGames(
       const fetchedGames = data.games || [];
       
       if (fetchedGames.length === 0) {
-        console.log(`[v6.24] ${player}: 0 games in this window`);
+        console.log(`[v6.26] ${player}: 0 games in this window`);
         continue;
       }
       
-      console.log(`[v6.24] ✓ ${player}: ${fetchedGames.length} games from API`);
+      console.log(`[v6.26] ✓ ${player}: ${fetchedGames.length} games from API`);
       rateLimitCount = 0;
       
       let addedFromPlayer = 0;
@@ -1032,7 +1012,7 @@ async function fetchLichessGames(
         
         if (!isValidLichessId) continue;
         if (gameIds.has(lichessGameId)) continue;
-        // v6.24: NO DB dedup at fetch time - caller handles it at prediction stage
+        // v6.26: NO DB dedup at fetch time - caller handles it at prediction stage
         
         gameIds.add(lichessGameId);
         addedFromPlayer++;
@@ -1064,18 +1044,18 @@ async function fetchLichessGames(
         });
       }
       
-      console.log(`[v6.24] ${player}: +${addedFromPlayer} fresh (total queue: ${games.length})`);
+      console.log(`[v6.26] ${player}: +${addedFromPlayer} fresh (total queue: ${games.length})`);
       
       if (games.length >= targetGames) break;
     } catch (e) {
-      console.error(`[v6.24] Error for ${player}:`, e);
+      console.error(`[v6.26] Error for ${player}:`, e);
     }
   }
   
-  console.log(`[v6.24 FETCH] COMPLETE: ${games.length} fresh games, ${queriedPlayers.size} players queried`);
+  console.log(`[v6.26 FETCH] COMPLETE: ${games.length} fresh games, ${playersQueried} players queried`);
   
   if (games.length === 0) {
-    console.warn(`[v6.24] No games collected this batch - caller should retry`);
+    console.warn(`[v6.26] No games collected this batch - caller should retry`);
   }
   
   return games.sort(() => Math.random() - 0.5);
