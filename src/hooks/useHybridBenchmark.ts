@@ -16,9 +16,9 @@
  * - Chess.com: -50 offset (closer to FIDE)
  */
 
-// v6.60-FETCH-FIX: Only exclude DB games during fetch, not session predictions
-const BENCHMARK_VERSION = "6.60-FETCH-FIX";
-console.log(`[v6.60] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.61-QUEUE-FIX: Remove predictedIds check from queue-adding (only check in processing loop)
+const BENCHMARK_VERSION = "6.61-QUEUE-FIX";
+console.log(`[v6.61] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -560,11 +560,14 @@ export function useHybridBenchmark() {
         for (const g of result.games) {
           const gameId = g.gameId;
           
-          // v6.57: ONLY check: is this a duplicate?
+          // v6.61: ONLY check DB duplicates when adding to queue
+          // Session duplicates (predictedIds) are checked in the processing loop
+          // This prevents "starvation" on subsequent batches
           if (!gameId) continue; // Need some ID
           
           const rawId = gameId.replace(/^(li_|cc_)/, '');
-          if (analyzedData.gameIds.has(gameId) || analyzedData.gameIds.has(rawId) || predictedIds.has(gameId)) {
+          // v6.61: REMOVED predictedIds.has(gameId) - that's checked at line 780
+          if (analyzedData.gameIds.has(gameId) || analyzedData.gameIds.has(rawId)) {
             dupesSkipped++;
             continue;
           }
@@ -595,8 +598,8 @@ export function useHybridBenchmark() {
           validGames++;
         }
         
-        console.log(`[v6.57] ID-ONLY FILTER: ${dupesSkipped} dupes skipped`);
-        console.log(`[v6.57] Queue: ${queueBefore} → ${gameQueue.length} (+${validGames} absorbed, conversion rate: ${result.games.length > 0 ? Math.round(validGames / result.games.length * 100) : 0}%)`);
+        console.log(`[v6.61] Queue filter: ${dupesSkipped} DB dupes skipped`);
+        console.log(`[v6.61] Queue: ${queueBefore} → ${gameQueue.length} (+${validGames} absorbed, conversion: ${result.games.length > 0 ? Math.round(validGames / result.games.length * 100) : 0}%)`);
         
         return validGames;
       }
