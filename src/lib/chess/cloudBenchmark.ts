@@ -298,8 +298,8 @@ export async function fetchRealGames(
         // Only use decisive games (not draws for clearer testing)
         if (!lichessGame.winner) continue;
         
-        // Skip games that are too short
-        if (!lichessGame.moves || lichessGame.moves.split(' ').length < 30) continue;
+        // Skip games that are too short (10 half-moves minimum, matching Edge Function)
+        if (!lichessGame.moves || lichessGame.moves.split(' ').length < 10) continue;
         
         // Skip if we already have a game with very similar ID (dedup)
         const gameKey = `${lichessGame.players.white.user?.name}-${lichessGame.players.black.user?.name}-${lichessGame.createdAt}`;
