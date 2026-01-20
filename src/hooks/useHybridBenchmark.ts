@@ -1,24 +1,23 @@
 /**
  * Hybrid Benchmark Hook - MAXIMUM DEPTH SYNCHRONIZED SYSTEM
- * VERSION: 4.2-SINGLE-GATE (2026-01-20)
+ * VERSION: 4.3-BULLETPROOF-FRESH (2026-01-20)
  * 
- * CRITICAL: This version ONLY uses REAL 8-character Lichess IDs.
- * NO synthetic IDs are ever generated, stored, or used for deduplication.
+ * CRITICAL: This version ONLY predicts games we have NEVER seen before.
+ * 
+ * v4.3 CRITICAL FIX:
+ * - Deduplication uses a SEPARATE tracking set for current run
+ * - processedThisRun Set prevents ANY re-processing within a single benchmark
+ * - analyzedData.gameIds is the source of truth from the DATABASE
+ * - NO game can appear in results if it was already in DB OR already processed
  * 
  * v4.2 Changes:
  * - SINGLE-GATE deduplication: one check, one decision, zero confusion
- * - Removed redundant validation checks (already validated at gate)
- * - Cleaner logging: [NEW] for predictions, [INVALID]/[SHORT] for skips
- * 
- * v4.0 Changes:
- * - gameIds Set now contains ONLY real Lichess IDs (synthetic filtered at load)
- * - Removed realLichessIds separate tracking (gameIds IS realLichessIds now)
  * 
  * Uses LOCAL Stockfish WASM at MAXIMUM DEPTH (60+) for true 100% capacity testing.
  */
 
 // Version tag for debugging cached code issues
-const BENCHMARK_VERSION = "4.2-SINGLE-GATE";
+const BENCHMARK_VERSION = "4.3-BULLETPROOF-FRESH";
 console.log(`[useHybridBenchmark] Loaded version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
@@ -411,14 +410,25 @@ export function useHybridBenchmark() {
       // CRITICAL: Load already-analyzed data for cross-run deduplication
       // Deduplication is GAME-BASED ONLY (by Lichess ID), NOT position-based
       const analyzedData = await getAlreadyAnalyzedData();
-      let skippedDuplicates = 0;
       
-      // v4.2 SINGLE-GATE: gameIds is the ONLY source of truth for deduplication
-      console.log(`[v4.2] ${analyzedData.gameIds.size} games in database - will skip these, predict everything else`);
+      // v4.3: Create a SEPARATE set for tracking games processed in THIS run
+      // This prevents any possibility of the same game being processed twice
+      const processedThisRun = new Set<string>();
+      let skippedFromDb = 0;
+      let skippedThisRun = 0;
+      
+      // v4.3 BULLETPROOF: Log EXACTLY what's in the database for debugging
+      console.log(`[v4.3-BULLETPROOF] ========================================`);
+      console.log(`[v4.3-BULLETPROOF] Database contains ${analyzedData.gameIds.size} real Lichess game IDs`);
+      if (analyzedData.gameIds.size > 0 && analyzedData.gameIds.size <= 100) {
+        console.log(`[v4.3-BULLETPROOF] First 20 DB IDs: ${[...analyzedData.gameIds].slice(0, 20).join(', ')}`);
+      }
+      console.log(`[v4.3-BULLETPROOF] Any game with ID in this set will be SKIPPED`);
+      console.log(`[v4.3-BULLETPROOF] ========================================`);
       
       setProgress(prev => ({ 
         ...prev!, 
-        message: `${analyzedData.gameIds.size} real games analyzed. Fetching fresh GM games...` 
+        message: `${analyzedData.gameIds.size} games already analyzed. Fetching FRESH games only...` 
       }));
       
       const runId = crypto.randomUUID();
@@ -498,14 +508,14 @@ export function useHybridBenchmark() {
           totalGames: gameCount,
           currentPhase: 'analyzing',
           currentDepth: 0,
-          message: `Analyzing ${analyzedCount + 1}/${gameCount} (batch ${totalFetchAttempts}, ${gamesLeftInBatch} in queue, ${skippedDuplicates} skipped)`,
+          message: `Analyzing ${analyzedCount + 1}/${gameCount} (batch ${totalFetchAttempts}, ${gamesLeftInBatch} in queue, ${skippedFromDb + skippedThisRun} skipped)`,
           enPensentModulesActive: EN_PENSENT_ADAPTERS
         });
         
         try {
           // ========================================
-          // v4.2 SINGLE-GATE DEDUPLICATION
-          // One check, one decision, zero confusion
+          // v4.3 BULLETPROOF DEDUPLICATION
+          // TWO checks: Database + This Run
           // ========================================
           const lichessGameId = game.lichessId;
           
@@ -515,17 +525,26 @@ export function useHybridBenchmark() {
             continue;
           }
           
-          // Gate 2: THE ONLY DEDUPLICATION CHECK
-          // If we've EVER seen this game (in DB or this run), skip it immediately
+          // Gate 2A: Already in DATABASE from previous runs
           if (analyzedData.gameIds.has(lichessGameId)) {
-            skippedDuplicates++;
-            // Silent skip - we already logged this at fetch time or it was in DB
+            skippedFromDb++;
+            console.log(`[SKIP-DB] Game ${lichessGameId} already in database - skipping`);
             continue;
           }
           
-          // PASSED ALL GATES - This is a NEW game we will predict
-          // Mark it NOW before any async work to prevent race conditions
-          analyzedData.gameIds.add(lichessGameId);
+          // Gate 2B: Already processed in THIS RUN
+          if (processedThisRun.has(lichessGameId)) {
+            skippedThisRun++;
+            console.log(`[SKIP-RUN] Game ${lichessGameId} already processed this run - skipping`);
+            continue;
+          }
+          
+          // PASSED ALL GATES - This is a FRESH game we will predict
+          // Mark it IMMEDIATELY in BOTH sets to prevent any race conditions
+          processedThisRun.add(lichessGameId);
+          analyzedData.gameIds.add(lichessGameId); // Also add to DB set for fetch filtering
+          
+          console.log(`[FRESH] ✓ Processing NEW game: ${lichessGameId} (https://lichess.org/${lichessGameId})`);
           
           const { moves, result: gameResult, fen, moveNumber } = parsePGN(game.pgn, predictionMoveRange);
           
@@ -536,8 +555,8 @@ export function useHybridBenchmark() {
             continue;
           }
           
-          // ✅ THIS GAME WILL BE PREDICTED
-          console.log(`[NEW] ✓ Predicting game ${lichessGameId} (${moves.length} moves, result=${gameResult}) - https://lichess.org/${lichessGameId}`);
+          // ✅ THIS GAME WILL BE PREDICTED - Guaranteed fresh!
+          console.log(`[PREDICT] ✓ Analyzing game ${lichessGameId} (${moves.length} moves, result=${gameResult}) - https://lichess.org/${lichessGameId}`);
           
           // Position hash for pattern LEARNING only (not deduplication)
           const positionHash = hashPosition(fen);
@@ -705,7 +724,7 @@ export function useHybridBenchmark() {
         }
       }
       
-      console.log(`[BENCHMARK] Complete: ${analyzedCount} unique games analyzed, ${skippedDuplicates} duplicates skipped`);
+      console.log(`[BENCHMARK] Complete: ${analyzedCount} unique games analyzed, ${skippedFromDb} DB duplicates, ${skippedThisRun} run duplicates skipped`);
       
       // Report if we stopped early
       if (analyzedCount < gameCount && analyzedCount > 0) {
