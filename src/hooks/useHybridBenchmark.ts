@@ -11,9 +11,9 @@
  * That's it. No over-engineering.
  */
 
-// v6.43-BULLETPROOF: Fixed try-catch scoping + robust batch refetch + guaranteed saves
-const BENCHMARK_VERSION = "6.43-BULLETPROOF";
-console.log(`[v6.43] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.44-FLOWFIX: Fixed fetch starvation + time window randomization + higher fetch multiplier
+const BENCHMARK_VERSION = "6.44-FLOWFIX";
+console.log(`[v6.44] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -460,48 +460,60 @@ export function useHybridBenchmark() {
       let allGames: any[] = [];
       let gameIndex = 0;
       let batchNumber = 0;
-      const maxBatches = Math.max(20, Math.ceil(gameCount / 2));
+      const maxBatches = Math.max(30, Math.ceil(gameCount / 2)); // v6.44: More batches allowed
       
-      // v6.40: Request more games per batch for better throughput
-      const fetchCount = Math.max(gameCount * 4, 80);
+      // v6.44: Request MUCH more games per batch - DB has many, need fresh ones
+      // With 802+ games in DB, we need to fetch many to find fresh ones
+      const fetchCount = Math.max(gameCount * 8, 150);
       
       async function fetchMoreGames() {
         batchNumber++;
-        console.log(`[v6.40] ========== BATCH ${batchNumber}/${maxBatches} ==========`);
-        console.log(`[v6.40] Queue: ${allGames.length - gameIndex} remaining, Predicted: ${predictedCount}/${gameCount}`);
-        console.log(`[v6.40] DB has ${analyzedData.gameIds.size} games, Session has ${predictedIds.size}`);
+        console.log(`[v6.44] ========== BATCH ${batchNumber}/${maxBatches} ==========`);
+        console.log(`[v6.44] Queue: ${allGames.length - gameIndex} remaining, Predicted: ${predictedCount}/${gameCount}`);
+        console.log(`[v6.44] DB has ${analyzedData.gameIds.size} games, Session predicted: ${predictedIds.size}, Failed: ${failedGameIds.size}`);
         setProgress(prev => ({ 
           ...prev!, 
           message: `Fetching batch ${batchNumber} (predicted: ${predictedCount}/${gameCount})...` 
         }));
         
-        // v6.40: Fetch ALL games from API - dedup happens AFTER we see what came back
+        // v6.44: Fetch ALL games from API - dedup happens AFTER we see what came back
         const newGames = await fetchLichessGames(fetchCount, batchNumber);
-        console.log(`[v6.40] Batch ${batchNumber}: API returned ${newGames.length} games`);
+        console.log(`[v6.44] Batch ${batchNumber}: API returned ${newGames.length} games`);
         
         if (newGames.length === 0) {
-          console.warn(`[v6.40] ⚠️ API returned ZERO games - possible rate limit or empty time window`);
+          console.warn(`[v6.44] ⚠️ API returned ZERO games - possible rate limit or empty time window`);
           return 0;
         }
         
-        // v6.40: TRACE deduplication to understand exactly what's being filtered
+        // v6.44: TRACE deduplication to understand exactly what's being filtered
         let dbFiltered = 0;
         let sessionFiltered = 0;
         let noIdFiltered = 0;
+        let failedFiltered = 0;
         
         const trulyNewGames = newGames.filter(g => {
           if (!g.lichessId) { noIdFiltered++; return false; }
           if (analyzedData.gameIds.has(g.lichessId)) { dbFiltered++; return false; }
           if (predictedIds.has(g.lichessId)) { sessionFiltered++; return false; }
+          // v6.44: Also skip games we already tried and failed (timeout/parse error)
+          if (failedGameIds.has(g.lichessId)) { failedFiltered++; return false; }
           return true;
         });
         
-        console.log(`[v6.40] DEDUP: ${trulyNewGames.length} NEW, ${dbFiltered} in DB, ${sessionFiltered} in session, ${noIdFiltered} no ID`);
+        console.log(`[v6.44] DEDUP: ${trulyNewGames.length} NEW | ${dbFiltered} in DB | ${sessionFiltered} predicted | ${failedFiltered} failed | ${noIdFiltered} no ID`);
         
-        // v6.40: Add to END of queue for processing
+        // v6.44: Warn if most games are being filtered - indicates DB saturation
+        const totalFiltered = dbFiltered + sessionFiltered + failedFiltered + noIdFiltered;
+        if (trulyNewGames.length === 0 && totalFiltered > 0) {
+          console.warn(`[v6.44] ⚠️ ALL ${totalFiltered} games filtered! Need different time window.`);
+        } else if (trulyNewGames.length < newGames.length * 0.1) {
+          console.warn(`[v6.44] ⚠️ Only ${((trulyNewGames.length / newGames.length) * 100).toFixed(1)}% of games are new - DB is saturated for this time window`);
+        }
+        
+        // v6.44: Add to END of queue for processing
         const queueBefore = allGames.length;
         allGames = [...allGames, ...trulyNewGames];
-        console.log(`[v6.40] Queue: ${queueBefore} → ${allGames.length} (added ${trulyNewGames.length})`);
+        console.log(`[v6.44] Queue: ${queueBefore} → ${allGames.length} (added ${trulyNewGames.length})`);
         
         return trulyNewGames.length;
       }
@@ -1149,34 +1161,40 @@ async function fetchLichessGames(
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
   
-  // v6.39-FRESHWINDOW: Batch-aware time windows that GUARANTEE different periods
-  // PROBLEM: Edge function caches for 5 mins, and random windows often overlap
-  // SOLUTION: Use batch number to OFFSET the time window, ensuring each batch hits unique periods
+  // v6.44-FLOWFIX: TRULY RANDOM time windows to avoid cache hits and find fresh games
+  // PROBLEM: Deterministic windows cause cache hits on edge function (5 min cache)
+  // SOLUTION: Add random jitter to EACH request to bypass cache and explore varied history
   function getRandomTimeWindow(batchNum: number, playerIndex: number): { since: number; until: number } {
     const now = Date.now();
     const oneDay = 24 * 60 * 60 * 1000;
     
-    // v6.39: Use batch + player index to create deterministic but varied offsets
-    // This ensures: batch 1/player 0 ≠ batch 2/player 0 ≠ batch 1/player 1
-    const combinedOffset = (batchNum * 17 + playerIndex * 7) % 100; // Prime multipliers for distribution
+    // v6.44: Base offset from batch + player, but ADD RANDOM JITTER
+    const baseOffset = (batchNum * 17 + playerIndex * 7) % 100;
+    const randomJitter = Math.floor(Math.random() * 50); // 0-50 extra segments
+    const combinedOffset = (baseOffset + randomJitter) % 150; // Extended range
     
-    // Base: 8 years of history (2018-2026)
+    // Base: 8 years of history (2018-2026) = ~2920 days
     const totalHistoryDays = 365 * 8;
-    const segmentSize = Math.floor(totalHistoryDays / 100); // ~29 days per segment
+    const segmentSize = 20; // v6.44: Smaller segments (20 days) for finer granularity
     
-    // Each offset value gets a different 60-120 day window
-    const segmentStart = combinedOffset * segmentSize;
-    const windowDuration = 60 + Math.floor(Math.random() * 60); // 60-120 days
+    // Each offset value gets a different time slice
+    const daysBack = combinedOffset * segmentSize;
     
-    const windowEnd = now - (segmentStart * oneDay);
+    // v6.44: RANDOM window duration (30-90 days) - varies per request
+    const windowDuration = 30 + Math.floor(Math.random() * 60);
+    
+    const windowEnd = now - (daysBack * oneDay);
     const windowStart = windowEnd - (windowDuration * oneDay);
     
     // Clamp to valid range (2018+)
     const minTimestamp = now - (totalHistoryDays * oneDay);
     const clampedStart = Math.max(minTimestamp, windowStart);
-    const clampedEnd = Math.min(now - oneDay, windowEnd); // At least 1 day old
+    const clampedEnd = Math.min(now - oneDay, windowEnd);
     
-    console.log(`[v6.39] Window: batch=${batchNum} player=${playerIndex} → offset=${combinedOffset} → ${new Date(clampedStart).toISOString().split('T')[0]} to ${new Date(clampedEnd).toISOString().split('T')[0]}`);
+    // v6.44: Only log if debugging (reduce noise)
+    if (playerIndex === 0) {
+      console.log(`[v6.44] Window: batch=${batchNum} offset=${combinedOffset} → ${new Date(clampedStart).toISOString().split('T')[0]} to ${new Date(clampedEnd).toISOString().split('T')[0]}`);
+    }
     
     return { since: clampedStart, until: clampedEnd };
   }
