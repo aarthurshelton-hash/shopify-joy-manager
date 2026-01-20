@@ -13,8 +13,9 @@
  */
 
 // Version tag for debugging
-const CLOUD_BENCHMARK_VERSION = "6.11-PERSISTENT-REFETCH";
-console.log(`[v6.11] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
+// v6.12-METADATA-FIX: Ensure time_control and ELO fields are properly saved to DB
+const CLOUD_BENCHMARK_VERSION = "6.12-METADATA-FIX";
+console.log(`[v6.12] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
 
 import { Chess } from 'chess.js';
 import { evaluatePosition, type PositionEvaluation } from './lichessCloudEval';
