@@ -1,5 +1,9 @@
 /**
  * Hybrid Benchmark Hook - MAXIMUM DEPTH SYNCHRONIZED SYSTEM
+ * VERSION: 2.0-REAL-IDS-ONLY (2026-01-20)
+ * 
+ * CRITICAL: This version ONLY accepts REAL 8-character Lichess IDs.
+ * NO synthetic IDs are ever generated or accepted.
  * 
  * Uses LOCAL Stockfish WASM at MAXIMUM DEPTH (60+) for true 100% capacity testing.
  * This is the "truly hybrid" system - combining:
@@ -16,6 +20,10 @@
  * - Player fingerprint mental weak point detection
  * - Scientific formulations (Kuramoto, Shannon, Hurst, Φ)
  */
+
+// Version tag for debugging cached code issues
+const BENCHMARK_VERSION = "2.0-REAL-IDS-ONLY";
+console.log(`[useHybridBenchmark] Loaded version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -617,12 +625,18 @@ export function useHybridBenchmark() {
           // Use it for saving to database - this is the REAL Lichess ID
           const gameIdForDb = lichessGameId;
           
+          // AUDIT: Verify this is a REAL 8-char Lichess ID (final validation)
+          if (gameIdForDb.length !== 8 || !/^[a-zA-Z0-9]+$/.test(gameIdForDb)) {
+            console.error(`[CRITICAL] Non-8-char ID slipped through: "${gameIdForDb}" - REJECTING`);
+            continue;
+          }
+          
           // Add to analyzed data immediately so we don't re-analyze this game
           analyzedData.gameIds.add(gameIdForDb);
-          console.log(`[Analyze] ✓ REAL game ${gameIdForDb} (https://lichess.org/${gameIdForDb}) - analyzing move ${moveNumber}`);
+          console.log(`[v2.0-REAL-IDS-ONLY] ✓ Game ${gameIdForDb} (https://lichess.org/${gameIdForDb}) - move ${moveNumber}`);
           
           const attemptData = {
-            game_id: gameIdForDb, // ALWAYS real 8-char Lichess ID
+            game_id: gameIdForDb, // ALWAYS real 8-char Lichess ID (verified)
             game_name: gameName,
             fen,
             move_number: moveNumber,
@@ -1053,7 +1067,7 @@ async function fetchLichessGames(
           gameIds.add(lichessGameId);
           
           // AUDIT LOG: Real Lichess ID with verification link
-          console.log(`[Fetch] ✓ REAL Lichess game: ${lichessGameId} (verify: https://lichess.org/${lichessGameId})`);
+          console.log(`[v2.0-FETCH] ✓ REAL Lichess game: ${lichessGameId} (https://lichess.org/${lichessGameId})`);
           
           games.push({
             pgn,
