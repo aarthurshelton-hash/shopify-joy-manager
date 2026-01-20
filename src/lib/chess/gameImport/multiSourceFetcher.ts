@@ -1,14 +1,16 @@
 /**
  * Multi-Source Game Fetcher v2.0 - HIGH VOLUME
- * VERSION: 6.60-FETCH-FIX (2026-01-20)
+ * VERSION: 6.61-QUEUE-FIX (2026-01-20)
+ * 
+ * v6.61 CHANGES:
+ * - QUEUE FIX: Remove predictedIds check from queue-adding stage
+ * - Session duplicates now only checked in processing loop
+ * - Maximizes fresh game absorption per batch
  * 
  * v6.60 CHANGES:
  * - FETCH FIX: Only exclude DB games during fetch, not session predictions
  * - Prevents "starvation" where session predictions block fresh fetches
  * - Maintains processing-loop deduplication for safety
- * 
- * v6.59 CHANGES:
- * - VERIFIED player pool: Removed invalid/inactive usernames causing 404s
  * 
  * v6.58 CHANGES:
  * - Fixed ID validation to support prefixed IDs (li_/cc_)
