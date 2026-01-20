@@ -514,14 +514,23 @@ console.log(`[Dedup] Loaded ${analyzedData.gameIds.size} analyzed games (positio
           // The more times we see a position across unique games, the stronger our pattern recognition
           // Only skip if we've already analyzed THIS EXACT GAME (same lichessId) in a previous run
           const positionHash = hashPosition(fen);
-          const lichessGameId = game.lichessId || `unknown-${Date.now()}`;
+          
+          // CRITICAL: Use the REAL 8-character Lichess ID (e.g., "ZhoooCoY")
+          // This ID links directly to lichess.org/{id} for verification
+          const lichessGameId = game.lichessId;
+          
+          // Validate: Real Lichess IDs are 8 alphanumeric characters
+          if (!lichessGameId || lichessGameId.length !== 8 || !/^[a-zA-Z0-9]+$/.test(lichessGameId)) {
+            console.error(`[AUDIT FAIL] Invalid Lichess ID: "${lichessGameId}" - skipping game`);
+            continue;
+          }
           
           // Check if this exact game was already analyzed (by lichessId, not by position)
           // This prevents re-analyzing the same game file, but allows analyzing
           // identical positions that occur in DIFFERENT games (valuable pattern data)
           if (analyzedData.gameIds.has(lichessGameId)) {
             skippedDuplicates++;
-            console.log(`[Dedup] Skipping game ${lichessGameId} at move ${moveNumber} - already analyzed this game (${skippedDuplicates} total dupes)`);
+            console.log(`[Dedup] Skipping game ${lichessGameId} (https://lichess.org/${lichessGameId}) - already analyzed`);
             continue;
           }
           
@@ -602,13 +611,13 @@ console.log(`[Dedup] Loaded ${analyzedData.gameIds.size} analyzed games (positio
           const blackEloDisplay = game.blackElo ? ` (${game.blackElo})` : '';
           const gameName = `${whiteName}${whiteEloDisplay} vs ${blackName}${blackEloDisplay}`;
           
-          // The lichessGameId was already extracted above during the dedup check
-          // Use it for saving to database
+          // The lichessGameId was already validated above (8 alphanumeric chars)
+          // Use it for saving to database - this is the REAL Lichess ID
           const gameIdForDb = lichessGameId;
           
           // Add to analyzed data immediately so we don't re-analyze this game
           analyzedData.gameIds.add(gameIdForDb);
-          console.log(`[Analyze] Processing game ${gameIdForDb} - position at move ${moveNumber}`);
+          console.log(`[Analyze] ✓ REAL game ${gameIdForDb} (https://lichess.org/${gameIdForDb}) - analyzing move ${moveNumber}`);
           
           const attemptData = {
             game_id: gameIdForDb, // Use Lichess ID for cross-run deduplication
@@ -1010,11 +1019,19 @@ async function fetchLichessGames(
             continue;
           }
           
-          // CRITICAL FIX: Use the actual Lichess game ID for deduplication
-          // The Edge Function returns this as 'id' (e.g., "abc123XY")
+          // CRITICAL FIX: Use the ACTUAL Lichess game ID for deduplication
+          // The Edge Function returns this as 'id' (e.g., "ZhoooCoY", "2frAnX6b")
+          // These are 8-character alphanumeric IDs that link directly to lichess.org/{id}
           const lichessGameId = game.id;
-          if (!lichessGameId || typeof lichessGameId !== 'string' || lichessGameId.length < 6) {
-            console.warn(`[Benchmark] Game missing valid Lichess ID: ${lichessGameId}, skipping...`);
+          
+          // Validate: Real Lichess IDs are 8 alphanumeric characters
+          const isValidLichessId = lichessGameId && 
+            typeof lichessGameId === 'string' && 
+            lichessGameId.length === 8 &&
+            /^[a-zA-Z0-9]+$/.test(lichessGameId);
+          
+          if (!isValidLichessId) {
+            console.warn(`[Benchmark] Invalid Lichess ID format: "${lichessGameId}" - expected 8 alphanumeric chars, skipping...`);
             continue;
           }
           
@@ -1025,18 +1042,18 @@ async function fetchLichessGames(
           // This is the key fix - skip games we've already processed in previous benchmark runs
           if (analyzedData?.gameIds.has(lichessGameId)) {
             alreadyAnalyzedSkipped++;
-            console.log(`[Dedup] Skipping already-analyzed game: ${lichessGameId}`);
+            console.log(`[Dedup] Skipping already-analyzed game: ${lichessGameId} (https://lichess.org/${lichessGameId})`);
             continue;
           }
           
           gameIds.add(lichessGameId);
           
-          // DEBUG: Log the Lichess ID to verify it's real
-          console.log(`[Fetch] Adding game with Lichess ID: ${lichessGameId}`);
+          // AUDIT LOG: Real Lichess ID with verification link
+          console.log(`[Fetch] ✓ REAL Lichess game: ${lichessGameId} (verify: https://lichess.org/${lichessGameId})`);
           
           games.push({
             pgn,
-            lichessId: lichessGameId, // CRITICAL: Store the actual Lichess ID
+            lichessId: lichessGameId, // CRITICAL: Store the ACTUAL Lichess ID (e.g., "ZhoooCoY")
             // Time control context
             timeControl: game.timeControl,
             clockInitial: game.clockInitial,
