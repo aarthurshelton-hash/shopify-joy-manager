@@ -519,14 +519,28 @@ export default function Benchmark() {
           isLive={isLiveElo}
         />
 
-        {/* Cumulative Stats - Historical Performance */}
+        {/* Cumulative Stats - Historical Performance - PROMINENT */}
         {cumulativeStats && cumulativeStats.totalRuns > 0 && (
-          <Card className="border-primary/30 bg-gradient-to-r from-purple-500/5 to-orange-500/5">
+          <Card className="border-2 border-primary/50 bg-gradient-to-r from-purple-500/10 to-orange-500/10 shadow-lg">
             <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <History className="h-4 w-4" />
-                Historical Performance ({cumulativeStats.totalRuns} benchmark runs)
+              <CardTitle className="flex items-center justify-between text-base">
+                <div className="flex items-center gap-2">
+                  <History className="h-5 w-5 text-primary" />
+                  <span>📊 CUMULATIVE: {cumulativeStats.validPredictionCount} Games Analyzed</span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={async () => {
+                    const fresh = await getCumulativeStats();
+                    setCumulativeStats(fresh);
+                  }}
+                  className="text-xs"
+                >
+                  <RefreshCw className="h-3 w-3 mr-1" /> Refresh
+                </Button>
               </CardTitle>
+              <p className="text-xs text-muted-foreground">{cumulativeStats.totalRuns} benchmark runs • All-time statistics</p>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
