@@ -11,9 +11,9 @@
  * That's it. No over-engineering.
  */
 
-// v6.40-TRACE: Enhanced logging to diagnose processing flow issues
-const BENCHMARK_VERSION = "6.40-TRACE";
-console.log(`[v6.40] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.41-RESILIENT: Mark failed games as attempted + save partial results on error
+const BENCHMARK_VERSION = "6.41-RESILIENT";
+console.log(`[v6.41] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -376,6 +376,14 @@ export function useHybridBenchmark() {
     
     const engine = getStockfishEngine();
     
+    // v6.41: Declare these OUTSIDE try block so they're accessible in catch for partial save
+    const runId = crypto.randomUUID();
+    const attempts: any[] = [];
+    let hybridCorrect = 0;
+    let stockfishCorrect = 0;
+    let bothCorrect = 0;
+    let bothWrong = 0;
+    
     try {
       // Wait for engine to be ready with progress feedback
       setProgress({ 
@@ -430,12 +438,7 @@ export function useHybridBenchmark() {
         message: `${analyzedData.gameIds.size} games in DB. Fetching ${gameCount} FRESH games...` 
       }));
       
-      const runId = crypto.randomUUID();
-      const attempts: any[] = [];
-      let hybridCorrect = 0;
-      let stockfishCorrect = 0;
-      let bothCorrect = 0;
-      let bothWrong = 0;
+      // v6.41: These vars are now declared OUTSIDE the try block for partial save access
       const depths: number[] = [];
       let predictedCount = 0;
       
@@ -511,8 +514,9 @@ export function useHybridBenchmark() {
       }
       
       // Step 2: Process games with REFETCH when needed
-      // v6.33: Add dbDupe tracking for games already in database
+      // v6.41: Track FAILED games separately so they don't block the queue forever
       let skipStats = { invalidId: 0, dbDupe: 0, sessionDupe: 0, shortGame: 0, timeout: 0, parseError: 0 };
+      const failedGameIds = new Set<string>(); // v6.41: Games that failed processing - skip on retry
       
       // v6.36: Higher resilience thresholds for larger DB
       let emptyBatchStreak = 0;
@@ -564,6 +568,12 @@ export function useHybridBenchmark() {
           continue;
         }
         
+        // v6.41: Skip if this game previously failed (timeout/parse error)
+        if (failedGameIds.has(lichessId)) {
+          consecutiveSkips++;
+          continue;
+        }
+        
         // v6.33: Skip if already in DATABASE
         if (analyzedData.gameIds.has(lichessId)) {
           skipStats.dbDupe++;
@@ -602,14 +612,16 @@ export function useHybridBenchmark() {
           moveNumber = parsed.moveNumber;
           
           if (moves.length < 4) {
-          console.log(`[v6.33] Skip short: ${lichessId} (${moves.length} moves)`);
+          console.log(`[v6.41] Skip short: ${lichessId} (${moves.length} moves)`);
           skipStats.shortGame++;
+          failedGameIds.add(lichessId); // v6.41: Don't retry short games
           consecutiveSkips++;
           continue;
           }
         } catch (e) {
-          console.log(`[v6.33] Skip parse error: ${lichessId}`, e);
+          console.log(`[v6.41] Skip parse error: ${lichessId}`, e);
           skipStats.parseError++;
+          failedGameIds.add(lichessId); // v6.41: Don't retry parse errors
           consecutiveSkips++;
           continue;
         }
@@ -642,8 +654,9 @@ export function useHybridBenchmark() {
         const analysis = await Promise.race([analysisPromise, timeout]);
         
         if (!analysis) {
-          console.log(`[v6.33] ⚠️ Stockfish timeout for ${lichessId}, skipping`);
+          console.log(`[v6.41] ⚠️ Stockfish timeout for ${lichessId}, blacklisting`);
           skipStats.timeout++;
+          failedGameIds.add(lichessId); // v6.41: CRITICAL - don't retry timeouts
           consecutiveSkips++;
           continue;
         }
@@ -751,13 +764,13 @@ export function useHybridBenchmark() {
         console.log(`[v6.33]   En Pensent=${colorFlow.prediction}${hybridIsCorrect ? '✓' : '✗'} | SF=${stockfish.prediction}${stockfishIsCorrect ? '✓' : '✗'} | Actual=${gameResult}`);
       }
       
-      console.log(`[v6.33] ========================================`);
-      console.log(`[v6.33] BENCHMARK COMPLETE: ${predictedCount}/${gameCount} predictions`);
-      console.log(`[v6.33] Total batches fetched: ${batchNumber}`);
-      console.log(`[v6.33] Total games processed: ${gameIndex}/${allGames.length}`);
-      console.log(`[v6.33] Predicted ${predictedIds.size} games this session`);
-      console.log(`[v6.33] Skip stats: ${JSON.stringify(skipStats)}`);
-      console.log(`[v6.33] ========================================`);
+      console.log(`[v6.41] ========================================`);
+      console.log(`[v6.41] BENCHMARK COMPLETE: ${predictedCount}/${gameCount} predictions`);
+      console.log(`[v6.41] Total batches fetched: ${batchNumber}`);
+      console.log(`[v6.41] Total games processed: ${gameIndex}/${allGames.length}`);
+      console.log(`[v6.41] Predicted ${predictedIds.size} games, ${failedGameIds.size} failed`);
+      console.log(`[v6.41] Skip stats: ${JSON.stringify(skipStats)}`);
+      console.log(`[v6.41] ========================================`);
       
       if (attempts.length === 0) {
         throw new Error(`No valid games processed. Skip reasons: ${JSON.stringify(skipStats)}`);
@@ -897,6 +910,50 @@ export function useHybridBenchmark() {
       
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Unknown error';
+      console.error(`[v6.41] Benchmark error: ${message}`);
+      
+      // v6.41-RESILIENT: Save whatever results we have before throwing
+      if (attempts.length > 0) {
+        console.log(`[v6.41] 🔄 SAVING ${attempts.length} PARTIAL RESULTS before error...`);
+        try {
+          const partialRunId = `partial-${runId}`;
+          const { data: partialBenchmark } = await supabase
+            .from('chess_benchmark_results')
+            .insert({
+              run_id: partialRunId,
+              total_games: gameCount,
+              completed_games: attempts.length,
+              prediction_move_number: Math.round((predictionMoveRange[0] + predictionMoveRange[1]) / 2),
+              hybrid_accuracy: attempts.length > 0 ? (hybridCorrect / attempts.length) * 100 : 0,
+              stockfish_accuracy: attempts.length > 0 ? (stockfishCorrect / attempts.length) * 100 : 0,
+              hybrid_wins: attempts.filter(a => a.hybrid_correct && !a.stockfish_correct).length,
+              stockfish_wins: attempts.filter(a => !a.hybrid_correct && a.stockfish_correct).length,
+              both_correct: bothCorrect,
+              both_wrong: bothWrong,
+              data_source: 'lichess_grandmasters_partial',
+              games_analyzed: attempts.map(a => a.game_id),
+              stockfish_version: 'Stockfish 17 WASM (Local Maximum Depth)',
+              stockfish_mode: 'local_wasm_unlimited',
+              hybrid_version: 'en-pensent-v1',
+              data_quality_tier: 'tcec_unlimited',
+            })
+            .select()
+            .single();
+          
+          if (partialBenchmark) {
+            for (const attempt of attempts) {
+              await supabase.from('chess_prediction_attempts').insert({
+                ...attempt,
+                benchmark_id: partialBenchmark.id,
+              });
+            }
+            console.log(`[v6.41] ✅ Saved ${attempts.length} partial results to DB`);
+          }
+        } catch (saveError) {
+          console.error(`[v6.41] Failed to save partial results:`, saveError);
+        }
+      }
+      
       setError(message);
       throw e;
     } finally {
