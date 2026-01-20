@@ -29,8 +29,8 @@ const TOP_PLAYERS = [
   "duhless", "Vladislav_Artemiev", "MVL_Maxime", "rajabali", "IMRosen"
 ];
 
-// Fetch games from Lichess with deduplication
-async function fetchLichessGames(count: number, existingFens: Set<string>): Promise<any[]> {
+// Fetch games from Lichess with game-level deduplication
+async function fetchLichessGames(count: number, existingGameIds: Set<string>): Promise<any[]> {
   const games: any[] = [];
   const shuffledPlayers = TOP_PLAYERS.sort(() => Math.random() - 0.5).slice(0, 15);
   
@@ -106,6 +106,11 @@ ${game.moves} ${resultTag}`;
                   timeControl = game.perf === 'bullet' ? 'bullet' : 
                                 game.perf === 'blitz' ? 'blitz' : 
                                 game.perf === 'rapid' ? 'rapid' : 'classical';
+                }
+                
+                // Skip if this game has already been analyzed
+                if (existingGameIds.has(game.id)) {
+                  continue;
                 }
                 
                 games.push({
@@ -609,34 +614,35 @@ serve(async (req) => {
     // Load historical archetype performance for calibrated predictions
     await loadHistoricalStats(supabase);
 
-    // Get ALL existing position hashes for deduplication using pagination
-    // CRITICAL: Must fetch ALL positions, not limited to 1000 or 10000
-    const existingHashes = new Set<string>();
+    // Get ALL existing GAME IDs for game-level deduplication using pagination
+    // IMPORTANT: We deduplicate by GAME, not by position - same position from different games is valuable data
+    const existingGameIds = new Set<string>();
+    const existingPositionHashes = new Set<string>(); // For position reaffirmation tracking only
     let from = 0;
     const pageSize = 1000;
     let hasMore = true;
     
     while (hasMore) {
-      const { data: existingPositions, error } = await supabase
+      const { data: existingAttempts, error } = await supabase
         .from("chess_prediction_attempts")
-        .select("position_hash")
-        .not("position_hash", "is", null)
+        .select("game_id, position_hash")
         .range(from, from + pageSize - 1);
       
-      if (error || !existingPositions || existingPositions.length === 0) {
+      if (error || !existingAttempts || existingAttempts.length === 0) {
         hasMore = false;
         break;
       }
       
-      for (const p of existingPositions) {
-        if (p.position_hash) existingHashes.add(p.position_hash);
+      for (const p of existingAttempts) {
+        if (p.game_id) existingGameIds.add(p.game_id);
+        if (p.position_hash) existingPositionHashes.add(p.position_hash);
       }
       
       from += pageSize;
-      hasMore = existingPositions.length === pageSize;
+      hasMore = existingAttempts.length === pageSize;
     }
     
-    console.log(`[BenchmarkRunner] Loaded ALL ${existingHashes.size} existing positions for deduplication`);
+    console.log(`[BenchmarkRunner] Loaded ${existingGameIds.size} existing games and ${existingPositionHashes.size} positions for deduplication/reaffirmation`);
 
     const runId = crypto.randomUUID();
     const attempts: any[] = [];
@@ -661,7 +667,7 @@ serve(async (req) => {
         
         console.log(`[BenchmarkRunner] Fetch attempt ${totalFetchAttempts}: Need ${gameCount - attempts.length} more, fetching ${targetFetch} games...`);
         
-        const newGames = await fetchLichessGames(targetFetch, existingHashes);
+        const newGames = await fetchLichessGames(targetFetch, existingGameIds);
         if (newGames.length === 0 && totalFetchAttempts >= 3) {
           console.warn(`[BenchmarkRunner] No new games after ${totalFetchAttempts} attempts`);
           break;
@@ -690,11 +696,20 @@ serve(async (req) => {
         const parsed = parsePGNAndGetFEN(game.pgn, moveNumber);
         if (!parsed) continue;
         
-        // Check for duplicate position using consistent hash algorithm
+        // Generate position hash for tracking and cross-referencing
         const positionHash = generatePositionHash(parsed.fen);
-        if (existingHashes.has(positionHash)) {
+        
+        // Check if this GAME has already been analyzed (game-level deduplication)
+        const gameId = game.id || crypto.randomUUID();
+        if (existingGameIds.has(gameId)) {
           skippedDuplicates++;
           continue;
+        }
+        
+        // Track if this position appeared before in a different game (valuable insight!)
+        const isRecurringPosition = existingPositionHashes.has(positionHash);
+        if (isRecurringPosition) {
+          console.log(`[BenchmarkRunner] Found recurring position from different game - analyzing for pattern strength`);
         }
         
         const result = game.winner === "white" ? "white" : game.winner === "black" ? "black" : "draw";
@@ -725,11 +740,12 @@ serve(async (req) => {
         if (hybridIsCorrect && stockfishIsCorrect) bothCorrect++;
         if (!hybridIsCorrect && !stockfishIsCorrect) bothWrong++;
         
-        // Add to existing hashes to prevent in-run duplicates
-        existingHashes.add(positionHash);
+        // Add to existing game IDs to prevent in-run duplicates (game-level)
+        existingGameIds.add(gameId);
+        existingPositionHashes.add(positionHash);
         
         attempts.push({
-          game_id: game.id || crypto.randomUUID(),
+          game_id: gameId,
           game_name: `GM ${game.whiteElo || 2500} vs ${game.blackElo || 2500}`,
           fen: parsed.fen,
           position_hash: positionHash,
