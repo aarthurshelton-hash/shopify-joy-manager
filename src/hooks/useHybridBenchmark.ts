@@ -405,16 +405,19 @@ export function useHybridBenchmark() {
       }));
       
       // CRITICAL: Load already-analyzed data for cross-run deduplication
+      // Deduplication is GAME-BASED ONLY (by Lichess ID), NOT position-based
       const analyzedData = await getAlreadyAnalyzedData();
       let skippedDuplicates = 0;
       
-      // Log deduplication stats - position hash is PRIMARY key
-      const realIdCount = (analyzedData as any).realLichessIds?.size || 0;
-      console.log(`[Dedup] PRIMARY: ${analyzedData.positionHashes.size} unique positions | SECONDARY: ${realIdCount} real Lichess IDs, ${analyzedData.gameIds.size - realIdCount} legacy IDs`);
+      // Count real vs synthetic IDs in database
+      const realIdCount = analyzedData.realLichessIds?.size || 0;
+      const syntheticCount = analyzedData.gameIds.size - realIdCount;
+      console.log(`[Dedup] GAME-BASED deduplication: ${realIdCount} real Lichess IDs, ${syntheticCount} legacy synthetic IDs`);
+      console.log(`[Dedup] Fresh games with 8-char Lichess IDs will NOT match legacy synthetic IDs`);
       
       setProgress(prev => ({ 
         ...prev!, 
-        message: `Found ${analyzedData.positionHashes.size} analyzed positions. Fetching fresh GM games...` 
+        message: `${analyzedData.gameIds.size} games already analyzed. Fetching fresh GM games...` 
       }));
       
       const runId = crypto.randomUUID();
@@ -494,7 +497,7 @@ export function useHybridBenchmark() {
           totalGames: gameCount,
           currentPhase: 'analyzing',
           currentDepth: 0,
-          message: `Position ${analyzedCount + 1}/${gameCount} (${skippedDuplicates} duplicates skipped, batch ${totalFetchAttempts}, ${gamesLeftInBatch} remaining)`,
+          message: `Analyzing ${analyzedCount + 1}/${gameCount} (batch ${totalFetchAttempts}, ${gamesLeftInBatch} in queue, ${skippedDuplicates} skipped)`,
           enPensentModulesActive: EN_PENSENT_ADAPTERS
         });
         
@@ -503,12 +506,12 @@ export function useHybridBenchmark() {
           
           // Minimum 10 moves to have meaningful position
           if (moves.length < 10) {
-            console.log(`[Skip] Game has only ${moves.length} moves, need 10+ for analysis`);
+            console.log(`[Skip] Game ${game.lichessId} has only ${moves.length} moves, need 10+ for analysis`);
             continue;
           }
           
-          // Only skip truly unplayable results (ongoing games with no clear outcome)
-          // parsePGN now infers results from multiple sources, so this rarely triggers
+          // Log PGN parse success
+          console.log(`[Parse] Game ${game.lichessId}: ${moves.length} moves, result=${gameResult}, move ${moveNumber}`);
           
           // CRITICAL: Use the REAL 8-character Lichess ID (e.g., "ZhoooCoY")
           // This ID links directly to lichess.org/{id} for verification
