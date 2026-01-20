@@ -1,8 +1,8 @@
 /**
  * En Pensent™ vs TCEC Stockfish 17 Unlimited Benchmark
- * VERSION: 6.47-HIGHVOL (2026-01-20)
+ * VERSION: 6.54-RATELIMIT (2026-01-20)
  * 
- * HIGH-VOLUME MULTI-SOURCE with Platform-Aware ELO Calibration
+ * v6.54: Exponential backoff + adaptive throttling for rate limits
  * 
  * DATA SOURCES:
  * - Lichess: 5+ BILLION games via Edge Function proxy

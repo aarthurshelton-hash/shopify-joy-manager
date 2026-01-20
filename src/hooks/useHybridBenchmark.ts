@@ -16,9 +16,9 @@
  * - Chess.com: -50 offset (closer to FIDE)
  */
 
-// v6.53-BULLETPROOF: Complete pipeline audit + reliable multi-source processing
-const BENCHMARK_VERSION = "6.53-BULLETPROOF";
-console.log(`[v6.53] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.54-RATELIMIT: Exponential backoff + adaptive throttling
+const BENCHMARK_VERSION = "6.54-RATELIMIT";
+console.log(`[v6.54] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
