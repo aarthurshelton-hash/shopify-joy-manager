@@ -139,14 +139,14 @@ function extractMovesFromPgn(pgn: string): string {
  * v6.53: Now extracts moves from PGN for reliable processing
  */
 function chesscomToUnified(game: ChessComGame, username: string): UnifiedGameData | null {
-  if (!game.pgn || game.pgn.length < 50) return null;
-  
+  // v6.57-ID-ONLY: Only require a URL/ID exists - absorb everything else
   // Extract game ID from URL: https://www.chess.com/game/live/123456789
   const urlMatch = game.url?.match(/\/(\d+)$/);
-  const gameId = urlMatch ? `cc_${urlMatch[1]}` : `cc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  if (!urlMatch) return null; // Must have valid game ID
+  const gameId = `cc_${urlMatch[1]}`;
   
-  // v6.53: Extract moves from PGN for reliable parsing
-  const moves = extractMovesFromPgn(game.pgn);
+  // v6.57: Extract moves - handle empty PGN gracefully
+  const moves = game.pgn ? extractMovesFromPgn(game.pgn) : '';
   
   // Determine winner
   let winner: 'white' | 'black' | undefined;
@@ -159,8 +159,8 @@ function chesscomToUnified(game: ChessComGame, username: string): UnifiedGameDat
   let speed = game.time_class || 'unknown';
   
   return {
-    pgn: game.pgn,
-    moves,  // v6.53: Now includes extracted moves
+    pgn: game.pgn || '',  // v6.57: Allow empty PGN
+    moves,  // v6.57: May be empty - universal intelligence handles
     gameId,
     source: 'chesscom',
     winner,
@@ -376,19 +376,17 @@ async function fetchFromLichess(
       let addedFromPlayer = 0;
       for (const game of fetchedGames) {
         const lichessId = game.id;
-        // v6.52: Validate Lichess IDs are 8 chars (standard format)
-        if (!lichessId || lichessId.length !== 8) {
-          continue;
-        }
+        // v6.57-ID-ONLY: Only require an ID exists - absorb everything else
+        if (!lichessId) continue;
         
         const gameId = `li_${lichessId}`;
         
-        // v6.52: Check both prefixed AND raw ID against excludeIds
+        // v6.57: Only deduplication filter - no content filters
         if (excludeIds.has(gameId) || excludeIds.has(lichessId)) continue;
         if (localIds.has(gameId)) continue;
         
-        const pgn = game.pgn || game.moves;
-        if (!pgn || pgn.length < 50) continue;
+        const pgn = game.pgn || game.moves || '';
+        // v6.57: ABSORB EVERYTHING - universal intelligence handles edge cases
         
         localIds.add(gameId);
         
