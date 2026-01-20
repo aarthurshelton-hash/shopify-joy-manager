@@ -13,9 +13,9 @@
  */
 
 // Version tag for debugging
-// v6.13-PROGRESS-FIX: Improved progress reporting to show games collected after fetch
-const CLOUD_BENCHMARK_VERSION = "6.13-PROGRESS-FIX";
-console.log(`[v6.13] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
+// v6.14-ROBUST-PARSE: Aligned with useHybridBenchmark for raw moves parsing
+const CLOUD_BENCHMARK_VERSION = "6.14-ROBUST-PARSE";
+console.log(`[v6.14] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
 
 import { Chess } from 'chess.js';
 import { evaluatePosition, type PositionEvaluation } from './lichessCloudEval';
