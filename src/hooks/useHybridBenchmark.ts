@@ -1,26 +1,19 @@
 /**
- * Hybrid Benchmark Hook - MAXIMUM DEPTH SYNCHRONIZED SYSTEM
- * VERSION: 5.3-TARGETED-FETCH (2026-01-20)
+ * Hybrid Benchmark Hook - SIMPLE AND CLEAN
+ * VERSION: 6.0-SIMPLE (2026-01-20)
  * 
- * v5.3 CRITICAL FIXES:
- * - fetchLichessGames NOW USES count parameter (was ignoring it!)
- * - Fetches ONLY what's needed: ~8 players, ~5 games each for 10 targets
- * - STOPS EARLY when enough games collected
- * - No more 900-game over-fetching
+ * PHILOSOPHY: Keep it simple.
+ * 1. Fetch games from Lichess
+ * 2. Skip ONLY games already in our database
+ * 3. Predict EVERY fresh game
+ * 4. Store results
  * 
- * v5.2:
- * - Added exhaustive logging at every decision point
- * - Fixed silent failures: All skip reasons are now logged
- * 
- * v5.1:
- * - Games only marked "processed" AFTER passing ALL validation gates
- * 
- * Uses LOCAL Stockfish WASM at MAXIMUM DEPTH (60+) for true 100% capacity testing.
+ * That's it. No over-engineering.
  */
 
 // Version tag for debugging cached code issues
-const BENCHMARK_VERSION = "5.3-TARGETED-FETCH";
-console.log(`[v5.3] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+const BENCHMARK_VERSION = "6.0-SIMPLE";
+console.log(`[v6.0] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -439,340 +432,193 @@ export function useHybridBenchmark() {
       let bothCorrect = 0;
       let bothWrong = 0;
       const depths: number[] = [];
-      let analyzedCount = 0;
+      let predictedCount = 0;
       
-      // PERSISTENT RETRY LOOP: Keep fetching and processing until we hit target count
-      // This ensures the user always gets the exact number of games they requested
-      let totalFetchAttempts = 0;
-      const maxFetchAttempts = 10; // Safety limit to prevent infinite loops
-      let allGames: LichessGameData[] = [];
-      let gameIndex = 0;
+      // v6.0 SIMPLE FLOW: Fetch → Dedupe → Predict → Store
+      console.log(`[v6.0] ========================================`);
+      console.log(`[v6.0] STARTING SIMPLE BENCHMARK`);
+      console.log(`[v6.0] Target: ${gameCount} predictions`);
+      console.log(`[v6.0] Already in DB: ${analyzedData.gameIds.size} games`);
+      console.log(`[v6.0] ========================================`);
       
-      let consecutiveEmptyBatches = 0;
+      // Step 1: Fetch games (request 3x what we need to account for DB duplicates)
+      setProgress(prev => ({ 
+        ...prev!, 
+        message: `Fetching games from Lichess...` 
+      }));
       
-      while (analyzedCount < gameCount && totalFetchAttempts < maxFetchAttempts && !abortRef.current) {
-        // Fetch more games if we've exhausted our current batch
-        if (gameIndex >= allGames.length) {
-          totalFetchAttempts++;
-          // v5.3 FIX: Lean fetch - request only 2x what we need, not 100+ minimum
-          const gamesNeeded = gameCount - analyzedCount;
-          const targetFetch = Math.max(gamesNeeded * 2, 10); // 2x buffer, minimum 10
-          
-          console.log(`[v5.3 BATCH] ========================================`);
-          console.log(`[v5.3 BATCH] Batch ${totalFetchAttempts}: Need ${gamesNeeded} more predictions`);
-          console.log(`[v5.3 BATCH] Requesting ${targetFetch} games from fetcher`);
-          console.log(`[v5.3 BATCH] ========================================`);
-          
-          setProgress(prev => ({ 
-            ...prev!, 
-            message: `Batch ${totalFetchAttempts}: Fetching ${targetFetch} games... (${analyzedCount}/${gameCount} done)` 
-          }));
-          
-          try {
-            // CRITICAL: Pass analyzedData to pre-filter at fetch time
-            const newGames = await fetchLichessGames(targetFetch, analyzedData);
-            if (newGames.length === 0) {
-              consecutiveEmptyBatches++;
-              console.warn(`[Benchmark] Empty batch ${consecutiveEmptyBatches}/3`);
-              if (consecutiveEmptyBatches >= 3) {
-                console.warn(`[Benchmark] No new games fetched after ${consecutiveEmptyBatches} consecutive empty batches`);
-                break;
-              }
-              // Wait before retry on empty batch
-              await new Promise(resolve => setTimeout(resolve, 5000));
-              continue;
-            }
-            
-            consecutiveEmptyBatches = 0; // Reset on success
-            
-            // v5.0 FIX: APPEND new games instead of replacing
-            // This prevents losing unprocessed games from previous batches
-            allGames = [...allGames.slice(gameIndex), ...newGames];
-            gameIndex = 0;
-            
-            console.log(`[v5.0] Batch ${totalFetchAttempts}: Got ${newGames.length} NEW games, total queue: ${allGames.length}`);
-          } catch (fetchError) {
-            console.error(`[Benchmark] Fetch error:`, fetchError);
-            consecutiveEmptyBatches++;
-            if (consecutiveEmptyBatches >= 3) {
-              console.warn(`[Benchmark] Stopping after ${consecutiveEmptyBatches} consecutive failures`);
-              break;
-            }
-            await new Promise(resolve => setTimeout(resolve, 10000)); // Wait 10s on error
-            continue;
-          }
+      const fetchCount = Math.max(gameCount * 3, 30);
+      console.log(`[v6.0] Fetching ${fetchCount} games...`);
+      
+      const allGames = await fetchLichessGames(fetchCount, analyzedData);
+      console.log(`[v6.0] Got ${allGames.length} fresh games from Lichess`);
+      
+      if (allGames.length === 0) {
+        throw new Error('No fresh games available. Try again later.');
+      }
+      
+      // Step 2: Process each game - predict ALL of them
+      for (const game of allGames) {
+        if (predictedCount >= gameCount || abortRef.current) break;
+        
+        const lichessId = game.lichessId;
+        
+        // Simple validation
+        if (!lichessId || lichessId.length !== 8) {
+          console.log(`[v6.0] Skip invalid ID: ${lichessId}`);
+          continue;
         }
         
-        if (gameIndex >= allGames.length) {
-          console.warn(`[Benchmark] Exhausted all games in current batch, fetching more...`);
-          continue; // Loop back to fetch more
+        // Already in DB? Skip (but this should be pre-filtered by fetchLichessGames)
+        if (analyzedData.gameIds.has(lichessId)) {
+          console.log(`[v6.0] Skip DB duplicate: ${lichessId}`);
+          continue;
         }
         
-        const game = allGames[gameIndex];
-        gameIndex++;
-        const gamesLeftInBatch = allGames.length - gameIndex;
+        // Parse the game
+        const { moves, result: gameResult, fen, moveNumber } = parsePGN(game.pgn, predictionMoveRange);
+        
+        // Basic validity checks
+        if (moves.length < 10) {
+          console.log(`[v6.0] Skip short game: ${lichessId} (${moves.length} moves)`);
+          continue;
+        }
+        
+        if (gameResult !== 'white' && gameResult !== 'black' && gameResult !== 'draw') {
+          console.log(`[v6.0] Skip no result: ${lichessId}`);
+          continue;
+        }
+        
+        // ✅ VALID GAME - PREDICT IT
+        console.log(`[v6.0] PREDICTING #${predictedCount + 1}: ${lichessId} (${gameResult})`);
         
         setProgress({
-          currentGame: analyzedCount + 1,
+          currentGame: predictedCount + 1,
           totalGames: gameCount,
           currentPhase: 'analyzing',
           currentDepth: 0,
-          message: `Analyzing ${analyzedCount + 1}/${gameCount} (batch ${totalFetchAttempts}, ${gamesLeftInBatch} in queue, ${skippedFromDb + skippedThisRun} skipped)`,
+          message: `Predicting ${predictedCount + 1}/${gameCount}: ${lichessId}`,
           enPensentModulesActive: EN_PENSENT_ADAPTERS
         });
         
-        try {
-          // ========================================
-          // v5.0 ZERO-SKIP PROCESSING
-          // Games are ALREADY pre-filtered by fetchLichessGames
-          // We just need to validate format and run-level dedup
-          // ========================================
-          const lichessGameId = game.lichessId;
-          
-          // Gate 1: Valid ID format (8 alphanumeric chars)
-          if (!lichessGameId || lichessGameId.length !== 8 || !/^[a-zA-Z0-9]+$/.test(lichessGameId)) {
-            console.log(`[v5.0 INVALID] Game has invalid ID format: "${lichessGameId}" - skipping`);
-            continue;
-          }
-          
-          // Gate 2: Already processed in THIS RUN (prevents duplicates within same batch)
-          if (processedThisRun.has(lichessGameId)) {
-            skippedThisRun++;
-            console.log(`[v5.0 SKIP-RUN] Game ${lichessGameId} already processed this run`);
-            continue;
-          }
-          
-          // v5.0: TRUST the fetcher - it already filtered DB games
-          // Only check DB as a safety net (should never trigger if fetcher works correctly)
-          if (analyzedData.gameIds.has(lichessGameId)) {
-            skippedFromDb++;
-            console.warn(`[v5.0 SAFETY] Game ${lichessGameId} slipped through fetcher filter - skipping`);
-            continue;
-          }
-          
-          // v5.2: Exhaustive logging for every decision
-          console.log(`[v5.2 PARSE] Game ${lichessGameId}: Parsing PGN...`);
-          
-          const { moves, result: gameResult, fen, moveNumber } = parsePGN(game.pgn, predictionMoveRange);
-          
-          console.log(`[v5.2 PARSED] Game ${lichessGameId}: ${moves.length} moves, result="${gameResult}", move=${moveNumber}`);
-          
-          // Gate 3: Minimum moves for meaningful analysis
-          if (moves.length < 10) {
-            console.log(`[v5.2 SKIP-SHORT] ✗ Game ${lichessGameId} has only ${moves.length} moves (need 10+)`);
-            continue;
-          }
-          
-          // Gate 4: Valid result detection
-          if (gameResult !== 'white' && gameResult !== 'black' && gameResult !== 'draw') {
-            console.log(`[v5.2 SKIP-RESULT] ✗ Game ${lichessGameId} has invalid result: "${gameResult}"`);
-            continue;
-          }
-          
-          // ✅ ALL VALIDATION PASSED - NOW mark as processed
-          processedThisRun.add(lichessGameId);
-          analyzedData.gameIds.add(lichessGameId);
-          
-          console.log(`[v5.2 VALID] ========================================`);
-          console.log(`[v5.2 VALID] ✓ Game #${analyzedCount + 1}: ${lichessGameId}`);
-          console.log(`[v5.2 VALID] Moves: ${moves.length}, Result: ${gameResult}, Analyze at move ${moveNumber}`);
-          console.log(`[v5.2 VALID] Link: https://lichess.org/${lichessGameId}`);
-          console.log(`[v5.2 VALID] ========================================`);
-          
-          // Position hash for pattern LEARNING only (not deduplication)
-          const positionHash = hashPosition(fen);
-          if (analyzedData.positionHashes.has(positionHash)) {
-            console.log(`[v5.2 PATTERN] Same position in different game - strengthening confidence`);
-            reaffirmExistingPrediction(fen, positionHash).catch(() => {});
-          }
-          analyzedData.positionHashes.add(positionHash);
-          analyzedData.fenStrings.add(fen);
-          
-          // Full-scope Color Flow prediction with all 25 adapters
-          const colorFlow = analyzeColorFlowFullScope(moves.slice(0, moveNumber));
-          
-          // LOCAL Stockfish analysis at MAXIMUM DEPTH with verification
-          setProgress(prev => ({
-            ...prev!,
-            currentDepth: 0,
-            message: `Game ${analyzedCount + 1}: Analyzing with local Stockfish at depth ${depth}...`
-          }));
-          
-          // Use requireExactDepth for Maximum Depth benchmarks
-          const isMaxDepthMode = depth >= 40;
-          
-          // Add timeout protection for individual position analysis
-          const analysisTimeout = new Promise<null>((resolve) => 
-            setTimeout(() => resolve(null), 120000) // 2 minute timeout per position
-          );
-          
-          const analysisPromise = engine.analyzePosition(fen, { 
-            depth, 
-            requireExactDepth: isMaxDepthMode 
-          });
-          
-          const analysis = await Promise.race([analysisPromise, analysisTimeout]);
-          
-          if (!analysis) {
-            console.warn(`[v5.2 TIMEOUT] ✗ Game ${lichessGameId} - Stockfish analysis timed out after 120s`);
-            // v5.2: UNMARK as processed so it can be retried
-            processedThisRun.delete(lichessGameId);
-            analyzedData.gameIds.delete(lichessGameId);
-            continue;
-          }
-          
-          const stockfish = getLocalStockfishPrediction(analysis);
-          
-          // Log depth verification for audit trail
-          const depthReached = analysis.evaluation.depth;
-          const depthRatio = depthReached > 0 ? (depthReached / depth) * 100 : 0;
-          if (depthRatio < 95 && isMaxDepthMode && depthReached > 0) {
-            console.warn(`[v5.2 DEPTH] Position ${analyzedCount + 1}: Only ${depthReached}/${depth} (${depthRatio.toFixed(1)}%)`);
-          }
-          
-          console.log(`[v5.2 ANALYSIS] ✓ Game ${lichessGameId}: depth=${depthReached}, eval=${stockfish.evaluation}cp`);
-          
-          depths.push(stockfish.depth);
-          
-          setProgress(prev => ({
-            ...prev!,
-            currentDepth: stockfish.depth,
-          }));
-          
-          const hybridIsCorrect = colorFlow.prediction === gameResult;
-          const stockfishIsCorrect = stockfish.prediction === gameResult;
-          
-          if (hybridIsCorrect) hybridCorrect++;
-          if (stockfishIsCorrect) stockfishCorrect++;
-          if (hybridIsCorrect && stockfishIsCorrect) bothCorrect++;
-          if (!hybridIsCorrect && !stockfishIsCorrect) bothWrong++;
-          
-          const attemptId = crypto.randomUUID();
-          
-          // Build rich game name with player info if available
-          const whiteName = game.whiteName || 'Unknown';
-          const blackName = game.blackName || 'Unknown';
-          const whiteEloDisplay = game.whiteElo ? ` (${game.whiteElo})` : '';
-          const blackEloDisplay = game.blackElo ? ` (${game.blackElo})` : '';
-          const gameName = `${whiteName}${whiteEloDisplay} vs ${blackName}${blackEloDisplay}`;
-          
-          // Use the validated lichessGameId (already confirmed as 8-char alphanumeric above)
-          const gameIdForDb = lichessGameId;
-          
-          const attemptData = {
-            game_id: gameIdForDb, // ALWAYS real 8-char Lichess ID (verified)
-            game_name: gameName,
-            fen,
-            move_number: moveNumber,
-            position_hash: positionHash,
-            hybrid_prediction: colorFlow.prediction,
-            hybrid_confidence: colorFlow.confidence,
-            hybrid_archetype: colorFlow.archetype,
-            hybrid_correct: hybridIsCorrect,
-            stockfish_prediction: stockfish.prediction,
-            stockfish_confidence: stockfish.confidence,
-            stockfish_depth: stockfish.depth,
-            stockfish_eval: stockfish.evaluation,
-            stockfish_correct: stockfishIsCorrect,
-            actual_result: gameResult,
-            data_quality_tier: 'tcec_unlimited',
-            pgn: game.pgn.substring(0, 1000),
-            time_control: game.timeControl || null,
-            white_elo: game.whiteElo || null,
-            black_elo: game.blackElo || null,
-            lichess_id_verified: true, // Mark as verified real Lichess ID
-          };
-          
-          attempts.push(attemptData);
-          
-          // Stream live prediction with FULL UNIVERSAL CONTEXT
-          if (onPrediction) {
-            const livePrediction: LivePredictionData = {
-              id: attemptId,
-              gameName,
-              moveNumber,
-              fen,
-              hybridPrediction: colorFlow.prediction,
-              hybridArchetype: colorFlow.archetype,
-              hybridConfidence: colorFlow.confidence,
-              hybridCorrect: hybridIsCorrect,
-              stockfishPrediction: stockfish.prediction,
-              stockfishEval: stockfish.evaluation,
-              stockfishDepth: stockfish.depth,
-              stockfishCorrect: stockfishIsCorrect,
-              actualResult: gameResult,
-              // GAME MODE CONTEXT (Critical for archetypal cross-referencing)
-              gameMode: game.gameMode || game.timeControl,
-              speed: game.speed,
-              rated: game.rated,
-              variant: game.variant,
-              // FULL TEMPORAL CONTEXT
-              timeControl: game.timeControl,
-              playedAt: game.playedAt,
-              gameYear: game.gameYear,
-              gameMonth: game.gameMonth,
-              gameDayOfWeek: game.gameDayOfWeek,
-              gameHour: game.gameHour,
-              // PLAYER CONTEXT
-              whiteName: game.whiteName,
-              blackName: game.blackName,
-              whiteElo: game.whiteElo,
-              blackElo: game.blackElo,
-              whiteTitle: game.whiteTitle,
-              blackTitle: game.blackTitle,
-              // OPENING CONTEXT
-              openingEco: game.openingEco,
-              openingName: game.openingName,
-              openingPly: game.openingPly,
-              // CLOCK CONTEXT
-              clockInitial: game.clockInitial,
-              clockIncrement: game.clockIncrement,
-              clockTotalTime: game.clockTotalTime,
-              // TERMINATION CONTEXT
-              termination: game.termination,
-              timestamp: Date.now(),
-            };
-            onPrediction(livePrediction);
-            console.log(`[v5.2 STREAM] ✓ Streamed prediction to UI`);
-          }
-          
-          analyzedCount++; // Increment unique game counter
-          
-          console.log(`[v5.2 SUCCESS] ========================================`);
-          console.log(`[v5.2 SUCCESS] ✓ PREDICTION #${analyzedCount}/${gameCount} COMPLETE`);
-          console.log(`[v5.2 SUCCESS] En Pensent: ${colorFlow.prediction} (${(colorFlow.confidence * 100).toFixed(0)}%) ${hybridIsCorrect ? '✓' : '✗'}`);
-          console.log(`[v5.2 SUCCESS] Stockfish: ${stockfish.prediction} (${stockfish.evaluation}cp) ${stockfishIsCorrect ? '✓' : '✗'}`);
-          console.log(`[v5.2 SUCCESS] Actual: ${gameResult}`);
-          console.log(`[v5.2 SUCCESS] ========================================`);
-          
-        } catch (e) {
-          const errorMsg = e instanceof Error ? e.message : String(e);
-          console.error(`[v5.2 ERROR] Game ${gameIndex} failed:`, errorMsg);
-          // Continue to next game instead of stopping
-          setProgress(prev => ({
-            ...prev!,
-            message: `Error on position ${analyzedCount + 1}: ${errorMsg.substring(0, 50)}... Continuing...`
-          }));
+        // Get En Pensent prediction (Color Flow analysis)
+        const colorFlow = analyzeColorFlowFullScope(moves.slice(0, moveNumber));
+        
+        // Get Stockfish evaluation
+        const analysisPromise = engine.analyzePosition(fen, { depth, requireExactDepth: depth >= 40 });
+        const timeout = new Promise<null>(r => setTimeout(() => r(null), 120000));
+        const analysis = await Promise.race([analysisPromise, timeout]);
+        
+        if (!analysis) {
+          console.log(`[v6.0] Stockfish timeout for ${lichessId}, skipping`);
+          continue;
         }
+        
+        const stockfish = getLocalStockfishPrediction(analysis);
+        
+        // Record depth
+        depths.push(stockfish.depth);
+        console.log(`[v6.0] Stockfish: ${stockfish.evaluation}cp at depth ${stockfish.depth}`);
+        
+        // Compare predictions
+        const hybridIsCorrect = colorFlow.prediction === gameResult;
+        const stockfishIsCorrect = stockfish.prediction === gameResult;
+        
+        if (hybridIsCorrect) hybridCorrect++;
+        if (stockfishIsCorrect) stockfishCorrect++;
+        if (hybridIsCorrect && stockfishIsCorrect) bothCorrect++;
+        if (!hybridIsCorrect && !stockfishIsCorrect) bothWrong++;
+        
+        // Build attempt data
+        const positionHash = hashPosition(fen);
+        const whiteName = game.whiteName || 'Unknown';
+        const blackName = game.blackName || 'Unknown';
+        const whiteEloDisplay = game.whiteElo ? ` (${game.whiteElo})` : '';
+        const blackEloDisplay = game.blackElo ? ` (${game.blackElo})` : '';
+        const gameName = `${whiteName}${whiteEloDisplay} vs ${blackName}${blackEloDisplay}`;
+        
+        const attemptData = {
+          game_id: lichessId,
+          game_name: gameName,
+          fen,
+          move_number: moveNumber,
+          position_hash: positionHash,
+          hybrid_prediction: colorFlow.prediction,
+          hybrid_confidence: colorFlow.confidence,
+          hybrid_archetype: colorFlow.archetype,
+          hybrid_correct: hybridIsCorrect,
+          stockfish_prediction: stockfish.prediction,
+          stockfish_confidence: stockfish.confidence,
+          stockfish_depth: stockfish.depth,
+          stockfish_eval: stockfish.evaluation,
+          stockfish_correct: stockfishIsCorrect,
+          actual_result: gameResult,
+          data_quality_tier: 'tcec_unlimited',
+          pgn: game.pgn.substring(0, 1000),
+          time_control: game.timeControl || null,
+          white_elo: game.whiteElo || null,
+          black_elo: game.blackElo || null,
+          lichess_id_verified: true,
+        };
+        
+        attempts.push(attemptData);
+        analyzedData.gameIds.add(lichessId); // Mark as analyzed
+        
+        // Stream to UI
+        if (onPrediction) {
+          const livePrediction: LivePredictionData = {
+            id: crypto.randomUUID(),
+            gameName,
+            moveNumber,
+            fen,
+            hybridPrediction: colorFlow.prediction,
+            hybridArchetype: colorFlow.archetype,
+            hybridConfidence: colorFlow.confidence,
+            hybridCorrect: hybridIsCorrect,
+            stockfishPrediction: stockfish.prediction,
+            stockfishEval: stockfish.evaluation,
+            stockfishDepth: stockfish.depth,
+            stockfishCorrect: stockfishIsCorrect,
+            actualResult: gameResult,
+            gameMode: game.gameMode || game.timeControl,
+            speed: game.speed,
+            rated: game.rated,
+            variant: game.variant,
+            timeControl: game.timeControl,
+            playedAt: game.playedAt,
+            gameYear: game.gameYear,
+            gameMonth: game.gameMonth,
+            gameDayOfWeek: game.gameDayOfWeek,
+            gameHour: game.gameHour,
+            whiteName: game.whiteName,
+            blackName: game.blackName,
+            whiteElo: game.whiteElo,
+            blackElo: game.blackElo,
+            whiteTitle: game.whiteTitle,
+            blackTitle: game.blackTitle,
+            openingEco: game.openingEco,
+            openingName: game.openingName,
+            openingPly: game.openingPly,
+            clockInitial: game.clockInitial,
+            clockIncrement: game.clockIncrement,
+            clockTotalTime: game.clockTotalTime,
+            termination: game.termination,
+            timestamp: Date.now(),
+          };
+          onPrediction(livePrediction);
+        }
+        
+        predictedCount++;
+        
+        console.log(`[v6.0] ✓ PREDICTION #${predictedCount}: En Pensent=${colorFlow.prediction}${hybridIsCorrect ? '✓' : '✗'} | Stockfish=${stockfish.prediction}${stockfishIsCorrect ? '✓' : '✗'} | Actual=${gameResult}`);
       }
       
-      console.log(`[v5.2 COMPLETE] ========================================`);
-      console.log(`[v5.2 COMPLETE] Benchmark finished!`);
-      console.log(`[v5.2 COMPLETE] Predictions: ${analyzedCount}/${gameCount}`);
-      console.log(`[v5.2 COMPLETE] DB skips: ${skippedFromDb}, Run skips: ${skippedThisRun}`);
-      console.log(`[v5.2 COMPLETE] ========================================`);
-      
-      // Report if we stopped early
-      if (analyzedCount < gameCount && analyzedCount > 0) {
-        console.warn(`[Benchmark] Completed with ${analyzedCount}/${gameCount} positions (rate limiting or data exhaustion)`);
-        setProgress(prev => ({
-          ...prev!,
-          message: `Completed ${analyzedCount}/${gameCount} positions (API limits reached). Saving results...`
-        }));
-      }
+      console.log(`[v6.0] ========================================`);
+      console.log(`[v6.0] BENCHMARK COMPLETE: ${predictedCount}/${gameCount} predictions`);
+      console.log(`[v6.0] ========================================`);
       
       if (attempts.length === 0) {
-        throw new Error('No valid games processed. Lichess API may be rate limiting - try again in a few minutes.');
+        throw new Error('No valid games processed. Try again later.');
       }
       
       // Calculate stats
@@ -905,18 +751,13 @@ async function fetchLichessGames(
   count: number, 
   analyzedData?: { positionHashes: Set<string>; gameIds: Set<string>; fenStrings: Set<string>; realLichessIds?: Set<string> }
 ): Promise<LichessGameData[]> {
-  // v5.3 FIX: ACTUALLY USE the count parameter to limit fetching!
-  // Only fetch what we need + small buffer, not 900 games
+  // v6.0: Simple fetch - just get games and filter out ones we already have
   const targetGames = count;
-  const gamesPerPlayer = Math.max(5, Math.ceil(targetGames / 5)); // ~5 players worth
-  const maxPlayers = Math.min(8, Math.ceil(targetGames / 3)); // At most 8 players
+  const gamesPerPlayer = Math.max(10, Math.ceil(targetGames / 4));
   
-  console.log(`[v5.3 FETCH] ========================================`);
-  console.log(`[v5.3 FETCH] TARGET: ${targetGames} fresh games`);
-  console.log(`[v5.3 FETCH] Strategy: ${maxPlayers} players × ${gamesPerPlayer} games each`);
-  console.log(`[v5.3 FETCH] ========================================`);
+  console.log(`[v6.0 FETCH] Requesting ${targetGames} fresh games`);
   
-  // Compact player pool - focus on high-volume GMs
+  // Large player pool for variety
   const topPlayers = [
     "DrNykterstein", "Hikaru", "nihalsarin2004", "FairChess_on_YouTube",
     "GMWSO", "LyonBeast", "Polish_fighter3000", "Msb2", "penguingm1",
@@ -924,33 +765,24 @@ async function fetchLichessGames(
     "BogdanDeac", "mishanick", "Arjun_Erigaisi", "RaunakSadhwani2005"
   ];
   
-  // CRITICAL: Randomize time window for each run to get different games
+  // Random time window for variety
   const now = Date.now();
   const lichessStart = new Date('2010-01-01').getTime();
-  const fourteenYearsSpan = now - lichessStart;
-  
-  // Random window anywhere in Lichess history - 60-day windows for variety
-  const randomStartOffset = Math.floor(Math.random() * (fourteenYearsSpan - (60 * 24 * 60 * 60 * 1000)));
-  const since = lichessStart + randomStartOffset;
+  const span = now - lichessStart;
+  const randomOffset = Math.floor(Math.random() * (span - (60 * 24 * 60 * 60 * 1000)));
+  const since = lichessStart + randomOffset;
   const until = since + (60 * 24 * 60 * 60 * 1000);
   
   const games: LichessGameData[] = [];
   const gameIds = new Set<string>();
-  const shuffledPlayers = topPlayers.sort(() => Math.random() - 0.5);
+  const selectedPlayers = topPlayers.sort(() => Math.random() - 0.5);
   let fetchErrors = 0;
   let rateLimitedPlayers = 0;
   let shortGamesSkipped = 0;
   let alreadyAnalyzedSkipped = 0;
   
-  // v5.3: Only use as many players as needed
-  const selectedPlayers = shuffledPlayers.slice(0, maxPlayers);
-  
   const dbGameCount = analyzedData?.gameIds?.size || 0;
-  console.log(`[v5.3 FETCH] Window: ${new Date(since).toISOString().split('T')[0]} to ${new Date(until).toISOString().split('T')[0]}`);
-  console.log(`[v5.3 FETCH] ${selectedPlayers.length} GMs: ${selectedPlayers.join(', ')}`);
-  console.log(`[v5.3 FETCH] Pre-filter: ${dbGameCount} games already in database`);
-  console.log(`[v5.3 FETCH] ========================================`);
-  
+  console.log(`[v6.0 FETCH] DB has ${dbGameCount} games, window: ${new Date(since).toISOString().split('T')[0]}`);
   // Use Edge Function to fetch games (bypasses CORS in production)
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
