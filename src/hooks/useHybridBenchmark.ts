@@ -16,8 +16,8 @@
  * - Chess.com: -50 offset (closer to FIDE)
  */
 
-// v6.48-PREFIXFIX: Fixed ID validation for prefixed multi-source IDs
-const BENCHMARK_VERSION = "6.48-PREFIXFIX";
+// v6.49-HOISTFIX: Fixed variable hoisting order - failedGameIds before fetchMoreGames
+const BENCHMARK_VERSION = "6.49-HOISTFIX";
 console.log(`[v6.48] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
@@ -572,10 +572,13 @@ export function useHybridBenchmark() {
         throw new Error('No fresh games available. Try again later.');
       }
       
+      // v6.49: CRITICAL FIX - Declare failedGameIds BEFORE fetchMoreGames uses it
+      // This was causing "failedGameIds is not defined" error when fetchMoreGames was called
+      const failedGameIds = new Set<string>(); // Games that failed processing - skip on retry
+      
       // Step 2: Process games with REFETCH when needed
       // v6.43: Detailed skip stats + per-game error isolation
       let skipStats = { invalidId: 0, dbDupe: 0, sessionDupe: 0, shortGame: 0, timeout: 0, parseError: 0, analysisError: 0 };
-      const failedGameIds = new Set<string>(); // Games that failed processing - skip on retry
       
       // v6.43: Higher resilience thresholds
       let emptyBatchStreak = 0;
