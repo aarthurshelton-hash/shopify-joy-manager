@@ -12,9 +12,9 @@
  * Uses Lichess Cloud API with TCEC-calibrated prediction thresholds
  */
 
-// v6.32-UNFETTERED: Remove over-aggressive pre-filtering
-const CLOUD_BENCHMARK_VERSION = "6.32-UNFETTERED";
-console.log(`[v6.32] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
+// v6.33-NOFETCH-FILTER: No fetch-time filtering, all dedup at prediction loop
+const CLOUD_BENCHMARK_VERSION = "6.33-NOFETCH-FILTER";
+console.log(`[v6.33] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
 
 import { Chess } from 'chess.js';
 import { evaluatePosition, type PositionEvaluation } from './lichessCloudEval';
