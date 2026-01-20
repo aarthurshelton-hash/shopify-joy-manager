@@ -12,9 +12,9 @@
  * Uses Lichess Cloud API with TCEC-calibrated prediction thresholds
  */
 
-// v6.40-TRACE: Enhanced logging to diagnose processing flow issues
-const CLOUD_BENCHMARK_VERSION = "6.40-TRACE";
-console.log(`[v6.40] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
+// v6.41-RESILIENT: Mark failed games as attempted + save partial results on error
+const CLOUD_BENCHMARK_VERSION = "6.41-RESILIENT";
+console.log(`[v6.41] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
 
 import { Chess } from 'chess.js';
 import { evaluatePosition, type PositionEvaluation } from './lichessCloudEval';
