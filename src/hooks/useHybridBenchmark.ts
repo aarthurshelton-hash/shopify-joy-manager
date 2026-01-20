@@ -11,9 +11,9 @@
  * That's it. No over-engineering.
  */
 
-// v6.33-NOFETCH-FILTER: Remove ALL fetch-time filtering - dedup only at prediction loop
-const BENCHMARK_VERSION = "6.33-NOFETCH-FILTER";
-console.log(`[v6.33] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.34-LIVEDEDUP: Live deduplication - analyzedData.gameIds updated after each prediction
+const BENCHMARK_VERSION = "6.34-LIVEDEDUP";
+console.log(`[v6.34] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -439,19 +439,19 @@ export function useHybridBenchmark() {
       const depths: number[] = [];
       let predictedCount = 0;
       
-      // v6.32-UNFETTERED: Don't pre-filter at fetch - let prediction loop handle DB dedup
-      console.log(`[v6.33] ========================================`);
-      console.log(`[v6.33] STARTING BENCHMARK - NO FETCH-TIME FILTERING`);
-      console.log(`[v6.33] Target: ${gameCount} predictions`);
-      console.log(`[v6.33] DB has ${analyzedData.gameIds.size} games (dedup at prediction time only)`);
-      console.log(`[v6.33] Each batch fetches ALL games from API, dedup happens in prediction loop`);
-      console.log(`[v6.33] ========================================`);
+      // v6.34-LIVEDEDUP: Dedup uses live-updated analyzedData.gameIds + session predictedIds
+      console.log(`[v6.34] ========================================`);
+      console.log(`[v6.34] STARTING BENCHMARK - LIVE DEDUPLICATION`);
+      console.log(`[v6.34] Target: ${gameCount} predictions`);
+      console.log(`[v6.34] DB has ${analyzedData.gameIds.size} games (updated LIVE after each prediction)`);
+      console.log(`[v6.34] Dedup at fetch-time via analyzedData.gameIds + predictedIds`);
+      console.log(`[v6.34] ========================================`);
       
       // v6.33: predictedIds tracks games we've SUCCESSFULLY predicted this session
       const predictedIds = new Set<string>();
       
-      // v6.33: Track all games fetched this session to prevent re-adding to queue
-      const sessionFetchedIds = new Set<string>();
+      // v6.34: REMOVED sessionFetchedIds - was causing queue starvation
+      // Dedup happens ONLY via analyzedData.gameIds (DB) and predictedIds (session)
       
       // v6.33: Track all games across multiple fetch batches
       let allGames: any[] = [];
@@ -475,17 +475,18 @@ export function useHybridBenchmark() {
         const newGames = await fetchLichessGames(fetchCount, batchNumber);
         console.log(`[v6.33] Batch ${batchNumber}: Got ${newGames.length} games from API`);
         
-        // v6.33: Filter out games already in our queue from previous batches
-        const trulyNewGames = newGames.filter(g => g.lichessId && !sessionFetchedIds.has(g.lichessId));
-        console.log(`[v6.33] After session dedup: ${trulyNewGames.length} truly new (${newGames.length - trulyNewGames.length} already in queue)`);
-        
-        // Track fetched IDs
-        for (const g of trulyNewGames) {
-          if (g.lichessId) sessionFetchedIds.add(g.lichessId);
-        }
+        // v6.34: Filter games already in DB OR already predicted this session
+        // This allows fresh games from new time windows to enter queue
+        const trulyNewGames = newGames.filter(g => {
+          if (!g.lichessId) return false;
+          if (analyzedData.gameIds.has(g.lichessId)) return false; // Already in DB
+          if (predictedIds.has(g.lichessId)) return false; // Already predicted this run
+          return true;
+        });
+        console.log(`[v6.34] After dedup: ${trulyNewGames.length} fresh (${newGames.length - trulyNewGames.length} already known)`);
         
         allGames = [...allGames, ...trulyNewGames];
-        console.log(`[v6.33] Queue now: ${allGames.length} total, ${allGames.length - gameIndex} to process`);
+        console.log(`[v6.34] Queue now: ${allGames.length} total, ${allGames.length - gameIndex} to process`);
         return trulyNewGames.length;
       }
       
@@ -727,6 +728,7 @@ export function useHybridBenchmark() {
         
         predictedCount++;
         predictedIds.add(lichessId); // v6.33: Track predicted games for session dedup
+        analyzedData.gameIds.add(lichessId); // v6.34: Also update DB cache so future batches skip this
         consecutiveSkips = 0; // v6.33: Reset skip counter on successful prediction
         
         // v6.33: Log metadata capture for debugging
