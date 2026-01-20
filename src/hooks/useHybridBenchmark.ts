@@ -16,9 +16,9 @@
  * - Chess.com: -50 offset (closer to FIDE)
  */
 
-// v6.52-BATCHFIX: Fixed batch continuation logic when fetches return 0 after filtering
-const BENCHMARK_VERSION = "6.52-BATCHFIX";
-console.log(`[v6.51] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.53-BULLETPROOF: Complete pipeline audit + reliable multi-source processing
+const BENCHMARK_VERSION = "6.53-BULLETPROOF";
+console.log(`[v6.53] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -59,22 +59,26 @@ export function getGameStrengthFide(whiteElo: number, blackElo: number, source: 
   return toFideElo(avgPlatform, source);
 }
 
+// v6.53: Unified game data interface for both Lichess and Chess.com
 interface LichessGameData {
   pgn: string;
   // v6.15: Raw moves string from Edge Function (more reliable than PGN parsing)
   moves?: string;
-  // CRITICAL: Lichess game ID for cross-run deduplication
-  lichessId?: string;               // The actual Lichess game ID (e.g., "abc123XY")
+  // CRITICAL: Game ID for cross-run deduplication (prefixed: li_XXX or cc_XXX)
+  lichessId?: string;               // The game ID with source prefix
+  // v6.53: Explicit source tracking
+  source?: 'lichess' | 'chesscom';  // Which platform this game came from
   // v6.10-WINNER: Result determination fields
   winner?: 'white' | 'black';       // 'white' | 'black' | undefined (draw)
   status?: string;                  // 'mate' | 'resign' | 'stalemate' | 'timeout' | 'draw' | etc.
+  result?: '1-0' | '0-1' | '1/2-1/2' | '*';  // v6.53: Explicit result string
   // GAME MODE CONTEXT (Critical for archetypal cross-referencing)
   gameMode?: string;                // Primary mode: bullet/blitz/rapid/classical
   speed?: string;                   // Lichess speed category
   perf?: string;                    // Performance category
   rated?: boolean;                  // Was this rated?
   variant?: string;                 // Chess variant (standard, chess960, etc.)
-  source?: string;                  // How game started (lobby, friend, tournament)
+  gameSource?: string;              // How game started (lobby, friend, tournament)
   // Time control context
   timeControl?: string;
   clockInitial?: number;
@@ -509,13 +513,13 @@ export function useHybridBenchmark() {
       // Target: 200+ games per batch from parallel fetching
       const targetPerBatch = Math.max(200, gameCount * 5);
       
-      // v6.51-CLOSURE-FIX: High-volume multi-source fetcher
+      // v6.53-BULLETPROOF: High-volume multi-source fetcher
       // CRITICAL: This function must PUSH to gameQueue, NOT reassign it
       async function fetchMoreGames(): Promise<number> {
         batchNumber++;
-        console.log(`[v6.51] ========== BATCH ${batchNumber}/${maxBatches} ==========`);
-        console.log(`[v6.51] Queue: ${gameQueue.length - gameIndex} remaining, Predicted: ${predictedCount}/${gameCount}`);
-        console.log(`[v6.51] DB: ${analyzedData.gameIds.size} | Session: ${predictedIds.size} | Failed: ${failedGameIds.size}`);
+        console.log(`[v6.53] ========== BATCH ${batchNumber}/${maxBatches} ==========`);
+        console.log(`[v6.53] Queue: ${gameQueue.length - gameIndex} remaining, Predicted: ${predictedCount}/${gameCount}`);
+        console.log(`[v6.53] DB: ${analyzedData.gameIds.size} | Session: ${predictedIds.size} | Failed: ${failedGameIds.size}`);
         
         setProgress(prev => ({ 
           ...prev!, 
@@ -530,27 +534,36 @@ export function useHybridBenchmark() {
           sources: ['lichess', 'chesscom'],
         });
         
-        console.log(`[v6.51] Multi-source returned: ${result.games.length} (Lichess: ${result.lichessCount}, Chess.com: ${result.chesscomCount})`);
+        console.log(`[v6.53] Multi-source returned: ${result.games.length} (Lichess: ${result.lichessCount}, Chess.com: ${result.chesscomCount})`);
         
         if (result.errors.length > 0) {
-          console.warn(`[v6.51] Fetch errors:`, result.errors.slice(0, 3));
+          console.warn(`[v6.53] Fetch errors:`, result.errors.slice(0, 5));
         }
         
         if (result.games.length === 0) {
-          console.warn(`[v6.51] ⚠️ No games returned from either source!`);
+          console.warn(`[v6.53] ⚠️ No games returned from either source!`);
           return 0;
         }
         
-        // v6.51: CRITICAL FIX - Push to mutable array instead of reassigning
-        // The old code did: allGames = [...allGames, ...newGames]
-        // This created a NEW array, but the while loop still used the OLD reference
+        // v6.53: BULLETPROOF - Push to mutable array with validation
         const queueBefore = gameQueue.length;
+        let validGames = 0;
+        let skippedNoMoves = 0;
         
         for (const g of result.games) {
+          // v6.53: Validate game has usable content before queueing
+          const hasMoves = g.moves && g.moves.length > 20;
+          const hasPgn = g.pgn && g.pgn.length > 50;
+          
+          if (!hasMoves && !hasPgn) {
+            skippedNoMoves++;
+            continue;
+          }
+          
           gameQueue.push({
             pgn: g.pgn,
             moves: g.moves,
-            lichessId: g.gameId, // Now includes source prefix (li_ or cc_)
+            lichessId: g.gameId, // Includes source prefix (li_ or cc_)
             source: g.source,
             winner: g.winner,
             status: g.status,
@@ -569,11 +582,16 @@ export function useHybridBenchmark() {
             openingName: g.openingName,
             termination: g.termination,
           } as LichessGameData);
+          validGames++;
         }
         
-        console.log(`[v6.51] Queue: ${queueBefore} → ${gameQueue.length} (+${result.games.length})`);
+        if (skippedNoMoves > 0) {
+          console.log(`[v6.53] Skipped ${skippedNoMoves} games with no usable moves/PGN`);
+        }
         
-        return result.games.length;
+        console.log(`[v6.53] Queue: ${queueBefore} → ${gameQueue.length} (+${validGames} valid)`);
+        
+        return validGames;
       }
       
       // Initial fetch
@@ -676,42 +694,40 @@ export function useHybridBenchmark() {
       }
       
       while (predictedCount < gameCount && !abortRef.current && batchNumber < maxBatches) {
-        // v6.43: Safety check - if too many consecutive skips, force refetch
+        // v6.53: Safety check - if too many consecutive skips, force refetch
         if (consecutiveSkips >= MAX_CONSECUTIVE_SKIPS) {
-          console.warn(`[v6.43] ⚠️ ${consecutiveSkips} consecutive skips - forcing refetch`);
-          console.log(`[v6.51] SKIP STATS: invalid=${skipStats.invalidId}, dbDupe=${skipStats.dbDupe}, sessionDupe=${skipStats.sessionDupe}, short=${skipStats.shortGame}, timeout=${skipStats.timeout}, parse=${skipStats.parseError}, analysis=${skipStats.analysisError}`);
+          console.warn(`[v6.53] ⚠️ ${consecutiveSkips} consecutive skips - forcing refetch`);
+          console.log(`[v6.53] SKIP STATS: invalid=${skipStats.invalidId}, dbDupe=${skipStats.dbDupe}, sessionDupe=${skipStats.sessionDupe}, short=${skipStats.shortGame}, timeout=${skipStats.timeout}, parse=${skipStats.parseError}, analysis=${skipStats.analysisError}`);
           consecutiveSkips = 0;
           gameIndex = gameQueue.length; // Force refetch by exhausting queue pointer
         }
         
         // Check if we need more games
         if (gameIndex >= gameQueue.length) {
-          console.log(`[v6.51] Queue exhausted at index ${gameIndex}, need more (${predictedCount}/${gameCount})`);
-          console.log(`[v6.43] SKIP STATS: invalid=${skipStats.invalidId}, dbDupe=${skipStats.dbDupe}, sessionDupe=${skipStats.sessionDupe}, short=${skipStats.shortGame}, timeout=${skipStats.timeout}, parse=${skipStats.parseError}, analysis=${skipStats.analysisError}`);
+          console.log(`[v6.53] Queue exhausted at index ${gameIndex}, need more (${predictedCount}/${gameCount})`);
+          console.log(`[v6.53] SKIP STATS: invalid=${skipStats.invalidId}, dbDupe=${skipStats.dbDupe}, sessionDupe=${skipStats.sessionDupe}, short=${skipStats.shortGame}, timeout=${skipStats.timeout}, parse=${skipStats.parseError}, analysis=${skipStats.analysisError}`);
           
-          // v6.43: Try fetching with exponential backoff on empty batches
+          // v6.53: Try fetching with exponential backoff on empty batches
           const waitTime = Math.min(3000 * Math.pow(1.5, emptyBatchStreak), 15000);
           if (emptyBatchStreak > 0) {
-            console.log(`[v6.43] Waiting ${Math.round(waitTime/1000)}s before retry...`);
+            console.log(`[v6.53] Waiting ${Math.round(waitTime/1000)}s before retry...`);
             await new Promise(r => setTimeout(r, waitTime));
           }
           
           const newCount = await fetchMoreGames();
           
-          // v6.52-BATCHFIX: Better handling of batch results
+          // v6.53: Better handling of batch results
           if (newCount === 0) {
             emptyBatchStreak++;
-            console.warn(`[v6.52] Empty batch #${emptyBatchStreak}/${MAX_EMPTY_BATCHES}`);
+            console.warn(`[v6.53] Empty batch #${emptyBatchStreak}/${MAX_EMPTY_BATCHES}`);
             
             if (emptyBatchStreak >= MAX_EMPTY_BATCHES) {
-              console.warn(`[v6.52] Too many empty batches, saving partial results and stopping.`);
+              console.warn(`[v6.53] Too many empty batches, saving partial results and stopping.`);
               await saveIncrementalResults();
               break;
             }
             
-            // v6.52: DON'T continue - let the loop naturally check if we got games
-            // The fetchMoreGames might have added games but returned 0 due to filtering
-            // If gameQueue.length > gameIndex, we actually DO have games to process
+            // v6.53: Check if queue actually has games despite fetch returning 0
             if (gameIndex >= gameQueue.length) {
               // Truly empty - wait and try next batch
               continue;
@@ -956,16 +972,16 @@ export function useHybridBenchmark() {
         }
       }
       
-      // v6.43-BULLETPROOF: Final incremental save for any remaining predictions
+      // v6.53: Final incremental save for any remaining predictions
       await saveIncrementalResults();
       
-      console.log(`[v6.43] ========================================`);
-      console.log(`[v6.43] BENCHMARK COMPLETE: ${predictedCount}/${gameCount} predictions`);
-      console.log(`[v6.43] Total batches fetched: ${batchNumber}`);
-      console.log(`[v6.51] Total games processed: ${gameIndex}/${gameQueue.length}`);
-      console.log(`[v6.43] Predicted ${predictedIds.size} games, ${failedGameIds.size} failed`);
-      console.log(`[v6.43] Skip stats: ${JSON.stringify(skipStats)}`);
-      console.log(`[v6.43] ========================================`);
+      console.log(`[v6.53] ========================================`);
+      console.log(`[v6.53] BENCHMARK COMPLETE: ${predictedCount}/${gameCount} predictions`);
+      console.log(`[v6.53] Total batches fetched: ${batchNumber}`);
+      console.log(`[v6.53] Total games processed: ${gameIndex}/${gameQueue.length}`);
+      console.log(`[v6.53] Predicted ${predictedIds.size} games, ${failedGameIds.size} failed`);
+      console.log(`[v6.53] Skip stats: ${JSON.stringify(skipStats)}`);
+      console.log(`[v6.53] ========================================`);
       
       if (attempts.length === 0) {
         throw new Error(`No valid games processed. Skip reasons: ${JSON.stringify(skipStats)}`);
@@ -973,7 +989,7 @@ export function useHybridBenchmark() {
       
       // Warn if we got significantly fewer games than requested
       if (attempts.length < gameCount * 0.8) {
-        console.warn(`[v6.43] ⚠️ Only got ${attempts.length}/${gameCount} games - Lichess may be rate limiting or sparse data`);
+        console.warn(`[v6.53] ⚠️ Only got ${attempts.length}/${gameCount} games - sources may be rate limiting or sparse data`);
       }
       
       // Calculate stats
