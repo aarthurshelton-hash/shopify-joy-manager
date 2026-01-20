@@ -13,8 +13,8 @@
  */
 
 // Version tag for debugging
-const CLOUD_BENCHMARK_VERSION = "6.4-TIMEOUT";
-console.log(`[v6.4] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
+const CLOUD_BENCHMARK_VERSION = "6.5-REFETCH";
+console.log(`[v6.5] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
 
 import { Chess } from 'chess.js';
 import { evaluatePosition, type PositionEvaluation } from './lichessCloudEval';
