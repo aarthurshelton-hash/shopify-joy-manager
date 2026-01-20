@@ -199,7 +199,8 @@ export function ProofDashboard() {
               ) : (
                 <div className="space-y-4">
                   {breakthroughs.map((case_, index) => {
-                    const timeControlInfo = formatTimeControl(case_.timeControl);
+                    // v6.18: Pass gameName for ELO-based inference when time_control is null
+                    const timeControlInfo = formatTimeControl(case_.timeControl, case_.gameName);
                     const analysisDate = case_.createdAt ? parseISO(case_.createdAt) : null;
                     const gameDate = case_.gameDate ? parseISO(case_.gameDate) : null;
                     
