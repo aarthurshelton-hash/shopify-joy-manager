@@ -12,9 +12,9 @@
  * Uses Lichess Cloud API with TCEC-calibrated prediction thresholds
  */
 
-// v6.43-BULLETPROOF: Fixed try-catch scoping + robust batch refetch + guaranteed saves
-const CLOUD_BENCHMARK_VERSION = "6.43-BULLETPROOF";
-console.log(`[v6.43] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
+// v6.44-FLOWFIX: Fixed fetch starvation + time window randomization + higher fetch multiplier
+const CLOUD_BENCHMARK_VERSION = "6.44-FLOWFIX";
+console.log(`[v6.44] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
 
 import { Chess } from 'chess.js';
 import { evaluatePosition, type PositionEvaluation } from './lichessCloudEval';
