@@ -12,8 +12,8 @@
  */
 
 // Version tag for debugging cached code issues
-const BENCHMARK_VERSION = "6.9-SESSION-DEDUP";
-console.log(`[v6.9] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+const BENCHMARK_VERSION = "6.10-WINNER-FIX";
+console.log(`[v6.10] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -27,6 +27,9 @@ interface LichessGameData {
   pgn: string;
   // CRITICAL: Lichess game ID for cross-run deduplication
   lichessId?: string;               // The actual Lichess game ID (e.g., "abc123XY")
+  // v6.10-WINNER: Result determination fields
+  winner?: 'white' | 'black';       // 'white' | 'black' | undefined (draw)
+  status?: string;                  // 'mate' | 'resign' | 'stalemate' | 'timeout' | 'draw' | etc.
   // GAME MODE CONTEXT (Critical for archetypal cross-referencing)
   gameMode?: string;                // Primary mode: bullet/blitz/rapid/classical
   speed?: string;                   // Lichess speed category
@@ -1045,6 +1048,9 @@ async function fetchLichessGames(
               speed: game.speed,
               rated: game.rated,
               variant: game.variant,
+              // v6.10-WINNER: CRITICAL - Pass winner field for result determination!
+              winner: game.winner, // 'white' | 'black' | undefined (draw)
+              status: game.status, // 'mate' | 'resign' | 'stalemate' | 'timeout' | 'draw' | etc.
             });
           }
           
