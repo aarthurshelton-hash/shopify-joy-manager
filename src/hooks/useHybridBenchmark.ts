@@ -1,26 +1,23 @@
 /**
  * Hybrid Benchmark Hook - MAXIMUM DEPTH SYNCHRONIZED SYSTEM
- * VERSION: 5.0-ZERO-SKIP (2026-01-20)
+ * VERSION: 5.1-FRESH-VALID (2026-01-20)
  * 
- * CRITICAL: This version ONLY predicts games we have NEVER seen before.
+ * v5.1 CRITICAL FIX:
+ * - Games are ONLY marked as "processed" AFTER passing ALL validation gates
+ * - Before: Games marked processed, then failed validation = burned without prediction
+ * - After: Games that fail validation can be retried (not marked as processed)
+ * - This ensures every processed game produces a prediction result
  * 
- * v5.0 ZERO-SKIP FIX:
+ * v5.0 ZERO-SKIP:
  * - fetchLichessGames returns ONLY truly new games (pre-filtered by DB IDs)
  * - Main loop processes ALL returned games (no secondary skip checks needed)
  * - Crystal-clear logging: every decision is visible
- * - If fetcher returns a game, it WILL be predicted
- * 
- * v4.3 CRITICAL FIX:
- * - Deduplication uses a SEPARATE tracking set for current run
- * - processedThisRun Set prevents ANY re-processing within a single benchmark
- * - analyzedData.gameIds is the source of truth from the DATABASE
- * - NO game can appear in results if it was already in DB OR already processed
  * 
  * Uses LOCAL Stockfish WASM at MAXIMUM DEPTH (60+) for true 100% capacity testing.
  */
 
 // Version tag for debugging cached code issues
-const BENCHMARK_VERSION = "5.0-ZERO-SKIP";
+const BENCHMARK_VERSION = "5.1-FRESH-VALID";
 console.log(`[useHybridBenchmark] Loaded version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
@@ -547,22 +544,33 @@ export function useHybridBenchmark() {
             continue;
           }
           
-          // PASSED ALL GATES - Mark immediately
-          processedThisRun.add(lichessGameId);
-          analyzedData.gameIds.add(lichessGameId);
+          // v5.1 FIX: DO NOT mark as processed yet - we need to validate first!
+          // The old code marked games as processed BEFORE checking if they could actually be analyzed.
+          // This caused fresh games to be "burned" without producing predictions.
           
-          console.log(`[v5.0 FRESH] ✓ Game #${analyzedCount + 1}: ${lichessGameId} (https://lichess.org/${lichessGameId})`);
+          console.log(`[v5.1 CANDIDATE] Game ${lichessGameId} passed ID gates, validating...`);
           
           const { moves, result: gameResult, fen, moveNumber } = parsePGN(game.pgn, predictionMoveRange);
           
           // Gate 3: Minimum moves for meaningful analysis
           if (moves.length < 10) {
-            console.log(`[v5.0 SHORT] Game ${lichessGameId} has ${moves.length} moves (need 10+)`);
+            console.log(`[v5.1 SHORT] Game ${lichessGameId} has ${moves.length} moves (need 10+) - NOT marking as processed, will retry`);
+            continue; // Don't mark as processed - let it be retried with different PGN
+          }
+          
+          // Gate 4: Valid result detection
+          if (gameResult !== 'white' && gameResult !== 'black' && gameResult !== 'draw') {
+            console.log(`[v5.1 NO-RESULT] Game ${lichessGameId} has no valid result: "${gameResult}" - skipping`);
             continue;
           }
           
+          // ✅ ALL VALIDATION PASSED - NOW mark as processed
+          processedThisRun.add(lichessGameId);
+          analyzedData.gameIds.add(lichessGameId);
+          
           // ✅ THIS GAME WILL BE PREDICTED
-          console.log(`[v5.0 PREDICT] ✓ Predicting game ${lichessGameId}: ${moves.length} moves, result=${gameResult}`);
+          console.log(`[v5.1 FRESH+VALID] ✓ Game #${analyzedCount + 1}: ${lichessGameId} (${moves.length} moves, result=${gameResult})`);
+          console.log(`[v5.1 PREDICT] ✓ Predicting: https://lichess.org/${lichessGameId}`);
           
           // Position hash for pattern LEARNING only (not deduplication)
           const positionHash = hashPosition(fen);
