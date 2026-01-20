@@ -12,9 +12,9 @@
  * Uses Lichess Cloud API with TCEC-calibrated prediction thresholds
  */
 
-// v6.28-DEEPPOOL: Massive player pool expansion + batch-offset rotation
-const CLOUD_BENCHMARK_VERSION = "6.28-DEEPPOOL";
-console.log(`[v6.28] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
+// v6.29-STREAMLINE: Sync with main benchmark hook
+const CLOUD_BENCHMARK_VERSION = "6.29-STREAMLINE";
+console.log(`[v6.29] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
 
 import { Chess } from 'chess.js';
 import { evaluatePosition, type PositionEvaluation } from './lichessCloudEval';
