@@ -13,8 +13,8 @@
  */
 
 // Version tag for debugging
-const CLOUD_BENCHMARK_VERSION = "6.0-SIMPLE";
-console.log(`[v6.0] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
+const CLOUD_BENCHMARK_VERSION = "6.1-DEDUP";
+console.log(`[v6.1] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
 
 import { Chess } from 'chess.js';
 import { evaluatePosition, type PositionEvaluation } from './lichessCloudEval';
@@ -245,10 +245,12 @@ function normalCdf(z: number): number {
 /**
  * v6.0-SIMPLE: Fetch real games from Lichess top players
  * CRITICAL: Only fetch what we need - no over-fetching!
+ * v6.1: Now accepts existingGameIds to filter at fetch time (not just at process time)
  */
 export async function fetchRealGames(
   count: number = 50,
-  onProgress?: (status: string) => void
+  onProgress?: (status: string) => void,
+  existingGameIds?: Set<string>
 ): Promise<BenchmarkGame[]> {
   const games: BenchmarkGame[] = [];
   const targetGames = count;
@@ -301,10 +303,12 @@ export async function fetchRealGames(
         if (!lichessGame.moves || lichessGame.moves.split(' ').length < 10) continue;
         
         // Skip only TRUE duplicates: exact same game ID (unique 8-char Lichess identifier)
-        // Lichess IDs are globally unique per game, so this is the only check needed
-        const isDuplicate = games.some(g => g.id === lichessGame.id);
-        if (isDuplicate) {
-          console.log(`[CloudBenchmark] Skipping true duplicate: ${lichessGame.id}`);
+        // v6.1: Check BOTH current batch AND database for duplicates
+        const isInCurrentBatch = games.some(g => g.id === lichessGame.id);
+        const isInDatabase = existingGameIds?.has(lichessGame.id) ?? false;
+        
+        if (isInCurrentBatch || isInDatabase) {
+          console.log(`[CloudBenchmark] Skipping duplicate: ${lichessGame.id} (batch: ${isInCurrentBatch}, db: ${isInDatabase})`);
           continue;
         }
         
@@ -446,10 +450,11 @@ export async function runCloudBenchmark(
       
       let newGames: BenchmarkGame[];
       if (useRealGames) {
+        // v6.1: Pass existing game IDs for early deduplication at fetch time
         newGames = await fetchRealGames(targetFetch, (status) => {
           onProgress?.(status, 5);
           provenance.recordApiCall('lichess');
-        });
+        }, analyzedData.gameIds);
         newGames = shuffleWithProvenance(newGames, provenance);
       } else {
         newGames = shuffleWithProvenance([...FAMOUS_GAMES], provenance);
