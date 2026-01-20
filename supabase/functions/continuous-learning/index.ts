@@ -179,13 +179,26 @@ function computeFEN(moves: string[], upToMove: number): string {
  * Fetch fresh games from multiple players in parallel
  */
 async function fetchFreshGames(supabase: any, count: number): Promise<any[]> {
-  // Get already analyzed game IDs
+  // Get already analyzed game IDs - ONLY use REAL 8-char Lichess IDs for deduplication (v3.0)
   const { data: existingGames } = await supabase
     .from('chess_prediction_attempts')
     .select('game_id')
     .limit(50000);
   
-  const analyzedIds = new Set((existingGames || []).map((g: any) => g.game_id));
+  // CRITICAL v3.0: Only add REAL Lichess IDs (8 alphanumeric chars) to dedup set
+  // Synthetic IDs like "lichess-TIMESTAMP-X" will NEVER match real IDs, so skip them
+  const analyzedIds = new Set<string>();
+  let realCount = 0, syntheticCount = 0;
+  for (const g of (existingGames || [])) {
+    if (g.game_id && g.game_id.length === 8 && /^[a-zA-Z0-9]+$/.test(g.game_id)) {
+      analyzedIds.add(g.game_id);
+      realCount++;
+    } else {
+      syntheticCount++;
+    }
+  }
+  console.log(`[v3.0-DEDUP] Loaded ${realCount} real Lichess IDs for dedup (ignored ${syntheticCount} synthetic)`);
+  
   const allGames: any[] = [];
   
   // Sample from each ELO tier based on weights

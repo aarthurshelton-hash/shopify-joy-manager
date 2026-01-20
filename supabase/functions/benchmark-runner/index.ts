@@ -614,13 +614,16 @@ serve(async (req) => {
     // Load historical archetype performance for calibrated predictions
     await loadHistoricalStats(supabase);
 
-    // Get ALL existing GAME IDs for game-level deduplication using pagination
-    // IMPORTANT: We deduplicate by GAME, not by position - same position from different games is valuable data
-    const existingGameIds = new Set<string>();
+    // Get ONLY real 8-char Lichess IDs for deduplication (v3.0)
+    // CRITICAL: Legacy synthetic IDs (lichess-TIMESTAMP-X) are IGNORED
+    // They will never match real Lichess IDs like "ZhoooCoY"
+    const existingRealLichessIds = new Set<string>();
     const existingPositionHashes = new Set<string>(); // For position reaffirmation tracking only
     let from = 0;
     const pageSize = 1000;
     let hasMore = true;
+    let realIdCount = 0;
+    let syntheticCount = 0;
     
     while (hasMore) {
       const { data: existingAttempts, error } = await supabase
@@ -634,7 +637,16 @@ serve(async (req) => {
       }
       
       for (const p of existingAttempts) {
-        if (p.game_id) existingGameIds.add(p.game_id);
+        if (p.game_id) {
+          // ONLY add REAL 8-char Lichess IDs for deduplication
+          const isRealId = p.game_id.length === 8 && /^[a-zA-Z0-9]+$/.test(p.game_id);
+          if (isRealId) {
+            existingRealLichessIds.add(p.game_id);
+            realIdCount++;
+          } else {
+            syntheticCount++; // Count but DON'T add to dedup set
+          }
+        }
         if (p.position_hash) existingPositionHashes.add(p.position_hash);
       }
       
@@ -642,7 +654,10 @@ serve(async (req) => {
       hasMore = existingAttempts.length === pageSize;
     }
     
-    console.log(`[BenchmarkRunner] Loaded ${existingGameIds.size} existing games and ${existingPositionHashes.size} positions for deduplication/reaffirmation`);
+    console.log(`[v3.0-DEDUP] Loaded ${realIdCount} REAL Lichess IDs for deduplication (ignored ${syntheticCount} synthetic)`);
+    
+    // IMPORTANT: Pass only real IDs to fetchLichessGames
+    const existingGameIds = existingRealLichessIds;
 
     const runId = crypto.randomUUID();
     const attempts: any[] = [];
