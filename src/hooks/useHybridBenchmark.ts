@@ -12,8 +12,8 @@
  */
 
 // Version tag for debugging cached code issues
-const BENCHMARK_VERSION = "6.7-DIRECT-RESULT";
-console.log(`[v6.7] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+const BENCHMARK_VERSION = "6.8-ZERO-SKIP";
+console.log(`[v6.8] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -479,7 +479,7 @@ export function useHybridBenchmark() {
       
       // Step 2: Process games with REFETCH when needed
       // Track skip reasons for debugging
-      let skipStats = { invalidId: 0, dbDupe: 0, shortGame: 0, noResult: 0, timeout: 0, parseError: 0 };
+      let skipStats = { invalidId: 0, dbDupe: 0, shortGame: 0, timeout: 0, parseError: 0 };
       
       // v6.5 REFETCH LOOP: Keep processing until we hit target OR max batches
       while (predictedCount < gameCount && !abortRef.current && batchNumber < maxBatches) {
@@ -512,28 +512,20 @@ export function useHybridBenchmark() {
           continue;
         }
         
-        // v6.7: Use game.winner directly from Edge Function - MUCH more reliable than PGN parsing!
-        // Edge Function sets: winner: 'white' | 'black' | undefined (for draw)
-        // And result: '1-0' | '0-1' | '1/2-1/2'
+        // v6.8: ZERO SKIPPING - Determine result from whatever data we have
+        // Lichess winner field: 'white' | 'black' | undefined
+        // If no winner, it's a draw (stalemate, agreement, repetition, insufficient, timeout vs insufficient, etc.)
         let gameResult: string;
         if (game.winner === 'white') {
           gameResult = 'white';
         } else if (game.winner === 'black') {
           gameResult = 'black';
-        } else if (game.status === 'draw' || game.status === 'stalemate' || game.result === '1/2-1/2') {
-          gameResult = 'draw';
         } else {
-          // Fallback: check the result tag
-          if (game.result === '1-0') gameResult = 'white';
-          else if (game.result === '0-1') gameResult = 'black';
-          else {
-            console.log(`[v6.7] Skip ambiguous result: ${lichessId} (winner=${game.winner}, status=${game.status}, result=${game.result})`);
-            skipStats.noResult++;
-            continue;
-          }
+          // No winner = draw (covers ALL draw scenarios: stalemate, agreement, repetition, 50-move, insufficient, etc.)
+          gameResult = 'draw';
         }
         
-        console.log(`[v6.7] Game ${lichessId}: winner=${game.winner}, status=${game.status} → ${gameResult}`);
+        console.log(`[v6.8] Game ${lichessId}: winner=${game.winner}, status=${game.status} → ${gameResult}`);
         
         // Parse moves and generate FEN for prediction point
         let moves: string[];
