@@ -12,8 +12,8 @@
  */
 
 // Version tag for debugging cached code issues
-const BENCHMARK_VERSION = "6.0-SIMPLE";
-console.log(`[v6.0] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+const BENCHMARK_VERSION = "6.1-OPTIMIZED";
+console.log(`[v6.1] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -751,27 +751,21 @@ async function fetchLichessGames(
   count: number, 
   analyzedData?: { positionHashes: Set<string>; gameIds: Set<string>; fenStrings: Set<string>; realLichessIds?: Set<string> }
 ): Promise<LichessGameData[]> {
-  // v6.0: Simple fetch - just get games and filter out ones we already have
+  // v6.1: IMPROVED - Use realistic time windows and retry failed windows
   const targetGames = count;
-  const gamesPerPlayer = Math.max(10, Math.ceil(targetGames / 4));
+  const gamesPerPlayer = Math.max(15, Math.ceil(targetGames / 3));
   
-  console.log(`[v6.0 FETCH] Requesting ${targetGames} fresh games`);
+  console.log(`[v6.1 FETCH] Requesting ${targetGames} fresh games`);
   
-  // Large player pool for variety
+  // Large player pool - active Lichess players with long history
   const topPlayers = [
-    "DrNykterstein", "Hikaru", "nihalsarin2004", "FairChess_on_YouTube",
-    "GMWSO", "LyonBeast", "Polish_fighter3000", "Msb2", "penguingm1",
-    "DanielNaroditsky", "EricRosen", "Fins", "chessbrah", "opperwezen",
-    "BogdanDeac", "mishanick", "Arjun_Erigaisi", "RaunakSadhwani2005"
+    "DrNykterstein", "Hikaru", "nihalsarin2004", "GMWSO", "LyonBeast",
+    "Polish_fighter3000", "Msb2", "penguingm1", "DanielNaroditsky", 
+    "EricRosen", "Fins", "chessbrah", "opperwezen", "BogdanDeac",
+    "Arjun_Erigaisi", "RaunakSadhwani2005", "TemurKuybokarov",
+    "Zhigalko_Sergei", "ChessNetwork", "DrDrunkenstein", "Firouzja2003",
+    "GM_Srinath", "Oleksandr_Bortnyk", "FabianoCaruana", "LevonAronian"
   ];
-  
-  // Random time window for variety
-  const now = Date.now();
-  const lichessStart = new Date('2010-01-01').getTime();
-  const span = now - lichessStart;
-  const randomOffset = Math.floor(Math.random() * (span - (60 * 24 * 60 * 60 * 1000)));
-  const since = lichessStart + randomOffset;
-  const until = since + (60 * 24 * 60 * 60 * 1000);
   
   const games: LichessGameData[] = [];
   const gameIds = new Set<string>();
@@ -780,172 +774,173 @@ async function fetchLichessGames(
   let rateLimitedPlayers = 0;
   let shortGamesSkipped = 0;
   let alreadyAnalyzedSkipped = 0;
+  let emptyWindowRetries = 0;
   
   const dbGameCount = analyzedData?.gameIds?.size || 0;
-  console.log(`[v6.0 FETCH] DB has ${dbGameCount} games, window: ${new Date(since).toISOString().split('T')[0]}`);
-  // Use Edge Function to fetch games (bypasses CORS in production)
+  console.log(`[v6.1 FETCH] DB has ${dbGameCount} games`);
+  
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
   
-  // CRITICAL FIX: Don't break early - collect as many games as possible
-  // Add substantial delay between requests to respect Lichess rate limits
-  let requestDelay = 3500; // Start with 3.5s between requests
-  
-  for (const player of selectedPlayers) {
-    // If too many players are rate limited, wait longer and increase base delay
-    if (rateLimitedPlayers >= 2) {
-      const waitTime = Math.min(60000, 20000 * rateLimitedPlayers); // Up to 60s
-      console.warn(`[Benchmark] Rate limits detected (${rateLimitedPlayers}), waiting ${waitTime/1000}s...`);
-      await new Promise(resolve => setTimeout(resolve, waitTime));
-      requestDelay = Math.min(8000, requestDelay + 1500); // Increase base delay
-      rateLimitedPlayers = 0; // Reset counter after wait
-    }
-    
-    // Always wait between requests to avoid hitting limits
-    await new Promise(resolve => setTimeout(resolve, requestDelay));
-    
-    try {
-      console.log(`[Benchmark] Fetching games for ${player}... (${games.length} collected, delay: ${requestDelay}ms)`);
-      
-      const response = await fetch(`${supabaseUrl}/functions/v1/lichess-games`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseKey}`,
-          'apikey': supabaseKey
-        },
-        body: JSON.stringify({
-          player,
-          since,
-          until,
-          max: gamesPerPlayer // v5.3: Only request what we need
-        })
-      });
-      
-      if (response.status === 429) {
-        console.warn(`[Benchmark] Rate limited for ${player}, backing off...`);
-        rateLimitedPlayers++;
-        fetchErrors++;
-        requestDelay = Math.min(10000, requestDelay + 2000); // Increase delay on rate limit
-        continue;
-      }
-      
-      if (response.ok) {
-        const data = await response.json();
-        const fetchedGames = data.games || [];
-        
-        console.log(`[Benchmark] Got ${fetchedGames.length} raw games for ${player}`);
-        rateLimitedPlayers = 0; // Reset on success
-        
-        for (const game of fetchedGames) {
-          // Get PGN from either field
-          const pgn = game.pgn || game.moves;
-          if (!pgn || typeof pgn !== 'string' || pgn.length < 20) {
-            continue; // Truly empty - no data to work with
-          }
-          
-          // Accept ALL games with at least 5 move numbers (very short games analyzed at early position)
-          const moveCount = (pgn.match(/\d+\./g) || []).length;
-          if (moveCount < 5) {
-            shortGamesSkipped++;
-            continue;
-          }
-          
-          // CRITICAL FIX: Use the ACTUAL Lichess game ID for deduplication
-          // The Edge Function returns this as 'id' (e.g., "ZhoooCoY", "2frAnX6b")
-          // These are 8-character alphanumeric IDs that link directly to lichess.org/{id}
-          const lichessGameId = game.id;
-          
-          // Validate: Real Lichess IDs are 8 alphanumeric characters
-          const isValidLichessId = lichessGameId && 
-            typeof lichessGameId === 'string' && 
-            lichessGameId.length === 8 &&
-            /^[a-zA-Z0-9]+$/.test(lichessGameId);
-          
-          if (!isValidLichessId) {
-            console.warn(`[Benchmark] Invalid Lichess ID format: "${lichessGameId}" - expected 8 alphanumeric chars, skipping...`);
-            continue;
-          }
-          
-          // Skip if we've already seen this game in current batch
-          if (gameIds.has(lichessGameId)) continue;
-          
-          // v5.0: PRE-FILTER games already in database - this is THE key deduplication
-          if (analyzedData?.gameIds?.has(lichessGameId)) {
-            alreadyAnalyzedSkipped++;
-            // Only log periodically to avoid spam
-            if (alreadyAnalyzedSkipped <= 5 || alreadyAnalyzedSkipped % 10 === 0) {
-              console.log(`[v5.0 FILTER] Skipping DB game: ${lichessGameId} (${alreadyAnalyzedSkipped} total filtered)`);
-            }
-            continue;
-          }
-          
-          gameIds.add(lichessGameId);
-          
-          // This game is CONFIRMED FRESH - will be returned for prediction
-          console.log(`[v5.0 NEW] ✓ Fresh game found: ${lichessGameId} → https://lichess.org/${lichessGameId}`);
-          
-          games.push({
-            pgn,
-            lichessId: lichessGameId, // CRITICAL: Store the ACTUAL Lichess ID (e.g., "ZhoooCoY")
-            // Time control context
-            timeControl: game.timeControl,
-            clockInitial: game.clockInitial,
-            clockIncrement: game.clockIncrement,
-            // Player context
-            whiteName: game.whiteName,
-            blackName: game.blackName,
-            whiteElo: game.whiteElo,
-            blackElo: game.blackElo,
-            whiteTitle: game.whiteTitle,
-            blackTitle: game.blackTitle,
-            // Temporal context
-            playedAt: game.playedAt,
-            gameYear: game.gameYear,
-            gameMonth: game.gameMonth,
-            // Opening context
-            openingEco: game.openingEco,
-            openingName: game.openingName,
-          });
-        }
-        
-        // Log progress and check if we have enough
-        console.log(`[v5.3 FETCH] Progress: ${games.length}/${targetGames} fresh games collected`);
-        
-        // v5.3: STOP EARLY when we have enough games
-        if (games.length >= targetGames) {
-          console.log(`[v5.3 FETCH] ✓ Target reached! Got ${games.length} fresh games`);
-          break;
-        }
-      } else {
-        console.warn(`[Benchmark] Failed to fetch for ${player}: ${response.status}`);
-        fetchErrors++;
-      }
-    } catch (e) {
-      console.error(`[Benchmark] Error for ${player}:`, e);
-      fetchErrors++;
-    }
-    
-    // v5.3: Check after each player if we have enough
-    if (games.length >= targetGames) {
-      break;
-    }
-    
-    // Rate limiting protection - increase delay between players
-    await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 1000));
+  // v6.1: Use more recent time windows - most GM activity is 2018-present
+  // Lichess became mainstream around 2015, peak activity 2020+
+  function getRandomTimeWindow(): { since: number; until: number } {
+    const now = Date.now();
+    // Weight towards more recent games (2018-present for maximum data)
+    const minYear = 2018;
+    const maxYear = new Date().getFullYear();
+    const yearRange = maxYear - minYear;
+    // Bias towards recent years (quadratic distribution)
+    const randomFactor = Math.random() ** 0.5; // Sqrt biases towards higher values (recent)
+    const targetYear = minYear + Math.floor(yearRange * randomFactor);
+    const targetMonth = Math.floor(Math.random() * 12);
+    const windowStart = new Date(targetYear, targetMonth, 1).getTime();
+    const windowDuration = 90 * 24 * 60 * 60 * 1000; // 90 days
+    return { 
+      since: windowStart, 
+      until: Math.min(now, windowStart + windowDuration) 
+    };
   }
   
-  console.log(`[v5.3 FETCH] ========================================`);
-  console.log(`[v5.3 FETCH] COMPLETE: ${games.length} FRESH games (wanted ${targetGames})`);
-  console.log(`[v5.3 FETCH] Pre-filtered: ${alreadyAnalyzedSkipped} already in DB`);
-  console.log(`[v5.3 FETCH] Skipped: ${shortGamesSkipped} too short`);
-  console.log(`[v5.3 FETCH] ========================================`);
-  // If we didn't get enough games but have some, continue with what we have
+  let requestDelay = 2500; // Start with 2.5s between requests
+  
+  for (let attempt = 0; attempt < 3; attempt++) { // Retry loop for empty results
+    const { since, until } = getRandomTimeWindow();
+    console.log(`[v6.1 FETCH] Attempt ${attempt + 1}: Window ${new Date(since).toISOString().split('T')[0]} to ${new Date(until).toISOString().split('T')[0]}`);
+    
+    for (const player of selectedPlayers) {
+      if (games.length >= targetGames) break;
+      
+      // Rate limit handling
+      if (rateLimitedPlayers >= 3) {
+        const waitTime = Math.min(45000, 15000 * rateLimitedPlayers);
+        console.warn(`[v6.1] Rate limits detected (${rateLimitedPlayers}), waiting ${waitTime/1000}s...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        requestDelay = Math.min(6000, requestDelay + 1000);
+        rateLimitedPlayers = 0;
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, requestDelay));
+      
+      try {
+        console.log(`[v6.1 FETCH] Fetching ${player}... (${games.length}/${targetGames} collected)`);
+        
+        const response = await fetch(`${supabaseUrl}/functions/v1/lichess-games`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseKey}`,
+            'apikey': supabaseKey
+          },
+          body: JSON.stringify({
+            player,
+            since,
+            until,
+            max: gamesPerPlayer
+          })
+        });
+        
+        if (response.status === 429) {
+          console.warn(`[v6.1] Rate limited for ${player}, backing off...`);
+          rateLimitedPlayers++;
+          fetchErrors++;
+          requestDelay = Math.min(8000, requestDelay + 1500);
+          continue;
+        }
+        
+        if (response.ok) {
+          const data = await response.json();
+          const fetchedGames = data.games || [];
+          
+          if (fetchedGames.length === 0) {
+            console.log(`[v6.1] No games for ${player} in this window`);
+            emptyWindowRetries++;
+            continue;
+          }
+          
+          console.log(`[v6.1] Got ${fetchedGames.length} raw games for ${player}`);
+          rateLimitedPlayers = 0;
+          
+          for (const game of fetchedGames) {
+            const pgn = game.pgn || game.moves;
+            if (!pgn || typeof pgn !== 'string' || pgn.length < 20) continue;
+            
+            const moveCount = (pgn.match(/\d+\./g) || []).length;
+            if (moveCount < 5) {
+              shortGamesSkipped++;
+              continue;
+            }
+            
+            const lichessGameId = game.id;
+            const isValidLichessId = lichessGameId && 
+              typeof lichessGameId === 'string' && 
+              lichessGameId.length === 8 &&
+              /^[a-zA-Z0-9]+$/.test(lichessGameId);
+            
+            if (!isValidLichessId) continue;
+            if (gameIds.has(lichessGameId)) continue;
+            
+            if (analyzedData?.gameIds?.has(lichessGameId)) {
+              alreadyAnalyzedSkipped++;
+              continue;
+            }
+            
+            gameIds.add(lichessGameId);
+            console.log(`[v6.1 NEW] ✓ Fresh: ${lichessGameId} → lichess.org/${lichessGameId}`);
+            
+            games.push({
+              pgn,
+              lichessId: lichessGameId,
+              timeControl: game.timeControl,
+              clockInitial: game.clockInitial,
+              clockIncrement: game.clockIncrement,
+              whiteName: game.whiteName,
+              blackName: game.blackName,
+              whiteElo: game.whiteElo,
+              blackElo: game.blackElo,
+              whiteTitle: game.whiteTitle,
+              blackTitle: game.blackTitle,
+              playedAt: game.playedAt,
+              gameYear: game.gameYear,
+              gameMonth: game.gameMonth,
+              openingEco: game.openingEco,
+              openingName: game.openingName,
+            });
+          }
+          
+          if (games.length >= targetGames) {
+            console.log(`[v6.1 FETCH] ✓ Target reached: ${games.length} fresh games`);
+            break;
+          }
+        } else {
+          console.warn(`[v6.1] Fetch failed for ${player}: ${response.status}`);
+          fetchErrors++;
+        }
+      } catch (e) {
+        console.error(`[v6.1] Error for ${player}:`, e);
+        fetchErrors++;
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 500));
+    }
+    
+    if (games.length >= targetGames) break;
+    
+    // If we didn't get enough, try with a different time window
+    console.log(`[v6.1] Only got ${games.length}/${targetGames}, trying new window...`);
+  }
+  
+  console.log(`[v6.1 FETCH] ========================================`);
+  console.log(`[v6.1 FETCH] COMPLETE: ${games.length} FRESH games (wanted ${targetGames})`);
+  console.log(`[v6.1 FETCH] Pre-filtered: ${alreadyAnalyzedSkipped} already in DB`);
+  console.log(`[v6.1 FETCH] Skipped: ${shortGamesSkipped} too short`);
+  console.log(`[v6.1 FETCH] Empty windows: ${emptyWindowRetries}`);
+  console.log(`[v6.1 FETCH] ========================================`);
+  
   if (games.length === 0 && fetchErrors > 0) {
     throw new Error('Failed to fetch games from Lichess - possibly rate limited. Please try again in a few minutes.');
   }
   
-  // Final shuffle for randomization
   return games.sort(() => Math.random() - 0.5);
 }
 
