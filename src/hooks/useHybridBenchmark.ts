@@ -11,10 +11,9 @@
  * That's it. No over-engineering.
  */
 
-// Version tag for debugging cached code issues
-// v6.21-FREEFLOW: No dedup data passed to fetcher - fetch freely, dedup at prediction
-const BENCHMARK_VERSION = "6.21-FREEFLOW";
-console.log(`[v6.21] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.22-CLEAN: Removed ALL dedup from fetch function - dedup at prediction only
+const BENCHMARK_VERSION = "6.22-CLEAN";
+console.log(`[v6.22] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -440,12 +439,12 @@ export function useHybridBenchmark() {
       const depths: number[] = [];
       let predictedCount = 0;
       
-      // v6.21 FREEFLOW: Fetch without dedup restrictions, filter at prediction time
-      console.log(`[v6.21] ========================================`);
-      console.log(`[v6.21] STARTING FREEFLOW BENCHMARK`);
-      console.log(`[v6.21] Target: ${gameCount} predictions`);
-      console.log(`[v6.21] Already in DB: ${analyzedData.gameIds.size} games (filtered at prediction time only)`);
-      console.log(`[v6.21] ========================================`);
+      // v6.22 CLEAN: Fetch returns ALL games, dedup at prediction time only
+      console.log(`[v6.22] ========================================`);
+      console.log(`[v6.22] STARTING CLEAN BENCHMARK`);
+      console.log(`[v6.22] Target: ${gameCount} predictions`);
+      console.log(`[v6.22] DB has ${analyzedData.gameIds.size} games (checked at prediction stage only)`);
+      console.log(`[v6.22] ========================================`);
       
       // v6.21-FREEFLOW: Session tracking is for queue dedup only (within this run)
       // DB deduplication happens at prediction time, fetching is unrestricted
@@ -880,11 +879,8 @@ export function useHybridBenchmark() {
   };
 }
 
-// v6.18-FRESH: Data-rich epoch targeting, expanded player pool, better randomization
-async function fetchLichessGames(
-  count: number, 
-  analyzedData?: { positionHashes: Set<string>; gameIds: Set<string>; fenStrings: Set<string>; realLichessIds?: Set<string> }
-): Promise<LichessGameData[]> {
+// v6.22-CLEAN: No dedup at fetch time - let caller handle it
+async function fetchLichessGames(count: number): Promise<LichessGameData[]> {
   const targetGames = count;
   const gamesPerPlayer = Math.max(50, Math.ceil(targetGames / 2));
   
@@ -921,9 +917,8 @@ async function fetchLichessGames(
   // v6.18: Shuffle players AND pick a random subset each time
   const shuffledPlayers = [...topPlayers].sort(() => Math.random() - 0.5);
   
-  const dbGameCount = analyzedData?.gameIds?.size || 0;
-  console.log(`[v6.18 FETCH] Already have ${dbGameCount} game IDs in session`);
-  console.log(`[v6.18 FETCH] Player pool: ${shuffledPlayers.length} players, shuffled`);
+  // v6.22-CLEAN: NO dedup logging here - we fetch freely, caller deduplicates
+  console.log(`[v6.22 FETCH] Player pool: ${shuffledPlayers.length} players, shuffled`);
   
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -1010,7 +1005,7 @@ async function fetchLichessGames(
         
         if (!isValidLichessId) continue;
         if (gameIds.has(lichessGameId)) continue;
-        if (analyzedData?.gameIds?.has(lichessGameId)) continue;
+        // v6.22-CLEAN: NO DB dedup at fetch time - caller handles it at prediction stage
         
         gameIds.add(lichessGameId);
         addedFromPlayer++;
