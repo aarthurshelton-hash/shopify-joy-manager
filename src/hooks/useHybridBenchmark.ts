@@ -16,9 +16,9 @@
  * - Chess.com: -50 offset (closer to FIDE)
  */
 
-// v6.50-HOISTFIX2: Moved failedGameIds + skipStats declarations BEFORE fetchMoreGames definition
-const BENCHMARK_VERSION = "6.50-HOISTFIX2";
-console.log(`[v6.48] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.51-CLOSURE-FIX: Fixed allGames array mutation inside fetchMoreGames closure
+const BENCHMARK_VERSION = "6.51-CLOSURE-FIX";
+console.log(`[v6.51] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -492,8 +492,8 @@ export function useHybridBenchmark() {
       // v6.34: REMOVED sessionFetchedIds - was causing queue starvation
       // Dedup happens ONLY via analyzedData.gameIds (DB) and predictedIds (session)
       
-      // v6.33: Track all games across multiple fetch batches
-      let allGames: any[] = [];
+      // v6.51: Use mutable array - fetchMoreGames will PUSH to this
+      const gameQueue: LichessGameData[] = [];
       let gameIndex = 0;
       let batchNumber = 0;
       const maxBatches = Math.max(50, Math.ceil(gameCount / 2)); // v6.47: Even more batches allowed
@@ -509,12 +509,13 @@ export function useHybridBenchmark() {
       // Target: 200+ games per batch from parallel fetching
       const targetPerBatch = Math.max(200, gameCount * 5);
       
-      // v6.47-HIGHVOL: High-volume multi-source fetcher
+      // v6.51-CLOSURE-FIX: High-volume multi-source fetcher
+      // CRITICAL: This function must PUSH to gameQueue, NOT reassign it
       async function fetchMoreGames(): Promise<number> {
         batchNumber++;
-        console.log(`[v6.47] ========== BATCH ${batchNumber}/${maxBatches} ==========`);
-        console.log(`[v6.47] Queue: ${allGames.length - gameIndex} remaining, Predicted: ${predictedCount}/${gameCount}`);
-        console.log(`[v6.47] DB: ${analyzedData.gameIds.size} | Session: ${predictedIds.size} | Failed: ${failedGameIds.size}`);
+        console.log(`[v6.51] ========== BATCH ${batchNumber}/${maxBatches} ==========`);
+        console.log(`[v6.51] Queue: ${gameQueue.length - gameIndex} remaining, Predicted: ${predictedCount}/${gameCount}`);
+        console.log(`[v6.51] DB: ${analyzedData.gameIds.size} | Session: ${predictedIds.size} | Failed: ${failedGameIds.size}`);
         
         setProgress(prev => ({ 
           ...prev!, 
@@ -529,53 +530,56 @@ export function useHybridBenchmark() {
           sources: ['lichess', 'chesscom'],
         });
         
-        console.log(`[v6.47] Multi-source returned: ${result.games.length} (Lichess: ${result.lichessCount}, Chess.com: ${result.chesscomCount})`);
+        console.log(`[v6.51] Multi-source returned: ${result.games.length} (Lichess: ${result.lichessCount}, Chess.com: ${result.chesscomCount})`);
         
         if (result.errors.length > 0) {
-          console.warn(`[v6.46] Fetch errors:`, result.errors.slice(0, 3));
+          console.warn(`[v6.51] Fetch errors:`, result.errors.slice(0, 3));
         }
         
         if (result.games.length === 0) {
-          console.warn(`[v6.46] ⚠️ No games returned from either source!`);
+          console.warn(`[v6.51] ⚠️ No games returned from either source!`);
           return 0;
         }
         
-        // v6.46: Convert UnifiedGameData to our internal format
-        const newGames = result.games.map(g => ({
-          pgn: g.pgn,
-          moves: g.moves,
-          lichessId: g.gameId, // Now includes source prefix (li_ or cc_)
-          source: g.source,
-          winner: g.winner,
-          status: g.status,
-          result: g.result,
-          whiteName: g.whiteName,
-          blackName: g.blackName,
-          whiteElo: g.whiteElo,
-          blackElo: g.blackElo,
-          timeControl: g.timeControl,
-          speed: g.speed,
-          rated: g.rated,
-          playedAt: g.playedAt,
-          gameYear: g.gameYear,
-          gameMonth: g.gameMonth,
-          openingEco: g.openingEco,
-          openingName: g.openingName,
-          termination: g.termination,
-        }));
+        // v6.51: CRITICAL FIX - Push to mutable array instead of reassigning
+        // The old code did: allGames = [...allGames, ...newGames]
+        // This created a NEW array, but the while loop still used the OLD reference
+        const queueBefore = gameQueue.length;
         
-        // v6.46: Add to queue
-        const queueBefore = allGames.length;
-        allGames = [...allGames, ...newGames];
-        console.log(`[v6.46] Queue: ${queueBefore} → ${allGames.length} (+${newGames.length})`);
+        for (const g of result.games) {
+          gameQueue.push({
+            pgn: g.pgn,
+            moves: g.moves,
+            lichessId: g.gameId, // Now includes source prefix (li_ or cc_)
+            source: g.source,
+            winner: g.winner,
+            status: g.status,
+            result: g.result,
+            whiteName: g.whiteName,
+            blackName: g.blackName,
+            whiteElo: g.whiteElo,
+            blackElo: g.blackElo,
+            timeControl: g.timeControl,
+            speed: g.speed,
+            rated: g.rated,
+            playedAt: g.playedAt,
+            gameYear: g.gameYear,
+            gameMonth: g.gameMonth,
+            openingEco: g.openingEco,
+            openingName: g.openingName,
+            termination: g.termination,
+          } as LichessGameData);
+        }
         
-        return newGames.length;
+        console.log(`[v6.51] Queue: ${queueBefore} → ${gameQueue.length} (+${result.games.length})`);
+        
+        return result.games.length;
       }
       
       // Initial fetch
       await fetchMoreGames();
       
-      if (allGames.length === 0) {
+      if (gameQueue.length === 0) {
         throw new Error('No fresh games available. Try again later.');
       }
       
@@ -675,14 +679,14 @@ export function useHybridBenchmark() {
         // v6.43: Safety check - if too many consecutive skips, force refetch
         if (consecutiveSkips >= MAX_CONSECUTIVE_SKIPS) {
           console.warn(`[v6.43] ⚠️ ${consecutiveSkips} consecutive skips - forcing refetch`);
-          console.log(`[v6.43] SKIP STATS: invalid=${skipStats.invalidId}, dbDupe=${skipStats.dbDupe}, sessionDupe=${skipStats.sessionDupe}, short=${skipStats.shortGame}, timeout=${skipStats.timeout}, parse=${skipStats.parseError}, analysis=${skipStats.analysisError}`);
+          console.log(`[v6.51] SKIP STATS: invalid=${skipStats.invalidId}, dbDupe=${skipStats.dbDupe}, sessionDupe=${skipStats.sessionDupe}, short=${skipStats.shortGame}, timeout=${skipStats.timeout}, parse=${skipStats.parseError}, analysis=${skipStats.analysisError}`);
           consecutiveSkips = 0;
-          gameIndex = allGames.length; // Force refetch by exhausting queue pointer
+          gameIndex = gameQueue.length; // Force refetch by exhausting queue pointer
         }
         
         // Check if we need more games
-        if (gameIndex >= allGames.length) {
-          console.log(`[v6.43] Queue exhausted at index ${gameIndex}, need more (${predictedCount}/${gameCount})`);
+        if (gameIndex >= gameQueue.length) {
+          console.log(`[v6.51] Queue exhausted at index ${gameIndex}, need more (${predictedCount}/${gameCount})`);
           console.log(`[v6.43] SKIP STATS: invalid=${skipStats.invalidId}, dbDupe=${skipStats.dbDupe}, sessionDupe=${skipStats.sessionDupe}, short=${skipStats.shortGame}, timeout=${skipStats.timeout}, parse=${skipStats.parseError}, analysis=${skipStats.analysisError}`);
           
           // v6.43: Try fetching with exponential backoff on empty batches
@@ -709,9 +713,9 @@ export function useHybridBenchmark() {
         }
         
         // v6.33: Check bounds again after potential fetch
-        if (gameIndex >= allGames.length) continue;
+        if (gameIndex >= gameQueue.length) continue;
         
-        const game = allGames[gameIndex];
+        const game = gameQueue[gameIndex];
         gameIndex++;
         // v6.48: gameId now includes source prefix (li_XXXXXXXX or cc_XXXXXXXXX)
         const gameId = game.lichessId;
@@ -793,7 +797,7 @@ export function useHybridBenchmark() {
         
         console.log(`[v6.48] PREDICTING #${predictedCount + 1}/${gameCount}: ${gameId} → ${gameName} (${gameResult}) [batch ${batchNumber}]`);
         
-        const remainingInBatch = allGames.length - gameIndex;
+        const remainingInBatch = gameQueue.length - gameIndex;
         setProgress({
           currentGame: predictedCount + 1,
           totalGames: gameCount,
@@ -947,7 +951,7 @@ export function useHybridBenchmark() {
       console.log(`[v6.43] ========================================`);
       console.log(`[v6.43] BENCHMARK COMPLETE: ${predictedCount}/${gameCount} predictions`);
       console.log(`[v6.43] Total batches fetched: ${batchNumber}`);
-      console.log(`[v6.43] Total games processed: ${gameIndex}/${allGames.length}`);
+      console.log(`[v6.51] Total games processed: ${gameIndex}/${gameQueue.length}`);
       console.log(`[v6.43] Predicted ${predictedIds.size} games, ${failedGameIds.size} failed`);
       console.log(`[v6.43] Skip stats: ${JSON.stringify(skipStats)}`);
       console.log(`[v6.43] ========================================`);
