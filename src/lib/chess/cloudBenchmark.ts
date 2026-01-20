@@ -1,16 +1,20 @@
 /**
  * En Pensent™ vs TCEC Stockfish 17 Unlimited Benchmark
+ * VERSION: 6.0-SIMPLE (2026-01-20)
+ * 
+ * PHILOSOPHY: Keep it simple.
+ * 1. Fetch ONLY what we need (2-3x target, not 8x)
+ * 2. Skip games already in DB
+ * 3. Predict every fresh game
+ * 4. Store results
  * 
  * Compares against TCEC SF17 (ELO 3600) - the strongest Stockfish configuration
  * Uses Lichess Cloud API with TCEC-calibrated prediction thresholds
- * Fetches REAL games from Lichess top GMs for comprehensive testing
- * 
- * DATA INTEGRITY GUARANTEES:
- * 1. Cross-run deduplication - no position analyzed more than once ever
- * 2. Per-game randomized move numbers - prevents pattern memorization
- * 3. Fresh games fetched each run with unique game ID tracking
- * 4. Position hash verification before analysis
  */
+
+// Version tag for debugging
+const CLOUD_BENCHMARK_VERSION = "6.0-SIMPLE";
+console.log(`[v6.0] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
 
 import { Chess } from 'chess.js';
 import { evaluatePosition, type PositionEvaluation } from './lichessCloudEval';
@@ -238,34 +242,41 @@ function normalCdf(z: number): number {
  * Fetch real games from Lichess top players
  * CRITICAL: Uses random time windows to ensure DIFFERENT games each run
  */
+/**
+ * v6.0-SIMPLE: Fetch real games from Lichess top players
+ * CRITICAL: Only fetch what we need - no over-fetching!
+ */
 export async function fetchRealGames(
   count: number = 50,
   onProgress?: (status: string) => void
 ): Promise<BenchmarkGame[]> {
   const games: BenchmarkGame[] = [];
-  const gamesPerPlayer = Math.ceil((count * 2) / TOP_PLAYERS.length); // Fetch extra for filtering
+  const targetGames = count;
+  
+  // v6.0: Only fetch 3x what we need (was 8x+), minimum 5 games per player
+  const numPlayers = Math.min(5, Math.ceil(targetGames / 3));
+  const gamesPerPlayer = Math.max(5, Math.ceil((targetGames * 2) / numPlayers));
+  
+  console.log(`[v6.0 FETCH] Target: ${targetGames}, using ${numPlayers} players, ${gamesPerPlayer} games each`);
   
   // CRITICAL FIX: Randomize which time period we fetch from
-  // This ensures each benchmark run gets DIFFERENT games
   const now = Date.now();
   const oneYearAgo = now - (365 * 24 * 60 * 60 * 1000);
   const twoYearsAgo = now - (2 * 365 * 24 * 60 * 60 * 1000);
   
-  // Random time window: pick a random end point within the last 2 years
-  // This prevents always getting the same "most recent" games
   const randomOffset = Math.floor(Math.random() * (now - oneYearAgo));
   const untilTimestamp = now - randomOffset;
-  const sinceTimestamp = Math.max(twoYearsAgo, untilTimestamp - (180 * 24 * 60 * 60 * 1000)); // 6 month window
+  const sinceTimestamp = Math.max(twoYearsAgo, untilTimestamp - (180 * 24 * 60 * 60 * 1000));
   
-  // Shuffle players order to add more randomness
-  const shuffledPlayers = shuffleArray([...TOP_PLAYERS]);
+  // Only use a few players - no need to iterate through all 18+
+  const shuffledPlayers = shuffleArray([...TOP_PLAYERS]).slice(0, numPlayers);
   
-  onProgress?.(`Fetching games from random time window (${new Date(sinceTimestamp).toLocaleDateString()} - ${new Date(untilTimestamp).toLocaleDateString()})...`);
+  onProgress?.(`Fetching ${targetGames} games from ${numPlayers} players...`);
   
   for (const player of shuffledPlayers) {
-    if (games.length >= count) break;
+    if (games.length >= targetGames) break;
     
-    onProgress?.(`Fetching games from ${player} (${games.length}/${count} collected)...`);
+    onProgress?.(`Fetching from ${player} (${games.length}/${targetGames})...`);
     
     try {
       const result = await fetchLichessGames(player, {
@@ -421,15 +432,17 @@ export async function runCloudBenchmark(
   
   onProgress?.('Fetching FRESH real games from Lichess (randomized)...', 3);
 
-  // PERSISTENT RETRY LOOP: Keep fetching and processing until we hit target count
+  // v6.0-SIMPLE: Keep fetching and processing until we hit target count
   while (analyzedCount < targetCount && totalFetchAttempts < maxFetchAttempts) {
     // Fetch more games if we've exhausted current batch
     if (gameIndex >= allGames.length) {
       totalFetchAttempts++;
-      const gamesNeeded = (targetCount - analyzedCount) * 8; // 8x multiplier for buffer
-      const targetFetch = Math.max(gamesNeeded, 100);
+      // v6.0: Only fetch 2x what we need - no more 100 minimum!
+      const gamesNeeded = targetCount - analyzedCount;
+      const targetFetch = Math.max(gamesNeeded * 2, 10); // Just 2x buffer, minimum 10
       
-      onProgress?.(`Batch ${totalFetchAttempts}: Fetching ~${targetFetch} fresh games... (${analyzedCount}/${targetCount} complete)`, 5);
+      console.log(`[v6.0] Batch ${totalFetchAttempts}: Need ${gamesNeeded}, fetching ${targetFetch}`);
+      onProgress?.(`Batch ${totalFetchAttempts}: Fetching ${targetFetch} games... (${analyzedCount}/${targetCount} done)`, 5);
       
       let newGames: BenchmarkGame[];
       if (useRealGames) {
