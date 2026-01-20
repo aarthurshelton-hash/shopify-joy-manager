@@ -12,9 +12,9 @@
  * Uses Lichess Cloud API with TCEC-calibrated prediction thresholds
  */
 
-// v6.24-SESSFIX: Fixed session duplicate logic + truly random time windows
-const CLOUD_BENCHMARK_VERSION = "6.24-SESSFIX";
-console.log(`[v6.24] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
+// v6.25-DATAWEIGHT: Weight time windows toward data-rich years (2020-2025)
+const CLOUD_BENCHMARK_VERSION = "6.25-DATAWEIGHT";
+console.log(`[v6.25] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
 
 import { Chess } from 'chess.js';
 import { evaluatePosition, type PositionEvaluation } from './lichessCloudEval';
