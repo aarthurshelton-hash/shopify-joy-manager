@@ -11,9 +11,9 @@
  * That's it. No over-engineering.
  */
 
-// v6.34-LIVEDEDUP: Live deduplication - analyzedData.gameIds updated after each prediction
-const BENCHMARK_VERSION = "6.34-LIVEDEDUP";
-console.log(`[v6.34] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.35-RANDOMTIME: Truly random time windows + more players per batch for variety
+const BENCHMARK_VERSION = "6.35-RANDOMTIME";
+console.log(`[v6.35] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -957,32 +957,34 @@ async function fetchLichessGames(
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
   
-  // v6.30-FRESHFIRST: Start with MOST RECENT games (0-offset for batch 1)
+  // v6.35-RANDOMTIME: Truly random time windows to find fresh games
   function getRandomTimeWindow(): { since: number; until: number } {
     const now = Date.now();
     const oneDay = 24 * 60 * 60 * 1000;
     
-    // v6.32: Batch 1 gets FRESH games (0-14 days back)
-    // Subsequent batches go progressively further back
-    const batchIndex = batchNumber - 1; // 0-indexed for time calculation
-    const batchOffset = batchIndex * 14; // 2 weeks per batch progression
-    const randomDays = Math.floor(Math.random() * 14); // 0-14 days random within window
+    // v6.35: TRULY random across entire Lichess history (2010-present)
+    // With 242+ games already analyzed, we need more variety
+    const maxDaysBack = 365 * 14; // Go back up to 14 years (Lichess started ~2010)
+    const minDaysBack = 0;
     
-    // Go back (batchOffset + randomDays) days from now
-    const daysBack = batchOffset + randomDays;
-    const maxDaysBack = 365 * 3; // Max 3 years back
-    const actualDaysBack = daysBack % maxDaysBack;
+    // v6.35: Each batch gets a completely random window
+    // This avoids the "progressive" approach that can get stuck on depleted windows
+    const randomDaysBack = Math.floor(Math.random() * (maxDaysBack - minDaysBack)) + minDaysBack;
     
-    const windowEnd = now - (actualDaysBack * oneDay);
-    const windowStart = windowEnd - (14 * oneDay); // 2-week window
+    const windowEnd = now - (randomDaysBack * oneDay);
+    const windowDuration = 30 + Math.floor(Math.random() * 60); // 30-90 day windows for more variety
+    const windowStart = windowEnd - (windowDuration * oneDay);
     
-    console.log(`[v6.32] Time window: ${new Date(windowStart).toISOString().split('T')[0]} to ${new Date(windowEnd).toISOString().split('T')[0]} (${actualDaysBack} days back)`);
-    return { since: Math.max(0, windowStart), until: windowEnd };
+    // Ensure we don't go into the future
+    const safeWindowEnd = Math.min(windowEnd, now);
+    
+    console.log(`[v6.35] Time window: ${new Date(windowStart).toISOString().split('T')[0]} to ${new Date(safeWindowEnd).toISOString().split('T')[0]} (${randomDaysBack}d back, ${windowDuration}d span)`);
+    return { since: Math.max(0, windowStart), until: safeWindowEnd };
   }
   
   let rateLimitCount = 0;
   let playersQueried = 0;
-  const maxPlayersPerBatch = 8; // Fewer players but deeper per player
+  const maxPlayersPerBatch = 15; // v6.35: More players per batch to increase variety
   
   for (const player of shuffledPlayers) {
     if (games.length >= targetGames || playersQueried >= maxPlayersPerBatch) break;
