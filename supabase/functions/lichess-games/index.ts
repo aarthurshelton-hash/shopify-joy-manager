@@ -114,27 +114,28 @@ serve(async (req) => {
     for (const line of lines) {
       try {
         const game = JSON.parse(line);
-        // Accept ALL finished games (mate, resign, stalemate, timeout, outoftime, draw, etc.)
-        const validStatus = ['mate', 'resign', 'stalemate', 'timeout', 'outoftime', 'draw', 'agreed'];
-        if (game.moves && (validStatus.includes(game.status) || game.winner)) {
-          const moveCount = game.moves.split(' ').length;
-          // Accept games with at least 10 half-moves (5 full moves each side)
-          if (moveCount >= 10) {
-            // Determine result string from winner/status
-            let resultTag = '1/2-1/2';
-            if (game.winner === 'white') resultTag = '1-0';
-            else if (game.winner === 'black') resultTag = '0-1';
-            
-            // Extract player names
-            const whiteName = game.players?.white?.user?.name || game.players?.white?.user?.id || 'Unknown';
-            const blackName = game.players?.black?.user?.name || game.players?.black?.user?.id || 'Unknown';
-            
-            // Extract game date (createdAt is in milliseconds)
-            const gameDate = new Date(game.createdAt);
-            const formattedDate = gameDate.toISOString().split('T')[0].replace(/-/g, '.');
-            
-            // Build proper PGN with FULL metadata
-            const fullPgn = game.pgn || `[Event "Lichess ${game.speed || 'Game'}"]
+        
+        // v6.57-ID-ONLY: ABSORB EVERYTHING - only need an ID
+        // Universal intelligence handles all edge cases client-side
+        if (!game.id) continue;
+        
+        const moveCount = game.moves ? game.moves.split(' ').length : 0;
+        
+        // Determine result string from winner/status
+        let resultTag = '1/2-1/2';
+        if (game.winner === 'white') resultTag = '1-0';
+        else if (game.winner === 'black') resultTag = '0-1';
+        
+        // Extract player names
+        const whiteName = game.players?.white?.user?.name || game.players?.white?.user?.id || 'Unknown';
+        const blackName = game.players?.black?.user?.name || game.players?.black?.user?.id || 'Unknown';
+        
+        // Extract game date (createdAt is in milliseconds)
+        const gameDate = new Date(game.createdAt || Date.now());
+        const formattedDate = gameDate.toISOString().split('T')[0].replace(/-/g, '.');
+        
+        // Build proper PGN with FULL metadata
+        const fullPgn = game.pgn || `[Event "Lichess ${game.speed || 'Game'}"]
 [Site "lichess.org/${game.id}"]
 [Date "${formattedDate}"]
 [White "${whiteName}"]
@@ -146,68 +147,66 @@ serve(async (req) => {
 [ECO "${game.opening?.eco || '?'}"]
 [Opening "${game.opening?.name || 'Unknown'}"]
 
-${game.moves} ${resultTag}`;
+${game.moves || ''} ${resultTag}`;
 
-            // Extract time control from speed field
-            let timeControl = 'classical';
-            if (game.speed === 'bullet' || game.speed === 'ultraBullet') {
-              timeControl = 'bullet';
-            } else if (game.speed === 'blitz') {
-              timeControl = 'blitz';
-            } else if (game.speed === 'rapid') {
-              timeControl = 'rapid';
-            } else if (game.speed === 'classical' || game.speed === 'correspondence') {
-              timeControl = 'classical';
-            } else if (game.perf) {
-              timeControl = game.perf;
-            }
-            
-            games.push({
-              id: game.id,
-              pgn: fullPgn,
-              moves: game.moves,
-              status: game.status,
-              winner: game.winner,
-              result: resultTag,
-              moveCount,
-              // FULL TEMPORAL CONTEXT
-              createdAt: game.createdAt,          // Timestamp in ms
-              playedAt: gameDate.toISOString(),   // ISO string for display
-              gameYear: gameDate.getFullYear(),   // Year for era analysis
-              gameMonth: gameDate.getMonth() + 1, // Month (1-12)
-              gameDayOfWeek: gameDate.getDay(),   // Day of week (0=Sun, 6=Sat)
-              gameHour: gameDate.getHours(),      // Hour (0-23) - timezone inference
-              // GAME MODE CONTEXT (Critical for archetypal understanding)
-              gameMode: timeControl,              // Primary mode: bullet/blitz/rapid/classical
-              speed: game.speed,                  // Lichess speed category
-              perf: game.perf || game.speed,      // Performance category
-              rated: game.rated ?? true,          // Was this a rated game?
-              variant: game.variant || 'standard', // Chess variant (standard, chess960, etc.)
-              source: game.source || 'lobby',     // How game was started
-              // TIME CONTROL CONTEXT  
-              timeControl,
-              clockInitial: game.clock?.initial,   // Starting time in seconds
-              clockIncrement: game.clock?.increment, // Increment in seconds
-              clockTotalTime: (game.clock?.initial || 0) + (40 * (game.clock?.increment || 0)), // Estimated total time
-              // PLAYER CONTEXT
-              whiteName,
-              blackName,
-              whiteElo: game.players?.white?.rating,
-              blackElo: game.players?.black?.rating,
-              whiteTitle: game.players?.white?.user?.title, // GM, IM, FM, etc.
-              blackTitle: game.players?.black?.user?.title,
-              whiteProvisional: game.players?.white?.provisional, // Is rating provisional?
-              blackProvisional: game.players?.black?.provisional,
-              // OPENING CONTEXT
-              openingEco: game.opening?.eco,
-              openingName: game.opening?.name,
-              openingPly: game.opening?.ply, // How many moves in the opening
-              // TERMINATION CONTEXT
-              termination: game.status,           // How game ended (mate, resign, timeout, etc.)
-              lastMoveAt: game.lastMoveAt,        // When the final move was made
-            });
-          }
+        // Extract time control from speed field
+        let timeControl = 'classical';
+        if (game.speed === 'bullet' || game.speed === 'ultraBullet') {
+          timeControl = 'bullet';
+        } else if (game.speed === 'blitz') {
+          timeControl = 'blitz';
+        } else if (game.speed === 'rapid') {
+          timeControl = 'rapid';
+        } else if (game.speed === 'classical' || game.speed === 'correspondence') {
+          timeControl = 'classical';
+        } else if (game.perf) {
+          timeControl = game.perf;
         }
+        
+        games.push({
+          id: game.id,
+          pgn: fullPgn,
+          moves: game.moves || '',
+          status: game.status || 'unknown',
+          winner: game.winner,
+          result: resultTag,
+          moveCount,
+          // FULL TEMPORAL CONTEXT
+          createdAt: game.createdAt,
+          playedAt: gameDate.toISOString(),
+          gameYear: gameDate.getFullYear(),
+          gameMonth: gameDate.getMonth() + 1,
+          gameDayOfWeek: gameDate.getDay(),
+          gameHour: gameDate.getHours(),
+          // GAME MODE CONTEXT
+          gameMode: timeControl,
+          speed: game.speed,
+          perf: game.perf || game.speed,
+          rated: game.rated ?? true,
+          variant: game.variant || 'standard',
+          source: game.source || 'lobby',
+          // TIME CONTROL CONTEXT  
+          timeControl,
+          clockInitial: game.clock?.initial,
+          clockIncrement: game.clock?.increment,
+          clockTotalTime: (game.clock?.initial || 0) + (40 * (game.clock?.increment || 0)),
+          // PLAYER CONTEXT
+          whiteName,
+          blackName,
+          whiteElo: game.players?.white?.rating,
+          blackElo: game.players?.black?.rating,
+          whiteTitle: game.players?.white?.user?.title,
+          blackTitle: game.players?.black?.user?.title,
+          whiteProvisional: game.players?.white?.provisional,
+          blackProvisional: game.players?.black?.provisional,
+          // OPENING CONTEXT
+          openingEco: game.opening?.eco,
+          openingName: game.opening?.name,
+          openingPly: game.opening?.ply,
+          // TERMINATION CONTEXT
+          termination: game.status,
+          lastMoveAt: game.lastMoveAt,
+        });
       } catch {
         // Skip malformed lines
       }

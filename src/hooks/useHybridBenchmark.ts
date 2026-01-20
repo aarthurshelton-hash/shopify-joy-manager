@@ -753,29 +753,25 @@ export function useHybridBenchmark() {
         const gameId = game.lichessId;
         const source = game.source || 'lichess';
         
-        // v6.48: Updated validation for prefixed IDs
-        // Lichess: li_XXXXXXXX (11 chars), Chess.com: cc_XXXXXXXXX (12+ chars)
-        if (!gameId || gameId.length < 10) {
+        // v6.57-ID-ONLY: ONLY skip if:
+        // 1. No gameId at all (can't track it)
+        // 2. Previously failed this session
+        // 3. Already predicted this session
+        // ALL other checks removed - universal intelligence absorbs everything
+        
+        if (!gameId) {
           skipStats.invalidId++;
           consecutiveSkips++;
           continue;
         }
         
-        // v6.41: Skip if this game previously failed (timeout/parse error)
+        // Skip if this game previously failed (timeout/parse error)
         if (failedGameIds.has(gameId)) {
           consecutiveSkips++;
           continue;
         }
         
-        // v6.48: Skip if already in DATABASE (check both prefixed and raw ID for backwards compat)
-        const rawId = gameId.replace(/^(li_|cc_)/, '');
-        if (analyzedData.gameIds.has(gameId) || analyzedData.gameIds.has(rawId)) {
-          skipStats.dbDupe++;
-          consecutiveSkips++;
-          continue;
-        }
-        
-        // v6.33: Skip if we've ALREADY PREDICTED this game this session
+        // Skip if we've ALREADY PREDICTED this game this session
         if (predictedIds.has(gameId)) {
           skipStats.sessionDupe++;
           consecutiveSkips++;
