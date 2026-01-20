@@ -22,7 +22,7 @@
  */
 
 // v6.48-PREFIXFIX: Fixed ID validation for prefixed multi-source IDs
-const CLOUD_BENCHMARK_VERSION = "6.49-HOISTFIX";
+const CLOUD_BENCHMARK_VERSION = "6.50-HOISTFIX2";
 console.log(`[v6.48] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
 
 import { Chess } from 'chess.js';
