@@ -1,9 +1,9 @@
 /**
  * Multi-Source Game Fetcher v2.0 - HIGH VOLUME
- * VERSION: 6.56-STRICT-VALIDATE (2026-01-20)
+ * VERSION: 6.57-ID-ONLY (2026-01-20)
  * 
- * v6.56 CHANGES:
- * - More comprehensive result detection (mate, resign, timeout)
+ * v6.57 CHANGES:
+ * - ONLY filter is gameId deduplication - absorb everything else
  * - Better PGN content extraction for Chess.com
  * - Improved logging for debugging conversion rates
  * 

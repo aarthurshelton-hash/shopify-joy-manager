@@ -21,9 +21,9 @@
  * Compares against TCEC SF17 (ELO 3600) - the strongest Stockfish configuration
  */
 
-// v6.55-PIPELINE-FIX: Correct batch processing + queue handling
-const CLOUD_BENCHMARK_VERSION = "6.56-STRICT-VALIDATE";
-console.log(`[v6.55] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
+// v6.57-ID-ONLY: Only filter is gameId deduplication - absorb everything
+const CLOUD_BENCHMARK_VERSION = "6.57-ID-ONLY";
+console.log(`[v6.57] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
 
 import { Chess } from 'chess.js';
 import { evaluatePosition, type PositionEvaluation } from './lichessCloudEval';
