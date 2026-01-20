@@ -12,9 +12,9 @@
  * Uses Lichess Cloud API with TCEC-calibrated prediction thresholds
  */
 
-// v6.26-FREEFLOW: Maximum fresh game absorption
-const CLOUD_BENCHMARK_VERSION = "6.26-FREEFLOW";
-console.log(`[v6.26] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
+// v6.27-FRESHFOCUS: Prioritize recent data to avoid DB duplicates
+const CLOUD_BENCHMARK_VERSION = "6.27-FRESHFOCUS";
+console.log(`[v6.27] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
 
 import { Chess } from 'chess.js';
 import { evaluatePosition, type PositionEvaluation } from './lichessCloudEval';
