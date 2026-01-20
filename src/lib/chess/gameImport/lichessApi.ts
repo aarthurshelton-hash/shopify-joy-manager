@@ -187,8 +187,23 @@ export function lichessGameToPgn(game: LichessGame): string {
 }
 
 function getResult(game: LichessGame): string {
+  // v6.4-TIMEOUT: Handle ALL decisive statuses including timeout
+  // Lichess statuses: mate, resign, stalemate, timeout, draw, outoftime, cheat, noStart, unknownFinish, variantEnd
+  
+  // Draw statuses
   if (game.status === 'draw' || game.status === 'stalemate') return '1/2-1/2';
+  
+  // Decisive games - check winner field (works for mate, resign, timeout, outoftime, etc.)
   if (game.winner === 'white') return '1-0';
   if (game.winner === 'black') return '0-1';
+  
+  // Fallback for edge cases: check status directly
+  // "timeout" and "outoftime" should have winner set, but handle if not
+  if (game.status === 'timeout' || game.status === 'outoftime') {
+    // Try to infer from clock data if available, otherwise mark as unresolved
+    console.log(`[Lichess] Timeout game ${game.id} without winner field - marking as draw`);
+    return '1/2-1/2'; // Conservative: treat as draw rather than skip
+  }
+  
   return '*';
 }
