@@ -12,8 +12,8 @@
  */
 
 // Version tag for debugging cached code issues
-const BENCHMARK_VERSION = "6.6-TRUST-EDGE";
-console.log(`[v6.6] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+const BENCHMARK_VERSION = "6.7-DIRECT-RESULT";
+console.log(`[v6.7] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -512,34 +512,49 @@ export function useHybridBenchmark() {
           continue;
         }
         
-        // Parse the game
-        let moves: string[];
+        // v6.7: Use game.winner directly from Edge Function - MUCH more reliable than PGN parsing!
+        // Edge Function sets: winner: 'white' | 'black' | undefined (for draw)
+        // And result: '1-0' | '0-1' | '1/2-1/2'
         let gameResult: string;
+        if (game.winner === 'white') {
+          gameResult = 'white';
+        } else if (game.winner === 'black') {
+          gameResult = 'black';
+        } else if (game.status === 'draw' || game.status === 'stalemate' || game.result === '1/2-1/2') {
+          gameResult = 'draw';
+        } else {
+          // Fallback: check the result tag
+          if (game.result === '1-0') gameResult = 'white';
+          else if (game.result === '0-1') gameResult = 'black';
+          else {
+            console.log(`[v6.7] Skip ambiguous result: ${lichessId} (winner=${game.winner}, status=${game.status}, result=${game.result})`);
+            skipStats.noResult++;
+            continue;
+          }
+        }
+        
+        console.log(`[v6.7] Game ${lichessId}: winner=${game.winner}, status=${game.status} → ${gameResult}`);
+        
+        // Parse moves and generate FEN for prediction point
+        let moves: string[];
         let fen: string;
         let moveNumber: number;
         
         try {
-          const parsed = parsePGN(game.pgn, predictionMoveRange);
+          const parsed = parsePGNForMoves(game.pgn, predictionMoveRange);
           moves = parsed.moves;
-          gameResult = parsed.result;
           fen = parsed.fen;
           moveNumber = parsed.moveNumber;
         } catch (e) {
-          console.log(`[v6.1] Skip parse error: ${lichessId}`, e);
+          console.log(`[v6.7] Skip parse error: ${lichessId}`, e);
           skipStats.parseError++;
           continue;
         }
         
-        // v6.6: Edge Function already validates >= 10 half-moves, but double-check for safety
-        if (moves.length < 6) {
-          console.log(`[v6.6] Skip very short game: ${lichessId} (${moves.length} moves)`);
+        // v6.7: Very minimal check - Edge Function already validated
+        if (moves.length < 4) {
+          console.log(`[v6.7] Skip too short: ${lichessId} (${moves.length} moves)`);
           skipStats.shortGame++;
-          continue;
-        }
-        
-        if (gameResult !== 'white' && gameResult !== 'black' && gameResult !== 'draw') {
-          console.log(`[v6.4] Skip no result: ${lichessId} (got: ${gameResult})`);
-          skipStats.noResult++;
           continue;
         }
         
@@ -1063,56 +1078,22 @@ async function fetchLichessGames(
   return games.sort(() => Math.random() - 0.5);
 }
 
-// Parse PGN with adaptive prediction point - handles ALL game types
-function parsePGN(pgn: string, moveRange: [number, number]): { 
+// v6.7: Parse PGN for moves/FEN only - result comes from Edge Function
+function parsePGNForMoves(pgn: string, moveRange: [number, number]): { 
   moves: string[]; 
-  result: string; 
   fen: string;
   moveNumber: number;
 } {
-  // Try multiple ways to get the result
-  let result = "draw"; // Default assumption
-  
-  // Method 1: [Result] tag
-  const resultMatch = pgn.match(/\[Result\s+"([^"]+)"\]/);
-  if (resultMatch) {
-    const tag = resultMatch[1];
-    if (tag === "1-0") result = "white";
-    else if (tag === "0-1") result = "black";
-    else if (tag === "1/2-1/2") result = "draw";
-    // If tag is "*" (ongoing), we'll try other methods
-  }
-  
-  // Method 2: Look for result at end of moves (1-0, 0-1, 1/2-1/2)
-  if (result === "draw" && !resultMatch) {
-    if (pgn.includes(" 1-0") || pgn.endsWith("1-0")) result = "white";
-    else if (pgn.includes(" 0-1") || pgn.endsWith("0-1")) result = "black";
-  }
-  
-  // Method 3: Check for checkmate pattern (ending with #)
-  if (result === "draw") {
-    const moveSection = pgn.replace(/\[.*?\]/g, "").trim();
-    if (moveSection.includes("#")) {
-      // Count which color gave mate
-      const moves = moveSection.split(/\s+/).filter(m => m && !m.match(/^\d+\./));
-      const mateMove = moves.findIndex(m => m.includes("#"));
-      if (mateMove >= 0) {
-        result = mateMove % 2 === 0 ? "white" : "black"; // Even index = white's move
-      }
-    }
-  }
-  
-  // Extract moves
+  // Extract moves only - result comes from Edge Function's game.winner field
   const moveSection = pgn.replace(/\[.*?\]/g, "").replace(/\{.*?\}/g, "").trim();
   const moves = moveSection
     .split(/\s+/)
     .filter(m => m && !m.match(/^\d+\./) && !m.match(/^[01]-[01]$/) && !m.match(/^1\/2-1\/2$/) && m !== "*");
   
   // Adaptive prediction point - works with ANY game length
-  // For short games, analyze earlier; for long games, use requested range
-  const availableRange = Math.floor(moves.length * 0.6); // Can go up to 60% into game
+  const availableRange = Math.floor(moves.length * 0.6);
   const maxMove = Math.min(moveRange[1], availableRange, moves.length - 2);
-  const minMove = Math.min(moveRange[0], Math.max(5, Math.floor(moves.length * 0.2))); // At least 20% in, minimum move 5
+  const minMove = Math.min(moveRange[0], Math.max(5, Math.floor(moves.length * 0.2)));
   const moveNumber = Math.max(minMove, minMove + Math.floor(Math.random() * Math.max(1, maxMove - minMove + 1)));
   
   // Generate actual FEN at the prediction point
@@ -1125,5 +1106,5 @@ function parsePGN(pgn: string, moveRange: [number, number]): {
     }
   }
   
-  return { moves, result, fen: chess.fen(), moveNumber };
+  return { moves, fen: chess.fen(), moveNumber };
 }
