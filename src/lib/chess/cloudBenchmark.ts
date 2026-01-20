@@ -22,7 +22,7 @@
  */
 
 // v6.55-PIPELINE-FIX: Correct batch processing + queue handling
-const CLOUD_BENCHMARK_VERSION = "6.55-PIPELINE-FIX";
+const CLOUD_BENCHMARK_VERSION = "6.56-STRICT-VALIDATE";
 console.log(`[v6.55] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
 
 import { Chess } from 'chess.js';
