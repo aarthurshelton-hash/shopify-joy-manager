@@ -19,11 +19,13 @@
  * - Chess.com: -50 offset (closer to FIDE)
  */
 
-// v6.71-IDENTITY-FIX: Applied Identity Theorem thinking - trace entire trajectory
-// Root cause: queuedGameIds was never cleared after processing, causing fetch starvation
-// Fix: Remove processed games from queuedGameIds so they don't block future fetches
-const BENCHMARK_VERSION = "6.71-IDENTITY-FIX";
-console.log(`[v6.71] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.72-TRAJECTORY-FIX: Applied Identity Theorem - traced ENTIRE trajectory
+// Root cause: v6.71 used predictedIds for fetch exclusion, but that's only successfully analyzed games
+// Games that were FETCHED but not yet analyzed (in queue) would be re-fetched and then
+// rejected at queue-addition, causing "evaporation" to 0
+// Fix: Track ALL games received from API (allReceivedGameIds) and use THAT for fetch exclusion
+const BENCHMARK_VERSION = "6.72-TRAJECTORY-FIX";
+console.log(`[v6.72] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -499,9 +501,13 @@ export function useHybridBenchmark() {
       // v6.33: predictedIds tracks games we've SUCCESSFULLY predicted this session
       const predictedIds = new Set<string>();
       
-      // v6.71-IDENTITY-FIX: Track games CURRENTLY in queue (not all-time)
-      // When a game is processed, remove it from this set so future fetches can work
-      // This was the "evaporation" bug - queuedGameIds grew forever, starving fetches
+      // v6.72-TRAJECTORY-FIX: Track ALL games ever RECEIVED from API this session
+      // This is the COMPLETE SET of games we've seen - used for fetch exclusion
+      // Different from queuedGameIds which tracks what's in the queue (temporary)
+      const allReceivedGameIds = new Set<string>();
+      
+      // v6.72: queuedGameIds now only tracks games currently in queue (for queue-add dedup)
+      // It gets cleaned up when games are processed (see line ~817)
       const queuedGameIds = new Set<string>();
       
       // v6.51: Use mutable array - fetchMoreGames will PUSH to this
@@ -521,13 +527,13 @@ export function useHybridBenchmark() {
       // Target: 200+ games per batch from parallel fetching
       const targetPerBatch = Math.max(200, gameCount * 5);
       
-      // v6.70-BULLETPROOF: Fetch function with clear logging
+      // v6.72-TRAJECTORY-FIX: Fetch function excludes ALL games ever received this session
       async function fetchMoreGames(): Promise<number> {
         batchNumber++;
         const queueRemaining = gameQueue.length - gameIndex;
-        console.log(`[v6.70] ══════════ FETCH BATCH ${batchNumber}/${maxBatches} ══════════`);
-        console.log(`[v6.70] Queue: ${queueRemaining} remaining | Target: ${gameCount - predictedCount} more predictions`);
-        console.log(`[v6.70] Exclusions: DB=${analyzedData.gameIds.size}, Queued=${queuedGameIds.size}, Failed=${failedGameIds.size}`);
+        console.log(`[v6.72] ══════════ FETCH BATCH ${batchNumber}/${maxBatches} ══════════`);
+        console.log(`[v6.72] Queue: ${queueRemaining} remaining | Target: ${gameCount - predictedCount} more predictions`);
+        console.log(`[v6.72] Exclusions: DB=${analyzedData.gameIds.size}, Received=${allReceivedGameIds.size}, Failed=${failedGameIds.size}`);
         
         setProgress(prev => ({ 
           ...prev!, 
@@ -535,16 +541,16 @@ export function useHybridBenchmark() {
           message: `Fetching games (batch ${batchNumber})...` 
         }));
         
-        // v6.71-IDENTITY-FIX: Only exclude games in DB, failed, or PREDICTED (not just queued)
-        // The bug was: queuedGameIds grew forever, so API returned same games, all excluded
-        // Fix: Don't exclude queuedGameIds from fetch - only from queue addition
+        // v6.72-TRAJECTORY-FIX: Exclude ALL games ever received from API this session
+        // This prevents the API from returning the same games we already have
+        // (whether processed, failed, or still in queue)
         const fetchExcludeIds = new Set([
           ...analyzedData.gameIds,
           ...failedGameIds,
-          ...predictedIds  // v6.71: Use predictedIds instead of queuedGameIds for fetch
+          ...allReceivedGameIds  // v6.72: ALL games received this session, not just predicted
         ]);
         
-        console.log(`[v6.71] Fetch excludes: DB=${analyzedData.gameIds.size}, Failed=${failedGameIds.size}, Predicted=${predictedIds.size}`);
+        console.log(`[v6.72] Fetch excludes: DB=${analyzedData.gameIds.size}, Failed=${failedGameIds.size}, Received=${allReceivedGameIds.size}`);
         
         const result = await fetchMultiSourceGames({
           targetCount: targetPerBatch,
@@ -576,19 +582,24 @@ export function useHybridBenchmark() {
           
           const rawId = gameId.replace(/^(li_|cc_)/, '');
           
+          // v6.72: Mark as received IMMEDIATELY (before any filtering)
+          // This ensures future fetches won't return this game again
+          allReceivedGameIds.add(gameId);
+          allReceivedGameIds.add(rawId);
+          
           // Skip if in DB
           if (analyzedData.gameIds.has(gameId) || analyzedData.gameIds.has(rawId)) {
             dupesSkipped++;
             continue;
           }
           
-          // Skip if already queued
+          // Skip if already queued (shouldn't happen with v6.72, but safety check)
           if (queuedGameIds.has(gameId) || queuedGameIds.has(rawId)) {
             alreadyQueuedSkipped++;
             continue;
           }
           
-          // Track and queue
+          // Track in queue and add
           queuedGameIds.add(gameId);
           queuedGameIds.add(rawId);
           
@@ -817,7 +828,7 @@ export function useHybridBenchmark() {
           queuedGameIds.delete(gameIdForCleanup.replace(/^(li_|cc_)/, ''));
         }
         
-        console.log(`[v6.71] 🎯 PROCESS: Game ${currentIndex + 1}/${gameQueue.length} (queued: ${queuedGameIds.size}, remaining: ${gameQueue.length - gameIndex})`);
+        console.log(`[v6.72] 🎯 PROCESS: Game ${currentIndex + 1}/${gameQueue.length} (received: ${allReceivedGameIds.size}, queued: ${queuedGameIds.size}, remaining: ${gameQueue.length - gameIndex})`);
         
         // v6.70: Extract game info
         const gameId = game.lichessId;
