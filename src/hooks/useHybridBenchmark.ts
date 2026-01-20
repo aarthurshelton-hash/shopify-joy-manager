@@ -12,8 +12,8 @@
  */
 
 // Version tag for debugging cached code issues
-const BENCHMARK_VERSION = "6.2-AGGRESSIVE";
-console.log(`[v6.2] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+const BENCHMARK_VERSION = "6.3-RELIABLE";
+console.log(`[v6.3] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -638,13 +638,18 @@ export function useHybridBenchmark() {
         console.log(`[v6.1] ✓ PREDICTION #${predictedCount}: En Pensent=${colorFlow.prediction}${hybridIsCorrect ? '✓' : '✗'} | SF=${stockfish.prediction}${stockfishIsCorrect ? '✓' : '✗'} | Actual=${gameResult}`);
       }
       
-      console.log(`[v6.1] ========================================`);
-      console.log(`[v6.1] BENCHMARK COMPLETE: ${predictedCount}/${gameCount} predictions`);
-      console.log(`[v6.1] Skip stats: ${JSON.stringify(skipStats)}`);
-      console.log(`[v6.1] ========================================`);
+      console.log(`[v6.2] ========================================`);
+      console.log(`[v6.2] BENCHMARK COMPLETE: ${predictedCount}/${gameCount} predictions`);
+      console.log(`[v6.2] Skip stats: ${JSON.stringify(skipStats)}`);
+      console.log(`[v6.2] ========================================`);
       
       if (attempts.length === 0) {
         throw new Error(`No valid games processed. Skip reasons: ${JSON.stringify(skipStats)}`);
+      }
+      
+      // Warn if we got significantly fewer games than requested
+      if (attempts.length < gameCount * 0.8) {
+        console.warn(`[v6.2] ⚠️ Only got ${attempts.length}/${gameCount} games - Lichess may be rate limiting or sparse data`);
       }
       
       // Calculate stats
@@ -700,13 +705,33 @@ export function useHybridBenchmark() {
         console.error('Error saving benchmark:', benchmarkError);
       }
       
-      // Save individual attempts
+      // Save individual attempts with error handling
       if (benchmark) {
+        let savedCount = 0;
+        let saveErrors = 0;
+        
         for (const attempt of attempts) {
-          await supabase.from('chess_prediction_attempts').insert({
+          const { error: insertError } = await supabase.from('chess_prediction_attempts').insert({
             ...attempt,
             benchmark_id: benchmark.id,
           });
+          
+          if (insertError) {
+            console.error(`[v6.2] Failed to save prediction for ${attempt.game_id}:`, insertError.message);
+            saveErrors++;
+          } else {
+            savedCount++;
+          }
+        }
+        
+        console.log(`[v6.2] Saved ${savedCount}/${attempts.length} predictions (${saveErrors} errors)`);
+        
+        // If significant save failures, update the benchmark record
+        if (saveErrors > 0 && savedCount < attempts.length) {
+          await supabase.from('chess_benchmark_results')
+            .update({ completed_games: savedCount })
+            .eq('id', benchmark.id);
+          console.log(`[v6.2] Updated benchmark completed_games to ${savedCount}`);
         }
       }
       
@@ -779,20 +804,30 @@ async function fetchLichessGames(
   count: number, 
   analyzedData?: { positionHashes: Set<string>; gameIds: Set<string>; fenStrings: Set<string>; realLichessIds?: Set<string> }
 ): Promise<LichessGameData[]> {
-  // v6.2: AGGRESSIVE RETRY - Keep trying until we have enough fresh games
+  // v6.3: MORE AGGRESSIVE RETRY - Keep trying until we have enough fresh games
   const targetGames = count;
-  const gamesPerPlayer = Math.max(20, Math.ceil(targetGames / 2)); // More games per player
+  const gamesPerPlayer = Math.max(30, Math.ceil(targetGames)); // Fetch more games per player
   
-  console.log(`[v6.2 FETCH] Requesting ${targetGames} fresh games (${gamesPerPlayer}/player)`);
+  console.log(`[v6.3 FETCH] Requesting ${targetGames} fresh games (${gamesPerPlayer}/player)`);
   
-  // Large player pool - active Lichess players with long history
+  // Track fetch attempts for better diagnostics
+  let totalFetchAttempts = 0;
+  let successfulFetches = 0;
+  
+  // Large player pool - active Lichess players with long history (expanded)
   const topPlayers = [
     "DrNykterstein", "Hikaru", "nihalsarin2004", "GMWSO", "LyonBeast",
     "Polish_fighter3000", "Msb2", "penguingm1", "DanielNaroditsky", 
     "EricRosen", "Fins", "chessbrah", "opperwezen", "BogdanDeac",
     "Arjun_Erigaisi", "RaunakSadhwani2005", "TemurKuybokarov",
     "Zhigalko_Sergei", "ChessNetwork", "DrDrunkenstein", "Firouzja2003",
-    "GM_Srinath", "Oleksandr_Bortnyk", "FabianoCaruana", "LevonAronian"
+    "GM_Srinath", "Oleksandr_Bortnyk", "FabianoCaruana", "LevonAronian",
+    // Additional players for better coverage
+    "chesswarrior7197", "MagnusCarlsen", "AnishGiri", "VladimirKramnik",
+    "SethiChess", "duhless", "howitzer14", "rajabboy", "Jospem", "Alireza2003",
+    "lance5500", "Yasser-IRI", "DrChessPatzer", "chessbrahs", "Navaraok",
+    "Vladimirovich9000", "Nodirbek2004", "VincentKeymer2004", "rajuuu",
+    "WesleyS8", "AntoniaAntoaneta", "GM_In_Black", "Sergeiaza"
   ];
   
   const games: LichessGameData[] = [];
@@ -850,9 +885,10 @@ async function fetchLichessGames(
       }
       
       await new Promise(resolve => setTimeout(resolve, requestDelay));
+      totalFetchAttempts++;
       
       try {
-        console.log(`[v6.1 FETCH] Fetching ${player}... (${games.length}/${targetGames} collected)`);
+        console.log(`[v6.3 FETCH] Fetching ${player}... (${games.length}/${targetGames} collected)`);
         
         const response = await fetch(`${supabaseUrl}/functions/v1/lichess-games`, {
           method: 'POST',
@@ -870,7 +906,7 @@ async function fetchLichessGames(
         });
         
         if (response.status === 429) {
-          console.warn(`[v6.1] Rate limited for ${player}, backing off...`);
+          console.warn(`[v6.3] Rate limited for ${player}, backing off...`);
           rateLimitedPlayers++;
           fetchErrors++;
           requestDelay = Math.min(8000, requestDelay + 1500);
@@ -878,11 +914,12 @@ async function fetchLichessGames(
         }
         
         if (response.ok) {
+          successfulFetches++;
           const data = await response.json();
           const fetchedGames = data.games || [];
           
           if (fetchedGames.length === 0) {
-            console.log(`[v6.1] No games for ${player} in this window`);
+            console.log(`[v6.3] No games for ${player} in this window`);
             emptyWindowRetries++;
             continue;
           }
@@ -963,15 +1000,20 @@ async function fetchLichessGames(
     }
   }
   
-  console.log(`[v6.2 FETCH] ========================================`);
-  console.log(`[v6.2 FETCH] COMPLETE: ${games.length} FRESH games (wanted ${targetGames})`);
-  console.log(`[v6.2 FETCH] Pre-filtered: ${alreadyAnalyzedSkipped} already in DB`);
-  console.log(`[v6.2 FETCH] Skipped: ${shortGamesSkipped} too short`);
-  console.log(`[v6.2 FETCH] Empty windows: ${emptyWindowRetries}`);
-  console.log(`[v6.2 FETCH] ========================================`);
+  console.log(`[v6.3 FETCH] ========================================`);
+  console.log(`[v6.3 FETCH] COMPLETE: ${games.length} FRESH games (wanted ${targetGames})`);
+  console.log(`[v6.3 FETCH] API calls: ${totalFetchAttempts} (${successfulFetches} successful)`);
+  console.log(`[v6.3 FETCH] Pre-filtered: ${alreadyAnalyzedSkipped} already in DB`);
+  console.log(`[v6.3 FETCH] Skipped: ${shortGamesSkipped} too short`);
+  console.log(`[v6.3 FETCH] Empty windows: ${emptyWindowRetries}`);
+  console.log(`[v6.3 FETCH] ========================================`);
   
   if (games.length === 0 && fetchErrors > 0) {
     throw new Error('Failed to fetch games from Lichess - possibly rate limited. Please try again in a few minutes.');
+  }
+  
+  if (games.length < targetGames && games.length > 0) {
+    console.warn(`[v6.3] ⚠️ Only fetched ${games.length}/${targetGames} games - Lichess API may be limiting or time windows were sparse`);
   }
   
   return games.sort(() => Math.random() - 0.5);
