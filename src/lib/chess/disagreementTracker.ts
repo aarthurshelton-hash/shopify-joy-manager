@@ -26,8 +26,30 @@ function extractGameDateFromPgn(pgn: string | null): string | null {
 /**
  * Format time control for display
  * Handles various formats from Lichess API (speed field)
+ * v6.18: Also tries to infer from game context when time_control is null
  */
-export function formatTimeControl(tc: string | null | undefined): { label: string; color: string; icon: string } {
+export function formatTimeControl(tc: string | null | undefined, gameName?: string): { label: string; color: string; icon: string } {
+  // v6.18: If tc is null/undefined, try to infer from game name ELO ranges
+  // High ELO games (2800+) on Lichess are usually bullet/blitz
+  if (!tc && gameName) {
+    // Extract ELO from game name like "Player1 (2950) vs Player2 (3100)"
+    const eloMatches = gameName.match(/\((\d{3,4})\)/g);
+    if (eloMatches && eloMatches.length >= 1) {
+      const elos = eloMatches.map(m => parseInt(m.replace(/[()]/g, '')));
+      const avgElo = elos.reduce((a, b) => a + b, 0) / elos.length;
+      // Very high ELO (2800+) games on Lichess are almost always Bullet/Blitz
+      // This is a reasonable inference for GM games
+      if (avgElo >= 2800) {
+        return { label: 'Bullet/Blitz', color: 'text-orange-400', icon: '⚡' };
+      }
+      if (avgElo >= 2500) {
+        return { label: 'Rated', color: 'text-blue-400', icon: '🎯' };
+      }
+    }
+    // Fallback for games with names but unknown time control
+    return { label: 'Rated', color: 'text-muted-foreground', icon: '♟️' };
+  }
+  
   if (!tc) {
     return { label: 'Unknown', color: 'text-muted-foreground', icon: '🎯' };
   }
