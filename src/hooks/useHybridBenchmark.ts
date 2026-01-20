@@ -22,11 +22,13 @@
 // v6.75-CALIBRATED: Full pipeline calibration for high-volume benchmarks
 // Key fixes:
 // 1. PRE-WARM engine BEFORE starting benchmark (not reactive)
-// 2. HEALTH CHECK engine between batches (proactive)
-// 3. Shorter timeout + faster recovery cycle
-// 4. Clear engine state between problematic games
-const BENCHMARK_VERSION = "6.75-CALIBRATED";
-console.log(`[v6.75] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.76-FIX: Fixed batch starvation + ID consistency
+// 1. Removed over-aggressive allReceivedGameIds exclusion that starved batch 2+
+// 2. Fixed game_id storage to use raw IDs (matching DB format)
+// 3. Window isolation now works properly for fresh game yield
+// 4. Maintained engine health checks + calibrated timeouts
+const BENCHMARK_VERSION = "6.76-BATCH-FIX";
+console.log(`[v6.76] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -531,12 +533,12 @@ export function useHybridBenchmark() {
       // v6.33: predictedIds tracks games we've SUCCESSFULLY predicted this session
       const predictedIds = new Set<string>();
       
-      // v6.72-TRAJECTORY-FIX: Track ALL games ever RECEIVED from API this session
-      // This is the COMPLETE SET of games we've seen - used for fetch exclusion
-      // Different from queuedGameIds which tracks what's in the queue (temporary)
-      const allReceivedGameIds = new Set<string>();
+      // v6.76-FIX: Track ONLY games successfully queued or predicted this session
+      // allReceivedGameIds is NO LONGER used for fetch exclusion to allow window isolation to work
+      // Instead, we rely on time-window isolation + local dedup in fetcher
+      // This prevents batch 2+ from being starved by over-aggressive exclusion
       
-      // v6.72: queuedGameIds now only tracks games currently in queue (for queue-add dedup)
+      // v6.76: queuedGameIds tracks games currently in queue (for queue-add dedup ONLY)
       // It gets cleaned up when games are processed (see line ~817)
       const queuedGameIds = new Set<string>();
       
@@ -561,9 +563,9 @@ export function useHybridBenchmark() {
       async function fetchMoreGames(): Promise<number> {
         batchNumber++;
         const queueRemaining = gameQueue.length - gameIndex;
-        console.log(`[v6.75] ══════════ FETCH BATCH ${batchNumber}/${maxBatches} ══════════`);
-        console.log(`[v6.75] Queue: ${queueRemaining} remaining | Target: ${gameCount - predictedCount} more predictions`);
-        console.log(`[v6.75] Exclusions: DB=${analyzedData.gameIds.size}, Received=${allReceivedGameIds.size}, Failed=${failedGameIds.size}`);
+        console.log(`[v6.76] ══════════ FETCH BATCH ${batchNumber}/${maxBatches} ══════════`);
+        console.log(`[v6.76] Queue: ${queueRemaining} remaining | Target: ${gameCount - predictedCount} more predictions`);
+        console.log(`[v6.76] Exclusions: DB=${analyzedData.gameIds.size}, Queued=${queuedGameIds.size}, Predicted=${predictedIds.size}, Failed=${failedGameIds.size}`);
         
         setProgress(prev => ({ 
           ...prev!, 
@@ -571,16 +573,17 @@ export function useHybridBenchmark() {
           message: `Fetching games (batch ${batchNumber})...` 
         }));
         
-        // v6.72-TRAJECTORY-FIX: Exclude ALL games ever received from API this session
-        // This prevents the API from returning the same games we already have
-        // (whether processed, failed, or still in queue)
+        // v6.76-FIX: ONLY exclude games from DB and current queue
+        // Do NOT exclude all received games - window isolation handles uniqueness
+        // This allows batch 2+ to fetch fresh games from different time windows
         const fetchExcludeIds = new Set([
           ...analyzedData.gameIds,
           ...failedGameIds,
-          ...allReceivedGameIds  // v6.72: ALL games received this session, not just predicted
+          ...queuedGameIds,   // v6.76: Only exclude what's actively queued
+          ...predictedIds     // v6.76: And what's been predicted this session
         ]);
         
-        console.log(`[v6.75] Fetch excludes: DB=${analyzedData.gameIds.size}, Failed=${failedGameIds.size}, Received=${allReceivedGameIds.size}`);
+        console.log(`[v6.76] Fetch excludes: DB=${analyzedData.gameIds.size}, Failed=${failedGameIds.size}, Queued=${queuedGameIds.size}, Predicted=${predictedIds.size}`);
         
         const result = await fetchMultiSourceGames({
           targetCount: targetPerBatch,
@@ -589,7 +592,7 @@ export function useHybridBenchmark() {
           sources: ['lichess', 'chesscom'],
         });
         
-        console.log(`[v6.75] Fetched: ${result.games.length} raw (Lichess: ${result.lichessCount}, Chess.com: ${result.chesscomCount})`);
+        console.log(`[v6.76] Fetched: ${result.games.length} raw (Lichess: ${result.lichessCount}, Chess.com: ${result.chesscomCount})`);
         
         if (result.errors.length > 0) {
           console.warn(`[v6.75] Errors:`, result.errors.slice(0, 3));
@@ -612,24 +615,26 @@ export function useHybridBenchmark() {
           
           const rawId = gameId.replace(/^(li_|cc_)/, '');
           
-          // v6.72: Mark as received IMMEDIATELY (before any filtering)
-          // This ensures future fetches won't return this game again
-          allReceivedGameIds.add(gameId);
-          allReceivedGameIds.add(rawId);
-          
-          // Skip if in DB
+          // v6.76-FIX: Check BOTH prefixed and raw forms against DB
+          // Skip if in DB (check all ID variants)
           if (analyzedData.gameIds.has(gameId) || analyzedData.gameIds.has(rawId)) {
             dupesSkipped++;
             continue;
           }
           
-          // Skip if already queued (shouldn't happen with v6.72, but safety check)
+          // Skip if already predicted this session
+          if (predictedIds.has(gameId) || predictedIds.has(rawId)) {
+            dupesSkipped++;
+            continue;
+          }
+          
+          // Skip if already queued (prevents duplicate entries in current queue)
           if (queuedGameIds.has(gameId) || queuedGameIds.has(rawId)) {
             alreadyQueuedSkipped++;
             continue;
           }
           
-          // Track in queue and add
+          // Track in queue and add (both forms for robust dedup)
           queuedGameIds.add(gameId);
           queuedGameIds.add(rawId);
           
@@ -893,7 +898,7 @@ export function useHybridBenchmark() {
           queuedGameIds.delete(gameIdForCleanup.replace(/^(li_|cc_)/, ''));
         }
         
-        console.log(`[v6.75] 🎯 PROCESS: Game ${currentIndex + 1}/${gameQueue.length} (received: ${allReceivedGameIds.size}, queued: ${queuedGameIds.size}, remaining: ${gameQueue.length - gameIndex})`);
+        console.log(`[v6.76] 🎯 PROCESS: Game ${currentIndex + 1}/${gameQueue.length} (queued: ${queuedGameIds.size}, predicted: ${predictedIds.size}, remaining: ${gameQueue.length - gameIndex})`);
         
         // v6.75: Extract game info
         const gameId = game.lichessId;
@@ -1071,7 +1076,8 @@ export function useHybridBenchmark() {
         const positionHash = hashPosition(fen);
         
         const attemptData = {
-          game_id: gameId,
+          // v6.76-FIX: Store RAW game ID (without prefix) for DB consistency
+          game_id: gameId.replace(/^(li_|cc_)/, ''),
           game_name: gameName,
           fen,
           move_number: moveNumber,
