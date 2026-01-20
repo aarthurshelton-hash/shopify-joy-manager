@@ -12,8 +12,8 @@
  */
 
 // Version tag for debugging cached code issues
-const BENCHMARK_VERSION = "6.5-REFETCH";
-console.log(`[v6.5] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+const BENCHMARK_VERSION = "6.6-TRUST-EDGE";
+console.log(`[v6.6] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -530,9 +530,9 @@ export function useHybridBenchmark() {
           continue;
         }
         
-        // Basic validity checks
-        if (moves.length < 10) {
-          console.log(`[v6.1] Skip short game: ${lichessId} (${moves.length} moves)`);
+        // v6.6: Edge Function already validates >= 10 half-moves, but double-check for safety
+        if (moves.length < 6) {
+          console.log(`[v6.6] Skip very short game: ${lichessId} (${moves.length} moves)`);
           skipStats.shortGame++;
           continue;
         }
@@ -969,8 +969,9 @@ async function fetchLichessGames(
             const pgn = game.pgn || game.moves;
             if (!pgn || typeof pgn !== 'string' || pgn.length < 20) continue;
             
-            const moveCount = (pgn.match(/\d+\./g) || []).length;
-            if (moveCount < 5) {
+            // v6.6: Trust Edge Function's validation - it already filters for >= 10 half-moves
+            // Only skip if moveCount is explicitly provided and too low
+            if (game.moveCount && game.moveCount < 10) {
               shortGamesSkipped++;
               continue;
             }
