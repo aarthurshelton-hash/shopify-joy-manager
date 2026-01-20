@@ -458,59 +458,89 @@ export function useHybridBenchmark() {
       }
       
       // Step 2: Process each game - predict ALL of them
-      for (const game of allGames) {
+      // Track skip reasons for debugging
+      let skipStats = { invalidId: 0, dbDupe: 0, shortGame: 0, noResult: 0, timeout: 0, parseError: 0 };
+      
+      for (let gameIndex = 0; gameIndex < allGames.length; gameIndex++) {
         if (predictedCount >= gameCount || abortRef.current) break;
         
+        const game = allGames[gameIndex];
         const lichessId = game.lichessId;
         
         // Simple validation
         if (!lichessId || lichessId.length !== 8) {
-          console.log(`[v6.0] Skip invalid ID: ${lichessId}`);
+          console.log(`[v6.1] Skip invalid ID: ${lichessId}`);
+          skipStats.invalidId++;
           continue;
         }
         
         // Already in DB? Skip (but this should be pre-filtered by fetchLichessGames)
         if (analyzedData.gameIds.has(lichessId)) {
-          console.log(`[v6.0] Skip DB duplicate: ${lichessId}`);
+          console.log(`[v6.1] Skip DB duplicate: ${lichessId}`);
+          skipStats.dbDupe++;
           continue;
         }
         
         // Parse the game
-        const { moves, result: gameResult, fen, moveNumber } = parsePGN(game.pgn, predictionMoveRange);
+        let moves: string[];
+        let gameResult: string;
+        let fen: string;
+        let moveNumber: number;
+        
+        try {
+          const parsed = parsePGN(game.pgn, predictionMoveRange);
+          moves = parsed.moves;
+          gameResult = parsed.result;
+          fen = parsed.fen;
+          moveNumber = parsed.moveNumber;
+        } catch (e) {
+          console.log(`[v6.1] Skip parse error: ${lichessId}`, e);
+          skipStats.parseError++;
+          continue;
+        }
         
         // Basic validity checks
         if (moves.length < 10) {
-          console.log(`[v6.0] Skip short game: ${lichessId} (${moves.length} moves)`);
+          console.log(`[v6.1] Skip short game: ${lichessId} (${moves.length} moves)`);
+          skipStats.shortGame++;
           continue;
         }
         
         if (gameResult !== 'white' && gameResult !== 'black' && gameResult !== 'draw') {
-          console.log(`[v6.0] Skip no result: ${lichessId}`);
+          console.log(`[v6.1] Skip no result: ${lichessId}`);
+          skipStats.noResult++;
           continue;
         }
         
         // ✅ VALID GAME - PREDICT IT
-        console.log(`[v6.0] PREDICTING #${predictedCount + 1}: ${lichessId} (${gameResult})`);
+        const whiteName = game.whiteName || 'Unknown';
+        const blackName = game.blackName || 'Unknown';
+        const whiteEloDisplay = game.whiteElo ? ` (${game.whiteElo})` : '';
+        const blackEloDisplay = game.blackElo ? ` (${game.blackElo})` : '';
+        const gameName = `${whiteName}${whiteEloDisplay} vs ${blackName}${blackEloDisplay}`;
+        
+        console.log(`[v6.1] PREDICTING #${predictedCount + 1}/${gameCount}: ${lichessId} → ${gameName} (${gameResult})`);
         
         setProgress({
           currentGame: predictedCount + 1,
           totalGames: gameCount,
           currentPhase: 'analyzing',
           currentDepth: 0,
-          message: `Predicting ${predictedCount + 1}/${gameCount}: ${lichessId}`,
+          message: `Analyzing ${gameName} (game ${gameIndex + 1}/${allGames.length})`,
           enPensentModulesActive: EN_PENSENT_ADAPTERS
         });
         
         // Get En Pensent prediction (Color Flow analysis)
         const colorFlow = analyzeColorFlowFullScope(moves.slice(0, moveNumber));
         
-        // Get Stockfish evaluation
+        // Get Stockfish evaluation (reduced timeout: 60s instead of 120s)
         const analysisPromise = engine.analyzePosition(fen, { depth, requireExactDepth: depth >= 40 });
-        const timeout = new Promise<null>(r => setTimeout(() => r(null), 120000));
+        const timeout = new Promise<null>(r => setTimeout(() => r(null), 60000));
         const analysis = await Promise.race([analysisPromise, timeout]);
         
         if (!analysis) {
-          console.log(`[v6.0] Stockfish timeout for ${lichessId}, skipping`);
+          console.log(`[v6.1] ⚠️ Stockfish timeout for ${lichessId}, skipping`);
+          skipStats.timeout++;
           continue;
         }
         
@@ -518,7 +548,7 @@ export function useHybridBenchmark() {
         
         // Record depth
         depths.push(stockfish.depth);
-        console.log(`[v6.0] Stockfish: ${stockfish.evaluation}cp at depth ${stockfish.depth}`);
+        console.log(`[v6.1] Stockfish: ${stockfish.evaluation}cp at depth ${stockfish.depth}`);
         
         // Compare predictions
         const hybridIsCorrect = colorFlow.prediction === gameResult;
@@ -531,11 +561,6 @@ export function useHybridBenchmark() {
         
         // Build attempt data
         const positionHash = hashPosition(fen);
-        const whiteName = game.whiteName || 'Unknown';
-        const blackName = game.blackName || 'Unknown';
-        const whiteEloDisplay = game.whiteElo ? ` (${game.whiteElo})` : '';
-        const blackEloDisplay = game.blackElo ? ` (${game.blackElo})` : '';
-        const gameName = `${whiteName}${whiteEloDisplay} vs ${blackName}${blackEloDisplay}`;
         
         const attemptData = {
           game_id: lichessId,
@@ -610,16 +635,19 @@ export function useHybridBenchmark() {
         
         predictedCount++;
         
-        console.log(`[v6.0] ✓ PREDICTION #${predictedCount}: En Pensent=${colorFlow.prediction}${hybridIsCorrect ? '✓' : '✗'} | Stockfish=${stockfish.prediction}${stockfishIsCorrect ? '✓' : '✗'} | Actual=${gameResult}`);
+        console.log(`[v6.1] ✓ PREDICTION #${predictedCount}: En Pensent=${colorFlow.prediction}${hybridIsCorrect ? '✓' : '✗'} | SF=${stockfish.prediction}${stockfishIsCorrect ? '✓' : '✗'} | Actual=${gameResult}`);
       }
       
-      console.log(`[v6.0] ========================================`);
-      console.log(`[v6.0] BENCHMARK COMPLETE: ${predictedCount}/${gameCount} predictions`);
-      console.log(`[v6.0] ========================================`);
+      console.log(`[v6.1] ========================================`);
+      console.log(`[v6.1] BENCHMARK COMPLETE: ${predictedCount}/${gameCount} predictions`);
+      console.log(`[v6.1] Skip stats: ${JSON.stringify(skipStats)}`);
+      console.log(`[v6.1] ========================================`);
       
       if (attempts.length === 0) {
-        throw new Error('No valid games processed. Try again later.');
+        throw new Error(`No valid games processed. Skip reasons: ${JSON.stringify(skipStats)}`);
       }
+      
+      // Calculate stats
       
       // Calculate stats
       const totalGames = attempts.length;
