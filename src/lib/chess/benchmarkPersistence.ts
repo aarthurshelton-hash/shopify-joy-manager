@@ -630,7 +630,7 @@ export async function getCumulativeStats(): Promise<{
   if (!benchmarks || benchmarks.length === 0) {
     return {
       totalRuns: 0,
-      totalGamesAnalyzed: totalPredictions || 0,
+      totalGamesAnalyzed: validPredictions, // FIXED: Use valid count consistently
       overallHybridAccuracy: validPredictions > 0 ? (hybridCorrect / validPredictions) * 100 : 0,
       overallStockfishAccuracy: validPredictions > 0 ? (sfCorrect / validPredictions) * 100 : 0,
       hybridNetWins: hybridWinsTotal - sfWinsTotal,
@@ -663,9 +663,11 @@ export async function getCumulativeStats(): Promise<{
     }
   }
 
+  // FIXED v6.34: Use validPredictions consistently for ALL stats
+  // This ensures Total Games = EP Wins + SF Wins + Both Correct + Both Wrong
   return {
     totalRuns: benchmarks.length,
-    totalGamesAnalyzed: totalPredictions || 0,
+    totalGamesAnalyzed: validPredictions, // FIXED: Use valid count, not total (excludes invalid SF predictions)
     overallHybridAccuracy: validPredictions > 0 ? (hybridCorrect / validPredictions) * 100 : 0,
     overallStockfishAccuracy: validPredictions > 0 ? (sfCorrect / validPredictions) * 100 : 0,
     hybridNetWins: hybridWinsTotal - sfWinsTotal,
