@@ -57,12 +57,22 @@ export function hashPosition(fen: string): string {
  * game twice, but identical positions appearing in different games are welcome.
  */
 /**
- * Check if a game ID is a REAL Lichess ID (8 alphanumeric characters)
- * Real Lichess IDs: "ZhoooCoY", "TjTYXZko", "abc123XY"
- * NOT real: "lichess-1234567890-0", "benchmark-1234567890-0", "internal_sfvsf_0"
+ * Check if a game ID is a REAL external ID (Lichess or Chess.com)
+ * v6.57: Now supports prefixed IDs (li_XXXXXXXX, cc_XXXXXXXXX)
+ * Real IDs: "ZhoooCoY", "li_ZhoooCoY", "cc_123456789"
+ * NOT real: "benchmark-1234567890-0", "internal_sfvsf_0"
  */
 export function isRealLichessId(gameId: string): boolean {
-  return gameId.length === 8 && /^[a-zA-Z0-9]+$/.test(gameId);
+  // Strip prefix if present
+  const rawId = gameId.replace(/^(li_|cc_)/, '');
+  const hasValidPrefix = gameId.startsWith('li_') || gameId.startsWith('cc_');
+  
+  // Lichess: 8 alphanumeric chars
+  const isLichess = rawId.length === 8 && /^[a-zA-Z0-9]+$/.test(rawId);
+  // Chess.com: numeric IDs of varying length
+  const isChessCom = gameId.startsWith('cc_') && /^\d+$/.test(rawId);
+  
+  return isLichess || isChessCom || (hasValidPrefix && rawId.length >= 6);
 }
 
 /**
@@ -107,9 +117,14 @@ export async function getAlreadyAnalyzedData(): Promise<{
 
     for (const row of data) {
       if (row.game_id) {
-        // v4.0: ONLY add real 8-char Lichess IDs - completely ignore synthetic
+        // v6.57: Add BOTH raw and prefixed forms for dedup matching
         if (isRealLichessId(row.game_id)) {
           gameIds.add(row.game_id);
+          // Also add raw form for cross-matching
+          const rawId = row.game_id.replace(/^(li_|cc_)/, '');
+          if (rawId !== row.game_id) {
+            gameIds.add(rawId);
+          }
         } else {
           syntheticSkipped++;
         }
