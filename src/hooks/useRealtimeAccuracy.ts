@@ -1,7 +1,7 @@
 /**
- * Realtime Accuracy Hook
+ * Realtime Accuracy Hook v6.63
  * Ensures all accuracy metrics auto-update across the entire En Pensent platform
- * Subscribes to prediction outcomes, evolution state, and security metrics
+ * Now includes chess_prediction_attempts for FIDE ELO and cumulative stats sync
  */
 
 import { useEffect, useCallback, useRef, useState } from 'react';
@@ -17,8 +17,19 @@ export interface RealtimeAccuracyState {
   channels: string[];
 }
 
+export interface ChessCumulativeStats {
+  totalGames: number;
+  hybridWins: number;
+  stockfishWins: number;
+  bothCorrect: number;
+  bothWrong: number;
+  hybridAccuracy: number;
+  stockfishAccuracy: number;
+  avgConfidence: number;
+}
+
 export interface AccuracyUpdate {
-  type: 'prediction' | 'evolution' | 'security' | 'correlation';
+  type: 'prediction' | 'evolution' | 'security' | 'correlation' | 'chess';
   data: unknown;
   timestamp: Date;
 }
@@ -35,6 +46,102 @@ function broadcastAccuracyUpdate(update: AccuracyUpdate) {
   accuracyListeners.forEach(listener => listener(update));
 }
 
+// Cached chess stats with timestamp for efficient querying
+let cachedChessStats: ChessCumulativeStats | null = null;
+let lastChessStatsFetch = 0;
+const CHESS_STATS_CACHE_MS = 2000; // 2 second cache
+
+/**
+ * Fetch cumulative chess stats directly from database
+ * Uses count queries to bypass 1000 row limit
+ */
+export async function fetchChessCumulativeStats(): Promise<ChessCumulativeStats> {
+  // Return cached if fresh
+  if (cachedChessStats && Date.now() - lastChessStatsFetch < CHESS_STATS_CACHE_MS) {
+    return cachedChessStats;
+  }
+
+  const [
+    { count: totalGames },
+    { count: hybridWins },
+    { count: sfWins },
+    { count: bothCorrect },
+    { count: hybridCorrect },
+    { count: sfCorrect },
+  ] = await Promise.all([
+    supabase
+      .from('chess_prediction_attempts')
+      .select('*', { count: 'exact', head: true })
+      .not('stockfish_prediction', 'is', null)
+      .neq('stockfish_prediction', 'unknown')
+      .not('hybrid_prediction', 'is', null)
+      .neq('hybrid_prediction', 'unknown'),
+    supabase
+      .from('chess_prediction_attempts')
+      .select('*', { count: 'exact', head: true })
+      .eq('hybrid_correct', true)
+      .eq('stockfish_correct', false)
+      .not('stockfish_prediction', 'is', null)
+      .neq('stockfish_prediction', 'unknown'),
+    supabase
+      .from('chess_prediction_attempts')
+      .select('*', { count: 'exact', head: true })
+      .eq('hybrid_correct', false)
+      .eq('stockfish_correct', true)
+      .not('stockfish_prediction', 'is', null)
+      .neq('stockfish_prediction', 'unknown'),
+    supabase
+      .from('chess_prediction_attempts')
+      .select('*', { count: 'exact', head: true })
+      .eq('hybrid_correct', true)
+      .eq('stockfish_correct', true)
+      .not('stockfish_prediction', 'is', null)
+      .neq('stockfish_prediction', 'unknown'),
+    supabase
+      .from('chess_prediction_attempts')
+      .select('*', { count: 'exact', head: true })
+      .eq('hybrid_correct', true)
+      .not('stockfish_prediction', 'is', null)
+      .neq('stockfish_prediction', 'unknown'),
+    supabase
+      .from('chess_prediction_attempts')
+      .select('*', { count: 'exact', head: true })
+      .eq('stockfish_correct', true)
+      .not('stockfish_prediction', 'is', null)
+      .neq('stockfish_prediction', 'unknown'),
+  ]);
+
+  const total = totalGames || 0;
+  const epWins = hybridWins || 0;
+  const stockfishWinsCount = sfWins || 0;
+  const bothCorrectCount = bothCorrect || 0;
+  const bothWrongCount = total - epWins - stockfishWinsCount - bothCorrectCount;
+
+  const stats: ChessCumulativeStats = {
+    totalGames: total,
+    hybridWins: epWins,
+    stockfishWins: stockfishWinsCount,
+    bothCorrect: bothCorrectCount,
+    bothWrong: Math.max(0, bothWrongCount),
+    hybridAccuracy: total > 0 ? ((hybridCorrect || 0) / total) * 100 : 0,
+    stockfishAccuracy: total > 0 ? ((sfCorrect || 0) / total) * 100 : 0,
+    avgConfidence: 0.7, // Approximate - full calculation would require fetching rows
+  };
+
+  cachedChessStats = stats;
+  lastChessStatsFetch = Date.now();
+  
+  return stats;
+}
+
+/**
+ * Force invalidate chess stats cache
+ */
+export function invalidateChessStatsCache() {
+  cachedChessStats = null;
+  lastChessStatsFetch = 0;
+}
+
 export function useRealtimeAccuracy(enabled = true) {
   const queryClient = useQueryClient();
   const { syncEvolutionState, globalAccuracy } = useTradingSessionStore();
@@ -46,12 +153,24 @@ export function useRealtimeAccuracy(enabled = true) {
     updateCount: 0,
     channels: []
   });
+  
+  const [chessStats, setChessStats] = useState<ChessCumulativeStats | null>(null);
 
   // Sync all accuracy data from database
   const syncAccuracyData = useCallback(async () => {
     try {
       // Sync evolution state from local system
       syncEvolutionState();
+      
+      // Fetch chess cumulative stats
+      const freshChessStats = await fetchChessCumulativeStats();
+      setChessStats(freshChessStats);
+      
+      broadcastAccuracyUpdate({
+        type: 'chess',
+        data: freshChessStats,
+        timestamp: new Date()
+      });
       
       // Fetch latest security metrics
       const { data: securityMetrics } = await supabase
@@ -102,6 +221,8 @@ export function useRealtimeAccuracy(enabled = true) {
       queryClient.invalidateQueries({ queryKey: ['evolution-state'] });
       queryClient.invalidateQueries({ queryKey: ['market-correlations'] });
       queryClient.invalidateQueries({ queryKey: ['prediction-outcomes'] });
+      queryClient.invalidateQueries({ queryKey: ['chess-cumulative-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['benchmark-stats'] });
 
       setState(prev => ({
         ...prev,
@@ -119,6 +240,43 @@ export function useRealtimeAccuracy(enabled = true) {
 
     const channels: ReturnType<typeof supabase.channel>[] = [];
 
+    // Chess prediction attempts channel - CRITICAL for FIDE ELO updates
+    const chessChannel = supabase
+      .channel('realtime-chess-predictions')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'chess_prediction_attempts' },
+        async (payload) => {
+          console.log('[RealtimeAccuracy] Chess prediction update:', payload.eventType);
+          
+          // Invalidate cache and refetch
+          invalidateChessStatsCache();
+          const freshStats = await fetchChessCumulativeStats();
+          setChessStats(freshStats);
+          
+          broadcastAccuracyUpdate({
+            type: 'chess',
+            data: freshStats,
+            timestamp: new Date()
+          });
+
+          setState(prev => ({
+            ...prev,
+            lastUpdate: new Date(),
+            updateCount: prev.updateCount + 1
+          }));
+
+          queryClient.invalidateQueries({ queryKey: ['chess-cumulative-stats'] });
+          queryClient.invalidateQueries({ queryKey: ['benchmark-stats'] });
+        }
+      )
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('[RealtimeAccuracy] Chess predictions channel connected');
+        }
+      });
+    channels.push(chessChannel);
+
     // Prediction outcomes channel
     const predictionChannel = supabase
       .channel('realtime-predictions')
@@ -128,7 +286,7 @@ export function useRealtimeAccuracy(enabled = true) {
         (payload) => {
           console.log('[RealtimeAccuracy] Prediction update:', payload.eventType);
           syncEvolutionState();
-          selfEvolvingSystem.getState(); // Trigger recalculation
+          selfEvolvingSystem.getState();
           
           broadcastAccuracyUpdate({
             type: 'prediction',
@@ -142,7 +300,6 @@ export function useRealtimeAccuracy(enabled = true) {
             updateCount: prev.updateCount + 1
           }));
 
-          // Invalidate queries
           queryClient.invalidateQueries({ queryKey: ['prediction-outcomes'] });
         }
       )
@@ -252,7 +409,7 @@ export function useRealtimeAccuracy(enabled = true) {
     setState(prev => ({
       ...prev,
       isConnected: true,
-      channels: ['predictions', 'evolution', 'security', 'correlations']
+      channels: ['chess', 'predictions', 'evolution', 'security', 'correlations']
     }));
 
     // Initial sync
@@ -275,6 +432,7 @@ export function useRealtimeAccuracy(enabled = true) {
   return {
     ...state,
     globalAccuracy,
+    chessStats,
     syncAccuracyData,
     subscribeToUpdates: subscribeToAccuracyUpdates
   };

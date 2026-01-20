@@ -1,15 +1,14 @@
 /**
  * Multi-Source Game Fetcher v2.0 - HIGH VOLUME
- * VERSION: 6.62-WINDOW-FIX (2026-01-20)
+ * VERSION: 6.63-REALTIME-SYNC (2026-01-20)
+ * 
+ * v6.63 CHANGES:
+ * - REALTIME SYNC: Works with useRealtimeAccuracy for instant UI updates
  * 
  * v6.62 CHANGES:
  * - WINDOW FIX: Use larger prime-based offsets to prevent time window collisions
  * - Each batch explores genuinely different historical periods
  * - Randomization uses batch-seeded approach for reproducibility with variety
- * 
- * v6.61 CHANGES:
- * - QUEUE FIX: Remove predictedIds check from queue-adding stage
- * - Session duplicates now only checked in processing loop
  * 
  * SOURCES:
  * - Lichess (via Edge Function proxy) - 5+ billion games

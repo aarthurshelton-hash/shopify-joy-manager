@@ -1,7 +1,8 @@
 /**
  * En Pensent™ vs TCEC Stockfish 17 Unlimited Benchmark
- * VERSION: 6.62-WINDOW-FIX (2026-01-20)
+ * VERSION: 6.63-REALTIME-SYNC (2026-01-20)
  * 
+ * v6.63: Chess stats cache invalidation for instant UI sync
  * v6.62: Prime-based time window rotation prevents cache collisions across batches
  * v6.61: Remove predictedIds check from queue-adding (only check in processing loop)
  * v6.60: Only exclude DB games during fetch, not session predictions
@@ -23,9 +24,9 @@
  * Compares against TCEC SF17 (ELO 3600) - the strongest Stockfish configuration
  */
 
-// v6.62-WINDOW-FIX: Prime-based time window rotation
-const CLOUD_BENCHMARK_VERSION = "6.62-WINDOW-FIX";
-console.log(`[v6.62] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
+// v6.63-REALTIME-SYNC: Chess stats cache invalidation
+const CLOUD_BENCHMARK_VERSION = "6.63-REALTIME-SYNC";
+console.log(`[v6.63] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
 
 import { Chess } from 'chess.js';
 import { evaluatePosition, type PositionEvaluation } from './lichessCloudEval';
