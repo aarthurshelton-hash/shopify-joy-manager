@@ -425,7 +425,7 @@ export function useHybridBenchmark() {
       
       setProgress(prev => ({ 
         ...prev!, 
-        message: `${analyzedData.gameIds.size} games already analyzed. Fetching fresh GM games...` 
+        message: `${realIdCount} real games analyzed (${syntheticCount} legacy synthetic). Fetching fresh GM games...` 
       }));
       
       const runId = crypto.randomUUID();
@@ -531,17 +531,19 @@ export function useHybridBenchmark() {
             continue;
           }
           
-          // GAME-BASED DEDUPLICATION ONLY
-          // We ONLY skip games we've already analyzed (same Lichess game ID)
+          // GAME-BASED DEDUPLICATION ONLY (v3.0: use realLichessIds ONLY)
+          // We ONLY skip games we've already analyzed (same REAL 8-char Lichess game ID)
           // Same POSITION in different games is VALUABLE - strengthens pattern recognition!
-          if (analyzedData.gameIds.has(lichessGameId)) {
+          // CRITICAL: Check realLichessIds NOT gameIds - gameIds contains synthetic legacy IDs!
+          if (analyzedData.realLichessIds?.has(lichessGameId)) {
             skippedDuplicates++;
-            console.log(`[Dedup] Skipping game ${lichessGameId} - already predicted (verify: https://lichess.org/${lichessGameId})`);
+            console.log(`[v3.0-DEDUP] Skipping game ${lichessGameId} - already predicted (verify: https://lichess.org/${lichessGameId})`);
             continue;
           }
           
-          // Add to in-memory set for this run (prevent within-run duplicates)
+          // Add to BOTH sets - gameIds for backwards compat, realLichessIds for dedup
           analyzedData.gameIds.add(lichessGameId);
+          analyzedData.realLichessIds?.add(lichessGameId);
           
           // Generate position hash for LEARNING (cross-reference patterns, NOT deduplication)
           // If we see the same position in a new game, that's an ADVANTAGE for pattern confidence

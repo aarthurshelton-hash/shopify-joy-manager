@@ -385,9 +385,16 @@ export async function runCloudBenchmark(
   provenance.setStockfishConfig('lichess_cloud', 'TCEC Stockfish 17 NNUE (ELO 3600)');
   
   // CRITICAL: Load already-analyzed data for cross-run deduplication
-  let analyzedData: { positionHashes: Set<string>; gameIds: Set<string>; fenStrings: Set<string> } = {
+  // v3.0: realLichessIds is the ONLY set that matters for deduplication
+  let analyzedData: { 
+    positionHashes: Set<string>; 
+    gameIds: Set<string>; 
+    realLichessIds: Set<string>;
+    fenStrings: Set<string>;
+  } = {
     positionHashes: new Set(),
     gameIds: new Set(),
+    realLichessIds: new Set(),
     fenStrings: new Set(),
   };
   
@@ -396,7 +403,7 @@ export async function runCloudBenchmark(
   if (skipDuplicates) {
     onProgress?.('Loading previously analyzed games for deduplication...', 0);
     analyzedData = await getAlreadyAnalyzedData();
-    onProgress?.(`Found ${analyzedData.gameIds.size} games already analyzed. Same positions from NEW games = valuable data!`, 2);
+    onProgress?.(`Found ${analyzedData.realLichessIds.size} REAL games (ignoring ${analyzedData.gameIds.size - analyzedData.realLichessIds.size} synthetic). Same positions from NEW games = valuable data!`, 2);
   }
   
   // Track how many unique new games we've analyzed

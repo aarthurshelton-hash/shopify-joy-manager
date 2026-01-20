@@ -165,14 +165,20 @@ export function isPositionAlreadyAnalyzed(
 }
 
 /**
- * Check if a specific game has already been analyzed.
+ * Check if a specific game has already been analyzed (v3.0).
+ * CRITICAL: Uses realLichessIds ONLY - NOT gameIds which contains legacy synthetic IDs.
  * Note: Same position in different games (different timestamps) = different games.
- * We only dedupe on exact game_id match.
+ * We only dedupe on exact REAL Lichess game ID match.
  */
 export function isGameAlreadyAnalyzed(
   gameId: string, 
-  analyzedData: { gameIds: Set<string> }
+  analyzedData: { gameIds: Set<string>; realLichessIds?: Set<string> }
 ): boolean {
+  // v3.0: ONLY check realLichessIds if available (contains only real 8-char Lichess IDs)
+  // Falls back to gameIds for backwards compatibility but this is deprecated
+  if (analyzedData.realLichessIds) {
+    return analyzedData.realLichessIds.has(gameId);
+  }
   return analyzedData.gameIds.has(gameId);
 }
 
