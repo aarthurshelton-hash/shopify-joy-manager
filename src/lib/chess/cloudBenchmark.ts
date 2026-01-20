@@ -295,8 +295,7 @@ export async function fetchRealGames(
       for (const lichessGame of playerGames) {
         if (games.length >= count) break;
         
-        // Only use decisive games (not draws for clearer testing)
-        if (!lichessGame.winner) continue;
+        // Include all games - decisive AND draws (we predict all outcomes)
         
         // Skip games that are too short (10 half-moves minimum, matching Edge Function)
         if (!lichessGame.moves || lichessGame.moves.split(' ').length < 10) continue;
