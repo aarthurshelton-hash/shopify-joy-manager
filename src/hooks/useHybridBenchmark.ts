@@ -1010,11 +1010,11 @@ async function fetchLichessGames(
             continue;
           }
           
-          // CRITICAL: Use the actual Lichess game ID for deduplication
-          // This ID is unique and persistent across all fetches
+          // CRITICAL FIX: Use the actual Lichess game ID for deduplication
+          // The Edge Function returns this as 'id' (e.g., "abc123XY")
           const lichessGameId = game.id;
-          if (!lichessGameId) {
-            console.warn(`[Benchmark] Game missing ID, skipping...`);
+          if (!lichessGameId || typeof lichessGameId !== 'string' || lichessGameId.length < 6) {
+            console.warn(`[Benchmark] Game missing valid Lichess ID: ${lichessGameId}, skipping...`);
             continue;
           }
           
@@ -1030,6 +1030,10 @@ async function fetchLichessGames(
           }
           
           gameIds.add(lichessGameId);
+          
+          // DEBUG: Log the Lichess ID to verify it's real
+          console.log(`[Fetch] Adding game with Lichess ID: ${lichessGameId}`);
+          
           games.push({
             pgn,
             lichessId: lichessGameId, // CRITICAL: Store the actual Lichess ID
