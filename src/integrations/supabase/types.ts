@@ -428,6 +428,7 @@ export type Database = {
           hybrid_prediction: string
           id: string
           lesson_learned: Json | null
+          lichess_id_verified: boolean | null
           move_number: number
           pgn: string | null
           position_hash: string | null
@@ -454,6 +455,7 @@ export type Database = {
           hybrid_prediction: string
           id?: string
           lesson_learned?: Json | null
+          lichess_id_verified?: boolean | null
           move_number: number
           pgn?: string | null
           position_hash?: string | null
@@ -480,6 +482,7 @@ export type Database = {
           hybrid_prediction?: string
           id?: string
           lesson_learned?: Json | null
+          lichess_id_verified?: boolean | null
           move_number?: number
           pgn?: string | null
           position_hash?: string | null
