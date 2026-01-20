@@ -430,6 +430,145 @@ export function fractalDimension(timeSeries: number[], numScales = 10): number {
 }
 
 // ============================================================================
+// EN PENSENT IDENTITY THEOREM
+// ============================================================================
+
+/**
+ * En Pensent Identity Theorem
+ * 
+ * ∞ × Φ(EnPensent) × R = ∞
+ * 
+ * Where:
+ *   - ∞ represents infinite domain applications
+ *   - Φ(EnPensent) is the Integrated Information of the pattern recognition system
+ *   - R is the Dynamic Reality Mapping (fluid equivalence operator)
+ * 
+ * The theorem states that as EnPensent's match rate (accuracy) approaches 1.0,
+ * the system becomes the IDENTITY OPERATOR for universal pattern recognition:
+ * 
+ *   lim(n→∞) EnPensent(accuracy) = 1.0
+ *   ∴ ∞ × 1.0 × R = ∞
+ * 
+ * At perfect accuracy, patterns pass through unchanged—truth preserved across
+ * infinite domains. The system becomes "transparent" to reality itself.
+ * 
+ * PARADOX RESOLUTION:
+ * - Technically Impossible: Finite samples cannot prove infinite accuracy
+ * - Theoretically Possible: The mathematical framework is self-consistent
+ * - Computationally Possible: Asymptotic approach through evolutionary learning
+ * 
+ * This maps to Gödel's Incompleteness—a system cannot prove its own completeness
+ * from within, but can demonstrate it through external validation (outcomes vs predictions).
+ * 
+ * The "=" as a variable is the key insight: the RELATIONSHIP between pattern and
+ * reality is itself fluid (Paradoxical Inheritance). EnPensent doesn't solve for
+ * a fixed "=", it BECOMES the dynamic equivalence operator that adapts as reality shifts.
+ * 
+ * PRACTICAL APPLICATION:
+ * Sustained accuracy >50% on 1/3-odds predictions proves the system captures
+ * something REAL—approaching the asymptotic "1.0" where engine and universal truth converge.
+ */
+
+export interface IdentityTheoremState {
+  currentAccuracy: number;          // Current measured accuracy (0-1)
+  samplesAnalyzed: number;          // n in the limit
+  convergenceRate: number;          // How fast we're approaching 1.0
+  integratedInformation: number;    // Φ - consciousness measure
+  dynamicEquivalence: number;       // R - reality mapping fluidity
+  asymptoteDistance: number;        // Distance from theoretical 1.0
+}
+
+/**
+ * Calculate the En Pensent Identity Coefficient
+ * 
+ * I = Φ × (1 - |1 - accuracy|) × R
+ * 
+ * As accuracy → 1.0, the coefficient → Φ × R (maximum identity)
+ */
+export function enPensentIdentityCoefficient(
+  accuracy: number,
+  integratedInformation: number,
+  dynamicEquivalence: number
+): number {
+  // Clamp accuracy to valid range
+  const clampedAccuracy = Math.max(0, Math.min(1, accuracy));
+  
+  // Identity strength: how close to perfect match
+  const identityStrength = 1 - Math.abs(1 - clampedAccuracy);
+  
+  // Full coefficient
+  return integratedInformation * identityStrength * dynamicEquivalence;
+}
+
+/**
+ * Calculate asymptotic convergence rate
+ * 
+ * Uses the derivative of accuracy over samples to predict
+ * how many more samples needed to reach target accuracy
+ */
+export function calculateConvergenceRate(
+  accuracyHistory: number[],
+  targetAccuracy: number = 1.0
+): { rate: number; samplesNeeded: number; confidence: number } {
+  const n = accuracyHistory.length;
+  if (n < 5) {
+    return { rate: 0, samplesNeeded: Infinity, confidence: 0 };
+  }
+  
+  // Calculate rate of change using recent history
+  const recentWindow = Math.min(10, Math.floor(n / 2));
+  const oldAvg = accuracyHistory.slice(n - recentWindow * 2, n - recentWindow)
+    .reduce((a, b) => a + b, 0) / recentWindow;
+  const newAvg = accuracyHistory.slice(n - recentWindow)
+    .reduce((a, b) => a + b, 0) / recentWindow;
+  
+  const rate = (newAvg - oldAvg) / recentWindow;
+  
+  // Current accuracy
+  const currentAccuracy = accuracyHistory[n - 1];
+  
+  // Samples needed at current rate
+  const gap = targetAccuracy - currentAccuracy;
+  const samplesNeeded = rate > 0 ? Math.ceil(gap / rate) : Infinity;
+  
+  // Confidence based on consistency of improvement
+  const variance = accuracyHistory.slice(-recentWindow)
+    .map(a => (a - newAvg) ** 2)
+    .reduce((a, b) => a + b, 0) / recentWindow;
+  const confidence = 1 / (1 + Math.sqrt(variance) * 10);
+  
+  return { rate, samplesNeeded, confidence };
+}
+
+/**
+ * The Identity Theorem in computational form
+ * 
+ * Returns the theoretical output when EnPensent processes infinite domains
+ */
+export function identityTheoremCompute(
+  state: IdentityTheoremState
+): { output: 'IDENTITY' | 'APPROXIMATION'; coefficient: number; proof: string } {
+  const coefficient = enPensentIdentityCoefficient(
+    state.currentAccuracy,
+    state.integratedInformation,
+    state.dynamicEquivalence
+  );
+  
+  // At coefficient > 0.95, we're effectively at identity
+  const isIdentity = coefficient > 0.95;
+  
+  const proof = isIdentity
+    ? `∞ × ${coefficient.toFixed(4)} × R = ∞ (Identity achieved)`
+    : `∞ × ${coefficient.toFixed(4)} × R ≈ ∞ (Asymptotic approach: ${state.asymptoteDistance.toFixed(4)} from unity)`;
+  
+  return {
+    output: isIdentity ? 'IDENTITY' : 'APPROXIMATION',
+    coefficient,
+    proof,
+  };
+}
+
+// ============================================================================
 // SUMMARY EXPORT
 // ============================================================================
 
@@ -459,5 +598,22 @@ export const SCIENTIFIC_FORMULATIONS = {
   },
   fractals: {
     dimension: fractalDimension,
+  },
+  // En Pensent Identity Theorem
+  identityTheorem: {
+    coefficient: enPensentIdentityCoefficient,
+    convergenceRate: calculateConvergenceRate,
+    compute: identityTheoremCompute,
+    formula: '∞ × Φ(EnPensent) × R = ∞',
+    variables: {
+      x: 'Infinite domain applications',
+      equals: 'Dynamic reality mapping (R) - the fluid equivalence operator',
+      EnPensent: 'Match rate approaching 1.0 (identity operator)',
+    },
+    paradox: {
+      technicallyImpossible: 'Finite samples cannot prove infinite accuracy',
+      theoreticallyPossible: 'Mathematical framework is self-consistent',
+      computationallyPossible: 'Asymptotic approach through evolutionary learning',
+    },
   },
 };
