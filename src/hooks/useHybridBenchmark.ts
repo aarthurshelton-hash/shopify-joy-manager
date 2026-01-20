@@ -12,8 +12,8 @@
  */
 
 // Version tag for debugging cached code issues
-const BENCHMARK_VERSION = "6.3-RELIABLE";
-console.log(`[v6.3] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+const BENCHMARK_VERSION = "6.4-TIMEOUT";
+console.log(`[v6.4] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -507,10 +507,14 @@ export function useHybridBenchmark() {
         }
         
         if (gameResult !== 'white' && gameResult !== 'black' && gameResult !== 'draw') {
-          console.log(`[v6.1] Skip no result: ${lichessId}`);
+          console.log(`[v6.4] Skip no result: ${lichessId} (got: ${gameResult})`);
           skipStats.noResult++;
           continue;
         }
+        
+        // v6.4-TIMEOUT: Log game termination type for debugging
+        const termination = game.termination || 'unknown';
+        console.log(`[v6.4] Game ${lichessId}: result=${gameResult}, termination=${termination}`);
         
         // ✅ VALID GAME - PREDICT IT
         const whiteName = game.whiteName || 'Unknown';
@@ -971,6 +975,11 @@ async function fetchLichessGames(
               gameMonth: game.gameMonth,
               openingEco: game.openingEco,
               openingName: game.openingName,
+              // v6.4-TIMEOUT: Capture termination for timeout games
+              termination: game.status || game.termination || 'unknown',
+              speed: game.speed,
+              rated: game.rated,
+              variant: game.variant,
             });
           }
           
