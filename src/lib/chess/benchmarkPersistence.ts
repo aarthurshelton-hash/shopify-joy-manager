@@ -49,15 +49,21 @@ export function hashPosition(fen: string): string {
 /**
  * Fetch all previously analyzed position hashes and game IDs
  * Used for cross-run deduplication to ensure every benchmark uses unique positions
+ * 
+ * CRITICAL: Deduplication now uses POSITION HASHES as primary key (not game IDs)
+ * This ensures we don't re-analyze the same chess position regardless of
+ * whether it was stored with a legacy synthetic ID or a real Lichess ID.
  */
 export async function getAlreadyAnalyzedData(): Promise<{
   positionHashes: Set<string>;
   gameIds: Set<string>;
   fenStrings: Set<string>;
+  realLichessIds: Set<string>; // Only valid 8-char alphanumeric IDs
 }> {
   const positionHashes = new Set<string>();
   const gameIds = new Set<string>();
   const fenStrings = new Set<string>();
+  const realLichessIds = new Set<string>();
 
   // CRITICAL: Paginate through ALL records to bypass 1000 row limit
   // Without this, we'd only load 1000 positions and re-analyze old duplicates
@@ -65,6 +71,8 @@ export async function getAlreadyAnalyzedData(): Promise<{
   const pageSize = 1000;
   let hasMore = true;
   let totalFetched = 0;
+  let syntheticCount = 0;
+  let realIdCount = 0;
 
   while (hasMore) {
     const { data, error } = await supabase
@@ -83,8 +91,23 @@ export async function getAlreadyAnalyzedData(): Promise<{
     }
 
     for (const row of data) {
+      // Position hash is the PRIMARY deduplication key
       if (row.position_hash) positionHashes.add(row.position_hash);
-      if (row.game_id) gameIds.add(row.game_id);
+      
+      // Store ALL game IDs (both formats) for backward compatibility
+      if (row.game_id) {
+        gameIds.add(row.game_id);
+        
+        // Also track ONLY real 8-char Lichess IDs separately
+        const isRealLichessId = row.game_id.length === 8 && /^[a-zA-Z0-9]+$/.test(row.game_id);
+        if (isRealLichessId) {
+          realLichessIds.add(row.game_id);
+          realIdCount++;
+        } else {
+          syntheticCount++;
+        }
+      }
+      
       // Store NORMALIZED fen for consistent matching
       if (row.fen) fenStrings.add(normalizeFen(row.fen));
     }
@@ -94,8 +117,9 @@ export async function getAlreadyAnalyzedData(): Promise<{
     hasMore = data.length === pageSize;
   }
 
-  console.log(`[Dedup] Loaded ALL ${positionHashes.size} unique positions, ${gameIds.size} unique games from ${totalFetched} records`);
-  return { positionHashes, gameIds, fenStrings };
+  console.log(`[Dedup] Loaded ${positionHashes.size} positions, ${realIdCount} real Lichess IDs, ${syntheticCount} legacy IDs from ${totalFetched} records`);
+  console.log(`[Dedup] PRIMARY deduplication: position_hash (${positionHashes.size} unique positions)`);
+  return { positionHashes, gameIds, fenStrings, realLichessIds };
 }
 
 /**
