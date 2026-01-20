@@ -1,7 +1,8 @@
 /**
  * En Pensent™ vs TCEC Stockfish 17 Unlimited Benchmark
- * VERSION: 6.63-REALTIME-SYNC (2026-01-20)
+ * VERSION: 6.64-SYNC-FIX (2026-01-20)
  * 
+ * v6.64: Improved cache invalidation - batch invalidate instead of per-insert
  * v6.63: Chess stats cache invalidation for instant UI sync
  * v6.62: Prime-based time window rotation prevents cache collisions across batches
  * v6.61: Remove predictedIds check from queue-adding (only check in processing loop)

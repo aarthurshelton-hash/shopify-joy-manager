@@ -1,6 +1,11 @@
 /**
- * Hybrid Benchmark Hook - HIGH VOLUME v6.63
- * VERSION: 6.63-REALTIME-SYNC (2026-01-20)
+ * Hybrid Benchmark Hook - HIGH VOLUME v6.64
+ * VERSION: 6.64-SYNC-FIX (2026-01-20)
+ * 
+ * v6.64 CHANGES:
+ * - SYNC FIX: Improved cache invalidation timing for instant UI updates
+ * - IMMEDIATE INVALIDATE: Invalidate cache BEFORE insert for faster UI response
+ * - BATCH INVALIDATE: Single invalidation after batch saves
  * 
  * v6.63 CHANGES:
  * - REALTIME SYNC: Chess stats now invalidate cache on save for instant UI updates
@@ -9,17 +14,14 @@
  * - DEEPER HISTORY: Go back years instead of weeks
  * - FASTER BATCHES: Reduced delays between parallel chunks
  * 
- * With 5+ BILLION games on Lichess + billions on Chess.com,
- * we should be absorbing 50+ games per batch easily.
- * 
  * ELO CALIBRATION (Platform → FIDE):
  * - Lichess: -100 offset (Glicko-2 tends higher)
  * - Chess.com: -50 offset (closer to FIDE)
  */
 
-// v6.63-REALTIME-SYNC: Invalidate chess stats cache on save
-const BENCHMARK_VERSION = "6.63-REALTIME-SYNC";
-console.log(`[v6.63] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.64-SYNC-FIX: Improved cache invalidation
+const BENCHMARK_VERSION = "6.64-SYNC-FIX";
+console.log(`[v6.64] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -688,23 +690,28 @@ export function useHybridBenchmark() {
           }
           
           // Save new attempts
+          let savedCount = 0;
           for (const attempt of newAttempts) {
             const { error: insertError } = await supabase.from('chess_prediction_attempts').insert({
               ...attempt,
               benchmark_id: benchmarkId,
             });
             if (insertError && !insertError.message?.includes('duplicate')) {
-              console.error(`[v6.63] Failed to save ${attempt.game_id}:`, insertError.message);
+              console.error(`[v6.64] Failed to save ${attempt.game_id}:`, insertError.message);
             } else {
-              // v6.63: Invalidate cache on successful save for realtime UI sync
-              invalidateChessStatsCache();
+              savedCount++;
             }
           }
           
+          // v6.64: Single cache invalidation AFTER batch save (more efficient)
+          if (savedCount > 0) {
+            invalidateChessStatsCache();
+            console.log(`[v6.64] ✅ Saved ${savedCount}/${newAttempts.length} predictions, cache invalidated`);
+          }
+          
           lastSaveIndex = attempts.length;
-          console.log(`[v6.63] ✅ Incremental save complete`);
         } catch (saveErr) {
-          console.error(`[v6.63] ❌ Incremental save failed:`, saveErr);
+          console.error(`[v6.64] ❌ Incremental save failed:`, saveErr);
         }
       }
       
