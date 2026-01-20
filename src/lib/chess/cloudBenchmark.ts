@@ -13,9 +13,9 @@
  */
 
 // Version tag for debugging
-// v6.19-HYPER: 2-week windows with random day offset for maximum diversity
-const CLOUD_BENCHMARK_VERSION = "6.19-HYPER";
-console.log(`[v6.19] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
+// v6.20-ISOLATED: Session deduplication separate from DB - each run fetches fresh
+const CLOUD_BENCHMARK_VERSION = "6.20-ISOLATED";
+console.log(`[v6.20] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
 
 import { Chess } from 'chess.js';
 import { evaluatePosition, type PositionEvaluation } from './lichessCloudEval';

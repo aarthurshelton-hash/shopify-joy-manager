@@ -12,9 +12,9 @@
  */
 
 // Version tag for debugging cached code issues
-// v6.19-HYPER: 2-week windows with random day offset for maximum diversity between runs
-const BENCHMARK_VERSION = "6.19-HYPER";
-console.log(`[v6.19] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.20-ISOLATED: Session deduplication is separate from DB - each run fetches fresh
+const BENCHMARK_VERSION = "6.20-ISOLATED";
+console.log(`[v6.20] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -442,14 +442,15 @@ export function useHybridBenchmark() {
       
       // v6.5 REFETCH LOOP: Continuously fetch until we hit target predictions
       console.log(`[v6.5] ========================================`);
-      console.log(`[v6.5] STARTING REFETCH BENCHMARK`);
-      console.log(`[v6.5] Target: ${gameCount} predictions`);
-      console.log(`[v6.5] Already in DB: ${analyzedData.gameIds.size} games`);
-      console.log(`[v6.5] ========================================`);
+      console.log(`[v6.20] STARTING ISOLATED BENCHMARK`);
+      console.log(`[v6.20] Target: ${gameCount} predictions`);
+      console.log(`[v6.20] Already in DB: ${analyzedData.gameIds.size} games (checked at prediction time only)`);
+      console.log(`[v6.20] ========================================`);
       
-      // v6.9: Track ALL game IDs seen this session (DB + queue + predicted)
-      // This gets passed to fetchLichessGames to ensure we never fetch duplicates
-      const sessionSeenIds = new Set<string>(analyzedData.gameIds);
+      // v6.20-ISOLATED: Session tracking is SEPARATE from DB!
+      // This set ONLY tracks games fetched/processed in THIS run
+      // DB deduplication happens at prediction time, not fetch time
+      const sessionSeenIds = new Set<string>();
       
       // v6.5: Track all games across multiple fetch batches
       let allGames: any[] = [];
@@ -462,20 +463,23 @@ export function useHybridBenchmark() {
       
       async function fetchMoreGames() {
         batchNumber++;
-        console.log(`[v6.14] ========== BATCH ${batchNumber} ==========`);
-        console.log(`[v6.14] Session has seen ${sessionSeenIds.size} total game IDs`);
+        console.log(`[v6.20] ========== BATCH ${batchNumber} ==========`);
+        console.log(`[v6.20] Session has seen ${sessionSeenIds.size} games THIS RUN`);
+        console.log(`[v6.20] DB has ${analyzedData.gameIds.size} games (checked at prediction time)`);
         setProgress(prev => ({ 
           ...prev!, 
-          message: `Fetching batch ${batchNumber} from Lichess (seen ${sessionSeenIds.size} games)...` 
+          message: `Fetching batch ${batchNumber} (session: ${sessionSeenIds.size}, DB: ${analyzedData.gameIds.size})...` 
         }));
         
-        // v6.14: Pass session-local set that includes ALL games we've seen this run
-        const sessionAnalyzedData = {
-          ...analyzedData,
-          gameIds: sessionSeenIds, // Use session-local set, not just DB
+        // v6.20-ISOLATED: Only pass session-local IDs to fetcher
+        // DB deduplication happens later at prediction time
+        const sessionOnlyData = {
+          positionHashes: new Set<string>(),
+          gameIds: sessionSeenIds, // ONLY this run's games
+          fenStrings: new Set<string>(),
         };
         
-        const newGames = await fetchLichessGames(fetchCount, sessionAnalyzedData);
+        const newGames = await fetchLichessGames(fetchCount, sessionOnlyData);
         console.log(`[v6.14] Batch ${batchNumber}: Got ${newGames.length} fresh games from Lichess`);
         
         // Add all new games to session tracking immediately
@@ -536,14 +540,22 @@ export function useHybridBenchmark() {
         
         // Simple validation
         if (!lichessId || lichessId.length !== 8) {
-          console.log(`[v6.16] Skip invalid ID: ${lichessId}`);
+          console.log(`[v6.20] Skip invalid ID: ${lichessId}`);
           skipStats.invalidId++;
           continue;
         }
         
-        // v6.16: Simple session duplicate check
+        // v6.20-ISOLATED: Check against DB at prediction time (not fetch time)
+        // This is where we ensure we don't re-predict games from previous benchmark runs
+        if (analyzedData.gameIds.has(lichessId)) {
+          console.log(`[v6.20] Skip DB duplicate: ${lichessId}`);
+          skipStats.dbDupe++;
+          continue;
+        }
+        
+        // v6.20: Session duplicate check (within this run only)
         if (sessionSeenIds.has(lichessId) && !allGames.slice(0, gameIndex).some(g => g.lichessId === lichessId)) {
-          console.log(`[v6.16] Skip session duplicate: ${lichessId}`);
+          console.log(`[v6.20] Skip session duplicate: ${lichessId}`);
           skipStats.dbDupe++;
           continue;
         }
