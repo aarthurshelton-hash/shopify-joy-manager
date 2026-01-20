@@ -1,12 +1,19 @@
-# Memory: features/universal-engine/v6-isolated-session-deduplication
+# Memory: features/universal-engine/v6-session-fix-and-random-windows
 Updated: now
 
-The 'v6.23-ADAPTIVE' benchmark architecture maximizes game absorption through **batch-aware player rotation**:
+The 'v6.24-SESSFIX' benchmark fixes a critical bug where ALL fetched games were being filtered as "session duplicates":
 
-1. **Player Rotation Tracking**: `queriedPlayersThisSession` Set tracks which players have been queried, ensuring subsequent batches use different players
-2. **Batch-Seeded Time Windows**: Time windows use `(batchNumber * 17 + playerIndex * 31)` seeding for deterministic but varied date ranges across batches
-3. **Deterministic Player Ordering**: Players are sorted using `(charCode * batchNumber + length) % 1000` for consistent but batch-varied ordering
-4. **Fresh Player Prioritization**: Each batch filters out already-queried players before shuffling, falling back to all players only when pool exhausted
-5. **DB Check at Prediction Time Only**: Games are checked against `analyzedData.gameIds` in the main prediction loop, not during fetching
+**Bug in v6.23**: Every game was added to `sessionSeenIds` at fetch time, then the duplicate check on line 548 would ALWAYS find them in the set!
 
-This ensures each batch queries different players with different time windows, preventing the "empty batch" problem where all returned games were duplicates from earlier batches.
+**v6.24-SESSFIX Solution**:
+1. **Renamed to `predictedIds`**: Tracks games we've SUCCESSFULLY PREDICTED this session (not just fetched)
+2. **Tracking after prediction**: Games are only added to `predictedIds` AFTER the prediction is made (line 710)
+3. **Truly random time windows**: Removed deterministic seeding - each window uses pure `Math.random()`
+4. **Clean dedup logic**: Session check now only prevents re-predicting same game twice in one run
+
+**Data Flow**:
+- Fetch games → Add to queue (no session tracking here)
+- Process each game: Skip if DB duplicate OR already predicted this session
+- After successful prediction: `predictedIds.add(lichessId)`
+
+This ensures maximum game absorption from each batch while preventing duplicate predictions.
