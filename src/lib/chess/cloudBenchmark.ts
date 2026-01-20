@@ -13,9 +13,9 @@
  */
 
 // Version tag for debugging
-// v6.14-ROBUST-PARSE: Aligned with useHybridBenchmark for raw moves parsing
-const CLOUD_BENCHMARK_VERSION = "6.14-ROBUST-PARSE";
-console.log(`[v6.14] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
+// v6.15-BATCH-FIX: Aligned with useHybridBenchmark batch processing fixes
+const CLOUD_BENCHMARK_VERSION = "6.15-BATCH-FIX";
+console.log(`[v6.15] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
 
 import { Chess } from 'chess.js';
 import { evaluatePosition, type PositionEvaluation } from './lichessCloudEval';
