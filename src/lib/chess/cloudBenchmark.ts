@@ -1,20 +1,25 @@
 /**
  * En Pensent™ vs TCEC Stockfish 17 Unlimited Benchmark
- * VERSION: 6.0-SIMPLE (2026-01-20)
+ * VERSION: 6.45-MULTISOURCE (2026-01-20)
  * 
- * PHILOSOPHY: Keep it simple.
- * 1. Fetch ONLY what we need (2-3x target, not 8x)
+ * PHILOSOPHY: Simple + Diverse Sources
+ * 1. Fetch from BOTH Lichess AND Chess.com (dual source)
  * 2. Skip games already in DB
  * 3. Predict every fresh game
- * 4. Store results
+ * 4. Store results with source tracking
+ * 
+ * AVAILABLE GAMES:
+ * - Lichess: ~75 players × 5000 games = 375K+
+ * - Chess.com: ~30 players × 3000 games = 90K+
+ * - Combined: 465K+ games (effectively unlimited)
  * 
  * Compares against TCEC SF17 (ELO 3600) - the strongest Stockfish configuration
  * Uses Lichess Cloud API with TCEC-calibrated prediction thresholds
  */
 
-// v6.44-FLOWFIX: Fixed fetch starvation + time window randomization + higher fetch multiplier
-const CLOUD_BENCHMARK_VERSION = "6.44-FLOWFIX";
-console.log(`[v6.44] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
+// v6.45-MULTISOURCE: Dual-source fetching (Lichess + Chess.com)
+const CLOUD_BENCHMARK_VERSION = "6.45-MULTISOURCE";
+console.log(`[v6.45] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
 
 import { Chess } from 'chess.js';
 import { evaluatePosition, type PositionEvaluation } from './lichessCloudEval';

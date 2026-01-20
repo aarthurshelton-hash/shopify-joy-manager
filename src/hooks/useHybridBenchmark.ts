@@ -1,19 +1,22 @@
 /**
- * Hybrid Benchmark Hook - SIMPLE AND CLEAN
- * VERSION: 6.0-SIMPLE (2026-01-20)
+ * Hybrid Benchmark Hook - MULTI-SOURCE EDITION
+ * VERSION: 6.45-MULTISOURCE (2026-01-20)
  * 
- * PHILOSOPHY: Keep it simple.
- * 1. Fetch games from Lichess
+ * PHILOSOPHY: Simple + Diverse Sources
+ * 1. Fetch games from BOTH Lichess AND Chess.com
  * 2. Skip ONLY games already in our database
  * 3. Predict EVERY fresh game
- * 4. Store results
+ * 4. Store results with source tracking
  * 
- * That's it. No over-engineering.
+ * SOURCES:
+ * - Lichess: ~75 elite players × 5000+ games each = 375K+ games
+ * - Chess.com: ~30 elite players × 3000+ games each = 90K+ games
+ * - Combined: 465K+ available games (effectively unlimited)
  */
 
-// v6.44-FLOWFIX: Fixed fetch starvation + time window randomization + higher fetch multiplier
-const BENCHMARK_VERSION = "6.44-FLOWFIX";
-console.log(`[v6.44] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.45-MULTISOURCE: Dual-source fetching (Lichess + Chess.com)
+const BENCHMARK_VERSION = "6.45-MULTISOURCE";
+console.log(`[v6.45] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -22,6 +25,7 @@ import { Chess } from 'chess.js';
 import { analyzeTimeControlProfile, StyleProfile, TimeControlElo } from '@/lib/pensent-core/domains/chess/timeControlStyleProfiler';
 import { buildFingerprint, PlayerFingerprint, GameData } from '@/lib/pensent-core/domains/chess/playerFingerprint';
 import { getAlreadyAnalyzedData, hashPosition, reaffirmExistingPrediction } from '@/lib/chess/benchmarkPersistence';
+import { fetchMultiSourceGames, getSourceStats, type UnifiedGameData } from '@/lib/chess/gameImport/multiSourceFetcher';
 
 interface LichessGameData {
   pgn: string;
