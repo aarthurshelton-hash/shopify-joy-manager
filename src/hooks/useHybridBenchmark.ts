@@ -12,8 +12,8 @@
  */
 
 // Version tag for debugging cached code issues
-const BENCHMARK_VERSION = "6.1-OPTIMIZED";
-console.log(`[v6.1] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+const BENCHMARK_VERSION = "6.2-AGGRESSIVE";
+console.log(`[v6.2] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -779,11 +779,11 @@ async function fetchLichessGames(
   count: number, 
   analyzedData?: { positionHashes: Set<string>; gameIds: Set<string>; fenStrings: Set<string>; realLichessIds?: Set<string> }
 ): Promise<LichessGameData[]> {
-  // v6.1: IMPROVED - Use realistic time windows and retry failed windows
+  // v6.2: AGGRESSIVE RETRY - Keep trying until we have enough fresh games
   const targetGames = count;
-  const gamesPerPlayer = Math.max(15, Math.ceil(targetGames / 3));
+  const gamesPerPlayer = Math.max(20, Math.ceil(targetGames / 2)); // More games per player
   
-  console.log(`[v6.1 FETCH] Requesting ${targetGames} fresh games`);
+  console.log(`[v6.2 FETCH] Requesting ${targetGames} fresh games (${gamesPerPlayer}/player)`);
   
   // Large player pool - active Lichess players with long history
   const topPlayers = [
@@ -830,9 +830,10 @@ async function fetchLichessGames(
     };
   }
   
-  let requestDelay = 2500; // Start with 2.5s between requests
+  let requestDelay = 2000; // Start with 2s between requests
   
-  for (let attempt = 0; attempt < 3; attempt++) { // Retry loop for empty results
+  // v6.2: MORE AGGRESSIVE - up to 8 window attempts with different time slices
+  for (let attempt = 0; attempt < 8 && games.length < targetGames; attempt++) {
     const { since, until } = getRandomTimeWindow();
     console.log(`[v6.1 FETCH] Attempt ${attempt + 1}: Window ${new Date(since).toISOString().split('T')[0]} to ${new Date(until).toISOString().split('T')[0]}`);
     
@@ -954,16 +955,20 @@ async function fetchLichessGames(
     
     if (games.length >= targetGames) break;
     
-    // If we didn't get enough, try with a different time window
-    console.log(`[v6.1] Only got ${games.length}/${targetGames}, trying new window...`);
+    // v6.2: If we didn't get enough, try with a different time window
+    if (games.length < targetGames) {
+      console.log(`[v6.2] Only got ${games.length}/${targetGames}, trying new window (attempt ${attempt + 2}/8)...`);
+      // Reshuffle players for next attempt
+      selectedPlayers.sort(() => Math.random() - 0.5);
+    }
   }
   
-  console.log(`[v6.1 FETCH] ========================================`);
-  console.log(`[v6.1 FETCH] COMPLETE: ${games.length} FRESH games (wanted ${targetGames})`);
-  console.log(`[v6.1 FETCH] Pre-filtered: ${alreadyAnalyzedSkipped} already in DB`);
-  console.log(`[v6.1 FETCH] Skipped: ${shortGamesSkipped} too short`);
-  console.log(`[v6.1 FETCH] Empty windows: ${emptyWindowRetries}`);
-  console.log(`[v6.1 FETCH] ========================================`);
+  console.log(`[v6.2 FETCH] ========================================`);
+  console.log(`[v6.2 FETCH] COMPLETE: ${games.length} FRESH games (wanted ${targetGames})`);
+  console.log(`[v6.2 FETCH] Pre-filtered: ${alreadyAnalyzedSkipped} already in DB`);
+  console.log(`[v6.2 FETCH] Skipped: ${shortGamesSkipped} too short`);
+  console.log(`[v6.2 FETCH] Empty windows: ${emptyWindowRetries}`);
+  console.log(`[v6.2 FETCH] ========================================`);
   
   if (games.length === 0 && fetchErrors > 0) {
     throw new Error('Failed to fetch games from Lichess - possibly rate limited. Please try again in a few minutes.');
