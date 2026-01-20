@@ -339,6 +339,7 @@ export async function saveBenchmarkResults(result: BenchmarkResult): Promise<str
       position_hash: hashPosition(attempt.fen),
       lesson_learned: JSON.parse(JSON.stringify(analyzeLessonLearned(attempt))),
       data_quality_tier: 'tcec_calibrated',
+      lichess_id_verified: true, // All games from cloud benchmark are verified real Lichess IDs
     }));
 
     const { error: attemptsError } = await supabase
