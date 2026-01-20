@@ -1,8 +1,8 @@
 /**
  * En Pensent™ vs TCEC Stockfish 17 Unlimited Benchmark
- * VERSION: 6.58-UNIFIED-ID (2026-01-20)
+ * VERSION: 6.59-VERIFIED-POOL (2026-01-20)
  * 
- * v6.58: Fixed ID validation to support prefixed IDs (li_/cc_)
+ * v6.59: Cleaned player pool (removed 404s) + smart time windows
  *
  * DATA SOURCES:
  * - Lichess: 5+ BILLION games via Edge Function proxy
