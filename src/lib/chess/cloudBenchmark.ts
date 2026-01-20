@@ -12,9 +12,9 @@
  * Uses Lichess Cloud API with TCEC-calibrated prediction thresholds
  */
 
-// v6.42-IRONCLAD: Per-game error isolation + guaranteed incremental saves
-const CLOUD_BENCHMARK_VERSION = "6.42-IRONCLAD";
-console.log(`[v6.42] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
+// v6.43-BULLETPROOF: Fixed try-catch scoping + robust batch refetch + guaranteed saves
+const CLOUD_BENCHMARK_VERSION = "6.43-BULLETPROOF";
+console.log(`[v6.43] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
 
 import { Chess } from 'chess.js';
 import { evaluatePosition, type PositionEvaluation } from './lichessCloudEval';
