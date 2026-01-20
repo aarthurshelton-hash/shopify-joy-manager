@@ -13,8 +13,8 @@
  */
 
 // Version tag for debugging
-const CLOUD_BENCHMARK_VERSION = "6.1-DEDUP";
-console.log(`[v6.1] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
+const CLOUD_BENCHMARK_VERSION = "6.2-VOLUME";
+console.log(`[v6.2] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
 
 import { Chess } from 'chess.js';
 import { evaluatePosition, type PositionEvaluation } from './lichessCloudEval';
@@ -140,7 +140,7 @@ function evalToPrediction(cp: number): {
   }
 }
 
-// Famous grandmaster usernames on Lichess
+// Famous grandmaster usernames on Lichess - EXPANDED pool for volume
 const TOP_PLAYERS = [
   'DrNykterstein', // Magnus Carlsen
   'Hikaru',        // Hikaru Nakamura
@@ -152,6 +152,16 @@ const TOP_PLAYERS = [
   'GMWSO',         // Wesley So
   'Vladimirovich9000', // Ian Nepomniachtchi
   'lachesisQ',     // Ian Nepomniachtchi alt
+  'TemurKuybokarov', // Temur Kuybokarov
+  'penguingim1',   // Andrew Tang
+  'AnishGiri',     // Anish Giri
+  'DanielNaroditsky', // Daniel Naroditsky
+  'opperwezen',    // Jorden van Foreest
+  'Fins',          // John Bartholomew
+  'Polish_fighter3000', // Radoslaw Wojtaszek
+  'SSJG_Goku',     // Andrew Zhigalko
+  'Zhigalko_Sergei', // Sergei Zhigalko
+  'howitzer14',    // Nils Grandelius
 ];
 
 // Fallback famous games (with stable IDs for deduplication)
@@ -255,20 +265,23 @@ export async function fetchRealGames(
   const games: BenchmarkGame[] = [];
   const targetGames = count;
   
-  // v6.0: Only fetch 3x what we need (was 8x+), minimum 5 games per player
-  const numPlayers = Math.min(5, Math.ceil(targetGames / 3));
-  const gamesPerPlayer = Math.max(5, Math.ceil((targetGames * 2) / numPlayers));
+  // v6.2: Use MORE players with wider time windows to find fresh games
+  // With 65+ games already analyzed, we need more diversity
+  const numPlayers = Math.min(10, Math.ceil(targetGames / 2));
+  const gamesPerPlayer = Math.max(10, Math.ceil((targetGames * 3) / numPlayers));
   
   console.log(`[v6.0 FETCH] Target: ${targetGames}, using ${numPlayers} players, ${gamesPerPlayer} games each`);
   
-  // CRITICAL FIX: Randomize which time period we fetch from
+  // v6.2: WIDER time windows to ensure fresh games with growing database
+  // Lichess has games from 2010+, so we can go back MUCH further
   const now = Date.now();
-  const oneYearAgo = now - (365 * 24 * 60 * 60 * 1000);
-  const twoYearsAgo = now - (2 * 365 * 24 * 60 * 60 * 1000);
+  const fiveYearsAgo = now - (5 * 365 * 24 * 60 * 60 * 1000);
   
-  const randomOffset = Math.floor(Math.random() * (now - oneYearAgo));
+  // Random window within the last 5 years - much larger pool of games
+  const randomOffset = Math.floor(Math.random() * (now - fiveYearsAgo));
   const untilTimestamp = now - randomOffset;
-  const sinceTimestamp = Math.max(twoYearsAgo, untilTimestamp - (180 * 24 * 60 * 60 * 1000));
+  // Wider 1-year window instead of 180 days
+  const sinceTimestamp = Math.max(fiveYearsAgo, untilTimestamp - (365 * 24 * 60 * 60 * 1000));
   
   // Only use a few players - no need to iterate through all 18+
   const shuffledPlayers = shuffleArray([...TOP_PLAYERS]).slice(0, numPlayers);
