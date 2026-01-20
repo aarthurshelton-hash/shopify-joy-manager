@@ -13,8 +13,8 @@
  */
 
 // Version tag for debugging
-const CLOUD_BENCHMARK_VERSION = "6.2-VOLUME";
-console.log(`[v6.2] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
+const CLOUD_BENCHMARK_VERSION = "6.3-INFINITE";
+console.log(`[v6.3] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
 
 import { Chess } from 'chess.js';
 import { evaluatePosition, type PositionEvaluation } from './lichessCloudEval';
@@ -249,13 +249,17 @@ function normalCdf(z: number): number {
 }
 
 /**
- * Fetch real games from Lichess top players
- * CRITICAL: Uses random time windows to ensure DIFFERENT games each run
- */
-/**
- * v6.0-SIMPLE: Fetch real games from Lichess top players
- * CRITICAL: Only fetch what we need - no over-fetching!
- * v6.1: Now accepts existingGameIds to filter at fetch time (not just at process time)
+ * v6.3-INFINITE: Fetch from Lichess's near-infinite game pool
+ * 
+ * PHILOSOPHY: With millions of GM games since 2010, we should NEVER hit duplicates.
+ * Deduplication is a safety net, NOT a primary mechanism.
+ * 
+ * STRATEGY:
+ * 1. Use FULL Lichess history (2010-present = 14+ years)
+ * 2. Completely random time windows across that span
+ * 3. Large player pool (20+)
+ * 4. If duplicates found, IMMEDIATELY try different time window
+ * 5. Never fall back to famous games - keep trying fresh windows
  */
 export async function fetchRealGames(
   count: number = 50,
@@ -264,99 +268,120 @@ export async function fetchRealGames(
 ): Promise<BenchmarkGame[]> {
   const games: BenchmarkGame[] = [];
   const targetGames = count;
+  const dbSize = existingGameIds?.size || 0;
   
-  // v6.2: Use MORE players with wider time windows to find fresh games
-  // With 65+ games already analyzed, we need more diversity
-  const numPlayers = Math.min(10, Math.ceil(targetGames / 2));
-  const gamesPerPlayer = Math.max(10, Math.ceil((targetGames * 3) / numPlayers));
+  console.log(`[v6.3 INFINITE] Target: ${targetGames} fresh games, DB has ${dbSize} analyzed`);
   
-  console.log(`[v6.0 FETCH] Target: ${targetGames}, using ${numPlayers} players, ${gamesPerPlayer} games each`);
-  
-  // v6.2: WIDER time windows to ensure fresh games with growing database
-  // Lichess has games from 2010+, so we can go back MUCH further
+  // INFINITE POOL: Lichess has games since 2010 - that's 14+ years of data
   const now = Date.now();
-  const fiveYearsAgo = now - (5 * 365 * 24 * 60 * 60 * 1000);
+  const lichessEpoch = new Date('2010-01-01').getTime(); // Lichess founding
+  const totalHistoryMs = now - lichessEpoch;
   
-  // Random window within the last 5 years - much larger pool of games
-  const randomOffset = Math.floor(Math.random() * (now - fiveYearsAgo));
-  const untilTimestamp = now - randomOffset;
-  // Wider 1-year window instead of 180 days
-  const sinceTimestamp = Math.max(fiveYearsAgo, untilTimestamp - (365 * 24 * 60 * 60 * 1000));
+  // Try multiple completely random time windows until we have enough games
+  let attempts = 0;
+  const maxAttempts = 10; // Each attempt uses a totally different time slice
   
-  // Only use a few players - no need to iterate through all 18+
-  const shuffledPlayers = shuffleArray([...TOP_PLAYERS]).slice(0, numPlayers);
-  
-  onProgress?.(`Fetching ${targetGames} games from ${numPlayers} players...`);
-  
-  for (const player of shuffledPlayers) {
-    if (games.length >= targetGames) break;
+  while (games.length < targetGames && attempts < maxAttempts) {
+    attempts++;
     
-    onProgress?.(`Fetching from ${player} (${games.length}/${targetGames})...`);
+    // COMPLETELY RANDOM time window across ALL of Lichess history
+    const randomStart = lichessEpoch + Math.floor(Math.random() * (totalHistoryMs - 90 * 24 * 60 * 60 * 1000));
+    const windowSize = 90 * 24 * 60 * 60 * 1000; // 90-day windows
+    const sinceTimestamp = randomStart;
+    const untilTimestamp = Math.min(now, randomStart + windowSize);
     
-    try {
-      const result = await fetchLichessGames(player, {
-        max: gamesPerPlayer,
-        since: sinceTimestamp,
-        until: untilTimestamp,
-        rated: true,
-        opening: true,
-        moves: true,
-        pgnInJson: true,
-      });
+    const windowDate = new Date(randomStart).toISOString().split('T')[0];
+    console.log(`[v6.3] Attempt ${attempts}: Sampling from ${windowDate} (${games.length}/${targetGames} found)`);
+    
+    // Use ALL players, shuffled
+    const shuffledPlayers = shuffleArray([...TOP_PLAYERS]);
+    const playersThisAttempt = shuffledPlayers.slice(0, Math.min(5, shuffledPlayers.length));
+    
+    for (const player of playersThisAttempt) {
+      if (games.length >= targetGames) break;
       
-      // Shuffle this player's games too before processing
-      const playerGames = shuffleArray([...result.games]);
+      onProgress?.(`[Window ${attempts}] Fetching from ${player} (${games.length}/${targetGames})...`);
       
-      for (const lichessGame of playerGames) {
-        if (games.length >= count) break;
+      try {
+        const result = await fetchLichessGames(player, {
+          max: 20, // Fetch 20 per player per window
+          since: sinceTimestamp,
+          until: untilTimestamp,
+          rated: true,
+          opening: true,
+          moves: true,
+          pgnInJson: true,
+        });
         
-        // Include all games - decisive AND draws (we predict all outcomes)
-        
-        // Skip games that are too short (10 half-moves minimum, matching Edge Function)
-        if (!lichessGame.moves || lichessGame.moves.split(' ').length < 10) continue;
-        
-        // Skip only TRUE duplicates: exact same game ID (unique 8-char Lichess identifier)
-        // v6.1: Check BOTH current batch AND database for duplicates
-        const isInCurrentBatch = games.some(g => g.id === lichessGame.id);
-        const isInDatabase = existingGameIds?.has(lichessGame.id) ?? false;
-        
-        if (isInCurrentBatch || isInDatabase) {
-          console.log(`[CloudBenchmark] Skipping duplicate: ${lichessGame.id} (batch: ${isInCurrentBatch}, db: ${isInDatabase})`);
+        if (result.games.length === 0) {
+          console.log(`[v6.3] No games for ${player} in window ${windowDate}`);
           continue;
         }
         
-        const pgn = lichessGameToPgn(lichessGame);
-        const whiteName = lichessGame.players.white.user?.name || 'Anonymous';
-        const blackName = lichessGame.players.black.user?.name || 'Anonymous';
-        const whiteRating = lichessGame.players.white.rating || 0;
-        const blackRating = lichessGame.players.black.rating || 0;
+        // Shuffle player's games
+        const playerGames = shuffleArray([...result.games]);
+        let duplicatesThisPlayer = 0;
         
-        games.push({
-          id: lichessGame.id, // CRITICAL: Use actual Lichess game ID for cross-run deduplication
-          name: `${whiteName} (${whiteRating}) vs ${blackName} (${blackRating})`,
-          pgn,
-          result: lichessGame.winner === 'white' ? 'white_wins' : 'black_wins',
-          source: 'lichess',
-          rating: Math.max(whiteRating, blackRating),
-        });
+        for (const lichessGame of playerGames) {
+          if (games.length >= targetGames) break;
+          
+          // Skip short games
+          if (!lichessGame.moves || lichessGame.moves.split(' ').length < 10) continue;
+          
+          // SAFETY NET: Check for duplicates (should be rare with random windows)
+          const isInCurrentBatch = games.some(g => g.id === lichessGame.id);
+          const isInDatabase = existingGameIds?.has(lichessGame.id) ?? false;
+          
+          if (isInCurrentBatch || isInDatabase) {
+            duplicatesThisPlayer++;
+            continue; // Silently skip - don't log every duplicate
+          }
+          
+          const pgn = lichessGameToPgn(lichessGame);
+          const whiteName = lichessGame.players.white.user?.name || 'Anonymous';
+          const blackName = lichessGame.players.black.user?.name || 'Anonymous';
+          const whiteRating = lichessGame.players.white.rating || 0;
+          const blackRating = lichessGame.players.black.rating || 0;
+          
+          games.push({
+            id: lichessGame.id,
+            name: `${whiteName} (${whiteRating}) vs ${blackName} (${blackRating})`,
+            pgn,
+            result: lichessGame.winner === 'white' ? 'white_wins' : 
+                   lichessGame.winner === 'black' ? 'black_wins' : 'draw',
+            source: 'lichess',
+            rating: Math.max(whiteRating, blackRating),
+          });
+        }
+        
+        if (duplicatesThisPlayer > 0) {
+          console.log(`[v6.3] ${player}: ${duplicatesThisPlayer} duplicates skipped (rare - safety net working)`);
+        }
+        
+        // Respect rate limits
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+      } catch (error) {
+        console.warn(`[v6.3] Failed to fetch from ${player}:`, error);
       }
-      
-      // Small delay between players to respect rate limits
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-    } catch (error) {
-      console.warn(`Failed to fetch games from ${player}:`, error);
+    }
+    
+    // If this window yielded nothing, try a completely different one
+    if (games.length === 0 && attempts < maxAttempts) {
+      console.log(`[v6.3] Window ${attempts} empty, trying different time slice...`);
     }
   }
   
-  // If we couldn't get enough real games, supplement with famous games
-  if (games.length < 5) {
-    onProgress?.('Using fallback famous games...');
+  console.log(`[v6.3 COMPLETE] Found ${games.length} fresh games in ${attempts} attempts`);
+  
+  // Only fall back to famous games if we truly got NOTHING (API down, etc.)
+  if (games.length === 0) {
+    console.warn('[v6.3] API appears down - using famous games as last resort');
+    onProgress?.('API unavailable - using classic games...');
     return shuffleArray([...FAMOUS_GAMES]);
   }
   
-  // CRITICAL: Final shuffle to ensure randomization
-  onProgress?.(`Shuffling ${games.length} unique games for randomized order...`);
+  onProgress?.(`Found ${games.length} fresh games from Lichess history`);
   return shuffleArray(games);
 }
 
