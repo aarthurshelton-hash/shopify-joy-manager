@@ -16,9 +16,9 @@
  * - Chess.com: -50 offset (closer to FIDE)
  */
 
-// v6.61-QUEUE-FIX: Remove predictedIds check from queue-adding (only check in processing loop)
-const BENCHMARK_VERSION = "6.61-QUEUE-FIX";
-console.log(`[v6.61] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.62-WINDOW-FIX: Prime-based time window rotation prevents cache collisions
+const BENCHMARK_VERSION = "6.62-WINDOW-FIX";
+console.log(`[v6.62] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
