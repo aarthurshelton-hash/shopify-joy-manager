@@ -10,8 +10,9 @@ const evaluationCache = new Map<string, { data: unknown; timestamp: number }>();
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const CACHE_MAX_SIZE = 1000;
 
-// Rate limit tracking
+// Rate limit tracking - v6.67-RATELIMIT-MEMORY
 let lastRequestTime = 0;
+let rateLimitedUntil = 0; // Timestamp when rate limit expires
 const MIN_REQUEST_INTERVAL_MS = 3200; // ~18 requests/min, safely under 20/min limit
 
 function getCacheKey(fen: string, multiPv: number): string {
@@ -38,6 +39,21 @@ function setCachedResult(key: string, data: unknown): void {
   evaluationCache.set(key, { data, timestamp: Date.now() });
 }
 
+// v6.67: Check if we're still in rate limit cooldown
+function isRateLimited(): { limited: boolean; remainingMs: number } {
+  const now = Date.now();
+  if (rateLimitedUntil > now) {
+    return { limited: true, remainingMs: rateLimitedUntil - now };
+  }
+  return { limited: false, remainingMs: 0 };
+}
+
+// v6.67: Record when we get rate limited
+function recordRateLimit(retryAfterSeconds: number): void {
+  rateLimitedUntil = Date.now() + (retryAfterSeconds * 1000);
+  console.log(`[LichessCloudEval] Rate limit recorded, expires at ${new Date(rateLimitedUntil).toISOString()}`);
+}
+
 async function throttleRequest(): Promise<void> {
   const now = Date.now();
   const timeSinceLastRequest = now - lastRequestTime;
@@ -58,6 +74,23 @@ serve(async (req) => {
 
   try {
     const { fen, multiPv = 1, action } = await req.json();
+
+    // v6.67: Check if we're in rate limit cooldown BEFORE making any API calls
+    const rateLimitStatus = isRateLimited();
+    if (rateLimitStatus.limited) {
+      const remainingSec = Math.ceil(rateLimitStatus.remainingMs / 1000);
+      console.log(`[LichessCloudEval] Still rate limited, ${remainingSec}s remaining`);
+      return new Response(
+        JSON.stringify({ 
+          available: false, 
+          rateLimited: true, 
+          resetInMs: rateLimitStatus.remainingMs,
+          error: 'Rate limited',
+          message: `API cooldown: ${remainingSec}s remaining`
+        }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Health check action
     if (action === 'check') {
@@ -87,10 +120,11 @@ serve(async (req) => {
       });
 
       if (response.status === 429) {
-        const retryAfter = response.headers.get('Retry-After') || '60';
+        const retryAfter = parseInt(response.headers.get('Retry-After') || '60');
+        recordRateLimit(retryAfter); // v6.67: Remember this rate limit
         console.warn(`[LichessCloudEval] Rate limited, retry after ${retryAfter}s`);
         return new Response(
-          JSON.stringify({ available: false, rateLimited: true, resetInMs: parseInt(retryAfter) * 1000 }),
+          JSON.stringify({ available: false, rateLimited: true, resetInMs: retryAfter * 1000 }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -136,10 +170,11 @@ serve(async (req) => {
     });
 
     if (response.status === 429) {
-      const retryAfter = response.headers.get('Retry-After') || '60';
+      const retryAfter = parseInt(response.headers.get('Retry-After') || '60');
+      recordRateLimit(retryAfter); // v6.67: Remember this rate limit
       console.warn(`[LichessCloudEval] Rate limited, retry after ${retryAfter}s`);
       return new Response(
-        JSON.stringify({ error: 'Rate limited', rateLimited: true, resetInMs: parseInt(retryAfter) * 1000 }),
+        JSON.stringify({ error: 'Rate limited', rateLimited: true, resetInMs: retryAfter * 1000 }),
         { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
