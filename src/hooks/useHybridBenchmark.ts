@@ -12,9 +12,9 @@
  */
 
 // Version tag for debugging cached code issues
-// v6.17-CONSISTENT: Per-player time windows, consistent 2.5s delays, 6-month windows
-const BENCHMARK_VERSION = "6.17-CONSISTENT";
-console.log(`[v6.17] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.18-FRESH: Data-rich epoch targeting (2018+), expanded player pool, better randomization
+const BENCHMARK_VERSION = "6.18-FRESH";
+console.log(`[v6.18] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -874,7 +874,7 @@ export function useHybridBenchmark() {
   };
 }
 
-// v6.17-CONSISTENT: Per-player time windows, consistent fetching, no rushing
+// v6.18-FRESH: Data-rich epoch targeting, expanded player pool, better randomization
 async function fetchLichessGames(
   count: number, 
   analyzedData?: { positionHashes: Set<string>; gameIds: Set<string>; fenStrings: Set<string>; realLichessIds?: Set<string> }
@@ -882,40 +882,57 @@ async function fetchLichessGames(
   const targetGames = count;
   const gamesPerPlayer = Math.max(50, Math.ceil(targetGames / 2));
   
-  console.log(`[v6.17 FETCH] Requesting ${targetGames} fresh games`);
+  console.log(`[v6.18 FETCH] Requesting ${targetGames} fresh games`);
   
-  // Large player pool - active Lichess players
+  // v6.18: MASSIVELY EXPANDED player pool - 60+ players for infinite fresh data
+  // Includes historical GMs, rising stars, streamers, and active titled players
   const topPlayers = [
+    // Current Elite
     "DrNykterstein", "Hikaru", "nihalsarin2004", "GMWSO", "LyonBeast",
     "Polish_fighter3000", "Msb2", "penguingm1", "DanielNaroditsky", 
     "EricRosen", "Fins", "chessbrah", "opperwezen", "BogdanDeac",
     "Arjun_Erigaisi", "RaunakSadhwani2005", "TemurKuybokarov",
     "Zhigalko_Sergei", "ChessNetwork", "DrDrunkenstein", "Firouzja2003",
+    // More Elite / Historical
     "GM_Srinath", "Oleksandr_Bortnyk", "FabianoCaruana", "LevonAronian",
     "chesswarrior7197", "MagnusCarlsen", "AnishGiri", "VladimirKramnik",
     "SethiChess", "duhless", "howitzer14", "rajabboy", "Jospem", "Alireza2003",
-    "lance5500", "Navaraok", "Nodirbek2004", "VincentKeymer2004", "WesleyS8"
+    "lance5500", "Navaraok", "Nodirbek2004", "VincentKeymer2004", "WesleyS8",
+    // Additional Top Players - v6.18 expansion
+    "DrMikeLikesChess", "gmrobinsonelwog", "NeverEnough", "pengcheng2004",
+    "Svidler", "lovlas", "alireza2006", "taniasachdev", "JW_Praggnanandhaa",
+    "nepoking", "BakhtiyarIbadov", "RockingGuyMD", "Vladimiro_Kramnik",
+    "Judit_Polgar", "VisualDennis", "GMVallejo", "Andrej_Esipenko", "DanielFridman",
+    "kirthibhat", "Naroditsky", "GMSrinathNarayanan", "alexandrpredke",
+    // Strong players with lots of games
+    "wonderfultime", "may6enexttime", "AidenCohen", "Saintlaurent",
+    "neslansen", "AZETADINE", "WONDERBOY1776", "wonderfultime2"
   ];
   
   const games: LichessGameData[] = [];
   const gameIds = new Set<string>();
+  
+  // v6.18: Shuffle players AND pick a random subset each time
   const shuffledPlayers = [...topPlayers].sort(() => Math.random() - 0.5);
   
   const dbGameCount = analyzedData?.gameIds?.size || 0;
-  console.log(`[v6.17 FETCH] Already have ${dbGameCount} game IDs in session`);
+  console.log(`[v6.18 FETCH] Already have ${dbGameCount} game IDs in session`);
+  console.log(`[v6.18 FETCH] Player pool: ${shuffledPlayers.length} players, shuffled`);
   
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
   
-  // v6.17: Generate random time window PER PLAYER for variety
+  // v6.18: DATA-RICH EPOCH (2018+) - Much higher game density
+  // Random 6-month window in data-rich years only
   function getRandomTimeWindow(): { since: number; until: number } {
     const now = Date.now();
-    const minYear = 2015; // Extend back further for more data
+    // v6.18: Target 2018-present for data-rich period (avoid sparse 2010-2017)
+    const dataRichMinYear = 2018;
     const maxYear = new Date().getFullYear();
-    const targetYear = minYear + Math.floor(Math.random() * (maxYear - minYear + 1));
+    const targetYear = dataRichMinYear + Math.floor(Math.random() * (maxYear - dataRichMinYear + 1));
     const targetMonth = Math.floor(Math.random() * 12);
     const windowStart = new Date(targetYear, targetMonth, 1).getTime();
-    const windowDuration = 180 * 24 * 60 * 60 * 1000; // 6 months for bigger window
+    const windowDuration = 180 * 24 * 60 * 60 * 1000; // 6 months
     return { since: windowStart, until: Math.min(now, windowStart + windowDuration) };
   }
   
@@ -926,17 +943,17 @@ async function fetchLichessGames(
     
     // Rate limit backoff - be patient
     if (rateLimitCount >= 2) {
-      console.warn(`[v6.17] Rate limited ${rateLimitCount}x, waiting 20s...`);
+      console.warn(`[v6.18] Rate limited ${rateLimitCount}x, waiting 20s...`);
       await new Promise(r => setTimeout(r, 20000));
       rateLimitCount = 0;
     }
     
-    // v6.17: Consistent 2.5s delay between requests - no rushing
+    // v6.18: Consistent 2.5s delay between requests - no rushing
     await new Promise(r => setTimeout(r, 2500));
     
-    // v6.17: NEW time window for EACH player - ensures variety
+    // v6.18: NEW time window for EACH player in DATA-RICH EPOCH (2018+)
     const { since, until } = getRandomTimeWindow();
-    console.log(`[v6.17] ${player}: ${new Date(since).toISOString().split('T')[0]} to ${new Date(until).toISOString().split('T')[0]}`);
+    console.log(`[v6.18] ${player}: ${new Date(since).toISOString().split('T')[0]} to ${new Date(until).toISOString().split('T')[0]}`);
     
     try {
       const response = await fetch(`${supabaseUrl}/functions/v1/lichess-games`, {
@@ -951,12 +968,12 @@ async function fetchLichessGames(
       
       if (response.status === 429) {
         rateLimitCount++;
-        console.warn(`[v6.17] 429 for ${player}, will retry later`);
+        console.warn(`[v6.18] 429 for ${player}, will retry later`);
         continue;
       }
       
       if (!response.ok) {
-        console.warn(`[v6.17] ${player}: HTTP ${response.status}`);
+        console.warn(`[v6.18] ${player}: HTTP ${response.status}`);
         continue;
       }
       
@@ -964,11 +981,11 @@ async function fetchLichessGames(
       const fetchedGames = data.games || [];
       
       if (fetchedGames.length === 0) {
-        console.log(`[v6.17] ${player}: 0 games in this window, moving on`);
+        console.log(`[v6.18] ${player}: 0 games in this window, moving on`);
         continue;
       }
       
-      console.log(`[v6.17] ✓ ${player}: ${fetchedGames.length} games from API`);
+      console.log(`[v6.18] ✓ ${player}: ${fetchedGames.length} games from API`);
       rateLimitCount = 0;
       
       let addedFromPlayer = 0;
@@ -1017,19 +1034,19 @@ async function fetchLichessGames(
         });
       }
       
-      console.log(`[v6.17] ${player}: +${addedFromPlayer} fresh (total queue: ${games.length})`);
+      console.log(`[v6.18] ${player}: +${addedFromPlayer} fresh (total queue: ${games.length})`);
       
       if (games.length >= targetGames) break;
     } catch (e) {
-      console.error(`[v6.17] Error for ${player}:`, e);
+      console.error(`[v6.18] Error for ${player}:`, e);
     }
   }
   
-  console.log(`[v6.17 FETCH] COMPLETE: ${games.length} fresh games collected`);
+  console.log(`[v6.18 FETCH] COMPLETE: ${games.length} fresh games collected`);
   
-  // v6.17: Don't throw if 0 games - let caller handle retries gracefully
+  // v6.18: Don't throw if 0 games - let caller handle retries gracefully
   if (games.length === 0) {
-    console.warn(`[v6.17] No games collected this batch - caller should retry`);
+    console.warn(`[v6.18] No games collected this batch - caller should retry`);
   }
   
   return games.sort(() => Math.random() - 0.5);
