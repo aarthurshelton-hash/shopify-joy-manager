@@ -11,9 +11,9 @@
  * That's it. No over-engineering.
  */
 
-// v6.32-UNFETTERED: Remove over-aggressive pre-filtering, let prediction loop handle DB dedup
-const BENCHMARK_VERSION = "6.32-UNFETTERED";
-console.log(`[v6.32] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.33-NOFETCH-FILTER: Remove ALL fetch-time filtering - dedup only at prediction loop
+const BENCHMARK_VERSION = "6.33-NOFETCH-FILTER";
+console.log(`[v6.33] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -440,49 +440,53 @@ export function useHybridBenchmark() {
       let predictedCount = 0;
       
       // v6.32-UNFETTERED: Don't pre-filter at fetch - let prediction loop handle DB dedup
-      console.log(`[v6.32] ========================================`);
-      console.log(`[v6.32] STARTING UNFETTERED BENCHMARK`);
-      console.log(`[v6.32] Target: ${gameCount} predictions`);
-      console.log(`[v6.32] DB has ${analyzedData.gameIds.size} games (dedup at prediction time)`);
-      console.log(`[v6.32] Batch 1 = MOST RECENT games (0-14 days back)`);
-      console.log(`[v6.32] ========================================`);
+      console.log(`[v6.33] ========================================`);
+      console.log(`[v6.33] STARTING BENCHMARK - NO FETCH-TIME FILTERING`);
+      console.log(`[v6.33] Target: ${gameCount} predictions`);
+      console.log(`[v6.33] DB has ${analyzedData.gameIds.size} games (dedup at prediction time only)`);
+      console.log(`[v6.33] Each batch fetches ALL games from API, dedup happens in prediction loop`);
+      console.log(`[v6.33] ========================================`);
       
-      // v6.32: predictedIds tracks games we've SUCCESSFULLY predicted this session
+      // v6.33: predictedIds tracks games we've SUCCESSFULLY predicted this session
       const predictedIds = new Set<string>();
       
-      // v6.32: Track session-fetched IDs only (not DB) to prevent re-fetching same game
+      // v6.33: Track all games fetched this session to prevent re-adding to queue
       const sessionFetchedIds = new Set<string>();
       
-      // v6.32: Track all games across multiple fetch batches
+      // v6.33: Track all games across multiple fetch batches
       let allGames: any[] = [];
       let gameIndex = 0;
       let batchNumber = 0;
       const maxBatches = Math.max(20, Math.ceil(gameCount / 2));
       
-      // v6.32: Request more games per batch since we defer dedup
+      // v6.33: Request more games per batch since we defer dedup
       const fetchCount = Math.max(gameCount * 4, 80);
       
       async function fetchMoreGames() {
         batchNumber++;
-        console.log(`[v6.32] ========== BATCH ${batchNumber}/${maxBatches} ==========`);
-        console.log(`[v6.32] Queue: ${allGames.length - gameIndex} remaining, Predicted: ${predictedCount}/${gameCount}`);
+        console.log(`[v6.33] ========== BATCH ${batchNumber}/${maxBatches} ==========`);
+        console.log(`[v6.33] Queue: ${allGames.length - gameIndex} remaining, Predicted: ${predictedCount}/${gameCount}`);
         setProgress(prev => ({ 
           ...prev!, 
           message: `Fetching batch ${batchNumber} (predicted: ${predictedCount}/${gameCount})...` 
         }));
         
-        // v6.32: DON'T pass DB IDs - only pass session-fetched IDs to prevent re-fetching
-        const newGames = await fetchLichessGames(fetchCount, batchNumber, sessionFetchedIds);
-        console.log(`[v6.32] Batch ${batchNumber}: Got ${newGames.length} games from API`);
+        // v6.33: Fetch ALL games from API - no pre-filtering
+        const newGames = await fetchLichessGames(fetchCount, batchNumber);
+        console.log(`[v6.33] Batch ${batchNumber}: Got ${newGames.length} games from API`);
         
-        // v6.32: Track fetched IDs to prevent re-fetching (NOT prediction dedup)
-        for (const g of newGames) {
+        // v6.33: Filter out games already in our queue from previous batches
+        const trulyNewGames = newGames.filter(g => g.lichessId && !sessionFetchedIds.has(g.lichessId));
+        console.log(`[v6.33] After session dedup: ${trulyNewGames.length} truly new (${newGames.length - trulyNewGames.length} already in queue)`);
+        
+        // Track fetched IDs
+        for (const g of trulyNewGames) {
           if (g.lichessId) sessionFetchedIds.add(g.lichessId);
         }
         
-        allGames = [...allGames, ...newGames];
-        console.log(`[v6.32] Queue now: ${allGames.length} total, ${allGames.length - gameIndex} to process`);
-        return newGames.length;
+        allGames = [...allGames, ...trulyNewGames];
+        console.log(`[v6.33] Queue now: ${allGames.length} total, ${allGames.length - gameIndex} to process`);
+        return trulyNewGames.length;
       }
       
       // Initial fetch
@@ -493,46 +497,46 @@ export function useHybridBenchmark() {
       }
       
       // Step 2: Process games with REFETCH when needed
-      // v6.32: Add dbDupe tracking for games already in database
+      // v6.33: Add dbDupe tracking for games already in database
       let skipStats = { invalidId: 0, dbDupe: 0, sessionDupe: 0, shortGame: 0, timeout: 0, parseError: 0 };
       
-      // v6.32: Persistent refetch with better resilience
+      // v6.33: Persistent refetch with better resilience
       let emptyBatchStreak = 0;
       const MAX_EMPTY_BATCHES = 8;
       
-      // v6.32: Track consecutive skips to detect problematic patterns
+      // v6.33: Track consecutive skips to detect problematic patterns
       let consecutiveSkips = 0;
-      const MAX_CONSECUTIVE_SKIPS = 100; // Higher threshold since we defer dedup
+      const MAX_CONSECUTIVE_SKIPS = 100;
       
       while (predictedCount < gameCount && !abortRef.current && batchNumber < maxBatches) {
-        // v6.32: Safety check - if too many consecutive skips, something is wrong
+        // v6.33: Safety check - if too many consecutive skips, something is wrong
         if (consecutiveSkips >= MAX_CONSECUTIVE_SKIPS) {
-          console.warn(`[v6.32] ⚠️ ${consecutiveSkips} consecutive skips - breaking to refetch`);
-          console.log(`[v6.32] SKIP STATS: invalid=${skipStats.invalidId}, dbDupe=${skipStats.dbDupe}, sessionDupe=${skipStats.sessionDupe}, short=${skipStats.shortGame}, timeout=${skipStats.timeout}, parse=${skipStats.parseError}`);
+          console.warn(`[v6.33] ⚠️ ${consecutiveSkips} consecutive skips - breaking to refetch`);
+          console.log(`[v6.33] SKIP STATS: invalid=${skipStats.invalidId}, dbDupe=${skipStats.dbDupe}, sessionDupe=${skipStats.sessionDupe}, short=${skipStats.shortGame}, timeout=${skipStats.timeout}, parse=${skipStats.parseError}`);
           consecutiveSkips = 0;
           gameIndex = allGames.length; // Force refetch
         }
         
         // Check if we need more games
         if (gameIndex >= allGames.length) {
-          console.log(`[v6.32] Queue exhausted at ${gameIndex}, need more (${predictedCount}/${gameCount})`);
-          console.log(`[v6.32] SKIP STATS: invalid=${skipStats.invalidId}, dbDupe=${skipStats.dbDupe}, sessionDupe=${skipStats.sessionDupe}, short=${skipStats.shortGame}, timeout=${skipStats.timeout}, parse=${skipStats.parseError}`);
+          console.log(`[v6.33] Queue exhausted at ${gameIndex}, need more (${predictedCount}/${gameCount})`);
+          console.log(`[v6.33] SKIP STATS: invalid=${skipStats.invalidId}, dbDupe=${skipStats.dbDupe}, sessionDupe=${skipStats.sessionDupe}, short=${skipStats.shortGame}, timeout=${skipStats.timeout}, parse=${skipStats.parseError}`);
           const newCount = await fetchMoreGames();
           if (newCount === 0) {
             emptyBatchStreak++;
-            console.warn(`[v6.32] Empty batch #${emptyBatchStreak}/${MAX_EMPTY_BATCHES}`);
+            console.warn(`[v6.33] Empty batch #${emptyBatchStreak}/${MAX_EMPTY_BATCHES}`);
             if (emptyBatchStreak >= MAX_EMPTY_BATCHES) {
-              console.warn(`[v6.32] Too many empty batches, stopping.`);
+              console.warn(`[v6.33] Too many empty batches, stopping.`);
               break;
             }
             await new Promise(r => setTimeout(r, 3000));
             continue;
           }
           emptyBatchStreak = 0;
-          // v6.32 FIX: Don't continue - fall through to process newly fetched games
+          // v6.33 FIX: Don't continue - fall through to process newly fetched games
         }
         
-        // v6.32: Check bounds again after potential fetch
+        // v6.33: Check bounds again after potential fetch
         if (gameIndex >= allGames.length) continue;
         
         const game = allGames[gameIndex];
@@ -546,14 +550,14 @@ export function useHybridBenchmark() {
           continue;
         }
         
-        // v6.32: Skip if already in DATABASE (deferred from fetch to here)
+        // v6.33: Skip if already in DATABASE
         if (analyzedData.gameIds.has(lichessId)) {
           skipStats.dbDupe++;
           consecutiveSkips++;
           continue;
         }
         
-        // v6.32: Skip if we've ALREADY PREDICTED this game this session
+        // v6.33: Skip if we've ALREADY PREDICTED this game this session
         if (predictedIds.has(lichessId)) {
           skipStats.sessionDupe++;
           consecutiveSkips++;
@@ -584,13 +588,13 @@ export function useHybridBenchmark() {
           moveNumber = parsed.moveNumber;
           
           if (moves.length < 4) {
-            console.log(`[v6.32] Skip short: ${lichessId} (${moves.length} moves)`);
-            skipStats.shortGame++;
-            consecutiveSkips++;
-            continue;
+          console.log(`[v6.33] Skip short: ${lichessId} (${moves.length} moves)`);
+          skipStats.shortGame++;
+          consecutiveSkips++;
+          continue;
           }
         } catch (e) {
-          console.log(`[v6.32] Skip parse error: ${lichessId}`, e);
+          console.log(`[v6.33] Skip parse error: ${lichessId}`, e);
           skipStats.parseError++;
           consecutiveSkips++;
           continue;
@@ -624,7 +628,7 @@ export function useHybridBenchmark() {
         const analysis = await Promise.race([analysisPromise, timeout]);
         
         if (!analysis) {
-          console.log(`[v6.32] ⚠️ Stockfish timeout for ${lichessId}, skipping`);
+          console.log(`[v6.33] ⚠️ Stockfish timeout for ${lichessId}, skipping`);
           skipStats.timeout++;
           consecutiveSkips++;
           continue;
@@ -722,21 +726,21 @@ export function useHybridBenchmark() {
         }
         
         predictedCount++;
-        predictedIds.add(lichessId); // v6.24: Track predicted games for session dedup
-        consecutiveSkips = 0; // v6.32: Reset skip counter on successful prediction
+        predictedIds.add(lichessId); // v6.33: Track predicted games for session dedup
+        consecutiveSkips = 0; // v6.33: Reset skip counter on successful prediction
         
-        // v6.32: Log metadata capture for debugging
-        console.log(`[v6.32] ✓ PREDICTION #${predictedCount}: ${lichessId} | time_control=${game.timeControl || game.speed} | whiteElo=${game.whiteElo} | blackElo=${game.blackElo}`);
-        console.log(`[v6.32]   En Pensent=${colorFlow.prediction}${hybridIsCorrect ? '✓' : '✗'} | SF=${stockfish.prediction}${stockfishIsCorrect ? '✓' : '✗'} | Actual=${gameResult}`);
+        // v6.33: Log metadata capture for debugging
+        console.log(`[v6.33] ✓ PREDICTION #${predictedCount}: ${lichessId} | time_control=${game.timeControl || game.speed} | whiteElo=${game.whiteElo} | blackElo=${game.blackElo}`);
+        console.log(`[v6.33]   En Pensent=${colorFlow.prediction}${hybridIsCorrect ? '✓' : '✗'} | SF=${stockfish.prediction}${stockfishIsCorrect ? '✓' : '✗'} | Actual=${gameResult}`);
       }
       
-      console.log(`[v6.32] ========================================`);
-      console.log(`[v6.32] BENCHMARK COMPLETE: ${predictedCount}/${gameCount} predictions`);
-      console.log(`[v6.32] Total batches fetched: ${batchNumber}`);
-      console.log(`[v6.32] Total games processed: ${gameIndex}/${allGames.length}`);
-      console.log(`[v6.32] Predicted ${predictedIds.size} games this session`);
-      console.log(`[v6.32] Skip stats: ${JSON.stringify(skipStats)}`);
-      console.log(`[v6.32] ========================================`);
+      console.log(`[v6.33] ========================================`);
+      console.log(`[v6.33] BENCHMARK COMPLETE: ${predictedCount}/${gameCount} predictions`);
+      console.log(`[v6.33] Total batches fetched: ${batchNumber}`);
+      console.log(`[v6.33] Total games processed: ${gameIndex}/${allGames.length}`);
+      console.log(`[v6.33] Predicted ${predictedIds.size} games this session`);
+      console.log(`[v6.33] Skip stats: ${JSON.stringify(skipStats)}`);
+      console.log(`[v6.33] ========================================`);
       
       if (attempts.length === 0) {
         throw new Error(`No valid games processed. Skip reasons: ${JSON.stringify(skipStats)}`);
@@ -891,11 +895,10 @@ export function useHybridBenchmark() {
   };
 }
 
-// v6.29-STREAMLINE: Pre-filter against known DB IDs at fetch time for efficiency
+// v6.33-NOFETCH-FILTER: No pre-filtering at fetch - all dedup at prediction stage
 async function fetchLichessGames(
   count: number, 
-  batchNumber: number = 1,
-  knownDbIds?: Set<string>
+  batchNumber: number = 1
 ): Promise<LichessGameData[]> {
   const targetGames = count;
   const gamesPerPlayer = Math.max(30, Math.ceil(targetGames / 5));
@@ -1023,7 +1026,7 @@ async function fetchLichessGames(
       rateLimitCount = 0;
       
       let addedFromPlayer = 0;
-      let skippedSession = 0;
+      // v6.33: No session filtering at fetch time - all games go to queue
       for (const game of fetchedGames) {
         const pgn = game.pgn || game.moves;
         if (!pgn || typeof pgn !== 'string' || pgn.length < 20) continue;
@@ -1038,11 +1041,8 @@ async function fetchLichessGames(
         if (!isValidLichessId) continue;
         if (localGameIds.has(lichessGameId)) continue;
         
-        // v6.32: Only skip if already fetched THIS SESSION (not DB - defer to prediction loop)
-        if (knownDbIds && knownDbIds.has(lichessGameId)) {
-          skippedSession++;
-          continue;
-        }
+        // v6.33: NO filtering here - all dedup at prediction stage
+        // Only localGameIds prevents duplicates within this single fetch call
         
         localGameIds.add(lichessGameId);
         addedFromPlayer++;
@@ -1074,22 +1074,18 @@ async function fetchLichessGames(
         });
       }
       
-      if (skippedSession > 0) {
-        console.log(`[v6.32] ${player}: +${addedFromPlayer} fresh, ${skippedSession} session dupes filtered`);
-      } else {
-        console.log(`[v6.32] ${player}: +${addedFromPlayer} fresh (total: ${games.length})`);
-      }
+      console.log(`[v6.33] ${player}: +${addedFromPlayer} games (total: ${games.length})`);
       
       if (games.length >= targetGames) break;
     } catch (e) {
-      console.error(`[v6.32] Error for ${player}:`, e);
+      console.error(`[v6.33] Error for ${player}:`, e);
     }
   }
   
-  console.log(`[v6.32 FETCH] COMPLETE: ${games.length} games, ${playersQueried} players`);
+  console.log(`[v6.33 FETCH] COMPLETE: ${games.length} games, ${playersQueried} players`);
   
   if (games.length === 0) {
-    console.warn(`[v6.32] Empty batch - caller should retry with different params`);
+    console.warn(`[v6.33] Empty batch - caller should retry with different params`);
   }
   
   return games.sort(() => Math.random() - 0.5);
