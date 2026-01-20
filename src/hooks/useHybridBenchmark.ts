@@ -11,9 +11,9 @@
  * That's it. No over-engineering.
  */
 
-// v6.39-FRESHWINDOW: Batch-aware time windows to avoid cache hits & DB overlaps
-const BENCHMARK_VERSION = "6.39-FRESHWINDOW";
-console.log(`[v6.39] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.40-TRACE: Enhanced logging to diagnose processing flow issues
+const BENCHMARK_VERSION = "6.40-TRACE";
+console.log(`[v6.40] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -459,34 +459,47 @@ export function useHybridBenchmark() {
       let batchNumber = 0;
       const maxBatches = Math.max(20, Math.ceil(gameCount / 2));
       
-      // v6.33: Request more games per batch since we defer dedup
+      // v6.40: Request more games per batch for better throughput
       const fetchCount = Math.max(gameCount * 4, 80);
       
       async function fetchMoreGames() {
         batchNumber++;
-        console.log(`[v6.33] ========== BATCH ${batchNumber}/${maxBatches} ==========`);
-        console.log(`[v6.33] Queue: ${allGames.length - gameIndex} remaining, Predicted: ${predictedCount}/${gameCount}`);
+        console.log(`[v6.40] ========== BATCH ${batchNumber}/${maxBatches} ==========`);
+        console.log(`[v6.40] Queue: ${allGames.length - gameIndex} remaining, Predicted: ${predictedCount}/${gameCount}`);
+        console.log(`[v6.40] DB has ${analyzedData.gameIds.size} games, Session has ${predictedIds.size}`);
         setProgress(prev => ({ 
           ...prev!, 
           message: `Fetching batch ${batchNumber} (predicted: ${predictedCount}/${gameCount})...` 
         }));
         
-        // v6.33: Fetch ALL games from API - no pre-filtering
+        // v6.40: Fetch ALL games from API - dedup happens AFTER we see what came back
         const newGames = await fetchLichessGames(fetchCount, batchNumber);
-        console.log(`[v6.33] Batch ${batchNumber}: Got ${newGames.length} games from API`);
+        console.log(`[v6.40] Batch ${batchNumber}: API returned ${newGames.length} games`);
         
-        // v6.34: Filter games already in DB OR already predicted this session
-        // This allows fresh games from new time windows to enter queue
+        if (newGames.length === 0) {
+          console.warn(`[v6.40] ⚠️ API returned ZERO games - possible rate limit or empty time window`);
+          return 0;
+        }
+        
+        // v6.40: TRACE deduplication to understand exactly what's being filtered
+        let dbFiltered = 0;
+        let sessionFiltered = 0;
+        let noIdFiltered = 0;
+        
         const trulyNewGames = newGames.filter(g => {
-          if (!g.lichessId) return false;
-          if (analyzedData.gameIds.has(g.lichessId)) return false; // Already in DB
-          if (predictedIds.has(g.lichessId)) return false; // Already predicted this run
+          if (!g.lichessId) { noIdFiltered++; return false; }
+          if (analyzedData.gameIds.has(g.lichessId)) { dbFiltered++; return false; }
+          if (predictedIds.has(g.lichessId)) { sessionFiltered++; return false; }
           return true;
         });
-        console.log(`[v6.34] After dedup: ${trulyNewGames.length} fresh (${newGames.length - trulyNewGames.length} already known)`);
         
+        console.log(`[v6.40] DEDUP: ${trulyNewGames.length} NEW, ${dbFiltered} in DB, ${sessionFiltered} in session, ${noIdFiltered} no ID`);
+        
+        // v6.40: Add to END of queue for processing
+        const queueBefore = allGames.length;
         allGames = [...allGames, ...trulyNewGames];
-        console.log(`[v6.34] Queue now: ${allGames.length} total, ${allGames.length - gameIndex} to process`);
+        console.log(`[v6.40] Queue: ${queueBefore} → ${allGames.length} (added ${trulyNewGames.length})`);
+        
         return trulyNewGames.length;
       }
       
