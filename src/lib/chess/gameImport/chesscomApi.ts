@@ -75,10 +75,11 @@ export async function fetchChessComGames(
   username: string,
   options: {
     max?: number;
-    months?: number; // How many recent months to fetch
+    months?: number; // How many months of history to fetch
+    monthOffset?: number; // v6.73: Skip this many recent months (window isolation)
   } = {}
 ): Promise<ChessComImportResult> {
-  const { max = 100, months = 12 } = options; // v6.47: Higher defaults
+  const { max = 100, months = 12, monthOffset = 0 } = options;
   const errors: string[] = [];
   
   try {
@@ -95,12 +96,19 @@ export async function fetchChessComGames(
       };
     }
 
-    // Get the most recent archives
-    const recentArchives = archives.slice(-months).reverse();
+    // v6.73-WINDOW-ISOLATION: Skip recent months and take a specific window
+    // monthOffset = 0 → most recent months
+    // monthOffset = 3 → skip 3 most recent, get next N months
+    const allArchivesSorted = archives.slice().reverse(); // Most recent first
+    const windowStart = Math.min(monthOffset, allArchivesSorted.length);
+    const windowEnd = Math.min(windowStart + months, allArchivesSorted.length);
+    const targetArchives = allArchivesSorted.slice(windowStart, windowEnd);
+    
+    console.log(`[ChessCom v6.73] ${username}: Archives ${windowStart}-${windowEnd} of ${archives.length} (offset: ${monthOffset})`);
     
     let allGames: ChessComGame[] = [];
     
-    for (const archiveUrl of recentArchives) {
+    for (const archiveUrl of targetArchives) {
       if (allGames.length >= max) break;
       
       try {
@@ -120,7 +128,7 @@ export async function fetchChessComGames(
       username,
       totalGames: allGames.length,
       importedCount: limitedGames.length,
-      archives: recentArchives,
+      archives: targetArchives,
       errors
     };
   } catch (error) {

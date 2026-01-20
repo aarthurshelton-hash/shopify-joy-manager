@@ -1,14 +1,16 @@
 /**
- * Multi-Source Game Fetcher v6.67-RATELIMIT-MEMORY
- * VERSION: 6.67-RATELIMIT-MEMORY (2026-01-20)
+ * Multi-Source Game Fetcher v6.73-WINDOW-ISOLATION
+ * VERSION: 6.73-WINDOW-ISOLATION (2026-01-20)
+ * 
+ * v6.73 CHANGES (Identity Theorem Fix):
+ * - WINDOW-ISOLATION: Each batch uses strictly non-overlapping time windows
+ * - Sequential batch windows prevent API returning same games
+ * - Window base advances by window duration on each batch (no overlap)
+ * - Player rotation + time isolation = maximum unique game yield
  * 
  * v6.67 CHANGES:
  * - RATELIMIT-MEMORY: Server-side cooldown tracking in Edge Function
  * - Client stops making requests when server signals rate limit
- * - Prevents spamming API during cooldown period
- * 
- * v6.66 CHANGES:
- * - QUEUE-DEDUP: Track queued game IDs to prevent re-fetching
  * 
  * SOURCES:
  * - Lichess (via Edge Function proxy) - 5+ billion games
@@ -191,21 +193,23 @@ async function fetchFromChessCom(
   const errors: string[] = [];
   const localIds = new Set<string>();
   
-  // v6.47: Higher volume - more players, more months
-  // v6.62: Prime-based rotation for Chess.com player coverage
+  // v6.73-WINDOW-ISOLATION: Prime-based rotation for player coverage
+  // But sequential window isolation for time periods
   const startOffset = (batchNumber * 11) % CHESSCOM_TOP_PLAYERS.length;
   const shuffledPlayers = [
     ...CHESSCOM_TOP_PLAYERS.slice(startOffset), 
     ...CHESSCOM_TOP_PLAYERS.slice(0, startOffset)
   ];
   
-  console.log(`[ChessCom v6.62] Batch ${batchNumber}: Targeting ${targetCount} games from ${shuffledPlayers.slice(0, 8).join(', ')}...`);
+  console.log(`[ChessCom v6.73] Batch ${batchNumber}: Targeting ${targetCount} games from ${shuffledPlayers.slice(0, 8).join(', ')}...`);
   
-  // v6.62: Fetch from more players in PARALLEL with varied history
+  // v6.73-WINDOW-ISOLATION: Sequential non-overlapping month windows
+  // Each batch explores different historical period
   const maxPlayers = Math.min(20, shuffledPlayers.length);
   const gamesPerPlayer = Math.ceil(targetCount / 4);
-  // v6.62: Use prime offset for month depth to avoid cache hits
-  const monthsToFetch = 12 + ((batchNumber * 7) % 24); // 12-35 months history
+  // v6.73: Sequential months - batch 1 = last 3 months, batch 2 = 3-6 months ago, etc.
+  const monthsStart = (batchNumber - 1) * 3;
+  const monthsToFetch = 3; // 3-month windows
   
   // v6.47: Parallel fetching - split into chunks of 4
   const playerChunks: string[][] = [];
@@ -216,12 +220,14 @@ async function fetchFromChessCom(
   for (const chunk of playerChunks) {
     if (games.length >= targetCount) break;
     
-    // v6.47: Fetch chunk in parallel
+    // v6.73: Fetch chunk in parallel with window offset
     const chunkPromises = chunk.map(async (player) => {
       try {
+        // v6.73-WINDOW-ISOLATION: Pass month offset to explore sequential periods
         const result = await fetchChessComGames(player, { 
           max: gamesPerPlayer,
-          months: monthsToFetch
+          months: monthsToFetch,
+          monthOffset: monthsStart // Skip first N months to get different window
         });
         return { player, result };
       } catch (e) {
@@ -297,9 +303,9 @@ async function fetchFromLichess(
     ...LICHESS_TOP_PLAYERS.slice(0, startOffset)
   ];
   
-  console.log(`[Lichess v6.62] Batch ${batchNumber}: Verified pool (${LICHESS_TOP_PLAYERS.length} players)`);
-  console.log(`[Lichess v6.62] First 6: ${shuffledPlayers.slice(0, 6).join(', ')}`);
-  console.log(`[Lichess v6.62] Time window offset: year=${(batchNumber * 17) % 5}, month=${(batchNumber * 37) % 24}`);
+  console.log(`[Lichess v6.73] Batch ${batchNumber}: Verified pool (${LICHESS_TOP_PLAYERS.length} players)`);
+  console.log(`[Lichess v6.73] First 6: ${shuffledPlayers.slice(0, 6).join(', ')}`);
+  console.log(`[Lichess v6.73] Window: ${(batchNumber - 1) * 60}-${batchNumber * 60} days ago (isolated)`);
   
   // v6.59: Process more players but with smarter windows
   const maxPlayers = Math.min(30, shuffledPlayers.length);
@@ -330,8 +336,9 @@ async function fetchFromLichess(
       rateLimitHits = 0;
     }
     
-    // v6.62-WINDOW-FIX: Use prime-based offsets to prevent cache collisions
-    // Each batch explores genuinely different time periods
+    // v6.73-WINDOW-ISOLATION: Strictly non-overlapping windows per batch
+    // Identity Theorem: Each batch must explore UNIQUE time territory
+    // Sequential windows advance by full duration - no overlap possible
     const chunkPromises = chunk.map(async (player, idx) => {
       // v6.67: Skip if we already know server is rate limited
       if (serverRateLimited) {
@@ -341,17 +348,19 @@ async function fetchFromLichess(
       const now = Date.now();
       const oneDay = 24 * 60 * 60 * 1000;
       
-      // v6.62: Prime-based rotation prevents window overlap across batches
-      // Using primes 17, 37, 53 ensures non-repeating patterns for many batches
-      const playerHash = player.charCodeAt(0) + player.charCodeAt(player.length - 1);
-      const yearOffset = ((batchNumber * 17 + idx * 7) % 5); // 0-4 years back
-      const monthOffset = ((batchNumber * 37 + playerHash) % 24); // 0-23 months offset
-      const dayOffset = ((batchNumber * 53 + idx * 11 + playerHash) % 60); // 0-59 days extra
+      // v6.73-WINDOW-ISOLATION: Sequential non-overlapping windows
+      // Window duration is fixed - each batch advances by this amount
+      // This guarantees no overlap between batches, maximizing unique game yield
+      const windowDuration = 60; // 60-day fixed windows
+      const playerOffset = (player.charCodeAt(0) % 10); // 0-9 days per-player offset
       
-      const baseDaysBack = yearOffset * 365 + monthOffset * 30 + dayOffset;
-      const windowDuration = 45 + (batchNumber % 4) * 15; // 45-90 day windows
+      // CRITICAL: batchNumber directly controls window position
+      // Batch 1: 0-60 days ago, Batch 2: 60-120 days ago, etc.
+      const baseDaysBack = (batchNumber - 1) * windowDuration + playerOffset;
       const until = now - (baseDaysBack * oneDay);
       const since = until - (windowDuration * oneDay);
+      
+      console.log(`[v6.73] ${player}: Window ${batchNumber} → ${Math.round(baseDaysBack)}-${Math.round(baseDaysBack + windowDuration)} days ago`);
       
       try {
         const response = await fetch(`${supabaseUrl}/functions/v1/lichess-games`, {
