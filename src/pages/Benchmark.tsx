@@ -143,42 +143,68 @@ export default function Benchmark() {
     setIsLiveElo(isRunning || isLocalRunning);
   }, [isRunning, isLocalRunning]);
 
-  // REALTIME: Subscribe to chess benchmark updates for auto-updating ELO
+  // REALTIME: Subscribe to BOTH chess_benchmark_results AND chess_prediction_attempts
   useEffect(() => {
+    let lastRefresh = 0;
+    const DEBOUNCE_MS = 2000; // Debounce to avoid rapid refreshes
+    
+    const refreshStats = async (source: string) => {
+      const now = Date.now();
+      if (now - lastRefresh < DEBOUNCE_MS) {
+        console.log(`[Benchmark] Realtime: Debounced ${source} refresh`);
+        return;
+      }
+      lastRefresh = now;
+      
+      console.log(`[Benchmark] Realtime: Refreshing stats from ${source}`);
+      const newStats = await getCumulativeStats();
+      setCumulativeStats(newStats);
+      
+      if (newStats && newStats.validPredictionCount > 0) {
+        const cumulativeElo = calculateEloFromBenchmark(
+          newStats.overallHybridAccuracy,
+          newStats.overallStockfishAccuracy,
+          newStats.hybridWins,
+          newStats.stockfishWins,
+          newStats.bothCorrect,
+          newStats.validPredictionCount,
+          40
+        );
+        setLiveEloState(cumulativeElo);
+        console.log(`[Benchmark] Realtime ELO update (${source}):`, {
+          totalGames: newStats.validPredictionCount,
+          hybridAcc: newStats.overallHybridAccuracy.toFixed(1) + '%',
+          elo: cumulativeElo.enPensentElo
+        });
+      }
+    };
+    
     const channel = supabase
-      .channel('benchmark-realtime')
+      .channel('benchmark-realtime-v2')
+      // Listen to benchmark summary inserts
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'chess_benchmark_results' },
         async (payload) => {
           console.log('[Benchmark] Realtime: New benchmark result detected!', payload.new);
-          
-          // Refetch cumulative stats to update ELO
-          const newStats = await getCumulativeStats();
-          setCumulativeStats(newStats);
-          
-          if (newStats && newStats.validPredictionCount > 0) {
-            const cumulativeElo = calculateEloFromBenchmark(
-              newStats.overallHybridAccuracy,
-              newStats.overallStockfishAccuracy,
-              newStats.hybridWins,
-              newStats.stockfishWins,
-              newStats.bothCorrect,
-              newStats.validPredictionCount,
-              40
-            );
-            setLiveEloState(cumulativeElo);
-            console.log('[Benchmark] Realtime ELO update:', cumulativeElo.enPensentElo);
-          }
+          await refreshStats('benchmark_results');
           
           // Also update latest benchmark
           const latest = payload.new as LatestBenchmark;
           setLatestBenchmark(latest);
         }
       )
+      // Listen to individual prediction inserts for live updates
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'chess_prediction_attempts' },
+        async () => {
+          await refreshStats('prediction_attempts');
+        }
+      )
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
-          console.log('[Benchmark] Realtime subscription active - ELO will auto-update!');
+          console.log('[Benchmark] Realtime subscription active (v2) - listening to BOTH tables!');
         }
       });
     
