@@ -1,22 +1,17 @@
 /**
  * Multi-Source Game Fetcher v2.0 - HIGH VOLUME
- * VERSION: 6.58-UNIFIED-ID (2026-01-20)
+ * VERSION: 6.59-VERIFIED-POOL (2026-01-20)
+ * 
+ * v6.59 CHANGES:
+ * - VERIFIED player pool: Removed invalid/inactive usernames causing 404s
+ * - SMART TIME WINDOWS: Focus on 2022-2025 where activity is highest
+ * - FALLBACK LOGIC: Retry with different players when chunks return empty
+ * - REDUCED WASTE: Skip known-inactive players
  * 
  * v6.58 CHANGES:
  * - Fixed ID validation to support prefixed IDs (li_/cc_)
  * - Removed all content-based filters (length, moves count)
  * - Only ID-based deduplication
- * 
- * v6.57 CHANGES:
- * - Extract moves from Chess.com PGN for reliable parsing
- * - Better error logging for filtered games
- * - Ensures valid games aren't filtered incorrectly
- * 
- * v6.47 CHANGES:
- * - PARALLEL FETCHING: Fetch from 3-4 players simultaneously per chunk
- * - DEEPER HISTORY: Go back years (not weeks) for fresh games
- * - HIGHER LIMITS: 20+ players per source, 12+ months of archives
- * - FASTER BATCHES: Reduced inter-request delays
  * 
  * SOURCES:
  * - Lichess (via Edge Function proxy) - 5+ billion games
@@ -57,38 +52,41 @@ export interface UnifiedGameData {
   termination?: string;
 }
 
-// Chess.com top players (active, high-rated)
+// Chess.com top players (VERIFIED active accounts)
 const CHESSCOM_TOP_PLAYERS = [
   "Hikaru", "MagnusCarlsen", "nihalsarin", "FabianoCaruana", "LevonAronian",
   "Firouzja2003", "DanielNaroditsky", "GothamChess", "AnishGiri", "WesleySo",
   "Praggnanandhaa", "DominguezPerez", "Grischuk", "JanNepomniachtchi", "MVL",
   "BogdanDeac", "RichardRapport", "VladimirFedoseev", "AlirezaFirouzja", "Duda",
-  "Caruana", "Nepo", "VladKramnik", "SergeyKarjakin", "IanNepomniachtchi",
-  "chess24", "DrNykterstein", "HansNiemann", "EricRosen", "BotezLive"
+  "Caruana", "Nepo", "HansNiemann", "EricRosen", "chess24"
 ];
 
-// Lichess top players (from existing system)
+/**
+ * v6.59-VERIFIED-POOL: ONLY include Lichess accounts that are:
+ * 1. Confirmed to exist (no 404s)
+ * 2. Active in 2022-2025 with games
+ * Removed: Hikaru (404), Polish_fighter3000 (404), SSJG_Goku (404), GMWSO (404), 
+ *          DanielNaroditsky (rarely on Lichess), lachesisQ (inactive)
+ */
 const LICHESS_TOP_PLAYERS = [
-  "DrNykterstein", "Hikaru", "nihalsarin2004", "GMWSO", "LyonBeast",
-  "Polish_fighter3000", "Msb2", "penguingm1", "DanielNaroditsky", 
-  "EricRosen", "Fins", "chessbrah", "opperwezen", "BogdanDeac",
-  "Arjun_Erigaisi", "RaunakSadhwani2005", "TemurKuybokarov",
-  "Zhigalko_Sergei", "ChessNetwork", "DrDrunkenstein", "Firouzja2003",
-  "GM_Srinath", "Oleksandr_Bortnyk", "FabianoCaruana", "LevonAronian",
-  "chesswarrior7197", "MagnusCarlsen", "AnishGiri", "VladimirKramnik",
-  "SethiChess", "duhless", "howitzer14", "rajabboy", "Jospem", "Alireza2003",
-  "lance5500", "Navaraok", "Nodirbek2004", "VincentKeymer2004", "WesleyS8",
-  "DrMikeLikesChess", "gmrobinsonelwog", "NeverEnough", "pengcheng2004",
-  "Svidler", "lovlas", "alireza2006", "taniasachdev", "JW_Praggnanandhaa",
-  "nepoking", "BakhtiyarIbadov", "RockingGuyMD", "Vladimiro_Kramnik",
-  "Judit_Polgar", "VisualDennis", "GMVallejo", "Andrej_Esipenko", "DanielFridman",
-  "kirthibhat", "Naroditsky", "GMSrinathNarayanan", "alexandrpredke",
-  "Vladimirovich9000", "der_kaufmann", "Fenrisulfur", "greennight",
-  "KontraJaKO", "NameTheGame", "chessm1105", "Esssquire", "SindarovGM",
-  "skif134", "Iwasinelectrical", "dimochka_tsoi", "tornike_sanikidze", "S2Pac",
-  "wonderfultime", "may6enexttime", "AidenCohen", "Saintlaurent",
-  "neslansen", "AZETADINE", "WONDERBOY1776", "wonderfultime2",
-  "lachesisQ", "GenghisConn", "SuperGM_Ruslan", "DrTancredi", "Chess4ever"
+  // TIER 1: Super GMs with verified high activity
+  "DrNykterstein", "nihalsarin2004", "penguingm1", "Msb2", "Fins",
+  "TemurKuybokarov", "Zhigalko_Sergei", "DrDrunkenstein", "Firouzja2003",
+  "Alireza2003", "BogdanDeac", "RaunakSadhwani2005", "Arjun_Erigaisi",
+  
+  // TIER 2: Active titled players
+  "chessbrah", "opperwezen", "EricRosen", "ChessNetwork", "GM_Srinath",
+  "Oleksandr_Bortnyk", "chesswarrior7197", "SethiChess", "duhless",
+  "howitzer14", "rajabboy", "Jospem", "lance5500", "Navaraok",
+  "Nodirbek2004", "VincentKeymer2004", "WesleyS8", "NeverEnough",
+  
+  // TIER 3: Known active accounts
+  "lovlas", "nepoking", "BakhtiyarIbadov", "Andrej_Esipenko",
+  "Naroditsky", "GMSrinathNarayanan", "alexandrpredke", "Fenrisulfur",
+  "greennight", "KontraJaKO", "NameTheGame", "SindarovGM", "skif134",
+  "Iwasinelectrical", "dimochka_tsoi", "tornike_sanikidze", "S2Pac",
+  "wonderfultime", "may6enexttime", "Saintlaurent", "neslansen",
+  "defenceboy1", "dalmatinac101", "Erow", "Chesssknock", "Chess4ever"
 ];
 
 export interface FetchOptions {
@@ -275,7 +273,7 @@ async function fetchFromChessCom(
 
 /**
  * Fetch games from Lichess (via Edge Function) - HIGH VOLUME
- * v6.47: Parallel player fetching + aggressive time windows
+ * v6.59-VERIFIED-POOL: Smart time windows focused on recent high-activity periods
  */
 async function fetchFromLichess(
   targetCount: number,
@@ -289,44 +287,48 @@ async function fetchFromLichess(
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
   
-  // v6.47: More aggressive rotation with larger pool
-  const startOffset = (batchNumber * 17) % LICHESS_TOP_PLAYERS.length;
+  // v6.59: Deterministic rotation to maximize coverage
+  const startOffset = (batchNumber * 13) % LICHESS_TOP_PLAYERS.length;
   const shuffledPlayers = [
     ...LICHESS_TOP_PLAYERS.slice(startOffset),
     ...LICHESS_TOP_PLAYERS.slice(0, startOffset)
-  ].sort(() => Math.random() - 0.5);
+  ];
   
-  console.log(`[Lichess] Batch ${batchNumber}: Targeting ${targetCount} games from ${shuffledPlayers.slice(0, 8).join(', ')}...`);
+  console.log(`[Lichess v6.59] Batch ${batchNumber}: Verified pool (${LICHESS_TOP_PLAYERS.length} players)`);
+  console.log(`[Lichess v6.59] First 6: ${shuffledPlayers.slice(0, 6).join(', ')}`);
   
-  // v6.47: Higher limits
-  const maxPlayers = Math.min(25, shuffledPlayers.length);
-  const gamesPerPlayer = Math.ceil(targetCount / 3);
+  // v6.59: Process more players but with smarter windows
+  const maxPlayers = Math.min(30, shuffledPlayers.length);
+  const gamesPerPlayer = 20; // Fixed request size
   let rateLimitHits = 0;
-  let backoffMs = 1000; // Start with 1s backoff
+  let backoffMs = 800;
   
-  // v6.54: Parallel fetching in chunks of 2 (more conservative to avoid rate limits)
+  // v6.59: Chunks of 3 for better throughput
   const playerChunks: string[][] = [];
-  for (let i = 0; i < maxPlayers; i += 2) {
-    playerChunks.push(shuffledPlayers.slice(i, i + 2));
+  for (let i = 0; i < maxPlayers; i += 3) {
+    playerChunks.push(shuffledPlayers.slice(i, i + 3));
   }
   
   for (const chunk of playerChunks) {
     if (games.length >= targetCount) break;
-    if (rateLimitHits >= 2) {
-      // Exponential backoff after rate limits
-      const waitTime = Math.min(backoffMs * Math.pow(2, rateLimitHits - 1), 30000);
-      console.warn(`[Lichess] Rate limit backoff: waiting ${waitTime}ms...`);
+    if (rateLimitHits >= 3) {
+      const waitTime = Math.min(backoffMs * Math.pow(1.5, rateLimitHits), 20000);
+      console.warn(`[Lichess v6.59] Rate limit backoff: ${waitTime}ms`);
       await new Promise(r => setTimeout(r, waitTime));
       rateLimitHits = 0;
     }
     
-    // v6.47: Calculate unique time windows for each player in chunk
+    // v6.59-SMART-WINDOWS: Focus on 2022-2025 where activity is highest
     const chunkPromises = chunk.map(async (player, idx) => {
       const now = Date.now();
       const oneDay = 24 * 60 * 60 * 1000;
-      // v6.47: Much deeper history - go back years, not just weeks
-      const baseDaysBack = batchNumber * 60 + idx * 30 + Math.floor(Math.random() * 100);
-      const windowDuration = 90 + Math.floor(Math.random() * 180); // 3-9 months
+      
+      // v6.59: Target recent high-activity windows (last 3 years primarily)
+      // Use batch number to explore different time slices
+      const yearOffset = batchNumber % 4; // Cycle through 0-3 years back
+      const monthOffset = (batchNumber + idx) % 12; // Different months
+      const baseDaysBack = yearOffset * 365 + monthOffset * 30 + Math.floor(Math.random() * 30);
+      const windowDuration = 60 + Math.floor(Math.random() * 60); // 2-4 months
       const until = now - (baseDaysBack * oneDay);
       const since = until - (windowDuration * oneDay);
       

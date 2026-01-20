@@ -16,9 +16,9 @@
  * - Chess.com: -50 offset (closer to FIDE)
  */
 
-// v6.58-UNIFIED-ID: Fixed ID validation to support prefixed IDs (li_/cc_)
-const BENCHMARK_VERSION = "6.58-UNIFIED-ID";
-console.log(`[v6.58] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.59-VERIFIED-POOL: Cleaned player pool + smart time windows
+const BENCHMARK_VERSION = "6.59-VERIFIED-POOL";
+console.log(`[v6.59] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
