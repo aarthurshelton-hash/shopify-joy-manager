@@ -11,9 +11,9 @@
  * That's it. No over-engineering.
  */
 
-// v6.42-IRONCLAD: Per-game error isolation + guaranteed incremental saves + detailed failure tracking
-const BENCHMARK_VERSION = "6.42-IRONCLAD";
-console.log(`[v6.42] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.43-BULLETPROOF: Fixed try-catch scoping + robust batch refetch + guaranteed saves
+const BENCHMARK_VERSION = "6.43-BULLETPROOF";
+console.log(`[v6.43] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -514,19 +514,19 @@ export function useHybridBenchmark() {
       }
       
       // Step 2: Process games with REFETCH when needed
-      // v6.42: Detailed skip stats + per-game error isolation
+      // v6.43: Detailed skip stats + per-game error isolation
       let skipStats = { invalidId: 0, dbDupe: 0, sessionDupe: 0, shortGame: 0, timeout: 0, parseError: 0, analysisError: 0 };
       const failedGameIds = new Set<string>(); // Games that failed processing - skip on retry
       
-      // v6.42: Higher resilience thresholds
+      // v6.43: Higher resilience thresholds
       let emptyBatchStreak = 0;
-      const MAX_EMPTY_BATCHES = 15;
+      const MAX_EMPTY_BATCHES = 25; // v6.43: More tolerance for empty batches
       
-      // v6.42: Track consecutive skips to detect problematic patterns
+      // v6.43: Track consecutive skips to detect problematic patterns
       let consecutiveSkips = 0;
-      const MAX_CONSECUTIVE_SKIPS = 100;
+      const MAX_CONSECUTIVE_SKIPS = 150; // v6.43: More tolerance before refetch
       
-      // v6.42-IRONCLAD: Incremental save function - saves every N predictions to prevent data loss
+      // v6.43-BULLETPROOF: Incremental save function - saves every N predictions to prevent data loss
       const SAVE_INTERVAL = 5; // Save every 5 predictions
       let lastSaveIndex = 0;
       
@@ -534,7 +534,7 @@ export function useHybridBenchmark() {
         if (attempts.length <= lastSaveIndex) return; // Nothing new to save
         
         const newAttempts = attempts.slice(lastSaveIndex);
-        console.log(`[v6.42] 💾 Incremental save: ${newAttempts.length} new predictions (total: ${attempts.length})`);
+        console.log(`[v6.43] 💾 Incremental save: ${newAttempts.length} new predictions (total: ${attempts.length})`);
         
         try {
           // Upsert benchmark record
@@ -596,43 +596,52 @@ export function useHybridBenchmark() {
               benchmark_id: benchmarkId,
             });
             if (insertError && !insertError.message?.includes('duplicate')) {
-              console.error(`[v6.42] Failed to save ${attempt.game_id}:`, insertError.message);
+              console.error(`[v6.43] Failed to save ${attempt.game_id}:`, insertError.message);
             }
           }
           
           lastSaveIndex = attempts.length;
-          console.log(`[v6.42] ✅ Incremental save complete`);
+          console.log(`[v6.43] ✅ Incremental save complete`);
         } catch (saveErr) {
-          console.error(`[v6.42] ❌ Incremental save failed:`, saveErr);
+          console.error(`[v6.43] ❌ Incremental save failed:`, saveErr);
         }
       }
       
       while (predictedCount < gameCount && !abortRef.current && batchNumber < maxBatches) {
-        // v6.33: Safety check - if too many consecutive skips, something is wrong
+        // v6.43: Safety check - if too many consecutive skips, force refetch
         if (consecutiveSkips >= MAX_CONSECUTIVE_SKIPS) {
-          console.warn(`[v6.33] ⚠️ ${consecutiveSkips} consecutive skips - breaking to refetch`);
-          console.log(`[v6.33] SKIP STATS: invalid=${skipStats.invalidId}, dbDupe=${skipStats.dbDupe}, sessionDupe=${skipStats.sessionDupe}, short=${skipStats.shortGame}, timeout=${skipStats.timeout}, parse=${skipStats.parseError}`);
+          console.warn(`[v6.43] ⚠️ ${consecutiveSkips} consecutive skips - forcing refetch`);
+          console.log(`[v6.43] SKIP STATS: invalid=${skipStats.invalidId}, dbDupe=${skipStats.dbDupe}, sessionDupe=${skipStats.sessionDupe}, short=${skipStats.shortGame}, timeout=${skipStats.timeout}, parse=${skipStats.parseError}, analysis=${skipStats.analysisError}`);
           consecutiveSkips = 0;
-          gameIndex = allGames.length; // Force refetch
+          gameIndex = allGames.length; // Force refetch by exhausting queue pointer
         }
         
         // Check if we need more games
         if (gameIndex >= allGames.length) {
-          console.log(`[v6.33] Queue exhausted at ${gameIndex}, need more (${predictedCount}/${gameCount})`);
-          console.log(`[v6.33] SKIP STATS: invalid=${skipStats.invalidId}, dbDupe=${skipStats.dbDupe}, sessionDupe=${skipStats.sessionDupe}, short=${skipStats.shortGame}, timeout=${skipStats.timeout}, parse=${skipStats.parseError}`);
+          console.log(`[v6.43] Queue exhausted at index ${gameIndex}, need more (${predictedCount}/${gameCount})`);
+          console.log(`[v6.43] SKIP STATS: invalid=${skipStats.invalidId}, dbDupe=${skipStats.dbDupe}, sessionDupe=${skipStats.sessionDupe}, short=${skipStats.shortGame}, timeout=${skipStats.timeout}, parse=${skipStats.parseError}, analysis=${skipStats.analysisError}`);
+          
+          // v6.43: Try fetching with exponential backoff on empty batches
+          const waitTime = Math.min(3000 * Math.pow(1.5, emptyBatchStreak), 15000);
+          if (emptyBatchStreak > 0) {
+            console.log(`[v6.43] Waiting ${Math.round(waitTime/1000)}s before retry...`);
+            await new Promise(r => setTimeout(r, waitTime));
+          }
+          
           const newCount = await fetchMoreGames();
           if (newCount === 0) {
             emptyBatchStreak++;
-            console.warn(`[v6.33] Empty batch #${emptyBatchStreak}/${MAX_EMPTY_BATCHES}`);
+            console.warn(`[v6.43] Empty batch #${emptyBatchStreak}/${MAX_EMPTY_BATCHES}`);
             if (emptyBatchStreak >= MAX_EMPTY_BATCHES) {
-              console.warn(`[v6.33] Too many empty batches, stopping.`);
+              console.warn(`[v6.43] Too many empty batches, saving partial results and stopping.`);
+              // v6.43: Save what we have before breaking
+              await saveIncrementalResults();
               break;
             }
-            await new Promise(r => setTimeout(r, 3000));
             continue;
           }
           emptyBatchStreak = 0;
-          // v6.33 FIX: Don't continue - fall through to process newly fetched games
+          // Fall through to process newly fetched games
         }
         
         // v6.33: Check bounds again after potential fetch
@@ -714,7 +723,7 @@ export function useHybridBenchmark() {
         const blackEloDisplay = game.blackElo ? ` (${game.blackElo})` : '';
         const gameName = `${whiteName}${whiteEloDisplay} vs ${blackName}${blackEloDisplay}`;
         
-        console.log(`[v6.42] PREDICTING #${predictedCount + 1}/${gameCount}: ${lichessId} → ${gameName} (${gameResult}) [batch ${batchNumber}]`);
+        console.log(`[v6.43] PREDICTING #${predictedCount + 1}/${gameCount}: ${lichessId} → ${gameName} (${gameResult}) [batch ${batchNumber}]`);
         
         const remainingInBatch = allGames.length - gameIndex;
         setProgress({
@@ -726,145 +735,154 @@ export function useHybridBenchmark() {
           enPensentModulesActive: EN_PENSENT_ADAPTERS
         });
         
-        // v6.42-IRONCLAD: Wrap ENTIRE analysis in try-catch so one bad game doesn't crash the batch
+        // v6.43-BULLETPROOF: Wrap ENTIRE analysis in try-catch - errors are isolated per game
+        let colorFlow: ReturnType<typeof analyzeColorFlowFullScope>;
+        let analysis: PositionAnalysis | null = null;
+        
         try {
           // Get En Pensent prediction (Color Flow analysis)
-          const colorFlow = analyzeColorFlowFullScope(moves.slice(0, moveNumber));
-          
-          // Get Stockfish evaluation (reduced timeout: 60s instead of 120s)
-          const analysisPromise = engine.analyzePosition(fen, { depth, requireExactDepth: depth >= 40 });
-          const timeoutPromise = new Promise<null>(r => setTimeout(() => r(null), 60000));
-          const analysis = await Promise.race([analysisPromise, timeoutPromise]);
-          
-          if (!analysis) {
-            console.log(`[v6.42] ⚠️ Stockfish timeout for ${lichessId}, blacklisting`);
-            skipStats.timeout++;
-            failedGameIds.add(lichessId);
-            consecutiveSkips++;
-            continue;
-          }
-          
-          const stockfish = getLocalStockfishPrediction(analysis);
-          
-          // Record depth
-          depths.push(stockfish.depth);
-          console.log(`[v6.42] Stockfish: ${stockfish.evaluation}cp at depth ${stockfish.depth}`);
-          
-          // Compare predictions
-          const hybridIsCorrect = colorFlow.prediction === gameResult;
-          const stockfishIsCorrect = stockfish.prediction === gameResult;
-          
-          if (hybridIsCorrect) hybridCorrect++;
-          if (stockfishIsCorrect) stockfishCorrect++;
-          if (hybridIsCorrect && stockfishIsCorrect) bothCorrect++;
-          if (!hybridIsCorrect && !stockfishIsCorrect) bothWrong++;
-          
-          // Build attempt data
-          const positionHash = hashPosition(fen);
-          
-          const attemptData = {
-            game_id: lichessId,
-            game_name: gameName,
-            fen,
-            move_number: moveNumber,
-            position_hash: positionHash,
-            hybrid_prediction: colorFlow.prediction,
-            hybrid_confidence: colorFlow.confidence,
-            hybrid_archetype: colorFlow.archetype,
-            hybrid_correct: hybridIsCorrect,
-            stockfish_prediction: stockfish.prediction,
-            stockfish_confidence: stockfish.confidence,
-            stockfish_depth: stockfish.depth,
-            stockfish_eval: stockfish.evaluation,
-            stockfish_correct: stockfishIsCorrect,
-            actual_result: gameResult,
-            data_quality_tier: 'tcec_unlimited',
-            pgn: game.pgn.substring(0, 1000),
-            time_control: game.timeControl || game.gameMode || game.speed || null,
-            white_elo: typeof game.whiteElo === 'number' ? game.whiteElo : null,
-            black_elo: typeof game.blackElo === 'number' ? game.blackElo : null,
-            lichess_id_verified: true,
-          };
-          
-          attempts.push(attemptData);
-          
-          // Stream to UI
-          if (onPrediction) {
-            const livePrediction: LivePredictionData = {
-              id: crypto.randomUUID(),
-              gameName,
-              moveNumber,
-              fen,
-              hybridPrediction: colorFlow.prediction,
-              hybridArchetype: colorFlow.archetype,
-              hybridConfidence: colorFlow.confidence,
-              hybridCorrect: hybridIsCorrect,
-              stockfishPrediction: stockfish.prediction,
-              stockfishEval: stockfish.evaluation,
-              stockfishDepth: stockfish.depth,
-              stockfishCorrect: stockfishIsCorrect,
-              actualResult: gameResult,
-              gameMode: game.gameMode || game.timeControl,
-              speed: game.speed,
-              rated: game.rated,
-              variant: game.variant,
-              timeControl: game.timeControl,
-              playedAt: game.playedAt,
-              gameYear: game.gameYear,
-              gameMonth: game.gameMonth,
-              gameDayOfWeek: game.gameDayOfWeek,
-              gameHour: game.gameHour,
-              whiteName: game.whiteName,
-              blackName: game.blackName,
-              whiteElo: game.whiteElo,
-              blackElo: game.blackElo,
-              whiteTitle: game.whiteTitle,
-              blackTitle: game.blackTitle,
-              openingEco: game.openingEco,
-              openingName: game.openingName,
-              openingPly: game.openingPly,
-              clockInitial: game.clockInitial,
-              clockIncrement: game.clockIncrement,
-              clockTotalTime: game.clockTotalTime,
-              termination: game.termination,
-              timestamp: Date.now(),
-            };
-            onPrediction(livePrediction);
-          }
-          
-          predictedCount++;
-          predictedIds.add(lichessId);
-          analyzedData.gameIds.add(lichessId);
-          consecutiveSkips = 0;
-          
-          console.log(`[v6.42] ✓ PREDICTION #${predictedCount}: ${lichessId} | time_control=${game.timeControl || game.speed} | whiteElo=${game.whiteElo} | blackElo=${game.blackElo}`);
-          console.log(`[v6.42]   En Pensent=${colorFlow.prediction}${hybridIsCorrect ? '✓' : '✗'} | SF=${stockfish.prediction}${stockfishIsCorrect ? '✓' : '✗'} | Actual=${gameResult}`);
-          
-          // v6.42-IRONCLAD: Incremental save every SAVE_INTERVAL predictions
-          if (predictedCount % SAVE_INTERVAL === 0) {
-            await saveIncrementalResults();
-          }
-          
-        } catch (analysisError) {
-          // v6.42-IRONCLAD: Catch ANY error during analysis and continue to next game
-          console.error(`[v6.42] ❌ Analysis error for ${lichessId}:`, analysisError);
+          colorFlow = analyzeColorFlowFullScope(moves.slice(0, moveNumber));
+        } catch (cfError) {
+          console.error(`[v6.43] ❌ ColorFlow error for ${lichessId}:`, cfError);
           skipStats.analysisError++;
           failedGameIds.add(lichessId);
           consecutiveSkips++;
-          continue;
+          continue; // Skip to next game in the while loop
+        }
+        
+        try {
+          // Get Stockfish evaluation (reduced timeout: 45s for faster throughput)
+          const analysisPromise = engine.analyzePosition(fen, { depth, requireExactDepth: depth >= 40 });
+          const timeoutPromise = new Promise<null>(r => setTimeout(() => r(null), 45000));
+          analysis = await Promise.race([analysisPromise, timeoutPromise]);
+        } catch (sfError) {
+          console.error(`[v6.43] ❌ Stockfish error for ${lichessId}:`, sfError);
+          skipStats.analysisError++;
+          failedGameIds.add(lichessId);
+          consecutiveSkips++;
+          continue; // Skip to next game in the while loop
+        }
+        
+        if (!analysis) {
+          console.log(`[v6.43] ⚠️ Stockfish timeout for ${lichessId}, blacklisting`);
+          skipStats.timeout++;
+          failedGameIds.add(lichessId);
+          consecutiveSkips++;
+          continue; // Skip to next game in the while loop
+        }
+        
+        const stockfish = getLocalStockfishPrediction(analysis);
+        
+        // Record depth
+        depths.push(stockfish.depth);
+        console.log(`[v6.43] Stockfish: ${stockfish.evaluation}cp at depth ${stockfish.depth}`);
+        
+        // Compare predictions
+        const hybridIsCorrect = colorFlow.prediction === gameResult;
+        const stockfishIsCorrect = stockfish.prediction === gameResult;
+        
+        if (hybridIsCorrect) hybridCorrect++;
+        if (stockfishIsCorrect) stockfishCorrect++;
+        if (hybridIsCorrect && stockfishIsCorrect) bothCorrect++;
+        if (!hybridIsCorrect && !stockfishIsCorrect) bothWrong++;
+        
+        // Build attempt data
+        const positionHash = hashPosition(fen);
+        
+        const attemptData = {
+          game_id: lichessId,
+          game_name: gameName,
+          fen,
+          move_number: moveNumber,
+          position_hash: positionHash,
+          hybrid_prediction: colorFlow.prediction,
+          hybrid_confidence: colorFlow.confidence,
+          hybrid_archetype: colorFlow.archetype,
+          hybrid_correct: hybridIsCorrect,
+          stockfish_prediction: stockfish.prediction,
+          stockfish_confidence: stockfish.confidence,
+          stockfish_depth: stockfish.depth,
+          stockfish_eval: stockfish.evaluation,
+          stockfish_correct: stockfishIsCorrect,
+          actual_result: gameResult,
+          data_quality_tier: 'tcec_unlimited',
+          pgn: game.pgn.substring(0, 1000),
+          time_control: game.timeControl || game.gameMode || game.speed || null,
+          white_elo: typeof game.whiteElo === 'number' ? game.whiteElo : null,
+          black_elo: typeof game.blackElo === 'number' ? game.blackElo : null,
+          lichess_id_verified: true,
+        };
+        
+        attempts.push(attemptData);
+        
+        // Stream to UI
+        if (onPrediction) {
+          const livePrediction: LivePredictionData = {
+            id: crypto.randomUUID(),
+            gameName,
+            moveNumber,
+            fen,
+            hybridPrediction: colorFlow.prediction,
+            hybridArchetype: colorFlow.archetype,
+            hybridConfidence: colorFlow.confidence,
+            hybridCorrect: hybridIsCorrect,
+            stockfishPrediction: stockfish.prediction,
+            stockfishEval: stockfish.evaluation,
+            stockfishDepth: stockfish.depth,
+            stockfishCorrect: stockfishIsCorrect,
+            actualResult: gameResult,
+            gameMode: game.gameMode || game.timeControl,
+            speed: game.speed,
+            rated: game.rated,
+            variant: game.variant,
+            timeControl: game.timeControl,
+            playedAt: game.playedAt,
+            gameYear: game.gameYear,
+            gameMonth: game.gameMonth,
+            gameDayOfWeek: game.gameDayOfWeek,
+            gameHour: game.gameHour,
+            whiteName: game.whiteName,
+            blackName: game.blackName,
+            whiteElo: game.whiteElo,
+            blackElo: game.blackElo,
+            whiteTitle: game.whiteTitle,
+            blackTitle: game.blackTitle,
+            openingEco: game.openingEco,
+            openingName: game.openingName,
+            openingPly: game.openingPly,
+            clockInitial: game.clockInitial,
+            clockIncrement: game.clockIncrement,
+            clockTotalTime: game.clockTotalTime,
+            termination: game.termination,
+            timestamp: Date.now(),
+          };
+          onPrediction(livePrediction);
+        }
+        
+        predictedCount++;
+        predictedIds.add(lichessId);
+        analyzedData.gameIds.add(lichessId);
+        consecutiveSkips = 0;
+        
+        console.log(`[v6.43] ✓ PREDICTION #${predictedCount}: ${lichessId} | time_control=${game.timeControl || game.speed} | whiteElo=${game.whiteElo} | blackElo=${game.blackElo}`);
+        console.log(`[v6.43]   En Pensent=${colorFlow.prediction}${hybridIsCorrect ? '✓' : '✗'} | SF=${stockfish.prediction}${stockfishIsCorrect ? '✓' : '✗'} | Actual=${gameResult}`);
+        
+        // v6.43-BULLETPROOF: Incremental save every SAVE_INTERVAL predictions
+        if (predictedCount % SAVE_INTERVAL === 0) {
+          await saveIncrementalResults();
         }
       }
       
-      // v6.42-IRONCLAD: Final incremental save for any remaining predictions
+      // v6.43-BULLETPROOF: Final incremental save for any remaining predictions
       await saveIncrementalResults();
       
-      console.log(`[v6.42] ========================================`);
-      console.log(`[v6.42] BENCHMARK COMPLETE: ${predictedCount}/${gameCount} predictions`);
-      console.log(`[v6.42] Total batches fetched: ${batchNumber}`);
-      console.log(`[v6.42] Total games processed: ${gameIndex}/${allGames.length}`);
-      console.log(`[v6.42] Predicted ${predictedIds.size} games, ${failedGameIds.size} failed`);
-      console.log(`[v6.42] Skip stats: ${JSON.stringify(skipStats)}`);
-      console.log(`[v6.42] ========================================`);
+      console.log(`[v6.43] ========================================`);
+      console.log(`[v6.43] BENCHMARK COMPLETE: ${predictedCount}/${gameCount} predictions`);
+      console.log(`[v6.43] Total batches fetched: ${batchNumber}`);
+      console.log(`[v6.43] Total games processed: ${gameIndex}/${allGames.length}`);
+      console.log(`[v6.43] Predicted ${predictedIds.size} games, ${failedGameIds.size} failed`);
+      console.log(`[v6.43] Skip stats: ${JSON.stringify(skipStats)}`);
+      console.log(`[v6.43] ========================================`);
       
       if (attempts.length === 0) {
         throw new Error(`No valid games processed. Skip reasons: ${JSON.stringify(skipStats)}`);
@@ -872,7 +890,7 @@ export function useHybridBenchmark() {
       
       // Warn if we got significantly fewer games than requested
       if (attempts.length < gameCount * 0.8) {
-        console.warn(`[v6.42] ⚠️ Only got ${attempts.length}/${gameCount} games - Lichess may be rate limiting or sparse data`);
+        console.warn(`[v6.43] ⚠️ Only got ${attempts.length}/${gameCount} games - Lichess may be rate limiting or sparse data`);
       }
       
       // Calculate stats
@@ -892,7 +910,7 @@ export function useHybridBenchmark() {
       const positionsAtFullDepth = depths.filter(d => d >= depthThreshold).length;
       const depthAccuracy = (positionsAtFullDepth / depths.length) * 100;
       
-      // v6.42: Final benchmark update (predictions already saved incrementally)
+      // v6.43: Final benchmark update (predictions already saved incrementally)
       setProgress(prev => ({
         ...prev!,
         currentPhase: 'saving',
@@ -921,7 +939,7 @@ export function useHybridBenchmark() {
             games_analyzed: attempts.map(a => a.game_id),
           })
           .eq('id', existingBenchmark.id);
-        console.log(`[v6.42] ✅ Final benchmark update complete`);
+        console.log(`[v6.43] ✅ Final benchmark update complete`);
       } else {
         // Create benchmark if incremental saves didn't create it yet
         await supabase
@@ -944,7 +962,7 @@ export function useHybridBenchmark() {
             hybrid_version: 'en-pensent-v1',
             data_quality_tier: 'tcec_unlimited',
           });
-        console.log(`[v6.42] ✅ Created final benchmark record`);
+        console.log(`[v6.43] ✅ Created final benchmark record`);
       }
       
       // Collect unique archetypes detected
@@ -985,12 +1003,12 @@ export function useHybridBenchmark() {
       
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Unknown error';
-      console.error(`[v6.42] Benchmark error: ${message}`);
+      console.error(`[v6.43] Benchmark error: ${message}`);
       
-      // v6.42-IRONCLAD: Emergency save - predictions should already be in DB from incremental saves
+      // v6.43-BULLETPROOF: Emergency save - predictions should already be in DB from incremental saves
       // Just log what we had in case anything was lost
       if (attempts.length > 0) {
-        console.log(`[v6.42] ⚠️ Error occurred after ${attempts.length} predictions (most should already be saved incrementally)`);
+        console.log(`[v6.43] ⚠️ Error occurred after ${attempts.length} predictions (most should already be saved incrementally)`);
         
         // Try one more emergency save in case incremental saves didn't complete
         try {
@@ -1010,7 +1028,7 @@ export function useHybridBenchmark() {
                 stockfish_accuracy: attempts.length > 0 ? (stockfishCorrect / attempts.length) * 100 : 0,
               })
               .eq('id', existingBenchmark.id);
-            console.log(`[v6.42] ✅ Updated benchmark with ${attempts.length} predictions`);
+            console.log(`[v6.43] ✅ Updated benchmark with ${attempts.length} predictions`);
           } else {
             // Create benchmark record if it doesn't exist
             const { data: newBenchmark } = await supabase
@@ -1045,14 +1063,14 @@ export function useHybridBenchmark() {
                 });
                 // Silently ignore duplicate errors
                 if (insertErr && !insertErr.message?.includes('duplicate')) {
-                  console.error(`[v6.42] Insert error:`, insertErr.message);
+                  console.error(`[v6.43] Insert error:`, insertErr.message);
                 }
               }
-              console.log(`[v6.42] ✅ Emergency saved ${attempts.length} predictions`);
+              console.log(`[v6.43] ✅ Emergency saved ${attempts.length} predictions`);
             }
           }
         } catch (saveError) {
-          console.error(`[v6.42] ❌ Emergency save failed:`, saveError);
+          console.error(`[v6.43] ❌ Emergency save failed:`, saveError);
         }
       }
       
