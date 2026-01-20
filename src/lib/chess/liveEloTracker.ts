@@ -1,8 +1,16 @@
 /**
- * Live ELO Tracker
+ * Live ELO Tracker with Platform-Aware Calibration
  * 
  * Continuously calculates and updates FIDE ELO estimates for En Pensent
  * compared against Stockfish 17's baseline of 3600-3700 ELO.
+ * 
+ * PLATFORM ELO CALIBRATION:
+ * Different platforms have different rating pools and inflation levels.
+ * We track the source platform and apply appropriate FIDE conversion:
+ * 
+ * - Lichess (Glicko-2): Tends to run ~100-150 higher than FIDE
+ * - Chess.com (Glicko): Tends to run ~50-100 higher than FIDE
+ * - FIDE: The gold standard for competitive chess ratings
  * 
  * Uses official FIDE formulas with TCEC-calibrated D(P) values.
  */
@@ -20,6 +28,73 @@ export const STOCKFISH_17_ELO = {
   localDepth60: 3700,  // WASM depth 60 (maximum)
   unlimited: 3700,     // True unlimited (TCEC conditions)
 } as const;
+
+// Platform-specific ELO calibration factors
+export const PLATFORM_ELO_CALIBRATION = {
+  lichess: {
+    offset: -100,          // Lichess ratings tend to run ~100 higher than FIDE
+    volatility: 1.1,       // Slightly more volatile due to faster time controls
+    description: 'Lichess Glicko-2 (tends +100 vs FIDE)',
+  },
+  chesscom: {
+    offset: -50,           // Chess.com ratings closer to FIDE
+    volatility: 1.0,       // More stable rating pool
+    description: 'Chess.com Glicko (tends +50 vs FIDE)',
+  },
+  fide: {
+    offset: 0,             // FIDE is the baseline
+    volatility: 0.9,       // Lower volatility (classical time controls)
+    description: 'FIDE Official Rating',
+  },
+} as const;
+
+export type RatingPlatform = keyof typeof PLATFORM_ELO_CALIBRATION;
+
+/**
+ * Convert platform-specific ELO to approximate FIDE equivalent
+ */
+export function toFideElo(platformElo: number, source: RatingPlatform): number {
+  const calibration = PLATFORM_ELO_CALIBRATION[source];
+  return Math.round(platformElo + calibration.offset);
+}
+
+/**
+ * Convert FIDE ELO to platform-specific equivalent
+ */
+export function fromFideElo(fideElo: number, target: RatingPlatform): number {
+  const calibration = PLATFORM_ELO_CALIBRATION[target];
+  return Math.round(fideElo - calibration.offset);
+}
+
+/**
+ * Get average game strength in FIDE-equivalent terms
+ */
+export function getGameStrengthFide(
+  whiteElo: number, 
+  blackElo: number, 
+  source: RatingPlatform
+): number {
+  const avgPlatform = (whiteElo + blackElo) / 2;
+  return toFideElo(avgPlatform, source);
+}
+
+/**
+ * Get calibration description for display
+ */
+export function getPlatformCalibrationInfo(source: RatingPlatform): {
+  description: string;
+  offset: number;
+  example: string;
+} {
+  const cal = PLATFORM_ELO_CALIBRATION[source];
+  const examplePlatform = 2500;
+  const exampleFide = toFideElo(examplePlatform, source);
+  return {
+    description: cal.description,
+    offset: cal.offset,
+    example: `${examplePlatform} ${source} ≈ ${exampleFide} FIDE`,
+  };
+}
 
 export interface LiveEloState {
   enPensentElo: number;
