@@ -13,8 +13,8 @@
  */
 
 // Version tag for debugging
-const CLOUD_BENCHMARK_VERSION = "6.8-ZERO-SKIP";
-console.log(`[v6.8] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
+const CLOUD_BENCHMARK_VERSION = "6.9-SESSION-DEDUP";
+console.log(`[v6.9] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
 
 import { Chess } from 'chess.js';
 import { evaluatePosition, type PositionEvaluation } from './lichessCloudEval';

@@ -12,8 +12,8 @@
  */
 
 // Version tag for debugging cached code issues
-const BENCHMARK_VERSION = "6.8-ZERO-SKIP";
-console.log(`[v6.8] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+const BENCHMARK_VERSION = "6.9-SESSION-DEDUP";
+console.log(`[v6.9] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -441,6 +441,10 @@ export function useHybridBenchmark() {
       console.log(`[v6.5] Already in DB: ${analyzedData.gameIds.size} games`);
       console.log(`[v6.5] ========================================`);
       
+      // v6.9: Track ALL game IDs seen this session (DB + queue + predicted)
+      // This gets passed to fetchLichessGames to ensure we never fetch duplicates
+      const sessionSeenIds = new Set<string>(analyzedData.gameIds);
+      
       // v6.5: Track all games across multiple fetch batches
       let allGames: any[] = [];
       let gameIndex = 0;
@@ -452,21 +456,37 @@ export function useHybridBenchmark() {
       
       async function fetchMoreGames() {
         batchNumber++;
-        console.log(`[v6.5] ========== BATCH ${batchNumber} ==========`);
+        console.log(`[v6.9] ========== BATCH ${batchNumber} ==========`);
+        console.log(`[v6.9] Session has seen ${sessionSeenIds.size} total game IDs`);
         setProgress(prev => ({ 
           ...prev!, 
-          message: `Fetching batch ${batchNumber} from Lichess...` 
+          message: `Fetching batch ${batchNumber} from Lichess (seen ${sessionSeenIds.size} games)...` 
         }));
         
-        const newGames = await fetchLichessGames(fetchCount, analyzedData);
-        console.log(`[v6.5] Batch ${batchNumber}: Got ${newGames.length} fresh games`);
+        // v6.9: Pass session-local set that includes ALL games we've seen this run
+        const sessionAnalyzedData = {
+          ...analyzedData,
+          gameIds: sessionSeenIds, // Use session-local set, not just DB
+        };
         
-        // Filter out games we've already added to our queue (by lichessId)
+        const newGames = await fetchLichessGames(fetchCount, sessionAnalyzedData);
+        console.log(`[v6.9] Batch ${batchNumber}: Got ${newGames.length} fresh games from Lichess`);
+        
+        // Add all new games to session tracking immediately
+        for (const game of newGames) {
+          sessionSeenIds.add(game.lichessId);
+        }
+        
+        // Filter out games we've already added to our queue (by lichessId) - should be none now
         const existingIds = new Set(allGames.map(g => g.lichessId));
         const trulyNewGames = newGames.filter(g => !existingIds.has(g.lichessId));
-        console.log(`[v6.5] Batch ${batchNumber}: ${trulyNewGames.length} truly new (${newGames.length - trulyNewGames.length} already in queue)`);
+        
+        if (newGames.length !== trulyNewGames.length) {
+          console.warn(`[v6.9] ⚠️ ${newGames.length - trulyNewGames.length} queue dupes (shouldn't happen now)`);
+        }
         
         allGames = [...allGames, ...trulyNewGames];
+        console.log(`[v6.9] Queue now has ${allGames.length} games, index at ${gameIndex}`);
         return trulyNewGames.length;
       }
       
@@ -481,14 +501,14 @@ export function useHybridBenchmark() {
       // Track skip reasons for debugging
       let skipStats = { invalidId: 0, dbDupe: 0, shortGame: 0, timeout: 0, parseError: 0 };
       
-      // v6.5 REFETCH LOOP: Keep processing until we hit target OR max batches
+      // v6.9 REFETCH LOOP: Keep processing until we hit target OR max batches
       while (predictedCount < gameCount && !abortRef.current && batchNumber < maxBatches) {
         // Check if we need more games
         if (gameIndex >= allGames.length) {
-          console.log(`[v6.5] Exhausted batch ${batchNumber}, need more games (${predictedCount}/${gameCount} predictions)`);
+          console.log(`[v6.9] Exhausted queue at index ${gameIndex}, need more games (${predictedCount}/${gameCount} predictions)`);
           const newCount = await fetchMoreGames();
           if (newCount === 0) {
-            console.warn(`[v6.5] No new games in batch ${batchNumber}, stopping`);
+            console.warn(`[v6.9] No new games in batch ${batchNumber}, stopping (session has ${sessionSeenIds.size} IDs)`);
             break;
           }
           continue; // Re-check with new games
@@ -500,14 +520,16 @@ export function useHybridBenchmark() {
         
         // Simple validation
         if (!lichessId || lichessId.length !== 8) {
-          console.log(`[v6.1] Skip invalid ID: ${lichessId}`);
+          console.log(`[v6.9] Skip invalid ID: ${lichessId}`);
           skipStats.invalidId++;
           continue;
         }
         
-        // Already in DB? Skip (but this should be pre-filtered by fetchLichessGames)
-        if (analyzedData.gameIds.has(lichessId)) {
-          console.log(`[v6.1] Skip DB duplicate: ${lichessId}`);
+        // v6.9: Check against session set (not just DB)
+        // This is a safety net - should already be filtered by fetchLichessGames
+        if (sessionSeenIds.has(lichessId) && !allGames.slice(0, gameIndex).some(g => g.lichessId === lichessId)) {
+          // It's in session but not in our queue before us - already predicted this session
+          console.log(`[v6.9] Skip session duplicate: ${lichessId}`);
           skipStats.dbDupe++;
           continue;
         }
@@ -525,7 +547,7 @@ export function useHybridBenchmark() {
           gameResult = 'draw';
         }
         
-        console.log(`[v6.8] Game ${lichessId}: winner=${game.winner}, status=${game.status} → ${gameResult}`);
+        console.log(`[v6.9] Game ${lichessId}: winner=${game.winner}, status=${game.status} → ${gameResult}`);
         
         // Parse moves and generate FEN for prediction point
         let moves: string[];
@@ -538,21 +560,21 @@ export function useHybridBenchmark() {
           fen = parsed.fen;
           moveNumber = parsed.moveNumber;
         } catch (e) {
-          console.log(`[v6.7] Skip parse error: ${lichessId}`, e);
+          console.log(`[v6.9] Skip parse error: ${lichessId}`, e);
           skipStats.parseError++;
           continue;
         }
         
-        // v6.7: Very minimal check - Edge Function already validated
+        // v6.9: Very minimal check - Edge Function already validated
         if (moves.length < 4) {
-          console.log(`[v6.7] Skip too short: ${lichessId} (${moves.length} moves)`);
+          console.log(`[v6.9] Skip too short: ${lichessId} (${moves.length} moves)`);
           skipStats.shortGame++;
           continue;
         }
         
-        // v6.4-TIMEOUT: Log game termination type for debugging
+        // v6.9: Log game termination type for debugging
         const termination = game.termination || 'unknown';
-        console.log(`[v6.4] Game ${lichessId}: result=${gameResult}, termination=${termination}`);
+        console.log(`[v6.9] Game ${lichessId}: result=${gameResult}, termination=${termination}`);
         
         // ✅ VALID GAME - PREDICT IT
         const whiteName = game.whiteName || 'Unknown';
@@ -561,7 +583,7 @@ export function useHybridBenchmark() {
         const blackEloDisplay = game.blackElo ? ` (${game.blackElo})` : '';
         const gameName = `${whiteName}${whiteEloDisplay} vs ${blackName}${blackEloDisplay}`;
         
-        console.log(`[v6.5] PREDICTING #${predictedCount + 1}/${gameCount}: ${lichessId} → ${gameName} (${gameResult}) [batch ${batchNumber}]`);
+        console.log(`[v6.9] PREDICTING #${predictedCount + 1}/${gameCount}: ${lichessId} → ${gameName} (${gameResult}) [batch ${batchNumber}]`);
         
         const remainingInBatch = allGames.length - gameIndex;
         setProgress({
@@ -582,7 +604,7 @@ export function useHybridBenchmark() {
         const analysis = await Promise.race([analysisPromise, timeout]);
         
         if (!analysis) {
-          console.log(`[v6.1] ⚠️ Stockfish timeout for ${lichessId}, skipping`);
+          console.log(`[v6.9] ⚠️ Stockfish timeout for ${lichessId}, skipping`);
           skipStats.timeout++;
           continue;
         }
@@ -678,15 +700,16 @@ export function useHybridBenchmark() {
         
         predictedCount++;
         
-        console.log(`[v6.1] ✓ PREDICTION #${predictedCount}: En Pensent=${colorFlow.prediction}${hybridIsCorrect ? '✓' : '✗'} | SF=${stockfish.prediction}${stockfishIsCorrect ? '✓' : '✗'} | Actual=${gameResult}`);
+        console.log(`[v6.9] ✓ PREDICTION #${predictedCount}: En Pensent=${colorFlow.prediction}${hybridIsCorrect ? '✓' : '✗'} | SF=${stockfish.prediction}${stockfishIsCorrect ? '✓' : '✗'} | Actual=${gameResult}`);
       }
       
-      console.log(`[v6.5] ========================================`);
-      console.log(`[v6.5] BENCHMARK COMPLETE: ${predictedCount}/${gameCount} predictions`);
-      console.log(`[v6.5] Total batches fetched: ${batchNumber}`);
-      console.log(`[v6.5] Total games processed: ${gameIndex}/${allGames.length}`);
-      console.log(`[v6.5] Skip stats: ${JSON.stringify(skipStats)}`);
-      console.log(`[v6.5] ========================================`);
+      console.log(`[v6.9] ========================================`);
+      console.log(`[v6.9] BENCHMARK COMPLETE: ${predictedCount}/${gameCount} predictions`);
+      console.log(`[v6.9] Total batches fetched: ${batchNumber}`);
+      console.log(`[v6.9] Total games processed: ${gameIndex}/${allGames.length}`);
+      console.log(`[v6.9] Session saw ${sessionSeenIds.size} unique game IDs`);
+      console.log(`[v6.9] Skip stats: ${JSON.stringify(skipStats)}`);
+      console.log(`[v6.9] ========================================`);
       
       if (attempts.length === 0) {
         throw new Error(`No valid games processed. Skip reasons: ${JSON.stringify(skipStats)}`);
@@ -694,7 +717,7 @@ export function useHybridBenchmark() {
       
       // Warn if we got significantly fewer games than requested
       if (attempts.length < gameCount * 0.8) {
-        console.warn(`[v6.2] ⚠️ Only got ${attempts.length}/${gameCount} games - Lichess may be rate limiting or sparse data`);
+        console.warn(`[v6.9] ⚠️ Only got ${attempts.length}/${gameCount} games - Lichess may be rate limiting or sparse data`);
       }
       
       // Calculate stats
