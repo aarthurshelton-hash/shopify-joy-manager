@@ -408,12 +408,13 @@ export function useHybridBenchmark() {
       const analyzedData = await getAlreadyAnalyzedData();
       let skippedDuplicates = 0;
       
-console.log(`[Dedup] Loaded ${analyzedData.gameIds.size} analyzed games (position hashes for cross-reference only)`);
-      console.log(`[Dedup] Sample game IDs:`, Array.from(analyzedData.gameIds).slice(0, 5));
+      // Log deduplication stats - position hash is PRIMARY key
+      const realIdCount = (analyzedData as any).realLichessIds?.size || 0;
+      console.log(`[Dedup] PRIMARY: ${analyzedData.positionHashes.size} unique positions | SECONDARY: ${realIdCount} real Lichess IDs, ${analyzedData.gameIds.size - realIdCount} legacy IDs`);
       
       setProgress(prev => ({ 
         ...prev!, 
-        message: `Found ${analyzedData.gameIds.size} analyzed games. Fetching fresh GM games (same positions from new games = valuable data)...` 
+        message: `Found ${analyzedData.positionHashes.size} analyzed positions. Fetching fresh GM games...` 
       }));
       
       const runId = crypto.randomUUID();
@@ -525,26 +526,29 @@ console.log(`[Dedup] Loaded ${analyzedData.gameIds.size} analyzed games (positio
             continue;
           }
           
-          // Check if this exact game was already analyzed (by lichessId, not by position)
-          // This prevents re-analyzing the same game file, but allows analyzing
-          // identical positions that occur in DIFFERENT games (valuable pattern data)
-          if (analyzedData.gameIds.has(lichessGameId)) {
+          // CRITICAL FIX: Use POSITION HASH as PRIMARY deduplication key
+          // This catches duplicates regardless of whether they have real Lichess IDs or synthetic IDs
+          // Same chess position = same analysis, no need to re-run Stockfish
+          if (analyzedData.positionHashes.has(positionHash)) {
             skippedDuplicates++;
-            console.log(`[Dedup] Skipping game ${lichessGameId} (https://lichess.org/${lichessGameId}) - already analyzed`);
+            console.log(`[Dedup] Skipping duplicate POSITION (hash: ${positionHash.slice(0,8)}...) - already analyzed`);
+            // Fire background reaffirmation to boost confidence
+            reaffirmExistingPrediction(fen, positionHash).catch(() => {});
             continue;
           }
           
-          // Track position frequency for pattern strength (cross-reference, not skip)
-          const isKnownPosition = analyzedData.positionHashes.has(positionHash);
-          if (isKnownPosition) {
-            console.log(`[Pattern] Recognized position from NEW game - strengthening pattern database`);
-            // Fire background reaffirmation to boost confidence in known patterns
-            reaffirmExistingPrediction(fen, positionHash).catch(() => {});
+          // SECONDARY: Also skip if we've seen this exact Lichess game ID
+          // (handles case where same game might appear from different player searches)
+          if (analyzedData.gameIds.has(lichessGameId)) {
+            skippedDuplicates++;
+            console.log(`[Dedup] Skipping game ${lichessGameId} - already in database`);
+            continue;
           }
           
-          // Add to in-memory sets for this run
+          // Add to in-memory sets for this run (prevent within-run duplicates)
           analyzedData.positionHashes.add(positionHash);
           analyzedData.fenStrings.add(fen);
+          analyzedData.gameIds.add(lichessGameId);
           
           // Full-scope Color Flow prediction with all 25 adapters
           const colorFlow = analyzeColorFlowFullScope(moves.slice(0, moveNumber));
@@ -850,7 +854,7 @@ console.log(`[Dedup] Loaded ${analyzedData.gameIds.size} analyzed games (positio
 
 async function fetchLichessGames(
   count: number, 
-  analyzedData?: { positionHashes: Set<string>; gameIds: Set<string>; fenStrings: Set<string> }
+  analyzedData?: { positionHashes: Set<string>; gameIds: Set<string>; fenStrings: Set<string>; realLichessIds?: Set<string> }
 ): Promise<LichessGameData[]> {
   // MASSIVE player pool - 60+ GMs spanning Lichess history (2010-present)
   // With 14 years of history, we have access to MILLIONS of unique positions
@@ -1038,11 +1042,14 @@ async function fetchLichessGames(
           // Skip if we've already seen this game in current batch
           if (gameIds.has(lichessGameId)) continue;
           
-          // CRITICAL: Pre-filter against already-analyzed games BEFORE adding to collection
-          // This is the key fix - skip games we've already processed in previous benchmark runs
-          if (analyzedData?.gameIds.has(lichessGameId)) {
+          // CRITICAL FIX: Check BOTH real Lichess IDs AND legacy gameIds
+          // analyzedData.gameIds contains ALL IDs (synthetic + real)
+          // The main loop will do position-hash based deduplication for legacy records
+          const isKnownGame = analyzedData?.gameIds.has(lichessGameId) || 
+                              (analyzedData as any)?.realLichessIds?.has(lichessGameId);
+          if (isKnownGame) {
             alreadyAnalyzedSkipped++;
-            console.log(`[Dedup] Skipping already-analyzed game: ${lichessGameId} (https://lichess.org/${lichessGameId})`);
+            console.log(`[Dedup] Pre-filter: game ${lichessGameId} already in database`);
             continue;
           }
           
