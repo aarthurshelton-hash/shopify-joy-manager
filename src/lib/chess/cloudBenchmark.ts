@@ -1,27 +1,29 @@
 /**
  * En Pensent™ vs TCEC Stockfish 17 Unlimited Benchmark
- * VERSION: 6.46-UNIFIED (2026-01-20)
+ * VERSION: 6.47-HIGHVOL (2026-01-20)
  * 
- * MULTI-SOURCE with Platform-Aware ELO Calibration
+ * HIGH-VOLUME MULTI-SOURCE with Platform-Aware ELO Calibration
  * 
  * DATA SOURCES:
  * - Lichess: 5+ BILLION games via Edge Function proxy
  * - Chess.com: Billions of games via public API
  * 
- * ELO CALIBRATION (Platform → FIDE):
- * - Lichess: Generally ~100-150 higher than FIDE
- * - Chess.com: Generally ~50-100 higher than FIDE
- * - We track source platform and apply appropriate calibration
+ * v6.47 CHANGES:
+ * - PARALLEL FETCHING: 3-4 players per chunk simultaneously
+ * - DEEPER HISTORY: Years of archives, not weeks
+ * - HIGHER LIMITS: 20+ players per source, 12+ months
+ * - TARGET: 100+ unique games per batch
  * 
- * KEY INSIGHT: With 5B+ games available, duplicate probability is ~1 in 16 million.
- * The issue was overly complex deduplication, not actual duplicates.
+ * ELO CALIBRATION (Platform → FIDE):
+ * - Lichess: -100 offset (Glicko-2 tends higher)
+ * - Chess.com: -50 offset (closer to FIDE)
  * 
  * Compares against TCEC SF17 (ELO 3600) - the strongest Stockfish configuration
  */
 
-// v6.46-UNIFIED: Multi-source with platform ELO calibration
-const CLOUD_BENCHMARK_VERSION = "6.46-UNIFIED";
-console.log(`[v6.46] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
+// v6.47-HIGHVOL: Parallel fetching + higher volume
+const CLOUD_BENCHMARK_VERSION = "6.47-HIGHVOL";
+console.log(`[v6.47] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
 
 import { Chess } from 'chess.js';
 import { evaluatePosition, type PositionEvaluation } from './lichessCloudEval';

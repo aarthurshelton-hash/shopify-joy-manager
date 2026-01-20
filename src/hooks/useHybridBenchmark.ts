@@ -1,28 +1,24 @@
 /**
- * Hybrid Benchmark Hook - MULTI-SOURCE v6.46
- * VERSION: 6.46-UNIFIED (2026-01-20)
+ * Hybrid Benchmark Hook - HIGH VOLUME v6.47
+ * VERSION: 6.47-HIGHVOL (2026-01-20)
  * 
- * ROOT CAUSE FIX: v6.45 imported fetchMultiSourceGames but never used it!
- * Now ACTUALLY uses multi-source fetching with platform-aware ELO calibration.
+ * v6.47 CHANGES:
+ * - PARALLEL FETCHING: Fetch from multiple players simultaneously
+ * - HIGHER TARGETS: Request 200+ games per batch
+ * - DEEPER HISTORY: Go back years instead of weeks
+ * - FASTER BATCHES: Reduced delays between parallel chunks
  * 
- * KEY INSIGHT: With 5+ BILLION games on Lichess alone, duplicates are statistically
- * near-impossible. The issue was overly complex deduplication blocking fresh games.
- * 
- * v6.46 CHANGES:
- * - REMOVED: Internal fetchLichessGames function (was shadowing multi-source)
- * - USES: fetchMultiSourceGames for Lichess + Chess.com
- * - ADDED: Platform-specific ELO calibration for FIDE conversion
- * - SIMPLIFIED: Minimal deduplication (only exact ID matches)
+ * With 5+ BILLION games on Lichess + billions on Chess.com,
+ * we should be absorbing 50+ games per batch easily.
  * 
  * ELO CALIBRATION (Platform → FIDE):
- * - Lichess: Generally ~100-150 higher than FIDE
- * - Chess.com: Generally ~50-100 higher than FIDE  
- * - We track source and apply appropriate calibration
+ * - Lichess: -100 offset (Glicko-2 tends higher)
+ * - Chess.com: -50 offset (closer to FIDE)
  */
 
-// v6.46-UNIFIED: Actually uses multi-source + platform ELO
-const BENCHMARK_VERSION = "6.46-UNIFIED";
-console.log(`[v6.46] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.47-HIGHVOL: Parallel fetching + higher volume
+const BENCHMARK_VERSION = "6.47-HIGHVOL";
+console.log(`[v6.47] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -500,34 +496,33 @@ export function useHybridBenchmark() {
       let allGames: any[] = [];
       let gameIndex = 0;
       let batchNumber = 0;
-      const maxBatches = Math.max(30, Math.ceil(gameCount / 2)); // v6.44: More batches allowed
+      const maxBatches = Math.max(50, Math.ceil(gameCount / 2)); // v6.47: Even more batches allowed
       
-      // v6.44: Request MUCH more games per batch - DB has many, need fresh ones
-      // With 802+ games in DB, we need to fetch many to find fresh ones
-      const fetchCount = Math.max(gameCount * 8, 150);
+      // v6.47-HIGHVOL: Request MUCH more games per batch
+      // Target: 200+ games per batch from parallel fetching
+      const targetPerBatch = Math.max(200, gameCount * 5);
       
-      // v6.46-UNIFIED: ACTUALLY USE fetchMultiSourceGames!
-      // With 5+ billion games available, DB overlap is statistically negligible
+      // v6.47-HIGHVOL: High-volume multi-source fetcher
       async function fetchMoreGames(): Promise<number> {
         batchNumber++;
-        console.log(`[v6.46] ========== BATCH ${batchNumber}/${maxBatches} ==========`);
-        console.log(`[v6.46] Queue: ${allGames.length - gameIndex} remaining, Predicted: ${predictedCount}/${gameCount}`);
-        console.log(`[v6.46] DB: ${analyzedData.gameIds.size} | Session: ${predictedIds.size} | Failed: ${failedGameIds.size}`);
+        console.log(`[v6.47] ========== BATCH ${batchNumber}/${maxBatches} ==========`);
+        console.log(`[v6.47] Queue: ${allGames.length - gameIndex} remaining, Predicted: ${predictedCount}/${gameCount}`);
+        console.log(`[v6.47] DB: ${analyzedData.gameIds.size} | Session: ${predictedIds.size} | Failed: ${failedGameIds.size}`);
         
         setProgress(prev => ({ 
           ...prev!, 
-          message: `Fetching from Lichess + Chess.com (batch ${batchNumber})...` 
+          message: `High-volume fetch from Lichess + Chess.com (batch ${batchNumber})...` 
         }));
         
-        // v6.46: USE THE MULTI-SOURCE FETCHER!
+        // v6.47: Request MUCH more - we have billions available
         const result = await fetchMultiSourceGames({
-          targetCount: Math.max(100, gameCount * 3), // Request plenty
+          targetCount: targetPerBatch,
           batchNumber,
           excludeIds: new Set([...analyzedData.gameIds, ...predictedIds, ...failedGameIds]),
-          sources: ['lichess', 'chesscom'], // BOTH sources
+          sources: ['lichess', 'chesscom'],
         });
         
-        console.log(`[v6.46] Multi-source returned: ${result.games.length} (Lichess: ${result.lichessCount}, Chess.com: ${result.chesscomCount})`);
+        console.log(`[v6.47] Multi-source returned: ${result.games.length} (Lichess: ${result.lichessCount}, Chess.com: ${result.chesscomCount})`);
         
         if (result.errors.length > 0) {
           console.warn(`[v6.46] Fetch errors:`, result.errors.slice(0, 3));

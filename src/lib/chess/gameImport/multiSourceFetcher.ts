@@ -1,13 +1,18 @@
 /**
- * Multi-Source Game Fetcher v1.0
- * Aggregates games from multiple chess platforms for benchmark testing
+ * Multi-Source Game Fetcher v2.0 - HIGH VOLUME
+ * VERSION: 6.47-HIGHVOL (2026-01-20)
+ * 
+ * v6.47 CHANGES:
+ * - PARALLEL FETCHING: Fetch from 3-4 players simultaneously per chunk
+ * - DEEPER HISTORY: Go back years (not weeks) for fresh games
+ * - HIGHER LIMITS: 20+ players per source, 12+ months of archives
+ * - FASTER BATCHES: Reduced inter-request delays
  * 
  * SOURCES:
- * - Lichess (via Edge Function proxy)
- * - Chess.com (public API - no token needed)
+ * - Lichess (via Edge Function proxy) - 5+ billion games
+ * - Chess.com (public API) - billions more
  * 
- * This effectively DOUBLES the available game pool and reduces
- * dependency on any single API's rate limits.
+ * TARGET: 100+ unique games per batch
  */
 
 import { supabase } from "@/integrations/supabase/client";
@@ -135,7 +140,8 @@ function chesscomToUnified(game: ChessComGame, username: string): UnifiedGameDat
 }
 
 /**
- * Fetch games from Chess.com
+ * Fetch games from Chess.com - HIGH VOLUME
+ * v6.47: Parallel player fetching + higher limits
  */
 async function fetchFromChessCom(
   targetCount: number,
@@ -146,30 +152,51 @@ async function fetchFromChessCom(
   const errors: string[] = [];
   const localIds = new Set<string>();
   
-  // Shuffle players with batch-based offset
+  // v6.47: Higher volume - more players, more months
   const startOffset = (batchNumber * 7) % CHESSCOM_TOP_PLAYERS.length;
   const shuffledPlayers = [
     ...CHESSCOM_TOP_PLAYERS.slice(startOffset), 
     ...CHESSCOM_TOP_PLAYERS.slice(0, startOffset)
   ].sort(() => Math.random() - 0.5);
   
-  console.log(`[ChessCom] Batch ${batchNumber}: Fetching from ${shuffledPlayers.slice(0, 5).join(', ')}...`);
+  console.log(`[ChessCom] Batch ${batchNumber}: Targeting ${targetCount} games from ${shuffledPlayers.slice(0, 8).join(', ')}...`);
   
-  let playersQueried = 0;
-  const maxPlayers = Math.min(10, shuffledPlayers.length);
+  // v6.47: Fetch from more players in PARALLEL
+  const maxPlayers = Math.min(20, shuffledPlayers.length);
+  const gamesPerPlayer = Math.ceil(targetCount / 4);
+  const monthsToFetch = 12 + (batchNumber * 2); // v6.47: More history as batches progress
   
-  for (const player of shuffledPlayers) {
-    if (games.length >= targetCount || playersQueried >= maxPlayers) break;
-    playersQueried++;
+  // v6.47: Parallel fetching - split into chunks of 4
+  const playerChunks: string[][] = [];
+  for (let i = 0; i < maxPlayers; i += 4) {
+    playerChunks.push(shuffledPlayers.slice(i, i + 4));
+  }
+  
+  for (const chunk of playerChunks) {
+    if (games.length >= targetCount) break;
     
-    // Rate limiting - Chess.com is generous but let's be respectful
-    await new Promise(r => setTimeout(r, 500));
+    // v6.47: Fetch chunk in parallel
+    const chunkPromises = chunk.map(async (player) => {
+      try {
+        const result = await fetchChessComGames(player, { 
+          max: gamesPerPlayer,
+          months: monthsToFetch
+        });
+        return { player, result };
+      } catch (e) {
+        return { player, error: e instanceof Error ? e.message : 'Unknown error' };
+      }
+    });
     
-    try {
-      const result = await fetchChessComGames(player, { 
-        max: Math.ceil(targetCount / 3),
-        months: 6 + batchNumber // Vary months based on batch for diversity
-      });
+    const chunkResults = await Promise.all(chunkPromises);
+    
+    for (const res of chunkResults) {
+      if ('error' in res) {
+        errors.push(`[ChessCom ${res.player}] ${res.error}`);
+        continue;
+      }
+      
+      const { player, result } = res;
       
       if (result.errors.length > 0) {
         errors.push(...result.errors.map(e => `[ChessCom ${player}] ${e}`));
@@ -192,18 +219,19 @@ async function fetchFromChessCom(
       if (addedFromPlayer > 0) {
         console.log(`[ChessCom] ✓ ${player}: +${addedFromPlayer} games`);
       }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Unknown error';
-      errors.push(`[ChessCom ${player}] ${msg}`);
     }
+    
+    // Small delay between chunks to be respectful
+    await new Promise(r => setTimeout(r, 300));
   }
   
-  console.log(`[ChessCom] Batch complete: ${games.length} games from ${playersQueried} players`);
+  console.log(`[ChessCom] Batch complete: ${games.length} games`);
   return { games, errors };
 }
 
 /**
- * Fetch games from Lichess (via Edge Function)
+ * Fetch games from Lichess (via Edge Function) - HIGH VOLUME
+ * v6.47: Parallel player fetching + aggressive time windows
  */
 async function fetchFromLichess(
   targetCount: number,
@@ -217,65 +245,85 @@ async function fetchFromLichess(
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
   
-  // Shuffle players
-  const startOffset = (batchNumber * 13) % LICHESS_TOP_PLAYERS.length;
+  // v6.47: More aggressive rotation with larger pool
+  const startOffset = (batchNumber * 17) % LICHESS_TOP_PLAYERS.length;
   const shuffledPlayers = [
     ...LICHESS_TOP_PLAYERS.slice(startOffset),
     ...LICHESS_TOP_PLAYERS.slice(0, startOffset)
   ].sort(() => Math.random() - 0.5);
   
-  console.log(`[Lichess] Batch ${batchNumber}: Fetching from ${shuffledPlayers.slice(0, 5).join(', ')}...`);
+  console.log(`[Lichess] Batch ${batchNumber}: Targeting ${targetCount} games from ${shuffledPlayers.slice(0, 8).join(', ')}...`);
   
-  let playersQueried = 0;
-  let rateLimitCount = 0;
-  const maxPlayers = Math.min(15, shuffledPlayers.length);
+  // v6.47: Higher limits
+  const maxPlayers = Math.min(25, shuffledPlayers.length);
   const gamesPerPlayer = Math.ceil(targetCount / 3);
+  let rateLimitHits = 0;
   
-  for (const player of shuffledPlayers) {
-    if (games.length >= targetCount || playersQueried >= maxPlayers) break;
-    playersQueried++;
-    
-    // Rate limit handling
-    if (rateLimitCount >= 2) {
-      console.warn(`[Lichess] Rate limited, waiting 10s...`);
-      await new Promise(r => setTimeout(r, 10000));
-      rateLimitCount = 0;
+  // v6.47: Parallel fetching in chunks of 3 (Lichess is more rate-limited)
+  const playerChunks: string[][] = [];
+  for (let i = 0; i < maxPlayers; i += 3) {
+    playerChunks.push(shuffledPlayers.slice(i, i + 3));
+  }
+  
+  for (const chunk of playerChunks) {
+    if (games.length >= targetCount) break;
+    if (rateLimitHits >= 3) {
+      console.warn(`[Lichess] Too many rate limits, waiting 15s...`);
+      await new Promise(r => setTimeout(r, 15000));
+      rateLimitHits = 0;
     }
     
-    await new Promise(r => setTimeout(r, 1200));
-    
-    // Random time window
-    const now = Date.now();
-    const oneDay = 24 * 60 * 60 * 1000;
-    const daysBack = (batchNumber * 17 + playersQueried * 7 + Math.floor(Math.random() * 50)) * 20;
-    const windowDuration = 30 + Math.floor(Math.random() * 60);
-    const until = now - (daysBack * oneDay);
-    const since = until - (windowDuration * oneDay);
-    
-    try {
-      const response = await fetch(`${supabaseUrl}/functions/v1/lichess-games`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseKey}`,
-          'apikey': supabaseKey
-        },
-        body: JSON.stringify({ player, since, until, max: gamesPerPlayer })
-      });
+    // v6.47: Calculate unique time windows for each player in chunk
+    const chunkPromises = chunk.map(async (player, idx) => {
+      const now = Date.now();
+      const oneDay = 24 * 60 * 60 * 1000;
+      // v6.47: Much deeper history - go back years, not just weeks
+      const baseDaysBack = batchNumber * 60 + idx * 30 + Math.floor(Math.random() * 100);
+      const windowDuration = 90 + Math.floor(Math.random() * 180); // 3-9 months
+      const until = now - (baseDaysBack * oneDay);
+      const since = until - (windowDuration * oneDay);
       
-      if (response.status === 429) {
-        rateLimitCount++;
-        errors.push(`[Lichess ${player}] Rate limited`);
+      try {
+        const response = await fetch(`${supabaseUrl}/functions/v1/lichess-games`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseKey}`,
+            'apikey': supabaseKey
+          },
+          body: JSON.stringify({ player, since, until, max: gamesPerPlayer })
+        });
+        
+        if (response.status === 429) {
+          return { player, rateLimit: true };
+        }
+        
+        if (!response.ok) {
+          return { player, error: `HTTP ${response.status}` };
+        }
+        
+        const data = await response.json();
+        return { player, games: data.games || [] };
+      } catch (e) {
+        return { player, error: e instanceof Error ? e.message : 'Unknown error' };
+      }
+    });
+    
+    const chunkResults = await Promise.all(chunkPromises);
+    
+    for (const res of chunkResults) {
+      if ('rateLimit' in res && res.rateLimit) {
+        rateLimitHits++;
+        errors.push(`[Lichess ${res.player}] Rate limited`);
         continue;
       }
       
-      if (!response.ok) {
-        errors.push(`[Lichess ${player}] HTTP ${response.status}`);
+      if ('error' in res) {
+        errors.push(`[Lichess ${res.player}] ${res.error}`);
         continue;
       }
       
-      const data = await response.json();
-      const fetchedGames = data.games || [];
+      const { player, games: fetchedGames } = res;
       
       let addedFromPlayer = 0;
       for (const game of fetchedGames) {
@@ -320,15 +368,15 @@ async function fetchFromLichess(
       
       if (addedFromPlayer > 0) {
         console.log(`[Lichess] ✓ ${player}: +${addedFromPlayer} games`);
-        rateLimitCount = 0;
+        rateLimitHits = 0;
       }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Unknown error';
-      errors.push(`[Lichess ${player}] ${msg}`);
     }
+    
+    // v6.47: Shorter delay between parallel chunks
+    await new Promise(r => setTimeout(r, 800));
   }
   
-  console.log(`[Lichess] Batch complete: ${games.length} games from ${playersQueried} players`);
+  console.log(`[Lichess] Batch complete: ${games.length} games`);
   return { games, errors };
 }
 
