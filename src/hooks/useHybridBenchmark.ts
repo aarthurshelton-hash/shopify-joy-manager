@@ -689,18 +689,41 @@ export function useHybridBenchmark() {
             benchmarkId = newBenchmark?.id || '';
           }
           
-          // Save new attempts
+          // v6.65-COMPLETE-ONLY: Only save attempts with COMPLETE predictions
+          // This allows failed game IDs to be re-captured in future runs
+          const VALID_PREDICTIONS = ['white', 'black', 'draw', 'white_wins', 'black_wins'];
+          const completeAttempts = newAttempts.filter(attempt => {
+            const hasValidHybrid = attempt.hybrid_prediction && 
+              attempt.hybrid_prediction !== 'unknown' &&
+              VALID_PREDICTIONS.includes(attempt.hybrid_prediction);
+            const hasValidStockfish = attempt.stockfish_prediction && 
+              attempt.stockfish_prediction !== 'unknown' &&
+              VALID_PREDICTIONS.includes(attempt.stockfish_prediction);
+            
+            if (!hasValidHybrid || !hasValidStockfish) {
+              console.log(`[v6.65] ⚠️ Skipping incomplete: ${attempt.game_id} (hybrid=${attempt.hybrid_prediction}, sf=${attempt.stockfish_prediction})`);
+              return false;
+            }
+            return true;
+          });
+          
+          // Save complete attempts only
           let savedCount = 0;
-          for (const attempt of newAttempts) {
+          for (const attempt of completeAttempts) {
             const { error: insertError } = await supabase.from('chess_prediction_attempts').insert({
               ...attempt,
               benchmark_id: benchmarkId,
             });
             if (insertError && !insertError.message?.includes('duplicate')) {
-              console.error(`[v6.64] Failed to save ${attempt.game_id}:`, insertError.message);
+              console.error(`[v6.65] Failed to save ${attempt.game_id}:`, insertError.message);
             } else {
               savedCount++;
             }
+          }
+          
+          const skippedCount = newAttempts.length - completeAttempts.length;
+          if (skippedCount > 0) {
+            console.log(`[v6.65] 🔄 ${skippedCount} incomplete predictions skipped (game IDs remain available for re-capture)`);
           }
           
           // v6.64: Single cache invalidation AFTER batch save (more efficient)

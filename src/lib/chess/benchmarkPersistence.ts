@@ -333,8 +333,26 @@ export async function saveBenchmarkResults(result: BenchmarkResult): Promise<str
 
     const benchmarkId = benchmarkData.id;
 
+    // v6.65-COMPLETE-ONLY: Filter to ONLY save attempts with COMPLETE predictions
+    // Invalid predictions block the game_id from re-capture in future runs
+    const VALID_PREDICTIONS = ['white', 'black', 'draw', 'white_wins', 'black_wins'];
+    
+    const validAttempts = result.predictionPoints.filter(attempt => {
+      const hybridPred = String(attempt.hybridPrediction || '');
+      const sfPred = String(attempt.stockfishPrediction || '');
+      
+      const hasValidHybrid = hybridPred && hybridPred !== 'unknown' && VALID_PREDICTIONS.includes(hybridPred);
+      const hasValidStockfish = sfPred && sfPred !== 'unknown' && VALID_PREDICTIONS.includes(sfPred);
+      
+      if (!hasValidHybrid || !hasValidStockfish) {
+        console.log(`[v6.65] Skipping incomplete prediction for ${attempt.gameId}: hybrid=${hybridPred}, sf=${sfPred}`);
+        return false;
+      }
+      return true;
+    });
+
     // Insert individual prediction attempts for learning
-    const attempts = result.predictionPoints.map(attempt => ({
+    const attempts = validAttempts.map(attempt => ({
       benchmark_id: benchmarkId,
       game_id: attempt.gameId,
       game_name: attempt.gameName,
@@ -356,6 +374,8 @@ export async function saveBenchmarkResults(result: BenchmarkResult): Promise<str
       data_quality_tier: 'tcec_calibrated',
       lichess_id_verified: true, // All games from cloud benchmark are verified real Lichess IDs
     }));
+    
+    console.log(`[v6.65] Saving ${attempts.length}/${result.predictionPoints.length} complete predictions (${result.predictionPoints.length - attempts.length} incomplete filtered out)`);
 
     // CRITICAL: Use batch inserts for large sets to avoid timeout issues
     const BATCH_SIZE = 25;
