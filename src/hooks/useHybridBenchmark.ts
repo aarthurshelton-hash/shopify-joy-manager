@@ -804,10 +804,11 @@ export function useHybridBenchmark() {
         console.error('Error saving benchmark:', benchmarkError);
       }
       
-      // Save individual attempts with error handling
+      // Save individual attempts with error handling and duplicate detection
       if (benchmark) {
         let savedCount = 0;
         let saveErrors = 0;
+        let duplicates = 0;
         
         for (const attempt of attempts) {
           const { error: insertError } = await supabase.from('chess_prediction_attempts').insert({
@@ -816,21 +817,28 @@ export function useHybridBenchmark() {
           });
           
           if (insertError) {
-            console.error(`[v6.2] Failed to save prediction for ${attempt.game_id}:`, insertError.message);
-            saveErrors++;
+            // Check if it's a duplicate key error (game already analyzed)
+            if (insertError.code === '23505' || insertError.message?.includes('duplicate')) {
+              console.log(`[v6.33] ℹ️ Game ${attempt.game_id} already in DB (duplicate), skipping`);
+              duplicates++;
+            } else {
+              console.error(`[v6.33] ❌ Failed to save prediction for ${attempt.game_id}:`, insertError.message);
+              saveErrors++;
+            }
           } else {
             savedCount++;
           }
         }
         
-        console.log(`[v6.2] Saved ${savedCount}/${attempts.length} predictions (${saveErrors} errors)`);
+        console.log(`[v6.33] Saved ${savedCount}/${attempts.length} predictions (${duplicates} duplicates, ${saveErrors} errors)`);
         
-        // If significant save failures, update the benchmark record
-        if (saveErrors > 0 && savedCount < attempts.length) {
+        // Update the benchmark record with actual saved count
+        const actualSaved = savedCount; // Duplicates don't count as new
+        if (actualSaved !== attempts.length) {
           await supabase.from('chess_benchmark_results')
-            .update({ completed_games: savedCount })
+            .update({ completed_games: actualSaved })
             .eq('id', benchmark.id);
-          console.log(`[v6.2] Updated benchmark completed_games to ${savedCount}`);
+          console.log(`[v6.33] Updated benchmark completed_games to ${actualSaved}`);
         }
       }
       

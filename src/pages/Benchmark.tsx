@@ -5,7 +5,7 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Slider } from '@/components/ui/slider';
-import { Brain, Cpu, Trophy, Play, Loader2, Clock, CheckCircle, XCircle, AlertCircle, Cloud, Database, TrendingUp, History, Layers, RefreshCw, Sparkles, Crown, Shield, Zap, BookOpen } from 'lucide-react';
+import { Brain, Cpu, Trophy, Play, Loader2, Clock, CheckCircle, XCircle, AlertCircle, Cloud, Database, TrendingUp, History, Layers, RefreshCw, Sparkles, Crown, Shield, Zap, BookOpen, MousePointer } from 'lucide-react';
 import { runCloudBenchmark, FAMOUS_GAMES, type BenchmarkResult, type PredictionAttempt } from '@/lib/chess/cloudBenchmark';
 import { checkLichessAvailability } from '@/lib/chess/lichessCloudEval';
 import { saveBenchmarkResults, getCumulativeStats, getArchetypeStats } from '@/lib/chess/benchmarkPersistence';
@@ -25,6 +25,7 @@ import {
   type LiveEloState 
 } from '@/lib/chess/liveEloTracker';
 import { useBenchmarkRateLimit } from '@/hooks/useRateLimit';
+import { GameDetailsModal } from '@/components/chess/GameDetailsModal';
 
 interface CumulativeStats {
   totalRuns: number;
@@ -544,29 +545,69 @@ export default function Benchmark() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
+                {/* Total Games - Clickable */}
+                <GameDetailsModal
+                  filter="all"
+                  title="All Analyzed Games"
+                  trigger={
+                    <div className="p-3 bg-background/50 rounded-lg cursor-pointer hover:bg-accent/50 transition-colors group">
+                      <p className="text-2xl font-bold group-hover:text-primary">{cumulativeStats.totalGamesAnalyzed}</p>
+                      <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                        Total Games <MousePointer className="h-3 w-3 opacity-0 group-hover:opacity-100" />
+                      </p>
+                    </div>
+                  }
+                />
+                {/* Hybrid Wins - Clickable */}
+                <GameDetailsModal
+                  filter="hybrid_wins"
+                  title="En Pensent Wins (Correct when SF Wrong)"
+                  trigger={
+                    <div className="p-3 bg-background/50 rounded-lg cursor-pointer hover:bg-accent/50 transition-colors group">
+                      <p className="text-2xl font-bold text-primary group-hover:brightness-125">{cumulativeStats.hybridWins}</p>
+                      <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                        EP Wins <MousePointer className="h-3 w-3 opacity-0 group-hover:opacity-100" />
+                      </p>
+                    </div>
+                  }
+                />
+                {/* Stockfish Wins - Clickable */}
+                <GameDetailsModal
+                  filter="stockfish_wins"
+                  title="Stockfish Wins (Correct when EP Wrong)"
+                  trigger={
+                    <div className="p-3 bg-background/50 rounded-lg cursor-pointer hover:bg-accent/50 transition-colors group">
+                      <p className="text-2xl font-bold text-blue-500 group-hover:brightness-125">{cumulativeStats.stockfishWins}</p>
+                      <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                        SF Wins <MousePointer className="h-3 w-3 opacity-0 group-hover:opacity-100" />
+                      </p>
+                    </div>
+                  }
+                />
+                {/* Both Correct - Clickable */}
+                <GameDetailsModal
+                  filter="both_correct"
+                  title="Both Correct (Consensus)"
+                  trigger={
+                    <div className="p-3 bg-background/50 rounded-lg cursor-pointer hover:bg-accent/50 transition-colors group">
+                      <p className="text-2xl font-bold text-green-500 group-hover:brightness-125">{cumulativeStats.bothCorrect}</p>
+                      <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                        Both ✓ <MousePointer className="h-3 w-3 opacity-0 group-hover:opacity-100" />
+                      </p>
+                    </div>
+                  }
+                />
+                {/* Net Advantage */}
                 <div className="p-3 bg-background/50 rounded-lg">
-                  <p className="text-2xl font-bold">{cumulativeStats.totalGamesAnalyzed}</p>
-                  <p className="text-xs text-muted-foreground">Total Games</p>
-                </div>
-                <div className="p-3 bg-background/50 rounded-lg">
-                  <p className="text-2xl font-bold text-purple-500">{cumulativeStats.overallHybridAccuracy.toFixed(1)}%</p>
-                  <p className="text-xs text-muted-foreground">Hybrid Accuracy</p>
-                </div>
-                <div className="p-3 bg-background/50 rounded-lg">
-                  <p className="text-2xl font-bold text-blue-500">{cumulativeStats.overallStockfishAccuracy.toFixed(1)}%</p>
-                  <p className="text-xs text-muted-foreground">SF17 Accuracy</p>
-                </div>
-                <div className="p-3 bg-background/50 rounded-lg">
-                  <p className={`text-2xl font-bold ${cumulativeStats.hybridNetWins > 0 ? 'text-green-500' : cumulativeStats.hybridNetWins < 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
+                  <p className={`text-2xl font-bold ${cumulativeStats.hybridNetWins > 0 ? 'text-green-500' : cumulativeStats.hybridNetWins < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
                     {cumulativeStats.hybridNetWins > 0 ? '+' : ''}{cumulativeStats.hybridNetWins}
                   </p>
-                  <p className="text-xs text-muted-foreground">Hybrid Net Wins</p>
-                </div>
-                <div className="p-3 bg-background/50 rounded-lg">
-                  <p className="text-lg font-bold text-green-500 truncate">{cumulativeStats.bestArchetype || 'N/A'}</p>
-                  <p className="text-xs text-muted-foreground">Best Archetype</p>
+                  <p className="text-xs text-muted-foreground">Net Advantage</p>
                 </div>
               </div>
+              <p className="text-xs text-muted-foreground text-center mt-3 flex items-center justify-center gap-1">
+                <MousePointer className="h-3 w-3" /> Click any stat to view detailed game list with Lichess verification links
+              </p>
             </CardContent>
           </Card>
         )}
