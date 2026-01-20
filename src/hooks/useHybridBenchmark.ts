@@ -11,9 +11,9 @@
  * That's it. No over-engineering.
  */
 
-// v6.35-RANDOMTIME: Truly random time windows + more players per batch for variety
-const BENCHMARK_VERSION = "6.35-RANDOMTIME";
-console.log(`[v6.35] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.36-DEEPPOOL: Deep player pool + per-player random windows + higher resilience
+const BENCHMARK_VERSION = "6.36-DEEPPOOL";
+console.log(`[v6.36] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -501,11 +501,11 @@ export function useHybridBenchmark() {
       // v6.33: Add dbDupe tracking for games already in database
       let skipStats = { invalidId: 0, dbDupe: 0, sessionDupe: 0, shortGame: 0, timeout: 0, parseError: 0 };
       
-      // v6.33: Persistent refetch with better resilience
+      // v6.36: Higher resilience thresholds for larger DB
       let emptyBatchStreak = 0;
-      const MAX_EMPTY_BATCHES = 8;
+      const MAX_EMPTY_BATCHES = 15; // v6.36: Up from 8 to handle larger DB
       
-      // v6.33: Track consecutive skips to detect problematic patterns
+      // v6.36: Track consecutive skips to detect problematic patterns
       let consecutiveSkips = 0;
       const MAX_CONSECUTIVE_SKIPS = 100;
       
@@ -957,34 +957,25 @@ async function fetchLichessGames(
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
   
-  // v6.35-RANDOMTIME: Truly random time windows to find fresh games
+  // v6.36-DEEPPOOL: Each player gets their own random time window for maximum diversity
   function getRandomTimeWindow(): { since: number; until: number } {
     const now = Date.now();
     const oneDay = 24 * 60 * 60 * 1000;
     
-    // v6.35: TRULY random across entire Lichess history (2010-present)
-    // With 242+ games already analyzed, we need more variety
-    const maxDaysBack = 365 * 14; // Go back up to 14 years (Lichess started ~2010)
-    const minDaysBack = 0;
-    
-    // v6.35: Each batch gets a completely random window
-    // This avoids the "progressive" approach that can get stuck on depleted windows
-    const randomDaysBack = Math.floor(Math.random() * (maxDaysBack - minDaysBack)) + minDaysBack;
+    // v6.36: Random across Lichess history (2010-present, ~14 years)
+    const maxDaysBack = 365 * 14;
+    const randomDaysBack = Math.floor(Math.random() * maxDaysBack);
     
     const windowEnd = now - (randomDaysBack * oneDay);
-    const windowDuration = 30 + Math.floor(Math.random() * 60); // 30-90 day windows for more variety
+    const windowDuration = 30 + Math.floor(Math.random() * 90); // 30-120 day windows
     const windowStart = windowEnd - (windowDuration * oneDay);
     
-    // Ensure we don't go into the future
-    const safeWindowEnd = Math.min(windowEnd, now);
-    
-    console.log(`[v6.35] Time window: ${new Date(windowStart).toISOString().split('T')[0]} to ${new Date(safeWindowEnd).toISOString().split('T')[0]} (${randomDaysBack}d back, ${windowDuration}d span)`);
-    return { since: Math.max(0, windowStart), until: safeWindowEnd };
+    return { since: Math.max(0, windowStart), until: Math.min(windowEnd, now) };
   }
   
   let rateLimitCount = 0;
   let playersQueried = 0;
-  const maxPlayersPerBatch = 15; // v6.35: More players per batch to increase variety
+  const maxPlayersPerBatch = 20; // v6.36: More players for diversity
   
   for (const player of shuffledPlayers) {
     if (games.length >= targetGames || playersQueried >= maxPlayersPerBatch) break;
@@ -992,17 +983,17 @@ async function fetchLichessGames(
     
     // Rate limit backoff
     if (rateLimitCount >= 2) {
-      console.warn(`[v6.32] Rate limited ${rateLimitCount}x, waiting 10s...`);
+      console.warn(`[v6.36] Rate limited ${rateLimitCount}x, waiting 10s...`);
       await new Promise(r => setTimeout(r, 10000));
       rateLimitCount = 0;
     }
     
-    // v6.32: 1.5s delay - faster but still respectful
-    await new Promise(r => setTimeout(r, 1500));
+    // v6.36: 1.2s delay - slightly faster
+    await new Promise(r => setTimeout(r, 1200));
     
-    // v6.32: Truly random time window
+    // v6.36: EACH PLAYER gets their OWN random time window
     const { since, until } = getRandomTimeWindow();
-    console.log(`[v6.32] ${player}: ${new Date(since).toISOString().split('T')[0]} to ${new Date(until).toISOString().split('T')[0]}`);
+    console.log(`[v6.36] ${player}: ${new Date(since).toISOString().split('T')[0]} to ${new Date(until).toISOString().split('T')[0]}`);
     
     try {
       const response = await fetch(`${supabaseUrl}/functions/v1/lichess-games`, {

@@ -12,9 +12,9 @@
  * Uses Lichess Cloud API with TCEC-calibrated prediction thresholds
  */
 
-// v6.35-RANDOMTIME: Truly random time windows for fresh game discovery
-const CLOUD_BENCHMARK_VERSION = "6.35-RANDOMTIME";
-console.log(`[v6.35] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
+// v6.36-DEEPPOOL: Deep player pool + per-player random windows
+const CLOUD_BENCHMARK_VERSION = "6.36-DEEPPOOL";
+console.log(`[v6.36] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
 
 import { Chess } from 'chess.js';
 import { evaluatePosition, type PositionEvaluation } from './lichessCloudEval';
