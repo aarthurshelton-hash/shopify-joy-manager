@@ -49,9 +49,7 @@ serve(async (req) => {
     }
     lastRequestTime = Date.now();
 
-    const sinceStr = since ? new Date(since).toISOString() : 'oldest';
-    const untilStr = until ? new Date(until).toISOString() : 'now';
-    console.log(`[Lichess Games] Fetching games for ${player} (since: ${sinceStr}, until: ${untilStr})`);
+    console.log(`[Lichess Games] Fetching games for ${player} (since: ${new Date(since).toISOString()}, until: ${new Date(until).toISOString()})`);
 
     const url = `https://lichess.org/api/games/user/${encodeURIComponent(player)}?` + 
       `max=${max}&` +
