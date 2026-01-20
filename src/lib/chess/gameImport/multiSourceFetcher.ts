@@ -1,14 +1,15 @@
 /**
  * Multi-Source Game Fetcher v2.0 - HIGH VOLUME
- * VERSION: 6.53-BULLETPROOF (2026-01-20)
+ * VERSION: 6.54-RATELIMIT (2026-01-20)
+ * 
+ * v6.54 CHANGES:
+ * - Exponential backoff for rate limit handling
+ * - Reduced chunk size (2 instead of 3) for Lichess
+ * - Adaptive delays after rate limit encounters
+ * - Longer cache TTL on edge function (10 min)
  * 
  * v6.53 CHANGES:
  * - Extract moves from Chess.com PGN for reliable parsing
- * - Better validation to ensure games have usable content
- * - Improved logging for debugging fetch issues
- * 
- * v6.52 CHANGES:
- * - Improved ID validation to handle both prefixed and raw IDs
  * - Better error logging for filtered games
  * - Ensures valid games aren't filtered incorrectly
  * 
@@ -302,18 +303,21 @@ async function fetchFromLichess(
   const maxPlayers = Math.min(25, shuffledPlayers.length);
   const gamesPerPlayer = Math.ceil(targetCount / 3);
   let rateLimitHits = 0;
+  let backoffMs = 1000; // Start with 1s backoff
   
-  // v6.47: Parallel fetching in chunks of 3 (Lichess is more rate-limited)
+  // v6.54: Parallel fetching in chunks of 2 (more conservative to avoid rate limits)
   const playerChunks: string[][] = [];
-  for (let i = 0; i < maxPlayers; i += 3) {
-    playerChunks.push(shuffledPlayers.slice(i, i + 3));
+  for (let i = 0; i < maxPlayers; i += 2) {
+    playerChunks.push(shuffledPlayers.slice(i, i + 2));
   }
   
   for (const chunk of playerChunks) {
     if (games.length >= targetCount) break;
-    if (rateLimitHits >= 3) {
-      console.warn(`[Lichess] Too many rate limits, waiting 15s...`);
-      await new Promise(r => setTimeout(r, 15000));
+    if (rateLimitHits >= 2) {
+      // Exponential backoff after rate limits
+      const waitTime = Math.min(backoffMs * Math.pow(2, rateLimitHits - 1), 30000);
+      console.warn(`[Lichess] Rate limit backoff: waiting ${waitTime}ms...`);
+      await new Promise(r => setTimeout(r, waitTime));
       rateLimitHits = 0;
     }
     
@@ -358,7 +362,8 @@ async function fetchFromLichess(
     for (const res of chunkResults) {
       if ('rateLimit' in res && res.rateLimit) {
         rateLimitHits++;
-        errors.push(`[Lichess ${res.player}] Rate limited`);
+        backoffMs = Math.min(backoffMs * 1.5, 10000); // Increase backoff
+        errors.push(`[Lichess ${res.player}] Rate limited (backoff: ${backoffMs}ms)`);
         continue;
       }
       
@@ -418,11 +423,13 @@ async function fetchFromLichess(
       if (addedFromPlayer > 0) {
         console.log(`[Lichess] ✓ ${player}: +${addedFromPlayer} games`);
         rateLimitHits = 0;
+        backoffMs = Math.max(backoffMs * 0.8, 1000); // Reduce backoff on success
       }
     }
     
-    // v6.47: Shorter delay between parallel chunks
-    await new Promise(r => setTimeout(r, 800));
+    // v6.54: Adaptive delay - longer after rate limits
+    const chunkDelay = rateLimitHits > 0 ? 2000 : 1200;
+    await new Promise(r => setTimeout(r, chunkDelay));
   }
   
   console.log(`[Lichess] Batch complete: ${games.length} games`);

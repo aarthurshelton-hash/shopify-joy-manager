@@ -5,13 +5,29 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Simple in-memory cache for rate limit protection (5-minute TTL)
+// Simple in-memory cache for rate limit protection (10-minute TTL)
 const cache = new Map<string, { data: unknown; timestamp: number }>();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutes (longer to reduce repeated hits)
 
-// Track last request time for throttling
+// Track last request time for throttling with exponential backoff
 let lastRequestTime = 0;
-const MIN_REQUEST_INTERVAL = 2000; // 2 seconds between requests
+let baseInterval = 2500; // Start at 2.5 seconds
+let consecutiveRequests = 0;
+let lastRateLimitTime = 0;
+
+// Dynamic interval: increases after rate limits, decreases after successful requests
+function getRequestInterval(): number {
+  const timeSinceRateLimit = Date.now() - lastRateLimitTime;
+  // If we hit a rate limit recently (last 60s), use longer intervals
+  if (timeSinceRateLimit < 60000) {
+    return Math.min(baseInterval * 2, 10000); // Max 10s
+  }
+  // After 5+ consecutive successful requests, reduce interval
+  if (consecutiveRequests > 5) {
+    return Math.max(baseInterval * 0.8, 2000); // Min 2s
+  }
+  return baseInterval;
+}
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -40,11 +56,13 @@ serve(async (req) => {
       );
     }
 
-    // Server-side throttle: wait if needed
+    // Server-side throttle with adaptive interval
     const now = Date.now();
+    const interval = getRequestInterval();
     const timeSinceLastRequest = now - lastRequestTime;
-    if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
-      const waitTime = MIN_REQUEST_INTERVAL - timeSinceLastRequest;
+    if (timeSinceLastRequest < interval) {
+      const waitTime = interval - timeSinceLastRequest;
+      console.log(`[Lichess Games] Throttling: waiting ${waitTime}ms (interval: ${interval}ms)`);
       await new Promise(resolve => setTimeout(resolve, waitTime));
     }
     lastRequestTime = Date.now();
@@ -71,10 +89,13 @@ serve(async (req) => {
     });
 
     if (response.status === 429) {
-      console.warn(`[Lichess Games] Rate limited for ${player}`);
+      console.warn(`[Lichess Games] Rate limited for ${player} - increasing backoff`);
+      lastRateLimitTime = Date.now();
+      baseInterval = Math.min(baseInterval * 1.5, 10000); // Increase base interval, max 10s
+      consecutiveRequests = 0;
       return new Response(
-        JSON.stringify({ error: 'Rate limited', retryAfter: 60 }),
-        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'Rate limited', retryAfter: 60, backoffMs: baseInterval }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '60' } }
       );
     }
 
@@ -193,6 +214,11 @@ ${game.moves} ${resultTag}`;
     }
 
     console.log(`[Lichess Games] Fetched ${games.length} valid games for ${player}`);
+    consecutiveRequests++;
+    // Gradually reduce interval after successful requests
+    if (consecutiveRequests > 3) {
+      baseInterval = Math.max(baseInterval * 0.95, 2000);
+    }
 
     // Cache successful response
     const responseData = { games, count: games.length };
