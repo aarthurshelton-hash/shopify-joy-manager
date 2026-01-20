@@ -1,33 +1,24 @@
 /**
  * Hybrid Benchmark Hook - MAXIMUM DEPTH SYNCHRONIZED SYSTEM
- * VERSION: 4.0-REAL-IDS-ONLY (2026-01-20)
+ * VERSION: 4.2-SINGLE-GATE (2026-01-20)
  * 
  * CRITICAL: This version ONLY uses REAL 8-character Lichess IDs.
  * NO synthetic IDs are ever generated, stored, or used for deduplication.
  * 
+ * v4.2 Changes:
+ * - SINGLE-GATE deduplication: one check, one decision, zero confusion
+ * - Removed redundant validation checks (already validated at gate)
+ * - Cleaner logging: [NEW] for predictions, [INVALID]/[SHORT] for skips
+ * 
  * v4.0 Changes:
  * - gameIds Set now contains ONLY real Lichess IDs (synthetic filtered at load)
  * - Removed realLichessIds separate tracking (gameIds IS realLichessIds now)
- * - Simplified deduplication logic throughout
  * 
  * Uses LOCAL Stockfish WASM at MAXIMUM DEPTH (60+) for true 100% capacity testing.
- * This is the "truly hybrid" system - combining:
- * - Local Stockfish 17 WASM at depth 60+ (not cached cloud positions)
- * - En Pensent FULL SCOPE with ALL 25 domain adapters active
- * - Universal Synthesizer for multi-domain prediction
- * - Player Fingerprinting for mental weakness detection
- * - Time Control Style Profiling across all game modes
- * 
- * When testing against 100% depth Stockfish, we operate at 100% En Pensent capacity:
- * - All 25 domain adapters active (Atomic, Cosmic, Botanical, Mycelium, etc.)
- * - Full archetype classification with 21+ archetypes
- * - Complete temporal signature analysis
- * - Player fingerprint mental weak point detection
- * - Scientific formulations (Kuramoto, Shannon, Hurst, Φ)
  */
 
 // Version tag for debugging cached code issues
-const BENCHMARK_VERSION = "4.1-BULLETPROOF-DEDUP";
+const BENCHMARK_VERSION = "4.2-SINGLE-GATE";
 console.log(`[useHybridBenchmark] Loaded version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
@@ -422,8 +413,8 @@ export function useHybridBenchmark() {
       const analyzedData = await getAlreadyAnalyzedData();
       let skippedDuplicates = 0;
       
-      // v4.1: Bulletproof deduplication - gameIds contains ONLY real Lichess IDs
-      console.log(`[DEDUP] Loaded ${analyzedData.gameIds.size} previously analyzed games from database`);
+      // v4.2 SINGLE-GATE: gameIds is the ONLY source of truth for deduplication
+      console.log(`[v4.2] ${analyzedData.gameIds.size} games in database - will skip these, predict everything else`);
       
       setProgress(prev => ({ 
         ...prev!, 
@@ -512,48 +503,46 @@ export function useHybridBenchmark() {
         });
         
         try {
-          const { moves, result: gameResult, fen, moveNumber } = parsePGN(game.pgn, predictionMoveRange);
-          
-          // Minimum 10 moves to have meaningful position
-          if (moves.length < 10) {
-            console.log(`[Skip] Game ${game.lichessId} has only ${moves.length} moves, need 10+ for analysis`);
-            continue;
-          }
-          
-          // Log PGN parse success
-          console.log(`[Parse] Game ${game.lichessId}: ${moves.length} moves, result=${gameResult}, move ${moveNumber}`);
-          
-          // CRITICAL: Use the REAL 8-character Lichess ID (e.g., "ZhoooCoY")
-          // This ID links directly to lichess.org/{id} for verification
+          // ========================================
+          // v4.2 SINGLE-GATE DEDUPLICATION
+          // One check, one decision, zero confusion
+          // ========================================
           const lichessGameId = game.lichessId;
           
-          // Validate: Real Lichess IDs are 8 alphanumeric characters
+          // Gate 1: Valid ID format (8 alphanumeric chars)
           if (!lichessGameId || lichessGameId.length !== 8 || !/^[a-zA-Z0-9]+$/.test(lichessGameId)) {
-            console.error(`[AUDIT FAIL] Invalid Lichess ID: "${lichessGameId}" - skipping game`);
+            console.log(`[INVALID] Game has invalid ID format: "${lichessGameId}" - skipping`);
             continue;
           }
           
-          // v4.0 BULLETPROOF GAME-BASED DEDUPLICATION
-          // Check BOTH the database set AND mark immediately to prevent any race conditions
-          const alreadyInDb = analyzedData.gameIds.has(lichessGameId);
-          
-          if (alreadyInDb) {
+          // Gate 2: THE ONLY DEDUPLICATION CHECK
+          // If we've EVER seen this game (in DB or this run), skip it immediately
+          if (analyzedData.gameIds.has(lichessGameId)) {
             skippedDuplicates++;
-            console.log(`[SKIP-DB] Game ${lichessGameId} already in database - skipping`);
+            // Silent skip - we already logged this at fetch time or it was in DB
             continue;
           }
           
-          // IMMEDIATELY mark as processed BEFORE any async work
-          // This prevents the same game from being processed twice within a run
+          // PASSED ALL GATES - This is a NEW game we will predict
+          // Mark it NOW before any async work to prevent race conditions
           analyzedData.gameIds.add(lichessGameId);
           
-          console.log(`[PROCESS] ✓ New game ${lichessGameId} - processing (https://lichess.org/${lichessGameId})`);
+          const { moves, result: gameResult, fen, moveNumber } = parsePGN(game.pgn, predictionMoveRange);
           
-          // Generate position hash for LEARNING (cross-reference patterns, NOT deduplication)
+          // Gate 3: Minimum moves for meaningful analysis
+          if (moves.length < 10) {
+            console.log(`[SHORT] Game ${lichessGameId} has ${moves.length} moves (need 10+) - skipping`);
+            // Note: game is already marked, so it won't be retried
+            continue;
+          }
+          
+          // ✅ THIS GAME WILL BE PREDICTED
+          console.log(`[NEW] ✓ Predicting game ${lichessGameId} (${moves.length} moves, result=${gameResult}) - https://lichess.org/${lichessGameId}`);
+          
+          // Position hash for pattern LEARNING only (not deduplication)
           const positionHash = hashPosition(fen);
-          const isKnownPosition = analyzedData.positionHashes.has(positionHash);
-          if (isKnownPosition) {
-            console.log(`[Pattern Boost] Position from new game matches known pattern - strengthening confidence`);
+          if (analyzedData.positionHashes.has(positionHash)) {
+            console.log(`[PATTERN] Same position in different game - strengthening pattern confidence`);
             reaffirmExistingPrediction(fen, positionHash).catch(() => {});
           }
           analyzedData.positionHashes.add(positionHash);
@@ -624,19 +613,8 @@ export function useHybridBenchmark() {
           const blackEloDisplay = game.blackElo ? ` (${game.blackElo})` : '';
           const gameName = `${whiteName}${whiteEloDisplay} vs ${blackName}${blackEloDisplay}`;
           
-          // The lichessGameId was already validated above (8 alphanumeric chars)
-          // Use it for saving to database - this is the REAL Lichess ID
+          // Use the validated lichessGameId (already confirmed as 8-char alphanumeric above)
           const gameIdForDb = lichessGameId;
-          
-          // AUDIT: Verify this is a REAL 8-char Lichess ID (final validation)
-          if (gameIdForDb.length !== 8 || !/^[a-zA-Z0-9]+$/.test(gameIdForDb)) {
-            console.error(`[CRITICAL] Non-8-char ID slipped through: "${gameIdForDb}" - REJECTING`);
-            continue;
-          }
-          
-          // Add to analyzed data immediately so we don't re-analyze this game
-          analyzedData.gameIds.add(gameIdForDb);
-          console.log(`[SAVED] ✓ Game ${gameIdForDb} recorded - will skip in future runs`);
           
           const attemptData = {
             game_id: gameIdForDb, // ALWAYS real 8-char Lichess ID (verified)
