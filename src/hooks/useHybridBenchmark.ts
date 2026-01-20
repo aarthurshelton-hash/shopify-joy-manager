@@ -16,9 +16,9 @@
  * - Chess.com: -50 offset (closer to FIDE)
  */
 
-// v6.57-ID-ONLY: Only filter is gameId deduplication - absorb everything else
-const BENCHMARK_VERSION = "6.57-ID-ONLY";
-console.log(`[v6.57] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.58-UNIFIED-ID: Fixed ID validation to support prefixed IDs (li_/cc_)
+const BENCHMARK_VERSION = "6.58-UNIFIED-ID";
+console.log(`[v6.58] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -801,13 +801,8 @@ export function useHybridBenchmark() {
           fen = parsed.fen;
           moveNumber = parsed.moveNumber;
           
-          if (moves.length < 4) {
-          console.log(`[v6.48] Skip short: ${gameId} (${moves.length} moves)`);
-          skipStats.shortGame++;
-          failedGameIds.add(gameId);
-          consecutiveSkips++;
-          continue;
-          }
+          // v6.57-ID-ONLY: Removed moves.length check - universal intelligence handles short games
+          // Only truly empty games (0-1 moves) will fail naturally in analysis
         } catch (e) {
           console.log(`[v6.48] Skip parse error: ${gameId}`, e);
           skipStats.parseError++;

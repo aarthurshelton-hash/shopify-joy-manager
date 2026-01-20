@@ -1,9 +1,9 @@
 /**
  * En Pensent™ vs TCEC Stockfish 17 Unlimited Benchmark
- * VERSION: 6.54-RATELIMIT (2026-01-20)
+ * VERSION: 6.58-UNIFIED-ID (2026-01-20)
  * 
- * v6.54: Exponential backoff + adaptive throttling for rate limits
- * 
+ * v6.58: Fixed ID validation to support prefixed IDs (li_/cc_)
+ *
  * DATA SOURCES:
  * - Lichess: 5+ BILLION games via Edge Function proxy
  * - Chess.com: Billions of games via public API

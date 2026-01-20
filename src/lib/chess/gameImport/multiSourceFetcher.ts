@@ -1,13 +1,13 @@
 /**
  * Multi-Source Game Fetcher v2.0 - HIGH VOLUME
- * VERSION: 6.57-ID-ONLY (2026-01-20)
+ * VERSION: 6.58-UNIFIED-ID (2026-01-20)
+ * 
+ * v6.58 CHANGES:
+ * - Fixed ID validation to support prefixed IDs (li_/cc_)
+ * - Removed all content-based filters (length, moves count)
+ * - Only ID-based deduplication
  * 
  * v6.57 CHANGES:
- * - ONLY filter is gameId deduplication - absorb everything else
- * - Better PGN content extraction for Chess.com
- * - Improved logging for debugging conversion rates
- * 
- * v6.54 CHANGES:
  * - Extract moves from Chess.com PGN for reliable parsing
  * - Better error logging for filtered games
  * - Ensures valid games aren't filtered incorrectly
