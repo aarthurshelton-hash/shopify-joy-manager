@@ -11,9 +11,9 @@
  * That's it. No over-engineering.
  */
 
-// v6.24-SESSFIX: Fix session duplicate logic + truly random time windows
-const BENCHMARK_VERSION = "6.24-SESSFIX";
-console.log(`[v6.24] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.25-DATAWEIGHT: Weight time windows toward data-rich years (2020-2025)
+const BENCHMARK_VERSION = "6.25-DATAWEIGHT";
+console.log(`[v6.25] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -507,13 +507,14 @@ export function useHybridBenchmark() {
       while (predictedCount < gameCount && !abortRef.current && batchNumber < maxBatches) {
         // Check if we need more games
         if (gameIndex >= allGames.length) {
-          console.log(`[v6.14] Exhausted queue at index ${gameIndex}, need more games (${predictedCount}/${gameCount} predictions)`);
+          console.log(`[v6.25] Exhausted queue at index ${gameIndex}, need more games (${predictedCount}/${gameCount} predictions)`);
+          console.log(`[v6.25] SKIP STATS: invalid=${skipStats.invalidId}, dbDupe=${skipStats.dbDupe}, short=${skipStats.shortGame}, timeout=${skipStats.timeout}, parse=${skipStats.parseError}`);
           const newCount = await fetchMoreGames();
           if (newCount === 0) {
             emptyBatchStreak++;
-            console.warn(`[v6.24] Empty batch #${emptyBatchStreak}/${MAX_EMPTY_BATCHES} (predicted ${predictedIds.size} this session)`);
+            console.warn(`[v6.25] Empty batch #${emptyBatchStreak}/${MAX_EMPTY_BATCHES} (predicted ${predictedIds.size} this session)`);
             if (emptyBatchStreak >= MAX_EMPTY_BATCHES) {
-              console.warn(`[v6.14] Too many empty batches, stopping.`);
+              console.warn(`[v6.25] Too many empty batches, stopping.`);
               break;
             }
             // Keep trying! Don't break on first empty batch
@@ -529,21 +530,21 @@ export function useHybridBenchmark() {
         
         // Simple validation
         if (!lichessId || lichessId.length !== 8) {
-          console.log(`[v6.24] Skip invalid ID: ${lichessId}`);
+          console.log(`[v6.25] Skip invalid ID: ${lichessId}`);
           skipStats.invalidId++;
           continue;
         }
         
-        // v6.24: Check against DB at prediction time
+        // v6.25: Check against DB at prediction time
         if (analyzedData.gameIds.has(lichessId)) {
-          console.log(`[v6.24] Skip DB duplicate: ${lichessId}`);
+          // Don't spam console for expected DB dupes
           skipStats.dbDupe++;
           continue;
         }
         
-        // v6.24-SESSFIX: Only skip if we've ALREADY PREDICTED this game this session
+        // v6.25: Only skip if we've ALREADY PREDICTED this game this session
         if (predictedIds.has(lichessId)) {
-          console.log(`[v6.24] Skip already predicted this session: ${lichessId}`);
+          console.log(`[v6.25] Skip already predicted this session: ${lichessId}`);
           skipStats.dbDupe++;
           continue;
         }
@@ -933,15 +934,25 @@ async function fetchLichessGames(
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
   
-  // v6.24-SESSFIX: TRULY RANDOM time windows for maximum diversity
+  // v6.25-DATAWEIGHT: Weight time windows toward data-rich years (2020-2025)
+  // 70% chance recent years (2022-2025), 30% chance older (2020-2021)
   function getRandomTimeWindow(): { since: number; until: number } {
     const now = Date.now();
-    const dataRichMinYear = 2018;
-    const maxYear = new Date().getFullYear();
     
-    // v6.24: TRULY RANDOM - no seeding, pure randomness for each call
-    const yearRange = maxYear - dataRichMinYear + 1;
-    const targetYear = dataRichMinYear + Math.floor(Math.random() * yearRange);
+    // v6.25: Weighted random toward recent years where data is densest
+    let targetYear: number;
+    const roll = Math.random();
+    if (roll < 0.4) {
+      // 40% chance: 2024-2025 (most active)
+      targetYear = 2024 + Math.floor(Math.random() * 2);
+    } else if (roll < 0.75) {
+      // 35% chance: 2022-2023
+      targetYear = 2022 + Math.floor(Math.random() * 2);
+    } else {
+      // 25% chance: 2020-2021
+      targetYear = 2020 + Math.floor(Math.random() * 2);
+    }
+    
     const targetMonth = Math.floor(Math.random() * 12);
     const targetDay = 1 + Math.floor(Math.random() * 28);
     
