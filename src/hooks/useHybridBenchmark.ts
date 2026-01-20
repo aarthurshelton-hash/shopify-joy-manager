@@ -19,9 +19,11 @@
  * - Chess.com: -50 offset (closer to FIDE)
  */
 
-// v6.70-BULLETPROOF: Simplified state machine - games cannot evaporate
-const BENCHMARK_VERSION = "6.70-BULLETPROOF";
-console.log(`[v6.70] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.71-IDENTITY-FIX: Applied Identity Theorem thinking - trace entire trajectory
+// Root cause: queuedGameIds was never cleared after processing, causing fetch starvation
+// Fix: Remove processed games from queuedGameIds so they don't block future fetches
+const BENCHMARK_VERSION = "6.71-IDENTITY-FIX";
+console.log(`[v6.71] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -497,8 +499,9 @@ export function useHybridBenchmark() {
       // v6.33: predictedIds tracks games we've SUCCESSFULLY predicted this session
       const predictedIds = new Set<string>();
       
-      // v6.66-QUEUE-DEDUP: Track ALL game IDs currently in or passing through the queue
-      // This prevents fetching the same game twice even if it's not yet in the DB
+      // v6.71-IDENTITY-FIX: Track games CURRENTLY in queue (not all-time)
+      // When a game is processed, remove it from this set so future fetches can work
+      // This was the "evaporation" bug - queuedGameIds grew forever, starving fetches
       const queuedGameIds = new Set<string>();
       
       // v6.51: Use mutable array - fetchMoreGames will PUSH to this
@@ -532,12 +535,16 @@ export function useHybridBenchmark() {
           message: `Fetching games (batch ${batchNumber})...` 
         }));
         
-        // Exclude everything already seen
+        // v6.71-IDENTITY-FIX: Only exclude games in DB, failed, or PREDICTED (not just queued)
+        // The bug was: queuedGameIds grew forever, so API returned same games, all excluded
+        // Fix: Don't exclude queuedGameIds from fetch - only from queue addition
         const fetchExcludeIds = new Set([
           ...analyzedData.gameIds,
           ...failedGameIds,
-          ...queuedGameIds
+          ...predictedIds  // v6.71: Use predictedIds instead of queuedGameIds for fetch
         ]);
+        
+        console.log(`[v6.71] Fetch excludes: DB=${analyzedData.gameIds.size}, Failed=${failedGameIds.size}, Predicted=${predictedIds.size}`);
         
         const result = await fetchMultiSourceGames({
           targetCount: targetPerBatch,
@@ -803,7 +810,14 @@ export function useHybridBenchmark() {
         const game = gameQueue[currentIndex];
         gameIndex++; // Advance BEFORE any continue/break
         
-        console.log(`[v6.70] 🎯 PROCESS: Game ${currentIndex + 1}/${gameQueue.length} (${gameQueue.length - gameIndex} remaining after this)`);
+        // v6.71-IDENTITY-FIX: Remove from queuedGameIds since we're now processing it
+        const gameIdForCleanup = game.lichessId;
+        if (gameIdForCleanup) {
+          queuedGameIds.delete(gameIdForCleanup);
+          queuedGameIds.delete(gameIdForCleanup.replace(/^(li_|cc_)/, ''));
+        }
+        
+        console.log(`[v6.71] 🎯 PROCESS: Game ${currentIndex + 1}/${gameQueue.length} (queued: ${queuedGameIds.size}, remaining: ${gameQueue.length - gameIndex})`);
         
         // v6.70: Extract game info
         const gameId = game.lichessId;
