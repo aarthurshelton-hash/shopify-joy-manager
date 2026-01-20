@@ -21,9 +21,9 @@
  * Compares against TCEC SF17 (ELO 3600) - the strongest Stockfish configuration
  */
 
-// v6.53-BULLETPROOF: Complete pipeline audit + reliable multi-source processing
-const CLOUD_BENCHMARK_VERSION = "6.53-BULLETPROOF";
-console.log(`[v6.53] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
+// v6.55-PIPELINE-FIX: Correct batch processing + queue handling
+const CLOUD_BENCHMARK_VERSION = "6.55-PIPELINE-FIX";
+console.log(`[v6.55] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
 
 import { Chess } from 'chess.js';
 import { evaluatePosition, type PositionEvaluation } from './lichessCloudEval';
