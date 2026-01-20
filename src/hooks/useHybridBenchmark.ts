@@ -12,9 +12,9 @@
  */
 
 // Version tag for debugging cached code issues
-// v6.18-FRESH: Data-rich epoch targeting (2018+), expanded player pool, better randomization
-const BENCHMARK_VERSION = "6.18-FRESH";
-console.log(`[v6.18] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.19-HYPER: 2-week windows with random day offset for maximum diversity between runs
+const BENCHMARK_VERSION = "6.19-HYPER";
+console.log(`[v6.19] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -922,17 +922,19 @@ async function fetchLichessGames(
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
   
-  // v6.18: DATA-RICH EPOCH (2018+) - Much higher game density
-  // Random 6-month window in data-rich years only
+  // v6.19: HYPER-RANDOM WINDOWS - 2-week slices with random day offset for maximum diversity
+  // This ensures each run hits completely different game sets even for same players
   function getRandomTimeWindow(): { since: number; until: number } {
     const now = Date.now();
-    // v6.18: Target 2018-present for data-rich period (avoid sparse 2010-2017)
+    // v6.19: Target 2018-present for data-rich period
     const dataRichMinYear = 2018;
     const maxYear = new Date().getFullYear();
     const targetYear = dataRichMinYear + Math.floor(Math.random() * (maxYear - dataRichMinYear + 1));
     const targetMonth = Math.floor(Math.random() * 12);
-    const windowStart = new Date(targetYear, targetMonth, 1).getTime();
-    const windowDuration = 180 * 24 * 60 * 60 * 1000; // 6 months
+    const targetDay = 1 + Math.floor(Math.random() * 28); // Random day 1-28 for diversity
+    const windowStart = new Date(targetYear, targetMonth, targetDay).getTime();
+    // v6.19: 2-week window instead of 6-month - much more granular, less overlap
+    const windowDuration = 14 * 24 * 60 * 60 * 1000; // 2 weeks
     return { since: windowStart, until: Math.min(now, windowStart + windowDuration) };
   }
   
