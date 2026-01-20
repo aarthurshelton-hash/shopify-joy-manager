@@ -11,9 +11,9 @@
  * That's it. No over-engineering.
  */
 
-// v6.29-STREAMLINE: Pre-filter at fetch time + deterministic batch time windows
-const BENCHMARK_VERSION = "6.29-STREAMLINE";
-console.log(`[v6.29] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.30-FRESHFIRST: Start with most recent games, zero-offset for batch 1
+const BENCHMARK_VERSION = "6.30-FRESHFIRST";
+console.log(`[v6.30] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -439,13 +439,13 @@ export function useHybridBenchmark() {
       const depths: number[] = [];
       let predictedCount = 0;
       
-      // v6.29-STREAMLINE: Pre-filter at fetch time for efficiency
-      console.log(`[v6.29] ========================================`);
-      console.log(`[v6.29] STARTING STREAMLINE BENCHMARK`);
-      console.log(`[v6.29] Target: ${gameCount} predictions`);
-      console.log(`[v6.29] DB has ${analyzedData.gameIds.size} games (pre-filtered at fetch)`);
-      console.log(`[v6.29] Each batch uses DIFFERENT time window`);
-      console.log(`[v6.29] ========================================`);
+      // v6.30-FRESHFIRST: Start with most recent games
+      console.log(`[v6.30] ========================================`);
+      console.log(`[v6.30] STARTING FRESHFIRST BENCHMARK`);
+      console.log(`[v6.30] Target: ${gameCount} predictions`);
+      console.log(`[v6.30] DB has ${analyzedData.gameIds.size} games (pre-filtered at fetch)`);
+      console.log(`[v6.30] Batch 1 = MOST RECENT games (0-14 days back)`);
+      console.log(`[v6.30] ========================================`);
       
       // v6.29: predictedIds tracks games we've SUCCESSFULLY predicted this session
       const predictedIds = new Set<string>();
@@ -464,24 +464,24 @@ export function useHybridBenchmark() {
       
       async function fetchMoreGames() {
         batchNumber++;
-        console.log(`[v6.29] ========== BATCH ${batchNumber}/${maxBatches} ==========`);
-        console.log(`[v6.29] Queue: ${allGames.length}, Predicted: ${predictedCount}, Known IDs: ${allKnownIds.size}`);
+        console.log(`[v6.30] ========== BATCH ${batchNumber}/${maxBatches} ==========`);
+        console.log(`[v6.30] Queue: ${allGames.length}, Predicted: ${predictedCount}, Known IDs: ${allKnownIds.size}`);
         setProgress(prev => ({ 
           ...prev!, 
           message: `Fetching batch ${batchNumber} (predicted: ${predictedCount}/${gameCount})...` 
         }));
         
-        // v6.29: Pass allKnownIds for pre-filtering at fetch time
+        // v6.30: Pass allKnownIds for pre-filtering at fetch time
         const newGames = await fetchLichessGames(fetchCount, batchNumber, allKnownIds);
-        console.log(`[v6.29] Batch ${batchNumber}: Got ${newGames.length} fresh games`);
+        console.log(`[v6.30] Batch ${batchNumber}: Got ${newGames.length} fresh games`);
         
-        // v6.29: Add fetched game IDs to known set to prevent duplicates across batches
+        // v6.30: Add fetched game IDs to known set to prevent duplicates across batches
         for (const g of newGames) {
           if (g.lichessId) allKnownIds.add(g.lichessId);
         }
         
         allGames = [...allGames, ...newGames];
-        console.log(`[v6.29] Queue now: ${allGames.length} games`);
+        console.log(`[v6.30] Queue now: ${allGames.length} games`);
         return newGames.length;
       }
       
@@ -503,14 +503,14 @@ export function useHybridBenchmark() {
       while (predictedCount < gameCount && !abortRef.current && batchNumber < maxBatches) {
         // Check if we need more games
         if (gameIndex >= allGames.length) {
-          console.log(`[v6.29] Queue exhausted at ${gameIndex}, need more (${predictedCount}/${gameCount})`);
-          console.log(`[v6.29] SKIP STATS: invalid=${skipStats.invalidId}, sessionDupe=${skipStats.sessionDupe}, short=${skipStats.shortGame}, timeout=${skipStats.timeout}, parse=${skipStats.parseError}`);
+          console.log(`[v6.30] Queue exhausted at ${gameIndex}, need more (${predictedCount}/${gameCount})`);
+          console.log(`[v6.30] SKIP STATS: invalid=${skipStats.invalidId}, sessionDupe=${skipStats.sessionDupe}, short=${skipStats.shortGame}, timeout=${skipStats.timeout}, parse=${skipStats.parseError}`);
           const newCount = await fetchMoreGames();
           if (newCount === 0) {
             emptyBatchStreak++;
-            console.warn(`[v6.29] Empty batch #${emptyBatchStreak}/${MAX_EMPTY_BATCHES}`);
+            console.warn(`[v6.30] Empty batch #${emptyBatchStreak}/${MAX_EMPTY_BATCHES}`);
             if (emptyBatchStreak >= MAX_EMPTY_BATCHES) {
-              console.warn(`[v6.29] Too many empty batches, stopping.`);
+              console.warn(`[v6.30] Too many empty batches, stopping.`);
               break;
             }
             await new Promise(r => setTimeout(r, 2000));
@@ -530,7 +530,7 @@ export function useHybridBenchmark() {
           continue;
         }
         
-        // v6.29: Skip only if we've ALREADY PREDICTED this game this session
+        // v6.30: Skip only if we've ALREADY PREDICTED this game this session
         // (DB dupes are pre-filtered at fetch time now)
         if (predictedIds.has(lichessId)) {
           skipStats.sessionDupe++;
@@ -917,25 +917,26 @@ async function fetchLichessGames(
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
   
-  // v6.29: Simpler time window - use batch number to vary the time slice
+  // v6.30-FRESHFIRST: Start with MOST RECENT games (0-offset for batch 1)
   function getRandomTimeWindow(): { since: number; until: number } {
     const now = Date.now();
     const oneDay = 24 * 60 * 60 * 1000;
     
-    // v6.29: Use batch number to deterministically vary time window
-    // Each batch explores a DIFFERENT time period
-    const batchOffset = batchNumber * 21; // 3 weeks per batch
+    // v6.30: Batch 1 gets FRESH games (0-14 days back)
+    // Subsequent batches go progressively further back
+    const batchIndex = batchNumber - 1; // 0-indexed for time calculation
+    const batchOffset = batchIndex * 14; // 2 weeks per batch progression
     const randomDays = Math.floor(Math.random() * 14); // 0-14 days random within window
     
     // Go back (batchOffset + randomDays) days from now
     const daysBack = batchOffset + randomDays;
-    const maxDaysBack = 365 * 4; // Max 4 years
+    const maxDaysBack = 365 * 3; // Max 3 years back
     const actualDaysBack = daysBack % maxDaysBack;
     
     const windowEnd = now - (actualDaysBack * oneDay);
     const windowStart = windowEnd - (14 * oneDay); // 2-week window
     
-    console.log(`[v6.29] Time window: ${new Date(windowStart).toISOString().split('T')[0]} to ${new Date(windowEnd).toISOString().split('T')[0]} (${actualDaysBack} days back)`);
+    console.log(`[v6.30] Time window: ${new Date(windowStart).toISOString().split('T')[0]} to ${new Date(windowEnd).toISOString().split('T')[0]} (${actualDaysBack} days back)`);
     return { since: Math.max(0, windowStart), until: windowEnd };
   }
   
