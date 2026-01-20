@@ -1,12 +1,16 @@
 /**
  * Hybrid Benchmark Hook - MAXIMUM DEPTH SYNCHRONIZED SYSTEM
- * VERSION: 5.2-LEAN-FETCH (2026-01-20)
+ * VERSION: 5.3-TARGETED-FETCH (2026-01-20)
  * 
- * v5.2 CRITICAL FIXES:
- * - Fixed batch size: Now fetches (needed * 2) instead of min(100)
- * - Added exhaustive logging at EVERY decision point
+ * v5.3 CRITICAL FIXES:
+ * - fetchLichessGames NOW USES count parameter (was ignoring it!)
+ * - Fetches ONLY what's needed: ~8 players, ~5 games each for 10 targets
+ * - STOPS EARLY when enough games collected
+ * - No more 900-game over-fetching
+ * 
+ * v5.2:
+ * - Added exhaustive logging at every decision point
  * - Fixed silent failures: All skip reasons are now logged
- * - Guaranteed prediction results for every processed game
  * 
  * v5.1:
  * - Games only marked "processed" AFTER passing ALL validation gates
@@ -15,8 +19,8 @@
  */
 
 // Version tag for debugging cached code issues
-const BENCHMARK_VERSION = "5.2-LEAN-FETCH";
-console.log(`[v5.2] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+const BENCHMARK_VERSION = "5.3-TARGETED-FETCH";
+console.log(`[v5.3] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -450,14 +454,14 @@ export function useHybridBenchmark() {
         // Fetch more games if we've exhausted our current batch
         if (gameIndex >= allGames.length) {
           totalFetchAttempts++;
-          // v5.2 FIX: Lean fetch - request only 2x what we need, not 100+ minimum
+          // v5.3 FIX: Lean fetch - request only 2x what we need, not 100+ minimum
           const gamesNeeded = gameCount - analyzedCount;
           const targetFetch = Math.max(gamesNeeded * 2, 10); // 2x buffer, minimum 10
           
-          console.log(`[v5.2 FETCH] ========================================`);
-          console.log(`[v5.2 FETCH] Batch ${totalFetchAttempts}: Need ${gamesNeeded} more predictions`);
-          console.log(`[v5.2 FETCH] Requesting ${targetFetch} games (2x buffer)`);
-          console.log(`[v5.2 FETCH] ========================================`);
+          console.log(`[v5.3 BATCH] ========================================`);
+          console.log(`[v5.3 BATCH] Batch ${totalFetchAttempts}: Need ${gamesNeeded} more predictions`);
+          console.log(`[v5.3 BATCH] Requesting ${targetFetch} games from fetcher`);
+          console.log(`[v5.3 BATCH] ========================================`);
           
           setProgress(prev => ({ 
             ...prev!, 
@@ -901,108 +905,51 @@ async function fetchLichessGames(
   count: number, 
   analyzedData?: { positionHashes: Set<string>; gameIds: Set<string>; fenStrings: Set<string>; realLichessIds?: Set<string> }
 ): Promise<LichessGameData[]> {
-  // MASSIVE player pool - 60+ GMs spanning Lichess history (2010-present)
-  // With 14 years of history, we have access to MILLIONS of unique positions
+  // v5.3 FIX: ACTUALLY USE the count parameter to limit fetching!
+  // Only fetch what we need + small buffer, not 900 games
+  const targetGames = count;
+  const gamesPerPlayer = Math.max(5, Math.ceil(targetGames / 5)); // ~5 players worth
+  const maxPlayers = Math.min(8, Math.ceil(targetGames / 3)); // At most 8 players
+  
+  console.log(`[v5.3 FETCH] ========================================`);
+  console.log(`[v5.3 FETCH] TARGET: ${targetGames} fresh games`);
+  console.log(`[v5.3 FETCH] Strategy: ${maxPlayers} players × ${gamesPerPlayer} games each`);
+  console.log(`[v5.3 FETCH] ========================================`);
+  
+  // Compact player pool - focus on high-volume GMs
   const topPlayers = [
-    // Super GMs (2750+) - Current Elite
-    "DrNykterstein", // Magnus Carlsen
-    "DrDrunkenstein", // Magnus secondary
-    "Hikaru", // Hikaru Nakamura  
-    "nihalsarin2004", // Nihal Sarin
-    "FairChess_on_YouTube", // Alireza Firouzja
-    "GMWSO", // Wesley So
-    "LyonBeast", // Maxime Vachier-Lagrave
-    "Polish_fighter3000", // Jan-Krzysztof Duda
-    "Msb2", // Anish Giri
-    "Vladimirovich9000", // Ian Nepomniachtchi
-    "chaboribra", // Ding Liren
-    
-    // Elite GMs (2700+)
-    "opperwezen", // Jorden van Foreest
-    "Ssjlegend", // Samuel Sevian
-    "BogdanDeac",
-    "mishanick", // Alexander Grischuk
-    "Vladislav_Artemiev",
-    "penguingm1", // Andrew Tang (bullet king)
-    "Zhigalko_Sergei",
-    "GMKrikor", // Krikor Mekhitarian
-    "Lachesisq", // Dmitry Andreikin
-    "Lovlas", // Arik Braun
-    "gmaniruddha", // Anirudh Bartakke
-    "DoktorAtom", // Shakhriyar Mamedyarov
-    
-    // Strong GMs (2600+)
-    "Fins", // John Bartholomew
-    "GMBenjaminFinegold",
-    "DanielNaroditsky",
-    "EricRosen", 
-    "GMHansen",
-    "LiamE", // Liem Le Quang
-    "alexandr_fier",
-    "akshaychandra", // Akshay Chandra
-    "RebeccaHarris",
-    "PinIsMightier",
-    "RoadToGM",
-    
-    // Historical GMs (Active 2010-2020)
-    "Crazychessplaya", // Early Lichess GM
-    "Konavets",
-    "Kingscrusher", // Tryfon Gavriel
-    "chessbrah", // Eric Hansen
-    "ChessNetwork",
-    "STL_Sam", // Sam Shankland
-    "GMPTTRN", // Pavel Tregubov
-    "Chesstoday",
-    "GMBiloPhotos",
-    "sergeigm",
-    
-    // International GMs (Diverse styles)
-    "GM_Boris_Chatalbashev",
-    "sergey_kasparov",
-    "RaunakSadhwani2005", // Raunak Sadhwani
-    "Arjun_Erigaisi", // Arjun Erigaisi
-    "parhamov", // Parham Maghsoodloo
-    "NihalSarin", // Secondary account
-    "HansNiemann",
-    "ChristopherYoo",
-    "gmMikalGolubyev",
-    "gmfederico"
+    "DrNykterstein", "Hikaru", "nihalsarin2004", "FairChess_on_YouTube",
+    "GMWSO", "LyonBeast", "Polish_fighter3000", "Msb2", "penguingm1",
+    "DanielNaroditsky", "EricRosen", "Fins", "chessbrah", "opperwezen",
+    "BogdanDeac", "mishanick", "Arjun_Erigaisi", "RaunakSadhwani2005"
   ];
   
   // CRITICAL: Randomize time window for each run to get different games
   const now = Date.now();
-  
-  // FULL LICHESS HISTORY: From 2010 (Lichess founding) to now
-  // This gives us access to 14+ years of GM games - millions of positions
   const lichessStart = new Date('2010-01-01').getTime();
   const fourteenYearsSpan = now - lichessStart;
   
   // Random window anywhere in Lichess history - 60-day windows for variety
   const randomStartOffset = Math.floor(Math.random() * (fourteenYearsSpan - (60 * 24 * 60 * 60 * 1000)));
   const since = lichessStart + randomStartOffset;
-  const until = since + (60 * 24 * 60 * 60 * 1000); // 60-day window (doubled for more games)
+  const until = since + (60 * 24 * 60 * 60 * 1000);
   
   const games: LichessGameData[] = [];
-  const gameIds = new Set<string>(); // Deduplicate by game ID within this fetch
+  const gameIds = new Set<string>();
   const shuffledPlayers = topPlayers.sort(() => Math.random() - 0.5);
   let fetchErrors = 0;
   let rateLimitedPlayers = 0;
   let shortGamesSkipped = 0;
-  let invalidPgnSkipped = 0;
-  let alreadyAnalyzedSkipped = 0; // Track pre-filtered games
+  let alreadyAnalyzedSkipped = 0;
   
-  // Fetch from ALL players in the pool - we have 14 years of data
-  const selectedPlayers = shuffledPlayers.slice(0, Math.min(30, shuffledPlayers.length));
+  // v5.3: Only use as many players as needed
+  const selectedPlayers = shuffledPlayers.slice(0, maxPlayers);
   
-  // v5.0: Crystal-clear deduplication status
   const dbGameCount = analyzedData?.gameIds?.size || 0;
-  console.log(`[v5.0 FETCH] ========================================`);
-  console.log(`[v5.0 FETCH] FETCHING FROM LICHESS HISTORY (2010-present)`);
-  console.log(`[v5.0 FETCH] Window: ${new Date(since).toISOString().split('T')[0]} to ${new Date(until).toISOString().split('T')[0]}`);
-  console.log(`[v5.0 FETCH] ${selectedPlayers.length} GMs being queried`);
-  console.log(`[v5.0 FETCH] WILL PRE-FILTER: ${dbGameCount} games already in database`);
-  console.log(`[v5.0 FETCH] Every game returned has been verified as NEW`);
-  console.log(`[v5.0 FETCH] ========================================`);
+  console.log(`[v5.3 FETCH] Window: ${new Date(since).toISOString().split('T')[0]} to ${new Date(until).toISOString().split('T')[0]}`);
+  console.log(`[v5.3 FETCH] ${selectedPlayers.length} GMs: ${selectedPlayers.join(', ')}`);
+  console.log(`[v5.3 FETCH] Pre-filter: ${dbGameCount} games already in database`);
+  console.log(`[v5.3 FETCH] ========================================`);
   
   // Use Edge Function to fetch games (bypasses CORS in production)
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -1039,7 +986,7 @@ async function fetchLichessGames(
           player,
           since,
           until,
-          max: 30 // Reduced to be gentler on API
+          max: gamesPerPlayer // v5.3: Only request what we need
         })
       });
       
@@ -1130,8 +1077,14 @@ async function fetchLichessGames(
           });
         }
         
-        // Log progress
-        console.log(`[Benchmark] Progress: ${games.length} valid games collected (${shortGamesSkipped} short, ${invalidPgnSkipped} invalid)`);
+        // Log progress and check if we have enough
+        console.log(`[v5.3 FETCH] Progress: ${games.length}/${targetGames} fresh games collected`);
+        
+        // v5.3: STOP EARLY when we have enough games
+        if (games.length >= targetGames) {
+          console.log(`[v5.3 FETCH] ✓ Target reached! Got ${games.length} fresh games`);
+          break;
+        }
       } else {
         console.warn(`[Benchmark] Failed to fetch for ${player}: ${response.status}`);
         fetchErrors++;
@@ -1141,16 +1094,20 @@ async function fetchLichessGames(
       fetchErrors++;
     }
     
+    // v5.3: Check after each player if we have enough
+    if (games.length >= targetGames) {
+      break;
+    }
+    
     // Rate limiting protection - increase delay between players
     await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 1000));
   }
   
-  console.log(`[v5.0 FETCH] ========================================`);
-  console.log(`[v5.0 FETCH] COMPLETE: ${games.length} FRESH games ready`);
-  console.log(`[v5.0 FETCH] Pre-filtered: ${alreadyAnalyzedSkipped} already in DB`);
-  console.log(`[v5.0 FETCH] Skipped: ${shortGamesSkipped} too short, ${invalidPgnSkipped} invalid`);
-  console.log(`[v5.0 FETCH] Every game in this batch is GUARANTEED NEW`);
-  console.log(`[v5.0 FETCH] ========================================`);
+  console.log(`[v5.3 FETCH] ========================================`);
+  console.log(`[v5.3 FETCH] COMPLETE: ${games.length} FRESH games (wanted ${targetGames})`);
+  console.log(`[v5.3 FETCH] Pre-filtered: ${alreadyAnalyzedSkipped} already in DB`);
+  console.log(`[v5.3 FETCH] Skipped: ${shortGamesSkipped} too short`);
+  console.log(`[v5.3 FETCH] ========================================`);
   // If we didn't get enough games but have some, continue with what we have
   if (games.length === 0 && fetchErrors > 0) {
     throw new Error('Failed to fetch games from Lichess - possibly rate limited. Please try again in a few minutes.');
