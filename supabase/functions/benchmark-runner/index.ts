@@ -699,9 +699,21 @@ serve(async (req) => {
         // Generate position hash for tracking and cross-referencing
         const positionHash = generatePositionHash(parsed.fen);
         
+        // CRITICAL: Only use REAL 8-character Lichess IDs - NEVER generate synthetic IDs
+        // Real Lichess IDs are 8 alphanumeric characters that link to lichess.org/{id}
+        const lichessId = game.id;
+        const isRealLichessId = lichessId && 
+          typeof lichessId === 'string' && 
+          lichessId.length === 8 && 
+          /^[a-zA-Z0-9]+$/.test(lichessId);
+        
+        if (!isRealLichessId) {
+          console.warn(`[BenchmarkRunner] SKIP: Invalid Lichess ID "${lichessId}" - must be 8 alphanumeric chars`);
+          continue;
+        }
+        
         // Check if this GAME has already been analyzed (game-level deduplication)
-        const gameId = game.id || crypto.randomUUID();
-        if (existingGameIds.has(gameId)) {
+        if (existingGameIds.has(lichessId)) {
           skippedDuplicates++;
           continue;
         }
@@ -741,12 +753,15 @@ serve(async (req) => {
         if (!hybridIsCorrect && !stockfishIsCorrect) bothWrong++;
         
         // Add to existing game IDs to prevent in-run duplicates (game-level)
-        existingGameIds.add(gameId);
+        existingGameIds.add(lichessId);
         existingPositionHashes.add(positionHash);
         
+        console.log(`[BenchmarkRunner] ✓ Analyzing REAL game ${lichessId} (verify: https://lichess.org/${lichessId})`);
+        
         attempts.push({
-          game_id: gameId,
+          game_id: lichessId, // ALWAYS the real 8-char Lichess ID
           game_name: `GM ${game.whiteElo || 2500} vs ${game.blackElo || 2500}`,
+          lichess_id_verified: true, // Mark as verified real Lichess ID
           fen: parsed.fen,
           position_hash: positionHash,
           move_number: moveNumber,
