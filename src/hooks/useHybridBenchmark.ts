@@ -16,9 +16,9 @@
  * - Chess.com: -50 offset (closer to FIDE)
  */
 
-// v6.56-STRICT-VALIDATE: Pre-queue validation + comprehensive skip diagnostics
-const BENCHMARK_VERSION = "6.56-STRICT-VALIDATE";
-console.log(`[v6.56] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.57-ID-ONLY: Only filter is gameId deduplication - absorb everything else
+const BENCHMARK_VERSION = "6.57-ID-ONLY";
+console.log(`[v6.57] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -546,54 +546,25 @@ export function useHybridBenchmark() {
           return 0;
         }
         
-        // v6.56-STRICT-VALIDATE: Aggressive pre-queue validation to minimize in-loop skips
+        // v6.57-ID-ONLY: ONLY filter is gameId deduplication
+        // All other data (short PGN, missing result, etc.) gets absorbed by universal intelligence
         const queueBefore = gameQueue.length;
         let validGames = 0;
-        const preQueueSkips = { noMoves: 0, noResult: 0, badId: 0, dbDupe: 0, shortPgn: 0 };
+        let dupesSkipped = 0;
         
         for (const g of result.games) {
-          // v6.56: STRICT ID validation BEFORE queueing
           const gameId = g.gameId;
-          if (!gameId || gameId.length < 10) {
-            preQueueSkips.badId++;
-            continue;
-          }
           
-          // v6.56: DEDUP CHECK at queue time - don't add games we'll just skip later
+          // v6.57: ONLY check: is this a duplicate?
+          if (!gameId) continue; // Need some ID
+          
           const rawId = gameId.replace(/^(li_|cc_)/, '');
-          if (analyzedData.gameIds.has(gameId) || analyzedData.gameIds.has(rawId)) {
-            preQueueSkips.dbDupe++;
+          if (analyzedData.gameIds.has(gameId) || analyzedData.gameIds.has(rawId) || predictedIds.has(gameId)) {
+            dupesSkipped++;
             continue;
           }
           
-          // v6.56: Validate moves/PGN content
-          const hasMoves = g.moves && g.moves.length > 20;
-          const hasPgn = g.pgn && g.pgn.length > 50;
-          
-          if (!hasMoves && !hasPgn) {
-            preQueueSkips.noMoves++;
-            continue;
-          }
-          
-          // v6.56: Validate PGN can be parsed (quick sanity check)
-          if (!hasMoves && hasPgn) {
-            // Extract moves from PGN if moves string is missing/short
-            const pgnLines = g.pgn.split('\n').filter(l => !l.startsWith('[') && l.trim().length > 0);
-            if (pgnLines.join(' ').trim().length < 30) {
-              preQueueSkips.shortPgn++;
-              continue;
-            }
-          }
-          
-          // v6.56: Check for determinable result 
-          const hasResult = g.winner !== undefined || g.result !== undefined || 
-                           g.status === 'draw' || g.status === 'stalemate' || 
-                           g.status === 'mate' || g.status === 'resign' || g.status === 'timeout';
-          if (!hasResult) {
-            preQueueSkips.noResult++;
-            continue; // v6.56: NOW we skip - no point queueing games we can't score
-          }
-          
+          // v6.57: ABSORB EVERYTHING - universal intelligence handles all edge cases
           gameQueue.push({
             pgn: g.pgn,
             moves: g.moves,
@@ -619,9 +590,8 @@ export function useHybridBenchmark() {
           validGames++;
         }
         
-        const totalSkipped = Object.values(preQueueSkips).reduce((a, b) => a + b, 0);
-        console.log(`[v6.56] PRE-QUEUE FILTER: ${totalSkipped} skipped → badId=${preQueueSkips.badId}, dbDupe=${preQueueSkips.dbDupe}, noMoves=${preQueueSkips.noMoves}, shortPgn=${preQueueSkips.shortPgn}, noResult=${preQueueSkips.noResult}`);
-        console.log(`[v6.56] Queue: ${queueBefore} → ${gameQueue.length} (+${validGames} valid, conversion rate: ${result.games.length > 0 ? Math.round(validGames / result.games.length * 100) : 0}%)`);
+        console.log(`[v6.57] ID-ONLY FILTER: ${dupesSkipped} dupes skipped`);
+        console.log(`[v6.57] Queue: ${queueBefore} → ${gameQueue.length} (+${validGames} absorbed, conversion rate: ${result.games.length > 0 ? Math.round(validGames / result.games.length * 100) : 0}%)`);
         
         return validGames;
       }
