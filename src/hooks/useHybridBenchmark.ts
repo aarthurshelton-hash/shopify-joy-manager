@@ -19,9 +19,9 @@
  * - Chess.com: -50 offset (closer to FIDE)
  */
 
-// v6.64-SYNC-FIX: Improved cache invalidation
-const BENCHMARK_VERSION = "6.64-SYNC-FIX";
-console.log(`[v6.64] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.66-QUEUE-DEDUP: Fix queue deduplication to prevent stale fetches
+const BENCHMARK_VERSION = "6.66-QUEUE-DEDUP";
+console.log(`[v6.66] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -497,8 +497,9 @@ export function useHybridBenchmark() {
       // v6.33: predictedIds tracks games we've SUCCESSFULLY predicted this session
       const predictedIds = new Set<string>();
       
-      // v6.34: REMOVED sessionFetchedIds - was causing queue starvation
-      // Dedup happens ONLY via analyzedData.gameIds (DB) and predictedIds (session)
+      // v6.66-QUEUE-DEDUP: Track ALL game IDs currently in or passing through the queue
+      // This prevents fetching the same game twice even if it's not yet in the DB
+      const queuedGameIds = new Set<string>();
       
       // v6.51: Use mutable array - fetchMoreGames will PUSH to this
       const gameQueue: LichessGameData[] = [];
@@ -517,25 +518,28 @@ export function useHybridBenchmark() {
       // Target: 200+ games per batch from parallel fetching
       const targetPerBatch = Math.max(200, gameCount * 5);
       
-      // v6.55-PIPELINE-FIX: High-volume multi-source fetcher with detailed logging
+      // v6.66-QUEUE-DEDUP: High-volume multi-source fetcher with COMPLETE deduplication
       // CRITICAL: This function must PUSH to gameQueue, NOT reassign it
       async function fetchMoreGames(): Promise<number> {
         batchNumber++;
         const queueRemaining = gameQueue.length - gameIndex;
-        console.log(`[v6.55] ========== BATCH ${batchNumber}/${maxBatches} ==========`);
-        console.log(`[v6.55] Queue remaining: ${queueRemaining} | Predicted: ${predictedCount}/${gameCount}`);
-        console.log(`[v6.55] Exclusions → DB: ${analyzedData.gameIds.size} | Session: ${predictedIds.size} | Failed: ${failedGameIds.size}`);
+        console.log(`[v6.66] ========== BATCH ${batchNumber}/${maxBatches} ==========`);
+        console.log(`[v6.66] Queue remaining: ${queueRemaining} | Predicted: ${predictedCount}/${gameCount}`);
+        console.log(`[v6.66] Exclusions → DB: ${analyzedData.gameIds.size} | Queued: ${queuedGameIds.size} | Failed: ${failedGameIds.size}`);
         
         setProgress(prev => ({ 
           ...prev!, 
           message: `High-volume fetch from Lichess + Chess.com (batch ${batchNumber})...` 
         }));
         
-        // v6.60: FETCH EXCLUSION - Only exclude DB games and failed games
-        // Don't exclude predictedIds here - those get filtered in the processing loop
-        // This prevents "starvation" where session predictions block fresh fetches
-        const fetchExcludeIds = new Set([...analyzedData.gameIds, ...failedGameIds]);
-        console.log(`[v6.60] Fetch exclusion: ${fetchExcludeIds.size} (DB: ${analyzedData.gameIds.size}, Failed: ${failedGameIds.size})`);
+        // v6.66-QUEUE-DEDUP: Exclude DB games, failed games, AND games currently in queue
+        // This prevents re-fetching games that are already waiting to be processed
+        const fetchExcludeIds = new Set([
+          ...analyzedData.gameIds,
+          ...failedGameIds,
+          ...queuedGameIds  // v6.66: Add currently queued games to exclusion
+        ]);
+        console.log(`[v6.66] Fetch exclusion: ${fetchExcludeIds.size} (DB: ${analyzedData.gameIds.size}, Queued: ${queuedGameIds.size}, Failed: ${failedGameIds.size})`);
         
         const result = await fetchMultiSourceGames({
           targetCount: targetPerBatch,
@@ -544,37 +548,46 @@ export function useHybridBenchmark() {
           sources: ['lichess', 'chesscom'],
         });
         
-        console.log(`[v6.55] Multi-source returned: ${result.games.length} raw (Lichess: ${result.lichessCount}, Chess.com: ${result.chesscomCount})`);
+        console.log(`[v6.66] Multi-source returned: ${result.games.length} raw (Lichess: ${result.lichessCount}, Chess.com: ${result.chesscomCount})`);
         
         if (result.errors.length > 0) {
-          console.warn(`[v6.55] Fetch errors (first 5):`, result.errors.slice(0, 5));
+          console.warn(`[v6.66] Fetch errors (first 5):`, result.errors.slice(0, 5));
         }
         
         if (result.games.length === 0) {
-          console.warn(`[v6.55] ⚠️ No games returned from either source!`);
+          console.warn(`[v6.66] ⚠️ No games returned from either source!`);
           return 0;
         }
         
-        // v6.57-ID-ONLY: ONLY filter is gameId deduplication
+        // v6.66-QUEUE-DEDUP: ONLY filter is gameId deduplication + track in queuedGameIds
         // All other data (short PGN, missing result, etc.) gets absorbed by universal intelligence
         const queueBefore = gameQueue.length;
         let validGames = 0;
         let dupesSkipped = 0;
+        let alreadyQueuedSkipped = 0;
         
         for (const g of result.games) {
           const gameId = g.gameId;
           
-          // v6.61: ONLY check DB duplicates when adding to queue
-          // Session duplicates (predictedIds) are checked in the processing loop
-          // This prevents "starvation" on subsequent batches
           if (!gameId) continue; // Need some ID
           
           const rawId = gameId.replace(/^(li_|cc_)/, '');
-          // v6.61: REMOVED predictedIds.has(gameId) - that's checked at line 780
+          
+          // v6.66: Check DB duplicates
           if (analyzedData.gameIds.has(gameId) || analyzedData.gameIds.has(rawId)) {
             dupesSkipped++;
             continue;
           }
+          
+          // v6.66: Check if already queued (prevents re-queueing same game across batches)
+          if (queuedGameIds.has(gameId) || queuedGameIds.has(rawId)) {
+            alreadyQueuedSkipped++;
+            continue;
+          }
+          
+          // v6.66: Track this game as queued BEFORE adding to queue
+          queuedGameIds.add(gameId);
+          queuedGameIds.add(rawId); // Add both prefixed and raw ID
           
           // v6.57: ABSORB EVERYTHING - universal intelligence handles all edge cases
           gameQueue.push({
@@ -602,8 +615,9 @@ export function useHybridBenchmark() {
           validGames++;
         }
         
-        console.log(`[v6.61] Queue filter: ${dupesSkipped} DB dupes skipped`);
-        console.log(`[v6.61] Queue: ${queueBefore} → ${gameQueue.length} (+${validGames} absorbed, conversion: ${result.games.length > 0 ? Math.round(validGames / result.games.length * 100) : 0}%)`);
+        console.log(`[v6.66] Queue filter: ${dupesSkipped} DB dupes, ${alreadyQueuedSkipped} already queued`);
+        console.log(`[v6.66] Queue: ${queueBefore} → ${gameQueue.length} (+${validGames} fresh, queuedIds: ${queuedGameIds.size})`);
+        console.log(`[v6.66] Conversion: ${result.games.length > 0 ? Math.round(validGames / result.games.length * 100) : 0}%`);
         
         return validGames;
       }
@@ -739,50 +753,51 @@ export function useHybridBenchmark() {
       }
       
       while (predictedCount < gameCount && !abortRef.current && batchNumber < maxBatches) {
-        // v6.55: Safety check - if too many consecutive skips, force refetch
+        // v6.66: Safety check - if too many consecutive skips, force refetch
         if (consecutiveSkips >= MAX_CONSECUTIVE_SKIPS) {
-          console.warn(`[v6.55] ⚠️ ${consecutiveSkips} consecutive skips - forcing refetch`);
-          console.log(`[v6.55] SKIP STATS: invalid=${skipStats.invalidId}, dbDupe=${skipStats.dbDupe}, sessionDupe=${skipStats.sessionDupe}, short=${skipStats.shortGame}, timeout=${skipStats.timeout}, parse=${skipStats.parseError}, analysis=${skipStats.analysisError}`);
+          console.warn(`[v6.66] ⚠️ ${consecutiveSkips} consecutive skips - forcing refetch`);
+          console.log(`[v6.66] SKIP STATS: invalid=${skipStats.invalidId}, dbDupe=${skipStats.dbDupe}, sessionDupe=${skipStats.sessionDupe}, short=${skipStats.shortGame}, timeout=${skipStats.timeout}, parse=${skipStats.parseError}, analysis=${skipStats.analysisError}`);
           consecutiveSkips = 0;
           gameIndex = gameQueue.length; // Force refetch by exhausting queue pointer
         }
         
         // Check if we need more games
         if (gameIndex >= gameQueue.length) {
-          console.log(`[v6.55] Queue exhausted at index ${gameIndex}, need more (${predictedCount}/${gameCount})`);
-          console.log(`[v6.55] SKIP STATS: invalid=${skipStats.invalidId}, dbDupe=${skipStats.dbDupe}, sessionDupe=${skipStats.sessionDupe}, short=${skipStats.shortGame}, timeout=${skipStats.timeout}, parse=${skipStats.parseError}, analysis=${skipStats.analysisError}`);
+          console.log(`[v6.66] Queue exhausted at index ${gameIndex}, need more (${predictedCount}/${gameCount})`);
+          console.log(`[v6.66] SKIP STATS: invalid=${skipStats.invalidId}, dbDupe=${skipStats.dbDupe}, sessionDupe=${skipStats.sessionDupe}, short=${skipStats.shortGame}, timeout=${skipStats.timeout}, parse=${skipStats.parseError}, analysis=${skipStats.analysisError}`);
+          console.log(`[v6.66] queuedIds set size: ${queuedGameIds.size}`);
           
-          // v6.55: Try fetching with exponential backoff on empty batches
+          // v6.66: Try fetching with exponential backoff on empty batches
           const waitTime = Math.min(3000 * Math.pow(1.5, emptyBatchStreak), 15000);
           if (emptyBatchStreak > 0) {
-            console.log(`[v6.55] Waiting ${Math.round(waitTime/1000)}s before retry...`);
+            console.log(`[v6.66] Waiting ${Math.round(waitTime/1000)}s before retry...`);
             await new Promise(r => setTimeout(r, waitTime));
           }
           
           const newCount = await fetchMoreGames();
           
-        // v6.55-PIPELINE-FIX: Correct batch result handling
+          // v6.66-QUEUE-DEDUP: Correct batch result handling
           if (newCount === 0) {
             emptyBatchStreak++;
-            console.warn(`[v6.55] Empty fetch #${emptyBatchStreak}/${MAX_EMPTY_BATCHES} (queue has ${gameQueue.length - gameIndex} remaining)`);
+            console.warn(`[v6.66] Empty fetch #${emptyBatchStreak}/${MAX_EMPTY_BATCHES} (queue has ${gameQueue.length - gameIndex} remaining)`);
             
             if (emptyBatchStreak >= MAX_EMPTY_BATCHES) {
-              console.warn(`[v6.55] Too many empty fetches, saving partial results and stopping.`);
+              console.warn(`[v6.66] Too many empty fetches, saving partial results and stopping.`);
               await saveIncrementalResults();
               break;
             }
             
-            // v6.55 FIX: If queue still has games, DON'T continue - fall through to process them
+            // v6.66 FIX: If queue still has games, DON'T continue - fall through to process them
             // Only continue (skip to next batch) if queue is TRULY exhausted
             if (gameIndex >= gameQueue.length) {
-              console.log(`[v6.55] Queue truly empty after empty fetch - retrying...`);
+              console.log(`[v6.66] Queue truly empty after empty fetch - retrying...`);
               continue;
             }
-            console.log(`[v6.55] Queue still has ${gameQueue.length - gameIndex} games - processing them`);
+            console.log(`[v6.66] Queue still has ${gameQueue.length - gameIndex} games - processing them`);
             // FALL THROUGH - do NOT continue
           } else {
             emptyBatchStreak = 0;
-            console.log(`[v6.55] ✓ Fetched ${newCount} new games, queue now ${gameQueue.length - gameIndex} processable`);
+            console.log(`[v6.66] ✓ Fetched ${newCount} new games, queue now ${gameQueue.length - gameIndex} processable`);
           }
           // CRITICAL: Fall through to process games (newly fetched OR remaining from previous batch)
         }
