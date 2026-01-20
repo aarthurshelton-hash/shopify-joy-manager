@@ -1,11 +1,11 @@
 # Memory: features/universal-engine/v6-isolated-session-deduplication
 Updated: now
 
-The 'v6.20-ISOLATED' system fixes consecutive benchmark runs by **separating session deduplication from DB deduplication**:
+The 'v6.21-FREEFLOW' system fixes consecutive benchmark batch fetching by **completely removing deduplication from the fetch layer**:
 
-1. **Session-Local Tracking**: `sessionSeenIds` starts EMPTY each run - it only tracks games fetched/processed in THIS run, not previous runs
-2. **DB Check at Prediction Time**: Games are checked against `analyzedData.gameIds` (DB) only when about to predict, not during fetching
-3. **Clean Fetching**: `fetchLichessGames` receives only session-local IDs, allowing it to freely fetch games that exist in DB from previous runs
-4. **Deduplication at Insert**: If a game was already predicted in a previous run, it's skipped at prediction time (line 547-553), not at fetch time
+1. **Free Fetching**: `fetchLichessGames()` is called with NO deduplication data at all - it returns all games it finds from the Lichess API
+2. **Queue Deduplication**: The `existingIds` Set filters out games already in `allGames` queue (prevents within-run queue duplicates)
+3. **DB Check at Prediction Time**: Games are checked against `analyzedData.gameIds` (DB) only when about to predict, not during fetching
+4. **Session Tracking for Logging**: `sessionSeenIds` tracks fetched games for informational purposes only, not for filtering
 
-This ensures each benchmark run can fetch fresh games independently, while still preventing duplicate predictions within the same run AND across runs (via DB constraint).
+The key insight: passing `sessionSeenIds` to `fetchLichessGames` caused it to filter out ALL previously fetched games in subsequent batches, resulting in empty batch returns. By removing this filtering, each batch now returns fresh games from new random time windows.

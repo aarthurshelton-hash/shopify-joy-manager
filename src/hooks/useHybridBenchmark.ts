@@ -12,9 +12,9 @@
  */
 
 // Version tag for debugging cached code issues
-// v6.20-ISOLATED: Session deduplication is separate from DB - each run fetches fresh
-const BENCHMARK_VERSION = "6.20-ISOLATED";
-console.log(`[v6.20] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.21-FREEFLOW: No dedup data passed to fetcher - fetch freely, dedup at prediction
+const BENCHMARK_VERSION = "6.21-FREEFLOW";
+console.log(`[v6.21] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -440,16 +440,15 @@ export function useHybridBenchmark() {
       const depths: number[] = [];
       let predictedCount = 0;
       
-      // v6.5 REFETCH LOOP: Continuously fetch until we hit target predictions
-      console.log(`[v6.5] ========================================`);
-      console.log(`[v6.20] STARTING ISOLATED BENCHMARK`);
-      console.log(`[v6.20] Target: ${gameCount} predictions`);
-      console.log(`[v6.20] Already in DB: ${analyzedData.gameIds.size} games (checked at prediction time only)`);
-      console.log(`[v6.20] ========================================`);
+      // v6.21 FREEFLOW: Fetch without dedup restrictions, filter at prediction time
+      console.log(`[v6.21] ========================================`);
+      console.log(`[v6.21] STARTING FREEFLOW BENCHMARK`);
+      console.log(`[v6.21] Target: ${gameCount} predictions`);
+      console.log(`[v6.21] Already in DB: ${analyzedData.gameIds.size} games (filtered at prediction time only)`);
+      console.log(`[v6.21] ========================================`);
       
-      // v6.20-ISOLATED: Session tracking is SEPARATE from DB!
-      // This set ONLY tracks games fetched/processed in THIS run
-      // DB deduplication happens at prediction time, not fetch time
+      // v6.21-FREEFLOW: Session tracking is for queue dedup only (within this run)
+      // DB deduplication happens at prediction time, fetching is unrestricted
       const sessionSeenIds = new Set<string>();
       
       // v6.5: Track all games across multiple fetch batches
@@ -463,23 +462,18 @@ export function useHybridBenchmark() {
       
       async function fetchMoreGames() {
         batchNumber++;
-        console.log(`[v6.20] ========== BATCH ${batchNumber} ==========`);
-        console.log(`[v6.20] Session has seen ${sessionSeenIds.size} games THIS RUN`);
-        console.log(`[v6.20] DB has ${analyzedData.gameIds.size} games (checked at prediction time)`);
+        console.log(`[v6.21] ========== BATCH ${batchNumber} ==========`);
+        console.log(`[v6.21] Queue has ${allGames.length} games, processed ${gameIndex}`);
+        console.log(`[v6.21] DB has ${analyzedData.gameIds.size} games (skipped at prediction time)`);
         setProgress(prev => ({ 
           ...prev!, 
-          message: `Fetching batch ${batchNumber} (session: ${sessionSeenIds.size}, DB: ${analyzedData.gameIds.size})...` 
+          message: `Fetching batch ${batchNumber} (queue: ${allGames.length}, predicted: ${predictedCount})...` 
         }));
         
-        // v6.20-ISOLATED: Only pass session-local IDs to fetcher
-        // DB deduplication happens later at prediction time
-        const sessionOnlyData = {
-          positionHashes: new Set<string>(),
-          gameIds: sessionSeenIds, // ONLY this run's games
-          fenStrings: new Set<string>(),
-        };
-        
-        const newGames = await fetchLichessGames(fetchCount, sessionOnlyData);
+        // v6.21-FREEFLOW: Don't pass ANY dedup data to fetcher!
+        // Let fetchLichessGames return everything it finds
+        // Deduplication happens later at prediction stage
+        const newGames = await fetchLichessGames(fetchCount);
         console.log(`[v6.14] Batch ${batchNumber}: Got ${newGames.length} fresh games from Lichess`);
         
         // Add all new games to session tracking immediately

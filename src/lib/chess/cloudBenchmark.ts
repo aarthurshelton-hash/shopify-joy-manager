@@ -13,9 +13,9 @@
  */
 
 // Version tag for debugging
-// v6.20-ISOLATED: Session deduplication separate from DB - each run fetches fresh
-const CLOUD_BENCHMARK_VERSION = "6.20-ISOLATED";
-console.log(`[v6.20] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
+// v6.21-FREEFLOW: Fetch without dedup restrictions, filter at prediction time
+const CLOUD_BENCHMARK_VERSION = "6.21-FREEFLOW";
+console.log(`[v6.21] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
 
 import { Chess } from 'chess.js';
 import { evaluatePosition, type PositionEvaluation } from './lichessCloudEval';
