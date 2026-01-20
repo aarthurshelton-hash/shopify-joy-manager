@@ -27,7 +27,7 @@
  */
 
 // Version tag for debugging cached code issues
-const BENCHMARK_VERSION = "4.0-REAL-IDS-ONLY";
+const BENCHMARK_VERSION = "4.1-BULLETPROOF-DEDUP";
 console.log(`[useHybridBenchmark] Loaded version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
@@ -422,8 +422,8 @@ export function useHybridBenchmark() {
       const analyzedData = await getAlreadyAnalyzedData();
       let skippedDuplicates = 0;
       
-      // v4.0: gameIds now contains ONLY real Lichess IDs (synthetic are filtered at load)
-      console.log(`[v4.0-DEDUP] Loaded ${analyzedData.gameIds.size} real Lichess IDs for deduplication`);
+      // v4.1: Bulletproof deduplication - gameIds contains ONLY real Lichess IDs
+      console.log(`[DEDUP] Loaded ${analyzedData.gameIds.size} previously analyzed games from database`);
       
       setProgress(prev => ({ 
         ...prev!, 
@@ -533,24 +533,27 @@ export function useHybridBenchmark() {
             continue;
           }
           
-          // v4.0 GAME-BASED DEDUPLICATION - Simple: check if we've analyzed this game
-          if (analyzedData.gameIds.has(lichessGameId)) {
+          // v4.0 BULLETPROOF GAME-BASED DEDUPLICATION
+          // Check BOTH the database set AND mark immediately to prevent any race conditions
+          const alreadyInDb = analyzedData.gameIds.has(lichessGameId);
+          
+          if (alreadyInDb) {
             skippedDuplicates++;
-            console.log(`[v4.0-DEDUP] Skipping game ${lichessGameId} - already analyzed (https://lichess.org/${lichessGameId})`);
+            console.log(`[SKIP-DB] Game ${lichessGameId} already in database - skipping`);
             continue;
           }
           
-          // Add to set to prevent within-run duplicates
+          // IMMEDIATELY mark as processed BEFORE any async work
+          // This prevents the same game from being processed twice within a run
           analyzedData.gameIds.add(lichessGameId);
           
+          console.log(`[PROCESS] ✓ New game ${lichessGameId} - processing (https://lichess.org/${lichessGameId})`);
+          
           // Generate position hash for LEARNING (cross-reference patterns, NOT deduplication)
-          // If we see the same position in a new game, that's an ADVANTAGE for pattern confidence
           const positionHash = hashPosition(fen);
           const isKnownPosition = analyzedData.positionHashes.has(positionHash);
           if (isKnownPosition) {
-            // BOOST: We've seen this position before in a DIFFERENT game!
-            // This strengthens our pattern confidence - fire reaffirmation
-            console.log(`[Pattern Boost] Position seen in another game - reaffirming pattern (hash: ${positionHash.slice(0,8)}...)`);
+            console.log(`[Pattern Boost] Position from new game matches known pattern - strengthening confidence`);
             reaffirmExistingPrediction(fen, positionHash).catch(() => {});
           }
           analyzedData.positionHashes.add(positionHash);
@@ -633,7 +636,7 @@ export function useHybridBenchmark() {
           
           // Add to analyzed data immediately so we don't re-analyze this game
           analyzedData.gameIds.add(gameIdForDb);
-          console.log(`[v2.0-REAL-IDS-ONLY] ✓ Game ${gameIdForDb} (https://lichess.org/${gameIdForDb}) - move ${moveNumber}`);
+          console.log(`[SAVED] ✓ Game ${gameIdForDb} recorded - will skip in future runs`);
           
           const attemptData = {
             game_id: gameIdForDb, // ALWAYS real 8-char Lichess ID (verified)
@@ -724,7 +727,7 @@ export function useHybridBenchmark() {
         }
       }
       
-      console.log(`[Dedup] Benchmark complete: ${analyzedCount} unique positions analyzed, ${skippedDuplicates} duplicates skipped`);
+      console.log(`[BENCHMARK] Complete: ${analyzedCount} unique games analyzed, ${skippedDuplicates} duplicates skipped`);
       
       // Report if we stopped early
       if (analyzedCount < gameCount && analyzedCount > 0) {
@@ -962,14 +965,14 @@ async function fetchLichessGames(
   // Fetch from ALL players in the pool - we have 14 years of data
   const selectedPlayers = shuffledPlayers.slice(0, Math.min(30, shuffledPlayers.length));
   
-  // v4.0: gameIds now contains ONLY real Lichess IDs
+  // v4.1: Bulletproof deduplication
   const realIdCount = analyzedData?.gameIds?.size || 0;
-  console.log(`[v4.0-FETCH] ========================================`);
-  console.log(`[v4.0-FETCH] Fetching from FULL LICHESS HISTORY (2010-present)`);
-  console.log(`[v4.0-FETCH] ${selectedPlayers.length} GMs, window: ${new Date(since).toISOString()} to ${new Date(until).toISOString()}`);
-  console.log(`[v4.0-FETCH] DEDUP: ${realIdCount} real Lichess IDs loaded`);
-  console.log(`[v4.0-FETCH] Target buffer: ${count * 5} games`);
-  console.log(`[v4.0-FETCH] ========================================`);
+  console.log(`[FETCH] ========================================`);
+  console.log(`[FETCH] Fetching from FULL LICHESS HISTORY (2010-present)`);
+  console.log(`[FETCH] ${selectedPlayers.length} GMs, window: ${new Date(since).toISOString().split('T')[0]} to ${new Date(until).toISOString().split('T')[0]}`);
+  console.log(`[FETCH] Will skip ${realIdCount} already-analyzed games`);
+  console.log(`[FETCH] Target buffer: ${count * 5} games`);
+  console.log(`[FETCH] ========================================`);
   
   // Use Edge Function to fetch games (bypasses CORS in production)
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -1058,18 +1061,17 @@ async function fetchLichessGames(
           // Skip if we've already seen this game in current batch
           if (gameIds.has(lichessGameId)) continue;
           
-          // v4.0 GAME-BASED DEDUPLICATION: Check if already analyzed
-          const isKnownGame = analyzedData?.gameIds?.has(lichessGameId);
-          if (isKnownGame) {
+          // Skip if already analyzed in database (pre-filter for efficiency)
+          // Silent skip - no logging here, the main processing loop handles all logging
+          if (analyzedData?.gameIds?.has(lichessGameId)) {
             alreadyAnalyzedSkipped++;
-            console.log(`[v4.0-DEDUP] Pre-filter: game ${lichessGameId} already analyzed`);
             continue;
           }
           
           gameIds.add(lichessGameId);
           
-          // AUDIT LOG: Real Lichess ID with verification link
-          console.log(`[v2.0-FETCH] ✓ REAL Lichess game: ${lichessGameId} (https://lichess.org/${lichessGameId})`);
+          // Only log games we're actually returning for processing
+          console.log(`[FETCH] ✓ New game: ${lichessGameId} (https://lichess.org/${lichessGameId})`);
           
           games.push({
             pgn,
@@ -1110,11 +1112,11 @@ async function fetchLichessGames(
     await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 1000));
   }
   
-  console.log(`[Benchmark] FINAL: Fetched ${games.length} NEW games (${gameIds.size} unique IDs)`);
-  console.log(`[Benchmark] Pre-filtered: ${alreadyAnalyzedSkipped} already-analyzed games, ${shortGamesSkipped} short games, ${invalidPgnSkipped} invalid PGNs`);
-  console.log(`[Benchmark] Fetch errors: ${fetchErrors}`);
-  console.log(`[Benchmark] Window: ${new Date(since).toLocaleDateString()} - ${new Date(until).toLocaleDateString()}`);
-  
+  console.log(`[FETCH] ========================================`);
+  console.log(`[FETCH] COMPLETE: ${games.length} new games ready for analysis`);
+  console.log(`[FETCH] Skipped: ${alreadyAnalyzedSkipped} already-analyzed, ${shortGamesSkipped} too short, ${invalidPgnSkipped} invalid`);
+  console.log(`[FETCH] Errors: ${fetchErrors} API failures`);
+  console.log(`[FETCH] ========================================`);
   // If we didn't get enough games but have some, continue with what we have
   if (games.length === 0 && fetchErrors > 0) {
     throw new Error('Failed to fetch games from Lichess - possibly rate limited. Please try again in a few minutes.');
