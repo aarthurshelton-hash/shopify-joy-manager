@@ -300,9 +300,12 @@ export async function fetchRealGames(
         // Skip games that are too short (10 half-moves minimum, matching Edge Function)
         if (!lichessGame.moves || lichessGame.moves.split(' ').length < 10) continue;
         
-        // Skip only if we already have this exact game ID (true duplicate)
-        if (games.some(g => g.id === lichessGame.id)) {
-          continue; // Avoid true duplicates only
+        // Skip only TRUE duplicates: exact same game ID (unique 8-char Lichess identifier)
+        // Lichess IDs are globally unique per game, so this is the only check needed
+        const isDuplicate = games.some(g => g.id === lichessGame.id);
+        if (isDuplicate) {
+          console.log(`[CloudBenchmark] Skipping true duplicate: ${lichessGame.id}`);
+          continue;
         }
         
         const pgn = lichessGameToPgn(lichessGame);
