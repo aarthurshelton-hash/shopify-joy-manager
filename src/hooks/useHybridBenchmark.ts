@@ -1,9 +1,14 @@
 /**
  * Hybrid Benchmark Hook - MAXIMUM DEPTH SYNCHRONIZED SYSTEM
- * VERSION: 2.0-REAL-IDS-ONLY (2026-01-20)
+ * VERSION: 4.0-REAL-IDS-ONLY (2026-01-20)
  * 
- * CRITICAL: This version ONLY accepts REAL 8-character Lichess IDs.
- * NO synthetic IDs are ever generated or accepted.
+ * CRITICAL: This version ONLY uses REAL 8-character Lichess IDs.
+ * NO synthetic IDs are ever generated, stored, or used for deduplication.
+ * 
+ * v4.0 Changes:
+ * - gameIds Set now contains ONLY real Lichess IDs (synthetic filtered at load)
+ * - Removed realLichessIds separate tracking (gameIds IS realLichessIds now)
+ * - Simplified deduplication logic throughout
  * 
  * Uses LOCAL Stockfish WASM at MAXIMUM DEPTH (60+) for true 100% capacity testing.
  * This is the "truly hybrid" system - combining:
@@ -22,7 +27,7 @@
  */
 
 // Version tag for debugging cached code issues
-const BENCHMARK_VERSION = "2.0-REAL-IDS-ONLY";
+const BENCHMARK_VERSION = "4.0-REAL-IDS-ONLY";
 console.log(`[useHybridBenchmark] Loaded version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
@@ -417,15 +422,12 @@ export function useHybridBenchmark() {
       const analyzedData = await getAlreadyAnalyzedData();
       let skippedDuplicates = 0;
       
-      // Count real vs synthetic IDs in database
-      const realIdCount = analyzedData.realLichessIds?.size || 0;
-      const syntheticCount = analyzedData.gameIds.size - realIdCount;
-      console.log(`[Dedup] GAME-BASED deduplication: ${realIdCount} real Lichess IDs, ${syntheticCount} legacy synthetic IDs`);
-      console.log(`[Dedup] Fresh games with 8-char Lichess IDs will NOT match legacy synthetic IDs`);
+      // v4.0: gameIds now contains ONLY real Lichess IDs (synthetic are filtered at load)
+      console.log(`[v4.0-DEDUP] Loaded ${analyzedData.gameIds.size} real Lichess IDs for deduplication`);
       
       setProgress(prev => ({ 
         ...prev!, 
-        message: `${realIdCount} real games analyzed (${syntheticCount} legacy synthetic). Fetching fresh GM games...` 
+        message: `${analyzedData.gameIds.size} real games analyzed. Fetching fresh GM games...` 
       }));
       
       const runId = crypto.randomUUID();
@@ -531,19 +533,15 @@ export function useHybridBenchmark() {
             continue;
           }
           
-          // GAME-BASED DEDUPLICATION ONLY (v3.0: use realLichessIds ONLY)
-          // We ONLY skip games we've already analyzed (same REAL 8-char Lichess game ID)
-          // Same POSITION in different games is VALUABLE - strengthens pattern recognition!
-          // CRITICAL: Check realLichessIds NOT gameIds - gameIds contains synthetic legacy IDs!
-          if (analyzedData.realLichessIds?.has(lichessGameId)) {
+          // v4.0 GAME-BASED DEDUPLICATION - Simple: check if we've analyzed this game
+          if (analyzedData.gameIds.has(lichessGameId)) {
             skippedDuplicates++;
-            console.log(`[v3.0-DEDUP] Skipping game ${lichessGameId} - already predicted (verify: https://lichess.org/${lichessGameId})`);
+            console.log(`[v4.0-DEDUP] Skipping game ${lichessGameId} - already analyzed (https://lichess.org/${lichessGameId})`);
             continue;
           }
           
-          // Add to BOTH sets - gameIds for backwards compat, realLichessIds for dedup
+          // Add to set to prevent within-run duplicates
           analyzedData.gameIds.add(lichessGameId);
-          analyzedData.realLichessIds?.add(lichessGameId);
           
           // Generate position hash for LEARNING (cross-reference patterns, NOT deduplication)
           // If we see the same position in a new game, that's an ADVANTAGE for pattern confidence
@@ -964,15 +962,14 @@ async function fetchLichessGames(
   // Fetch from ALL players in the pool - we have 14 years of data
   const selectedPlayers = shuffledPlayers.slice(0, Math.min(30, shuffledPlayers.length));
   
-  // v3.0: ONLY use realLichessIds for deduplication - legacy synthetic IDs are useless
-  const realIdCount = analyzedData?.realLichessIds?.size || 0;
-  const legacyIdCount = (analyzedData?.gameIds?.size || 0) - realIdCount;
-  console.log(`[v3.0-BENCHMARK] ========================================`);
-  console.log(`[v3.0-BENCHMARK] Fetching from FULL LICHESS HISTORY (2010-present)`);
-  console.log(`[v3.0-BENCHMARK] ${selectedPlayers.length} GMs, window: ${new Date(since).toISOString()} to ${new Date(until).toISOString()}`);
-  console.log(`[v3.0-BENCHMARK] DEDUP: ${realIdCount} real Lichess IDs (legacy ${legacyIdCount} IGNORED)`);
-  console.log(`[v3.0-BENCHMARK] Target buffer: ${count * 5} games`);
-  console.log(`[v3.0-BENCHMARK] ========================================`);
+  // v4.0: gameIds now contains ONLY real Lichess IDs
+  const realIdCount = analyzedData?.gameIds?.size || 0;
+  console.log(`[v4.0-FETCH] ========================================`);
+  console.log(`[v4.0-FETCH] Fetching from FULL LICHESS HISTORY (2010-present)`);
+  console.log(`[v4.0-FETCH] ${selectedPlayers.length} GMs, window: ${new Date(since).toISOString()} to ${new Date(until).toISOString()}`);
+  console.log(`[v4.0-FETCH] DEDUP: ${realIdCount} real Lichess IDs loaded`);
+  console.log(`[v4.0-FETCH] Target buffer: ${count * 5} games`);
+  console.log(`[v4.0-FETCH] ========================================`);
   
   // Use Edge Function to fetch games (bypasses CORS in production)
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -1061,14 +1058,11 @@ async function fetchLichessGames(
           // Skip if we've already seen this game in current batch
           if (gameIds.has(lichessGameId)) continue;
           
-          // GAME-BASED DEDUPLICATION v3.0: ONLY use realLichessIds
-          // CRITICAL: We ONLY check realLichessIds - NOT gameIds which contains legacy synthetic IDs
-          // Synthetic IDs like "lichess-TIMESTAMP-X" will NEVER match real IDs like "ZhoooCoY"
-          // Checking gameIds would cause fresh games to slip through (false negative dedup)
-          const isKnownGame = analyzedData?.realLichessIds?.has(lichessGameId);
+          // v4.0 GAME-BASED DEDUPLICATION: Check if already analyzed
+          const isKnownGame = analyzedData?.gameIds?.has(lichessGameId);
           if (isKnownGame) {
             alreadyAnalyzedSkipped++;
-            console.log(`[v3.0-DEDUP] ✓ Pre-filter: game ${lichessGameId} already analyzed (https://lichess.org/${lichessGameId})`);
+            console.log(`[v4.0-DEDUP] Pre-filter: game ${lichessGameId} already analyzed`);
             continue;
           }
           

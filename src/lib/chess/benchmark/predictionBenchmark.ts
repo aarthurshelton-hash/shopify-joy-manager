@@ -232,7 +232,10 @@ export async function runPredictionBenchmark(
   };
   
   for (let i = 0; i < numGames; i++) {
-    const gameId = `benchmark-${Date.now()}-${i}`;
+    // CRITICAL: For internal benchmark (Stockfish vs Stockfish), we use a synthetic-style ID
+    // but mark it clearly as internal so it's never confused with real Lichess IDs
+    // Real Lichess IDs are ALWAYS 8 alphanumeric chars - this format is intentionally different
+    const gameId = `internal_sfvsf_${i}`;
     
     onProgress?.(`Generating game ${i + 1}/${numGames}`, (i / numGames) * 100);
     

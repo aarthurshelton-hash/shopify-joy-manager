@@ -614,16 +614,14 @@ serve(async (req) => {
     // Load historical archetype performance for calibrated predictions
     await loadHistoricalStats(supabase);
 
-    // Get ONLY real 8-char Lichess IDs for deduplication (v3.0)
-    // CRITICAL: Legacy synthetic IDs (lichess-TIMESTAMP-X) are IGNORED
-    // They will never match real Lichess IDs like "ZhoooCoY"
-    const existingRealLichessIds = new Set<string>();
+    // v4.0: Load ONLY real 8-char Lichess IDs for deduplication
+    // Synthetic IDs are completely ignored
+    const existingGameIds = new Set<string>();
     const existingPositionHashes = new Set<string>(); // For position reaffirmation tracking only
     let from = 0;
     const pageSize = 1000;
     let hasMore = true;
-    let realIdCount = 0;
-    let syntheticCount = 0;
+    let syntheticSkipped = 0;
     
     while (hasMore) {
       const { data: existingAttempts, error } = await supabase
@@ -638,13 +636,12 @@ serve(async (req) => {
       
       for (const p of existingAttempts) {
         if (p.game_id) {
-          // ONLY add REAL 8-char Lichess IDs for deduplication
+          // v4.0: ONLY add real 8-char Lichess IDs
           const isRealId = p.game_id.length === 8 && /^[a-zA-Z0-9]+$/.test(p.game_id);
           if (isRealId) {
-            existingRealLichessIds.add(p.game_id);
-            realIdCount++;
+            existingGameIds.add(p.game_id);
           } else {
-            syntheticCount++; // Count but DON'T add to dedup set
+            syntheticSkipped++;
           }
         }
         if (p.position_hash) existingPositionHashes.add(p.position_hash);
@@ -654,10 +651,7 @@ serve(async (req) => {
       hasMore = existingAttempts.length === pageSize;
     }
     
-    console.log(`[v3.0-DEDUP] Loaded ${realIdCount} REAL Lichess IDs for deduplication (ignored ${syntheticCount} synthetic)`);
-    
-    // IMPORTANT: Pass only real IDs to fetchLichessGames
-    const existingGameIds = existingRealLichessIds;
+    console.log(`[v4.0-DEDUP] Loaded ${existingGameIds.size} real Lichess IDs (skipped ${syntheticSkipped} synthetic)`);
 
     const runId = crypto.randomUUID();
     const attempts: any[] = [];

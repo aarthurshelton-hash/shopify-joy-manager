@@ -57,22 +57,28 @@ export function hashPosition(fen: string): string {
  * game twice, but identical positions appearing in different games are welcome.
  */
 /**
- * Fetch all previously analyzed GAMES for deduplication
+ * Check if a game ID is a REAL Lichess ID (8 alphanumeric characters)
+ * Real Lichess IDs: "ZhoooCoY", "TjTYXZko", "abc123XY"
+ * NOT real: "lichess-1234567890-0", "benchmark-1234567890-0", "internal_sfvsf_0"
+ */
+export function isRealLichessId(gameId: string): boolean {
+  return gameId.length === 8 && /^[a-zA-Z0-9]+$/.test(gameId);
+}
+
+/**
+ * Fetch all previously analyzed REAL Lichess games for deduplication
  * 
- * CRITICAL v3.0 FIX: ONLY real 8-char Lichess IDs are used for deduplication.
- * Legacy synthetic IDs (lichess-TIMESTAMP-X, game-TIMESTAMP-X) are IGNORED
- * because they will NEVER match real Lichess game IDs like "ZhoooCoY".
- * 
- * This prevents the deduplication system from blocking fresh new games.
+ * v4.0: COMPLETELY ELIMINATES synthetic ID tracking.
+ * We ONLY care about real 8-char Lichess IDs for deduplication.
+ * All other IDs are treated as noise and ignored.
  */
 export async function getAlreadyAnalyzedData(): Promise<{
-  gameIds: Set<string>;          // DEPRECATED: Contains ALL IDs but should NOT be used for deduplication
-  realLichessIds: Set<string>;   // ONLY use this for deduplication - valid 8-char alphanumeric Lichess IDs
+  gameIds: Set<string>;          // Contains ONLY real 8-char Lichess IDs now
+  realLichessIds: Set<string>;   // Same as gameIds (kept for backwards compat)
   positionHashes: Set<string>;   // For pattern learning cross-reference (NOT deduplication)
   fenStrings: Set<string>;       // For pattern learning (NOT deduplication)
 }> {
-  const gameIds = new Set<string>();       // Keep for backwards compat but don't use for dedup
-  const realLichessIds = new Set<string>(); // THE ONLY SET THAT MATTERS FOR DEDUPLICATION
+  const gameIds = new Set<string>();        // NOW contains ONLY real Lichess IDs
   const positionHashes = new Set<string>(); // For learning, NOT deduplication
   const fenStrings = new Set<string>();     // For learning, NOT deduplication
 
@@ -81,8 +87,7 @@ export async function getAlreadyAnalyzedData(): Promise<{
   const pageSize = 1000;
   let hasMore = true;
   let totalFetched = 0;
-  let syntheticCount = 0;
-  let realIdCount = 0;
+  let syntheticSkipped = 0;
 
   while (hasMore) {
     const { data, error } = await supabase
@@ -91,7 +96,7 @@ export async function getAlreadyAnalyzedData(): Promise<{
       .range(from, from + pageSize - 1);
 
     if (error) {
-      console.warn('[v3.0-DEDUP] Error fetching games:', error);
+      console.warn('[v4.0-DEDUP] Error fetching games:', error);
       break;
     }
 
@@ -102,19 +107,11 @@ export async function getAlreadyAnalyzedData(): Promise<{
 
     for (const row of data) {
       if (row.game_id) {
-        // Store ALL game IDs (for backwards compat only)
-        gameIds.add(row.game_id);
-        
-        // CRITICAL: Only track REAL 8-char Lichess IDs for actual deduplication
-        // Real Lichess IDs: exactly 8 alphanumeric characters (e.g., "ZhoooCoY", "TjTYXZko")
-        // Synthetic IDs: "lichess-TIMESTAMP-X" or "game-TIMESTAMP-X" - IGNORE THESE
-        const isRealLichessId = row.game_id.length === 8 && /^[a-zA-Z0-9]+$/.test(row.game_id);
-        if (isRealLichessId) {
-          realLichessIds.add(row.game_id);
-          realIdCount++;
+        // v4.0: ONLY add real 8-char Lichess IDs - completely ignore synthetic
+        if (isRealLichessId(row.game_id)) {
+          gameIds.add(row.game_id);
         } else {
-          syntheticCount++;
-          // DO NOT add synthetic IDs to realLichessIds - they pollute deduplication
+          syntheticSkipped++;
         }
       }
       
@@ -128,14 +125,10 @@ export async function getAlreadyAnalyzedData(): Promise<{
     hasMore = data.length === pageSize;
   }
 
-  console.log(`[v3.0-DEDUP] ========================================`);
-  console.log(`[v3.0-DEDUP] Database scan complete: ${totalFetched} total records`);
-  console.log(`[v3.0-DEDUP] ✓ REAL Lichess IDs (8-char): ${realIdCount}`);
-  console.log(`[v3.0-DEDUP] ✗ Legacy synthetic IDs (IGNORED): ${syntheticCount}`);
-  console.log(`[v3.0-DEDUP] DEDUPLICATION USES ONLY: ${realIdCount} real IDs`);
-  console.log(`[v3.0-DEDUP] ========================================`);
+  console.log(`[v4.0-DEDUP] Database: ${totalFetched} records, ${gameIds.size} real Lichess IDs, ${syntheticSkipped} synthetic skipped`);
   
-  return { gameIds, realLichessIds, positionHashes, fenStrings };
+  // Return gameIds as the canonical set - realLichessIds is the same reference for compatibility
+  return { gameIds, realLichessIds: gameIds, positionHashes, fenStrings };
 }
 
 /**
@@ -165,19 +158,19 @@ export function isPositionAlreadyAnalyzed(
 }
 
 /**
- * Check if a specific game has already been analyzed (v3.0).
- * CRITICAL: Uses realLichessIds ONLY - NOT gameIds which contains legacy synthetic IDs.
- * Note: Same position in different games (different timestamps) = different games.
- * We only dedupe on exact REAL Lichess game ID match.
+ * Check if a specific game has already been analyzed (v4.0).
+ * 
+ * ONLY checks real 8-char Lichess IDs. Synthetic IDs always return false
+ * because we don't track them for deduplication purposes.
  */
 export function isGameAlreadyAnalyzed(
   gameId: string, 
-  analyzedData: { gameIds: Set<string>; realLichessIds?: Set<string> }
+  analyzedData: { gameIds: Set<string> }
 ): boolean {
-  // v3.0: ONLY check realLichessIds if available (contains only real 8-char Lichess IDs)
-  // Falls back to gameIds for backwards compatibility but this is deprecated
-  if (analyzedData.realLichessIds) {
-    return analyzedData.realLichessIds.has(gameId);
+  // v4.0: First verify this is even a real Lichess ID format
+  // If not, we can't have analyzed it as a "real" game
+  if (!isRealLichessId(gameId)) {
+    return false;
   }
   return analyzedData.gameIds.has(gameId);
 }
