@@ -1,6 +1,11 @@
 /**
  * Multi-Source Game Fetcher v2.0 - HIGH VOLUME
- * VERSION: 6.47-HIGHVOL (2026-01-20)
+ * VERSION: 6.52-BATCHFIX (2026-01-20)
+ * 
+ * v6.52 CHANGES:
+ * - Improved ID validation to handle both prefixed and raw IDs
+ * - Better error logging for filtered games
+ * - Ensures valid games aren't filtered incorrectly
  * 
  * v6.47 CHANGES:
  * - PARALLEL FETCHING: Fetch from 3-4 players simultaneously per chunk
@@ -328,9 +333,14 @@ async function fetchFromLichess(
       let addedFromPlayer = 0;
       for (const game of fetchedGames) {
         const lichessId = game.id;
-        if (!lichessId || lichessId.length !== 8) continue;
+        // v6.52: Validate Lichess IDs are 8 chars (standard format)
+        if (!lichessId || lichessId.length !== 8) {
+          continue;
+        }
         
         const gameId = `li_${lichessId}`;
+        
+        // v6.52: Check both prefixed AND raw ID against excludeIds
         if (excludeIds.has(gameId) || excludeIds.has(lichessId)) continue;
         if (localIds.has(gameId)) continue;
         

@@ -22,7 +22,7 @@
  */
 
 // v6.48-PREFIXFIX: Fixed ID validation for prefixed multi-source IDs
-const CLOUD_BENCHMARK_VERSION = "6.51-CLOSURE-FIX";
+const CLOUD_BENCHMARK_VERSION = "6.52-BATCHFIX";
 console.log(`[v6.51] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
 
 import { Chess } from 'chess.js';
