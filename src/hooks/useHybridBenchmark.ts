@@ -11,9 +11,9 @@
  * That's it. No over-engineering.
  */
 
-// v6.26-FREEFLOW: Maximum fresh game absorption with deferred deduplication
-const BENCHMARK_VERSION = "6.26-FREEFLOW";
-console.log(`[v6.26] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.27-FRESHFOCUS: Prioritize recent data to avoid DB duplicates
+const BENCHMARK_VERSION = "6.27-FRESHFOCUS";
+console.log(`[v6.27] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -907,39 +907,46 @@ async function fetchLichessGames(
   const games: LichessGameData[] = [];
   const gameIds = new Set<string>();
   
-  // v6.26-FREEFLOW: Truly random shuffle every batch - NO player tracking
+  // v6.27-FRESHFOCUS: Truly random shuffle every batch - NO player tracking
   const shuffledPlayers = [...topPlayers].sort(() => Math.random() - 0.5);
   
-  console.log(`[v6.26 FETCH] Using ${shuffledPlayers.length} players (random order each batch)`);
-  console.log(`[v6.26 FETCH] First 5: ${shuffledPlayers.slice(0, 5).join(', ')}`);
+  console.log(`[v6.27 FETCH] Using ${shuffledPlayers.length} players (random order each batch)`);
+  console.log(`[v6.27 FETCH] First 5: ${shuffledPlayers.slice(0, 5).join(', ')}`);
   
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
   
-  // v6.26-FREEFLOW: Truly random time windows weighted toward recent years
+  // v6.27-FRESHFOCUS: Prioritize RECENT data that's NOT already in DB
   function getRandomTimeWindow(): { since: number; until: number } {
     const now = Date.now();
+    const currentYear = new Date().getFullYear(); // 2026
     
-    // Weight toward recent years (more games available)
+    // v6.27: HEAVILY weight toward most recent data (less likely to be in DB)
     let targetYear: number;
     const roll = Math.random();
-    if (roll < 0.5) {
-      // 50% chance: 2024-2025 (most active)
-      targetYear = 2024 + Math.floor(Math.random() * 2);
-    } else if (roll < 0.8) {
-      // 30% chance: 2022-2023
-      targetYear = 2022 + Math.floor(Math.random() * 2);
+    if (roll < 0.6) {
+      // 60% chance: Current year and last year (2025-2026) - FRESHEST DATA
+      targetYear = currentYear - Math.floor(Math.random() * 2); // 2025 or 2026
+    } else if (roll < 0.85) {
+      // 25% chance: 2023-2024
+      targetYear = 2023 + Math.floor(Math.random() * 2);
     } else {
-      // 20% chance: 2020-2021
-      targetYear = 2020 + Math.floor(Math.random() * 2);
+      // 15% chance: 2021-2022 (older but different from DB games)
+      targetYear = 2021 + Math.floor(Math.random() * 2);
     }
     
     const targetMonth = Math.floor(Math.random() * 12);
     const targetDay = 1 + Math.floor(Math.random() * 28);
     
-    const windowStart = new Date(targetYear, targetMonth, targetDay).getTime();
-    // Use 3-week windows for more games
-    const windowDuration = 21 * 24 * 60 * 60 * 1000;
+    // Cap future dates to now
+    let windowStart = new Date(targetYear, targetMonth, targetDay).getTime();
+    if (windowStart > now) {
+      // If in the future, use last 60 days instead
+      windowStart = now - (60 * 24 * 60 * 60 * 1000) + Math.random() * (30 * 24 * 60 * 60 * 1000);
+    }
+    
+    // Use 2-week windows for more variety
+    const windowDuration = 14 * 24 * 60 * 60 * 1000;
     return { since: windowStart, until: Math.min(now, windowStart + windowDuration) };
   }
   
