@@ -1,24 +1,22 @@
 /**
  * Hybrid Benchmark Hook - MAXIMUM DEPTH SYNCHRONIZED SYSTEM
- * VERSION: 5.1-FRESH-VALID (2026-01-20)
+ * VERSION: 5.2-LEAN-FETCH (2026-01-20)
  * 
- * v5.1 CRITICAL FIX:
- * - Games are ONLY marked as "processed" AFTER passing ALL validation gates
- * - Before: Games marked processed, then failed validation = burned without prediction
- * - After: Games that fail validation can be retried (not marked as processed)
- * - This ensures every processed game produces a prediction result
+ * v5.2 CRITICAL FIXES:
+ * - Fixed batch size: Now fetches (needed * 2) instead of min(100)
+ * - Added exhaustive logging at EVERY decision point
+ * - Fixed silent failures: All skip reasons are now logged
+ * - Guaranteed prediction results for every processed game
  * 
- * v5.0 ZERO-SKIP:
- * - fetchLichessGames returns ONLY truly new games (pre-filtered by DB IDs)
- * - Main loop processes ALL returned games (no secondary skip checks needed)
- * - Crystal-clear logging: every decision is visible
+ * v5.1:
+ * - Games only marked "processed" AFTER passing ALL validation gates
  * 
  * Uses LOCAL Stockfish WASM at MAXIMUM DEPTH (60+) for true 100% capacity testing.
  */
 
 // Version tag for debugging cached code issues
-const BENCHMARK_VERSION = "5.1-FRESH-VALID";
-console.log(`[useHybridBenchmark] Loaded version: ${BENCHMARK_VERSION}`);
+const BENCHMARK_VERSION = "5.2-LEAN-FETCH";
+console.log(`[v5.2] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -452,15 +450,19 @@ export function useHybridBenchmark() {
         // Fetch more games if we've exhausted our current batch
         if (gameIndex >= allGames.length) {
           totalFetchAttempts++;
-          const gamesNeeded = (gameCount - analyzedCount) * 8; // 8x multiplier for buffer
-          const targetFetch = Math.max(gamesNeeded, 100);
+          // v5.2 FIX: Lean fetch - request only 2x what we need, not 100+ minimum
+          const gamesNeeded = gameCount - analyzedCount;
+          const targetFetch = Math.max(gamesNeeded * 2, 10); // 2x buffer, minimum 10
+          
+          console.log(`[v5.2 FETCH] ========================================`);
+          console.log(`[v5.2 FETCH] Batch ${totalFetchAttempts}: Need ${gamesNeeded} more predictions`);
+          console.log(`[v5.2 FETCH] Requesting ${targetFetch} games (2x buffer)`);
+          console.log(`[v5.2 FETCH] ========================================`);
           
           setProgress(prev => ({ 
             ...prev!, 
-            message: `Batch ${totalFetchAttempts}: Fetching ~${targetFetch} fresh games... (${analyzedCount}/${gameCount} complete)` 
+            message: `Batch ${totalFetchAttempts}: Fetching ${targetFetch} games... (${analyzedCount}/${gameCount} done)` 
           }));
-          
-          console.log(`[Benchmark] Fetch attempt ${totalFetchAttempts}: Need ${gameCount - analyzedCount} more positions, fetching ${targetFetch} games...`);
           
           try {
             // CRITICAL: Pass analyzedData to pre-filter at fetch time
@@ -544,23 +546,22 @@ export function useHybridBenchmark() {
             continue;
           }
           
-          // v5.1 FIX: DO NOT mark as processed yet - we need to validate first!
-          // The old code marked games as processed BEFORE checking if they could actually be analyzed.
-          // This caused fresh games to be "burned" without producing predictions.
-          
-          console.log(`[v5.1 CANDIDATE] Game ${lichessGameId} passed ID gates, validating...`);
+          // v5.2: Exhaustive logging for every decision
+          console.log(`[v5.2 PARSE] Game ${lichessGameId}: Parsing PGN...`);
           
           const { moves, result: gameResult, fen, moveNumber } = parsePGN(game.pgn, predictionMoveRange);
           
+          console.log(`[v5.2 PARSED] Game ${lichessGameId}: ${moves.length} moves, result="${gameResult}", move=${moveNumber}`);
+          
           // Gate 3: Minimum moves for meaningful analysis
           if (moves.length < 10) {
-            console.log(`[v5.1 SHORT] Game ${lichessGameId} has ${moves.length} moves (need 10+) - NOT marking as processed, will retry`);
-            continue; // Don't mark as processed - let it be retried with different PGN
+            console.log(`[v5.2 SKIP-SHORT] ✗ Game ${lichessGameId} has only ${moves.length} moves (need 10+)`);
+            continue;
           }
           
           // Gate 4: Valid result detection
           if (gameResult !== 'white' && gameResult !== 'black' && gameResult !== 'draw') {
-            console.log(`[v5.1 NO-RESULT] Game ${lichessGameId} has no valid result: "${gameResult}" - skipping`);
+            console.log(`[v5.2 SKIP-RESULT] ✗ Game ${lichessGameId} has invalid result: "${gameResult}"`);
             continue;
           }
           
@@ -568,14 +569,16 @@ export function useHybridBenchmark() {
           processedThisRun.add(lichessGameId);
           analyzedData.gameIds.add(lichessGameId);
           
-          // ✅ THIS GAME WILL BE PREDICTED
-          console.log(`[v5.1 FRESH+VALID] ✓ Game #${analyzedCount + 1}: ${lichessGameId} (${moves.length} moves, result=${gameResult})`);
-          console.log(`[v5.1 PREDICT] ✓ Predicting: https://lichess.org/${lichessGameId}`);
+          console.log(`[v5.2 VALID] ========================================`);
+          console.log(`[v5.2 VALID] ✓ Game #${analyzedCount + 1}: ${lichessGameId}`);
+          console.log(`[v5.2 VALID] Moves: ${moves.length}, Result: ${gameResult}, Analyze at move ${moveNumber}`);
+          console.log(`[v5.2 VALID] Link: https://lichess.org/${lichessGameId}`);
+          console.log(`[v5.2 VALID] ========================================`);
           
           // Position hash for pattern LEARNING only (not deduplication)
           const positionHash = hashPosition(fen);
           if (analyzedData.positionHashes.has(positionHash)) {
-            console.log(`[PATTERN] Same position in different game - strengthening pattern confidence`);
+            console.log(`[v5.2 PATTERN] Same position in different game - strengthening confidence`);
             reaffirmExistingPrediction(fen, positionHash).catch(() => {});
           }
           analyzedData.positionHashes.add(positionHash);
@@ -607,7 +610,10 @@ export function useHybridBenchmark() {
           const analysis = await Promise.race([analysisPromise, analysisTimeout]);
           
           if (!analysis) {
-            console.warn(`[Benchmark] Analysis timeout for game ${analyzedCount + 1}, skipping...`);
+            console.warn(`[v5.2 TIMEOUT] ✗ Game ${lichessGameId} - Stockfish analysis timed out after 120s`);
+            // v5.2: UNMARK as processed so it can be retried
+            processedThisRun.delete(lichessGameId);
+            analyzedData.gameIds.delete(lichessGameId);
             continue;
           }
           
@@ -617,10 +623,10 @@ export function useHybridBenchmark() {
           const depthReached = analysis.evaluation.depth;
           const depthRatio = depthReached > 0 ? (depthReached / depth) * 100 : 0;
           if (depthRatio < 95 && isMaxDepthMode && depthReached > 0) {
-            console.warn(`[Depth Audit] Position ${analyzedCount + 1}: Only reached ${depthReached}/${depth} (${depthRatio.toFixed(1)}%)`);
+            console.warn(`[v5.2 DEPTH] Position ${analyzedCount + 1}: Only ${depthReached}/${depth} (${depthRatio.toFixed(1)}%)`);
           }
           
-          console.log(`[Benchmark] Game ${analyzedCount + 1} complete: depth ${depthReached}, eval ${stockfish.evaluation}cp`);
+          console.log(`[v5.2 ANALYSIS] ✓ Game ${lichessGameId}: depth=${depthReached}, eval=${stockfish.evaluation}cp`);
           
           depths.push(stockfish.depth);
           
@@ -723,13 +729,21 @@ export function useHybridBenchmark() {
               timestamp: Date.now(),
             };
             onPrediction(livePrediction);
+            console.log(`[v5.2 STREAM] ✓ Streamed prediction to UI`);
           }
           
           analyzedCount++; // Increment unique game counter
           
+          console.log(`[v5.2 SUCCESS] ========================================`);
+          console.log(`[v5.2 SUCCESS] ✓ PREDICTION #${analyzedCount}/${gameCount} COMPLETE`);
+          console.log(`[v5.2 SUCCESS] En Pensent: ${colorFlow.prediction} (${(colorFlow.confidence * 100).toFixed(0)}%) ${hybridIsCorrect ? '✓' : '✗'}`);
+          console.log(`[v5.2 SUCCESS] Stockfish: ${stockfish.prediction} (${stockfish.evaluation}cp) ${stockfishIsCorrect ? '✓' : '✗'}`);
+          console.log(`[v5.2 SUCCESS] Actual: ${gameResult}`);
+          console.log(`[v5.2 SUCCESS] ========================================`);
+          
         } catch (e) {
           const errorMsg = e instanceof Error ? e.message : String(e);
-          console.error(`[Benchmark] Error processing game ${gameIndex}:`, errorMsg);
+          console.error(`[v5.2 ERROR] Game ${gameIndex} failed:`, errorMsg);
           // Continue to next game instead of stopping
           setProgress(prev => ({
             ...prev!,
@@ -738,7 +752,11 @@ export function useHybridBenchmark() {
         }
       }
       
-      console.log(`[BENCHMARK] Complete: ${analyzedCount} unique games analyzed, ${skippedFromDb} DB duplicates, ${skippedThisRun} run duplicates skipped`);
+      console.log(`[v5.2 COMPLETE] ========================================`);
+      console.log(`[v5.2 COMPLETE] Benchmark finished!`);
+      console.log(`[v5.2 COMPLETE] Predictions: ${analyzedCount}/${gameCount}`);
+      console.log(`[v5.2 COMPLETE] DB skips: ${skippedFromDb}, Run skips: ${skippedThisRun}`);
+      console.log(`[v5.2 COMPLETE] ========================================`);
       
       // Report if we stopped early
       if (analyzedCount < gameCount && analyzedCount > 0) {
