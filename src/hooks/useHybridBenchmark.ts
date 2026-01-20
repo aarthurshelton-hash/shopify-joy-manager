@@ -11,9 +11,9 @@
  * That's it. No over-engineering.
  */
 
-// v6.37-RECENTBIAS: Bias random windows toward recent history where players are active
-const BENCHMARK_VERSION = "6.37-RECENTBIAS";
-console.log(`[v6.37] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.38-FIXSKIP: Don't mark games as analyzed until AFTER successful prediction
+const BENCHMARK_VERSION = "6.38-FIXSKIP";
+console.log(`[v6.38] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -680,7 +680,9 @@ export function useHybridBenchmark() {
         };
         
         attempts.push(attemptData);
-        analyzedData.gameIds.add(lichessId); // Mark as analyzed
+        // v6.38: REMOVED - was marking games as analyzed BEFORE we know if prediction succeeded
+        // This caused games that timed out to be permanently skipped
+        // Now only marked at line 731 after successful prediction
         
         // Stream to UI
         if (onPrediction) {

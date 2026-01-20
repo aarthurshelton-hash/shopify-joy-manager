@@ -12,9 +12,9 @@
  * Uses Lichess Cloud API with TCEC-calibrated prediction thresholds
  */
 
-// v6.37-RECENTBIAS: Bias random windows toward recent history where players are active
-const CLOUD_BENCHMARK_VERSION = "6.37-RECENTBIAS";
-console.log(`[v6.37] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
+// v6.38-FIXSKIP: Don't mark games as analyzed until AFTER successful prediction
+const CLOUD_BENCHMARK_VERSION = "6.38-FIXSKIP";
+console.log(`[v6.38] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
 
 import { Chess } from 'chess.js';
 import { evaluatePosition, type PositionEvaluation } from './lichessCloudEval';
