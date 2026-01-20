@@ -1,10 +1,10 @@
 /**
  * En Pensent™ vs TCEC Stockfish 17 Unlimited Benchmark
- * VERSION: 6.61-QUEUE-FIX (2026-01-20)
+ * VERSION: 6.62-WINDOW-FIX (2026-01-20)
  * 
+ * v6.62: Prime-based time window rotation prevents cache collisions across batches
  * v6.61: Remove predictedIds check from queue-adding (only check in processing loop)
  * v6.60: Only exclude DB games during fetch, not session predictions
- * v6.59: Cleaned player pool (removed 404s) + smart time windows
  *
  * DATA SOURCES:
  * - Lichess: 5+ BILLION games via Edge Function proxy
@@ -23,9 +23,9 @@
  * Compares against TCEC SF17 (ELO 3600) - the strongest Stockfish configuration
  */
 
-// v6.61-QUEUE-FIX: Remove predictedIds from queue filter
-const CLOUD_BENCHMARK_VERSION = "6.61-QUEUE-FIX";
-console.log(`[v6.61] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
+// v6.62-WINDOW-FIX: Prime-based time window rotation
+const CLOUD_BENCHMARK_VERSION = "6.62-WINDOW-FIX";
+console.log(`[v6.62] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
 
 import { Chess } from 'chess.js';
 import { evaluatePosition, type PositionEvaluation } from './lichessCloudEval';

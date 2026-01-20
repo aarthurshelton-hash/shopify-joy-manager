@@ -1,21 +1,15 @@
 /**
  * Multi-Source Game Fetcher v2.0 - HIGH VOLUME
- * VERSION: 6.61-QUEUE-FIX (2026-01-20)
+ * VERSION: 6.62-WINDOW-FIX (2026-01-20)
+ * 
+ * v6.62 CHANGES:
+ * - WINDOW FIX: Use larger prime-based offsets to prevent time window collisions
+ * - Each batch explores genuinely different historical periods
+ * - Randomization uses batch-seeded approach for reproducibility with variety
  * 
  * v6.61 CHANGES:
  * - QUEUE FIX: Remove predictedIds check from queue-adding stage
  * - Session duplicates now only checked in processing loop
- * - Maximizes fresh game absorption per batch
- * 
- * v6.60 CHANGES:
- * - FETCH FIX: Only exclude DB games during fetch, not session predictions
- * - Prevents "starvation" where session predictions block fresh fetches
- * - Maintains processing-loop deduplication for safety
- * 
- * v6.58 CHANGES:
- * - Fixed ID validation to support prefixed IDs (li_/cc_)
- * - Removed all content-based filters (length, moves count)
- * - Only ID-based deduplication
  * 
  * SOURCES:
  * - Lichess (via Edge Function proxy) - 5+ billion games
@@ -199,18 +193,20 @@ async function fetchFromChessCom(
   const localIds = new Set<string>();
   
   // v6.47: Higher volume - more players, more months
-  const startOffset = (batchNumber * 7) % CHESSCOM_TOP_PLAYERS.length;
+  // v6.62: Prime-based rotation for Chess.com player coverage
+  const startOffset = (batchNumber * 11) % CHESSCOM_TOP_PLAYERS.length;
   const shuffledPlayers = [
     ...CHESSCOM_TOP_PLAYERS.slice(startOffset), 
     ...CHESSCOM_TOP_PLAYERS.slice(0, startOffset)
-  ].sort(() => Math.random() - 0.5);
+  ];
   
-  console.log(`[ChessCom] Batch ${batchNumber}: Targeting ${targetCount} games from ${shuffledPlayers.slice(0, 8).join(', ')}...`);
+  console.log(`[ChessCom v6.62] Batch ${batchNumber}: Targeting ${targetCount} games from ${shuffledPlayers.slice(0, 8).join(', ')}...`);
   
-  // v6.47: Fetch from more players in PARALLEL
+  // v6.62: Fetch from more players in PARALLEL with varied history
   const maxPlayers = Math.min(20, shuffledPlayers.length);
   const gamesPerPlayer = Math.ceil(targetCount / 4);
-  const monthsToFetch = 12 + (batchNumber * 2); // v6.47: More history as batches progress
+  // v6.62: Use prime offset for month depth to avoid cache hits
+  const monthsToFetch = 12 + ((batchNumber * 7) % 24); // 12-35 months history
   
   // v6.47: Parallel fetching - split into chunks of 4
   const playerChunks: string[][] = [];
@@ -291,15 +287,16 @@ async function fetchFromLichess(
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
   
-  // v6.59: Deterministic rotation to maximize coverage
-  const startOffset = (batchNumber * 13) % LICHESS_TOP_PLAYERS.length;
+  // v6.62: Prime-based rotation to maximize player coverage
+  const startOffset = (batchNumber * 17) % LICHESS_TOP_PLAYERS.length;
   const shuffledPlayers = [
     ...LICHESS_TOP_PLAYERS.slice(startOffset),
     ...LICHESS_TOP_PLAYERS.slice(0, startOffset)
   ];
   
-  console.log(`[Lichess v6.59] Batch ${batchNumber}: Verified pool (${LICHESS_TOP_PLAYERS.length} players)`);
-  console.log(`[Lichess v6.59] First 6: ${shuffledPlayers.slice(0, 6).join(', ')}`);
+  console.log(`[Lichess v6.62] Batch ${batchNumber}: Verified pool (${LICHESS_TOP_PLAYERS.length} players)`);
+  console.log(`[Lichess v6.62] First 6: ${shuffledPlayers.slice(0, 6).join(', ')}`);
+  console.log(`[Lichess v6.62] Time window offset: year=${(batchNumber * 17) % 5}, month=${(batchNumber * 37) % 24}`);
   
   // v6.59: Process more players but with smarter windows
   const maxPlayers = Math.min(30, shuffledPlayers.length);
@@ -322,17 +319,21 @@ async function fetchFromLichess(
       rateLimitHits = 0;
     }
     
-    // v6.59-SMART-WINDOWS: Focus on 2022-2025 where activity is highest
+    // v6.62-WINDOW-FIX: Use prime-based offsets to prevent cache collisions
+    // Each batch explores genuinely different time periods
     const chunkPromises = chunk.map(async (player, idx) => {
       const now = Date.now();
       const oneDay = 24 * 60 * 60 * 1000;
       
-      // v6.59: Target recent high-activity windows (last 3 years primarily)
-      // Use batch number to explore different time slices
-      const yearOffset = batchNumber % 4; // Cycle through 0-3 years back
-      const monthOffset = (batchNumber + idx) % 12; // Different months
-      const baseDaysBack = yearOffset * 365 + monthOffset * 30 + Math.floor(Math.random() * 30);
-      const windowDuration = 60 + Math.floor(Math.random() * 60); // 2-4 months
+      // v6.62: Prime-based rotation prevents window overlap across batches
+      // Using primes 17, 37, 53 ensures non-repeating patterns for many batches
+      const playerHash = player.charCodeAt(0) + player.charCodeAt(player.length - 1);
+      const yearOffset = ((batchNumber * 17 + idx * 7) % 5); // 0-4 years back
+      const monthOffset = ((batchNumber * 37 + playerHash) % 24); // 0-23 months offset
+      const dayOffset = ((batchNumber * 53 + idx * 11 + playerHash) % 60); // 0-59 days extra
+      
+      const baseDaysBack = yearOffset * 365 + monthOffset * 30 + dayOffset;
+      const windowDuration = 45 + (batchNumber % 4) * 15; // 45-90 day windows
       const until = now - (baseDaysBack * oneDay);
       const since = until - (windowDuration * oneDay);
       
