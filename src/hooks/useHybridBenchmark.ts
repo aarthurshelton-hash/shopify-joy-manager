@@ -16,9 +16,9 @@
  * - Chess.com: -50 offset (closer to FIDE)
  */
 
-// v6.47-HIGHVOL: Parallel fetching + higher volume
-const BENCHMARK_VERSION = "6.47-HIGHVOL";
-console.log(`[v6.47] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.48-PREFIXFIX: Fixed ID validation for prefixed multi-source IDs
+const BENCHMARK_VERSION = "6.48-PREFIXFIX";
+console.log(`[v6.48] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -708,30 +708,34 @@ export function useHybridBenchmark() {
         
         const game = allGames[gameIndex];
         gameIndex++;
-        const lichessId = game.lichessId;
+        // v6.48: gameId now includes source prefix (li_XXXXXXXX or cc_XXXXXXXXX)
+        const gameId = game.lichessId;
+        const source = game.source || 'lichess';
         
-        // Simple validation
-        if (!lichessId || lichessId.length !== 8) {
+        // v6.48: Updated validation for prefixed IDs
+        // Lichess: li_XXXXXXXX (11 chars), Chess.com: cc_XXXXXXXXX (12+ chars)
+        if (!gameId || gameId.length < 10) {
           skipStats.invalidId++;
           consecutiveSkips++;
           continue;
         }
         
         // v6.41: Skip if this game previously failed (timeout/parse error)
-        if (failedGameIds.has(lichessId)) {
+        if (failedGameIds.has(gameId)) {
           consecutiveSkips++;
           continue;
         }
         
-        // v6.33: Skip if already in DATABASE
-        if (analyzedData.gameIds.has(lichessId)) {
+        // v6.48: Skip if already in DATABASE (check both prefixed and raw ID for backwards compat)
+        const rawId = gameId.replace(/^(li_|cc_)/, '');
+        if (analyzedData.gameIds.has(gameId) || analyzedData.gameIds.has(rawId)) {
           skipStats.dbDupe++;
           consecutiveSkips++;
           continue;
         }
         
         // v6.33: Skip if we've ALREADY PREDICTED this game this session
-        if (predictedIds.has(lichessId)) {
+        if (predictedIds.has(gameId)) {
           skipStats.sessionDupe++;
           consecutiveSkips++;
           continue;
@@ -747,7 +751,7 @@ export function useHybridBenchmark() {
           gameResult = 'draw';
         }
         
-        console.log(`[v6.16] Game ${lichessId}: winner=${game.winner} → ${gameResult}`);
+        console.log(`[v6.48] Game ${gameId}: winner=${game.winner} → ${gameResult}`);
         
         // Parse moves and generate FEN
         let moves: string[];
@@ -761,16 +765,16 @@ export function useHybridBenchmark() {
           moveNumber = parsed.moveNumber;
           
           if (moves.length < 4) {
-          console.log(`[v6.41] Skip short: ${lichessId} (${moves.length} moves)`);
+          console.log(`[v6.48] Skip short: ${gameId} (${moves.length} moves)`);
           skipStats.shortGame++;
-          failedGameIds.add(lichessId); // v6.41: Don't retry short games
+          failedGameIds.add(gameId);
           consecutiveSkips++;
           continue;
           }
         } catch (e) {
-          console.log(`[v6.41] Skip parse error: ${lichessId}`, e);
+          console.log(`[v6.48] Skip parse error: ${gameId}`, e);
           skipStats.parseError++;
-          failedGameIds.add(lichessId); // v6.41: Don't retry parse errors
+          failedGameIds.add(gameId);
           consecutiveSkips++;
           continue;
         }
@@ -782,7 +786,7 @@ export function useHybridBenchmark() {
         const blackEloDisplay = game.blackElo ? ` (${game.blackElo})` : '';
         const gameName = `${whiteName}${whiteEloDisplay} vs ${blackName}${blackEloDisplay}`;
         
-        console.log(`[v6.43] PREDICTING #${predictedCount + 1}/${gameCount}: ${lichessId} → ${gameName} (${gameResult}) [batch ${batchNumber}]`);
+        console.log(`[v6.48] PREDICTING #${predictedCount + 1}/${gameCount}: ${gameId} → ${gameName} (${gameResult}) [batch ${batchNumber}]`);
         
         const remainingInBatch = allGames.length - gameIndex;
         setProgress({
@@ -802,11 +806,11 @@ export function useHybridBenchmark() {
           // Get En Pensent prediction (Color Flow analysis)
           colorFlow = analyzeColorFlowFullScope(moves.slice(0, moveNumber));
         } catch (cfError) {
-          console.error(`[v6.43] ❌ ColorFlow error for ${lichessId}:`, cfError);
+          console.error(`[v6.48] ❌ ColorFlow error for ${gameId}:`, cfError);
           skipStats.analysisError++;
-          failedGameIds.add(lichessId);
+          failedGameIds.add(gameId);
           consecutiveSkips++;
-          continue; // Skip to next game in the while loop
+          continue;
         }
         
         try {
@@ -815,19 +819,19 @@ export function useHybridBenchmark() {
           const timeoutPromise = new Promise<null>(r => setTimeout(() => r(null), 45000));
           analysis = await Promise.race([analysisPromise, timeoutPromise]);
         } catch (sfError) {
-          console.error(`[v6.43] ❌ Stockfish error for ${lichessId}:`, sfError);
+          console.error(`[v6.48] ❌ Stockfish error for ${gameId}:`, sfError);
           skipStats.analysisError++;
-          failedGameIds.add(lichessId);
+          failedGameIds.add(gameId);
           consecutiveSkips++;
-          continue; // Skip to next game in the while loop
+          continue;
         }
         
         if (!analysis) {
-          console.log(`[v6.43] ⚠️ Stockfish timeout for ${lichessId}, blacklisting`);
+          console.log(`[v6.48] ⚠️ Stockfish timeout for ${gameId}, blacklisting`);
           skipStats.timeout++;
-          failedGameIds.add(lichessId);
+          failedGameIds.add(gameId);
           consecutiveSkips++;
-          continue; // Skip to next game in the while loop
+          continue;
         }
         
         const stockfish = getLocalStockfishPrediction(analysis);
@@ -849,7 +853,7 @@ export function useHybridBenchmark() {
         const positionHash = hashPosition(fen);
         
         const attemptData = {
-          game_id: lichessId,
+          game_id: gameId,
           game_name: gameName,
           fen,
           move_number: moveNumber,
@@ -919,12 +923,12 @@ export function useHybridBenchmark() {
         }
         
         predictedCount++;
-        predictedIds.add(lichessId);
-        analyzedData.gameIds.add(lichessId);
+        predictedIds.add(gameId);
+        analyzedData.gameIds.add(gameId);
         consecutiveSkips = 0;
         
-        console.log(`[v6.43] ✓ PREDICTION #${predictedCount}: ${lichessId} | time_control=${game.timeControl || game.speed} | whiteElo=${game.whiteElo} | blackElo=${game.blackElo}`);
-        console.log(`[v6.43]   En Pensent=${colorFlow.prediction}${hybridIsCorrect ? '✓' : '✗'} | SF=${stockfish.prediction}${stockfishIsCorrect ? '✓' : '✗'} | Actual=${gameResult}`);
+        console.log(`[v6.48] ✓ PREDICTION #${predictedCount}: ${gameId} | source=${source} | time_control=${game.timeControl || game.speed} | whiteElo=${game.whiteElo} | blackElo=${game.blackElo}`);
+        console.log(`[v6.48]   En Pensent=${colorFlow.prediction}${hybridIsCorrect ? '✓' : '✗'} | SF=${stockfish.prediction}${stockfishIsCorrect ? '✓' : '✗'} | Actual=${gameResult}`);
         
         // v6.43-BULLETPROOF: Incremental save every SAVE_INTERVAL predictions
         if (predictedCount % SAVE_INTERVAL === 0) {
