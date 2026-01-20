@@ -445,7 +445,7 @@ export function useHybridBenchmark() {
       let allGames: any[] = [];
       let gameIndex = 0;
       let batchNumber = 0;
-      const maxBatches = 20; // Safety limit to prevent infinite loops
+      const maxBatches = Math.max(20, Math.ceil(gameCount / 5)); // Dynamic limit based on target
       
       // Initial fetch
       const fetchCount = Math.max(gameCount * 3, 30);
