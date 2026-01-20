@@ -12,9 +12,9 @@
  */
 
 // Version tag for debugging cached code issues
-// v6.15-BATCH-FIX: Fix batch processing - process games immediately as they arrive
-const BENCHMARK_VERSION = "6.15-BATCH-FIX";
-console.log(`[v6.14] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.16-CLEAN: Simplified fetch logic - NO module state, direct fetch, predict everything
+const BENCHMARK_VERSION = "6.16-CLEAN";
+console.log(`[v6.16] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -536,37 +536,31 @@ export function useHybridBenchmark() {
         
         // Simple validation
         if (!lichessId || lichessId.length !== 8) {
-          console.log(`[v6.14] Skip invalid ID: ${lichessId}`);
+          console.log(`[v6.16] Skip invalid ID: ${lichessId}`);
           skipStats.invalidId++;
           continue;
         }
         
-        // v6.14: Check against session set (not just DB)
-        // This is a safety net - should already be filtered by fetchLichessGames
+        // v6.16: Simple session duplicate check
         if (sessionSeenIds.has(lichessId) && !allGames.slice(0, gameIndex).some(g => g.lichessId === lichessId)) {
-          // It's in session but not in our queue before us - already predicted this session
-          console.log(`[v6.14] Skip session duplicate: ${lichessId}`);
+          console.log(`[v6.16] Skip session duplicate: ${lichessId}`);
           skipStats.dbDupe++;
           continue;
         }
         
-        // v6.8: ZERO SKIPPING - Determine result from whatever data we have
-        // Lichess winner field: 'white' | 'black' | undefined
-        // If no winner, it's a draw (stalemate, agreement, repetition, insufficient, timeout vs insufficient, etc.)
+        // Determine result from winner field (simple and direct)
         let gameResult: string;
         if (game.winner === 'white') {
           gameResult = 'white';
         } else if (game.winner === 'black') {
           gameResult = 'black';
         } else {
-          // No winner = draw (covers ALL draw scenarios: stalemate, agreement, repetition, 50-move, insufficient, etc.)
           gameResult = 'draw';
         }
         
-        console.log(`[v6.14] Game ${lichessId}: winner=${game.winner}, status=${game.status} → ${gameResult}`);
+        console.log(`[v6.16] Game ${lichessId}: winner=${game.winner} → ${gameResult}`);
         
-        // Parse moves and generate FEN for prediction point
-        // v6.14: Use raw moves string from Edge Function when available (more reliable)
+        // Parse moves and generate FEN
         let moves: string[];
         let fen: string;
         let moveNumber: number;
@@ -577,21 +571,16 @@ export function useHybridBenchmark() {
           fen = parsed.fen;
           moveNumber = parsed.moveNumber;
           
-          // v6.14: Very minimal check - Edge Function already validated 10+ half-moves
           if (moves.length < 4) {
-            console.log(`[v6.14] Skip short after parse: ${lichessId} (${moves.length} moves from raw: ${game.moves?.slice(0, 50)}...)`);
+            console.log(`[v6.16] Skip short: ${lichessId} (${moves.length} moves)`);
             skipStats.shortGame++;
             continue;
           }
         } catch (e) {
-          console.log(`[v6.14] Skip parse error: ${lichessId}`, e);
+          console.log(`[v6.16] Skip parse error: ${lichessId}`, e);
           skipStats.parseError++;
           continue;
         }
-        
-        // v6.14: Log game termination type for debugging
-        const termination = game.termination || 'unknown';
-        console.log(`[v6.14] Game ${lichessId}: result=${gameResult}, termination=${termination}`);
         
         // ✅ VALID GAME - PREDICT IT
         const whiteName = game.whiteName || 'Unknown';
@@ -885,29 +874,17 @@ export function useHybridBenchmark() {
   };
 }
 
-// Fetch games from Lichess via Edge Function (avoids CORS issues in production)
-// CRITICAL: Each benchmark run must use FRESH, UNIQUE games for scientific validity
-// Pre-filters against analyzedData to ONLY return truly new games
-
-// v6.15: Track state across all fetches in the session for smarter window selection
-let lastUsedWindow: { since: number; until: number } | null = null;
-let usedWindows: Set<string> = new Set();
-
+// v6.16-CLEAN: Simple fetch function - NO module-level state, just fetch games
 async function fetchLichessGames(
   count: number, 
   analyzedData?: { positionHashes: Set<string>; gameIds: Set<string>; fenStrings: Set<string>; realLichessIds?: Set<string> }
 ): Promise<LichessGameData[]> {
-  // v6.15: Simpler single-pass fetch - let caller handle retry logic
   const targetGames = count;
-  const gamesPerPlayer = Math.max(25, Math.ceil(targetGames / 2));
+  const gamesPerPlayer = Math.max(30, Math.ceil(targetGames / 2));
   
-  console.log(`[v6.15 FETCH] Requesting ${targetGames} fresh games (${gamesPerPlayer}/player)`);
+  console.log(`[v6.16 FETCH] Requesting ${targetGames} fresh games`);
   
-  // Track fetch attempts for better diagnostics
-  let totalFetchAttempts = 0;
-  let successfulFetches = 0;
-  
-  // Large player pool - active Lichess players with long history (expanded)
+  // Large player pool - active Lichess players
   const topPlayers = [
     "DrNykterstein", "Hikaru", "nihalsarin2004", "GMWSO", "LyonBeast",
     "Polish_fighter3000", "Msb2", "penguingm1", "DanielNaroditsky", 
@@ -915,86 +892,51 @@ async function fetchLichessGames(
     "Arjun_Erigaisi", "RaunakSadhwani2005", "TemurKuybokarov",
     "Zhigalko_Sergei", "ChessNetwork", "DrDrunkenstein", "Firouzja2003",
     "GM_Srinath", "Oleksandr_Bortnyk", "FabianoCaruana", "LevonAronian",
-    // Additional players for better coverage
     "chesswarrior7197", "MagnusCarlsen", "AnishGiri", "VladimirKramnik",
     "SethiChess", "duhless", "howitzer14", "rajabboy", "Jospem", "Alireza2003",
-    "lance5500", "Yasser-IRI", "DrChessPatzer", "chessbrahs", "Navaraok",
-    "Vladimirovich9000", "Nodirbek2004", "VincentKeymer2004", "rajuuu",
-    "WesleyS8", "AntoniaAntoaneta", "GM_In_Black", "Sergeiaza",
-    // Even more players for exhaustive coverage
-    "Fair_Play_Fighters", "BodhiChess", "penguin_master", "ChessQueen2021",
-    "BlitzMasterX", "RapidKing99", "ClassicalChamp", "TacticalGenius"
+    "lance5500", "Navaraok", "Nodirbek2004", "VincentKeymer2004", "WesleyS8"
   ];
   
   const games: LichessGameData[] = [];
   const gameIds = new Set<string>();
-  // v6.15: Shuffle players differently each time for variety
-  const selectedPlayers = topPlayers.sort(() => Math.random() - 0.5);
-  let fetchErrors = 0;
-  let rateLimitedPlayers = 0;
-  let shortGamesSkipped = 0;
-  let alreadyAnalyzedSkipped = 0;
+  const shuffledPlayers = [...topPlayers].sort(() => Math.random() - 0.5);
   
   const dbGameCount = analyzedData?.gameIds?.size || 0;
-  console.log(`[v6.15 FETCH] Session has seen ${dbGameCount} game IDs`);
+  console.log(`[v6.16 FETCH] Already have ${dbGameCount} game IDs in session`);
   
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
   
-  // v6.15: Get a UNIQUE time window - avoid recently used windows
-  function getUniqueTimeWindow(): { since: number; until: number } {
+  // v6.16: Simple random time window each call - no tracking state
+  function getRandomTimeWindow(): { since: number; until: number } {
     const now = Date.now();
     const minYear = 2018;
     const maxYear = new Date().getFullYear();
-    
-    for (let attempt = 0; attempt < 20; attempt++) {
-      const yearRange = maxYear - minYear;
-      const randomFactor = Math.random() ** 0.5;
-      const targetYear = minYear + Math.floor(yearRange * randomFactor);
-      const targetMonth = Math.floor(Math.random() * 12);
-      const windowStart = new Date(targetYear, targetMonth, 1).getTime();
-      const windowDuration = 90 * 24 * 60 * 60 * 1000; // 90 days
-      const windowKey = `${targetYear}-${targetMonth}`;
-      
-      if (!usedWindows.has(windowKey)) {
-        usedWindows.add(windowKey);
-        const window = { since: windowStart, until: Math.min(now, windowStart + windowDuration) };
-        lastUsedWindow = window;
-        return window;
-      }
-    }
-    
-    // Fallback: random window even if used before
-    const randomYear = minYear + Math.floor(Math.random() * (maxYear - minYear));
-    const randomMonth = Math.floor(Math.random() * 12);
-    const windowStart = new Date(randomYear, randomMonth, 1).getTime();
-    return { since: windowStart, until: Math.min(now, windowStart + 90 * 24 * 60 * 60 * 1000) };
+    const targetYear = minYear + Math.floor(Math.random() * (maxYear - minYear + 1));
+    const targetMonth = Math.floor(Math.random() * 12);
+    const windowStart = new Date(targetYear, targetMonth, 1).getTime();
+    const windowDuration = 90 * 24 * 60 * 60 * 1000; // 90 days
+    return { since: windowStart, until: Math.min(now, windowStart + windowDuration) };
   }
   
-  let requestDelay = 1500; // Start with 1.5s between requests
+  const { since, until } = getRandomTimeWindow();
+  console.log(`[v6.16 FETCH] Window: ${new Date(since).toISOString().split('T')[0]} to ${new Date(until).toISOString().split('T')[0]}`);
   
-  // v6.15: Single pass with unique window - caller handles retry
-  const { since, until } = getUniqueTimeWindow();
-  console.log(`[v6.15 FETCH] Window: ${new Date(since).toISOString().split('T')[0]} to ${new Date(until).toISOString().split('T')[0]}`);
+  let rateLimitCount = 0;
   
-  for (const player of selectedPlayers) {
+  for (const player of shuffledPlayers) {
     if (games.length >= targetGames) break;
     
-    // Rate limit handling
-    if (rateLimitedPlayers >= 3) {
-      const waitTime = Math.min(45000, 15000 * rateLimitedPlayers);
-      console.warn(`[v6.15] Rate limits detected (${rateLimitedPlayers}), waiting ${waitTime/1000}s...`);
-      await new Promise(resolve => setTimeout(resolve, waitTime));
-      requestDelay = Math.min(6000, requestDelay + 1000);
-      rateLimitedPlayers = 0;
+    // Rate limit backoff
+    if (rateLimitCount >= 3) {
+      console.warn(`[v6.16] Rate limited, waiting 30s...`);
+      await new Promise(r => setTimeout(r, 30000));
+      rateLimitCount = 0;
     }
     
-    await new Promise(resolve => setTimeout(resolve, requestDelay));
-    totalFetchAttempts++;
+    await new Promise(r => setTimeout(r, 1500 + Math.random() * 500));
     
     try {
-      console.log(`[v6.15 FETCH] Fetching ${player}... (${games.length}/${targetGames} collected)`);
-      
       const response = await fetch(`${supabaseUrl}/functions/v1/lichess-games`, {
         method: 'POST',
         headers: {
@@ -1002,122 +944,79 @@ async function fetchLichessGames(
           'Authorization': `Bearer ${supabaseKey}`,
           'apikey': supabaseKey
         },
-        body: JSON.stringify({
-          player,
-          since,
-          until,
-          max: gamesPerPlayer
-        })
+        body: JSON.stringify({ player, since, until, max: gamesPerPlayer })
       });
       
       if (response.status === 429) {
-        console.warn(`[v6.15] Rate limited for ${player}, backing off...`);
-        rateLimitedPlayers++;
-        fetchErrors++;
-        requestDelay = Math.min(8000, requestDelay + 1500);
+        rateLimitCount++;
         continue;
       }
       
-      if (response.ok) {
-        successfulFetches++;
-        const data = await response.json();
-        const fetchedGames = data.games || [];
+      if (!response.ok) continue;
+      
+      const data = await response.json();
+      const fetchedGames = data.games || [];
+      
+      if (fetchedGames.length === 0) continue;
+      
+      console.log(`[v6.16] ✓ ${player}: ${fetchedGames.length} games`);
+      rateLimitCount = 0;
+      
+      for (const game of fetchedGames) {
+        const pgn = game.pgn || game.moves;
+        if (!pgn || typeof pgn !== 'string' || pgn.length < 20) continue;
+        if (game.moveCount && game.moveCount < 10) continue;
         
-        if (fetchedGames.length === 0) {
-          console.log(`[v6.15] No games for ${player} in this window`);
-          continue;
-        }
+        const lichessGameId = game.id;
+        const isValidLichessId = lichessGameId && 
+          typeof lichessGameId === 'string' && 
+          lichessGameId.length === 8 &&
+          /^[a-zA-Z0-9]+$/.test(lichessGameId);
         
-        console.log(`[v6.15] ✓ ${player}: ${fetchedGames.length} raw games`);
-        rateLimitedPlayers = 0;
+        if (!isValidLichessId) continue;
+        if (gameIds.has(lichessGameId)) continue;
+        if (analyzedData?.gameIds?.has(lichessGameId)) continue;
         
-        for (const game of fetchedGames) {
-          const pgn = game.pgn || game.moves;
-          if (!pgn || typeof pgn !== 'string' || pgn.length < 20) continue;
-          
-          // v6.6: Trust Edge Function's validation - it already filters for >= 10 half-moves
-          // Only skip if moveCount is explicitly provided and too low
-          if (game.moveCount && game.moveCount < 10) {
-            shortGamesSkipped++;
-            continue;
-          }
-          
-          const lichessGameId = game.id;
-          const isValidLichessId = lichessGameId && 
-            typeof lichessGameId === 'string' && 
-            lichessGameId.length === 8 &&
-            /^[a-zA-Z0-9]+$/.test(lichessGameId);
-          
-          if (!isValidLichessId) continue;
-          if (gameIds.has(lichessGameId)) continue;
-          
-          if (analyzedData?.gameIds?.has(lichessGameId)) {
-            alreadyAnalyzedSkipped++;
-            continue;
-          }
-          
-          gameIds.add(lichessGameId);
-          console.log(`[v6.15 NEW] ✓ Fresh: ${lichessGameId} → lichess.org/${lichessGameId}`);
-          
-          games.push({
-            pgn,
-            lichessId: lichessGameId,
-            timeControl: game.timeControl,
-            clockInitial: game.clockInitial,
-            clockIncrement: game.clockIncrement,
-            whiteName: game.whiteName,
-            blackName: game.blackName,
-            whiteElo: game.whiteElo,
-            blackElo: game.blackElo,
-            whiteTitle: game.whiteTitle,
-            blackTitle: game.blackTitle,
-            playedAt: game.playedAt,
-            gameYear: game.gameYear,
-            gameMonth: game.gameMonth,
-            openingEco: game.openingEco,
-            openingName: game.openingName,
-            // v6.4-TIMEOUT: Capture termination for timeout games
-            termination: game.status || game.termination || 'unknown',
-            speed: game.speed,
-            rated: game.rated,
-            variant: game.variant,
-            // v6.10-WINNER: CRITICAL - Pass winner field for result determination!
-            winner: game.winner, // 'white' | 'black' | undefined (draw)
-            status: game.status, // 'mate' | 'resign' | 'stalemate' | 'timeout' | 'draw' | etc.
-            // v6.15: Pass moves directly for reliable parsing
-            moves: game.moves,
-          });
-        }
+        gameIds.add(lichessGameId);
+        console.log(`[v6.16] ✓ Fresh: ${lichessGameId}`);
         
-        if (games.length >= targetGames) {
-          console.log(`[v6.15 FETCH] ✓ Target reached: ${games.length} fresh games`);
-          break;
-        }
-      } else {
-        console.warn(`[v6.15] Fetch failed for ${player}: ${response.status}`);
-        fetchErrors++;
+        games.push({
+          pgn,
+          lichessId: lichessGameId,
+          timeControl: game.timeControl,
+          clockInitial: game.clockInitial,
+          clockIncrement: game.clockIncrement,
+          whiteName: game.whiteName,
+          blackName: game.blackName,
+          whiteElo: game.whiteElo,
+          blackElo: game.blackElo,
+          whiteTitle: game.whiteTitle,
+          blackTitle: game.blackTitle,
+          playedAt: game.playedAt,
+          gameYear: game.gameYear,
+          gameMonth: game.gameMonth,
+          openingEco: game.openingEco,
+          openingName: game.openingName,
+          termination: game.status || game.termination || 'unknown',
+          speed: game.speed,
+          rated: game.rated,
+          variant: game.variant,
+          winner: game.winner,
+          status: game.status,
+          moves: game.moves,
+        });
       }
+      
+      if (games.length >= targetGames) break;
     } catch (e) {
-      console.error(`[v6.15] Error for ${player}:`, e);
-      fetchErrors++;
+      console.error(`[v6.16] Error for ${player}:`, e);
     }
-    
-    await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 400));
   }
   
-  console.log(`[v6.15 FETCH] ========================================`);
-  console.log(`[v6.15 FETCH] COMPLETE: ${games.length} FRESH games (wanted ${targetGames})`);
-  console.log(`[v6.15 FETCH] API calls: ${totalFetchAttempts} (${successfulFetches} successful)`);
-  console.log(`[v6.15 FETCH] Pre-filtered: ${alreadyAnalyzedSkipped} already seen`);
-  console.log(`[v6.15 FETCH] Skipped: ${shortGamesSkipped} too short`);
-  console.log(`[v6.15 FETCH] ========================================`);
+  console.log(`[v6.16 FETCH] COMPLETE: ${games.length} fresh games (wanted ${targetGames})`);
   
-  if (games.length === 0 && fetchErrors > 0) {
-    throw new Error('Failed to fetch games from Lichess - possibly rate limited. Please try again in a few minutes.');
-  }
-  
-  if (games.length < targetGames && games.length > 0) {
-    console.warn(`[v6.15] ⚠️ Only fetched ${games.length}/${targetGames} games - will retry with new window`);
+  if (games.length === 0) {
+    throw new Error('No games fetched from Lichess. Please try again.');
   }
   
   return games.sort(() => Math.random() - 0.5);
