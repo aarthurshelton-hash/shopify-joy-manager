@@ -116,9 +116,9 @@ export async function getAlreadyAnalyzedData(): Promise<{
     hasMore = data.length === pageSize;
   }
 
-  console.log(`[Dedup] Loaded ${realIdCount} real Lichess games, ${syntheticCount} legacy IDs from ${totalFetched} total records`);
-  console.log(`[Dedup] GAME-BASED deduplication: Only skip games we've already analyzed (${gameIds.size} unique games)`);
-  console.log(`[Dedup] Position patterns available for learning: ${positionHashes.size} (NOT used for deduplication)`);
+  console.log(`[v2.0-DEDUP] Database contains: ${realIdCount} REAL Lichess IDs, ${syntheticCount} legacy synthetic IDs`);
+  console.log(`[v2.0-DEDUP] ✓ ONLY real 8-char Lichess IDs (${realIdCount}) used for deduplication - legacy IDs IGNORED`);
+  console.log(`[v2.0-DEDUP] Pattern learning references: ${positionHashes.size} positions (NOT used for deduplication)`);
   return { gameIds, realLichessIds, positionHashes, fenStrings };
 }
 
