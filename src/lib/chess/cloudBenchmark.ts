@@ -12,9 +12,9 @@
  * Uses Lichess Cloud API with TCEC-calibrated prediction thresholds
  */
 
-// v6.30-FRESHFIRST: Start with most recent games
-const CLOUD_BENCHMARK_VERSION = "6.30-FRESHFIRST";
-console.log(`[v6.30] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
+// v6.31-RESILIENT: Add consecutive skip protection
+const CLOUD_BENCHMARK_VERSION = "6.31-RESILIENT";
+console.log(`[v6.31] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
 
 import { Chess } from 'chess.js';
 import { evaluatePosition, type PositionEvaluation } from './lichessCloudEval';
