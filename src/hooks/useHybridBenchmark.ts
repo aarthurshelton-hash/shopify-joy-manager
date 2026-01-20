@@ -683,7 +683,7 @@ export function useHybridBenchmark() {
       let consecutiveSkips = 0;
       const MAX_CONSECUTIVE_SKIPS = 150; // v6.43: More tolerance before refetch
       
-      // v6.74-ENGINE-HEALTH: Track consecutive engine failures separately
+      // v6.75-ENGINE-HEALTH: Track consecutive engine failures separately
       let consecutiveEngineFailures = 0;
       
       // v6.43-BULLETPROOF: Incremental save function - saves every N predictions to prevent data loss
@@ -1056,7 +1056,7 @@ export function useHybridBenchmark() {
         
         const stockfish = getLocalStockfishPrediction(analysis);
         depths.push(stockfish.depth);
-        console.log(`[v6.74] Stockfish: ${stockfish.evaluation}cp at depth ${stockfish.depth}`);
+        console.log(`[v6.75] Stockfish: ${stockfish.evaluation}cp at depth ${stockfish.depth}`);
         
         // Compare predictions
         const hybridIsCorrect = colorFlow.prediction === gameResult;
@@ -1148,9 +1148,9 @@ export function useHybridBenchmark() {
         analyzedData.gameIds.add(gameId);
         consecutiveSkips = 0;
         
-        console.log(`[v6.74] ✅ PREDICTION #${predictedCount}/${gameCount}: ${gameId}`);
-        console.log(`[v6.74]   EP=${colorFlow.prediction}${hybridIsCorrect ? '✓' : '✗'} | SF=${stockfish.prediction}${stockfishIsCorrect ? '✓' : '✗'} | Actual=${gameResult}`);
-        console.log(`[v6.74]   Queue: ${gameQueue.length - gameIndex} remaining | Predicted: ${predictedCount}/${gameCount}`);
+        console.log(`[v6.75] ✅ PREDICTION #${predictedCount}/${gameCount}: ${gameId}`);
+        console.log(`[v6.75]   EP=${colorFlow.prediction}${hybridIsCorrect ? '✓' : '✗'} | SF=${stockfish.prediction}${stockfishIsCorrect ? '✓' : '✗'} | Actual=${gameResult}`);
+        console.log(`[v6.75]   Queue: ${gameQueue.length - gameIndex} remaining | Predicted: ${predictedCount}/${gameCount}`);
         
         // Incremental save
         if (predictedCount % SAVE_INTERVAL === 0) {
@@ -1161,12 +1161,12 @@ export function useHybridBenchmark() {
       // Final save
       await saveIncrementalResults();
       
-      console.log(`[v6.74] ════════════════════════════════════════════════════`);
-      console.log(`[v6.74] BENCHMARK COMPLETE: ${predictedCount}/${gameCount} predictions`);
-      console.log(`[v6.74] Batches: ${batchNumber} | Processed: ${gameIndex}/${gameQueue.length}`);
-      console.log(`[v6.74] Predicted: ${predictedIds.size} | Failed: ${failedGameIds.size}`);
-      console.log(`[v6.74] Skip stats: ${JSON.stringify(skipStats)}`);
-      console.log(`[v6.74] ════════════════════════════════════════════════════`);
+      console.log(`[v6.75] ════════════════════════════════════════════════════`);
+      console.log(`[v6.75] BENCHMARK COMPLETE: ${predictedCount}/${gameCount} predictions`);
+      console.log(`[v6.75] Batches: ${batchNumber} | Processed: ${gameIndex}/${gameQueue.length}`);
+      console.log(`[v6.75] Predicted: ${predictedIds.size} | Failed: ${failedGameIds.size}`);
+      console.log(`[v6.75] Skip stats: ${JSON.stringify(skipStats)}`);
+      console.log(`[v6.75] ════════════════════════════════════════════════════`);
       
       if (attempts.length === 0) {
         throw new Error(`No valid games processed. Skip reasons: ${JSON.stringify(skipStats)}`);
