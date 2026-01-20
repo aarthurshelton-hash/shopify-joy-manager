@@ -1,14 +1,13 @@
 /**
  * Multi-Source Game Fetcher v2.0 - HIGH VOLUME
- * VERSION: 6.54-RATELIMIT (2026-01-20)
+ * VERSION: 6.56-STRICT-VALIDATE (2026-01-20)
+ * 
+ * v6.56 CHANGES:
+ * - More comprehensive result detection (mate, resign, timeout)
+ * - Better PGN content extraction for Chess.com
+ * - Improved logging for debugging conversion rates
  * 
  * v6.54 CHANGES:
- * - Exponential backoff for rate limit handling
- * - Reduced chunk size (2 instead of 3) for Lichess
- * - Adaptive delays after rate limit encounters
- * - Longer cache TTL on edge function (10 min)
- * 
- * v6.53 CHANGES:
  * - Extract moves from Chess.com PGN for reliable parsing
  * - Better error logging for filtered games
  * - Ensures valid games aren't filtered incorrectly

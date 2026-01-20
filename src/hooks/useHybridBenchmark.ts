@@ -16,9 +16,9 @@
  * - Chess.com: -50 offset (closer to FIDE)
  */
 
-// v6.55-PIPELINE-FIX: Correct batch processing + aggressive queue handling
-const BENCHMARK_VERSION = "6.55-PIPELINE-FIX";
-console.log(`[v6.55] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.56-STRICT-VALIDATE: Pre-queue validation + comprehensive skip diagnostics
+const BENCHMARK_VERSION = "6.56-STRICT-VALIDATE";
+console.log(`[v6.56] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -546,27 +546,52 @@ export function useHybridBenchmark() {
           return 0;
         }
         
-        // v6.55-PIPELINE-FIX: Push to mutable array with detailed validation logging
+        // v6.56-STRICT-VALIDATE: Aggressive pre-queue validation to minimize in-loop skips
         const queueBefore = gameQueue.length;
         let validGames = 0;
-        let skippedNoMoves = 0;
-        let skippedNoResult = 0;
+        const preQueueSkips = { noMoves: 0, noResult: 0, badId: 0, dbDupe: 0, shortPgn: 0 };
         
         for (const g of result.games) {
-          // v6.55: Validate game has usable content before queueing
+          // v6.56: STRICT ID validation BEFORE queueing
+          const gameId = g.gameId;
+          if (!gameId || gameId.length < 10) {
+            preQueueSkips.badId++;
+            continue;
+          }
+          
+          // v6.56: DEDUP CHECK at queue time - don't add games we'll just skip later
+          const rawId = gameId.replace(/^(li_|cc_)/, '');
+          if (analyzedData.gameIds.has(gameId) || analyzedData.gameIds.has(rawId)) {
+            preQueueSkips.dbDupe++;
+            continue;
+          }
+          
+          // v6.56: Validate moves/PGN content
           const hasMoves = g.moves && g.moves.length > 20;
           const hasPgn = g.pgn && g.pgn.length > 50;
           
           if (!hasMoves && !hasPgn) {
-            skippedNoMoves++;
+            preQueueSkips.noMoves++;
             continue;
           }
           
-          // v6.55: Check for valid result - games need winner or draw status
-          const hasResult = g.winner !== undefined || g.result !== undefined || g.status === 'draw' || g.status === 'stalemate';
+          // v6.56: Validate PGN can be parsed (quick sanity check)
+          if (!hasMoves && hasPgn) {
+            // Extract moves from PGN if moves string is missing/short
+            const pgnLines = g.pgn.split('\n').filter(l => !l.startsWith('[') && l.trim().length > 0);
+            if (pgnLines.join(' ').trim().length < 30) {
+              preQueueSkips.shortPgn++;
+              continue;
+            }
+          }
+          
+          // v6.56: Check for determinable result 
+          const hasResult = g.winner !== undefined || g.result !== undefined || 
+                           g.status === 'draw' || g.status === 'stalemate' || 
+                           g.status === 'mate' || g.status === 'resign' || g.status === 'timeout';
           if (!hasResult) {
-            skippedNoResult++;
-            // Still queue it - we'll try to infer result from PGN during processing
+            preQueueSkips.noResult++;
+            continue; // v6.56: NOW we skip - no point queueing games we can't score
           }
           
           gameQueue.push({
@@ -594,11 +619,9 @@ export function useHybridBenchmark() {
           validGames++;
         }
         
-        if (skippedNoMoves > 0 || skippedNoResult > 0) {
-          console.log(`[v6.55] Pre-queue filter: ${skippedNoMoves} no moves, ${skippedNoResult} no result`);
-        }
-        
-        console.log(`[v6.55] Queue: ${queueBefore} → ${gameQueue.length} (+${validGames} valid, ready to process)`);
+        const totalSkipped = Object.values(preQueueSkips).reduce((a, b) => a + b, 0);
+        console.log(`[v6.56] PRE-QUEUE FILTER: ${totalSkipped} skipped → badId=${preQueueSkips.badId}, dbDupe=${preQueueSkips.dbDupe}, noMoves=${preQueueSkips.noMoves}, shortPgn=${preQueueSkips.shortPgn}, noResult=${preQueueSkips.noResult}`);
+        console.log(`[v6.56] Queue: ${queueBefore} → ${gameQueue.length} (+${validGames} valid, conversion rate: ${result.games.length > 0 ? Math.round(validGames / result.games.length * 100) : 0}%)`);
         
         return validGames;
       }
