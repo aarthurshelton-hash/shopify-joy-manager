@@ -78,7 +78,7 @@ export async function fetchChessComGames(
     months?: number; // How many recent months to fetch
   } = {}
 ): Promise<ChessComImportResult> {
-  const { max = 50, months = 3 } = options;
+  const { max = 100, months = 12 } = options; // v6.47: Higher defaults
   const errors: string[] = [];
   
   try {
