@@ -13,9 +13,9 @@
  */
 
 // Version tag for debugging
-// v6.16-CLEAN: Aligned with useHybridBenchmark - simplified fetch logic
-const CLOUD_BENCHMARK_VERSION = "6.16-CLEAN";
-console.log(`[v6.16] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
+// v6.17-CONSISTENT: Aligned with useHybridBenchmark - per-player windows, no rushing
+const CLOUD_BENCHMARK_VERSION = "6.17-CONSISTENT";
+console.log(`[v6.17] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
 
 import { Chess } from 'chess.js';
 import { evaluatePosition, type PositionEvaluation } from './lichessCloudEval';

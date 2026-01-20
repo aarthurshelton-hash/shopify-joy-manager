@@ -12,9 +12,9 @@
  */
 
 // Version tag for debugging cached code issues
-// v6.16-CLEAN: Simplified fetch logic - NO module state, direct fetch, predict everything
-const BENCHMARK_VERSION = "6.16-CLEAN";
-console.log(`[v6.16] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.17-CONSISTENT: Per-player time windows, consistent 2.5s delays, 6-month windows
+const BENCHMARK_VERSION = "6.17-CONSISTENT";
+console.log(`[v6.17] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -874,15 +874,15 @@ export function useHybridBenchmark() {
   };
 }
 
-// v6.16-CLEAN: Simple fetch function - NO module-level state, just fetch games
+// v6.17-CONSISTENT: Per-player time windows, consistent fetching, no rushing
 async function fetchLichessGames(
   count: number, 
   analyzedData?: { positionHashes: Set<string>; gameIds: Set<string>; fenStrings: Set<string>; realLichessIds?: Set<string> }
 ): Promise<LichessGameData[]> {
   const targetGames = count;
-  const gamesPerPlayer = Math.max(30, Math.ceil(targetGames / 2));
+  const gamesPerPlayer = Math.max(50, Math.ceil(targetGames / 2));
   
-  console.log(`[v6.16 FETCH] Requesting ${targetGames} fresh games`);
+  console.log(`[v6.17 FETCH] Requesting ${targetGames} fresh games`);
   
   // Large player pool - active Lichess players
   const topPlayers = [
@@ -902,39 +902,41 @@ async function fetchLichessGames(
   const shuffledPlayers = [...topPlayers].sort(() => Math.random() - 0.5);
   
   const dbGameCount = analyzedData?.gameIds?.size || 0;
-  console.log(`[v6.16 FETCH] Already have ${dbGameCount} game IDs in session`);
+  console.log(`[v6.17 FETCH] Already have ${dbGameCount} game IDs in session`);
   
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
   
-  // v6.16: Simple random time window each call - no tracking state
+  // v6.17: Generate random time window PER PLAYER for variety
   function getRandomTimeWindow(): { since: number; until: number } {
     const now = Date.now();
-    const minYear = 2018;
+    const minYear = 2015; // Extend back further for more data
     const maxYear = new Date().getFullYear();
     const targetYear = minYear + Math.floor(Math.random() * (maxYear - minYear + 1));
     const targetMonth = Math.floor(Math.random() * 12);
     const windowStart = new Date(targetYear, targetMonth, 1).getTime();
-    const windowDuration = 90 * 24 * 60 * 60 * 1000; // 90 days
+    const windowDuration = 180 * 24 * 60 * 60 * 1000; // 6 months for bigger window
     return { since: windowStart, until: Math.min(now, windowStart + windowDuration) };
   }
-  
-  const { since, until } = getRandomTimeWindow();
-  console.log(`[v6.16 FETCH] Window: ${new Date(since).toISOString().split('T')[0]} to ${new Date(until).toISOString().split('T')[0]}`);
   
   let rateLimitCount = 0;
   
   for (const player of shuffledPlayers) {
     if (games.length >= targetGames) break;
     
-    // Rate limit backoff
-    if (rateLimitCount >= 3) {
-      console.warn(`[v6.16] Rate limited, waiting 30s...`);
-      await new Promise(r => setTimeout(r, 30000));
+    // Rate limit backoff - be patient
+    if (rateLimitCount >= 2) {
+      console.warn(`[v6.17] Rate limited ${rateLimitCount}x, waiting 20s...`);
+      await new Promise(r => setTimeout(r, 20000));
       rateLimitCount = 0;
     }
     
-    await new Promise(r => setTimeout(r, 1500 + Math.random() * 500));
+    // v6.17: Consistent 2.5s delay between requests - no rushing
+    await new Promise(r => setTimeout(r, 2500));
+    
+    // v6.17: NEW time window for EACH player - ensures variety
+    const { since, until } = getRandomTimeWindow();
+    console.log(`[v6.17] ${player}: ${new Date(since).toISOString().split('T')[0]} to ${new Date(until).toISOString().split('T')[0]}`);
     
     try {
       const response = await fetch(`${supabaseUrl}/functions/v1/lichess-games`, {
@@ -949,19 +951,27 @@ async function fetchLichessGames(
       
       if (response.status === 429) {
         rateLimitCount++;
+        console.warn(`[v6.17] 429 for ${player}, will retry later`);
         continue;
       }
       
-      if (!response.ok) continue;
+      if (!response.ok) {
+        console.warn(`[v6.17] ${player}: HTTP ${response.status}`);
+        continue;
+      }
       
       const data = await response.json();
       const fetchedGames = data.games || [];
       
-      if (fetchedGames.length === 0) continue;
+      if (fetchedGames.length === 0) {
+        console.log(`[v6.17] ${player}: 0 games in this window, moving on`);
+        continue;
+      }
       
-      console.log(`[v6.16] ✓ ${player}: ${fetchedGames.length} games`);
+      console.log(`[v6.17] ✓ ${player}: ${fetchedGames.length} games from API`);
       rateLimitCount = 0;
       
+      let addedFromPlayer = 0;
       for (const game of fetchedGames) {
         const pgn = game.pgn || game.moves;
         if (!pgn || typeof pgn !== 'string' || pgn.length < 20) continue;
@@ -978,7 +988,7 @@ async function fetchLichessGames(
         if (analyzedData?.gameIds?.has(lichessGameId)) continue;
         
         gameIds.add(lichessGameId);
-        console.log(`[v6.16] ✓ Fresh: ${lichessGameId}`);
+        addedFromPlayer++;
         
         games.push({
           pgn,
@@ -1007,16 +1017,19 @@ async function fetchLichessGames(
         });
       }
       
+      console.log(`[v6.17] ${player}: +${addedFromPlayer} fresh (total queue: ${games.length})`);
+      
       if (games.length >= targetGames) break;
     } catch (e) {
-      console.error(`[v6.16] Error for ${player}:`, e);
+      console.error(`[v6.17] Error for ${player}:`, e);
     }
   }
   
-  console.log(`[v6.16 FETCH] COMPLETE: ${games.length} fresh games (wanted ${targetGames})`);
+  console.log(`[v6.17 FETCH] COMPLETE: ${games.length} fresh games collected`);
   
+  // v6.17: Don't throw if 0 games - let caller handle retries gracefully
   if (games.length === 0) {
-    throw new Error('No games fetched from Lichess. Please try again.');
+    console.warn(`[v6.17] No games collected this batch - caller should retry`);
   }
   
   return games.sort(() => Math.random() - 0.5);
