@@ -1,7 +1,9 @@
 /**
  * Lichess API Integration for Historical Game Import
- * Free, open API - no token required for public data
+ * Routes through Edge Function proxy to avoid CORS and centralize rate limiting
  */
+
+import { supabase } from "@/integrations/supabase/client";
 
 export interface LichessGame {
   id: string;
@@ -34,10 +36,9 @@ export interface LichessImportResult {
   errors: string[];
 }
 
-const LICHESS_API_BASE = 'https://lichess.org/api';
-
 /**
- * Fetch games from Lichess for a specific user
+ * Fetch games from Lichess via Edge Function proxy
+ * This avoids CORS issues and centralizes rate limiting
  */
 export async function fetchLichessGames(
   username: string,
@@ -56,42 +57,81 @@ export async function fetchLichessGames(
     max = 50,
     since,
     until,
-    rated,
-    perfType,
-    opening = true,
-    moves = true,
-    pgnInJson = true
   } = options;
 
-  const params = new URLSearchParams();
-  params.set('max', String(max));
-  if (since) params.set('since', String(since));
-  if (until) params.set('until', String(until));
-  if (rated !== undefined) params.set('rated', String(rated));
-  if (perfType) params.set('perfType', perfType);
-  if (opening) params.set('opening', 'true');
-  if (moves) params.set('moves', 'true');
-  if (pgnInJson) params.set('pgnInJson', 'true');
-
-  const url = `${LICHESS_API_BASE}/games/user/${username}?${params.toString()}`;
-
   try {
-    const response = await fetch(url, {
-      headers: {
-        'Accept': 'application/x-ndjson'
-      }
+    // Use Edge Function proxy to avoid CORS and centralize rate limiting
+    const { data, error } = await supabase.functions.invoke('lichess-games', {
+      body: {
+        player: username,
+        max,
+        since,
+        until,
+      },
     });
 
-    if (!response.ok) {
-      if (response.status === 404) {
-        throw new Error(`User "${username}" not found on Lichess`);
-      }
-      throw new Error(`Lichess API error: ${response.status}`);
+    if (error) {
+      console.error('[Lichess API] Edge function error:', error);
+      return {
+        games: [],
+        username,
+        totalGames: 0,
+        importedCount: 0,
+        errors: [error.message || 'Edge function error']
+      };
     }
 
-    const text = await response.text();
-    const lines = text.trim().split('\n').filter(line => line.length > 0);
-    const games: LichessGame[] = lines.map(line => JSON.parse(line));
+    // Handle rate limit response
+    if (data?.error === 'Rate limited') {
+      console.warn(`[Lichess API] Rate limited, retry after ${data.retryAfter}s`);
+      return {
+        games: [],
+        username,
+        totalGames: 0,
+        importedCount: 0,
+        errors: [`Rate limited - retry after ${data.retryAfter}s`]
+      };
+    }
+
+    if (data?.error) {
+      return {
+        games: [],
+        username,
+        totalGames: 0,
+        importedCount: 0,
+        errors: [data.error]
+      };
+    }
+
+    // Transform edge function response to LichessGame format
+    const games: LichessGame[] = (data?.games || []).map((g: Record<string, unknown>) => ({
+      id: g.id as string,
+      rated: (g.rated as boolean) ?? true,
+      variant: (g.variant as string) || 'standard',
+      speed: (g.speed as string) || 'blitz',
+      perf: (g.perf as string) || (g.speed as string) || 'blitz',
+      createdAt: g.createdAt as number,
+      lastMoveAt: g.lastMoveAt as number,
+      status: g.status as string,
+      players: {
+        white: { 
+          user: { name: g.whiteName as string, id: g.whiteName as string }, 
+          rating: g.whiteElo as number 
+        },
+        black: { 
+          user: { name: g.blackName as string, id: g.blackName as string }, 
+          rating: g.blackElo as number 
+        },
+      },
+      winner: g.winner as 'white' | 'black' | undefined,
+      moves: g.moves as string,
+      pgn: g.pgn as string,
+      opening: g.openingEco ? {
+        eco: g.openingEco as string,
+        name: (g.openingName as string) || 'Unknown',
+        ply: (g.openingPly as number) || 0,
+      } : undefined,
+    }));
 
     return {
       games,
@@ -101,6 +141,7 @@ export async function fetchLichessGames(
       errors: []
     };
   } catch (error) {
+    console.error('[Lichess API] Fetch error:', error);
     return {
       games: [],
       username,
@@ -112,10 +153,10 @@ export async function fetchLichessGames(
 }
 
 /**
- * Get user profile info from Lichess
+ * Get user profile info from Lichess (direct API call - profile is public/simple)
  */
 export async function getLichessUserProfile(username: string) {
-  const response = await fetch(`${LICHESS_API_BASE}/user/${username}`);
+  const response = await fetch(`https://lichess.org/api/user/${username}`);
   if (!response.ok) {
     throw new Error(`User not found: ${username}`);
   }
