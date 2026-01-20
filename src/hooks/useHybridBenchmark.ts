@@ -622,7 +622,7 @@ export function useHybridBenchmark() {
           console.log(`[Analyze] ✓ REAL game ${gameIdForDb} (https://lichess.org/${gameIdForDb}) - analyzing move ${moveNumber}`);
           
           const attemptData = {
-            game_id: gameIdForDb, // Use Lichess ID for cross-run deduplication
+            game_id: gameIdForDb, // ALWAYS real 8-char Lichess ID
             game_name: gameName,
             fen,
             move_number: moveNumber,
@@ -642,6 +642,7 @@ export function useHybridBenchmark() {
             time_control: game.timeControl || null,
             white_elo: game.whiteElo || null,
             black_elo: game.blackElo || null,
+            lichess_id_verified: true, // Mark as verified real Lichess ID
           };
           
           attempts.push(attemptData);
