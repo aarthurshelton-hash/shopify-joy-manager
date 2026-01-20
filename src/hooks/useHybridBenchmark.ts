@@ -12,8 +12,9 @@
  */
 
 // Version tag for debugging cached code issues
-const BENCHMARK_VERSION = "6.11-PERSISTENT-REFETCH";
-console.log(`[v6.11] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.12-METADATA-FIX: Ensure time_control and ELO fields are properly saved to DB
+const BENCHMARK_VERSION = "6.12-METADATA-FIX";
+console.log(`[v6.12] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -658,9 +659,11 @@ export function useHybridBenchmark() {
           actual_result: gameResult,
           data_quality_tier: 'tcec_unlimited',
           pgn: game.pgn.substring(0, 1000),
-          time_control: game.timeControl || null,
-          white_elo: game.whiteElo || null,
-          black_elo: game.blackElo || null,
+          // v6.12: Ensure time_control and ELO fields are properly captured
+          // Use gameMode/speed fallback for time_control, and explicit number check for ELO
+          time_control: game.timeControl || game.gameMode || game.speed || null,
+          white_elo: typeof game.whiteElo === 'number' ? game.whiteElo : null,
+          black_elo: typeof game.blackElo === 'number' ? game.blackElo : null,
           lichess_id_verified: true,
         };
         
@@ -713,7 +716,9 @@ export function useHybridBenchmark() {
         
         predictedCount++;
         
-        console.log(`[v6.11] ✓ PREDICTION #${predictedCount}: En Pensent=${colorFlow.prediction}${hybridIsCorrect ? '✓' : '✗'} | SF=${stockfish.prediction}${stockfishIsCorrect ? '✓' : '✗'} | Actual=${gameResult}`);
+        // v6.12: Log metadata capture for debugging
+        console.log(`[v6.12] ✓ PREDICTION #${predictedCount}: ${lichessId} | time_control=${game.timeControl || game.speed} | whiteElo=${game.whiteElo} | blackElo=${game.blackElo}`);
+        console.log(`[v6.12]   En Pensent=${colorFlow.prediction}${hybridIsCorrect ? '✓' : '✗'} | SF=${stockfish.prediction}${stockfishIsCorrect ? '✓' : '✗'} | Actual=${gameResult}`);
       }
       
       console.log(`[v6.11] ========================================`);
