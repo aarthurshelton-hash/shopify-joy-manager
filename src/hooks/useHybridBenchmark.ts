@@ -16,9 +16,9 @@
  * - Chess.com: -50 offset (closer to FIDE)
  */
 
-// v6.59-VERIFIED-POOL: Cleaned player pool + smart time windows
-const BENCHMARK_VERSION = "6.59-VERIFIED-POOL";
-console.log(`[v6.59] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.60-FETCH-FIX: Only exclude DB games during fetch, not session predictions
+const BENCHMARK_VERSION = "6.60-FETCH-FIX";
+console.log(`[v6.60] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -527,11 +527,16 @@ export function useHybridBenchmark() {
           message: `High-volume fetch from Lichess + Chess.com (batch ${batchNumber})...` 
         }));
         
-        // v6.47: Request MUCH more - we have billions available
+        // v6.60: FETCH EXCLUSION - Only exclude DB games and failed games
+        // Don't exclude predictedIds here - those get filtered in the processing loop
+        // This prevents "starvation" where session predictions block fresh fetches
+        const fetchExcludeIds = new Set([...analyzedData.gameIds, ...failedGameIds]);
+        console.log(`[v6.60] Fetch exclusion: ${fetchExcludeIds.size} (DB: ${analyzedData.gameIds.size}, Failed: ${failedGameIds.size})`);
+        
         const result = await fetchMultiSourceGames({
           targetCount: targetPerBatch,
           batchNumber,
-          excludeIds: new Set([...analyzedData.gameIds, ...predictedIds, ...failedGameIds]),
+          excludeIds: fetchExcludeIds,
           sources: ['lichess', 'chesscom'],
         });
         

@@ -1,7 +1,8 @@
 /**
  * En Pensent™ vs TCEC Stockfish 17 Unlimited Benchmark
- * VERSION: 6.59-VERIFIED-POOL (2026-01-20)
+ * VERSION: 6.60-FETCH-FIX (2026-01-20)
  * 
+ * v6.60: Only exclude DB games during fetch, not session predictions
  * v6.59: Cleaned player pool (removed 404s) + smart time windows
  *
  * DATA SOURCES:
@@ -21,9 +22,9 @@
  * Compares against TCEC SF17 (ELO 3600) - the strongest Stockfish configuration
  */
 
-// v6.57-ID-ONLY: Only filter is gameId deduplication - absorb everything
-const CLOUD_BENCHMARK_VERSION = "6.57-ID-ONLY";
-console.log(`[v6.57] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
+// v6.60-FETCH-FIX: Only filter is gameId deduplication - absorb everything
+const CLOUD_BENCHMARK_VERSION = "6.60-FETCH-FIX";
+console.log(`[v6.60] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
 
 import { Chess } from 'chess.js';
 import { evaluatePosition, type PositionEvaluation } from './lichessCloudEval';
