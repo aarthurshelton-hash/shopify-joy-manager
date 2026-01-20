@@ -13,9 +13,9 @@
  */
 
 // Version tag for debugging
-// v6.12-METADATA-FIX: Ensure time_control and ELO fields are properly saved to DB
-const CLOUD_BENCHMARK_VERSION = "6.12-METADATA-FIX";
-console.log(`[v6.12] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
+// v6.13-PROGRESS-FIX: Improved progress reporting to show games collected after fetch
+const CLOUD_BENCHMARK_VERSION = "6.13-PROGRESS-FIX";
+console.log(`[v6.13] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
 
 import { Chess } from 'chess.js';
 import { evaluatePosition, type PositionEvaluation } from './lichessCloudEval';
@@ -299,10 +299,11 @@ export async function fetchRealGames(
     const shuffledPlayers = shuffleArray([...TOP_PLAYERS]);
     const playersThisAttempt = shuffledPlayers.slice(0, Math.min(5, shuffledPlayers.length));
     
-    for (const player of playersThisAttempt) {
+      for (const player of playersThisAttempt) {
       if (games.length >= targetGames) break;
       
-      onProgress?.(`[Window ${attempts}] Fetching from ${player} (${games.length}/${targetGames})...`);
+      // v6.13: Show pre-fetch status with clearer wording
+      onProgress?.(`Fetching ${player}... (${games.length}/${targetGames} collected)`);
       
       try {
         const result = await fetchLichessGames(player, {
@@ -323,6 +324,7 @@ export async function fetchRealGames(
         // Shuffle player's games
         const playerGames = shuffleArray([...result.games]);
         let duplicatesThisPlayer = 0;
+        let addedThisPlayer = 0;
         
         for (const lichessGame of playerGames) {
           if (games.length >= targetGames) break;
@@ -354,6 +356,12 @@ export async function fetchRealGames(
             source: 'lichess',
             rating: Math.max(whiteRating, blackRating),
           });
+          addedThisPlayer++;
+        }
+        
+        // v6.13: Update progress AFTER collecting games from this player
+        if (addedThisPlayer > 0) {
+          onProgress?.(`✓ ${player}: +${addedThisPlayer} games (${games.length}/${targetGames} total)`);
         }
         
         if (duplicatesThisPlayer > 0) {
