@@ -342,15 +342,30 @@ export async function saveBenchmarkResults(result: BenchmarkResult): Promise<str
       lichess_id_verified: true, // All games from cloud benchmark are verified real Lichess IDs
     }));
 
-    const { error: attemptsError } = await supabase
-      .from('chess_prediction_attempts')
-      .insert(attempts);
+    // CRITICAL: Use batch inserts for large sets to avoid timeout issues
+    const BATCH_SIZE = 25;
+    let savedCount = 0;
+    
+    for (let i = 0; i < attempts.length; i += BATCH_SIZE) {
+      const batch = attempts.slice(i, i + BATCH_SIZE);
+      const { error: attemptsError } = await supabase
+        .from('chess_prediction_attempts')
+        .insert(batch);
 
-    if (attemptsError) {
-      console.error('Failed to save prediction attempts:', attemptsError);
+      if (attemptsError) {
+        console.error(`Failed to save prediction batch ${i / BATCH_SIZE + 1}:`, attemptsError);
+        
+        // CRITICAL FIX: If predictions fail to save, delete the benchmark result
+        // This prevents orphaned benchmark records that inflate total counts
+        await supabase.from('chess_benchmark_results').delete().eq('id', benchmarkId);
+        console.error('[Benchmark] Rolled back benchmark result due to prediction save failure');
+        return null;
+      }
+      
+      savedCount += batch.length;
     }
 
-    console.log(`[Benchmark] Saved run ${runId} with ${attempts.length} predictions`);
+    console.log(`[Benchmark] Saved run ${runId} with ${savedCount}/${attempts.length} predictions`);
     return runId;
 
   } catch (error) {
