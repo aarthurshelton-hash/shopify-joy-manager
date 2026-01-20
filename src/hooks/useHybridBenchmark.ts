@@ -19,16 +19,14 @@
  * - Chess.com: -50 offset (closer to FIDE)
  */
 
-// v6.75-CALIBRATED: Full pipeline calibration for high-volume benchmarks
+// v6.77-ID-CONSISTENCY: Full ID format consistency across pipeline
 // Key fixes:
-// 1. PRE-WARM engine BEFORE starting benchmark (not reactive)
-// v6.76-FIX: Fixed batch starvation + ID consistency
-// 1. Removed over-aggressive allReceivedGameIds exclusion that starved batch 2+
-// 2. Fixed game_id storage to use raw IDs (matching DB format)
-// 3. Window isolation now works properly for fresh game yield
-// 4. Maintained engine health checks + calibrated timeouts
-const BENCHMARK_VERSION = "6.76-BATCH-FIX";
-console.log(`[v6.76] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// 1. Live updates add BOTH prefixed and raw forms to dedup sets
+// 2. Raw IDs stored in DB + raw IDs in all exclusion checks
+// 3. Consistent format throughout: DB=raw, memory=both forms
+// 4. Fixed "fresh games skipped" bug where live updates didn't match DB format
+const BENCHMARK_VERSION = "6.77-ID-CONSISTENCY";
+console.log(`[v6.77] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -446,8 +444,8 @@ export function useHybridBenchmark() {
         enPensentModulesActive: EN_PENSENT_ADAPTERS
       });
       
-      console.log('[v6.75] ══════════ ENGINE PRE-WARM SEQUENCE ══════════');
-      console.log('[v6.75] Step 1: Wait for engine ready state...');
+      console.log('[v6.77] ══════════ ENGINE PRE-WARM SEQUENCE ══════════');
+      console.log('[v6.77] Step 1: Wait for engine ready state...');
       
       const ready = await engine.waitReady((progress) => {
         setProgress(prev => ({
@@ -460,8 +458,8 @@ export function useHybridBenchmark() {
         throw new Error('Stockfish engine failed to initialize. Please refresh the page and try again.');
       }
       
-      // v6.75: WARM-UP TEST - Run a quick analysis to ensure engine is truly responsive
-      console.log('[v6.75] Step 2: Running warm-up analysis...');
+      // v6.77: WARM-UP TEST - Run a quick analysis to ensure engine is truly responsive
+      console.log('[v6.77] Step 2: Running warm-up analysis...');
       setProgress(prev => ({ ...prev!, message: 'Validating engine health (warm-up test)...' }));
       
       try {
@@ -472,7 +470,7 @@ export function useHybridBenchmark() {
         ]);
         
         if (!warmupResult) {
-          console.warn('[v6.75] ⚠️ Warm-up test timeout - reinitializing engine...');
+          console.warn('[v6.77] ⚠️ Warm-up test timeout - reinitializing engine...');
           // Force re-initialization
           await new Promise(r => setTimeout(r, 1000));
           const retryReady = await engine.waitReady();
@@ -480,14 +478,14 @@ export function useHybridBenchmark() {
             throw new Error('Engine failed warm-up test and reinitialization. Please refresh the page.');
           }
         } else {
-          console.log(`[v6.75] ✅ Warm-up complete: depth ${warmupResult.evaluation.depth}, eval ${warmupResult.evaluation.score}cp`);
+          console.log(`[v6.77] ✅ Warm-up complete: depth ${warmupResult.evaluation.depth}, eval ${warmupResult.evaluation.score}cp`);
         }
       } catch (warmupErr) {
-        console.warn('[v6.75] Warm-up error (non-fatal):', warmupErr);
+        console.warn('[v6.77] Warm-up error (non-fatal):', warmupErr);
       }
       
-      console.log('[v6.75] Step 3: Engine calibrated and ready for benchmark');
-      console.log('[v6.75] ═══════════════════════════════════════════════');
+      console.log('[v6.77] Step 3: Engine calibrated and ready for benchmark');
+      console.log('[v6.77] ═══════════════════════════════════════════════');
       
       // Fetch games from Lichess
       setProgress(prev => ({ 
@@ -533,13 +531,12 @@ export function useHybridBenchmark() {
       // v6.33: predictedIds tracks games we've SUCCESSFULLY predicted this session
       const predictedIds = new Set<string>();
       
-      // v6.76-FIX: Track ONLY games successfully queued or predicted this session
-      // allReceivedGameIds is NO LONGER used for fetch exclusion to allow window isolation to work
-      // Instead, we rely on time-window isolation + local dedup in fetcher
-      // This prevents batch 2+ from being starved by over-aggressive exclusion
+      // v6.77-ID-CONSISTENCY: All dedup sets store BOTH prefixed and raw forms
+      // This ensures matching works regardless of which format is checked
+      // Example: Set has both "li_ABC123XY" AND "ABC123XY"
       
-      // v6.76: queuedGameIds tracks games currently in queue (for queue-add dedup ONLY)
-      // It gets cleaned up when games are processed (see line ~817)
+      // v6.77: queuedGameIds tracks games currently in queue
+      // Stores BOTH forms for robust matching
       const queuedGameIds = new Set<string>();
       
       // v6.51: Use mutable array - fetchMoreGames will PUSH to this
@@ -563,9 +560,9 @@ export function useHybridBenchmark() {
       async function fetchMoreGames(): Promise<number> {
         batchNumber++;
         const queueRemaining = gameQueue.length - gameIndex;
-        console.log(`[v6.76] ══════════ FETCH BATCH ${batchNumber}/${maxBatches} ══════════`);
-        console.log(`[v6.76] Queue: ${queueRemaining} remaining | Target: ${gameCount - predictedCount} more predictions`);
-        console.log(`[v6.76] Exclusions: DB=${analyzedData.gameIds.size}, Queued=${queuedGameIds.size}, Predicted=${predictedIds.size}, Failed=${failedGameIds.size}`);
+        console.log(`[v6.77] ══════════ FETCH BATCH ${batchNumber}/${maxBatches} ══════════`);
+        console.log(`[v6.77] Queue: ${queueRemaining} remaining | Target: ${gameCount - predictedCount} more predictions`);
+        console.log(`[v6.77] Exclusions: DB=${analyzedData.gameIds.size}, Queued=${queuedGameIds.size}, Predicted=${predictedIds.size}, Failed=${failedGameIds.size}`);
         
         setProgress(prev => ({ 
           ...prev!, 
@@ -573,17 +570,29 @@ export function useHybridBenchmark() {
           message: `Fetching games (batch ${batchNumber})...` 
         }));
         
-        // v6.76-FIX: ONLY exclude games from DB and current queue
-        // Do NOT exclude all received games - window isolation handles uniqueness
-        // This allows batch 2+ to fetch fresh games from different time windows
-        const fetchExcludeIds = new Set([
-          ...analyzedData.gameIds,
-          ...failedGameIds,
-          ...queuedGameIds,   // v6.76: Only exclude what's actively queued
-          ...predictedIds     // v6.76: And what's been predicted this session
-        ]);
+        // v6.77-ID-CONSISTENCY: Build exclusion set with BOTH forms of every ID
+        // This ensures matching works whether fetcher returns prefixed or raw IDs
+        const fetchExcludeIds = new Set<string>();
         
-        console.log(`[v6.76] Fetch excludes: DB=${analyzedData.gameIds.size}, Failed=${failedGameIds.size}, Queued=${queuedGameIds.size}, Predicted=${predictedIds.size}`);
+        // Add all forms from each source set
+        for (const id of analyzedData.gameIds) {
+          fetchExcludeIds.add(id);
+          const raw = id.replace(/^(li_|cc_)/, '');
+          if (raw !== id) fetchExcludeIds.add(raw);
+        }
+        for (const id of failedGameIds) {
+          fetchExcludeIds.add(id);
+          const raw = id.replace(/^(li_|cc_)/, '');
+          if (raw !== id) fetchExcludeIds.add(raw);
+        }
+        for (const id of queuedGameIds) {
+          fetchExcludeIds.add(id);
+        }
+        for (const id of predictedIds) {
+          fetchExcludeIds.add(id);
+        }
+        
+        console.log(`[v6.77] Fetch excludes total: ${fetchExcludeIds.size} IDs`);
         
         const result = await fetchMultiSourceGames({
           targetCount: targetPerBatch,
@@ -592,18 +601,18 @@ export function useHybridBenchmark() {
           sources: ['lichess', 'chesscom'],
         });
         
-        console.log(`[v6.76] Fetched: ${result.games.length} raw (Lichess: ${result.lichessCount}, Chess.com: ${result.chesscomCount})`);
+        console.log(`[v6.77] Fetched: ${result.games.length} raw (Lichess: ${result.lichessCount}, Chess.com: ${result.chesscomCount})`);
         
         if (result.errors.length > 0) {
-          console.warn(`[v6.75] Errors:`, result.errors.slice(0, 3));
+          console.warn(`[v6.77] Errors:`, result.errors.slice(0, 3));
         }
         
         if (result.games.length === 0) {
-          console.warn(`[v6.75] ⚠️ No games from either source!`);
+          console.warn(`[v6.77] ⚠️ No games from either source!`);
           return 0;
         }
         
-        // v6.70: Dedup and queue games
+        // v6.77-ID-CONSISTENCY: Dedup and queue games with both ID forms
         const queueBefore = gameQueue.length;
         let validGames = 0;
         let dupesSkipped = 0;
@@ -615,26 +624,13 @@ export function useHybridBenchmark() {
           
           const rawId = gameId.replace(/^(li_|cc_)/, '');
           
-          // v6.76-FIX: Check BOTH prefixed and raw forms against DB
-          // Skip if in DB (check all ID variants)
-          if (analyzedData.gameIds.has(gameId) || analyzedData.gameIds.has(rawId)) {
+          // v6.77: Check BOTH forms against exclusion set
+          if (fetchExcludeIds.has(gameId) || fetchExcludeIds.has(rawId)) {
             dupesSkipped++;
             continue;
           }
           
-          // Skip if already predicted this session
-          if (predictedIds.has(gameId) || predictedIds.has(rawId)) {
-            dupesSkipped++;
-            continue;
-          }
-          
-          // Skip if already queued (prevents duplicate entries in current queue)
-          if (queuedGameIds.has(gameId) || queuedGameIds.has(rawId)) {
-            alreadyQueuedSkipped++;
-            continue;
-          }
-          
-          // Track in queue and add (both forms for robust dedup)
+          // v6.77: Track in queue with BOTH forms for robust matching
           queuedGameIds.add(gameId);
           queuedGameIds.add(rawId);
           
@@ -664,8 +660,8 @@ export function useHybridBenchmark() {
         }
         
         const queueNow = gameQueue.length - gameIndex;
-        console.log(`[v6.75] Queue: ${queueBefore} → ${gameQueue.length} (+${validGames} new)`);
-        console.log(`[v6.75] Available for processing: ${queueNow} | Dupes: ${dupesSkipped} | Already queued: ${alreadyQueuedSkipped}`);
+        console.log(`[v6.77] Queue: ${queueBefore} → ${gameQueue.length} (+${validGames} new)`);
+        console.log(`[v6.77] Available for processing: ${queueNow} | Dupes: ${dupesSkipped}`);
         
         return validGames;
       }
@@ -813,10 +809,10 @@ export function useHybridBenchmark() {
       
       while (predictedCount < gameCount && !abortRef.current && batchNumber < maxBatches) {
         // ═══════════════════════════════════════════════════════════════════
-        // PHASE 0: PROACTIVE HEALTH CHECK (v6.75)
+        // PHASE 0: PROACTIVE HEALTH CHECK (v6.77)
         // ═══════════════════════════════════════════════════════════════════
         if (gamesProcessedSinceHealthCheck >= HEALTH_CHECK_INTERVAL) {
-          console.log(`[v6.75] 🏥 HEALTH CHECK: ${gamesProcessedSinceHealthCheck} games processed, validating engine...`);
+          console.log(`[v6.77] 🏥 HEALTH CHECK: ${gamesProcessedSinceHealthCheck} games processed, validating engine...`);
           setProgress(prev => ({ ...prev!, message: 'Running engine health check...' }));
           
           try {
@@ -827,15 +823,15 @@ export function useHybridBenchmark() {
             ]);
             
             if (!healthResult) {
-              console.warn('[v6.75] ⚠️ Health check timeout - reinitializing...');
+              console.warn('[v6.77] ⚠️ Health check timeout - reinitializing...');
               await new Promise(r => setTimeout(r, 1500));
               await engine.waitReady();
               consecutiveEngineFailures = 0;
             } else {
-              console.log(`[v6.75] ✅ Engine healthy: depth ${healthResult.evaluation.depth}`);
+              console.log(`[v6.77] ✅ Engine healthy: depth ${healthResult.evaluation.depth}`);
             }
           } catch (healthErr) {
-            console.warn('[v6.75] Health check error:', healthErr);
+            console.warn('[v6.77] Health check error:', healthErr);
           }
           
           gamesProcessedSinceHealthCheck = 0;
@@ -847,25 +843,25 @@ export function useHybridBenchmark() {
         const queueAvailable = gameQueue.length - gameIndex;
         
         if (queueAvailable === 0) {
-          console.log(`[v6.75] 📥 FETCH PHASE: Queue empty, need ${gameCount - predictedCount} more predictions`);
-          console.log(`[v6.75] Stats: predicted=${predictedCount}, index=${gameIndex}, queueLen=${gameQueue.length}`);
+          console.log(`[v6.77] 📥 FETCH PHASE: Queue empty, need ${gameCount - predictedCount} more predictions`);
+          console.log(`[v6.77] Stats: predicted=${predictedCount}, index=${gameIndex}, queueLen=${gameQueue.length}`);
           
           // Exponential backoff on consecutive empty fetches
           if (emptyBatchStreak > 0) {
             const waitTime = Math.min(2000 * Math.pow(1.5, emptyBatchStreak), 15000);
-            console.log(`[v6.75] ⏳ Backoff: ${Math.round(waitTime/1000)}s (streak: ${emptyBatchStreak})`);
+            console.log(`[v6.77] ⏳ Backoff: ${Math.round(waitTime/1000)}s (streak: ${emptyBatchStreak})`);
             await new Promise(r => setTimeout(r, waitTime));
           }
           
           const fetchedCount = await fetchMoreGames();
           const newQueueAvailable = gameQueue.length - gameIndex;
           
-          console.log(`[v6.75] 📥 Fetch result: +${fetchedCount} games, queue now has ${newQueueAvailable} available`);
+          console.log(`[v6.77] 📥 Fetch result: +${fetchedCount} games, queue now has ${newQueueAvailable} available`);
           
           if (fetchedCount === 0 && newQueueAvailable === 0) {
             emptyBatchStreak++;
             if (emptyBatchStreak >= MAX_EMPTY_BATCHES) {
-              console.warn(`[v6.75] ❌ Max empty batches (${MAX_EMPTY_BATCHES}) reached, stopping`);
+              console.warn(`[v6.77] ❌ Max empty batches (${MAX_EMPTY_BATCHES}) reached, stopping`);
               await saveIncrementalResults();
               break;
             }
@@ -877,7 +873,7 @@ export function useHybridBenchmark() {
           
           // Verify we now have games
           if (gameQueue.length - gameIndex === 0) {
-            console.error(`[v6.75] ❌ LOGIC ERROR: fetch succeeded but queue still empty!`);
+            console.error(`[v6.77] ❌ LOGIC ERROR: fetch succeeded but queue still empty!`);
             continue;
           }
         }
@@ -898,9 +894,9 @@ export function useHybridBenchmark() {
           queuedGameIds.delete(gameIdForCleanup.replace(/^(li_|cc_)/, ''));
         }
         
-        console.log(`[v6.76] 🎯 PROCESS: Game ${currentIndex + 1}/${gameQueue.length} (queued: ${queuedGameIds.size}, predicted: ${predictedIds.size}, remaining: ${gameQueue.length - gameIndex})`);
+        console.log(`[v6.77] 🎯 PROCESS: Game ${currentIndex + 1}/${gameQueue.length} (queued: ${queuedGameIds.size}, predicted: ${predictedIds.size}, remaining: ${gameQueue.length - gameIndex})`);
         
-        // v6.75: Extract game info
+        // v6.77: Extract game info
         const gameId = game.lichessId;
         const source = game.source || 'lichess';
         
@@ -910,7 +906,7 @@ export function useHybridBenchmark() {
         
         // Skip 1: No ID = can't track
         if (!gameId) {
-          console.log(`[v6.75] ⏭️ SKIP: No gameId`);
+          console.log(`[v6.77] ⏭️ SKIP: No gameId`);
           skipStats.invalidId++;
           consecutiveSkips++;
           continue;
@@ -918,23 +914,24 @@ export function useHybridBenchmark() {
         
         // Skip 2: Previously failed this session
         if (failedGameIds.has(gameId)) {
-          console.log(`[v6.75] ⏭️ SKIP: Previously failed - ${gameId}`);
+          console.log(`[v6.77] ⏭️ SKIP: Previously failed - ${gameId}`);
           consecutiveSkips++;
           continue;
         }
         
-        // Skip 3: Already predicted this session
-        if (predictedIds.has(gameId)) {
-          console.log(`[v6.75] ⏭️ SKIP: Already predicted - ${gameId}`);
+        // Skip 3: Already predicted this session (check both forms)
+        const rawGameIdForCheck = gameId.replace(/^(li_|cc_)/, '');
+        if (predictedIds.has(gameId) || predictedIds.has(rawGameIdForCheck)) {
+          console.log(`[v6.77] ⏭️ SKIP: Already predicted - ${gameId}`);
           skipStats.sessionDupe++;
           consecutiveSkips++;
           continue;
         }
         
-        // v6.75: Force refetch if too many consecutive skips
+        // v6.77: Force refetch if too many consecutive skips
         if (consecutiveSkips >= MAX_CONSECUTIVE_SKIPS) {
-          console.warn(`[v6.75] ⚠️ ${consecutiveSkips} consecutive skips - will trigger fresh fetch`);
-          console.log(`[v6.75] SKIP STATS: ${JSON.stringify(skipStats)}`);
+          console.warn(`[v6.77] ⚠️ ${consecutiveSkips} consecutive skips - will trigger fresh fetch`);
+          console.log(`[v6.77] SKIP STATS: ${JSON.stringify(skipStats)}`);
           gameIndex = gameQueue.length; // Force queue exhaustion
           consecutiveSkips = 0;
           continue;
@@ -944,7 +941,7 @@ export function useHybridBenchmark() {
         const gameResult = game.winner === 'white' ? 'white' : 
                           game.winner === 'black' ? 'black' : 'draw';
         
-        console.log(`[v6.75] Game ${gameId}: winner=${game.winner} → ${gameResult}`);
+        console.log(`[v6.77] Game ${gameId}: winner=${game.winner} → ${gameResult}`);
         
         // Parse moves and generate FEN
         let moves: string[];
@@ -957,7 +954,7 @@ export function useHybridBenchmark() {
           fen = parsed.fen;
           moveNumber = parsed.moveNumber;
         } catch (e) {
-          console.log(`[v6.75] ⏭️ SKIP: Parse error - ${gameId}`, e);
+          console.log(`[v6.77] ⏭️ SKIP: Parse error - ${gameId}`, e);
           skipStats.parseError++;
           failedGameIds.add(gameId);
           consecutiveSkips++;
@@ -971,7 +968,7 @@ export function useHybridBenchmark() {
         const blackEloDisplay = game.blackElo ? ` (${game.blackElo})` : '';
         const gameName = `${whiteName}${whiteEloDisplay} vs ${blackName}${blackEloDisplay}`;
         
-        console.log(`[v6.75] 🔮 PREDICTING #${predictedCount + 1}/${gameCount}: ${gameId} → ${gameName} (${gameResult}) [batch ${batchNumber}]`);
+        console.log(`[v6.77] 🔮 PREDICTING #${predictedCount + 1}/${gameCount}: ${gameId} → ${gameName} (${gameResult}) [batch ${batchNumber}]`);
         
         const remainingInQueue = gameQueue.length - gameIndex;
         setProgress({
@@ -1148,15 +1145,21 @@ export function useHybridBenchmark() {
         
         // ═══════════════════════════════════════════════════════════════════
         // SUCCESS: Record prediction
+        // v6.77-ID-CONSISTENCY: Add BOTH prefixed and raw forms to dedup sets
         // ═══════════════════════════════════════════════════════════════════
         predictedCount++;
+        const rawGameId = gameId.replace(/^(li_|cc_)/, '');
+        
+        // Add BOTH forms to all tracking sets
         predictedIds.add(gameId);
+        predictedIds.add(rawGameId);
         analyzedData.gameIds.add(gameId);
+        analyzedData.gameIds.add(rawGameId);
         consecutiveSkips = 0;
         
-        console.log(`[v6.75] ✅ PREDICTION #${predictedCount}/${gameCount}: ${gameId}`);
-        console.log(`[v6.75]   EP=${colorFlow.prediction}${hybridIsCorrect ? '✓' : '✗'} | SF=${stockfish.prediction}${stockfishIsCorrect ? '✓' : '✗'} | Actual=${gameResult}`);
-        console.log(`[v6.75]   Queue: ${gameQueue.length - gameIndex} remaining | Predicted: ${predictedCount}/${gameCount}`);
+        console.log(`[v6.77] ✅ PREDICTION #${predictedCount}/${gameCount}: ${gameId}`);
+        console.log(`[v6.77]   EP=${colorFlow.prediction}${hybridIsCorrect ? '✓' : '✗'} | SF=${stockfish.prediction}${stockfishIsCorrect ? '✓' : '✗'} | Actual=${gameResult}`);
+        console.log(`[v6.77]   Queue: ${gameQueue.length - gameIndex} remaining | Predicted: ${predictedCount}/${gameCount}`);
         
         // Incremental save
         if (predictedCount % SAVE_INTERVAL === 0) {
@@ -1167,12 +1170,12 @@ export function useHybridBenchmark() {
       // Final save
       await saveIncrementalResults();
       
-      console.log(`[v6.75] ════════════════════════════════════════════════════`);
-      console.log(`[v6.75] BENCHMARK COMPLETE: ${predictedCount}/${gameCount} predictions`);
-      console.log(`[v6.75] Batches: ${batchNumber} | Processed: ${gameIndex}/${gameQueue.length}`);
-      console.log(`[v6.75] Predicted: ${predictedIds.size} | Failed: ${failedGameIds.size}`);
-      console.log(`[v6.75] Skip stats: ${JSON.stringify(skipStats)}`);
-      console.log(`[v6.75] ════════════════════════════════════════════════════`);
+      console.log(`[v6.77] ════════════════════════════════════════════════════`);
+      console.log(`[v6.77] BENCHMARK COMPLETE: ${predictedCount}/${gameCount} predictions`);
+      console.log(`[v6.77] Batches: ${batchNumber} | Processed: ${gameIndex}/${gameQueue.length}`);
+      console.log(`[v6.77] Predicted: ${predictedIds.size} | Failed: ${failedGameIds.size}`);
+      console.log(`[v6.77] Skip stats: ${JSON.stringify(skipStats)}`);
+      console.log(`[v6.77] ════════════════════════════════════════════════════`);
       
       if (attempts.length === 0) {
         throw new Error(`No valid games processed. Skip reasons: ${JSON.stringify(skipStats)}`);
