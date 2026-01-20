@@ -11,9 +11,9 @@
  * That's it. No over-engineering.
  */
 
-// v6.36-DEEPPOOL: Deep player pool + per-player random windows + higher resilience
-const BENCHMARK_VERSION = "6.36-DEEPPOOL";
-console.log(`[v6.36] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.37-RECENTBIAS: Bias random windows toward recent history where players are active
+const BENCHMARK_VERSION = "6.37-RECENTBIAS";
+console.log(`[v6.37] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -957,17 +957,24 @@ async function fetchLichessGames(
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
   
-  // v6.36-DEEPPOOL: Each player gets their own random time window for maximum diversity
+  // v6.37-RECENTBIAS: Bias toward recent history where players are MORE ACTIVE
+  // Problem: 14-year random windows often land where players have ZERO games
   function getRandomTimeWindow(): { since: number; until: number } {
     const now = Date.now();
     const oneDay = 24 * 60 * 60 * 1000;
     
-    // v6.36: Random across Lichess history (2010-present, ~14 years)
-    const maxDaysBack = 365 * 14;
-    const randomDaysBack = Math.floor(Math.random() * maxDaysBack);
+    // v6.37: 70% chance recent (last 3 years), 30% chance older (3-8 years)
+    // This avoids dead zones (2010-2015) where most titled players weren't on Lichess
+    const useRecent = Math.random() < 0.7;
+    const maxDaysBack = useRecent 
+      ? 365 * 3   // Last 3 years - high activity zone
+      : 365 * 8;  // Last 8 years max (2018+)
+    
+    const minDaysBack = useRecent ? 7 : 365 * 3; // Recent starts from last week, old from 3+ years
+    const randomDaysBack = minDaysBack + Math.floor(Math.random() * (maxDaysBack - minDaysBack));
     
     const windowEnd = now - (randomDaysBack * oneDay);
-    const windowDuration = 30 + Math.floor(Math.random() * 90); // 30-120 day windows
+    const windowDuration = 60 + Math.floor(Math.random() * 120); // 60-180 day windows (wider)
     const windowStart = windowEnd - (windowDuration * oneDay);
     
     return { since: Math.max(0, windowStart), until: Math.min(windowEnd, now) };
