@@ -12,9 +12,9 @@
  */
 
 // Version tag for debugging cached code issues
-// v6.12-METADATA-FIX: Ensure time_control and ELO fields are properly saved to DB
-const BENCHMARK_VERSION = "6.12-METADATA-FIX";
-console.log(`[v6.12] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.14-ROBUST-PARSE: Use raw moves string from Edge Function for reliable parsing
+const BENCHMARK_VERSION = "6.14-ROBUST-PARSE";
+console.log(`[v6.14] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -460,21 +460,21 @@ export function useHybridBenchmark() {
       
       async function fetchMoreGames() {
         batchNumber++;
-        console.log(`[v6.11] ========== BATCH ${batchNumber} ==========`);
-        console.log(`[v6.11] Session has seen ${sessionSeenIds.size} total game IDs`);
+        console.log(`[v6.14] ========== BATCH ${batchNumber} ==========`);
+        console.log(`[v6.14] Session has seen ${sessionSeenIds.size} total game IDs`);
         setProgress(prev => ({ 
           ...prev!, 
           message: `Fetching batch ${batchNumber} from Lichess (seen ${sessionSeenIds.size} games)...` 
         }));
         
-        // v6.11: Pass session-local set that includes ALL games we've seen this run
+        // v6.14: Pass session-local set that includes ALL games we've seen this run
         const sessionAnalyzedData = {
           ...analyzedData,
           gameIds: sessionSeenIds, // Use session-local set, not just DB
         };
         
         const newGames = await fetchLichessGames(fetchCount, sessionAnalyzedData);
-        console.log(`[v6.11] Batch ${batchNumber}: Got ${newGames.length} fresh games from Lichess`);
+        console.log(`[v6.14] Batch ${batchNumber}: Got ${newGames.length} fresh games from Lichess`);
         
         // Add all new games to session tracking immediately
         for (const game of newGames) {
@@ -486,11 +486,11 @@ export function useHybridBenchmark() {
         const trulyNewGames = newGames.filter(g => !existingIds.has(g.lichessId));
         
         if (newGames.length !== trulyNewGames.length) {
-          console.warn(`[v6.11] ⚠️ ${newGames.length - trulyNewGames.length} queue dupes (shouldn't happen now)`);
+          console.warn(`[v6.14] ⚠️ ${newGames.length - trulyNewGames.length} queue dupes (shouldn't happen now)`);
         }
         
         allGames = [...allGames, ...trulyNewGames];
-        console.log(`[v6.11] Queue now has ${allGames.length} games, index at ${gameIndex}`);
+        console.log(`[v6.14] Queue now has ${allGames.length} games, index at ${gameIndex}`);
         return trulyNewGames.length;
       }
       
@@ -505,20 +505,20 @@ export function useHybridBenchmark() {
       // Track skip reasons for debugging
       let skipStats = { invalidId: 0, dbDupe: 0, shortGame: 0, timeout: 0, parseError: 0 };
       
-      // v6.11 PERSISTENT REFETCH: Keep trying until we hit target OR truly exhausted
+      // v6.14 PERSISTENT REFETCH: Keep trying until we hit target OR truly exhausted
       let emptyBatchStreak = 0;
       const MAX_EMPTY_BATCHES = 5; // Give up after 5 consecutive empty fetches
       
       while (predictedCount < gameCount && !abortRef.current && batchNumber < maxBatches) {
         // Check if we need more games
         if (gameIndex >= allGames.length) {
-          console.log(`[v6.11] Exhausted queue at index ${gameIndex}, need more games (${predictedCount}/${gameCount} predictions)`);
+          console.log(`[v6.14] Exhausted queue at index ${gameIndex}, need more games (${predictedCount}/${gameCount} predictions)`);
           const newCount = await fetchMoreGames();
           if (newCount === 0) {
             emptyBatchStreak++;
-            console.warn(`[v6.11] Empty batch #${emptyBatchStreak}/${MAX_EMPTY_BATCHES} (session has ${sessionSeenIds.size} IDs)`);
+            console.warn(`[v6.14] Empty batch #${emptyBatchStreak}/${MAX_EMPTY_BATCHES} (session has ${sessionSeenIds.size} IDs)`);
             if (emptyBatchStreak >= MAX_EMPTY_BATCHES) {
-              console.warn(`[v6.11] Too many empty batches, stopping.`);
+              console.warn(`[v6.14] Too many empty batches, stopping.`);
               break;
             }
             // Keep trying! Don't break on first empty batch
@@ -534,16 +534,16 @@ export function useHybridBenchmark() {
         
         // Simple validation
         if (!lichessId || lichessId.length !== 8) {
-          console.log(`[v6.11] Skip invalid ID: ${lichessId}`);
+          console.log(`[v6.14] Skip invalid ID: ${lichessId}`);
           skipStats.invalidId++;
           continue;
         }
         
-        // v6.11: Check against session set (not just DB)
+        // v6.14: Check against session set (not just DB)
         // This is a safety net - should already be filtered by fetchLichessGames
         if (sessionSeenIds.has(lichessId) && !allGames.slice(0, gameIndex).some(g => g.lichessId === lichessId)) {
           // It's in session but not in our queue before us - already predicted this session
-          console.log(`[v6.11] Skip session duplicate: ${lichessId}`);
+          console.log(`[v6.14] Skip session duplicate: ${lichessId}`);
           skipStats.dbDupe++;
           continue;
         }
@@ -561,34 +561,35 @@ export function useHybridBenchmark() {
           gameResult = 'draw';
         }
         
-        console.log(`[v6.11] Game ${lichessId}: winner=${game.winner}, status=${game.status} → ${gameResult}`);
+        console.log(`[v6.14] Game ${lichessId}: winner=${game.winner}, status=${game.status} → ${gameResult}`);
         
         // Parse moves and generate FEN for prediction point
+        // v6.14: Use raw moves string from Edge Function when available (more reliable)
         let moves: string[];
         let fen: string;
         let moveNumber: number;
         
         try {
-          const parsed = parsePGNForMoves(game.pgn, predictionMoveRange);
+          const parsed = parsePGNForMoves(game.pgn, predictionMoveRange, game.moves);
           moves = parsed.moves;
           fen = parsed.fen;
           moveNumber = parsed.moveNumber;
+          
+          // v6.14: Very minimal check - Edge Function already validated 10+ half-moves
+          if (moves.length < 4) {
+            console.log(`[v6.14] Skip short after parse: ${lichessId} (${moves.length} moves from raw: ${game.moves?.slice(0, 50)}...)`);
+            skipStats.shortGame++;
+            continue;
+          }
         } catch (e) {
-          console.log(`[v6.11] Skip parse error: ${lichessId}`, e);
+          console.log(`[v6.14] Skip parse error: ${lichessId}`, e);
           skipStats.parseError++;
           continue;
         }
         
-        // v6.11: Very minimal check - Edge Function already validated
-        if (moves.length < 4) {
-          console.log(`[v6.11] Skip too short: ${lichessId} (${moves.length} moves)`);
-          skipStats.shortGame++;
-          continue;
-        }
-        
-        // v6.11: Log game termination type for debugging
+        // v6.14: Log game termination type for debugging
         const termination = game.termination || 'unknown';
-        console.log(`[v6.11] Game ${lichessId}: result=${gameResult}, termination=${termination}`);
+        console.log(`[v6.14] Game ${lichessId}: result=${gameResult}, termination=${termination}`);
         
         // ✅ VALID GAME - PREDICT IT
         const whiteName = game.whiteName || 'Unknown';
@@ -597,7 +598,7 @@ export function useHybridBenchmark() {
         const blackEloDisplay = game.blackElo ? ` (${game.blackElo})` : '';
         const gameName = `${whiteName}${whiteEloDisplay} vs ${blackName}${blackEloDisplay}`;
         
-        console.log(`[v6.11] PREDICTING #${predictedCount + 1}/${gameCount}: ${lichessId} → ${gameName} (${gameResult}) [batch ${batchNumber}]`);
+        console.log(`[v6.14] PREDICTING #${predictedCount + 1}/${gameCount}: ${lichessId} → ${gameName} (${gameResult}) [batch ${batchNumber}]`);
         
         const remainingInBatch = allGames.length - gameIndex;
         setProgress({
@@ -618,7 +619,7 @@ export function useHybridBenchmark() {
         const analysis = await Promise.race([analysisPromise, timeout]);
         
         if (!analysis) {
-          console.log(`[v6.11] ⚠️ Stockfish timeout for ${lichessId}, skipping`);
+          console.log(`[v6.14] ⚠️ Stockfish timeout for ${lichessId}, skipping`);
           skipStats.timeout++;
           continue;
         }
@@ -717,17 +718,17 @@ export function useHybridBenchmark() {
         predictedCount++;
         
         // v6.12: Log metadata capture for debugging
-        console.log(`[v6.12] ✓ PREDICTION #${predictedCount}: ${lichessId} | time_control=${game.timeControl || game.speed} | whiteElo=${game.whiteElo} | blackElo=${game.blackElo}`);
-        console.log(`[v6.12]   En Pensent=${colorFlow.prediction}${hybridIsCorrect ? '✓' : '✗'} | SF=${stockfish.prediction}${stockfishIsCorrect ? '✓' : '✗'} | Actual=${gameResult}`);
+        console.log(`[v6.14] ✓ PREDICTION #${predictedCount}: ${lichessId} | time_control=${game.timeControl || game.speed} | whiteElo=${game.whiteElo} | blackElo=${game.blackElo}`);
+        console.log(`[v6.14]   En Pensent=${colorFlow.prediction}${hybridIsCorrect ? '✓' : '✗'} | SF=${stockfish.prediction}${stockfishIsCorrect ? '✓' : '✗'} | Actual=${gameResult}`);
       }
       
-      console.log(`[v6.11] ========================================`);
-      console.log(`[v6.11] BENCHMARK COMPLETE: ${predictedCount}/${gameCount} predictions`);
-      console.log(`[v6.11] Total batches fetched: ${batchNumber}`);
-      console.log(`[v6.11] Total games processed: ${gameIndex}/${allGames.length}`);
-      console.log(`[v6.11] Session saw ${sessionSeenIds.size} unique game IDs`);
-      console.log(`[v6.11] Skip stats: ${JSON.stringify(skipStats)}`);
-      console.log(`[v6.11] ========================================`);
+      console.log(`[v6.14] ========================================`);
+      console.log(`[v6.14] BENCHMARK COMPLETE: ${predictedCount}/${gameCount} predictions`);
+      console.log(`[v6.14] Total batches fetched: ${batchNumber}`);
+      console.log(`[v6.14] Total games processed: ${gameIndex}/${allGames.length}`);
+      console.log(`[v6.14] Session saw ${sessionSeenIds.size} unique game IDs`);
+      console.log(`[v6.14] Skip stats: ${JSON.stringify(skipStats)}`);
+      console.log(`[v6.14] ========================================`);
       
       if (attempts.length === 0) {
         throw new Error(`No valid games processed. Skip reasons: ${JSON.stringify(skipStats)}`);
@@ -735,7 +736,7 @@ export function useHybridBenchmark() {
       
       // Warn if we got significantly fewer games than requested
       if (attempts.length < gameCount * 0.8) {
-        console.warn(`[v6.11] ⚠️ Only got ${attempts.length}/${gameCount} games - Lichess may be rate limiting or sparse data`);
+        console.warn(`[v6.14] ⚠️ Only got ${attempts.length}/${gameCount} games - Lichess may be rate limiting or sparse data`);
       }
       
       // Calculate stats
@@ -1114,17 +1115,29 @@ async function fetchLichessGames(
   return games.sort(() => Math.random() - 0.5);
 }
 
-// v6.7: Parse PGN for moves/FEN only - result comes from Edge Function
-function parsePGNForMoves(pgn: string, moveRange: [number, number]): { 
+// v6.14: Parse moves for FEN - PREFER raw moves string from Edge Function
+function parsePGNForMoves(pgn: string, moveRange: [number, number], rawMoves?: string): { 
   moves: string[]; 
   fen: string;
   moveNumber: number;
 } {
-  // Extract moves only - result comes from Edge Function's game.winner field
-  const moveSection = pgn.replace(/\[.*?\]/g, "").replace(/\{.*?\}/g, "").trim();
-  const moves = moveSection
-    .split(/\s+/)
-    .filter(m => m && !m.match(/^\d+\./) && !m.match(/^[01]-[01]$/) && !m.match(/^1\/2-1\/2$/) && m !== "*");
+  // v6.14: PREFER raw moves from Edge Function (cleaner, no PGN parsing needed)
+  let moves: string[];
+  
+  if (rawMoves && rawMoves.trim()) {
+    // Raw moves come as space-separated SAN moves: "e4 e5 Nf3 Nc6 Bb5 ..."
+    moves = rawMoves.trim().split(/\s+/).filter(m => m && m.length > 0);
+  } else {
+    // Fallback: Extract moves from PGN
+    const moveSection = pgn.replace(/\[.*?\]/g, "").replace(/\{.*?\}/g, "").trim();
+    moves = moveSection
+      .split(/\s+/)
+      .filter(m => m && !m.match(/^\d+\./) && !m.match(/^[01]-[01]$/) && !m.match(/^1\/2-1\/2$/) && m !== "*");
+  }
+  
+  if (moves.length < 4) {
+    throw new Error(`Too few moves: ${moves.length}`);
+  }
   
   // Adaptive prediction point - works with ANY game length
   const availableRange = Math.floor(moves.length * 0.6);
@@ -1134,13 +1147,22 @@ function parsePGNForMoves(pgn: string, moveRange: [number, number]): {
   
   // Generate actual FEN at the prediction point
   const chess = new Chess();
+  let successfulMoves = 0;
   for (let i = 0; i < moveNumber && i < moves.length; i++) {
     try {
       chess.move(moves[i]);
+      successfulMoves++;
     } catch {
+      // v6.14: Log but continue - partial FEN is still useful
+      console.warn(`[v6.14] Invalid move at index ${i}: ${moves[i]}`);
       break;
     }
   }
   
-  return { moves, fen: chess.fen(), moveNumber };
+  // v6.14: Ensure we have meaningful position
+  if (successfulMoves < 4) {
+    throw new Error(`Too few valid moves parsed: ${successfulMoves}`);
+  }
+  
+  return { moves: moves.slice(0, successfulMoves + Math.min(10, moves.length - successfulMoves)), fen: chess.fen(), moveNumber: successfulMoves };
 }
