@@ -1,11 +1,16 @@
 /**
- * Visual Proof Dashboard
+ * Visual Proof Dashboard v6.64
  * 
  * Real-time evidence of En Pensent hybrid superiority in prediction.
  * Shows breakthrough cases, disagreement analysis, and cumulative proof.
+ * 
+ * v6.64 CHANGES:
+ * - REALTIME SYNC: Uses useRealtimeAccuracyContext for live updates
+ * - AUTO-REFRESH: Subscribes to chess prediction changes
+ * - INSTANT UI: Stats update immediately when new predictions come in
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -35,6 +40,7 @@ import {
   formatTimeControl,
 } from '@/lib/chess/disagreementTracker';
 import { getCumulativeStats } from '@/lib/chess/benchmarkPersistence';
+import { useRealtimeAccuracyContext } from '@/providers/RealtimeAccuracyProvider';
 import { format, parseISO, isValid } from 'date-fns';
 
 interface CumulativeStats {
@@ -52,22 +58,34 @@ export function ProofDashboard() {
   const [breakthroughs, setBreakthroughs] = useState<DisagreementCase[]>([]);
   const [cumulative, setCumulative] = useState<CumulativeStats | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // v6.64: Use realtime context for instant updates
+  const { chessStats, updateCount } = useRealtimeAccuracyContext();
 
-  useEffect(() => {
-    async function loadData() {
-      setLoading(true);
-      const [disagreementStats, breakthroughCases, cumulativeStats] = await Promise.all([
-        getDisagreementStats(),
-        getHybridBreakthroughs(10),
-        getCumulativeStats(),
-      ]);
-      setStats(disagreementStats);
-      setBreakthroughs(breakthroughCases);
-      setCumulative(cumulativeStats);
-      setLoading(false);
-    }
-    loadData();
+  // v6.64: Load initial data and refresh when realtime updates occur
+  const loadData = useCallback(async () => {
+    const [disagreementStats, breakthroughCases, cumulativeStats] = await Promise.all([
+      getDisagreementStats(),
+      getHybridBreakthroughs(10),
+      getCumulativeStats(),
+    ]);
+    setStats(disagreementStats);
+    setBreakthroughs(breakthroughCases);
+    setCumulative(cumulativeStats);
+    setLoading(false);
   }, []);
+
+  // Initial load
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // v6.64: Auto-refresh when realtime updates come in
+  useEffect(() => {
+    if (updateCount > 0) {
+      loadData();
+    }
+  }, [updateCount, loadData]);
 
   if (loading) {
     return (
