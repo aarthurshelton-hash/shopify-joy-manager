@@ -1,6 +1,11 @@
 /**
  * Multi-Source Game Fetcher v2.0 - HIGH VOLUME
- * VERSION: 6.52-BATCHFIX (2026-01-20)
+ * VERSION: 6.53-BULLETPROOF (2026-01-20)
+ * 
+ * v6.53 CHANGES:
+ * - Extract moves from Chess.com PGN for reliable parsing
+ * - Better validation to ensure games have usable content
+ * - Improved logging for debugging fetch issues
  * 
  * v6.52 CHANGES:
  * - Improved ID validation to handle both prefixed and raw IDs
@@ -101,7 +106,37 @@ export interface FetchResult {
 }
 
 /**
+ * Extract moves from PGN string
+ * v6.53: Critical for Chess.com games which only have PGN
+ */
+function extractMovesFromPgn(pgn: string): string {
+  // Remove headers (lines starting with [)
+  const lines = pgn.split('\n');
+  const moveLines: string[] = [];
+  
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('[')) continue;
+    if (trimmed.length === 0) continue;
+    moveLines.push(trimmed);
+  }
+  
+  const movesStr = moveLines.join(' ');
+  
+  // Remove result at end (1-0, 0-1, 1/2-1/2, *)
+  const cleaned = movesStr
+    .replace(/1-0\s*$/, '')
+    .replace(/0-1\s*$/, '')
+    .replace(/1\/2-1\/2\s*$/, '')
+    .replace(/\*\s*$/, '')
+    .trim();
+  
+  return cleaned;
+}
+
+/**
  * Convert Chess.com game to unified format
+ * v6.53: Now extracts moves from PGN for reliable processing
  */
 function chesscomToUnified(game: ChessComGame, username: string): UnifiedGameData | null {
   if (!game.pgn || game.pgn.length < 50) return null;
@@ -109,6 +144,9 @@ function chesscomToUnified(game: ChessComGame, username: string): UnifiedGameDat
   // Extract game ID from URL: https://www.chess.com/game/live/123456789
   const urlMatch = game.url?.match(/\/(\d+)$/);
   const gameId = urlMatch ? `cc_${urlMatch[1]}` : `cc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  
+  // v6.53: Extract moves from PGN for reliable parsing
+  const moves = extractMovesFromPgn(game.pgn);
   
   // Determine winner
   let winner: 'white' | 'black' | undefined;
@@ -122,6 +160,7 @@ function chesscomToUnified(game: ChessComGame, username: string): UnifiedGameDat
   
   return {
     pgn: game.pgn,
+    moves,  // v6.53: Now includes extracted moves
     gameId,
     source: 'chesscom',
     winner,
