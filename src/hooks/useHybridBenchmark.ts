@@ -11,9 +11,9 @@
  * That's it. No over-engineering.
  */
 
-// v6.41-RESILIENT: Mark failed games as attempted + save partial results on error
-const BENCHMARK_VERSION = "6.41-RESILIENT";
-console.log(`[v6.41] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.42-IRONCLAD: Per-game error isolation + guaranteed incremental saves + detailed failure tracking
+const BENCHMARK_VERSION = "6.42-IRONCLAD";
+console.log(`[v6.42] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -514,17 +514,98 @@ export function useHybridBenchmark() {
       }
       
       // Step 2: Process games with REFETCH when needed
-      // v6.41: Track FAILED games separately so they don't block the queue forever
-      let skipStats = { invalidId: 0, dbDupe: 0, sessionDupe: 0, shortGame: 0, timeout: 0, parseError: 0 };
-      const failedGameIds = new Set<string>(); // v6.41: Games that failed processing - skip on retry
+      // v6.42: Detailed skip stats + per-game error isolation
+      let skipStats = { invalidId: 0, dbDupe: 0, sessionDupe: 0, shortGame: 0, timeout: 0, parseError: 0, analysisError: 0 };
+      const failedGameIds = new Set<string>(); // Games that failed processing - skip on retry
       
-      // v6.36: Higher resilience thresholds for larger DB
+      // v6.42: Higher resilience thresholds
       let emptyBatchStreak = 0;
-      const MAX_EMPTY_BATCHES = 15; // v6.36: Up from 8 to handle larger DB
+      const MAX_EMPTY_BATCHES = 15;
       
-      // v6.36: Track consecutive skips to detect problematic patterns
+      // v6.42: Track consecutive skips to detect problematic patterns
       let consecutiveSkips = 0;
       const MAX_CONSECUTIVE_SKIPS = 100;
+      
+      // v6.42-IRONCLAD: Incremental save function - saves every N predictions to prevent data loss
+      const SAVE_INTERVAL = 5; // Save every 5 predictions
+      let lastSaveIndex = 0;
+      
+      async function saveIncrementalResults() {
+        if (attempts.length <= lastSaveIndex) return; // Nothing new to save
+        
+        const newAttempts = attempts.slice(lastSaveIndex);
+        console.log(`[v6.42] 💾 Incremental save: ${newAttempts.length} new predictions (total: ${attempts.length})`);
+        
+        try {
+          // Upsert benchmark record
+          const { data: existingBenchmark } = await supabase
+            .from('chess_benchmark_results')
+            .select('id')
+            .eq('run_id', runId)
+            .maybeSingle();
+          
+          let benchmarkId: string;
+          
+          if (existingBenchmark) {
+            // Update existing
+            await supabase
+              .from('chess_benchmark_results')
+              .update({
+                completed_games: attempts.length,
+                hybrid_accuracy: attempts.length > 0 ? (hybridCorrect / attempts.length) * 100 : 0,
+                stockfish_accuracy: attempts.length > 0 ? (stockfishCorrect / attempts.length) * 100 : 0,
+                hybrid_wins: attempts.filter(a => a.hybrid_correct && !a.stockfish_correct).length,
+                stockfish_wins: attempts.filter(a => !a.hybrid_correct && a.stockfish_correct).length,
+                both_correct: bothCorrect,
+                both_wrong: bothWrong,
+                games_analyzed: attempts.map(a => a.game_id),
+              })
+              .eq('id', existingBenchmark.id);
+            benchmarkId = existingBenchmark.id;
+          } else {
+            // Create new
+            const { data: newBenchmark } = await supabase
+              .from('chess_benchmark_results')
+              .insert({
+                run_id: runId,
+                total_games: gameCount,
+                completed_games: attempts.length,
+                prediction_move_number: Math.round((predictionMoveRange[0] + predictionMoveRange[1]) / 2),
+                hybrid_accuracy: attempts.length > 0 ? (hybridCorrect / attempts.length) * 100 : 0,
+                stockfish_accuracy: attempts.length > 0 ? (stockfishCorrect / attempts.length) * 100 : 0,
+                hybrid_wins: attempts.filter(a => a.hybrid_correct && !a.stockfish_correct).length,
+                stockfish_wins: attempts.filter(a => !a.hybrid_correct && a.stockfish_correct).length,
+                both_correct: bothCorrect,
+                both_wrong: bothWrong,
+                data_source: 'lichess_grandmasters',
+                games_analyzed: attempts.map(a => a.game_id),
+                stockfish_version: 'Stockfish 17 WASM (Local Maximum Depth)',
+                stockfish_mode: 'local_wasm_unlimited',
+                hybrid_version: 'en-pensent-v1',
+                data_quality_tier: 'tcec_unlimited',
+              })
+              .select()
+              .single();
+            benchmarkId = newBenchmark?.id || '';
+          }
+          
+          // Save new attempts
+          for (const attempt of newAttempts) {
+            const { error: insertError } = await supabase.from('chess_prediction_attempts').insert({
+              ...attempt,
+              benchmark_id: benchmarkId,
+            });
+            if (insertError && !insertError.message?.includes('duplicate')) {
+              console.error(`[v6.42] Failed to save ${attempt.game_id}:`, insertError.message);
+            }
+          }
+          
+          lastSaveIndex = attempts.length;
+          console.log(`[v6.42] ✅ Incremental save complete`);
+        } catch (saveErr) {
+          console.error(`[v6.42] ❌ Incremental save failed:`, saveErr);
+        }
+      }
       
       while (predictedCount < gameCount && !abortRef.current && batchNumber < maxBatches) {
         // v6.33: Safety check - if too many consecutive skips, something is wrong
@@ -626,14 +707,14 @@ export function useHybridBenchmark() {
           continue;
         }
         
-        // ✅ VALID GAME - PREDICT IT
+        // ✅ VALID GAME - PREDICT IT (wrapped in try-catch for per-game error isolation)
         const whiteName = game.whiteName || 'Unknown';
         const blackName = game.blackName || 'Unknown';
         const whiteEloDisplay = game.whiteElo ? ` (${game.whiteElo})` : '';
         const blackEloDisplay = game.blackElo ? ` (${game.blackElo})` : '';
         const gameName = `${whiteName}${whiteEloDisplay} vs ${blackName}${blackEloDisplay}`;
         
-        console.log(`[v6.14] PREDICTING #${predictedCount + 1}/${gameCount}: ${lichessId} → ${gameName} (${gameResult}) [batch ${batchNumber}]`);
+        console.log(`[v6.42] PREDICTING #${predictedCount + 1}/${gameCount}: ${lichessId} → ${gameName} (${gameResult}) [batch ${batchNumber}]`);
         
         const remainingInBatch = allGames.length - gameIndex;
         setProgress({
@@ -645,132 +726,145 @@ export function useHybridBenchmark() {
           enPensentModulesActive: EN_PENSENT_ADAPTERS
         });
         
-        // Get En Pensent prediction (Color Flow analysis)
-        const colorFlow = analyzeColorFlowFullScope(moves.slice(0, moveNumber));
-        
-        // Get Stockfish evaluation (reduced timeout: 60s instead of 120s)
-        const analysisPromise = engine.analyzePosition(fen, { depth, requireExactDepth: depth >= 40 });
-        const timeout = new Promise<null>(r => setTimeout(() => r(null), 60000));
-        const analysis = await Promise.race([analysisPromise, timeout]);
-        
-        if (!analysis) {
-          console.log(`[v6.41] ⚠️ Stockfish timeout for ${lichessId}, blacklisting`);
-          skipStats.timeout++;
-          failedGameIds.add(lichessId); // v6.41: CRITICAL - don't retry timeouts
+        // v6.42-IRONCLAD: Wrap ENTIRE analysis in try-catch so one bad game doesn't crash the batch
+        try {
+          // Get En Pensent prediction (Color Flow analysis)
+          const colorFlow = analyzeColorFlowFullScope(moves.slice(0, moveNumber));
+          
+          // Get Stockfish evaluation (reduced timeout: 60s instead of 120s)
+          const analysisPromise = engine.analyzePosition(fen, { depth, requireExactDepth: depth >= 40 });
+          const timeoutPromise = new Promise<null>(r => setTimeout(() => r(null), 60000));
+          const analysis = await Promise.race([analysisPromise, timeoutPromise]);
+          
+          if (!analysis) {
+            console.log(`[v6.42] ⚠️ Stockfish timeout for ${lichessId}, blacklisting`);
+            skipStats.timeout++;
+            failedGameIds.add(lichessId);
+            consecutiveSkips++;
+            continue;
+          }
+          
+          const stockfish = getLocalStockfishPrediction(analysis);
+          
+          // Record depth
+          depths.push(stockfish.depth);
+          console.log(`[v6.42] Stockfish: ${stockfish.evaluation}cp at depth ${stockfish.depth}`);
+          
+          // Compare predictions
+          const hybridIsCorrect = colorFlow.prediction === gameResult;
+          const stockfishIsCorrect = stockfish.prediction === gameResult;
+          
+          if (hybridIsCorrect) hybridCorrect++;
+          if (stockfishIsCorrect) stockfishCorrect++;
+          if (hybridIsCorrect && stockfishIsCorrect) bothCorrect++;
+          if (!hybridIsCorrect && !stockfishIsCorrect) bothWrong++;
+          
+          // Build attempt data
+          const positionHash = hashPosition(fen);
+          
+          const attemptData = {
+            game_id: lichessId,
+            game_name: gameName,
+            fen,
+            move_number: moveNumber,
+            position_hash: positionHash,
+            hybrid_prediction: colorFlow.prediction,
+            hybrid_confidence: colorFlow.confidence,
+            hybrid_archetype: colorFlow.archetype,
+            hybrid_correct: hybridIsCorrect,
+            stockfish_prediction: stockfish.prediction,
+            stockfish_confidence: stockfish.confidence,
+            stockfish_depth: stockfish.depth,
+            stockfish_eval: stockfish.evaluation,
+            stockfish_correct: stockfishIsCorrect,
+            actual_result: gameResult,
+            data_quality_tier: 'tcec_unlimited',
+            pgn: game.pgn.substring(0, 1000),
+            time_control: game.timeControl || game.gameMode || game.speed || null,
+            white_elo: typeof game.whiteElo === 'number' ? game.whiteElo : null,
+            black_elo: typeof game.blackElo === 'number' ? game.blackElo : null,
+            lichess_id_verified: true,
+          };
+          
+          attempts.push(attemptData);
+          
+          // Stream to UI
+          if (onPrediction) {
+            const livePrediction: LivePredictionData = {
+              id: crypto.randomUUID(),
+              gameName,
+              moveNumber,
+              fen,
+              hybridPrediction: colorFlow.prediction,
+              hybridArchetype: colorFlow.archetype,
+              hybridConfidence: colorFlow.confidence,
+              hybridCorrect: hybridIsCorrect,
+              stockfishPrediction: stockfish.prediction,
+              stockfishEval: stockfish.evaluation,
+              stockfishDepth: stockfish.depth,
+              stockfishCorrect: stockfishIsCorrect,
+              actualResult: gameResult,
+              gameMode: game.gameMode || game.timeControl,
+              speed: game.speed,
+              rated: game.rated,
+              variant: game.variant,
+              timeControl: game.timeControl,
+              playedAt: game.playedAt,
+              gameYear: game.gameYear,
+              gameMonth: game.gameMonth,
+              gameDayOfWeek: game.gameDayOfWeek,
+              gameHour: game.gameHour,
+              whiteName: game.whiteName,
+              blackName: game.blackName,
+              whiteElo: game.whiteElo,
+              blackElo: game.blackElo,
+              whiteTitle: game.whiteTitle,
+              blackTitle: game.blackTitle,
+              openingEco: game.openingEco,
+              openingName: game.openingName,
+              openingPly: game.openingPly,
+              clockInitial: game.clockInitial,
+              clockIncrement: game.clockIncrement,
+              clockTotalTime: game.clockTotalTime,
+              termination: game.termination,
+              timestamp: Date.now(),
+            };
+            onPrediction(livePrediction);
+          }
+          
+          predictedCount++;
+          predictedIds.add(lichessId);
+          analyzedData.gameIds.add(lichessId);
+          consecutiveSkips = 0;
+          
+          console.log(`[v6.42] ✓ PREDICTION #${predictedCount}: ${lichessId} | time_control=${game.timeControl || game.speed} | whiteElo=${game.whiteElo} | blackElo=${game.blackElo}`);
+          console.log(`[v6.42]   En Pensent=${colorFlow.prediction}${hybridIsCorrect ? '✓' : '✗'} | SF=${stockfish.prediction}${stockfishIsCorrect ? '✓' : '✗'} | Actual=${gameResult}`);
+          
+          // v6.42-IRONCLAD: Incremental save every SAVE_INTERVAL predictions
+          if (predictedCount % SAVE_INTERVAL === 0) {
+            await saveIncrementalResults();
+          }
+          
+        } catch (analysisError) {
+          // v6.42-IRONCLAD: Catch ANY error during analysis and continue to next game
+          console.error(`[v6.42] ❌ Analysis error for ${lichessId}:`, analysisError);
+          skipStats.analysisError++;
+          failedGameIds.add(lichessId);
           consecutiveSkips++;
           continue;
         }
-        
-        const stockfish = getLocalStockfishPrediction(analysis);
-        
-        // Record depth
-        depths.push(stockfish.depth);
-        console.log(`[v6.1] Stockfish: ${stockfish.evaluation}cp at depth ${stockfish.depth}`);
-        
-        // Compare predictions
-        const hybridIsCorrect = colorFlow.prediction === gameResult;
-        const stockfishIsCorrect = stockfish.prediction === gameResult;
-        
-        if (hybridIsCorrect) hybridCorrect++;
-        if (stockfishIsCorrect) stockfishCorrect++;
-        if (hybridIsCorrect && stockfishIsCorrect) bothCorrect++;
-        if (!hybridIsCorrect && !stockfishIsCorrect) bothWrong++;
-        
-        // Build attempt data
-        const positionHash = hashPosition(fen);
-        
-        const attemptData = {
-          game_id: lichessId,
-          game_name: gameName,
-          fen,
-          move_number: moveNumber,
-          position_hash: positionHash,
-          hybrid_prediction: colorFlow.prediction,
-          hybrid_confidence: colorFlow.confidence,
-          hybrid_archetype: colorFlow.archetype,
-          hybrid_correct: hybridIsCorrect,
-          stockfish_prediction: stockfish.prediction,
-          stockfish_confidence: stockfish.confidence,
-          stockfish_depth: stockfish.depth,
-          stockfish_eval: stockfish.evaluation,
-          stockfish_correct: stockfishIsCorrect,
-          actual_result: gameResult,
-          data_quality_tier: 'tcec_unlimited',
-          pgn: game.pgn.substring(0, 1000),
-          // v6.12: Ensure time_control and ELO fields are properly captured
-          // Use gameMode/speed fallback for time_control, and explicit number check for ELO
-          time_control: game.timeControl || game.gameMode || game.speed || null,
-          white_elo: typeof game.whiteElo === 'number' ? game.whiteElo : null,
-          black_elo: typeof game.blackElo === 'number' ? game.blackElo : null,
-          lichess_id_verified: true,
-        };
-        
-        attempts.push(attemptData);
-        // v6.38: REMOVED - was marking games as analyzed BEFORE we know if prediction succeeded
-        // This caused games that timed out to be permanently skipped
-        // Now only marked at line 731 after successful prediction
-        
-        // Stream to UI
-        if (onPrediction) {
-          const livePrediction: LivePredictionData = {
-            id: crypto.randomUUID(),
-            gameName,
-            moveNumber,
-            fen,
-            hybridPrediction: colorFlow.prediction,
-            hybridArchetype: colorFlow.archetype,
-            hybridConfidence: colorFlow.confidence,
-            hybridCorrect: hybridIsCorrect,
-            stockfishPrediction: stockfish.prediction,
-            stockfishEval: stockfish.evaluation,
-            stockfishDepth: stockfish.depth,
-            stockfishCorrect: stockfishIsCorrect,
-            actualResult: gameResult,
-            gameMode: game.gameMode || game.timeControl,
-            speed: game.speed,
-            rated: game.rated,
-            variant: game.variant,
-            timeControl: game.timeControl,
-            playedAt: game.playedAt,
-            gameYear: game.gameYear,
-            gameMonth: game.gameMonth,
-            gameDayOfWeek: game.gameDayOfWeek,
-            gameHour: game.gameHour,
-            whiteName: game.whiteName,
-            blackName: game.blackName,
-            whiteElo: game.whiteElo,
-            blackElo: game.blackElo,
-            whiteTitle: game.whiteTitle,
-            blackTitle: game.blackTitle,
-            openingEco: game.openingEco,
-            openingName: game.openingName,
-            openingPly: game.openingPly,
-            clockInitial: game.clockInitial,
-            clockIncrement: game.clockIncrement,
-            clockTotalTime: game.clockTotalTime,
-            termination: game.termination,
-            timestamp: Date.now(),
-          };
-          onPrediction(livePrediction);
-        }
-        
-        predictedCount++;
-        predictedIds.add(lichessId); // v6.33: Track predicted games for session dedup
-        analyzedData.gameIds.add(lichessId); // v6.34: Also update DB cache so future batches skip this
-        consecutiveSkips = 0; // v6.33: Reset skip counter on successful prediction
-        
-        // v6.33: Log metadata capture for debugging
-        console.log(`[v6.33] ✓ PREDICTION #${predictedCount}: ${lichessId} | time_control=${game.timeControl || game.speed} | whiteElo=${game.whiteElo} | blackElo=${game.blackElo}`);
-        console.log(`[v6.33]   En Pensent=${colorFlow.prediction}${hybridIsCorrect ? '✓' : '✗'} | SF=${stockfish.prediction}${stockfishIsCorrect ? '✓' : '✗'} | Actual=${gameResult}`);
       }
       
-      console.log(`[v6.41] ========================================`);
-      console.log(`[v6.41] BENCHMARK COMPLETE: ${predictedCount}/${gameCount} predictions`);
-      console.log(`[v6.41] Total batches fetched: ${batchNumber}`);
-      console.log(`[v6.41] Total games processed: ${gameIndex}/${allGames.length}`);
-      console.log(`[v6.41] Predicted ${predictedIds.size} games, ${failedGameIds.size} failed`);
-      console.log(`[v6.41] Skip stats: ${JSON.stringify(skipStats)}`);
-      console.log(`[v6.41] ========================================`);
+      // v6.42-IRONCLAD: Final incremental save for any remaining predictions
+      await saveIncrementalResults();
+      
+      console.log(`[v6.42] ========================================`);
+      console.log(`[v6.42] BENCHMARK COMPLETE: ${predictedCount}/${gameCount} predictions`);
+      console.log(`[v6.42] Total batches fetched: ${batchNumber}`);
+      console.log(`[v6.42] Total games processed: ${gameIndex}/${allGames.length}`);
+      console.log(`[v6.42] Predicted ${predictedIds.size} games, ${failedGameIds.size} failed`);
+      console.log(`[v6.42] Skip stats: ${JSON.stringify(skipStats)}`);
+      console.log(`[v6.42] ========================================`);
       
       if (attempts.length === 0) {
         throw new Error(`No valid games processed. Skip reasons: ${JSON.stringify(skipStats)}`);
@@ -778,10 +872,8 @@ export function useHybridBenchmark() {
       
       // Warn if we got significantly fewer games than requested
       if (attempts.length < gameCount * 0.8) {
-        console.warn(`[v6.14] ⚠️ Only got ${attempts.length}/${gameCount} games - Lichess may be rate limiting or sparse data`);
+        console.warn(`[v6.42] ⚠️ Only got ${attempts.length}/${gameCount} games - Lichess may be rate limiting or sparse data`);
       }
-      
-      // Calculate stats
       
       // Calculate stats
       const totalGames = attempts.length;
@@ -800,76 +892,59 @@ export function useHybridBenchmark() {
       const positionsAtFullDepth = depths.filter(d => d >= depthThreshold).length;
       const depthAccuracy = (positionsAtFullDepth / depths.length) * 100;
       
-      // Save to database
+      // v6.42: Final benchmark update (predictions already saved incrementally)
       setProgress(prev => ({
         ...prev!,
         currentPhase: 'saving',
-        message: 'Saving benchmark results...'
+        message: 'Finalizing benchmark results...'
       }));
       
-      const { data: benchmark, error: benchmarkError } = await supabase
+      // Update the benchmark record with final stats
+      const { data: existingBenchmark } = await supabase
         .from('chess_benchmark_results')
-        .insert({
-          run_id: runId,
-          total_games: totalGames,
-          completed_games: totalGames,
-          prediction_move_number: Math.round((predictionMoveRange[0] + predictionMoveRange[1]) / 2),
-          hybrid_accuracy: hybridAccuracy,
-          stockfish_accuracy: stockfishAccuracy,
-          hybrid_wins: hybridWins,
-          stockfish_wins: stockfishWins,
-          both_correct: bothCorrect,
-          both_wrong: bothWrong,
-          data_source: 'lichess_grandmasters',
-          games_analyzed: attempts.map(a => a.game_id),
-          stockfish_version: 'Stockfish 17 WASM (Local Maximum Depth)',
-          stockfish_mode: 'local_wasm_unlimited',
-          hybrid_version: 'en-pensent-v1',
-          data_quality_tier: 'tcec_unlimited',
-        })
-        .select()
-        .single();
+        .select('id')
+        .eq('run_id', runId)
+        .maybeSingle();
       
-      if (benchmarkError) {
-        console.error('Error saving benchmark:', benchmarkError);
-      }
-      
-      // Save individual attempts with error handling and duplicate detection
-      if (benchmark) {
-        let savedCount = 0;
-        let saveErrors = 0;
-        let duplicates = 0;
-        
-        for (const attempt of attempts) {
-          const { error: insertError } = await supabase.from('chess_prediction_attempts').insert({
-            ...attempt,
-            benchmark_id: benchmark.id,
+      if (existingBenchmark) {
+        await supabase
+          .from('chess_benchmark_results')
+          .update({
+            total_games: totalGames,
+            completed_games: totalGames,
+            hybrid_accuracy: hybridAccuracy,
+            stockfish_accuracy: stockfishAccuracy,
+            hybrid_wins: hybridWins,
+            stockfish_wins: stockfishWins,
+            both_correct: bothCorrect,
+            both_wrong: bothWrong,
+            games_analyzed: attempts.map(a => a.game_id),
+          })
+          .eq('id', existingBenchmark.id);
+        console.log(`[v6.42] ✅ Final benchmark update complete`);
+      } else {
+        // Create benchmark if incremental saves didn't create it yet
+        await supabase
+          .from('chess_benchmark_results')
+          .insert({
+            run_id: runId,
+            total_games: totalGames,
+            completed_games: totalGames,
+            prediction_move_number: Math.round((predictionMoveRange[0] + predictionMoveRange[1]) / 2),
+            hybrid_accuracy: hybridAccuracy,
+            stockfish_accuracy: stockfishAccuracy,
+            hybrid_wins: hybridWins,
+            stockfish_wins: stockfishWins,
+            both_correct: bothCorrect,
+            both_wrong: bothWrong,
+            data_source: 'lichess_grandmasters',
+            games_analyzed: attempts.map(a => a.game_id),
+            stockfish_version: 'Stockfish 17 WASM (Local Maximum Depth)',
+            stockfish_mode: 'local_wasm_unlimited',
+            hybrid_version: 'en-pensent-v1',
+            data_quality_tier: 'tcec_unlimited',
           });
-          
-          if (insertError) {
-            // Check if it's a duplicate key error (game already analyzed)
-            if (insertError.code === '23505' || insertError.message?.includes('duplicate')) {
-              console.log(`[v6.33] ℹ️ Game ${attempt.game_id} already in DB (duplicate), skipping`);
-              duplicates++;
-            } else {
-              console.error(`[v6.33] ❌ Failed to save prediction for ${attempt.game_id}:`, insertError.message);
-              saveErrors++;
-            }
-          } else {
-            savedCount++;
-          }
-        }
-        
-        console.log(`[v6.33] Saved ${savedCount}/${attempts.length} predictions (${duplicates} duplicates, ${saveErrors} errors)`);
-        
-        // Update the benchmark record with actual saved count
-        const actualSaved = savedCount; // Duplicates don't count as new
-        if (actualSaved !== attempts.length) {
-          await supabase.from('chess_benchmark_results')
-            .update({ completed_games: actualSaved })
-            .eq('id', benchmark.id);
-          console.log(`[v6.33] Updated benchmark completed_games to ${actualSaved}`);
-        }
+        console.log(`[v6.42] ✅ Created final benchmark record`);
       }
       
       // Collect unique archetypes detected
@@ -910,47 +985,74 @@ export function useHybridBenchmark() {
       
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Unknown error';
-      console.error(`[v6.41] Benchmark error: ${message}`);
+      console.error(`[v6.42] Benchmark error: ${message}`);
       
-      // v6.41-RESILIENT: Save whatever results we have before throwing
+      // v6.42-IRONCLAD: Emergency save - predictions should already be in DB from incremental saves
+      // Just log what we had in case anything was lost
       if (attempts.length > 0) {
-        console.log(`[v6.41] 🔄 SAVING ${attempts.length} PARTIAL RESULTS before error...`);
+        console.log(`[v6.42] ⚠️ Error occurred after ${attempts.length} predictions (most should already be saved incrementally)`);
+        
+        // Try one more emergency save in case incremental saves didn't complete
         try {
-          const partialRunId = `partial-${runId}`;
-          const { data: partialBenchmark } = await supabase
+          const { data: existingBenchmark } = await supabase
             .from('chess_benchmark_results')
-            .insert({
-              run_id: partialRunId,
-              total_games: gameCount,
-              completed_games: attempts.length,
-              prediction_move_number: Math.round((predictionMoveRange[0] + predictionMoveRange[1]) / 2),
-              hybrid_accuracy: attempts.length > 0 ? (hybridCorrect / attempts.length) * 100 : 0,
-              stockfish_accuracy: attempts.length > 0 ? (stockfishCorrect / attempts.length) * 100 : 0,
-              hybrid_wins: attempts.filter(a => a.hybrid_correct && !a.stockfish_correct).length,
-              stockfish_wins: attempts.filter(a => !a.hybrid_correct && a.stockfish_correct).length,
-              both_correct: bothCorrect,
-              both_wrong: bothWrong,
-              data_source: 'lichess_grandmasters_partial',
-              games_analyzed: attempts.map(a => a.game_id),
-              stockfish_version: 'Stockfish 17 WASM (Local Maximum Depth)',
-              stockfish_mode: 'local_wasm_unlimited',
-              hybrid_version: 'en-pensent-v1',
-              data_quality_tier: 'tcec_unlimited',
-            })
-            .select()
-            .single();
+            .select('id')
+            .eq('run_id', runId)
+            .maybeSingle();
           
-          if (partialBenchmark) {
-            for (const attempt of attempts) {
-              await supabase.from('chess_prediction_attempts').insert({
-                ...attempt,
-                benchmark_id: partialBenchmark.id,
-              });
+          if (existingBenchmark) {
+            // Update existing benchmark with final count
+            await supabase
+              .from('chess_benchmark_results')
+              .update({
+                completed_games: attempts.length,
+                hybrid_accuracy: attempts.length > 0 ? (hybridCorrect / attempts.length) * 100 : 0,
+                stockfish_accuracy: attempts.length > 0 ? (stockfishCorrect / attempts.length) * 100 : 0,
+              })
+              .eq('id', existingBenchmark.id);
+            console.log(`[v6.42] ✅ Updated benchmark with ${attempts.length} predictions`);
+          } else {
+            // Create benchmark record if it doesn't exist
+            const { data: newBenchmark } = await supabase
+              .from('chess_benchmark_results')
+              .insert({
+                run_id: runId,
+                total_games: gameCount,
+                completed_games: attempts.length,
+                prediction_move_number: Math.round((predictionMoveRange[0] + predictionMoveRange[1]) / 2),
+                hybrid_accuracy: attempts.length > 0 ? (hybridCorrect / attempts.length) * 100 : 0,
+                stockfish_accuracy: attempts.length > 0 ? (stockfishCorrect / attempts.length) * 100 : 0,
+                hybrid_wins: attempts.filter(a => a.hybrid_correct && !a.stockfish_correct).length,
+                stockfish_wins: attempts.filter(a => !a.hybrid_correct && a.stockfish_correct).length,
+                both_correct: bothCorrect,
+                both_wrong: bothWrong,
+                data_source: 'lichess_grandmasters_error',
+                games_analyzed: attempts.map(a => a.game_id),
+                stockfish_version: 'Stockfish 17 WASM (Local Maximum Depth)',
+                stockfish_mode: 'local_wasm_unlimited',
+                hybrid_version: 'en-pensent-v1',
+                data_quality_tier: 'tcec_unlimited',
+              })
+              .select()
+              .single();
+            
+            if (newBenchmark) {
+              // Save any unsaved attempts (ignore errors for duplicates)
+              for (const attempt of attempts) {
+                const { error: insertErr } = await supabase.from('chess_prediction_attempts').insert({
+                  ...attempt,
+                  benchmark_id: newBenchmark.id,
+                });
+                // Silently ignore duplicate errors
+                if (insertErr && !insertErr.message?.includes('duplicate')) {
+                  console.error(`[v6.42] Insert error:`, insertErr.message);
+                }
+              }
+              console.log(`[v6.42] ✅ Emergency saved ${attempts.length} predictions`);
             }
-            console.log(`[v6.41] ✅ Saved ${attempts.length} partial results to DB`);
           }
         } catch (saveError) {
-          console.error(`[v6.41] Failed to save partial results:`, saveError);
+          console.error(`[v6.42] ❌ Emergency save failed:`, saveError);
         }
       }
       
