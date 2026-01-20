@@ -19,9 +19,9 @@
  * - Chess.com: -50 offset (closer to FIDE)
  */
 
-// v6.66-QUEUE-DEDUP: Fix queue deduplication to prevent stale fetches
-const BENCHMARK_VERSION = "6.66-QUEUE-DEDUP";
-console.log(`[v6.66] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.68-QUEUE-INDEX-FIX: Improved queue index tracking + debug logging
+const BENCHMARK_VERSION = "6.68-QUEUE-INDEX-FIX";
+console.log(`[v6.68] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -802,8 +802,15 @@ export function useHybridBenchmark() {
           // CRITICAL: Fall through to process games (newly fetched OR remaining from previous batch)
         }
         
-        // v6.33: Check bounds again after potential fetch
-        if (gameIndex >= gameQueue.length) continue;
+        // v6.68-QUEUE-INDEX-FIX: After successful fetch, gameQueue has grown
+        // but gameIndex was pointing at old end. Check if we have NEW games to process.
+        if (gameIndex >= gameQueue.length) {
+          console.warn(`[v6.68] ❌ Index ${gameIndex} still >= queue length ${gameQueue.length} - no new games added`);
+          continue;
+        }
+        
+        // v6.68: Log queue state for debugging evaporation
+        console.log(`[v6.68] Processing index ${gameIndex} of ${gameQueue.length} (${gameQueue.length - gameIndex} remaining)`);
         
         const game = gameQueue[gameIndex];
         gameIndex++;
