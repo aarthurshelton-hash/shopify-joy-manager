@@ -12,9 +12,9 @@
  * Uses Lichess Cloud API with TCEC-calibrated prediction thresholds
  */
 
-// v6.38-FIXSKIP: Don't mark games as analyzed until AFTER successful prediction
-const CLOUD_BENCHMARK_VERSION = "6.38-FIXSKIP";
-console.log(`[v6.38] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
+// v6.39-FRESHWINDOW: Batch-aware time windows to avoid cache hits & DB overlaps
+const CLOUD_BENCHMARK_VERSION = "6.39-FRESHWINDOW";
+console.log(`[v6.39] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
 
 import { Chess } from 'chess.js';
 import { evaluatePosition, type PositionEvaluation } from './lichessCloudEval';

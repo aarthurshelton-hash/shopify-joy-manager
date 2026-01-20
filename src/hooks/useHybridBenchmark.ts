@@ -11,9 +11,9 @@
  * That's it. No over-engineering.
  */
 
-// v6.38-FIXSKIP: Don't mark games as analyzed until AFTER successful prediction
-const BENCHMARK_VERSION = "6.38-FIXSKIP";
-console.log(`[v6.38] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.39-FRESHWINDOW: Batch-aware time windows to avoid cache hits & DB overlaps
+const BENCHMARK_VERSION = "6.39-FRESHWINDOW";
+console.log(`[v6.39] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -959,27 +959,36 @@ async function fetchLichessGames(
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
   
-  // v6.37-RECENTBIAS: Bias toward recent history where players are MORE ACTIVE
-  // Problem: 14-year random windows often land where players have ZERO games
-  function getRandomTimeWindow(): { since: number; until: number } {
+  // v6.39-FRESHWINDOW: Batch-aware time windows that GUARANTEE different periods
+  // PROBLEM: Edge function caches for 5 mins, and random windows often overlap
+  // SOLUTION: Use batch number to OFFSET the time window, ensuring each batch hits unique periods
+  function getRandomTimeWindow(batchNum: number, playerIndex: number): { since: number; until: number } {
     const now = Date.now();
     const oneDay = 24 * 60 * 60 * 1000;
     
-    // v6.37: 70% chance recent (last 3 years), 30% chance older (3-8 years)
-    // This avoids dead zones (2010-2015) where most titled players weren't on Lichess
-    const useRecent = Math.random() < 0.7;
-    const maxDaysBack = useRecent 
-      ? 365 * 3   // Last 3 years - high activity zone
-      : 365 * 8;  // Last 8 years max (2018+)
+    // v6.39: Use batch + player index to create deterministic but varied offsets
+    // This ensures: batch 1/player 0 ≠ batch 2/player 0 ≠ batch 1/player 1
+    const combinedOffset = (batchNum * 17 + playerIndex * 7) % 100; // Prime multipliers for distribution
     
-    const minDaysBack = useRecent ? 7 : 365 * 3; // Recent starts from last week, old from 3+ years
-    const randomDaysBack = minDaysBack + Math.floor(Math.random() * (maxDaysBack - minDaysBack));
+    // Base: 8 years of history (2018-2026)
+    const totalHistoryDays = 365 * 8;
+    const segmentSize = Math.floor(totalHistoryDays / 100); // ~29 days per segment
     
-    const windowEnd = now - (randomDaysBack * oneDay);
-    const windowDuration = 60 + Math.floor(Math.random() * 120); // 60-180 day windows (wider)
+    // Each offset value gets a different 60-120 day window
+    const segmentStart = combinedOffset * segmentSize;
+    const windowDuration = 60 + Math.floor(Math.random() * 60); // 60-120 days
+    
+    const windowEnd = now - (segmentStart * oneDay);
     const windowStart = windowEnd - (windowDuration * oneDay);
     
-    return { since: Math.max(0, windowStart), until: Math.min(windowEnd, now) };
+    // Clamp to valid range (2018+)
+    const minTimestamp = now - (totalHistoryDays * oneDay);
+    const clampedStart = Math.max(minTimestamp, windowStart);
+    const clampedEnd = Math.min(now - oneDay, windowEnd); // At least 1 day old
+    
+    console.log(`[v6.39] Window: batch=${batchNum} player=${playerIndex} → offset=${combinedOffset} → ${new Date(clampedStart).toISOString().split('T')[0]} to ${new Date(clampedEnd).toISOString().split('T')[0]}`);
+    
+    return { since: clampedStart, until: clampedEnd };
   }
   
   let rateLimitCount = 0;
@@ -1000,9 +1009,9 @@ async function fetchLichessGames(
     // v6.36: 1.2s delay - slightly faster
     await new Promise(r => setTimeout(r, 1200));
     
-    // v6.36: EACH PLAYER gets their OWN random time window
-    const { since, until } = getRandomTimeWindow();
-    console.log(`[v6.36] ${player}: ${new Date(since).toISOString().split('T')[0]} to ${new Date(until).toISOString().split('T')[0]}`);
+    // v6.39: EACH PLAYER + BATCH combo gets UNIQUE time window (no overlaps)
+    const playerIndex = shuffledPlayers.indexOf(player);
+    const { since, until } = getRandomTimeWindow(batchNumber, playerIndex);
     
     try {
       const response = await fetch(`${supabaseUrl}/functions/v1/lichess-games`, {
