@@ -268,8 +268,8 @@ async function fetchFromChessCom(
       }
     }
     
-    // v6.79: Longer delay between chunks to be more respectful to APIs
-    await new Promise(r => setTimeout(r, 600));
+    // v6.80-PATIENT: Respectful delay between chunks
+    await new Promise(r => setTimeout(r, 1500));
   }
   
   console.log(`[ChessCom] Batch complete: ${games.length} games`);
@@ -473,9 +473,10 @@ async function fetchFromLichess(
       }
     }
     
-    // v6.79: SLOWER adaptive delay - prevent rate limit cascades
-    // When we hit rate limits, we need MUCH longer delays to let the API recover
-    const chunkDelay = rateLimitHits > 0 ? 4000 : 1800; // 4s after rate limit, 1.8s normally
+    // v6.80-PATIENT: SLOW AND STEADY wins the race
+    // Take the rush out - quality over quantity
+    const chunkDelay = rateLimitHits > 0 ? 8000 : 3000; // 8s after rate limit, 3s normally
+    console.log(`[v6.80-PATIENT] Waiting ${chunkDelay/1000}s before next chunk...`);
     await new Promise(r => setTimeout(r, chunkDelay));
   }
   

@@ -66,9 +66,9 @@ export function useHybridPrediction() {
       const patternPrediction = predictFromPatterns(pgn);
 
       // Step 3: Generate full hybrid prediction (includes Lichess Cloud Stockfish)
-      // v6.79-SLOWER-CLOUD: Add small delay before cloud API call to prevent cascading rate limits
+      // v6.80-PATIENT: Longer delay before cloud API - quality over speed
       setProgress({ stage: 'Preparing Stockfish tactical analysis', percent: 35 });
-      await new Promise(r => setTimeout(r, 500)); // Half-second buffer before cloud API
+      await new Promise(r => setTimeout(r, 1000)); // 1s buffer before cloud API
       
       setProgress({ stage: 'Running Stockfish tactical analysis (Cloud)', percent: 40 });
       const hybridPrediction = await generateHybridPrediction(pgn, {
