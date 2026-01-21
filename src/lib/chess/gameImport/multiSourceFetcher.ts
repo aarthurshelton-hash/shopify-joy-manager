@@ -1,16 +1,15 @@
 /**
- * Multi-Source Game Fetcher v6.73-WINDOW-ISOLATION
- * VERSION: 6.73-WINDOW-ISOLATION (2026-01-20)
+ * Multi-Source Game Fetcher v6.86-PATIENT-WAIT
+ * VERSION: 6.86-PATIENT-WAIT (2026-01-21)
+ * 
+ * v6.86 CHANGES (Rate Limit Patience):
+ * - WAIT, DON'T BREAK: When rate limited, WAIT for cooldown then resume
+ * - Previously: Rate limit → break loop → lose all pending fetches
+ * - Now: Rate limit → wait resetMs → continue processing remaining players
+ * - Fresh ID = Fresh Game philosophy preserved
  * 
  * v6.73 CHANGES (Identity Theorem Fix):
  * - WINDOW-ISOLATION: Each batch uses strictly non-overlapping time windows
- * - Sequential batch windows prevent API returning same games
- * - Window base advances by window duration on each batch (no overlap)
- * - Player rotation + time isolation = maximum unique game yield
- * 
- * v6.67 CHANGES:
- * - RATELIMIT-MEMORY: Server-side cooldown tracking in Edge Function
- * - Client stops making requests when server signals rate limit
  * 
  * SOURCES:
  * - Lichess (via Edge Function proxy) - 5+ billion games
@@ -325,28 +324,35 @@ async function fetchFromLichess(
   for (const chunk of playerChunks) {
     if (games.length >= targetCount) break;
     
-    // v6.67: If server is rate limited, stop making requests until cooldown expires
-    if (serverRateLimited) {
-      console.warn(`[Lichess v6.67] Server rate limited, waiting ${Math.ceil(serverResetMs / 1000)}s before resuming`);
-      errors.push(`[Lichess] Server rate limited - will resume in ${Math.ceil(serverResetMs / 1000)}s`);
-      break; // Exit loop - don't spam the server
+    // v6.86-PATIENT-WAIT: If server is rate limited, WAIT for cooldown then continue
+    // Previously this would BREAK, losing all remaining player fetches
+    // Now we patiently wait and resume - every game matters!
+    if (serverRateLimited && serverResetMs > 0) {
+      const waitSec = Math.ceil(serverResetMs / 1000);
+      console.warn(`[Lichess v6.86] Rate limited - WAITING ${waitSec}s then resuming (not breaking!)`);
+      errors.push(`[Lichess] Rate limit pause: ${waitSec}s (will resume)`);
+      
+      // WAIT for the full cooldown period
+      await new Promise(r => setTimeout(r, serverResetMs + 2000)); // +2s safety margin
+      
+      // Reset rate limit state after waiting
+      serverRateLimited = false;
+      serverResetMs = 0;
+      rateLimitHits = 0;
+      backoffMs = 3000; // Reset to conservative backoff
+      console.log(`[Lichess v6.86] Cooldown complete - resuming fetches`);
     }
     
     if (rateLimitHits >= 3) {
-      const waitTime = Math.min(backoffMs * Math.pow(1.5, rateLimitHits), 20000);
-      console.warn(`[Lichess v6.67] Local rate limit backoff: ${waitTime}ms`);
+      const waitTime = Math.min(backoffMs * Math.pow(1.5, rateLimitHits), 30000);
+      console.warn(`[Lichess v6.86] Backoff wait: ${Math.ceil(waitTime/1000)}s`);
       await new Promise(r => setTimeout(r, waitTime));
       rateLimitHits = 0;
     }
     
     // v6.73-WINDOW-ISOLATION: Strictly non-overlapping windows per batch
-    // Identity Theorem: Each batch must explore UNIQUE time territory
-    // Sequential windows advance by full duration - no overlap possible
-    const chunkPromises = chunk.map(async (player, idx) => {
-      // v6.67: Skip if we already know server is rate limited
-      if (serverRateLimited) {
-        return { player, rateLimit: true, resetMs: serverResetMs };
-      }
+    const chunkPromises = chunk.map(async (player) => {
+      // v6.86: Don't skip - we've already waited if needed
       
       const now = Date.now();
       const oneDay = 24 * 60 * 60 * 1000;
@@ -473,16 +479,15 @@ async function fetchFromLichess(
       }
       
       if (addedFromPlayer > 0) {
-        console.log(`[Lichess] ✓ ${player}: +${addedFromPlayer} games`);
+        console.log(`[Lichess v6.86] ✓ ${player}: +${addedFromPlayer} games`);
         rateLimitHits = 0;
-        backoffMs = Math.max(backoffMs * 0.8, 1000); // Reduce backoff on success
+        backoffMs = Math.max(backoffMs * 0.9, 2000); // Reduce backoff on success
       }
     }
     
-    // v6.80-PATIENT: SLOW AND STEADY wins the race
-    // Take the rush out - quality over quantity
-    const chunkDelay = rateLimitHits > 0 ? 8000 : 3000; // 8s after rate limit, 3s normally
-    console.log(`[v6.80-PATIENT] Waiting ${chunkDelay/1000}s before next chunk...`);
+    // v6.86-PATIENT: Generous delay between chunks to avoid rate limits
+    const chunkDelay = rateLimitHits > 0 ? 10000 : 4000; // 10s after issues, 4s normally
+    console.log(`[v6.86-PATIENT] Waiting ${chunkDelay/1000}s before next chunk...`);
     await new Promise(r => setTimeout(r, chunkDelay));
   }
   
