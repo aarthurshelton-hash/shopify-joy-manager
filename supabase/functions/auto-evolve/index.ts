@@ -1,16 +1,13 @@
 /**
- * Auto-Evolve Edge Function v7.2-REAL-SF17
+ * Auto-Evolve Edge Function v7.3-DUAL-SOURCES
  * 
  * Server-side autonomous evolution engine with REAL Stockfish 17 evaluation.
+ * Now fetches games from BOTH Lichess AND Chess.com!
  * 
- * KEY FIX v7.2: NO MORE FAKE STOCKFISH HEURISTICS!
- * - Calls Lichess Cloud Eval API for REAL SF17 NNUE evaluation
- * - Hybrid uses Color Flow trajectory analysis (En Pensent IP)
- * - Both systems now compete FAIRLY with authentic implementations
- * 
- * Features:
+ * KEY FEATURES:
  * - REAL Stockfish 17 via Lichess Cloud Eval (D30+ analysis)
  * - REAL Color Flow archetype classification (15 archetypes)
+ * - DUAL DATA SOURCES: Lichess + Chess.com
  * - Self-healing rate limit handling
  * - Divergent predictions from fundamentally different engines
  */
@@ -22,7 +19,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const AUTO_EVOLVE_VERSION = '7.2-REAL-SF17';
+const AUTO_EVOLVE_VERSION = '7.3-DUAL-SOURCES';
 
 // ============================================================================
 // LICHESS CLOUD EVAL - REAL STOCKFISH 17
@@ -287,34 +284,60 @@ Deno.serve(async (req) => {
   const supabase = createClient(supabaseUrl, supabaseKey);
 
   try {
-    console.log(`[${AUTO_EVOLVE_VERSION}] 🚀 Autonomous evolution batch starting with REAL SF17...`);
+    console.log(`[${AUTO_EVOLVE_VERSION}] 🚀 Autonomous evolution batch with REAL SF17 + DUAL SOURCES...`);
 
-    // Fetch active players from Lichess leaderboard
-    let activePlayers = await fetchLeaderboardPlayers();
-    console.log(`[${AUTO_EVOLVE_VERSION}] Got ${activePlayers.length} active players from leaderboard`);
+    // ========== LICHESS SOURCE ==========
+    let lichessPlayers = await fetchLeaderboardPlayers();
+    console.log(`[${AUTO_EVOLVE_VERSION}] Got ${lichessPlayers.length} Lichess players`);
 
-    if (activePlayers.length === 0) {
-      activePlayers = ['DrNykterstein', 'nihalsarin2004', 'Fins', 'penguingm1'];
+    if (lichessPlayers.length === 0) {
+      lichessPlayers = ['DrNykterstein', 'nihalsarin2004', 'Fins', 'penguingim1'];
     }
 
-    // Select random players
-    const selectedPlayers = shuffleArray(activePlayers).slice(0, 3);
-    console.log(`[${AUTO_EVOLVE_VERSION}] Selected players: ${selectedPlayers.join(', ')}`);
+    const selectedLichessPlayers = shuffleArray(lichessPlayers).slice(0, 2);
 
-    // Fetch recent games
+    // ========== CHESS.COM SOURCE ==========
+    const chesscomPlayers = shuffleArray([
+      'MagnusCarlsen', 'Hikaru', 'FabianoCaruana', 'DanielNaroditsky', 
+      'GothamChess', 'AnishGiri', 'LevonAronian', 'WesleySo'
+    ]).slice(0, 2);
+
+    console.log(`[${AUTO_EVOLVE_VERSION}] Lichess: ${selectedLichessPlayers.join(', ')}, Chess.com: ${chesscomPlayers.join(', ')}`);
+
+    // Fetch games from BOTH sources
     const games: GameData[] = [];
-    const since = Date.now() - (24 * 60 * 60 * 1000);
+    const since = Date.now() - (7 * 24 * 60 * 60 * 1000);
+    let lichessCount = 0;
+    let chesscomCount = 0;
 
-    for (const player of selectedPlayers) {
+    // Lichess games
+    for (const player of selectedLichessPlayers) {
       try {
-        const playerGames = await fetchLichessGames(player, since, 5);
+        const playerGames = await fetchLichessGames(player, since, 4);
         games.push(...playerGames);
-        console.log(`[${AUTO_EVOLVE_VERSION}] Fetched ${playerGames.length} games from ${player}`);
+        lichessCount += playerGames.length;
+        console.log(`[${AUTO_EVOLVE_VERSION}] Lichess: +${playerGames.length} from ${player}`);
         await sleep(500);
       } catch (err) {
-        console.warn(`[${AUTO_EVOLVE_VERSION}] Failed to fetch from ${player}:`, err);
+        console.warn(`[${AUTO_EVOLVE_VERSION}] Lichess failed for ${player}:`, err);
       }
     }
+
+    // Chess.com games (current month)
+    const now = new Date();
+    for (const player of chesscomPlayers) {
+      try {
+        const playerGames = await fetchChesscomGames(player, now.getFullYear(), now.getMonth() + 1, 4);
+        games.push(...playerGames);
+        chesscomCount += playerGames.length;
+        console.log(`[${AUTO_EVOLVE_VERSION}] Chess.com: +${playerGames.length} from ${player}`);
+        await sleep(500);
+      } catch (err) {
+        console.warn(`[${AUTO_EVOLVE_VERSION}] Chess.com failed for ${player}:`, err);
+      }
+    }
+
+    console.log(`[${AUTO_EVOLVE_VERSION}] Total: ${games.length} games (${lichessCount} Lichess, ${chesscomCount} Chess.com)`);
 
     if (games.length === 0) {
       console.log(`[${AUTO_EVOLVE_VERSION}] No games fetched, skipping batch`);
@@ -395,7 +418,8 @@ Deno.serve(async (req) => {
       divergentPredictions: divergentCount,
       realSfEvaluations: realSfEvalCount,
       durationMs,
-      players: selectedPlayers,
+      players: [...selectedLichessPlayers, ...chesscomPlayers],
+      sources: { lichess: lichessCount, chesscom: chesscomCount },
     });
 
     // Update evolution state
@@ -496,6 +520,69 @@ async function fetchLichessGames(player: string, since: number, max: number): Pr
       }
     } catch {
       // Skip malformed JSON
+    }
+  }
+
+  return games;
+}
+
+// ============================================================================
+// CHESS.COM API FUNCTIONS
+// ============================================================================
+
+async function fetchChesscomGames(player: string, year: number, month: number, max: number): Promise<GameData[]> {
+  const monthStr = String(month).padStart(2, '0');
+  const url = `https://api.chess.com/pub/player/${encodeURIComponent(player.toLowerCase())}/games/${year}/${monthStr}`;
+  
+  const response = await fetch(url, {
+    headers: {
+      'Accept': 'application/json',
+      'User-Agent': 'EnPensent-AutoEvolve/7.3 (https://enpensent.com)'
+    }
+  });
+
+  if (!response.ok) {
+    if (response.status === 429) throw new Error('Rate limited by Chess.com');
+    if (response.status === 404) {
+      console.log(`[${AUTO_EVOLVE_VERSION}] Chess.com: No games for ${player} in ${year}/${monthStr}`);
+      return [];
+    }
+    throw new Error(`Chess.com API error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  const rawGames = data.games || [];
+  const games: GameData[] = [];
+
+  for (const game of rawGames.slice(-max)) { // Get most recent games
+    try {
+      if (!game.pgn) continue;
+      
+      // Skip games that aren't decisive
+      if (!game.white?.result && !game.black?.result) continue;
+      
+      const isWhiteWin = game.white?.result === 'win';
+      const isBlackWin = game.black?.result === 'win';
+      
+      // Skip draws for now (focus on decisive games for stronger signals)
+      if (!isWhiteWin && !isBlackWin) continue;
+      
+      const winner = isWhiteWin ? 'white' : 'black';
+      const result = isWhiteWin ? '1-0' : '0-1';
+      
+      games.push({
+        id: game.uuid || `chesscom-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        pgn: game.pgn,
+        white: game.white?.username || 'Unknown',
+        black: game.black?.username || 'Unknown',
+        result,
+        winner,
+        timeControl: game.time_class || 'unknown',
+        whiteElo: game.white?.rating,
+        blackElo: game.black?.rating,
+      });
+    } catch {
+      // Skip malformed games
     }
   }
 
