@@ -129,12 +129,13 @@ export interface DualPoolResult {
 
 // ================ PLAYER POOLS ================
 
+// v6.95: VERIFIED existing Lichess players only (removed SSJG_Goku - 404)
 const LICHESS_ELITE_PLAYERS = [
   'DrNykterstein', 'Hikaru', 'nihalsarin2004', 'FairChess_on_YouTube',
   'LyonBeast', 'Bombegansen', 'GMWSO', 'Vladimirovich9000',
   'penguingim1', 'AnishGiri', 'DanielNaroditsky', 'opperwezen',
   'Fins', 'Polish_fighter3000', 'howitzer14', 'lachesisQ',
-  'TemurKuybokarov', 'Msb2', 'SSJG_Goku', 'Zhigalko_Sergei',
+  'TemurKuybokarov', 'Msb2', 'Zhigalko_Sergei', 'GMHikaruOnTwitch',
 ];
 
 const CHESSCOM_ELITE_PLAYERS = [
