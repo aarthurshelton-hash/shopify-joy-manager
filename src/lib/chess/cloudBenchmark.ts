@@ -32,8 +32,8 @@
  */
 
 // v6.88-YIELD-MAXIMIZER: Chess stats cache invalidation
-const CLOUD_BENCHMARK_VERSION = "6.88-YIELD-MAXIMIZER";
-console.log(`[v6.88] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
+const CLOUD_BENCHMARK_VERSION = "6.89-HYBRID-ONLY-FIX";
+console.log(`[v6.89] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
 
 import { Chess } from 'chess.js';
 import { evaluatePosition, type PositionEvaluation } from './lichessCloudEval';
@@ -635,22 +635,18 @@ export async function runCloudBenchmark(
       onProgress?.(`[SF17] Evaluating position after move ${movesToPlay}...`, progressPercent + 3);
       const cloudEval = await evaluatePosition(fen);
       
-      // v6.88-YIELD-MAXIMIZER: Fallback eval when position not in cloud
-      // Rather than skip entirely, use a neutral eval and flag it
-      // This preserves the hybrid prediction value even without cloud SF eval
-      let stockfishEval = 0;
-      let stockfishDepth = 0;
-      let evalSource = 'cloud';
+      // v6.89-HYBRID-ONLY-FIX: Proper handling when cloud eval unavailable
+      // Previously: Used eval=0 which always predicted "draw" - not meaningful
+      // Now: Skip games without cloud eval to ensure fair SF comparison
+      // Hybrid-only mode defeats the purpose of the benchmark (comparing two engines)
       
       if (!cloudEval) {
-        console.log(`[v6.88] No cloud eval for ${game.name} - using hybrid-only mode`);
-        evalSource = 'hybrid_only';
-        // Stockfish prediction will be neutral, letting hybrid shine
-      } else {
-        stockfishEval = cloudEval.evaluation;
-        stockfishDepth = cloudEval.depth;
+        console.log(`[v6.89] No cloud eval for ${game.name} - skipping (need valid SF baseline)`);
+        continue; // Both engines need valid predictions for fair comparison
       }
       
+      const stockfishEval = cloudEval.evaluation;
+      const stockfishDepth = cloudEval.depth;
       const stockfishResult = evalToPrediction(stockfishEval);
       
       // Track depth for provenance
