@@ -25,13 +25,28 @@ const MIN_INTERVAL = 2000; // 2 seconds between requests
 const cache = new Map<string, { data: unknown; timestamp: number }>();
 const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
+// Fisher-Yates shuffle for true randomization
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { perfTypes = ['bullet', 'blitz', 'rapid', 'classical'], count = 50 } = await req.json().catch(() => ({}));
+    // v6.87b: Fetch top 100 players, randomized order, all game modes including ultrabullet/horde/etc
+    const { 
+      perfTypes = ['bullet', 'blitz', 'rapid', 'classical', 'ultraBullet', 'chess960', 'crazyhouse', 'antichess', 'atomic', 'horde', 'racingKings', 'kingOfTheHill'], 
+      count = 100,
+      randomize = true 
+    } = await req.json().catch(() => ({}));
 
     // Check cache first
     const cacheKey = `leaderboard-${perfTypes.join(',')}-${count}`;
@@ -118,24 +133,28 @@ serve(async (req) => {
       console.log(`[Lichess Leaderboard] ${perfType}: ${rank} players extracted`);
     }
 
-    // Sort by rating descending
-    players.sort((a, b) => b.rating - a.rating);
+    // v6.87b: Randomize order for variety, or sort by rating
+    const finalPlayers = randomize ? shuffleArray(players) : players.sort((a, b) => b.rating - a.rating);
 
     const result = {
-      players,
-      count: players.length,
+      players: finalPlayers.slice(0, count), // Limit to requested count after shuffle
+      count: Math.min(finalPlayers.length, count),
+      totalAvailable: players.length,
       perfTypes,
+      randomized: randomize,
       fetchedAt: new Date().toISOString()
     };
 
-    // Cache the result
-    cache.set(cacheKey, { data: result, timestamp: Date.now() });
+    // Cache the result (but randomization happens fresh each time if requested)
+    if (!randomize) {
+      cache.set(cacheKey, { data: result, timestamp: Date.now() });
+    }
 
-    console.log(`[Lichess Leaderboard] Total: ${players.length} unique players`);
+    console.log(`[Lichess Leaderboard] Total: ${result.count} players (${randomize ? 'randomized' : 'sorted'})`);
 
     return new Response(
       JSON.stringify(result),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json', 'X-Cache': 'MISS' } }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json', 'X-Cache': randomize ? 'FRESH' : 'MISS' } }
     );
 
   } catch (error) {
