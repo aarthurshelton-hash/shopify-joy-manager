@@ -74,12 +74,14 @@ const queryClient = new QueryClient();
 
 import { UniversalHeartbeatProvider } from "@/providers/UniversalHeartbeatProvider";
 import { RealtimeAccuracyProvider } from "@/providers/RealtimeAccuracyProvider";
+import { AutoEvolutionProvider } from "@/providers/AutoEvolutionProvider";
 
 const App = () => (
   <ErrorBoundary componentName="App">
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <RealtimeAccuracyProvider enabled={true}>
+          <AutoEvolutionProvider autoStart={true} delayMs={8000}>
           <UniversalHeartbeatProvider autoStart={true} interval={30000}>
           <TooltipProvider>
             <Toaster />
@@ -173,6 +175,7 @@ const App = () => (
           </BrowserRouter>
         </TooltipProvider>
         </UniversalHeartbeatProvider>
+        </AutoEvolutionProvider>
         </RealtimeAccuracyProvider>
       </AuthProvider>
     </QueryClientProvider>
