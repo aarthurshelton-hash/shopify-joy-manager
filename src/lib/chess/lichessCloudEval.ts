@@ -36,10 +36,11 @@ export interface PositionEvaluation {
   winProbability: number;
 }
 
-// Rate limiting state (local tracking) - v6.79-SLOWER-CLOUD
+// Rate limiting state (local tracking) - v6.80-PATIENT
+// PHILOSOPHY: Quality > Speed. WAIT for rate limits, never skip.
 let rateLimitResetTime = 0;
 let lastRequestTime = 0;
-const MIN_REQUEST_INTERVAL = 4500; // 4.5s between requests (~13/min - extra conservative to prevent cascades)
+const MIN_REQUEST_INTERVAL = 5000; // 5s between requests (~12/min - bulletproof headroom)
 
 // In-memory cache for evaluated positions
 const positionCache = new Map<string, PositionEvaluation>();
@@ -51,6 +52,30 @@ export function getRateLimitStatus(): { isLimited: boolean; resetInMs: number } 
     return { isLimited: true, resetInMs: rateLimitResetTime - now };
   }
   return { isLimited: false, resetInMs: 0 };
+}
+
+/**
+ * v6.80-PATIENT: Wait for rate limit to clear before proceeding
+ * Returns true when ready to proceed, false if timed out waiting
+ */
+export async function waitForRateLimit(maxWaitMs: number = 120000): Promise<boolean> {
+  const status = getRateLimitStatus();
+  if (!status.isLimited) return true;
+  
+  const waitTime = Math.min(status.resetInMs + 2000, maxWaitMs); // Extra 2s buffer
+  console.log(`[v6.80-PATIENT] ⏳ Rate limited - waiting ${Math.ceil(waitTime/1000)}s for API to recover...`);
+  
+  await new Promise(r => setTimeout(r, waitTime));
+  
+  // Double-check after waiting
+  const recheckStatus = getRateLimitStatus();
+  if (recheckStatus.isLimited) {
+    console.warn(`[v6.80-PATIENT] Still rate limited after wait, remaining: ${Math.ceil(recheckStatus.resetInMs/1000)}s`);
+    return false;
+  }
+  
+  console.log(`[v6.80-PATIENT] ✅ Rate limit cleared, resuming...`);
+  return true;
 }
 
 /**
@@ -138,7 +163,16 @@ function uciToSan(fen: string, uci: string): string {
  * Evaluate a position using Lichess Cloud Eval (Stockfish 17) via Edge Function
  * Includes throttling and caching for rate limit management
  */
-export async function evaluatePosition(fen: string, multiPv: number = 1, skipCache: boolean = false): Promise<PositionEvaluation | null> {
+/**
+ * v6.80-PATIENT: Evaluate position with patient rate limit handling
+ * @param waitForLimit - If true (default), WAIT for rate limits to clear instead of returning null
+ */
+export async function evaluatePosition(
+  fen: string, 
+  multiPv: number = 1, 
+  skipCache: boolean = false,
+  waitForLimit: boolean = true
+): Promise<PositionEvaluation | null> {
   // Check cache first
   if (!skipCache) {
     const cached = getCachedEvaluation(fen);
@@ -148,11 +182,20 @@ export async function evaluatePosition(fen: string, multiPv: number = 1, skipCac
     }
   }
   
-  // Check if we're rate limited
+  // v6.80-PATIENT: Wait for rate limit instead of returning null
   const limitStatus = getRateLimitStatus();
   if (limitStatus.isLimited) {
-    console.warn(`[LichessCloud] Rate limited, ${Math.ceil(limitStatus.resetInMs / 1000)}s remaining`);
-    return null;
+    if (waitForLimit) {
+      console.log(`[v6.80-PATIENT] Rate limited - waiting patiently...`);
+      const ready = await waitForRateLimit();
+      if (!ready) {
+        console.warn(`[v6.80-PATIENT] Rate limit wait timed out`);
+        return null;
+      }
+    } else {
+      console.warn(`[LichessCloud] Rate limited, ${Math.ceil(limitStatus.resetInMs / 1000)}s remaining`);
+      return null;
+    }
   }
   
   try {

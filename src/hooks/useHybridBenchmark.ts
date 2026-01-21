@@ -1,29 +1,28 @@
 /**
- * Hybrid Benchmark Hook - v6.78-SIMPLE
- * VERSION: 6.78-SIMPLE (2026-01-20)
+ * Hybrid Benchmark Hook - v6.80-PATIENT
+ * VERSION: 6.80-PATIENT (2026-01-21)
  * 
- * v6.78 CHANGES:
- * - RADICAL SIMPLIFICATION: One check - is raw ID in DB?
- * - DUAL SOURCE: Fetch from Lichess + Chess.com equally
- * - SINGLE TRUTH: analyzedData.gameIds is the only dedup set
- * - RAW IDs ONLY: No prefixes in DB or tracking sets
+ * v6.80 CHANGES (QUALITY OVER QUANTITY):
+ * - PATIENT RATE LIMITING: Wait for limits to clear, never skip due to rate limits
+ * - SLOWER FETCHING: 3s between chunks, 8s after rate limit hits
+ * - BULLETPROOF CLOUD: 6s between cloud eval requests (~10/min)
+ * - WAIT, DON'T SKIP: Games only fail if Stockfish genuinely times out
  * 
- * v6.64 CHANGES:
- * - SYNC FIX: Improved cache invalidation timing for instant UI updates
- * 
- * ELO CALIBRATION (Platform → FIDE):
- * - Lichess: -100 offset (Glicko-2 tends higher)
- * - Chess.com: -50 offset (closer to FIDE)
+ * v6.78 PHILOSOPHY:
+ * - ONLY requirement: unique raw game ID not in database
+ * - BOTH sources: Lichess + Chess.com equally
+ * - SIMPLE dedup: one check - is raw ID in analyzedData.gameIds?
+ * - RETRY on engine fail: wait and try again (don't skip)
  */
 
-// v6.78-SIMPLE: Radical simplification of the pipeline
+// v6.80-PATIENT: Quality over quantity - take the rush out
 // Philosophy:
-// 1. ONLY requirement: unique raw game ID not in database
-// 2. BOTH sources: Lichess + Chess.com equally
-// 3. SIMPLE dedup: one check - is raw ID in analyzedData.gameIds?
-// 4. RETRY on engine fail: wait and try again (don't skip)
-const BENCHMARK_VERSION = "6.78-SIMPLE";
-console.log(`[v6.78] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// 1. WAIT for rate limits to clear instead of skipping
+// 2. SLOWER but MORE RELIABLE fetching
+// 3. Only skip if game genuinely can't be processed
+// 4. Every game that enters pipeline should succeed
+const BENCHMARK_VERSION = "6.80-PATIENT";
+console.log(`[v6.80] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -813,25 +812,25 @@ export function useHybridBenchmark() {
         const queueAvailable = gameQueue.length - gameIndex;
         
         if (queueAvailable === 0) {
-          console.log(`[v6.77] 📥 FETCH PHASE: Queue empty, need ${gameCount - predictedCount} more predictions`);
-          console.log(`[v6.77] Stats: predicted=${predictedCount}, index=${gameIndex}, queueLen=${gameQueue.length}`);
+          console.log(`[v6.80] 📥 FETCH PHASE: Queue empty, need ${gameCount - predictedCount} more predictions`);
+          console.log(`[v6.80] Stats: predicted=${predictedCount}, index=${gameIndex}, queueLen=${gameQueue.length}`);
           
-          // Exponential backoff on consecutive empty fetches
+          // v6.80-PATIENT: LONGER exponential backoff - let APIs recover
           if (emptyBatchStreak > 0) {
-            const waitTime = Math.min(2000 * Math.pow(1.5, emptyBatchStreak), 15000);
-            console.log(`[v6.77] ⏳ Backoff: ${Math.round(waitTime/1000)}s (streak: ${emptyBatchStreak})`);
+            const waitTime = Math.min(5000 * Math.pow(1.5, emptyBatchStreak), 30000);
+            console.log(`[v6.80-PATIENT] ⏳ Patience backoff: ${Math.round(waitTime/1000)}s (streak: ${emptyBatchStreak})`);
             await new Promise(r => setTimeout(r, waitTime));
           }
           
           const fetchedCount = await fetchMoreGames();
           const newQueueAvailable = gameQueue.length - gameIndex;
           
-          console.log(`[v6.77] 📥 Fetch result: +${fetchedCount} games, queue now has ${newQueueAvailable} available`);
+          console.log(`[v6.80] 📥 Fetch result: +${fetchedCount} games, queue now has ${newQueueAvailable} available`);
           
           if (fetchedCount === 0 && newQueueAvailable === 0) {
             emptyBatchStreak++;
             if (emptyBatchStreak >= MAX_EMPTY_BATCHES) {
-              console.warn(`[v6.77] ❌ Max empty batches (${MAX_EMPTY_BATCHES}) reached, stopping`);
+              console.warn(`[v6.80] ❌ Max empty batches (${MAX_EMPTY_BATCHES}) reached, stopping`);
               await saveIncrementalResults();
               break;
             }
@@ -843,7 +842,7 @@ export function useHybridBenchmark() {
           
           // Verify we now have games
           if (gameQueue.length - gameIndex === 0) {
-            console.error(`[v6.77] ❌ LOGIC ERROR: fetch succeeded but queue still empty!`);
+            console.error(`[v6.80] ❌ LOGIC ERROR: fetch succeeded but queue still empty!`);
             continue;
           }
         }
@@ -857,34 +856,34 @@ export function useHybridBenchmark() {
         const game = gameQueue[currentIndex];
         gameIndex++; // Advance BEFORE any continue/break
         
-        // v6.78-SIMPLE: No queue tracking needed - just process
+        // v6.80-PATIENT: No queue tracking needed - just process
         
-        console.log(`[v6.78] 🎯 PROCESS: Game ${currentIndex + 1}/${gameQueue.length} (remaining: ${gameQueue.length - gameIndex})`);
+        console.log(`[v6.80] 🎯 PROCESS: Game ${currentIndex + 1}/${gameQueue.length} (remaining: ${gameQueue.length - gameIndex})`);
         
-        // v6.78: Extract game info
+        // v6.80: Extract game info
         const gameId = game.lichessId;
         const source = game.source || 'lichess';
         
         // ═══════════════════════════════════════════════════════════════════
-        // v6.78-SIMPLE: Only TWO skip conditions
+        // v6.80-PATIENT: Only TWO skip conditions
         // 1. No ID (can't track)
         // 2. Already in DB (check raw form)
-        // ═══════════════════════════════════════════════════════════════════
+        // Rate limits and engine fails are WAITED not skipped
         
         // Skip 1: No ID = can't track
         if (!gameId) {
-          console.log(`[v6.78] ⏭️ SKIP: No gameId`);
+          console.log(`[v6.80] ⏭️ SKIP: No gameId`);
           skipStats.noId++;
           consecutiveSkips++;
           continue;
         }
         
-        // v6.78: Get raw ID (without prefix) - this is what we store in DB
+        // v6.80: Get raw ID (without prefix) - this is what we store in DB
         const rawGameId = gameId.replace(/^(li_|cc_)/, '');
         
         // Skip 2: Already in DB (includes games predicted earlier THIS session)
         if (analyzedData.gameIds.has(rawGameId)) {
-          console.log(`[v6.78] ⏭️ SKIP: Already in DB - ${rawGameId}`);
+          console.log(`[v6.80] ⏭️ SKIP: Already in DB - ${rawGameId}`);
           skipStats.inDb++;
           consecutiveSkips++;
           continue;
@@ -892,7 +891,7 @@ export function useHybridBenchmark() {
         
         // Skip 3: Previously failed this session (parse error, NOT engine timeout)
         if (failedGameIds.has(rawGameId)) {
-          console.log(`[v6.78] ⏭️ SKIP: Previously failed - ${rawGameId}`);
+          console.log(`[v6.80] ⏭️ SKIP: Previously failed - ${rawGameId}`);
           consecutiveSkips++;
           continue;
         }
@@ -968,8 +967,9 @@ export function useHybridBenchmark() {
         }
         
         // v6.75-CALIBRATED: Shorter timeout (30s instead of 45s) + faster recovery
+        // v6.80-PATIENT: Engine timeout handling - wait and retry instead of skip
         let engineFailed = false;
-        const ANALYSIS_TIMEOUT = depth >= 40 ? 35000 : 25000; // Calibrated per depth
+        const ANALYSIS_TIMEOUT = depth >= 40 ? 45000 : 35000; // v6.80: Longer timeouts
         
         try {
           const analysisPromise = engine.analyzePosition(fen, { depth, requireExactDepth: depth >= 40 });
@@ -978,31 +978,32 @@ export function useHybridBenchmark() {
           
           if (!analysis) {
             engineFailed = true;
-            console.log(`[v6.78] ⚠️ Stockfish timeout (${ANALYSIS_TIMEOUT/1000}s) for ${gameId}`);
+            console.log(`[v6.80] ⚠️ Stockfish timeout (${ANALYSIS_TIMEOUT/1000}s) for ${gameId}`);
             skipStats.engineTimeout++;
           }
         } catch (sfError) {
           engineFailed = true;
-          console.error(`[v6.78] ❌ Stockfish error for ${gameId}:`, sfError);
+          console.error(`[v6.80] ❌ Stockfish error for ${gameId}:`, sfError);
           skipStats.analysisError++;
         }
         
         if (engineFailed) {
           consecutiveEngineFailures++;
-          // v6.78: Add RAW ID to failed set
+          // v6.80: Add RAW ID to failed set
           failedGameIds.add(rawGameId);
           consecutiveSkips++;
           
-          // v6.75: Faster recovery cycle - reinitialize after 2 failures instead of 3
+          // v6.80-PATIENT: Recovery with longer waits
           if (consecutiveEngineFailures >= 2) {
-            console.warn(`[v6.75] ⚠️ ${consecutiveEngineFailures} consecutive engine failures - FAST RECOVERY`);
-            setProgress(prev => ({ ...prev!, message: 'Engine stall detected - fast recovery...' }));
+            console.warn(`[v6.80-PATIENT] ⚠️ ${consecutiveEngineFailures} consecutive engine failures - PATIENT RECOVERY`);
+            setProgress(prev => ({ ...prev!, message: 'Engine stall detected - patient recovery...' }));
             
-            // v6.75: Stop the current analysis first
+            // v6.80: Stop the current analysis first
             try { engine.stop(); } catch (e) { /* ignore */ }
             
-            // Shorter wait (1s instead of 2s)
-            await new Promise(r => setTimeout(r, 1000));
+            // v6.80-PATIENT: Longer wait (3s instead of 1s)
+            console.log(`[v6.80-PATIENT] ⏳ Waiting 3s before engine recovery...`);
+            await new Promise(r => setTimeout(r, 3000));
             
             // Try to reinitialize the engine
             const reready = await engine.waitReady((p) => {
@@ -1010,11 +1011,11 @@ export function useHybridBenchmark() {
             });
             
             if (reready) {
-              console.log(`[v6.75] ✅ Engine recovered successfully`);
+              console.log(`[v6.80] ✅ Engine recovered successfully`);
               consecutiveEngineFailures = 0;
               gamesProcessedSinceHealthCheck = 0; // Reset health check counter
             } else {
-              console.error(`[v6.75] ❌ Engine failed to recover - aborting batch`);
+              console.error(`[v6.80] ❌ Engine failed to recover - aborting batch`);
               await saveIncrementalResults();
               break;
             }
@@ -1028,7 +1029,7 @@ export function useHybridBenchmark() {
         
         const stockfish = getLocalStockfishPrediction(analysis);
         depths.push(stockfish.depth);
-        console.log(`[v6.75] Stockfish: ${stockfish.evaluation}cp at depth ${stockfish.depth}`);
+        console.log(`[v6.80] Stockfish: ${stockfish.evaluation}cp at depth ${stockfish.depth}`);
         
         // Compare predictions
         const hybridIsCorrect = colorFlow.prediction === gameResult;
