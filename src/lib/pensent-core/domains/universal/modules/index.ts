@@ -10,6 +10,7 @@
 export * from './collectiveEntrainment';
 export * from './scientificFormulations';
 export * from './psychedelicEquivalence';
+export * from './synapticTruthNetwork';
 
 /**
  * Module Overview:
