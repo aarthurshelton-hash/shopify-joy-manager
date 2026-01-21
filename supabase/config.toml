@@ -89,3 +89,9 @@ verify_jwt = false
 
 [functions.lichess-leaderboard]
 verify_jwt = false
+
+[functions.auto-evolve]
+verify_jwt = false
+
+[functions.auto-evolve.schedule]
+cron = "*/5 * * * *"
