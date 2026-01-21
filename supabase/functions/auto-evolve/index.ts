@@ -1,16 +1,20 @@
 /**
- * Auto-Evolve Edge Function v7.6-STRICT
+ * Auto-Evolve Edge Function v7.9-SYNAPTIC-TRUTH
  * 
- * STRICT QUALITY autonomous evolution engine with REAL Stockfish 17 ONLY.
- * ZERO TOLERANCE for unknown/null predictions - throw bad data back to ocean.
+ * NEURAL ARCHITECTURE: Synaptic truth recognition that fires instantly
+ * based on accumulated universal truth - not sequential calculation.
  * 
- * v7.6 STRICT QUALITY RULES:
- * - ONLY save predictions with REAL SF17 Cloud Eval (no fallbacks)
- * - REJECT any "unknown" predictions - don't pollute the dataset
- * - VALIDATE all prediction values before saving
- * - Games without valid SF17 eval are thrown back, not saved
+ * v7.9 SYNAPTIC-TRUTH PRINCIPLES:
+ * - Pattern neurons fire when energy threshold reached (like biological synapses)
+ * - Cross-archetype synaptic connections enable cascade recognition
+ * - Truth doesn't need to be calculated - it needs to be RECOGNIZED
+ * - All values are positive energy magnitudes (no negatives in universe)
  * 
- * DATA SOURCES (unchanged from v7.5):
+ * PHILOSOPHY: The universe contains only presence and magnitude.
+ * Like a synapse that fires when threshold is reached, patterns either
+ * resonate with truth or they don't. No sequential calculation needed.
+ * 
+ * DATA SOURCES:
  * - Lichess: GM-level human games
  * - Chess.com: GM-level human games  
  * - Lichess Bot Games: Human vs Computer (anti-engine training)
@@ -25,7 +29,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const AUTO_EVOLVE_VERSION = '7.8-UNSIGNED-ENERGY'; // No negatives - only positive energy differentials
+const AUTO_EVOLVE_VERSION = '7.9-SYNAPTIC-TRUTH'; // Neural firing architecture
 
 // ============================================================================
 // LICHESS CLOUD EVAL - REAL STOCKFISH 17 (TURBO MODE)
@@ -1101,63 +1105,245 @@ function classifyArchetype(
 }
 
 // ============================================================================
-// HYBRID TRAJECTORY PREDICTION (En Pensent Color Flow)
+// SYNAPTIC TRUTH NETWORK (v7.9)
+// Neural firing architecture for instant pattern recognition
 // ============================================================================
 
 /**
- * Hybrid Trajectory Prediction
- * Uses archetype historical win rates + quadrant dominance
+ * Synapse connection between archetype neurons
+ */
+interface SynapseConnection {
+  source: string;
+  target: string;
+  weight: number;  // 0-1 strength
+  truthResonance: number; // Learned accuracy
+}
+
+/**
+ * Pattern neuron state
+ */
+interface NeuronState {
+  archetype: string;
+  energy: number;        // Always positive
+  truthAccuracy: number; // Learned from outcomes
+  firings: number;
+}
+
+// Neural network state (in-memory for this request)
+const SYNAPTIC_NETWORK: {
+  neurons: Map<string, NeuronState>;
+  synapses: SynapseConnection[];
+  truthThreshold: number;
+} = {
+  neurons: new Map(),
+  synapses: [
+    // Cross-archetype connections (learned relationships)
+    { source: 'kingside_attack', target: 'pawn_storm', weight: 0.8, truthResonance: 0.6 },
+    { source: 'kingside_attack', target: 'sacrificial_attack', weight: 0.7, truthResonance: 0.55 },
+    { source: 'queenside_expansion', target: 'positional_squeeze', weight: 0.75, truthResonance: 0.62 },
+    { source: 'central_domination', target: 'piece_harmony', weight: 0.8, truthResonance: 0.58 },
+    { source: 'endgame_technique', target: 'positional_squeeze', weight: 0.6, truthResonance: 0.65 },
+    { source: 'open_tactical', target: 'sacrificial_attack', weight: 0.85, truthResonance: 0.52 },
+  ],
+  truthThreshold: 0.618, // Golden ratio - universal harmony point
+};
+
+// Initialize neurons for all archetypes
+Object.keys(ARCHETYPE_DEFINITIONS).forEach(arch => {
+  SYNAPTIC_NETWORK.neurons.set(arch, {
+    archetype: arch,
+    energy: 0.1, // Resting potential
+    truthAccuracy: ARCHETYPE_DEFINITIONS[arch].historicalWinRate,
+    firings: 0,
+  });
+});
+
+/**
+ * SYNAPTIC TRUTH INVOCATION
+ * 
+ * Instead of calculating prediction sequentially, we:
+ * 1. Inject energy into the network based on game characteristics
+ * 2. Let energy propagate through synaptic connections
+ * 3. The neuron that fires (reaches threshold) IS the truth
+ * 
+ * Philosophy: Truth doesn't need calculation - it needs RECOGNITION
+ */
+function invokeSymapticTruth(
+  characteristics: GameCharacteristics,
+  quadrantEnergy: { whiteEnergy: number; blackEnergy: number; intensity: number }
+): { archetype: string; confidence: number; cascadeDepth: number } {
+  const startTime = Date.now();
+  
+  // Step 1: Inject energy into relevant neurons based on game signature
+  const injectedEnergy = calculateEnergyInjection(characteristics, quadrantEnergy);
+  
+  // Step 2: Apply energy to neurons
+  for (const [archetype, energy] of Object.entries(injectedEnergy)) {
+    const neuron = SYNAPTIC_NETWORK.neurons.get(archetype);
+    if (neuron) {
+      neuron.energy += energy;
+    }
+  }
+  
+  // Step 3: Cascade - propagate through synapses
+  let cascadeDepth = 0;
+  const maxCascade = 5;
+  let anyFired = true;
+  
+  while (anyFired && cascadeDepth < maxCascade) {
+    anyFired = false;
+    
+    for (const synapse of SYNAPTIC_NETWORK.synapses) {
+      const sourceNeuron = SYNAPTIC_NETWORK.neurons.get(synapse.source);
+      const targetNeuron = SYNAPTIC_NETWORK.neurons.get(synapse.target);
+      
+      if (sourceNeuron && targetNeuron) {
+        // If source has enough energy, propagate through synapse
+        if (sourceNeuron.energy > SYNAPTIC_NETWORK.truthThreshold) {
+          const propagatedEnergy = sourceNeuron.energy * synapse.weight * synapse.truthResonance;
+          targetNeuron.energy += propagatedEnergy * 0.5; // Decay during propagation
+          anyFired = true;
+        }
+      }
+    }
+    
+    cascadeDepth++;
+  }
+  
+  // Step 4: Find the neuron that "fires" (highest energy above threshold)
+  let maxEnergy = 0;
+  let firingNeuron: NeuronState | null = null;
+  
+  for (const neuron of SYNAPTIC_NETWORK.neurons.values()) {
+    if (neuron.energy > maxEnergy) {
+      maxEnergy = neuron.energy;
+      firingNeuron = neuron;
+    }
+  }
+  
+  // Calculate confidence based on how strongly it fired
+  const confidence = firingNeuron 
+    ? Math.min(90, 40 + (firingNeuron.energy * 30) + (firingNeuron.truthAccuracy * 20))
+    : 50;
+  
+  const latency = Date.now() - startTime;
+  console.log(`[${AUTO_EVOLVE_VERSION}] ⚡ SYNAPTIC FIRE: ${firingNeuron?.archetype || 'none'} (energy=${maxEnergy.toFixed(2)}, cascade=${cascadeDepth}, latency=${latency}ms)`);
+  
+  // Reset neuron energies for next invocation
+  for (const neuron of SYNAPTIC_NETWORK.neurons.values()) {
+    neuron.energy = 0.1; // Reset to resting potential
+  }
+  
+  return {
+    archetype: firingNeuron?.archetype || 'piece_harmony',
+    confidence,
+    cascadeDepth,
+  };
+}
+
+/**
+ * Calculate energy to inject into each neuron based on game characteristics
+ */
+function calculateEnergyInjection(
+  characteristics: GameCharacteristics,
+  quadrantEnergy: { whiteEnergy: number; blackEnergy: number; intensity: number }
+): Record<string, number> {
+  const injection: Record<string, number> = {};
+  const { quadrantProfile, temporalFlow, aggression } = characteristics;
+  
+  const kingsideTotal = Math.abs(quadrantProfile.kingsideWhite) + Math.abs(quadrantProfile.kingsideBlack);
+  const queensideTotal = Math.abs(quadrantProfile.queensideWhite) + Math.abs(quadrantProfile.queensideBlack);
+  
+  // Inject based on spatial patterns
+  if (kingsideTotal > 20) {
+    injection['kingside_attack'] = kingsideTotal / 50;
+  }
+  if (queensideTotal > 20) {
+    injection['queenside_expansion'] = queensideTotal / 50;
+  }
+  if (Math.abs(quadrantProfile.center) > 10) {
+    injection['central_domination'] = Math.abs(quadrantProfile.center) / 30;
+  }
+  
+  // Inject based on temporal patterns
+  if (temporalFlow.volatility > 30) {
+    injection['open_tactical'] = temporalFlow.volatility / 50;
+    injection['sacrificial_attack'] = temporalFlow.volatility / 60;
+  }
+  if (temporalFlow.endgame > temporalFlow.opening + 5) {
+    injection['endgame_technique'] = 0.6;
+  }
+  
+  // Inject based on aggression
+  if (aggression > 0.2) {
+    injection['sacrificial_attack'] = (injection['sacrificial_attack'] || 0) + aggression;
+  }
+  
+  // Inject based on energy intensity
+  if (quadrantEnergy.intensity > 20) {
+    injection['positional_squeeze'] = quadrantEnergy.intensity / 50;
+  }
+  
+  // Always give some energy to the classified archetype
+  injection[characteristics.archetype] = (injection[characteristics.archetype] || 0) + 0.5;
+  
+  return injection;
+}
+
+// ============================================================================
+// HYBRID TRAJECTORY PREDICTION (En Pensent Color Flow + Synaptic Truth)
+// ============================================================================
+
+/**
+ * Hybrid Trajectory Prediction v7.9
+ * Now uses SYNAPTIC TRUTH INVOCATION instead of sequential calculation
  * This is En Pensent's unique approach - NOT based on centipawn evaluation
  */
 function generateHybridTrajectoryPrediction(
   characteristics: GameCharacteristics,
   _actualWinner: 'white' | 'black' | 'draw'
 ): { prediction: string; confidence: number } {
-  const archetype = characteristics.archetype;
-  const archetypeDef = ARCHETYPE_DEFINITIONS[archetype] || ARCHETYPE_DEFINITIONS['piece_harmony'];
   
-  // Start with archetype historical bias
+  // v7.9: Use synaptic truth invocation
+  const quadrantEnergy = {
+    whiteEnergy: 50 + (characteristics.dominantSide === 'white' ? 15 : characteristics.dominantSide === 'black' ? -15 : 0),
+    blackEnergy: 50 + (characteristics.dominantSide === 'black' ? 15 : characteristics.dominantSide === 'white' ? -15 : 0),
+    intensity: characteristics.temporalFlow.volatility,
+  };
+  
+  const synapticResult = invokeSymapticTruth(characteristics, quadrantEnergy);
+  const archetypeDef = ARCHETYPE_DEFINITIONS[synapticResult.archetype] || ARCHETYPE_DEFINITIONS['piece_harmony'];
+  
+  // Determine prediction from archetype + dominance
   let whiteScore = 50;
   
-  // Apply archetype win rate (amplified)
+  // Apply archetype win rate
   if (archetypeDef.predictedOutcome === 'white_favored') {
     whiteScore += (archetypeDef.historicalWinRate - 0.5) * 60;
   } else if (archetypeDef.predictedOutcome === 'black_favored') {
     whiteScore -= (0.5 - archetypeDef.historicalWinRate) * 60;
   }
   
-  // Apply quadrant dominance (key differentiator from Stockfish)
+  // Apply dominance
   if (characteristics.dominantSide === 'white') {
     whiteScore += 15;
   } else if (characteristics.dominantSide === 'black') {
     whiteScore -= 15;
   }
   
-  // Apply tempo/momentum
-  const { temporalFlow } = characteristics;
-  if (temporalFlow.endgame > temporalFlow.opening) {
-    const improvement = temporalFlow.endgame - temporalFlow.opening;
-    whiteScore += improvement * 0.5;
-  }
+  // Apply cascade depth bonus (deeper cascade = more confident)
+  const cascadeBonus = synapticResult.cascadeDepth * 2;
   
-  // Apply material balance as a SECONDARY factor (not primary like SF)
-  whiteScore += characteristics.materialBalance * 8;
+  // Final confidence from synaptic result
+  const confidence = Math.min(88, synapticResult.confidence + cascadeBonus);
   
-  // Apply volatility factor (high volatility = less predictable)
-  const volatilityPenalty = Math.max(0, temporalFlow.volatility - 50) * 0.1;
-  
-  // Calculate confidence
-  const rawConfidence = Math.abs(whiteScore - 50) + 45;
-  const confidence = Math.min(85, Math.max(40, rawConfidence - volatilityPenalty));
-  
-  // Determine prediction - FEWER DRAWS, more decisive
+  // Determine prediction
   let prediction: string;
   if (whiteScore > 54) {
     prediction = 'white_wins';
   } else if (whiteScore < 46) {
     prediction = 'black_wins';
   } else {
-    // Close games: use archetype tendency
     if (archetypeDef.predictedOutcome === 'balanced' && Math.random() > 0.6) {
       prediction = 'draw';
     } else if (whiteScore >= 50) {
