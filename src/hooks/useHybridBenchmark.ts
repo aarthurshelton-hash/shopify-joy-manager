@@ -1,6 +1,6 @@
 /**
- * Hybrid Benchmark Hook - v6.82-SPEED
- * VERSION: 6.82-SPEED (2026-01-21)
+ * Hybrid Benchmark Hook - v6.85-UNIFORM-IDS
+ * VERSION: 6.85-UNIFORM-IDS (2026-01-21)
  * 
  * v6.82 CHANGES (SPEED UP BY 1s):
  * - ALL TIMEOUTS: Reduced by 1 second each for faster processing
@@ -19,14 +19,15 @@
  * - WAIT, DON'T SKIP: Games only fail if Stockfish genuinely can't analyze them
  */
 
-// v6.82-SPEED: All timeouts reduced by 1 second for faster processing
+// v6.85-UNIFORM-IDS: All ID operations use RAW form (no prefix)
 // Philosophy:
 // 1. Engine timeouts are resource issues, NOT game problems
 // 2. Retry up to 3 times with increasing patience
 // 3. Only mark as failed after ALL retries exhausted
 // 4. Every game that CAN be analyzed SHOULD be analyzed
-const BENCHMARK_VERSION = "6.82-SPEED";
-console.log(`[v6.82] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// 5. ALL ID tracking (failed, session, DB) uses RAW IDs only - no prefix mismatch
+const BENCHMARK_VERSION = "6.85-UNIFORM-IDS";
+console.log(`[v6.85] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -926,9 +927,10 @@ export function useHybridBenchmark() {
           fen = parsed.fen;
           moveNumber = parsed.moveNumber;
         } catch (e) {
-          console.log(`[v6.77] ⏭️ SKIP: Parse error - ${gameId}`, e);
+        // v6.85-UNIFORM-IDS: Always use rawGameId for failed tracking (consistency)
+          console.log(`[v6.85] ⏭️ SKIP: Parse error - ${rawGameId}`, e);
           skipStats.parseError++;
-          failedGameIds.add(gameId);
+          failedGameIds.add(rawGameId);
           consecutiveSkips++;
           continue;
         }
@@ -963,9 +965,10 @@ export function useHybridBenchmark() {
         try {
           colorFlow = analyzeColorFlowFullScope(moves.slice(0, moveNumber));
         } catch (cfError) {
-          console.error(`[v6.75] ❌ ColorFlow error for ${gameId}:`, cfError);
+          // v6.85-UNIFORM-IDS: Use rawGameId for consistency
+          console.error(`[v6.85] ❌ ColorFlow error for ${rawGameId}:`, cfError);
           skipStats.analysisError++;
-          failedGameIds.add(gameId);
+          failedGameIds.add(rawGameId);
           consecutiveSkips++;
           continue;
         }
