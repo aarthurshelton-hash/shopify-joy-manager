@@ -1,32 +1,29 @@
 /**
- * Hybrid Benchmark Hook - HIGH VOLUME v6.64
- * VERSION: 6.64-SYNC-FIX (2026-01-20)
+ * Hybrid Benchmark Hook - v6.78-SIMPLE
+ * VERSION: 6.78-SIMPLE (2026-01-20)
+ * 
+ * v6.78 CHANGES:
+ * - RADICAL SIMPLIFICATION: One check - is raw ID in DB?
+ * - DUAL SOURCE: Fetch from Lichess + Chess.com equally
+ * - SINGLE TRUTH: analyzedData.gameIds is the only dedup set
+ * - RAW IDs ONLY: No prefixes in DB or tracking sets
  * 
  * v6.64 CHANGES:
  * - SYNC FIX: Improved cache invalidation timing for instant UI updates
- * - IMMEDIATE INVALIDATE: Invalidate cache BEFORE insert for faster UI response
- * - BATCH INVALIDATE: Single invalidation after batch saves
- * 
- * v6.63 CHANGES:
- * - REALTIME SYNC: Chess stats now invalidate cache on save for instant UI updates
- * - PARALLEL FETCHING: Fetch from multiple players simultaneously
- * - HIGHER TARGETS: Request 200+ games per batch
- * - DEEPER HISTORY: Go back years instead of weeks
- * - FASTER BATCHES: Reduced delays between parallel chunks
  * 
  * ELO CALIBRATION (Platform → FIDE):
  * - Lichess: -100 offset (Glicko-2 tends higher)
  * - Chess.com: -50 offset (closer to FIDE)
  */
 
-// v6.77-ID-CONSISTENCY: Full ID format consistency across pipeline
-// Key fixes:
-// 1. Live updates add BOTH prefixed and raw forms to dedup sets
-// 2. Raw IDs stored in DB + raw IDs in all exclusion checks
-// 3. Consistent format throughout: DB=raw, memory=both forms
-// 4. Fixed "fresh games skipped" bug where live updates didn't match DB format
-const BENCHMARK_VERSION = "6.77-ID-CONSISTENCY";
-console.log(`[v6.77] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// v6.78-SIMPLE: Radical simplification of the pipeline
+// Philosophy:
+// 1. ONLY requirement: unique raw game ID not in database
+// 2. BOTH sources: Lichess + Chess.com equally
+// 3. SIMPLE dedup: one check - is raw ID in analyzedData.gameIds?
+// 4. RETRY on engine fail: wait and try again (don't skip)
+const BENCHMARK_VERSION = "6.78-SIMPLE";
+console.log(`[v6.78] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -520,124 +517,98 @@ export function useHybridBenchmark() {
       const depths: number[] = [];
       let predictedCount = 0;
       
-      // v6.34-LIVEDEDUP: Dedup uses live-updated analyzedData.gameIds + session predictedIds
-      console.log(`[v6.34] ========================================`);
-      console.log(`[v6.34] STARTING BENCHMARK - LIVE DEDUPLICATION`);
-      console.log(`[v6.34] Target: ${gameCount} predictions`);
-      console.log(`[v6.34] DB has ${analyzedData.gameIds.size} games (updated LIVE after each prediction)`);
-      console.log(`[v6.34] Dedup at fetch-time via analyzedData.gameIds + predictedIds`);
-      console.log(`[v6.34] ========================================`);
+      // v6.78-SIMPLE: Radical simplification
+      // ONE set for tracking: analyzed IDs from DB (raw format)
+      // ONE check: is this raw ID in the set?
+      console.log(`[v6.78] ========================================`);
+      console.log(`[v6.78] SIMPLE BENCHMARK - DUAL SOURCE`);
+      console.log(`[v6.78] Target: ${gameCount} predictions`);
+      console.log(`[v6.78] DB has ${analyzedData.gameIds.size} games (raw IDs)`);
+      console.log(`[v6.78] Philosophy: ID exists in DB? Skip. Otherwise process.`);
+      console.log(`[v6.78] ========================================`);
       
-      // v6.33: predictedIds tracks games we've SUCCESSFULLY predicted this session
-      const predictedIds = new Set<string>();
+      // v6.78-SIMPLE: Only ONE dedup set needed - raw IDs from DB + session
+      // This is analyzedData.gameIds - it already has raw IDs
+      // We add raw IDs to it when we successfully predict
       
-      // v6.77-ID-CONSISTENCY: All dedup sets store BOTH prefixed and raw forms
-      // This ensures matching works regardless of which format is checked
-      // Example: Set has both "li_ABC123XY" AND "ABC123XY"
-      
-      // v6.77: queuedGameIds tracks games currently in queue
-      // Stores BOTH forms for robust matching
-      const queuedGameIds = new Set<string>();
-      
-      // v6.51: Use mutable array - fetchMoreGames will PUSH to this
+      // v6.78: Simple queue - just an array of games to process
       const gameQueue: LichessGameData[] = [];
       let gameIndex = 0;
       let batchNumber = 0;
-      const maxBatches = Math.max(50, Math.ceil(gameCount / 2)); // v6.47: Even more batches allowed
+      const maxBatches = Math.max(50, Math.ceil(gameCount / 2));
       
-      // v6.50: CRITICAL - Declare failedGameIds BEFORE fetchMoreGames function definition
-      // The function uses failedGameIds in excludeIds, so it must exist when function is defined
-      const failedGameIds = new Set<string>(); // Games that failed processing - skip on retry
+      // v6.78: Simple failed set - games that errored (parse, etc.) - NOT engine timeout
+      const failedGameIds = new Set<string>();
       
-      // v6.43: Detailed skip stats + per-game error isolation  
-      let skipStats = { invalidId: 0, dbDupe: 0, sessionDupe: 0, shortGame: 0, timeout: 0, parseError: 0, analysisError: 0 };
+      // v6.78: Simple stats
+      let skipStats = { noId: 0, inDb: 0, inSession: 0, parseError: 0, engineTimeout: 0, analysisError: 0 };
       
-      // v6.47-HIGHVOL: Request MUCH more games per batch
-      // Target: 200+ games per batch from parallel fetching
+      // v6.78-SIMPLE: Request games from BOTH sources
       const targetPerBatch = Math.max(200, gameCount * 5);
       
-      // v6.72-TRAJECTORY-FIX: Fetch function excludes ALL games ever received this session
+      // v6.78-SIMPLE: Fetch function - just get games not in DB
       async function fetchMoreGames(): Promise<number> {
         batchNumber++;
         const queueRemaining = gameQueue.length - gameIndex;
-        console.log(`[v6.77] ══════════ FETCH BATCH ${batchNumber}/${maxBatches} ══════════`);
-        console.log(`[v6.77] Queue: ${queueRemaining} remaining | Target: ${gameCount - predictedCount} more predictions`);
-        console.log(`[v6.77] Exclusions: DB=${analyzedData.gameIds.size}, Queued=${queuedGameIds.size}, Predicted=${predictedIds.size}, Failed=${failedGameIds.size}`);
+        console.log(`[v6.78] ══════════ FETCH BATCH ${batchNumber}/${maxBatches} ══════════`);
+        console.log(`[v6.78] Queue: ${queueRemaining} remaining | Target: ${gameCount - predictedCount} more predictions`);
+        console.log(`[v6.78] DB knows: ${analyzedData.gameIds.size} game IDs | Failed: ${failedGameIds.size}`);
         
         setProgress(prev => ({ 
           ...prev!, 
           currentPhase: 'fetching',
-          message: `Fetching games (batch ${batchNumber})...` 
+          message: `Fetching from Lichess + Chess.com (batch ${batchNumber})...` 
         }));
         
-        // v6.77-ID-CONSISTENCY: Build exclusion set with BOTH forms of every ID
-        // This ensures matching works whether fetcher returns prefixed or raw IDs
-        const fetchExcludeIds = new Set<string>();
-        
-        // Add all forms from each source set
-        for (const id of analyzedData.gameIds) {
-          fetchExcludeIds.add(id);
-          const raw = id.replace(/^(li_|cc_)/, '');
-          if (raw !== id) fetchExcludeIds.add(raw);
-        }
+        // v6.78-SIMPLE: Exclude only DB IDs + failed IDs
+        // analyzedData.gameIds already contains raw IDs from DB
+        // Add failed IDs (in raw form)
+        const fetchExcludeIds = new Set(analyzedData.gameIds);
         for (const id of failedGameIds) {
-          fetchExcludeIds.add(id);
           const raw = id.replace(/^(li_|cc_)/, '');
-          if (raw !== id) fetchExcludeIds.add(raw);
-        }
-        for (const id of queuedGameIds) {
-          fetchExcludeIds.add(id);
-        }
-        for (const id of predictedIds) {
-          fetchExcludeIds.add(id);
+          fetchExcludeIds.add(raw);
         }
         
-        console.log(`[v6.77] Fetch excludes total: ${fetchExcludeIds.size} IDs`);
+        console.log(`[v6.78] Excluding ${fetchExcludeIds.size} known IDs from fetch`);
         
         const result = await fetchMultiSourceGames({
           targetCount: targetPerBatch,
           batchNumber,
           excludeIds: fetchExcludeIds,
-          sources: ['lichess', 'chesscom'],
+          sources: ['lichess', 'chesscom'],  // BOTH sources
         });
         
-        console.log(`[v6.77] Fetched: ${result.games.length} raw (Lichess: ${result.lichessCount}, Chess.com: ${result.chesscomCount})`);
+        console.log(`[v6.78] Fetched: ${result.games.length} (Lichess: ${result.lichessCount}, Chess.com: ${result.chesscomCount})`);
         
         if (result.errors.length > 0) {
-          console.warn(`[v6.77] Errors:`, result.errors.slice(0, 3));
+          console.warn(`[v6.78] Errors:`, result.errors.slice(0, 3));
         }
         
         if (result.games.length === 0) {
-          console.warn(`[v6.77] ⚠️ No games from either source!`);
+          console.warn(`[v6.78] ⚠️ No games from either source!`);
           return 0;
         }
         
-        // v6.77-ID-CONSISTENCY: Dedup and queue games with both ID forms
+        // v6.78-SIMPLE: Add to queue - simple dedup check
         const queueBefore = gameQueue.length;
-        let validGames = 0;
-        let dupesSkipped = 0;
-        let alreadyQueuedSkipped = 0;
+        let addedCount = 0;
         
         for (const g of result.games) {
-          const gameId = g.gameId;
-          if (!gameId) continue;
+          const prefixedId = g.gameId;
+          if (!prefixedId) continue;
           
-          const rawId = gameId.replace(/^(li_|cc_)/, '');
+          // v6.78: Extract raw ID (what we store in DB)
+          const rawId = prefixedId.replace(/^(li_|cc_)/, '');
           
-          // v6.77: Check BOTH forms against exclusion set
-          if (fetchExcludeIds.has(gameId) || fetchExcludeIds.has(rawId)) {
-            dupesSkipped++;
-            continue;
+          // v6.78-SIMPLE: One check - is this raw ID known?
+          if (analyzedData.gameIds.has(rawId)) {
+            continue; // Already in DB
           }
-          
-          // v6.77: Track in queue with BOTH forms for robust matching
-          queuedGameIds.add(gameId);
-          queuedGameIds.add(rawId);
           
           gameQueue.push({
             pgn: g.pgn,
             moves: g.moves,
-            lichessId: g.gameId,
+            lichessId: prefixedId, // Keep prefixed for source tracking
             source: g.source,
             winner: g.winner,
             status: g.status,
@@ -656,14 +627,13 @@ export function useHybridBenchmark() {
             openingName: g.openingName,
             termination: g.termination,
           } as LichessGameData);
-          validGames++;
+          addedCount++;
         }
         
         const queueNow = gameQueue.length - gameIndex;
-        console.log(`[v6.77] Queue: ${queueBefore} → ${gameQueue.length} (+${validGames} new)`);
-        console.log(`[v6.77] Available for processing: ${queueNow} | Dupes: ${dupesSkipped}`);
+        console.log(`[v6.78] Queue: ${queueBefore} → ${gameQueue.length} (+${addedCount} new, ${queueNow} available)`);
         
-        return validGames;
+        return addedCount;
       }
       
       // Initial fetch
@@ -887,43 +857,42 @@ export function useHybridBenchmark() {
         const game = gameQueue[currentIndex];
         gameIndex++; // Advance BEFORE any continue/break
         
-        // v6.71-IDENTITY-FIX: Remove from queuedGameIds since we're now processing it
-        const gameIdForCleanup = game.lichessId;
-        if (gameIdForCleanup) {
-          queuedGameIds.delete(gameIdForCleanup);
-          queuedGameIds.delete(gameIdForCleanup.replace(/^(li_|cc_)/, ''));
-        }
+        // v6.78-SIMPLE: No queue tracking needed - just process
         
-        console.log(`[v6.77] 🎯 PROCESS: Game ${currentIndex + 1}/${gameQueue.length} (queued: ${queuedGameIds.size}, predicted: ${predictedIds.size}, remaining: ${gameQueue.length - gameIndex})`);
+        console.log(`[v6.78] 🎯 PROCESS: Game ${currentIndex + 1}/${gameQueue.length} (remaining: ${gameQueue.length - gameIndex})`);
         
-        // v6.77: Extract game info
+        // v6.78: Extract game info
         const gameId = game.lichessId;
         const source = game.source || 'lichess';
         
         // ═══════════════════════════════════════════════════════════════════
-        // VALIDATION: Skip only truly invalid games
+        // v6.78-SIMPLE: Only TWO skip conditions
+        // 1. No ID (can't track)
+        // 2. Already in DB (check raw form)
         // ═══════════════════════════════════════════════════════════════════
         
         // Skip 1: No ID = can't track
         if (!gameId) {
-          console.log(`[v6.77] ⏭️ SKIP: No gameId`);
-          skipStats.invalidId++;
+          console.log(`[v6.78] ⏭️ SKIP: No gameId`);
+          skipStats.noId++;
           consecutiveSkips++;
           continue;
         }
         
-        // Skip 2: Previously failed this session
-        if (failedGameIds.has(gameId)) {
-          console.log(`[v6.77] ⏭️ SKIP: Previously failed - ${gameId}`);
+        // v6.78: Get raw ID (without prefix) - this is what we store in DB
+        const rawGameId = gameId.replace(/^(li_|cc_)/, '');
+        
+        // Skip 2: Already in DB (includes games predicted earlier THIS session)
+        if (analyzedData.gameIds.has(rawGameId)) {
+          console.log(`[v6.78] ⏭️ SKIP: Already in DB - ${rawGameId}`);
+          skipStats.inDb++;
           consecutiveSkips++;
           continue;
         }
         
-        // Skip 3: Already predicted this session (check both forms)
-        const rawGameIdForCheck = gameId.replace(/^(li_|cc_)/, '');
-        if (predictedIds.has(gameId) || predictedIds.has(rawGameIdForCheck)) {
-          console.log(`[v6.77] ⏭️ SKIP: Already predicted - ${gameId}`);
-          skipStats.sessionDupe++;
+        // Skip 3: Previously failed this session (parse error, NOT engine timeout)
+        if (failedGameIds.has(rawGameId)) {
+          console.log(`[v6.78] ⏭️ SKIP: Previously failed - ${rawGameId}`);
           consecutiveSkips++;
           continue;
         }
@@ -1009,18 +978,19 @@ export function useHybridBenchmark() {
           
           if (!analysis) {
             engineFailed = true;
-            console.log(`[v6.75] ⚠️ Stockfish timeout (${ANALYSIS_TIMEOUT/1000}s) for ${gameId}`);
-            skipStats.timeout++;
+            console.log(`[v6.78] ⚠️ Stockfish timeout (${ANALYSIS_TIMEOUT/1000}s) for ${gameId}`);
+            skipStats.engineTimeout++;
           }
         } catch (sfError) {
           engineFailed = true;
-          console.error(`[v6.75] ❌ Stockfish error for ${gameId}:`, sfError);
+          console.error(`[v6.78] ❌ Stockfish error for ${gameId}:`, sfError);
           skipStats.analysisError++;
         }
         
         if (engineFailed) {
           consecutiveEngineFailures++;
-          failedGameIds.add(gameId);
+          // v6.78: Add RAW ID to failed set
+          failedGameIds.add(rawGameId);
           consecutiveSkips++;
           
           // v6.75: Faster recovery cycle - reinitialize after 2 failures instead of 3
@@ -1145,21 +1115,17 @@ export function useHybridBenchmark() {
         
         // ═══════════════════════════════════════════════════════════════════
         // SUCCESS: Record prediction
-        // v6.77-ID-CONSISTENCY: Add BOTH prefixed and raw forms to dedup sets
+        // v6.78-SIMPLE: Add raw ID to analyzedData.gameIds (single source of truth)
         // ═══════════════════════════════════════════════════════════════════
         predictedCount++;
-        const rawGameId = gameId.replace(/^(li_|cc_)/, '');
         
-        // Add BOTH forms to all tracking sets
-        predictedIds.add(gameId);
-        predictedIds.add(rawGameId);
-        analyzedData.gameIds.add(gameId);
+        // v6.78-SIMPLE: Add raw ID to the DB tracking set (already declared above)
         analyzedData.gameIds.add(rawGameId);
         consecutiveSkips = 0;
         
-        console.log(`[v6.77] ✅ PREDICTION #${predictedCount}/${gameCount}: ${gameId}`);
-        console.log(`[v6.77]   EP=${colorFlow.prediction}${hybridIsCorrect ? '✓' : '✗'} | SF=${stockfish.prediction}${stockfishIsCorrect ? '✓' : '✗'} | Actual=${gameResult}`);
-        console.log(`[v6.77]   Queue: ${gameQueue.length - gameIndex} remaining | Predicted: ${predictedCount}/${gameCount}`);
+        console.log(`[v6.78] ✅ PREDICTION #${predictedCount}/${gameCount}: ${rawGameId} (${source})`);
+        console.log(`[v6.78]   EP=${colorFlow.prediction}${hybridIsCorrect ? '✓' : '✗'} | SF=${stockfish.prediction}${stockfishIsCorrect ? '✓' : '✗'} | Actual=${gameResult}`);
+        console.log(`[v6.78]   Queue: ${gameQueue.length - gameIndex} remaining | DB knows: ${analyzedData.gameIds.size}`)
         
         // Incremental save
         if (predictedCount % SAVE_INTERVAL === 0) {
@@ -1170,12 +1136,12 @@ export function useHybridBenchmark() {
       // Final save
       await saveIncrementalResults();
       
-      console.log(`[v6.77] ════════════════════════════════════════════════════`);
-      console.log(`[v6.77] BENCHMARK COMPLETE: ${predictedCount}/${gameCount} predictions`);
-      console.log(`[v6.77] Batches: ${batchNumber} | Processed: ${gameIndex}/${gameQueue.length}`);
-      console.log(`[v6.77] Predicted: ${predictedIds.size} | Failed: ${failedGameIds.size}`);
-      console.log(`[v6.77] Skip stats: ${JSON.stringify(skipStats)}`);
-      console.log(`[v6.77] ════════════════════════════════════════════════════`);
+      console.log(`[v6.78] ════════════════════════════════════════════════════`);
+      console.log(`[v6.78] BENCHMARK COMPLETE: ${predictedCount}/${gameCount} predictions`);
+      console.log(`[v6.78] Batches: ${batchNumber} | Processed: ${gameIndex}/${gameQueue.length}`);
+      console.log(`[v6.78] DB knows: ${analyzedData.gameIds.size} | Failed: ${failedGameIds.size}`);
+      console.log(`[v6.78] Skip stats: ${JSON.stringify(skipStats)}`);
+      console.log(`[v6.78] ════════════════════════════════════════════════════`);
       
       if (attempts.length === 0) {
         throw new Error(`No valid games processed. Skip reasons: ${JSON.stringify(skipStats)}`);
