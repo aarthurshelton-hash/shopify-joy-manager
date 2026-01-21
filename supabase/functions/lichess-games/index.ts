@@ -162,7 +162,16 @@ serve(async (req) => {
     }
 
     if (!response.ok) {
-      console.error(`[Lichess Games] API error: ${response.status}`);
+      console.error(`[Lichess Games] API error: ${response.status} for player ${player}`);
+      // v6.95: 404 = user doesn't exist - return empty games, not error
+      // This allows pipeline to gracefully skip non-existent users
+      if (response.status === 404) {
+        console.warn(`[Lichess Games v6.95] Player "${player}" not found - skipping`);
+        return new Response(
+          JSON.stringify({ games: [], count: 0, skipped: true, reason: 'Player not found' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
       return new Response(
         JSON.stringify({ error: `Lichess API error: ${response.status}` }),
         { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
