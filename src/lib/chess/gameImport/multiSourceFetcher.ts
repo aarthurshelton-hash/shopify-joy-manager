@@ -1,15 +1,15 @@
 /**
- * Multi-Source Game Fetcher v6.86-PATIENT-WAIT
- * VERSION: 6.86-PATIENT-WAIT (2026-01-21)
+ * Multi-Source Game Fetcher v6.87-DYNAMIC-LEADERBOARD
+ * VERSION: 6.87-DYNAMIC-LEADERBOARD (2026-01-21)
+ * 
+ * v6.87 CHANGES (Dynamic Leaderboard Sourcing):
+ * - NEW: Fetches live top players from Lichess leaderboards
+ * - Pulls from daily/weekly rankings across bullet, blitz, rapid, classical
+ * - Combines dynamic leaderboard players with static verified pool
+ * - Constantly refreshing source of high-caliber players
  * 
  * v6.86 CHANGES (Rate Limit Patience):
  * - WAIT, DON'T BREAK: When rate limited, WAIT for cooldown then resume
- * - Previously: Rate limit → break loop → lose all pending fetches
- * - Now: Rate limit → wait resetMs → continue processing remaining players
- * - Fresh ID = Fresh Game philosophy preserved
- * 
- * v6.73 CHANGES (Identity Theorem Fix):
- * - WINDOW-ISOLATION: Each batch uses strictly non-overlapping time windows
  * 
  * SOURCES:
  * - Lichess (via Edge Function proxy) - 5+ billion games
@@ -60,13 +60,10 @@ const CHESSCOM_TOP_PLAYERS = [
 ];
 
 /**
- * v6.59-VERIFIED-POOL: ONLY include Lichess accounts that are:
- * 1. Confirmed to exist (no 404s)
- * 2. Active in 2022-2025 with games
- * Removed: Hikaru (404), Polish_fighter3000 (404), SSJG_Goku (404), GMWSO (404), 
- *          DanielNaroditsky (rarely on Lichess), lachesisQ (inactive)
+ * v6.59-VERIFIED-POOL: Static fallback pool of verified active Lichess accounts
+ * Used when leaderboard fetch fails or as supplement
  */
-const LICHESS_TOP_PLAYERS = [
+const LICHESS_FALLBACK_PLAYERS = [
   // TIER 1: Super GMs with verified high activity
   "DrNykterstein", "nihalsarin2004", "penguingm1", "Msb2", "Fins",
   "TemurKuybokarov", "Zhigalko_Sergei", "DrDrunkenstein", "Firouzja2003",
@@ -86,6 +83,92 @@ const LICHESS_TOP_PLAYERS = [
   "wonderfultime", "may6enexttime", "Saintlaurent", "neslansen",
   "defenceboy1", "dalmatinac101", "Erow", "Chesssknock", "Chess4ever"
 ];
+
+// Cache for leaderboard players (refreshed every 30 minutes)
+let cachedLeaderboardPlayers: string[] = [];
+let leaderboardCacheTime = 0;
+const LEADERBOARD_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+
+/**
+ * v6.87-DYNAMIC-LEADERBOARD: Fetch live top players from Lichess leaderboards
+ * Returns players across bullet, blitz, rapid, classical rankings
+ */
+async function fetchLeaderboardPlayers(): Promise<string[]> {
+  // Check cache first
+  if (cachedLeaderboardPlayers.length > 0 && Date.now() - leaderboardCacheTime < LEADERBOARD_CACHE_TTL) {
+    console.log(`[v6.87] Using cached leaderboard: ${cachedLeaderboardPlayers.length} players`);
+    return cachedLeaderboardPlayers;
+  }
+
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+  try {
+    console.log(`[v6.87] Fetching live leaderboard players...`);
+    
+    const response = await fetch(`${supabaseUrl}/functions/v1/lichess-leaderboard`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseKey}`,
+        'apikey': supabaseKey
+      },
+      body: JSON.stringify({
+        perfTypes: ['bullet', 'blitz', 'rapid', 'classical'],
+        count: 50 // Top 50 from each mode
+      })
+    });
+
+    if (!response.ok) {
+      console.warn(`[v6.87] Leaderboard fetch failed: ${response.status}`);
+      return LICHESS_FALLBACK_PLAYERS;
+    }
+
+    const data = await response.json();
+    
+    if (data.players && Array.isArray(data.players)) {
+      const players = data.players.map((p: { username: string }) => p.username);
+      console.log(`[v6.87] ✓ Leaderboard: ${players.length} live players (${data.perfTypes?.join(', ')})`);
+      
+      // Update cache
+      cachedLeaderboardPlayers = players;
+      leaderboardCacheTime = Date.now();
+      
+      return players;
+    }
+  } catch (e) {
+    console.warn(`[v6.87] Leaderboard error:`, e);
+  }
+
+  // Fallback to static pool
+  console.log(`[v6.87] Using fallback pool: ${LICHESS_FALLBACK_PLAYERS.length} players`);
+  return LICHESS_FALLBACK_PLAYERS;
+}
+
+/**
+ * v6.87: Get combined player pool - leaderboard + verified fallback
+ * Ensures we always have a robust set of players
+ */
+async function getLichessPlayerPool(): Promise<string[]> {
+  const leaderboardPlayers = await fetchLeaderboardPlayers();
+  
+  // Combine leaderboard with fallback, removing duplicates
+  const combined = new Set<string>();
+  
+  // Add leaderboard players first (prioritized)
+  for (const p of leaderboardPlayers) {
+    combined.add(p);
+  }
+  
+  // Add fallback players
+  for (const p of LICHESS_FALLBACK_PLAYERS) {
+    combined.add(p);
+  }
+  
+  const pool = Array.from(combined);
+  console.log(`[v6.87] Combined pool: ${pool.length} players (${leaderboardPlayers.length} from leaderboard)`);
+  return pool;
+}
 
 export interface FetchOptions {
   targetCount: number;
@@ -298,16 +381,19 @@ async function fetchFromLichess(
   let serverRateLimited = false;
   let serverResetMs = 0;
   
+  // v6.87-DYNAMIC-LEADERBOARD: Get combined pool from live leaderboard + fallback
+  const playerPool = await getLichessPlayerPool();
+  
   // v6.62: Prime-based rotation to maximize player coverage
-  const startOffset = (batchNumber * 17) % LICHESS_TOP_PLAYERS.length;
+  const startOffset = (batchNumber * 17) % playerPool.length;
   const shuffledPlayers = [
-    ...LICHESS_TOP_PLAYERS.slice(startOffset),
-    ...LICHESS_TOP_PLAYERS.slice(0, startOffset)
+    ...playerPool.slice(startOffset),
+    ...playerPool.slice(0, startOffset)
   ];
   
-  console.log(`[Lichess v6.73] Batch ${batchNumber}: Verified pool (${LICHESS_TOP_PLAYERS.length} players)`);
-  console.log(`[Lichess v6.73] First 6: ${shuffledPlayers.slice(0, 6).join(', ')}`);
-  console.log(`[Lichess v6.73] Window: ${(batchNumber - 1) * 60}-${batchNumber * 60} days ago (isolated)`);
+  console.log(`[Lichess v6.87] Batch ${batchNumber}: Dynamic pool (${playerPool.length} players)`);
+  console.log(`[Lichess v6.87] First 6: ${shuffledPlayers.slice(0, 6).join(', ')}`);
+  console.log(`[Lichess v6.87] Window: ${(batchNumber - 1) * 60}-${batchNumber * 60} days ago (isolated)`);
   
   // v6.59: Process more players but with smarter windows
   const maxPlayers = Math.min(30, shuffledPlayers.length);
@@ -553,22 +639,38 @@ export async function fetchMultiSourceGames(options: FetchOptions): Promise<Fetc
 
 /**
  * Get statistics about available game sources
+ * v6.87: Now includes dynamic leaderboard info
  */
 export function getSourceStats() {
+  const lichessPoolSize = cachedLeaderboardPlayers.length > 0 
+    ? cachedLeaderboardPlayers.length + LICHESS_FALLBACK_PLAYERS.length 
+    : LICHESS_FALLBACK_PLAYERS.length;
+    
   return {
     lichess: {
-      playerCount: LICHESS_TOP_PLAYERS.length,
-      estimatedGamesPerPlayer: 5000, // Conservative estimate
-      totalEstimated: LICHESS_TOP_PLAYERS.length * 5000,
+      playerCount: lichessPoolSize,
+      leaderboardPlayers: cachedLeaderboardPlayers.length,
+      fallbackPlayers: LICHESS_FALLBACK_PLAYERS.length,
+      estimatedGamesPerPlayer: 5000,
+      totalEstimated: lichessPoolSize * 5000,
     },
     chesscom: {
       playerCount: CHESSCOM_TOP_PLAYERS.length,
-      estimatedGamesPerPlayer: 3000, // Conservative estimate  
+      estimatedGamesPerPlayer: 3000,
       totalEstimated: CHESSCOM_TOP_PLAYERS.length * 3000,
     },
     combined: {
-      totalPlayers: LICHESS_TOP_PLAYERS.length + CHESSCOM_TOP_PLAYERS.length,
-      totalEstimated: (LICHESS_TOP_PLAYERS.length * 5000) + (CHESSCOM_TOP_PLAYERS.length * 3000),
+      totalPlayers: lichessPoolSize + CHESSCOM_TOP_PLAYERS.length,
+      totalEstimated: (lichessPoolSize * 5000) + (CHESSCOM_TOP_PLAYERS.length * 3000),
     }
   };
+}
+
+/**
+ * Force refresh the leaderboard cache
+ */
+export async function refreshLeaderboardCache(): Promise<number> {
+  leaderboardCacheTime = 0; // Force cache invalidation
+  const players = await fetchLeaderboardPlayers();
+  return players.length;
 }

@@ -86,3 +86,6 @@ verify_jwt = false
 
 [functions.lichess-games]
 verify_jwt = false
+
+[functions.lichess-leaderboard]
+verify_jwt = false
