@@ -1,28 +1,31 @@
 /**
- * Hybrid Benchmark Hook - v6.80-PATIENT
- * VERSION: 6.80-PATIENT (2026-01-21)
+ * Hybrid Benchmark Hook - v6.81-RETRY
+ * VERSION: 6.81-RETRY (2026-01-21)
  * 
- * v6.80 CHANGES (QUALITY OVER QUANTITY):
+ * v6.81 CHANGES (RETRY ENGINE TIMEOUTS):
+ * - ENGINE RETRIES: Timeouts get 3 retries with increasing patience, not instant fail
+ * - LONGER TIMEOUTS: 40-50s per analysis attempt (up from 35-45s)
+ * - DEEP RECOVERY: 5s wait + full reinit after consecutive total failures
+ * - ONLY FAIL PERMANENTLY: After exhausting all 3 retry attempts
+ * 
+ * v6.80 PHILOSOPHY (inherited):
  * - PATIENT RATE LIMITING: Wait for limits to clear, never skip due to rate limits
- * - SLOWER FETCHING: 3s between chunks, 8s after rate limit hits
- * - BULLETPROOF CLOUD: 6s between cloud eval requests (~10/min)
- * - WAIT, DON'T SKIP: Games only fail if Stockfish genuinely times out
+ * - WAIT, DON'T SKIP: Games only fail if Stockfish genuinely can't analyze them
  * 
- * v6.78 PHILOSOPHY:
+ * v6.78 PHILOSOPHY (inherited):
  * - ONLY requirement: unique raw game ID not in database
  * - BOTH sources: Lichess + Chess.com equally
  * - SIMPLE dedup: one check - is raw ID in analyzedData.gameIds?
- * - RETRY on engine fail: wait and try again (don't skip)
  */
 
-// v6.80-PATIENT: Quality over quantity - take the rush out
+// v6.81-RETRY: Retry engine timeouts, don't fail immediately
 // Philosophy:
-// 1. WAIT for rate limits to clear instead of skipping
-// 2. SLOWER but MORE RELIABLE fetching
-// 3. Only skip if game genuinely can't be processed
-// 4. Every game that enters pipeline should succeed
-const BENCHMARK_VERSION = "6.80-PATIENT";
-console.log(`[v6.80] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+// 1. Engine timeouts are resource issues, NOT game problems
+// 2. Retry up to 3 times with increasing patience
+// 3. Only mark as failed after ALL retries exhausted
+// 4. Every game that CAN be analyzed SHOULD be analyzed
+const BENCHMARK_VERSION = "6.81-RETRY";
+console.log(`[v6.81] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -966,62 +969,87 @@ export function useHybridBenchmark() {
           continue;
         }
         
-        // v6.75-CALIBRATED: Shorter timeout (30s instead of 45s) + faster recovery
-        // v6.80-PATIENT: Engine timeout handling - wait and retry instead of skip
-        let engineFailed = false;
-        const ANALYSIS_TIMEOUT = depth >= 40 ? 45000 : 35000; // v6.80: Longer timeouts
+        // v6.81-RETRY: Engine timeouts get RETRIED, not permanently failed
+        // Philosophy: Engine timeouts are resource issues, not game problems
+        // Retry up to 3 times with increasing patience before giving up
+        const MAX_ENGINE_RETRIES = 3;
+        let engineRetries = 0;
+        let engineSucceeded = false;
         
-        try {
-          const analysisPromise = engine.analyzePosition(fen, { depth, requireExactDepth: depth >= 40 });
-          const timeoutPromise = new Promise<null>(r => setTimeout(() => r(null), ANALYSIS_TIMEOUT));
-          analysis = await Promise.race([analysisPromise, timeoutPromise]);
+        while (engineRetries < MAX_ENGINE_RETRIES && !engineSucceeded) {
+          const ANALYSIS_TIMEOUT = depth >= 40 ? 50000 : 40000; // v6.81: Even more patient
           
-          if (!analysis) {
-            engineFailed = true;
-            console.log(`[v6.80] ⚠️ Stockfish timeout (${ANALYSIS_TIMEOUT/1000}s) for ${gameId}`);
-            skipStats.engineTimeout++;
+          try {
+            if (engineRetries > 0) {
+              console.log(`[v6.81-RETRY] 🔄 Engine retry ${engineRetries}/${MAX_ENGINE_RETRIES} for ${gameId}`);
+              setProgress(prev => ({ ...prev!, message: `Engine retry ${engineRetries}/${MAX_ENGINE_RETRIES}...` }));
+              
+              // Wait before retry, increasing with each attempt
+              const retryWait = 2000 * engineRetries;
+              await new Promise(r => setTimeout(r, retryWait));
+              
+              // Reset engine state
+              try { engine.stop(); } catch (e) { /* ignore */ }
+              await engine.waitReady();
+            }
+            
+            const analysisPromise = engine.analyzePosition(fen, { depth, requireExactDepth: depth >= 40 });
+            const timeoutPromise = new Promise<null>(r => setTimeout(() => r(null), ANALYSIS_TIMEOUT));
+            analysis = await Promise.race([analysisPromise, timeoutPromise]);
+            
+            if (analysis) {
+              engineSucceeded = true;
+              if (engineRetries > 0) {
+                console.log(`[v6.81-RETRY] ✅ Engine succeeded on retry ${engineRetries}`);
+              }
+            } else {
+              console.log(`[v6.81-RETRY] ⏳ Timeout on attempt ${engineRetries + 1}/${MAX_ENGINE_RETRIES} (${ANALYSIS_TIMEOUT/1000}s)`);
+              engineRetries++;
+              skipStats.engineTimeout++;
+            }
+          } catch (sfError) {
+            console.error(`[v6.81-RETRY] ❌ Engine error on attempt ${engineRetries + 1}:`, sfError);
+            engineRetries++;
+            skipStats.analysisError++;
           }
-        } catch (sfError) {
-          engineFailed = true;
-          console.error(`[v6.80] ❌ Stockfish error for ${gameId}:`, sfError);
-          skipStats.analysisError++;
         }
         
-        if (engineFailed) {
+        if (!engineSucceeded) {
+          console.warn(`[v6.81-RETRY] ❌ Engine exhausted ${MAX_ENGINE_RETRIES} retries for ${gameId} - marking as failed`);
           consecutiveEngineFailures++;
-          // v6.80: Add RAW ID to failed set
+          // Only add to failed set after ALL retries exhausted
           failedGameIds.add(rawGameId);
           consecutiveSkips++;
           
-          // v6.80-PATIENT: Recovery with longer waits
+          // v6.81: Patient engine recovery after total failure
           if (consecutiveEngineFailures >= 2) {
-            console.warn(`[v6.80-PATIENT] ⚠️ ${consecutiveEngineFailures} consecutive engine failures - PATIENT RECOVERY`);
-            setProgress(prev => ({ ...prev!, message: 'Engine stall detected - patient recovery...' }));
+            console.warn(`[v6.81] ⚠️ ${consecutiveEngineFailures} consecutive total failures - deep recovery`);
+            setProgress(prev => ({ ...prev!, message: 'Deep engine recovery...' }));
             
-            // v6.80: Stop the current analysis first
             try { engine.stop(); } catch (e) { /* ignore */ }
             
-            // v6.80-PATIENT: Longer wait (3s instead of 1s)
-            console.log(`[v6.80-PATIENT] ⏳ Waiting 3s before engine recovery...`);
-            await new Promise(r => setTimeout(r, 3000));
+            console.log(`[v6.81] ⏳ Deep recovery: waiting 5s before reinit...`);
+            await new Promise(r => setTimeout(r, 5000));
             
-            // Try to reinitialize the engine
             const reready = await engine.waitReady((p) => {
               setProgress(prev => ({ ...prev!, message: `Engine recovery: ${Math.round(p * 100)}%` }));
             });
             
             if (reready) {
-              console.log(`[v6.80] ✅ Engine recovered successfully`);
+              console.log(`[v6.81] ✅ Engine recovered from deep stall`);
               consecutiveEngineFailures = 0;
-              gamesProcessedSinceHealthCheck = 0; // Reset health check counter
+              gamesProcessedSinceHealthCheck = 0;
             } else {
-              console.error(`[v6.80] ❌ Engine failed to recover - aborting batch`);
+              console.error(`[v6.81] ❌ Engine failed to recover - aborting batch`);
               await saveIncrementalResults();
               break;
             }
           }
           continue;
         }
+        
+        // Reset counters on success
+        consecutiveEngineFailures = 0;
         
         // Reset counters on success
         consecutiveEngineFailures = 0;
