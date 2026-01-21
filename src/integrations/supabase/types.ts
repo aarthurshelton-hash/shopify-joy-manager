@@ -419,6 +419,7 @@ export type Database = {
           black_elo: number | null
           created_at: string
           data_quality_tier: string | null
+          data_source: string | null
           fen: string
           game_id: string
           game_name: string
@@ -446,6 +447,7 @@ export type Database = {
           black_elo?: number | null
           created_at?: string
           data_quality_tier?: string | null
+          data_source?: string | null
           fen: string
           game_id: string
           game_name: string
@@ -473,6 +475,7 @@ export type Database = {
           black_elo?: number | null
           created_at?: string
           data_quality_tier?: string | null
+          data_source?: string | null
           fen?: string
           game_id?: string
           game_name?: string
