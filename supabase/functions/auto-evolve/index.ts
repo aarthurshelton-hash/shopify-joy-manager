@@ -25,7 +25,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const AUTO_EVOLVE_VERSION = '7.6-STRICT';
+const AUTO_EVOLVE_VERSION = '7.7-NULL-TRUTH'; // null ≠ 0, absence ≠ zero
 
 // ============================================================================
 // LICHESS CLOUD EVAL - REAL STOCKFISH 17 (TURBO MODE)
@@ -832,10 +832,10 @@ function generateStockfishPredictionFromRealEval(
     return { prediction, confidence };
   }
   
-  // v7.6 STRICT: This code is unreachable now - we always have realEval
-  // Kept for safety but should never execute
-  console.error(`[${AUTO_EVOLVE_VERSION}] ❌ UNEXPECTED: Fallback called - this should not happen in v7.6`);
-  return { prediction: 'draw', confidence: 50 };
+  // v7.7-NULL-TRUTH: null ≠ 0. No data means REJECT, not "draw"
+  // If there's no eval, there's nothing - not even zero. Return null to force rejection.
+  console.error(`[${AUTO_EVOLVE_VERSION}] ❌ NULL ≠ 0: No eval means no prediction. Rejecting.`);
+  return { prediction: 'REJECT', confidence: 0 }; // Signal to caller: this must be rejected
 }
 
 // ============================================================================

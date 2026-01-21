@@ -330,7 +330,7 @@ export class StockfishEngine {
             nps: 0,
             time: 0,
           },
-          winProbability: this.cpToWinProbability(lastEval?.score || 0),
+          winProbability: lastEval?.score !== undefined ? this.cpToWinProbability(lastEval.score) : 50, // null ≠ 0, null = unknown (50%)
           isCheckmate: chess.isCheckmate(),
           isStalemate: chess.isStalemate(),
           isDraw: chess.isDraw(),
@@ -362,7 +362,7 @@ export class StockfishEngine {
             nps: 0,
             time: timeoutMs,
           },
-          winProbability: this.cpToWinProbability(lastEval?.score || 0),
+          winProbability: lastEval?.score !== undefined ? this.cpToWinProbability(lastEval.score) : 50, // null ≠ 0, null = unknown (50%)
           isCheckmate: chess.isCheckmate(),
           isStalemate: chess.isStalemate(),
           isDraw: chess.isDraw(),
