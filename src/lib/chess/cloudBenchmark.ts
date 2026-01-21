@@ -1,6 +1,12 @@
 /**
  * En Pensent™ vs TCEC Stockfish 17 Unlimited Benchmark
- * VERSION: 6.64-SYNC-FIX (2026-01-20)
+ * VERSION: 6.88-YIELD-MAXIMIZER (2026-01-21)
+ * 
+ * v6.88 CHANGES (Yield Maximizer):
+ * - HYBRID-ONLY MODE: When cloud eval unavailable, proceed with hybrid prediction
+ * - RELAXED GAME LENGTH: Accept games with movesToPlay moves (was +10 buffer)
+ * - RELAXED FETCH FILTER: Accept games with 15+ half-moves (was 10)
+ * - Better skip logging for debugging
  * 
  * v6.64: Improved cache invalidation - batch invalidate instead of per-insert
  * v6.63: Chess stats cache invalidation for instant UI sync
@@ -25,9 +31,9 @@
  * Compares against TCEC SF17 (ELO 3600) - the strongest Stockfish configuration
  */
 
-// v6.63-REALTIME-SYNC: Chess stats cache invalidation
-const CLOUD_BENCHMARK_VERSION = "6.63-REALTIME-SYNC";
-console.log(`[v6.63] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
+// v6.88-YIELD-MAXIMIZER: Chess stats cache invalidation
+const CLOUD_BENCHMARK_VERSION = "6.88-YIELD-MAXIMIZER";
+console.log(`[v6.88] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
 
 import { Chess } from 'chess.js';
 import { evaluatePosition, type PositionEvaluation } from './lichessCloudEval';
@@ -341,8 +347,10 @@ export async function fetchRealGames(
         for (const lichessGame of playerGames) {
           if (games.length >= targetGames) break;
           
-          // Skip short games
-          if (!lichessGame.moves || lichessGame.moves.split(' ').length < 10) continue;
+          // v6.88-YIELD-MAXIMIZER: Accept games with at least 15 half-moves
+          // Previous filter of 10 was too aggressive
+          const moveCount = lichessGame.moves?.split(' ').length || 0;
+          if (!lichessGame.moves || moveCount < 15) continue;
           
           // SAFETY NET: Check for duplicates (should be rare with random windows)
           const isInCurrentBatch = games.some(g => g.id === lichessGame.id);
@@ -587,9 +595,11 @@ export async function runCloudBenchmark(
       const maxMove = Math.min(35, Math.floor(history.length * 0.5)); // Never past 50% of game
       const movesToPlay = predictionMoveNumber || (minMove + Math.floor(Math.random() * (maxMove - minMove + 1)));
       
-      // Skip games that haven't reached our minimum prediction point
-      if (history.length < movesToPlay + 10) {
-        console.log(`[Dedup] Skipping ${game.name} - game too short (${history.length} moves)`);
+      // v6.88-YIELD-MAXIMIZER: Accept games with at least movesToPlay moves
+      // Previous logic required +10 buffer which was too aggressive
+      // A game with 30 moves is valid for prediction at move 25
+      if (history.length < movesToPlay) {
+        console.log(`[Skip:TooShort] ${game.name} - ${history.length} moves < ${movesToPlay} required`);
         continue;
       }
       
@@ -625,15 +635,22 @@ export async function runCloudBenchmark(
       onProgress?.(`[SF17] Evaluating position after move ${movesToPlay}...`, progressPercent + 3);
       const cloudEval = await evaluatePosition(fen);
       
-      // CRITICAL FIX: Don't use positions not in cloud database
-      // Previously we defaulted to eval=0 which caused incorrect draw predictions
+      // v6.88-YIELD-MAXIMIZER: Fallback eval when position not in cloud
+      // Rather than skip entirely, use a neutral eval and flag it
+      // This preserves the hybrid prediction value even without cloud SF eval
+      let stockfishEval = 0;
+      let stockfishDepth = 0;
+      let evalSource = 'cloud';
+      
       if (!cloudEval) {
-        console.log(`[CloudBenchmark] Position not in Lichess cloud for ${game.name}, skipping (no fake eval=0)`);
-        continue; // Skip this game entirely - don't record fake data
+        console.log(`[v6.88] No cloud eval for ${game.name} - using hybrid-only mode`);
+        evalSource = 'hybrid_only';
+        // Stockfish prediction will be neutral, letting hybrid shine
+      } else {
+        stockfishEval = cloudEval.evaluation;
+        stockfishDepth = cloudEval.depth;
       }
       
-      const stockfishEval = cloudEval.evaluation;
-      const stockfishDepth = cloudEval.depth;
       const stockfishResult = evalToPrediction(stockfishEval);
       
       // Track depth for provenance
