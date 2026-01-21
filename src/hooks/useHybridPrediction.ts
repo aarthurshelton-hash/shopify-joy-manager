@@ -65,8 +65,12 @@ export function useHybridPrediction() {
       setProgress({ stage: 'Matching historical patterns', percent: 25 });
       const patternPrediction = predictFromPatterns(pgn);
 
-      // Step 3: Generate full hybrid prediction (includes Stockfish)
-      setProgress({ stage: 'Running Stockfish tactical analysis', percent: 40 });
+      // Step 3: Generate full hybrid prediction (includes Lichess Cloud Stockfish)
+      // v6.79-SLOWER-CLOUD: Add small delay before cloud API call to prevent cascading rate limits
+      setProgress({ stage: 'Preparing Stockfish tactical analysis', percent: 35 });
+      await new Promise(r => setTimeout(r, 500)); // Half-second buffer before cloud API
+      
+      setProgress({ stage: 'Running Stockfish tactical analysis (Cloud)', percent: 40 });
       const hybridPrediction = await generateHybridPrediction(pgn, {
         depth: options?.depth || 18,
         onProgress: (stage, percent) => {

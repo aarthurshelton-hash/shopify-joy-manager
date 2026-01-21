@@ -10,10 +10,11 @@ const evaluationCache = new Map<string, { data: unknown; timestamp: number }>();
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const CACHE_MAX_SIZE = 1000;
 
-// Rate limit tracking - v6.67-RATELIMIT-MEMORY
+// Rate limit tracking - v6.79-SLOWER-CLOUD
+// Lichess Cloud Eval is 20 req/min - we need MORE headroom to avoid cascading failures
 let lastRequestTime = 0;
 let rateLimitedUntil = 0; // Timestamp when rate limit expires
-const MIN_REQUEST_INTERVAL_MS = 3200; // ~18 requests/min, safely under 20/min limit
+const MIN_REQUEST_INTERVAL_MS = 4000; // ~15 requests/min - MORE conservative to prevent rate limit cascades
 
 function getCacheKey(fen: string, multiPv: number): string {
   return `${fen}:${multiPv}`;

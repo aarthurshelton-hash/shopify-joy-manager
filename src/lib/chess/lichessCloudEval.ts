@@ -36,10 +36,10 @@ export interface PositionEvaluation {
   winProbability: number;
 }
 
-// Rate limiting state (local tracking)
+// Rate limiting state (local tracking) - v6.79-SLOWER-CLOUD
 let rateLimitResetTime = 0;
 let lastRequestTime = 0;
-const MIN_REQUEST_INTERVAL = 3500; // 3.5s between requests (stays under 20/min limit)
+const MIN_REQUEST_INTERVAL = 4500; // 4.5s between requests (~13/min - extra conservative to prevent cascades)
 
 // In-memory cache for evaluated positions
 const positionCache = new Map<string, PositionEvaluation>();
