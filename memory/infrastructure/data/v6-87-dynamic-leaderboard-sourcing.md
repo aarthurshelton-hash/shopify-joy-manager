@@ -1,34 +1,36 @@
 # Memory: infrastructure/data/v6-87-dynamic-leaderboard-sourcing
 Updated: now
 
-The 'v6.87-DYNAMIC-LEADERBOARD' system fetches live top players from Lichess leaderboards instead of relying solely on static player pools. This provides a constantly refreshing source of high-caliber players.
+The 'v6.87b-DYNAMIC-LEADERBOARD' system fetches live top players from Lichess leaderboards with full randomization for maximum variety.
 
 **Key Components**:
 
-1. **New Edge Function**: `lichess-leaderboard` fetches from `/api/player` endpoint
-   - Returns top 50 players across bullet, blitz, rapid, classical
-   - 30-minute server-side cache to avoid hammering the API
-   - Provides username, rating, title, and perfType for each player
+1. **Edge Function**: `lichess-leaderboard` fetches from `/api/player` endpoint
+   - Returns top 100 players (configurable) across ALL game modes:
+     - Standard: bullet, blitz, rapid, classical
+     - Variants: ultraBullet, chess960, crazyhouse, antichess, atomic, horde, racingKings, kingOfTheHill
+   - **Fisher-Yates shuffle** for true randomization each request
+   - 30-minute server-side cache ONLY for non-randomized requests
+   - Provides username, rating, title, perfType, and rank for each player
 
-2. **Client-Side Integration**: `multiSourceFetcher.ts` now calls `getLichessPlayerPool()`
-   - First attempts to fetch live leaderboard players
-   - Falls back to static `LICHESS_FALLBACK_PLAYERS` on failure
-   - Combines both sources for maximum coverage
-   - 30-minute client-side cache for efficiency
+2. **Randomization Options**:
+   - `randomize: true` (default) → Fresh shuffle every request, no cache
+   - `randomize: false` → Sorted by rating, cached for 30min
+   - `count: 100` (default) → How many players to return after shuffle
 
-3. **Combined Pool Logic**:
-   - Leaderboard players are prioritized (fresher, more active)
-   - Static fallback ensures reliability when API is unavailable
-   - Duplicates are automatically deduplicated via Set
-   - Pool size: ~100-150 unique players (50 from each mode + 60 fallback)
+3. **Future Database Integration**:
+   - Player pool will eventually map to `en_pensent_memory` table
+   - Parameters per player: archetype affinity, prediction accuracy history
+   - Game mode clustering for targeted prediction tuning
+   - Mass volume ingestion enables fine-grained accuracy calibration
 
 **Data Flow**:
 ```
 fetchLeaderboardPlayers() → lichess-leaderboard Edge Function → /api/player
                          ↓
-                    cachedLeaderboardPlayers (30min TTL)
+                    shuffleArray() (Fisher-Yates)
                          ↓
-getLichessPlayerPool() → Combine with LICHESS_FALLBACK_PLAYERS → Dedupe → Return
+getLichessPlayerPool() → Combine with fallback → Dedupe → Return randomized 100
 ```
 
-This ensures the pipeline always has access to the most active, highest-rated players on Lichess at any given time.
+This ensures every batch explores different players from different game modes for maximum prediction training diversity.
