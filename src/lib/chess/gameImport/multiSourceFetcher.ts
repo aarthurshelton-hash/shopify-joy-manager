@@ -251,11 +251,14 @@ async function fetchFromChessCom(
       
       let addedFromPlayer = 0;
       for (const game of result.games) {
+        // v6.84-ABSORB-ALL: Accept ANY game with a valid ID
+        // Opponents can be anyone - we want their games too!
         const unified = chesscomToUnified(game, player);
-        if (!unified) continue;
+        if (!unified) continue; // Only fails if no game ID extractable
         if (excludeIds.has(unified.gameId)) continue;
         if (localIds.has(unified.gameId)) continue;
         
+        // v6.84: Zero player/rating/content filtering - absorb everything
         localIds.add(unified.gameId);
         games.push(unified);
         addedFromPlayer++;
@@ -425,17 +428,20 @@ async function fetchFromLichess(
       let addedFromPlayer = 0;
       for (const game of fetchedGames) {
         const lichessId = game.id;
-        // v6.57-ID-ONLY: Only require an ID exists - absorb everything else
+        // v6.84-ABSORB-ALL: ONLY requirement is a valid game ID
+        // Accept ALL games regardless of player names/ratings/etc.
+        // The opponent could be anyone - we want their games too!
         if (!lichessId) continue;
         
         const gameId = `li_${lichessId}`;
         
-        // v6.57: Only deduplication filter - no content filters
+        // v6.84: ONLY deduplication - no player/rating/content filtering
+        // Fresh ID = fresh game, period.
         if (excludeIds.has(gameId) || excludeIds.has(lichessId)) continue;
         if (localIds.has(gameId)) continue;
         
         const pgn = game.pgn || game.moves || '';
-        // v6.57: ABSORB EVERYTHING - universal intelligence handles edge cases
+        // v6.84-ABSORB-ALL: Zero content filters - universal intelligence handles everything
         
         localIds.add(gameId);
         
