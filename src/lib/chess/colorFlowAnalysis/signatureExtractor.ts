@@ -242,7 +242,7 @@ function findCriticalMoments(board: SquareData[][], totalMoves: number): Critica
 
 /**
  * Classify the game into a strategic archetype based on color patterns
- * FIX: Diversified classification to prevent collapse to single archetype
+ * v6.83-DIVERSE: Lowered thresholds + added missing archetypes for better distribution
  */
 function classifyArchetype(
   quadrant: QuadrantProfile,
@@ -250,61 +250,84 @@ function classifyArchetype(
   moments: CriticalMoment[],
   totalMoves: number
 ): StrategicArchetype {
-  // Priority-ordered classification with stricter criteria
+  // Calculate aggregate metrics for smarter classification
+  const kingsideTotal = Math.abs(quadrant.kingsideWhite) + Math.abs(quadrant.kingsideBlack);
+  const queensideTotal = Math.abs(quadrant.queensideWhite) + Math.abs(quadrant.queensideBlack);
+  const totalActivity = kingsideTotal + queensideTotal + Math.abs(quadrant.center);
+  const avgMomentMagnitude = moments.length > 0 
+    ? moments.reduce((sum, m) => sum + m.shiftMagnitude, 0) / moments.length 
+    : 0;
   
-  // 1. Kingside attack - requires high kingside activity AND volatility
-  if (Math.abs(quadrant.kingsideBlack) > 60 && temporal.volatility > 45) {
+  // 1. Opposite castling - asymmetric flank activity (NEW)
+  const kingsideImbalance = Math.abs(quadrant.kingsideWhite - quadrant.kingsideBlack);
+  const queensideImbalance = Math.abs(quadrant.queensideWhite - quadrant.queensideBlack);
+  if (kingsideImbalance > 30 && queensideImbalance > 30 && temporal.volatility > 35) {
+    return 'opposite_castling';
+  }
+  
+  // 2. Pawn storm - linear progression with increasing endgame pressure (NEW)
+  if (temporal.endgame > temporal.opening + 25 && temporal.endgame > temporal.middlegame) {
+    return 'pawn_storm';
+  }
+  
+  // 3. Kingside attack - high kingside activity (lowered threshold)
+  if (kingsideTotal > 80 && kingsideTotal > queensideTotal * 1.3) {
     return 'kingside_attack';
   }
   
-  // 2. Queenside expansion - requires clear queenside dominance
-  if (Math.abs(quadrant.queensideBlack) > 55 || Math.abs(quadrant.queensideWhite) > 55) {
+  // 4. Queenside expansion - clear queenside focus (lowered threshold)
+  if (queensideTotal > 70 && queensideTotal > kingsideTotal * 1.3) {
     return 'queenside_expansion';
   }
   
-  // 3. Central domination - requires very high center control
-  if (Math.abs(quadrant.center) > 65) {
+  // 5. Central domination - strong center control (lowered threshold)
+  if (Math.abs(quadrant.center) > 45 && Math.abs(quadrant.center) > kingsideTotal * 0.5) {
     return 'central_domination';
   }
   
-  // 4. Sacrificial attack - multiple big shifts
-  if (moments.length >= 4 && moments.some(m => m.shiftMagnitude > 5)) {
+  // 6. Sacrificial attack - dramatic shifts with high average magnitude
+  if (moments.length >= 3 && avgMomentMagnitude > 4) {
     return 'sacrificial_attack';
   }
   
-  // 5. Open tactical - high volatility with many moments
-  if (temporal.volatility > 55 && moments.length >= 3) {
+  // 7. Open tactical - high volatility games (lowered threshold)
+  if (temporal.volatility > 40 && moments.length >= 2) {
     return 'open_tactical';
   }
   
-  // 6. Endgame technique - late game with low volatility
-  if (totalMoves > 40 && Math.abs(temporal.endgame) > 20 && temporal.volatility < 35) {
+  // 8. Endgame technique - long games with late-game focus
+  if (totalMoves > 35 && Math.abs(temporal.endgame) > 15) {
     return 'endgame_technique';
   }
   
-  // 7. Closed maneuvering - very low volatility in long games
-  if (temporal.volatility < 20 && totalMoves > 35) {
+  // 9. Closed maneuvering - low volatility in longer games (lowered thresholds)
+  if (temporal.volatility < 30 && totalMoves > 30) {
     return 'closed_maneuvering';
   }
   
-  // 8. Positional squeeze - endgame stronger than opening with moderate volatility
-  if (temporal.endgame > temporal.opening + 15 && temporal.volatility < 45) {
+  // 10. Positional squeeze - gradual improvement over phases
+  if (temporal.middlegame > temporal.opening && temporal.endgame > temporal.middlegame) {
     return 'positional_squeeze';
   }
   
-  // 9. Piece harmony - balanced center with moderate volatility
-  if (quadrant.center > 35 && quadrant.center < 60 && temporal.volatility >= 30 && temporal.volatility <= 50) {
+  // 11. Piece harmony - moderate center with balanced activity
+  if (quadrant.center > 20 && temporal.volatility >= 25 && temporal.volatility <= 55) {
     return 'piece_harmony';
   }
   
-  // 10. Prophylactic defense - ONLY for truly quiet positions
-  // Stricter criteria: low middlegame activity AND low volatility AND shorter games
-  if (Math.abs(temporal.middlegame) < 15 && temporal.volatility < 25 && totalMoves < 35) {
+  // 12. Prophylactic defense - quieter games with modest activity
+  if (totalActivity < 150 && temporal.volatility < 35) {
     return 'prophylactic_defense';
   }
   
-  // Default to unknown rather than prophylactic_defense
-  return 'unknown';
+  // Fallback: Use activity ratios to pick something reasonable
+  if (kingsideTotal > queensideTotal) {
+    return 'kingside_attack';
+  } else if (queensideTotal > kingsideTotal) {
+    return 'queenside_expansion';
+  }
+  
+  return 'piece_harmony'; // Reasonable default instead of 'unknown'
 }
 
 /**
