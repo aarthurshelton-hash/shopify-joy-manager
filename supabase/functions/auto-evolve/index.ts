@@ -351,75 +351,58 @@ Deno.serve(async (req) => {
 
     // ========== v7.5 MULTIVERSE: PARALLEL MULTI-SOURCE FETCHING ==========
     
-    // TIER 1: Human vs Human (GM-level)
-    const selectedLichessPlayers = shuffleArray([
-      'DrNykterstein', 'nihalsarin2004', 'Fins', 'penguingim1', 
-      'lance5500', 'Firouzja2003', 'GMWSO', 'opperwezen',
-      'Zhigalko_Sergei', 'LyonBeast', 'Polish_fighter3000'
-    ]).slice(0, 3);
-
-    const chesscomPlayers = shuffleArray([
-      'MagnusCarlsen', 'Hikaru', 'FabianoCaruana', 'DanielNaroditsky', 
-      'GothamChess', 'AnishGiri', 'LevonAronian', 'WesleySo',
-      'Vladimirkramnik', 'DominguezPerez', 'GMJefferyXiong', 'Grischuk'
-    ]).slice(0, 3);
-
-    // TIER 2: Human vs Bot (anti-computer fortress patterns)
-    const antiComputerPlayers = shuffleArray([
-      'DrNykterstein', 'Fins', 'penguingim1', 'lance5500'
-    ]).slice(0, 2);
-
-    // TIER 3: Computer vs Computer (TCEC-style sources via Lichess broadcasts)
-    const engineAccountsLichess = [
-      'stockfish-official', 'lc0', 'komodo-official'
+    // TIER 1: Human vs Human (GM-level) - EXPANDED POOL for better rotation
+    const lichessPool = [
+      'nihalsarin2004', 'Fins', 'lance5500', 'Firouzja2003', 'GMWSO', 'opperwezen',
+      'Zhigalko_Sergei', 'LyonBeast', 'Polish_fighter3000', 'DrDrunkenstein',
+      'RebeccaHarris', 'Msb2', 'AndreyEsipenko', 'Alireza2003', 'Oleksandr_Bortnyk'
     ];
+    const selectedLichessPlayers = shuffleArray(lichessPool).slice(0, 4);
+
+    const chesscomPool = [
+      'Hikaru', 'FabianoCaruana', 'DanielNaroditsky', 'GothamChess', 
+      'AnishGiri', 'LevonAronian', 'WesleySo', 'DominguezPerez', 
+      'GMJefferyXiong', 'Grischuk', 'ChessNetwork', 'GMBenjaminBok',
+      'Firouzja2003', 'Parham-Maghsoodloo', 'Vidit_Gujrathi'
+    ];
+    const chesscomPlayers = shuffleArray(chesscomPool).slice(0, 4);
 
     console.log(`[${AUTO_EVOLVE_VERSION}] 🌌 MULTIVERSE sources:`);
-    console.log(`  - Human vs Human: ${selectedLichessPlayers.join(', ')} | ${chesscomPlayers.join(', ')}`);
-    console.log(`  - Anti-Computer: ${antiComputerPlayers.join(', ')}`);
+    console.log(`  - Lichess GMs: ${selectedLichessPlayers.join(', ')}`);
+    console.log(`  - Chess.com GMs: ${chesscomPlayers.join(', ')}`);
 
     const since = Date.now() - (14 * 24 * 60 * 60 * 1000);
     const now = new Date();
 
-    // PARALLEL: Fetch from ALL sources simultaneously
-    const [lichessResults, chesscomResults, botGameResults] = await Promise.all([
-      // TIER 1a: Lichess GM games
+    // PARALLEL: Fetch from BOTH sources simultaneously (removed broken bot API)
+    const [lichessResults, chesscomResults] = await Promise.all([
+      // Lichess GM games
       Promise.all(selectedLichessPlayers.map(async (player) => {
         try {
-          const games = await fetchLichessGames(player, since, 5);
+          const games = await fetchLichessGames(player, since, 6);
           return { player, games, source: 'lichess', tier: 'human_vs_human' };
         } catch (err) {
           console.warn(`[${AUTO_EVOLVE_VERSION}] Lichess ${player}:`, err);
           return { player, games: [], source: 'lichess', tier: 'human_vs_human' };
         }
       })),
-      // TIER 1b: Chess.com GM games
+      // Chess.com GM games
       Promise.all(chesscomPlayers.map(async (player) => {
         try {
-          const games = await fetchChesscomGames(player, now.getFullYear(), now.getMonth() + 1, 5);
+          const games = await fetchChesscomGames(player, now.getFullYear(), now.getMonth() + 1, 6);
           return { player, games, source: 'chesscom', tier: 'human_vs_human' };
         } catch (err) {
           console.warn(`[${AUTO_EVOLVE_VERSION}] Chess.com ${player}:`, err);
           return { player, games: [], source: 'chesscom', tier: 'human_vs_human' };
         }
-      })),
-      // TIER 2: Human vs Bot games (fortress/anti-computer patterns)
-      Promise.all(antiComputerPlayers.map(async (player) => {
-        try {
-          const games = await fetchLichessBotGames(player, since, 4);
-          return { player, games, source: 'lichess-bot', tier: 'human_vs_computer' };
-        } catch (err) {
-          console.warn(`[${AUTO_EVOLVE_VERSION}] Bot games ${player}:`, err);
-          return { player, games: [], source: 'lichess-bot', tier: 'human_vs_computer' };
-        }
       }))
     ]);
 
-    // Combine and deduplicate with tier tracking
+    // Combine and deduplicate
     const allGames: (GameData & { tier?: string })[] = [];
-    let lichessCount = 0, chesscomCount = 0, botCount = 0, dedupSkipped = 0;
+    let lichessCount = 0, chesscomCount = 0, dedupSkipped = 0;
 
-    for (const result of [...lichessResults, ...chesscomResults, ...botGameResults]) {
+    for (const result of [...lichessResults, ...chesscomResults]) {
       for (const game of result.games) {
         if (existingIds.has(game.id)) {
           dedupSkipped++;
@@ -428,13 +411,11 @@ Deno.serve(async (req) => {
         allGames.push({ ...game, tier: result.tier });
         if (result.source === 'lichess') lichessCount++;
         else if (result.source === 'chesscom') chesscomCount++;
-        else if (result.source === 'lichess-bot') botCount++;
       }
     }
 
     console.log(`[${AUTO_EVOLVE_VERSION}] 🌌 MULTIVERSE: ${allGames.length} fresh games`);
-    console.log(`  - Human vs Human: ${lichessCount + chesscomCount} (${lichessCount} Lichess, ${chesscomCount} Chess.com)`);
-    console.log(`  - Human vs Bot: ${botCount}`);
+    console.log(`  - Lichess: ${lichessCount}, Chess.com: ${chesscomCount}`);
     console.log(`  - Duplicates skipped: ${dedupSkipped}`);
 
     if (allGames.length === 0) {
@@ -520,9 +501,8 @@ Deno.serve(async (req) => {
       realSfEvaluations: realSfEvalCount,
       dedupSkipped,
       durationMs,
-      players: [...selectedLichessPlayers, ...chesscomPlayers, ...antiComputerPlayers],
-      sources: { lichess: lichessCount, chesscom: chesscomCount, botGames: botCount },
-      tiers: { human_vs_human: lichessCount + chesscomCount, human_vs_computer: botCount },
+      players: [...selectedLichessPlayers, ...chesscomPlayers],
+      sources: { lichess: lichessCount, chesscom: chesscomCount },
     });
 
     // Update evolution state
