@@ -1,22 +1,21 @@
 /**
- * Auto-Evolve Edge Function v7.5-MULTIVERSE
+ * Auto-Evolve Edge Function v7.6-STRICT
  * 
- * MULTI-SOURCE autonomous evolution engine with REAL Stockfish 17.
- * Ingests Player vs Player, Player vs Computer, and Computer vs Computer games.
+ * STRICT QUALITY autonomous evolution engine with REAL Stockfish 17 ONLY.
+ * ZERO TOLERANCE for unknown/null predictions - throw bad data back to ocean.
  * 
- * v7.5 MULTIVERSE DATA SOURCES:
+ * v7.6 STRICT QUALITY RULES:
+ * - ONLY save predictions with REAL SF17 Cloud Eval (no fallbacks)
+ * - REJECT any "unknown" predictions - don't pollute the dataset
+ * - VALIDATE all prediction values before saving
+ * - Games without valid SF17 eval are thrown back, not saved
+ * 
+ * DATA SOURCES (unchanged from v7.5):
  * - Lichess: GM-level human games
  * - Chess.com: GM-level human games  
  * - Lichess Bot Games: Human vs Computer (anti-engine training)
- * - TCEC Archives: Computer vs Computer (perfect tactical vocab)
- * - CCC Archives: Computer vs Computer (alternative engine styles)
  * 
- * KEY FEATURES:
- * - REAL Stockfish 17 via Lichess Cloud Eval (D30+ analysis)
- * - REAL Color Flow archetype classification (15 archetypes)
- * - TRIPLE DATA TIER: Human, Human-vs-Bot, Engine-vs-Engine
- * - Fortress position recognition from anti-computer games
- * - Self-healing rate limit handling
+ * QUALITY OVER QUANTITY: Better to skip 10 games than save 1 with garbage data.
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
@@ -26,7 +25,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const AUTO_EVOLVE_VERSION = '7.5-MULTIVERSE';
+const AUTO_EVOLVE_VERSION = '7.6-STRICT';
 
 // ============================================================================
 // LICHESS CLOUD EVAL - REAL STOCKFISH 17 (TURBO MODE)
@@ -444,8 +443,8 @@ Deno.serve(async (req) => {
         stockfish_eval: p.stockfishEval,
         stockfish_depth: p.stockfishDepth,
         actual_result: p.actualResult,
-        data_source: 'auto-evolve-v7.5-MULTIVERSE',
-        data_quality_tier: p.stockfishEval !== null ? 'verified-sf17' : 'multiverse-fallback',
+        data_source: 'auto-evolve-v7.6-STRICT',
+        data_quality_tier: 'verified-sf17-strict', // ALL predictions now have real SF17
         white_elo: p.whiteElo,
         black_elo: p.blackElo,
         time_control: p.timeControl,
@@ -716,12 +715,29 @@ async function generateRealDivergentPrediction(game: GameData): Promise<Predicti
   // Analyze game characteristics with REAL Color Flow logic
   const characteristics = analyzeRealGameCharacteristics(moves, predictionMove);
   
-  // v7.2: Get REAL Stockfish 17 evaluation from Lichess Cloud
+  // v7.6: Get REAL Stockfish 17 evaluation from Lichess Cloud
+  // CRITICAL: If no real eval, REJECT THE GAME - don't save garbage fallback data
   const realSfEval = await getRealStockfishEval(fen);
   
-  // Generate predictions using REAL engines
+  if (!realSfEval) {
+    console.log(`[${AUTO_EVOLVE_VERSION}] ⏭️ Skipping ${game.id} - no real SF17 eval available`);
+    return null; // Throw back to the ocean - don't pollute data
+  }
+  
+  // Generate predictions using REAL engines ONLY
   const hybridPrediction = generateHybridTrajectoryPrediction(characteristics, game.winner);
   const stockfishPrediction = generateStockfishPredictionFromRealEval(realSfEval, characteristics);
+  
+  // v7.6: VALIDATE predictions - reject "unknown" or invalid predictions
+  const validPredictions = ['white_wins', 'black_wins', 'draw'];
+  if (!validPredictions.includes(stockfishPrediction.prediction)) {
+    console.log(`[${AUTO_EVOLVE_VERSION}] ⏭️ Skipping ${game.id} - invalid SF prediction: ${stockfishPrediction.prediction}`);
+    return null;
+  }
+  if (!validPredictions.includes(hybridPrediction.prediction)) {
+    console.log(`[${AUTO_EVOLVE_VERSION}] ⏭️ Skipping ${game.id} - invalid hybrid prediction: ${hybridPrediction.prediction}`);
+    return null;
+  }
   
   // Normalize result format
   const normalizedResult = game.winner === 'white' ? 'white_wins' 
@@ -738,11 +754,11 @@ async function generateRealDivergentPrediction(game: GameData): Promise<Predicti
     hybridCorrect: hybridPrediction.prediction === normalizedResult,
     stockfishPrediction: stockfishPrediction.prediction,
     stockfishConfidence: stockfishPrediction.confidence,
-    stockfishEval: realSfEval?.cp ?? null,
-    stockfishDepth: realSfEval?.depth ?? null,
+    stockfishEval: realSfEval.cp,
+    stockfishDepth: realSfEval.depth,
     stockfishCorrect: stockfishPrediction.prediction === normalizedResult,
     actualResult: normalizedResult,
-    dataSource: 'auto-evolve-v7.4-TURBO',
+    dataSource: 'auto-evolve-v7.6-STRICT',
     whiteElo: game.whiteElo,
     blackElo: game.blackElo,
     timeControl: game.timeControl,
@@ -816,34 +832,10 @@ function generateStockfishPredictionFromRealEval(
     return { prediction, confidence };
   }
   
-  // Fallback: If cloud eval unavailable, use material-based heuristic
-  // This should be rare - most positions are in cloud database
-  console.log(`[${AUTO_EVOLVE_VERSION}] ⚠️ No cloud eval, using material fallback`);
-  return generateMaterialFallbackPrediction(characteristics);
-}
-
-/**
- * Material-based fallback when cloud eval unavailable
- * CLEARLY LABELED as fallback, not passed off as SF17
- */
-function generateMaterialFallbackPrediction(
-  characteristics: GameCharacteristics
-): { prediction: string; confidence: number } {
-  const { materialBalance } = characteristics;
-  
-  let whiteScore = 50 + (materialBalance * 25);
-  const confidence = Math.min(70, 45 + Math.abs(materialBalance) * 10);
-  
-  let prediction: string;
-  if (whiteScore > 55) {
-    prediction = 'white_wins';
-  } else if (whiteScore < 45) {
-    prediction = 'black_wins';
-  } else {
-    prediction = Math.random() > 0.7 ? 'draw' : (whiteScore >= 50 ? 'white_wins' : 'black_wins');
-  }
-  
-  return { prediction, confidence };
+  // v7.6 STRICT: This code is unreachable now - we always have realEval
+  // Kept for safety but should never execute
+  console.error(`[${AUTO_EVOLVE_VERSION}] ❌ UNEXPECTED: Fallback called - this should not happen in v7.6`);
+  return { prediction: 'draw', confidence: 50 };
 }
 
 // ============================================================================
