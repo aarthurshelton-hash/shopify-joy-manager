@@ -76,12 +76,17 @@ function cloudEvalToPositionAnalysis(
 
 /**
  * Generate a hybrid prediction combining Stockfish tactics with Color Flow strategy
+ * 
+ * v6.97-LOCAL: Accepts optional pre-computed evaluation to avoid cloud API calls
  */
 export async function generateHybridPrediction(
   pgn: string,
   options: {
     depth?: number;
     onProgress?: (stage: string, progress: number) => void;
+    precomputedEval?: number; // v6.97: Skip cloud API if provided
+    precomputedDepth?: number;
+    skipCloudEval?: boolean;  // v6.97: Force skip cloud API
   } = {}
 ): Promise<HybridPrediction> {
   const depth = options.depth || 18;
@@ -110,7 +115,7 @@ export async function generateHybridPrediction(
   // Step 2: Extract Color Flow Signature
   const colorSignature = extractColorFlowSignature(board, gameData, totalMoves);
   
-  options.onProgress?.('Analyzing current position with Lichess Cloud', 30);
+  options.onProgress?.('Analyzing current position', 30);
   
   // Step 3: Get current position for analysis
   const chess = new Chess();
@@ -121,11 +126,45 @@ export async function generateHybridPrediction(
   }
   const currentFen = chess.fen();
   
-  // Step 4: Get Stockfish evaluation from Lichess Cloud API
-  const cloudEval = await evaluatePosition(currentFen);
+  // Step 4: Get Stockfish evaluation
+  // v6.97-LOCAL: Use precomputed eval if provided, otherwise try cloud (with fallback)
+  let positionAnalysis: PositionAnalysis;
   
-  // Convert to PositionAnalysis format expected by other functions
-  const positionAnalysis = cloudEvalToPositionAnalysis(cloudEval, currentFen);
+  if (options.precomputedEval !== undefined) {
+    // Use pre-computed local Stockfish eval (no API call needed)
+    positionAnalysis = {
+      fen: currentFen,
+      bestMove: 'e2e4',
+      evaluation: {
+        score: options.precomputedEval,
+        scoreType: 'cp',
+        depth: options.precomputedDepth || depth,
+        nodes: 0,
+        nps: 0,
+        time: 0,
+        pv: [],
+      },
+      winProbability: 50 + (options.precomputedEval / 20),
+      isCheckmate: false,
+      isStalemate: false,
+      isDraw: false,
+    };
+  } else if (options.skipCloudEval) {
+    // Skip cloud API entirely, use neutral eval
+    positionAnalysis = {
+      fen: currentFen,
+      bestMove: 'e2e4',
+      evaluation: { score: 0, scoreType: 'cp', depth: 10, nodes: 0, nps: 0, time: 0, pv: [] },
+      winProbability: 50,
+      isCheckmate: false,
+      isStalemate: false,
+      isDraw: false,
+    };
+  } else {
+    // Original behavior: call cloud API (may trigger rate limits)
+    const cloudEval = await evaluatePosition(currentFen);
+    positionAnalysis = cloudEvalToPositionAnalysis(cloudEval, currentFen);
+  }
   
   options.onProgress?.('Fusing tactical and strategic analysis', 60);
   
