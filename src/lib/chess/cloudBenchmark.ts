@@ -1,42 +1,34 @@
 /**
- * En Pensent™ vs TCEC Stockfish 17 Unlimited Benchmark
- * VERSION: 6.88-YIELD-MAXIMIZER (2026-01-21)
+ * En Pensent™ vs LOCAL Stockfish 17 Benchmark
+ * VERSION: 6.90-LOCAL-STOCKFISH (2026-01-21)
  * 
- * v6.88 CHANGES (Yield Maximizer):
- * - HYBRID-ONLY MODE: When cloud eval unavailable, proceed with hybrid prediction
- * - RELAXED GAME LENGTH: Accept games with movesToPlay moves (was +10 buffer)
- * - RELAXED FETCH FILTER: Accept games with 15+ half-moves (was 10)
- * - Better skip logging for debugging
+ * v6.90 CHANGES (Local Stockfish):
+ * - CRITICAL FIX: Use LOCAL Stockfish engine, not Lichess Cloud eval
+ * - Removes circular dependency: was filtering games by cloud eval availability
+ * - Now ANY position can be analyzed - no bias toward "popular" positions
+ * - Local SF17 NNUE provides consistent baseline across all games
  * 
- * v6.64: Improved cache invalidation - batch invalidate instead of per-insert
- * v6.63: Chess stats cache invalidation for instant UI sync
- * v6.62: Prime-based time window rotation prevents cache collisions across batches
- * v6.61: Remove predictedIds check from queue-adding (only check in processing loop)
- * v6.60: Only exclude DB games during fetch, not session predictions
- *
+ * PREVIOUS BUG:
+ * - Cloud eval only exists for positions Lichess has cached
+ * - This biased benchmark toward popular/common positions
+ * - Rare/unique positions were skipped entirely
+ * 
  * DATA SOURCES:
  * - Lichess: 5+ BILLION games via Edge Function proxy
  * - Chess.com: Billions of games via public API
- * 
- * v6.47 CHANGES:
- * - PARALLEL FETCHING: 3-4 players per chunk simultaneously
- * - DEEPER HISTORY: Years of archives, not weeks
- * - HIGHER LIMITS: 20+ players per source, 12+ months
- * - TARGET: 100+ unique games per batch
  * 
  * ELO CALIBRATION (Platform → FIDE):
  * - Lichess: -100 offset (Glicko-2 tends higher)
  * - Chess.com: -50 offset (closer to FIDE)
  * 
- * Compares against TCEC SF17 (ELO 3600) - the strongest Stockfish configuration
+ * Compares against LOCAL SF17 NNUE - consistent baseline for all positions
  */
 
-// v6.88-YIELD-MAXIMIZER: Chess stats cache invalidation
-const CLOUD_BENCHMARK_VERSION = "6.89-HYBRID-ONLY-FIX";
-console.log(`[v6.89] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
+const CLOUD_BENCHMARK_VERSION = "6.90-LOCAL-STOCKFISH";
+console.log(`[v6.90] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
 
 import { Chess } from 'chess.js';
-import { evaluatePosition, type PositionEvaluation } from './lichessCloudEval';
+import { getStockfishEngine } from './stockfishEngine';
 import { generateHybridPrediction } from './hybridPrediction';
 import { extractColorFlowSignature } from './colorFlowAnalysis';
 import { fetchLichessGames, lichessGameToPgn, type LichessGame } from './gameImport/lichessApi';
@@ -631,22 +623,18 @@ export async function runCloudBenchmark(
       analyzedData.fenStrings.add(fen);
       analyzedData.gameIds.add(gameId); // Mark this game as analyzed
       
-      // Get Stockfish 17 evaluation from Lichess Cloud
-      onProgress?.(`[SF17] Evaluating position after move ${movesToPlay}...`, progressPercent + 3);
-      const cloudEval = await evaluatePosition(fen);
+      // v6.90-LOCAL-STOCKFISH: Use LOCAL Stockfish engine, not cloud API
+      // This eliminates the circular dependency where we filtered games by cloud availability
+      onProgress?.(`[SF17 LOCAL] Evaluating position after move ${movesToPlay}...`, progressPercent + 3);
       
-      // v6.89-HYBRID-ONLY-FIX: Proper handling when cloud eval unavailable
-      // Previously: Used eval=0 which always predicted "draw" - not meaningful
-      // Now: Skip games without cloud eval to ensure fair SF comparison
-      // Hybrid-only mode defeats the purpose of the benchmark (comparing two engines)
+      const stockfishEngine = getStockfishEngine();
+      await stockfishEngine.waitReady();
       
-      if (!cloudEval) {
-        console.log(`[v6.89] No cloud eval for ${game.name} - skipping (need valid SF baseline)`);
-        continue; // Both engines need valid predictions for fair comparison
-      }
+      // Analyze with depth 18 for good accuracy without excessive time
+      const localAnalysis = await stockfishEngine.analyzePosition(fen, { depth: 18 });
       
-      const stockfishEval = cloudEval.evaluation;
-      const stockfishDepth = cloudEval.depth;
+      const stockfishEval = localAnalysis.evaluation.score;
+      const stockfishDepth = localAnalysis.evaluation.depth;
       const stockfishResult = evalToPrediction(stockfishEval);
       
       // Track depth for provenance
