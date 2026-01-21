@@ -129,13 +129,15 @@ export interface DualPoolResult {
 
 // ================ PLAYER POOLS ================
 
-// v6.95: VERIFIED existing Lichess players only (removed SSJG_Goku - 404)
+// v6.96: VERIFIED existing Lichess players only 
+// Removed: SSJG_Goku (404), Hikaru (404 - uses 'DrNykterstein' on Lichess)
 const LICHESS_ELITE_PLAYERS = [
-  'DrNykterstein', 'Hikaru', 'nihalsarin2004', 'FairChess_on_YouTube',
+  'DrNykterstein', 'nihalsarin2004', 'FairChess_on_YouTube',
   'LyonBeast', 'Bombegansen', 'GMWSO', 'Vladimirovich9000',
   'penguingim1', 'AnishGiri', 'DanielNaroditsky', 'opperwezen',
   'Fins', 'Polish_fighter3000', 'howitzer14', 'lachesisQ',
-  'TemurKuybokarov', 'Msb2', 'Zhigalko_Sergei', 'GMHikaruOnTwitch',
+  'TemurKuybokarov', 'Msb2', 'Zhigalko_Sergei', 'chaborak',
+  'Alireza2003', 'FerdinandPorsche', 'realDonaldDuck',
 ];
 
 const CHESSCOM_ELITE_PLAYERS = [
@@ -154,6 +156,63 @@ function shuffleArray<T>(array: T[]): T[] {
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
   return shuffled;
+}
+
+/**
+ * v6.96-LOCAL: Generate hybrid prediction using PRE-COMPUTED local Stockfish eval
+ * This avoids calling the cloud API which causes 429 rate limit errors
+ */
+async function generateLocalHybridPrediction(
+  pgn: string,
+  stockfishEval: number,
+  stockfishDepth: number
+): Promise<{
+  prediction: 'white_wins' | 'black_wins' | 'draw';
+  confidence: number;
+  archetype: string;
+}> {
+  try {
+    // Import simulation dynamically to avoid circular deps
+    const { simulateGame } = await import('./gameSimulator');
+    const { extractColorFlowSignature, predictFromColorFlow } = await import('./colorFlowAnalysis');
+    
+    const simulation = simulateGame(pgn);
+    const colorSignature = extractColorFlowSignature(simulation.board, simulation.gameData, simulation.totalMoves);
+    const colorPrediction = predictFromColorFlow(colorSignature, simulation.totalMoves);
+    
+    // Combine Stockfish eval with Color Flow prediction
+    const sfPred = evalToPrediction(stockfishEval);
+    const archetype = colorSignature.archetype || 'UNKNOWN';
+    
+    // Color flow predicted winner (from ColorFlowPrediction type)
+    const colorPredictionStr = 
+      colorPrediction.predictedWinner === 'white' ? 'white_wins' :
+      colorPrediction.predictedWinner === 'black' ? 'black_wins' : 'draw';
+    
+    // Fuse: If both agree, high confidence. If disagree, use SF with reduced confidence.
+    if (sfPred.prediction === colorPredictionStr) {
+      return {
+        prediction: sfPred.prediction,
+        confidence: Math.min(98, sfPred.confidence + 10),
+        archetype,
+      };
+    } else {
+      // Stockfish has priority but lower confidence when Color Flow disagrees
+      return {
+        prediction: sfPred.prediction,
+        confidence: Math.max(35, sfPred.confidence - 15),
+        archetype,
+      };
+    }
+  } catch (err) {
+    console.warn('[v6.96-LOCAL] Hybrid fallback to SF-only:', err);
+    const sfPred = evalToPrediction(stockfishEval);
+    return {
+      prediction: sfPred.prediction,
+      confidence: sfPred.confidence,
+      archetype: 'FALLBACK',
+    };
+  }
 }
 
 function evalToPrediction(cp: number): { prediction: 'white_wins' | 'black_wins' | 'draw'; confidence: number } {
@@ -475,12 +534,8 @@ export async function runCloudPoolBatch(
       const fen = chess.fen();
       const truncatedPgn = chess.pgn();
       
-      // Hybrid analysis
-      const hybridResult = await generateHybridPrediction(truncatedPgn, { depth: 10 });
-      const probs = hybridResult.trajectoryPrediction.outcomeProbabilities;
-      const hybridPrediction = 
-        probs.whiteWin > probs.blackWin && probs.whiteWin > probs.draw ? 'white_wins' :
-        probs.blackWin > probs.draw ? 'black_wins' : 'draw';
+      // v6.96-LOCAL: Use local hybrid prediction (no cloud API)
+      const hybridResult = await generateLocalHybridPrediction(truncatedPgn, sfResult.eval, sfResult.depth);
       
       const sfPrediction = evalToPrediction(sfResult.eval);
       
@@ -492,16 +547,16 @@ export async function runCloudPoolBatch(
         pgn: truncatedPgn,
         stockfishEval: sfResult.eval,
         stockfishDepth: sfResult.depth,
-        stockfishMode: 'cloud',
+        stockfishMode: 'local', // v6.96: Always local now
         stockfishNodes: sfResult.nodes,
         stockfishPrediction: sfPrediction.prediction,
         stockfishConfidence: sfPrediction.confidence,
-        hybridPrediction: hybridPrediction as any,
-        hybridConfidence: hybridResult.confidence.overall,
-        hybridArchetype: hybridResult.strategicAnalysis.archetype,
+        hybridPrediction: hybridResult.prediction,
+        hybridConfidence: hybridResult.confidence,
+        hybridArchetype: hybridResult.archetype,
         actualResult: game.result,
         stockfishCorrect: sfPrediction.prediction === game.result,
-        hybridCorrect: hybridPrediction === game.result,
+        hybridCorrect: hybridResult.prediction === game.result,
         dataSource: game.source,
         poolName: config.name,
         analysisTimeMs: Date.now() - startTime,
@@ -585,12 +640,8 @@ export async function runLocalPoolBatch(
       const fen = chess.fen();
       const truncatedPgn = chess.pgn();
       
-      // Hybrid analysis
-      const hybridResult = await generateHybridPrediction(truncatedPgn, { depth: 15 });
-      const probs = hybridResult.trajectoryPrediction.outcomeProbabilities;
-      const hybridPrediction = 
-        probs.whiteWin > probs.blackWin && probs.whiteWin > probs.draw ? 'white_wins' :
-        probs.blackWin > probs.draw ? 'black_wins' : 'draw';
+      // v6.96-LOCAL: Use local hybrid prediction (no cloud API)
+      const hybridResult = await generateLocalHybridPrediction(truncatedPgn, sfResult.eval, sfResult.depth);
       
       const sfPrediction = evalToPrediction(sfResult.eval);
       
@@ -606,12 +657,12 @@ export async function runLocalPoolBatch(
         stockfishNodes: sfResult.nodes,
         stockfishPrediction: sfPrediction.prediction,
         stockfishConfidence: sfPrediction.confidence,
-        hybridPrediction: hybridPrediction as any,
-        hybridConfidence: hybridResult.confidence.overall,
-        hybridArchetype: hybridResult.strategicAnalysis.archetype,
+        hybridPrediction: hybridResult.prediction,
+        hybridConfidence: hybridResult.confidence,
+        hybridArchetype: hybridResult.archetype,
         actualResult: game.result,
         stockfishCorrect: sfPrediction.prediction === game.result,
-        hybridCorrect: hybridPrediction === game.result,
+        hybridCorrect: hybridResult.prediction === game.result,
         dataSource: game.source,
         poolName: config.name,
         analysisTimeMs: Date.now() - startTime,
