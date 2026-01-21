@@ -25,7 +25,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const AUTO_EVOLVE_VERSION = '7.7-NULL-TRUTH'; // null ≠ 0, absence ≠ zero
+const AUTO_EVOLVE_VERSION = '7.8-UNSIGNED-ENERGY'; // No negatives - only positive energy differentials
 
 // ============================================================================
 // LICHESS CLOUD EVAL - REAL STOCKFISH 17 (TURBO MODE)
@@ -766,29 +766,70 @@ async function generateRealDivergentPrediction(game: GameData): Promise<Predicti
 }
 
 /**
- * Convert centipawn to win probability using Lichess formula
- * This is the exact formula Stockfish/Lichess uses
+ * v7.8-UNSIGNED-ENERGY: Convert signed centipawns to positive energy model
+ * 
+ * PHILOSOPHY: The universe contains no negatives - only presence and magnitude.
+ * What we call "-50cp" is really "Black energy = 60, White energy = 40"
+ * 
+ * Returns: { whiteEnergy: 0-100, blackEnergy: 0-100, dominantSide: 'white'|'black'|'balanced' }
  */
-function cpToWinProbability(cp: number): number {
-  // Lichess formula: https://lichess.org/blog/WEwfpxQAALES-BgK/learn-from-your-mistakes
-  return 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * cp)) - 1);
+interface EnergyState {
+  whiteEnergy: number;   // 0-100 positive
+  blackEnergy: number;   // 0-100 positive  
+  dominantSide: 'white' | 'black' | 'balanced';
+  intensity: number;     // How strong is the differential (0-100)
+}
+
+function cpToEnergyState(cp: number): EnergyState {
+  // Lichess formula gives us win probability (0-100)
+  const winProb = 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * cp)) - 1);
+  
+  // Both sides ALWAYS have positive energy - it's just distributed differently
+  // Total energy in system = 100 (conservation principle)
+  const whiteEnergy = winProb;
+  const blackEnergy = 100 - winProb;
+  
+  // Determine dominance based on energy differential
+  const differential = Math.abs(whiteEnergy - blackEnergy);
+  let dominantSide: 'white' | 'black' | 'balanced';
+  
+  if (differential < 10) {
+    dominantSide = 'balanced';
+  } else if (whiteEnergy > blackEnergy) {
+    dominantSide = 'white';
+  } else {
+    dominantSide = 'black';
+  }
+  
+  return {
+    whiteEnergy,
+    blackEnergy,
+    dominantSide,
+    intensity: differential, // How "charged" the position is
+  };
 }
 
 /**
- * Generate Stockfish prediction from REAL evaluation
- * Uses actual centipawn scores from SF17 NNUE
+ * Legacy compatibility - converts to win probability (white's energy)
+ */
+function cpToWinProbability(cp: number): number {
+  return cpToEnergyState(cp).whiteEnergy;
+}
+
+/**
+ * v7.8-UNSIGNED-ENERGY: Generate prediction using positive energy model
+ * No negative numbers - only energy magnitude comparison
  */
 function generateStockfishPredictionFromRealEval(
   realEval: { cp: number; depth: number; isMate: boolean; mateIn?: number } | null,
   characteristics: GameCharacteristics
 ): { prediction: string; confidence: number } {
   
-  // If we have REAL SF17 evaluation, use it!
+  // If we have REAL SF17 evaluation, convert to energy state
   if (realEval) {
-    const cp = realEval.cp;
-    const winProb = cpToWinProbability(cp);
+    const energy = cpToEnergyState(realEval.cp);
     
-    // Mate detection
+    // Mate detection - maximum energy concentration
     if (realEval.isMate && realEval.mateIn !== undefined) {
       if (realEval.mateIn > 0) {
         return { prediction: 'white_wins', confidence: 99 };
@@ -797,37 +838,35 @@ function generateStockfishPredictionFromRealEval(
       }
     }
     
-    // Use win probability for prediction
+    // v7.8: Use UNSIGNED energy comparison - no negative numbers
+    // Both energies are positive, we compare magnitudes
     let prediction: string;
     let confidence: number;
     
-    if (winProb > 65) {
-      prediction = 'white_wins';
-      confidence = Math.min(95, winProb);
-    } else if (winProb < 35) {
-      prediction = 'black_wins';
-      confidence = Math.min(95, 100 - winProb);
-    } else if (winProb > 55) {
-      prediction = 'white_wins';
-      confidence = 55 + (winProb - 50);
-    } else if (winProb < 45) {
-      prediction = 'black_wins';
-      confidence = 55 + (50 - winProb);
+    console.log(`[${AUTO_EVOLVE_VERSION}] ⚡ Energy State: White=${energy.whiteEnergy.toFixed(1)}, Black=${energy.blackEnergy.toFixed(1)}, Intensity=${energy.intensity.toFixed(1)}`);
+    
+    if (energy.intensity > 30) {
+      // Strong energy differential - clear dominant side
+      prediction = energy.dominantSide === 'white' ? 'white_wins' : 'black_wins';
+      confidence = Math.min(95, 50 + energy.intensity);
+    } else if (energy.intensity > 10) {
+      // Moderate energy differential
+      prediction = energy.dominantSide === 'white' ? 'white_wins' 
+                 : energy.dominantSide === 'black' ? 'black_wins' : 'draw';
+      confidence = 50 + energy.intensity;
     } else {
-      // Very close - slight edge based on eval sign
-      if (cp > 20) {
-        prediction = 'white_wins';
-        confidence = 52;
-      } else if (cp < -20) {
-        prediction = 'black_wins';
-        confidence = 52;
-      } else {
+      // Energy nearly balanced - predict draw or slight edge
+      if (energy.dominantSide === 'balanced') {
         prediction = 'draw';
-        confidence = 50;
+        confidence = 50 + (10 - energy.intensity); // More balanced = more confident draw
+      } else {
+        // Tiny edge to dominant side
+        prediction = energy.dominantSide === 'white' ? 'white_wins' : 'black_wins';
+        confidence = 52;
       }
     }
     
-    console.log(`[${AUTO_EVOLVE_VERSION}] REAL SF17: cp=${cp}, winProb=${winProb.toFixed(1)}%, prediction=${prediction}`);
+    console.log(`[${AUTO_EVOLVE_VERSION}] REAL SF17: energy.white=${energy.whiteEnergy.toFixed(1)}%, energy.black=${energy.blackEnergy.toFixed(1)}%, prediction=${prediction}`);
     
     return { prediction, confidence };
   }
@@ -890,14 +929,19 @@ function analyzeRealGameCharacteristics(moves: string[], predictionMove: number)
   };
 }
 
+/**
+ * v7.8-UNSIGNED-ENERGY: Quadrant analysis using positive energy only
+ * No negative balances - track WHITE and BLACK energy separately
+ */
 function analyzeQuadrantFromMoves(moves: string[]): QuadrantProfile {
-  let kingsideWhite = 0, kingsideBlack = 0;
-  let queensideWhite = 0, queensideBlack = 0;
-  let center = 0;
+  // Track POSITIVE energy for each side separately
+  let whiteKingsideEnergy = 0, blackKingsideEnergy = 0;
+  let whiteQueensideEnergy = 0, blackQueensideEnergy = 0;
+  let whiteCenterEnergy = 0, blackCenterEnergy = 0;
   
   moves.forEach((move, idx) => {
     const isWhite = idx % 2 === 0;
-    const balance = isWhite ? 1 : -1;
+    const energy = 3; // Each move contributes positive energy
     
     // Extract destination square
     const dest = move.match(/[a-h][1-8]/)?.[0];
@@ -910,59 +954,84 @@ function analyzeQuadrantFromMoves(moves: string[]): QuadrantProfile {
     const isWhiteSide = rank < 4;
     const isCenter = (file >= 3 && file <= 4) && (rank >= 3 && rank <= 4);
     
+    // Add POSITIVE energy to the appropriate side
     if (isCenter) {
-      center += balance * 5;
-    } else if (isKingside && isWhiteSide) {
-      kingsideWhite += balance * 3;
-    } else if (isKingside && !isWhiteSide) {
-      kingsideBlack += balance * 3;
-    } else if (!isKingside && isWhiteSide) {
-      queensideWhite += balance * 3;
+      if (isWhite) whiteCenterEnergy += 5;
+      else blackCenterEnergy += 5;
+    } else if (isKingside) {
+      if (isWhiteSide) {
+        if (isWhite) whiteKingsideEnergy += energy;
+        else blackKingsideEnergy += energy; // Black attacking white's kingside
+      } else {
+        if (isWhite) whiteKingsideEnergy += energy; // White attacking black's kingside
+        else blackKingsideEnergy += energy;
+      }
     } else {
-      queensideBlack += balance * 3;
+      if (isWhiteSide) {
+        if (isWhite) whiteQueensideEnergy += energy;
+        else blackQueensideEnergy += energy;
+      } else {
+        if (isWhite) whiteQueensideEnergy += energy;
+        else blackQueensideEnergy += energy;
+      }
     }
   });
   
-  const normalize = (val: number) => Math.max(-100, Math.min(100, val));
+  // Return as differential (for compatibility) but calculated from positive values
+  const normalize = (white: number, black: number) => Math.max(-100, Math.min(100, white - black));
   
   return {
-    kingsideWhite: normalize(kingsideWhite),
-    kingsideBlack: normalize(kingsideBlack),
-    queensideWhite: normalize(queensideWhite),
-    queensideBlack: normalize(queensideBlack),
-    center: normalize(center),
+    kingsideWhite: normalize(whiteKingsideEnergy, blackKingsideEnergy),
+    kingsideBlack: normalize(blackKingsideEnergy, whiteKingsideEnergy),
+    queensideWhite: normalize(whiteQueensideEnergy, blackQueensideEnergy),
+    queensideBlack: normalize(blackQueensideEnergy, whiteQueensideEnergy),
+    center: normalize(whiteCenterEnergy, blackCenterEnergy),
   };
 }
 
+/**
+ * v7.8-UNSIGNED-ENERGY: Temporal flow using positive energy tracking
+ * No negative balances - track WHITE and BLACK energy through game phases
+ */
 function analyzeTemporalFlow(moves: string[], totalMoves: number): TemporalFlow {
-  let openingBalance = 0, middlegameBalance = 0, endgameBalance = 0;
+  // Track POSITIVE energy for each side in each phase
+  let whiteOpeningEnergy = 0, blackOpeningEnergy = 0;
+  let whiteMiddlegameEnergy = 0, blackMiddlegameEnergy = 0;
+  let whiteEndgameEnergy = 0, blackEndgameEnergy = 0;
   let volatility = 0;
-  let prevBalance = 0;
+  let prevEnergy = 0;
   
   moves.forEach((move, idx) => {
-    const balance = idx % 2 === 0 ? 1 : -1;
+    const isWhite = idx % 2 === 0;
     const moveNum = Math.floor(idx / 2) + 1;
+    const energy = 1; // Each move contributes positive energy
     
     if (moveNum <= 10) {
-      openingBalance += balance;
+      if (isWhite) whiteOpeningEnergy += energy;
+      else blackOpeningEnergy += energy;
     } else if (moveNum <= 25) {
-      middlegameBalance += balance;
+      if (isWhite) whiteMiddlegameEnergy += energy;
+      else blackMiddlegameEnergy += energy;
     } else {
-      endgameBalance += balance;
+      if (isWhite) whiteEndgameEnergy += energy;
+      else blackEndgameEnergy += energy;
     }
     
-    volatility += Math.abs(balance - prevBalance);
-    prevBalance = balance;
+    // Volatility = energy differential changes over time
+    const currentDiff = isWhite ? 1 : -1;
+    volatility += Math.abs(currentDiff - prevEnergy);
+    prevEnergy = currentDiff;
   });
   
-  const normalize = (val: number, phase: number) => 
-    Math.max(-100, Math.min(100, (val / Math.max(phase, 1)) * 10));
+  // Return as differential (for compatibility) but calculated from positive values
+  const normalize = (white: number, black: number, phase: number) => 
+    Math.max(-100, Math.min(100, ((white - black) / Math.max(phase, 1)) * 10));
   
   return {
-    opening: normalize(openingBalance, 10),
-    middlegame: normalize(middlegameBalance, 15),
-    endgame: normalize(endgameBalance, Math.max(0, totalMoves - 25)),
-    volatility: Math.min(100, (volatility / totalMoves) * 5),
+    opening: normalize(whiteOpeningEnergy, blackOpeningEnergy, 10),
+    middlegame: normalize(whiteMiddlegameEnergy, blackMiddlegameEnergy, 15),
+    endgame: normalize(whiteEndgameEnergy, blackEndgameEnergy, Math.max(1, totalMoves - 25)),
+    volatility: Math.min(100, (volatility / Math.max(totalMoves, 1)) * 5),
   };
 }
 
