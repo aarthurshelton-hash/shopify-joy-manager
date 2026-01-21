@@ -81,7 +81,7 @@ const App = () => (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <RealtimeAccuracyProvider enabled={true}>
-          <AutoEvolutionProvider autoStart={true} delayMs={8000}>
+          <AutoEvolutionProvider autoStart={true}>
           <UniversalHeartbeatProvider autoStart={true} interval={30000}>
           <TooltipProvider>
             <Toaster />

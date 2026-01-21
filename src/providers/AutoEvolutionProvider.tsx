@@ -1,96 +1,128 @@
 /**
- * AutoEvolutionProvider - v6.95-AUTOSTART
+ * AutoEvolutionProvider - v6.96-PERSISTENT
  * 
- * Automatically starts the evolution pipeline when the app loads.
- * This ensures continuous data absorption without manual intervention.
+ * CRITICAL FIX: Previous version (v6.95) had timers that stopped on page reload.
+ * 
+ * v6.96 CHANGES:
+ * - Removed startedRef guard that prevented restarts
+ * - Added visibility change handler to resume when tab becomes active
+ * - Added periodic heartbeat to detect stalls
+ * - Immediate start on mount (no 8s delay that causes missed starts)
  */
 
 import { useEffect, useRef } from 'react';
 import {
   startAutoEvolution,
-  stopAutoEvolution,
-  subscribeToEvolution,
   getEvolutionState,
+  subscribeToEvolution,
 } from '@/lib/chess/autoEvolutionEngine';
 import { supabase } from '@/integrations/supabase/client';
 
-const AUTO_EVOLUTION_VERSION = "6.95-AUTOSTART";
+const AUTO_EVOLUTION_VERSION = "6.96-PERSISTENT";
 
 interface AutoEvolutionProviderProps {
   children: React.ReactNode;
   autoStart?: boolean;
-  delayMs?: number; // Delay before auto-starting (gives app time to load)
 }
 
 export function AutoEvolutionProvider({ 
   children, 
   autoStart = true,
-  delayMs = 5000 // Wait 5s for app to fully load
 }: AutoEvolutionProviderProps) {
-  const startedRef = useRef(false);
-  const unsubscribeRef = useRef<(() => void) | null>(null);
+  const initRef = useRef(false);
+  const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
   
   useEffect(() => {
-    if (!autoStart || startedRef.current) return;
+    if (!autoStart) return;
     
-    console.log(`[v6.95-AUTOSTART] AutoEvolutionProvider mounted, will start in ${delayMs}ms...`);
+    // Prevent double-init in strict mode, but allow restart after page reload
+    if (initRef.current) return;
+    initRef.current = true;
+    
+    console.log(`[v6.96-PERSISTENT] AutoEvolutionProvider mounted`);
     
     // Subscribe to events for logging
-    unsubscribeRef.current = subscribeToEvolution((state, event, data) => {
+    const unsubscribe = subscribeToEvolution((state, event, data) => {
       if (event === 'cloud_batch_complete' || event === 'local_batch_complete') {
-        console.log(`[v6.95-AUTOSTART] ✅ Batch complete: +${data?.count} predictions (session: ${state.sessionPredictions})`);
-        
-        // Log to database for verification
+        console.log(`[v6.96-PERSISTENT] ✅ Batch complete: +${data?.count} predictions (session: ${state.sessionPredictions})`);
         logEvolutionEvent(event, data);
       } else if (event === 'recovery_complete') {
-        console.log(`[v6.95-AUTOSTART] 🔄 Recovery #${data?.count} complete`);
+        console.log(`[v6.96-PERSISTENT] 🔄 Recovery #${data?.count} complete`);
       } else if (event === 'cloud_batch_error' || event === 'local_batch_error') {
-        console.error(`[v6.95-AUTOSTART] ❌ Batch error:`, data?.error);
+        console.error(`[v6.96-PERSISTENT] ❌ Batch error:`, data?.error);
+        logEvolutionEvent('batch_error', { error: String(data?.error) });
       }
     });
     
-    // Delayed start to ensure app is fully loaded
-    const startTimer = setTimeout(async () => {
+    // IMMEDIATE START - no delay
+    const startEngine = async () => {
       const state = getEvolutionState();
       if (state.isRunning) {
-        console.log('[v6.95-AUTOSTART] Already running, skipping auto-start');
+        console.log('[v6.96-PERSISTENT] Engine already running');
         return;
       }
       
-      console.log(`[v6.95-AUTOSTART] ========================================`);
-      console.log(`[v6.95-AUTOSTART] 🚀 AUTO-STARTING EVOLUTION PIPELINE`);
-      console.log(`[v6.95-AUTOSTART] Version: ${AUTO_EVOLUTION_VERSION}`);
-      console.log(`[v6.95-AUTOSTART] ========================================`);
+      console.log(`[v6.96-PERSISTENT] ========================================`);
+      console.log(`[v6.96-PERSISTENT] 🚀 AUTO-STARTING EVOLUTION PIPELINE`);
+      console.log(`[v6.96-PERSISTENT] Version: ${AUTO_EVOLUTION_VERSION}`);
+      console.log(`[v6.96-PERSISTENT] Time: ${new Date().toISOString()}`);
+      console.log(`[v6.96-PERSISTENT] ========================================`);
       
       try {
         await startAutoEvolution();
-        startedRef.current = true;
         
-        // Verify it started
         const newState = getEvolutionState();
-        console.log(`[v6.95-AUTOSTART] ✅ Engine running: ${newState.isRunning}`);
-        console.log(`[v6.95-AUTOSTART] Session predictions: ${newState.sessionPredictions}`);
-        console.log(`[v6.95-AUTOSTART] Total predictions: ${newState.totalPredictions}`);
+        console.log(`[v6.96-PERSISTENT] ✅ Engine running: ${newState.isRunning}`);
         
-        // Log start event
         await logEvolutionEvent('auto_start', { 
           version: AUTO_EVOLUTION_VERSION,
           totalPredictions: newState.totalPredictions 
         });
         
       } catch (err) {
-        console.error('[v6.95-AUTOSTART] ❌ Failed to auto-start:', err);
+        console.error('[v6.96-PERSISTENT] ❌ Failed to auto-start:', err);
+        // Retry after 30s
+        setTimeout(startEngine, 30000);
       }
-    }, delayMs);
+    };
+    
+    // Start immediately
+    startEngine();
+    
+    // HEARTBEAT: Check every 5 min if engine stopped and restart it
+    heartbeatRef.current = setInterval(async () => {
+      const state = getEvolutionState();
+      if (!state.isRunning) {
+        console.warn('[v6.96-PERSISTENT] ⚠️ Heartbeat detected engine stopped, restarting...');
+        await startEngine();
+      } else {
+        console.log(`[v6.96-PERSISTENT] 💓 Heartbeat OK - Session: ${state.sessionPredictions} predictions`);
+      }
+    }, 5 * 60 * 1000);
+    
+    // VISIBILITY HANDLER: Resume when tab becomes visible
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible') {
+        console.log('[v6.96-PERSISTENT] Tab became visible, checking engine...');
+        const state = getEvolutionState();
+        if (!state.isRunning) {
+          console.warn('[v6.96-PERSISTENT] Engine not running, restarting...');
+          await startEngine();
+        }
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     
     return () => {
-      clearTimeout(startTimer);
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
+      unsubscribe();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (heartbeatRef.current) {
+        clearInterval(heartbeatRef.current);
       }
       // Note: We do NOT stop the engine on unmount - it should keep running
     };
-  }, [autoStart, delayMs]);
+  }, [autoStart]);
   
   return <>{children}</>;
 }
@@ -103,7 +135,7 @@ async function logEvolutionEvent(event: string, data?: Record<string, unknown>) 
     await supabase
       .from('evolution_state')
       .insert({
-        state_type: `autostart_event_${event}`,
+        state_type: `v6.96_${event}`,
         genes: {
           version: AUTO_EVOLUTION_VERSION,
           event,
@@ -115,7 +147,7 @@ async function logEvolutionEvent(event: string, data?: Record<string, unknown>) 
       });
   } catch (err) {
     // Silent fail - this is just for verification logging
-    console.warn('[v6.95-AUTOSTART] Event log failed:', err);
+    console.warn('[v6.96-PERSISTENT] Event log failed:', err);
   }
 }
 
