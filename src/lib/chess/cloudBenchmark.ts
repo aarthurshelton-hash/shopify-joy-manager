@@ -1,6 +1,13 @@
 /**
  * En Pensent™ vs LOCAL Stockfish 17 Benchmark
- * VERSION: 6.91-BULLETPROOF-LOCAL (2026-01-21)
+ * VERSION: 6.92-DUAL-POOL (2026-01-21)
+ * 
+ * v6.92 CHANGES (Dual-Pool Pipeline):
+ * - NEW: Dual-pool architecture for volume + depth
+ * - CLOUD-VOLUME pool: 100+ games/hour via Lichess Cloud API
+ * - LOCAL-DEEP pool: 5 games/hour with SF17 D30 (100M nodes)
+ * - Cross-validates predictions across Stockfish configurations
+ * - Tracks stockfish_mode (cloud/local) in database
  * 
  * v6.91 CHANGES (Bulletproof Local SF):
  * - Engine health check before each analysis
@@ -22,11 +29,11 @@
  * - Lichess: -100 offset (Glicko-2 tends higher)
  * - Chess.com: -50 offset (closer to FIDE)
  * 
- * Compares against LOCAL SF17 NNUE - consistent baseline for all positions
+ * SEE ALSO: dualPoolPipeline.ts for automated high-volume processing
  */
 
-const CLOUD_BENCHMARK_VERSION = "6.91-BULLETPROOF-LOCAL";
-console.log(`[v6.91] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
+const CLOUD_BENCHMARK_VERSION = "6.92-DUAL-POOL";
+console.log(`[v6.92] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
 
 import { Chess } from 'chess.js';
 import { getStockfishEngine } from './stockfishEngine';
