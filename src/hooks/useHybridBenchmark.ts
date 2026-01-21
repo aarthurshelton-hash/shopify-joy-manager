@@ -1,31 +1,32 @@
 /**
- * Hybrid Benchmark Hook - v6.81-RETRY
- * VERSION: 6.81-RETRY (2026-01-21)
+ * Hybrid Benchmark Hook - v6.82-SPEED
+ * VERSION: 6.82-SPEED (2026-01-21)
  * 
- * v6.81 CHANGES (RETRY ENGINE TIMEOUTS):
+ * v6.82 CHANGES (SPEED UP BY 1s):
+ * - ALL TIMEOUTS: Reduced by 1 second each for faster processing
+ * - WARMUP: 7s (was 8s)
+ * - HEALTH CHECK: 4s (was 5s)
+ * - ANALYSIS: 39s/49s (was 40s/50s)
+ * - RETRY WAIT: 1s base (was 2s base)
+ * - DEEP RECOVERY: 4s (was 5s)
+ * 
+ * v6.81 PHILOSOPHY (inherited):
  * - ENGINE RETRIES: Timeouts get 3 retries with increasing patience, not instant fail
- * - LONGER TIMEOUTS: 40-50s per analysis attempt (up from 35-45s)
- * - DEEP RECOVERY: 5s wait + full reinit after consecutive total failures
  * - ONLY FAIL PERMANENTLY: After exhausting all 3 retry attempts
  * 
  * v6.80 PHILOSOPHY (inherited):
  * - PATIENT RATE LIMITING: Wait for limits to clear, never skip due to rate limits
  * - WAIT, DON'T SKIP: Games only fail if Stockfish genuinely can't analyze them
- * 
- * v6.78 PHILOSOPHY (inherited):
- * - ONLY requirement: unique raw game ID not in database
- * - BOTH sources: Lichess + Chess.com equally
- * - SIMPLE dedup: one check - is raw ID in analyzedData.gameIds?
  */
 
-// v6.81-RETRY: Retry engine timeouts, don't fail immediately
+// v6.82-SPEED: All timeouts reduced by 1 second for faster processing
 // Philosophy:
 // 1. Engine timeouts are resource issues, NOT game problems
 // 2. Retry up to 3 times with increasing patience
 // 3. Only mark as failed after ALL retries exhausted
 // 4. Every game that CAN be analyzed SHOULD be analyzed
-const BENCHMARK_VERSION = "6.81-RETRY";
-console.log(`[v6.81] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+const BENCHMARK_VERSION = "6.82-SPEED";
+console.log(`[v6.82] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -465,7 +466,7 @@ export function useHybridBenchmark() {
         const warmupFen = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1'; // e4 position
         const warmupResult = await Promise.race([
           engine.analyzePosition(warmupFen, { depth: 10 }),
-          new Promise<null>(r => setTimeout(() => r(null), 8000)) // 8s timeout for warmup
+          new Promise<null>(r => setTimeout(() => r(null), 7000)) // 7s timeout for warmup
         ]);
         
         if (!warmupResult) {
@@ -791,7 +792,7 @@ export function useHybridBenchmark() {
             const healthFen = 'r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3'; // Common opening
             const healthResult = await Promise.race([
               engine.analyzePosition(healthFen, { depth: 8 }),
-              new Promise<null>(r => setTimeout(() => r(null), 5000))
+              new Promise<null>(r => setTimeout(() => r(null), 4000))
             ]);
             
             if (!healthResult) {
@@ -818,10 +819,10 @@ export function useHybridBenchmark() {
           console.log(`[v6.80] 📥 FETCH PHASE: Queue empty, need ${gameCount - predictedCount} more predictions`);
           console.log(`[v6.80] Stats: predicted=${predictedCount}, index=${gameIndex}, queueLen=${gameQueue.length}`);
           
-          // v6.80-PATIENT: LONGER exponential backoff - let APIs recover
+          // v6.82-SPEED: Faster exponential backoff - reduced by 1s base
           if (emptyBatchStreak > 0) {
-            const waitTime = Math.min(5000 * Math.pow(1.5, emptyBatchStreak), 30000);
-            console.log(`[v6.80-PATIENT] ⏳ Patience backoff: ${Math.round(waitTime/1000)}s (streak: ${emptyBatchStreak})`);
+            const waitTime = Math.min(4000 * Math.pow(1.5, emptyBatchStreak), 29000);
+            console.log(`[v6.82] ⏳ Patience backoff: ${Math.round(waitTime/1000)}s (streak: ${emptyBatchStreak})`);
             await new Promise(r => setTimeout(r, waitTime));
           }
           
@@ -977,7 +978,7 @@ export function useHybridBenchmark() {
         let engineSucceeded = false;
         
         while (engineRetries < MAX_ENGINE_RETRIES && !engineSucceeded) {
-          const ANALYSIS_TIMEOUT = depth >= 40 ? 50000 : 40000; // v6.81: Even more patient
+          const ANALYSIS_TIMEOUT = depth >= 40 ? 49000 : 39000; // v6.82: Speed up by 1s
           
           try {
             if (engineRetries > 0) {
@@ -985,7 +986,7 @@ export function useHybridBenchmark() {
               setProgress(prev => ({ ...prev!, message: `Engine retry ${engineRetries}/${MAX_ENGINE_RETRIES}...` }));
               
               // Wait before retry, increasing with each attempt
-              const retryWait = 2000 * engineRetries;
+              const retryWait = 1000 * engineRetries; // v6.82: 1s base instead of 2s
               await new Promise(r => setTimeout(r, retryWait));
               
               // Reset engine state
@@ -1028,8 +1029,8 @@ export function useHybridBenchmark() {
             
             try { engine.stop(); } catch (e) { /* ignore */ }
             
-            console.log(`[v6.81] ⏳ Deep recovery: waiting 5s before reinit...`);
-            await new Promise(r => setTimeout(r, 5000));
+            console.log(`[v6.82] ⏳ Deep recovery: waiting 4s before reinit...`);
+            await new Promise(r => setTimeout(r, 4000));
             
             const reready = await engine.waitReady((p) => {
               setProgress(prev => ({ ...prev!, message: `Engine recovery: ${Math.round(p * 100)}%` }));
