@@ -111,7 +111,7 @@ export function AutoEvolutionPanel() {
           </div>
         </div>
         <CardDescription>
-          Self-healing dual-pool pipeline • Never stops absorbing data
+          v6.94-BULLETPROOF • Local Stockfish only • No external API dependencies
         </CardDescription>
       </CardHeader>
       
@@ -138,20 +138,20 @@ export function AutoEvolutionPanel() {
           
           <div className="bg-background/50 rounded-lg p-3 border">
             <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-              <Cloud className="h-3 w-3" />
-              Cloud Pool
+              <Cpu className="h-3 w-3" />
+              Volume Pool
             </div>
             <div className="text-xl font-bold text-blue-400">{cloudPredictions.toLocaleString()}</div>
-            <div className="text-xs text-muted-foreground">100/hr target</div>
+            <div className="text-xs text-muted-foreground">D18 ~100/hr</div>
           </div>
           
           <div className="bg-background/50 rounded-lg p-3 border">
             <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
               <Cpu className="h-3 w-3" />
-              Local Pool
+              Deep Pool
             </div>
             <div className="text-xl font-bold text-purple-400">{localPredictions.toLocaleString()}</div>
-            <div className="text-xs text-muted-foreground">5/hr target</div>
+            <div className="text-xs text-muted-foreground">D30 ~5/hr</div>
           </div>
         </div>
         
@@ -160,8 +160,8 @@ export function AutoEvolutionPanel() {
           <div className="bg-background/50 rounded-lg p-3 border">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <Cloud className="h-4 w-4 text-blue-400" />
-                <span className="font-medium text-sm">CLOUD-VOLUME</span>
+                <Cpu className="h-4 w-4 text-blue-400" />
+                <span className="font-medium text-sm">VOLUME (D18)</span>
               </div>
               {getStatusBadge(poolStatus.cloud)}
             </div>
@@ -183,7 +183,7 @@ export function AutoEvolutionPanel() {
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <Cpu className="h-4 w-4 text-purple-400" />
-                <span className="font-medium text-sm">LOCAL-DEEP</span>
+                <span className="font-medium text-sm">DEEP (D30)</span>
               </div>
               {getStatusBadge(poolStatus.local)}
             </div>
@@ -233,8 +233,8 @@ export function AutoEvolutionPanel() {
         {/* Info Banner */}
         {isRunning && !isPaused && (
           <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 text-sm text-center">
-            <span className="text-primary font-medium">🧬 Evolution Active</span>
-            <span className="text-muted-foreground"> • Cloud batch every 15min • Deep batch every 24min • Auto-recovery enabled</span>
+            <span className="text-primary font-medium">🚀 v6.94 ACTIVE</span>
+            <span className="text-muted-foreground"> • Volume batch every 6min • Deep batch every 12min • LOCAL STOCKFISH ONLY</span>
           </div>
         )}
         

@@ -1,40 +1,36 @@
 /**
  * Dual-Pool Automated Benchmark Pipeline
- * VERSION: 6.92-DUAL-POOL (2026-01-21)
+ * VERSION: 6.94-BULLETPROOF (2026-01-21)
  * 
  * ARCHITECTURE:
  * ============
- * Two parallel processing pools optimized for different use cases:
+ * Two parallel processing pools - LOCAL STOCKFISH IS PRIMARY (guaranteed to work)
  * 
- * 1. HIGH-VOLUME CLOUD POOL (100+ results/hour)
- *    - Uses Lichess Cloud API for Stockfish evaluations
- *    - Depth ~25-40 from cached cloud analysis
- *    - Fast throughput: ~2 games/minute
- *    - Best for: Volume, statistical significance
+ * 1. HIGH-VOLUME LOCAL POOL (100+ results/hour)
+ *    - Uses LOCAL Stockfish 17 NNUE at optimized depth (D18)
+ *    - Fast and RELIABLE - no external API dependencies
+ *    - Best for: Volume, guaranteed throughput
  * 
- * 2. DEEP LOCAL POOL (5 results/hour)
- *    - Uses local Stockfish 17 NNUE at maximum depth
- *    - Depth 30+ with 100M+ nodes
+ * 2. DEEP LOCAL POOL (5 results/hour)  
+ *    - Uses local Stockfish 17 NNUE at maximum depth (D30)
  *    - Slow but precise: ~12 minutes/game
  *    - Best for: Edge cases, pattern discovery
  * 
- * THROUGHPUT TARGETS:
- * - Cloud Pool: 100 games/hour minimum
- * - Local Pool: 5 games/hour with deep analysis
- * - Combined: 105+ unique games/hour
+ * CRITICAL: Cloud API is OPTIONAL enhancement, not required.
+ * Pipeline MUST work without any external API.
  * 
- * DATA DIVERSITY:
- * - Two different Stockfish configurations
- * - Cross-validates predictions across depth levels
- * - Identifies positions where depth matters
+ * THROUGHPUT TARGETS:
+ * - Volume Pool: 100 games/hour minimum (LOCAL STOCKFISH D18)
+ * - Deep Pool: 5 games/hour with deep analysis (LOCAL STOCKFISH D30)
+ * - Combined: 105+ unique games/hour
  */
 
-const DUAL_POOL_VERSION = "6.92-DUAL-POOL";
-console.log(`[v6.92] dualPoolPipeline.ts LOADED - Version: ${DUAL_POOL_VERSION}`);
+const DUAL_POOL_VERSION = "6.94-BULLETPROOF";
+console.log(`[v6.94] dualPoolPipeline.ts LOADED - Version: ${DUAL_POOL_VERSION}`);
 
 import { Chess } from 'chess.js';
-import { getStockfishEngine } from './stockfishEngine';
-import { evaluatePosition as evaluateCloudPosition, getRateLimitStatus, waitForRateLimit } from './lichessCloudEval';
+import { getStockfishEngine, terminateStockfish } from './stockfishEngine';
+import { evaluatePosition as evaluateCloudPosition, getRateLimitStatus } from './lichessCloudEval';
 import { generateHybridPrediction } from './hybridPrediction';
 import { fetchLichessGames, lichessGameToPgn, type LichessGame } from './gameImport/lichessApi';
 import { fetchChessComGames, type ChessComGame } from './gameImport/chesscomApi';
@@ -46,29 +42,33 @@ import { supabase } from '@/integrations/supabase/client';
 export interface PoolConfig {
   name: string;
   targetPerHour: number;
-  stockfishMode: 'cloud' | 'local';
-  localDepth?: number;
-  localNodes?: number;
+  stockfishMode: 'local_fast' | 'local_deep'; // v6.94: Always local, just different depth
+  localDepth: number;
+  localNodes: number;
   analysisTimeout: number; // ms
   delayBetweenGames: number; // ms
 }
 
+// v6.94: VOLUME pool uses LOCAL Stockfish at D18 for guaranteed throughput
 export const CLOUD_POOL_CONFIG: PoolConfig = {
-  name: 'CLOUD-VOLUME',
+  name: 'VOLUME-LOCAL',
   targetPerHour: 100,
-  stockfishMode: 'cloud',
-  analysisTimeout: 15000, // 15s max for cloud
-  delayBetweenGames: 500, // 0.5s between games
+  stockfishMode: 'local_fast',
+  localDepth: 18,           // D18 is fast but accurate
+  localNodes: 5000000,      // 5M nodes - quick
+  analysisTimeout: 30000,   // 30s max
+  delayBetweenGames: 500,   // 0.5s between games
 };
 
+// v6.94: DEEP pool uses LOCAL Stockfish at D30 for precision
 export const LOCAL_POOL_CONFIG: PoolConfig = {
   name: 'LOCAL-DEEP',
   targetPerHour: 5,
-  stockfishMode: 'local',
+  stockfishMode: 'local_deep',
   localDepth: 30,
-  localNodes: 100000000, // 100M nodes
-  analysisTimeout: 600000, // 10 minutes max
-  delayBetweenGames: 1000, // 1s between games
+  localNodes: 100000000,    // 100M nodes
+  analysisTimeout: 600000,  // 10 minutes max
+  delayBetweenGames: 1000,  // 1s between games
 };
 
 // ================ TYPES ================
@@ -308,64 +308,28 @@ async function fetchChessComGamesForPool(
 
 // ================ ANALYSIS FUNCTIONS ================
 
-async function analyzeWithCloudPool(
+/**
+ * v6.94-BULLETPROOF: Always use LOCAL Stockfish for guaranteed results
+ * Cloud API is OPTIONAL enhancement only - pipeline works without it
+ */
+async function analyzeWithLocalStockfish(
   game: UnifiedGame,
   movesToPlay: number,
   config: PoolConfig
-): Promise<{ eval: number; depth: number; nodes?: number } | null> {
+): Promise<{ eval: number; depth: number; nodes?: number; mode: string } | null> {
   const chess = new Chess();
   
   try {
     chess.loadPgn(game.pgn);
   } catch {
+    console.warn(`[v6.94] PGN parse failed for ${game.id}`);
     return null;
   }
   
   const history = chess.history();
-  if (history.length < movesToPlay) return null;
-  
-  chess.reset();
-  for (let i = 0; i < movesToPlay; i++) {
-    chess.move(history[i]);
-  }
-  
-  const fen = chess.fen();
-  
-  // Check rate limit status
-  const rateLimitStatus = getRateLimitStatus();
-  if (rateLimitStatus.isLimited) {
-    console.log(`[v6.92-CLOUD] Rate limited, waiting...`);
-    await waitForRateLimit(60000);
-  }
-  
-  const cloudEval = await evaluateCloudPosition(fen, 1, false, true);
-  
-  if (!cloudEval) {
-    console.log(`[v6.92-CLOUD] No cloud eval for position`);
+  if (history.length < movesToPlay) {
     return null;
   }
-  
-  return {
-    eval: cloudEval.evaluation,
-    depth: cloudEval.depth,
-  };
-}
-
-async function analyzeWithLocalPool(
-  game: UnifiedGame,
-  movesToPlay: number,
-  config: PoolConfig
-): Promise<{ eval: number; depth: number; nodes?: number } | null> {
-  const chess = new Chess();
-  
-  try {
-    chess.loadPgn(game.pgn);
-  } catch {
-    return null;
-  }
-  
-  const history = chess.history();
-  if (history.length < movesToPlay) return null;
   
   chess.reset();
   for (let i = 0; i < movesToPlay; i++) {
@@ -381,17 +345,26 @@ async function analyzeWithLocalPool(
     const readyTimeout = new Promise<never>((_, reject) => 
       setTimeout(() => reject(new Error('Engine ready timeout')), 15000)
     );
-    await Promise.race([engine.waitReady(), readyTimeout]);
     
-    // Deep analysis with extended timeout
+    try {
+      await Promise.race([engine.waitReady(), readyTimeout]);
+    } catch (readyErr) {
+      console.warn(`[v6.94] Engine not ready, attempting recovery...`);
+      terminateStockfish();
+      await new Promise(r => setTimeout(r, 2000));
+      const newEngine = getStockfishEngine();
+      await newEngine.waitReady();
+    }
+    
+    // Analysis with timeout
     const analysisTimeout = new Promise<never>((_, reject) => 
       setTimeout(() => reject(new Error(`Analysis timeout after ${config.analysisTimeout}ms`)), config.analysisTimeout)
     );
     
     const analysis = await Promise.race([
       engine.analyzePosition(fen, { 
-        depth: config.localDepth || 30,
-        nodes: config.localNodes || 100000000,
+        depth: config.localDepth,
+        nodes: config.localNodes,
       }),
       analysisTimeout,
     ]);
@@ -400,20 +373,40 @@ async function analyzeWithLocalPool(
       eval: analysis.evaluation.score,
       depth: analysis.evaluation.depth,
       nodes: analysis.evaluation.nodes,
+      mode: config.stockfishMode,
     };
   } catch (err) {
-    console.error(`[v6.92-LOCAL] Analysis failed:`, err);
+    console.error(`[v6.94] Analysis failed for ${game.id}:`, err);
     
-    // Try to recover engine
+    // Try to recover engine for next game
     try {
       const engine = getStockfishEngine();
       engine.stop();
       await new Promise(r => setTimeout(r, 1000));
-      await engine.waitReady();
     } catch {}
     
     return null;
   }
+}
+
+// Legacy wrapper for backward compatibility
+async function analyzeWithCloudPool(
+  game: UnifiedGame,
+  movesToPlay: number,
+  config: PoolConfig
+): Promise<{ eval: number; depth: number; nodes?: number } | null> {
+  // v6.94: Route to local Stockfish - cloud is unreliable
+  const result = await analyzeWithLocalStockfish(game, movesToPlay, CLOUD_POOL_CONFIG);
+  return result ? { eval: result.eval, depth: result.depth, nodes: result.nodes } : null;
+}
+
+async function analyzeWithLocalPool(
+  game: UnifiedGame,
+  movesToPlay: number,
+  config: PoolConfig
+): Promise<{ eval: number; depth: number; nodes?: number } | null> {
+  const result = await analyzeWithLocalStockfish(game, movesToPlay, config);
+  return result ? { eval: result.eval, depth: result.depth, nodes: result.nodes } : null;
 }
 
 // ================ MAIN PIPELINE FUNCTIONS ================
