@@ -1,10 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 /**
- * Lichess Games Fetcher v6.67-RATELIMIT-MEMORY
+ * Lichess Games Fetcher v6.86-PATIENT-WAIT
  * 
- * Server-side rate limit tracking ensures we don't hammer the API
- * after receiving a 429. The cooldown is remembered across requests.
+ * Server-side rate limit tracking ensures we don't hammer the API.
+ * Client now WAITS for cooldowns instead of breaking, so we can be 
+ * more conservative with our intervals.
  */
 
 const corsHeaders = {
@@ -16,11 +17,11 @@ const corsHeaders = {
 const cache = new Map<string, { data: unknown; timestamp: number }>();
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes (longer to reduce repeated hits)
 
-// v6.67-RATELIMIT-MEMORY: Track rate limit state across requests
+// v6.86-PATIENT-WAIT: More conservative intervals since client waits
 let lastRequestTime = 0;
-let baseInterval = 2500; // Start at 2.5 seconds
+let baseInterval = 3000; // Start at 3 seconds (was 2.5s)
 let consecutiveRequests = 0;
-let rateLimitedUntil = 0; // v6.67: Timestamp when rate limit expires
+let rateLimitedUntil = 0;
 
 // v6.67: Check if we're still in rate limit cooldown
 function isRateLimited(): { limited: boolean; remainingMs: number } {
@@ -31,10 +32,10 @@ function isRateLimited(): { limited: boolean; remainingMs: number } {
   return { limited: false, remainingMs: 0 };
 }
 
-// v6.67: Record when we get rate limited
+// v6.86: Record when we get rate limited
 function recordRateLimit(retryAfterSeconds: number): void {
   rateLimitedUntil = Date.now() + (retryAfterSeconds * 1000);
-  console.log(`[Lichess Games v6.67] Rate limit recorded, expires at ${new Date(rateLimitedUntil).toISOString()}`);
+  console.log(`[Lichess Games v6.86] Rate limit recorded, expires at ${new Date(rateLimitedUntil).toISOString()}`);
 }
 
 // Dynamic interval: increases after rate limits, decreases after successful requests
@@ -44,9 +45,9 @@ function getRequestInterval(): number {
   if (timeSinceRateLimit < 60000 && timeSinceRateLimit > 0) {
     return Math.min(baseInterval * 2, 10000); // Max 10s
   }
-  // After 5+ consecutive successful requests, reduce interval
+// v6.86: After 5+ consecutive successful requests, slightly reduce interval
   if (consecutiveRequests > 5) {
-    return Math.max(baseInterval * 0.8, 2000); // Min 2s
+    return Math.max(baseInterval * 0.9, 2500); // Min 2.5s (was 2s)
   }
   return baseInterval;
 }
@@ -60,11 +61,10 @@ serve(async (req) => {
   try {
     const { player, since, until, max = 25 } = await req.json();
 
-    // v6.67: Check if we're in rate limit cooldown BEFORE making any API calls
     const rateLimitStatus = isRateLimited();
     if (rateLimitStatus.limited) {
       const remainingSec = Math.ceil(rateLimitStatus.remainingMs / 1000);
-      console.log(`[Lichess Games v6.67] Rate limit active, ${remainingSec}s remaining - returning early`);
+      console.log(`[Lichess Games v6.86] Rate limit active, ${remainingSec}s remaining - client should wait`);
       return new Response(
         JSON.stringify({ 
           games: [], 
@@ -137,10 +137,10 @@ serve(async (req) => {
 
     if (response.status === 429) {
       const retryAfter = parseInt(response.headers.get('Retry-After') || '60');
-      recordRateLimit(retryAfter); // v6.67: Remember this rate limit
-      baseInterval = Math.min(baseInterval * 1.5, 10000); // Increase base interval
+      recordRateLimit(retryAfter);
+      baseInterval = Math.min(baseInterval * 1.5, 12000); // Increase base interval, max 12s
       consecutiveRequests = 0;
-      console.warn(`[Lichess Games v6.67] Rate limited for ${player} - cooldown set to ${retryAfter}s`);
+      console.warn(`[Lichess Games v6.86] Rate limited for ${player} - cooldown set to ${retryAfter}s`);
       return new Response(
         JSON.stringify({ 
           games: [],
@@ -274,11 +274,11 @@ ${game.moves || ''} ${resultTag}`;
       }
     }
 
-    console.log(`[Lichess Games] Fetched ${games.length} valid games for ${player}`);
+    console.log(`[Lichess Games v6.86] Fetched ${games.length} valid games for ${player}`);
     consecutiveRequests++;
-    // Gradually reduce interval after successful requests
+    // v6.86: Gradually reduce interval after successful requests (more conservative)
     if (consecutiveRequests > 3) {
-      baseInterval = Math.max(baseInterval * 0.95, 2000);
+      baseInterval = Math.max(baseInterval * 0.95, 2500); // Min 2.5s
     }
 
     // Cache successful response
