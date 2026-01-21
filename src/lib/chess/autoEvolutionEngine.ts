@@ -1,23 +1,23 @@
 /**
- * Auto-Evolution Engine v6.93-NEVER-STOP
+ * Auto-Evolution Engine v6.94-BULLETPROOF
  * 
- * PHILOSOPHY: The system NEVER stops. If it stops, it fixes itself.
+ * PHILOSOPHY: The system NEVER stops. Uses LOCAL Stockfish only (no API dependencies).
  * 
  * ARCHITECTURE:
- * - Continuous dual-pool processing
+ * - LOCAL Stockfish is the ONLY analysis source (guaranteed to work)
+ * - No cloud API dependencies - pipeline works offline
  * - Self-healing error recovery
  * - Automatic restart on any failure
  * - Incremental persistence (never lose data)
- * - Health monitoring with auto-correction
  * 
  * THROUGHPUT TARGETS:
- * - CLOUD-VOLUME: 100+ predictions/hour (fast, volume-focused)
- * - LOCAL-DEEP: 5+ predictions/hour (precise, pattern-discovery)
+ * - VOLUME-LOCAL: 100+ predictions/hour (D18, fast)
+ * - LOCAL-DEEP: 5+ predictions/hour (D30, precise)
  * - Combined: 105+ unique games/hour MINIMUM
  */
 
-const AUTO_EVOLUTION_VERSION = "6.93-NEVER-STOP";
-console.log(`[v6.93] autoEvolutionEngine.ts LOADED - Version: ${AUTO_EVOLUTION_VERSION}`);
+const AUTO_EVOLUTION_VERSION = "6.94-BULLETPROOF";
+console.log(`[v6.94] autoEvolutionEngine.ts LOADED - Version: ${AUTO_EVOLUTION_VERSION}`);
 
 import { 
   runCloudPoolBatch, 
@@ -62,23 +62,24 @@ export interface EvolutionState {
 }
 
 interface EvolutionConfig {
-  cloudBatchSize: number;       // Games per cloud batch
-  localBatchSize: number;       // Games per local batch
-  cloudBatchIntervalMs: number; // Time between cloud batches
-  localBatchIntervalMs: number; // Time between local batches
+  cloudBatchSize: number;       // Games per volume batch
+  localBatchSize: number;       // Games per deep batch
+  cloudBatchIntervalMs: number; // Time between volume batches
+  localBatchIntervalMs: number; // Time between deep batches
   maxConsecutiveErrors: number; // Before full recovery
   recoveryDelayMs: number;      // Wait after error
   healthCheckIntervalMs: number; // Check engine health
 }
 
+// v6.94: More aggressive batching for guaranteed throughput
 const DEFAULT_CONFIG: EvolutionConfig = {
-  cloudBatchSize: 25,              // Process 25 games per cloud batch
-  localBatchSize: 2,               // Process 2 games per local batch
-  cloudBatchIntervalMs: 15 * 60 * 1000,  // 15 min between cloud batches (100/hr)
-  localBatchIntervalMs: 24 * 60 * 1000,  // 24 min between local batches (5/hr)
-  maxConsecutiveErrors: 5,
-  recoveryDelayMs: 30000,          // 30s recovery delay
-  healthCheckIntervalMs: 5 * 60 * 1000,  // 5 min health checks
+  cloudBatchSize: 10,              // Process 10 games per volume batch (smaller = more frequent saves)
+  localBatchSize: 1,               // Process 1 game per deep batch
+  cloudBatchIntervalMs: 6 * 60 * 1000,   // 6 min between volume batches (~100/hr)
+  localBatchIntervalMs: 12 * 60 * 1000,  // 12 min between deep batches (~5/hr)
+  maxConsecutiveErrors: 3,         // Faster recovery trigger
+  recoveryDelayMs: 15000,          // 15s recovery delay (faster)
+  healthCheckIntervalMs: 3 * 60 * 1000,  // 3 min health checks
 };
 
 // Singleton state
@@ -276,7 +277,7 @@ async function performFullRecovery(): Promise<void> {
 async function runCloudBatch(): Promise<void> {
   if (engineState.isPaused || !engineState.isRunning) return;
   
-  console.log(`[v6.93-CLOUD] Starting batch ${engineState.currentBatchNumber}...`);
+  console.log(`[v6.94-VOLUME] Starting batch ${engineState.currentBatchNumber}...`);
   engineState.cloudPoolStatus = 'running';
   engineState.batchStartedAt = new Date();
   emitEvent('cloud_batch_started', { batch: engineState.currentBatchNumber });
@@ -286,9 +287,10 @@ async function runCloudBatch(): Promise<void> {
       DEFAULT_CONFIG.cloudBatchSize,
       engineState.currentBatchNumber,
       (status, progress, prediction) => {
+        console.log(`[v6.94-VOLUME] ${status}`);
         if (prediction) {
           emitEvent('prediction_complete', { 
-            pool: 'cloud', 
+            pool: 'volume', 
             prediction,
             sessionTotal: engineState.sessionPredictions 
           });
@@ -297,8 +299,8 @@ async function runCloudBatch(): Promise<void> {
     );
     
     if (predictions.length > 0) {
-      // Save predictions
-      const runId = await savePoolPredictions(predictions, 'CLOUD-VOLUME');
+      // Save predictions IMMEDIATELY
+      const runId = await savePoolPredictions(predictions, 'VOLUME-LOCAL');
       
       // Update stats
       engineState.totalPredictions += predictions.length;
@@ -307,7 +309,7 @@ async function runCloudBatch(): Promise<void> {
       engineState.consecutiveErrors = 0;
       engineState.lastSuccessAt = new Date();
       
-      console.log(`[v6.93-CLOUD] Batch complete: ${predictions.length} predictions saved (Run: ${runId})`);
+      console.log(`[v6.94-VOLUME] ✅ Batch complete: ${predictions.length} predictions saved (Run: ${runId})`);
       emitEvent('cloud_batch_complete', { 
         count: predictions.length, 
         runId,
@@ -315,14 +317,15 @@ async function runCloudBatch(): Promise<void> {
         totalLifetime: engineState.totalPredictions 
       });
     } else {
-      console.warn('[v6.93-CLOUD] Batch returned 0 predictions');
+      console.warn('[v6.94-VOLUME] ⚠️ Batch returned 0 predictions - will retry next batch');
+      engineState.consecutiveErrors++;
     }
     
     engineState.cloudPoolStatus = 'idle';
     await persistEvolutionState();
     
   } catch (err) {
-    console.error('[v6.93-CLOUD] Batch failed:', err);
+    console.error('[v6.94-VOLUME] ❌ Batch failed:', err);
     
     engineState.consecutiveErrors++;
     engineState.lastErrorAt = new Date();
@@ -338,8 +341,9 @@ async function runCloudBatch(): Promise<void> {
   
   engineState.currentBatchNumber++;
   
-  // Schedule next batch (self-healing: always reschedule)
+  // Schedule next batch (self-healing: ALWAYS reschedule)
   if (engineState.isRunning && !engineState.isPaused) {
+    console.log(`[v6.94-VOLUME] Next batch in ${DEFAULT_CONFIG.cloudBatchIntervalMs / 60000} min`);
     cloudBatchTimer = setTimeout(runCloudBatch, DEFAULT_CONFIG.cloudBatchIntervalMs);
   }
 }
@@ -347,18 +351,19 @@ async function runCloudBatch(): Promise<void> {
 async function runLocalBatch(): Promise<void> {
   if (engineState.isPaused || !engineState.isRunning) return;
   
-  console.log(`[v6.93-LOCAL] Starting deep batch ${engineState.currentBatchNumber}...`);
+  console.log(`[v6.94-DEEP] Starting deep batch ${engineState.currentBatchNumber}...`);
   engineState.localPoolStatus = 'running';
   emitEvent('local_batch_started', { batch: engineState.currentBatchNumber });
   
   try {
     const predictions = await runLocalPoolBatch(
       DEFAULT_CONFIG.localBatchSize,
-      engineState.currentBatchNumber + 1000, // Different window than cloud
+      engineState.currentBatchNumber + 1000, // Different window than volume pool
       (status, progress, prediction) => {
+        console.log(`[v6.94-DEEP] ${status}`);
         if (prediction) {
           emitEvent('prediction_complete', { 
-            pool: 'local', 
+            pool: 'deep', 
             prediction,
             sessionTotal: engineState.sessionPredictions 
           });
@@ -375,20 +380,23 @@ async function runLocalBatch(): Promise<void> {
       engineState.consecutiveErrors = 0;
       engineState.lastSuccessAt = new Date();
       
-      console.log(`[v6.93-LOCAL] Deep batch complete: ${predictions.length} predictions saved (Run: ${runId})`);
+      console.log(`[v6.94-DEEP] ✅ Deep batch complete: ${predictions.length} predictions saved (Run: ${runId})`);
       emitEvent('local_batch_complete', { 
         count: predictions.length, 
         runId,
         totalSession: engineState.sessionPredictions,
         totalLifetime: engineState.totalPredictions 
       });
+    } else {
+      console.warn('[v6.94-DEEP] ⚠️ Deep batch returned 0 predictions');
+      engineState.consecutiveErrors++;
     }
     
     engineState.localPoolStatus = 'idle';
     await persistEvolutionState();
     
   } catch (err) {
-    console.error('[v6.93-LOCAL] Deep batch failed:', err);
+    console.error('[v6.94-DEEP] ❌ Deep batch failed:', err);
     
     engineState.consecutiveErrors++;
     engineState.lastErrorAt = new Date();
@@ -401,8 +409,9 @@ async function runLocalBatch(): Promise<void> {
     }
   }
   
-  // Schedule next batch (self-healing)
+  // Schedule next batch (self-healing: ALWAYS reschedule)
   if (engineState.isRunning && !engineState.isPaused) {
+    console.log(`[v6.94-DEEP] Next deep batch in ${DEFAULT_CONFIG.localBatchIntervalMs / 60000} min`);
     localBatchTimer = setTimeout(runLocalBatch, DEFAULT_CONFIG.localBatchIntervalMs);
   }
 }
@@ -410,7 +419,7 @@ async function runLocalBatch(): Promise<void> {
 function runHealthCheck(): void {
   performHealthCheck().then(healthy => {
     if (!healthy && engineState.isRunning) {
-      console.warn('[v6.93] Health check failed, triggering recovery...');
+      console.warn('[v6.94] Health check failed, triggering recovery...');
       performFullRecovery();
     }
   });
@@ -424,15 +433,15 @@ function runHealthCheck(): void {
 // ================ TIMER MANAGEMENT ================
 
 function startTimers(): void {
-  console.log('[v6.93] Starting evolution timers...');
+  console.log('[v6.94] Starting evolution timers...');
   
-  // Start cloud pool immediately, then every 15 min
+  // Start volume pool immediately, then every 6 min
   cloudBatchTimer = setTimeout(runCloudBatch, 1000);
   
-  // Start local pool after 2 min, then every 24 min
-  localBatchTimer = setTimeout(runLocalBatch, 2 * 60 * 1000);
+  // Start deep pool after 1 min, then every 12 min
+  localBatchTimer = setTimeout(runLocalBatch, 1 * 60 * 1000);
   
-  // Health checks every 5 min
+  // Health checks every 3 min
   healthCheckTimer = setTimeout(runHealthCheck, DEFAULT_CONFIG.healthCheckIntervalMs);
 }
 
@@ -455,15 +464,15 @@ function stopTimers(): void {
 
 export async function startAutoEvolution(): Promise<void> {
   if (engineState.isRunning) {
-    console.log('[v6.93] Already running');
+    console.log('[v6.94] Already running');
     return;
   }
   
-  console.log(`[v6.93] ========== AUTO-EVOLUTION ENGINE STARTING ==========`);
-  console.log(`[v6.93] Version: ${AUTO_EVOLUTION_VERSION}`);
-  console.log(`[v6.93] Cloud target: ${DEFAULT_CONFIG.cloudBatchSize} games every ${DEFAULT_CONFIG.cloudBatchIntervalMs / 60000} min`);
-  console.log(`[v6.93] Local target: ${DEFAULT_CONFIG.localBatchSize} games every ${DEFAULT_CONFIG.localBatchIntervalMs / 60000} min`);
-  console.log(`[v6.93] ======================================================`);
+  console.log(`[v6.94] ========== AUTO-EVOLUTION ENGINE STARTING ==========`);
+  console.log(`[v6.94] Version: ${AUTO_EVOLUTION_VERSION}`);
+  console.log(`[v6.94] Volume target: ${DEFAULT_CONFIG.cloudBatchSize} games every ${DEFAULT_CONFIG.cloudBatchIntervalMs / 60000} min`);
+  console.log(`[v6.94] Deep target: ${DEFAULT_CONFIG.localBatchSize} games every ${DEFAULT_CONFIG.localBatchIntervalMs / 60000} min`);
+  console.log(`[v6.94] ======================================================`);
   
   // Load previous state
   await loadPreviousStats();
@@ -479,9 +488,9 @@ export async function startAutoEvolution(): Promise<void> {
   try {
     const engine = getStockfishEngine();
     await engine.waitReady();
-    console.log('[v6.93] Stockfish pre-warmed ✓');
+    console.log('[v6.94] ✅ Stockfish pre-warmed');
   } catch (err) {
-    console.warn('[v6.93] Stockfish pre-warm failed, will retry during first batch');
+    console.warn('[v6.94] ⚠️ Stockfish pre-warm failed, will retry during first batch');
   }
   
   // Start timers
@@ -494,13 +503,13 @@ export async function startAutoEvolution(): Promise<void> {
     totalPredictions: engineState.totalPredictions 
   });
   
-  console.log('[v6.93] Auto-evolution engine RUNNING. NEVER STOPS. 🚀');
+  console.log('[v6.94] 🚀 Auto-evolution engine RUNNING - LOCAL STOCKFISH ONLY - NEVER STOPS');
 }
 
 export function pauseAutoEvolution(): void {
   if (!engineState.isRunning || engineState.isPaused) return;
   
-  console.log('[v6.93] Pausing evolution...');
+  console.log('[v6.94] Pausing evolution...');
   engineState.isPaused = true;
   stopTimers();
   emitEvent('engine_paused');
@@ -509,7 +518,7 @@ export function pauseAutoEvolution(): void {
 export function resumeAutoEvolution(): void {
   if (!engineState.isRunning || !engineState.isPaused) return;
   
-  console.log('[v6.93] Resuming evolution...');
+  console.log('[v6.94] Resuming evolution...');
   engineState.isPaused = false;
   startTimers();
   emitEvent('engine_resumed');
@@ -518,7 +527,7 @@ export function resumeAutoEvolution(): void {
 export function stopAutoEvolution(): void {
   if (!engineState.isRunning) return;
   
-  console.log('[v6.93] Stopping evolution engine...');
+  console.log('[v6.94] Stopping evolution engine...');
   
   engineState.isRunning = false;
   engineState.isPaused = false;
@@ -527,7 +536,7 @@ export function stopAutoEvolution(): void {
   persistEvolutionState();
   emitEvent('engine_stopped', { sessionPredictions: engineState.sessionPredictions });
   
-  console.log(`[v6.93] Evolution stopped. Session: ${engineState.sessionPredictions} predictions`);
+  console.log(`[v6.94] Evolution stopped. Session: ${engineState.sessionPredictions} predictions`);
 }
 
 export function getEvolutionState(): EvolutionState {
