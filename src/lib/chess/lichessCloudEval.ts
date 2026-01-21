@@ -212,7 +212,17 @@ export async function evaluatePosition(
       const data = await response.json();
       const resetMs = data.resetInMs || 60000; // Default 60s if not provided
       rateLimitResetTime = Date.now() + resetMs;
-      console.warn(`[LichessCloud] Rate limited, reset in ${Math.ceil(resetMs / 1000)}s`);
+      console.warn(`[v6.80-PATIENT] Received 429, reset in ${Math.ceil(resetMs / 1000)}s`);
+      
+      // v6.80-PATIENT: WAIT and RETRY instead of returning null
+      if (waitForLimit) {
+        console.log(`[v6.80-PATIENT] ⏳ Waiting for rate limit to clear, then retrying...`);
+        const ready = await waitForRateLimit();
+        if (ready) {
+          // Recursive retry after waiting
+          return evaluatePosition(fen, multiPv, skipCache, false); // Don't wait again to prevent infinite loop
+        }
+      }
       return null;
     }
     
