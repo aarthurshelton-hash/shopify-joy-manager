@@ -31,6 +31,7 @@ interface GameDetail {
   white_elo: number | null;
   black_elo: number | null;
   created_at: string;
+  data_source: string | null;
 }
 
 interface GameDetailsModalProps {
@@ -136,6 +137,26 @@ export function GameDetailsModal({ trigger, filter = 'all', title = 'All Analyze
     }
   };
 
+  const getSourceInfo = (game: GameDetail) => {
+    // Detect source from data_source column or game_id pattern
+    const source = game.data_source || (game.game_id.match(/^\d+$/) ? 'chesscom' : 'lichess');
+    
+    if (source === 'chesscom') {
+      return {
+        label: 'Chess.com',
+        color: 'bg-green-500/10 text-green-600 border-green-500/30',
+        url: `https://www.chess.com/game/live/${game.game_id}`,
+        icon: '♔'
+      };
+    }
+    return {
+      label: 'Lichess',
+      color: 'bg-orange-500/10 text-orange-600 border-orange-500/30',
+      url: `https://lichess.org/${game.game_id}`,
+      icon: '♞'
+    };
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -209,18 +230,28 @@ export function GameDetailsModal({ trigger, filter = 'all', title = 'All Analyze
                       {/* Left: Game Info */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <code className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">
-                            {game.game_id}
-                          </code>
-                          <a 
-                            href={`https://lichess.org/${game.game_id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary hover:underline flex items-center gap-1 text-xs"
-                          >
-                            <ExternalLink className="h-3 w-3" />
-                            View on Lichess
-                          </a>
+                          {(() => {
+                            const sourceInfo = getSourceInfo(game);
+                            return (
+                              <>
+                                <Badge variant="outline" className={`text-xs ${sourceInfo.color}`}>
+                                  {sourceInfo.icon} {sourceInfo.label}
+                                </Badge>
+                                <code className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">
+                                  {game.game_id}
+                                </code>
+                                <a 
+                                  href={sourceInfo.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-primary hover:underline flex items-center gap-1 text-xs"
+                                >
+                                  <ExternalLink className="h-3 w-3" />
+                                  View Game
+                                </a>
+                              </>
+                            );
+                          })()}
                           {game.time_control && (
                             <Badge variant="secondary" className="text-xs">
                               <Clock className="h-3 w-3 mr-1" />
