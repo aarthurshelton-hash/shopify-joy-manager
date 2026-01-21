@@ -5,7 +5,8 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Slider } from '@/components/ui/slider';
-import { Brain, Cpu, Trophy, Play, Loader2, Clock, CheckCircle, XCircle, AlertCircle, Cloud, Database, TrendingUp, History, Layers, RefreshCw, Sparkles, Crown, Shield, Zap, BookOpen, MousePointer } from 'lucide-react';
+import { Brain, Cpu, Trophy, Play, Loader2, Clock, CheckCircle, XCircle, AlertCircle, Cloud, Database, TrendingUp, History, Layers, RefreshCw, Sparkles, Crown, Shield, Zap, BookOpen, MousePointer, Rocket } from 'lucide-react';
+import { AutoEvolutionPanel } from '@/components/chess/AutoEvolutionPanel';
 import { runCloudBenchmark, FAMOUS_GAMES, type BenchmarkResult, type PredictionAttempt } from '@/lib/chess/cloudBenchmark';
 import { checkLichessAvailability } from '@/lib/chess/lichessCloudEval';
 import { saveBenchmarkResults, getCumulativeStats, getArchetypeStats } from '@/lib/chess/benchmarkPersistence';
@@ -466,7 +467,11 @@ export default function Benchmark() {
 
         {/* Main Tabs */}
         <Tabs defaultValue="benchmark" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
+            <TabsTrigger value="auto" className="flex items-center gap-2">
+              <Rocket className="h-4 w-4" />
+              Auto-Evolution
+            </TabsTrigger>
             <TabsTrigger value="benchmark" className="flex items-center gap-2">
               <Brain className="h-4 w-4" />
               Benchmark
@@ -488,6 +493,10 @@ export default function Benchmark() {
               Proof
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="auto" className="mt-6">
+            <AutoEvolutionPanel />
+          </TabsContent>
 
           <TabsContent value="intelligence" className="mt-6">
             <StockfishIntelligencePanel 
