@@ -1,7 +1,7 @@
 /**
  * En Pensent™ Prediction Benchmark System
  * 
- * v7.2-BENCHMARK-STREAMLINED: Eliminates blocking DB calls during benchmarking
+ * v7.3-RETRY-ON-FALLBACK: Retries with extended time before accepting fallback
  * 
  * THE PARADIGM: We don't just play chess - we predict its future better than pure calculation.
  * 
@@ -12,11 +12,11 @@
  * - Patterns loaded ONCE before benchmark starts (not per-prediction)
  * - Accuracy stats fetched ONCE and cached (not per-prediction)
  * - skipCloudEval option used to avoid API rate limits
- * - Hard timeouts on all operations to prevent stalls
+ * - RETRY with extended timeout before accepting fallback
  */
 
 import { Chess } from 'chess.js';
-import { getStockfishEngine } from '../stockfishEngine';
+import { getStockfishEngine, terminateStockfish } from '../stockfishEngine';
 import { generateHybridPrediction } from '../hybridPrediction';
 import { extractColorFlowSignature } from '../colorFlowAnalysis';
 import { simulateGame } from '../gameSimulator';
@@ -46,6 +46,9 @@ export interface PredictionAttempt {
   // Scoring
   stockfishCorrect?: boolean;
   hybridCorrect?: boolean;
+  
+  // v7.3: Track if this was a retry
+  wasRetried?: boolean;
 }
 
 export interface BenchmarkResult {
@@ -73,11 +76,74 @@ export interface BenchmarkResult {
   // Timestamp
   startedAt: Date;
   completedAt?: Date;
+  
+  // v7.3: Retry stats
+  totalRetries?: number;
+}
+
+// v7.3: Helper to detect if result is a fallback
+function isFallbackResult<T>(result: T, fallback: T): boolean {
+  if (result === fallback) return true;
+  if (typeof result === 'object' && typeof fallback === 'object') {
+    return JSON.stringify(result) === JSON.stringify(fallback);
+  }
+  return false;
+}
+
+// v7.3: Promise with timeout that RETRIES with extended time on fallback
+async function withRetryTimeout<T>(
+  promiseFactory: () => Promise<T>,
+  initialMs: number,
+  fallback: T,
+  maxRetries: number = 2,
+  timeoutMultiplier: number = 1.5
+): Promise<{ result: T; wasRetried: boolean }> {
+  let currentTimeout = initialMs;
+  let wasRetried = false;
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const result = await Promise.race([
+      promiseFactory(),
+      new Promise<T>((resolve) => setTimeout(() => resolve(fallback), currentTimeout))
+    ]);
+    
+    // If we got a real result (not fallback), return it
+    if (!isFallbackResult(result, fallback)) {
+      return { result, wasRetried };
+    }
+    
+    // On fallback, retry with more time
+    if (attempt < maxRetries) {
+      wasRetried = true;
+      currentTimeout = Math.round(currentTimeout * timeoutMultiplier);
+      console.log(`[v7.3] Timeout hit, retry ${attempt + 1}/${maxRetries} with ${currentTimeout}ms`);
+      
+      // Reset Stockfish if it might be stuck
+      if (attempt === 1) {
+        try {
+          terminateStockfish();
+          await new Promise(r => setTimeout(r, 500));
+        } catch (e) {
+          console.warn('[v7.3] Engine reset failed:', e);
+        }
+      }
+    }
+  }
+  
+  // All retries exhausted, return fallback
+  console.warn('[v7.3] All retries exhausted, using fallback');
+  return { result: fallback, wasRetried };
+}
+
+// Simple timeout helper (no retry) for non-critical operations
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms))
+  ]);
 }
 
 // Convert Stockfish centipawn evaluation to win probability and prediction
-// FIXED: Previous threshold of ±150cp was WAY too conservative
-// Most GM positions at move 20 are within ±50cp, causing all predictions to be "draw"
 function stockfishEvalToPrediction(cp: number): {
   prediction: 'white_wins' | 'black_wins' | 'draw';
   confidence: number;
@@ -101,14 +167,6 @@ function stockfishEvalToPrediction(cp: number): {
   } else {
     return { prediction: 'draw', confidence: 35 + (15 - Math.abs(cp)) * 2 };
   }
-}
-
-// Helper: Promise with timeout to prevent hangs
-function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms))
-  ]);
 }
 
 // Generate a high-quality Stockfish vs Stockfish game
@@ -185,7 +243,7 @@ async function generateStockfishGame(
 }
 
 // Make a prediction at a specific point in the game
-// v7.2: Uses skipCloudEval and precomputed Stockfish eval to eliminate blocking calls
+// v7.3: Uses retry-on-fallback for both Stockfish and Hybrid predictions
 async function makePredictionAtMove(
   gameId: string,
   fullPgn: string,
@@ -206,33 +264,39 @@ async function makePredictionAtMove(
   const truncatedPgn = chess.pgn();
   const fen = chess.fen();
   
-  // Get Stockfish evaluation with 10s timeout (reduced from 15s)
+  // v7.3: Stockfish evaluation with RETRY on timeout
   const engine = getStockfishEngine();
   await withTimeout(engine.waitReady(), 5000, false);
   
-  const analysis = await withTimeout(
-    engine.analyzePosition(fen, { depth, nodes: 50000 }), // Reduced nodes for speed
-    10000, // 10s timeout
-    { evaluation: { score: 0 }, bestMove: '' } as any
+  const sfFallback = { evaluation: { score: 0 }, bestMove: '' } as any;
+  const { result: analysis, wasRetried: sfRetried } = await withRetryTimeout(
+    () => engine.analyzePosition(fen, { depth, nodes: 100000 }), // Increased nodes
+    8000, // 8s initial timeout
+    sfFallback,
+    2, // max 2 retries
+    1.5 // 1.5x timeout on retry (8s -> 12s -> 18s)
   );
   
   const stockfishResult = stockfishEvalToPrediction(analysis.evaluation?.score || 0);
   
-  // v7.2: Get Hybrid prediction with skipCloudEval=true and precomputed eval
-  // This eliminates the Lichess Cloud API call AND uses pre-computed Stockfish eval
-  const hybridResult = await withTimeout(
-    generateHybridPrediction(truncatedPgn, { 
+  // v7.3: Hybrid prediction with RETRY on timeout
+  const hybridFallback = { 
+    trajectoryPrediction: { outcomeProbabilities: { whiteWin: 0.33, blackWin: 0.33, draw: 0.34 } },
+    confidence: { overall: 30 },
+    strategicAnalysis: { archetype: 'FALLBACK' } // Mark as fallback clearly
+  } as any;
+  
+  const { result: hybridResult, wasRetried: hybridRetried } = await withRetryTimeout(
+    () => generateHybridPrediction(truncatedPgn, { 
       depth,
       precomputedEval: analysis.evaluation?.score || 0,
       precomputedDepth: analysis.evaluation?.depth || depth,
-      skipCloudEval: true, // No API call needed
+      skipCloudEval: true,
     }),
-    15000, // 15s timeout (reduced from 20s)
-    { 
-      trajectoryPrediction: { outcomeProbabilities: { whiteWin: 0.33, blackWin: 0.33, draw: 0.34 } },
-      confidence: { overall: 30 },
-      strategicAnalysis: { archetype: 'unknown' }
-    } as any
+    12000, // 12s initial timeout
+    hybridFallback,
+    2, // max 2 retries
+    1.5 // 1.5x timeout on retry (12s -> 18s -> 27s)
   );
   
   // Map hybrid prediction to outcome
@@ -240,6 +304,11 @@ async function makePredictionAtMove(
   const hybridPrediction = 
     probs.whiteWin > probs.blackWin && probs.whiteWin > probs.draw ? 'white_wins' :
     probs.blackWin > probs.draw ? 'black_wins' : 'draw';
+  
+  const wasRetried = sfRetried || hybridRetried;
+  if (wasRetried) {
+    console.log(`[v7.3] Prediction for ${gameId} completed after retry (SF: ${sfRetried}, Hybrid: ${hybridRetried})`);
+  }
     
   return {
     gameId,
@@ -252,6 +321,7 @@ async function makePredictionAtMove(
     hybridPrediction,
     hybridConfidence: hybridResult.confidence.overall,
     hybridArchetype: hybridResult.strategicAnalysis.archetype,
+    wasRetried,
   };
 }
 
