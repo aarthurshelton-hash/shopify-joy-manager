@@ -29,7 +29,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const AUTO_EVOLVE_VERSION = '7.10-DUAL-EVAL'; // Cloud + Local fallback for throughput
+const AUTO_EVOLVE_VERSION = '7.11-STAGGERED'; // Sequential fetch to avoid rate limits + wider time windows
 
 // ============================================================================
 // DUAL EVAL SYSTEM - CLOUD SF17 + LOCAL HEURISTIC FALLBACK (v7.10)
@@ -57,6 +57,9 @@ interface EvalResult {
 // TURBO: Faster rate limiting (12 req/min, still under 20 limit)
 let lastCloudEvalTime = 0;
 const CLOUD_EVAL_INTERVAL_MS = 5000; // 12 req/min in turbo mode
+
+// v7.11: Helper for staggered requests
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 /**
  * v7.10-DUAL-EVAL: Try cloud first, fall back to local heuristic
@@ -349,54 +352,67 @@ Deno.serve(async (req) => {
     const existingIds = new Set((existingGames || []).map(g => g.game_id));
     console.log(`[${AUTO_EVOLVE_VERSION}] 🔍 Pre-loaded ${existingIds.size} existing game IDs for dedup`);
 
-    // ========== v7.5 MULTIVERSE: PARALLEL MULTI-SOURCE FETCHING ==========
+    // ========== v7.11-STAGGERED: SEQUENTIAL FETCHING TO AVOID RATE LIMITS ==========
     
-    // TIER 1: Human vs Human (GM-level) - EXPANDED POOL for better rotation
+    // TIER 1: VERIFIED HIGH-VOLUME GM players (removed invalid/low-yield accounts)
     const lichessPool = [
-      'nihalsarin2004', 'Fins', 'lance5500', 'Firouzja2003', 'GMWSO', 'opperwezen',
+      'nihalsarin2004', 'Firouzja2003', 'GMWSO', 'opperwezen',
       'Zhigalko_Sergei', 'LyonBeast', 'Polish_fighter3000', 'DrDrunkenstein',
-      'RebeccaHarris', 'Msb2', 'AndreyEsipenko', 'Alireza2003', 'Oleksandr_Bortnyk'
+      'Msb2', 'AndreyEsipenko', 'penguingim1', 'Alireza2003', 'duhless'
     ];
-    const selectedLichessPlayers = shuffleArray(lichessPool).slice(0, 4);
+    // Select 2 players per run to stay under rate limits
+    const selectedLichessPlayers = shuffleArray(lichessPool).slice(0, 2);
 
     const chesscomPool = [
       'Hikaru', 'FabianoCaruana', 'DanielNaroditsky', 'GothamChess', 
-      'AnishGiri', 'LevonAronian', 'WesleySo', 'DominguezPerez', 
-      'GMJefferyXiong', 'Grischuk', 'ChessNetwork', 'GMBenjaminBok',
-      'Firouzja2003', 'Parham-Maghsoodloo', 'Vidit_Gujrathi'
+      'AnishGiri', 'LevonAronian', 'WesleySo', 'GMJefferyXiong', 
+      'Grischuk', 'GMBenjaminBok', 'Vidit_Gujrathi', 'chaborz'
     ];
-    const chesscomPlayers = shuffleArray(chesscomPool).slice(0, 4);
+    const chesscomPlayers = shuffleArray(chesscomPool).slice(0, 2);
 
-    console.log(`[${AUTO_EVOLVE_VERSION}] 🌌 MULTIVERSE sources:`);
+    console.log(`[${AUTO_EVOLVE_VERSION}] 🌌 STAGGERED sources:`);
     console.log(`  - Lichess GMs: ${selectedLichessPlayers.join(', ')}`);
     console.log(`  - Chess.com GMs: ${chesscomPlayers.join(', ')}`);
 
-    const since = Date.now() - (14 * 24 * 60 * 60 * 1000);
+    // v7.11: Use RANDOM time windows to get fresh games (30-180 days ago)
+    const randomOffset = Math.floor(Math.random() * 150) + 30; // 30-180 days
+    const since = Date.now() - (randomOffset * 24 * 60 * 60 * 1000);
+    const until = since + (7 * 24 * 60 * 60 * 1000); // 7-day window
     const now = new Date();
+    
+    console.log(`[${AUTO_EVOLVE_VERSION}] 📅 Time window: ${randomOffset}-${randomOffset-7} days ago`);
 
-    // PARALLEL: Fetch from BOTH sources simultaneously (removed broken bot API)
-    const [lichessResults, chesscomResults] = await Promise.all([
-      // Lichess GM games
-      Promise.all(selectedLichessPlayers.map(async (player) => {
-        try {
-          const games = await fetchLichessGames(player, since, 6);
-          return { player, games, source: 'lichess', tier: 'human_vs_human' };
-        } catch (err) {
-          console.warn(`[${AUTO_EVOLVE_VERSION}] Lichess ${player}:`, err);
-          return { player, games: [], source: 'lichess', tier: 'human_vs_human' };
+    // v7.11-STAGGERED: Sequential fetching with delays to avoid rate limits
+    const lichessResults: Array<{ player: string; games: GameData[]; source: string; tier: string }> = [];
+    for (const player of selectedLichessPlayers) {
+      try {
+        await delay(1500); // 1.5s between requests
+        const games = await fetchLichessGames(player, since, 10);
+        lichessResults.push({ player, games, source: 'lichess', tier: 'human_vs_human' });
+        console.log(`[${AUTO_EVOLVE_VERSION}] ✅ Lichess ${player}: ${games.length} games`);
+      } catch (err) {
+        console.warn(`[${AUTO_EVOLVE_VERSION}] ⚠️ Lichess ${player}:`, err);
+        lichessResults.push({ player, games: [], source: 'lichess', tier: 'human_vs_human' });
+      }
+    }
+
+    // Chess.com can handle parallel (no rate limit issues)
+    const chesscomResults = await Promise.all(chesscomPlayers.map(async (player) => {
+      try {
+        // Try current month, then previous month if empty
+        let games = await fetchChesscomGames(player, now.getFullYear(), now.getMonth() + 1, 10);
+        if (games.length === 0) {
+          const prevMonth = now.getMonth() === 0 ? 12 : now.getMonth();
+          const prevYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+          games = await fetchChesscomGames(player, prevYear, prevMonth, 10);
         }
-      })),
-      // Chess.com GM games
-      Promise.all(chesscomPlayers.map(async (player) => {
-        try {
-          const games = await fetchChesscomGames(player, now.getFullYear(), now.getMonth() + 1, 6);
-          return { player, games, source: 'chesscom', tier: 'human_vs_human' };
-        } catch (err) {
-          console.warn(`[${AUTO_EVOLVE_VERSION}] Chess.com ${player}:`, err);
-          return { player, games: [], source: 'chesscom', tier: 'human_vs_human' };
-        }
-      }))
-    ]);
+        console.log(`[${AUTO_EVOLVE_VERSION}] ✅ Chess.com ${player}: ${games.length} games`);
+        return { player, games, source: 'chesscom', tier: 'human_vs_human' };
+      } catch (err) {
+        console.warn(`[${AUTO_EVOLVE_VERSION}] ⚠️ Chess.com ${player}:`, err);
+        return { player, games: [], source: 'chesscom', tier: 'human_vs_human' };
+      }
+    }));
 
     // Combine and deduplicate
     const allGames: (GameData & { tier?: string })[] = [];
@@ -786,7 +802,7 @@ async function generateRealDivergentPrediction(game: GameData): Promise<Predicti
     stockfishDepth: evalResult.depth,
     stockfishCorrect: stockfishPrediction.prediction === normalizedResult,
     actualResult: normalizedResult,
-    dataSource: `auto-evolve-v7.10-${evalResult.source}`,
+    dataSource: `auto-evolve-${AUTO_EVOLVE_VERSION}-${evalResult.source}`,
     whiteElo: game.whiteElo,
     blackElo: game.blackElo,
     timeControl: game.timeControl,
