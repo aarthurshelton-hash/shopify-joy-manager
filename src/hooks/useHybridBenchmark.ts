@@ -26,8 +26,8 @@
 // 3. Only mark as failed after ALL retries exhausted
 // 4. Every game that CAN be analyzed SHOULD be analyzed
 // 5. ALL ID tracking (failed, session, DB) uses RAW IDs only - no prefix mismatch
-const BENCHMARK_VERSION = "7.50-OPTIONS";
-console.log(`[v7.50] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+const BENCHMARK_VERSION = "7.51-PUMP";
+console.log(`[v7.51] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -485,22 +485,22 @@ export function useHybridBenchmark() {
         throw new Error('Stockfish engine failed to initialize. Please refresh the page and try again.');
       }
       
-      // v7.40-FASTER: Minimal 1s warm-up (was 3s)
-      console.log('[v7.40] Step 2: Minimal warm-up...');
-      setProgress(prev => ({ ...prev!, message: 'Engine warm-up...' }));
+      // v7.51-PUMP: Instant warm-up (no waiting)
+      console.log('[v7.51] Step 2: Quick warm-up...');
+      setProgress(prev => ({ ...prev!, message: 'Engine ready...' }));
       
       try {
         const warmupFen = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1';
         const warmupResult = await Promise.race([
-          engine.analyzePosition(warmupFen, { depth: 6 }), // v7.40: depth 6 (was 8)
-          new Promise<null>(r => setTimeout(() => r(null), 1500)) // v7.40: 1.5s timeout (was 3s)
+          engine.analyzePosition(warmupFen, { depth: 4 }), // v7.51: depth 4 (instant)
+          new Promise<null>(r => setTimeout(() => r(null), 500)) // v7.51: 500ms timeout
         ]);
         
         if (warmupResult) {
-          console.log(`[v7.40] ✅ Warm-up: depth ${warmupResult.evaluation.depth}`);
+          console.log(`[v7.51] ✅ Warm-up: depth ${warmupResult.evaluation.depth}`);
         }
       } catch (warmupErr) {
-        console.warn('[v7.40] Warm-up skipped:', warmupErr);
+        console.warn('[v7.51] Warm-up skipped:', warmupErr);
       }
       
       console.log('[v7.14] ═══════════════════════════════════════════════');
@@ -667,15 +667,15 @@ export function useHybridBenchmark() {
       // Step 2: Process games with REFETCH when needed
       // v6.50: skipStats and failedGameIds now declared BEFORE fetchMoreGames (line ~500)
       
-      // v6.43: Higher resilience thresholds
+      // v7.51-PUMP: Higher resilience + faster recovery
       let emptyBatchStreak = 0;
-      const MAX_EMPTY_BATCHES = 25; // v6.43: More tolerance for empty batches
+      const MAX_EMPTY_BATCHES = 30; // v7.51: More tolerance
       
-      // v6.43: Track consecutive skips to detect problematic patterns
+      // v7.51: Track consecutive skips
       let consecutiveSkips = 0;
-      const MAX_CONSECUTIVE_SKIPS = 150; // v6.43: More tolerance before refetch
+      const MAX_CONSECUTIVE_SKIPS = 200; // v7.51: More tolerance
       
-      // v6.75-ENGINE-HEALTH: Track consecutive engine failures separately
+      // v7.51-PUMP: Track consecutive engine failures separately
       let consecutiveEngineFailures = 0;
       
       // v6.43-BULLETPROOF: Incremental save function - saves every N predictions to prevent data loss
@@ -808,25 +808,25 @@ export function useHybridBenchmark() {
         }
         
         // ═══════════════════════════════════════════════════════════════════
-        // PHASE 0: LIGHTWEIGHT HEALTH CHECK (v7.14)
+        // PHASE 0: LIGHTWEIGHT HEALTH CHECK (v7.51 - less frequent)
         // ═══════════════════════════════════════════════════════════════════
         if (gamesProcessedSinceHealthCheck >= HEALTH_CHECK_INTERVAL) {
-          console.log(`[v7.14] 🏥 Quick health check after ${gamesProcessedSinceHealthCheck} games...`);
+          console.log(`[v7.51] 🏥 Health check after ${gamesProcessedSinceHealthCheck} games...`);
           
           try {
             const healthFen = 'r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3';
             const healthResult = await Promise.race([
-              engine.analyzePosition(healthFen, { depth: 6 }), // v7.14: depth 6 (was 8)
-              new Promise<null>(r => setTimeout(() => r(null), 2000)) // v7.14: 2s (was 4s)
+              engine.analyzePosition(healthFen, { depth: 4 }), // v7.51: depth 4 (was 6)
+              new Promise<null>(r => setTimeout(() => r(null), 800)) // v7.51: 800ms (was 2s)
             ]);
             
             if (!healthResult) {
-              console.warn('[v7.14] Health check timeout - quick reinit...');
+              console.warn('[v7.51] Health check timeout - quick reinit...');
               await engine.waitReady();
               consecutiveEngineFailures = 0;
             }
           } catch (healthErr) {
-            // v7.14: Silent fail - don't block pipeline
+            // v7.51: Silent fail - don't block pipeline
           }
           
           gamesProcessedSinceHealthCheck = 0;
@@ -841,10 +841,10 @@ export function useHybridBenchmark() {
           console.log(`[v6.80] 📥 FETCH PHASE: Queue empty, need ${gameCount - predictedCount} more predictions`);
           console.log(`[v6.80] Stats: predicted=${predictedCount}, index=${gameIndex}, queueLen=${gameQueue.length}`);
           
-          // v6.82-SPEED: Faster exponential backoff - reduced by 1s base
+          // v7.51-PUMP: Fast exponential backoff - 1s base, max 8s
           if (emptyBatchStreak > 0) {
-            const waitTime = Math.min(4000 * Math.pow(1.5, emptyBatchStreak), 29000);
-            console.log(`[v6.82] ⏳ Patience backoff: ${Math.round(waitTime/1000)}s (streak: ${emptyBatchStreak})`);
+            const waitTime = Math.min(1000 * Math.pow(1.5, emptyBatchStreak), 8000);
+            console.log(`[v7.51] ⏳ Quick backoff: ${Math.round(waitTime/1000)}s (streak: ${emptyBatchStreak})`);
             await new Promise(r => setTimeout(r, waitTime));
           }
           
@@ -994,19 +994,19 @@ export function useHybridBenchmark() {
           continue;
         }
         
-        // v7.14-FAST: Reduced retries and timeouts for faster throughput
-        const MAX_ENGINE_RETRIES = 2; // v7.14: 2 retries (was 3)
+        // v7.51-PUMP: Fast analysis with minimal retries
+        const MAX_ENGINE_RETRIES = 1; // v7.51: 1 retry only (was 2)
         let engineRetries = 0;
         let engineSucceeded = false;
         
-        while (engineRetries < MAX_ENGINE_RETRIES && !engineSucceeded) {
-          // v7.14: Aggressive timeouts - 15s for normal, 25s for deep
-          const ANALYSIS_TIMEOUT = depth >= 40 ? 25000 : 15000;
+        while (engineRetries <= MAX_ENGINE_RETRIES && !engineSucceeded) {
+          // v7.51-PUMP: Aggressive timeouts - 8s normal, 15s deep
+          const ANALYSIS_TIMEOUT = depth >= 40 ? 15000 : 8000;
           
           try {
             if (engineRetries > 0) {
-              console.log(`[v7.14] 🔄 Retry ${engineRetries}/${MAX_ENGINE_RETRIES}`);
-              await new Promise(r => setTimeout(r, 500 * engineRetries)); // v7.14: 500ms base (was 1s)
+              console.log(`[v7.51] 🔄 Retry ${engineRetries}`);
+              await new Promise(r => setTimeout(r, 200)); // v7.51: 200ms (was 500ms)
               try { engine.stop(); } catch (e) { /* ignore */ }
               await engine.waitReady();
             }
@@ -1018,35 +1018,35 @@ export function useHybridBenchmark() {
             if (analysis) {
               engineSucceeded = true;
             } else {
-              console.log(`[v7.14] ⏳ Timeout attempt ${engineRetries + 1} (${ANALYSIS_TIMEOUT/1000}s)`);
+              console.log(`[v7.51] ⏳ Timeout attempt ${engineRetries + 1} (${ANALYSIS_TIMEOUT/1000}s)`);
               engineRetries++;
               skipStats.engineTimeout++;
             }
           } catch (sfError) {
-            console.error(`[v7.14] ❌ Engine error:`, sfError);
+            console.error(`[v7.51] ❌ Engine error:`, sfError);
             engineRetries++;
             skipStats.analysisError++;
           }
         }
         
         if (!engineSucceeded) {
-          console.warn(`[v7.14] ❌ Engine failed after ${MAX_ENGINE_RETRIES} retries`);
+          console.warn(`[v7.51] ❌ Engine failed, skipping game`);
           consecutiveEngineFailures++;
           failedGameIds.add(rawGameId);
           consecutiveSkips++;
           
-          // v7.14: Quick recovery after 2 consecutive failures
-          if (consecutiveEngineFailures >= 2) {
-            console.warn(`[v7.14] Quick recovery after ${consecutiveEngineFailures} failures`);
+          // v7.51-PUMP: Quick recovery after 3 consecutive failures
+          if (consecutiveEngineFailures >= 3) {
+            console.warn(`[v7.51] Quick recovery after ${consecutiveEngineFailures} failures`);
             try { engine.stop(); } catch (e) { /* ignore */ }
-            await new Promise(r => setTimeout(r, 1500)); // v7.14: 1.5s (was 4s)
+            await new Promise(r => setTimeout(r, 500)); // v7.51: 500ms (was 1.5s)
             
             const reready = await engine.waitReady();
             if (reready) {
               consecutiveEngineFailures = 0;
               gamesProcessedSinceHealthCheck = 0;
             } else {
-              console.error(`[v7.14] ❌ Engine failed to recover`);
+              console.error(`[v7.51] ❌ Engine failed to recover`);
               await saveIncrementalResults();
               break;
             }
