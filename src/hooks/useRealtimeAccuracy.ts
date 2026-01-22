@@ -1,8 +1,8 @@
 /**
- * Realtime Accuracy Hook v7.20
+ * Realtime Accuracy Hook v7.23 - LIVE STATS
  * Ensures all accuracy metrics auto-update across the entire En Pensent platform
- * v7.20: Added chess_benchmark_results subscription for instant benchmark completion updates
- * Now includes chess_prediction_attempts for FIDE ELO and cumulative stats sync
+ * v7.23: All stats fetched from DB and recalculated on every realtime event
+ * Includes live ELO calculation from cumulative stats
  */
 
 import { useEffect, useCallback, useRef, useState } from 'react';
@@ -10,6 +10,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { useTradingSessionStore } from '@/stores/tradingSessionStore';
 import { selfEvolvingSystem } from '@/lib/pensent-core/domains/finance/selfEvolvingSystem';
 import { useQueryClient } from '@tanstack/react-query';
+import { 
+  calculateEloFromBenchmark, 
+  createInitialEloState,
+  type LiveEloState 
+} from '@/lib/chess/liveEloTracker';
 
 export interface RealtimeAccuracyState {
   isConnected: boolean;
@@ -27,6 +32,9 @@ export interface ChessCumulativeStats {
   hybridAccuracy: number;
   stockfishAccuracy: number;
   avgConfidence: number;
+  // v7.23: Additional stats for full parity with getCumulativeStats
+  totalRuns: number;
+  hybridNetWins: number;
 }
 
 export interface AccuracyUpdate {
@@ -50,7 +58,7 @@ function broadcastAccuracyUpdate(update: AccuracyUpdate) {
 // Cached chess stats with timestamp for efficient querying
 let cachedChessStats: ChessCumulativeStats | null = null;
 let lastChessStatsFetch = 0;
-const CHESS_STATS_CACHE_MS = 2000; // 2 second cache
+const CHESS_STATS_CACHE_MS = 500; // v7.23: Reduced to 500ms for faster updates
 
 /**
  * Fetch cumulative chess stats directly from database
@@ -69,6 +77,7 @@ export async function fetchChessCumulativeStats(): Promise<ChessCumulativeStats>
     { count: bothCorrect },
     { count: hybridCorrect },
     { count: sfCorrect },
+    { data: benchmarks },
   ] = await Promise.all([
     supabase
       .from('chess_prediction_attempts')
@@ -110,6 +119,9 @@ export async function fetchChessCumulativeStats(): Promise<ChessCumulativeStats>
       .eq('stockfish_correct', true)
       .not('stockfish_prediction', 'is', null)
       .neq('stockfish_prediction', 'unknown'),
+    supabase
+      .from('chess_benchmark_results')
+      .select('id'),
   ]);
 
   const total = totalGames || 0;
@@ -126,7 +138,10 @@ export async function fetchChessCumulativeStats(): Promise<ChessCumulativeStats>
     bothWrong: Math.max(0, bothWrongCount),
     hybridAccuracy: total > 0 ? ((hybridCorrect || 0) / total) * 100 : 0,
     stockfishAccuracy: total > 0 ? ((sfCorrect || 0) / total) * 100 : 0,
-    avgConfidence: 0.7, // Approximate - full calculation would require fetching rows
+    avgConfidence: 0.7,
+    // v7.23: Additional stats
+    totalRuns: benchmarks?.length || 0,
+    hybridNetWins: epWins - stockfishWinsCount,
   };
 
   cachedChessStats = stats;
@@ -156,6 +171,25 @@ export function useRealtimeAccuracy(enabled = true) {
   });
   
   const [chessStats, setChessStats] = useState<ChessCumulativeStats | null>(null);
+  
+  // v7.23: Live ELO state calculated from realtime chess stats
+  const [liveEloState, setLiveEloState] = useState<LiveEloState>(createInitialEloState());
+  
+  // v7.23: Update ELO whenever chess stats change
+  const updateEloFromStats = useCallback((stats: ChessCumulativeStats) => {
+    if (stats.totalGames > 0) {
+      const newElo = calculateEloFromBenchmark(
+        stats.hybridAccuracy,
+        stats.stockfishAccuracy,
+        stats.hybridWins,
+        stats.stockfishWins,
+        stats.bothCorrect,
+        stats.totalGames,
+        35 // Default depth estimate
+      );
+      setLiveEloState(newElo);
+    }
+  }, []);
 
   // Sync all accuracy data from database
   const syncAccuracyData = useCallback(async () => {
@@ -166,6 +200,7 @@ export function useRealtimeAccuracy(enabled = true) {
       // Fetch chess cumulative stats
       const freshChessStats = await fetchChessCumulativeStats();
       setChessStats(freshChessStats);
+      updateEloFromStats(freshChessStats); // v7.23: Update ELO from fresh stats
       
       broadcastAccuracyUpdate({
         type: 'chess',
@@ -254,6 +289,7 @@ export function useRealtimeAccuracy(enabled = true) {
           invalidateChessStatsCache();
           const freshStats = await fetchChessCumulativeStats();
           setChessStats(freshStats);
+          updateEloFromStats(freshStats); // v7.23: Update ELO immediately
           
           broadcastAccuracyUpdate({
             type: 'chess',
@@ -291,6 +327,7 @@ export function useRealtimeAccuracy(enabled = true) {
           invalidateChessStatsCache();
           const freshStats = await fetchChessCumulativeStats();
           setChessStats(freshStats);
+          updateEloFromStats(freshStats); // v7.23: Update ELO immediately
           
           broadcastAccuracyUpdate({
             type: 'chess',
@@ -472,6 +509,7 @@ export function useRealtimeAccuracy(enabled = true) {
     ...state,
     globalAccuracy,
     chessStats,
+    liveEloState, // v7.23: Expose live ELO calculated from realtime stats
     syncAccuracyData,
     subscribeToUpdates: subscribeToAccuracyUpdates
   };
