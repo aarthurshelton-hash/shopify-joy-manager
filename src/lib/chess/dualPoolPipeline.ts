@@ -26,8 +26,8 @@
  * Pipeline MUST work without any external API.
  */
 
-const DUAL_POOL_VERSION = "7.13-COORDINATOR-AWARE";
-console.log(`[v7.13] dualPoolPipeline.ts LOADED - Version: ${DUAL_POOL_VERSION}`);
+const DUAL_POOL_VERSION = "7.15-SIMPLE-DEDUP";
+console.log(`[v7.15] dualPoolPipeline.ts LOADED - Version: ${DUAL_POOL_VERSION}`);
 
 // v7.0: Hard timeout wrapper for any async operation
 function withTimeout<T>(promise: Promise<T>, ms: number, name: string): Promise<T> {
@@ -45,9 +45,10 @@ import { evaluatePosition as evaluateCloudPosition, getRateLimitStatus } from '.
 import { generateHybridPrediction } from './hybridPrediction';
 import { fetchLichessGames, lichessGameToPgn, type LichessGame } from './gameImport/lichessApi';
 import { fetchChessComGames, type ChessComGame } from './gameImport/chesscomApi';
-import { getAlreadyAnalyzedData, isGameAlreadyAnalyzed, hashPosition } from './benchmarkPersistence';
+import { hashPosition } from './benchmarkPersistence';
 import { supabase } from '@/integrations/supabase/client';
 import { isManualBenchmarkActive } from './benchmarkCoordinator';
+import { initKnownIds, isKnown, markKnown, getKnownIds, toRawId } from './simpleDedup';
 
 // ================ POOL CONFIGURATIONS ================
 
@@ -499,14 +500,13 @@ export async function runCloudPoolBatch(
   
   onProgress?.(`[${config.name}] Starting batch ${batchNumber}...`, 0);
   
-  // v7.0: Load existing game IDs with timeout
-  let existingIds = new Set<string>();
+  // v7.15-SIMPLE-DEDUP: Init known IDs ONCE (cached after first call)
   try {
-    const existingData = await withTimeout(getAlreadyAnalyzedData(), 10000, 'LoadExistingData');
-    existingIds = existingData.gameIds;
+    await withTimeout(initKnownIds(), 8000, 'InitKnownIds');
   } catch (err) {
-    console.warn('[v7.0] Failed to load existing data, continuing with empty set:', err);
+    console.warn('[v7.15] Failed to init known IDs, continuing:', err);
   }
+  const existingIds = getKnownIds();
   
   // v7.0: Fetch games with hard timeouts - continue even if one source fails
   let lichessGames: UnifiedGame[] = [];
@@ -519,7 +519,7 @@ export async function runCloudPoolBatch(
       'FetchLichess'
     );
   } catch (err) {
-    console.warn('[v7.0] Lichess fetch timeout/error:', err);
+    console.warn('[v7.15] Lichess fetch timeout/error:', err);
   }
   
   try {
@@ -529,17 +529,18 @@ export async function runCloudPoolBatch(
       'FetchChessCom'
     );
   } catch (err) {
-    console.warn('[v7.0] Chess.com fetch timeout/error:', err);
+    console.warn('[v7.15] Chess.com fetch timeout/error:', err);
   }
   
-  const allGames = shuffleArray([...lichessGames, ...chesscomGames]);
+  // v7.15-SIMPLE-DEDUP: Filter games using simple check
+  const allGames = shuffleArray([...lichessGames, ...chesscomGames]).filter(game => !isKnown(game.id));
   
   if (allGames.length === 0) {
     onProgress?.(`[${config.name}] No fresh games found`, 100);
     return [];
   }
   
-  onProgress?.(`[${config.name}] Processing ${allGames.length} games...`, 15);
+  onProgress?.(`[${config.name}] Processing ${allGames.length} fresh games...`, 15);
   
   let processed = 0;
   for (const game of allGames) {
@@ -600,8 +601,8 @@ export async function runCloudPoolBatch(
       const progress = 15 + (processed / allGames.length) * 85;
       onProgress?.(`[${config.name}] ${predictions.length}/${targetCount} analyzed`, progress, prediction);
       
-      // Add to existing IDs to prevent re-analysis
-      existingIds.add(game.id);
+      // v7.15-SIMPLE-DEDUP: Mark as known immediately
+      markKnown(game.id);
       
       await new Promise(r => setTimeout(r, config.delayBetweenGames));
       
@@ -625,17 +626,24 @@ export async function runLocalPoolBatch(
   
   onProgress?.(`[${config.name}] Starting batch ${batchNumber}...`, 0);
   
-  // Load existing game IDs
-  const existingData = await getAlreadyAnalyzedData();
-  const existingIds = existingData.gameIds;
+  // v7.15-SIMPLE-DEDUP: Init known IDs ONCE (cached after first call)
+  try {
+    await withTimeout(initKnownIds(), 8000, 'InitKnownIds');
+  } catch (err) {
+    console.warn('[v7.15] Failed to init known IDs:', err);
+  }
+  const existingIds = getKnownIds();
   
   // Fetch games - prefer Lichess for local analysis
-  const games = await fetchLichessGamesForPool(
+  const rawGames = await fetchLichessGamesForPool(
     targetCount * 3, // Fetch extra for filtering
     existingIds, 
     batchNumber + 100, // Different window than cloud pool
     (msg) => onProgress?.(msg, 5)
   );
+  
+  // v7.15-SIMPLE-DEDUP: Filter using simple check
+  const games = rawGames.filter(game => !isKnown(game.id));
   
   if (games.length === 0) {
     onProgress?.(`[${config.name}] No fresh games found`, 100);
@@ -706,7 +714,8 @@ export async function runLocalPoolBatch(
       console.log(`[${config.name}] Deep analysis complete: ${game.name} (${Math.round((Date.now() - startTime) / 1000)}s)`);
       onProgress?.(`[${config.name}] ${predictions.length}/${targetCount} deep analyzed`, progressBase + 5, prediction);
       
-      existingIds.add(game.id);
+      // v7.15-SIMPLE-DEDUP: Mark as known immediately
+      markKnown(game.id);
       
       await new Promise(r => setTimeout(r, config.delayBetweenGames));
       

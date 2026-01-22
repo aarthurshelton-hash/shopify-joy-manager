@@ -1,15 +1,17 @@
 /**
- * Multi-Source Game Fetcher v6.87-DYNAMIC-LEADERBOARD
- * VERSION: 6.87-DYNAMIC-LEADERBOARD (2026-01-21)
+ * Multi-Source Game Fetcher v7.15-SIMPLE-DEDUP
+ * VERSION: 7.15-SIMPLE-DEDUP (2026-01-22)
+ * 
+ * v7.15 CHANGES (Simple Deduplication):
+ * - Uses simpleDedup module for ONE check: isKnown(id) → accept/reject
+ * - No complex multi-layer ID tracking
+ * - Fresh ID = fresh game, period
  * 
  * v6.87 CHANGES (Dynamic Leaderboard Sourcing):
  * - NEW: Fetches live top players from Lichess leaderboards
  * - Pulls from daily/weekly rankings across bullet, blitz, rapid, classical
  * - Combines dynamic leaderboard players with static verified pool
  * - Constantly refreshing source of high-caliber players
- * 
- * v6.86 CHANGES (Rate Limit Patience):
- * - WAIT, DON'T BREAK: When rate limited, WAIT for cooldown then resume
  * 
  * SOURCES:
  * - Lichess (via Edge Function proxy) - 5+ billion games
@@ -20,6 +22,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { fetchChessComGames, ChessComGame, getChessComResult } from "./chesscomApi";
+import { isKnown, toRawId } from "../simpleDedup";
 
 export interface UnifiedGameData {
   pgn: string;
@@ -333,14 +336,15 @@ async function fetchFromChessCom(
       
       let addedFromPlayer = 0;
       for (const game of result.games) {
-        // v6.84-ABSORB-ALL: Accept ANY game with a valid ID
-        // Opponents can be anyone - we want their games too!
+        // v7.15-SIMPLE-DEDUP: Accept ANY game with a valid ID if not known
         const unified = chesscomToUnified(game, player);
         if (!unified) continue; // Only fails if no game ID extractable
-        if (excludeIds.has(unified.gameId)) continue;
+        
+        // v7.15: Simple check - is this ID already in our system?
+        if (isKnown(unified.gameId)) continue;
+        if (excludeIds.has(unified.gameId)) continue; // Also check passed-in set
         if (localIds.has(unified.gameId)) continue;
         
-        // v6.84: Zero player/rating/content filtering - absorb everything
         localIds.add(unified.gameId);
         games.push(unified);
         addedFromPlayer++;
@@ -520,20 +524,17 @@ async function fetchFromLichess(
       let addedFromPlayer = 0;
       for (const game of fetchedGames) {
         const lichessId = game.id;
-        // v6.84-ABSORB-ALL: ONLY requirement is a valid game ID
-        // Accept ALL games regardless of player names/ratings/etc.
-        // The opponent could be anyone - we want their games too!
+        // v7.15-SIMPLE-DEDUP: ONLY requirement is a valid game ID
         if (!lichessId) continue;
         
         const gameId = `li_${lichessId}`;
         
-        // v6.84: ONLY deduplication - no player/rating/content filtering
-        // Fresh ID = fresh game, period.
+        // v7.15: Simple check - is this ID already in our system?
+        if (isKnown(gameId) || isKnown(lichessId)) continue;
         if (excludeIds.has(gameId) || excludeIds.has(lichessId)) continue;
         if (localIds.has(gameId)) continue;
         
         const pgn = game.pgn || game.moves || '';
-        // v6.84-ABSORB-ALL: Zero content filters - universal intelligence handles everything
         
         localIds.add(gameId);
         
