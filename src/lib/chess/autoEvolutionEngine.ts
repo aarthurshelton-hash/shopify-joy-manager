@@ -22,8 +22,8 @@
  * - Incremental persistence (never lose data)
  */
 
-const AUTO_EVOLUTION_VERSION = "7.50-OPTIONS";
-console.log(`[v7.50] autoEvolutionEngine.ts LOADED - Version: ${AUTO_EVOLUTION_VERSION}`);
+const AUTO_EVOLUTION_VERSION = "7.51-FAST";
+console.log(`[v7.51] autoEvolutionEngine.ts LOADED - Version: ${AUTO_EVOLUTION_VERSION}`);
 
 import { 
   runCloudPoolBatch, 
@@ -78,15 +78,15 @@ interface EvolutionConfig {
   healthCheckIntervalMs: number; // Check engine health
 }
 
-// v7.40-FASTER: Reduced intervals for higher throughput
+// v7.51-FAST: Minimal intervals for continuous throughput
 const DEFAULT_CONFIG: EvolutionConfig = {
-  cloudBatchSize: 5,               // Smaller batches = more checkpoints
-  localBatchSize: 1,               // Process 1 game per deep batch
-  cloudBatchIntervalMs: 90 * 1000,       // v7.40: 90s between volume batches (was 3 min)
-  localBatchIntervalMs: 5 * 60 * 1000,   // v7.40: 5 min between deep batches (was 10 min)
-  maxConsecutiveErrors: 2,         // Faster recovery trigger
-  recoveryDelayMs: 5000,           // v7.40: 5s recovery delay (was 10s)
-  healthCheckIntervalMs: 2 * 60 * 1000,  // 2 min health checks
+  cloudBatchSize: 5,               // 5 games per volume batch
+  localBatchSize: 1,               // 1 game per deep batch
+  cloudBatchIntervalMs: 15 * 1000,       // v7.51: 15s between volume batches (was 90s)
+  localBatchIntervalMs: 60 * 1000,       // v7.51: 60s between deep batches (was 5 min)
+  maxConsecutiveErrors: 3,         // Allow 3 errors before recovery
+  recoveryDelayMs: 2000,           // v7.51: 2s recovery delay (was 5s)
+  healthCheckIntervalMs: 60 * 1000,      // v7.51: 1 min health checks (was 2 min)
 };
 
 // v7.0: Hard timeout for any batch operation

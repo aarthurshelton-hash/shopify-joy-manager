@@ -26,8 +26,8 @@
  * Pipeline MUST work without any external API.
  */
 
-const DUAL_POOL_VERSION = "7.50-OPTIONS";
-console.log(`[v7.50] dualPoolPipeline.ts LOADED - Version: ${DUAL_POOL_VERSION}`);
+const DUAL_POOL_VERSION = "7.51-FAST";
+console.log(`[v7.51] dualPoolPipeline.ts LOADED - Version: ${DUAL_POOL_VERSION}`);
 
 // v7.0: Hard timeout wrapper for any async operation
 function withTimeout<T>(promise: Promise<T>, ms: number, name: string): Promise<T> {
@@ -63,26 +63,26 @@ export interface PoolConfig {
   delayBetweenGames: number; // ms
 }
 
-// v6.94: VOLUME pool uses LOCAL Stockfish at D18 for guaranteed throughput
+// v7.51: VOLUME pool uses LOCAL Stockfish at D18 for guaranteed throughput
 export const CLOUD_POOL_CONFIG: PoolConfig = {
   name: 'VOLUME-LOCAL',
-  targetPerHour: 100,
+  targetPerHour: 200,       // v7.51: Increased target
   stockfishMode: 'local_fast',
   localDepth: 18,           // D18 is fast but accurate
-  localNodes: 5000000,      // 5M nodes - quick
-  analysisTimeout: 30000,   // 30s max
-  delayBetweenGames: 500,   // 0.5s between games
+  localNodes: 3000000,      // v7.51: 3M nodes - faster
+  analysisTimeout: 15000,   // v7.51: 15s max (was 30s)
+  delayBetweenGames: 200,   // v7.51: 200ms between games (was 500ms)
 };
 
-// v6.94: DEEP pool uses LOCAL Stockfish at D30 for precision
+// v7.51: DEEP pool uses LOCAL Stockfish at D26 for precision (was D30)
 export const LOCAL_POOL_CONFIG: PoolConfig = {
   name: 'LOCAL-DEEP',
-  targetPerHour: 5,
+  targetPerHour: 12,        // v7.51: Increased target (was 5)
   stockfishMode: 'local_deep',
-  localDepth: 30,
-  localNodes: 100000000,    // 100M nodes
-  analysisTimeout: 600000,  // 10 minutes max
-  delayBetweenGames: 1000,  // 1s between games
+  localDepth: 26,           // v7.51: D26 (was D30) - faster with minimal accuracy loss
+  localNodes: 50000000,     // v7.51: 50M nodes (was 100M)
+  analysisTimeout: 45000,   // v7.51: 45s max (was 10 min!)
+  delayBetweenGames: 300,   // v7.51: 300ms between games (was 1s)
 };
 
 // ================ TYPES ================

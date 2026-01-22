@@ -1,13 +1,12 @@
 /**
- * v7.39-BREATHE: Extracted Breathing Pacer
+ * v7.51-FAST: Extracted Breathing Pacer
  * 
- * Prevents API saturation by enforcing mandatory cooldowns
- * between predictions. Extracted to small file to avoid
- * timeout issues with large pipeline file edits.
+ * Prevents API saturation by enforcing minimal cooldowns
+ * between predictions. Optimized for continuous throughput.
  */
 
-export const BREATHING_VERSION = "7.50";
-export const RATE_LIMIT_BREATHING_MS = 1500;
+export const BREATHING_VERSION = "7.51";
+export const RATE_LIMIT_BREATHING_MS = 300; // v7.51: 300ms (was 1500ms)
 
 let lastBreathTime = 0;
 
@@ -36,4 +35,4 @@ export function timeSinceLastBreath(): number {
   return Date.now() - lastBreathTime;
 }
 
-console.log(`[v${BREATHING_VERSION}-BREATHE] breathingPacer.ts LOADED - Cooldown: ${RATE_LIMIT_BREATHING_MS}ms`);
+console.log(`[v${BREATHING_VERSION}-FAST] breathingPacer.ts LOADED - Cooldown: ${RATE_LIMIT_BREATHING_MS}ms`);
