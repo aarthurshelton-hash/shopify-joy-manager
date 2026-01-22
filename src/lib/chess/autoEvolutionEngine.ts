@@ -22,8 +22,8 @@
  * - Incremental persistence (never lose data)
  */
 
-const AUTO_EVOLUTION_VERSION = "7.40-FASTER";
-console.log(`[v7.40] autoEvolutionEngine.ts LOADED - Version: ${AUTO_EVOLUTION_VERSION}`);
+const AUTO_EVOLUTION_VERSION = "7.41-BREATHE";
+console.log(`[v7.41] autoEvolutionEngine.ts LOADED - Version: ${AUTO_EVOLUTION_VERSION}`);
 
 import { 
   runCloudPoolBatch, 
