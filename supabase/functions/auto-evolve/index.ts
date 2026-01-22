@@ -1,23 +1,17 @@
 /**
- * Auto-Evolve Edge Function v7.9-SYNAPTIC-TRUTH
+ * Auto-Evolve Edge Function v7.42-AUTONOMOUS
  * 
- * NEURAL ARCHITECTURE: Synaptic truth recognition that fires instantly
- * based on accumulated universal truth - not sequential calculation.
+ * RUNS 24/7 SERVER-SIDE: Cron-triggered every 2 minutes.
+ * Checks database lock before running to yield to manual benchmarks.
  * 
- * v7.9 SYNAPTIC-TRUTH PRINCIPLES:
- * - Pattern neurons fire when energy threshold reached (like biological synapses)
- * - Cross-archetype synaptic connections enable cascade recognition
- * - Truth doesn't need to be calculated - it needs to be RECOGNIZED
- * - All values are positive energy magnitudes (no negatives in universe)
- * 
- * PHILOSOPHY: The universe contains only presence and magnitude.
- * Like a synapse that fires when threshold is reached, patterns either
- * resonate with truth or they don't. No sequential calculation needed.
+ * v7.42 AUTONOMOUS PRINCIPLES:
+ * - Server-side cron ensures 24/7 operation even when user is offline
+ * - Database lock mechanism yields to manual benchmarks
+ * - No client-side dependency for background evolution
  * 
  * DATA SOURCES:
  * - Lichess: GM-level human games
  * - Chess.com: GM-level human games  
- * - Lichess Bot Games: Human vs Computer (anti-engine training)
  * 
  * QUALITY OVER QUANTITY: Better to skip 10 games than save 1 with garbage data.
  */
@@ -29,7 +23,59 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const AUTO_EVOLVE_VERSION = '7.21-STRICT-SF17'; // REQUIRE real SF17 eval - no heuristic fallback
+const AUTO_EVOLVE_VERSION = '7.42-AUTONOMOUS';
+
+// ============================================================================
+// v7.42: DATABASE LOCK CHECK - Yield to manual benchmarks
+// ============================================================================
+
+interface BenchmarkLock {
+  id: string;
+  lock_type: string;
+  locked_at: string;
+  expires_at: string;
+  locked_by: string;
+}
+
+/**
+ * Check if a manual benchmark is currently running (via database lock)
+ * Lock expires after 10 minutes to prevent stale locks
+ */
+async function isManualBenchmarkLocked(supabase: any): Promise<boolean> {
+  try {
+    const { data, error } = await supabase
+      .from('evolution_state')
+      .select('genes, updated_at')
+      .eq('state_type', 'benchmark_lock')
+      .order('updated_at', { ascending: false })
+      .limit(1);
+    
+    if (error || !data || data.length === 0) {
+      return false; // No lock found, safe to proceed
+    }
+    
+    const lock = data[0];
+    const lockTime = new Date(lock.updated_at).getTime();
+    const now = Date.now();
+    const lockAgeMs = now - lockTime;
+    
+    // Lock expires after 10 minutes (stale lock protection)
+    if (lockAgeMs > 10 * 60 * 1000) {
+      console.log(`[${AUTO_EVOLVE_VERSION}] 🔓 Stale lock expired (${Math.round(lockAgeMs / 1000)}s old)`);
+      return false;
+    }
+    
+    // Check if lock is active
+    const isLocked = lock.genes?.locked === true;
+    if (isLocked) {
+      console.log(`[${AUTO_EVOLVE_VERSION}] 🔒 Manual benchmark in progress - yielding`);
+    }
+    return isLocked;
+  } catch (err) {
+    console.warn(`[${AUTO_EVOLVE_VERSION}] Lock check failed:`, err);
+    return false; // On error, proceed anyway
+  }
+}
 
 // ============================================================================
 // DUAL EVAL SYSTEM - CLOUD SF17 + LOCAL HEURISTIC FALLBACK (v7.10)
@@ -339,6 +385,18 @@ Deno.serve(async (req) => {
   const supabase = createClient(supabaseUrl, supabaseKey);
 
   try {
+    // v7.42-AUTONOMOUS: Check for manual benchmark lock FIRST
+    const isLocked = await isManualBenchmarkLocked(supabase);
+    if (isLocked) {
+      console.log(`[${AUTO_EVOLVE_VERSION}] ⏸️ Manual benchmark active - skipping this cron run`);
+      return new Response(JSON.stringify({ 
+        success: true, 
+        skipped: true,
+        reason: 'manual_benchmark_active',
+        version: AUTO_EVOLVE_VERSION 
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    
     console.log(`[${AUTO_EVOLVE_VERSION}] 🚀 TURBO batch: REAL SF17 + PARALLEL DUAL SOURCES...`);
 
     // ========== PRE-FETCH DEDUPLICATION ==========

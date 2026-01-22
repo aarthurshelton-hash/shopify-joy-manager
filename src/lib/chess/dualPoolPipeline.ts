@@ -26,8 +26,8 @@
  * Pipeline MUST work without any external API.
  */
 
-const DUAL_POOL_VERSION = "7.41-BREATHE";
-console.log(`[v7.41] dualPoolPipeline.ts LOADED - Version: ${DUAL_POOL_VERSION}`);
+const DUAL_POOL_VERSION = "7.42-AUTONOMOUS";
+console.log(`[v7.42] dualPoolPipeline.ts LOADED - Version: ${DUAL_POOL_VERSION}`);
 
 // v7.0: Hard timeout wrapper for any async operation
 function withTimeout<T>(promise: Promise<T>, ms: number, name: string): Promise<T> {
