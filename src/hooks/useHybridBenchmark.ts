@@ -416,14 +416,15 @@ export function useHybridBenchmark() {
   const [result, setResult] = useState<BenchmarkResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef(false);
+  const completingRef = useRef(false); // v7.28: Track if we're in completion phase
   
-  // v7.27-COORDINATOR-AWARE: Subscribe to benchmark lock changes
-  // When lock is released externally (e.g., page nav), abort benchmark
+  // v7.28-FIX: Subscribe to benchmark lock changes
+  // Only abort if lock released EXTERNALLY (not by our own completion)
   useEffect(() => {
     const unsubscribe = subscribeToBenchmarkLock((isLocked) => {
-      // If lock was released while we're running, abort
-      if (!isLocked && isRunning) {
-        console.log('[v7.27] Benchmark lock released externally, aborting...');
+      // If lock was released while we're running AND we're not completing normally
+      if (!isLocked && isRunning && !completingRef.current) {
+        console.log('[v7.28] Benchmark lock released externally, aborting...');
         abortRef.current = true;
       }
     });
@@ -437,6 +438,7 @@ export function useHybridBenchmark() {
     setError(null);
     setResult(null);
     abortRef.current = false;
+    completingRef.current = false; // v7.28: Reset completion flag
     
     // v7.27: Get coordinator abort signal for external cancellation
     const coordinatorSignal = getBenchmarkAbortSignal();
@@ -1257,6 +1259,9 @@ export function useHybridBenchmark() {
       
       // Collect unique archetypes detected
       const archetypesDetected = [...new Set(attempts.map(a => a.hybrid_archetype))];
+      
+      // v7.28: Mark as completing so lock release doesn't trigger abort
+      completingRef.current = true;
       
       const finalResult: BenchmarkResult = {
         runId,

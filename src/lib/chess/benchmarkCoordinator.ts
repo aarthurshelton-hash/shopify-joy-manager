@@ -1,18 +1,18 @@
 /**
- * Benchmark Coordinator v7.13-BULLETPROOF
+ * Benchmark Coordinator v7.28-SAFE
  * 
  * Coordinates between manual benchmarks and auto-evolution to prevent
  * resource conflicts (Stockfish worker contention).
  * 
- * v7.13 FIXES:
+ * v7.28 FIXES:
+ * - NO LONGER terminates Stockfish on lock acquire (manual benchmark needs it!)
  * - Auto-evolution checks lock BEFORE starting any batch
- * - Hard timeout on lock acquisition to prevent deadlocks
- * - Force termination of Stockfish on lock acquire
+ * - Hard timeout on lock acquisition to prevent deadlocks  
  * - Global abort signal for all running operations
+ * - Faster lock acquisition (reduced timeouts)
  * 
  * When manual benchmark starts:
  * - Pauses auto-evolution
- * - Terminates any running Stockfish workers
  * - Gives exclusive access to manual benchmark
  * 
  * When manual benchmark ends:
@@ -24,7 +24,7 @@ import {
   resumeAutoEvolution, 
   getEvolutionState 
 } from './autoEvolutionEngine';
-import { terminateStockfish } from './stockfishEngine';
+// v7.28: Removed terminateStockfish import - manual benchmark needs the engine!
 
 interface CoordinatorState {
   manualBenchmarkActive: boolean;
@@ -61,7 +61,7 @@ function notifyListeners(isLocked: boolean): void {
 
 /**
  * Call this BEFORE starting a manual benchmark
- * Pauses auto-evolution and clears Stockfish for exclusive access
+ * Pauses auto-evolution for exclusive access (NO LONGER terminates Stockfish!)
  */
 export async function acquireBenchmarkLock(): Promise<AbortController> {
   if (state.manualBenchmarkActive) {
@@ -83,18 +83,13 @@ export async function acquireBenchmarkLock(): Promise<AbortController> {
     console.log('[BenchmarkCoordinator] Pausing auto-evolution for manual benchmark');
     pauseAutoEvolution();
     
-    // v7.14: Reduced wait time for faster lock acquisition
-    await new Promise(r => setTimeout(r, 200));
+    // v7.28: Quick wait for auto-evolution to yield
+    await new Promise(r => setTimeout(r, 100));
   }
   
-  // v7.14: Quick terminate - don't wait as long
-  try {
-    terminateStockfish();
-    console.log('[BenchmarkCoordinator] Stockfish terminated');
-    await new Promise(r => setTimeout(r, 500)); // v7.14: 500ms (was 1500ms)
-  } catch (err) {
-    console.warn('[BenchmarkCoordinator] Stockfish termination warning:', err);
-  }
+  // v7.28: DO NOT terminate Stockfish here! Manual benchmark needs the engine!
+  // The engine will be initialized fresh by useHybridBenchmark.runBenchmark()
+  console.log('[BenchmarkCoordinator] Skipping Stockfish termination (manual benchmark will use it)');
   
   state.manualBenchmarkActive = true;
   state.startedAt = new Date();
