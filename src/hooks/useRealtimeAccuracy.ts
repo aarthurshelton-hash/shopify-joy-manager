@@ -1,8 +1,9 @@
 /**
- * Realtime Accuracy Hook v7.23 - LIVE STATS
+ * Realtime Accuracy Hook v7.24 - LIVE STATS
  * Ensures all accuracy metrics auto-update across the entire En Pensent platform
- * v7.23: All stats fetched from DB and recalculated on every realtime event
+ * v7.24: All stats fetched from DB and recalculated on every realtime event
  * Includes live ELO calculation from cumulative stats
+ * Used by useAutoEvolution for real "total" counts
  */
 
 import { useEffect, useCallback, useRef, useState } from 'react';
@@ -32,9 +33,12 @@ export interface ChessCumulativeStats {
   hybridAccuracy: number;
   stockfishAccuracy: number;
   avgConfidence: number;
-  // v7.23: Additional stats for full parity with getCumulativeStats
+  // v7.24: Additional stats for full parity with getCumulativeStats
   totalRuns: number;
   hybridNetWins: number;
+  // v7.24: Pool-specific counts for AutoEvolutionPanel
+  volumePoolCount: number;  // D15-22 predictions
+  deepPoolCount: number;    // D25+ predictions
 }
 
 export interface AccuracyUpdate {
@@ -78,6 +82,8 @@ export async function fetchChessCumulativeStats(): Promise<ChessCumulativeStats>
     { count: hybridCorrect },
     { count: sfCorrect },
     { data: benchmarks },
+    { count: volumeCount },
+    { count: deepCount },
   ] = await Promise.all([
     supabase
       .from('chess_prediction_attempts')
@@ -122,6 +128,17 @@ export async function fetchChessCumulativeStats(): Promise<ChessCumulativeStats>
     supabase
       .from('chess_benchmark_results')
       .select('id'),
+    // v7.24: Volume pool = D15-22
+    supabase
+      .from('chess_prediction_attempts')
+      .select('*', { count: 'exact', head: true })
+      .gte('stockfish_depth', 15)
+      .lte('stockfish_depth', 22),
+    // v7.24: Deep pool = D25+
+    supabase
+      .from('chess_prediction_attempts')
+      .select('*', { count: 'exact', head: true })
+      .gte('stockfish_depth', 25),
   ]);
 
   const total = totalGames || 0;
@@ -139,9 +156,12 @@ export async function fetchChessCumulativeStats(): Promise<ChessCumulativeStats>
     hybridAccuracy: total > 0 ? ((hybridCorrect || 0) / total) * 100 : 0,
     stockfishAccuracy: total > 0 ? ((sfCorrect || 0) / total) * 100 : 0,
     avgConfidence: 0.7,
-    // v7.23: Additional stats
+    // v7.24: Additional stats
     totalRuns: benchmarks?.length || 0,
     hybridNetWins: epWins - stockfishWinsCount,
+    // v7.24: Pool counts
+    volumePoolCount: volumeCount || 0,
+    deepPoolCount: deepCount || 0,
   };
 
   cachedChessStats = stats;
