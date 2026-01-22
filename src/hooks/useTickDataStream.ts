@@ -1,10 +1,11 @@
 /**
  * Tick Data Stream Hook
- * Provides real-time tick data from WebSocket or simulated demo mode
- * BULLETPROOF VERSION - Works in all market conditions
+ * v7.51-REAL: REAL DATA ONLY - No simulation fallbacks
+ * Connects to multi-broker aggregator for authentic market data
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface Tick {
   price: number;
@@ -12,15 +13,16 @@ export interface Tick {
   timestamp: number;
   bid?: number;
   ask?: number;
+  source?: string; // Track data source for authenticity
+  isReal: boolean; // v7.51: Must be true for valid data
 }
 
 export interface TickStreamConfig {
   symbol: string;
-  mode: 'demo' | 'websocket';
+  mode: 'real' | 'websocket'; // v7.51: Removed 'demo' mode
   wsUrl?: string;
   apiKey?: string;
-  demoVolatility?: number;
-  demoInterval?: number;
+  pollInterval?: number; // How often to fetch real data (ms)
 }
 
 export interface TickStreamState {
@@ -29,11 +31,14 @@ export interface TickStreamState {
   latestTick: Tick | null;
   ticksPerSecond: number;
   error: string | null;
+  dataQuality: 'real' | 'stale' | 'disconnected';
+  lastRealUpdate: number;
+  sources: string[];
 }
 
 const DEFAULT_CONFIG: Partial<TickStreamConfig> = {
-  demoVolatility: 0.0012,
-  demoInterval: 150
+  pollInterval: 1500, // 1.5s default poll interval
+  mode: 'real'
 };
 
 type TickListener = (tick: Tick) => void;
@@ -46,12 +51,15 @@ export function useTickDataStream(config: TickStreamConfig) {
     ticks: [],
     latestTick: null,
     ticksPerSecond: 0,
-    error: null
+    error: null,
+    dataQuality: 'disconnected',
+    lastRealUpdate: 0,
+    sources: []
   });
   
   const listenersRef = useRef<Set<TickListener>>(new Set());
   const wsRef = useRef<WebSocket | null>(null);
-  const demoIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const tickCountRef = useRef(0);
   const tpsIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const priceRef = useRef<number>(100);
@@ -93,69 +101,106 @@ export function useTickDataStream(config: TickStreamConfig) {
     });
   }, []);
   
-  // Generate demo tick with realistic price movement
-  const generateDemoTick = useCallback((): Tick => {
-    const volatility = mergedConfig.demoVolatility || 0.0012;
-    
-    // Random walk with mean reversion
-    const randomMove = (Math.random() - 0.5) * 2 * volatility;
-    const meanReversion = (100 - priceRef.current) * 0.0001; // Pull back to 100
-    
-    // Occasional larger moves (momentum)
-    const momentumFactor = Math.random() > 0.95 ? (Math.random() - 0.5) * volatility * 3 : 0;
-    
-    priceRef.current = priceRef.current * (1 + randomMove + meanReversion + momentumFactor);
-    priceRef.current = Math.max(50, Math.min(200, priceRef.current)); // Keep in reasonable range
-    
-    return {
-      price: Math.round(priceRef.current * 100) / 100,
-      volume: Math.round(1000 + Math.random() * 5000),
-      timestamp: Date.now(),
-      bid: Math.round((priceRef.current - 0.01) * 100) / 100,
-      ask: Math.round((priceRef.current + 0.01) * 100) / 100
-    };
-  }, [mergedConfig.demoVolatility]);
+  // Fetch real data from multi-broker edge function
+  const fetchRealData = useCallback(async (): Promise<Tick | null> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('multi-broker-data', {
+        body: { 
+          symbol: mergedConfig.symbol, 
+          assetType: 'stock',
+          action: 'aggregate' 
+        },
+      });
+
+      if (error) {
+        console.error('[TickStream] Edge function error:', error);
+        setState(prev => ({ ...prev, error: error.message }));
+        return null;
+      }
+
+      if (data?.success && data.data) {
+        const aggregated = data.data;
+        
+        if (!aggregated.consensus?.price || aggregated.sources?.length === 0) {
+          console.warn('[TickStream] No real data available for', mergedConfig.symbol);
+          return null;
+        }
+
+        priceRef.current = aggregated.consensus.price;
+
+        const tick: Tick = {
+          price: aggregated.consensus.price,
+          volume: aggregated.ticks?.reduce((sum: number, t: any) => sum + (t.volume || 0), 0) || 0,
+          timestamp: aggregated.timestamp || Date.now(),
+          bid: aggregated.ticks?.[0]?.bid,
+          ask: aggregated.ticks?.[0]?.ask,
+          source: aggregated.sources?.join(',') || 'unknown',
+          isReal: true
+        };
+
+        setState(prev => ({
+          ...prev,
+          sources: aggregated.sources || [],
+          dataQuality: 'real',
+          lastRealUpdate: Date.now()
+        }));
+
+        return tick;
+      }
+
+      return null;
+    } catch (err) {
+      console.error('[TickStream] Fetch error:', err);
+      setState(prev => ({ ...prev, error: String(err) }));
+      return null;
+    }
+  }, [mergedConfig.symbol]);
   
-  // Start demo mode
-  const startDemoMode = useCallback(() => {
-    if (demoIntervalRef.current) {
-      clearInterval(demoIntervalRef.current);
+  // Start real data polling mode
+  const startRealMode = useCallback(() => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
     }
     
-    console.log('[TickStream] Starting demo mode for', mergedConfig.symbol);
+    console.log('[TickStream] Starting REAL data mode for', mergedConfig.symbol);
     
     // Initialize price based on symbol
     const symbolPrices: Record<string, number> = {
-      'SPY': 450, 'QQQ': 380, 'AAPL': 175, 'NVDA': 480,
-      'TSLA': 250, 'MSFT': 380, 'AMD': 130, 'GOOGL': 140
+      'SPY': 580, 'QQQ': 500, 'AAPL': 230, 'NVDA': 140,
+      'TSLA': 380, 'MSFT': 450, 'AMD': 125, 'GOOGL': 195
     };
     priceRef.current = symbolPrices[mergedConfig.symbol] || 100;
     
-    // Generate first tick immediately
-    const firstTick = generateDemoTick();
-    processTick(firstTick);
-    
-    // Set connected state
-    setState(prev => ({ ...prev, connected: true, error: null }));
-    
-    // Continue generating ticks
-    const interval = mergedConfig.demoInterval || 150;
-    demoIntervalRef.current = setInterval(() => {
-      if (mountedRef.current) {
-        const tick = generateDemoTick();
+    // Fetch first tick immediately
+    const fetchFirst = async () => {
+      const tick = await fetchRealData();
+      if (tick && mountedRef.current) {
         processTick(tick);
+        setState(prev => ({ ...prev, connected: true, error: null }));
+      }
+    };
+    fetchFirst();
+    
+    // Continue polling for real data
+    const interval = mergedConfig.pollInterval || 1500;
+    pollIntervalRef.current = setInterval(async () => {
+      if (mountedRef.current) {
+        const tick = await fetchRealData();
+        if (tick) {
+          processTick(tick);
+        }
       }
     }, interval);
     
     isStartedRef.current = true;
-    console.log('[TickStream] Demo mode started with interval:', interval);
-  }, [mergedConfig.symbol, mergedConfig.demoInterval, generateDemoTick, processTick]);
+    console.log('[TickStream] Real data mode started with poll interval:', interval, 'ms');
+  }, [mergedConfig.symbol, mergedConfig.pollInterval, fetchRealData, processTick]);
   
-  // Connect WebSocket
+  // Connect WebSocket (with real data fallback, not demo)
   const connectWebSocket = useCallback(() => {
     if (!mergedConfig.wsUrl) {
-      console.warn('[TickStream] No WebSocket URL provided, falling back to demo');
-      startDemoMode();
+      console.warn('[TickStream] No WebSocket URL provided, using real data polling');
+      startRealMode();
       return;
     }
     
@@ -164,7 +209,7 @@ export function useTickDataStream(config: TickStreamConfig) {
       
       wsRef.current.onopen = () => {
         console.log('[TickStream] WebSocket connected');
-        setState(prev => ({ ...prev, connected: true, error: null }));
+        setState(prev => ({ ...prev, connected: true, error: null, dataQuality: 'real' }));
         
         // Subscribe to symbol
         if (wsRef.current && mergedConfig.apiKey) {
@@ -185,7 +230,9 @@ export function useTickDataStream(config: TickStreamConfig) {
               volume: data.volume || 1000,
               timestamp: data.timestamp || Date.now(),
               bid: data.bid,
-              ask: data.ask
+              ask: data.ask,
+              source: 'websocket',
+              isReal: true
             });
           }
         } catch (e) {
@@ -194,36 +241,36 @@ export function useTickDataStream(config: TickStreamConfig) {
       };
       
       wsRef.current.onerror = (error) => {
-        console.error('[TickStream] WebSocket error, falling back to demo:', error);
-        setState(prev => ({ ...prev, error: 'WebSocket error, using demo mode' }));
-        startDemoMode();
+        console.error('[TickStream] WebSocket error, falling back to real data polling:', error);
+        setState(prev => ({ ...prev, error: 'WebSocket error, using real data polling' }));
+        startRealMode();
       };
       
       wsRef.current.onclose = () => {
         console.log('[TickStream] WebSocket closed');
-        if (mountedRef.current && !demoIntervalRef.current) {
-          // Fallback to demo mode
-          startDemoMode();
+        if (mountedRef.current && !pollIntervalRef.current) {
+          // Fallback to real data polling (not demo)
+          startRealMode();
         }
       };
     } catch (error) {
       console.error('[TickStream] Failed to create WebSocket:', error);
-      startDemoMode();
+      startRealMode();
     }
-  }, [mergedConfig.wsUrl, mergedConfig.symbol, mergedConfig.apiKey, processTick, startDemoMode]);
+  }, [mergedConfig.wsUrl, mergedConfig.symbol, mergedConfig.apiKey, processTick, startRealMode]);
   
   // Disconnect
   const disconnect = useCallback(() => {
-    if (demoIntervalRef.current) {
-      clearInterval(demoIntervalRef.current);
-      demoIntervalRef.current = null;
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
     }
     if (wsRef.current) {
       wsRef.current.close();
       wsRef.current = null;
     }
     isStartedRef.current = false;
-    setState(prev => ({ ...prev, connected: false }));
+    setState(prev => ({ ...prev, connected: false, dataQuality: 'disconnected' }));
   }, []);
   
   // Reconnect
@@ -233,10 +280,10 @@ export function useTickDataStream(config: TickStreamConfig) {
       if (mergedConfig.mode === 'websocket') {
         connectWebSocket();
       } else {
-        startDemoMode();
+        startRealMode();
       }
     }, 100);
-  }, [disconnect, mergedConfig.mode, connectWebSocket, startDemoMode]);
+  }, [disconnect, mergedConfig.mode, connectWebSocket, startRealMode]);
   
   // Track TPS
   useEffect(() => {
@@ -266,7 +313,7 @@ export function useTickDataStream(config: TickStreamConfig) {
       if (mergedConfig.mode === 'websocket') {
         connectWebSocket();
       } else {
-        startDemoMode();
+        startRealMode(); // v7.51: Always real data, never demo
       }
     }, 50);
     
@@ -275,12 +322,13 @@ export function useTickDataStream(config: TickStreamConfig) {
       clearTimeout(startTimer);
       disconnect();
     };
-  }, [mergedConfig.mode, connectWebSocket, startDemoMode, disconnect]);
+  }, [mergedConfig.mode, connectWebSocket, startRealMode, disconnect]);
   
   return {
     ...state,
     addTickListener,
     disconnect,
-    reconnect
+    reconnect,
+    isRealData: state.dataQuality === 'real' && state.sources.length > 0
   };
 }

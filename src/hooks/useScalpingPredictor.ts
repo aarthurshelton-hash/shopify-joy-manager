@@ -17,9 +17,10 @@ import {
   type EvolutionState 
 } from '@/lib/pensent-core/domains/finance/selfEvolvingSystem';
 
-export interface ScalpingConfig extends TickStreamConfig {
+export interface ScalpingConfig extends Omit<TickStreamConfig, 'pollInterval'> {
   predictionIntervalMs: number; // How often to generate new predictions
   autoPredict: boolean;
+  pollInterval?: number; // v7.51: Real data poll interval
 }
 
 export interface ScalpingState {
@@ -105,14 +106,13 @@ export function useScalpingPredictor(config: ScalpingConfig) {
   // Track resolved predictions to feed evolution system
   const lastResolvedCountRef = useRef(0);
   
-  // Connect to tick stream
+  // Connect to tick stream - v7.51: REAL DATA ONLY
   const tickStream = useTickDataStream({
     symbol: config.symbol,
-    mode: config.mode,
+    mode: config.mode === 'websocket' ? 'websocket' : 'real', // v7.51: No demo mode
     wsUrl: config.wsUrl,
     apiKey: config.apiKey,
-    demoVolatility: config.demoVolatility,
-    demoInterval: config.demoInterval
+    pollInterval: config.pollInterval || 1500
   });
   
   // Process incoming ticks
