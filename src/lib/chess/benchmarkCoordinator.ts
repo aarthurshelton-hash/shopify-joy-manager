@@ -83,16 +83,15 @@ export async function acquireBenchmarkLock(): Promise<AbortController> {
     console.log('[BenchmarkCoordinator] Pausing auto-evolution for manual benchmark');
     pauseAutoEvolution();
     
-    // Wait a moment for any in-flight operations to settle
-    await new Promise(r => setTimeout(r, 500));
+    // v7.14: Reduced wait time for faster lock acquisition
+    await new Promise(r => setTimeout(r, 200));
   }
   
-  // v7.13: FORCE terminate Stockfish to ensure clean state
-  // This is aggressive but prevents hung workers
+  // v7.14: Quick terminate - don't wait as long
   try {
     terminateStockfish();
     console.log('[BenchmarkCoordinator] Stockfish terminated');
-    await new Promise(r => setTimeout(r, 1500)); // Wait longer for worker cleanup
+    await new Promise(r => setTimeout(r, 500)); // v7.14: 500ms (was 1500ms)
   } catch (err) {
     console.warn('[BenchmarkCoordinator] Stockfish termination warning:', err);
   }
@@ -136,8 +135,8 @@ export async function releaseBenchmarkLock(): Promise<void> {
   // Notify listeners
   notifyListeners(false);
   
-  // Give Stockfish a moment to clean up
-  await new Promise(r => setTimeout(r, 500));
+  // v7.14: Quick cleanup
+  await new Promise(r => setTimeout(r, 200));
   
   // Resume auto-evolution if it was running before
   if (state.wasAutoEvolutionRunning) {

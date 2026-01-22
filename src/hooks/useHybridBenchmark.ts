@@ -445,8 +445,8 @@ export function useHybridBenchmark() {
         enPensentModulesActive: EN_PENSENT_ADAPTERS
       });
       
-      console.log('[v6.77] ══════════ ENGINE PRE-WARM SEQUENCE ══════════');
-      console.log('[v6.77] Step 1: Wait for engine ready state...');
+      console.log('[v7.14] ══════════ FAST ENGINE INIT ══════════');
+      console.log('[v7.14] Step 1: Wait for engine ready state...');
       
       const ready = await engine.waitReady((progress) => {
         setProgress(prev => ({
@@ -459,34 +459,25 @@ export function useHybridBenchmark() {
         throw new Error('Stockfish engine failed to initialize. Please refresh the page and try again.');
       }
       
-      // v6.77: WARM-UP TEST - Run a quick analysis to ensure engine is truly responsive
-      console.log('[v6.77] Step 2: Running warm-up analysis...');
-      setProgress(prev => ({ ...prev!, message: 'Validating engine health (warm-up test)...' }));
+      // v7.14-FAST: Quick warm-up with 3s timeout (was 7s)
+      console.log('[v7.14] Step 2: Quick warm-up...');
+      setProgress(prev => ({ ...prev!, message: 'Quick engine warm-up...' }));
       
       try {
-        const warmupFen = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1'; // e4 position
+        const warmupFen = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1';
         const warmupResult = await Promise.race([
-          engine.analyzePosition(warmupFen, { depth: 10 }),
-          new Promise<null>(r => setTimeout(() => r(null), 7000)) // 7s timeout for warmup
+          engine.analyzePosition(warmupFen, { depth: 8 }), // v7.14: depth 8 (was 10)
+          new Promise<null>(r => setTimeout(() => r(null), 3000)) // v7.14: 3s timeout (was 7s)
         ]);
         
-        if (!warmupResult) {
-          console.warn('[v6.77] ⚠️ Warm-up test timeout - reinitializing engine...');
-          // Force re-initialization
-          await new Promise(r => setTimeout(r, 1000));
-          const retryReady = await engine.waitReady();
-          if (!retryReady) {
-            throw new Error('Engine failed warm-up test and reinitialization. Please refresh the page.');
-          }
-        } else {
-          console.log(`[v6.77] ✅ Warm-up complete: depth ${warmupResult.evaluation.depth}, eval ${warmupResult.evaluation.score}cp`);
+        if (warmupResult) {
+          console.log(`[v7.14] ✅ Warm-up: depth ${warmupResult.evaluation.depth}`);
         }
       } catch (warmupErr) {
-        console.warn('[v6.77] Warm-up error (non-fatal):', warmupErr);
+        console.warn('[v7.14] Warm-up skipped:', warmupErr);
       }
       
-      console.log('[v6.77] Step 3: Engine calibrated and ready for benchmark');
-      console.log('[v6.77] ═══════════════════════════════════════════════');
+      console.log('[v7.14] ═══════════════════════════════════════════════');
       
       // Fetch games from Lichess
       setProgress(prev => ({ 
@@ -779,33 +770,29 @@ export function useHybridBenchmark() {
       // PHASE 3 (NEW): HEALTH CHECK - Validate engine between batches
       
       let gamesProcessedSinceHealthCheck = 0;
-      const HEALTH_CHECK_INTERVAL = 15; // Check engine health every 15 games
+      const HEALTH_CHECK_INTERVAL = 30; // v7.14: Check every 30 games (was 15)
       
       while (predictedCount < gameCount && !abortRef.current && batchNumber < maxBatches) {
         // ═══════════════════════════════════════════════════════════════════
-        // PHASE 0: PROACTIVE HEALTH CHECK (v6.77)
+        // PHASE 0: LIGHTWEIGHT HEALTH CHECK (v7.14)
         // ═══════════════════════════════════════════════════════════════════
         if (gamesProcessedSinceHealthCheck >= HEALTH_CHECK_INTERVAL) {
-          console.log(`[v6.77] 🏥 HEALTH CHECK: ${gamesProcessedSinceHealthCheck} games processed, validating engine...`);
-          setProgress(prev => ({ ...prev!, message: 'Running engine health check...' }));
+          console.log(`[v7.14] 🏥 Quick health check after ${gamesProcessedSinceHealthCheck} games...`);
           
           try {
-            const healthFen = 'r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3'; // Common opening
+            const healthFen = 'r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3';
             const healthResult = await Promise.race([
-              engine.analyzePosition(healthFen, { depth: 8 }),
-              new Promise<null>(r => setTimeout(() => r(null), 4000))
+              engine.analyzePosition(healthFen, { depth: 6 }), // v7.14: depth 6 (was 8)
+              new Promise<null>(r => setTimeout(() => r(null), 2000)) // v7.14: 2s (was 4s)
             ]);
             
             if (!healthResult) {
-              console.warn('[v6.77] ⚠️ Health check timeout - reinitializing...');
-              await new Promise(r => setTimeout(r, 1500));
+              console.warn('[v7.14] Health check timeout - quick reinit...');
               await engine.waitReady();
               consecutiveEngineFailures = 0;
-            } else {
-              console.log(`[v6.77] ✅ Engine healthy: depth ${healthResult.evaluation.depth}`);
             }
           } catch (healthErr) {
-            console.warn('[v6.77] Health check error:', healthErr);
+            // v7.14: Silent fail - don't block pipeline
           }
           
           gamesProcessedSinceHealthCheck = 0;
@@ -973,26 +960,19 @@ export function useHybridBenchmark() {
           continue;
         }
         
-        // v6.81-RETRY: Engine timeouts get RETRIED, not permanently failed
-        // Philosophy: Engine timeouts are resource issues, not game problems
-        // Retry up to 3 times with increasing patience before giving up
-        const MAX_ENGINE_RETRIES = 3;
+        // v7.14-FAST: Reduced retries and timeouts for faster throughput
+        const MAX_ENGINE_RETRIES = 2; // v7.14: 2 retries (was 3)
         let engineRetries = 0;
         let engineSucceeded = false;
         
         while (engineRetries < MAX_ENGINE_RETRIES && !engineSucceeded) {
-          const ANALYSIS_TIMEOUT = depth >= 40 ? 49000 : 39000; // v6.82: Speed up by 1s
+          // v7.14: Aggressive timeouts - 15s for normal, 25s for deep
+          const ANALYSIS_TIMEOUT = depth >= 40 ? 25000 : 15000;
           
           try {
             if (engineRetries > 0) {
-              console.log(`[v6.81-RETRY] 🔄 Engine retry ${engineRetries}/${MAX_ENGINE_RETRIES} for ${gameId}`);
-              setProgress(prev => ({ ...prev!, message: `Engine retry ${engineRetries}/${MAX_ENGINE_RETRIES}...` }));
-              
-              // Wait before retry, increasing with each attempt
-              const retryWait = 1000 * engineRetries; // v6.82: 1s base instead of 2s
-              await new Promise(r => setTimeout(r, retryWait));
-              
-              // Reset engine state
+              console.log(`[v7.14] 🔄 Retry ${engineRetries}/${MAX_ENGINE_RETRIES}`);
+              await new Promise(r => setTimeout(r, 500 * engineRetries)); // v7.14: 500ms base (was 1s)
               try { engine.stop(); } catch (e) { /* ignore */ }
               await engine.waitReady();
             }
@@ -1003,57 +983,42 @@ export function useHybridBenchmark() {
             
             if (analysis) {
               engineSucceeded = true;
-              if (engineRetries > 0) {
-                console.log(`[v6.81-RETRY] ✅ Engine succeeded on retry ${engineRetries}`);
-              }
             } else {
-              console.log(`[v6.81-RETRY] ⏳ Timeout on attempt ${engineRetries + 1}/${MAX_ENGINE_RETRIES} (${ANALYSIS_TIMEOUT/1000}s)`);
+              console.log(`[v7.14] ⏳ Timeout attempt ${engineRetries + 1} (${ANALYSIS_TIMEOUT/1000}s)`);
               engineRetries++;
               skipStats.engineTimeout++;
             }
           } catch (sfError) {
-            console.error(`[v6.81-RETRY] ❌ Engine error on attempt ${engineRetries + 1}:`, sfError);
+            console.error(`[v7.14] ❌ Engine error:`, sfError);
             engineRetries++;
             skipStats.analysisError++;
           }
         }
         
         if (!engineSucceeded) {
-          console.warn(`[v6.81-RETRY] ❌ Engine exhausted ${MAX_ENGINE_RETRIES} retries for ${gameId} - marking as failed`);
+          console.warn(`[v7.14] ❌ Engine failed after ${MAX_ENGINE_RETRIES} retries`);
           consecutiveEngineFailures++;
-          // Only add to failed set after ALL retries exhausted
           failedGameIds.add(rawGameId);
           consecutiveSkips++;
           
-          // v6.81: Patient engine recovery after total failure
+          // v7.14: Quick recovery after 2 consecutive failures
           if (consecutiveEngineFailures >= 2) {
-            console.warn(`[v6.81] ⚠️ ${consecutiveEngineFailures} consecutive total failures - deep recovery`);
-            setProgress(prev => ({ ...prev!, message: 'Deep engine recovery...' }));
-            
+            console.warn(`[v7.14] Quick recovery after ${consecutiveEngineFailures} failures`);
             try { engine.stop(); } catch (e) { /* ignore */ }
+            await new Promise(r => setTimeout(r, 1500)); // v7.14: 1.5s (was 4s)
             
-            console.log(`[v6.82] ⏳ Deep recovery: waiting 4s before reinit...`);
-            await new Promise(r => setTimeout(r, 4000));
-            
-            const reready = await engine.waitReady((p) => {
-              setProgress(prev => ({ ...prev!, message: `Engine recovery: ${Math.round(p * 100)}%` }));
-            });
-            
+            const reready = await engine.waitReady();
             if (reready) {
-              console.log(`[v6.81] ✅ Engine recovered from deep stall`);
               consecutiveEngineFailures = 0;
               gamesProcessedSinceHealthCheck = 0;
             } else {
-              console.error(`[v6.81] ❌ Engine failed to recover - aborting batch`);
+              console.error(`[v7.14] ❌ Engine failed to recover`);
               await saveIncrementalResults();
               break;
             }
           }
           continue;
         }
-        
-        // Reset counters on success
-        consecutiveEngineFailures = 0;
         
         // Reset counters on success
         consecutiveEngineFailures = 0;

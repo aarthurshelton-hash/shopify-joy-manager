@@ -13,8 +13,9 @@ import { patternDatabase } from './patternDatabase';
 import { PatternRecord } from './types';
 import { StrategicArchetype } from '../colorFlowAnalysis';
 
-// v7.13: Hard timeout for DB operations
-const DB_TIMEOUT_MS = 15000; // 15 seconds max
+// v7.14-FAST: Reduced timeouts for faster benchmark startup
+const DB_TIMEOUT_MS = 8000; // 8 seconds max (was 15s)
+const MAX_PAGES = 5; // v7.14: Limit to 5 pages (was 10)
 
 function withTimeout<T>(promise: Promise<T>, ms: number, name: string): Promise<T> {
   return Promise.race([
@@ -60,17 +61,16 @@ export async function loadLearnedPatterns(): Promise<{
     };
   }
 
-  console.log('[PatternLoader] Loading ALL learned patterns from database...');
+  console.log('[PatternLoader] Loading patterns (fast mode)...');
   
   const patterns: LearnedPattern[] = [];
   let from = 0;
   const pageSize = 500;
   let hasMore = true;
-  const maxPages = 10; // v7.13: Limit to prevent infinite loops
   let pageCount = 0;
 
-  // Paginate through records with timeout protection
-  while (hasMore && pageCount < maxPages) {
+  // v7.14: Fast pagination with reduced limits
+  while (hasMore && pageCount < MAX_PAGES) {
     pageCount++;
     
     try {
