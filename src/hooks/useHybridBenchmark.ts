@@ -458,6 +458,7 @@ export function useHybridBenchmark() {
     let stockfishCorrect = 0;
     let bothCorrect = 0;
     let bothWrong = 0;
+    const benchmarkStartTime = Date.now(); // v7.29: Track start time for duration_ms
     
     try {
       // v6.75-CALIBRATED: PRE-WARM engine with health validation
@@ -1216,6 +1217,9 @@ export function useHybridBenchmark() {
         .eq('run_id', runId)
         .maybeSingle();
       
+      // v7.29: Calculate duration for final save
+      const benchmarkDurationMs = Date.now() - benchmarkStartTime;
+      
       if (existingBenchmark) {
         await supabase
           .from('chess_benchmark_results')
@@ -1229,9 +1233,10 @@ export function useHybridBenchmark() {
             both_correct: bothCorrect,
             both_wrong: bothWrong,
             games_analyzed: attempts.map(a => a.game_id),
+            duration_ms: benchmarkDurationMs, // v7.29: NOW SAVED!
           })
           .eq('id', existingBenchmark.id);
-        console.log(`[v6.43] ✅ Final benchmark update complete`);
+        console.log(`[v7.29] ✅ Final benchmark update complete (duration: ${Math.round(benchmarkDurationMs/1000)}s)`);
       } else {
         // Create benchmark if incremental saves didn't create it yet
         await supabase
@@ -1253,8 +1258,9 @@ export function useHybridBenchmark() {
             stockfish_mode: 'local_wasm_unlimited',
             hybrid_version: 'en-pensent-v1',
             data_quality_tier: 'tcec_unlimited',
+            duration_ms: benchmarkDurationMs, // v7.29: NOW SAVED!
           });
-        console.log(`[v6.43] ✅ Created final benchmark record`);
+        console.log(`[v7.29] ✅ Created final benchmark record (duration: ${Math.round(benchmarkDurationMs/1000)}s)`);
       }
       
       // Collect unique archetypes detected
@@ -1314,18 +1320,21 @@ export function useHybridBenchmark() {
             .maybeSingle();
           
           if (existingBenchmark) {
-            // Update existing benchmark with final count
+            // Update existing benchmark with final count + duration
+            const errorDurationMs = Date.now() - benchmarkStartTime; // v7.29
             await supabase
               .from('chess_benchmark_results')
               .update({
                 completed_games: attempts.length,
                 hybrid_accuracy: attempts.length > 0 ? (hybridCorrect / attempts.length) * 100 : 0,
                 stockfish_accuracy: attempts.length > 0 ? (stockfishCorrect / attempts.length) * 100 : 0,
+                duration_ms: errorDurationMs, // v7.29: Save duration even on error
               })
               .eq('id', existingBenchmark.id);
-            console.log(`[v6.43] ✅ Updated benchmark with ${attempts.length} predictions`);
+            console.log(`[v7.29] ✅ Updated benchmark with ${attempts.length} predictions (error path, ${Math.round(errorDurationMs/1000)}s)`);
           } else {
             // Create benchmark record if it doesn't exist
+            const errorDurationMs = Date.now() - benchmarkStartTime; // v7.29
             const { data: newBenchmark } = await supabase
               .from('chess_benchmark_results')
               .insert({
@@ -1345,6 +1354,7 @@ export function useHybridBenchmark() {
                 stockfish_mode: 'local_wasm_unlimited',
                 hybrid_version: 'en-pensent-v1',
                 data_quality_tier: 'tcec_unlimited',
+                duration_ms: errorDurationMs, // v7.29: Save duration even on error
               })
               .select()
               .single();
