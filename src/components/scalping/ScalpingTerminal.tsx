@@ -71,11 +71,10 @@ const ScalpingTerminal: React.FC = () => {
   // Stable config that only changes when needed
   const predictorConfig = useMemo(() => ({
     symbol: symbol || 'SPY',
-    mode: 'demo' as const,
+    mode: 'real' as const, // v7.51: REAL data only
     predictionIntervalMs: predictionInterval,
     autoPredict,
-    demoVolatility: 0.0012,
-    demoInterval: 150
+    pollInterval: 1500 // v7.51: Poll for real data every 1.5s
   }), [symbol, predictionInterval, autoPredict]);
   
   const predictor = useScalpingPredictor(predictorConfig);

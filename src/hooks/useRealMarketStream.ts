@@ -1,32 +1,31 @@
 /**
- * Multi-Market Data Stream Hook
- * v7.51-REAL: 100% REAL DATA from Multi-Broker Aggregator
- * NO SIMULATED DATA - Uses Alpaca, Polygon, Binance, Finnhub, Twelve Data, Tradier
+ * Real Market Data Stream Hook
+ * v7.51-REAL: 100% real data from Multi-Broker Aggregator
+ * NO SIMULATED DATA - Only authentic market feeds
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { crossMarketEngine, type MarketTick, type AssetClass, type BigPictureState, type MarketSnapshot } from '@/lib/pensent-core/domains/finance/crossMarketEngine';
 import { multiBrokerAdapter } from '@/lib/pensent-core/domains/universal/adapters/multiBrokerAdapter';
 
-export interface MarketConfig {
+export interface RealMarketConfig {
   symbol: string;
   assetClass: AssetClass;
-  basePrice: number;
-  pollInterval: number; // v7.51: How often to fetch real data (ms)
+  pollInterval: number; // How often to fetch real data (ms)
 }
 
-const DEFAULT_MARKETS: MarketConfig[] = [
-  { symbol: 'SPY', assetClass: 'equity', basePrice: 580, pollInterval: 2000 },
-  { symbol: 'QQQ', assetClass: 'equity', basePrice: 500, pollInterval: 2000 },
-  { symbol: 'TLT', assetClass: 'bond', basePrice: 95, pollInterval: 5000 },
-  { symbol: 'GLD', assetClass: 'commodity', basePrice: 240, pollInterval: 3000 },
-  { symbol: 'BTCUSD', assetClass: 'crypto', basePrice: 100000, pollInterval: 1000 },
-  { symbol: 'ETHUSD', assetClass: 'crypto', basePrice: 3500, pollInterval: 1000 },
+const DEFAULT_REAL_MARKETS: RealMarketConfig[] = [
+  { symbol: 'SPY', assetClass: 'equity', pollInterval: 2000 },
+  { symbol: 'QQQ', assetClass: 'equity', pollInterval: 2000 },
+  { symbol: 'TLT', assetClass: 'bond', pollInterval: 5000 },
+  { symbol: 'GLD', assetClass: 'commodity', pollInterval: 3000 },
+  { symbol: 'BTCUSD', assetClass: 'crypto', pollInterval: 1000 },
+  { symbol: 'ETHUSD', assetClass: 'crypto', pollInterval: 1000 },
 ];
 
-export interface MultiMarketState {
+export interface RealMarketState {
   connected: boolean;
-  markets: MarketConfig[];
+  markets: RealMarketConfig[];
   snapshot: MarketSnapshot;
   bigPicture: BigPictureState;
   ticksPerSecond: number;
@@ -38,8 +37,8 @@ export interface MultiMarketState {
   successfulFetches: number;
 }
 
-export function useMultiMarketStream(markets: MarketConfig[] = DEFAULT_MARKETS) {
-  const [state, setState] = useState<MultiMarketState>({
+export function useRealMarketStream(markets: RealMarketConfig[] = DEFAULT_REAL_MARKETS) {
+  const [state, setState] = useState<RealMarketState>({
     connected: false,
     markets,
     snapshot: {
@@ -60,34 +59,30 @@ export function useMultiMarketStream(markets: MarketConfig[] = DEFAULT_MARKETS) 
     successfulFetches: 0
   });
 
-  const pricesRef = useRef<Map<string, number>>(new Map());
   const intervalsRef = useRef<NodeJS.Timeout[]>([]);
   const tickCountRef = useRef(0);
   const tpsIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const mountedRef = useRef(true);
   const isStartedRef = useRef(false);
+  const pricesRef = useRef<Map<string, number>>(new Map());
 
   // Convert asset class to multi-broker format
   const assetClassToBrokerType = (assetClass: AssetClass): 'stock' | 'forex' | 'crypto' => {
     switch (assetClass) {
-      case 'equity': return 'stock';
-      case 'forex': return 'forex';
       case 'crypto': return 'crypto';
-      case 'future':
-      case 'commodity': 
-      case 'bond':
+      case 'forex': return 'forex';
       default: return 'stock';
     }
   };
 
-  // Fetch ONLY real data from multi-broker aggregator - NO FALLBACKS
-  const fetchRealData = useCallback(async (market: MarketConfig): Promise<MarketTick | null> => {
+  // Fetch ONLY real data - no fallbacks
+  const fetchRealData = useCallback(async (market: RealMarketConfig): Promise<MarketTick | null> => {
     try {
       const brokerType = assetClassToBrokerType(market.assetClass);
       const data = await multiBrokerAdapter.fetchAggregatedData(market.symbol, brokerType);
       
       if (!data || !data.consensus.price || data.sources.length === 0) {
-        console.warn(`[MultiMarketStream] No real data for ${market.symbol}`);
+        console.warn(`[RealMarketStream] No real data for ${market.symbol}`);
         setState(prev => ({
           ...prev,
           failedFetches: prev.failedFetches + 1,
@@ -96,13 +91,23 @@ export function useMultiMarketStream(markets: MarketConfig[] = DEFAULT_MARKETS) 
         return null;
       }
 
-      const previousPrice = pricesRef.current.get(market.symbol) || market.basePrice;
+      const previousPrice = pricesRef.current.get(market.symbol) || data.consensus.price;
       const change = data.consensus.price - previousPrice;
       const changePercent = previousPrice > 0 ? (change / previousPrice) * 100 : 0;
 
       pricesRef.current.set(market.symbol, data.consensus.price);
 
-      // Update state with REAL data confirmation
+      const tick: MarketTick = {
+        symbol: market.symbol,
+        assetClass: market.assetClass,
+        price: data.consensus.price,
+        change: Math.round(change * 100) / 100,
+        changePercent: Math.round(changePercent * 10000) / 10000,
+        volume: data.ticks.reduce((sum, t) => sum + (t.volume || 0), 0),
+        timestamp: data.timestamp
+      };
+
+      // Update state with real data confirmation
       setState(prev => ({
         ...prev,
         realDataSources: data.sources,
@@ -112,17 +117,9 @@ export function useMultiMarketStream(markets: MarketConfig[] = DEFAULT_MARKETS) 
         successfulFetches: prev.successfulFetches + 1
       }));
 
-      return {
-        symbol: market.symbol,
-        assetClass: market.assetClass,
-        price: data.consensus.price,
-        change: Math.round(change * 100) / 100,
-        changePercent: Math.round(changePercent * 10000) / 10000,
-        volume: data.ticks.reduce((sum, t) => sum + (t.volume || 0), 0),
-        timestamp: data.timestamp
-      };
+      return tick;
     } catch (error) {
-      console.error(`[MultiMarketStream] Failed to fetch ${market.symbol}:`, error);
+      console.error(`[RealMarketStream] Failed to fetch ${market.symbol}:`, error);
       setState(prev => ({
         ...prev,
         failedFetches: prev.failedFetches + 1
@@ -131,23 +128,21 @@ export function useMultiMarketStream(markets: MarketConfig[] = DEFAULT_MARKETS) 
     }
   }, []);
 
-  // v7.51-REAL: REMOVED generateSimulatedTick - no simulation allowed
-
   const startStreams = useCallback(() => {
     if (isStartedRef.current) return;
     
     intervalsRef.current.forEach(clearInterval);
     intervalsRef.current = [];
 
-    console.log('[MultiMarketStream] Starting REAL-ONLY data streams (v7.51-REAL)...');
+    console.log('[RealMarketStream] Starting REAL-ONLY data streams (no simulation)...');
     isStartedRef.current = true;
 
-    // Initialize adapter
+    // Initialize multi-broker adapter
     multiBrokerAdapter.initialize();
 
-    // Initial fetch of real data for all markets
+    // Initial fetch for all markets
     const initializeRealData = async () => {
-      console.log('[MultiMarketStream] Fetching initial real data...');
+      console.log('[RealMarketStream] Fetching initial real data...');
       let hasData = false;
       
       for (const market of markets) {
@@ -173,34 +168,30 @@ export function useMultiMarketStream(markets: MarketConfig[] = DEFAULT_MARKETS) 
 
     initializeRealData();
 
-    // Set up real data polling for each market at their configured intervals
+    // Set up polling for each market at their specific intervals
     markets.forEach(market => {
-      const realInterval = setInterval(async () => {
+      const interval = setInterval(async () => {
         if (!mountedRef.current) return;
         
-        try {
-          const tick = await fetchRealData(market);
-          if (tick) {
-            tickCountRef.current++;
-            const bigPicture = crossMarketEngine.processTick(tick);
-            const snapshot = crossMarketEngine.getSnapshot();
-            
-            setState(prev => ({
-              ...prev,
-              connected: true,
-              snapshot,
-              bigPicture
-            }));
-          }
-        } catch (error) {
-          console.error('[MultiMarketStream] Real data fetch error:', error);
+        const tick = await fetchRealData(market);
+        if (tick) {
+          tickCountRef.current++;
+          const bigPicture = crossMarketEngine.processTick(tick);
+          const snapshot = crossMarketEngine.getSnapshot();
+          
+          setState(prev => ({
+            ...prev,
+            connected: true,
+            snapshot,
+            bigPicture
+          }));
         }
       }, market.pollInterval);
       
-      intervalsRef.current.push(realInterval);
+      intervalsRef.current.push(interval);
     });
 
-    console.log('[MultiMarketStream] Real-only streams started (no simulation)');
+    console.log('[RealMarketStream] Real-only streams started');
   }, [markets, fetchRealData]);
 
   // Track TPS
@@ -228,7 +219,7 @@ export function useMultiMarketStream(markets: MarketConfig[] = DEFAULT_MARKETS) 
     
     const startTimer = setTimeout(() => {
       startStreams();
-    }, 50);
+    }, 100);
 
     return () => {
       mountedRef.current = false;
@@ -236,7 +227,7 @@ export function useMultiMarketStream(markets: MarketConfig[] = DEFAULT_MARKETS) 
       intervalsRef.current.forEach(clearInterval);
       intervalsRef.current = [];
       isStartedRef.current = false;
-      setState(prev => ({ ...prev, connected: false }));
+      setState(prev => ({ ...prev, connected: false, dataQuality: 'disconnected' }));
     };
   }, [startStreams]);
 
