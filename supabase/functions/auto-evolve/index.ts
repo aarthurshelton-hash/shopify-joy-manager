@@ -29,7 +29,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const AUTO_EVOLVE_VERSION = '7.11-STAGGERED'; // Sequential fetch to avoid rate limits + wider time windows
+const AUTO_EVOLVE_VERSION = '7.21-STRICT-SF17'; // REQUIRE real SF17 eval - no heuristic fallback
 
 // ============================================================================
 // DUAL EVAL SYSTEM - CLOUD SF17 + LOCAL HEURISTIC FALLBACK (v7.10)
@@ -54,30 +54,30 @@ interface EvalResult {
   source: 'cloud-sf17' | 'local-heuristic';
 }
 
-// TURBO: Faster rate limiting (12 req/min, still under 20 limit)
+// v7.21: Slower rate limiting to ensure we GET real evals (6 req/min, conservative)
 let lastCloudEvalTime = 0;
-const CLOUD_EVAL_INTERVAL_MS = 5000; // 12 req/min in turbo mode
+const CLOUD_EVAL_INTERVAL_MS = 10000; // 6 req/min - slower but REAL data
 
 // v7.11: Helper for staggered requests
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 /**
- * v7.10-DUAL-EVAL: Try cloud first, fall back to local heuristic
- * This removes the bottleneck while still preferring real SF17 when available
+ * v7.21-STRICT-SF17: REQUIRE real Stockfish 17 evaluation
+ * NO HEURISTIC FALLBACK - skip games that don't have cloud eval
+ * This ensures both SF and EP are at full performance for fair comparison
  */
-async function getEvaluation(fen: string, characteristics: GameCharacteristics): Promise<EvalResult> {
-  // Try cloud eval first (fast check, no waiting if already rate limited)
+async function getEvaluation(fen: string, _characteristics: GameCharacteristics): Promise<EvalResult | null> {
+  // STRICT: Only accept real cloud SF17 evaluations
   const cloudEval = await tryCloudEval(fen);
   
-  if (cloudEval) {
+  if (cloudEval && cloudEval.depth >= 20) {
     return { ...cloudEval, source: 'cloud-sf17' };
   }
   
-  // Fallback: Use local heuristic based on game characteristics
-  const heuristicEval = generateHeuristicEval(characteristics);
-  console.log(`[${AUTO_EVOLVE_VERSION}] 📊 Local heuristic eval: cp=${heuristicEval.cp}`);
-  
-  return { ...heuristicEval, source: 'local-heuristic' };
+  // v7.21: NO FALLBACK - return null to skip this game
+  // Better to skip 10 games than save 1 with fake SF data
+  console.log(`[${AUTO_EVOLVE_VERSION}] ⏭️ No real SF17 eval available - skipping position`);
+  return null;
 }
 
 /**
@@ -489,7 +489,7 @@ Deno.serve(async (req) => {
           stockfish_depth: p.stockfishDepth,
           actual_result: p.actualResult,
           data_source: p.dataSource,
-          data_quality_tier: p.stockfishDepth && p.stockfishDepth > 0 ? 'verified-sf17' : 'heuristic-fallback',
+          data_quality_tier: 'verified-sf17', // v7.21: All data is now verified SF17 (no heuristic fallback)
           white_elo: p.whiteElo,
           black_elo: p.blackElo,
           time_control: p.timeControl,
@@ -759,10 +759,16 @@ async function generateRealDivergentPrediction(game: GameData): Promise<Predicti
   // Analyze game characteristics with REAL Color Flow logic
   const characteristics = analyzeRealGameCharacteristics(moves, predictionMove);
   
-  // v7.10-DUAL-EVAL: Get evaluation (cloud SF17 preferred, local heuristic fallback)
+  // v7.21-STRICT-SF17: Get REAL evaluation (skip if not available)
   const evalResult = await getEvaluation(fen, characteristics);
   
-  // Generate predictions using available eval
+  // v7.21: STRICT - skip game if no real SF17 eval available
+  if (!evalResult) {
+    console.log(`[${AUTO_EVOLVE_VERSION}] ⏭️ Skipping ${game.id} - no real SF17 eval`);
+    return null;
+  }
+  
+  // Generate predictions using REAL SF17 eval
   const hybridPrediction = generateHybridTrajectoryPrediction(characteristics, game.winner);
   const stockfishPrediction = generateStockfishPredictionFromRealEval(
     { cp: evalResult.cp, depth: evalResult.depth, isMate: evalResult.isMate, mateIn: evalResult.mateIn }, 
@@ -784,8 +790,7 @@ async function generateRealDivergentPrediction(game: GameData): Promise<Predicti
   const normalizedResult = game.winner === 'white' ? 'white_wins' 
     : game.winner === 'black' ? 'black_wins' : 'draw';
   
-  // Track eval source for data quality tiering
-  const dataQualityTier = evalResult.source === 'cloud-sf17' ? 'verified-sf17' : 'heuristic-fallback';
+  // v7.21: All saved data is verified SF17 (no heuristic fallback tier)
   
   return {
     gameId: game.id,
@@ -802,7 +807,7 @@ async function generateRealDivergentPrediction(game: GameData): Promise<Predicti
     stockfishDepth: evalResult.depth,
     stockfishCorrect: stockfishPrediction.prediction === normalizedResult,
     actualResult: normalizedResult,
-    dataSource: `auto-evolve-${AUTO_EVOLVE_VERSION}-${evalResult.source}`,
+    dataSource: `auto-evolve-${AUTO_EVOLVE_VERSION}-verified-sf17`,
     whiteElo: game.whiteElo,
     blackElo: game.blackElo,
     timeControl: game.timeControl,
