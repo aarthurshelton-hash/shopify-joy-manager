@@ -25,7 +25,7 @@ import { toast } from 'sonner';
 import { getUserWallet, formatBalance, purchaseWithWallet } from '@/lib/marketplace/walletApi';
 import { initiateDeposit } from '@/lib/marketplace/withdrawalApi';
 import { useNavigate } from 'react-router-dom';
-import { usePaymentRateLimit } from '@/hooks/useRateLimit';
+import { usePaymentRateLimit } from '@/hooks/useRateLimitV2';
 
 interface WalletPurchaseModalProps {
   open: boolean;
@@ -51,7 +51,8 @@ export const WalletPurchaseModal: React.FC<WalletPurchaseModalProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [purchaseComplete, setPurchaseComplete] = useState(false);
-  const { checkLimit, isLimited, retryAfter } = usePaymentRateLimit();
+  const { check: checkLimit, isLimited, resetInMs } = usePaymentRateLimit();
+  const retryAfter = resetInMs ? Math.ceil(resetInMs / 1000) : null;
 
   // Calculate fees
   const platformFeeCents = Math.floor(priceCents * 0.05);
@@ -84,11 +85,9 @@ export const WalletPurchaseModal: React.FC<WalletPurchaseModalProps> = ({
       return;
     }
 
-    // Check rate limit before proceeding
-    const allowed = await checkLimit();
-    if (!allowed) {
-      return;
-    }
+    // Check rate limit before proceeding (V2 is synchronous)
+    const result = checkLimit();
+    if (!result.allowed) return;
 
     setIsPurchasing(true);
 

@@ -25,7 +25,7 @@ import {
   calculateEloFromBenchmark,
   type LiveEloState 
 } from '@/lib/chess/liveEloTracker';
-import { useBenchmarkRateLimit } from '@/hooks/useRateLimit';
+import { useBenchmarkRateLimit } from '@/hooks/useRateLimitV2';
 import { GameDetailsModal } from '@/components/chess/GameDetailsModal';
 
 interface CumulativeStats {
@@ -97,8 +97,8 @@ export default function Benchmark() {
     error: localError 
   } = useHybridBenchmark();
 
-  // Rate limiting for benchmark runs
-  const { checkLimit: checkBenchmarkLimit, isLimited: isBenchmarkLimited } = useBenchmarkRateLimit();
+  // Rate limiting for benchmark runs (V2 - synchronous, sliding window)
+  const { check: checkBenchmarkLimit, isLimited: isBenchmarkLimited } = useBenchmarkRateLimit();
 
   // Handle live prediction callback
   const handleLivePrediction = useCallback((prediction: LivePredictionData) => {
@@ -340,9 +340,9 @@ export default function Benchmark() {
   };
 
   const runBenchmark = async () => {
-    // Check rate limit before starting
-    const allowed = await checkBenchmarkLimit();
-    if (!allowed) return;
+    // Check rate limit before starting (V2 is synchronous)
+    const result = checkBenchmarkLimit();
+    if (!result.allowed) return;
 
     console.log('[Benchmark] Starting cloud benchmark with FRESH Lichess games...');
     setIsRunning(true);
