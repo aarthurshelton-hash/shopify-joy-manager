@@ -1,11 +1,14 @@
 /**
- * React Hook for Auto-Evolution Engine v6.93
+ * React Hook for Auto-Evolution Engine v7.24-LIVE-STATS
  * 
  * Provides complete control over the self-healing evolution system:
  * - Start/Stop/Pause controls
- * - Real-time stats and progress
+ * - Real-time stats and progress from DATABASE
  * - Event subscriptions for UI updates
  * - Force batch triggers
+ * 
+ * v7.24: Stats are now fetched from DB on mount (not just when engine starts)
+ *        Uses useRealtimeAccuracyContext for live updates
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -21,6 +24,7 @@ import {
   type EvolutionState,
   AUTO_EVOLUTION_VERSION,
 } from '@/lib/chess/autoEvolutionEngine';
+import { useRealtimeAccuracyContext } from '@/providers/RealtimeAccuracyProvider';
 
 export interface UseAutoEvolutionReturn {
   // State
@@ -68,6 +72,9 @@ export function useAutoEvolution(): UseAutoEvolutionReturn {
   const [lastEvent, setLastEvent] = useState<{ type: string; data?: any } | null>(null);
   const [sessionDuration, setSessionDuration] = useState('0s');
   
+  // v7.24: Use realtime context for LIVE database stats
+  const { chessStats } = useRealtimeAccuracyContext();
+  
   const sessionTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   // Subscribe to evolution events
@@ -80,7 +87,7 @@ export function useAutoEvolution(): UseAutoEvolutionReturn {
       if (event === 'cloud_batch_complete' || event === 'local_batch_complete') {
         toast({
           title: `🧬 ${event.includes('cloud') ? 'Cloud' : 'Deep'} Batch Complete`,
-          description: `+${data?.count} predictions (${newState.sessionPredictions} session / ${newState.totalPredictions} total)`,
+          description: `+${data?.count} predictions (${newState.sessionPredictions} session / ${chessStats?.totalGames || newState.totalPredictions} total)`,
         });
       } else if (event === 'recovery_complete') {
         toast({
@@ -96,7 +103,7 @@ export function useAutoEvolution(): UseAutoEvolutionReturn {
     });
     
     return unsubscribe;
-  }, [toast]);
+  }, [toast, chessStats]);
   
   // Session duration timer
   useEffect(() => {
@@ -183,15 +190,22 @@ export function useAutoEvolution(): UseAutoEvolutionReturn {
     return `${Math.floor(elapsed / 3600000)}h ago`;
   };
   
+  // v7.24: Use REAL database stats from realtime context, not engine singleton
+  // This ensures stats are accurate even before engine starts
+  const totalFromDb = chessStats?.totalGames || 0;
+  const volumeFromDb = chessStats?.volumePoolCount || 0;
+  const deepFromDb = chessStats?.deepPoolCount || 0;
+  
   return {
     state,
     isRunning: state.isRunning,
     isPaused: state.isPaused,
     
     sessionPredictions: state.sessionPredictions,
-    totalPredictions: state.totalPredictions,
-    cloudPredictions: state.totalCloudPredictions,
-    localPredictions: state.totalLocalPredictions,
+    // v7.24: Prefer DB stats over engine state
+    totalPredictions: totalFromDb > 0 ? totalFromDb : state.totalPredictions,
+    cloudPredictions: volumeFromDb > 0 ? volumeFromDb : state.totalCloudPredictions,
+    localPredictions: deepFromDb > 0 ? deepFromDb : state.totalLocalPredictions,
     
     consecutiveErrors: state.consecutiveErrors,
     recoveryCount: state.recoveryCount,

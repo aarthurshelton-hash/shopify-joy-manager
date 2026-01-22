@@ -1,8 +1,9 @@
 /**
- * Realtime Accuracy Provider v7.23 - LIVE STATS
+ * Realtime Accuracy Provider v7.24 - LIVE STATS
  * Wraps the app to provide platform-wide accuracy auto-updates
  * Ensures all numerical data across En Pensent syncs in realtime
- * v7.23: Now exposes liveEloState for instant ELO updates across all pages
+ * v7.24: Now exposes liveEloState for instant ELO updates across all pages
+ *        Stats sourced from DB, used by useAutoEvolution for accurate totals
  */
 
 import React, { createContext, useContext, ReactNode, useEffect } from 'react';
