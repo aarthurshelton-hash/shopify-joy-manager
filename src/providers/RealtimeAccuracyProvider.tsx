@@ -1,8 +1,8 @@
 /**
- * Realtime Accuracy Provider v6.63
+ * Realtime Accuracy Provider v7.20
  * Wraps the app to provide platform-wide accuracy auto-updates
  * Ensures all numerical data across En Pensent syncs in realtime
- * NOW includes chess_prediction_attempts for FIDE ELO accuracy
+ * v7.20: Now includes chess_benchmark_results for instant benchmark completion updates
  */
 
 import React, { createContext, useContext, ReactNode, useEffect } from 'react';
