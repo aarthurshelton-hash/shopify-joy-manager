@@ -1,21 +1,21 @@
 /**
- * Benchmark Coordinator v7.28-SAFE
+ * Benchmark Coordinator v7.42-AUTONOMOUS
  * 
  * Coordinates between manual benchmarks and auto-evolution to prevent
  * resource conflicts (Stockfish worker contention).
  * 
- * v7.28 FIXES:
- * - NO LONGER terminates Stockfish on lock acquire (manual benchmark needs it!)
- * - Auto-evolution checks lock BEFORE starting any batch
- * - Hard timeout on lock acquisition to prevent deadlocks  
- * - Global abort signal for all running operations
- * - Faster lock acquisition (reduced timeouts)
+ * v7.42 AUTONOMOUS CHANGES:
+ * - Sets DATABASE LOCK when manual benchmark starts (so server-side cron yields)
+ * - Lock expires after 10 minutes (stale lock protection)
+ * - Auto-evolution (both client and server) checks lock before starting
  * 
  * When manual benchmark starts:
- * - Pauses auto-evolution
+ * - Sets database lock (for server-side awareness)
+ * - Pauses client-side auto-evolution
  * - Gives exclusive access to manual benchmark
  * 
  * When manual benchmark ends:
+ * - Releases database lock
  * - Resumes auto-evolution if it was running
  */
 
@@ -24,7 +24,9 @@ import {
   resumeAutoEvolution, 
   getEvolutionState 
 } from './autoEvolutionEngine';
-// v7.28: Removed terminateStockfish import - manual benchmark needs the engine!
+import { supabase } from '@/integrations/supabase/client';
+
+const COORDINATOR_VERSION = "7.42-AUTONOMOUS";
 
 interface CoordinatorState {
   manualBenchmarkActive: boolean;
@@ -60,36 +62,63 @@ function notifyListeners(isLocked: boolean): void {
 }
 
 /**
+ * v7.42: Set database lock to signal server-side cron to yield
+ */
+async function setDatabaseLock(locked: boolean): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('evolution_state')
+      .upsert({
+        state_type: 'benchmark_lock',
+        genes: { 
+          locked,
+          version: COORDINATOR_VERSION,
+          timestamp: new Date().toISOString(),
+        },
+        fitness_score: locked ? 0 : 100,
+        generation: 0,
+      }, { onConflict: 'state_type' });
+    
+    if (error) {
+      console.warn(`[${COORDINATOR_VERSION}] Failed to set database lock:`, error);
+    } else {
+      console.log(`[${COORDINATOR_VERSION}] Database lock ${locked ? 'SET' : 'RELEASED'}`);
+    }
+  } catch (err) {
+    console.warn(`[${COORDINATOR_VERSION}] Database lock error:`, err);
+  }
+}
+
+/**
  * Call this BEFORE starting a manual benchmark
- * Pauses auto-evolution for exclusive access (NO LONGER terminates Stockfish!)
+ * Sets database lock + pauses client-side auto-evolution
  */
 export async function acquireBenchmarkLock(): Promise<AbortController> {
   if (state.manualBenchmarkActive) {
-    console.log('[BenchmarkCoordinator] Lock already held, returning existing abort controller');
+    console.log(`[${COORDINATOR_VERSION}] Lock already held, returning existing abort controller`);
     return state.abortController || new AbortController();
   }
   
-  console.log('[BenchmarkCoordinator] Acquiring benchmark lock...');
+  console.log(`[${COORDINATOR_VERSION}] Acquiring benchmark lock...`);
   
   // Create abort controller for this benchmark session
   state.abortController = new AbortController();
+  
+  // v7.42: Set database lock FIRST (so server-side cron yields)
+  await setDatabaseLock(true);
   
   // Check current auto-evolution state
   const evolutionState = getEvolutionState();
   state.wasAutoEvolutionRunning = evolutionState.isRunning && !evolutionState.isPaused;
   
-  // Pause auto-evolution if running
+  // Pause client-side auto-evolution if running
   if (state.wasAutoEvolutionRunning) {
-    console.log('[BenchmarkCoordinator] Pausing auto-evolution for manual benchmark');
+    console.log(`[${COORDINATOR_VERSION}] Pausing client-side auto-evolution for manual benchmark`);
     pauseAutoEvolution();
     
-    // v7.28: Quick wait for auto-evolution to yield
+    // Quick wait for auto-evolution to yield
     await new Promise(r => setTimeout(r, 100));
   }
-  
-  // v7.28: DO NOT terminate Stockfish here! Manual benchmark needs the engine!
-  // The engine will be initialized fresh by useHybridBenchmark.runBenchmark()
-  console.log('[BenchmarkCoordinator] Skipping Stockfish termination (manual benchmark will use it)');
   
   state.manualBenchmarkActive = true;
   state.startedAt = new Date();
@@ -97,18 +126,18 @@ export async function acquireBenchmarkLock(): Promise<AbortController> {
   // Notify listeners
   notifyListeners(true);
   
-  console.log('[BenchmarkCoordinator] ✅ Benchmark lock acquired');
+  console.log(`[${COORDINATOR_VERSION}] ✅ Benchmark lock acquired (database + client)`);
   
   return state.abortController;
 }
 
 /**
  * Call this AFTER a manual benchmark completes (success or failure)
- * Resumes auto-evolution if it was running before
+ * Releases database lock + resumes auto-evolution if it was running before
  */
 export async function releaseBenchmarkLock(): Promise<void> {
   if (!state.manualBenchmarkActive) {
-    console.log('[BenchmarkCoordinator] No lock to release');
+    console.log(`[${COORDINATOR_VERSION}] No lock to release`);
     return;
   }
   
@@ -116,9 +145,9 @@ export async function releaseBenchmarkLock(): Promise<void> {
     ? Math.round((Date.now() - state.startedAt.getTime()) / 1000) 
     : 0;
   
-  console.log(`[BenchmarkCoordinator] Releasing benchmark lock after ${duration}s`);
+  console.log(`[${COORDINATOR_VERSION}] Releasing benchmark lock after ${duration}s`);
   
-  // v7.13: Signal abort to any remaining operations
+  // Signal abort to any remaining operations
   if (state.abortController) {
     state.abortController.abort();
     state.abortController = null;
@@ -130,18 +159,21 @@ export async function releaseBenchmarkLock(): Promise<void> {
   // Notify listeners
   notifyListeners(false);
   
-  // v7.14: Quick cleanup
+  // v7.42: Release database lock (so server-side cron can resume)
+  await setDatabaseLock(false);
+  
+  // Quick cleanup
   await new Promise(r => setTimeout(r, 200));
   
-  // Resume auto-evolution if it was running before
+  // Resume client-side auto-evolution if it was running before
   if (state.wasAutoEvolutionRunning) {
-    console.log('[BenchmarkCoordinator] Resuming auto-evolution');
+    console.log(`[${COORDINATOR_VERSION}] Resuming client-side auto-evolution`);
     resumeAutoEvolution();
   }
   
   state.wasAutoEvolutionRunning = false;
   
-  console.log('[BenchmarkCoordinator] ✅ Benchmark lock released');
+  console.log(`[${COORDINATOR_VERSION}] ✅ Benchmark lock released (database + client)`);
 }
 
 /**

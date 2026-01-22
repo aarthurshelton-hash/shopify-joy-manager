@@ -94,4 +94,4 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.auto-evolve.schedule]
-cron = "*/5 * * * *"
+cron = "*/2 * * * *"
