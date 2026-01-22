@@ -26,8 +26,8 @@
  * Pipeline MUST work without any external API.
  */
 
-const DUAL_POOL_VERSION = "7.16-FAST-RECOVERY";
-console.log(`[v7.16] dualPoolPipeline.ts LOADED - Version: ${DUAL_POOL_VERSION}`);
+const DUAL_POOL_VERSION = "7.17-SCHEMA-ALIGNED";
+console.log(`[v7.17] dualPoolPipeline.ts LOADED - Version: ${DUAL_POOL_VERSION}`);
 
 // v7.0: Hard timeout wrapper for any async operation
 function withTimeout<T>(promise: Promise<T>, ms: number, name: string): Promise<T> {
@@ -118,6 +118,11 @@ export interface PoolPrediction {
   dataSource: 'lichess' | 'chesscom';
   poolName: string;
   analysisTimeMs: number;
+  
+  // v7.17: Additional game metadata for DB alignment
+  whiteElo?: number;
+  blackElo?: number;
+  timeControl?: string;
 }
 
 export interface PoolProgress {
@@ -244,6 +249,7 @@ function evalToPrediction(cp: number): { prediction: 'white_wins' | 'black_wins'
 
 // ================ GAME FETCHERS ================
 
+// v7.17: Aligned with DB schema fields
 interface UnifiedGame {
   id: string;
   name: string;
@@ -251,6 +257,10 @@ interface UnifiedGame {
   result: 'white_wins' | 'black_wins' | 'draw';
   source: 'lichess' | 'chesscom';
   rating: number;
+  // v7.17: Additional metadata for DB alignment
+  whiteElo?: number;
+  blackElo?: number;
+  timeControl?: string;
 }
 
 async function fetchLichessGamesForPool(
@@ -311,6 +321,10 @@ async function fetchLichessGamesForPool(
                  game.winner === 'black' ? 'black_wins' : 'draw',
           source: 'lichess',
           rating: Math.max(whiteRating, blackRating),
+          // v7.17: Include ELO and time control for DB alignment
+          whiteElo: whiteRating,
+          blackElo: blackRating,
+          timeControl: game.speed || undefined,
         });
       }
       
@@ -367,6 +381,10 @@ async function fetchChessComGamesForPool(
           result,
           source: 'chesscom',
           rating: Math.max(game.white.rating, game.black.rating),
+          // v7.17: Include ELO and time control for DB alignment
+          whiteElo: game.white.rating,
+          blackElo: game.black.rating,
+          timeControl: game.time_class || undefined,
         });
       }
       
@@ -600,6 +618,10 @@ export async function runCloudPoolBatch(
         dataSource: game.source,
         poolName: config.name,
         analysisTimeMs: Date.now() - startTime,
+        // v7.17: Include ELO and time control for DB alignment
+        whiteElo: game.whiteElo,
+        blackElo: game.blackElo,
+        timeControl: game.timeControl,
       };
       
       predictions.push(prediction);
@@ -713,6 +735,10 @@ export async function runLocalPoolBatch(
         dataSource: game.source,
         poolName: config.name,
         analysisTimeMs: Date.now() - startTime,
+        // v7.17: Include ELO and time control for DB alignment
+        whiteElo: game.whiteElo,
+        blackElo: game.blackElo,
+        timeControl: game.timeControl,
       };
       
       predictions.push(prediction);
@@ -783,9 +809,11 @@ export async function savePoolPredictions(
     const benchmarkId = benchmarkData.id;
     
     // Save individual predictions
+    // v7.17-SCHEMA-ALIGNED: Ensure all fields match DB schema exactly
     const attempts = predictions.map(p => ({
       benchmark_id: benchmarkId,
-      game_id: p.gameId,
+      // v7.17: Strip prefix from game_id for DB consistency (raw ID only)
+      game_id: toRawId(p.gameId),
       game_name: p.gameName,
       move_number: p.moveNumber,
       fen: p.fen,
@@ -803,6 +831,11 @@ export async function savePoolPredictions(
       position_hash: hashPosition(p.fen),
       data_source: p.dataSource,
       data_quality_tier: 'dual_pool',
+      // v7.17: Add missing fields that manual benchmark includes
+      lichess_id_verified: true,
+      time_control: p.timeControl || null,
+      white_elo: p.whiteElo || null,
+      black_elo: p.blackElo || null,
     }));
     
     // Batch insert
