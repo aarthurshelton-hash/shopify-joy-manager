@@ -26,8 +26,8 @@
  * Pipeline MUST work without any external API.
  */
 
-const DUAL_POOL_VERSION = "7.30-YIELD";
-console.log(`[v7.30] dualPoolPipeline.ts LOADED - Version: ${DUAL_POOL_VERSION}`);
+const DUAL_POOL_VERSION = "7.41-BREATHE";
+console.log(`[v7.41] dualPoolPipeline.ts LOADED - Version: ${DUAL_POOL_VERSION}`);
 
 // v7.0: Hard timeout wrapper for any async operation
 function withTimeout<T>(promise: Promise<T>, ms: number, name: string): Promise<T> {
@@ -49,6 +49,7 @@ import { hashPosition } from './benchmarkPersistence';
 import { supabase } from '@/integrations/supabase/client';
 import { isManualBenchmarkActive } from './benchmarkCoordinator';
 import { initKnownIds, isKnown, markKnown, getKnownIds, toRawId } from './simpleDedup';
+import { breathe, RATE_LIMIT_BREATHING_MS } from './breathingPacer';
 
 // ================ POOL CONFIGURATIONS ================
 
@@ -642,10 +643,8 @@ export async function runCloudPoolBatch(
       const progress = 15 + (processed / allGames.length) * 85;
       onProgress?.(`[${config.name}] ${predictions.length}/${targetCount} analyzed`, progress, prediction);
       
-      // v7.15-SIMPLE-DEDUP: Mark as known immediately
-      markKnown(game.id);
-      
-      await new Promise(r => setTimeout(r, config.delayBetweenGames));
+      // v7.41-BREATHE: Use breathing pacer to mark known AND enforce cooldown
+      await breathe(game.id, markKnown, config.delayBetweenGames);
       
     } catch (err) {
       console.error(`[${config.name}] Error processing ${game.id}:`, err);
@@ -765,10 +764,8 @@ export async function runLocalPoolBatch(
       console.log(`[${config.name}] Deep analysis complete: ${game.name} (${Math.round((Date.now() - startTime) / 1000)}s)`);
       onProgress?.(`[${config.name}] ${predictions.length}/${targetCount} deep analyzed`, progressBase + 5, prediction);
       
-      // v7.15-SIMPLE-DEDUP: Mark as known immediately
-      markKnown(game.id);
-      
-      await new Promise(r => setTimeout(r, config.delayBetweenGames));
+      // v7.41-BREATHE: Use breathing pacer to mark known AND enforce cooldown
+      await breathe(game.id, markKnown, config.delayBetweenGames);
       
     } catch (err) {
       console.error(`[${config.name}] Error processing ${game.id}:`, err);
