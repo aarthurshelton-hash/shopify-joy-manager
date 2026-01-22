@@ -1,13 +1,13 @@
 /**
- * AutoEvolutionProvider - v6.96-PERSISTENT
+ * AutoEvolutionProvider - v7.0-UNBLOCKABLE
  * 
- * CRITICAL FIX: Previous version (v6.95) had timers that stopped on page reload.
+ * CRITICAL FIX: Previous versions had operations that could hang indefinitely.
  * 
- * v6.96 CHANGES:
- * - Removed startedRef guard that prevented restarts
- * - Added visibility change handler to resume when tab becomes active
- * - Added periodic heartbeat to detect stalls
- * - Immediate start on mount (no 8s delay that causes missed starts)
+ * v7.0 CHANGES:
+ * - All operations have hard timeouts
+ * - Faster heartbeat to catch stalls sooner
+ * - Immediate recovery on visibility change
+ * - Engine reset on consecutive failures
  */
 
 import { useEffect, useRef } from 'react';
@@ -18,7 +18,7 @@ import {
 } from '@/lib/chess/autoEvolutionEngine';
 import { supabase } from '@/integrations/supabase/client';
 
-const AUTO_EVOLUTION_VERSION = "6.96-PERSISTENT";
+const AUTO_EVOLUTION_VERSION = "7.0-UNBLOCKABLE";
 
 interface AutoEvolutionProviderProps {
   children: React.ReactNode;
@@ -39,17 +39,17 @@ export function AutoEvolutionProvider({
     if (initRef.current) return;
     initRef.current = true;
     
-    console.log(`[v6.96-PERSISTENT] AutoEvolutionProvider mounted`);
+    console.log(`[v7.0-UNBLOCKABLE] AutoEvolutionProvider mounted`);
     
     // Subscribe to events for logging
     const unsubscribe = subscribeToEvolution((state, event, data) => {
       if (event === 'cloud_batch_complete' || event === 'local_batch_complete') {
-        console.log(`[v6.96-PERSISTENT] ✅ Batch complete: +${data?.count} predictions (session: ${state.sessionPredictions})`);
+        console.log(`[v7.0-UNBLOCKABLE] ✅ Batch complete: +${data?.count} predictions (session: ${state.sessionPredictions})`);
         logEvolutionEvent(event, data);
       } else if (event === 'recovery_complete') {
-        console.log(`[v6.96-PERSISTENT] 🔄 Recovery #${data?.count} complete`);
+        console.log(`[v7.0-UNBLOCKABLE] 🔄 Recovery #${data?.count} complete`);
       } else if (event === 'cloud_batch_error' || event === 'local_batch_error') {
-        console.error(`[v6.96-PERSISTENT] ❌ Batch error:`, data?.error);
+        console.error(`[v7.0-UNBLOCKABLE] ❌ Batch error:`, data?.error);
         logEvolutionEvent('batch_error', { error: String(data?.error) });
       }
     });
@@ -58,21 +58,27 @@ export function AutoEvolutionProvider({
     const startEngine = async () => {
       const state = getEvolutionState();
       if (state.isRunning) {
-        console.log('[v6.96-PERSISTENT] Engine already running');
+        console.log('[v7.0-UNBLOCKABLE] Engine already running');
         return;
       }
       
-      console.log(`[v6.96-PERSISTENT] ========================================`);
-      console.log(`[v6.96-PERSISTENT] 🚀 AUTO-STARTING EVOLUTION PIPELINE`);
-      console.log(`[v6.96-PERSISTENT] Version: ${AUTO_EVOLUTION_VERSION}`);
-      console.log(`[v6.96-PERSISTENT] Time: ${new Date().toISOString()}`);
-      console.log(`[v6.96-PERSISTENT] ========================================`);
+      console.log(`[v7.0-UNBLOCKABLE] ========================================`);
+      console.log(`[v7.0-UNBLOCKABLE] 🚀 AUTO-STARTING EVOLUTION PIPELINE`);
+      console.log(`[v7.0-UNBLOCKABLE] Version: ${AUTO_EVOLUTION_VERSION}`);
+      console.log(`[v7.0-UNBLOCKABLE] Time: ${new Date().toISOString()}`);
+      console.log(`[v7.0-UNBLOCKABLE] ========================================`);
       
       try {
-        await startAutoEvolution();
+        // v7.0: Timeout on start operation
+        const startPromise = startAutoEvolution();
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Start timeout')), 30000)
+        );
+        
+        await Promise.race([startPromise, timeoutPromise]);
         
         const newState = getEvolutionState();
-        console.log(`[v6.96-PERSISTENT] ✅ Engine running: ${newState.isRunning}`);
+        console.log(`[v7.0-UNBLOCKABLE] ✅ Engine running: ${newState.isRunning}`);
         
         await logEvolutionEvent('auto_start', { 
           version: AUTO_EVOLUTION_VERSION,
@@ -80,33 +86,33 @@ export function AutoEvolutionProvider({
         });
         
       } catch (err) {
-        console.error('[v6.96-PERSISTENT] ❌ Failed to auto-start:', err);
-        // Retry after 30s
-        setTimeout(startEngine, 30000);
+        console.error('[v7.0-UNBLOCKABLE] ❌ Failed to auto-start:', err);
+        // Retry after 15s (faster retry)
+        setTimeout(startEngine, 15000);
       }
     };
     
     // Start immediately
     startEngine();
     
-    // HEARTBEAT: Check every 5 min if engine stopped and restart it
+    // HEARTBEAT: Check every 2 min if engine stopped and restart it
     heartbeatRef.current = setInterval(async () => {
       const state = getEvolutionState();
       if (!state.isRunning) {
-        console.warn('[v6.96-PERSISTENT] ⚠️ Heartbeat detected engine stopped, restarting...');
+        console.warn('[v7.0-UNBLOCKABLE] ⚠️ Heartbeat detected engine stopped, restarting...');
         await startEngine();
       } else {
-        console.log(`[v6.96-PERSISTENT] 💓 Heartbeat OK - Session: ${state.sessionPredictions} predictions`);
+        console.log(`[v7.0-UNBLOCKABLE] 💓 Heartbeat OK - Session: ${state.sessionPredictions} predictions`);
       }
-    }, 5 * 60 * 1000);
+    }, 2 * 60 * 1000);
     
     // VISIBILITY HANDLER: Resume when tab becomes visible
     const handleVisibilityChange = async () => {
       if (document.visibilityState === 'visible') {
-        console.log('[v6.96-PERSISTENT] Tab became visible, checking engine...');
+        console.log('[v7.0-UNBLOCKABLE] Tab became visible, checking engine...');
         const state = getEvolutionState();
         if (!state.isRunning) {
-          console.warn('[v6.96-PERSISTENT] Engine not running, restarting...');
+          console.warn('[v7.0-UNBLOCKABLE] Engine not running, restarting...');
           await startEngine();
         }
       }
@@ -132,10 +138,11 @@ export function AutoEvolutionProvider({
  */
 async function logEvolutionEvent(event: string, data?: Record<string, unknown>) {
   try {
-    await supabase
+    // v7.0: Timeout on log operation to prevent hanging
+    const insertPromise = supabase
       .from('evolution_state')
       .insert({
-        state_type: `v6.96_${event}`,
+        state_type: `v7.0_${event}`,
         genes: {
           version: AUTO_EVOLUTION_VERSION,
           event,
@@ -145,9 +152,15 @@ async function logEvolutionEvent(event: string, data?: Record<string, unknown>) 
         fitness_score: 100,
         generation: 0,
       });
+    
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Log timeout')), 5000)
+    );
+    
+    await Promise.race([insertPromise, timeoutPromise]);
   } catch (err) {
     // Silent fail - this is just for verification logging
-    console.warn('[v6.96-PERSISTENT] Event log failed:', err);
+    console.warn('[v7.0-UNBLOCKABLE] Event log failed:', err);
   }
 }
 
