@@ -96,6 +96,14 @@ function stockfishEvalToPrediction(cp: number): {
   }
 }
 
+// Helper: Promise with timeout to prevent hangs
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms))
+  ]);
+}
+
 // Generate a high-quality Stockfish vs Stockfish game
 async function generateStockfishGame(
   gameId: string,
@@ -105,16 +113,35 @@ async function generateStockfishGame(
 ): Promise<{ pgn: string; result: 'white_wins' | 'black_wins' | 'draw'; moveCount: number }> {
   const chess = new Chess();
   const engine = getStockfishEngine();
-  await engine.waitReady();
+  
+  // Timeout: 10s for engine ready
+  const ready = await withTimeout(engine.waitReady(), 10000, false);
+  if (!ready) {
+    console.warn('[Benchmark] Stockfish not ready, returning short game');
+    return { pgn: '', result: 'draw', moveCount: 0 };
+  }
   
   let moveCount = 0;
+  const MOVE_TIMEOUT = 5000; // 5s per move max
+  const GAME_TIMEOUT = 120000; // 2 min total game limit
+  const gameStart = Date.now();
   
   while (!chess.isGameOver() && moveCount < maxMoves) {
-    const analysis = await engine.analyzePosition(chess.fen(), { depth, nodes: 50000 });
+    // Check total game timeout
+    if (Date.now() - gameStart > GAME_TIMEOUT) {
+      console.warn(`[Benchmark] Game ${gameId} hit 2-minute limit at move ${moveCount}`);
+      break;
+    }
+    
+    // Analysis with 5s timeout per move
+    const analysis = await withTimeout(
+      engine.analyzePosition(chess.fen(), { depth, nodes: 50000 }),
+      MOVE_TIMEOUT,
+      { bestMove: null, evaluation: { score: 0 } } as any
+    );
     
     if (analysis.bestMove) {
       try {
-        // Parse UCI move format
         const from = analysis.bestMove.slice(0, 2);
         const to = analysis.bestMove.slice(2, 4);
         const promotion = analysis.bestMove.length > 4 ? analysis.bestMove[4] : undefined;
@@ -128,6 +155,7 @@ async function generateStockfishGame(
         break;
       }
     } else {
+      console.warn(`[Benchmark] No best move returned for game ${gameId} at move ${moveCount}`);
       break;
     }
   }
@@ -138,9 +166,9 @@ async function generateStockfishGame(
     result = chess.turn() === 'w' ? 'black_wins' : 'white_wins';
   } else if (chess.isDraw()) {
     result = 'draw';
-  } else if (moveCount >= maxMoves) {
-    // Use final evaluation to determine likely winner
-    const finalEval = await engine.quickEval(chess.fen());
+  } else if (moveCount >= maxMoves || Date.now() - gameStart > GAME_TIMEOUT) {
+    // Use quick eval with timeout
+    const finalEval = await withTimeout(engine.quickEval(chess.fen()), 3000, 0);
     if (finalEval > 200) result = 'white_wins';
     else if (finalEval < -200) result = 'black_wins';
     else result = 'draw';
@@ -170,21 +198,35 @@ async function makePredictionAtMove(
   const truncatedPgn = chess.pgn();
   const fen = chess.fen();
   
-  // Get Stockfish evaluation
+  // Get Stockfish evaluation with 15s timeout
   const engine = getStockfishEngine();
-  await engine.waitReady();
-  const analysis = await engine.analyzePosition(fen, { depth, nodes: 80000 });
+  await withTimeout(engine.waitReady(), 5000, false);
+  
+  const analysis = await withTimeout(
+    engine.analyzePosition(fen, { depth, nodes: 80000 }),
+    15000,
+    { evaluation: { score: 0 }, bestMove: '' } as any
+  );
   
   const stockfishResult = stockfishEvalToPrediction(analysis.evaluation?.score || 0);
   
-  // Get Hybrid prediction
-  const hybridResult = await generateHybridPrediction(truncatedPgn, { depth });
+  // Get Hybrid prediction with 20s timeout
+  const hybridResult = await withTimeout(
+    generateHybridPrediction(truncatedPgn, { depth }),
+    20000,
+    { 
+      trajectoryPrediction: { outcomeProbabilities: { whiteWin: 0.33, blackWin: 0.33, draw: 0.34 } },
+      confidence: { overall: 30 },
+      strategicAnalysis: { archetype: 'unknown' }
+    } as any
+  );
   
   // Map hybrid prediction to outcome
   const probs = hybridResult.trajectoryPrediction.outcomeProbabilities;
   const hybridPrediction = 
     probs.whiteWin > probs.blackWin && probs.whiteWin > probs.draw ? 'white_wins' :
     probs.blackWin > probs.draw ? 'black_wins' : 'draw';
+    
   return {
     gameId,
     moveNumber,
