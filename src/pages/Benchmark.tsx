@@ -28,6 +28,7 @@ import {
 import { useBenchmarkRateLimit } from '@/hooks/useRateLimitV2';
 import { GameDetailsModal } from '@/components/chess/GameDetailsModal';
 import { acquireBenchmarkLock, releaseBenchmarkLock } from '@/lib/chess/benchmarkCoordinator';
+import { useRealtimeAccuracyContext } from '@/providers/RealtimeAccuracyProvider';
 
 interface CumulativeStats {
   totalRuns: number;
@@ -56,6 +57,9 @@ interface LatestBenchmark {
 }
 
 export default function Benchmark() {
+  // v7.23: Use realtime context for live ELO (stats still use existing realtime subscription)
+  const { liveEloState: realtimeEloState, chessStats: realtimeChessStats } = useRealtimeAccuracyContext();
+  
   const [isRunning, setIsRunning] = useState(false);
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState('');
@@ -75,9 +79,32 @@ export default function Benchmark() {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number>(0);
 
-  // Live ELO State
-  const [liveEloState, setLiveEloState] = useState<LiveEloState>(createInitialEloState());
+  // v7.23: Use realtime ELO from context, fall back to local state during active benchmark
+  const [localEloState, setLiveEloState] = useState<LiveEloState>(createInitialEloState());
   const [isLiveElo, setIsLiveElo] = useState(false);
+  
+  // v7.23: Prefer realtime ELO when not running a benchmark
+  const liveEloState = isRunning ? localEloState : realtimeEloState;
+  
+  // v7.23: Sync cumulative stats from realtime context
+  useEffect(() => {
+    if (realtimeChessStats && !isRunning) {
+      setCumulativeStats({
+        totalRuns: realtimeChessStats.totalRuns,
+        totalGamesAnalyzed: realtimeChessStats.totalGames,
+        overallHybridAccuracy: realtimeChessStats.hybridAccuracy,
+        overallStockfishAccuracy: realtimeChessStats.stockfishAccuracy,
+        hybridNetWins: realtimeChessStats.hybridNetWins,
+        hybridWins: realtimeChessStats.hybridWins,
+        stockfishWins: realtimeChessStats.stockfishWins,
+        bothCorrect: realtimeChessStats.bothCorrect,
+        bestArchetype: null,
+        worstArchetype: null,
+        validPredictionCount: realtimeChessStats.totalGames,
+        invalidPredictionCount: 0,
+      });
+    }
+  }, [realtimeChessStats, isRunning]);
 
   // Live Prediction Stream State
   const [livePredictions, setLivePredictions] = useState<LivePrediction[]>([]);

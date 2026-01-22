@@ -1,8 +1,8 @@
 /**
- * Realtime Accuracy Provider v7.20
+ * Realtime Accuracy Provider v7.23 - LIVE STATS
  * Wraps the app to provide platform-wide accuracy auto-updates
  * Ensures all numerical data across En Pensent syncs in realtime
- * v7.20: Now includes chess_benchmark_results for instant benchmark completion updates
+ * v7.23: Now exposes liveEloState for instant ELO updates across all pages
  */
 
 import React, { createContext, useContext, ReactNode, useEffect } from 'react';
@@ -14,11 +14,13 @@ import {
   ChessCumulativeStats 
 } from '@/hooks/useRealtimeAccuracy';
 import { useTradingSessionStore } from '@/stores/tradingSessionStore';
+import { type LiveEloState } from '@/lib/chess/liveEloTracker';
 
 interface RealtimeAccuracyContextValue extends RealtimeAccuracyState {
   syncAccuracyData: () => Promise<void>;
   subscribeToUpdates: (listener: (update: AccuracyUpdate) => void) => () => void;
   chessStats: ChessCumulativeStats | null;
+  liveEloState: LiveEloState; // v7.23: Live ELO calculated from realtime stats
 }
 
 const RealtimeAccuracyContext = createContext<RealtimeAccuracyContextValue | null>(null);
