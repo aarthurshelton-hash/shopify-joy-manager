@@ -95,3 +95,6 @@ verify_jwt = false
 
 [functions.auto-evolve.schedule]
 cron = "*/2 * * * *"
+
+[functions.options-data]
+verify_jwt = false

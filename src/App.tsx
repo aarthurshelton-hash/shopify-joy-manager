@@ -64,6 +64,7 @@ import EarlyAccess from "./pages/EarlyAccess";
 import StockPredictions from "./pages/StockPredictions";
 import StrategicPlan from "./pages/StrategicPlan";
 import ScalpingTerminalPage from "./pages/ScalpingTerminalPage";
+import OptionsScalpingPage from "./pages/OptionsScalpingPage";
 import Showcase from "./pages/Showcase";
 import AdminSystemVitals from "./pages/AdminSystemVitals";
 import Benchmark from "./pages/Benchmark";
@@ -153,6 +154,7 @@ const App = () => (
               <Route path="/stock-predictions" element={<AdminRoute featureName="Stock Predictions"><StockPredictions /></AdminRoute>} />
               <Route path="/strategic-plan" element={<AdminRoute featureName="Strategic Plan"><StrategicPlan /></AdminRoute>} />
               <Route path="/trading" element={<AdminRoute featureName="Trading Terminal"><ScalpingTerminalPage /></AdminRoute>} />
+              <Route path="/options" element={<AdminRoute featureName="Options Scalping"><OptionsScalpingPage /></AdminRoute>} />
               <Route path="/benchmark" element={<AdminRoute featureName="Benchmark"><Benchmark /></AdminRoute>} />
               <Route path="/proof" element={<AdminRoute featureName="Proof Center"><ProofCenter /></AdminRoute>} />
               
