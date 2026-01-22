@@ -1,14 +1,18 @@
 /**
  * En Pensent™ Prediction Benchmark System
  * 
+ * v7.2-BENCHMARK-STREAMLINED: Eliminates blocking DB calls during benchmarking
+ * 
  * THE PARADIGM: We don't just play chess - we predict its future better than pure calculation.
  * 
  * This benchmark proves that fusing strategic pattern recognition with tactical analysis
  * creates predictions that surpass Stockfish's raw evaluation.
  * 
- * Historical Note:
- * Deep Blue (1997) and AlphaZero (2017) proved machines could PLAY chess.
- * En Pensent (2025) proves machines can PREDICT chess trajectories.
+ * Performance optimizations:
+ * - Patterns loaded ONCE before benchmark starts (not per-prediction)
+ * - Accuracy stats fetched ONCE and cached (not per-prediction)
+ * - skipCloudEval option used to avoid API rate limits
+ * - Hard timeouts on all operations to prevent stalls
  */
 
 import { Chess } from 'chess.js';
@@ -16,6 +20,9 @@ import { getStockfishEngine } from '../stockfishEngine';
 import { generateHybridPrediction } from '../hybridPrediction';
 import { extractColorFlowSignature } from '../colorFlowAnalysis';
 import { simulateGame } from '../gameSimulator';
+import { loadLearnedPatterns } from '../patternLearning/persistentPatternLoader';
+import { fetchChessCumulativeStats, invalidateChessStatsCache } from '@/hooks/useRealtimeAccuracy';
+import { updateAccuracyCache } from '../hybridPrediction/confidenceCalculator';
 
 export interface PredictionAttempt {
   gameId: string;
@@ -178,6 +185,7 @@ async function generateStockfishGame(
 }
 
 // Make a prediction at a specific point in the game
+// v7.2: Uses skipCloudEval and precomputed Stockfish eval to eliminate blocking calls
 async function makePredictionAtMove(
   gameId: string,
   fullPgn: string,
@@ -198,22 +206,28 @@ async function makePredictionAtMove(
   const truncatedPgn = chess.pgn();
   const fen = chess.fen();
   
-  // Get Stockfish evaluation with 15s timeout
+  // Get Stockfish evaluation with 10s timeout (reduced from 15s)
   const engine = getStockfishEngine();
   await withTimeout(engine.waitReady(), 5000, false);
   
   const analysis = await withTimeout(
-    engine.analyzePosition(fen, { depth, nodes: 80000 }),
-    15000,
+    engine.analyzePosition(fen, { depth, nodes: 50000 }), // Reduced nodes for speed
+    10000, // 10s timeout
     { evaluation: { score: 0 }, bestMove: '' } as any
   );
   
   const stockfishResult = stockfishEvalToPrediction(analysis.evaluation?.score || 0);
   
-  // Get Hybrid prediction with 20s timeout
+  // v7.2: Get Hybrid prediction with skipCloudEval=true and precomputed eval
+  // This eliminates the Lichess Cloud API call AND uses pre-computed Stockfish eval
   const hybridResult = await withTimeout(
-    generateHybridPrediction(truncatedPgn, { depth }),
-    20000,
+    generateHybridPrediction(truncatedPgn, { 
+      depth,
+      precomputedEval: analysis.evaluation?.score || 0,
+      precomputedDepth: analysis.evaluation?.depth || depth,
+      skipCloudEval: true, // No API call needed
+    }),
+    15000, // 15s timeout (reduced from 20s)
     { 
       trajectoryPrediction: { outcomeProbabilities: { whiteWin: 0.33, blackWin: 0.33, draw: 0.34 } },
       confidence: { overall: 30 },
@@ -242,6 +256,7 @@ async function makePredictionAtMove(
 }
 
 // Run the full benchmark
+// v7.2-BENCHMARK-STREAMLINED: Pre-load all patterns and cache accuracy ONCE before loop
 export async function runPredictionBenchmark(
   options: {
     numGames?: number;
@@ -256,6 +271,36 @@ export async function runPredictionBenchmark(
     depth = 18,
     onProgress,
   } = options;
+  
+  // v7.2: PRE-LOAD patterns ONCE before benchmark starts
+  onProgress?.('Loading historical patterns...', 1);
+  try {
+    const { loaded } = await withTimeout(
+      loadLearnedPatterns(),
+      10000, // 10s timeout
+      { loaded: 0, hybridWins: 0, stockfishWins: 0, totalAccuracy: 0 }
+    );
+    console.log(`[Benchmark] Pre-loaded ${loaded} historical patterns`);
+  } catch (e) {
+    console.warn('[Benchmark] Pattern pre-load failed, continuing:', e);
+  }
+  
+  // v7.2: PRE-CACHE accuracy stats ONCE before benchmark starts
+  onProgress?.('Fetching accuracy stats...', 2);
+  try {
+    const stats = await withTimeout(
+      fetchChessCumulativeStats(),
+      5000, // 5s timeout
+      { totalGames: 0, hybridAccuracy: 50, stockfishAccuracy: 50 } as any
+    );
+    if (stats.totalGames > 0) {
+      const totalCorrect = Math.round((stats.hybridAccuracy / 100) * stats.totalGames);
+      updateAccuracyCache(stats.totalGames, totalCorrect);
+    }
+    console.log(`[Benchmark] Pre-cached accuracy: ${stats.hybridAccuracy.toFixed(1)}% from ${stats.totalGames} games`);
+  } catch (e) {
+    console.warn('[Benchmark] Accuracy pre-cache failed, continuing:', e);
+  }
   
   const result: BenchmarkResult = {
     totalGames: numGames,
@@ -369,12 +414,26 @@ function normalCdf(z: number): number {
 }
 
 // Quick benchmark with pre-existing games
+// v7.2-BENCHMARK-STREAMLINED: Pre-load patterns and cache accuracy
 export async function runQuickBenchmark(
   pgnGames: { pgn: string; result: 'white_wins' | 'black_wins' | 'draw' }[],
   predictionMoveNumber: number = 20,
   depth: number = 18,
   onProgress?: (status: string, progress: number) => void
 ): Promise<BenchmarkResult> {
+  // v7.2: PRE-LOAD patterns and accuracy stats ONCE
+  onProgress?.('Loading historical patterns...', 1);
+  try {
+    await withTimeout(loadLearnedPatterns(), 10000, { loaded: 0 } as any);
+    const stats = await withTimeout(fetchChessCumulativeStats(), 5000, { totalGames: 0, hybridAccuracy: 50 } as any);
+    if (stats.totalGames > 0) {
+      const totalCorrect = Math.round((stats.hybridAccuracy / 100) * stats.totalGames);
+      updateAccuracyCache(stats.totalGames, totalCorrect);
+    }
+  } catch (e) {
+    console.warn('[QuickBenchmark] Pre-load failed, continuing:', e);
+  }
+  
   const result: BenchmarkResult = {
     totalGames: pgnGames.length,
     completedGames: 0,

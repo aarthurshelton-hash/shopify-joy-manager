@@ -92,9 +92,13 @@ export async function generateHybridPrediction(
 ): Promise<HybridPrediction> {
   const depth = options.depth || 18;
   
+  // v7.2-BENCHMARK-STREAMLINED: Skip pattern loading if we have precomputed eval
+  // This indicates we're in benchmark mode where patterns are pre-loaded
+  const isBenchmarkMode = options.precomputedEval !== undefined;
+  
   // CRITICAL: Load learned patterns from database on first prediction
-  // This ensures all 802+ validated positions are used for pattern matching
-  if (!patternsLoadedThisSession) {
+  // But skip if in benchmark mode (patterns already pre-loaded)
+  if (!patternsLoadedThisSession && !isBenchmarkMode) {
     options.onProgress?.('Loading historical patterns from database', 2);
     try {
       const { loaded, hybridWins, totalAccuracy } = await loadLearnedPatterns();
@@ -199,15 +203,17 @@ export async function generateHybridPrediction(
   );
   
   // Step 10: Update accuracy cache and calculate confidence
-  // This ensures confidence reflects ACTUAL accuracy, not theoretical factors
-  try {
-    const stats = await fetchChessCumulativeStats();
-    if (stats.totalGames > 0) {
-      const totalCorrect = Math.round((stats.hybridAccuracy / 100) * stats.totalGames);
-      updateAccuracyCache(stats.totalGames, totalCorrect);
+  // v7.2: Skip DB call in benchmark mode - accuracy is pre-cached
+  if (!isBenchmarkMode) {
+    try {
+      const stats = await fetchChessCumulativeStats();
+      if (stats.totalGames > 0) {
+        const totalCorrect = Math.round((stats.hybridAccuracy / 100) * stats.totalGames);
+        updateAccuracyCache(stats.totalGames, totalCorrect);
+      }
+    } catch (err) {
+      console.warn('[HybridEngine] Could not fetch accuracy stats for confidence calibration');
     }
-  } catch (err) {
-    console.warn('[HybridEngine] Could not fetch accuracy stats for confidence calibration');
   }
   
   const confidence = calculateHybridConfidence(
