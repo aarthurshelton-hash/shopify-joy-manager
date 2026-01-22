@@ -26,8 +26,8 @@
  * Pipeline MUST work without any external API.
  */
 
-const DUAL_POOL_VERSION = "7.15-SIMPLE-DEDUP";
-console.log(`[v7.15] dualPoolPipeline.ts LOADED - Version: ${DUAL_POOL_VERSION}`);
+const DUAL_POOL_VERSION = "7.16-FAST-RECOVERY";
+console.log(`[v7.16] dualPoolPipeline.ts LOADED - Version: ${DUAL_POOL_VERSION}`);
 
 // v7.0: Hard timeout wrapper for any async operation
 function withTimeout<T>(promise: Promise<T>, ms: number, name: string): Promise<T> {
@@ -449,14 +449,21 @@ async function analyzeWithLocalStockfish(
       mode: config.stockfishMode,
     };
   } catch (err) {
-    console.error(`[v6.94] Analysis failed for ${game.id}:`, err);
+    console.error(`[v7.16] Analysis failed for ${game.id}:`, err);
     
-    // Try to recover engine for next game
+    // v7.16: Aggressive recovery - terminate and restart on any failure
     try {
-      const engine = getStockfishEngine();
-      engine.stop();
-      await new Promise(r => setTimeout(r, 1000));
-    } catch {}
+      terminateStockfish();
+      await new Promise(r => setTimeout(r, 1500));
+      // Pre-warm new engine
+      const newEngine = getStockfishEngine();
+      await Promise.race([
+        newEngine.waitReady(),
+        new Promise(r => setTimeout(r, 3000))
+      ]);
+    } catch (recoveryErr) {
+      console.warn('[v7.16] Recovery failed:', recoveryErr);
+    }
     
     return null;
   }

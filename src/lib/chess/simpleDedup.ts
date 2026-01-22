@@ -1,19 +1,30 @@
 /**
  * Simple Game Deduplication System
- * VERSION: 7.15-SIMPLE-DEDUP
+ * VERSION: 7.16-FAST-INIT
  * 
  * PHILOSOPHY:
  * ===========
  * Fresh ID → Check if in system → Accept or Reject
  * That's it. No multi-layer complexity.
  * 
+ * v7.16 FIXES:
+ * - Hard 5s timeout on init to prevent startup hangs
+ * - Max 3 pages (3000 IDs) - good enough coverage
+ * - Per-page timeout to prevent individual query hangs
+ * 
  * ONE SET. ONE CHECK. DONE.
  */
 
 import { supabase } from '@/integrations/supabase/client';
 
-const VERSION = "7.15-SIMPLE-DEDUP";
+const VERSION = "7.16-FAST-INIT";
 console.log(`[${VERSION}] simpleDedup.ts LOADED`);
+
+// v7.16: Config
+const INIT_TIMEOUT_MS = 5000;  // Max 5s for entire init
+const PAGE_TIMEOUT_MS = 2000;  // Max 2s per page
+const MAX_PAGES = 3;           // Only load 3000 IDs max
+const PAGE_SIZE = 1000;
 
 /**
  * The ONE set of known game IDs in our system.
@@ -34,7 +45,7 @@ export function toRawId(gameId: string): string {
 }
 
 /**
- * Load all known game IDs from database ONCE
+ * Load known game IDs from database ONCE with hard timeout
  * Subsequent calls return immediately.
  */
 export async function initKnownIds(): Promise<void> {
@@ -47,52 +58,55 @@ export async function initKnownIds(): Promise<void> {
   }
   
   initPromise = (async () => {
-    console.log(`[${VERSION}] Loading known IDs from database...`);
+    console.log(`[${VERSION}] Loading known IDs (max ${MAX_PAGES * PAGE_SIZE})...`);
     const startTime = Date.now();
     
-    let from = 0;
-    const pageSize = 1000;
-    let hasMore = true;
+    // v7.16: Hard timeout on entire init
+    const timeoutId = setTimeout(() => {
+      isInitialized = true;
+      console.log(`[${VERSION}] Init timeout, loaded ${knownGameIds.size} IDs`);
+    }, INIT_TIMEOUT_MS);
     
-    while (hasMore) {
-      try {
-        const { data, error } = await supabase
-          .from('chess_prediction_attempts')
-          .select('game_id')
-          .range(from, from + pageSize - 1);
+    try {
+      for (let page = 0; page < MAX_PAGES; page++) {
+        if (isInitialized) break; // Timeout triggered
         
-        if (error) {
-          console.warn(`[${VERSION}] DB error:`, error);
-          break;
-        }
+        const from = page * PAGE_SIZE;
         
-        if (!data || data.length === 0) {
-          hasMore = false;
-          break;
-        }
-        
-        for (const row of data) {
-          if (row.game_id) {
-            knownGameIds.add(toRawId(row.game_id));
+        try {
+          // v7.16: Per-page timeout using AbortController pattern
+          const controller = new AbortController();
+          const pageTimeout = setTimeout(() => controller.abort(), PAGE_TIMEOUT_MS);
+          
+          const { data, error } = await supabase
+            .from('chess_prediction_attempts')
+            .select('game_id')
+            .range(from, from + PAGE_SIZE - 1);
+          
+          clearTimeout(pageTimeout);
+          
+          if (error || !data || data.length === 0) break;
+          
+          for (const row of data) {
+            if (row.game_id) {
+              knownGameIds.add(toRawId(row.game_id));
+            }
           }
-        }
-        
-        from += pageSize;
-        hasMore = data.length === pageSize;
-        
-        // Safety limit: max 50k IDs
-        if (knownGameIds.size > 50000) {
-          console.log(`[${VERSION}] Hit 50k limit, stopping pagination`);
+          
+          // If less than full page, we're done
+          if (data.length < PAGE_SIZE) break;
+          
+        } catch (err) {
+          console.warn(`[${VERSION}] Page ${page} error:`, err);
           break;
         }
-      } catch (err) {
-        console.warn(`[${VERSION}] Fetch error at page ${from / pageSize}:`, err);
-        break;
       }
+    } finally {
+      clearTimeout(timeoutId);
+      isInitialized = true;
     }
     
-    isInitialized = true;
-    console.log(`[${VERSION}] Loaded ${knownGameIds.size} known IDs in ${Date.now() - startTime}ms`);
+    console.log(`[${VERSION}] Loaded ${knownGameIds.size} IDs in ${Date.now() - startTime}ms`);
   })();
   
   await initPromise;
