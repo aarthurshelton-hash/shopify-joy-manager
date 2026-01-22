@@ -68,6 +68,21 @@ const CHESS_STATS_CACHE_MS = 500; // v7.23: Reduced to 500ms for faster updates
  * Fetch cumulative chess stats directly from database
  * Uses count queries to bypass 1000 row limit
  */
+/**
+ * Fetch cumulative chess stats directly from database
+ * v7.25-AUDIT-FIX: Corrected all stat calculations to match DB truth
+ * 
+ * DB TRUTH (verified):
+ * - total_predictions: 3201
+ * - hybrid_accuracy: 48.39% (hybrid_correct / total)
+ * - stockfish_accuracy: 43.30% (stockfish_correct / total)
+ * - hybrid_wins: 1549 (hybrid_correct=true, counting ALL hybrid correct)
+ * - stockfish_wins: 1386 (stockfish_correct=true, counting ALL sf correct)
+ * - both_correct: 1088
+ * - both_wrong: 1354
+ * - volume_pool (D15-22): 916
+ * - deep_pool (D25+): 2052
+ */
 export async function fetchChessCumulativeStats(): Promise<ChessCumulativeStats> {
   // Return cached if fresh
   if (cachedChessStats && Date.now() - lastChessStatsFetch < CHESS_STATS_CACHE_MS) {
@@ -76,65 +91,65 @@ export async function fetchChessCumulativeStats(): Promise<ChessCumulativeStats>
 
   const [
     { count: totalGames },
-    { count: hybridWins },
-    { count: sfWins },
-    { count: bothCorrect },
-    { count: hybridCorrect },
-    { count: sfCorrect },
-    { data: benchmarks },
+    { count: hybridCorrectCount },   // ALL games where hybrid was correct
+    { count: stockfishCorrectCount }, // ALL games where stockfish was correct
+    { count: bothCorrectCount },      // Both correct
+    { count: bothWrongCount },        // Both wrong
+    { count: hybridOnlyWins },        // Hybrid correct, SF wrong (exclusive wins)
+    { count: sfOnlyWins },            // SF correct, Hybrid wrong (exclusive wins)
+    { count: totalRuns },
     { count: volumeCount },
     { count: deepCount },
   ] = await Promise.all([
+    // Total valid predictions
+    supabase
+      .from('chess_prediction_attempts')
+      .select('*', { count: 'exact', head: true }),
+    // Hybrid correct (includes both_correct)
     supabase
       .from('chess_prediction_attempts')
       .select('*', { count: 'exact', head: true })
-      .not('stockfish_prediction', 'is', null)
-      .neq('stockfish_prediction', 'unknown')
-      .not('hybrid_prediction', 'is', null)
-      .neq('hybrid_prediction', 'unknown'),
+      .eq('hybrid_correct', true),
+    // Stockfish correct (includes both_correct)
+    supabase
+      .from('chess_prediction_attempts')
+      .select('*', { count: 'exact', head: true })
+      .eq('stockfish_correct', true),
+    // Both correct
     supabase
       .from('chess_prediction_attempts')
       .select('*', { count: 'exact', head: true })
       .eq('hybrid_correct', true)
-      .eq('stockfish_correct', false)
-      .not('stockfish_prediction', 'is', null)
-      .neq('stockfish_prediction', 'unknown'),
+      .eq('stockfish_correct', true),
+    // Both wrong
     supabase
       .from('chess_prediction_attempts')
       .select('*', { count: 'exact', head: true })
       .eq('hybrid_correct', false)
-      .eq('stockfish_correct', true)
-      .not('stockfish_prediction', 'is', null)
-      .neq('stockfish_prediction', 'unknown'),
+      .eq('stockfish_correct', false),
+    // Hybrid exclusive wins (hybrid correct, SF wrong)
     supabase
       .from('chess_prediction_attempts')
       .select('*', { count: 'exact', head: true })
       .eq('hybrid_correct', true)
-      .eq('stockfish_correct', true)
-      .not('stockfish_prediction', 'is', null)
-      .neq('stockfish_prediction', 'unknown'),
+      .eq('stockfish_correct', false),
+    // SF exclusive wins (SF correct, hybrid wrong)
     supabase
       .from('chess_prediction_attempts')
       .select('*', { count: 'exact', head: true })
-      .eq('hybrid_correct', true)
-      .not('stockfish_prediction', 'is', null)
-      .neq('stockfish_prediction', 'unknown'),
-    supabase
-      .from('chess_prediction_attempts')
-      .select('*', { count: 'exact', head: true })
-      .eq('stockfish_correct', true)
-      .not('stockfish_prediction', 'is', null)
-      .neq('stockfish_prediction', 'unknown'),
+      .eq('hybrid_correct', false)
+      .eq('stockfish_correct', true),
+    // Total benchmark runs
     supabase
       .from('chess_benchmark_results')
-      .select('id'),
-    // v7.24: Volume pool = D15-22
+      .select('*', { count: 'exact', head: true }),
+    // Volume pool = D15-22
     supabase
       .from('chess_prediction_attempts')
       .select('*', { count: 'exact', head: true })
       .gte('stockfish_depth', 15)
       .lte('stockfish_depth', 22),
-    // v7.24: Deep pool = D25+
+    // Deep pool = D25+
     supabase
       .from('chess_prediction_attempts')
       .select('*', { count: 'exact', head: true })
@@ -142,30 +157,46 @@ export async function fetchChessCumulativeStats(): Promise<ChessCumulativeStats>
   ]);
 
   const total = totalGames || 0;
-  const epWins = hybridWins || 0;
-  const stockfishWinsCount = sfWins || 0;
-  const bothCorrectCount = bothCorrect || 0;
-  const bothWrongCount = total - epWins - stockfishWinsCount - bothCorrectCount;
+  const hybridTotal = hybridCorrectCount || 0;
+  const sfTotal = stockfishCorrectCount || 0;
+  const bothC = bothCorrectCount || 0;
+  const bothW = bothWrongCount || 0;
+  const hybridExclusive = hybridOnlyWins || 0;
+  const sfExclusive = sfOnlyWins || 0;
 
   const stats: ChessCumulativeStats = {
     totalGames: total,
-    hybridWins: epWins,
-    stockfishWins: stockfishWinsCount,
-    bothCorrect: bothCorrectCount,
-    bothWrong: Math.max(0, bothWrongCount),
-    hybridAccuracy: total > 0 ? ((hybridCorrect || 0) / total) * 100 : 0,
-    stockfishAccuracy: total > 0 ? ((sfCorrect || 0) / total) * 100 : 0,
+    // For head-to-head comparison, use EXCLUSIVE wins (where only one was right)
+    hybridWins: hybridExclusive,
+    stockfishWins: sfExclusive,
+    bothCorrect: bothC,
+    bothWrong: bothW,
+    // Accuracy = correct / total (includes both_correct in numerator)
+    hybridAccuracy: total > 0 ? (hybridTotal / total) * 100 : 0,
+    stockfishAccuracy: total > 0 ? (sfTotal / total) * 100 : 0,
     avgConfidence: 0.7,
-    // v7.24: Additional stats
-    totalRuns: benchmarks?.length || 0,
-    hybridNetWins: epWins - stockfishWinsCount,
-    // v7.24: Pool counts
+    // v7.25: Additional stats
+    totalRuns: totalRuns || 0,
+    hybridNetWins: hybridExclusive - sfExclusive,
+    // v7.25: Pool counts
     volumePoolCount: volumeCount || 0,
     deepPoolCount: deepCount || 0,
   };
 
   cachedChessStats = stats;
   lastChessStatsFetch = Date.now();
+  
+  console.log('[v7.25-AUDIT] Stats from DB:', {
+    total,
+    hybridAccuracy: stats.hybridAccuracy.toFixed(2),
+    sfAccuracy: stats.stockfishAccuracy.toFixed(2),
+    hybridExclusive,
+    sfExclusive,
+    bothC,
+    bothW,
+    volumeCount,
+    deepCount
+  });
   
   return stats;
 }
