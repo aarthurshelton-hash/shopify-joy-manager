@@ -970,7 +970,11 @@ export default function Benchmark() {
               )}
               
               {isLocalRunning && (
-                <Button variant="outline" onClick={abortLocalBenchmark}>
+                <Button variant="outline" onClick={async () => {
+                  abortLocalBenchmark();
+                  // v7.13: Also release the benchmark lock when manually aborting
+                  await releaseBenchmarkLock();
+                }}>
                   Cancel
                 </Button>
               )}

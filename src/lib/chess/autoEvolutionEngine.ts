@@ -1,7 +1,12 @@
 /**
- * Auto-Evolution Engine v7.0-UNBLOCKABLE
+ * Auto-Evolution Engine v7.13-COORDINATOR-AWARE
  * 
  * PHILOSOPHY: The system NEVER stops. Uses LOCAL Stockfish only (no API dependencies).
+ * 
+ * v7.13 CRITICAL FIXES:
+ * - Checks isManualBenchmarkActive() BEFORE starting any batch
+ * - Yields to manual benchmarks immediately
+ * - Subscribes to lock changes for instant pause/resume
  * 
  * v7.0 CRITICAL FIXES:
  * - All async operations have hard timeouts to prevent infinite hangs
@@ -17,8 +22,8 @@
  * - Incremental persistence (never lose data)
  */
 
-const AUTO_EVOLUTION_VERSION = "7.0-UNBLOCKABLE";
-console.log(`[v7.0] autoEvolutionEngine.ts LOADED - Version: ${AUTO_EVOLUTION_VERSION}`);
+const AUTO_EVOLUTION_VERSION = "7.13-COORDINATOR-AWARE";
+console.log(`[v7.13] autoEvolutionEngine.ts LOADED - Version: ${AUTO_EVOLUTION_VERSION}`);
 
 import { 
   runCloudPoolBatch, 
@@ -31,6 +36,7 @@ import {
 } from './dualPoolPipeline';
 import { supabase } from '@/integrations/supabase/client';
 import { getStockfishEngine, terminateStockfish } from './stockfishEngine';
+import { isManualBenchmarkActive, subscribeToBenchmarkLock } from './benchmarkCoordinator';
 
 // ================ ENGINE STATE ================
 
@@ -314,7 +320,17 @@ function withTimeout<T>(promise: Promise<T>, ms: number, name: string): Promise<
 async function runCloudBatch(): Promise<void> {
   if (engineState.isPaused || !engineState.isRunning) return;
   
-  console.log(`[v7.0-VOLUME] Starting batch ${engineState.currentBatchNumber}...`);
+  // v7.13: CRITICAL - Check for manual benchmark lock BEFORE starting
+  if (isManualBenchmarkActive()) {
+    console.log('[v7.13-VOLUME] ⏸️ Manual benchmark active, skipping batch');
+    // Reschedule for later instead of running now
+    if (engineState.isRunning && !engineState.isPaused) {
+      cloudBatchTimer = setTimeout(runCloudBatch, 30000); // Check again in 30s
+    }
+    return;
+  }
+  
+  console.log(`[v7.13-VOLUME] Starting batch ${engineState.currentBatchNumber}...`);
   engineState.cloudPoolStatus = 'running';
   engineState.batchStartedAt = new Date();
   emitEvent('cloud_batch_started', { batch: engineState.currentBatchNumber });
@@ -406,7 +422,17 @@ async function runCloudBatch(): Promise<void> {
 async function runLocalBatch(): Promise<void> {
   if (engineState.isPaused || !engineState.isRunning) return;
   
-  console.log(`[v7.0-DEEP] Starting deep batch ${engineState.currentBatchNumber}...`);
+  // v7.13: CRITICAL - Check for manual benchmark lock BEFORE starting
+  if (isManualBenchmarkActive()) {
+    console.log('[v7.13-DEEP] ⏸️ Manual benchmark active, skipping batch');
+    // Reschedule for later instead of running now
+    if (engineState.isRunning && !engineState.isPaused) {
+      localBatchTimer = setTimeout(runLocalBatch, 30000); // Check again in 30s
+    }
+    return;
+  }
+  
+  console.log(`[v7.13-DEEP] Starting deep batch ${engineState.currentBatchNumber}...`);
   engineState.localPoolStatus = 'running';
   emitEvent('local_batch_started', { batch: engineState.currentBatchNumber });
   

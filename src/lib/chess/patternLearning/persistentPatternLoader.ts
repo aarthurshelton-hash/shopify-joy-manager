@@ -1,15 +1,29 @@
 /**
- * Persistent Pattern Loader
+ * Persistent Pattern Loader v7.13
  * 
  * Loads learned patterns from the database into the in-memory pattern system.
  * Ensures En Pensent's predictions leverage ALL historical knowledge from
  * the 802+ validated positions in chess_prediction_attempts.
+ * 
+ * v7.13: Added timeout protection to prevent DB calls from blocking pipeline
  */
 
 import { supabase } from '@/integrations/supabase/client';
 import { patternDatabase } from './patternDatabase';
 import { PatternRecord } from './types';
 import { StrategicArchetype } from '../colorFlowAnalysis';
+
+// v7.13: Hard timeout for DB operations
+const DB_TIMEOUT_MS = 15000; // 15 seconds max
+
+function withTimeout<T>(promise: Promise<T>, ms: number, name: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => 
+      setTimeout(() => reject(new Error(`${name} timeout after ${ms}ms`)), ms)
+    )
+  ]);
+}
 
 interface LearnedPattern {
   id: string;
@@ -52,27 +66,46 @@ export async function loadLearnedPatterns(): Promise<{
   let from = 0;
   const pageSize = 500;
   let hasMore = true;
+  const maxPages = 10; // v7.13: Limit to prevent infinite loops
+  let pageCount = 0;
 
-  // Paginate through ALL records
-  while (hasMore) {
-    const { data, error } = await supabase
-      .from('chess_prediction_attempts')
-      .select('id, fen, hybrid_archetype, hybrid_confidence, hybrid_correct, actual_result, lesson_learned, stockfish_correct')
-      .range(from, from + pageSize - 1);
+  // Paginate through records with timeout protection
+  while (hasMore && pageCount < maxPages) {
+    pageCount++;
+    
+    try {
+      // v7.13: Create proper Promise with timeout
+      const fetchPage = async () => {
+        return await supabase
+          .from('chess_prediction_attempts')
+          .select('id, fen, hybrid_archetype, hybrid_confidence, hybrid_correct, actual_result, lesson_learned, stockfish_correct')
+          .range(from, from + pageSize - 1);
+      };
+      
+      const result = await withTimeout(
+        fetchPage(),
+        DB_TIMEOUT_MS,
+        `PatternPage${pageCount}`
+      );
 
-    if (error) {
-      console.error('[PatternLoader] Error loading patterns:', error);
+      if (result.error) {
+        console.error('[PatternLoader] Error loading patterns:', result.error);
+        break;
+      }
+
+      if (!result.data || result.data.length === 0) {
+        hasMore = false;
+        break;
+      }
+
+      patterns.push(...(result.data as LearnedPattern[]));
+      from += pageSize;
+      hasMore = result.data.length === pageSize;
+    } catch (err) {
+      console.warn(`[PatternLoader] Page ${pageCount} failed (timeout?):`, err);
+      // Continue with what we have rather than failing completely
       break;
     }
-
-    if (!data || data.length === 0) {
-      hasMore = false;
-      break;
-    }
-
-    patterns.push(...(data as LearnedPattern[]));
-    from += pageSize;
-    hasMore = data.length === pageSize;
   }
 
   // Calculate statistics

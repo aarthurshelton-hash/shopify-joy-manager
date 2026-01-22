@@ -26,8 +26,8 @@
  * Pipeline MUST work without any external API.
  */
 
-const DUAL_POOL_VERSION = "7.0-UNBLOCKABLE";
-console.log(`[v7.0] dualPoolPipeline.ts LOADED - Version: ${DUAL_POOL_VERSION}`);
+const DUAL_POOL_VERSION = "7.13-COORDINATOR-AWARE";
+console.log(`[v7.13] dualPoolPipeline.ts LOADED - Version: ${DUAL_POOL_VERSION}`);
 
 // v7.0: Hard timeout wrapper for any async operation
 function withTimeout<T>(promise: Promise<T>, ms: number, name: string): Promise<T> {
@@ -47,6 +47,7 @@ import { fetchLichessGames, lichessGameToPgn, type LichessGame } from './gameImp
 import { fetchChessComGames, type ChessComGame } from './gameImport/chesscomApi';
 import { getAlreadyAnalyzedData, isGameAlreadyAnalyzed, hashPosition } from './benchmarkPersistence';
 import { supabase } from '@/integrations/supabase/client';
+import { isManualBenchmarkActive } from './benchmarkCoordinator';
 
 // ================ POOL CONFIGURATIONS ================
 
@@ -489,6 +490,12 @@ export async function runCloudPoolBatch(
 ): Promise<PoolPrediction[]> {
   const predictions: PoolPrediction[] = [];
   const config = CLOUD_POOL_CONFIG;
+  
+  // v7.13: Check for manual benchmark before starting
+  if (isManualBenchmarkActive()) {
+    console.log('[v7.13] Manual benchmark active, skipping pool batch');
+    return predictions;
+  }
   
   onProgress?.(`[${config.name}] Starting batch ${batchNumber}...`, 0);
   
