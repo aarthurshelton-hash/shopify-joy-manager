@@ -27,6 +27,7 @@ import {
 } from '@/lib/chess/liveEloTracker';
 import { useBenchmarkRateLimit } from '@/hooks/useRateLimitV2';
 import { GameDetailsModal } from '@/components/chess/GameDetailsModal';
+import { acquireBenchmarkLock, releaseBenchmarkLock } from '@/lib/chess/benchmarkCoordinator';
 
 interface CumulativeStats {
   totalRuns: number;
@@ -134,6 +135,9 @@ export default function Benchmark() {
           });
         }
         setIsLiveElo(false);
+        
+        // v7.12: Release lock when local benchmark completes
+        await releaseBenchmarkLock();
       };
       
       updateCumulativeElo();
@@ -144,6 +148,16 @@ export default function Benchmark() {
   useEffect(() => {
     setIsLiveElo(isRunning || isLocalRunning);
   }, [isRunning, isLocalRunning]);
+
+  // v7.12: Release lock when local benchmark stops (error/abort/complete without result)
+  useEffect(() => {
+    // When isLocalRunning goes from true to false, ensure lock is released
+    // Note: localResult useEffect handles successful completion
+    if (!isLocalRunning && localError) {
+      console.log('[Benchmark] Local benchmark errored, releasing lock');
+      releaseBenchmarkLock();
+    }
+  }, [isLocalRunning, localError]);
 
   // REALTIME: Subscribe to BOTH chess_benchmark_results AND chess_prediction_attempts
   useEffect(() => {
@@ -345,6 +359,10 @@ export default function Benchmark() {
     if (!result.allowed) return;
 
     console.log('[Benchmark] Starting cloud benchmark with FRESH Lichess games...');
+    
+    // v7.12: Acquire lock - pauses auto-evolution
+    await acquireBenchmarkLock();
+    
     setIsRunning(true);
     setProgress(0);
     setStatus('Fetching FRESH real games from Lichess top players...');
@@ -432,6 +450,8 @@ export default function Benchmark() {
       setStatus(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsRunning(false);
+      // v7.12: Release lock - resumes auto-evolution if it was running
+      await releaseBenchmarkLock();
     }
   };
 
@@ -920,8 +940,11 @@ export default function Benchmark() {
                 <Button 
                   onClick={async () => {
                     // Check rate limit before starting
-                    const allowed = await checkBenchmarkLimit();
-                    if (!allowed) return;
+                    const result = checkBenchmarkLimit();
+                    if (!result.allowed) return;
+                    
+                    // v7.12: Acquire lock - pauses auto-evolution
+                    await acquireBenchmarkLock();
                     
                     setLivePredictions([]); // Clear previous predictions
                     runLocalBenchmark({
