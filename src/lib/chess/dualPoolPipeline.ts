@@ -26,8 +26,8 @@
  * Pipeline MUST work without any external API.
  */
 
-const DUAL_POOL_VERSION = "7.17-SCHEMA-ALIGNED";
-console.log(`[v7.17] dualPoolPipeline.ts LOADED - Version: ${DUAL_POOL_VERSION}`);
+const DUAL_POOL_VERSION = "7.30-YIELD";
+console.log(`[v7.30] dualPoolPipeline.ts LOADED - Version: ${DUAL_POOL_VERSION}`);
 
 // v7.0: Hard timeout wrapper for any async operation
 function withTimeout<T>(promise: Promise<T>, ms: number, name: string): Promise<T> {
@@ -408,6 +408,12 @@ async function analyzeWithLocalStockfish(
   movesToPlay: number,
   config: PoolConfig
 ): Promise<{ eval: number; depth: number; nodes?: number; mode: string } | null> {
+  // v7.30-YIELD: CRITICAL - Check lock BEFORE touching Stockfish engine
+  if (isManualBenchmarkActive()) {
+    console.log(`[v7.30-YIELD] Manual benchmark owns engine, skipping analysis for ${game.id}`);
+    return null;
+  }
+  
   const chess = new Chess();
   
   try {
@@ -571,6 +577,12 @@ export async function runCloudPoolBatch(
   for (const game of allGames) {
     if (predictions.length >= targetCount) break;
     
+    // v7.30-YIELD: Check for manual benchmark at START of each game
+    if (isManualBenchmarkActive()) {
+      console.log(`[v7.30-YIELD] Manual benchmark detected mid-batch, yielding ${predictions.length} predictions`);
+      return predictions; // Return what we have so far
+    }
+    
     const startTime = Date.now();
     const movesToPlay = 15 + Math.floor(Math.random() * 20); // 15-35
     
@@ -684,6 +696,12 @@ export async function runLocalPoolBatch(
   let processed = 0;
   for (const game of games) {
     if (predictions.length >= targetCount) break;
+    
+    // v7.30-YIELD: Check for manual benchmark at START of each game
+    if (isManualBenchmarkActive()) {
+      console.log(`[v7.30-YIELD] Manual benchmark detected mid-batch, yielding ${predictions.length} predictions`);
+      return predictions; // Return what we have so far
+    }
     
     const startTime = Date.now();
     const movesToPlay = 15 + Math.floor(Math.random() * 20);
