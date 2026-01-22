@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { TrendingUp, TrendingDown, Minus, RefreshCw, Target, BarChart3, Save, Layers, Trophy, History, Zap, Wifi } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, RefreshCw, Target, BarChart3, Save, Layers, Trophy, History, Zap, Wifi, DollarSign, Activity } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { 
@@ -23,8 +23,10 @@ import { AccuracyLeaderboard } from '@/components/finance/AccuracyLeaderboard';
 import { CrossDomainAnalysis } from '@/components/finance/CrossDomainAnalysis';
 import { PredictionHistory } from '@/components/finance/PredictionHistory';
 import MultiMarketScalpingTerminal from '@/components/scalping/MultiMarketScalpingTerminal';
+import OptionsScalpingTerminal from '@/components/options/OptionsScalpingTerminal';
 import { useRealtimeAccuracy, subscribeToAccuracyUpdates } from '@/hooks/useRealtimeAccuracy';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { useTradingSessionStore } from '@/stores/tradingSessionStore';
 
 interface StockData {
   symbol: string;
@@ -41,12 +43,33 @@ const StockPredictionDashboard: React.FC = () => {
   const [prediction, setPrediction] = useState<ReturnType<typeof generateMultiTimeframePrediction> | null>(null);
   const [loading, setLoading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
-  const [activeTab, setActiveTab] = useState('analyze');
+  const [activeTab, setActiveTab] = useState('scalping');
   const [predictions, setPredictions] = useState<any[]>([]);
   const [accuracyStats, setAccuracyStats] = useState<any>({ archetypePerformance: {} });
   
+  // Unified trading session store - persistent $1000 balance that grows indefinitely
+  const { 
+    currentSession,
+    globalAccuracy,
+    startSession,
+    getSessionStats
+  } = useTradingSessionStore();
+  
   // Realtime accuracy hook for auto-updates
   const { isConnected, updateCount, syncAccuracyData } = useRealtimeAccuracy(true);
+  
+  // Calculate derived stats
+  const sessionStats = getSessionStats();
+  const winRate = sessionStats.winRate;
+  const totalWins = currentSession?.winningTrades || 0;
+  const totalLosses = currentSession?.losingTrades || 0;
+  
+  // Auto-start session with $1000 if not already active
+  useEffect(() => {
+    if (!currentSession || currentSession.status === 'completed') {
+      startSession(1000);
+    }
+  }, [currentSession, startSession]);
 
   // Auto-refresh on realtime updates
   useEffect(() => {
@@ -175,11 +198,91 @@ const StockPredictionDashboard: React.FC = () => {
         </p>
       </div>
 
+      {/* Unified Balance Header */}
+      <Card className="bg-gradient-to-br from-card via-card to-primary/5 border-primary/20 mb-6">
+        <CardContent className="pt-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            {/* Main Balance */}
+            <div className="col-span-2">
+              <div className="text-sm text-muted-foreground mb-1 flex items-center gap-2">
+                <DollarSign className="w-4 h-4" />
+                Universal Trading Balance
+              </div>
+              <div className="text-4xl font-mono font-bold">
+                ${currentSession?.currentBalance.toFixed(2) || '1000.00'}
+              </div>
+              <div className={`text-lg font-semibold flex items-center gap-1 ${
+                (currentSession?.totalPnl || 0) >= 0 ? "text-success" : "text-destructive"
+              }`}>
+                {(currentSession?.totalPnl || 0) >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                {(currentSession?.totalPnl || 0) >= 0 ? '+' : ''}{sessionStats.growthPercent.toFixed(2)}%
+                <span className="text-sm text-muted-foreground ml-1">
+                  ({(currentSession?.totalPnl || 0) >= 0 ? '+' : ''}${(currentSession?.totalPnl || 0).toFixed(2)})
+                </span>
+              </div>
+            </div>
+            
+            {/* Win Rate */}
+            <div>
+              <div className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
+                <Target className="w-3 h-3" />
+                Win Rate
+              </div>
+              <div className={`text-2xl font-bold ${
+                winRate >= 55 ? "text-success" : 
+                winRate >= 45 ? "text-warning" : "text-destructive"
+              }`}>
+                {winRate.toFixed(1)}%
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {totalWins}W / {totalLosses}L
+              </div>
+            </div>
+            
+            {/* Total Trades */}
+            <div>
+              <div className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
+                <Activity className="w-3 h-3" />
+                Total Trades
+              </div>
+              <div className="text-2xl font-bold">
+                {currentSession?.totalTrades || 0}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Predictions: {globalAccuracy.totalPredictions}
+              </div>
+            </div>
+            
+            {/* Peak Balance */}
+            <div>
+              <div className="text-sm text-muted-foreground mb-1">Peak Balance</div>
+              <div className="text-2xl font-bold text-success">
+                ${currentSession?.peakBalance.toFixed(2) || '1000.00'}
+              </div>
+            </div>
+            
+            {/* Prediction Accuracy */}
+            <div>
+              <div className="text-sm text-muted-foreground mb-1">Prediction Accuracy</div>
+              <div className="text-2xl font-bold text-primary">
+                {globalAccuracy.accuracy.toFixed(1)}%
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {globalAccuracy.correctPredictions}/{globalAccuracy.totalPredictions}
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Main Navigation Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
-        <TabsList className="grid grid-cols-5 w-full max-w-2xl mx-auto">
+        <TabsList className="grid grid-cols-6 w-full max-w-3xl mx-auto">
           <TabsTrigger value="scalping" className="flex items-center gap-1">
             <Zap className="w-4 h-4" /> Scalping
+          </TabsTrigger>
+          <TabsTrigger value="options" className="flex items-center gap-1">
+            <Activity className="w-4 h-4" /> Options
           </TabsTrigger>
           <TabsTrigger value="analyze" className="flex items-center gap-1">
             <Target className="w-4 h-4" /> Analyze
@@ -198,6 +301,12 @@ const StockPredictionDashboard: React.FC = () => {
         <TabsContent value="scalping">
           <ErrorBoundary componentName="ScalpingTerminal">
             <MultiMarketScalpingTerminal />
+          </ErrorBoundary>
+        </TabsContent>
+        
+        <TabsContent value="options">
+          <ErrorBoundary componentName="OptionsTerminal">
+            <OptionsScalpingTerminal />
           </ErrorBoundary>
         </TabsContent>
 
