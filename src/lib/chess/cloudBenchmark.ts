@@ -47,6 +47,7 @@ import {
   hashPosition,
   reaffirmExistingPrediction 
 } from './benchmarkPersistence';
+import { getBenchmarkAbortSignal } from './benchmarkCoordinator';
 
 export interface PredictionAttempt {
   gameId: string;
@@ -512,8 +513,15 @@ export async function runCloudBenchmark(
   
   onProgress?.('Fetching FRESH real games from Lichess (randomized)...', 3);
 
-  // v6.0-SIMPLE: Keep fetching and processing until we hit target count
+  // v7.27-COORDINATOR-AWARE: Check abort signal at start of each iteration
   while (analyzedCount < targetCount && totalFetchAttempts < maxFetchAttempts) {
+    // Check coordinator abort signal
+    const abortSignal = getBenchmarkAbortSignal();
+    if (abortSignal?.aborted) {
+      console.log('[v7.27] Benchmark aborted by coordinator');
+      break;
+    }
+    
     // Fetch more games if we've exhausted current batch
     if (gameIndex >= allGames.length) {
       totalFetchAttempts++;

@@ -29,7 +29,7 @@
 const BENCHMARK_VERSION = "7.18-SCHEMA-ALIGNED";
 console.log(`[v7.18] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
 import { supabase } from '@/integrations/supabase/client';
 import { Chess } from 'chess.js';
@@ -38,6 +38,7 @@ import { buildFingerprint, PlayerFingerprint, GameData } from '@/lib/pensent-cor
 import { getAlreadyAnalyzedData, hashPosition, reaffirmExistingPrediction } from '@/lib/chess/benchmarkPersistence';
 import { fetchMultiSourceGames, getSourceStats, type UnifiedGameData } from '@/lib/chess/gameImport/multiSourceFetcher';
 import { invalidateChessStatsCache } from './useRealtimeAccuracy';
+import { getBenchmarkAbortSignal, subscribeToBenchmarkLock } from '@/lib/chess/benchmarkCoordinator';
 
 // Platform-specific ELO calibration factors (Platform → FIDE approximation)
 export const PLATFORM_ELO_CALIBRATION = {
@@ -415,6 +416,19 @@ export function useHybridBenchmark() {
   const [result, setResult] = useState<BenchmarkResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef(false);
+  
+  // v7.27-COORDINATOR-AWARE: Subscribe to benchmark lock changes
+  // When lock is released externally (e.g., page nav), abort benchmark
+  useEffect(() => {
+    const unsubscribe = subscribeToBenchmarkLock((isLocked) => {
+      // If lock was released while we're running, abort
+      if (!isLocked && isRunning) {
+        console.log('[v7.27] Benchmark lock released externally, aborting...');
+        abortRef.current = true;
+      }
+    });
+    return unsubscribe;
+  }, [isRunning]);
 
   const runBenchmark = useCallback(async (config: HybridBenchmarkConfig) => {
     const { gameCount, depth, predictionMoveRange, onPrediction } = config;
@@ -423,6 +437,15 @@ export function useHybridBenchmark() {
     setError(null);
     setResult(null);
     abortRef.current = false;
+    
+    // v7.27: Get coordinator abort signal for external cancellation
+    const coordinatorSignal = getBenchmarkAbortSignal();
+    if (coordinatorSignal) {
+      coordinatorSignal.addEventListener('abort', () => {
+        console.log('[v7.27] Coordinator abort signal received');
+        abortRef.current = true;
+      });
+    }
     
     const engine = getStockfishEngine();
     
@@ -773,6 +796,14 @@ export function useHybridBenchmark() {
       const HEALTH_CHECK_INTERVAL = 30; // v7.14: Check every 30 games (was 15)
       
       while (predictedCount < gameCount && !abortRef.current && batchNumber < maxBatches) {
+        // v7.27-COORDINATOR-AWARE: Check coordinator abort signal at start of each iteration
+        const coordinatorAborted = getBenchmarkAbortSignal()?.aborted;
+        if (coordinatorAborted) {
+          console.log('[v7.27] Coordinator signaled abort, stopping benchmark loop');
+          abortRef.current = true;
+          break;
+        }
+        
         // ═══════════════════════════════════════════════════════════════════
         // PHASE 0: LIGHTWEIGHT HEALTH CHECK (v7.14)
         // ═══════════════════════════════════════════════════════════════════
