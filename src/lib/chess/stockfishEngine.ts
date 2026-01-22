@@ -272,8 +272,8 @@ export class StockfishEngine {
     const requestedDepth = options.depth || 12;
     const requireExact = options.requireExactDepth ?? false;
     
-    // Timeout protection: 120 seconds for depth 60, scales linearly
-    const timeoutMs = Math.max(30000, requestedDepth * 2000);
+    // v7.51-PUMP: Fast timeout - 8s base + 200ms per depth level
+    const timeoutMs = Math.max(8000, Math.min(requestedDepth * 200, 30000));
     
     return new Promise((resolve, reject) => {
       let timeoutId: NodeJS.Timeout | undefined;
