@@ -16,7 +16,7 @@
  * - Combined: 105+ unique games/hour MINIMUM
  */
 
-const AUTO_EVOLUTION_VERSION = "6.94-BULLETPROOF";
+const AUTO_EVOLUTION_VERSION = "6.95-STABLE";
 console.log(`[v6.94] autoEvolutionEngine.ts LOADED - Version: ${AUTO_EVOLUTION_VERSION}`);
 
 import { 
@@ -131,29 +131,50 @@ function emitEvent(event: string, data?: any) {
 
 async function persistEvolutionState() {
   try {
-    const { error } = await supabase
+    // First check if record exists
+    const { data: existing } = await supabase
       .from('evolution_state')
-      .upsert({
-        state_type: 'auto_evolution_engine',
-        genes: {
-          version: AUTO_EVOLUTION_VERSION,
-          total_predictions: engineState.totalPredictions,
-          total_cloud: engineState.totalCloudPredictions,
-          total_local: engineState.totalLocalPredictions,
-          recovery_count: engineState.recoveryCount,
-          consecutive_errors: engineState.consecutiveErrors,
-        },
-        fitness_score: engineState.consecutiveErrors === 0 ? 100 : 
-          Math.max(0, 100 - engineState.consecutiveErrors * 20),
-        generation: engineState.currentBatchNumber,
-        last_mutation_at: new Date().toISOString(),
-      });
+      .select('id')
+      .eq('state_type', 'auto_evolution_engine')
+      .maybeSingle();
+    
+    const payload = {
+      state_type: 'auto_evolution_engine',
+      genes: {
+        version: AUTO_EVOLUTION_VERSION,
+        total_predictions: engineState.totalPredictions,
+        total_cloud: engineState.totalCloudPredictions,
+        total_local: engineState.totalLocalPredictions,
+        recovery_count: engineState.recoveryCount,
+        consecutive_errors: engineState.consecutiveErrors,
+      },
+      fitness_score: engineState.consecutiveErrors === 0 ? 1 : 
+        Math.max(0, 1 - engineState.consecutiveErrors * 0.2),
+      generation: engineState.currentBatchNumber,
+      last_mutation_at: new Date().toISOString(),
+    };
+    
+    let error;
+    if (existing?.id) {
+      // Update existing
+      const result = await supabase
+        .from('evolution_state')
+        .update(payload)
+        .eq('id', existing.id);
+      error = result.error;
+    } else {
+      // Insert new
+      const result = await supabase
+        .from('evolution_state')
+        .insert(payload);
+      error = result.error;
+    }
     
     if (error) {
-      console.warn('[v6.93] State persistence warning:', error.message);
+      console.warn('[v6.95] State persistence warning:', error.message);
     }
   } catch (err) {
-    console.error('[v6.93] State persistence failed:', err);
+    console.error('[v6.95] State persistence failed:', err);
   }
 }
 
