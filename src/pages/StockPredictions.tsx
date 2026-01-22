@@ -64,12 +64,18 @@ const StockPredictionDashboard: React.FC = () => {
   const totalWins = currentSession?.winningTrades || 0;
   const totalLosses = currentSession?.losingTrades || 0;
   
-  // Auto-start session with $1000 if not already active
+  // Auto-resume or continue session - NEVER reset balance, grow indefinitely
   useEffect(() => {
-    if (!currentSession || currentSession.status === 'completed') {
+    // Only start a new session if there's no session at all
+    // If session exists (even if 'completed'), we continue using its balance
+    if (!currentSession) {
       startSession(1000);
+    } else if (currentSession.status === 'completed') {
+      // Resume from the last balance instead of resetting
+      // This ensures we never lose progress
+      startSession(currentSession.currentBalance);
     }
-  }, [currentSession, startSession]);
+  }, []);
 
   // Auto-refresh on realtime updates
   useEffect(() => {

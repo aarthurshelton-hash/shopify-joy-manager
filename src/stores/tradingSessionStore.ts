@@ -173,6 +173,24 @@ export const useTradingSessionStore = create<TradingSessionState>()(
       },
       
       startSession: (startingBalance = DEFAULT_STARTING_BALANCE) => {
+        const existingSession = get().currentSession;
+        
+        // v7.51-UNIFIED: If session exists and is active/paused, just resume it - NEVER reset
+        if (existingSession && existingSession.status !== 'completed') {
+          set(state => ({
+            currentSession: {
+              ...existingSession,
+              status: 'active'
+            },
+            liveMetrics: {
+              ...state.liveMetrics,
+              isStreaming: true
+            }
+          }));
+          return;
+        }
+        
+        // Create new session with provided balance (preserves progress when continuing)
         const session: TradingSession = {
           id: `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           startedAt: Date.now(),
