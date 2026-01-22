@@ -22,8 +22,8 @@
  * - Incremental persistence (never lose data)
  */
 
-const AUTO_EVOLUTION_VERSION = "7.13-COORDINATOR-AWARE";
-console.log(`[v7.13] autoEvolutionEngine.ts LOADED - Version: ${AUTO_EVOLUTION_VERSION}`);
+const AUTO_EVOLUTION_VERSION = "7.22-REAL-STATS";
+console.log(`[v7.22] autoEvolutionEngine.ts LOADED - Version: ${AUTO_EVOLUTION_VERSION}`);
 
 import { 
   runCloudPoolBatch, 
@@ -190,13 +190,35 @@ async function persistEvolutionState() {
 
 async function loadPreviousStats(): Promise<void> {
   try {
-    // Load total prediction count from database
-    const { count } = await supabase
+    // v7.22: Load REAL total prediction count from database
+    const { count: totalCount } = await supabase
       .from('chess_prediction_attempts')
       .select('*', { count: 'exact', head: true });
     
-    if (count) {
-      engineState.totalPredictions = count;
+    if (totalCount) {
+      engineState.totalPredictions = totalCount;
+    }
+    
+    // v7.22: Load REAL pool-specific counts from database
+    // Volume pool = D18 depth (VOLUME-LOCAL, cloud batches)
+    const { count: volumeCount } = await supabase
+      .from('chess_prediction_attempts')
+      .select('*', { count: 'exact', head: true })
+      .gte('stockfish_depth', 15)
+      .lte('stockfish_depth', 22);
+    
+    if (volumeCount) {
+      engineState.totalCloudPredictions = volumeCount;
+    }
+    
+    // Deep pool = D30+ depth (LOCAL-DEEP, local batches)
+    const { count: deepCount } = await supabase
+      .from('chess_prediction_attempts')
+      .select('*', { count: 'exact', head: true })
+      .gte('stockfish_depth', 25);
+    
+    if (deepCount) {
+      engineState.totalLocalPredictions = deepCount;
     }
     
     // Load evolution state
@@ -214,9 +236,9 @@ async function loadPreviousStats(): Promise<void> {
       engineState.recoveryCount = genes.recovery_count || 0;
     }
     
-    console.log(`[v6.93] Loaded state: ${engineState.totalPredictions} total predictions, batch ${engineState.currentBatchNumber}`);
+    console.log(`[v7.22] Loaded REAL stats: ${engineState.totalPredictions} total, ${engineState.totalCloudPredictions} volume (D18), ${engineState.totalLocalPredictions} deep (D30+)`);
   } catch (err) {
-    console.warn('[v6.93] Could not load previous stats:', err);
+    console.warn('[v7.22] Could not load previous stats:', err);
   }
 }
 
