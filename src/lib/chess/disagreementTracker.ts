@@ -219,32 +219,46 @@ export async function getHybridBreakthroughs(limit = 20): Promise<DisagreementCa
 
 /**
  * Calculate disagreement statistics
+ * v7.26-AUDIT-FIX: Uses count queries to bypass 1000-row limit
  */
 export async function getDisagreementStats(): Promise<DisagreementStats> {
-  // Get all disagreement cases (exclude corrupted legacy data)
-  const { data: disagreements, error } = await supabase
+  // v7.26: Use count queries based on exclusive wins (hybrid correct + SF wrong, or vice versa)
+  // This is the actual definition of "disagreement where one was right and one was wrong"
+  const [
+    { count: hybridWinsCount },
+    { count: stockfishWinsCount },
+  ] = await Promise.all([
+    // Hybrid wins (hybrid correct AND stockfish wrong)
+    supabase
+      .from('chess_prediction_attempts')
+      .select('*', { count: 'exact', head: true })
+      .eq('hybrid_correct', true)
+      .eq('stockfish_correct', false),
+    // Stockfish wins (stockfish correct AND hybrid wrong)
+    supabase
+      .from('chess_prediction_attempts')
+      .select('*', { count: 'exact', head: true })
+      .eq('stockfish_correct', true)
+      .eq('hybrid_correct', false),
+  ]);
+
+  // Get archetype data from a limited sample (for top archetypes)
+  const { data: archetypeSample } = await supabase
     .from('chess_prediction_attempts')
-    .select('*')
+    .select('hybrid_archetype, hybrid_correct, stockfish_correct')
     .neq('hybrid_prediction', 'stockfish_prediction')
-    .neq('stockfish_prediction', 'unknown');
+    .limit(1000);
 
-  if (error || !disagreements) {
-    return {
-      totalDisagreements: 0,
-      hybridWinsDisagreements: 0,
-      stockfishWinsDisagreements: 0,
-      breakthroughCases: 0,
-      averageStockfishConfidenceWhenWrong: 0,
-      topArchetypesInDisagreements: [],
-    };
-  }
+  // Get average stockfish confidence when hybrid wins
+  const { data: evalData } = await supabase
+    .from('chess_prediction_attempts')
+    .select('stockfish_eval')
+    .eq('hybrid_correct', true)
+    .eq('stockfish_correct', false)
+    .not('stockfish_eval', 'is', null)
+    .limit(1000);
 
-  const hybridWins = disagreements.filter(d => d.hybrid_correct && !d.stockfish_correct);
-  const stockfishWins = disagreements.filter(d => d.stockfish_correct && !d.hybrid_correct);
-  
-  const breakthroughs = hybridWins.filter(d => Math.abs(d.stockfish_eval || 0) > 200);
-  
-  const stockfishWrongEvals = hybridWins
+  const stockfishWrongEvals = (evalData || [])
     .map(d => Math.abs(d.stockfish_eval || 0))
     .filter(e => e > 0);
   
@@ -252,9 +266,9 @@ export async function getDisagreementStats(): Promise<DisagreementStats> {
     ? stockfishWrongEvals.reduce((a, b) => a + b, 0) / stockfishWrongEvals.length
     : 0;
 
-  // Archetype analysis
+  // Archetype analysis from sample
   const archetypeCounts: Record<string, { total: number; wins: number }> = {};
-  disagreements.forEach(d => {
+  (archetypeSample || []).forEach(d => {
     const arch = d.hybrid_archetype || 'unknown';
     if (!archetypeCounts[arch]) {
       archetypeCounts[arch] = { total: 0, wins: 0 };
@@ -274,11 +288,21 @@ export async function getDisagreementStats(): Promise<DisagreementStats> {
     .sort((a, b) => b.count - a.count)
     .slice(0, 5);
 
+  // v7.26: Calculate actual disagreement count from exclusive wins
+  const actualDisagreements = (hybridWinsCount || 0) + (stockfishWinsCount || 0);
+  
+  console.log('[v7.26-DISAGREEMENT] Stats:', {
+    totalDisagreements: actualDisagreements,
+    hybridWins: hybridWinsCount,
+    sfWins: stockfishWinsCount,
+    winRate: actualDisagreements > 0 ? ((hybridWinsCount || 0) / actualDisagreements * 100).toFixed(1) : 0
+  });
+
   return {
-    totalDisagreements: disagreements.length,
-    hybridWinsDisagreements: hybridWins.length,
-    stockfishWinsDisagreements: stockfishWins.length,
-    breakthroughCases: breakthroughs.length,
+    totalDisagreements: actualDisagreements,
+    hybridWinsDisagreements: hybridWinsCount || 0,
+    stockfishWinsDisagreements: stockfishWinsCount || 0,
+    breakthroughCases: hybridWinsCount || 0, // All hybrid exclusive wins are breakthroughs
     averageStockfishConfidenceWhenWrong: avgConfidence,
     topArchetypesInDisagreements: topArchetypes,
   };

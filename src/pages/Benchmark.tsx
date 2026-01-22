@@ -1341,7 +1341,7 @@ export default function Benchmark() {
                 </div>
                 <div className="text-center p-4 bg-muted/50 rounded-lg">
                   <p className="text-2xl font-bold">
-                    {Math.round(Math.min(cumulativeStats.overallHybridAccuracy, cumulativeStats.overallStockfishAccuracy) * cumulativeStats.validPredictionCount / 100)}
+                    {cumulativeStats.bothCorrect}
                   </p>
                   <p className="text-sm text-muted-foreground">Both Correct</p>
                 </div>

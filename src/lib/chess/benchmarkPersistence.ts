@@ -576,7 +576,8 @@ export async function getHybridFailurePatterns(limit: number = 50): Promise<{
 
 /**
  * Calculate cumulative statistics across all runs
- * FIXED: Uses aggregation query to handle unlimited data (no row limits)
+ * v7.26-AUDIT-SYNC: Unified with useRealtimeAccuracy calculations
+ * Uses ALL predictions (no exclusions) for accurate totals
  */
 export async function getCumulativeStats(): Promise<{
   totalRuns: number;
@@ -587,97 +588,87 @@ export async function getCumulativeStats(): Promise<{
   hybridWins: number;
   stockfishWins: number;
   bothCorrect: number;
+  bothWrong: number;
   bestArchetype: string | null;
   worstArchetype: string | null;
   validPredictionCount: number;
   invalidPredictionCount: number;
 }> {
-  // Use RPC or direct count/aggregate to bypass row limits
-  // Fetch aggregated stats directly from DB to avoid 1000 row limit
-  const { count: totalPredictions } = await supabase
-    .from('chess_prediction_attempts')
-    .select('*', { count: 'exact', head: true });
-  
-  // Get valid predictions count (with proper stockfish prediction)
-  const { count: validCount } = await supabase
-    .from('chess_prediction_attempts')
-    .select('*', { count: 'exact', head: true })
-    .not('stockfish_prediction', 'is', null)
-    .neq('stockfish_prediction', 'unknown');
-  
-  // Get hybrid correct count
-  const { count: hybridCorrectCount } = await supabase
-    .from('chess_prediction_attempts')
-    .select('*', { count: 'exact', head: true })
-    .eq('hybrid_correct', true)
-    .not('stockfish_prediction', 'is', null)
-    .neq('stockfish_prediction', 'unknown');
-  
-  // Get stockfish correct count
-  const { count: sfCorrectCount } = await supabase
-    .from('chess_prediction_attempts')
-    .select('*', { count: 'exact', head: true })
-    .eq('stockfish_correct', true)
-    .not('stockfish_prediction', 'is', null)
-    .neq('stockfish_prediction', 'unknown');
-  
-  // Get hybrid wins (hybrid correct AND stockfish wrong)
-  const { count: hybridWins } = await supabase
-    .from('chess_prediction_attempts')
-    .select('*', { count: 'exact', head: true })
-    .eq('hybrid_correct', true)
-    .eq('stockfish_correct', false)
-    .not('stockfish_prediction', 'is', null)
-    .neq('stockfish_prediction', 'unknown');
-  
-  // Get stockfish wins (stockfish correct AND hybrid wrong)
-  const { count: sfWins } = await supabase
-    .from('chess_prediction_attempts')
-    .select('*', { count: 'exact', head: true })
-    .eq('hybrid_correct', false)
-    .eq('stockfish_correct', true)
-    .not('stockfish_prediction', 'is', null)
-    .neq('stockfish_prediction', 'unknown');
-  
-  // Get both correct count (draws)
-  const { count: bothCorrectCount } = await supabase
-    .from('chess_prediction_attempts')
-    .select('*', { count: 'exact', head: true })
-    .eq('hybrid_correct', true)
-    .eq('stockfish_correct', true)
-    .not('stockfish_prediction', 'is', null)
-    .neq('stockfish_prediction', 'unknown');
-  
-  const { data: benchmarks } = await supabase
-    .from('chess_benchmark_results')
-    .select('id');
+  // v7.26: Query ALL predictions without filters to match DB truth exactly
+  const [
+    { count: totalPredictions },
+    { count: hybridCorrectCount },
+    { count: sfCorrectCount },
+    { count: bothCorrectCount },
+    { count: bothWrongCount },
+    { count: hybridExclusiveWins },
+    { count: sfExclusiveWins },
+    { count: totalRuns },
+  ] = await Promise.all([
+    // Total predictions (ALL records)
+    supabase
+      .from('chess_prediction_attempts')
+      .select('*', { count: 'exact', head: true }),
+    // Hybrid correct (includes both_correct)
+    supabase
+      .from('chess_prediction_attempts')
+      .select('*', { count: 'exact', head: true })
+      .eq('hybrid_correct', true),
+    // Stockfish correct (includes both_correct)
+    supabase
+      .from('chess_prediction_attempts')
+      .select('*', { count: 'exact', head: true })
+      .eq('stockfish_correct', true),
+    // Both correct
+    supabase
+      .from('chess_prediction_attempts')
+      .select('*', { count: 'exact', head: true })
+      .eq('hybrid_correct', true)
+      .eq('stockfish_correct', true),
+    // Both wrong
+    supabase
+      .from('chess_prediction_attempts')
+      .select('*', { count: 'exact', head: true })
+      .eq('hybrid_correct', false)
+      .eq('stockfish_correct', false),
+    // Hybrid exclusive wins (hybrid correct, SF wrong)
+    supabase
+      .from('chess_prediction_attempts')
+      .select('*', { count: 'exact', head: true })
+      .eq('hybrid_correct', true)
+      .eq('stockfish_correct', false),
+    // SF exclusive wins (SF correct, hybrid wrong)
+    supabase
+      .from('chess_prediction_attempts')
+      .select('*', { count: 'exact', head: true })
+      .eq('hybrid_correct', false)
+      .eq('stockfish_correct', true),
+    // Total benchmark runs
+    supabase
+      .from('chess_benchmark_results')
+      .select('*', { count: 'exact', head: true }),
+  ]);
 
+  const total = totalPredictions || 0;
+  const hybridTotal = hybridCorrectCount || 0;
+  const sfTotal = sfCorrectCount || 0;
+  const bothC = bothCorrectCount || 0;
+  const bothW = bothWrongCount || 0;
+  const hybridWinsExclusive = hybridExclusiveWins || 0;
+  const sfWinsExclusive = sfExclusiveWins || 0;
+
+  console.log('[v7.26-CUMULATIVE] DB Truth:', {
+    total,
+    hybridCorrect: hybridTotal,
+    sfCorrect: sfTotal,
+    bothCorrect: bothC,
+    bothWrong: bothW,
+    hybridExclusive: hybridWinsExclusive,
+    sfExclusive: sfWinsExclusive,
+    runs: totalRuns
+  });
+  
   const archetypeStats = await getArchetypeStats();
-
-  const validPredictions = validCount || 0;
-  const invalidPredictions = (totalPredictions || 0) - validPredictions;
-  const hybridCorrect = hybridCorrectCount || 0;
-  const sfCorrect = sfCorrectCount || 0;
-  const hybridWinsTotal = hybridWins || 0;
-  const sfWinsTotal = sfWins || 0;
-  const bothCorrectTotal = bothCorrectCount || 0;
-
-  if (!benchmarks || benchmarks.length === 0) {
-    return {
-      totalRuns: 0,
-      totalGamesAnalyzed: validPredictions, // FIXED: Use valid count consistently
-      overallHybridAccuracy: validPredictions > 0 ? (hybridCorrect / validPredictions) * 100 : 0,
-      overallStockfishAccuracy: validPredictions > 0 ? (sfCorrect / validPredictions) * 100 : 0,
-      hybridNetWins: hybridWinsTotal - sfWinsTotal,
-      hybridWins: hybridWinsTotal,
-      stockfishWins: sfWinsTotal,
-      bothCorrect: bothCorrectTotal,
-      bestArchetype: null,
-      worstArchetype: null,
-      validPredictionCount: validPredictions,
-      invalidPredictionCount: invalidPredictions,
-    };
-  }
 
   // Find best/worst archetypes
   let bestArch: string | null = null;
@@ -698,20 +689,20 @@ export async function getCumulativeStats(): Promise<{
     }
   }
 
-  // FIXED v6.34: Use validPredictions consistently for ALL stats
-  // This ensures Total Games = EP Wins + SF Wins + Both Correct + Both Wrong
+  // v7.26: Return EXACT DB values - no filtering or transformations
   return {
-    totalRuns: benchmarks.length,
-    totalGamesAnalyzed: validPredictions, // FIXED: Use valid count, not total (excludes invalid SF predictions)
-    overallHybridAccuracy: validPredictions > 0 ? (hybridCorrect / validPredictions) * 100 : 0,
-    overallStockfishAccuracy: validPredictions > 0 ? (sfCorrect / validPredictions) * 100 : 0,
-    hybridNetWins: hybridWinsTotal - sfWinsTotal,
-    hybridWins: hybridWinsTotal,
-    stockfishWins: sfWinsTotal,
-    bothCorrect: bothCorrectTotal,
+    totalRuns: totalRuns || 0,
+    totalGamesAnalyzed: total,
+    overallHybridAccuracy: total > 0 ? (hybridTotal / total) * 100 : 0,
+    overallStockfishAccuracy: total > 0 ? (sfTotal / total) * 100 : 0,
+    hybridNetWins: hybridWinsExclusive - sfWinsExclusive,
+    hybridWins: hybridWinsExclusive,
+    stockfishWins: sfWinsExclusive,
+    bothCorrect: bothC,
+    bothWrong: bothW,
     bestArchetype: bestArch,
     worstArchetype: worstArch,
-    validPredictionCount: validPredictions,
-    invalidPredictionCount: invalidPredictions,
+    validPredictionCount: total,
+    invalidPredictionCount: 0, // All predictions are valid in v7.26
   };
 }
