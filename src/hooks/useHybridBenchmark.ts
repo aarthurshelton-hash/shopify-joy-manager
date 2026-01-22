@@ -26,8 +26,8 @@
 // 3. Only mark as failed after ALL retries exhausted
 // 4. Every game that CAN be analyzed SHOULD be analyzed
 // 5. ALL ID tracking (failed, session, DB) uses RAW IDs only - no prefix mismatch
-const BENCHMARK_VERSION = "6.85-UNIFORM-IDS";
-console.log(`[v6.85] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+const BENCHMARK_VERSION = "7.18-SCHEMA-ALIGNED";
+console.log(`[v7.18] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -1040,6 +1040,7 @@ export function useHybridBenchmark() {
         // Build attempt data
         const positionHash = hashPosition(fen);
         
+        // v7.18-SCHEMA-ALIGNED: Include data_source at attempt level for consistency
         const attemptData = {
           // v6.76-FIX: Store RAW game ID (without prefix) for DB consistency
           game_id: gameId.replace(/^(li_|cc_)/, ''),
@@ -1059,6 +1060,8 @@ export function useHybridBenchmark() {
           actual_result: gameResult,
           data_quality_tier: 'tcec_unlimited',
           pgn: game.pgn.substring(0, 1000),
+          // v7.18: Include data_source at attempt level (matches DB schema)
+          data_source: source, // 'lichess' or 'chesscom'
           time_control: game.timeControl || game.gameMode || game.speed || null,
           white_elo: typeof game.whiteElo === 'number' ? game.whiteElo : null,
           black_elo: typeof game.blackElo === 'number' ? game.blackElo : null,
