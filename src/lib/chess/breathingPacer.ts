@@ -6,7 +6,7 @@
  * timeout issues with large pipeline file edits.
  */
 
-export const BREATHING_VERSION = "7.41";
+export const BREATHING_VERSION = "7.50";
 export const RATE_LIMIT_BREATHING_MS = 1500;
 
 let lastBreathTime = 0;
