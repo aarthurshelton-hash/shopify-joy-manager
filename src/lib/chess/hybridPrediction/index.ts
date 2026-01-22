@@ -92,12 +92,12 @@ export async function generateHybridPrediction(
 ): Promise<HybridPrediction> {
   const depth = options.depth || 18;
   
-  // v7.2-BENCHMARK-STREAMLINED: Skip pattern loading if we have precomputed eval
-  // This indicates we're in benchmark mode where patterns are pre-loaded
-  const isBenchmarkMode = options.precomputedEval !== undefined;
+  // v7.14-FAST-BENCHMARK: Skip pattern loading entirely if we have precomputed eval
+  // or if skipCloudEval is set (indicates local benchmark mode)
+  const isBenchmarkMode = options.precomputedEval !== undefined || options.skipCloudEval;
   
   // CRITICAL: Load learned patterns from database on first prediction
-  // But skip if in benchmark mode (patterns already pre-loaded)
+  // But skip if in benchmark mode (patterns already pre-loaded or not needed)
   if (!patternsLoadedThisSession && !isBenchmarkMode) {
     options.onProgress?.('Loading historical patterns from database', 2);
     try {
