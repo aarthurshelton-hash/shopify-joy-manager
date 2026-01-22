@@ -1,6 +1,7 @@
 /**
- * Realtime Accuracy Hook v6.63
+ * Realtime Accuracy Hook v7.20
  * Ensures all accuracy metrics auto-update across the entire En Pensent platform
+ * v7.20: Added chess_benchmark_results subscription for instant benchmark completion updates
  * Now includes chess_prediction_attempts for FIDE ELO and cumulative stats sync
  */
 
@@ -277,6 +278,44 @@ export function useRealtimeAccuracy(enabled = true) {
       });
     channels.push(chessChannel);
 
+    // Chess benchmark results channel - for completed benchmark syncing
+    const benchmarkChannel = supabase
+      .channel('realtime-chess-benchmarks')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'chess_benchmark_results' },
+        async (payload) => {
+          console.log('[RealtimeAccuracy] Benchmark result update:', payload.eventType, payload.new);
+          
+          // Invalidate cache and refetch all chess-related queries
+          invalidateChessStatsCache();
+          const freshStats = await fetchChessCumulativeStats();
+          setChessStats(freshStats);
+          
+          broadcastAccuracyUpdate({
+            type: 'chess',
+            data: { ...freshStats, benchmarkEvent: payload.eventType, benchmarkData: payload.new },
+            timestamp: new Date()
+          });
+
+          setState(prev => ({
+            ...prev,
+            lastUpdate: new Date(),
+            updateCount: prev.updateCount + 1
+          }));
+
+          queryClient.invalidateQueries({ queryKey: ['chess-cumulative-stats'] });
+          queryClient.invalidateQueries({ queryKey: ['benchmark-stats'] });
+          queryClient.invalidateQueries({ queryKey: ['benchmark-history'] });
+        }
+      )
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('[RealtimeAccuracy] Benchmark results channel connected');
+        }
+      });
+    channels.push(benchmarkChannel);
+
     // Prediction outcomes channel
     const predictionChannel = supabase
       .channel('realtime-predictions')
@@ -409,7 +448,7 @@ export function useRealtimeAccuracy(enabled = true) {
     setState(prev => ({
       ...prev,
       isConnected: true,
-      channels: ['chess', 'predictions', 'evolution', 'security', 'correlations']
+      channels: ['chess', 'benchmarks', 'predictions', 'evolution', 'security', 'correlations']
     }));
 
     // Initial sync
