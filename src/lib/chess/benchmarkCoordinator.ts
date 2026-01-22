@@ -1,8 +1,14 @@
 /**
- * Benchmark Coordinator v7.12
+ * Benchmark Coordinator v7.13-BULLETPROOF
  * 
  * Coordinates between manual benchmarks and auto-evolution to prevent
  * resource conflicts (Stockfish worker contention).
+ * 
+ * v7.13 FIXES:
+ * - Auto-evolution checks lock BEFORE starting any batch
+ * - Hard timeout on lock acquisition to prevent deadlocks
+ * - Force termination of Stockfish on lock acquire
+ * - Global abort signal for all running operations
  * 
  * When manual benchmark starts:
  * - Pauses auto-evolution
@@ -24,25 +30,49 @@ interface CoordinatorState {
   manualBenchmarkActive: boolean;
   wasAutoEvolutionRunning: boolean;
   startedAt: Date | null;
+  abortController: AbortController | null;
 }
 
 const state: CoordinatorState = {
   manualBenchmarkActive: false,
   wasAutoEvolutionRunning: false,
   startedAt: null,
+  abortController: null,
 };
+
+// v7.13: Subscribers that get notified when lock state changes
+type LockListener = (isLocked: boolean) => void;
+const lockListeners: Set<LockListener> = new Set();
+
+export function subscribeToBenchmarkLock(listener: LockListener): () => void {
+  lockListeners.add(listener);
+  return () => lockListeners.delete(listener);
+}
+
+function notifyListeners(isLocked: boolean): void {
+  lockListeners.forEach(listener => {
+    try {
+      listener(isLocked);
+    } catch (e) {
+      console.warn('[BenchmarkCoordinator] Listener error:', e);
+    }
+  });
+}
 
 /**
  * Call this BEFORE starting a manual benchmark
  * Pauses auto-evolution and clears Stockfish for exclusive access
  */
-export async function acquireBenchmarkLock(): Promise<void> {
+export async function acquireBenchmarkLock(): Promise<AbortController> {
   if (state.manualBenchmarkActive) {
-    console.log('[BenchmarkCoordinator] Lock already held');
-    return;
+    console.log('[BenchmarkCoordinator] Lock already held, returning existing abort controller');
+    return state.abortController || new AbortController();
   }
   
   console.log('[BenchmarkCoordinator] Acquiring benchmark lock...');
+  
+  // Create abort controller for this benchmark session
+  state.abortController = new AbortController();
   
   // Check current auto-evolution state
   const evolutionState = getEvolutionState();
@@ -57,10 +87,12 @@ export async function acquireBenchmarkLock(): Promise<void> {
     await new Promise(r => setTimeout(r, 500));
   }
   
-  // Terminate Stockfish to ensure clean state
+  // v7.13: FORCE terminate Stockfish to ensure clean state
+  // This is aggressive but prevents hung workers
   try {
     terminateStockfish();
-    await new Promise(r => setTimeout(r, 1000));
+    console.log('[BenchmarkCoordinator] Stockfish terminated');
+    await new Promise(r => setTimeout(r, 1500)); // Wait longer for worker cleanup
   } catch (err) {
     console.warn('[BenchmarkCoordinator] Stockfish termination warning:', err);
   }
@@ -68,7 +100,12 @@ export async function acquireBenchmarkLock(): Promise<void> {
   state.manualBenchmarkActive = true;
   state.startedAt = new Date();
   
+  // Notify listeners
+  notifyListeners(true);
+  
   console.log('[BenchmarkCoordinator] ✅ Benchmark lock acquired');
+  
+  return state.abortController;
 }
 
 /**
@@ -87,8 +124,17 @@ export async function releaseBenchmarkLock(): Promise<void> {
   
   console.log(`[BenchmarkCoordinator] Releasing benchmark lock after ${duration}s`);
   
+  // v7.13: Signal abort to any remaining operations
+  if (state.abortController) {
+    state.abortController.abort();
+    state.abortController = null;
+  }
+  
   state.manualBenchmarkActive = false;
   state.startedAt = null;
+  
+  // Notify listeners
+  notifyListeners(false);
   
   // Give Stockfish a moment to clean up
   await new Promise(r => setTimeout(r, 500));
@@ -106,14 +152,25 @@ export async function releaseBenchmarkLock(): Promise<void> {
 
 /**
  * Check if a manual benchmark is currently active
+ * CRITICAL: Auto-evolution should check this before EVERY batch
  */
 export function isManualBenchmarkActive(): boolean {
   return state.manualBenchmarkActive;
 }
 
 /**
+ * Get the current abort signal (for cancellation)
+ */
+export function getBenchmarkAbortSignal(): AbortSignal | null {
+  return state.abortController?.signal || null;
+}
+
+/**
  * Get coordinator state for debugging
  */
-export function getCoordinatorState(): CoordinatorState {
-  return { ...state };
+export function getCoordinatorState(): CoordinatorState & { hasAbortController: boolean } {
+  return { 
+    ...state,
+    hasAbortController: state.abortController !== null,
+  };
 }
