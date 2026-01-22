@@ -26,8 +26,8 @@
 // 3. Only mark as failed after ALL retries exhausted
 // 4. Every game that CAN be analyzed SHOULD be analyzed
 // 5. ALL ID tracking (failed, session, DB) uses RAW IDs only - no prefix mismatch
-const BENCHMARK_VERSION = "7.18-SCHEMA-ALIGNED";
-console.log(`[v7.18] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+const BENCHMARK_VERSION = "7.40-FASTER";
+console.log(`[v7.40] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -485,22 +485,22 @@ export function useHybridBenchmark() {
         throw new Error('Stockfish engine failed to initialize. Please refresh the page and try again.');
       }
       
-      // v7.14-FAST: Quick warm-up with 3s timeout (was 7s)
-      console.log('[v7.14] Step 2: Quick warm-up...');
-      setProgress(prev => ({ ...prev!, message: 'Quick engine warm-up...' }));
+      // v7.40-FASTER: Minimal 1s warm-up (was 3s)
+      console.log('[v7.40] Step 2: Minimal warm-up...');
+      setProgress(prev => ({ ...prev!, message: 'Engine warm-up...' }));
       
       try {
         const warmupFen = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1';
         const warmupResult = await Promise.race([
-          engine.analyzePosition(warmupFen, { depth: 8 }), // v7.14: depth 8 (was 10)
-          new Promise<null>(r => setTimeout(() => r(null), 3000)) // v7.14: 3s timeout (was 7s)
+          engine.analyzePosition(warmupFen, { depth: 6 }), // v7.40: depth 6 (was 8)
+          new Promise<null>(r => setTimeout(() => r(null), 1500)) // v7.40: 1.5s timeout (was 3s)
         ]);
         
         if (warmupResult) {
-          console.log(`[v7.14] ✅ Warm-up: depth ${warmupResult.evaluation.depth}`);
+          console.log(`[v7.40] ✅ Warm-up: depth ${warmupResult.evaluation.depth}`);
         }
       } catch (warmupErr) {
-        console.warn('[v7.14] Warm-up skipped:', warmupErr);
+        console.warn('[v7.40] Warm-up skipped:', warmupErr);
       }
       
       console.log('[v7.14] ═══════════════════════════════════════════════');
