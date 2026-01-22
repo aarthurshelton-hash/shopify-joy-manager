@@ -36,7 +36,8 @@ import { createTacticalInsight } from './tacticalInsight';
 import { createStrategicInsight } from './strategicInsight';
 import { fuseRecommendations } from './fusedRecommendation';
 import { generateTrajectoryPrediction } from './trajectoryPrediction';
-import { calculateHybridConfidence, calculateCombinedScore } from './confidenceCalculator';
+import { calculateHybridConfidence, calculateCombinedScore, updateAccuracyCache } from './confidenceCalculator';
+import { fetchChessCumulativeStats } from '@/hooks/useRealtimeAccuracy';
 import { HybridPrediction } from './types';
 
 // Track if patterns have been loaded this session
@@ -197,7 +198,18 @@ export async function generateHybridPrediction(
     chess
   );
   
-  // Step 10: Calculate confidence
+  // Step 10: Update accuracy cache and calculate confidence
+  // This ensures confidence reflects ACTUAL accuracy, not theoretical factors
+  try {
+    const stats = await fetchChessCumulativeStats();
+    if (stats.totalGames > 0) {
+      const totalCorrect = Math.round((stats.hybridAccuracy / 100) * stats.totalGames);
+      updateAccuracyCache(stats.totalGames, totalCorrect);
+    }
+  } catch (err) {
+    console.warn('[HybridEngine] Could not fetch accuracy stats for confidence calibration');
+  }
+  
   const confidence = calculateHybridConfidence(
     positionAnalysis,
     colorSignature,
