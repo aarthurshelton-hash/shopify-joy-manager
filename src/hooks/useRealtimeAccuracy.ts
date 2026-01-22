@@ -62,7 +62,8 @@ function broadcastAccuracyUpdate(update: AccuracyUpdate) {
 // Cached chess stats with timestamp for efficient querying
 let cachedChessStats: ChessCumulativeStats | null = null;
 let lastChessStatsFetch = 0;
-const CHESS_STATS_CACHE_MS = 500; // v7.23: Reduced to 500ms for faster updates
+const CHESS_STATS_CACHE_MS = 5000; // v7.32: Increased to 5s to reduce DB spam
+let lastLoggedTotal = 0; // v7.32: Only log when data changes
 
 /**
  * Fetch cumulative chess stats directly from database
@@ -186,17 +187,11 @@ export async function fetchChessCumulativeStats(): Promise<ChessCumulativeStats>
   cachedChessStats = stats;
   lastChessStatsFetch = Date.now();
   
-  console.log('[v7.25-AUDIT] Stats from DB:', {
-    total,
-    hybridAccuracy: stats.hybridAccuracy.toFixed(2),
-    sfAccuracy: stats.stockfishAccuracy.toFixed(2),
-    hybridExclusive,
-    sfExclusive,
-    bothC,
-    bothW,
-    volumeCount,
-    deepCount
-  });
+  // v7.32: Only log when data actually changes
+  if (total !== lastLoggedTotal) {
+    console.log('[v7.32] Stats updated:', { total, hybridAcc: stats.hybridAccuracy.toFixed(2), sfAcc: stats.stockfishAccuracy.toFixed(2) });
+    lastLoggedTotal = total;
+  }
   
   return stats;
 }
