@@ -22,7 +22,8 @@ import { SCALPING_UNDERLYINGS } from '@/lib/pensent-core/domains/options';
 const OptionsScalpingTerminal: React.FC = () => {
   const {
     isRunning, isConnected, selectedUnderlying, chain, analysis, context,
-    pendingPredictions, resolvedPredictions, portfolio, accuracy, evolution,
+    pendingPredictions, resolvedPredictions, accuracy, evolution,
+    unifiedBalance, unifiedPnL, unifiedWinRate,
     start, stop, selectUnderlying, generatePrediction, reset,
   } = useOptionsScalping();
 
@@ -69,16 +70,16 @@ const OptionsScalpingTerminal: React.FC = () => {
         ))}
       </div>
 
-      {/* Stats Grid */}
+      {/* Stats Grid - Uses UNIFIED balance from session store */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
         <Card><CardContent className="pt-4 text-center">
           <DollarSign className="w-5 h-5 mx-auto mb-1 text-primary" />
-          <div className="text-2xl font-bold">${portfolio.balance.toFixed(0)}</div>
-          <div className="text-xs text-muted-foreground">Balance</div>
+          <div className="text-2xl font-bold">${unifiedBalance.toFixed(0)}</div>
+          <div className="text-xs text-muted-foreground">Unified Balance</div>
         </CardContent></Card>
         <Card><CardContent className="pt-4 text-center">
-          <div className={cn("text-2xl font-bold", portfolio.totalPnL >= 0 ? "text-green-500" : "text-red-500")}>
-            {portfolio.totalPnL >= 0 ? '+' : ''}${portfolio.totalPnL.toFixed(0)}
+          <div className={cn("text-2xl font-bold", unifiedPnL >= 0 ? "text-success" : "text-destructive")}>
+            {unifiedPnL >= 0 ? '+' : ''}${unifiedPnL.toFixed(0)}
           </div>
           <div className="text-xs text-muted-foreground">Total P&L</div>
         </CardContent></Card>
