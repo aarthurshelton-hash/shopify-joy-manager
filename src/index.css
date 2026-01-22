@@ -36,6 +36,12 @@
 
     --destructive: 0 75% 48%;
     --destructive-foreground: 0 0% 100%;
+    
+    /* Success and Warning tokens */
+    --success: 142 70% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 0%;
 
     --border: 220 14% 16%;
     --input: 220 14% 13%;
@@ -91,6 +97,11 @@
 
     --destructive: 0 75% 48%;
     --destructive-foreground: 0 0% 100%;
+    
+    --success: 142 70% 40%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 45%;
+    --warning-foreground: 0 0% 0%;
 
     --border: 40 18% 86%;
     --input: 40 18% 92%;
