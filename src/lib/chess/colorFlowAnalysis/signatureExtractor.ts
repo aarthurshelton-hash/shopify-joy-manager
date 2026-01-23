@@ -2,6 +2,7 @@
  * Color Flow Signature Extractor
  * 
  * Core signature extraction from board visualization data
+ * v7.52-PROPHYLACTIC: Enhanced with sub-archetype variation detection
  */
 
 import { SquareData, GameData } from '../gameSimulator';
@@ -12,6 +13,20 @@ import {
   CriticalMoment,
   StrategicArchetype 
 } from './types';
+import { 
+  classifyProphylacticVariation, 
+  ProphylacticAnalysis 
+} from './prophylacticVariations';
+
+// Store last prophylactic analysis for external access
+let lastProphylacticAnalysis: ProphylacticAnalysis | null = null;
+
+/**
+ * Get the last prophylactic variation analysis (if archetype was prophylactic_defense)
+ */
+export function getLastProphylacticAnalysis(): ProphylacticAnalysis | null {
+  return lastProphylacticAnalysis;
+}
 
 /**
  * Extract the complete Color Flow Signature from a visualization
@@ -38,6 +53,18 @@ export function extractColorFlowSignature(
   
   // Classify strategic archetype
   const archetype = classifyArchetype(quadrantProfile, temporalFlow, criticalMoments, totalMoves);
+  
+  // v7.52-PROPHYLACTIC: Deep analysis for prophylactic defense archetype
+  if (archetype === 'prophylactic_defense') {
+    lastProphylacticAnalysis = classifyProphylacticVariation(
+      quadrantProfile, 
+      temporalFlow, 
+      criticalMoments, 
+      totalMoves
+    );
+  } else {
+    lastProphylacticAnalysis = null;
+  }
   
   // Calculate overall intensity
   const intensity = calculateOverallIntensity(board);
