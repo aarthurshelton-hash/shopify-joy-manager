@@ -93,10 +93,10 @@ const CATEGORIES = {
 };
 
 const STARTING_BALANCE = 1000;
-const PREDICTION_INTERVAL = 8000; // 8 seconds between predictions
-const BET_PERCENTAGE = 0.02; // 2% of balance per trade
-const WIN_MULTIPLIER = 1.8; // 80% profit on correct predictions
-const LOSS_MULTIPLIER = 0; // Lose entire bet on wrong predictions
+const PREDICTION_INTERVAL = 15000; // 15 seconds between predictions (more realistic)
+const POSITION_SIZE = 100; // Fixed $100 position size per trade
+const PROFIT_TARGET_PERCENT = 0.5; // 0.5% profit target
+const STOP_LOSS_PERCENT = 0.3; // 0.3% stop loss
 
 // ============================================
 // PREDICTION ENGINE
@@ -555,7 +555,7 @@ const MultiMarketScalpingTerminal: React.FC = () => {
     if (!quote) return;
     
     const { direction, confidence } = predictDirection(randomSymbol.symbol);
-    const betAmount = Math.max(1, Math.round(currentPortfolio.balance * BET_PERCENTAGE * 100) / 100);
+    const betAmount = Math.min(POSITION_SIZE, currentPortfolio.balance);
     
     const prediction: Prediction = {
       id: `pred-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -618,17 +618,23 @@ const MultiMarketScalpingTerminal: React.FC = () => {
         selfEvolvingSystem.updateCorrelationMemory(pred.symbol, pred.category, priceChange);
       }
       
-      // Calculate P&L
+      // Calculate P&L based on actual price movement (realistic paper trading)
+      const priceMovePct = Math.abs(priceChange) * 100;
       let pnl = 0;
+      
       if (wasCorrect) {
-        pnl = pred.betAmount * (WIN_MULTIPLIER - 1);
+        // Win: earn based on price movement, capped at profit target
+        pnl = pred.betAmount * Math.min(priceMovePct, PROFIT_TARGET_PERCENT) / 100;
+        pnl = Math.max(pnl, pred.betAmount * 0.001); // Minimum $0.10 on $100
         portfolioUpdates.balance += pnl;
         portfolioUpdates.winningTrades++;
         portfolioUpdates.currentStreak++;
         portfolioUpdates.bestStreak = Math.max(portfolioUpdates.bestStreak, portfolioUpdates.currentStreak);
         portfolioUpdates.bestTrade = Math.max(portfolioUpdates.bestTrade, pnl);
       } else {
-        pnl = -pred.betAmount;
+        // Lose: lose based on price movement, capped at stop loss
+        pnl = -pred.betAmount * Math.min(priceMovePct, STOP_LOSS_PERCENT) / 100;
+        pnl = Math.min(pnl, -pred.betAmount * 0.001); // Minimum -$0.10 on $100
         portfolioUpdates.balance += pnl;
         portfolioUpdates.losingTrades++;
         portfolioUpdates.currentStreak = 0;
@@ -733,9 +739,9 @@ const MultiMarketScalpingTerminal: React.FC = () => {
         <div className="flex items-center gap-3">
           <Activity className="w-8 h-8 text-primary" />
           <div>
-            <h1 className="text-2xl font-bold">Multi-Market Prediction Engine</h1>
+            <h1 className="text-2xl font-bold">Paper Trading Terminal</h1>
             <p className="text-sm text-muted-foreground">
-              Real-time predictions across Stocks, Bonds, Futures, Commodities & Crypto
+              $1000 → $10,000 Challenge • Real Market Data • En Pensent AI Predictions
             </p>
           </div>
           <Badge variant={isLive ? "default" : "destructive"} className="ml-2">
@@ -844,14 +850,14 @@ const MultiMarketScalpingTerminal: React.FC = () => {
             </div>
           </div>
           
-          {/* Growth Progress Bar */}
+          {/* Growth Progress Bar - Target $10,000 */}
           <div className="mt-4">
             <div className="flex justify-between text-xs text-muted-foreground mb-1">
               <span>Starting: $1,000</span>
-              <span>Target: $2,000 (100% growth)</span>
+              <span>Target: $10,000 (900% growth)</span>
             </div>
             <Progress 
-              value={Math.min(100, Math.max(0, growthPercent))} 
+              value={Math.min(100, Math.max(0, (currentPortfolio.balance / 10000) * 100))} 
               className="h-2"
             />
           </div>
@@ -1087,7 +1093,7 @@ const MultiMarketScalpingTerminal: React.FC = () => {
                     </div>
                     
                     <div className="text-xs text-center text-muted-foreground">
-                      Win: +{((WIN_MULTIPLIER - 1) * 100).toFixed(0)}% • Resolves in {PREDICTION_INTERVAL / 1000}s
+                      Target: +{PROFIT_TARGET_PERCENT}% • Stop: -{STOP_LOSS_PERCENT}% • Resolves in {PREDICTION_INTERVAL / 1000}s
                     </div>
                   </div>
                   
