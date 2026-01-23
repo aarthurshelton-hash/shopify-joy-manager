@@ -692,24 +692,10 @@ const MultiMarketScalpingTerminal: React.FC = () => {
     };
   }, [isRunning, availableSymbols.length, activeCategory]);
   
-  // Reset function
-  const handleReset = useCallback(() => {
+  // Clear predictions only - never reset the balance!
+  const handleClearPredictions = useCallback(() => {
     setPredictions([]);
-    setPortfolio({
-      balance: STARTING_BALANCE,
-      startingBalance: STARTING_BALANCE,
-      totalTrades: 0,
-      winningTrades: 0,
-      losingTrades: 0,
-      totalPnL: 0,
-      bestTrade: 0,
-      worstTrade: 0,
-      currentStreak: 0,
-      bestStreak: 0,
-      peakBalance: STARTING_BALANCE,
-      troughBalance: STARTING_BALANCE,
-    });
-    // Clear price histories
+    // Clear price histories to get fresh analysis
     for (const key in priceHistories) {
       delete priceHistories[key];
     }
@@ -759,9 +745,9 @@ const MultiMarketScalpingTerminal: React.FC = () => {
             {isRunning ? <Pause className="w-4 h-4 mr-1" /> : <Play className="w-4 h-4 mr-1" />}
             {isRunning ? 'Pause' : 'Start'}
           </Button>
-          <Button variant="outline" size="sm" onClick={handleReset}>
+          <Button variant="outline" size="sm" onClick={handleClearPredictions}>
             <RotateCcw className="w-4 h-4 mr-1" />
-            Reset $1000
+            Clear History
           </Button>
         </div>
       </div>
