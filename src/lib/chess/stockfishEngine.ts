@@ -205,15 +205,24 @@ export class StockfishEngine {
   }
 
   // ===================== PUBLIC API =====================
+  
+  // v7.59: Mutex to prevent concurrent waitReady calls
+  private waitReadyPromise: Promise<boolean> | null = null;
 
   /**
    * Wait for engine to be ready with optional progress callback
-   * Enhanced with better timeout handling and re-initialization attempts
+   * v7.59: Added mutex to prevent multiple concurrent wait loops (causes pauses)
    */
   async waitReady(onProgress?: (progress: number) => void): Promise<boolean> {
-    if (this.isReady) {
+    // Fast path - already ready
+    if (this.isReady && this.worker) {
       onProgress?.(1);
       return true;
+    }
+    
+    // v7.59: If already waiting, reuse the existing promise (prevents duplicate wait loops)
+    if (this.waitReadyPromise) {
+      return this.waitReadyPromise;
     }
     
     // If worker died, try to reinitialize
@@ -222,39 +231,46 @@ export class StockfishEngine {
       this.initWorker();
     }
     
-    return new Promise((resolve) => {
+    // v7.59: Create and cache the wait promise
+    this.waitReadyPromise = new Promise<boolean>((resolve) => {
       let attempts = 0;
-      const maxAttempts = 600; // 60 seconds max (increased from 30)
+      const maxAttempts = 150; // v7.59: 15 seconds max (was 60s - too long!)
       let lastProgress = 0;
+      let lastLogTime = 0;
       
       const checkReady = setInterval(() => {
         attempts++;
         const progress = Math.min(attempts / maxAttempts, 0.99);
         
         // Only call progress callback if progress changed significantly
-        if (progress - lastProgress > 0.05) {
+        if (progress - lastProgress > 0.1) {
           lastProgress = progress;
           onProgress?.(progress);
         }
         
         if (this.isReady) {
           clearInterval(checkReady);
+          this.waitReadyPromise = null; // v7.59: Clear mutex
           console.log('[Stockfish] Engine ready after', attempts * 100, 'ms');
           onProgress?.(1);
           resolve(true);
         } else if (attempts >= maxAttempts) {
           clearInterval(checkReady);
-          console.error('[Stockfish] Engine timeout after 60 seconds - this may indicate a WASM loading issue');
-          // Mark as ready anyway with a warning - let the analysis functions handle errors
+          this.waitReadyPromise = null; // v7.59: Clear mutex
+          console.error('[Stockfish] Engine timeout after 15 seconds');
           resolve(false);
         }
         
-        // Log progress every 10 seconds
-        if (attempts % 100 === 0) {
-          console.log(`[Stockfish] Still waiting for engine... ${attempts / 10}s elapsed`);
+        // v7.59: Log less frequently (every 5 seconds, not every 10s)
+        const now = Date.now();
+        if (now - lastLogTime > 5000) {
+          lastLogTime = now;
+          console.log(`[Stockfish] Waiting for engine... ${Math.round(attempts / 10)}s`);
         }
       }, 100);
     });
+    
+    return this.waitReadyPromise;
   }
 
   /**

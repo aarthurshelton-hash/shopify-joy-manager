@@ -26,8 +26,8 @@
 // 3. Only mark as failed after ALL retries exhausted
 // 4. Every game that CAN be analyzed SHOULD be analyzed
 // 5. ALL ID tracking (failed, session, DB) uses RAW IDs only - no prefix mismatch
-const BENCHMARK_VERSION = "7.51-PUMP";
-console.log(`[v7.51] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+const BENCHMARK_VERSION = "7.59-SMOOTH";
+console.log(`[v7.59] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -790,13 +790,12 @@ export function useHybridBenchmark() {
         }
       }
       
-      // v6.75-CALIBRATED: Simplified state machine with proactive health checks
-      // PHASE 1: FETCH - Get games into queue
-      // PHASE 2: PROCESS - Pop and analyze each game
-      // PHASE 3 (NEW): HEALTH CHECK - Validate engine between batches
+      // v7.59-SMOOTH: Removed aggressive health checks that cause pauses
+      // The engine singleton handles its own state - trust it
+      // Health checks only on FAILURE, not proactively
       
       let gamesProcessedSinceHealthCheck = 0;
-      const HEALTH_CHECK_INTERVAL = 30; // v7.14: Check every 30 games (was 15)
+      const HEALTH_CHECK_INTERVAL = 100; // v7.59: Every 100 games (was 30 - too frequent!)
       
       while (predictedCount < gameCount && !abortRef.current && batchNumber < maxBatches) {
         // v7.27-COORDINATOR-AWARE: Check coordinator abort signal at start of each iteration
@@ -808,27 +807,12 @@ export function useHybridBenchmark() {
         }
         
         // ═══════════════════════════════════════════════════════════════════
-        // PHASE 0: LIGHTWEIGHT HEALTH CHECK (v7.51 - less frequent)
+        // PHASE 0: HEALTH CHECK - v7.59: Only if engine.available is false
         // ═══════════════════════════════════════════════════════════════════
-        if (gamesProcessedSinceHealthCheck >= HEALTH_CHECK_INTERVAL) {
-          console.log(`[v7.51] 🏥 Health check after ${gamesProcessedSinceHealthCheck} games...`);
-          
-          try {
-            const healthFen = 'r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3';
-            const healthResult = await Promise.race([
-              engine.analyzePosition(healthFen, { depth: 4 }), // v7.51: depth 4 (was 6)
-              new Promise<null>(r => setTimeout(() => r(null), 800)) // v7.51: 800ms (was 2s)
-            ]);
-            
-            if (!healthResult) {
-              console.warn('[v7.51] Health check timeout - quick reinit...');
-              await engine.waitReady();
-              consecutiveEngineFailures = 0;
-            }
-          } catch (healthErr) {
-            // v7.51: Silent fail - don't block pipeline
-          }
-          
+        if (gamesProcessedSinceHealthCheck >= HEALTH_CHECK_INTERVAL && !engine.available) {
+          console.log(`[v7.59] 🏥 Engine unavailable after ${gamesProcessedSinceHealthCheck} games, reinit...`);
+          await engine.waitReady();
+          consecutiveEngineFailures = 0;
           gamesProcessedSinceHealthCheck = 0;
         }
         
