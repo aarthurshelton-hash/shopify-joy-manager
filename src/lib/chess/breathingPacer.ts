@@ -1,18 +1,19 @@
 /**
- * v7.57-TURBO: Ultra-Fast Breathing Pacer
+ * v7.58-STABLE: Balanced Breathing Pacer
  * 
- * Minimal delays for maximum throughput while preventing rate limits.
- * v7.57: Reduced to 100ms base cooldown for ~10x faster benchmarking.
+ * Prevents UI glitching by enforcing minimum processing gaps.
+ * v7.58: 250ms cooldown prevents rapid-fire updates that cause visual glitching.
  */
 
-export const BREATHING_VERSION = "7.57";
-export const RATE_LIMIT_BREATHING_MS = 100; // v7.57: 100ms (was 300ms)
+export const BREATHING_VERSION = "7.58";
+export const RATE_LIMIT_BREATHING_MS = 250; // v7.58: 250ms prevents UI glitching
 
 let lastBreathTime = 0;
+let processingCount = 0;
 
 /**
- * Enforce minimal breathing pause after each prediction
- * Marks game as known, then applies micro-delay
+ * Enforce stable breathing pause after each prediction
+ * Marks game as known, then applies consistent delay
  */
 export async function breathe(
   gameId: string,
@@ -21,12 +22,18 @@ export async function breathe(
 ): Promise<void> {
   // Mark known BEFORE delay to prevent re-processing
   markKnownFn(gameId);
+  processingCount++;
   
-  // v7.57: Use smaller of baseDelay or breathing time, not sum
-  const totalDelay = Math.max(baseDelayMs, RATE_LIMIT_BREATHING_MS);
+  // v7.58: Ensure minimum gap between operations to prevent UI glitching
+  const timeSinceLast = Date.now() - lastBreathTime;
+  const requiredDelay = Math.max(RATE_LIMIT_BREATHING_MS, baseDelayMs);
+  const actualDelay = Math.max(0, requiredDelay - timeSinceLast);
+  
+  if (actualDelay > 0) {
+    await new Promise(resolve => setTimeout(resolve, actualDelay));
+  }
+  
   lastBreathTime = Date.now();
-  
-  await new Promise(resolve => setTimeout(resolve, totalDelay));
 }
 
 /**
@@ -36,4 +43,11 @@ export function timeSinceLastBreath(): number {
   return Date.now() - lastBreathTime;
 }
 
-console.log(`[v${BREATHING_VERSION}-TURBO] breathingPacer.ts LOADED - Cooldown: ${RATE_LIMIT_BREATHING_MS}ms`);
+/**
+ * Get processing count (for diagnostics)
+ */
+export function getProcessingCount(): number {
+  return processingCount;
+}
+
+console.log(`[v${BREATHING_VERSION}-STABLE] breathingPacer.ts LOADED - Cooldown: ${RATE_LIMIT_BREATHING_MS}ms`);

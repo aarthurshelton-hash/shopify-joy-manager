@@ -26,8 +26,8 @@
  * Pipeline MUST work without any external API.
  */
 
-const DUAL_POOL_VERSION = "7.57-TURBO";
-console.log(`[v7.57] dualPoolPipeline.ts LOADED - Version: ${DUAL_POOL_VERSION}`);
+const DUAL_POOL_VERSION = "7.58-STABLE";
+console.log(`[v7.58] dualPoolPipeline.ts LOADED - Version: ${DUAL_POOL_VERSION}`);
 
 // v7.0: Hard timeout wrapper for any async operation
 function withTimeout<T>(promise: Promise<T>, ms: number, name: string): Promise<T> {
@@ -63,26 +63,26 @@ export interface PoolConfig {
   delayBetweenGames: number; // ms
 }
 
-// v7.57-TURBO: VOLUME pool - ultra-fast local Stockfish
+// v7.58-STABLE: VOLUME pool - balanced speed and stability
 export const CLOUD_POOL_CONFIG: PoolConfig = {
   name: 'VOLUME-LOCAL',
-  targetPerHour: 300,       // v7.57: Aggressive target
+  targetPerHour: 150,       // v7.58: Balanced target (150/hr = 2.5/min)
   stockfishMode: 'local_fast',
-  localDepth: 16,           // v7.57: D16 for speed (was D18)
-  localNodes: 2000000,      // v7.57: 2M nodes
-  analysisTimeout: 10000,   // v7.57: 10s max (was 15s)
-  delayBetweenGames: 50,    // v7.57: 50ms between games (was 200ms)
+  localDepth: 18,           // v7.58: D18 for quality
+  localNodes: 3000000,      // v7.58: 3M nodes
+  analysisTimeout: 12000,   // v7.58: 12s max
+  delayBetweenGames: 300,   // v7.58: 300ms between games prevents glitching
 };
 
-// v7.57-TURBO: DEEP pool - faster deep analysis
+// v7.58-STABLE: DEEP pool - stable deep analysis
 export const LOCAL_POOL_CONFIG: PoolConfig = {
   name: 'LOCAL-DEEP',
-  targetPerHour: 20,        // v7.57: Higher target (was 12)
+  targetPerHour: 12,        // v7.58: Realistic target
   stockfishMode: 'local_deep',
-  localDepth: 24,           // v7.57: D24 (was D26)
-  localNodes: 30000000,     // v7.57: 30M nodes (was 50M)
-  analysisTimeout: 30000,   // v7.57: 30s max (was 45s)
-  delayBetweenGames: 100,   // v7.57: 100ms between games (was 300ms)
+  localDepth: 26,           // v7.58: D26 for depth
+  localNodes: 40000000,     // v7.58: 40M nodes
+  analysisTimeout: 40000,   // v7.58: 40s max
+  delayBetweenGames: 500,   // v7.58: 500ms between games for stability
 };
 
 // ================ TYPES ================
