@@ -26,8 +26,8 @@
 // 3. Only mark as failed after ALL retries exhausted
 // 4. Every game that CAN be analyzed SHOULD be analyzed
 // 5. ALL ID tracking (failed, session, DB) uses RAW IDs only - no prefix mismatch
-const BENCHMARK_VERSION = "7.59-SMOOTH";
-console.log(`[v7.59] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+const BENCHMARK_VERSION = "7.60-CRASH-FIX";
+console.log(`[v7.60] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -450,6 +450,13 @@ export function useHybridBenchmark() {
     }
     
     const engine = getStockfishEngine();
+    
+    // v7.60: Force recovery if engine crashed previously
+    if (!engine.available) {
+      console.log('[v7.60] Engine not available, forcing recovery before benchmark...');
+      engine.forceRecovery();
+      await new Promise(r => setTimeout(r, 500)); // Give it time to reinit
+    }
     
     // v6.41: Declare these OUTSIDE try block so they're accessible in catch for partial save
     const runId = crypto.randomUUID();

@@ -69,13 +69,38 @@ export class StockfishEngine {
   private analysisCallbacks: ((eval_: StockfishEvaluation) => void)[] = [];
   private currentDepth = 0;
   private analysisBuffer: string[] = [];
+  private crashCount = 0;
+  private lastCrashTime = 0;
+  private isRecovering = false;
 
   constructor() {
     this.initWorker();
   }
 
+  /**
+   * v7.60-CRASH-RECOVERY: Terminate crashed worker and reset state
+   */
+  private terminateWorker(): void {
+    if (this.worker) {
+      try {
+        this.worker.terminate();
+      } catch (e) {
+        console.warn('[Stockfish] Error terminating worker:', e);
+      }
+      this.worker = null;
+    }
+    this.isReady = false;
+    this.waitReadyPromise = null;
+    this.pendingCallbacks.clear();
+    this.analysisCallbacks = [];
+  }
+
   private initWorker(): void {
+    // v7.60: Terminate any existing worker first
+    this.terminateWorker();
+    
     try {
+      console.log('[Stockfish] Creating new worker...');
       this.worker = new Worker('/stockfish.worker.js');
       
       this.worker.onmessage = (e) => {
@@ -84,11 +109,17 @@ export class StockfishEngine {
         if (type === 'ready') {
           console.log('[Stockfish] Engine ready!');
           this.isReady = true;
+          this.crashCount = 0; // Reset crash count on successful init
+          this.isRecovering = false;
           this.configure();
         } else if (type === 'uci') {
           this.handleUciMessage(data);
         } else if (type === 'error') {
           console.error('[Stockfish] Error:', data);
+          // v7.60: Check if this is a fatal WASM error
+          if (data && (data.includes('RuntimeError') || data.includes('Unreachable') || data.includes('Out of bounds'))) {
+            this.handleCrash('WASM runtime error');
+          }
         } else if (type === 'status') {
           console.log('[Stockfish]', data);
         }
@@ -96,10 +127,46 @@ export class StockfishEngine {
       
       this.worker.onerror = (e) => {
         console.error('[Stockfish] Worker error:', e);
-        this.isReady = false;
+        this.handleCrash('Worker error');
       };
     } catch (error) {
       console.error('[Stockfish] Failed to create worker:', error);
+      this.handleCrash('Worker creation failed');
+    }
+  }
+
+  /**
+   * v7.60-CRASH-RECOVERY: Handle engine crashes with auto-recovery
+   */
+  private handleCrash(reason: string): void {
+    const now = Date.now();
+    
+    // Prevent infinite crash loops - max 3 crashes per 30 seconds
+    if (now - this.lastCrashTime < 30000) {
+      this.crashCount++;
+    } else {
+      this.crashCount = 1;
+    }
+    this.lastCrashTime = now;
+    
+    console.error(`[Stockfish] CRASH #${this.crashCount}: ${reason}`);
+    this.isReady = false;
+    
+    if (this.crashCount >= 3) {
+      console.error('[Stockfish] Too many crashes, giving up for 30 seconds');
+      return;
+    }
+    
+    // Auto-recover after a short delay
+    if (!this.isRecovering) {
+      this.isRecovering = true;
+      console.log('[Stockfish] Scheduling auto-recovery in 500ms...');
+      setTimeout(() => {
+        if (this.isRecovering) {
+          console.log('[Stockfish] Attempting auto-recovery...');
+          this.initWorker();
+        }
+      }, 500);
     }
   }
 
@@ -577,18 +644,30 @@ export class StockfishEngine {
 
   /**
    * Check if engine is available
+   * v7.60: Also check we haven't crashed too many times
    */
   get available(): boolean {
-    return this.isReady && this.worker !== null;
+    return this.isReady && this.worker !== null && this.crashCount < 3;
+  }
+
+  /**
+   * v7.60: Force engine recovery (for manual benchmark start)
+   */
+  forceRecovery(): void {
+    console.log('[Stockfish] Force recovery requested');
+    this.crashCount = 0;
+    this.isRecovering = false;
+    this.initWorker();
   }
 
   /**
    * Get engine info
    */
-  get info(): { version: string; available: boolean } {
+  get info(): { version: string; available: boolean; crashCount: number } {
     return {
       version: 'Stockfish 17.1 NNUE WASM',
       available: this.available,
+      crashCount: this.crashCount,
     };
   }
 }
