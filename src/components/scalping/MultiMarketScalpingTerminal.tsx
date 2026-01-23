@@ -203,8 +203,11 @@ const MultiMarketScalpingTerminal: React.FC = () => {
   const [customBetAmount, setCustomBetAmount] = useState<number>(20); // $20 default bet
   const [isLoadingPortfolio, setIsLoadingPortfolio] = useState(true);
   
-  // Portfolio state - will be synced from database
-  const [portfolio, setPortfolio] = useState<PortfolioState>({
+  // Portfolio state - synced from database, starts as null until loaded
+  const [portfolio, setPortfolio] = useState<PortfolioState | null>(null);
+  
+  // Default portfolio for initial render only
+  const currentPortfolio: PortfolioState = portfolio ?? {
     balance: STARTING_BALANCE,
     startingBalance: STARTING_BALANCE,
     totalTrades: 0,
@@ -217,7 +220,7 @@ const MultiMarketScalpingTerminal: React.FC = () => {
     bestStreak: 0,
     peakBalance: STARTING_BALANCE,
     troughBalance: STARTING_BALANCE,
-  });
+  };
   
   // Evolution state from selfEvolvingSystem
   const [evolutionSummary, setEvolutionSummary] = useState(selfEvolvingSystem.getEvolutionSummary());
@@ -275,23 +278,28 @@ const MultiMarketScalpingTerminal: React.FC = () => {
         const bestTrade = closedTrades.reduce((max, t) => Math.max(max, t.pnl || 0), 0);
         const worstTrade = closedTrades.reduce((min, t) => Math.min(min, t.pnl || 0), 0);
         
-        // Update portfolio with real data
-        if (portfolioData || closedTrades.length > 0) {
-          setPortfolio({
-            balance: portfolioData?.balance || STARTING_BALANCE,
-            startingBalance: STARTING_BALANCE,
-            totalTrades: portfolioData?.total_trades || closedTrades.length,
-            winningTrades: portfolioData?.winning_trades || winningTrades,
-            losingTrades: losingTrades,
-            totalPnL: totalPnL,
-            bestTrade: bestTrade,
-            worstTrade: worstTrade,
-            currentStreak: 0, // Would need additional calculation
-            bestStreak: 0,
-            peakBalance: portfolioData?.peak_balance || STARTING_BALANCE,
-            troughBalance: portfolioData?.trough_balance || STARTING_BALANCE,
-          });
-        }
+        // Update portfolio with real data from database
+        // CRITICAL: Always load from DB - this is the source of truth
+        const dbBalance = portfolioData?.balance ?? STARTING_BALANCE;
+        const dbPeakBalance = portfolioData?.peak_balance ?? dbBalance;
+        const dbTroughBalance = portfolioData?.trough_balance ?? dbBalance;
+        
+        console.log(`[Portfolio] Loaded from DB: $${dbBalance.toFixed(2)} (peak: $${dbPeakBalance.toFixed(2)})`);
+        
+        setPortfolio({
+          balance: dbBalance,
+          startingBalance: STARTING_BALANCE,
+          totalTrades: portfolioData?.total_trades || closedTrades.length,
+          winningTrades: portfolioData?.winning_trades || winningTrades,
+          losingTrades: losingTrades,
+          totalPnL: dbBalance - STARTING_BALANCE,
+          bestTrade: bestTrade,
+          worstTrade: worstTrade,
+          currentStreak: 0,
+          bestStreak: 0,
+          peakBalance: dbPeakBalance,
+          troughBalance: dbTroughBalance,
+        });
         
         // Update evolution state if available
         if (evolutionData) {
@@ -399,15 +407,15 @@ const MultiMarketScalpingTerminal: React.FC = () => {
     }
   }, []);
   
-  // Computed values
+  // Computed values - use currentPortfolio for null-safety
   const growthPercent = useMemo(() => 
-    ((portfolio.balance - portfolio.startingBalance) / portfolio.startingBalance) * 100,
-    [portfolio.balance, portfolio.startingBalance]
+    ((currentPortfolio.balance - currentPortfolio.startingBalance) / currentPortfolio.startingBalance) * 100,
+    [currentPortfolio.balance, currentPortfolio.startingBalance]
   );
   
   const winRate = useMemo(() => 
-    portfolio.totalTrades > 0 ? (portfolio.winningTrades / portfolio.totalTrades) * 100 : 0,
-    [portfolio.winningTrades, portfolio.totalTrades]
+    currentPortfolio.totalTrades > 0 ? (currentPortfolio.winningTrades / currentPortfolio.totalTrades) * 100 : 0,
+    [currentPortfolio.winningTrades, currentPortfolio.totalTrades]
   );
   
   const pendingPredictions = useMemo(() => 
@@ -455,12 +463,12 @@ const MultiMarketScalpingTerminal: React.FC = () => {
   
   // Manual trade on selected symbol
   const executeManualTrade = useCallback((direction: 'up' | 'down') => {
-    if (!selectedSymbol || portfolio.balance <= 0 || customBetAmount <= 0) return;
+    if (!selectedSymbol || currentPortfolio.balance <= 0 || customBetAmount <= 0) return;
     
     const quote = quotes[selectedSymbol.symbol];
     if (!quote) return;
     
-    const betAmount = Math.min(customBetAmount, portfolio.balance);
+    const betAmount = Math.min(customBetAmount, currentPortfolio.balance);
     const { confidence } = predictDirection(selectedSymbol.symbol);
     
     const prediction: Prediction = {
@@ -476,7 +484,7 @@ const MultiMarketScalpingTerminal: React.FC = () => {
     };
     
     setPredictions(prev => [...prev, prediction].slice(-200));
-  }, [selectedSymbol, quotes, portfolio.balance, customBetAmount]);
+  }, [selectedSymbol, quotes, currentPortfolio.balance, customBetAmount]);
 
   // Fetch available symbols
   useEffect(() => {
@@ -536,7 +544,7 @@ const MultiMarketScalpingTerminal: React.FC = () => {
   
   // Generate prediction
   const generatePrediction = useCallback(() => {
-    if (!mountedRef.current || portfolio.balance <= 0) return;
+    if (!mountedRef.current || currentPortfolio.balance <= 0) return;
     
     // Select a random symbol from 24/7 markets for continuous predictions
     const tradableSymbols = availableSymbols.filter(s => s.is24h && quotes[s.symbol]);
@@ -547,7 +555,7 @@ const MultiMarketScalpingTerminal: React.FC = () => {
     if (!quote) return;
     
     const { direction, confidence } = predictDirection(randomSymbol.symbol);
-    const betAmount = Math.max(1, Math.round(portfolio.balance * BET_PERCENTAGE * 100) / 100);
+    const betAmount = Math.max(1, Math.round(currentPortfolio.balance * BET_PERCENTAGE * 100) / 100);
     
     const prediction: Prediction = {
       id: `pred-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -562,14 +570,15 @@ const MultiMarketScalpingTerminal: React.FC = () => {
     };
     
     setPredictions(prev => [...prev, prediction].slice(-200));
-  }, [availableSymbols, quotes, portfolio.balance]);
+  }, [availableSymbols, quotes, currentPortfolio.balance]);
   
   // Resolve predictions
   const resolvePredictions = useCallback(() => {
-    if (!mountedRef.current) return;
+    if (!mountedRef.current || !portfolio) return;
     
     const now = Date.now();
-    let portfolioUpdates = { ...portfolio };
+    let portfolioUpdates = { ...currentPortfolio };
+    let hasUpdates = false;
     
     setPredictions(prev => prev.map(pred => {
       if (pred.resolved || pred.expiresAt > now) return pred;
@@ -577,6 +586,7 @@ const MultiMarketScalpingTerminal: React.FC = () => {
       const currentQuote = quotes[pred.symbol];
       if (!currentQuote) return pred;
       
+      hasUpdates = true;
       const priceChange = (currentQuote.price - pred.priceAtPrediction) / pred.priceAtPrediction;
       const actualDirection = resolveDirection(priceChange, pred.symbol);
       
@@ -587,7 +597,6 @@ const MultiMarketScalpingTerminal: React.FC = () => {
       // ========================================
       // FEED OUTCOME TO SELF-EVOLVING SYSTEM
       // ========================================
-      // Map 'flat' to 'neutral' for the evolution system
       const mapDirection = (dir: 'up' | 'down' | 'flat'): 'up' | 'down' | 'neutral' => 
         dir === 'flat' ? 'neutral' : dir;
       
@@ -596,17 +605,15 @@ const MultiMarketScalpingTerminal: React.FC = () => {
         actual: mapDirection(actualDirection),
         confidence: pred.confidence / 100,
         marketConditions: {
-          correlationStrength: Math.abs(priceChange) * 100, // Derive from price movement
+          correlationStrength: Math.abs(priceChange) * 100,
           volatility: Math.abs(priceChange),
           momentum: priceChange > 0 ? 1 : priceChange < 0 ? -1 : 0,
           leadingSignals: pred.confidence / 100
         }
       });
       
-      // Update evolution summary
       setEvolutionSummary(selfEvolvingSystem.getEvolutionSummary());
       
-      // Update correlation memory for cross-market learning
       if (pred.category) {
         selfEvolvingSystem.updateCorrelationMemory(pred.symbol, pred.category, priceChange);
       }
@@ -629,9 +636,11 @@ const MultiMarketScalpingTerminal: React.FC = () => {
       }
       
       portfolioUpdates.totalTrades++;
-      portfolioUpdates.totalPnL += pnl;
+      portfolioUpdates.totalPnL = portfolioUpdates.balance - STARTING_BALANCE;
       portfolioUpdates.peakBalance = Math.max(portfolioUpdates.peakBalance, portfolioUpdates.balance);
       portfolioUpdates.troughBalance = Math.min(portfolioUpdates.troughBalance, portfolioUpdates.balance);
+      
+      console.log(`[Trade] ${pred.symbol} ${wasCorrect ? '✓' : '✗'} | P&L: $${pnl.toFixed(2)} | Balance: $${portfolioUpdates.balance.toFixed(2)}`);
       
       return {
         ...pred,
@@ -643,13 +652,11 @@ const MultiMarketScalpingTerminal: React.FC = () => {
       };
     }));
     
-    setPortfolio(portfolioUpdates);
-    
-    // Sync to database if there were any updates
-    if (portfolioUpdates.totalTrades !== portfolio.totalTrades) {
+    if (hasUpdates) {
+      setPortfolio(portfolioUpdates);
       syncPortfolioToDB(portfolioUpdates);
     }
-  }, [quotes, portfolio, syncPortfolioToDB]);
+  }, [quotes, portfolio, currentPortfolio, syncPortfolioToDB]);
   
   // Main effect - data fetching and prediction loop
   useEffect(() => {
@@ -761,10 +768,10 @@ const MultiMarketScalpingTerminal: React.FC = () => {
             <div className="col-span-2">
               <div className="text-sm text-muted-foreground mb-1 flex items-center gap-2">
                 <DollarSign className="w-4 h-4" />
-                Simulated Balance
+                Paper Trading Balance
               </div>
               <div className="text-4xl font-mono font-bold">
-                ${portfolio.balance.toFixed(2)}
+                ${currentPortfolio.balance.toFixed(2)}
               </div>
               <div className={cn(
                 "text-lg font-semibold flex items-center gap-1",
@@ -773,7 +780,7 @@ const MultiMarketScalpingTerminal: React.FC = () => {
                 {growthPercent >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
                 {growthPercent >= 0 ? '+' : ''}{growthPercent.toFixed(2)}%
                 <span className="text-sm text-muted-foreground ml-1">
-                  ({formatMoney(portfolio.totalPnL)})
+                  ({formatMoney(currentPortfolio.totalPnL)})
                 </span>
               </div>
             </div>
@@ -791,7 +798,7 @@ const MultiMarketScalpingTerminal: React.FC = () => {
                 {winRate.toFixed(1)}%
               </div>
               <div className="text-xs text-muted-foreground">
-                {portfolio.winningTrades}W / {portfolio.losingTrades}L
+                {currentPortfolio.winningTrades}W / {currentPortfolio.losingTrades}L
               </div>
             </div>
             
@@ -802,7 +809,7 @@ const MultiMarketScalpingTerminal: React.FC = () => {
                 Trades
               </div>
               <div className="text-2xl font-bold text-primary">
-                {portfolio.totalTrades}
+                {currentPortfolio.totalTrades}
               </div>
               <div className="text-xs text-muted-foreground">
                 2% per trade
@@ -816,10 +823,10 @@ const MultiMarketScalpingTerminal: React.FC = () => {
                 Streak
               </div>
               <div className="text-2xl font-bold text-orange-500">
-                {portfolio.currentStreak}
+                {currentPortfolio.currentStreak}
               </div>
               <div className="text-xs text-muted-foreground">
-                Best: {portfolio.bestStreak}
+                Best: {currentPortfolio.bestStreak}
               </div>
             </div>
             
@@ -829,10 +836,10 @@ const MultiMarketScalpingTerminal: React.FC = () => {
                 Peak / Trough
               </div>
               <div className="text-lg font-semibold text-green-500">
-                ${portfolio.peakBalance.toFixed(0)}
+                ${currentPortfolio.peakBalance.toFixed(0)}
               </div>
               <div className="text-sm font-medium text-red-500">
-                ${portfolio.troughBalance.toFixed(0)}
+                ${currentPortfolio.troughBalance.toFixed(0)}
               </div>
             </div>
           </div>
@@ -1047,14 +1054,14 @@ const MultiMarketScalpingTerminal: React.FC = () => {
                             variant={customBetAmount === amount ? "default" : "outline"}
                             size="sm"
                             onClick={() => setCustomBetAmount(amount)}
-                            disabled={amount > portfolio.balance}
+                            disabled={amount > currentPortfolio.balance}
                           >
                             ${amount}
                           </Button>
                         ))}
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">
-                        Available: ${portfolio.balance.toFixed(2)}
+                        Available: ${currentPortfolio.balance.toFixed(2)}
                       </div>
                     </div>
                     
@@ -1063,7 +1070,7 @@ const MultiMarketScalpingTerminal: React.FC = () => {
                         size="lg"
                         className="bg-green-600 hover:bg-green-700 text-white"
                         onClick={() => executeManualTrade('up')}
-                        disabled={portfolio.balance < customBetAmount}
+                        disabled={currentPortfolio.balance < customBetAmount}
                       >
                         <TrendingUp className="w-5 h-5 mr-2" />
                         LONG
@@ -1072,7 +1079,7 @@ const MultiMarketScalpingTerminal: React.FC = () => {
                         size="lg"
                         className="bg-red-600 hover:bg-red-700 text-white"
                         onClick={() => executeManualTrade('down')}
-                        disabled={portfolio.balance < customBetAmount}
+                        disabled={currentPortfolio.balance < customBetAmount}
                       >
                         <TrendingDown className="w-5 h-5 mr-2" />
                         SHORT
