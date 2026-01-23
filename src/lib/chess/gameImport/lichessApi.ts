@@ -1,9 +1,12 @@
 /**
  * Lichess API Integration for Historical Game Import
  * Routes through Edge Function proxy to avoid CORS and centralize rate limiting
+ * 
+ * v7.54-FIX: Added Chess.js import for UCI-to-SAN conversion
  */
 
 import { supabase } from "@/integrations/supabase/client";
+import { Chess } from 'chess.js';
 
 export interface LichessGame {
   id: string;
@@ -165,8 +168,10 @@ export async function getLichessUserProfile(username: string) {
 
 /**
  * Convert Lichess game to standard PGN format
+ * v7.54-FIX: Properly convert UCI moves to SAN notation
  */
 export function lichessGameToPgn(game: LichessGame): string {
+  // If we already have a proper PGN, use it directly
   if (game.pgn) return game.pgn;
   
   const headers: string[] = [];
@@ -183,7 +188,46 @@ export function lichessGameToPgn(game: LichessGame): string {
     headers.push(`[Opening "${game.opening.name}"]`);
   }
   
-  return `${headers.join('\n')}\n\n${game.moves || ''} ${getResult(game)}`;
+  // v7.54-FIX: Convert UCI moves to SAN notation
+  // Lichess API returns moves in UCI format (e2e4, g1f3, etc.) when pgnInJson is false
+  // We need to replay the game and extract SAN notation
+  let sanMoves = '';
+  if (game.moves) {
+    try {
+      const chess = new Chess();
+      const uciMoves = game.moves.split(' ');
+      const sanList: string[] = [];
+      
+      for (const uci of uciMoves) {
+        if (!uci || uci.length < 4) continue;
+        
+        const from = uci.slice(0, 2);
+        const to = uci.slice(2, 4);
+        const promotion = uci.length > 4 ? uci[4] : undefined;
+        
+        try {
+          const move = chess.move({ from, to, promotion });
+          if (move) {
+            sanList.push(move.san);
+          }
+        } catch {
+          // Skip invalid moves (might be corrupted data)
+          console.warn(`[lichessApi] Invalid UCI move: ${uci} in game ${game.id}`);
+          break;
+        }
+      }
+      
+      // Format as proper PGN move text
+      sanMoves = sanList.map((san, i) => 
+        i % 2 === 0 ? `${Math.floor(i / 2) + 1}. ${san}` : san
+      ).join(' ');
+    } catch (err) {
+      console.warn(`[lichessApi] Failed to convert moves for ${game.id}:`, err);
+      sanMoves = '';
+    }
+  }
+  
+  return `${headers.join('\n')}\n\n${sanMoves} ${getResult(game)}`;
 }
 
 function getResult(game: LichessGame): string {
