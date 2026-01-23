@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, forwardRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,7 +14,7 @@ interface MFAVerificationProps {
   onSuccess: () => void;
 }
 
-const MFAVerification: React.FC<MFAVerificationProps> = ({ isOpen, onClose, onSuccess }) => {
+const MFAVerification = forwardRef<HTMLDivElement, MFAVerificationProps>(({ isOpen, onClose, onSuccess }, ref) => {
   const [isLoading, setIsLoading] = useState(false);
   const [verificationCode, setVerificationCode] = useState('');
   const [factorId, setFactorId] = useState<string | null>(null);
@@ -133,9 +133,11 @@ const MFAVerification: React.FC<MFAVerificationProps> = ({ isOpen, onClose, onSu
             Open your authenticator app and enter the current code for En Pensent
           </p>
         </div>
-      </DialogContent>
+    </DialogContent>
     </Dialog>
   );
-};
+});
+
+MFAVerification.displayName = 'MFAVerification';
 
 export default MFAVerification;
