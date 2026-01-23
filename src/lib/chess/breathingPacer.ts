@@ -1,18 +1,18 @@
 /**
- * v7.51-FAST: Extracted Breathing Pacer
+ * v7.57-TURBO: Ultra-Fast Breathing Pacer
  * 
- * Prevents API saturation by enforcing minimal cooldowns
- * between predictions. Optimized for continuous throughput.
+ * Minimal delays for maximum throughput while preventing rate limits.
+ * v7.57: Reduced to 100ms base cooldown for ~10x faster benchmarking.
  */
 
-export const BREATHING_VERSION = "7.51";
-export const RATE_LIMIT_BREATHING_MS = 300; // v7.51: 300ms (was 1500ms)
+export const BREATHING_VERSION = "7.57";
+export const RATE_LIMIT_BREATHING_MS = 100; // v7.57: 100ms (was 300ms)
 
 let lastBreathTime = 0;
 
 /**
- * Enforce breathing pause after each prediction
- * Marks game as known, then waits for cooldown
+ * Enforce minimal breathing pause after each prediction
+ * Marks game as known, then applies micro-delay
  */
 export async function breathe(
   gameId: string,
@@ -22,7 +22,8 @@ export async function breathe(
   // Mark known BEFORE delay to prevent re-processing
   markKnownFn(gameId);
   
-  const totalDelay = baseDelayMs + RATE_LIMIT_BREATHING_MS;
+  // v7.57: Use smaller of baseDelay or breathing time, not sum
+  const totalDelay = Math.max(baseDelayMs, RATE_LIMIT_BREATHING_MS);
   lastBreathTime = Date.now();
   
   await new Promise(resolve => setTimeout(resolve, totalDelay));
@@ -35,4 +36,4 @@ export function timeSinceLastBreath(): number {
   return Date.now() - lastBreathTime;
 }
 
-console.log(`[v${BREATHING_VERSION}-FAST] breathingPacer.ts LOADED - Cooldown: ${RATE_LIMIT_BREATHING_MS}ms`);
+console.log(`[v${BREATHING_VERSION}-TURBO] breathingPacer.ts LOADED - Cooldown: ${RATE_LIMIT_BREATHING_MS}ms`);

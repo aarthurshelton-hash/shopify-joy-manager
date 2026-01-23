@@ -26,8 +26,8 @@
  * Pipeline MUST work without any external API.
  */
 
-const DUAL_POOL_VERSION = "7.51-FAST";
-console.log(`[v7.51] dualPoolPipeline.ts LOADED - Version: ${DUAL_POOL_VERSION}`);
+const DUAL_POOL_VERSION = "7.57-TURBO";
+console.log(`[v7.57] dualPoolPipeline.ts LOADED - Version: ${DUAL_POOL_VERSION}`);
 
 // v7.0: Hard timeout wrapper for any async operation
 function withTimeout<T>(promise: Promise<T>, ms: number, name: string): Promise<T> {
@@ -63,26 +63,26 @@ export interface PoolConfig {
   delayBetweenGames: number; // ms
 }
 
-// v7.51: VOLUME pool uses LOCAL Stockfish at D18 for guaranteed throughput
+// v7.57-TURBO: VOLUME pool - ultra-fast local Stockfish
 export const CLOUD_POOL_CONFIG: PoolConfig = {
   name: 'VOLUME-LOCAL',
-  targetPerHour: 200,       // v7.51: Increased target
+  targetPerHour: 300,       // v7.57: Aggressive target
   stockfishMode: 'local_fast',
-  localDepth: 18,           // D18 is fast but accurate
-  localNodes: 3000000,      // v7.51: 3M nodes - faster
-  analysisTimeout: 15000,   // v7.51: 15s max (was 30s)
-  delayBetweenGames: 200,   // v7.51: 200ms between games (was 500ms)
+  localDepth: 16,           // v7.57: D16 for speed (was D18)
+  localNodes: 2000000,      // v7.57: 2M nodes
+  analysisTimeout: 10000,   // v7.57: 10s max (was 15s)
+  delayBetweenGames: 50,    // v7.57: 50ms between games (was 200ms)
 };
 
-// v7.51: DEEP pool uses LOCAL Stockfish at D26 for precision (was D30)
+// v7.57-TURBO: DEEP pool - faster deep analysis
 export const LOCAL_POOL_CONFIG: PoolConfig = {
   name: 'LOCAL-DEEP',
-  targetPerHour: 12,        // v7.51: Increased target (was 5)
+  targetPerHour: 20,        // v7.57: Higher target (was 12)
   stockfishMode: 'local_deep',
-  localDepth: 26,           // v7.51: D26 (was D30) - faster with minimal accuracy loss
-  localNodes: 50000000,     // v7.51: 50M nodes (was 100M)
-  analysisTimeout: 45000,   // v7.51: 45s max (was 10 min!)
-  delayBetweenGames: 300,   // v7.51: 300ms between games (was 1s)
+  localDepth: 24,           // v7.57: D24 (was D26)
+  localNodes: 30000000,     // v7.57: 30M nodes (was 50M)
+  analysisTimeout: 30000,   // v7.57: 30s max (was 45s)
+  delayBetweenGames: 100,   // v7.57: 100ms between games (was 300ms)
 };
 
 // ================ TYPES ================
