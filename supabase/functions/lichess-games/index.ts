@@ -1,11 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 /**
- * Lichess Games Fetcher v6.86-PATIENT-WAIT
+ * Lichess Games Fetcher v7.55-RESILIENT
  * 
- * Server-side rate limit tracking ensures we don't hammer the API.
- * Client now WAITS for cooldowns instead of breaking, so we can be 
- * more conservative with our intervals.
+ * - Retry logic for transient HTTP/2 connection errors
+ * - Server-side rate limit tracking
+ * - Client waits for cooldowns instead of breaking
  */
 
 const corsHeaders = {
@@ -128,12 +128,40 @@ serve(async (req) => {
       (until ? `until=${until}&` : '') +
       `sort=dateDesc`;
 
-    const response = await fetch(url, {
-      headers: {
-        'Accept': 'application/x-ndjson',
-        'User-Agent': 'EnPensent Chess Analysis (https://enpensent.com)'
+    // v7.55: Retry logic for transient HTTP/2 connection errors
+    let response: Response | null = null;
+    let lastError: Error | null = null;
+    const maxRetries = 3;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        response = await fetch(url, {
+          headers: {
+            'Accept': 'application/x-ndjson',
+            'User-Agent': 'EnPensent Chess Analysis (https://enpensent.com)'
+          }
+        });
+        break; // Success, exit retry loop
+      } catch (err) {
+        lastError = err instanceof Error ? err : new Error(String(err));
+        const isTransient = lastError.message.includes('http2') || 
+                           lastError.message.includes('connection error') ||
+                           lastError.message.includes('SendRequest');
+        
+        console.warn(`[Lichess Games v7.55] Fetch attempt ${attempt}/${maxRetries} failed: ${lastError.message}`);
+        
+        if (!isTransient || attempt === maxRetries) {
+          throw lastError;
+        }
+        
+        // Exponential backoff: 500ms, 1000ms, 2000ms
+        await new Promise(resolve => setTimeout(resolve, 500 * Math.pow(2, attempt - 1)));
       }
-    });
+    }
+    
+    if (!response) {
+      throw lastError || new Error('Fetch failed without error');
+    }
 
     if (response.status === 429) {
       const retryAfter = parseInt(response.headers.get('Retry-After') || '60');
@@ -308,10 +336,21 @@ ${game.moves || ''} ${resultTag}`;
     );
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Internal server error';
-    console.error('[Lichess Games] Error:', errorMessage);
+    const isTransientNetwork = errorMessage.includes('http2') || 
+                               errorMessage.includes('connection error') ||
+                               errorMessage.includes('SendRequest');
+    
+    console.error(`[Lichess Games v7.55] Error (transient: ${isTransientNetwork}):`, errorMessage);
+    
+    // Return 503 for transient errors so client can retry
+    const status = isTransientNetwork ? 503 : 500;
     return new Response(
-      JSON.stringify({ error: errorMessage }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ 
+        error: errorMessage,
+        retryable: isTransientNetwork,
+        message: isTransientNetwork ? 'Temporary network issue - please retry' : 'Internal server error'
+      }),
+      { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
