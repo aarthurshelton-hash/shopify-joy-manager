@@ -1,6 +1,7 @@
 /**
  * En Pensent™ Prediction Benchmark System
  * 
+ * v7.56-SMART-FALLBACK: Intelligent fallback handling with quality tiers
  * v7.3-RETRY-ON-FALLBACK: Retries with extended time before accepting fallback
  * 
  * THE PARADIGM: We don't just play chess - we predict its future better than pure calculation.
@@ -13,6 +14,7 @@
  * - Accuracy stats fetched ONCE and cached (not per-prediction)
  * - skipCloudEval option used to avoid API rate limits
  * - RETRY with extended timeout before accepting fallback
+ * - SMART FALLBACK: Use archetype history instead of random guess
  */
 
 import { Chess } from 'chess.js';
@@ -23,6 +25,10 @@ import { simulateGame } from '../gameSimulator';
 import { loadLearnedPatterns } from '../patternLearning/persistentPatternLoader';
 import { fetchChessCumulativeStats, invalidateChessStatsCache } from '@/hooks/useRealtimeAccuracy';
 import { updateAccuracyCache } from '../hybridPrediction/confidenceCalculator';
+import { loadArchetypeStats, getArchetypePrediction } from '../accuracy/archetypeHistoricalRates';
+
+// v7.56: Fallback quality tiers
+export type FallbackTier = 'full' | 'partial_sf' | 'partial_hybrid' | 'archetype_fallback' | 'excluded';
 
 export interface PredictionAttempt {
   gameId: string;
@@ -49,6 +55,10 @@ export interface PredictionAttempt {
   
   // v7.3: Track if this was a retry
   wasRetried?: boolean;
+  
+  // v7.56: Fallback quality tier
+  fallbackTier?: FallbackTier;
+  fallbackSource?: 'archetype_history' | 'default_rates' | 'random';
 }
 
 export interface BenchmarkResult {
@@ -56,7 +66,7 @@ export interface BenchmarkResult {
   completedGames: number;
   predictionPoints: PredictionAttempt[];
   
-  // Win rates
+  // Win rates (v7.56: excludes 'excluded' tier)
   stockfishAccuracy: number;
   hybridAccuracy: number;
   
@@ -79,6 +89,15 @@ export interface BenchmarkResult {
   
   // v7.3: Retry stats
   totalRetries?: number;
+  
+  // v7.56: Fallback stats
+  fallbackStats?: {
+    full: number;           // Complete predictions
+    partial_sf: number;     // SF failed, Hybrid worked
+    partial_hybrid: number; // Hybrid failed, SF worked
+    archetype_fallback: number; // Used archetype history
+    excluded: number;       // Both failed - not in accuracy metrics
+  };
 }
 
 // v7.3: Helper to detect if result is a fallback
@@ -243,6 +262,7 @@ async function generateStockfishGame(
 }
 
 // Make a prediction at a specific point in the game
+// v7.56-SMART-FALLBACK: Uses archetype history for intelligent fallbacks
 // v7.3: Uses retry-on-fallback for both Stockfish and Hybrid predictions
 async function makePredictionAtMove(
   gameId: string,
@@ -264,26 +284,50 @@ async function makePredictionAtMove(
   const truncatedPgn = chess.pgn();
   const fen = chess.fen();
   
+  // v7.56: Track fallback state
+  let sfFailed = false;
+  let hybridFailed = false;
+  let fallbackTier: FallbackTier = 'full';
+  let fallbackSource: 'archetype_history' | 'default_rates' | 'random' | undefined;
+  
+  // v7.56: Pre-extract Color Flow signature for smart fallback
+  let extractedArchetype: string = 'unknown';
+  let extractedDominantSide: 'white' | 'black' | 'contested' = 'contested';
+  try {
+    const simResult = simulateGame(truncatedPgn);
+    if (simResult.board && simResult.gameData) {
+      const signature = extractColorFlowSignature(simResult.board, simResult.gameData, moveNumber);
+      extractedArchetype = signature.archetype;
+      extractedDominantSide = signature.dominantSide;
+    }
+  } catch (e) {
+    console.warn('[v7.56] Signature extraction failed:', e);
+  }
+  
   // v7.3: Stockfish evaluation with RETRY on timeout
   const engine = getStockfishEngine();
   await withTimeout(engine.waitReady(), 5000, false);
   
-  const sfFallback = { evaluation: { score: 0 }, bestMove: '' } as any;
+  const sfFallback = { evaluation: { score: 0 }, bestMove: '', isFallback: true } as any;
   const { result: analysis, wasRetried: sfRetried } = await withRetryTimeout(
-    () => engine.analyzePosition(fen, { depth, nodes: 100000 }), // Increased nodes
+    () => engine.analyzePosition(fen, { depth, nodes: 100000 }),
     8000, // 8s initial timeout
     sfFallback,
     2, // max 2 retries
     1.5 // 1.5x timeout on retry (8s -> 12s -> 18s)
   );
   
+  // Check if SF actually returned data or fallback
+  sfFailed = analysis.isFallback === true || (analysis.evaluation?.score === 0 && !analysis.bestMove);
+  
   const stockfishResult = stockfishEvalToPrediction(analysis.evaluation?.score || 0);
   
-  // v7.3: Hybrid prediction with RETRY on timeout
+  // v7.56: Hybrid prediction with SMART FALLBACK
   const hybridFallback = { 
     trajectoryPrediction: { outcomeProbabilities: { whiteWin: 0.33, blackWin: 0.33, draw: 0.34 } },
     confidence: { overall: 30 },
-    strategicAnalysis: { archetype: 'FALLBACK' } // Mark as fallback clearly
+    strategicAnalysis: { archetype: 'FALLBACK' },
+    isFallback: true
   } as any;
   
   const { result: hybridResult, wasRetried: hybridRetried } = await withRetryTimeout(
@@ -299,15 +343,54 @@ async function makePredictionAtMove(
     1.5 // 1.5x timeout on retry (12s -> 18s -> 27s)
   );
   
-  // Map hybrid prediction to outcome
-  const probs = hybridResult.trajectoryPrediction.outcomeProbabilities;
-  const hybridPrediction = 
-    probs.whiteWin > probs.blackWin && probs.whiteWin > probs.draw ? 'white_wins' :
-    probs.blackWin > probs.draw ? 'black_wins' : 'draw';
+  // Check if Hybrid actually returned data or fallback
+  hybridFailed = hybridResult.isFallback === true || hybridResult.strategicAnalysis?.archetype === 'FALLBACK';
+  
+  // v7.56: Determine fallback tier and apply smart fallback if needed
+  let hybridPrediction: 'white_wins' | 'black_wins' | 'draw';
+  let hybridConfidence: number;
+  let hybridArchetype: string;
+  
+  if (!hybridFailed) {
+    // Full prediction available
+    fallbackTier = sfFailed ? 'partial_sf' : 'full';
+    const probs = hybridResult.trajectoryPrediction.outcomeProbabilities;
+    hybridPrediction = 
+      probs.whiteWin > probs.blackWin && probs.whiteWin > probs.draw ? 'white_wins' :
+      probs.blackWin > probs.draw ? 'black_wins' : 'draw';
+    hybridConfidence = hybridResult.confidence.overall;
+    hybridArchetype = hybridResult.strategicAnalysis.archetype;
+  } else if (!sfFailed && extractedArchetype !== 'unknown') {
+    // Hybrid failed but SF worked AND we have an archetype - use smart fallback
+    fallbackTier = 'archetype_fallback';
+    const archetypePred = getArchetypePrediction(extractedArchetype as any, extractedDominantSide);
+    hybridPrediction = archetypePred.prediction;
+    hybridConfidence = archetypePred.confidence;
+    hybridArchetype = `${extractedArchetype}_fallback`;
+    fallbackSource = archetypePred.source === 'historical' ? 'archetype_history' : 'default_rates';
+    console.log(`[v7.56] Smart fallback for ${gameId}: ${extractedArchetype} -> ${hybridPrediction} (${fallbackSource})`);
+  } else if (sfFailed && hybridFailed) {
+    // Both failed - exclude from metrics
+    fallbackTier = 'excluded';
+    hybridPrediction = 'draw'; // Placeholder
+    hybridConfidence = 0;
+    hybridArchetype = 'EXCLUDED';
+    fallbackSource = 'random';
+    console.warn(`[v7.56] Both SF and Hybrid failed for ${gameId} - excluding from metrics`);
+  } else {
+    // SF failed, hybrid worked
+    fallbackTier = 'partial_hybrid';
+    const probs = hybridResult.trajectoryPrediction.outcomeProbabilities;
+    hybridPrediction = 
+      probs.whiteWin > probs.blackWin && probs.whiteWin > probs.draw ? 'white_wins' :
+      probs.blackWin > probs.draw ? 'black_wins' : 'draw';
+    hybridConfidence = hybridResult.confidence.overall;
+    hybridArchetype = hybridResult.strategicAnalysis.archetype;
+  }
   
   const wasRetried = sfRetried || hybridRetried;
   if (wasRetried) {
-    console.log(`[v7.3] Prediction for ${gameId} completed after retry (SF: ${sfRetried}, Hybrid: ${hybridRetried})`);
+    console.log(`[v7.56] Prediction for ${gameId} completed after retry (SF: ${sfRetried}, Hybrid: ${hybridRetried}, Tier: ${fallbackTier})`);
   }
     
   return {
@@ -319,9 +402,11 @@ async function makePredictionAtMove(
     stockfishPrediction: stockfishResult.prediction,
     stockfishConfidence: stockfishResult.confidence,
     hybridPrediction,
-    hybridConfidence: hybridResult.confidence.overall,
-    hybridArchetype: hybridResult.strategicAnalysis.archetype,
+    hybridConfidence,
+    hybridArchetype,
     wasRetried,
+    fallbackTier,
+    fallbackSource,
   };
 }
 
@@ -353,6 +438,15 @@ export async function runPredictionBenchmark(
     console.log(`[Benchmark] Pre-loaded ${loaded} historical patterns`);
   } catch (e) {
     console.warn('[Benchmark] Pattern pre-load failed, continuing:', e);
+  }
+  
+  // v7.56: PRE-LOAD archetype stats for smart fallbacks
+  onProgress?.('Loading archetype history...', 1.5);
+  try {
+    const archetypeStats = await withTimeout(loadArchetypeStats(), 5000, new Map());
+    console.log(`[Benchmark] Pre-loaded archetype stats for ${archetypeStats.size} archetypes`);
+  } catch (e) {
+    console.warn('[Benchmark] Archetype stats pre-load failed, continuing:', e);
   }
   
   // v7.2: PRE-CACHE accuracy stats ONCE before benchmark starts
@@ -443,17 +537,32 @@ export async function runPredictionBenchmark(
     }
   }
   
-  // Calculate final statistics
-  const sfCorrect = result.predictionPoints.filter(p => p.stockfishCorrect).length;
-  const hybridCorrect = result.predictionPoints.filter(p => p.hybridCorrect).length;
+  // v7.56: Calculate fallback stats
+  const fallbackStats = {
+    full: result.predictionPoints.filter(p => p.fallbackTier === 'full').length,
+    partial_sf: result.predictionPoints.filter(p => p.fallbackTier === 'partial_sf').length,
+    partial_hybrid: result.predictionPoints.filter(p => p.fallbackTier === 'partial_hybrid').length,
+    archetype_fallback: result.predictionPoints.filter(p => p.fallbackTier === 'archetype_fallback').length,
+    excluded: result.predictionPoints.filter(p => p.fallbackTier === 'excluded').length,
+  };
+  result.fallbackStats = fallbackStats;
   
-  result.stockfishAccuracy = result.completedGames > 0 ? (sfCorrect / result.completedGames) * 100 : 0;
-  result.hybridAccuracy = result.completedGames > 0 ? (hybridCorrect / result.completedGames) * 100 : 0;
+  console.log(`[v7.56] Fallback stats: ${JSON.stringify(fallbackStats)}`);
+  
+  // v7.56: Calculate final statistics EXCLUDING 'excluded' tier
+  const validPredictions = result.predictionPoints.filter(p => p.fallbackTier !== 'excluded');
+  const validCount = validPredictions.length;
+  
+  const sfCorrect = validPredictions.filter(p => p.stockfishCorrect).length;
+  const hybridCorrect = validPredictions.filter(p => p.hybridCorrect).length;
+  
+  result.stockfishAccuracy = validCount > 0 ? (sfCorrect / validCount) * 100 : 0;
+  result.hybridAccuracy = validCount > 0 ? (hybridCorrect / validCount) * 100 : 0;
   
   // Statistical significance (binomial test approximation)
-  if (result.completedGames > 0) {
+  if (validCount > 0) {
     const diff = Math.abs(hybridCorrect - sfCorrect);
-    const n = result.completedGames;
+    const n = validCount;
     const variance = n * 0.5 * 0.5; // Under null hypothesis
     const zScore = diff / Math.sqrt(variance);
     result.pValue = 2 * (1 - normalCdf(zScore));
@@ -461,6 +570,14 @@ export async function runPredictionBenchmark(
   }
   
   result.completedAt = new Date();
+  
+  // Log summary
+  if (fallbackStats.excluded > 0) {
+    console.log(`[v7.56] Excluded ${fallbackStats.excluded} predictions from metrics (both SF and Hybrid failed)`);
+  }
+  if (fallbackStats.archetype_fallback > 0) {
+    console.log(`[v7.56] Used archetype-based smart fallback for ${fallbackStats.archetype_fallback} predictions`);
+  }
   
   return result;
 }

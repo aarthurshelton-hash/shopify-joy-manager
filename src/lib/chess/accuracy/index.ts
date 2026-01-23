@@ -1,5 +1,5 @@
 /**
- * Chess Accuracy Enhancement Suite - v7.53-ACCURACY
+ * Chess Accuracy Enhancement Suite - v7.56-SMART-FALLBACK
  * 
  * Unified exports for all chess prediction accuracy improvements.
  */
@@ -52,3 +52,11 @@ export {
   aggregateCriticalMoments,
   scoreDecisionProximity,
 } from './criticalMomentDetection';
+
+// v7.56: Archetype Historical Rates (Smart Fallback)
+export {
+  type ArchetypeStats,
+  loadArchetypeStats,
+  getArchetypePrediction,
+  invalidateArchetypeCache,
+} from './archetypeHistoricalRates';
