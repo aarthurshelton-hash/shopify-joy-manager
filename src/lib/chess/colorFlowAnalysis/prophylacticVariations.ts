@@ -211,10 +211,24 @@ export interface ProphylacticAnalysis {
   matchingFactors: string[];
   suggestedPlay: string;
   riskAssessment: string;
+  // v7.80: Enhanced sub-archetype data
+  secondaryVariation?: ProphylacticVariation;
+  secondaryConfidence?: number;
+  phaseSpecificStrength: 'opening' | 'middlegame' | 'endgame';
+  defensiveTopology: 'central' | 'flank' | 'distributed' | 'contracted';
+  temporalRhythm: 'proactive' | 'reactive' | 'static' | 'elastic';
+  tradingSignal: 'hold' | 'accumulate' | 'hedge' | 'reduce' | 'wait';
 }
 
 /**
- * Classify a prophylactic defense game into its specific variation
+ * v7.80-PROPHYLACTIC-SPEC: Enhanced Prophylactic Variation Classifier
+ * 
+ * Classification now uses:
+ * - Weighted multi-factor scoring with phase awareness
+ * - Defensive topology detection (where prevention occurs)
+ * - Temporal rhythm analysis (proactive vs reactive)
+ * - Secondary variation detection for hybrid patterns
+ * - Market signal generation for cross-domain intelligence
  */
 export function classifyProphylacticVariation(
   quadrant: QuadrantProfile,
@@ -222,14 +236,80 @@ export function classifyProphylacticVariation(
   moments: CriticalMoment[],
   totalMoves: number
 ): ProphylacticAnalysis {
-  const scores: Map<ProphylacticVariation, { score: number; factors: string[] }> = new Map();
+  // ========== ADVANCED METRIC CALCULATION ==========
+  const metrics = calculateAdvancedMetrics(quadrant, temporal, moments, totalMoves);
   
-  // Initialize all variations
-  for (const variation of Object.keys(PROPHYLACTIC_VARIATIONS) as ProphylacticVariation[]) {
-    scores.set(variation, { score: 0, factors: [] });
-  }
+  // ========== WEIGHTED SCORING ENGINE ==========
+  const scores = runWeightedScoringEngine(metrics, temporal, moments, totalMoves);
   
-  // Calculate aggregate metrics
+  // ========== DETERMINE TOP VARIATIONS ==========
+  const sortedVariations = Array.from(scores.entries())
+    .sort((a, b) => b[1].score - a[1].score);
+  
+  const [primaryVariation, primaryData] = sortedVariations[0];
+  const [secondaryVariation, secondaryData] = sortedVariations[1] || ['prophylactic_unknown', { score: 0, factors: [] }];
+  
+  // Calculate normalized confidence
+  const totalScore = sortedVariations.reduce((sum, [_, d]) => sum + d.score, 0);
+  const primaryConfidence = Math.min(95, Math.max(30, 
+    totalScore > 0 ? (primaryData.score / totalScore) * 100 + primaryData.score * 0.3 : 30
+  ));
+  const secondaryConfidence = Math.min(85, Math.max(0,
+    totalScore > 0 ? (secondaryData.score / totalScore) * 100 + secondaryData.score * 0.2 : 0
+  ));
+  
+  // ========== TOPOLOGY & RHYTHM DETECTION ==========
+  const defensiveTopology = detectDefensiveTopology(quadrant, metrics);
+  const temporalRhythm = detectTemporalRhythm(temporal, moments);
+  const phaseSpecificStrength = detectPhaseStrength(temporal, metrics);
+  
+  // ========== TRADING SIGNAL GENERATION ==========
+  const tradingSignal = generateTradingSignal(primaryVariation, primaryConfidence, temporalRhythm);
+  
+  const definition = PROPHYLACTIC_VARIATIONS[primaryVariation];
+  
+  console.log(`[Prophylactic v7.80] Primary: ${primaryVariation} (${primaryConfidence.toFixed(1)}%), Secondary: ${secondaryVariation} (${secondaryConfidence.toFixed(1)}%)`);
+  console.log(`[Prophylactic v7.80] Topology: ${defensiveTopology}, Rhythm: ${temporalRhythm}, Phase: ${phaseSpecificStrength}`);
+  
+  return {
+    variation: primaryVariation,
+    confidence: Math.round(primaryConfidence),
+    matchingFactors: primaryData.factors.length > 0 ? primaryData.factors : ['General prophylactic pattern'],
+    suggestedPlay: getSuggestedPlay(primaryVariation, temporal, totalMoves),
+    riskAssessment: getRiskAssessment(definition, primaryConfidence),
+    // v7.80 Enhanced fields
+    secondaryVariation: secondaryConfidence > 25 ? secondaryVariation : undefined,
+    secondaryConfidence: secondaryConfidence > 25 ? Math.round(secondaryConfidence) : undefined,
+    phaseSpecificStrength,
+    defensiveTopology,
+    temporalRhythm,
+    tradingSignal,
+  };
+}
+
+// ===================== ADVANCED METRICS ENGINE =====================
+
+interface AdvancedMetrics {
+  kingsideTotal: number;
+  queensideTotal: number;
+  totalActivity: number;
+  avgMomentMagnitude: number;
+  temporalProgression: number;
+  balanceStability: number;
+  quadrantShift: number;
+  centerDominance: number;
+  compressionRatio: number;
+  counterattackPotential: number;
+  structuralRigidity: number;
+  gamePhase: 'opening' | 'middlegame' | 'endgame';
+}
+
+function calculateAdvancedMetrics(
+  quadrant: QuadrantProfile,
+  temporal: TemporalFlow,
+  moments: CriticalMoment[],
+  totalMoves: number
+): AdvancedMetrics {
   const kingsideTotal = Math.abs(quadrant.kingsideWhite) + Math.abs(quadrant.kingsideBlack);
   const queensideTotal = Math.abs(quadrant.queensideWhite) + Math.abs(quadrant.queensideBlack);
   const totalActivity = kingsideTotal + queensideTotal + Math.abs(quadrant.center);
@@ -238,177 +318,277 @@ export function classifyProphylacticVariation(
     : 0;
   const temporalProgression = temporal.endgame - temporal.opening;
   const balanceStability = 100 - temporal.volatility;
-  
-  // ========== Petrosian Overprotection ==========
-  // High center activity, low volatility, multiple piece layers
-  if (Math.abs(quadrant.center) > 30 && temporal.volatility < 25) {
-    const entry = scores.get('petrosian_overprotection')!;
-    entry.score += 25;
-    entry.factors.push('Strong central overprotection');
-  }
-  if (balanceStability > 75 && totalMoves > 30) {
-    const entry = scores.get('petrosian_overprotection')!;
-    entry.score += 20;
-    entry.factors.push('Sustained positional stability');
-  }
-  
-  // ========== Karpov Stranglehold ==========
-  // Gradual territorial expansion, low volatility, increasing control
-  if (temporalProgression > 20 && temporal.volatility < 30) {
-    const entry = scores.get('karpov_stranglehold')!;
-    entry.score += 30;
-    entry.factors.push('Progressive positional squeeze');
-  }
-  if (temporal.middlegame > temporal.opening && temporal.endgame > temporal.middlegame) {
-    const entry = scores.get('karpov_stranglehold')!;
-    entry.score += 20;
-    entry.factors.push('Steadily increasing control');
-  }
-  
-  // ========== Nimzowitsch Restraint ==========
-  // Static structure, blocked pawn patterns, piece blockade
-  if (temporal.volatility < 20 && totalActivity < 100) {
-    const entry = scores.get('nimzowitsch_restraint')!;
-    entry.score += 25;
-    entry.factors.push('Blocked position structure');
-  }
-  if (moments.length <= 1 && totalMoves > 25) {
-    const entry = scores.get('nimzowitsch_restraint')!;
-    entry.score += 20;
-    entry.factors.push('Minimal tactical incidents');
-  }
-  
-  // ========== Tigran Pivot ==========
-  // Sudden quadrant shift, defensive repositioning
   const quadrantShift = Math.abs(kingsideTotal - queensideTotal);
-  if (quadrantShift > 40 && temporal.volatility > 25 && temporal.volatility < 45) {
-    const entry = scores.get('tigran_pivot')!;
-    entry.score += 30;
-    entry.factors.push('Defensive piece transfer');
-  }
-  if (moments.some(m => m.shiftMagnitude > 4)) {
-    const entry = scores.get('tigran_pivot')!;
-    entry.score += 15;
-    entry.factors.push('Reactive repositioning detected');
-  }
+  const centerDominance = Math.abs(quadrant.center) / Math.max(1, totalActivity) * 100;
   
-  // ========== Hedgehog Coil ==========
-  // Compact structure, late-game counterattack
-  if (temporal.opening < 0 && temporal.endgame > 10) {
-    const entry = scores.get('hedgehog_coil')!;
-    entry.score += 25;
-    entry.factors.push('Early concession, late expansion');
-  }
-  if (totalActivity < 120 && totalMoves > 30 && moments.length >= 2) {
-    const entry = scores.get('hedgehog_coil')!;
-    entry.score += 20;
-    entry.factors.push('Coiled defensive setup');
-  }
+  // Compression ratio: how "contracted" is the defensive structure
+  const compressionRatio = totalActivity < 100 ? (100 - totalActivity) / 100 : 0;
   
-  // ========== Berlin Wall ==========
-  // Early simplification, endgame-focused, very low volatility
-  if (temporal.volatility < 15 && totalMoves > 25) {
-    const entry = scores.get('berlin_wall')!;
-    entry.score += 30;
-    entry.factors.push('Ultra-solid simplification');
-  }
-  if (totalActivity < 80 && moments.length === 0) {
-    const entry = scores.get('berlin_wall')!;
-    entry.score += 25;
-    entry.factors.push('Drawish endgame structure');
-  }
+  // Counterattack potential: signs of stored energy for counterplay
+  const counterattackPotential = (
+    (temporal.endgame > temporal.middlegame ? 20 : 0) +
+    (moments.filter(m => m.shiftMagnitude > 4).length * 10) +
+    (temporal.opening < 0 && temporal.endgame > 0 ? 25 : 0)
+  );
   
-  // ========== Fortress Construction ==========
-  // Minimal territory, defensive perimeter, material flexibility
-  if (totalActivity < 60 && balanceStability > 80) {
-    const entry = scores.get('fortress_construction')!;
-    entry.score += 35;
-    entry.factors.push('Impregnable defensive setup');
-  }
-  if (temporal.endgame < temporal.middlegame && totalMoves > 40) {
-    const entry = scores.get('fortress_construction')!;
-    entry.score += 20;
-    entry.factors.push('Late-game contraction');
-  }
+  // Structural rigidity: how locked/static is the position
+  const structuralRigidity = (
+    (temporal.volatility < 15 ? 30 : 0) +
+    (moments.length <= 1 ? 25 : 0) +
+    (totalMoves > 30 && totalActivity < 80 ? 20 : 0)
+  );
   
-  // ========== Prophylactic Exchange ==========
-  // Decreasing activity, targeted piece elimination
-  if (temporal.endgame < temporal.opening && temporal.volatility < 30) {
-    const entry = scores.get('prophylactic_exchange')!;
-    entry.score += 25;
-    entry.factors.push('Piece density reduction');
-  }
-  if (totalActivity < 100 && moments.length <= 2) {
-    const entry = scores.get('prophylactic_exchange')!;
-    entry.score += 15;
-    entry.factors.push('Controlled simplification');
-  }
-  
-  // ========== Waiting Move Mastery ==========
-  // Minimal progress, repetitive patterns, zugzwang induction
-  if (temporal.volatility < 12 && balanceStability > 85) {
-    const entry = scores.get('waiting_move_mastery')!;
-    entry.score += 30;
-    entry.factors.push('Patience-based play');
-  }
-  if (moments.length === 0 && totalMoves > 35) {
-    const entry = scores.get('waiting_move_mastery')!;
-    entry.score += 25;
-    entry.factors.push('Zugzwang cultivation');
-  }
-  
-  // ========== Elastic Defense ==========
-  // Initial retreat, subsequent counterattack
-  if (temporal.opening < -15 && temporal.middlegame > 0) {
-    const entry = scores.get('elastic_defense')!;
-    entry.score += 30;
-    entry.factors.push('Retreat and spring pattern');
-  }
-  if (avgMomentMagnitude > 3 && moments.length >= 2) {
-    const entry = scores.get('elastic_defense')!;
-    entry.score += 20;
-    entry.factors.push('Counterattack rhythm');
-  }
-  
-  // ========== Pressure Absorption ==========
-  // Sustained enemy pressure, gradual neutralization
-  if (temporal.opening < 0 && temporal.middlegame < 0 && temporal.endgame > -10) {
-    const entry = scores.get('pressure_absorption')!;
-    entry.score += 25;
-    entry.factors.push('Attack absorption');
-  }
-  if (moments.length >= 3 && avgMomentMagnitude < 4) {
-    const entry = scores.get('pressure_absorption')!;
-    entry.score += 20;
-    entry.factors.push('Weathering the storm');
-  }
-  
-  // Find best match
-  let bestVariation: ProphylacticVariation = 'prophylactic_unknown';
-  let bestScore = 0;
-  let bestFactors: string[] = [];
-  
-  for (const [variation, data] of scores) {
-    if (data.score > bestScore) {
-      bestScore = data.score;
-      bestVariation = variation;
-      bestFactors = data.factors;
-    }
-  }
-  
-  // Calculate confidence
-  const confidence = Math.min(95, Math.max(30, bestScore));
-  
-  // Get variation definition
-  const definition = PROPHYLACTIC_VARIATIONS[bestVariation];
+  // Determine game phase
+  let gamePhase: 'opening' | 'middlegame' | 'endgame' = 'middlegame';
+  if (totalMoves <= 15) gamePhase = 'opening';
+  else if (totalMoves >= 35) gamePhase = 'endgame';
   
   return {
-    variation: bestVariation,
-    confidence,
-    matchingFactors: bestFactors.length > 0 ? bestFactors : ['General prophylactic pattern'],
-    suggestedPlay: getSuggestedPlay(bestVariation, temporal, totalMoves),
-    riskAssessment: getRiskAssessment(definition, confidence),
+    kingsideTotal,
+    queensideTotal,
+    totalActivity,
+    avgMomentMagnitude,
+    temporalProgression,
+    balanceStability,
+    quadrantShift,
+    centerDominance,
+    compressionRatio,
+    counterattackPotential,
+    structuralRigidity,
+    gamePhase,
   };
+}
+
+// ===================== WEIGHTED SCORING ENGINE =====================
+
+interface ScoringEntry {
+  score: number;
+  factors: string[];
+}
+
+function runWeightedScoringEngine(
+  metrics: AdvancedMetrics,
+  temporal: TemporalFlow,
+  moments: CriticalMoment[],
+  totalMoves: number
+): Map<ProphylacticVariation, ScoringEntry> {
+  const scores = new Map<ProphylacticVariation, ScoringEntry>();
+  
+  // Initialize all variations
+  for (const variation of Object.keys(PROPHYLACTIC_VARIATIONS) as ProphylacticVariation[]) {
+    scores.set(variation, { score: 0, factors: [] });
+  }
+  
+  // Phase-based weight multipliers
+  const phaseMultiplier = {
+    opening: metrics.gamePhase === 'opening' ? 1.3 : 0.8,
+    middlegame: metrics.gamePhase === 'middlegame' ? 1.2 : 0.9,
+    endgame: metrics.gamePhase === 'endgame' ? 1.4 : 0.7,
+  };
+  
+  // ========== PETROSIAN OVERPROTECTION ==========
+  // Key: High center dominance, multiple protection layers, stability
+  scoreVariation(scores, 'petrosian_overprotection', [
+    { condition: metrics.centerDominance > 25, points: 30, factor: 'Strong central overprotection' },
+    { condition: metrics.centerDominance > 40, points: 15, factor: 'Dominant center control' },
+    { condition: metrics.balanceStability > 75, points: 20, factor: 'Deep positional stability' },
+    { condition: temporal.volatility < 20 && totalMoves > 30, points: 15, factor: 'Sustained piece coordination' },
+    { condition: metrics.structuralRigidity > 50, points: 10, factor: 'Locked central structure' },
+  ], phaseMultiplier.middlegame);
+  
+  // ========== KARPOV STRANGLEHOLD ==========
+  // Key: Progressive territorial gain, steadily increasing control
+  scoreVariation(scores, 'karpov_stranglehold', [
+    { condition: metrics.temporalProgression > 20, points: 35, factor: 'Progressive positional squeeze' },
+    { condition: temporal.middlegame > temporal.opening && temporal.endgame > temporal.middlegame, points: 25, factor: 'Steadily increasing control' },
+    { condition: metrics.balanceStability > 70 && metrics.temporalProgression > 10, points: 15, factor: 'Controlled expansion' },
+    { condition: metrics.compressionRatio < 0.3 && metrics.totalActivity > 100, points: 10, factor: 'Space advantage maintained' },
+  ], phaseMultiplier.endgame);
+  
+  // ========== NIMZOWITSCH RESTRAINT ==========
+  // Key: Static structure, blockade patterns, minimal tactical incidents
+  scoreVariation(scores, 'nimzowitsch_restraint', [
+    { condition: metrics.structuralRigidity > 60, points: 35, factor: 'Classic blockade structure' },
+    { condition: temporal.volatility < 20 && metrics.totalActivity < 100, points: 25, factor: 'Frozen pawn structure' },
+    { condition: moments.length <= 1 && totalMoves > 25, points: 20, factor: 'Minimal tactical incidents' },
+    { condition: metrics.avgMomentMagnitude < 2, points: 10, factor: 'Ultra-quiet play' },
+  ], phaseMultiplier.middlegame);
+  
+  // ========== TIGRAN PIVOT ==========
+  // Key: Quadrant shift, defensive repositioning, reactive adjustments
+  scoreVariation(scores, 'tigran_pivot', [
+    { condition: metrics.quadrantShift > 40, points: 35, factor: 'Major defensive piece transfer' },
+    { condition: metrics.quadrantShift > 60, points: 15, factor: 'Cross-board repositioning' },
+    { condition: temporal.volatility > 25 && temporal.volatility < 50, points: 20, factor: 'Controlled volatility during pivot' },
+    { condition: moments.some(m => m.shiftMagnitude > 4), points: 15, factor: 'Reactive repositioning detected' },
+  ], phaseMultiplier.middlegame);
+  
+  // ========== HEDGEHOG COIL ==========
+  // Key: Early concession, compact structure, late-game explosion
+  scoreVariation(scores, 'hedgehog_coil', [
+    { condition: temporal.opening < -10 && temporal.endgame > 10, points: 35, factor: 'Classic hedgehog spring pattern' },
+    { condition: temporal.opening < 0 && temporal.endgame > 0, points: 20, factor: 'Early concession, late expansion' },
+    { condition: metrics.counterattackPotential > 40, points: 20, factor: 'Coiled counterattack energy' },
+    { condition: metrics.compressionRatio > 0.3 && moments.length >= 2, points: 15, factor: 'Compact but active structure' },
+  ], phaseMultiplier.endgame);
+  
+  // ========== BERLIN WALL ==========
+  // Key: Ultra-low volatility, early simplification, draw-oriented
+  scoreVariation(scores, 'berlin_wall', [
+    { condition: temporal.volatility < 12, points: 40, factor: 'Ultra-solid Berlin structure' },
+    { condition: temporal.volatility < 15 && moments.length === 0, points: 25, factor: 'Complete tactical sterility' },
+    { condition: metrics.totalActivity < 80 && totalMoves > 25, points: 20, factor: 'Early simplification complete' },
+    { condition: metrics.structuralRigidity > 70, points: 10, factor: 'Endgame fortress activated' },
+  ], phaseMultiplier.endgame);
+  
+  // ========== FORTRESS CONSTRUCTION ==========
+  // Key: Minimal territory, impregnable perimeter, late-game contraction
+  scoreVariation(scores, 'fortress_construction', [
+    { condition: metrics.compressionRatio > 0.5, points: 40, factor: 'Fortress perimeter established' },
+    { condition: metrics.totalActivity < 60 && metrics.balanceStability > 80, points: 30, factor: 'Impregnable defensive setup' },
+    { condition: temporal.endgame < temporal.middlegame && totalMoves > 40, points: 20, factor: 'Late-game defensive contraction' },
+    { condition: metrics.structuralRigidity > 60 && metrics.counterattackPotential < 20, points: 10, factor: 'Pure defensive fortress' },
+  ], phaseMultiplier.endgame);
+  
+  // ========== PROPHYLACTIC EXCHANGE ==========
+  // Key: Decreasing piece density, controlled simplification
+  scoreVariation(scores, 'prophylactic_exchange', [
+    { condition: temporal.endgame < temporal.opening && temporal.endgame < temporal.middlegame, points: 30, factor: 'Systematic piece reduction' },
+    { condition: metrics.totalActivity < 100 && moments.length <= 2, points: 20, factor: 'Controlled simplification' },
+    { condition: metrics.temporalProgression < -10, points: 20, factor: 'Activity decrease over time' },
+    { condition: metrics.balanceStability > 65, points: 10, factor: 'Stable through exchanges' },
+  ], phaseMultiplier.middlegame);
+  
+  // ========== WAITING MOVE MASTERY ==========
+  // Key: Extreme patience, zugzwang cultivation, minimal progress
+  scoreVariation(scores, 'waiting_move_mastery', [
+    { condition: temporal.volatility < 10, points: 40, factor: 'Master-level patience' },
+    { condition: temporal.volatility < 12 && metrics.balanceStability > 85, points: 25, factor: 'Zugzwang cultivation' },
+    { condition: moments.length === 0 && totalMoves > 35, points: 25, factor: 'Perfect waiting technique' },
+    { condition: metrics.avgMomentMagnitude === 0 && totalMoves > 30, points: 15, factor: 'Zero tactical incidents' },
+  ], phaseMultiplier.endgame);
+  
+  // ========== ELASTIC DEFENSE ==========
+  // Key: Initial retreat, subsequent counterattack, flexibility
+  scoreVariation(scores, 'elastic_defense', [
+    { condition: temporal.opening < -15 && temporal.middlegame > 0, points: 40, factor: 'Classic elastic pattern' },
+    { condition: temporal.opening < -10 && temporal.endgame > temporal.opening + 20, points: 25, factor: 'Retreat and spring back' },
+    { condition: metrics.counterattackPotential > 50, points: 20, factor: 'Strong counterattack rhythm' },
+    { condition: metrics.avgMomentMagnitude > 3 && moments.length >= 2, points: 15, factor: 'Multiple swing moments' },
+  ], phaseMultiplier.middlegame);
+  
+  // ========== PRESSURE ABSORPTION ==========
+  // Key: Sustained enemy pressure weathered, gradual neutralization
+  scoreVariation(scores, 'pressure_absorption', [
+    { condition: temporal.opening < 0 && temporal.middlegame < 0 && temporal.endgame > -5, points: 35, factor: 'Full attack absorbed' },
+    { condition: temporal.opening < -10 && temporal.endgame > temporal.opening, points: 25, factor: 'Weathered the storm' },
+    { condition: moments.length >= 3 && metrics.avgMomentMagnitude < 4, points: 20, factor: 'Multiple absorptions without breaking' },
+    { condition: metrics.balanceStability > 60 && temporal.opening < 0, points: 15, factor: 'Stable under pressure' },
+  ], phaseMultiplier.middlegame);
+  
+  return scores;
+}
+
+function scoreVariation(
+  scores: Map<ProphylacticVariation, ScoringEntry>,
+  variation: ProphylacticVariation,
+  criteria: Array<{ condition: boolean; points: number; factor: string }>,
+  phaseMultiplier: number
+): void {
+  const entry = scores.get(variation)!;
+  for (const { condition, points, factor } of criteria) {
+    if (condition) {
+      entry.score += points * phaseMultiplier;
+      entry.factors.push(factor);
+    }
+  }
+}
+
+// ===================== TOPOLOGY & RHYTHM DETECTION =====================
+
+function detectDefensiveTopology(
+  quadrant: QuadrantProfile,
+  metrics: AdvancedMetrics
+): 'central' | 'flank' | 'distributed' | 'contracted' {
+  if (metrics.compressionRatio > 0.4) return 'contracted';
+  if (metrics.centerDominance > 35) return 'central';
+  if (metrics.quadrantShift > 50) return 'flank';
+  return 'distributed';
+}
+
+function detectTemporalRhythm(
+  temporal: TemporalFlow,
+  moments: CriticalMoment[]
+): 'proactive' | 'reactive' | 'static' | 'elastic' {
+  // Elastic: clear retreat then advance pattern
+  if (temporal.opening < -10 && temporal.endgame > temporal.opening + 15) return 'elastic';
+  
+  // Static: ultra-low volatility, no significant moments
+  if (temporal.volatility < 15 && moments.length <= 1) return 'static';
+  
+  // Reactive: multiple moments, responding to threats
+  if (moments.length >= 3) return 'reactive';
+  
+  // Proactive: gradual increase without major incidents
+  if (temporal.endgame > temporal.opening && moments.length <= 2) return 'proactive';
+  
+  return 'reactive';
+}
+
+function detectPhaseStrength(
+  temporal: TemporalFlow,
+  metrics: AdvancedMetrics
+): 'opening' | 'middlegame' | 'endgame' {
+  // Where did the defense shine most?
+  const phases = [
+    { phase: 'opening' as const, strength: Math.abs(temporal.opening) },
+    { phase: 'middlegame' as const, strength: Math.abs(temporal.middlegame) },
+    { phase: 'endgame' as const, strength: Math.abs(temporal.endgame) },
+  ];
+  
+  // Prefer endgame if fortress-like
+  if (metrics.compressionRatio > 0.4) return 'endgame';
+  
+  // Prefer where control increased most
+  if (temporal.endgame > temporal.middlegame && temporal.middlegame > temporal.opening) return 'endgame';
+  if (temporal.middlegame > temporal.opening && temporal.middlegame > temporal.endgame) return 'middlegame';
+  
+  return phases.sort((a, b) => b.strength - a.strength)[0].phase;
+}
+
+// ===================== TRADING SIGNAL GENERATION =====================
+
+function generateTradingSignal(
+  variation: ProphylacticVariation,
+  confidence: number,
+  rhythm: 'proactive' | 'reactive' | 'static' | 'elastic'
+): 'hold' | 'accumulate' | 'hedge' | 'reduce' | 'wait' {
+  // Low confidence = wait for clarity
+  if (confidence < 40) return 'wait';
+  
+  // Variation-specific signals
+  const signalMap: Record<ProphylacticVariation, 'hold' | 'accumulate' | 'hedge' | 'reduce' | 'wait'> = {
+    petrosian_overprotection: 'hedge',
+    karpov_stranglehold: 'accumulate',
+    nimzowitsch_restraint: 'hold',
+    tigran_pivot: 'hedge',
+    hedgehog_coil: 'accumulate',
+    berlin_wall: 'hold',
+    fortress_construction: 'reduce',
+    prophylactic_exchange: 'reduce',
+    waiting_move_mastery: 'wait',
+    elastic_defense: 'accumulate',
+    pressure_absorption: 'hold',
+    prophylactic_unknown: 'wait',
+  };
+  
+  let signal = signalMap[variation];
+  
+  // Rhythm-based adjustments
+  if (rhythm === 'elastic' && signal === 'hold') signal = 'accumulate';
+  if (rhythm === 'static' && signal === 'accumulate') signal = 'hold';
+  
+  return signal;
 }
 
 /**
