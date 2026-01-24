@@ -26,8 +26,8 @@
 // 3. Only mark as failed after ALL retries exhausted
 // 4. Every game that CAN be analyzed SHOULD be analyzed
 // 5. ALL ID tracking (failed, session, DB) uses RAW IDs only - no prefix mismatch
-const BENCHMARK_VERSION = "7.61-PHASE-SPEC";
-console.log(`[v7.61] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION} (Phase Specialization)`);
+const BENCHMARK_VERSION = "7.70-COMPOUND-INTEL";
+console.log(`[v7.70] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION} (Compound Intelligence)`);
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -39,6 +39,7 @@ import { getAlreadyAnalyzedData, hashPosition, reaffirmExistingPrediction } from
 import { fetchMultiSourceGames, getSourceStats, type UnifiedGameData } from '@/lib/chess/gameImport/multiSourceFetcher';
 import { invalidateChessStatsCache } from './useRealtimeAccuracy';
 import { getBenchmarkAbortSignal, subscribeToBenchmarkLock } from '@/lib/chess/benchmarkCoordinator';
+import { recordPredictionOutcome, initializeFromDatabase as initIntelligence, getIntelligenceMetrics } from '@/lib/chess/accuracy/intelligenceCompounding';
 
 // Platform-specific ELO calibration factors (Platform → FIDE approximation)
 export const PLATFORM_ELO_CALIBRATION = {
@@ -517,6 +518,12 @@ export function useHybridBenchmark() {
         ...prev!, 
         message: 'Loading previously analyzed positions for deduplication...' 
       }));
+      
+      // v7.70-COMPOUND: Initialize intelligence compounding system
+      // This loads historical patterns for live calibration
+      await initIntelligence();
+      const intelMetrics = getIntelligenceMetrics();
+      console.log(`[v7.70] 🧠 Intelligence initialized: ${intelMetrics.archetypeCount} archetypes, ${(intelMetrics.globalDisagreementWinRate * 100).toFixed(0)}% disagreement win rate`);
       
       // CRITICAL: Load already-analyzed data for cross-run deduplication
       // Deduplication is GAME-BASED ONLY (by Lichess ID), NOT position-based
@@ -1145,13 +1152,26 @@ export function useHybridBenchmark() {
         // ═══════════════════════════════════════════════════════════════════
         predictedCount++;
         
+        // v7.70-COMPOUND: Record outcome into intelligence compounding system
+        // This enables live calibration, disagreement amplification, and temporal decay
+        if (colorFlow.archetype) {
+          const archetypeNormalized = colorFlow.archetype.toLowerCase().replace(/\s+/g, '_');
+          recordPredictionOutcome(
+            archetypeNormalized as any,
+            hybridIsCorrect,
+            hybridIsCorrect,
+            stockfishIsCorrect
+          );
+        }
+        
         // v6.78-SIMPLE: Add raw ID to the DB tracking set (already declared above)
         analyzedData.gameIds.add(rawGameId);
         consecutiveSkips = 0;
         
-        console.log(`[v6.78] ✅ PREDICTION #${predictedCount}/${gameCount}: ${rawGameId} (${source})`);
-        console.log(`[v6.78]   EP=${colorFlow.prediction}${hybridIsCorrect ? '✓' : '✗'} | SF=${stockfish.prediction}${stockfishIsCorrect ? '✓' : '✗'} | Actual=${gameResult}`);
-        console.log(`[v6.78]   Queue: ${gameQueue.length - gameIndex} remaining | DB knows: ${analyzedData.gameIds.size}`)
+        console.log(`[v7.70] ✅ PREDICTION #${predictedCount}/${gameCount}: ${rawGameId} (${source})`);
+        console.log(`[v7.70]   EP=${colorFlow.prediction}${hybridIsCorrect ? '✓' : '✗'} | SF=${stockfish.prediction}${stockfishIsCorrect ? '✓' : '✗'} | Actual=${gameResult}`);
+        console.log(`[v7.70]   Archetype: ${colorFlow.archetype} | Intelligence: ${getIntelligenceMetrics().isLearning ? 'LEARNING' : 'warming up'}`);
+        console.log(`[v7.70]   Queue: ${gameQueue.length - gameIndex} remaining | DB knows: ${analyzedData.gameIds.size}`)
         
         // Incremental save
         if (predictedCount % SAVE_INTERVAL === 0) {

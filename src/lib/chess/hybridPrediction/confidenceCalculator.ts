@@ -1,13 +1,20 @@
 /**
- * Hybrid Confidence Calculator v2.0
+ * Hybrid Confidence Calculator v3.0 (COMPOUND INTELLIGENCE)
  * 
- * FIXED: Confidence now reflects ACTUAL accuracy, not theoretical factors.
- * Confidence should only increase when prediction accuracy improves.
+ * v3.0: Integrated with Intelligence Compounding System
+ * - Live confidence calibration from rolling accuracy
+ * - Disagreement amplifier for archetypes that beat Stockfish
+ * - Temporal decay weighting (recent predictions matter more)
  */
 
 import { PositionAnalysis } from '../stockfishEngine';
 import { ColorFlowSignature, ARCHETYPE_DEFINITIONS } from '../colorFlowAnalysis';
 import { TacticalInsight, StrategicInsight, HybridConfidence } from './types';
+import { 
+  getCalibratedConfidence, 
+  getIntelligenceMetrics,
+  initializeFromDatabase 
+} from '../accuracy/intelligenceCompounding';
 
 // In-memory accuracy tracker (gets populated from database on first load)
 let accuracyCache: {
@@ -19,6 +26,15 @@ let accuracyCache: {
   correctPredictions: 0,
   lastUpdated: 0,
 };
+
+// Initialize intelligence system on module load
+let initPromise: Promise<void> | null = null;
+function ensureInitialized(): Promise<void> {
+  if (!initPromise) {
+    initPromise = initializeFromDatabase();
+  }
+  return initPromise;
+}
 
 /**
  * Update accuracy cache from external source (called by benchmark system)
@@ -59,6 +75,9 @@ export function calculateHybridConfidence(
 ): HybridConfidence {
   const factors: string[] = [];
   
+  // Ensure intelligence system is initializing
+  ensureInitialized();
+  
   // PRIMARY: Actual accuracy is the foundation
   const actualAccuracy = getActualAccuracy();
   factors.push(`Historical accuracy: ${actualAccuracy.toFixed(1)}%`);
@@ -81,12 +100,21 @@ export function calculateHybridConfidence(
   const alignment = calculateAlignment(analysis, signature, factors);
   const alignmentModifier = (alignment - 50) / 10; // -1 to +3.5
   
-  // OVERALL: Actual accuracy + small modifiers, HARD CAP at actualAccuracy + 10
-  const rawOverall = actualAccuracy + (tacticalModifier + archetypeModifier + alignmentModifier) / 3;
-  const maxConfidence = Math.min(95, actualAccuracy + 10); // Can't claim >10% more than actual
-  const overall = Math.round(Math.max(20, Math.min(maxConfidence, rawOverall)));
+  // BASE: Actual accuracy + small modifiers
+  const baseConfidence = actualAccuracy + (tacticalModifier + archetypeModifier + alignmentModifier) / 3;
   
-  factors.push(`Confidence capped at ${maxConfidence.toFixed(0)}% until accuracy improves`);
+  // v3.0: APPLY COMPOUND INTELLIGENCE CALIBRATION
+  const calibrated = getCalibratedConfidence(signature.archetype, baseConfidence);
+  factors.push(...calibrated.factors);
+  
+  // Log intelligence metrics periodically
+  const metrics = getIntelligenceMetrics();
+  if (metrics.isLearning && Math.random() < 0.1) {
+    console.log(`[Intelligence] Learning active: ${metrics.archetypeCount} archetypes, ${(metrics.globalDisagreementWinRate * 100).toFixed(0)}% disagreement wins`);
+  }
+  
+  const maxConfidence = Math.min(95, actualAccuracy + 15); // Allow +15% with compounding
+  const overall = Math.round(Math.max(20, Math.min(maxConfidence, calibrated.confidence)));
   
   return {
     overall,
