@@ -1,8 +1,9 @@
 /**
- * Trajectory Prediction Generator v7.61
+ * Trajectory Prediction Generator v7.75
  * 
  * Generates game trajectory predictions from hybrid analysis
- * Now with PHASE SPECIALIZATION for improved accuracy
+ * - Phase Specialization for improved accuracy
+ * - White Win Calibration to fix systematic under-prediction of white wins
  */
 
 import { Chess } from 'chess.js';
@@ -15,6 +16,7 @@ import {
   isArchetypePhaseMatch 
 } from '../accuracy/phaseSpecialization';
 import { detectGamePhase } from '../accuracy/temporalPhaseWeighting';
+import { calibrateForWhiteBias } from '../accuracy/whiteWinCalibration';
 
 /**
  * Count pieces on the board for phase detection
@@ -116,22 +118,41 @@ function determinePredictedOutcome(
   const effectiveWinRate = phaseAdjustedWinRate ?? archetypeDef.historicalWinRate;
   
   // v7.61: Phase-specialized thresholds
+  let rawPrediction: 'white_wins' | 'black_wins' | 'draw' | 'unclear';
+  
   if (signature.dominantSide !== 'contested') {
     // Higher threshold = more confident predictions
     if (effectiveWinRate > 0.58) {
-      return signature.dominantSide === 'white' ? 'white_wins' : 'black_wins';
+      rawPrediction = signature.dominantSide === 'white' ? 'white_wins' : 'black_wins';
+    } else if (effectiveWinRate < 0.42) {
+      rawPrediction = signature.dominantSide === 'white' ? 'black_wins' : 'white_wins';
+    } else if (signature.temporalFlow.volatility < 30) {
+      rawPrediction = 'draw';  // Low volatility + uncertain = draw likely
+    } else {
+      rawPrediction = 'unclear';
     }
-    if (effectiveWinRate < 0.42) {
-      return signature.dominantSide === 'white' ? 'black_wins' : 'white_wins';
-    }
-    // In the "uncertain zone" (0.42-0.58), look at volatility
-    if (signature.temporalFlow.volatility < 30) {
-      return 'draw';  // Low volatility + uncertain = draw likely
-    }
-    return 'unclear';
+  } else {
+    rawPrediction = signature.temporalFlow.volatility > 50 ? 'unclear' : 'draw';
   }
   
-  return signature.temporalFlow.volatility > 50 ? 'unclear' : 'draw';
+  // v7.75: Apply white win calibration to fix systematic bias
+  // Calculate a rough confidence from effective win rate distance from 0.5
+  const rawConfidence = Math.abs(effectiveWinRate - 0.5) * 200; // 0-100 scale
+  
+  const calibrated = calibrateForWhiteBias(
+    rawPrediction,
+    signature.archetype,
+    signature.dominantSide,
+    analysis.evaluation.score,
+    rawConfidence
+  );
+  
+  // Log significant calibration adjustments
+  if (calibrated.adjustmentMagnitude !== 0) {
+    console.log(`[WhiteWinCalibration] ${rawPrediction} → ${calibrated.calibratedPrediction}: ${calibrated.adjustmentApplied}`);
+  }
+  
+  return calibrated.calibratedPrediction;
 }
 
 function generateMilestones(

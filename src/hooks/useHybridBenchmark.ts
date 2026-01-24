@@ -1,4 +1,6 @@
 /**
+ * Hybrid Benchmark Hook v7.75-WHITE-CALIBRATION
+ *
  * Hybrid Benchmark Hook - v6.85-UNIFORM-IDS
  * VERSION: 6.85-UNIFORM-IDS (2026-01-21)
  * 
