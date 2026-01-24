@@ -26,8 +26,8 @@
 // 3. Only mark as failed after ALL retries exhausted
 // 4. Every game that CAN be analyzed SHOULD be analyzed
 // 5. ALL ID tracking (failed, session, DB) uses RAW IDs only - no prefix mismatch
-const BENCHMARK_VERSION = "7.60-CRASH-FIX";
-console.log(`[v7.60] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION}`);
+const BENCHMARK_VERSION = "7.61-PHASE-SPEC";
+console.log(`[v7.61] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION} (Phase Specialization)`);
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
