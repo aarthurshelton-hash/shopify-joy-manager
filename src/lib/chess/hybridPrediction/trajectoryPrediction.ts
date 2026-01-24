@@ -1,16 +1,38 @@
 /**
- * Trajectory Prediction Generator
+ * Trajectory Prediction Generator v7.61
  * 
  * Generates game trajectory predictions from hybrid analysis
+ * Now with PHASE SPECIALIZATION for improved accuracy
  */
 
 import { Chess } from 'chess.js';
 import { PositionAnalysis } from '../stockfishEngine';
 import { ColorFlowSignature, ARCHETYPE_DEFINITIONS } from '../colorFlowAnalysis';
 import { TrajectoryPrediction, TrajectoryMilestone } from './types';
+import { 
+  getPhaseSpecializedPrediction, 
+  getPhaseOptimalHorizon,
+  isArchetypePhaseMatch 
+} from '../accuracy/phaseSpecialization';
+import { detectGamePhase } from '../accuracy/temporalPhaseWeighting';
+
+/**
+ * Count pieces on the board for phase detection
+ */
+function countPieces(chess: Chess): number {
+  const board = chess.board();
+  let count = 0;
+  for (const row of board) {
+    for (const sq of row) {
+      if (sq) count++;
+    }
+  }
+  return count;
+}
 
 /**
  * Generate trajectory prediction for the game
+ * v7.61: Uses phase-specialized prediction models
  */
 export function generateTrajectoryPrediction(
   signature: ColorFlowSignature,
@@ -19,21 +41,46 @@ export function generateTrajectoryPrediction(
   chess: Chess
 ): TrajectoryPrediction {
   const archetypeDef = ARCHETYPE_DEFINITIONS[signature.archetype];
+  const pieceCount = countPieces(chess);
+  const phase = detectGamePhase(currentMove, pieceCount);
   
-  // Determine predicted outcome
-  const predictedOutcome = determinePredictedOutcome(signature, analysis, archetypeDef);
+  // v7.61: Get phase-specialized prediction
+  const phaseSpecialized = getPhaseSpecializedPrediction(
+    signature,
+    archetypeDef.historicalWinRate,
+    currentMove,
+    pieceCount
+  );
   
-  // Calculate horizon
-  const horizonMoves = archetypeDef.lookaheadConfidence;
+  // Determine predicted outcome using phase-adjusted win rate
+  const predictedOutcome = determinePredictedOutcome(
+    signature, 
+    analysis, 
+    archetypeDef,
+    phaseSpecialized.phaseAdjustedWinRate,
+    phaseSpecialized.shouldPredict
+  );
+  
+  // v7.61: Use phase-optimal horizon
+  const horizonMoves = getPhaseOptimalHorizon(phase);
   
   // Generate milestones
-  const milestones = generateMilestones(signature, currentMove);
+  const milestones = generateMilestones(signature, currentMove, phase);
   
-  // Calculate probabilities
-  const outcomeProbabilities = calculateOutcomeProbabilities(archetypeDef, analysis);
+  // Calculate probabilities using phase-adjusted rates
+  const outcomeProbabilities = calculateOutcomeProbabilities(
+    archetypeDef, 
+    analysis,
+    phaseSpecialized.phaseAdjustedWinRate
+  );
   
   // Trajectory breakers
   const trajectoryBreakers = getTrajectoryBreakers(signature);
+  
+  // v7.61: Add phase info to breakers
+  if (!isArchetypePhaseMatch(signature.archetype, phase)) {
+    trajectoryBreakers.unshift(`⚠️ ${signature.archetype} archetype unreliable in ${phase} phase`);
+  }
   
   return {
     predictedOutcome,
@@ -47,8 +94,11 @@ export function generateTrajectoryPrediction(
 function determinePredictedOutcome(
   signature: ColorFlowSignature,
   analysis: PositionAnalysis,
-  archetypeDef: typeof ARCHETYPE_DEFINITIONS[keyof typeof ARCHETYPE_DEFINITIONS]
+  archetypeDef: typeof ARCHETYPE_DEFINITIONS[keyof typeof ARCHETYPE_DEFINITIONS],
+  phaseAdjustedWinRate?: number,
+  shouldPredict: boolean = true
 ): 'white_wins' | 'black_wins' | 'draw' | 'unclear' {
+  // Forced outcomes: mate or decisive material
   if (analysis.evaluation.scoreType === 'mate') {
     return analysis.evaluation.score > 0 ? 'white_wins' : 'black_wins';
   }
@@ -57,9 +107,26 @@ function determinePredictedOutcome(
     return analysis.evaluation.score > 0 ? 'white_wins' : 'black_wins';
   }
   
+  // v7.61: If phase reliability is too low, abstain
+  if (!shouldPredict) {
+    return 'unclear';
+  }
+  
+  // Use phase-adjusted win rate if available
+  const effectiveWinRate = phaseAdjustedWinRate ?? archetypeDef.historicalWinRate;
+  
+  // v7.61: Phase-specialized thresholds
   if (signature.dominantSide !== 'contested') {
-    if (archetypeDef.historicalWinRate > 0.55) {
+    // Higher threshold = more confident predictions
+    if (effectiveWinRate > 0.58) {
       return signature.dominantSide === 'white' ? 'white_wins' : 'black_wins';
+    }
+    if (effectiveWinRate < 0.42) {
+      return signature.dominantSide === 'white' ? 'black_wins' : 'white_wins';
+    }
+    // In the "uncertain zone" (0.42-0.58), look at volatility
+    if (signature.temporalFlow.volatility < 30) {
+      return 'draw';  // Low volatility + uncertain = draw likely
     }
     return 'unclear';
   }
@@ -69,7 +136,8 @@ function determinePredictedOutcome(
 
 function generateMilestones(
   signature: ColorFlowSignature,
-  currentMove: number
+  currentMove: number,
+  phase?: string
 ): TrajectoryMilestone[] {
   const milestones: TrajectoryMilestone[] = [];
   
@@ -100,19 +168,31 @@ function generateMilestones(
     });
   }
   
+  // v7.61: Add phase-specific milestone if in endgame
+  if (phase === 'endgame' || phase === 'deep_endgame') {
+    milestones.push({
+      approximateMoveNumber: currentMove + 15,
+      description: 'Technique conversion window',
+      criticalSquares: ['king activity', 'passed pawns'],
+      expectedColorFlow: 'High reliability phase - patterns crystallized',
+    });
+  }
+  
   return milestones;
 }
 
 function calculateOutcomeProbabilities(
   archetypeDef: typeof ARCHETYPE_DEFINITIONS[keyof typeof ARCHETYPE_DEFINITIONS],
-  analysis: PositionAnalysis
+  analysis: PositionAnalysis,
+  phaseAdjustedWinRate?: number
 ): { whiteWin: number; blackWin: number; draw: number } {
-  const baseWin = archetypeDef.historicalWinRate;
+  // v7.61: Use phase-adjusted rate if available
+  const baseWin = phaseAdjustedWinRate ?? archetypeDef.historicalWinRate;
   const evalAdjust = Math.min(0.3, analysis.evaluation.score / 1000);
   
   const whiteWin = Math.min(0.95, Math.max(0.05, baseWin + evalAdjust));
   const blackWin = Math.min(0.95, Math.max(0.05, (1 - baseWin) - evalAdjust));
-  const draw = 1 - whiteWin - blackWin;
+  const draw = Math.max(0, 1 - whiteWin - blackWin);
   
   return { whiteWin, blackWin, draw };
 }
