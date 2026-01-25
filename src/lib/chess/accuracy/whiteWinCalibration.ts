@@ -90,34 +90,24 @@ export function calibrateForWhiteBias(
   const stockfishFavorsWhite = stockfishEval > 50;
   const stockfishFavorsBlack = stockfishEval < -50;
   
-  // v7.85 KEY FIX: Much more aggressive white win calibration
-  // prophylactic_defense was causing 2,500+ wrong predictions
+  // v7.87 TARGETED FIX: Only flip for specific high-risk archetypes
+  // v7.85-v7.86 was over-aggressive, flipping TOO MANY to white
+  // Now only flip when there's strong evidence of systematic under-prediction
   if (rawPrediction === 'black_wins') {
-    // Check for white bias correction conditions
+    // ONLY flip for prophylactic_defense - this was the main problem archetype
+    // Other archetypes should NOT auto-flip as they cause false positives
     const shouldFlipToWhite = (
-      // v7.85: prophylactic_defense specifically - flip unless Stockfish strongly favors black
-      (archetype === 'prophylactic_defense' && stockfishEval > -100) ||
+      // prophylactic_defense: flip unless Stockfish STRONGLY favors black (< -200)
+      (archetype === 'prophylactic_defense' && stockfishEval > -200 && dominantSide !== 'black') ||
       
-      // Archetype historically under-predicts white wins (high correction factor)
-      (biasCorrection >= 0.15 && stockfishEval > -150) ||
-      
-      // Medium bias correction with any positive or neutral Stockfish
-      (biasCorrection >= 0.10 && stockfishEval > -50) ||
-      
-      // Stockfish slightly favors white but we predicted black
-      (stockfishFavorsWhite && dominantSide === 'contested') ||
-      
-      // Center-dominated games with our black prediction are usually wrong
-      (archetype === 'central_domination' && stockfishEval > -30) ||
-      
-      // Contested position with archetype that favors white
-      (dominantSide === 'contested' && biasCorrection > 0.05 && stockfishEval > -80)
+      // Stockfish clearly favors white (+100) but we predicted black in contested position
+      (stockfishEval > 100 && dominantSide === 'contested')
     );
     
     if (shouldFlipToWhite) {
       return {
         calibratedPrediction: 'white_wins',
-        adjustmentApplied: `v7.85 Bias correction: ${archetype} under-predicts white (eval: ${stockfishEval})`,
+        adjustmentApplied: `v7.87 Targeted: ${archetype} flip (eval: ${stockfishEval}, side: ${dominantSide})`,
         adjustmentMagnitude: biasCorrection,
       };
     }

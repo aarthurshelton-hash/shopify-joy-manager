@@ -26,8 +26,8 @@
  * Pipeline MUST work without any external API.
  */
 
-const DUAL_POOL_VERSION = "7.58-STABLE";
-console.log(`[v7.58] dualPoolPipeline.ts LOADED - Version: ${DUAL_POOL_VERSION}`);
+const DUAL_POOL_VERSION = "7.87-TARGETED";
+console.log(`[v7.87] dualPoolPipeline.ts LOADED - Version: ${DUAL_POOL_VERSION}`);
 
 // v7.0: Hard timeout wrapper for any async operation
 function withTimeout<T>(promise: Promise<T>, ms: number, name: string): Promise<T> {
@@ -178,16 +178,10 @@ function shuffleArray<T>(array: T[]): T[] {
 }
 
 /**
- * v7.86-CALIBRATED: Generate hybrid prediction with WHITE WIN CALIBRATION applied
+ * v7.87-TARGETED: Generate hybrid prediction with TARGETED calibration
  * 
- * CRITICAL FIX: v6.96 was bypassing calibrateForWhiteBias() entirely!
- * This caused 2,500+ games with prophylactic_defense archetype to wrongly
- * predict black_wins when white actually won.
- * 
- * Now properly integrates:
- * 1. Color Flow trajectory analysis
- * 2. Stockfish tactical evaluation  
- * 3. White win calibration (v7.85 fix for prophylactic_defense bias)
+ * v7.85-v7.86 was over-aggressive, flipping too many predictions to white.
+ * v7.87 only flips for prophylactic_defense archetype or when SF strongly favors white.
  */
 async function generateLocalHybridPrediction(
   pgn: string,
@@ -233,19 +227,18 @@ async function generateLocalHybridPrediction(
       fusedConfidence = Math.max(45, colorPrediction.confidence);
     }
     
-    // v7.86-CALIBRATED: Apply white win calibration to fix prophylactic_defense bias
-    // This is the critical fix - v6.96 was completely skipping this!
+    // v7.87-TARGETED: Apply calibration only for high-risk archetypes
     const calibrated = calibrateForWhiteBias(
       fusedPrediction,
-      archetype as any, // Cast to StrategicArchetype
+      archetype as any,
       dominantSide as any,
       stockfishEval,
       fusedConfidence
     );
     
-    // Log calibration flips for monitoring
-    if (calibrated.adjustmentMagnitude !== 0) {
-      console.log(`[v7.86-CALIBRATED] ${fusedPrediction} → ${calibrated.calibratedPrediction}: ${calibrated.adjustmentApplied}`);
+    // Log calibration flips for monitoring (only when flip happens)
+    if (calibrated.calibratedPrediction !== fusedPrediction) {
+      console.log(`[v7.87-TARGETED] ${fusedPrediction} → ${calibrated.calibratedPrediction}: ${calibrated.adjustmentApplied}`);
     }
     
     return {
@@ -254,7 +247,7 @@ async function generateLocalHybridPrediction(
       archetype,
     };
   } catch (err) {
-    console.warn('[v7.86-CALIBRATED] Hybrid fallback to SF-only:', err);
+    console.warn('[v7.87-TARGETED] Hybrid fallback to SF-only:', err);
     const sfPred = evalToPrediction(stockfishEval);
     return {
       prediction: sfPred.prediction,
