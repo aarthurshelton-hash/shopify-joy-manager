@@ -178,8 +178,16 @@ function shuffleArray<T>(array: T[]): T[] {
 }
 
 /**
- * v6.96-LOCAL: Generate hybrid prediction using PRE-COMPUTED local Stockfish eval
- * This avoids calling the cloud API which causes 429 rate limit errors
+ * v7.86-CALIBRATED: Generate hybrid prediction with WHITE WIN CALIBRATION applied
+ * 
+ * CRITICAL FIX: v6.96 was bypassing calibrateForWhiteBias() entirely!
+ * This caused 2,500+ games with prophylactic_defense archetype to wrongly
+ * predict black_wins when white actually won.
+ * 
+ * Now properly integrates:
+ * 1. Color Flow trajectory analysis
+ * 2. Stockfish tactical evaluation  
+ * 3. White win calibration (v7.85 fix for prophylactic_defense bias)
  */
 async function generateLocalHybridPrediction(
   pgn: string,
@@ -191,9 +199,10 @@ async function generateLocalHybridPrediction(
   archetype: string;
 }> {
   try {
-    // Import simulation dynamically to avoid circular deps
+    // Import simulation and calibration dynamically to avoid circular deps
     const { simulateGame } = await import('./gameSimulator');
     const { extractColorFlowSignature, predictFromColorFlow } = await import('./colorFlowAnalysis');
+    const { calibrateForWhiteBias } = await import('./accuracy/whiteWinCalibration');
     
     const simulation = simulateGame(pgn);
     const colorSignature = extractColorFlowSignature(simulation.board, simulation.gameData, simulation.totalMoves);
@@ -201,30 +210,51 @@ async function generateLocalHybridPrediction(
     
     // Combine Stockfish eval with Color Flow prediction
     const sfPred = evalToPrediction(stockfishEval);
-    const archetype = colorSignature.archetype || 'UNKNOWN';
+    const archetype = colorSignature.archetype || 'unknown';
+    const dominantSide = colorSignature.dominantSide || 'contested';
     
     // Color flow predicted winner (from ColorFlowPrediction type)
-    const colorPredictionStr = 
+    const colorPredictionStr: 'white_wins' | 'black_wins' | 'draw' = 
       colorPrediction.predictedWinner === 'white' ? 'white_wins' :
       colorPrediction.predictedWinner === 'black' ? 'black_wins' : 'draw';
     
-    // Fuse: If both agree, high confidence. If disagree, use SF with reduced confidence.
+    // Fuse Color Flow + Stockfish
+    let fusedPrediction: 'white_wins' | 'black_wins' | 'draw';
+    let fusedConfidence: number;
+    
     if (sfPred.prediction === colorPredictionStr) {
-      return {
-        prediction: sfPred.prediction,
-        confidence: Math.min(98, sfPred.confidence + 10),
-        archetype,
-      };
+      // Both agree - high confidence
+      fusedPrediction = sfPred.prediction;
+      fusedConfidence = Math.min(98, sfPred.confidence + 10);
     } else {
-      // Stockfish has priority but lower confidence when Color Flow disagrees
-      return {
-        prediction: sfPred.prediction,
-        confidence: Math.max(35, sfPred.confidence - 15),
-        archetype,
-      };
+      // Disagreement - use Color Flow with moderate confidence
+      // v7.86: Trust Color Flow more when it disagrees with Stockfish
+      fusedPrediction = colorPredictionStr;
+      fusedConfidence = Math.max(45, colorPrediction.confidence);
     }
+    
+    // v7.86-CALIBRATED: Apply white win calibration to fix prophylactic_defense bias
+    // This is the critical fix - v6.96 was completely skipping this!
+    const calibrated = calibrateForWhiteBias(
+      fusedPrediction,
+      archetype as any, // Cast to StrategicArchetype
+      dominantSide as any,
+      stockfishEval,
+      fusedConfidence
+    );
+    
+    // Log calibration flips for monitoring
+    if (calibrated.adjustmentMagnitude !== 0) {
+      console.log(`[v7.86-CALIBRATED] ${fusedPrediction} → ${calibrated.calibratedPrediction}: ${calibrated.adjustmentApplied}`);
+    }
+    
+    return {
+      prediction: calibrated.calibratedPrediction as 'white_wins' | 'black_wins' | 'draw',
+      confidence: fusedConfidence,
+      archetype,
+    };
   } catch (err) {
-    console.warn('[v6.96-LOCAL] Hybrid fallback to SF-only:', err);
+    console.warn('[v7.86-CALIBRATED] Hybrid fallback to SF-only:', err);
     const sfPred = evalToPrediction(stockfishEval);
     return {
       prediction: sfPred.prediction,
