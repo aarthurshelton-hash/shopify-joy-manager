@@ -860,24 +860,85 @@ export default function Benchmark() {
             </div>
 
             {/* Shared Positions Slider - shown for BOTH modes */}
-            <div className="space-y-2 p-4 bg-muted/30 rounded-lg border border-border">
+            <div className="space-y-3 p-4 bg-muted/30 rounded-lg border border-border">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Unique Positions to Analyze</span>
                 <span className="font-mono font-medium text-primary">{gameCount}</span>
               </div>
+              
+              {/* Quick Preset Buttons */}
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant={gameCount === 10 ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setGameCount(10)}
+                  disabled={isRunning || isLocalRunning}
+                  className="text-xs"
+                >
+                  10 Quick
+                </Button>
+                <Button
+                  variant={gameCount === 30 ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setGameCount(30)}
+                  disabled={isRunning || isLocalRunning}
+                  className="text-xs"
+                >
+                  30 Standard
+                </Button>
+                <Button
+                  variant={gameCount === 100 ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setGameCount(100)}
+                  disabled={isRunning || isLocalRunning}
+                  className="text-xs"
+                >
+                  100 Thorough
+                </Button>
+                <Button
+                  variant={gameCount === 250 ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setGameCount(250)}
+                  disabled={isRunning || isLocalRunning}
+                  className="text-xs"
+                >
+                  250 Deep
+                </Button>
+                <Button
+                  variant={gameCount === 500 ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setGameCount(500)}
+                  disabled={isRunning || isLocalRunning}
+                  className="text-xs flex items-center gap-1"
+                >
+                  <Rocket className="h-3 w-3" />
+                  500 Marathon
+                </Button>
+              </div>
+              
               <Slider
                 value={[gameCount]}
                 onValueChange={([v]) => setGameCount(v)}
                 min={10}
-                max={100}
+                max={500}
                 step={10}
                 disabled={isRunning || isLocalRunning}
                 className="py-2"
               />
               <div className="flex justify-between text-xs text-muted-foreground">
                 <span>10 (quick)</span>
-                <span>100 (thorough)</span>
+                <span>500 (marathon)</span>
               </div>
+              
+              {/* Duration Estimate */}
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Clock className="h-3 w-3" />
+                <span>
+                  Estimated time: ~{gameCount <= 100 ? Math.round(gameCount * 3 / 60) : Math.round(gameCount * 2.5 / 60)} minutes
+                  {gameCount >= 250 && " — perfect for a long walk! ☕"}
+                </span>
+              </div>
+              
               <p className="text-xs text-muted-foreground">
                 Fetches ~8x more games to find unique positions (after deduplication)
               </p>
