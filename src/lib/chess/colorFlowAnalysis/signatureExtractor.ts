@@ -342,8 +342,18 @@ function classifyArchetype(
     return 'piece_harmony';
   }
   
-  // 12. Prophylactic defense - quieter games with modest activity
-  if (totalActivity < 150 && temporal.volatility < 35) {
+  // 12. Prophylactic defense - TIGHTENED: requires truly defensive characteristics
+  // v7.85: Much stricter criteria - must show actual defensive patterns not just low activity
+  const hasDefensiveCharacter = (
+    // Black must have genuine territorial presence (not just white being passive)
+    (quadrant.kingsideBlack < -10 || quadrant.queensideBlack < -10) &&
+    // Temporal shows black gaining or maintaining (not white building advantage)
+    (temporal.middlegame <= temporal.opening || temporal.endgame <= temporal.middlegame) &&
+    // Low crisis moments - true prophylaxis prevents tactics
+    moments.length <= 2
+  );
+  
+  if (totalActivity < 120 && temporal.volatility < 25 && hasDefensiveCharacter) {
     return 'prophylactic_defense';
   }
   
