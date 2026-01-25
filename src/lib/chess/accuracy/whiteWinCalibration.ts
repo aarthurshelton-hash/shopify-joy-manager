@@ -34,6 +34,10 @@ export const DRAW_PRIOR = 0.07;       // Actual draw rate in dataset
  * Based on analysis of where En Pensent most under-predicts white
  */
 export const ARCHETYPE_WHITE_BIAS_CORRECTION: Record<StrategicArchetype, number> = {
+  // v7.85: CRITICAL FIX - prophylactic_defense was causing 70% of white win losses
+  // When we classify as prophylactic_defense, we're often wrong about black having initiative
+  prophylactic_defense: 0.25,    // HIGHEST boost - this archetype massively under-predicts white
+  
   // Most problematic - severely under-predicts white
   central_domination: 0.20,      // White dominates center → often wins
   piece_harmony: 0.18,           // Coordination often favors white's initiative
@@ -44,15 +48,14 @@ export const ARCHETYPE_WHITE_BIAS_CORRECTION: Record<StrategicArchetype, number>
   queenside_expansion: 0.12,     // White queenside play effective
   pawn_storm: 0.10,              // White pawn storms with tempo
   sacrificial_attack: 0.08,      // White sacs with compensation
+  closed_maneuvering: 0.10,      // v7.85: was 0.05, boost for quiet white wins
   
   // Balanced prediction
   endgame_technique: 0.05,       // Relatively accurate
-  closed_maneuvering: 0.05,      // Accurate on slow games
   
   // Over-predicts white (negative correction)
   open_tactical: -0.05,          // Actually balanced in tactics
   opposite_castling: -0.08,      // Mutual attacks - draws more common
-  prophylactic_defense: -0.10,   // Black's prophylaxis works
   
   // Unknown - use neutral
   unknown: 0.0,
@@ -87,12 +90,19 @@ export function calibrateForWhiteBias(
   const stockfishFavorsWhite = stockfishEval > 50;
   const stockfishFavorsBlack = stockfishEval < -50;
   
-  // KEY FIX: When predicting black_wins but conditions are ambiguous, consider flipping
+  // v7.85 KEY FIX: Much more aggressive white win calibration
+  // prophylactic_defense was causing 2,500+ wrong predictions
   if (rawPrediction === 'black_wins') {
     // Check for white bias correction conditions
     const shouldFlipToWhite = (
-      // Archetype historically under-predicts white wins
-      (biasCorrection >= 0.10) ||
+      // v7.85: prophylactic_defense specifically - flip unless Stockfish strongly favors black
+      (archetype === 'prophylactic_defense' && stockfishEval > -100) ||
+      
+      // Archetype historically under-predicts white wins (high correction factor)
+      (biasCorrection >= 0.15 && stockfishEval > -150) ||
+      
+      // Medium bias correction with any positive or neutral Stockfish
+      (biasCorrection >= 0.10 && stockfishEval > -50) ||
       
       // Stockfish slightly favors white but we predicted black
       (stockfishFavorsWhite && dominantSide === 'contested') ||
@@ -107,7 +117,7 @@ export function calibrateForWhiteBias(
     if (shouldFlipToWhite) {
       return {
         calibratedPrediction: 'white_wins',
-        adjustmentApplied: `Bias correction: ${archetype} under-predicts white wins`,
+        adjustmentApplied: `v7.85 Bias correction: ${archetype} under-predicts white (eval: ${stockfishEval})`,
         adjustmentMagnitude: biasCorrection,
       };
     }
