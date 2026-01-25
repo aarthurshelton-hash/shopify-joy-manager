@@ -1,0 +1,247 @@
+/**
+ * IBKR Client Portal Gateway Hook
+ * 
+ * Manages connection to the local IBKR gateway and provides
+ * real-time account data and order execution for paper trading.
+ */
+
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { ibkrClient, IBKRAccount, IBKRPosition, IBKROrder } from '@/lib/trading/ibkrClient';
+import { useToast } from '@/hooks/use-toast';
+
+export interface IBKRGatewayState {
+  connected: boolean;
+  authenticated: boolean;
+  paperTrading: boolean;
+  accounts: IBKRAccount[];
+  selectedAccount: IBKRAccount | null;
+  positions: IBKRPosition[];
+  orders: IBKROrder[];
+  loading: boolean;
+  error: string | null;
+}
+
+export function useIBKRGateway() {
+  const [state, setState] = useState<IBKRGatewayState>({
+    connected: false,
+    authenticated: false,
+    paperTrading: false,
+    accounts: [],
+    selectedAccount: null,
+    positions: [],
+    orders: [],
+    loading: true,
+    error: null,
+  });
+
+  const tickleInterval = useRef<NodeJS.Timeout | null>(null);
+  const refreshInterval = useRef<NodeJS.Timeout | null>(null);
+  const { toast } = useToast();
+
+  // Check gateway connection
+  const checkConnection = useCallback(async () => {
+    try {
+      const status = await ibkrClient.checkConnection();
+      
+      setState(prev => ({
+        ...prev,
+        connected: status.connected,
+        authenticated: status.authenticated,
+        paperTrading: status.paperTrading,
+        loading: false,
+        error: status.connected ? null : 'Gateway not running. Start IBKR Client Portal Gateway.',
+      }));
+
+      return status;
+    } catch (err) {
+      setState(prev => ({
+        ...prev,
+        connected: false,
+        authenticated: false,
+        loading: false,
+        error: 'Failed to connect to IBKR Gateway',
+      }));
+      return { connected: false, authenticated: false, paperTrading: false };
+    }
+  }, []);
+
+  // Load accounts
+  const loadAccounts = useCallback(async () => {
+    const accounts = await ibkrClient.getAccounts();
+    
+    // Find paper trading account (usually has 'DU' prefix or 'Paper' type)
+    const paperAccount = accounts.find(
+      a => a.accountId.startsWith('DU') || 
+           a.accountType.toLowerCase().includes('paper') ||
+           a.accountType.toLowerCase().includes('demo')
+    );
+    
+    setState(prev => ({
+      ...prev,
+      accounts,
+      selectedAccount: paperAccount || accounts[0] || null,
+    }));
+
+    return accounts;
+  }, []);
+
+  // Load positions for selected account
+  const loadPositions = useCallback(async () => {
+    if (!state.selectedAccount) return [];
+    
+    const positions = await ibkrClient.getPositions(state.selectedAccount.accountId);
+    setState(prev => ({ ...prev, positions }));
+    return positions;
+  }, [state.selectedAccount]);
+
+  // Load orders
+  const loadOrders = useCallback(async () => {
+    const orders = await ibkrClient.getOrders();
+    setState(prev => ({ ...prev, orders }));
+    return orders;
+  }, []);
+
+  // Refresh all data
+  const refreshData = useCallback(async () => {
+    if (!state.authenticated) return;
+    
+    await Promise.all([
+      loadAccounts(),
+      loadPositions(),
+      loadOrders(),
+    ]);
+  }, [state.authenticated, loadAccounts, loadPositions, loadOrders]);
+
+  // Place order
+  const placeOrder = useCallback(async (params: {
+    symbol: string;
+    side: 'BUY' | 'SELL';
+    quantity: number;
+    orderType: 'MKT' | 'LMT';
+    price?: number;
+  }) => {
+    if (!state.selectedAccount) {
+      toast({
+        title: 'No Account Selected',
+        description: 'Please select an IBKR account first.',
+        variant: 'destructive',
+      });
+      return null;
+    }
+
+    // Search for contract first
+    const contracts = await ibkrClient.searchContract(params.symbol);
+    if (contracts.length === 0) {
+      toast({
+        title: 'Symbol Not Found',
+        description: `Could not find contract for ${params.symbol}`,
+        variant: 'destructive',
+      });
+      return null;
+    }
+
+    const conid = contracts[0].conid;
+
+    // Place the order
+    const result = await ibkrClient.placeOrder({
+      accountId: state.selectedAccount.accountId,
+      conid,
+      side: params.side,
+      quantity: params.quantity,
+      orderType: params.orderType,
+      price: params.price,
+    });
+
+    if (result) {
+      toast({
+        title: 'Order Placed',
+        description: `${params.side} ${params.quantity} ${params.symbol} - ${result.status}`,
+      });
+      
+      // Refresh orders
+      await loadOrders();
+    } else {
+      toast({
+        title: 'Order Failed',
+        description: 'Could not place order. Check gateway connection.',
+        variant: 'destructive',
+      });
+    }
+
+    return result;
+  }, [state.selectedAccount, toast, loadOrders]);
+
+  // Cancel order
+  const cancelOrder = useCallback(async (orderId: string) => {
+    if (!state.selectedAccount) return false;
+    
+    const success = await ibkrClient.cancelOrder(state.selectedAccount.accountId, orderId);
+    
+    if (success) {
+      toast({
+        title: 'Order Cancelled',
+        description: `Order ${orderId} has been cancelled.`,
+      });
+      await loadOrders();
+    }
+    
+    return success;
+  }, [state.selectedAccount, toast, loadOrders]);
+
+  // Select account
+  const selectAccount = useCallback((accountId: string) => {
+    const account = state.accounts.find(a => a.accountId === accountId);
+    if (account) {
+      setState(prev => ({ ...prev, selectedAccount: account }));
+    }
+  }, [state.accounts]);
+
+  // Initialize and maintain connection
+  useEffect(() => {
+    const init = async () => {
+      const status = await checkConnection();
+      
+      if (status.authenticated) {
+        await loadAccounts();
+        await loadPositions();
+        await loadOrders();
+        
+        // Start tickle interval to keep session alive (every 5 min)
+        tickleInterval.current = setInterval(() => {
+          ibkrClient.tickle();
+        }, 5 * 60 * 1000);
+        
+        // Start data refresh interval (every 10 sec)
+        refreshInterval.current = setInterval(() => {
+          refreshData();
+        }, 10000);
+      }
+    };
+
+    init();
+
+    return () => {
+      if (tickleInterval.current) clearInterval(tickleInterval.current);
+      if (refreshInterval.current) clearInterval(refreshInterval.current);
+    };
+  }, []);
+
+  // Reload positions when account changes
+  useEffect(() => {
+    if (state.selectedAccount && state.authenticated) {
+      loadPositions();
+    }
+  }, [state.selectedAccount?.accountId]);
+
+  return {
+    ...state,
+    checkConnection,
+    loadAccounts,
+    loadPositions,
+    loadOrders,
+    refreshData,
+    placeOrder,
+    cancelOrder,
+    selectAccount,
+  };
+}

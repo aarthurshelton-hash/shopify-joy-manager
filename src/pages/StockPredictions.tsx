@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { TrendingUp, TrendingDown, Minus, RefreshCw, Target, BarChart3, Save, Layers, Trophy, History, Zap, Wifi, DollarSign, Activity } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, RefreshCw, Target, BarChart3, Save, Layers, Trophy, History, Zap, Wifi, DollarSign, Activity, Landmark } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { 
@@ -27,6 +27,7 @@ import OptionsScalpingTerminal from '@/components/options/OptionsScalpingTermina
 import { useRealtimeAccuracy, subscribeToAccuracyUpdates } from '@/hooks/useRealtimeAccuracy';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useTradingSessionStore } from '@/stores/tradingSessionStore';
+import { IBKRPaperTradingPanel } from '@/components/trading/IBKRPaperTradingPanel';
 
 interface StockData {
   symbol: string;
@@ -283,12 +284,15 @@ const StockPredictionDashboard: React.FC = () => {
 
       {/* Main Navigation Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
-        <TabsList className="grid grid-cols-6 w-full max-w-3xl mx-auto">
+        <TabsList className="grid grid-cols-7 w-full max-w-4xl mx-auto">
           <TabsTrigger value="scalping" className="flex items-center gap-1">
             <Zap className="w-4 h-4" /> Scalping
           </TabsTrigger>
           <TabsTrigger value="options" className="flex items-center gap-1">
             <Activity className="w-4 h-4" /> Options
+          </TabsTrigger>
+          <TabsTrigger value="ibkr" className="flex items-center gap-1">
+            <Landmark className="w-4 h-4" /> IBKR
           </TabsTrigger>
           <TabsTrigger value="analyze" className="flex items-center gap-1">
             <Target className="w-4 h-4" /> Analyze
@@ -313,6 +317,12 @@ const StockPredictionDashboard: React.FC = () => {
         <TabsContent value="options">
           <ErrorBoundary componentName="OptionsTerminal">
             <OptionsScalpingTerminal />
+          </ErrorBoundary>
+        </TabsContent>
+        
+        <TabsContent value="ibkr">
+          <ErrorBoundary componentName="IBKRTrading">
+            <IBKRPaperTradingPanel />
           </ErrorBoundary>
         </TabsContent>
 
