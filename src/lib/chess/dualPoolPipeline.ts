@@ -26,8 +26,8 @@
  * Pipeline MUST work without any external API.
  */
 
-const DUAL_POOL_VERSION = "7.88-EQUILIBRIUM";
-console.log(`[v7.88] dualPoolPipeline.ts LOADED - Version: ${DUAL_POOL_VERSION}`);
+const DUAL_POOL_VERSION = "7.89-BALANCED";
+console.log(`[v7.89] dualPoolPipeline.ts LOADED - Version: ${DUAL_POOL_VERSION}`);
 
 // v7.0: Hard timeout wrapper for any async operation
 function withTimeout<T>(promise: Promise<T>, ms: number, name: string): Promise<T> {
@@ -183,6 +183,16 @@ function shuffleArray<T>(array: T[]): T[] {
  * v7.85-v7.86 was over-aggressive, flipping too many predictions to white.
  * v7.87 only flips for prophylactic_defense archetype or when SF strongly favors white.
  */
+/**
+ * v7.89-BALANCED: Generate hybrid prediction using fixed Color Flow logic
+ * 
+ * KEY INSIGHT: The color flow prediction engine now uses DOMINANT SIDE
+ * as the primary factor, not archetype. No more post-hoc calibration needed.
+ * 
+ * Fusion strategy:
+ * - If SF and Color Flow agree → high confidence, use that prediction
+ * - If they disagree → weighted blend based on position characteristics
+ */
 async function generateLocalHybridPrediction(
   pgn: string,
   stockfishEval: number,
@@ -193,61 +203,60 @@ async function generateLocalHybridPrediction(
   archetype: string;
 }> {
   try {
-    // Import simulation and calibration dynamically to avoid circular deps
     const { simulateGame } = await import('./gameSimulator');
     const { extractColorFlowSignature, predictFromColorFlow } = await import('./colorFlowAnalysis');
-    const { calibrateForWhiteBias } = await import('./accuracy/whiteWinCalibration');
     
     const simulation = simulateGame(pgn);
     const colorSignature = extractColorFlowSignature(simulation.board, simulation.gameData, simulation.totalMoves);
     const colorPrediction = predictFromColorFlow(colorSignature, simulation.totalMoves);
     
-    // Combine Stockfish eval with Color Flow prediction
     const sfPred = evalToPrediction(stockfishEval);
     const archetype = colorSignature.archetype || 'unknown';
-    const dominantSide = colorSignature.dominantSide || 'contested';
     
-    // Color flow predicted winner (from ColorFlowPrediction type)
+    // Color flow predicted winner
     const colorPredictionStr: 'white_wins' | 'black_wins' | 'draw' = 
       colorPrediction.predictedWinner === 'white' ? 'white_wins' :
       colorPrediction.predictedWinner === 'black' ? 'black_wins' : 'draw';
     
-    // Fuse Color Flow + Stockfish
+    // v7.89 BALANCED FUSION: No more calibration layer
     let fusedPrediction: 'white_wins' | 'black_wins' | 'draw';
     let fusedConfidence: number;
     
     if (sfPred.prediction === colorPredictionStr) {
-      // Both agree - high confidence
+      // Agreement = high confidence, use shared prediction
       fusedPrediction = sfPred.prediction;
-      fusedConfidence = Math.min(98, sfPred.confidence + 10);
+      fusedConfidence = Math.min(95, (sfPred.confidence + colorPrediction.confidence) / 2 + 15);
     } else {
-      // Disagreement - use Color Flow with moderate confidence
-      // v7.86: Trust Color Flow more when it disagrees with Stockfish
-      fusedPrediction = colorPredictionStr;
-      fusedConfidence = Math.max(45, colorPrediction.confidence);
-    }
-    
-    // v7.87-TARGETED: Apply calibration only for high-risk archetypes
-    const calibrated = calibrateForWhiteBias(
-      fusedPrediction,
-      archetype as any,
-      dominantSide as any,
-      stockfishEval,
-      fusedConfidence
-    );
-    
-    // Log calibration flips for monitoring (only when flip happens)
-    if (calibrated.calibratedPrediction !== fusedPrediction) {
-      console.log(`[v7.87-TARGETED] ${fusedPrediction} → ${calibrated.calibratedPrediction}: ${calibrated.adjustmentApplied}`);
+      // Disagreement - use weighted blend based on evaluation strength
+      const sfStrength = Math.abs(stockfishEval);
+      
+      if (sfStrength > 200) {
+        // Strong SF advantage - trust Stockfish more
+        fusedPrediction = sfPred.prediction;
+        fusedConfidence = Math.min(80, sfPred.confidence);
+      } else if (sfStrength < 30) {
+        // Unclear position - trust Color Flow pattern recognition
+        fusedPrediction = colorPredictionStr;
+        fusedConfidence = Math.max(45, colorPrediction.confidence);
+      } else {
+        // Medium eval - weight by confidence levels
+        if (colorPrediction.confidence > sfPred.confidence + 10) {
+          fusedPrediction = colorPredictionStr;
+          fusedConfidence = colorPrediction.confidence;
+        } else {
+          fusedPrediction = sfPred.prediction;
+          fusedConfidence = sfPred.confidence;
+        }
+      }
     }
     
     return {
-      prediction: calibrated.calibratedPrediction as 'white_wins' | 'black_wins' | 'draw',
+      prediction: fusedPrediction,
       confidence: fusedConfidence,
       archetype,
     };
   } catch (err) {
-    console.warn('[v7.87-TARGETED] Hybrid fallback to SF-only:', err);
+    console.warn('[v7.89-BALANCED] Hybrid fallback to SF-only:', err);
     const sfPred = evalToPrediction(stockfishEval);
     return {
       prediction: sfPred.prediction,

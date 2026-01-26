@@ -1,7 +1,12 @@
 /**
- * Color Flow Prediction Engine
+ * Color Flow Prediction Engine v7.89-BALANCED
  * 
  * Generates strategic predictions from color flow signatures
+ * 
+ * v7.89 CRITICAL FIX:
+ * - Previous logic always defaulted to white when dominantSide was 'contested'
+ * - Now properly uses DOMINANT SIDE as the PRIMARY prediction factor
+ * - Archetype only influences confidence, not the predicted winner
  */
 
 import { ColorFlowSignature, ColorFlowPrediction, StrategicArchetype } from './types';
@@ -9,6 +14,9 @@ import { ARCHETYPE_DEFINITIONS } from './archetypeDefinitions';
 
 /**
  * Generate strategic predictions based on color flow signature
+ * 
+ * v7.89 FIX: The predicted winner is determined by WHO controls the board,
+ * not by which archetype is detected. Archetype only adjusts confidence.
  */
 export function predictFromColorFlow(
   signature: ColorFlowSignature,
@@ -16,20 +24,54 @@ export function predictFromColorFlow(
 ): ColorFlowPrediction {
   const archetypeDef = ARCHETYPE_DEFINITIONS[signature.archetype];
   
-  // Base prediction on archetype
+  // v7.89 CRITICAL: Prediction based on DOMINANT SIDE, not archetype
+  // The side that controls the board wins - this is the core insight
   let predictedWinner: 'white' | 'black' | 'draw';
-  if (archetypeDef.predictedOutcome === 'balanced') {
-    predictedWinner = 'draw';
-  } else if (archetypeDef.predictedOutcome === 'white_favored') {
-    predictedWinner = signature.dominantSide === 'black' ? 'black' : 'white';
-  } else {
+  
+  if (signature.dominantSide === 'white') {
+    predictedWinner = 'white';
+  } else if (signature.dominantSide === 'black') {
     predictedWinner = 'black';
+  } else {
+    // Contested position - use intensity and momentum to decide
+    // If intensity is very low (<20), likely a draw
+    // Otherwise, use temporal flow to see who has momentum
+    if (signature.intensity < 20) {
+      predictedWinner = 'draw';
+    } else {
+      // Check quadrant control for tiebreaker
+      const quadrant = signature.quadrantProfile;
+      const whiteControl = quadrant.kingsideWhite + quadrant.queensideWhite;
+      const blackControl = quadrant.kingsideBlack + quadrant.queensideBlack;
+      
+      if (Math.abs(whiteControl - blackControl) < 5) {
+        // Very close - predict draw
+        predictedWinner = 'draw';
+      } else {
+        predictedWinner = whiteControl > blackControl ? 'white' : 'black';
+      }
+    }
   }
   
-  // Adjust confidence based on pattern clarity
-  let confidence = archetypeDef.historicalWinRate * 100;
-  confidence *= (signature.intensity / 100);
-  confidence = Math.round(confidence);
+  // Calculate confidence from archetype + intensity + temporal patterns
+  let confidence = 50; // Base confidence
+  
+  // Boost from archetype historical win rate
+  confidence += (archetypeDef.historicalWinRate - 0.5) * 40;
+  
+  // Boost from pattern intensity (how clear is the pattern?)
+  confidence += (signature.intensity - 50) * 0.3;
+  
+  // Boost from temporal volatility (lower volatility = more confident)
+  confidence -= signature.temporalFlow.volatility * 0.15;
+  
+  // Boost if dominant side matches archetype prediction
+  if (signature.dominantSide !== 'contested') {
+    confidence += 10;
+  }
+  
+  // Clamp to reasonable range
+  confidence = Math.max(30, Math.min(85, Math.round(confidence)));
   
   // Strategic guidance based on archetype
   const guidance = generateStrategicGuidance(signature);
@@ -124,8 +166,8 @@ function describeExpectedEvolution(
     }. Watch for tactical breaks in the ${signature.flowDirection}.`;
   } else {
     return `Late game ${archetype.name}. Pattern suggests ${
-      archetype.predictedOutcome === 'balanced' ? 'drawing tendencies' : 
-      `favorable conversion for ${archetype.predictedOutcome.replace('_favored', '')}`
+      signature.dominantSide === 'contested' ? 'drawing tendencies' : 
+      `favorable conversion for ${signature.dominantSide}`
     }.`;
   }
 }
