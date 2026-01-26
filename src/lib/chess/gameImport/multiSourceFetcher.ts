@@ -357,8 +357,8 @@ async function fetchFromChessCom(
       }
     }
     
-    // v6.80-PATIENT: Respectful delay between chunks
-    await new Promise(r => setTimeout(r, 1500));
+    // v7.90-TURBO: Minimal delay for throughput (Chess.com is less rate-limited)
+    await new Promise(r => setTimeout(r, 200));
   }
   
   console.log(`[ChessCom] Batch complete: ${games.length} games`);
@@ -422,8 +422,8 @@ async function fetchFromLichess(
       console.warn(`[Lichess v6.86] Rate limited - WAITING ${waitSec}s then resuming (not breaking!)`);
       errors.push(`[Lichess] Rate limit pause: ${waitSec}s (will resume)`);
       
-      // WAIT for the full cooldown period
-      await new Promise(r => setTimeout(r, serverResetMs + 2000)); // +2s safety margin
+      // v7.90-TURBO: Wait for cooldown with minimal safety margin
+      await new Promise(r => setTimeout(r, serverResetMs + 500)); // +500ms safety
       
       // Reset rate limit state after waiting
       serverRateLimited = false;
@@ -572,10 +572,11 @@ async function fetchFromLichess(
       }
     }
     
-    // v6.86-PATIENT: Generous delay between chunks to avoid rate limits
-    const chunkDelay = rateLimitHits > 0 ? 10000 : 4000; // 10s after issues, 4s normally
-    console.log(`[v6.86-PATIENT] Waiting ${chunkDelay/1000}s before next chunk...`);
-    await new Promise(r => setTimeout(r, chunkDelay));
+    // v7.90-TURBO: Fast chunks - rate limiting is handled per-request, not per-chunk
+    const chunkDelay = rateLimitHits > 0 ? 1500 : 300; // 1.5s after issues, 300ms normally
+    if (games.length < targetCount) {
+      await new Promise(r => setTimeout(r, chunkDelay));
+    }
   }
   
   console.log(`[Lichess] Batch complete: ${games.length} games`);
