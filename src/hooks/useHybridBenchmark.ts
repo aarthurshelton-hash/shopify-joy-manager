@@ -28,8 +28,8 @@
 // 3. Only mark as failed after ALL retries exhausted
 // 4. Every game that CAN be analyzed SHOULD be analyzed
 // 5. ALL ID tracking (failed, session, DB) uses RAW IDs only - no prefix mismatch
-const BENCHMARK_VERSION = "7.90-TURBO-FLOW";
-console.log(`[v7.90] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION} (Zero-pause pipeline)`);
+const BENCHMARK_VERSION = "7.95-ZERO-PAUSE";
+console.log(`[v${BENCHMARK_VERSION}] useHybridBenchmark LOADED - Optimized zero-pause pipeline`);
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -694,8 +694,8 @@ export function useHybridBenchmark() {
       // v7.51-PUMP: Track consecutive engine failures separately
       let consecutiveEngineFailures = 0;
       
-      // v6.43-BULLETPROOF: Incremental save function - saves every N predictions to prevent data loss
-      const SAVE_INTERVAL = 5; // Save every 5 predictions
+      // v7.95-ZERO-PAUSE: Less frequent saves - every 15 predictions to reduce pauses
+      const SAVE_INTERVAL = 15;
       let lastSaveIndex = 0;
       
       async function saveIncrementalResults() {
@@ -841,10 +841,10 @@ export function useHybridBenchmark() {
           console.log(`[v6.80] 📥 FETCH PHASE: Queue empty, need ${gameCount - predictedCount} more predictions`);
           console.log(`[v6.80] Stats: predicted=${predictedCount}, index=${gameIndex}, queueLen=${gameQueue.length}`);
           
-          // v7.90-TURBO: Minimal backoff - 200ms base, max 2s
+          // v7.95-ZERO-PAUSE: Ultra-minimal backoff - 50ms base, max 500ms
           if (emptyBatchStreak > 0) {
-            const waitTime = Math.min(200 * Math.pow(1.5, emptyBatchStreak), 2000);
-            console.log(`[v7.90] ⏳ Quick backoff: ${waitTime}ms (streak: ${emptyBatchStreak})`);
+            const waitTime = Math.min(50 * Math.pow(1.3, emptyBatchStreak), 500);
+            console.log(`[v7.95] ⏳ Micro backoff: ${waitTime}ms`);
             await new Promise(r => setTimeout(r, waitTime));
           }
           
@@ -994,19 +994,19 @@ export function useHybridBenchmark() {
           continue;
         }
         
-        // v7.51-PUMP: Fast analysis with minimal retries
-        const MAX_ENGINE_RETRIES = 1; // v7.51: 1 retry only (was 2)
+        // v7.95-ZERO-PAUSE: Ultra-fast analysis with instant retry
+        const MAX_ENGINE_RETRIES = 1;
         let engineRetries = 0;
         let engineSucceeded = false;
         
         while (engineRetries <= MAX_ENGINE_RETRIES && !engineSucceeded) {
-          // v7.51-PUMP: Aggressive timeouts - 8s normal, 15s deep
-          const ANALYSIS_TIMEOUT = depth >= 40 ? 15000 : 8000;
+          // v7.95: Aggressive timeouts - 6s normal, 12s deep
+          const ANALYSIS_TIMEOUT = depth >= 40 ? 12000 : 6000;
           
           try {
             if (engineRetries > 0) {
-              console.log(`[v7.90] 🔄 Retry ${engineRetries}`);
-              await new Promise(r => setTimeout(r, 100)); // v7.90: 100ms (was 200ms)
+              console.log(`[v7.95] 🔄 Instant retry`);
+              // v7.95: No wait between retries - just stop and go
               try { engine.stop(); } catch (e) { /* ignore */ }
               await engine.waitReady();
             }
@@ -1035,18 +1035,19 @@ export function useHybridBenchmark() {
           failedGameIds.add(rawGameId);
           consecutiveSkips++;
           
-          // v7.51-PUMP: Quick recovery after 3 consecutive failures
+          // v7.95-ZERO-PAUSE: Instant recovery after 3 consecutive failures
           if (consecutiveEngineFailures >= 3) {
-            console.warn(`[v7.90] Quick recovery after ${consecutiveEngineFailures} failures`);
+            console.warn(`[v7.95] Instant recovery after ${consecutiveEngineFailures} failures`);
             try { engine.stop(); } catch (e) { /* ignore */ }
-            await new Promise(r => setTimeout(r, 300)); // v7.90: 300ms (was 500ms)
+            // v7.95: 100ms micro-pause then continue
+            await new Promise(r => setTimeout(r, 100));
             
             const reready = await engine.waitReady();
             if (reready) {
               consecutiveEngineFailures = 0;
               gamesProcessedSinceHealthCheck = 0;
             } else {
-              console.error(`[v7.51] ❌ Engine failed to recover`);
+              console.error(`[v7.95] ❌ Engine failed to recover`);
               await saveIncrementalResults();
               break;
             }

@@ -78,15 +78,15 @@ interface EvolutionConfig {
   healthCheckIntervalMs: number; // Check engine health
 }
 
-// v7.51-FAST: Minimal intervals for continuous throughput
+// v7.95-ZERO-PAUSE: Optimized intervals for continuous throughput
 const DEFAULT_CONFIG: EvolutionConfig = {
   cloudBatchSize: 5,               // 5 games per volume batch
   localBatchSize: 1,               // 1 game per deep batch
-  cloudBatchIntervalMs: 15 * 1000,       // v7.51: 15s between volume batches (was 90s)
-  localBatchIntervalMs: 60 * 1000,       // v7.51: 60s between deep batches (was 5 min)
+  cloudBatchIntervalMs: 10 * 1000,       // v7.95: 10s between volume batches (was 15s)
+  localBatchIntervalMs: 45 * 1000,       // v7.95: 45s between deep batches (was 60s)
   maxConsecutiveErrors: 3,         // Allow 3 errors before recovery
-  recoveryDelayMs: 2000,           // v7.51: 2s recovery delay (was 5s)
-  healthCheckIntervalMs: 60 * 1000,      // v7.51: 1 min health checks (was 2 min)
+  recoveryDelayMs: 500,            // v7.95: 500ms recovery delay (was 2s)
+  healthCheckIntervalMs: 120 * 1000,     // v7.95: 2 min health checks (less frequent)
 };
 
 // v7.0: Hard timeout for any batch operation
@@ -276,23 +276,23 @@ async function performHealthCheck(): Promise<boolean> {
 }
 
 async function recoverStockfish(): Promise<void> {
-  console.log('[v6.93] Recovering Stockfish engine...');
+  console.log('[v7.95] Recovering Stockfish engine...');
   
   try {
     terminateStockfish();
-    await new Promise(r => setTimeout(r, 2000));
+    await new Promise(r => setTimeout(r, 500)); // v7.95: 500ms (was 2000ms)
     
     const engine = getStockfishEngine();
     await engine.waitReady();
     
-    console.log('[v6.93] Stockfish recovered ✓');
+    console.log('[v7.95] Stockfish recovered ✓');
   } catch (err) {
-    console.error('[v6.93] Stockfish recovery failed:', err);
+    console.error('[v7.95] Stockfish recovery failed:', err);
   }
 }
 
 async function performFullRecovery(): Promise<void> {
-  console.log('[v6.93] FULL RECOVERY initiated...');
+  console.log('[v7.95] FULL RECOVERY initiated...');
   engineState.recoveryCount++;
   
   emitEvent('recovery_started', { count: engineState.recoveryCount });
@@ -301,7 +301,7 @@ async function performFullRecovery(): Promise<void> {
   stopTimers();
   
   // 2. Wait for any in-flight operations
-  await new Promise(r => setTimeout(r, DEFAULT_CONFIG.recoveryDelayMs));
+  await new Promise(r => setTimeout(r, Math.min(DEFAULT_CONFIG.recoveryDelayMs, 1000)));
   
   // 3. Recover Stockfish
   await recoverStockfish();
@@ -314,15 +314,15 @@ async function performFullRecovery(): Promise<void> {
   // 5. Persist state
   await persistEvolutionState();
   
-  // 6. Restart if engine was running
+  // 6. Restart if engine was running - v7.95: 1s delay instead of 5s
   if (engineState.isRunning && !engineState.isPaused) {
-    console.log('[v6.93] Restarting after recovery...');
-    await new Promise(r => setTimeout(r, 5000));
+    console.log('[v7.95] Restarting after recovery...');
+    await new Promise(r => setTimeout(r, 1000));
     startTimers();
   }
   
   emitEvent('recovery_complete', { count: engineState.recoveryCount });
-  console.log('[v6.93] FULL RECOVERY complete ✓');
+  console.log('[v7.95] FULL RECOVERY complete ✓');
 }
 
 // ================ BATCH PROCESSORS ================
