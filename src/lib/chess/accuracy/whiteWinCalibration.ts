@@ -90,25 +90,34 @@ export function calibrateForWhiteBias(
   const stockfishFavorsWhite = stockfishEval > 50;
   const stockfishFavorsBlack = stockfishEval < -50;
   
-  // v7.87 TARGETED FIX: Only flip for specific high-risk archetypes
-  // v7.85-v7.86 was over-aggressive, flipping TOO MANY to white
-  // Now only flip when there's strong evidence of systematic under-prediction
+  // v7.88 EQUILIBRIUM: Minimal intervention - trust the engine more
+  // Data shows: We beat SF on black wins (48.5% vs 33.4%), SF beats us on white (70.8% vs 53.6%)
+  // The solution is NOT to flip aggressively, but to improve underlying pattern recognition
+  
+  // ONLY flip in extreme disagreement cases with high Stockfish confidence
   if (rawPrediction === 'black_wins') {
-    // ONLY flip for prophylactic_defense - this was the main problem archetype
-    // Other archetypes should NOT auto-flip as they cause false positives
-    const shouldFlipToWhite = (
-      // prophylactic_defense: flip unless Stockfish STRONGLY favors black (< -200)
-      (archetype === 'prophylactic_defense' && stockfishEval > -200 && dominantSide !== 'black') ||
-      
-      // Stockfish clearly favors white (+100) but we predicted black in contested position
-      (stockfishEval > 100 && dominantSide === 'contested')
-    );
+    // Flip ONLY when Stockfish is VERY confident white is winning (eval > 150)
+    // AND our confidence is low (< 55)
+    const extremeWhiteAdvantage = stockfishEval > 150 && confidence < 55;
     
-    if (shouldFlipToWhite) {
+    if (extremeWhiteAdvantage) {
       return {
         calibratedPrediction: 'white_wins',
-        adjustmentApplied: `v7.87 Targeted: ${archetype} flip (eval: ${stockfishEval}, side: ${dominantSide})`,
+        adjustmentApplied: `v7.88 Equilibrium: SF strongly favors white (${stockfishEval}cp)`,
         adjustmentMagnitude: biasCorrection,
+      };
+    }
+  }
+  
+  // Mirror logic for white_wins predictions when SF strongly disagrees
+  if (rawPrediction === 'white_wins') {
+    const extremeBlackAdvantage = stockfishEval < -150 && confidence < 55;
+    
+    if (extremeBlackAdvantage) {
+      return {
+        calibratedPrediction: 'black_wins',
+        adjustmentApplied: `v7.88 Equilibrium: SF strongly favors black (${stockfishEval}cp)`,
+        adjustmentMagnitude: -biasCorrection,
       };
     }
   }
