@@ -1,29 +1,18 @@
 /**
- * IBKR Gateway Hook with Simulated Trading Fallback
+ * IBKR Gateway Hook
  * 
- * Manages connection to IBKR gateway with automatic fallback
- * to simulated paper trading when gateway is unavailable.
+ * Manages connection to IBKR Client Portal Gateway for real paper trading.
+ * No simulation fallback - requires actual IBKR connection.
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { ibkrClient, IBKRAccount, IBKRPosition, IBKROrder } from '@/lib/trading/ibkrClient';
-import { 
-  getSimulatedAccount, 
-  getSimulatedPositions, 
-  getSimulatedOrders,
-  placeSimulatedOrder,
-  cancelSimulatedOrder,
-  resetSimulatedAccount,
-} from '@/lib/trading/simulatedTrading';
 import { useToast } from '@/hooks/use-toast';
-
-export type TradingMode = 'ibkr' | 'simulated';
 
 export interface IBKRGatewayState {
   connected: boolean;
   authenticated: boolean;
   paperTrading: boolean;
-  tradingMode: TradingMode;
   accounts: IBKRAccount[];
   selectedAccount: IBKRAccount | null;
   positions: IBKRPosition[];
@@ -37,7 +26,6 @@ export function useIBKRGateway() {
     connected: false,
     authenticated: false,
     paperTrading: false,
-    tradingMode: 'simulated', // Default to simulated
     accounts: [],
     selectedAccount: null,
     positions: [],
@@ -50,61 +38,10 @@ export function useIBKRGateway() {
   const refreshInterval = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
-  // Switch to simulated trading mode
-  const enableSimulatedMode = useCallback(() => {
-    console.log('[IBKR] Switching to simulated trading mode');
-    const simAccount = getSimulatedAccount();
-    const simPositions = getSimulatedPositions();
-    const simOrders = getSimulatedOrders();
-    
-    setState(prev => ({
-      ...prev,
-      connected: true,
-      authenticated: true,
-      paperTrading: true,
-      tradingMode: 'simulated' as TradingMode,
-      loading: false,
-      error: null,
-      accounts: [{
-        accountId: simAccount.accountId,
-        accountType: simAccount.accountType,
-        balance: simAccount.balance,
-        buyingPower: simAccount.buyingPower,
-        currency: 'USD',
-      }],
-      selectedAccount: {
-        accountId: simAccount.accountId,
-        accountType: simAccount.accountType,
-        balance: simAccount.balance,
-        buyingPower: simAccount.buyingPower,
-        currency: 'USD',
-      },
-      positions: simPositions.map(p => ({
-        ...p,
-        realizedPnl: 0,
-      })),
-      orders: simOrders.map(o => ({
-        orderId: o.orderId,
-        conid: 0,
-        symbol: o.symbol,
-        side: o.side,
-        orderType: o.orderType as 'MKT' | 'LMT' | 'STP' | 'STP_LIMIT',
-        quantity: o.quantity,
-        filledQuantity: o.filledQuantity,
-        status: o.status,
-        price: o.price,
-      })),
-    }));
-    
-    toast({
-      title: 'Simulated Trading Active',
-      description: 'Using local simulation. Start with $1,000!',
-    });
-  }, [toast]);
-
   // Check gateway connection with timeout
   const checkConnection = useCallback(async () => {
     console.log('[IBKR] Checking gateway connection...');
+    setState(prev => ({ ...prev, loading: true, error: null }));
     
     // Set a timeout to ensure we don't stay loading forever
     const timeoutId = setTimeout(() => {
@@ -185,45 +122,8 @@ export function useIBKRGateway() {
     return orders;
   }, []);
 
-  // Refresh all data (works for both modes)
+  // Refresh all data
   const refreshData = useCallback(async () => {
-    if (state.tradingMode === 'simulated') {
-      const simAccount = getSimulatedAccount();
-      const simPositions = getSimulatedPositions();
-      const simOrders = getSimulatedOrders();
-      
-      setState(prev => ({
-        ...prev,
-        accounts: [{
-          accountId: simAccount.accountId,
-          accountType: simAccount.accountType,
-          balance: simAccount.balance,
-          buyingPower: simAccount.buyingPower,
-          currency: 'USD',
-        }],
-        selectedAccount: {
-          accountId: simAccount.accountId,
-          accountType: simAccount.accountType,
-          balance: simAccount.balance,
-          buyingPower: simAccount.buyingPower,
-          currency: 'USD',
-        },
-        positions: simPositions.map(p => ({ ...p, realizedPnl: 0 })),
-        orders: simOrders.map(o => ({
-          orderId: o.orderId,
-          conid: 0,
-          symbol: o.symbol,
-          side: o.side,
-          orderType: o.orderType as 'MKT' | 'LMT' | 'STP' | 'STP_LIMIT',
-          quantity: o.quantity,
-          filledQuantity: o.filledQuantity,
-          status: o.status,
-          price: o.price,
-        })),
-      }));
-      return;
-    }
-    
     if (!state.authenticated) return;
     
     await Promise.all([
@@ -231,9 +131,9 @@ export function useIBKRGateway() {
       loadPositions(),
       loadOrders(),
     ]);
-  }, [state.tradingMode, state.authenticated, loadAccounts, loadPositions, loadOrders]);
+  }, [state.authenticated, loadAccounts, loadPositions, loadOrders]);
 
-  // Place order (works for both modes)
+  // Place order
   const placeOrder = useCallback(async (params: {
     symbol: string;
     side: 'BUY' | 'SELL';
@@ -241,34 +141,6 @@ export function useIBKRGateway() {
     orderType: 'MKT' | 'LMT';
     price?: number;
   }) => {
-    // Simulated mode
-    if (state.tradingMode === 'simulated') {
-      const result = placeSimulatedOrder({
-        symbol: params.symbol,
-        side: params.side,
-        quantity: params.quantity,
-        orderType: params.orderType,
-        price: params.price,
-      });
-      
-      if (result) {
-        toast({
-          title: 'Order Executed',
-          description: `${params.side} ${params.quantity} ${params.symbol} @ $${result.price?.toFixed(2)}`,
-        });
-        refreshData();
-      } else {
-        toast({
-          title: 'Order Failed',
-          description: 'Insufficient funds or shares.',
-          variant: 'destructive',
-        });
-      }
-      
-      return result ? { orderId: result.orderId, status: result.status } : null;
-    }
-    
-    // IBKR mode
     if (!state.selectedAccount) {
       toast({
         title: 'No Account Selected',
@@ -314,22 +186,10 @@ export function useIBKRGateway() {
     }
 
     return result;
-  }, [state.tradingMode, state.selectedAccount, toast, loadOrders, refreshData]);
+  }, [state.selectedAccount, toast, loadOrders]);
 
-  // Cancel order (works for both modes)
+  // Cancel order
   const cancelOrder = useCallback(async (orderId: string) => {
-    if (state.tradingMode === 'simulated') {
-      const success = cancelSimulatedOrder(orderId);
-      if (success) {
-        toast({
-          title: 'Order Cancelled',
-          description: `Order ${orderId} has been cancelled.`,
-        });
-        refreshData();
-      }
-      return success;
-    }
-    
     if (!state.selectedAccount) return false;
     
     const success = await ibkrClient.cancelOrder(state.selectedAccount.accountId, orderId);
@@ -343,19 +203,7 @@ export function useIBKRGateway() {
     }
     
     return success;
-  }, [state.tradingMode, state.selectedAccount, toast, loadOrders, refreshData]);
-
-  // Reset simulated account
-  const resetAccount = useCallback(() => {
-    if (state.tradingMode === 'simulated') {
-      resetSimulatedAccount();
-      enableSimulatedMode();
-      toast({
-        title: 'Account Reset',
-        description: 'Starting fresh with $1,000!',
-      });
-    }
-  }, [state.tradingMode, enableSimulatedMode, toast]);
+  }, [state.selectedAccount, toast, loadOrders]);
 
   // Select account
   const selectAccount = useCallback((accountId: string) => {
@@ -412,7 +260,5 @@ export function useIBKRGateway() {
     placeOrder,
     cancelOrder,
     selectAccount,
-    enableSimulatedMode,
-    resetAccount,
   };
 }

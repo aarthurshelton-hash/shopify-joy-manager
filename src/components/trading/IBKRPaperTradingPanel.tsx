@@ -3,6 +3,7 @@
  * 
  * UI for connecting to and trading with Interactive Brokers
  * via the Client Portal Gateway running locally.
+ * Real IBKR connection only - no simulation.
  */
 
 import { useState } from 'react';
@@ -25,14 +26,13 @@ import {
   AlertCircle,
   CheckCircle2,
   ExternalLink,
+  Terminal,
 } from 'lucide-react';
 
 export function IBKRPaperTradingPanel() {
   const {
     connected,
     authenticated,
-    paperTrading,
-    tradingMode,
     accounts,
     selectedAccount,
     positions,
@@ -44,8 +44,6 @@ export function IBKRPaperTradingPanel() {
     placeOrder,
     cancelOrder,
     selectAccount,
-    enableSimulatedMode,
-    resetAccount,
   } = useIBKRGateway();
 
   const [orderForm, setOrderForm] = useState({
@@ -82,7 +80,7 @@ export function IBKRPaperTradingPanel() {
     );
   }
 
-  if (!connected && tradingMode !== 'simulated') {
+  if (!connected) {
     return (
       <Card className="border-destructive">
         <CardHeader>
@@ -91,52 +89,47 @@ export function IBKRPaperTradingPanel() {
             IBKR Gateway Not Connected
           </CardTitle>
           <CardDescription>
-            Choose how you want to paper trade.
+            The Client Portal Gateway must be running on your local machine.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Connection Error</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          
           <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Options</AlertTitle>
-            <AlertDescription className="space-y-2">
-              <p className="mt-2">
-                <strong>Option 1:</strong> Use our built-in simulator (recommended for testing)
-              </p>
-              <p>
-                <strong>Option 2:</strong> Connect to IBKR Client Portal Gateway for real paper trading
-              </p>
+            <Terminal className="h-4 w-4" />
+            <AlertTitle>Setup Instructions</AlertTitle>
+            <AlertDescription className="space-y-2 mt-2">
+              <p><strong>1.</strong> Download IBKR Client Portal Gateway from IBKR website</p>
+              <p><strong>2.</strong> Open Terminal and run:</p>
+              <code className="block bg-muted p-2 rounded text-xs mt-1">
+                cd ~/Downloads/clientportal && bin/run.sh root/conf.yaml
+              </code>
+              <p><strong>3.</strong> Open <code className="bg-muted px-1">https://localhost:5000</code> in Chrome</p>
+              <p><strong>4.</strong> Accept the security warning and login with paper trading credentials</p>
+              <p><strong>5.</strong> Return here and click "Retry Connection"</p>
             </AlertDescription>
           </Alert>
           
-          <Button onClick={enableSimulatedMode} className="w-full" size="lg">
-            <TrendingUp className="h-4 w-4 mr-2" />
-            Start Simulated Trading ($1,000)
-          </Button>
-          
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
-                Or connect to IBKR
-              </span>
-            </div>
+          <div className="flex gap-2">
+            <Button onClick={checkConnection} className="flex-1">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retry Connection
+            </Button>
+            
+            <Button 
+              variant="outline"
+              onClick={() => window.open('https://localhost:5000', '_blank')}
+            >
+              <ExternalLink className="h-4 w-4 mr-2" />
+              Open Gateway
+            </Button>
           </div>
-          
-          <Button variant="outline" onClick={checkConnection} className="w-full">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Retry IBKR Connection
-          </Button>
-          
-          <Button 
-            variant="ghost" 
-            className="w-full text-muted-foreground"
-            onClick={() => window.open('https://localhost:5000', '_blank')}
-          >
-            <ExternalLink className="h-4 w-4 mr-2" />
-            Open Gateway Login
-          </Button>
         </CardContent>
       </Card>
     );
@@ -184,47 +177,34 @@ export function IBKRPaperTradingPanel() {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-primary">
               <CheckCircle2 className="h-5 w-5" />
-              {tradingMode === 'simulated' ? 'Simulated Trading' : 'IBKR Connected'}
+              IBKR Connected
               <Badge variant="outline" className="ml-2 bg-primary/10 text-primary border-primary">
-                {tradingMode === 'simulated' ? 'Simulator' : 'Paper Trading'}
+                Paper Trading
               </Badge>
             </CardTitle>
-            <div className="flex gap-2">
-              {tradingMode === 'simulated' && (
-                <Button variant="ghost" size="sm" onClick={resetAccount}>
-                  Reset
-                </Button>
-              )}
-              <Button variant="ghost" size="sm" onClick={refreshData}>
-                <RefreshCw className="h-4 w-4" />
-              </Button>
-            </div>
+            <Button variant="ghost" size="sm" onClick={refreshData}>
+              <RefreshCw className="h-4 w-4" />
+            </Button>
           </div>
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-4">
             <div className="flex-1">
-              {tradingMode === 'simulated' ? (
-                <div className="text-sm text-muted-foreground">
-                  Account: {selectedAccount?.accountId}
-                </div>
-              ) : (
-                <Select 
-                  value={selectedAccount?.accountId || ''} 
-                  onValueChange={selectAccount}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Account" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {accounts.map(acc => (
-                      <SelectItem key={acc.accountId} value={acc.accountId}>
-                        {acc.accountId} ({acc.accountType})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
+              <Select 
+                value={selectedAccount?.accountId || ''} 
+                onValueChange={selectAccount}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Account" />
+                </SelectTrigger>
+                <SelectContent>
+                  {accounts.map(acc => (
+                    <SelectItem key={acc.accountId} value={acc.accountId}>
+                      {acc.accountId} ({acc.accountType})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             {selectedAccount && (
               <div className="text-right">
