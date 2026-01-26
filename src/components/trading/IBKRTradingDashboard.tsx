@@ -144,17 +144,52 @@ export function IBKRTradingDashboard() {
   // ========== LOADING STATE ==========
   if (loading) {
     return (
-      <Card className="animate-pulse">
+      <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Loader2 className="h-5 w-5 animate-spin" />
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
             Connecting to IBKR Gateway...
           </CardTitle>
+          <CardDescription>
+            Checking connection to localhost:5000
+          </CardDescription>
         </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">
-            Looking for the Client Portal Gateway on localhost:5000
+        <CardContent className="space-y-4">
+          <Progress value={33} className="h-2" />
+          <p className="text-sm text-muted-foreground">
+            Looking for the Client Portal Gateway...
           </p>
+          
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Connection taking too long?</AlertTitle>
+            <AlertDescription className="space-y-2 mt-2">
+              <p>Your browser may be blocking the connection. Try:</p>
+              <ol className="list-decimal list-inside text-sm space-y-1">
+                <li>
+                  Open <a 
+                    href="https://localhost:5000" 
+                    target="_blank" 
+                    rel="noopener" 
+                    className="text-primary underline font-medium"
+                  >
+                    https://localhost:5000
+                  </a> in a new tab
+                </li>
+                <li>Accept the <strong>self-signed certificate warning</strong></li>
+                <li>Login if prompted, then return here</li>
+              </ol>
+            </AlertDescription>
+          </Alert>
+          
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => window.open('https://localhost:5000', '_blank')}
+          >
+            <ExternalLink className="h-4 w-4 mr-2" />
+            Open Gateway in New Tab
+          </Button>
         </CardContent>
       </Card>
     );

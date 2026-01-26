@@ -38,10 +38,27 @@ export function useIBKRGateway() {
   const refreshInterval = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
-  // Check gateway connection
+  // Check gateway connection with timeout
   const checkConnection = useCallback(async () => {
+    console.log('[IBKR] Checking gateway connection...');
+    
+    // Set a timeout to ensure we don't stay loading forever
+    const timeoutId = setTimeout(() => {
+      console.warn('[IBKR] Connection check timed out after 5s');
+      setState(prev => ({
+        ...prev,
+        connected: false,
+        authenticated: false,
+        loading: false,
+        error: 'Connection timed out. The gateway may not be running or the browser is blocking the connection.',
+      }));
+    }, 5000);
+    
     try {
       const status = await ibkrClient.checkConnection();
+      clearTimeout(timeoutId);
+      
+      console.log('[IBKR] Connection status:', status);
       
       setState(prev => ({
         ...prev,
@@ -54,12 +71,15 @@ export function useIBKRGateway() {
 
       return status;
     } catch (err) {
+      clearTimeout(timeoutId);
+      console.error('[IBKR] Connection error:', err);
+      
       setState(prev => ({
         ...prev,
         connected: false,
         authenticated: false,
         loading: false,
-        error: 'Failed to connect to IBKR Gateway',
+        error: `Failed to connect: ${(err as Error).message}. Try opening https://localhost:5000 directly first.`,
       }));
       return { connected: false, authenticated: false, paperTrading: false };
     }
