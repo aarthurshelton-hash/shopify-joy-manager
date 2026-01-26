@@ -1,9 +1,8 @@
 /**
- * IBKR Paper Trading Panel
+ * IB Gateway Paper Trading Panel
  * 
- * UI for connecting to and trading with Interactive Brokers
- * via the Client Portal Gateway running locally.
- * Real IBKR connection only - no simulation.
+ * UI for connecting to IB Gateway via local bridge.
+ * Real IB Gateway connection only - no simulation.
  */
 
 import { useState } from 'react';
@@ -16,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useIBKRGateway } from '@/hooks/useIBKRGateway';
+import { getBridgeConfig, setBridgeConfig } from '@/lib/trading/ibGatewayBridge';
 import { 
   Loader2, 
   Wifi, 
@@ -25,8 +25,9 @@ import {
   TrendingDown,
   AlertCircle,
   CheckCircle2,
-  ExternalLink,
   Terminal,
+  Settings,
+  Plug,
 } from 'lucide-react';
 
 export function IBKRPaperTradingPanel() {
@@ -40,6 +41,7 @@ export function IBKRPaperTradingPanel() {
     loading,
     error,
     checkConnection,
+    connectToGateway,
     refreshData,
     placeOrder,
     cancelOrder,
@@ -54,6 +56,8 @@ export function IBKRPaperTradingPanel() {
     price: 0,
   });
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [bridgeSettings, setBridgeSettings] = useState(getBridgeConfig());
 
   const handlePlaceOrder = async () => {
     setIsPlacingOrder(true);
@@ -67,29 +71,109 @@ export function IBKRPaperTradingPanel() {
     setIsPlacingOrder(false);
   };
 
+  const handleSaveSettings = () => {
+    setBridgeConfig(bridgeSettings);
+    setShowSettings(false);
+    checkConnection();
+  };
+
   if (loading) {
     return (
       <Card className="animate-pulse">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Loader2 className="h-5 w-5 animate-spin" />
-            Connecting to IBKR Gateway...
+            Connecting to IB Gateway Bridge...
           </CardTitle>
         </CardHeader>
       </Card>
     );
   }
 
+  // Settings Panel
+  if (showSettings) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Settings className="h-5 w-5" />
+            Bridge Settings
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Bridge URL</label>
+            <Input 
+              value={bridgeSettings.bridgeUrl}
+              onChange={e => setBridgeSettings(prev => ({ ...prev, bridgeUrl: e.target.value }))}
+              placeholder="http://localhost:4000"
+            />
+            <p className="text-xs text-muted-foreground">
+              The URL where your local bridge server is running
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Gateway Host</label>
+              <Input 
+                value={bridgeSettings.gatewayHost}
+                onChange={e => setBridgeSettings(prev => ({ ...prev, gatewayHost: e.target.value }))}
+                placeholder="127.0.0.1"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Gateway Port</label>
+              <Select 
+                value={String(bridgeSettings.gatewayPort)}
+                onValueChange={v => setBridgeSettings(prev => ({ ...prev, gatewayPort: parseInt(v) }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="4002">4002 (Paper)</SelectItem>
+                  <SelectItem value="4001">4001 (Live)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Client ID</label>
+            <Input 
+              type="number"
+              value={bridgeSettings.clientId}
+              onChange={e => setBridgeSettings(prev => ({ ...prev, clientId: parseInt(e.target.value) || 1 }))}
+              min={1}
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <Button onClick={handleSaveSettings} className="flex-1">Save Settings</Button>
+            <Button variant="outline" onClick={() => setShowSettings(false)}>Cancel</Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Not connected to bridge
   if (!connected) {
     return (
       <Card className="border-destructive">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-destructive">
-            <WifiOff className="h-5 w-5" />
-            IBKR Gateway Not Connected
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-destructive">
+              <WifiOff className="h-5 w-5" />
+              Bridge Not Running
+            </CardTitle>
+            <Button variant="ghost" size="sm" onClick={() => setShowSettings(true)}>
+              <Settings className="h-4 w-4" />
+            </Button>
+          </div>
           <CardDescription>
-            The Client Portal Gateway must be running on your local machine.
+            The local bridge server must be running to connect to IB Gateway.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -105,70 +189,64 @@ export function IBKRPaperTradingPanel() {
             <Terminal className="h-4 w-4" />
             <AlertTitle>Setup Instructions</AlertTitle>
             <AlertDescription className="space-y-2 mt-2">
-              <p><strong>1.</strong> Download IBKR Client Portal Gateway from IBKR website</p>
+              <p><strong>1.</strong> Download the bridge from the Files tab: <code className="bg-muted px-1">ib-gateway-bridge/</code></p>
               <p><strong>2.</strong> Open Terminal and run:</p>
               <code className="block bg-muted p-2 rounded text-xs mt-1">
-                cd ~/Downloads/clientportal && bin/run.sh root/conf.yaml
+                cd ib-gateway-bridge && npm install && npm start
               </code>
-              <p><strong>3.</strong> Open <code className="bg-muted px-1">https://localhost:5000</code> in Chrome</p>
-              <p><strong>4.</strong> Accept the security warning and login with paper trading credentials</p>
+              <p><strong>3.</strong> Start IB Gateway application and log in</p>
+              <p><strong>4.</strong> Enable API in IB Gateway: Configure → Settings → API</p>
               <p><strong>5.</strong> Return here and click "Retry Connection"</p>
             </AlertDescription>
           </Alert>
           
-          <div className="flex gap-2">
-            <Button onClick={checkConnection} className="flex-1">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Retry Connection
-            </Button>
-            
-            <Button 
-              variant="outline"
-              onClick={() => window.open('https://localhost:5000', '_blank')}
-            >
-              <ExternalLink className="h-4 w-4 mr-2" />
-              Open Gateway
-            </Button>
-          </div>
+          <Button onClick={checkConnection} className="w-full">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Retry Connection
+          </Button>
         </CardContent>
       </Card>
     );
   }
 
+  // Bridge running but not connected to gateway
   if (!authenticated) {
     return (
       <Card className="border-yellow-500">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-yellow-500">
-            <Wifi className="h-5 w-5" />
-            Gateway Running - Login Required
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-yellow-500">
+              <Wifi className="h-5 w-5" />
+              Bridge Running - Gateway Disconnected
+            </CardTitle>
+            <Button variant="ghost" size="sm" onClick={() => setShowSettings(true)}>
+              <Settings className="h-4 w-4" />
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <Alert variant="default">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              The gateway is running but you need to login. Click below to open the login page.
+              Bridge is running. Make sure IB Gateway is open and API is enabled, then connect.
             </AlertDescription>
           </Alert>
           
-          <Button 
-            onClick={() => window.open('https://localhost:5000', '_blank')}
-            className="w-full"
-          >
-            <ExternalLink className="h-4 w-4 mr-2" />
-            Login to IBKR Gateway
+          <Button onClick={connectToGateway} className="w-full">
+            <Plug className="h-4 w-4 mr-2" />
+            Connect to IB Gateway
           </Button>
           
           <Button variant="outline" onClick={checkConnection} className="w-full">
             <RefreshCw className="h-4 w-4 mr-2" />
-            Check Authentication
+            Check Status
           </Button>
         </CardContent>
       </Card>
     );
   }
 
+  // Connected
   return (
     <div className="space-y-4">
       {/* Connection Status */}
@@ -177,14 +255,19 @@ export function IBKRPaperTradingPanel() {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-primary">
               <CheckCircle2 className="h-5 w-5" />
-              IBKR Connected
+              IB Gateway Connected
               <Badge variant="outline" className="ml-2 bg-primary/10 text-primary border-primary">
                 Paper Trading
               </Badge>
             </CardTitle>
-            <Button variant="ghost" size="sm" onClick={refreshData}>
-              <RefreshCw className="h-4 w-4" />
-            </Button>
+            <div className="flex gap-1">
+              <Button variant="ghost" size="sm" onClick={() => setShowSettings(true)}>
+                <Settings className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={refreshData}>
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -236,7 +319,7 @@ export function IBKRPaperTradingPanel() {
             <CardHeader>
               <CardTitle>Place Order</CardTitle>
               <CardDescription>
-                Execute paper trades through IBKR
+                Execute paper trades through IB Gateway
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -348,7 +431,7 @@ export function IBKRPaperTradingPanel() {
                       <TableRow key={pos.conid}>
                         <TableCell className="font-medium">{pos.symbol}</TableCell>
                         <TableCell className="text-right">
-                          <span className={pos.position > 0 ? 'text-emerald-500' : 'text-destructive'}>
+                          <span className={pos.position > 0 ? 'text-primary' : 'text-destructive'}>
                             {pos.position > 0 ? '+' : ''}{pos.position}
                           </span>
                         </TableCell>
@@ -358,7 +441,7 @@ export function IBKRPaperTradingPanel() {
                         <TableCell className="text-right">
                           ${pos.marketValue.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                         </TableCell>
-                        <TableCell className={`text-right font-medium ${pos.unrealizedPnl >= 0 ? 'text-emerald-500' : 'text-destructive'}`}>
+                        <TableCell className={`text-right font-medium ${pos.unrealizedPnl >= 0 ? 'text-primary' : 'text-destructive'}`}>
                           {pos.unrealizedPnl >= 0 ? '+' : ''}${pos.unrealizedPnl.toFixed(2)}
                         </TableCell>
                       </TableRow>

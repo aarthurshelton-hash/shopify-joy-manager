@@ -1,28 +1,28 @@
 /**
- * IBKR Gateway Hook
+ * IB Gateway Hook
  * 
- * Manages connection to IBKR Client Portal Gateway for real paper trading.
- * No simulation fallback - requires actual IBKR connection.
+ * Manages connection to IB Gateway through local bridge.
+ * No simulation - requires actual IB Gateway connection via bridge.
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { ibkrClient, IBKRAccount, IBKRPosition, IBKROrder } from '@/lib/trading/ibkrClient';
+import { ibGatewayClient, IBAccount, IBPosition, IBOrder } from '@/lib/trading/ibGatewayClient';
 import { useToast } from '@/hooks/use-toast';
 
-export interface IBKRGatewayState {
+export interface IBGatewayState {
   connected: boolean;
   authenticated: boolean;
   paperTrading: boolean;
-  accounts: IBKRAccount[];
-  selectedAccount: IBKRAccount | null;
-  positions: IBKRPosition[];
-  orders: IBKROrder[];
+  accounts: IBAccount[];
+  selectedAccount: IBAccount | null;
+  positions: IBPosition[];
+  orders: IBOrder[];
   loading: boolean;
   error: string | null;
 }
 
 export function useIBKRGateway() {
-  const [state, setState] = useState<IBKRGatewayState>({
+  const [state, setState] = useState<IBGatewayState>({
     connected: false,
     authenticated: false,
     paperTrading: false,
@@ -34,32 +34,30 @@ export function useIBKRGateway() {
     error: null,
   });
 
-  const tickleInterval = useRef<NodeJS.Timeout | null>(null);
   const refreshInterval = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
-  // Check gateway connection with timeout
+  // Check bridge and gateway connection
   const checkConnection = useCallback(async () => {
-    console.log('[IBKR] Checking gateway connection...');
+    console.log('[IB Gateway] Checking connection...');
     setState(prev => ({ ...prev, loading: true, error: null }));
     
-    // Set a timeout to ensure we don't stay loading forever
     const timeoutId = setTimeout(() => {
-      console.warn('[IBKR] Connection check timed out after 5s');
+      console.warn('[IB Gateway] Connection check timed out');
       setState(prev => ({
         ...prev,
         connected: false,
         authenticated: false,
         loading: false,
-        error: 'Connection timed out. The gateway may not be running or the browser is blocking the connection.',
+        error: 'Connection timed out. Ensure the bridge server is running.',
       }));
-    }, 5000);
+    }, 8000);
     
     try {
-      const status = await ibkrClient.checkConnection();
+      const status = await ibGatewayClient.checkConnection();
       clearTimeout(timeoutId);
       
-      console.log('[IBKR] Connection status:', status);
+      console.log('[IB Gateway] Status:', status);
       
       setState(prev => ({
         ...prev,
@@ -67,34 +65,67 @@ export function useIBKRGateway() {
         authenticated: status.authenticated,
         paperTrading: status.paperTrading,
         loading: false,
-        error: status.connected ? null : 'Gateway not running. Start IBKR Client Portal Gateway.',
+        error: status.connected 
+          ? (status.authenticated ? null : 'Bridge running but not connected to IB Gateway. Click "Connect to Gateway".')
+          : 'Bridge not running. Start the local bridge server first.',
       }));
 
       return status;
     } catch (err) {
       clearTimeout(timeoutId);
-      console.error('[IBKR] Connection error:', err);
+      console.error('[IB Gateway] Connection error:', err);
       
       setState(prev => ({
         ...prev,
         connected: false,
         authenticated: false,
         loading: false,
-        error: `Failed to connect: ${(err as Error).message}. Try opening https://localhost:5000 directly first.`,
+        error: `Failed to connect: ${(err as Error).message}`,
       }));
       return { connected: false, authenticated: false, paperTrading: false };
     }
   }, []);
 
+  // Connect bridge to IB Gateway
+  const connectToGateway = useCallback(async () => {
+    setState(prev => ({ ...prev, loading: true, error: null }));
+    
+    try {
+      const success = await ibGatewayClient.connect();
+      
+      if (success) {
+        toast({
+          title: 'Connected',
+          description: 'Successfully connected to IB Gateway',
+        });
+        await checkConnection();
+        await loadAccounts();
+      } else {
+        setState(prev => ({
+          ...prev,
+          loading: false,
+          error: 'Failed to connect. Ensure IB Gateway is running and API is enabled.',
+        }));
+      }
+      
+      return success;
+    } catch (err) {
+      setState(prev => ({
+        ...prev,
+        loading: false,
+        error: `Connection failed: ${(err as Error).message}`,
+      }));
+      return false;
+    }
+  }, [toast, checkConnection]);
+
   // Load accounts
   const loadAccounts = useCallback(async () => {
-    const accounts = await ibkrClient.getAccounts();
+    const accounts = await ibGatewayClient.getAccounts();
     
-    // Find paper trading account (usually has 'DU' prefix or 'Paper' type)
     const paperAccount = accounts.find(
       a => a.accountId.startsWith('DU') || 
-           a.accountType.toLowerCase().includes('paper') ||
-           a.accountType.toLowerCase().includes('demo')
+           a.accountType.toLowerCase().includes('paper')
     );
     
     setState(prev => ({
@@ -106,18 +137,18 @@ export function useIBKRGateway() {
     return accounts;
   }, []);
 
-  // Load positions for selected account
+  // Load positions
   const loadPositions = useCallback(async () => {
     if (!state.selectedAccount) return [];
     
-    const positions = await ibkrClient.getPositions(state.selectedAccount.accountId);
+    const positions = await ibGatewayClient.getPositions(state.selectedAccount.accountId);
     setState(prev => ({ ...prev, positions }));
     return positions;
   }, [state.selectedAccount]);
 
   // Load orders
   const loadOrders = useCallback(async () => {
-    const orders = await ibkrClient.getOrders();
+    const orders = await ibGatewayClient.getOrders();
     setState(prev => ({ ...prev, orders }));
     return orders;
   }, []);
@@ -144,13 +175,14 @@ export function useIBKRGateway() {
     if (!state.selectedAccount) {
       toast({
         title: 'No Account Selected',
-        description: 'Please select an IBKR account first.',
+        description: 'Please select an account first.',
         variant: 'destructive',
       });
       return null;
     }
 
-    const contracts = await ibkrClient.searchContract(params.symbol);
+    // Search for contract
+    const contracts = await ibGatewayClient.searchContract(params.symbol);
     if (contracts.length === 0) {
       toast({
         title: 'Symbol Not Found',
@@ -160,11 +192,12 @@ export function useIBKRGateway() {
       return null;
     }
 
-    const conid = contracts[0].conid;
+    const contract = contracts[0];
 
-    const result = await ibkrClient.placeOrder({
+    const result = await ibGatewayClient.placeOrder({
       accountId: state.selectedAccount.accountId,
-      conid,
+      conid: contract.conid,
+      symbol: params.symbol,
       side: params.side,
       quantity: params.quantity,
       orderType: params.orderType,
@@ -190,9 +223,7 @@ export function useIBKRGateway() {
 
   // Cancel order
   const cancelOrder = useCallback(async (orderId: string) => {
-    if (!state.selectedAccount) return false;
-    
-    const success = await ibkrClient.cancelOrder(state.selectedAccount.accountId, orderId);
+    const success = await ibGatewayClient.cancelOrder(orderId);
     
     if (success) {
       toast({
@@ -203,7 +234,7 @@ export function useIBKRGateway() {
     }
     
     return success;
-  }, [state.selectedAccount, toast, loadOrders]);
+  }, [toast, loadOrders]);
 
   // Select account
   const selectAccount = useCallback((accountId: string) => {
@@ -213,7 +244,7 @@ export function useIBKRGateway() {
     }
   }, [state.accounts]);
 
-  // Initialize and maintain connection
+  // Initialize
   useEffect(() => {
     const init = async () => {
       const status = await checkConnection();
@@ -223,12 +254,7 @@ export function useIBKRGateway() {
         await loadPositions();
         await loadOrders();
         
-        // Start tickle interval to keep session alive (every 5 min)
-        tickleInterval.current = setInterval(() => {
-          ibkrClient.tickle();
-        }, 5 * 60 * 1000);
-        
-        // Start data refresh interval (every 10 sec)
+        // Refresh data every 10 seconds
         refreshInterval.current = setInterval(() => {
           refreshData();
         }, 10000);
@@ -238,7 +264,6 @@ export function useIBKRGateway() {
     init();
 
     return () => {
-      if (tickleInterval.current) clearInterval(tickleInterval.current);
       if (refreshInterval.current) clearInterval(refreshInterval.current);
     };
   }, []);
@@ -253,6 +278,7 @@ export function useIBKRGateway() {
   return {
     ...state,
     checkConnection,
+    connectToGateway,
     loadAccounts,
     loadPositions,
     loadOrders,
