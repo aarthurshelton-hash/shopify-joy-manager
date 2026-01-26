@@ -26,8 +26,8 @@
  * Pipeline MUST work without any external API.
  */
 
-const DUAL_POOL_VERSION = "7.90-NO-HALTS";
-console.log(`[v7.90] dualPoolPipeline.ts LOADED - Version: ${DUAL_POOL_VERSION}`);
+const DUAL_POOL_VERSION = "7.95-ZERO-PAUSE";
+console.log(`[v7.95] dualPoolPipeline.ts LOADED - Version: ${DUAL_POOL_VERSION}`);
 
 // v7.0: Hard timeout wrapper for any async operation
 function withTimeout<T>(promise: Promise<T>, ms: number, name: string): Promise<T> {
@@ -63,26 +63,26 @@ export interface PoolConfig {
   delayBetweenGames: number; // ms
 }
 
-// v7.58-STABLE: VOLUME pool - balanced speed and stability
+// v7.95-ZERO-PAUSE: Optimized pool - faster with minimal delays
 export const CLOUD_POOL_CONFIG: PoolConfig = {
   name: 'VOLUME-LOCAL',
-  targetPerHour: 150,       // v7.58: Balanced target (150/hr = 2.5/min)
+  targetPerHour: 200,       // v7.95: Higher target (200/hr = 3.3/min)
   stockfishMode: 'local_fast',
-  localDepth: 18,           // v7.58: D18 for quality
-  localNodes: 3000000,      // v7.58: 3M nodes
-  analysisTimeout: 12000,   // v7.58: 12s max
-  delayBetweenGames: 300,   // v7.58: 300ms between games prevents glitching
+  localDepth: 16,           // v7.95: D16 for speed
+  localNodes: 2000000,      // v7.95: 2M nodes
+  analysisTimeout: 8000,    // v7.95: 8s max
+  delayBetweenGames: 100,   // v7.95: 100ms between games (was 300ms)
 };
 
-// v7.58-STABLE: DEEP pool - stable deep analysis
+// v7.95-ZERO-PAUSE: DEEP pool - faster deep analysis
 export const LOCAL_POOL_CONFIG: PoolConfig = {
   name: 'LOCAL-DEEP',
-  targetPerHour: 12,        // v7.58: Realistic target
+  targetPerHour: 20,        // v7.95: Faster target
   stockfishMode: 'local_deep',
-  localDepth: 26,           // v7.58: D26 for depth
-  localNodes: 40000000,     // v7.58: 40M nodes
-  analysisTimeout: 40000,   // v7.58: 40s max
-  delayBetweenGames: 500,   // v7.58: 500ms between games for stability
+  localDepth: 24,           // v7.95: D24 for depth (was 26)
+  localNodes: 30000000,     // v7.95: 30M nodes
+  analysisTimeout: 25000,   // v7.95: 25s max (was 40s)
+  delayBetweenGames: 200,   // v7.95: 200ms between games (was 500ms)
 };
 
 // ================ TYPES ================
@@ -479,9 +479,9 @@ async function analyzeWithLocalStockfish(
     try {
       await Promise.race([engine.waitReady(), readyTimeout]);
     } catch (readyErr) {
-      console.warn(`[v6.94] Engine not ready, attempting recovery...`);
+      console.warn(`[v7.95] Engine not ready, quick recovery...`);
       terminateStockfish();
-      await new Promise(r => setTimeout(r, 2000));
+      await new Promise(r => setTimeout(r, 300)); // v7.95: 300ms (was 2000ms)
       const newEngine = getStockfishEngine();
       await newEngine.waitReady();
     }
@@ -506,20 +506,19 @@ async function analyzeWithLocalStockfish(
       mode: config.stockfishMode,
     };
   } catch (err) {
-    console.error(`[v7.16] Analysis failed for ${game.id}:`, err);
+    console.error(`[v7.95] Analysis failed for ${game.id}:`, err);
     
-    // v7.16: Aggressive recovery - terminate and restart on any failure
+    // v7.95: Fast recovery - 300ms then retry
     try {
       terminateStockfish();
-      await new Promise(r => setTimeout(r, 1500));
-      // Pre-warm new engine
+      await new Promise(r => setTimeout(r, 300));
       const newEngine = getStockfishEngine();
       await Promise.race([
         newEngine.waitReady(),
-        new Promise(r => setTimeout(r, 3000))
+        new Promise(r => setTimeout(r, 2000))
       ]);
     } catch (recoveryErr) {
-      console.warn('[v7.16] Recovery failed:', recoveryErr);
+      console.warn('[v7.95] Recovery failed:', recoveryErr);
     }
     
     return null;

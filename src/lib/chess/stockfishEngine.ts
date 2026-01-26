@@ -157,16 +157,16 @@ export class StockfishEngine {
       return;
     }
     
-    // Auto-recover after a short delay
+    // Auto-recover after a minimal delay
     if (!this.isRecovering) {
       this.isRecovering = true;
-      console.log('[Stockfish] Scheduling auto-recovery in 500ms...');
+      console.log('[Stockfish] Scheduling auto-recovery in 200ms...');
       setTimeout(() => {
         if (this.isRecovering) {
           console.log('[Stockfish] Attempting auto-recovery...');
           this.initWorker();
         }
-      }, 500);
+      }, 200); // v7.95: 200ms (was 500ms)
     }
   }
 
