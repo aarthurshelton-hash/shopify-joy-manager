@@ -5,7 +5,7 @@
  * Integrates En Pensent predictions with IBKR order execution.
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
 import { useIBKRGateway } from '@/hooks/useIBKRGateway';
+import { IBKRGatewaySettings } from './IBKRGatewaySettings';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   Loader2, 
@@ -78,6 +79,11 @@ export function IBKRTradingDashboard() {
     price: 0,
   });
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+
+  // Handle gateway settings change - reconnect
+  const handleGatewaySettingsChange = useCallback(() => {
+    checkConnection();
+  }, [checkConnection]);
 
   // Load quotes for quick symbols
   useEffect(() => {
@@ -146,12 +152,15 @@ export function IBKRTradingDashboard() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Loader2 className="h-5 w-5 animate-spin text-primary" />
-            Connecting to IBKR Gateway...
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              Connecting to IBKR Gateway...
+            </CardTitle>
+            <IBKRGatewaySettings onSettingsChange={handleGatewaySettingsChange} />
+          </div>
           <CardDescription>
-            Checking connection to localhost:5000
+            Checking connection to gateway
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -166,17 +175,9 @@ export function IBKRTradingDashboard() {
             <AlertDescription className="space-y-2 mt-2">
               <p>Your browser may be blocking the connection. Try:</p>
               <ol className="list-decimal list-inside text-sm space-y-1">
-                <li>
-                  Open <a 
-                    href="https://localhost:5000" 
-                    target="_blank" 
-                    rel="noopener" 
-                    className="text-primary underline font-medium"
-                  >
-                    https://localhost:5000
-                  </a> in a new tab
-                </li>
-                <li>Accept the <strong>self-signed certificate warning</strong></li>
+                <li>Click <strong>Gateway Settings</strong> above to configure your gateway URL</li>
+                <li>If using remotely, enter your machine's IP (e.g., https://192.168.1.100:5000)</li>
+                <li>Accept the <strong>self-signed certificate warning</strong> in your browser</li>
                 <li>Login if prompted, then return here</li>
               </ol>
             </AlertDescription>
@@ -200,18 +201,21 @@ export function IBKRTradingDashboard() {
     return (
       <Card className="border-destructive/50">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-destructive">
-            <WifiOff className="h-5 w-5" />
-            IBKR Gateway Not Running
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-destructive">
+              <WifiOff className="h-5 w-5" />
+              IBKR Gateway Not Connected
+            </CardTitle>
+            <IBKRGatewaySettings onSettingsChange={handleGatewaySettingsChange} />
+          </div>
           <CardDescription>
-            Start the IBKR Client Portal Gateway to begin trading.
+            {error || 'Start the IBKR Client Portal Gateway to begin trading.'}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <Alert>
             <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Quick Setup (3 minutes)</AlertTitle>
+            <AlertTitle>Quick Setup</AlertTitle>
             <AlertDescription className="space-y-2">
               <ol className="list-decimal list-inside space-y-2 mt-2">
                 <li>
@@ -225,21 +229,15 @@ export function IBKRTradingDashboard() {
                   </a>
                 </li>
                 <li>
-                  Extract and run <code className="bg-muted px-1 rounded text-sm">bin/run.sh</code> (Mac) 
+                  Run <code className="bg-muted px-1 rounded text-sm">bin/run.sh</code> (Mac) 
                   or <code className="bg-muted px-1 rounded text-sm">bin/run.bat</code> (Windows)
                 </li>
                 <li>
-                  Open <a 
-                    href="https://localhost:5000" 
-                    target="_blank" 
-                    rel="noopener" 
-                    className="text-primary underline font-medium"
-                  >
-                    https://localhost:5000
-                  </a> and login with IBKR credentials
+                  Login at <strong>https://localhost:5000</strong> with IBKR credentials
                 </li>
-                <li>Select your <strong>Paper Trading</strong> account</li>
-                <li>Accept the self-signed certificate warning in your browser</li>
+                <li>
+                  <strong>Using remote access?</strong> Click Gateway Settings above and enter your machine's IP
+                </li>
               </ol>
             </AlertDescription>
           </Alert>

@@ -1,11 +1,13 @@
 /**
  * IBKR Client Portal Gateway Client
  * 
- * Connects directly to the local IBKR Client Portal Gateway
- * running on the user's machine at https://localhost:5000
+ * Connects directly to the IBKR Client Portal Gateway.
+ * Gateway URL is configurable for remote access scenarios.
  * 
  * Note: This runs in the browser, not edge functions
  */
+
+import { getGatewayUrl } from './ibkrConfig';
 
 export interface IBKRAccount {
   accountId: string;
@@ -49,8 +51,8 @@ export interface IBKRQuote {
   changePercent: number;
 }
 
-// Gateway base URL - runs locally on user's machine
-const GATEWAY_URL = 'https://localhost:5000/v1/api';
+// Gateway URL is now dynamic - fetched per request
+const getUrl = () => getGatewayUrl();
 
 class IBKRClient {
   private authenticated = false;
@@ -61,7 +63,7 @@ class IBKRClient {
    */
   async checkConnection(): Promise<{ connected: boolean; authenticated: boolean; paperTrading: boolean }> {
     try {
-      const response = await fetch(`${GATEWAY_URL}/iserver/auth/status`, {
+      const response = await fetch(`${getUrl()}/iserver/auth/status`, {
         method: 'POST',
         credentials: 'include',
       });
@@ -89,7 +91,7 @@ class IBKRClient {
    */
   async getAccounts(): Promise<IBKRAccount[]> {
     try {
-      const response = await fetch(`${GATEWAY_URL}/portfolio/accounts`, {
+      const response = await fetch(`${getUrl()}/portfolio/accounts`, {
         credentials: 'include',
       });
       
@@ -101,7 +103,7 @@ class IBKRClient {
       const accountsWithBalance = await Promise.all(
         accounts.map(async (acc: any) => {
           try {
-            const summaryRes = await fetch(`${GATEWAY_URL}/portfolio/${acc.accountId}/summary`, {
+            const summaryRes = await fetch(`${getUrl()}/portfolio/${acc.accountId}/summary`, {
               credentials: 'include',
             });
             const summary = summaryRes.ok ? await summaryRes.json() : {};
@@ -145,7 +147,7 @@ class IBKRClient {
     if (!accId) return [];
 
     try {
-      const response = await fetch(`${GATEWAY_URL}/portfolio/${accId}/positions/0`, {
+      const response = await fetch(`${getUrl()}/portfolio/${accId}/positions/0`, {
         credentials: 'include',
       });
       
@@ -174,7 +176,7 @@ class IBKRClient {
   async searchContract(symbol: string): Promise<{ conid: number; symbol: string; description: string }[]> {
     try {
       const response = await fetch(
-        `${GATEWAY_URL}/iserver/secdef/search?symbol=${encodeURIComponent(symbol)}`,
+        `${getUrl()}/iserver/secdef/search?symbol=${encodeURIComponent(symbol)}`,
         { credentials: 'include' }
       );
       
@@ -199,7 +201,7 @@ class IBKRClient {
   async getQuote(conid: number): Promise<IBKRQuote | null> {
     try {
       const response = await fetch(
-        `${GATEWAY_URL}/iserver/marketdata/snapshot?conids=${conid}&fields=31,84,85,86,87,88`,
+        `${getUrl()}/iserver/marketdata/snapshot?conids=${conid}&fields=31,84,85,86,87,88`,
         { credentials: 'include' }
       );
       
@@ -256,7 +258,7 @@ class IBKRClient {
         }]
       };
 
-      const response = await fetch(`${GATEWAY_URL}/iserver/account/${accId}/orders`, {
+      const response = await fetch(`${getUrl()}/iserver/account/${accId}/orders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -274,7 +276,7 @@ class IBKRClient {
       // IBKR returns order confirmation that may need to be confirmed
       if (result[0]?.id && result[0]?.message?.includes('confirm')) {
         // Auto-confirm the order
-        const confirmRes = await fetch(`${GATEWAY_URL}/iserver/reply/${result[0].id}`, {
+        const confirmRes = await fetch(`${getUrl()}/iserver/reply/${result[0].id}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -305,7 +307,7 @@ class IBKRClient {
    */
   async getOrders(): Promise<IBKROrder[]> {
     try {
-      const response = await fetch(`${GATEWAY_URL}/iserver/account/orders`, {
+      const response = await fetch(`${getUrl()}/iserver/account/orders`, {
         credentials: 'include',
       });
       
@@ -337,7 +339,7 @@ class IBKRClient {
    */
   async cancelOrder(accountId: string, orderId: string): Promise<boolean> {
     try {
-      const response = await fetch(`${GATEWAY_URL}/iserver/account/${accountId}/order/${orderId}`, {
+      const response = await fetch(`${getUrl()}/iserver/account/${accountId}/order/${orderId}`, {
         method: 'DELETE',
         credentials: 'include',
       });
@@ -354,7 +356,7 @@ class IBKRClient {
    */
   async tickle(): Promise<boolean> {
     try {
-      const response = await fetch(`${GATEWAY_URL}/tickle`, {
+      const response = await fetch(`${getUrl()}/tickle`, {
         method: 'POST',
         credentials: 'include',
       });
