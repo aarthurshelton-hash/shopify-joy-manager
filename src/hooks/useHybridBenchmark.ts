@@ -28,8 +28,8 @@
 // 3. Only mark as failed after ALL retries exhausted
 // 4. Every game that CAN be analyzed SHOULD be analyzed
 // 5. ALL ID tracking (failed, session, DB) uses RAW IDs only - no prefix mismatch
-const BENCHMARK_VERSION = "7.70-COMPOUND-INTEL";
-console.log(`[v7.70] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION} (Compound Intelligence)`);
+const BENCHMARK_VERSION = "7.90-TURBO-FLOW";
+console.log(`[v7.90] useHybridBenchmark LOADED - Version: ${BENCHMARK_VERSION} (Zero-pause pipeline)`);
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { getStockfishEngine, PositionAnalysis } from '@/lib/chess/stockfishEngine';
@@ -841,10 +841,10 @@ export function useHybridBenchmark() {
           console.log(`[v6.80] 📥 FETCH PHASE: Queue empty, need ${gameCount - predictedCount} more predictions`);
           console.log(`[v6.80] Stats: predicted=${predictedCount}, index=${gameIndex}, queueLen=${gameQueue.length}`);
           
-          // v7.51-PUMP: Fast exponential backoff - 1s base, max 8s
+          // v7.90-TURBO: Minimal backoff - 200ms base, max 2s
           if (emptyBatchStreak > 0) {
-            const waitTime = Math.min(1000 * Math.pow(1.5, emptyBatchStreak), 8000);
-            console.log(`[v7.51] ⏳ Quick backoff: ${Math.round(waitTime/1000)}s (streak: ${emptyBatchStreak})`);
+            const waitTime = Math.min(200 * Math.pow(1.5, emptyBatchStreak), 2000);
+            console.log(`[v7.90] ⏳ Quick backoff: ${waitTime}ms (streak: ${emptyBatchStreak})`);
             await new Promise(r => setTimeout(r, waitTime));
           }
           
@@ -1005,8 +1005,8 @@ export function useHybridBenchmark() {
           
           try {
             if (engineRetries > 0) {
-              console.log(`[v7.51] 🔄 Retry ${engineRetries}`);
-              await new Promise(r => setTimeout(r, 200)); // v7.51: 200ms (was 500ms)
+              console.log(`[v7.90] 🔄 Retry ${engineRetries}`);
+              await new Promise(r => setTimeout(r, 100)); // v7.90: 100ms (was 200ms)
               try { engine.stop(); } catch (e) { /* ignore */ }
               await engine.waitReady();
             }
@@ -1037,9 +1037,9 @@ export function useHybridBenchmark() {
           
           // v7.51-PUMP: Quick recovery after 3 consecutive failures
           if (consecutiveEngineFailures >= 3) {
-            console.warn(`[v7.51] Quick recovery after ${consecutiveEngineFailures} failures`);
+            console.warn(`[v7.90] Quick recovery after ${consecutiveEngineFailures} failures`);
             try { engine.stop(); } catch (e) { /* ignore */ }
-            await new Promise(r => setTimeout(r, 500)); // v7.51: 500ms (was 1.5s)
+            await new Promise(r => setTimeout(r, 300)); // v7.90: 300ms (was 500ms)
             
             const reready = await engine.waitReady();
             if (reready) {
