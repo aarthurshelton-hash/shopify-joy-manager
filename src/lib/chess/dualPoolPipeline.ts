@@ -26,8 +26,8 @@
  * Pipeline MUST work without any external API.
  */
 
-const DUAL_POOL_VERSION = "7.89-BALANCED";
-console.log(`[v7.89] dualPoolPipeline.ts LOADED - Version: ${DUAL_POOL_VERSION}`);
+const DUAL_POOL_VERSION = "7.90-NO-HALTS";
+console.log(`[v7.90] dualPoolPipeline.ts LOADED - Version: ${DUAL_POOL_VERSION}`);
 
 // v7.0: Hard timeout wrapper for any async operation
 function withTimeout<T>(promise: Promise<T>, ms: number, name: string): Promise<T> {
@@ -885,16 +885,19 @@ export async function savePoolPredictions(
       black_elo: p.blackElo || null,
     }));
     
-    // Batch insert
+    // v7.90: Batch upsert with conflict handling to prevent duplicate key errors
     const BATCH_SIZE = 25;
     for (let i = 0; i < attempts.length; i += BATCH_SIZE) {
       const batch = attempts.slice(i, i + BATCH_SIZE);
       const { error } = await supabase
         .from('chess_prediction_attempts')
-        .insert(batch);
+        .upsert(batch, { 
+          onConflict: 'game_id',
+          ignoreDuplicates: true 
+        });
       
       if (error) {
-        console.error(`[v6.92] Batch ${i / BATCH_SIZE + 1} failed:`, error);
+        console.error(`[v7.90] Batch ${i / BATCH_SIZE + 1} failed:`, error);
       }
     }
     
