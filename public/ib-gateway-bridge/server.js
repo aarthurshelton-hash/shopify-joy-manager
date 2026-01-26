@@ -7,7 +7,8 @@
 
 import express from 'express';
 import cors from 'cors';
-import { IBApi, EventName, Contract, Order, OrderAction, OrderType, SecType } from '@stoqey/ib';
+import pkg from '@stoqey/ib';
+const { IBApi, EventName, Contract, Order, OrderAction, OrderType, SecType } = pkg;
 
 const app = express();
 app.use(cors());
