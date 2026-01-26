@@ -1,0 +1,16 @@
+{
+  "name": "ib-gateway-bridge",
+  "version": "1.0.0",
+  "description": "HTTP to TWS API bridge for IB Gateway",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "start:live": "IB_PORT=4001 node server.js"
+  },
+  "dependencies": {
+    "@stoqey/ib": "^1.3.0",
+    "cors": "^2.8.5",
+    "express": "^4.18.2"
+  }
+}

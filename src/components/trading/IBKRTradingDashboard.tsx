@@ -16,7 +16,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
 import { useIBKRGateway } from '@/hooks/useIBKRGateway';
-import { IBKRGatewaySettings } from './IBKRGatewaySettings';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   Loader2, 
@@ -155,9 +154,8 @@ export function IBKRTradingDashboard() {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Loader2 className="h-5 w-5 animate-spin text-primary" />
-              Connecting to IBKR Gateway...
+              Connecting to IB Gateway Bridge...
             </CardTitle>
-            <IBKRGatewaySettings onSettingsChange={handleGatewaySettingsChange} />
           </div>
           <CardDescription>
             Checking connection to gateway
@@ -204,9 +202,8 @@ export function IBKRTradingDashboard() {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-destructive">
               <WifiOff className="h-5 w-5" />
-              IBKR Gateway Not Connected
+              IB Gateway Bridge Not Running
             </CardTitle>
-            <IBKRGatewaySettings onSettingsChange={handleGatewaySettingsChange} />
           </div>
           <CardDescription>
             {error || 'Start the IBKR Client Portal Gateway to begin trading.'}
