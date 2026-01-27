@@ -59,6 +59,7 @@ export function IBKRTradingDashboard() {
     loading,
     error,
     checkConnection,
+    connectToGateway,
     refreshData,
     placeOrder,
     cancelOrder,
@@ -272,18 +273,18 @@ export function IBKRTradingDashboard() {
           <Alert variant="default">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              The gateway is running but needs authentication. 
-              Login to your IBKR account to start trading.
+              Bridge is running but not connected to IB Gateway. 
+              Open IB Gateway desktop app, log in, then click "Connect to Gateway".
             </AlertDescription>
           </Alert>
           
           <div className="flex gap-2">
             <Button 
-              onClick={() => window.open('https://localhost:5000', '_blank')}
+              onClick={connectToGateway}
               className="flex-1"
             >
-              <ExternalLink className="h-4 w-4 mr-2" />
-              Login to IBKR
+              <Wifi className="h-4 w-4 mr-2" />
+              Connect to Gateway
             </Button>
             
             <Button variant="outline" onClick={checkConnection}>
@@ -291,6 +292,10 @@ export function IBKRTradingDashboard() {
               Check Status
             </Button>
           </div>
+          
+          <p className="text-xs text-muted-foreground">
+            IB Gateway must be running with API enabled (port 4002 for paper trading).
+          </p>
         </CardContent>
       </Card>
     );
