@@ -25,10 +25,10 @@ let ib = null;
 let connected = false;
 let nextOrderId = 1;
 let accounts = [];
+let accountSummary = new Map(); // Store account values
 let positions = new Map();
 let orders = new Map();
 let contractCache = new Map();
-
 // Initialize IB API
 function initIB() {
   ib = new IBApi({
@@ -64,6 +64,45 @@ function initIB() {
       currency: 'USD',
     }));
     console.log('[Bridge] Accounts:', accounts);
+    
+    // Request account summary for each account
+    accounts.forEach((acc, idx) => {
+      const reqId = 9000 + idx;
+      ib.reqAccountSummary(reqId, 'All', 'NetLiquidation,BuyingPower,AvailableFunds,TotalCashValue');
+    });
+  });
+
+  // Account summary data
+  ib.on(EventName.accountSummary, (reqId, account, tag, value, currency) => {
+    if (!accountSummary.has(account)) {
+      accountSummary.set(account, { currency: currency });
+    }
+    const summary = accountSummary.get(account);
+    
+    if (tag === 'NetLiquidation') {
+      summary.balance = parseFloat(value) || 0;
+    } else if (tag === 'BuyingPower') {
+      summary.buyingPower = parseFloat(value) || 0;
+    } else if (tag === 'AvailableFunds') {
+      summary.availableFunds = parseFloat(value) || 0;
+    } else if (tag === 'TotalCashValue') {
+      summary.cashValue = parseFloat(value) || 0;
+    }
+    summary.currency = currency;
+    
+    // Update accounts array with real values
+    const accIdx = accounts.findIndex(a => a.accountId === account);
+    if (accIdx >= 0) {
+      accounts[accIdx].balance = summary.balance || 0;
+      accounts[accIdx].buyingPower = summary.buyingPower || 0;
+      accounts[accIdx].currency = summary.currency || 'USD';
+    }
+    
+    console.log(`[Bridge] Account ${account} ${tag}: ${value} ${currency}`);
+  });
+
+  ib.on(EventName.accountSummaryEnd, (reqId) => {
+    console.log('[Bridge] Account summary complete');
   });
 
   // Order ID
@@ -182,6 +221,16 @@ app.post('/api/disconnect', (req, res) => {
 
 // Accounts
 app.get('/api/accounts', (req, res) => {
+  // Request fresh account data
+  if (ib && connected && accounts.length > 0) {
+    accounts.forEach((acc, idx) => {
+      const reqId = 9000 + idx;
+      try {
+        ib.cancelAccountSummary(reqId); // Cancel any existing
+      } catch {}
+      ib.reqAccountSummary(reqId, 'All', 'NetLiquidation,BuyingPower,AvailableFunds,TotalCashValue');
+    });
+  }
   res.json({ accounts });
 });
 
