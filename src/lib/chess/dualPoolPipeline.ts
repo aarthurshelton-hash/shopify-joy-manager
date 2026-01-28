@@ -31,8 +31,8 @@
  * - Picks the outcome with highest confidence (no more bias oscillation)
  */
 
-const DUAL_POOL_VERSION = "7.90-EQUILIBRIUM";
-console.log(`[v7.90] dualPoolPipeline.ts LOADED - Version: ${DUAL_POOL_VERSION}`);
+const DUAL_POOL_VERSION = "7.91-BALANCED";
+console.log(`[v7.91] dualPoolPipeline.ts LOADED - Version: ${DUAL_POOL_VERSION}`);
 
 // v7.0: Hard timeout wrapper for any async operation
 function withTimeout<T>(promise: Promise<T>, ms: number, name: string): Promise<T> {
