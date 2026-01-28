@@ -1,77 +1,73 @@
 /**
- * Color Flow Prediction Engine v7.89-BALANCED
+ * Color Flow Prediction Engine v7.90-EQUILIBRIUM
  * 
  * Generates strategic predictions from color flow signatures
  * 
- * v7.89 CRITICAL FIX:
- * - Previous logic always defaulted to white when dominantSide was 'contested'
- * - Now properly uses DOMINANT SIDE as the PRIMARY prediction factor
- * - Archetype only influences confidence, not the predicted winner
+ * v7.90 EQUILIBRIUM: CEO insight - "we can win both white AND black"
+ * Instead of oscillating biases, use THREE-WAY confidence voting:
+ * - Calculate independent confidence for white, black, AND draw
+ * - Pick the outcome with highest confidence
+ * - Only predict when there's clear separation
  */
 
 import { ColorFlowSignature, ColorFlowPrediction, StrategicArchetype } from './types';
 import { ARCHETYPE_DEFINITIONS } from './archetypeDefinitions';
+import { calculateEquilibriumScores, EquilibriumScores } from './equilibriumPredictor';
+
+// Store last equilibrium scores for debugging/transparency
+let lastEquilibriumScores: EquilibriumScores | null = null;
+
+/**
+ * Get the last equilibrium calculation (for debugging/UI display)
+ */
+export function getLastEquilibriumScores(): EquilibriumScores | null {
+  return lastEquilibriumScores;
+}
 
 /**
  * Generate strategic predictions based on color flow signature
  * 
- * v7.89 FIX: The predicted winner is determined by WHO controls the board,
- * not by which archetype is detected. Archetype only adjusts confidence.
+ * v7.90 EQUILIBRIUM: Uses three-way confidence voting for balanced predictions
  */
 export function predictFromColorFlow(
   signature: ColorFlowSignature,
-  currentMoveNumber: number
+  currentMoveNumber: number,
+  stockfishEval: number = 0,
+  stockfishDepth: number = 18
 ): ColorFlowPrediction {
   const archetypeDef = ARCHETYPE_DEFINITIONS[signature.archetype];
   
-  // v7.89 CRITICAL: Prediction based on DOMINANT SIDE, not archetype
-  // The side that controls the board wins - this is the core insight
-  let predictedWinner: 'white' | 'black' | 'draw';
+  // v7.90 EQUILIBRIUM: Calculate all three outcome confidences
+  const equilibrium = calculateEquilibriumScores(
+    signature,
+    stockfishEval,
+    stockfishDepth,
+    currentMoveNumber
+  );
   
-  if (signature.dominantSide === 'white') {
+  // Store for debugging access
+  lastEquilibriumScores = equilibrium;
+  
+  // Convert equilibrium prediction to winner format
+  let predictedWinner: 'white' | 'black' | 'draw';
+  if (equilibrium.prediction === 'white_wins') {
     predictedWinner = 'white';
-  } else if (signature.dominantSide === 'black') {
+  } else if (equilibrium.prediction === 'black_wins') {
     predictedWinner = 'black';
   } else {
-    // Contested position - use intensity and momentum to decide
-    // If intensity is very low (<20), likely a draw
-    // Otherwise, use temporal flow to see who has momentum
-    if (signature.intensity < 20) {
-      predictedWinner = 'draw';
-    } else {
-      // Check quadrant control for tiebreaker
-      const quadrant = signature.quadrantProfile;
-      const whiteControl = quadrant.kingsideWhite + quadrant.queensideWhite;
-      const blackControl = quadrant.kingsideBlack + quadrant.queensideBlack;
-      
-      if (Math.abs(whiteControl - blackControl) < 5) {
-        // Very close - predict draw
-        predictedWinner = 'draw';
-      } else {
-        predictedWinner = whiteControl > blackControl ? 'white' : 'black';
-      }
-    }
+    predictedWinner = 'draw';
   }
   
-  // Calculate confidence from archetype + intensity + temporal patterns
-  let confidence = 50; // Base confidence
+  // Use equilibrium confidence with clarity adjustment
+  let confidence = equilibrium.finalConfidence;
   
-  // Boost from archetype historical win rate
-  confidence += (archetypeDef.historicalWinRate - 0.5) * 40;
-  
-  // Boost from pattern intensity (how clear is the pattern?)
-  confidence += (signature.intensity - 50) * 0.3;
-  
-  // Boost from temporal volatility (lower volatility = more confident)
-  confidence -= signature.temporalFlow.volatility * 0.15;
-  
-  // Boost if dominant side matches archetype prediction
-  if (signature.dominantSide !== 'contested') {
-    confidence += 10;
+  // If low clarity, reduce confidence
+  if (!equilibrium.highClarity) {
+    confidence = Math.max(35, confidence - 10);
   }
   
   // Clamp to reasonable range
-  confidence = Math.max(30, Math.min(85, Math.round(confidence)));
+  confidence = Math.max(30, Math.min(85, confidence));
   
   // Strategic guidance based on archetype
   const guidance = generateStrategicGuidance(signature);

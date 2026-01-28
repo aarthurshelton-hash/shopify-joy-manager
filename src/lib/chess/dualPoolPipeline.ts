@@ -24,10 +24,15 @@
  * 
  * CRITICAL: Cloud API is OPTIONAL enhancement, not required.
  * Pipeline MUST work without any external API.
+ * 
+ * v7.90-EQUILIBRIUM: Uses THREE-WAY confidence voting for balanced predictions
+ * - CEO insight: "we can win both white AND black, build on the most likely"
+ * - Calculates independent white/black/draw confidence scores
+ * - Picks the outcome with highest confidence (no more bias oscillation)
  */
 
-const DUAL_POOL_VERSION = "7.95-ZERO-PAUSE";
-console.log(`[v7.95] dualPoolPipeline.ts LOADED - Version: ${DUAL_POOL_VERSION}`);
+const DUAL_POOL_VERSION = "7.90-EQUILIBRIUM";
+console.log(`[v7.90] dualPoolPipeline.ts LOADED - Version: ${DUAL_POOL_VERSION}`);
 
 // v7.0: Hard timeout wrapper for any async operation
 function withTimeout<T>(promise: Promise<T>, ms: number, name: string): Promise<T> {
@@ -184,14 +189,10 @@ function shuffleArray<T>(array: T[]): T[] {
  * v7.87 only flips for prophylactic_defense archetype or when SF strongly favors white.
  */
 /**
- * v7.89-BALANCED: Generate hybrid prediction using fixed Color Flow logic
+ * v7.90-EQUILIBRIUM: Generate hybrid prediction using THREE-WAY confidence voting
  * 
- * KEY INSIGHT: The color flow prediction engine now uses DOMINANT SIDE
- * as the primary factor, not archetype. No more post-hoc calibration needed.
- * 
- * Fusion strategy:
- * - If SF and Color Flow agree → high confidence, use that prediction
- * - If they disagree → weighted blend based on position characteristics
+ * CEO insight: We can win both white AND black - use all signals together
+ * Instead of oscillating biases, calculate confidence for ALL outcomes and pick highest
  */
 async function generateLocalHybridPrediction(
   pgn: string,
@@ -204,59 +205,36 @@ async function generateLocalHybridPrediction(
 }> {
   try {
     const { simulateGame } = await import('./gameSimulator');
-    const { extractColorFlowSignature, predictFromColorFlow } = await import('./colorFlowAnalysis');
+    const { extractColorFlowSignature, predictFromColorFlow, calculateEquilibriumScores } = await import('./colorFlowAnalysis');
     
     const simulation = simulateGame(pgn);
     const colorSignature = extractColorFlowSignature(simulation.board, simulation.gameData, simulation.totalMoves);
-    const colorPrediction = predictFromColorFlow(colorSignature, simulation.totalMoves);
     
-    const sfPred = evalToPrediction(stockfishEval);
+    // v7.90 EQUILIBRIUM: Use new three-way prediction with SF context
+    const colorPrediction = predictFromColorFlow(
+      colorSignature, 
+      simulation.totalMoves,
+      stockfishEval,  // Pass SF eval for equilibrium calculation
+      stockfishDepth
+    );
+    
     const archetype = colorSignature.archetype || 'unknown';
     
-    // Color flow predicted winner
-    const colorPredictionStr: 'white_wins' | 'black_wins' | 'draw' = 
+    // Convert to expected format
+    const prediction: 'white_wins' | 'black_wins' | 'draw' = 
       colorPrediction.predictedWinner === 'white' ? 'white_wins' :
       colorPrediction.predictedWinner === 'black' ? 'black_wins' : 'draw';
     
-    // v7.89 BALANCED FUSION: No more calibration layer
-    let fusedPrediction: 'white_wins' | 'black_wins' | 'draw';
-    let fusedConfidence: number;
-    
-    if (sfPred.prediction === colorPredictionStr) {
-      // Agreement = high confidence, use shared prediction
-      fusedPrediction = sfPred.prediction;
-      fusedConfidence = Math.min(95, (sfPred.confidence + colorPrediction.confidence) / 2 + 15);
-    } else {
-      // Disagreement - use weighted blend based on evaluation strength
-      const sfStrength = Math.abs(stockfishEval);
-      
-      if (sfStrength > 200) {
-        // Strong SF advantage - trust Stockfish more
-        fusedPrediction = sfPred.prediction;
-        fusedConfidence = Math.min(80, sfPred.confidence);
-      } else if (sfStrength < 30) {
-        // Unclear position - trust Color Flow pattern recognition
-        fusedPrediction = colorPredictionStr;
-        fusedConfidence = Math.max(45, colorPrediction.confidence);
-      } else {
-        // Medium eval - weight by confidence levels
-        if (colorPrediction.confidence > sfPred.confidence + 10) {
-          fusedPrediction = colorPredictionStr;
-          fusedConfidence = colorPrediction.confidence;
-        } else {
-          fusedPrediction = sfPred.prediction;
-          fusedConfidence = sfPred.confidence;
-        }
-      }
-    }
+    // v7.90: Confidence is already balanced by equilibrium system
+    const confidence = colorPrediction.confidence;
     
     return {
-      prediction: fusedPrediction,
-      confidence: fusedConfidence,
+      prediction,
+      confidence,
       archetype,
     };
   } catch (err) {
-    console.warn('[v7.89-BALANCED] Hybrid fallback to SF-only:', err);
+    console.warn('[v7.90-EQUILIBRIUM] Hybrid fallback to SF-only:', err);
     const sfPred = evalToPrediction(stockfishEval);
     return {
       prediction: sfPred.prediction,
