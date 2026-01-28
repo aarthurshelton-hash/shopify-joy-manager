@@ -5,8 +5,8 @@
  * v7.93: Smooth flow with burst detection and dynamic cooldowns.
  */
 
-export const BREATHING_VERSION = "7.93";
-export const RATE_LIMIT_BREATHING_MS = 300; // v7.93: 300ms base (adaptive)
+export const BREATHING_VERSION = "7.98";
+export const RATE_LIMIT_BREATHING_MS = 250; // v7.98: 250ms base (optimized)
 
 let lastBreathTime = 0;
 let processingCount = 0;
@@ -115,7 +115,7 @@ export function resetPacer(): void {
   burstCounter = 0;
   adaptiveCooldown = RATE_LIMIT_BREATHING_MS;
   recentOperations.length = 0;
-  console.log('[v7.93-SMOOTH] Pacer reset');
+  console.log('[v7.98-SMOOTH] Pacer reset');
 }
 
-console.log(`[v${BREATHING_VERSION}-SMOOTH-FLOW] breathingPacer.ts LOADED - Base cooldown: ${RATE_LIMIT_BREATHING_MS}ms (adaptive)`);
+console.log(`[v${BREATHING_VERSION}-SMOOTH-AUDIT] breathingPacer.ts LOADED - Base cooldown: ${RATE_LIMIT_BREATHING_MS}ms (adaptive)`);
