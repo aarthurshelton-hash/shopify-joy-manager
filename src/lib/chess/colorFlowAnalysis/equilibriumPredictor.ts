@@ -161,87 +161,49 @@ export function calculateEquilibriumScores(
 
 /**
  * Calculate control signal from quadrant profile
- * v7.94-FIRST-MOVE-FIX: Apply activity offset to compensate for white's first-move advantage
+ * v7.95-DUAL-LENS: Use dominantSide directly - the extraction already handles bias compensation
  */
 function calculateControlSignal(
   signature: ColorFlowSignature
 ): { white: number; black: number; draw: number } {
+  const dominantSide = signature.dominantSide;
   const q = signature.quadrantProfile;
   
-  // Calculate absolute control for each side SEPARATELY
-  const whiteHomeControl = Math.max(0, q.kingsideWhite) + Math.max(0, q.queensideWhite);
-  const blackHomeControl = Math.max(0, -q.kingsideBlack) + Math.max(0, -q.queensideBlack);
+  // Calculate intensity for confidence scaling
+  const totalActivity = (
+    Math.abs(q.kingsideWhite) + Math.abs(q.kingsideBlack) +
+    Math.abs(q.queensideWhite) + Math.abs(q.queensideBlack) +
+    Math.abs(q.center)
+  );
   
-  const whiteCenterControl = Math.max(0, q.center);
-  const blackCenterControl = Math.max(0, -q.center);
-  
-  const whiteInvasion = Math.max(0, q.kingsideBlack) + Math.max(0, q.queensideBlack);
-  const blackInvasion = Math.max(0, -q.kingsideWhite) + Math.max(0, -q.queensideWhite);
-  
-  // Total control with invasion weighted slightly less
-  const whiteTotalControl = whiteHomeControl + whiteCenterControl + whiteInvasion * 0.7;
-  const blackTotalControl = blackHomeControl + blackCenterControl + blackInvasion * 0.7;
-  
-  const totalControl = whiteTotalControl + blackTotalControl;
-  
-  // Avoid division by zero
-  if (totalControl < 10) {
+  // Low activity = uncertain
+  if (totalActivity < 50) {
     return { white: 33, black: 33, draw: 34 };
   }
   
-  // v7.94-FIRST-MOVE-FIX: Apply compensation for white's structural advantage
-  const FIRST_MOVE_OFFSET = 0.07;
+  // Calculate advantage strength based on intensity
+  const intensity = Math.min(1, totalActivity / 300);
+  const baseAdvantage = 15 + intensity * 20; // 15-35 point advantage
   
-  const whiteRatioRaw = whiteTotalControl / totalControl;
-  const blackRatioRaw = blackTotalControl / totalControl;
-  
-  // Compensate: shift neutral point from 50% to 53.5% for white
-  const whiteCorrected = whiteRatioRaw - FIRST_MOVE_OFFSET;
-  const blackCorrected = blackRatioRaw + FIRST_MOVE_OFFSET;
-  
-  // Normalize back to proportions
-  const correctedTotal = whiteCorrected + blackCorrected;
-  const whiteRatio = Math.max(0, whiteCorrected / correctedTotal);
-  const blackRatio = Math.max(0, blackCorrected / correctedTotal);
-  
-  // Close contest (40-60% split after correction) = high draw probability
-  if (whiteRatio > 0.4 && whiteRatio < 0.6) {
-    // Slight tilt based on ratio
-    const whiteEdge = (whiteRatio - 0.5) * 20;
-    return { 
-      white: 32 + whiteEdge, 
-      black: 32 - whiteEdge, 
-      draw: 36 
-    };
-  }
-  
-  // White advantage (>60% corrected control)
-  if (whiteRatio >= 0.6) {
-    const advantage = Math.min((whiteRatio - 0.5) * 60, 35);
-    return { 
-      white: 35 + advantage, 
-      black: 30 - advantage / 2, 
-      draw: 35 - advantage / 2 
-    };
-  }
-  
-  // Black advantage (>60% corrected control)  
-  if (blackRatio >= 0.6) {
-    const advantage = Math.min((blackRatio - 0.5) * 60, 35);
-    return { 
-      white: 30 - advantage / 2, 
-      black: 35 + advantage, 
-      draw: 35 - advantage / 2 
-    };
-  }
-  
-  // Slightly favored positions (between 50-60%)
-  if (whiteRatio > 0.5) {
-    const edge = (whiteRatio - 0.5) * 40;
-    return { white: 34 + edge, black: 32 - edge / 2, draw: 34 - edge / 2 };
-  } else {
-    const edge = (blackRatio - 0.5) * 40;
-    return { white: 32 - edge / 2, black: 34 + edge, draw: 34 - edge / 2 };
+  // v7.95-DUAL-LENS: Trust the dual-lens dominantSide detection completely
+  // It already combines both black-favoring and white-favoring detection methods
+  switch (dominantSide) {
+    case 'white':
+      return { 
+        white: 35 + baseAdvantage, 
+        black: 30 - baseAdvantage / 2, 
+        draw: 35 - baseAdvantage / 2 
+      };
+    case 'black':
+      return { 
+        white: 30 - baseAdvantage / 2, 
+        black: 35 + baseAdvantage, 
+        draw: 35 - baseAdvantage / 2 
+      };
+    case 'contested':
+    default:
+      // Truly contested - slight draw bias
+      return { white: 32, black: 32, draw: 36 };
   }
 }
 
