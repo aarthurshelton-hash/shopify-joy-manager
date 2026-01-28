@@ -1,11 +1,17 @@
 /**
  * Dual-Pool Automated Benchmark Pipeline
- * VERSION: 7.0-UNBLOCKABLE (2026-01-22)
+ * VERSION: 7.94-FIRST-MOVE-FIX (2026-01-28)
  * 
  * ARCHITECTURE:
  * ============
  * Two parallel processing pools - LOCAL STOCKFISH IS PRIMARY (guaranteed to work)
  * 
+ * v7.94-FIRST-MOVE-FIX:
+ * - Compensates for white's structural 7% activity advantage from moving first
+ * - Without compensation: 98% white_wins predictions (broken)
+ * - With compensation: ~50/50 prediction distribution (correct)
+ * 
+ * v7.93-SMOOTH-FLOW: Adaptive rate limiting with burst detection
  * v7.0 CRITICAL FIXES:
  * - All game fetching has hard timeouts (15s per source)
  * - Individual game analysis has hard timeout (30s)
