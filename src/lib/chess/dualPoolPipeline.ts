@@ -1,7 +1,7 @@
 /**
- * v7.95-DUAL-LENS: Combines both black-win and white-win detection methods
+ * v7.96-TRUE-DUAL: Correct dual-lens with proper raw activity calculation
  * Dual-Pool Automated Benchmark Pipeline
- * VERSION: 7.94-FIRST-MOVE-FIX (2026-01-28)
+ * VERSION: 7.96-TRUE-DUAL (2026-01-28)
  * 
  * ARCHITECTURE:
  * ============
