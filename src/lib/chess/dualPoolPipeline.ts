@@ -1,7 +1,11 @@
-/** v7.97-RAW-SUM
- * v7.96-TRUE-DUAL: Correct dual-lens with proper raw activity calculation
+/** v7.98-SMOOTH-AUDIT
  * Dual-Pool Automated Benchmark Pipeline
- * VERSION: 7.96-TRUE-DUAL (2026-01-28)
+ * VERSION: 7.98-SMOOTH-AUDIT (2026-01-28)
+ * 
+ * v7.98 FIXES:
+ * - Unique constraint on game_id for proper upsert
+ * - Randomized time windows for more fresh games
+ * - Synced version across all files
  * 
  * ARCHITECTURE:
  * ============
@@ -38,8 +42,8 @@
  * - Picks the outcome with highest confidence (no more bias oscillation)
  */
 
-const DUAL_POOL_VERSION = "7.93-SMOOTH-FLOW";
-console.log(`[v7.93] dualPoolPipeline.ts LOADED - Version: ${DUAL_POOL_VERSION}`);
+const DUAL_POOL_VERSION = "7.98-SMOOTH-AUDIT";
+console.log(`[v7.98] dualPoolPipeline.ts LOADED - Version: ${DUAL_POOL_VERSION}`);
 
 // v7.0: Hard timeout wrapper for any async operation
 function withTimeout<T>(promise: Promise<T>, ms: number, name: string): Promise<T> {
@@ -290,15 +294,17 @@ async function fetchLichessGamesForPool(
   const games: UnifiedGame[] = [];
   const shuffledPlayers = shuffleArray([...LICHESS_ELITE_PLAYERS]);
   
-  // v6.92: Use batch-based window isolation
+  // v7.98: Randomized window for maximum freshness
+  // Use combination of batch number AND random offset to avoid window collisions
   const now = Date.now();
   const dataRichEpoch = new Date('2018-01-01').getTime();
-  const primeOffsets = [17, 37, 53, 71, 89, 97];
-  const yearOffset = primeOffsets[batchNumber % primeOffsets.length];
-  const monthOffset = primeOffsets[(batchNumber + 1) % primeOffsets.length];
+  
+  // v7.98: More random window selection
+  const yearOffset = (batchNumber % 7) + Math.floor(Math.random() * 3); // 0-9 years back
+  const monthOffset = Math.floor(Math.random() * 12); // Random month
   
   const baseYear = 2018 + (yearOffset % 7); // 2018-2024
-  const baseMonth = (monthOffset % 12);
+  const baseMonth = monthOffset;
   const windowStart = new Date(baseYear, baseMonth, 1).getTime();
   const windowEnd = Math.min(now, windowStart + 90 * 24 * 60 * 60 * 1000);
   
@@ -367,8 +373,8 @@ async function fetchChessComGamesForPool(
   const games: UnifiedGame[] = [];
   const shuffledPlayers = shuffleArray([...CHESSCOM_ELITE_PLAYERS]);
   
-  // v6.92: Use batch-based archive offset
-  const monthOffset = (batchNumber * 3) % 24; // 0, 3, 6, ... months back
+  // v7.98: More randomized archive offset
+  const monthOffset = Math.floor(Math.random() * 24); // 0-24 months back randomly
   
   onProgress?.(`[Chess.com] Batch ${batchNumber}: Archive offset ${monthOffset} months`);
   
