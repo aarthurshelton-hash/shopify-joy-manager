@@ -10,12 +10,12 @@ const evaluationCache = new Map<string, { data: unknown; timestamp: number }>();
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const CACHE_MAX_SIZE = 1000;
 
-// Rate limit tracking - v6.80-PATIENT
-// PHILOSOPHY: Quality > Speed. WAIT for limits, never rush.
-// Lichess Cloud Eval is 20 req/min - we use VERY conservative 10/min
+// Rate limit tracking - v7.99-RESILIENT
+// Lichess Cloud Eval is 20 req/min - we use conservative 12/min with fast recovery
 let lastRequestTime = 0;
 let rateLimitedUntil = 0; // Timestamp when rate limit expires
-const MIN_REQUEST_INTERVAL_MS = 6000; // ~10 requests/min - BULLETPROOF headroom
+const MIN_REQUEST_INTERVAL_MS = 5000; // ~12 requests/min - balanced headroom
+const MAX_COOLDOWN_MS = 30000; // Cap cooldown at 30s, not 60s
 
 function getCacheKey(fen: string, multiPv: number): string {
   return `${fen}:${multiPv}`;
@@ -50,10 +50,11 @@ function isRateLimited(): { limited: boolean; remainingMs: number } {
   return { limited: false, remainingMs: 0 };
 }
 
-// v6.67: Record when we get rate limited
+// v7.99: Record when we get rate limited - capped cooldown
 function recordRateLimit(retryAfterSeconds: number): void {
-  rateLimitedUntil = Date.now() + (retryAfterSeconds * 1000);
-  console.log(`[LichessCloudEval] Rate limit recorded, expires at ${new Date(rateLimitedUntil).toISOString()}`);
+  const cooldownMs = Math.min(retryAfterSeconds * 1000, MAX_COOLDOWN_MS);
+  rateLimitedUntil = Date.now() + cooldownMs;
+  console.log(`[LichessCloudEval] Rate limit recorded for ${cooldownMs/1000}s, expires at ${new Date(rateLimitedUntil).toISOString()}`);
 }
 
 async function throttleRequest(): Promise<void> {
