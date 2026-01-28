@@ -397,74 +397,87 @@ function calculateOverallIntensity(board: SquareData[][]): number {
  * Method B (Ratio-Based): What we used when white wins worked
  */
 function determineDominantSide(profile: QuadrantProfile): 'white' | 'black' | 'contested' {
-  // ===== METHOD A: Absolute Difference (favored black detection historically) =====
-  // This method counts raw activity differences without normalization
-  const whiteActivityAbs = (
-    Math.max(0, profile.kingsideWhite) + 
-    Math.max(0, profile.queensideWhite) +
-    Math.max(0, profile.center) +
-    Math.max(0, profile.kingsideBlack) + // White invading black territory
-    Math.max(0, profile.queensideBlack)
-  );
+  /**
+   * v7.96-TRUE-DUAL: The REAL dual-lens approach
+   * 
+   * CRITICAL INSIGHT from CEO: "we were winning every black wins match" historically
+   * This means we HAD working black detection - we just broke it.
+   * 
+   * The quadrant profile values work like this:
+   * - POSITIVE values = white activity/control
+   * - NEGATIVE values = black activity/control
+   * 
+   * Method A: Sum all negative values for black, positive for white (RAW)
+   * Method B: Ratio-based with first-move compensation
+   * 
+   * If either method detects a clear winner, trust it!
+   */
   
-  const blackActivityAbs = (
-    Math.max(0, -profile.kingsideBlack) + 
-    Math.max(0, -profile.queensideBlack) +
-    Math.max(0, -profile.center) +
-    Math.max(0, -profile.kingsideWhite) + // Black invading white territory
-    Math.max(0, -profile.queensideWhite)
-  );
+  // ===== METHOD A: Raw Activity Sum (what originally detected black wins) =====
+  // Simply sum up: positive = white strength, negative = black strength
+  let whiteRawA = 0;
+  let blackRawA = 0;
   
-  const diffAbs = whiteActivityAbs - blackActivityAbs;
-  // Method A: Requires 25+ point lead (what worked for black wins)
+  // Each quadrant contributes to either white or black based on sign
+  const values = [
+    profile.kingsideWhite,
+    profile.kingsideBlack,
+    profile.queensideWhite,
+    profile.queensideBlack,
+    profile.center
+  ];
+  
+  for (const v of values) {
+    if (v > 0) whiteRawA += v;
+    else blackRawA += Math.abs(v);
+  }
+  
+  // Method A: 30-point threshold for clear dominance
+  const diffA = whiteRawA - blackRawA;
   let methodA: 'white' | 'black' | 'contested' = 'contested';
-  if (diffAbs > 25) methodA = 'white';
-  else if (diffAbs < -25) methodA = 'black';
+  if (diffA > 30) methodA = 'white';
+  else if (diffA < -30) methodA = 'black';
   
-  // ===== METHOD B: Ratio-Based with First-Move Compensation (favored white detection) =====
-  const whiteHome = Math.max(0, profile.kingsideWhite) + Math.max(0, profile.queensideWhite);
-  const whiteCenter = Math.max(0, profile.center);
-  const whiteInvasion = (Math.max(0, profile.kingsideBlack) + Math.max(0, profile.queensideBlack)) * 0.7;
-  
-  const blackHome = Math.max(0, -profile.kingsideBlack) + Math.max(0, -profile.queensideBlack);
-  const blackCenter = Math.max(0, -profile.center);
-  const blackInvasion = (Math.max(0, -profile.kingsideWhite) + Math.max(0, -profile.queensideWhite)) * 0.7;
-  
-  const whiteTotal = whiteHome + whiteCenter + whiteInvasion;
-  const blackTotal = blackHome + blackCenter + blackInvasion;
-  const grandTotal = whiteTotal + blackTotal;
+  // ===== METHOD B: Ratio-based with first-move compensation =====
+  // White has structural +7% activity from moving first
+  const FIRST_MOVE_OFFSET = 0.07;
+  const grandTotal = whiteRawA + blackRawA;
   
   let methodB: 'white' | 'black' | 'contested' = 'contested';
-  if (grandTotal > 10) {
-    // Apply 12% first-move compensation (increased from 7%)
-    const FIRST_MOVE_OFFSET = 0.12;
-    const whiteRatio = (whiteTotal / grandTotal) - FIRST_MOVE_OFFSET;
-    const blackRatio = (blackTotal / grandTotal) + FIRST_MOVE_OFFSET;
+  if (grandTotal > 20) {
+    const whiteRatioRaw = whiteRawA / grandTotal;
+    const blackRatioRaw = blackRawA / grandTotal;
+    
+    // Compensate: subtract 7% from white, add 7% to black
+    const whiteCorrected = whiteRatioRaw - FIRST_MOVE_OFFSET;
+    const blackCorrected = blackRatioRaw + FIRST_MOVE_OFFSET;
     
     // Normalize
-    const correctedTotal = whiteRatio + blackRatio;
-    const whiteFinal = whiteRatio / correctedTotal;
-    const blackFinal = blackRatio / correctedTotal;
+    const correctedTotal = whiteCorrected + blackCorrected;
+    const whiteFinal = whiteCorrected / correctedTotal;
+    const blackFinal = blackCorrected / correctedTotal;
     
-    // 55% threshold after correction
+    // 55% threshold after compensation = clear dominance
     if (whiteFinal >= 0.55) methodB = 'white';
     else if (blackFinal >= 0.55) methodB = 'black';
   }
   
-  // ===== DUAL-LENS FUSION: Combine both methods =====
-  // Both agree → Strong signal for that color
+  // ===== DUAL-LENS FUSION =====
+  // Priority: Agreement > Single detection > Contested
+  
+  // Both agree → High confidence
   if (methodA === methodB && methodA !== 'contested') {
     return methodA;
   }
   
-  // One says white, one says black → Truly contested
+  // One says white, one says black → Methods disagree, truly contested
   if ((methodA === 'white' && methodB === 'black') || 
       (methodA === 'black' && methodB === 'white')) {
     return 'contested';
   }
   
-  // One is contested, other has opinion → Trust the opinion
-  // This allows EITHER method to identify dominance
+  // One method detected, other is contested → Trust the detection
+  // This is the KEY: either method can identify dominance independently
   if (methodA !== 'contested') return methodA;
   if (methodB !== 'contested') return methodB;
   

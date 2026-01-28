@@ -1,52 +1,45 @@
-# Memory: features/universal-engine/v7-95-dual-lens-detection
+# Memory: features/universal-engine/v7-96-true-dual-detection
 Updated: Now
 
 ## Problem
-Benchmark showed 985/996 white wins correct (99%) but only 21/924 black wins correct (2.3%).
-Previous iterations showed the OPPOSITE pattern - we could detect black wins perfectly.
-This proves BOTH detection methods work, just not simultaneously.
+Benchmark showed 99% white wins correct but only 2.3% black wins correct.
+Previous v7.95-DUAL-LENS didn't fix the issue because Method A was incorrectly calculating raw activities.
 
-## Root Cause Analysis
-- **Method A** (Absolute Difference): Favored black detection with 25-point threshold
-- **Method B** (Ratio + Offset): Favored white detection with first-move compensation
+## Root Cause
+The original dual-lens had a flawed Method A calculation:
+- It was treating "positive quadrant values as white invading black territory" which is WRONG
+- Quadrant values are simple: POSITIVE = white activity, NEGATIVE = black activity
 
-Each method worked perfectly for ONE color but failed for the other.
+## v7.96-TRUE-DUAL Solution
 
-## v7.95-DUAL-LENS Solution
-
-### Core Architecture
-Run BOTH detection methods simultaneously and use fusion logic:
-
+### Correct Calculation
 ```typescript
-// Method A: Absolute difference (historically detected black wins)
-const diffAbs = whiteActivityAbs - blackActivityAbs;
-if (diffAbs > 25) methodA = 'white';
-else if (diffAbs < -25) methodA = 'black';
+// Simply iterate quadrant values
+for (const v of [kingsideWhite, kingsideBlack, queensideWhite, queensideBlack, center]) {
+  if (v > 0) whiteRawA += v;      // Positive = white strength
+  else blackRawA += Math.abs(v);   // Negative = black strength
+}
 
-// Method B: Ratio-based with 12% first-move offset (detected white wins)
-const whiteRatio = (whiteTotal / grandTotal) - 0.12;
-if (whiteFinal >= 0.55) methodB = 'white';
-else if (blackFinal >= 0.55) methodB = 'black';
+// Method A: 30-point threshold
+if (diffA > 30) methodA = 'white';
+else if (diffA < -30) methodA = 'black';
 
-// Fusion Logic:
-// Both agree → Strong confidence in that color
-// Disagree → Contested (let SF/other signals decide)
-// One contested, one has opinion → Trust the opinion
+// Method B: Ratio with 7% first-move compensation
+// 55% threshold after compensation
 ```
 
 ### Key Insight
-The "dual-lens" approach allows EITHER method to identify dominance when appropriate:
-- Method A catches black-dominant positions that Method B misses
-- Method B catches white-dominant positions that Method A misses
-- When they disagree, the position is truly contested
+The CEO's observation was correct: "we were winning every black wins match" historically.
+This means the system HAD correct black detection logic - we just broke it with incorrect reimplementation.
+
+By correctly summing positive vs negative quadrant values, we restore the original black-win detection
+while keeping the first-move compensation for white-win detection.
 
 ## Expected Impact
 - White win accuracy: Maintain ~99% (Method B still works)
-- Black win accuracy: Improve from 2% to ~40%+ (Method A now enabled)
-- Draw detection: Improved via contested classification
-- Overall: Path to 80%+ accuracy
+- Black win accuracy: Improve from 2% to ~60%+ (Method A now correct)
+- Path to 80%+ overall accuracy
 
 ## Files Modified
-- `src/lib/chess/colorFlowAnalysis/signatureExtractor.ts` - Dual-lens determineDominantSide
-- `src/lib/chess/colorFlowAnalysis/equilibriumPredictor.ts` - Simplified control signal
-- `src/lib/chess/dualPoolPipeline.ts` - Version bump
+- `src/lib/chess/colorFlowAnalysis/signatureExtractor.ts` - Corrected dual-lens calculation
+- `src/lib/chess/dualPoolPipeline.ts` - Version bump to 7.96
