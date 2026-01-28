@@ -384,34 +384,37 @@ function calculateOverallIntensity(board: SquareData[][]): number {
 
 /**
  * Determine which side has overall color dominance
- * v7.91-FIX: Calculate white and black activity SEPARATELY to avoid inherent bias
+ * v7.92-BALANCED: Truly symmetric calculation with lower thresholds
  * 
- * Previously: summed all values (white=+, black=-) which biased toward white
- * Now: count absolute activity for each side independently
+ * KEY: Use RATIO not absolute difference for symmetric detection
  */
 function determineDominantSide(profile: QuadrantProfile): 'white' | 'black' | 'contested' {
-  // White activity = positive values from white-controlled areas
-  const whiteActivity = Math.max(0, profile.kingsideWhite) + 
-                        Math.max(0, profile.queensideWhite) + 
-                        Math.max(0, profile.center);
-  
-  // Black activity = absolute value of negative values from black-controlled areas
-  // Note: kingsideBlack/queensideBlack store NEGATIVE values for black control
-  const blackActivity = Math.max(0, -profile.kingsideBlack) + 
-                        Math.max(0, -profile.queensideBlack) + 
-                        Math.max(0, -profile.center);
-  
-  // Also count invasion: white controlling black territory, black controlling white territory
+  // White activity from white-favoring quadrant values
+  const whiteHomeStrength = Math.max(0, profile.kingsideWhite) + Math.max(0, profile.queensideWhite);
+  const whiteCenterStrength = Math.max(0, profile.center);
+  // White invading black territory = positive values in black quadrants
   const whiteInvasion = Math.max(0, profile.kingsideBlack) + Math.max(0, profile.queensideBlack);
+  
+  // Black activity from black-favoring quadrant values (negative becomes positive)
+  const blackHomeStrength = Math.max(0, -profile.kingsideBlack) + Math.max(0, -profile.queensideBlack);
+  const blackCenterStrength = Math.max(0, -profile.center);
+  // Black invading white territory = negative values in white quadrants
   const blackInvasion = Math.max(0, -profile.kingsideWhite) + Math.max(0, -profile.queensideWhite);
   
-  const whiteTotal = whiteActivity + whiteInvasion * 0.5;
-  const blackTotal = blackActivity + blackInvasion * 0.5;
+  const whiteTotal = whiteHomeStrength + whiteCenterStrength + whiteInvasion * 0.7;
+  const blackTotal = blackHomeStrength + blackCenterStrength + blackInvasion * 0.7;
   
-  const diff = whiteTotal - blackTotal;
+  const totalActivity = whiteTotal + blackTotal;
   
-  // Symmetric thresholds
-  if (diff > 25) return 'white';
-  if (diff < -25) return 'black';
+  // Avoid division by zero
+  if (totalActivity < 10) return 'contested';
+  
+  // Use RATIO for symmetric detection
+  const whiteRatio = whiteTotal / totalActivity;
+  const blackRatio = blackTotal / totalActivity;
+  
+  // v7.92: 55% threshold for dominance (was effectively much higher)
+  if (whiteRatio > 0.55) return 'white';
+  if (blackRatio > 0.55) return 'black';
   return 'contested';
 }

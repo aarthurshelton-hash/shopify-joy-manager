@@ -322,19 +322,20 @@ function calculateArchetypeSignal(
     decisiveProb = 68;
   }
   
-  // v7.91: WHO wins depends on WHO is dominant (from board control), not archetype bias
+  // v7.92-BALANCED: WHO wins depends entirely on dominantSide
+  // The key fix: contested should be TRULY 50/50, not biased
   if (dominantSide === 'white') {
-    // White is dominant in this position - they're more likely to convert
-    const whiteShare = decisiveProb * 0.62; // 62% of decisive outcomes favor dominant side
-    const blackShare = decisiveProb * 0.38;
+    // White is dominant - they get 60% of decisive outcomes
+    const whiteShare = decisiveProb * 0.60;
+    const blackShare = decisiveProb * 0.40;
     return { white: whiteShare, black: blackShare, draw: drawProb };
   } else if (dominantSide === 'black') {
-    // Black is dominant - they're more likely to convert
-    const blackShare = decisiveProb * 0.62;
-    const whiteShare = decisiveProb * 0.38;
+    // Black is dominant - they get 60% of decisive outcomes
+    const blackShare = decisiveProb * 0.60;
+    const whiteShare = decisiveProb * 0.40;
     return { white: whiteShare, black: blackShare, draw: drawProb };
   } else {
-    // Contested - split evenly among decisive outcomes
+    // Contested - EXACTLY 50/50 split, no hidden bias
     const eachShare = decisiveProb / 2;
     return { white: eachShare, black: eachShare, draw: drawProb };
   }
