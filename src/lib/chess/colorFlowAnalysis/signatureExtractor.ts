@@ -384,12 +384,34 @@ function calculateOverallIntensity(board: SquareData[][]): number {
 
 /**
  * Determine which side has overall color dominance
+ * v7.91-FIX: Calculate white and black activity SEPARATELY to avoid inherent bias
+ * 
+ * Previously: summed all values (white=+, black=-) which biased toward white
+ * Now: count absolute activity for each side independently
  */
 function determineDominantSide(profile: QuadrantProfile): 'white' | 'black' | 'contested' {
-  const totalBalance = profile.kingsideWhite + profile.kingsideBlack +
-                       profile.queensideWhite + profile.queensideBlack + profile.center;
+  // White activity = positive values from white-controlled areas
+  const whiteActivity = Math.max(0, profile.kingsideWhite) + 
+                        Math.max(0, profile.queensideWhite) + 
+                        Math.max(0, profile.center);
   
-  if (totalBalance > 30) return 'white';
-  if (totalBalance < -30) return 'black';
+  // Black activity = absolute value of negative values from black-controlled areas
+  // Note: kingsideBlack/queensideBlack store NEGATIVE values for black control
+  const blackActivity = Math.max(0, -profile.kingsideBlack) + 
+                        Math.max(0, -profile.queensideBlack) + 
+                        Math.max(0, -profile.center);
+  
+  // Also count invasion: white controlling black territory, black controlling white territory
+  const whiteInvasion = Math.max(0, profile.kingsideBlack) + Math.max(0, profile.queensideBlack);
+  const blackInvasion = Math.max(0, -profile.kingsideWhite) + Math.max(0, -profile.queensideWhite);
+  
+  const whiteTotal = whiteActivity + whiteInvasion * 0.5;
+  const blackTotal = blackActivity + blackInvasion * 0.5;
+  
+  const diff = whiteTotal - blackTotal;
+  
+  // Symmetric thresholds
+  if (diff > 25) return 'white';
+  if (diff < -25) return 'black';
   return 'contested';
 }

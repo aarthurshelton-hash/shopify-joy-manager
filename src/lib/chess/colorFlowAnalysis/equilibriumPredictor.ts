@@ -1,13 +1,17 @@
 /**
- * Equilibrium Predictor v7.90-EQUILIBRIUM
+ * Equilibrium Predictor v7.91-BALANCED
  * 
- * KEY INSIGHT from CEO: "We were able to win black, then win white - 
- * this proves we have the tools to dominate BOTH"
+ * v7.91 KEY FIX: Eliminated systematic white bias
  * 
- * Instead of oscillating between biases, this module:
- * 1. Calculates THREE independent confidence scores (white, black, draw)
- * 2. Only predicts when one outcome has clear dominance
- * 3. Uses BOTH directional signals to pick the most likely outcome
+ * ROOT CAUSES FIXED:
+ * 1. determineDominantSide summed white(+) and black(-) values = inherent white bias
+ * 2. calculateControlSignal used raw differences instead of ratios
+ * 3. calculateArchetypeSignal used hardcoded "white_favored" outcomes from archetypes
+ * 
+ * SOLUTION:
+ * - Calculate white and black activity SEPARATELY using absolute values
+ * - Use RATIOS (white/total, black/total) not differences
+ * - Archetype determines STYLE (draw-prone vs decisive), dominantSide determines WHO wins
  * 
  * This is the path to 80%+ accuracy.
  */
@@ -56,7 +60,8 @@ export function calculateEquilibriumScores(
   const momentumSignal = calculateMomentumSignal(temporal);
   
   // ===== COMPONENT 3: Archetype Historical Rates =====
-  const archetypeSignal = calculateArchetypeSignal(signature.archetype, archetype);
+  // v7.91: Pass dominantSide so archetype signal knows WHO is attacking
+  const archetypeSignal = calculateArchetypeSignal(signature.archetype, archetype, signature.dominantSide);
   
   // ===== COMPONENT 4: Stockfish Evaluation =====
   const sfSignal = calculateStockfishSignal(stockfishEval);
@@ -158,45 +163,81 @@ export function calculateEquilibriumScores(
 
 /**
  * Calculate control signal from quadrant profile
+ * v7.91-BALANCED: Symmetric calculation that doesn't inherently favor white
+ * 
+ * KEY FIX: The quadrant profile uses +values for white, -values for black
+ * We must calculate each side's total activity SYMMETRICALLY
  */
 function calculateControlSignal(
   signature: ColorFlowSignature
 ): { white: number; black: number; draw: number } {
   const q = signature.quadrantProfile;
   
-  // Calculate total control for each side
-  const whiteControl = Math.max(0, q.kingsideWhite) + Math.max(0, q.queensideWhite) + Math.max(0, q.center);
-  const blackControl = Math.max(0, -q.kingsideBlack) + Math.max(0, -q.queensideBlack) + Math.max(0, -q.center);
+  // v7.91: Calculate absolute control for each side SEPARATELY
+  // White's own territory control (positive values in white quadrants)
+  const whiteHomeControl = Math.max(0, q.kingsideWhite) + Math.max(0, q.queensideWhite);
+  // Black's own territory control (negative values become positive)
+  const blackHomeControl = Math.max(0, -q.kingsideBlack) + Math.max(0, -q.queensideBlack);
   
-  // Also consider: who controls the OPPONENT'S territory
+  // Center is shared - split by sign
+  const whiteCenterControl = Math.max(0, q.center);
+  const blackCenterControl = Math.max(0, -q.center);
+  
+  // Territory invasion (controlling opponent's half)
+  // White invading black's territory = positive kingsideBlack/queensideBlack
   const whiteInvasion = Math.max(0, q.kingsideBlack) + Math.max(0, q.queensideBlack);
+  // Black invading white's territory = negative kingsideWhite/queensideWhite  
   const blackInvasion = Math.max(0, -q.kingsideWhite) + Math.max(0, -q.queensideWhite);
   
-  const whiteTotalControl = whiteControl + whiteInvasion * 0.5;
-  const blackTotalControl = blackControl + blackInvasion * 0.5;
+  // Total control with invasion weighted slightly less
+  const whiteTotalControl = whiteHomeControl + whiteCenterControl + whiteInvasion * 0.7;
+  const blackTotalControl = blackHomeControl + blackCenterControl + blackInvasion * 0.7;
   
-  // Normalize to create confidence distribution
-  const diff = whiteTotalControl - blackTotalControl;
+  // Calculate difference - positive = white advantage, negative = black advantage
+  const controlDiff = whiteTotalControl - blackTotalControl;
+  const totalControl = whiteTotalControl + blackTotalControl;
   
-  if (Math.abs(diff) < 20) {
-    // Close contest - high draw probability
-    return { white: 30, black: 30, draw: 40 };
-  } else if (diff > 0) {
-    // White advantage
-    const advantage = Math.min(diff / 2, 40);
+  // Avoid division by zero
+  if (totalControl < 10) {
+    return { white: 33, black: 33, draw: 34 };
+  }
+  
+  // v7.91: Use symmetric thresholds based on RATIO, not raw difference
+  const whiteRatio = whiteTotalControl / totalControl;
+  const blackRatio = blackTotalControl / totalControl;
+  
+  // Close contest (40-60% split) = high draw probability
+  if (whiteRatio > 0.4 && whiteRatio < 0.6) {
+    return { white: 32, black: 32, draw: 36 };
+  }
+  
+  // White advantage (>60% control)
+  if (whiteRatio >= 0.6) {
+    const advantage = Math.min((whiteRatio - 0.5) * 60, 35);
     return { 
       white: 35 + advantage, 
-      black: 25 - advantage / 2, 
-      draw: 40 - advantage / 2 
+      black: 30 - advantage / 2, 
+      draw: 35 - advantage / 2 
     };
-  } else {
-    // Black advantage
-    const advantage = Math.min(-diff / 2, 40);
+  }
+  
+  // Black advantage (>60% control)  
+  if (blackRatio >= 0.6) {
+    const advantage = Math.min((blackRatio - 0.5) * 60, 35);
     return { 
-      white: 25 - advantage / 2, 
+      white: 30 - advantage / 2, 
       black: 35 + advantage, 
-      draw: 40 - advantage / 2 
+      draw: 35 - advantage / 2 
     };
+  }
+  
+  // Slightly favored positions (60% threshold not met)
+  if (whiteRatio > 0.5) {
+    const edge = (whiteRatio - 0.5) * 40;
+    return { white: 34 + edge, black: 32 - edge / 2, draw: 34 - edge / 2 };
+  } else {
+    const edge = (blackRatio - 0.5) * 40;
+    return { white: 32 - edge / 2, black: 34 + edge, draw: 34 - edge / 2 };
   }
 }
 
@@ -246,54 +287,57 @@ function calculateMomentumSignal(
 
 /**
  * Calculate archetype signal from historical patterns
+ * v7.91-BALANCED: Archetype describes game STYLE, not who wins
+ * 
+ * KEY INSIGHT: "kingside_attack" can favor EITHER side depending on who is attacking
+ * The archetype outcome biases (all "white_favored") were causing massive bias
+ * 
+ * Instead: Use archetype to determine DRAW vs DECISIVE probability,
+ * and the dominantSide (from signature) to determine WHITE vs BLACK
  */
 function calculateArchetypeSignal(
   archetype: string,
-  archetypeDef: typeof ARCHETYPE_DEFINITIONS[keyof typeof ARCHETYPE_DEFINITIONS] | undefined
+  archetypeDef: typeof ARCHETYPE_DEFINITIONS[keyof typeof ARCHETYPE_DEFINITIONS] | undefined,
+  dominantSide?: 'white' | 'black' | 'contested'
 ): { white: number; black: number; draw: number } {
   if (!archetypeDef) {
     return { white: 33, black: 33, draw: 34 };
   }
   
-  const winRate = archetypeDef.historicalWinRate;
-  const outcome = archetypeDef.predictedOutcome;
-  
-  // Draw-prone archetypes
+  // Archetype determines draw probability (style of game)
   const drawProneArchetypes = ['prophylactic_defense', 'closed_maneuvering', 'endgame_technique'];
-  const decisiveArchetypes = ['kingside_attack', 'sacrificial_attack', 'opposite_castling'];
+  const decisiveArchetypes = ['kingside_attack', 'sacrificial_attack', 'opposite_castling', 'pawn_storm'];
+  
+  let drawProb: number;
+  let decisiveProb: number;
   
   if (drawProneArchetypes.includes(archetype)) {
-    // Higher draw probability
-    if (outcome === 'white_favored') {
-      return { white: 35, black: 25, draw: 40 };
-    } else if (outcome === 'black_favored') {
-      return { white: 25, black: 35, draw: 40 };
-    }
-    return { white: 30, black: 30, draw: 40 };
+    drawProb = 42;  // High draw probability
+    decisiveProb = 58;
+  } else if (decisiveArchetypes.includes(archetype)) {
+    drawProb = 22;  // Low draw probability - someone will win
+    decisiveProb = 78;
+  } else {
+    drawProb = 32;  // Standard
+    decisiveProb = 68;
   }
   
-  if (decisiveArchetypes.includes(archetype)) {
-    // Lower draw probability
-    if (outcome === 'white_favored') {
-      const boost = (winRate - 0.5) * 60;
-      return { white: 45 + boost, black: 35 - boost / 2, draw: 20 };
-    } else if (outcome === 'black_favored') {
-      const boost = (0.5 - winRate) * 60;
-      return { white: 35 - boost / 2, black: 45 + boost, draw: 20 };
-    }
-    return { white: 40, black: 40, draw: 20 };
+  // v7.91: WHO wins depends on WHO is dominant (from board control), not archetype bias
+  if (dominantSide === 'white') {
+    // White is dominant in this position - they're more likely to convert
+    const whiteShare = decisiveProb * 0.62; // 62% of decisive outcomes favor dominant side
+    const blackShare = decisiveProb * 0.38;
+    return { white: whiteShare, black: blackShare, draw: drawProb };
+  } else if (dominantSide === 'black') {
+    // Black is dominant - they're more likely to convert
+    const blackShare = decisiveProb * 0.62;
+    const whiteShare = decisiveProb * 0.38;
+    return { white: whiteShare, black: blackShare, draw: drawProb };
+  } else {
+    // Contested - split evenly among decisive outcomes
+    const eachShare = decisiveProb / 2;
+    return { white: eachShare, black: eachShare, draw: drawProb };
   }
-  
-  // Standard archetype
-  if (outcome === 'white_favored') {
-    const boost = (winRate - 0.5) * 40;
-    return { white: 40 + boost, black: 30 - boost / 2, draw: 30 };
-  } else if (outcome === 'black_favored') {
-    const boost = (0.5 - winRate) * 40;
-    return { white: 30 - boost / 2, black: 40 + boost, draw: 30 };
-  }
-  
-  return { white: 35, black: 35, draw: 30 };
 }
 
 /**
