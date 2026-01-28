@@ -25,8 +25,11 @@ export { ARCHETYPE_DEFINITIONS } from './archetypeDefinitions';
 // Re-export signature extractor with prophylactic deep analysis
 export { extractColorFlowSignature, getLastProphylacticAnalysis } from './signatureExtractor';
 
-// Re-export prediction engine
-export { predictFromColorFlow } from './predictionEngine';
+// Re-export prediction engine with equilibrium system
+export { predictFromColorFlow, getLastEquilibriumScores } from './predictionEngine';
+
+// Re-export equilibrium predictor
+export { calculateEquilibriumScores, type EquilibriumScores } from './equilibriumPredictor';
 
 // Re-export prophylactic variation system
 export {
