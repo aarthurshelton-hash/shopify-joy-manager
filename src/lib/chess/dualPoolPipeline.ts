@@ -1,4 +1,5 @@
 /**
+ * v7.95-DUAL-LENS: Combines both black-win and white-win detection methods
  * Dual-Pool Automated Benchmark Pipeline
  * VERSION: 7.94-FIRST-MOVE-FIX (2026-01-28)
  * 
