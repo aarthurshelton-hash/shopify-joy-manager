@@ -31,8 +31,8 @@
  * - Picks the outcome with highest confidence (no more bias oscillation)
  */
 
-const DUAL_POOL_VERSION = "7.92-SYMMETRIC";
-console.log(`[v7.92] dualPoolPipeline.ts LOADED - Version: ${DUAL_POOL_VERSION}`);
+const DUAL_POOL_VERSION = "7.93-SMOOTH-FLOW";
+console.log(`[v7.93] dualPoolPipeline.ts LOADED - Version: ${DUAL_POOL_VERSION}`);
 
 // v7.0: Hard timeout wrapper for any async operation
 function withTimeout<T>(promise: Promise<T>, ms: number, name: string): Promise<T> {
@@ -68,26 +68,26 @@ export interface PoolConfig {
   delayBetweenGames: number; // ms
 }
 
-// v7.95-ZERO-PAUSE: Optimized pool - faster with minimal delays
+// v7.93-SMOOTH-FLOW: Balanced pool - smooth flow with safer delays
 export const CLOUD_POOL_CONFIG: PoolConfig = {
   name: 'VOLUME-LOCAL',
-  targetPerHour: 200,       // v7.95: Higher target (200/hr = 3.3/min)
+  targetPerHour: 120,       // v7.93: Sustainable target (2/min)
   stockfishMode: 'local_fast',
-  localDepth: 16,           // v7.95: D16 for speed
-  localNodes: 2000000,      // v7.95: 2M nodes
-  analysisTimeout: 8000,    // v7.95: 8s max
-  delayBetweenGames: 100,   // v7.95: 100ms between games (was 300ms)
+  localDepth: 16,           // D16 for speed
+  localNodes: 2000000,      // 2M nodes
+  analysisTimeout: 10000,   // v7.93: 10s max (safer margin)
+  delayBetweenGames: 400,   // v7.93: 400ms between games for smooth flow
 };
 
-// v7.95-ZERO-PAUSE: DEEP pool - faster deep analysis
+// v7.93-SMOOTH-FLOW: DEEP pool - steady deep analysis
 export const LOCAL_POOL_CONFIG: PoolConfig = {
   name: 'LOCAL-DEEP',
-  targetPerHour: 20,        // v7.95: Faster target
+  targetPerHour: 15,        // v7.93: Sustainable deep target
   stockfishMode: 'local_deep',
-  localDepth: 24,           // v7.95: D24 for depth (was 26)
-  localNodes: 30000000,     // v7.95: 30M nodes
-  analysisTimeout: 25000,   // v7.95: 25s max (was 40s)
-  delayBetweenGames: 200,   // v7.95: 200ms between games (was 500ms)
+  localDepth: 24,           // D24 for depth
+  localNodes: 30000000,     // 30M nodes
+  analysisTimeout: 30000,   // v7.93: 30s max (safe margin)
+  delayBetweenGames: 600,   // v7.93: 600ms between games for smooth flow
 };
 
 // ================ TYPES ================
@@ -339,9 +339,12 @@ async function fetchLichessGamesForPool(
         });
       }
       
-      await new Promise(r => setTimeout(r, 300));
+      // v7.93: Safer delay between player fetches (500ms)
+      await new Promise(r => setTimeout(r, 500));
     } catch (err) {
-      console.warn(`[v6.92] Lichess fetch failed for ${player}:`, err);
+      console.warn(`[v7.93] Lichess fetch failed for ${player}:`, err);
+      // v7.93: Extra delay after error to prevent rapid retries
+      await new Promise(r => setTimeout(r, 1000));
     }
   }
   
@@ -399,9 +402,12 @@ async function fetchChessComGamesForPool(
         });
       }
       
-      await new Promise(r => setTimeout(r, 500));
+      // v7.93: Safer delay between player fetches (700ms for Chess.com)
+      await new Promise(r => setTimeout(r, 700));
     } catch (err) {
-      console.warn(`[v6.92] Chess.com fetch failed for ${player}:`, err);
+      console.warn(`[v7.93] Chess.com fetch failed for ${player}:`, err);
+      // v7.93: Extra delay after error
+      await new Promise(r => setTimeout(r, 1200));
     }
   }
   
@@ -457,9 +463,9 @@ async function analyzeWithLocalStockfish(
     try {
       await Promise.race([engine.waitReady(), readyTimeout]);
     } catch (readyErr) {
-      console.warn(`[v7.95] Engine not ready, quick recovery...`);
+      console.warn(`[v7.93] Engine not ready, smooth recovery...`);
       terminateStockfish();
-      await new Promise(r => setTimeout(r, 300)); // v7.95: 300ms (was 2000ms)
+      await new Promise(r => setTimeout(r, 500)); // v7.93: 500ms recovery (balanced)
       const newEngine = getStockfishEngine();
       await newEngine.waitReady();
     }
@@ -484,19 +490,21 @@ async function analyzeWithLocalStockfish(
       mode: config.stockfishMode,
     };
   } catch (err) {
-    console.error(`[v7.95] Analysis failed for ${game.id}:`, err);
+    console.error(`[v7.93] Analysis failed for ${game.id}:`, err);
     
-    // v7.95: Fast recovery - 300ms then retry
+    // v7.93: Smooth recovery - 500ms then attempt engine reset
     try {
       terminateStockfish();
-      await new Promise(r => setTimeout(r, 300));
+      await new Promise(r => setTimeout(r, 500));
       const newEngine = getStockfishEngine();
       await Promise.race([
         newEngine.waitReady(),
-        new Promise(r => setTimeout(r, 2000))
+        new Promise(r => setTimeout(r, 3000))
       ]);
     } catch (recoveryErr) {
-      console.warn('[v7.95] Recovery failed:', recoveryErr);
+      console.warn('[v7.93] Recovery failed:', recoveryErr);
+      // v7.93: Extra delay after failed recovery
+      await new Promise(r => setTimeout(r, 1000));
     }
     
     return null;
