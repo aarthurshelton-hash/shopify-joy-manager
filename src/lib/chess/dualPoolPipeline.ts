@@ -1,4 +1,4 @@
-/**
+/** v7.97-RAW-SUM
  * v7.96-TRUE-DUAL: Correct dual-lens with proper raw activity calculation
  * Dual-Pool Automated Benchmark Pipeline
  * VERSION: 7.96-TRUE-DUAL (2026-01-28)
