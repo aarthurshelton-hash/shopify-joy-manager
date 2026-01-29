@@ -1,21 +1,19 @@
 /**
- * Equilibrium Predictor v8.03-RECALIBRATED
+ * Equilibrium Predictor v8.04-SYMMETRIC
  * 
- * v8.03 KEY FIX: Aggressive black-favoring adjustments
+ * v8.04 KEY FIX: Truly balanced, symmetric detection
  * 
- * EMPIRICAL EVIDENCE (24h benchmark, 3630 predictions):
- * - White predictions: 2411 (66%) → 1193 correct (49.5% accuracy)
- * - Black predictions: 911 (25%) → 414 correct (45.2% accuracy)
- * - Both predictions WORK when made!
+ * PROBLEM IDENTIFIED:
+ * - v8.03 over-corrected: Now our wins are white-only, SF wins are black/draws
+ * - Oscillating between white-bias and black-bias doesn't work
  * 
- * PROBLEM: Still making 2.6x more white predictions than black
- * TARGET: ~50% white, ~42% black, ~8% draw
+ * SOLUTION: Pure symmetric detection
+ * - Minimal first-move offset (15 points, not 60)
+ * - Identical thresholds for white and black detection
+ * - Contested positions are truly 33/33/34, not artificially skewed
+ * - Let Stockfish be the tiebreaker for edge cases
  * 
- * SOLUTION v8.03:
- * 1. signatureExtractor: FIRST_MOVE_BIAS 45 → 60
- * 2. signatureExtractor: DOMINANCE_THRESHOLD 15 → 10
- * 3. This file: "contested" now favors black MORE strongly
- * 4. This file: Slight black boost in control signal
+ * TARGET: Balanced accuracy across ALL outcomes, not biased toward one color
  */
 
 import { ColorFlowSignature, QuadrantProfile, TemporalFlow } from './types';
@@ -206,10 +204,9 @@ function calculateControlSignal(
       };
     case 'contested':
     default:
-      // v8.03-RECALIBRATED: Contested should favor black MORE strongly
-      // Rationale: We're still 2.6x biased toward white predictions
-      // After all compensation, "contested" means black is performing well
-      return { white: 28, black: 38, draw: 34 };
+      // v8.04-SYMMETRIC: Contested = truly equal, let SF be the tiebreaker
+      // Previous versions artificially favored one color, causing oscillation
+      return { white: 33, black: 33, draw: 34 };
   }
 }
 

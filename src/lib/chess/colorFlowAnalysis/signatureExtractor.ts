@@ -384,22 +384,16 @@ function calculateOverallIntensity(board: SquareData[][]): number {
 
 /**
  * Determine which side has overall color dominance
- * v8.03-RECALIBRATED: Aggressive black detection to achieve prediction parity
+ * v8.04-SYMMETRIC: Truly balanced detection - no artificial bias in either direction
  * 
- * EMPIRICAL EVIDENCE (24h, 3630 predictions):
- * - White predictions: 2411 (66%) with 49.5% accuracy
- * - Black predictions: 911 (25%) with 45.2% accuracy
- * - Both work when made! We just need MORE black predictions.
+ * PROBLEM: v8.03 over-corrected - now our wins are white-only, SF wins are black/draws
+ * The fix oscillated too far in the opposite direction.
  * 
- * TARGET: ~50% white, ~42% black, ~8% draw
- * 
- * RECALIBRATION v8.03:
- * - FIRST_MOVE_BIAS: 45 → 60 (stronger compensation)
- * - DOMINANCE_THRESHOLD: 15 → 10 (easier to trigger black)
- * - Ratio compensation: 0.85 → 0.78 (stronger ratio fix)
+ * SOLUTION: Pure symmetric detection with ZERO artificial bias
+ * Let the actual board activity speak for itself.
  */
 function determineDominantSide(profile: QuadrantProfile): 'white' | 'black' | 'contested' {
-  // Calculate total activity first
+  // Calculate total activity for threshold checks
   const totalActivity = 
     Math.abs(profile.kingsideWhite) + 
     Math.abs(profile.kingsideBlack) + 
@@ -407,52 +401,45 @@ function determineDominantSide(profile: QuadrantProfile): 'white' | 'black' | 'c
     Math.abs(profile.queensideBlack) + 
     Math.abs(profile.center);
   
-  // Low activity = not enough signal
-  if (totalActivity < 50) {
+  // Low activity = not enough signal for confident prediction
+  if (totalActivity < 60) {
     return 'contested';
   }
   
-  // Sum ALL quadrant values directly
-  // Positive = white activity, Negative = black activity
-  const rawSum = 
+  // Method 1: Quadrant-based detection (attacking territory)
+  // White attacking black's territory = white aggression
+  // Black attacking white's territory = black aggression  
+  const whiteAttacking = Math.max(0, profile.kingsideBlack) + Math.max(0, profile.queensideBlack);
+  const blackAttacking = Math.max(0, -profile.kingsideWhite) + Math.max(0, -profile.queensideWhite);
+  
+  // Method 2: Center control
+  const centerAdvantage = profile.center; // positive = white, negative = black
+  
+  // Method 3: Overall board presence
+  // Sum ALL quadrant values: positive = white activity dominates, negative = black
+  const rawBalance = 
     profile.kingsideWhite + 
     profile.kingsideBlack + 
     profile.queensideWhite + 
     profile.queensideBlack + 
     profile.center;
   
-  // v8.03-RECALIBRATED: MUCH STRONGER first-move compensation
-  // Data shows we're still 2.6x biased toward white predictions
-  // Increase compensation from 45 → 60 to achieve parity
-  const FIRST_MOVE_BIAS = 60;
-  const correctedSum = rawSum - FIRST_MOVE_BIAS;
+  // v8.04-SYMMETRIC: Minimal first-move compensation (just 15 points)
+  // This acknowledges white moves first but doesn't over-correct
+  const FIRST_MOVE_OFFSET = 15;
+  const adjustedBalance = rawBalance - FIRST_MOVE_OFFSET;
   
-  // LOWER threshold = easier to detect black as dominant
-  const DOMINANCE_THRESHOLD = 10;
+  // Combine signals with equal weight
+  const whiteSignal = (whiteAttacking * 2) + Math.max(0, centerAdvantage) + Math.max(0, adjustedBalance);
+  const blackSignal = (blackAttacking * 2) + Math.max(0, -centerAdvantage) + Math.max(0, -adjustedBalance);
   
-  // Primary detection: absolute difference method
-  if (correctedSum > DOMINANCE_THRESHOLD) {
+  // SYMMETRIC thresholds - identical for both sides
+  const DOMINANCE_THRESHOLD = 20;
+  const difference = whiteSignal - blackSignal;
+  
+  if (difference > DOMINANCE_THRESHOLD) {
     return 'white';
-  } else if (correctedSum < -DOMINANCE_THRESHOLD) {
-    return 'black';
-  }
-  
-  // Secondary detection: ratio-based for edge cases
-  // Calculate white vs black activity separately
-  const whiteActivity = Math.max(0, profile.kingsideWhite) + Math.max(0, profile.queensideWhite) + Math.max(0, profile.center);
-  const blackActivity = Math.max(0, -profile.kingsideBlack) + Math.max(0, -profile.queensideBlack) + Math.max(0, -profile.center);
-  
-  // v8.03: Stronger compensation (22% reduction for first-move advantage)
-  const compensatedWhite = whiteActivity * 0.78;
-  
-  const whiteRatio = compensatedWhite / (compensatedWhite + blackActivity + 0.001);
-  const blackRatio = blackActivity / (compensatedWhite + blackActivity + 0.001);
-  
-  // v8.03: Lower ratio threshold (52% to be dominant instead of 55%)
-  if (whiteRatio > 0.52) {
-    return 'white';
-  } else if (blackRatio > 0.48) {
-    // v8.03: Black only needs 48% to be declared dominant (compensating for white bias)
+  } else if (difference < -DOMINANCE_THRESHOLD) {
     return 'black';
   }
   
