@@ -1,12 +1,16 @@
 /**
- * Archetype Calibration v8.07-AGREEMENT-CALIBRATED
+ * Archetype Calibration v8.07c-BREAKTHROUGH-MAXIMIZER
  * 
- * Data-driven confidence adjustments based on historical accuracy
+ * Data-driven confidence adjustments optimized for DISAGREEMENT WINS
  * 
- * Key insight: Agreement between SF and Hybrid = 56% accuracy
- *              Disagreement = Hybrid 35.8%, SF 45.5%
+ * Key insight: Every SF miss is our opportunity to shine
+ *              Strong archetypes (>50%) should NEVER defer to SF
+ *              Weak SF signals are BREAKTHROUGH territory
  * 
- * Strategy: Boost on agreement, defer to SF on disagreement
+ * Strategy: 
+ * - Boost on agreement (56% historical)
+ * - TRUST pattern recognition on disagreements
+ * - Only defer in absolute extreme cases (>350cp) with weak archetypes
  */
 
 import { StrategicArchetype } from './types';
@@ -65,10 +69,16 @@ export function calibrateConfidence(
   // Check if predictions agree
   const agree = hybridPrediction === sfPrediction;
   
-  // v8.07b: ONLY defer to SF in extreme tactical cases
-  // Every SF miss is our opportunity to shine with pattern recognition
-  const extremeSfSignal = Math.abs(sfEval) > 250; // Raised from 150cp
+  // v8.07c: BREAKTHROUGH-MAXIMIZER
+  // ONLY defer in absolute extreme tactical situations
+  // Every SF miss is an opportunity for pattern recognition to shine
+  const absoluteExtremeSfSignal = Math.abs(sfEval) > 350; // Raised from 250cp
+  const extremeSfSignal = Math.abs(sfEval) > 250;
   const strongSfSignal = Math.abs(sfEval) > 150;
+  
+  // Is this a strong archetype that should NEVER defer?
+  const isStrongArchetype = stats.hybridAccuracy >= 0.50;
+  const isDecentArchetype = stats.hybridAccuracy >= 0.45;
   
   let multiplier = 1.0;
   let reason = '';
@@ -76,77 +86,97 @@ export function calibrateConfidence(
   
   if (agree) {
     // AGREEMENT CASE: Both predict the same outcome
-    // Historical: 56% accuracy when agreeing
+    // Historical: 56% accuracy when agreeing - this is our reliable zone
     
-    // Boost based on archetype reliability
-    if (stats.hybridAccuracy > 0.50) {
-      multiplier = 1.15; // High-performing archetype
-      reason = `Agreement + strong ${archetype} (${(stats.hybridAccuracy * 100).toFixed(0)}% historical)`;
-    } else if (stats.hybridAccuracy > 0.45) {
-      multiplier = 1.08; // Average archetype
+    if (isStrongArchetype) {
+      multiplier = 1.18; // Boost strong archetypes more
+      reason = `Agreement + elite ${archetype} (${(stats.hybridAccuracy * 100).toFixed(0)}% historical)`;
+    } else if (isDecentArchetype) {
+      multiplier = 1.10; // Good archetype
       reason = `Agreement on ${archetype}`;
     } else {
-      multiplier = 1.0; // Weak archetype - no boost even on agreement
-      reason = `Agreement but weak archetype ${archetype}`;
+      multiplier = 1.02; // Even weak archetypes get slight boost on agreement
+      reason = `Agreement, moderate archetype ${archetype}`;
     }
     
     // Extra boost for strong SF confirmation
     if (strongSfSignal) {
-      multiplier *= 1.10;
-      reason += ' + strong SF';
+      multiplier *= 1.08;
+      reason += ' + SF confirms';
     }
   } else {
-    // DISAGREEMENT CASE: This is our OPPORTUNITY
-    // SF misses are where pattern recognition shines
-    // v8.07b: Trust our archetypes more aggressively
+    // DISAGREEMENT CASE: This is our BREAKTHROUGH TERRITORY
+    // v8.07c: Trust pattern recognition MUCH more aggressively
+    // SF sees snapshots, we see trajectories
     
-    if (extremeSfSignal) {
-      // ONLY defer when SF sees a massive tactical advantage (>250cp)
-      // Even here, strong archetypes should push back
-      if (stats.hybridAccuracy > 0.50) {
-        // Strong archetype - don't defer, slight penalty
-        multiplier = 0.88;
-        reason = `Disagree but ${archetype} historically strong - trust pattern`;
+    if (isStrongArchetype) {
+      // STRONG ARCHETYPES (>50%): NEVER defer to SF
+      // These are our best performers - trust them fully
+      if (absoluteExtremeSfSignal) {
+        // Even in extreme cases, still trust strong archetypes
+        multiplier = 0.92; // Minimal penalty
+        reason = `Disagree, SF extreme but ${archetype} elite - TRUST PATTERN`;
+      } else if (extremeSfSignal) {
+        multiplier = 0.98; // Almost no penalty
+        reason = `Disagree, ${archetype} elite vs SF - BREAKTHROUGH ZONE`;
+      } else if (strongSfSignal) {
+        multiplier = 1.0; // No penalty at all
+        reason = `Disagree, strong ${archetype} vs moderate SF - OPPORTUNITY`;
       } else {
-        deferToStockfish = true;
-        multiplier = 0.80;
-        reason = `Disagree, SF extreme (${sfEval}cp), weak archetype`;
+        // Weak SF eval - BOOST our confidence!
+        multiplier = 1.05; // Actually boost on weak SF disagreement
+        reason = `Disagree, weak SF, elite ${archetype} - CAPITALIZE`;
       }
-    } else if (strongSfSignal) {
-      // Strong but not extreme - trust pattern recognition
-      // This is prime disagreement breakthrough territory
-      if (stats.hybridAccuracy > 0.48) {
-        multiplier = 0.95; // Barely penalize - our opportunity
-        reason = `Disagree, SF strong but ${archetype} reliable - OPPORTUNITY`;
+    } else if (isDecentArchetype) {
+      // DECENT ARCHETYPES (45-50%): Only defer in absolute extreme
+      if (absoluteExtremeSfSignal) {
+        deferToStockfish = true;
+        multiplier = 0.82;
+        reason = `Disagree, SF absolute extreme (${sfEval}cp), defer`;
+      } else if (extremeSfSignal) {
+        multiplier = 0.90; // Moderate penalty
+        reason = `Disagree, ${archetype} decent vs SF extreme - cautious`;
+      } else if (strongSfSignal) {
+        multiplier = 0.95; // Slight penalty
+        reason = `Disagree, ${archetype} decent - OPPORTUNITY`;
       } else {
-        multiplier = 0.88;
-        reason = `Disagree, SF strong, archetype moderate`;
+        multiplier = 1.0; // No penalty for weak SF
+        reason = `Disagree, weak SF, decent ${archetype} - BREAKTHROUGH`;
       }
     } else {
-      // Weak/moderate SF eval - FULLY trust pattern recognition
-      // These are prime disagreement wins
-      if (stats.hybridAccuracy > 0.50) {
-        multiplier = 1.0; // No penalty at all
-        reason = `Disagree, weak SF, strong ${archetype} - BREAKTHROUGH`;
-      } else if (stats.hybridAccuracy > 0.45) {
-        multiplier = 0.95;
-        reason = `Disagree, weak SF, decent archetype`;
+      // WEAK ARCHETYPES (<45%): More cautious but still don't over-defer
+      if (absoluteExtremeSfSignal) {
+        deferToStockfish = true;
+        multiplier = 0.78;
+        reason = `Disagree, SF extreme (${sfEval}cp), weak archetype - defer`;
+      } else if (extremeSfSignal) {
+        deferToStockfish = true;
+        multiplier = 0.82;
+        reason = `Disagree, SF strong, weak ${archetype}`;
+      } else if (strongSfSignal) {
+        multiplier = 0.88;
+        reason = `Disagree, SF moderate, weak archetype - cautious trust`;
       } else {
-        multiplier = 0.90;
-        reason = `Disagree, weak SF, weak archetype`;
+        // Even weak archetypes get a shot with weak SF
+        multiplier = 0.95;
+        reason = `Disagree, weak SF, test ${archetype}`;
       }
     }
   }
   
   // Apply archetype-specific ceiling based on historical accuracy
-  const archetypeCeiling = 30 + (stats.hybridAccuracy * 100);
+  // v8.07c: Raise ceiling for strong archetypes
+  const archetypeCeiling = isStrongArchetype 
+    ? 40 + (stats.hybridAccuracy * 100) // Higher ceiling for elite
+    : 30 + (stats.hybridAccuracy * 100);
+  
   const adjustedConfidence = Math.min(
     archetypeCeiling,
     Math.round(baseConfidence * multiplier)
   );
   
   return {
-    adjustedConfidence: Math.max(25, Math.min(85, adjustedConfidence)),
+    adjustedConfidence: Math.max(25, Math.min(88, adjustedConfidence)),
     deferToStockfish,
     confidenceMultiplier: multiplier,
     reason,
