@@ -1683,6 +1683,75 @@ export type Database = {
         }
         Relationships: []
       }
+      options_trades: {
+        Row: {
+          created_at: string
+          direction: string
+          entry_price: number
+          entry_time: string
+          exit_price: number | null
+          exit_time: string | null
+          expiration: string
+          id: string
+          option_symbol: string
+          option_type: string
+          pnl: number | null
+          pnl_percent: number | null
+          predicted_confidence: number
+          prediction_id: string | null
+          quantity: number
+          status: string
+          strategy: string
+          strike: number
+          underlying: string
+          was_correct: boolean | null
+        }
+        Insert: {
+          created_at?: string
+          direction: string
+          entry_price: number
+          entry_time?: string
+          exit_price?: number | null
+          exit_time?: string | null
+          expiration: string
+          id?: string
+          option_symbol: string
+          option_type: string
+          pnl?: number | null
+          pnl_percent?: number | null
+          predicted_confidence: number
+          prediction_id?: string | null
+          quantity?: number
+          status?: string
+          strategy: string
+          strike: number
+          underlying: string
+          was_correct?: boolean | null
+        }
+        Update: {
+          created_at?: string
+          direction?: string
+          entry_price?: number
+          entry_time?: string
+          exit_price?: number | null
+          exit_time?: string | null
+          expiration?: string
+          id?: string
+          option_symbol?: string
+          option_type?: string
+          pnl?: number | null
+          pnl_percent?: number | null
+          predicted_confidence?: number
+          prediction_id?: string | null
+          quantity?: number
+          status?: string
+          strategy?: string
+          strike?: number
+          underlying?: string
+          was_correct?: boolean | null
+        }
+        Relationships: []
+      }
       order_financials: {
         Row: {
           created_at: string
