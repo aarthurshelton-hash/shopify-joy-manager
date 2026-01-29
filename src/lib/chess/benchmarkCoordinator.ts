@@ -26,7 +26,7 @@ import {
 } from './autoEvolutionEngine';
 import { supabase } from '@/integrations/supabase/client';
 
-const COORDINATOR_VERSION = "7.42-AUTONOMOUS";
+const COORDINATOR_VERSION = "8.01-SMOOTH";
 
 interface CoordinatorState {
   manualBenchmarkActive: boolean;
@@ -62,13 +62,21 @@ function notifyListeners(isLocked: boolean): void {
 }
 
 /**
- * v7.42: Set database lock to signal server-side cron to yield
+ * v8.01-SMOOTH: Set database lock with retry logic to prevent constraint errors
  */
 async function setDatabaseLock(locked: boolean): Promise<void> {
-  try {
-    const { error } = await supabase
-      .from('evolution_state')
-      .upsert({
+  const maxRetries = 3;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      // v8.01: First try to update existing record
+      const { data: existing } = await supabase
+        .from('evolution_state')
+        .select('id')
+        .eq('state_type', 'benchmark_lock')
+        .maybeSingle();
+      
+      const payload = {
         state_type: 'benchmark_lock',
         genes: { 
           locked,
@@ -77,15 +85,51 @@ async function setDatabaseLock(locked: boolean): Promise<void> {
         },
         fitness_score: locked ? 0 : 100,
         generation: 0,
-      }, { onConflict: 'state_type' });
-    
-    if (error) {
+      };
+      
+      let error;
+      if (existing?.id) {
+        // Update existing record by ID (no conflict possible)
+        const result = await supabase
+          .from('evolution_state')
+          .update(payload)
+          .eq('id', existing.id);
+        error = result.error;
+      } else {
+        // Insert new with upsert as fallback
+        const result = await supabase
+          .from('evolution_state')
+          .upsert(payload, { 
+            onConflict: 'state_type',
+            ignoreDuplicates: false 
+          });
+        error = result.error;
+      }
+      
+      if (!error) {
+        console.log(`[${COORDINATOR_VERSION}] Database lock ${locked ? 'SET' : 'RELEASED'}`);
+        return;
+      }
+      
+      // If duplicate key error, retry after brief delay
+      if (error.message.includes('duplicate key') || error.message.includes('unique constraint')) {
+        if (attempt < maxRetries) {
+          await new Promise(r => setTimeout(r, 100 * attempt));
+          continue;
+        }
+      }
+      
       console.warn(`[${COORDINATOR_VERSION}] Failed to set database lock:`, error);
-    } else {
-      console.log(`[${COORDINATOR_VERSION}] Database lock ${locked ? 'SET' : 'RELEASED'}`);
+      return;
+      
+    } catch (err) {
+      if (attempt < maxRetries) {
+        await new Promise(r => setTimeout(r, 100 * attempt));
+        continue;
+      }
+      console.warn(`[${COORDINATOR_VERSION}] Database lock error:`, err);
+      return;
     }
-  } catch (err) {
-    console.warn(`[${COORDINATOR_VERSION}] Database lock error:`, err);
   }
 }
 

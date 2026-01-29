@@ -22,8 +22,8 @@
  * - Incremental persistence (never lose data)
  */
 
-const AUTO_EVOLUTION_VERSION = "7.51-FAST";
-console.log(`[v7.51] autoEvolutionEngine.ts LOADED - Version: ${AUTO_EVOLUTION_VERSION}`);
+const AUTO_EVOLUTION_VERSION = "8.01-SMOOTH";
+console.log(`[v8.01] autoEvolutionEngine.ts LOADED - Version: ${AUTO_EVOLUTION_VERSION}`);
 
 import { 
   runCloudPoolBatch, 
@@ -139,15 +139,18 @@ function emitEvent(event: string, data?: any) {
 
 // ================ PERSISTENCE ================
 
+// v8.01-SMOOTH: Mutex to prevent concurrent persistence attempts
+let persistenceMutex = false;
+
 async function persistEvolutionState() {
+  // v8.01: Skip if already persisting (prevents duplicate key race condition)
+  if (persistenceMutex) {
+    return;
+  }
+  
+  persistenceMutex = true;
+  
   try {
-    // First check if record exists
-    const { data: existing } = await supabase
-      .from('evolution_state')
-      .select('id')
-      .eq('state_type', 'auto_evolution_engine')
-      .maybeSingle();
-    
     const payload = {
       state_type: 'auto_evolution_engine',
       genes: {
@@ -164,27 +167,24 @@ async function persistEvolutionState() {
       last_mutation_at: new Date().toISOString(),
     };
     
-    let error;
-    if (existing?.id) {
-      // Update existing
-      const result = await supabase
-        .from('evolution_state')
-        .update(payload)
-        .eq('id', existing.id);
-      error = result.error;
-    } else {
-      // Insert new
-      const result = await supabase
-        .from('evolution_state')
-        .insert(payload);
-      error = result.error;
-    }
+    // v8.01-SMOOTH: Use upsert with onConflict to prevent duplicate key errors
+    const { error } = await supabase
+      .from('evolution_state')
+      .upsert(payload, { 
+        onConflict: 'state_type',
+        ignoreDuplicates: false  // We want to update, not skip
+      });
     
     if (error) {
-      console.warn('[v6.95] State persistence warning:', error.message);
+      // Only log if it's not a constraint error (those are expected during race conditions)
+      if (!error.message.includes('duplicate key') && !error.message.includes('unique constraint')) {
+        console.warn('[v8.01] State persistence warning:', error.message);
+      }
     }
   } catch (err) {
-    console.error('[v6.95] State persistence failed:', err);
+    console.error('[v8.01] State persistence failed:', err);
+  } finally {
+    persistenceMutex = false;
   }
 }
 

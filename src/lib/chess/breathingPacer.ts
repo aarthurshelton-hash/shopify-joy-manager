@@ -5,8 +5,8 @@
  * v7.93: Smooth flow with burst detection and dynamic cooldowns.
  */
 
-export const BREATHING_VERSION = "7.98";
-export const RATE_LIMIT_BREATHING_MS = 250; // v7.98: 250ms base (optimized)
+export const BREATHING_VERSION = "8.01";
+export const RATE_LIMIT_BREATHING_MS = 200; // v8.01: 200ms base (optimized for smooth flow)
 
 let lastBreathTime = 0;
 let processingCount = 0;
