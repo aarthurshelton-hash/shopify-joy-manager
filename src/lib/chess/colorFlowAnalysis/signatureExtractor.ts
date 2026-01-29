@@ -384,25 +384,19 @@ function calculateOverallIntensity(board: SquareData[][]): number {
 
 /**
  * Determine which side has overall color dominance
- * v8.0-CALIBRATED: Data-driven calibration for balanced predictions
+ * v8.03-RECALIBRATED: Aggressive black detection to achieve prediction parity
  * 
- * EMPIRICAL EVIDENCE (24h benchmark):
- * - White wins predictions: 2048 (81%) → should be ~55%
- * - Black wins predictions: 350 (14%) → should be ~40%
- * - Draw predictions: 124 (5%) → should be ~5%
+ * EMPIRICAL EVIDENCE (24h, 3630 predictions):
+ * - White predictions: 2411 (66%) with 49.5% accuracy
+ * - Black predictions: 911 (25%) with 45.2% accuracy
+ * - Both work when made! We just need MORE black predictions.
  * 
- * BOTH white_wins and black_wins predictions have 49% accuracy!
- * This proves the model CAN predict both correctly.
- * The problem: we're not predicting 'black' often enough.
+ * TARGET: ~50% white, ~42% black, ~8% draw
  * 
- * ROOT CAUSE: The first-move bias compensation was too weak.
- * White inherently gets ~15-25% more board activity from moving first.
- * We need STRONGER compensation to achieve prediction parity.
- * 
- * CALIBRATION:
- * - Increase FIRST_MOVE_BIAS from 20 → 45 (empirically calibrated)
- * - Decrease DOMINANCE_THRESHOLD from 25 → 15 (make black detection easier)
- * - Use RATIO-BASED secondary check to catch edge cases
+ * RECALIBRATION v8.03:
+ * - FIRST_MOVE_BIAS: 45 → 60 (stronger compensation)
+ * - DOMINANCE_THRESHOLD: 15 → 10 (easier to trigger black)
+ * - Ratio compensation: 0.85 → 0.78 (stronger ratio fix)
  */
 function determineDominantSide(profile: QuadrantProfile): 'white' | 'black' | 'contested' {
   // Calculate total activity first
@@ -427,14 +421,14 @@ function determineDominantSide(profile: QuadrantProfile): 'white' | 'black' | 'c
     profile.queensideBlack + 
     profile.center;
   
-  // v8.0-CALIBRATED: STRONGER first-move compensation
-  // Empirically: white gets ~15-25% extra activity from first move
-  // This translates to ~45 points on the raw sum (not 20!)
-  const FIRST_MOVE_BIAS = 45;
+  // v8.03-RECALIBRATED: MUCH STRONGER first-move compensation
+  // Data shows we're still 2.6x biased toward white predictions
+  // Increase compensation from 45 → 60 to achieve parity
+  const FIRST_MOVE_BIAS = 60;
   const correctedSum = rawSum - FIRST_MOVE_BIAS;
   
-  // LOWER threshold = easier to detect both sides
-  const DOMINANCE_THRESHOLD = 15;
+  // LOWER threshold = easier to detect black as dominant
+  const DOMINANCE_THRESHOLD = 10;
   
   // Primary detection: absolute difference method
   if (correctedSum > DOMINANCE_THRESHOLD) {
@@ -448,16 +442,17 @@ function determineDominantSide(profile: QuadrantProfile): 'white' | 'black' | 'c
   const whiteActivity = Math.max(0, profile.kingsideWhite) + Math.max(0, profile.queensideWhite) + Math.max(0, profile.center);
   const blackActivity = Math.max(0, -profile.kingsideBlack) + Math.max(0, -profile.queensideBlack) + Math.max(0, -profile.center);
   
-  // Apply first-move compensation to ratios too
-  const compensatedWhite = whiteActivity * 0.85; // Reduce white by 15% for first-move advantage
+  // v8.03: Stronger compensation (22% reduction for first-move advantage)
+  const compensatedWhite = whiteActivity * 0.78;
   
   const whiteRatio = compensatedWhite / (compensatedWhite + blackActivity + 0.001);
   const blackRatio = blackActivity / (compensatedWhite + blackActivity + 0.001);
   
-  // Ratio threshold: 55% to be dominant (after compensation)
-  if (whiteRatio > 0.55) {
+  // v8.03: Lower ratio threshold (52% to be dominant instead of 55%)
+  if (whiteRatio > 0.52) {
     return 'white';
-  } else if (blackRatio > 0.55) {
+  } else if (blackRatio > 0.48) {
+    // v8.03: Black only needs 48% to be declared dominant (compensating for white bias)
     return 'black';
   }
   

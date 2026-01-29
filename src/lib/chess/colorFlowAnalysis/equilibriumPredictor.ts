@@ -1,20 +1,21 @@
 /**
- * Equilibrium Predictor v8.0-CALIBRATED
+ * Equilibrium Predictor v8.03-RECALIBRATED
  * 
- * v8.0 KEY FIX: Data-driven calibration for balanced predictions
+ * v8.03 KEY FIX: Aggressive black-favoring adjustments
  * 
- * EMPIRICAL EVIDENCE (24h benchmark, 2500+ games):
- * - Prediction distribution: 81% white, 14% black, 5% draw (BROKEN)
- * - Target distribution: 55% white, 40% black, 5% draw
- * - BOTH predictions have 49% accuracy when made → model works!
- * - Problem: Not predicting 'black' often enough
+ * EMPIRICAL EVIDENCE (24h benchmark, 3630 predictions):
+ * - White predictions: 2411 (66%) → 1193 correct (49.5% accuracy)
+ * - Black predictions: 911 (25%) → 414 correct (45.2% accuracy)
+ * - Both predictions WORK when made!
  * 
- * SOLUTION:
- * 1. signatureExtractor: Increased FIRST_MOVE_BIAS from 20 → 45
- * 2. signatureExtractor: Decreased DOMINANCE_THRESHOLD from 25 → 15
- * 3. This file: Ensure contested games split favorably toward black
+ * PROBLEM: Still making 2.6x more white predictions than black
+ * TARGET: ~50% white, ~42% black, ~8% draw
  * 
- * This is the final fix for balanced predictions.
+ * SOLUTION v8.03:
+ * 1. signatureExtractor: FIRST_MOVE_BIAS 45 → 60
+ * 2. signatureExtractor: DOMINANCE_THRESHOLD 15 → 10
+ * 3. This file: "contested" now favors black MORE strongly
+ * 4. This file: Slight black boost in control signal
  */
 
 import { ColorFlowSignature, QuadrantProfile, TemporalFlow } from './types';
@@ -205,10 +206,10 @@ function calculateControlSignal(
       };
     case 'contested':
     default:
-      // v8.0-CALIBRATED: Contested should slightly favor black
-      // Rationale: White already has advantages baked in (first move, etc.)
-      // A "contested" detection after compensation means black is holding well
-      return { white: 30, black: 35, draw: 35 };
+      // v8.03-RECALIBRATED: Contested should favor black MORE strongly
+      // Rationale: We're still 2.6x biased toward white predictions
+      // After all compensation, "contested" means black is performing well
+      return { white: 28, black: 38, draw: 34 };
   }
 }
 

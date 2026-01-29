@@ -42,8 +42,8 @@
  * - Picks the outcome with highest confidence (no more bias oscillation)
  */
 
-const DUAL_POOL_VERSION = "8.02-CALIBRATED";
-console.log(`[v8.02] dualPoolPipeline.ts LOADED - Version: ${DUAL_POOL_VERSION}`);
+const DUAL_POOL_VERSION = "8.03-RECALIBRATED";
+console.log(`[v8.03] dualPoolPipeline.ts LOADED - Version: ${DUAL_POOL_VERSION}`);
 
 // v7.0: Hard timeout wrapper for any async operation
 function withTimeout<T>(promise: Promise<T>, ms: number, name: string): Promise<T> {
@@ -309,28 +309,28 @@ async function fetchLichessGamesForPool(
   const games: UnifiedGame[] = [];
   const shuffledPlayers = shuffleArray([...LICHESS_ELITE_PLAYERS]);
   
-  // v7.98: Randomized window for maximum freshness
-  // Use combination of batch number AND random offset to avoid window collisions
+  // v8.03: MUCH more aggressive randomization to avoid window collisions
   const now = Date.now();
-  const dataRichEpoch = new Date('2018-01-01').getTime();
   
-  // v7.98: More random window selection
-  const yearOffset = (batchNumber % 7) + Math.floor(Math.random() * 3); // 0-9 years back
-  const monthOffset = Math.floor(Math.random() * 12); // Random month
+  // v8.03: Fully randomized window - don't rely on batch number at all
+  // This ensures each fetch has a unique time window
+  const randomYear = 2019 + Math.floor(Math.random() * 6); // 2019-2024
+  const randomMonth = Math.floor(Math.random() * 12);
+  const randomDay = 1 + Math.floor(Math.random() * 28);
   
-  const baseYear = 2018 + (yearOffset % 7); // 2018-2024
-  const baseMonth = monthOffset;
-  const windowStart = new Date(baseYear, baseMonth, 1).getTime();
-  const windowEnd = Math.min(now, windowStart + 90 * 24 * 60 * 60 * 1000);
+  const windowStart = new Date(randomYear, randomMonth, randomDay).getTime();
+  // v8.03: Shorter window (30 days) for more precision
+  const windowEnd = Math.min(now, windowStart + 30 * 24 * 60 * 60 * 1000);
   
-  onProgress?.(`[Lichess] Batch ${batchNumber}: Window ${new Date(windowStart).toISOString().slice(0,7)}`);
+  onProgress?.(`[Lichess] Batch ${batchNumber}: ${new Date(windowStart).toISOString().slice(0,10)}`);
   
-  for (const player of shuffledPlayers.slice(0, 5)) {
+  // v8.03: Try more players (7 instead of 5) to increase yield
+  for (const player of shuffledPlayers.slice(0, 7)) {
     if (games.length >= count) break;
     
     try {
       const result = await fetchLichessGames(player, {
-        max: 20,
+        max: 30, // v8.03: Request more games (was 20)
         since: windowStart,
         until: windowEnd,
         rated: true,
@@ -341,7 +341,10 @@ async function fetchLichessGamesForPool(
       
       for (const game of result.games) {
         if (games.length >= count) break;
-        if (existingIds.has(game.id)) continue;
+        
+        // v8.03: Check both raw and prefixed forms
+        const rawId = game.id.replace(/^li_/, '');
+        if (existingIds.has(rawId) || existingIds.has(game.id)) continue;
         
         const moveCount = game.moves?.split(' ').length || 0;
         if (moveCount < 20) continue;
@@ -360,19 +363,17 @@ async function fetchLichessGamesForPool(
                  game.winner === 'black' ? 'black_wins' : 'draw',
           source: 'lichess',
           rating: Math.max(whiteRating, blackRating),
-          // v7.17: Include ELO and time control for DB alignment
           whiteElo: whiteRating,
           blackElo: blackRating,
           timeControl: game.speed || undefined,
         });
       }
       
-      // v7.93: Safer delay between player fetches (500ms)
-      await new Promise(r => setTimeout(r, 500));
+      // v8.03: Reduced delay (400ms) for faster throughput
+      await new Promise(r => setTimeout(r, 400));
     } catch (err) {
-      console.warn(`[v7.93] Lichess fetch failed for ${player}:`, err);
-      // v7.93: Extra delay after error to prevent rapid retries
-      await new Promise(r => setTimeout(r, 1000));
+      console.warn(`[v8.03] Lichess fetch failed for ${player}:`, err);
+      await new Promise(r => setTimeout(r, 800));
     }
   }
   
@@ -388,18 +389,19 @@ async function fetchChessComGamesForPool(
   const games: UnifiedGame[] = [];
   const shuffledPlayers = shuffleArray([...CHESSCOM_ELITE_PLAYERS]);
   
-  // v7.98: More randomized archive offset
-  const monthOffset = Math.floor(Math.random() * 24); // 0-24 months back randomly
+  // v8.03: FULLY randomized archive offset (0-36 months)
+  const monthOffset = Math.floor(Math.random() * 36);
   
   onProgress?.(`[Chess.com] Batch ${batchNumber}: Archive offset ${monthOffset} months`);
   
-  for (const player of shuffledPlayers.slice(0, 3)) {
+  // v8.03: Try more players (5 instead of 3)
+  for (const player of shuffledPlayers.slice(0, 5)) {
     if (games.length >= count) break;
     
     try {
       const result = await fetchChessComGames(player, {
-        max: 20,
-        months: 3,
+        max: 30, // v8.03: Request more games (was 20)
+        months: 2, // v8.03: Narrower window for precision
         monthOffset,
       });
       
@@ -410,32 +412,32 @@ async function fetchChessComGamesForPool(
         const urlMatch = game.url.match(/\/game\/live\/(\d+)/);
         const gameId = urlMatch ? `cc_${urlMatch[1]}` : `cc_${game.end_time}`;
         
-        if (existingIds.has(gameId)) continue;
+        // v8.03: Check both raw and prefixed forms
+        const rawId = gameId.replace(/^cc_/, '');
+        if (existingIds.has(rawId) || existingIds.has(gameId)) continue;
         if (!game.pgn || game.pgn.length < 100) continue;
         
-        const result = game.white.result === 'win' ? 'white_wins' :
+        const gameResult = game.white.result === 'win' ? 'white_wins' :
                       game.black.result === 'win' ? 'black_wins' : 'draw';
         
         games.push({
           id: gameId,
           name: `${game.white.username} (${game.white.rating}) vs ${game.black.username} (${game.black.rating})`,
           pgn: game.pgn,
-          result,
+          result: gameResult,
           source: 'chesscom',
           rating: Math.max(game.white.rating, game.black.rating),
-          // v7.17: Include ELO and time control for DB alignment
           whiteElo: game.white.rating,
           blackElo: game.black.rating,
           timeControl: game.time_class || undefined,
         });
       }
       
-      // v7.93: Safer delay between player fetches (700ms for Chess.com)
-      await new Promise(r => setTimeout(r, 700));
+      // v8.03: Reduced delay (500ms) for faster throughput
+      await new Promise(r => setTimeout(r, 500));
     } catch (err) {
-      console.warn(`[v7.93] Chess.com fetch failed for ${player}:`, err);
-      // v7.93: Extra delay after error
-      await new Promise(r => setTimeout(r, 1200));
+      console.warn(`[v8.03] Chess.com fetch failed for ${player}:`, err);
+      await new Promise(r => setTimeout(r, 1000));
     }
   }
   
