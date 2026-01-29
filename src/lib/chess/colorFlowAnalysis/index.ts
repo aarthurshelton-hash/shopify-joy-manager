@@ -1,3 +1,6 @@
+// v8.07-AGREEMENT-CALIBRATED exports
+export { calibrateConfidence, getSfPrediction, forceArchetypeAssignment, ARCHETYPE_HISTORICAL_ACCURACY } from './archetypeCalibration';
+
 /**
  * Color Flow Analysis Engine
  * 

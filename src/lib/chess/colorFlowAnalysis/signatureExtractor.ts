@@ -357,14 +357,33 @@ function classifyArchetype(
     return 'prophylactic_defense';
   }
   
-  // Fallback: Use activity ratios to pick something reasonable
-  if (kingsideTotal > queensideTotal) {
+  // v8.07: ELIMINATE FALLBACK/unknown - always assign specific archetype
+  // Use activity ratios + volatility to pick the most appropriate archetype
+  
+  if (temporal.volatility > 35) {
+    // High volatility = tactical nature
+    if (kingsideTotal > queensideTotal) {
+      return 'kingside_attack';
+    } else if (queensideTotal > kingsideTotal) {
+      return 'queenside_expansion';
+    }
+    return 'open_tactical';
+  }
+  
+  // Low-medium volatility = positional nature
+  if (kingsideTotal > queensideTotal * 1.2) {
     return 'kingside_attack';
-  } else if (queensideTotal > kingsideTotal) {
+  } else if (queensideTotal > kingsideTotal * 1.2) {
     return 'queenside_expansion';
   }
   
-  return 'piece_harmony'; // Reasonable default instead of 'unknown'
+  // Balanced activity - use center control as tiebreaker
+  if (Math.abs(quadrant.center) > 20) {
+    return 'central_domination';
+  }
+  
+  // Default to best-performing archetype (piece_harmony at 53%)
+  return 'piece_harmony';
 }
 
 /**
