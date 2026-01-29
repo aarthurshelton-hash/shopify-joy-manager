@@ -3,6 +3,7 @@
  * 
  * Unified dashboard for Interactive Brokers paper/live trading.
  * Integrates En Pensent predictions with IBKR order execution.
+ * Now includes 24/7 autonomous trading with real IBKR data.
  */
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -16,6 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
 import { useIBKRGateway } from '@/hooks/useIBKRGateway';
+import { useIBKRAutonomousTrading } from '@/hooks/useIBKRAutonomousTrading';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   Loader2, 
@@ -35,6 +37,10 @@ import {
   History,
   BarChart3,
   Zap,
+  Bot,
+  Play,
+  Square,
+  Brain,
 } from 'lucide-react';
 
 // Tracked symbols for quick trading
@@ -65,6 +71,12 @@ export function IBKRTradingDashboard() {
     cancelOrder,
     selectAccount,
   } = useIBKRGateway();
+
+  // Autonomous trading hook
+  const autonomousTrading = useIBKRAutonomousTrading(
+    authenticated,
+    selectedAccount?.accountId || null
+  );
 
   const [activeTab, setActiveTab] = useState('overview');
   const [quotes, setQuotes] = useState<QuoteData[]>([]);
@@ -395,9 +407,15 @@ export function IBKRTradingDashboard() {
 
       {/* Main Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4 max-w-lg">
+        <TabsList className="grid w-full grid-cols-5 max-w-2xl">
           <TabsTrigger value="overview" className="flex items-center gap-1">
             <BarChart3 className="w-4 h-4" /> Overview
+          </TabsTrigger>
+          <TabsTrigger value="autonomous" className="flex items-center gap-1">
+            <Bot className="w-4 h-4" /> Auto
+            {autonomousTrading.isRunning && (
+              <span className="ml-1 w-2 h-2 bg-success rounded-full animate-pulse" />
+            )}
           </TabsTrigger>
           <TabsTrigger value="trade" className="flex items-center gap-1">
             <ShoppingCart className="w-4 h-4" /> Trade
@@ -516,6 +534,233 @@ export function IBKRTradingDashboard() {
                 )}
               </CardContent>
             </Card>
+          </div>
+        </TabsContent>
+
+        {/* ========== AUTONOMOUS TRADING TAB ========== */}
+        <TabsContent value="autonomous" className="mt-6">
+          <div className="space-y-6">
+            {/* Autonomous Control Panel */}
+            <Card className={`border-2 ${autonomousTrading.isRunning ? 'border-success bg-success/5' : 'border-dashed'}`}>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-3 rounded-full ${autonomousTrading.isRunning ? 'bg-success/20' : 'bg-muted'}`}>
+                      <Bot className={`w-6 h-6 ${autonomousTrading.isRunning ? 'text-success animate-pulse' : 'text-muted-foreground'}`} />
+                    </div>
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        24/7 Autonomous Trading
+                        {autonomousTrading.isRunning && (
+                          <Badge className="bg-success text-success-foreground">
+                            <Activity className="w-3 h-3 mr-1 animate-pulse" />
+                            LIVE
+                          </Badge>
+                        )}
+                      </CardTitle>
+                      <CardDescription>
+                        Pattern recognition executing real trades on your IBKR paper account
+                      </CardDescription>
+                    </div>
+                  </div>
+                  
+                  <Button
+                    size="lg"
+                    variant={autonomousTrading.isRunning ? 'destructive' : 'default'}
+                    onClick={autonomousTrading.isRunning ? autonomousTrading.stopAutonomous : autonomousTrading.startAutonomous}
+                    className="gap-2"
+                  >
+                    {autonomousTrading.isRunning ? (
+                      <>
+                        <Square className="w-4 h-4" />
+                        Stop Trading
+                      </>
+                    ) : (
+                      <>
+                        <Play className="w-4 h-4" />
+                        Start Autonomous
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardHeader>
+              
+              {autonomousTrading.session && (
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="text-center p-4 bg-muted/50 rounded-lg">
+                      <div className="text-2xl font-bold font-mono">
+                        ${autonomousTrading.session.currentBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      </div>
+                      <div className="text-sm text-muted-foreground">Current Balance</div>
+                    </div>
+                    <div className="text-center p-4 bg-muted/50 rounded-lg">
+                      <div className={`text-2xl font-bold font-mono ${autonomousTrading.session.totalPnl >= 0 ? 'text-success' : 'text-destructive'}`}>
+                        {autonomousTrading.session.totalPnl >= 0 ? '+' : ''}${autonomousTrading.session.totalPnl.toFixed(2)}
+                      </div>
+                      <div className="text-sm text-muted-foreground">Session P&L</div>
+                    </div>
+                    <div className="text-center p-4 bg-muted/50 rounded-lg">
+                      <div className="text-2xl font-bold">{autonomousTrading.session.totalTrades}</div>
+                      <div className="text-sm text-muted-foreground">Total Trades</div>
+                    </div>
+                    <div className="text-center p-4 bg-muted/50 rounded-lg">
+                      <div className="text-2xl font-bold text-success">{autonomousTrading.stats.winRate}</div>
+                      <div className="text-sm text-muted-foreground">Win Rate</div>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+                    <Brain className="w-4 h-4" />
+                    <span>Trading: {autonomousTrading.symbols.join(', ')}</span>
+                    <span className="mx-2">•</span>
+                    <span>Cycle: {autonomousTrading.stats.avgCycleTime}</span>
+                    <span className="mx-2">•</span>
+                    <span>Open: {autonomousTrading.stats.openPositions} positions</span>
+                  </div>
+                </CardContent>
+              )}
+            </Card>
+
+            {/* Configuration */}
+            <div className="grid md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Target className="w-5 h-5" />
+                    Trading Configuration
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center py-2 border-b">
+                      <span className="text-muted-foreground">Min Confidence</span>
+                      <span className="font-mono font-medium">{(autonomousTrading.config.MIN_CONFIDENCE * 100).toFixed(0)}%</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2 border-b">
+                      <span className="text-muted-foreground">Max Risk per Trade</span>
+                      <span className="font-mono font-medium">{autonomousTrading.config.MAX_RISK_PERCENT}%</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2 border-b">
+                      <span className="text-muted-foreground">Position Size</span>
+                      <span className="font-mono font-medium">{autonomousTrading.config.POSITION_SIZE_PERCENT}%</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2 border-b">
+                      <span className="text-muted-foreground">Stop Loss</span>
+                      <span className="font-mono font-medium">{autonomousTrading.config.STOP_LOSS_PERCENT}%</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2 border-b">
+                      <span className="text-muted-foreground">Take Profit</span>
+                      <span className="font-mono font-medium">{autonomousTrading.config.TAKE_PROFIT_PERCENT}%</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2">
+                      <span className="text-muted-foreground">Cycle Interval</span>
+                      <span className="font-mono font-medium">{autonomousTrading.config.CYCLE_INTERVAL_MS / 1000}s</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Recent Cycles */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Activity className="w-5 h-5" />
+                    Recent Cycles
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {autonomousTrading.cycleResults.length === 0 ? (
+                    <div className="text-center text-muted-foreground py-8">
+                      <Activity className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                      <p>No cycles yet</p>
+                      <p className="text-sm">Start autonomous trading to see activity</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {autonomousTrading.cycleResults.slice(-10).reverse().map((cycle, i) => (
+                        <div key={i} className="flex items-center justify-between py-2 text-sm border-b last:border-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-muted-foreground">
+                              {new Date(cycle.timestamp).toLocaleTimeString()}
+                            </span>
+                            {cycle.tradesExecuted > 0 && (
+                              <Badge variant="default" className="text-xs">
+                                {cycle.tradesExecuted} trade{cycle.tradesExecuted > 1 ? 's' : ''}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-muted-foreground">{cycle.signalsGenerated} signals</span>
+                            {cycle.pnlChange !== 0 && (
+                              <span className={`font-mono ${cycle.pnlChange >= 0 ? 'text-success' : 'text-destructive'}`}>
+                                {cycle.pnlChange >= 0 ? '+' : ''}${cycle.pnlChange.toFixed(2)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Active Auto Positions */}
+            {autonomousTrading.positions.filter(p => p.status === 'open').length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Briefcase className="w-5 h-5" />
+                    Auto Trading Positions
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Symbol</TableHead>
+                        <TableHead>Side</TableHead>
+                        <TableHead className="text-right">Qty</TableHead>
+                        <TableHead className="text-right">Entry</TableHead>
+                        <TableHead className="text-right">Stop Loss</TableHead>
+                        <TableHead className="text-right">Take Profit</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {autonomousTrading.positions.filter(p => p.status === 'open').map(pos => (
+                        <TableRow key={pos.id}>
+                          <TableCell className="font-bold">{pos.symbol}</TableCell>
+                          <TableCell>
+                            <Badge variant={pos.side === 'long' ? 'default' : 'destructive'}>
+                              {pos.side.toUpperCase()}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right font-mono">{pos.quantity}</TableCell>
+                          <TableCell className="text-right font-mono">${pos.entryPrice.toFixed(2)}</TableCell>
+                          <TableCell className="text-right font-mono text-destructive">${pos.stopLoss.toFixed(2)}</TableCell>
+                          <TableCell className="text-right font-mono text-success">${pos.takeProfit.toFixed(2)}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="bg-success/10 text-success border-success/30">
+                              Open
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
+
+            {autonomousTrading.error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Error</AlertTitle>
+                <AlertDescription>{autonomousTrading.error}</AlertDescription>
+              </Alert>
+            )}
           </div>
         </TabsContent>
 
