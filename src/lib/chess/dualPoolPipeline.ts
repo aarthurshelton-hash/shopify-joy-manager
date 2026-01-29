@@ -42,8 +42,8 @@
  * - Picks the outcome with highest confidence (no more bias oscillation)
  */
 
-const DUAL_POOL_VERSION = "8.01-SMOOTH";
-console.log(`[v8.01] dualPoolPipeline.ts LOADED - Version: ${DUAL_POOL_VERSION}`);
+const DUAL_POOL_VERSION = "8.02-CALIBRATED";
+console.log(`[v8.02] dualPoolPipeline.ts LOADED - Version: ${DUAL_POOL_VERSION}`);
 
 // v7.0: Hard timeout wrapper for any async operation
 function withTimeout<T>(promise: Promise<T>, ms: number, name: string): Promise<T> {
@@ -245,27 +245,42 @@ async function generateLocalHybridPrediction(
       archetype,
     };
   } catch (err) {
-    console.warn('[v7.90-EQUILIBRIUM] Hybrid fallback to SF-only:', err);
-    const sfPred = evalToPrediction(stockfishEval);
+    console.warn('[v8.02-CALIBRATED] Hybrid error, using balanced SF fallback:', err);
+    const sfPred = evalToPredictionBalanced(stockfishEval);
     return {
       prediction: sfPred.prediction,
       confidence: sfPred.confidence,
-      archetype: 'FALLBACK',
+      archetype: sfPred.archetype, // v8.02: Infer archetype from eval pattern
     };
   }
 }
 
-function evalToPrediction(cp: number): { prediction: 'white_wins' | 'black_wins' | 'draw'; confidence: number } {
-  if (cp > 50) {
-    return { prediction: 'white_wins', confidence: Math.min(95, 50 + Math.abs(cp) / 8) };
-  } else if (cp < -50) {
-    return { prediction: 'black_wins', confidence: Math.min(95, 50 + Math.abs(cp) / 8) };
+/**
+ * v8.02-CALIBRATED: Balanced SF-only fallback with archetype inference
+ * Key fix: Symmetric thresholds and archetype assignment (no more 'FALLBACK')
+ */
+function evalToPredictionBalanced(cp: number): { 
+  prediction: 'white_wins' | 'black_wins' | 'draw'; 
+  confidence: number;
+  archetype: string;
+} {
+  // v8.02: SYMMETRIC thresholds - same for white and black
+  if (cp > 100) {
+    return { prediction: 'white_wins', confidence: Math.min(85, 55 + Math.abs(cp) / 10), archetype: 'positional_squeeze' };
+  } else if (cp < -100) {
+    return { prediction: 'black_wins', confidence: Math.min(85, 55 + Math.abs(cp) / 10), archetype: 'positional_squeeze' };
+  } else if (cp > 40) {
+    return { prediction: 'white_wins', confidence: 45 + Math.abs(cp) / 5, archetype: 'central_domination' };
+  } else if (cp < -40) {
+    return { prediction: 'black_wins', confidence: 45 + Math.abs(cp) / 5, archetype: 'central_domination' };
   } else if (cp > 15) {
-    return { prediction: 'white_wins', confidence: 40 + Math.abs(cp) };
+    // v8.02: Slight edge - could go either way, predict conservatively
+    return { prediction: 'white_wins', confidence: 38, archetype: 'piece_harmony' };
   } else if (cp < -15) {
-    return { prediction: 'black_wins', confidence: 40 + Math.abs(cp) };
+    return { prediction: 'black_wins', confidence: 38, archetype: 'piece_harmony' };
   } else {
-    return { prediction: 'draw', confidence: 35 + (15 - Math.abs(cp)) * 2 };
+    // v8.02: Equal position = draw with moderate confidence
+    return { prediction: 'draw', confidence: 42, archetype: 'closed_maneuvering' };
   }
 }
 
@@ -638,7 +653,7 @@ export async function runCloudPoolBatch(
       // v6.96-LOCAL: Use local hybrid prediction (no cloud API)
       const hybridResult = await generateLocalHybridPrediction(truncatedPgn, sfResult.eval, sfResult.depth);
       
-      const sfPrediction = evalToPrediction(sfResult.eval);
+      const sfPrediction = evalToPredictionBalanced(sfResult.eval);
       
       const prediction: PoolPrediction = {
         gameId: game.id,
@@ -759,7 +774,7 @@ export async function runLocalPoolBatch(
       // v6.96-LOCAL: Use local hybrid prediction (no cloud API)
       const hybridResult = await generateLocalHybridPrediction(truncatedPgn, sfResult.eval, sfResult.depth);
       
-      const sfPrediction = evalToPrediction(sfResult.eval);
+      const sfPrediction = evalToPredictionBalanced(sfResult.eval);
       
       const prediction: PoolPrediction = {
         gameId: game.id,
