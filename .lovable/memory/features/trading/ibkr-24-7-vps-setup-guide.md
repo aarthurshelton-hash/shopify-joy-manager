@@ -1,96 +1,127 @@
 # Memory: features/trading/ibkr-24-7-vps-setup-guide
 Updated: 2026-01-29
 
-## 24/7 IBKR Paper Trading - VPS Setup Guide
+## 24/7 IBKR Paper Trading - Windows VPS Setup Guide
 
-### Architecture Requirements
-To run IBKR autonomous trading 24/7, you need a persistent environment with:
-1. **IB Gateway** (headless mode preferred) - IBKR's desktop app
-2. **Node.js Bridge Server** - Translates HTTP → TWS socket
-3. **Trading Application** - React app or headless trading script
+### Recommended Provider: Vultr Windows VPS
+- **Plan**: 2 vCPU, 4GB RAM ($24/month) - sufficient for IB Gateway + Node.js
+- **OS**: Windows Server 2022
+- **Location**: Choose closest to NYSE (New York, New Jersey)
 
-### Option 1: Windows VPS (Recommended for IB Gateway)
-IB Gateway has best compatibility with Windows.
+### Step-by-Step Setup
 
-**Providers:**
-- Vultr Windows VPS ($24/mo for 2GB RAM)
-- AWS Lightsail Windows ($20/mo)
-- DigitalOcean Windows Droplet
+#### 1. Provision VPS
+1. Sign up at vultr.com (or AWS Lightsail, DigitalOcean)
+2. Deploy Windows Server 2022 instance
+3. Note the IP address and Administrator password
+4. Wait 5-10 minutes for Windows to initialize
 
-**Setup Steps:**
-1. Provision Windows Server 2019/2022 VPS
-2. RDP into the server
-3. Download and install IB Gateway from IBKR
-4. Install Node.js LTS
-5. Clone/copy the bridge server code
-6. Configure IB Gateway for auto-start
-7. Set up the bridge as a Windows Service
+#### 2. Connect via RDP
+- **Windows**: Open Remote Desktop Connection, enter VPS IP
+- **Mac**: Download Microsoft Remote Desktop from App Store
+- Login with Administrator credentials
 
-### Option 2: Linux VPS with IBC (IB Controller)
-Uses IBC to run IB Gateway headlessly on Linux.
+#### 3. Install Prerequisites
+```powershell
+# Open PowerShell as Administrator
 
-**Providers:**
-- DigitalOcean Droplet ($12/mo for 2GB)
-- Vultr ($10/mo)
-- Linode ($10/mo)
+# Install Chocolatey (package manager)
+Set-ExecutionPolicy Bypass -Scope Process -Force
+[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
 
-**Setup Steps:**
-1. Provision Ubuntu 22.04 VPS
-2. Install Java (required for IB Gateway)
-3. Install IBC (IB Controller) - automates IB Gateway login
-4. Install Xvfb (virtual framebuffer for headless)
-5. Install Node.js LTS
-6. Deploy bridge server
-7. Configure systemd services
+# Install Node.js LTS
+choco install nodejs-lts -y
 
-### Option 3: Dedicated Home Machine
-Run on a spare computer at home.
+# Install Git
+choco install git -y
 
-**Requirements:**
-- Always-on computer (old laptop, mini PC, Raspberry Pi 4)
-- Stable internet connection
-- UPS (uninterruptible power supply) recommended
+# Refresh environment
+refreshenv
+```
 
-### IBC Configuration (for headless operation)
-IBC automates IB Gateway login and keeps it running:
+#### 4. Download & Install IB Gateway
+1. Download from: https://www.interactivebrokers.com/en/trading/ibgateway-stable.php
+2. Run installer, select "IB Gateway" (not TWS)
+3. Launch IB Gateway, login with paper trading credentials
+4. Configure API Settings:
+   - File → Global Configuration → API → Settings
+   - ✅ Enable ActiveX and Socket Clients
+   - ❌ Read-Only API (uncheck this!)
+   - Socket port: 4002 (paper trading)
+   - Trusted IPs: 127.0.0.1
 
+#### 5. Deploy Bridge Server & Trader
+```powershell
+# Create trading directory
+mkdir C:\Trading
+cd C:\Trading
+
+# Clone or copy the files (copy from your local machine via RDP)
+# Or download directly if hosted on GitHub
+
+# Install bridge dependencies
+cd ib-gateway-bridge
+npm install
+
+# Install trader dependencies
+cd ..\ib-headless-trader
+npm install
+```
+
+#### 6. Install PM2 for Process Management
+```powershell
+npm install -g pm2
+npm install -g pm2-windows-startup
+
+# Start the bridge server
+cd C:\Trading\ib-gateway-bridge
+pm2 start server.js --name "ib-bridge"
+
+# Start the headless trader
+cd C:\Trading\ib-headless-trader
+pm2 start trader.js --name "ib-trader"
+
+# Save PM2 process list
+pm2 save
+
+# Configure auto-start on Windows boot
+pm2-startup install
+```
+
+#### 7. Keep IB Gateway Running
+IB Gateway will disconnect after market hours. Use **IBC** (IB Controller) for auto-restart:
+1. Download IBC: https://github.com/IbcAlpha/IBC/releases
+2. Extract to C:\IBC
+3. Edit `config.ini`:
 ```ini
-# config.ini
-IbLoginId=YOUR_IBKR_USERNAME
-IbPassword=YOUR_IBKR_PASSWORD
+IbLoginId=YOUR_PAPER_USERNAME
+IbPassword=YOUR_PAPER_PASSWORD
 TradingMode=paper
-IbDir=/opt/ibgateway
 AcceptIncomingConnectionAction=accept
 AcceptNonBrokerageAccountWarning=yes
 ExistingSessionDetectedAction=primary
 ```
+4. Create scheduled task to run IBC at startup
 
-### Bridge Server as Systemd Service
-```ini
-[Unit]
-Description=IB Gateway Bridge Server
-After=network.target
+### Monitoring Commands
+```powershell
+# Check PM2 status
+pm2 status
 
-[Service]
-Type=simple
-User=trader
-WorkingDirectory=/home/trader/ib-bridge
-ExecStart=/usr/bin/node server.js
-Restart=always
-RestartSec=10
+# View trader logs
+pm2 logs ib-trader
 
-[Install]
-WantedBy=multi-user.target
+# View bridge logs
+pm2 logs ib-bridge
+
+# Restart services
+pm2 restart all
 ```
 
-### Monitoring & Alerts
-- Set up health checks (ping bridge /api/status every minute)
-- Configure email/SMS alerts for disconnection
-- Use PM2 or systemd for process management
-- Log all trades to database for remote monitoring
-
-### Security Considerations
-- Use paper trading account only
-- Firewall: only allow localhost connections to IB Gateway
-- VPN for secure RDP/SSH access
-- Never expose IB Gateway ports to internet
+### Security Checklist
+- ✅ Use strong RDP password
+- ✅ Enable Windows Firewall
+- ✅ Only paper trading account
+- ✅ Change RDP port from 3389 (optional)
+- ✅ Regular Windows updates
