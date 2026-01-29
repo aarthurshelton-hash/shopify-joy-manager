@@ -2,9 +2,17 @@
  * IBKR Options Autonomous Trading Hook
  * 
  * Runs 24/7 automated OPTIONS trading through the local IB Gateway bridge.
- * Uses real IBKR paper account data with En Pensent™ prediction engine.
+ * Uses real IBKR paper account data with FULL En Pensent™ Universal Intelligence:
  * 
- * @version 7.51-OPTIONS-IBKR
+ * === INTEGRATED SYSTEMS ===
+ * - 27 Domain Adapters (Light, Network, Bio, Audio, Music, Soul, Atomic, Cosmic, etc.)
+ * - 9 Advanced Modules (Entropy, Archetype, Quantum, Morphic, Contagion, Fractal, etc.)
+ * - Scientific Formulations (Shannon Entropy, Hurst, Lyapunov, Kuramoto, Bayesian)
+ * - Speedrun Glitch Detection (Sequence Breaks, Wrong Warps)
+ * - Consciousness Resonance (Collective Entrainment)
+ * - Cultural Arbitrage (Cross-market asymmetries)
+ * 
+ * @version 8.0-UNIVERSAL-OPTIONS-IBKR
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -18,6 +26,11 @@ import {
   TimeframeType,
   SCALPING_UNDERLYINGS,
 } from '@/lib/pensent-core/domains/options';
+import { 
+  universalOptionsIntegration,
+  UniversalOptionsContext,
+  EnhancedOptionsPrediction,
+} from '@/lib/pensent-core/domains/options/universalOptionsIntegration';
 
 interface OptionsSession {
   id: string;
