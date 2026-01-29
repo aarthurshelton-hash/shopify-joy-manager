@@ -17,13 +17,13 @@
 
 import { supabase } from '@/integrations/supabase/client';
 
-const VERSION = "7.90-FULL-DEDUP";
+const VERSION = "8.03-AGGRESSIVE";
 console.log(`[${VERSION}] simpleDedup.ts LOADED`);
 
-// v7.90: Increased limits to prevent duplicate key errors
-const INIT_TIMEOUT_MS = 10000; // Max 10s for entire init
-const PAGE_TIMEOUT_MS = 3000;  // Max 3s per page  
-const MAX_PAGES = 20;          // Load up to 20,000 IDs (covers 12k+ existing)
+// v8.03: More aggressive loading to ensure full coverage
+const INIT_TIMEOUT_MS = 15000; // Max 15s for entire init (was 10s)
+const PAGE_TIMEOUT_MS = 4000;  // Max 4s per page (was 3s)
+const MAX_PAGES = 30;          // Load up to 30,000 IDs (was 20)
 const PAGE_SIZE = 1000;
 
 /**
