@@ -1,21 +1,27 @@
 /**
- * Color Flow Prediction Engine v7.90-EQUILIBRIUM
+ * Color Flow Prediction Engine v8.07-AGREEMENT-CALIBRATED
  * 
  * Generates strategic predictions from color flow signatures
  * 
- * v7.90 EQUILIBRIUM: CEO insight - "we can win both white AND black"
- * Instead of oscillating biases, use THREE-WAY confidence voting:
- * - Calculate independent confidence for white, black, AND draw
- * - Pick the outcome with highest confidence
- * - Only predict when there's clear separation
+ * v8.07 AGREEMENT-CALIBRATED:
+ * - Boost confidence when SF and Hybrid agree (56% historical accuracy)
+ * - Defer to SF on disagreements (SF 45.5% vs Hybrid 35.8%)
+ * - Eliminate FALLBACK/unknown archetypes
+ * - Apply historical archetype calibration
  */
 
 import { ColorFlowSignature, ColorFlowPrediction, StrategicArchetype } from './types';
 import { ARCHETYPE_DEFINITIONS } from './archetypeDefinitions';
 import { calculateEquilibriumScores, EquilibriumScores } from './equilibriumPredictor';
+import { 
+  calibrateConfidence, 
+  getSfPrediction, 
+  forceArchetypeAssignment 
+} from './archetypeCalibration';
 
 // Store last equilibrium scores for debugging/transparency
 let lastEquilibriumScores: EquilibriumScores | null = null;
+let lastCalibrationReason: string = '';
 
 /**
  * Get the last equilibrium calculation (for debugging/UI display)
@@ -25,9 +31,16 @@ export function getLastEquilibriumScores(): EquilibriumScores | null {
 }
 
 /**
+ * Get the last calibration reason (for debugging/UI display)
+ */
+export function getLastCalibrationReason(): string {
+  return lastCalibrationReason;
+}
+
+/**
  * Generate strategic predictions based on color flow signature
  * 
- * v7.90 EQUILIBRIUM: Uses three-way confidence voting for balanced predictions
+ * v8.07 AGREEMENT-CALIBRATED: Uses agreement weighting + historical calibration
  */
 export function predictFromColorFlow(
   signature: ColorFlowSignature,
@@ -35,11 +48,19 @@ export function predictFromColorFlow(
   stockfishEval: number = 0,
   stockfishDepth: number = 18
 ): ColorFlowPrediction {
-  const archetypeDef = ARCHETYPE_DEFINITIONS[signature.archetype];
+  // v8.07: Force-assign archetype if unknown
+  const effectiveArchetype = forceArchetypeAssignment(
+    signature.archetype,
+    signature.dominantSide,
+    signature.flowDirection,
+    signature.intensity
+  );
+  
+  const archetypeDef = ARCHETYPE_DEFINITIONS[effectiveArchetype];
   
   // v7.90 EQUILIBRIUM: Calculate all three outcome confidences
   const equilibrium = calculateEquilibriumScores(
-    signature,
+    { ...signature, archetype: effectiveArchetype },
     stockfishEval,
     stockfishDepth,
     currentMoveNumber
@@ -48,26 +69,53 @@ export function predictFromColorFlow(
   // Store for debugging access
   lastEquilibriumScores = equilibrium;
   
-  // Convert equilibrium prediction to winner format
+  // Get SF-only prediction for agreement check
+  const sfPrediction = getSfPrediction(stockfishEval);
+  
+  // v8.07: Apply agreement-based calibration
+  const calibration = calibrateConfidence(
+    effectiveArchetype,
+    equilibrium.prediction,
+    sfPrediction,
+    equilibrium.finalConfidence,
+    stockfishEval
+  );
+  
+  lastCalibrationReason = calibration.reason;
+  
+  // Determine final prediction
   let predictedWinner: 'white' | 'black' | 'draw';
-  if (equilibrium.prediction === 'white_wins') {
-    predictedWinner = 'white';
-  } else if (equilibrium.prediction === 'black_wins') {
-    predictedWinner = 'black';
+  let finalConfidence: number;
+  
+  if (calibration.deferToStockfish) {
+    // SF takes precedence
+    if (sfPrediction === 'white_wins') {
+      predictedWinner = 'white';
+    } else if (sfPrediction === 'black_wins') {
+      predictedWinner = 'black';
+    } else {
+      predictedWinner = 'draw';
+    }
+    finalConfidence = calibration.adjustedConfidence;
   } else {
-    predictedWinner = 'draw';
+    // Use Hybrid prediction with calibrated confidence
+    if (equilibrium.prediction === 'white_wins') {
+      predictedWinner = 'white';
+    } else if (equilibrium.prediction === 'black_wins') {
+      predictedWinner = 'black';
+    } else {
+      predictedWinner = 'draw';
+    }
+    finalConfidence = calibration.adjustedConfidence;
   }
   
-  // Use equilibrium confidence with clarity adjustment
-  let confidence = equilibrium.finalConfidence;
-  
-  // If low clarity, reduce confidence
+  // If low clarity, reduce confidence further
   if (!equilibrium.highClarity) {
-    confidence = Math.max(35, confidence - 10);
+    finalConfidence = Math.max(30, finalConfidence - 8);
   }
   
   // Clamp to reasonable range
-  confidence = Math.max(30, Math.min(85, confidence));
+  finalConfidence = Math.max(30, Math.min(85, finalConfidence));
   
   // Strategic guidance based on archetype
   const guidance = generateStrategicGuidance(signature);
@@ -80,7 +128,7 @@ export function predictFromColorFlow(
   
   return {
     predictedWinner,
-    confidence,
+    confidence: finalConfidence,
     lookaheadMoves: archetypeDef.lookaheadConfidence,
     strategicGuidance: guidance,
     futureCriticalSquares,
