@@ -66,7 +66,7 @@ export function useIBKRAutonomousTrading(gatewayConnected: boolean, accountId: s
   const [lastCycleTime, setLastCycleTime] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
   
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   const { toast } = useToast();
 
