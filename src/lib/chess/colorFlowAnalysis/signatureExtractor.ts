@@ -384,13 +384,12 @@ function calculateOverallIntensity(board: SquareData[][]): number {
 
 /**
  * Determine which side has overall color dominance
- * v8.04-SYMMETRIC: Truly balanced detection - no artificial bias in either direction
+ * v8.06-EQUILIBRIUM: Balanced detection after learning from v8.05 over-correction
  * 
- * PROBLEM: v8.03 over-corrected - now our wins are white-only, SF wins are black/draws
- * The fix oscillated too far in the opposite direction.
+ * v8.05 LEARNING: We went from 66% white predictions to 69% black predictions
+ * Neither extreme works - need TRUE balance
  * 
- * SOLUTION: Pure symmetric detection with ZERO artificial bias
- * Let the actual board activity speak for itself.
+ * SOLUTION: Equal weights for both colors, use multiple signals symmetrically
  */
 function determineDominantSide(profile: QuadrantProfile): 'white' | 'black' | 'contested' {
   // Calculate total activity for threshold checks
@@ -401,46 +400,56 @@ function determineDominantSide(profile: QuadrantProfile): 'white' | 'black' | 'c
     Math.abs(profile.queensideBlack) + 
     Math.abs(profile.center);
   
-  // Low activity = not enough signal for confident prediction
-  if (totalActivity < 60) {
+  // Low activity = not enough signal
+  if (totalActivity < 50) {
     return 'contested';
   }
   
-  // Method 1: Quadrant-based detection (attacking territory)
-  // White attacking black's territory = white aggression
-  // Black attacking white's territory = black aggression  
-  const whiteAttacking = Math.max(0, profile.kingsideBlack) + Math.max(0, profile.queensideBlack);
-  const blackAttacking = Math.max(0, -profile.kingsideWhite) + Math.max(0, -profile.queensideWhite);
+  // ===== SIGNAL 1: Territory Invasion (SYMMETRIC) =====
+  // Black pieces in WHITE's territory
+  const blackInWhiteTerritory = Math.max(0, -profile.kingsideWhite) + Math.max(0, -profile.queensideWhite);
+  // White pieces in BLACK's territory
+  const whiteInBlackTerritory = Math.max(0, profile.kingsideBlack) + Math.max(0, profile.queensideBlack);
   
-  // Method 2: Center control
-  const centerAdvantage = profile.center; // positive = white, negative = black
+  // ===== SIGNAL 2: Center Control =====
+  const centerControl = profile.center; // positive = white, negative = black
   
-  // Method 3: Overall board presence
-  // Sum ALL quadrant values: positive = white activity dominates, negative = black
+  // ===== SIGNAL 3: Overall Balance =====
   const rawBalance = 
-    profile.kingsideWhite + 
-    profile.kingsideBlack + 
-    profile.queensideWhite + 
-    profile.queensideBlack + 
+    profile.kingsideWhite + profile.kingsideBlack + 
+    profile.queensideWhite + profile.queensideBlack + 
     profile.center;
   
-  // v8.04-SYMMETRIC: Minimal first-move compensation (just 15 points)
-  // This acknowledges white moves first but doesn't over-correct
-  const FIRST_MOVE_OFFSET = 15;
+  // v8.06: Moderate first-move offset (between v8.04's 15 and v8.05's 25)
+  const FIRST_MOVE_OFFSET = 20;
   const adjustedBalance = rawBalance - FIRST_MOVE_OFFSET;
   
-  // Combine signals with equal weight
-  const whiteSignal = (whiteAttacking * 2) + Math.max(0, centerAdvantage) + Math.max(0, adjustedBalance);
-  const blackSignal = (blackAttacking * 2) + Math.max(0, -centerAdvantage) + Math.max(0, -adjustedBalance);
+  // ===== SYMMETRIC SCORING =====
+  // v8.06: Equal weights for both colors (2.0x invasion weight for both)
+  const whiteScore = (whiteInBlackTerritory * 2.0) + 
+                     Math.max(0, centerControl * 0.8) + 
+                     Math.max(0, adjustedBalance * 0.4);
   
-  // SYMMETRIC thresholds - identical for both sides
-  const DOMINANCE_THRESHOLD = 20;
-  const difference = whiteSignal - blackSignal;
+  const blackScore = (blackInWhiteTerritory * 2.0) + 
+                     Math.max(0, -centerControl * 0.8) + 
+                     Math.max(0, -adjustedBalance * 0.4);
   
-  if (difference > DOMINANCE_THRESHOLD) {
+  // ===== DECISION with moderate gap requirement =====
+  const DOMINANCE_GAP = 18; // Require clear separation
+  const difference = whiteScore - blackScore;
+  
+  if (difference > DOMINANCE_GAP) {
     return 'white';
-  } else if (difference < -DOMINANCE_THRESHOLD) {
+  } else if (difference < -DOMINANCE_GAP) {
     return 'black';
+  }
+  
+  // v8.06: Only use invasion tiebreaker when one side has CLEAR advantage
+  if (blackInWhiteTerritory > 25 && blackInWhiteTerritory > whiteInBlackTerritory * 1.5) {
+    return 'black';
+  }
+  if (whiteInBlackTerritory > 25 && whiteInBlackTerritory > blackInWhiteTerritory * 1.5) {
+    return 'white';
   }
   
   return 'contested';
