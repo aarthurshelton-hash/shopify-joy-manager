@@ -1,0 +1,14 @@
+{
+  "name": "ib-headless-trader",
+  "version": "1.0.0",
+  "description": "24/7 Autonomous IBKR Paper Trading Bot",
+  "main": "trader.js",
+  "type": "module",
+  "scripts": {
+    "start": "node trader.js",
+    "start:dev": "node --watch trader.js"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.2"
+  }
+}
