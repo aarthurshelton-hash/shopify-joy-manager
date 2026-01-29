@@ -1,5 +1,5 @@
 /**
- * Universal Options Integration - Full 27-Domain + Scientific Foundation
+ * Universal Options Integration - Full 27-Domain + Scientific Foundation + Greeks-Chess
  * 
  * Connects Options Prediction to En Pensent™ Universal Intelligence:
  * - 27 Domain Adapters 
@@ -7,8 +7,9 @@
  * - Cross-Domain Engine
  * - Speedrun Glitch Detection
  * - Consciousness Resonance
+ * - Greeks ↔ Chess Constraints Mapping (Δ,Γ,Θ,ν,ρ)
  * 
- * @version 8.0-UNIVERSAL-OPTIONS
+ * @version 8.1-GREEKS-CHESS
  */
 
 import { crossDomainEngine } from '../universal/crossDomainEngine';
@@ -22,6 +23,7 @@ import {
   fractalDimension,
   FUNDAMENTAL_CONSTANTS,
 } from '../universal/modules/scientificFormulations';
+import { greeksChessAdapter, type GreeksChessMapping } from './greeksChessAdapter';
 
 export interface UniversalOptionsContext {
   domainConsensus: {
@@ -45,6 +47,16 @@ export interface UniversalOptionsContext {
   resonanceState: {
     synchronization: number;
     mood: string;
+  };
+  greeksChessMapping: {
+    delta: number;
+    gamma: number;
+    theta: number;
+    vega: number;
+    rho: number;
+    chessAnalogy: string;
+    strategicInsight: string;
+    preferredStrategy: string;
   };
   universalConfidence: number;
   universalDirection: 'bullish' | 'bearish' | 'neutral';
@@ -110,9 +122,29 @@ class UniversalOptionsIntegration {
     const resonanceState = consciousnessResonanceDetector.getState();
     const resonanceRec = consciousnessResonanceDetector.getTradingRecommendation();
     
+    // Greeks-Chess Mapping - derive Greeks from market conditions
+    const impliedDelta = momentum > 0 ? Math.min(0.9, momentum * 2) : Math.max(-0.9, momentum * 2);
+    const impliedGamma = Math.min(1, volatility * 3); // High vol = high gamma
+    const impliedTheta = 0.6; // Default to weekly-equivalent decay
+    const impliedVega = Math.min(1, volatility * 2.5);
+    const impliedRho = calcHurst > 0.6 ? 0.7 : 0.3; // Trending = long-term factors matter
+    
+    const chessInsight = greeksChessAdapter.getChessInsightFromMarketGreeks(
+      impliedDelta, impliedGamma, impliedTheta, impliedVega, impliedRho
+    );
+    
+    const greeksMapping = greeksChessAdapter.generateMapping({
+      timeControl: impliedTheta > 0.8 ? 'bullet' : impliedTheta > 0.6 ? 'blitz' : impliedTheta > 0.3 ? 'rapid' : 'classical',
+      materialBalance: Math.round(impliedDelta * 15),
+      tacticalSharpness: impliedGamma,
+      pieceActivity: impliedVega,
+      pawnStructure: impliedRho,
+      kingSafety: 1 - impliedGamma * 0.4,
+    });
+    
     // Final synthesis
     const universalDirection = unifiedPrediction.direction === 'up' ? 'bullish' : unifiedPrediction.direction === 'down' ? 'bearish' : 'neutral';
-    const universalConfidence = Math.min(0.95, unifiedPrediction.confidence * 0.85);
+    const universalConfidence = Math.min(0.95, unifiedPrediction.confidence * 0.85 + greeksMapping.confidenceBoost);
     
     return {
       domainConsensus: {
@@ -124,6 +156,16 @@ class UniversalOptionsIntegration {
       scientificMetrics: { hurstExponent: calcHurst, lyapunovExponent: calcLyapunov, shannonEntropy: calcEntropy, fractalDimension: calcFractal, goldenRatioAlignment },
       glitchState: { hasGlitch: glitches.length > 0, glitchType: glitches[0]?.type || null, recommendation: glitchRec.reasoning },
       resonanceState: { synchronization: resonanceState.globalSynchronization, mood: resonanceRec.mood },
+      greeksChessMapping: {
+        delta: impliedDelta,
+        gamma: impliedGamma,
+        theta: impliedTheta,
+        vega: impliedVega,
+        rho: impliedRho,
+        chessAnalogy: chessInsight.chessAnalogy,
+        strategicInsight: chessInsight.strategicInsight,
+        preferredStrategy: greeksMapping.optionsImplication.preferredStrategy,
+      },
       universalConfidence,
       universalDirection,
       truthScore: unifiedPrediction.harmonicAlignment,
@@ -175,4 +217,5 @@ class UniversalOptionsIntegration {
 }
 
 export const universalOptionsIntegration = new UniversalOptionsIntegration();
-console.log('[v8.0-UNIVERSAL-OPTIONS] 27 Domain Adapters + Scientific Framework LOADED');
+export { greeksChessAdapter };
+console.log('[v8.1-GREEKS-CHESS] 27 Domains + Greeks↔Chess Adapter LOADED');
