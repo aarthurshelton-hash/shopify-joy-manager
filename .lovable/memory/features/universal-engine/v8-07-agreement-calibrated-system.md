@@ -1,23 +1,43 @@
 # Memory: features/universal-engine/v8-07-agreement-calibrated-system
 Updated: now
 
-The 'v8.07-AGREEMENT-CALIBRATED' system implements three key improvements based on data analysis:
+The 'v8.07c-BREAKTHROUGH-MAXIMIZER' system optimizes for disagreement wins by trusting pattern recognition more aggressively:
 
-1. **Agreement Weighting**: When SF and Hybrid agree, historical accuracy is 56%. When they disagree, Hybrid drops to 35.8% while SF maintains 45.5%. The system now:
-   - Boosts confidence by 1.08-1.15x on agreement (higher for strong archetypes)
-   - Defers to Stockfish on disagreement when SF eval is decisive (>150cp)
-   - Applies 0.75-0.95x multiplier on disagreements based on archetype strength
+## Core Philosophy
+- Every SF miss is an opportunity for pattern recognition to shine
+- Strong archetypes (>50% accuracy) should NEVER defer to SF
+- Weak SF signals are BREAKTHROUGH territory
 
-2. **FALLBACK Elimination**: The 'unknown' archetype (805 games at 41.5% accuracy) is eliminated. The `classifyArchetype` function now uses volatility and activity ratios to always assign a specific archetype. Default is `piece_harmony` (53% accuracy, the best-performing archetype).
+## Calibration Logic
 
-3. **Historical Calibration**: New `archetypeCalibration.ts` module provides:
-   - `ARCHETYPE_HISTORICAL_ACCURACY`: Per-archetype accuracy stats from database
-   - `calibrateConfidence()`: Adjusts confidence based on agreement state + archetype reliability
-   - `forceArchetypeAssignment()`: Converts 'unknown' to best-matching specific archetype
-   - Archetype-specific confidence ceiling: 30 + (accuracy * 100)
+### Agreement (56% historical accuracy)
+- Strong archetype (>50%): 1.18x boost
+- Decent archetype (45-50%): 1.10x boost  
+- Weak archetype: 1.02x boost
+- Additional 1.08x if SF signal is strong (confirmation)
 
-Key calibration logic:
-- Agreement + strong archetype (>50% accuracy): 1.15x multiplier
-- Agreement + average archetype: 1.08x multiplier
-- Disagreement + strong SF (>150cp): defer to SF, 0.75x multiplier
-- Disagreement + weak archetype: defer to SF, 0.82x multiplier
+### Disagreement - BREAKTHROUGH ZONE
+
+**Strong Archetypes (>50% accuracy) - NEVER DEFER:**
+- Absolute extreme SF (>350cp): 0.92x (minimal penalty)
+- Extreme SF (>250cp): 0.98x (almost no penalty)
+- Strong SF (>150cp): 1.0x (no penalty)
+- Weak SF: 1.05x (BOOST - capitalize on opportunity)
+
+**Decent Archetypes (45-50%):**
+- Absolute extreme SF: Defer, 0.82x
+- Extreme SF: 0.90x (cautious)
+- Strong SF: 0.95x (slight penalty)
+- Weak SF: 1.0x (no penalty - breakthrough)
+
+**Weak Archetypes (<45%):**
+- Absolute extreme SF: Defer, 0.78x
+- Extreme SF: Defer, 0.82x
+- Strong SF: 0.88x (cautious trust)
+- Weak SF: 0.95x (test the archetype)
+
+## Key Changes from v8.07b
+- Raised absolute defer threshold to >350cp
+- Strong archetypes NEVER defer regardless of SF eval
+- Added BOOST (1.05x) for strong archetype + weak SF disagreement
+- Raised confidence ceiling for elite archetypes (40 + accuracy*100)
