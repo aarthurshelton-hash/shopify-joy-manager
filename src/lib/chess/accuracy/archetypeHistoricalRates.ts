@@ -29,24 +29,33 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
  * Default rates when no historical data available
  * Based on general chess statistics (white slight advantage)
  */
+/**
+ * v8.02-CALIBRATED: Balanced default rates matching actual archetypes
+ * Key fix: Use SYMMETRIC rates (equal white/black) since dominantSide handles bias
+ */
 const DEFAULT_RATES: Record<string, { white: number; black: number; draw: number }> = {
-  kingside_attack: { white: 0.42, black: 0.38, draw: 0.20 },
-  queenside_attack: { white: 0.40, black: 0.40, draw: 0.20 },
-  central_domination: { white: 0.45, black: 0.35, draw: 0.20 },
-  piece_activity: { white: 0.40, black: 0.40, draw: 0.20 },
-  pawn_structure: { white: 0.35, black: 0.35, draw: 0.30 },
-  endgame_technique: { white: 0.38, black: 0.38, draw: 0.24 },
-  prophylaxis: { white: 0.36, black: 0.36, draw: 0.28 },
-  prophylactic_defense: { white: 0.34, black: 0.34, draw: 0.32 },
-  space_advantage: { white: 0.44, black: 0.36, draw: 0.20 },
-  material_advantage: { white: 0.50, black: 0.35, draw: 0.15 },
-  dynamic_play: { white: 0.42, black: 0.42, draw: 0.16 },
-  positional_squeeze: { white: 0.48, black: 0.32, draw: 0.20 },
-  tactical_chaos: { white: 0.40, black: 0.45, draw: 0.15 },
-  opposite_castling: { white: 0.38, black: 0.42, draw: 0.20 },
-  pawn_storm: { white: 0.44, black: 0.40, draw: 0.16 },
-  // Fallback for unknown archetypes
-  default: { white: 0.38, black: 0.38, draw: 0.24 },
+  // Attack archetypes - decisive outcomes
+  kingside_attack: { white: 0.40, black: 0.40, draw: 0.20 },
+  queenside_expansion: { white: 0.40, black: 0.40, draw: 0.20 },
+  sacrificial_attack: { white: 0.42, black: 0.42, draw: 0.16 },
+  opposite_castling: { white: 0.42, black: 0.42, draw: 0.16 },
+  pawn_storm: { white: 0.42, black: 0.42, draw: 0.16 },
+  
+  // Central/positional archetypes
+  central_domination: { white: 0.38, black: 0.38, draw: 0.24 },
+  positional_squeeze: { white: 0.38, black: 0.38, draw: 0.24 },
+  piece_harmony: { white: 0.36, black: 0.36, draw: 0.28 },
+  
+  // Tactical archetypes
+  open_tactical: { white: 0.40, black: 0.40, draw: 0.20 },
+  
+  // Defensive/slow archetypes - higher draw rates
+  closed_maneuvering: { white: 0.32, black: 0.32, draw: 0.36 },
+  prophylactic_defense: { white: 0.30, black: 0.30, draw: 0.40 },
+  endgame_technique: { white: 0.34, black: 0.34, draw: 0.32 },
+  
+  // Fallback for any unmapped archetypes
+  default: { white: 0.36, black: 0.36, draw: 0.28 },
 };
 
 /**
