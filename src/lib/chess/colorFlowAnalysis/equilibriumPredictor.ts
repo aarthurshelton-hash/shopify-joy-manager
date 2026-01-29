@@ -1,19 +1,16 @@
 /**
- * Equilibrium Predictor v8.04-SYMMETRIC
+ * Equilibrium Predictor v8.06-EQUILIBRIUM
  * 
- * v8.04 KEY FIX: Truly balanced, symmetric detection
+ * v8.06 LEARNING FROM v8.05:
+ * - v8.05 over-corrected: 69% black predictions but only 47.8% accurate
+ * - Swinging between white-bias and black-bias doesn't work
  * 
- * PROBLEM IDENTIFIED:
- * - v8.03 over-corrected: Now our wins are white-only, SF wins are black/draws
- * - Oscillating between white-bias and black-bias doesn't work
+ * SOLUTION: True equilibrium with balanced weights
+ * - Reduce archetype-specific boosts to prevent overcorrection
+ * - Use Stockfish as symmetric tiebreaker (same thresholds for both colors)
+ * - Target ~50% white / ~35% black / ~15% draw distribution
  * 
- * SOLUTION: Pure symmetric detection
- * - Minimal first-move offset (15 points, not 60)
- * - Identical thresholds for white and black detection
- * - Contested positions are truly 33/33/34, not artificially skewed
- * - Let Stockfish be the tiebreaker for edge cases
- * 
- * TARGET: Balanced accuracy across ALL outcomes, not biased toward one color
+ * TARGET: 55-60% accuracy with balanced prediction distribution
  */
 
 import { ColorFlowSignature, QuadrantProfile, TemporalFlow } from './types';
@@ -112,32 +109,64 @@ export function calculateEquilibriumScores(
   let finalConfidence: number;
   let reasoning: string;
   
-  if (whiteConfidence > blackConfidence && whiteConfidence > drawConfidence) {
+  // v8.06-EQUILIBRIUM: Symmetric decision making with SF as balanced tiebreaker
+  
+  // CASE 1: Clear leader with significant margin (require 10% gap)
+  if (whiteConfidence > blackConfidence + 10 && whiteConfidence > drawConfidence + 8) {
     prediction = 'white_wins';
     finalConfidence = whiteConfidence;
-    reasoning = `White leads (${whiteConfidence}% vs B:${blackConfidence}% D:${drawConfidence}%)`;
-  } else if (blackConfidence > whiteConfidence && blackConfidence > drawConfidence) {
+    reasoning = `White leads clearly (${whiteConfidence}% vs B:${blackConfidence}% D:${drawConfidence}%)`;
+  } else if (blackConfidence > whiteConfidence + 10 && blackConfidence > drawConfidence + 8) {
     prediction = 'black_wins';
     finalConfidence = blackConfidence;
-    reasoning = `Black leads (${blackConfidence}% vs W:${whiteConfidence}% D:${drawConfidence}%)`;
-  } else if (drawConfidence > whiteConfidence && drawConfidence > blackConfidence) {
+    reasoning = `Black leads clearly (${blackConfidence}% vs W:${whiteConfidence}% D:${drawConfidence}%)`;
+  } else if (drawConfidence > whiteConfidence + 12 && drawConfidence > blackConfidence + 12) {
     prediction = 'draw';
     finalConfidence = drawConfidence;
     reasoning = `Draw leads (${drawConfidence}% vs W:${whiteConfidence}% B:${blackConfidence}%)`;
-  } else {
-    // Tie or very close - use SF as tiebreaker
-    if (stockfishEval > 20) {
+  } 
+  // CASE 2: v8.06 - Stockfish as SYMMETRIC tiebreaker (equal thresholds)
+  else if (stockfishEval > 100) {
+    prediction = 'white_wins';
+    finalConfidence = Math.max(whiteConfidence + 8, 55);
+    reasoning = `SF strong white (+${stockfishEval}cp)`;
+  } else if (stockfishEval < -100) {
+    prediction = 'black_wins';
+    finalConfidence = Math.max(blackConfidence + 8, 55);
+    reasoning = `SF strong black (${stockfishEval}cp)`;
+  } else if (stockfishEval > 50) {
+    prediction = 'white_wins';
+    finalConfidence = Math.max(whiteConfidence, 48);
+    reasoning = `SF white advantage (+${stockfishEval}cp)`;
+  } else if (stockfishEval < -50) {
+    prediction = 'black_wins';
+    finalConfidence = Math.max(blackConfidence, 48);
+    reasoning = `SF black advantage (${stockfishEval}cp)`;
+  }
+  // CASE 3: Near-equal SF eval - use our confidence scores
+  else if (whiteConfidence > blackConfidence && whiteConfidence > drawConfidence) {
+    prediction = 'white_wins';
+    finalConfidence = whiteConfidence;
+    reasoning = `White edge (SF: ${stockfishEval}cp)`;
+  } else if (blackConfidence > whiteConfidence && blackConfidence > drawConfidence) {
+    prediction = 'black_wins';
+    finalConfidence = blackConfidence;
+    reasoning = `Black edge (SF: ${stockfishEval}cp)`;
+  } else if (drawConfidence >= whiteConfidence && drawConfidence >= blackConfidence) {
+    prediction = 'draw';
+    finalConfidence = drawConfidence;
+    reasoning = `Draw likely (SF: ${stockfishEval}cp)`;
+  }
+  // CASE 4: Truly tied - slight favor to higher Elo attacker
+  else {
+    if (stockfishEval >= 0) {
       prediction = 'white_wins';
-      finalConfidence = Math.max(whiteConfidence, 45);
-      reasoning = `Tie broken by SF eval (+${stockfishEval}cp)`;
-    } else if (stockfishEval < -20) {
-      prediction = 'black_wins';
-      finalConfidence = Math.max(blackConfidence, 45);
-      reasoning = `Tie broken by SF eval (${stockfishEval}cp)`;
+      finalConfidence = Math.max(whiteConfidence, 42);
+      reasoning = `Tie broken: SF slightly favors white`;
     } else {
-      prediction = 'draw';
-      finalConfidence = Math.max(drawConfidence, 40);
-      reasoning = `Near-tie defaults to draw (SF: ${stockfishEval}cp)`;
+      prediction = 'black_wins';
+      finalConfidence = Math.max(blackConfidence, 42);
+      reasoning = `Tie broken: SF slightly favors black`;
     }
   }
   
@@ -256,13 +285,10 @@ function calculateMomentumSignal(
 
 /**
  * Calculate archetype signal from historical patterns
- * v7.91-BALANCED: Archetype describes game STYLE, not who wins
+ * v8.06-EQUILIBRIUM: Reduced archetype boosts to prevent overcorrection
  * 
- * KEY INSIGHT: "kingside_attack" can favor EITHER side depending on who is attacking
- * The archetype outcome biases (all "white_favored") were causing massive bias
- * 
- * Instead: Use archetype to determine DRAW vs DECISIVE probability,
- * and the dominantSide (from signature) to determine WHITE vs BLACK
+ * v8.05 showed that aggressive boosts cause oscillation.
+ * v8.06 uses moderate, balanced adjustments.
  */
 function calculateArchetypeSignal(
   archetype: string,
@@ -270,44 +296,77 @@ function calculateArchetypeSignal(
   dominantSide?: 'white' | 'black' | 'contested'
 ): { white: number; black: number; draw: number } {
   if (!archetypeDef) {
+    // No archetype = equal split
     return { white: 33, black: 33, draw: 34 };
   }
   
-  // Archetype determines draw probability (style of game)
+  // v8.06: Moderate archetype boosts (reduced from v8.05)
+  const ARCHETYPE_WEIGHTS: Record<string, { whiteBoost: number; blackBoost: number; drawBoost: number }> = {
+    // Defensive archetypes - slight black boost
+    prophylactic_defense: { whiteBoost: -2, blackBoost: 5, drawBoost: 4 },
+    closed_maneuvering: { whiteBoost: -1, blackBoost: 3, drawBoost: 5 },
+    
+    // Tactical archetypes - depends on who is attacking
+    kingside_attack: { whiteBoost: 0, blackBoost: 0, drawBoost: -5 },
+    queenside_expansion: { whiteBoost: 0, blackBoost: 0, drawBoost: -3 },
+    sacrificial_attack: { whiteBoost: 0, blackBoost: 0, drawBoost: -8 },
+    
+    // Balanced archetypes
+    opposite_castling: { whiteBoost: -2, blackBoost: 2, drawBoost: 0 },
+    open_tactical: { whiteBoost: -1, blackBoost: 2, drawBoost: -3 },
+    
+    // Strategic archetypes
+    central_domination: { whiteBoost: 2, blackBoost: 0, drawBoost: -3 },
+    positional_squeeze: { whiteBoost: 2, blackBoost: -1, drawBoost: -2 },
+    piece_harmony: { whiteBoost: 0, blackBoost: 1, drawBoost: 0 },
+    
+    // Endgame/pawn archetypes
+    endgame_technique: { whiteBoost: -1, blackBoost: 2, drawBoost: 6 },
+    pawn_storm: { whiteBoost: 0, blackBoost: 0, drawBoost: -5 },
+  };
+  
+  const weights = ARCHETYPE_WEIGHTS[archetype] || { whiteBoost: 0, blackBoost: 0, drawBoost: 0 };
+  
+  // Base draw probability by archetype style
   const drawProneArchetypes = ['prophylactic_defense', 'closed_maneuvering', 'endgame_technique'];
   const decisiveArchetypes = ['kingside_attack', 'sacrificial_attack', 'opposite_castling', 'pawn_storm'];
   
-  let drawProb: number;
-  let decisiveProb: number;
+  let baseDrawProb: number;
   
   if (drawProneArchetypes.includes(archetype)) {
-    drawProb = 42;  // High draw probability
-    decisiveProb = 58;
+    baseDrawProb = 35;
   } else if (decisiveArchetypes.includes(archetype)) {
-    drawProb = 22;  // Low draw probability - someone will win
-    decisiveProb = 78;
+    baseDrawProb = 25;
   } else {
-    drawProb = 32;  // Standard
-    decisiveProb = 68;
+    baseDrawProb = 30;
   }
   
-  // v7.92-BALANCED: WHO wins depends entirely on dominantSide
-  // The key fix: contested should be TRULY 50/50, not biased
+  const drawProb = Math.max(18, Math.min(45, baseDrawProb + weights.drawBoost));
+  const decisiveProb = 100 - drawProb;
+  
+  // v8.06: Symmetric split based on dominantSide
+  let whiteShare: number;
+  let blackShare: number;
+  
   if (dominantSide === 'white') {
-    // White is dominant - they get 60% of decisive outcomes
-    const whiteShare = decisiveProb * 0.60;
-    const blackShare = decisiveProb * 0.40;
-    return { white: whiteShare, black: blackShare, draw: drawProb };
+    whiteShare = (decisiveProb * 0.55) + weights.whiteBoost;
+    blackShare = (decisiveProb * 0.45) + weights.blackBoost;
   } else if (dominantSide === 'black') {
-    // Black is dominant - they get 60% of decisive outcomes
-    const blackShare = decisiveProb * 0.60;
-    const whiteShare = decisiveProb * 0.40;
-    return { white: whiteShare, black: blackShare, draw: drawProb };
+    blackShare = (decisiveProb * 0.55) + weights.blackBoost;
+    whiteShare = (decisiveProb * 0.45) + weights.whiteBoost;
   } else {
-    // Contested - EXACTLY 50/50 split, no hidden bias
-    const eachShare = decisiveProb / 2;
-    return { white: eachShare, black: eachShare, draw: drawProb };
+    // Contested: exactly 50/50
+    whiteShare = (decisiveProb / 2) + weights.whiteBoost;
+    blackShare = (decisiveProb / 2) + weights.blackBoost;
   }
+  
+  // Normalize
+  const total = whiteShare + blackShare + drawProb;
+  return { 
+    white: Math.round((whiteShare / total) * 100), 
+    black: Math.round((blackShare / total) * 100), 
+    draw: Math.round((drawProb / total) * 100)
+  };
 }
 
 /**
