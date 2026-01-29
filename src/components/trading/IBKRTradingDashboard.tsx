@@ -18,6 +18,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Progress } from '@/components/ui/progress';
 import { useIBKRGateway } from '@/hooks/useIBKRGateway';
 import { useIBKRAutonomousTrading } from '@/hooks/useIBKRAutonomousTrading';
+import { useIBKROptionsTrading } from '@/hooks/useIBKROptionsTrading';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   Loader2, 
@@ -41,6 +42,7 @@ import {
   Play,
   Square,
   Brain,
+  LineChart,
 } from 'lucide-react';
 
 // Tracked symbols for quick trading
@@ -72,8 +74,14 @@ export function IBKRTradingDashboard() {
     selectAccount,
   } = useIBKRGateway();
 
-  // Autonomous trading hook
+  // Autonomous trading hook (stocks)
   const autonomousTrading = useIBKRAutonomousTrading(
+    authenticated,
+    selectedAccount?.accountId || null
+  );
+
+  // Autonomous options trading hook
+  const optionsTrading = useIBKROptionsTrading(
     authenticated,
     selectedAccount?.accountId || null
   );
@@ -407,14 +415,20 @@ export function IBKRTradingDashboard() {
 
       {/* Main Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5 max-w-2xl">
+        <TabsList className="grid w-full grid-cols-6 max-w-3xl">
           <TabsTrigger value="overview" className="flex items-center gap-1">
             <BarChart3 className="w-4 h-4" /> Overview
           </TabsTrigger>
           <TabsTrigger value="autonomous" className="flex items-center gap-1">
-            <Bot className="w-4 h-4" /> Auto
+            <Bot className="w-4 h-4" /> Stocks
             {autonomousTrading.isRunning && (
               <span className="ml-1 w-2 h-2 bg-success rounded-full animate-pulse" />
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="options" className="flex items-center gap-1">
+            <LineChart className="w-4 h-4" /> Options
+            {optionsTrading.isRunning && (
+              <span className="ml-1 w-2 h-2 bg-primary rounded-full animate-pulse" />
             )}
           </TabsTrigger>
           <TabsTrigger value="trade" className="flex items-center gap-1">
@@ -759,6 +773,249 @@ export function IBKRTradingDashboard() {
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>Error</AlertTitle>
                 <AlertDescription>{autonomousTrading.error}</AlertDescription>
+              </Alert>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* ========== OPTIONS TRADING TAB ========== */}
+        <TabsContent value="options" className="mt-6">
+          <div className="space-y-6">
+            {/* Options Control Panel */}
+            <Card className={`border-2 ${optionsTrading.isRunning ? 'border-primary bg-primary/5' : 'border-dashed'}`}>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-3 rounded-full ${optionsTrading.isRunning ? 'bg-primary/20' : 'bg-muted'}`}>
+                      <LineChart className={`w-6 h-6 ${optionsTrading.isRunning ? 'text-primary animate-pulse' : 'text-muted-foreground'}`} />
+                    </div>
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        Options Scalping Engine
+                        {optionsTrading.isRunning && (
+                          <Badge className="bg-primary text-primary-foreground">LIVE</Badge>
+                        )}
+                      </CardTitle>
+                      <CardDescription>
+                        En Pensent™ multi-timeframe options prediction with IBKR execution
+                      </CardDescription>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    {!optionsTrading.isRunning ? (
+                      <Button 
+                        size="lg" 
+                        className="gap-2"
+                        onClick={optionsTrading.startOptionsTrading}
+                      >
+                        <Play className="w-5 h-5" />
+                        Start Options Trading
+                      </Button>
+                    ) : (
+                      <Button 
+                        size="lg" 
+                        variant="destructive"
+                        className="gap-2"
+                        onClick={optionsTrading.stopOptionsTrading}
+                      >
+                        <Square className="w-5 h-5" />
+                        Stop Trading
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </CardHeader>
+
+              {optionsTrading.session && (
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="text-center p-4 bg-muted/50 rounded-lg">
+                      <div className="text-3xl font-bold text-primary">
+                        ${optionsTrading.session.currentBalance.toLocaleString()}
+                      </div>
+                      <div className="text-sm text-muted-foreground">Current Balance</div>
+                    </div>
+                    <div className="text-center p-4 bg-muted/50 rounded-lg">
+                      <div className={`text-3xl font-bold ${optionsTrading.session.totalPnl >= 0 ? 'text-success' : 'text-destructive'}`}>
+                        {optionsTrading.session.totalPnl >= 0 ? '+' : ''}${optionsTrading.session.totalPnl.toFixed(2)}
+                      </div>
+                      <div className="text-sm text-muted-foreground">Session P&L</div>
+                    </div>
+                    <div className="text-center p-4 bg-muted/50 rounded-lg">
+                      <div className="text-3xl font-bold">{optionsTrading.stats.winRate}</div>
+                      <div className="text-sm text-muted-foreground">Win Rate</div>
+                    </div>
+                    <div className="text-center p-4 bg-muted/50 rounded-lg">
+                      <div className="text-3xl font-bold">{optionsTrading.session.totalTrades}</div>
+                      <div className="text-sm text-muted-foreground">Trades</div>
+                    </div>
+                  </div>
+
+                  {/* Underlyings being tracked */}
+                  <div className="mt-4 pt-4 border-t">
+                    <div className="flex flex-wrap gap-2">
+                      <span className="text-sm text-muted-foreground">Trading:</span>
+                      {optionsTrading.underlyings.slice(0, 6).map(sym => (
+                        <Badge key={sym} variant="outline">{sym}</Badge>
+                      ))}
+                      {optionsTrading.underlyings.length > 6 && (
+                        <Badge variant="secondary">+{optionsTrading.underlyings.length - 6} more</Badge>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              )}
+            </Card>
+
+            {/* Options Predictions & Positions */}
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Active Predictions */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Brain className="w-5 h-5" />
+                    Active Predictions
+                  </CardTitle>
+                  <CardDescription>
+                    Engine accuracy: {(optionsTrading.engineAccuracy.rate * 100).toFixed(1)}%
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {optionsTrading.activePredictions.length === 0 ? (
+                    <div className="text-center text-muted-foreground py-8">
+                      <Brain className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                      <p>No active predictions</p>
+                      <p className="text-sm">Start options trading to generate signals</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                      {optionsTrading.activePredictions.slice(-10).reverse().map(pred => (
+                        <div 
+                          key={pred.id} 
+                          className="flex items-center justify-between p-2 bg-muted/50 rounded-lg text-sm"
+                        >
+                          <div className="flex items-center gap-2">
+                            {pred.direction === 'long' ? (
+                              <TrendingUp className="w-4 h-4 text-success" />
+                            ) : (
+                              <TrendingDown className="w-4 h-4 text-destructive" />
+                            )}
+                            <span className="font-medium">{pred.underlying}</span>
+                            <Badge variant="outline" className="text-xs">
+                              {pred.optionType.toUpperCase()} ${pred.strike}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={pred.confidence >= 0.7 ? 'text-success' : 'text-muted-foreground'}>
+                              {(pred.confidence * 100).toFixed(0)}%
+                            </span>
+                            <Badge variant="secondary" className="text-xs">{pred.strategy}</Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Cycle Results */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Activity className="w-5 h-5" />
+                    Trading Activity
+                  </CardTitle>
+                  <CardDescription>
+                    Last cycle: {optionsTrading.lastCycleTime?.toLocaleTimeString() || 'N/A'}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {optionsTrading.cycleResults.length === 0 ? (
+                    <div className="text-center text-muted-foreground py-8">
+                      <Activity className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                      <p>No activity yet</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                      {optionsTrading.cycleResults.slice(-15).reverse().map((cycle, i) => (
+                        <div 
+                          key={i} 
+                          className="flex items-center justify-between p-2 bg-muted/30 rounded text-xs"
+                        >
+                          <span className="text-muted-foreground">
+                            {new Date(cycle.timestamp).toLocaleTimeString()}
+                          </span>
+                          <div className="flex items-center gap-3">
+                            <span>📊 {cycle.predictionsGenerated}</span>
+                            <span>📈 {cycle.tradesExecuted}</span>
+                            <span className={cycle.pnlChange >= 0 ? 'text-success' : 'text-destructive'}>
+                              {cycle.pnlChange >= 0 ? '+' : ''}${cycle.pnlChange.toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Options Positions Table */}
+            {optionsTrading.positions.filter(p => p.status === 'open').length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <LineChart className="w-5 h-5" />
+                    Open Options Positions
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Underlying</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Strike</TableHead>
+                        <TableHead>Side</TableHead>
+                        <TableHead className="text-right">Qty</TableHead>
+                        <TableHead className="text-right">Entry</TableHead>
+                        <TableHead className="text-right">Stop</TableHead>
+                        <TableHead className="text-right">Target</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {optionsTrading.positions.filter(p => p.status === 'open').map(pos => (
+                        <TableRow key={pos.id}>
+                          <TableCell className="font-bold">{pos.underlying}</TableCell>
+                          <TableCell>
+                            <Badge variant={pos.optionType === 'call' ? 'default' : 'destructive'}>
+                              {pos.optionType.toUpperCase()}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="font-mono">${pos.strike}</TableCell>
+                          <TableCell>
+                            <Badge variant={pos.side === 'long' ? 'default' : 'secondary'}>
+                              {pos.side.toUpperCase()}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right font-mono">{pos.quantity}</TableCell>
+                          <TableCell className="text-right font-mono">${pos.entryPrice.toFixed(2)}</TableCell>
+                          <TableCell className="text-right font-mono text-destructive">${pos.stopLoss.toFixed(2)}</TableCell>
+                          <TableCell className="text-right font-mono text-success">${pos.takeProfit.toFixed(2)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
+
+            {optionsTrading.error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Options Trading Error</AlertTitle>
+                <AlertDescription>{optionsTrading.error}</AlertDescription>
               </Alert>
             )}
           </div>
