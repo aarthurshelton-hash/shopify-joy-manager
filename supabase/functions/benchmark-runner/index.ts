@@ -6,6 +6,112 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const PIPELINE_VERSION = '2.0-HARDENED';
+
+// ============================================================================
+// UNIVERSAL RELIABILITY HELPERS (24/7 FAULT TOLERANCE)
+// ============================================================================
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+async function fetchWithTimeout(input: string, init: RequestInit = {}, timeoutMs = 15000): Promise<Response> {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(id);
+  }
+}
+
+async function fetchTextWithRetry(
+  url: string,
+  init: RequestInit = {},
+  opts: { retries?: number; timeoutMs?: number; backoffBaseMs?: number } = {}
+): Promise<string> {
+  const retries = opts.retries ?? 2;
+  const timeoutMs = opts.timeoutMs ?? 20000;
+  const backoffBaseMs = opts.backoffBaseMs ?? 1200;
+
+  let lastErr: unknown;
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetchWithTimeout(url, init, timeoutMs);
+
+      if (res.status === 429) {
+        const wait = Math.min(60000, backoffBaseMs * Math.pow(2, attempt)) + Math.floor(Math.random() * 250);
+        console.log(`[${PIPELINE_VERSION}] 429 rate limited, backing off ${wait}ms (attempt ${attempt + 1})`);
+        await sleep(wait);
+        continue;
+      }
+
+      if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+      return await res.text();
+    } catch (e) {
+      lastErr = e;
+      const wait = Math.min(30000, backoffBaseMs * Math.pow(2, attempt)) + Math.floor(Math.random() * 250);
+      console.warn(`[${PIPELINE_VERSION}] Fetch attempt ${attempt + 1} failed, retrying in ${wait}ms:`, e);
+      await sleep(wait);
+    }
+  }
+
+  throw lastErr instanceof Error ? lastErr : new Error("fetchTextWithRetry failed");
+}
+
+// ============================================================================
+// PIPELINE LOCK - PREVENT OVERLAPPING RUNS
+// ============================================================================
+
+async function acquirePipelineLock(supabase: any, lockName: string, ttlMs: number): Promise<boolean> {
+  const now = Date.now();
+  try {
+    const { data } = await supabase
+      .from("evolution_state")
+      .select("genes, updated_at")
+      .eq("state_type", lockName)
+      .order("updated_at", { ascending: false })
+      .limit(1);
+
+    const row = data?.[0];
+    if (row?.genes?.locked === true) {
+      const age = now - new Date(row.updated_at).getTime();
+      if (age < ttlMs) {
+        console.log(`[${PIPELINE_VERSION}] 🔒 Lock "${lockName}" active (age ${Math.round(age / 1000)}s < ttl ${Math.round(ttlMs / 1000)}s)`);
+        return false;
+      }
+      console.log(`[${PIPELINE_VERSION}] 🔓 Lock "${lockName}" expired (age ${Math.round(age / 1000)}s)`);
+    }
+
+    await supabase.from("evolution_state").upsert({
+      state_type: lockName,
+      genes: { locked: true, acquired_at: new Date().toISOString() },
+      updated_at: new Date().toISOString(),
+    });
+
+    console.log(`[${PIPELINE_VERSION}] ✅ Acquired lock "${lockName}"`);
+    return true;
+  } catch (err) {
+    console.warn(`[${PIPELINE_VERSION}] Lock acquisition error:`, err);
+    return false;
+  }
+}
+
+async function releasePipelineLock(supabase: any, lockName: string): Promise<void> {
+  try {
+    await supabase.from("evolution_state").upsert({
+      state_type: lockName,
+      genes: { locked: false, released_at: new Date().toISOString() },
+      updated_at: new Date().toISOString(),
+    });
+    console.log(`[${PIPELINE_VERSION}] 🔓 Released lock "${lockName}"`);
+  } catch (err) {
+    console.warn(`[${PIPELINE_VERSION}] Lock release error:`, err);
+  }
+}
+
 // Rate limit management
 let lastLichessRequest = 0;
 const MIN_LICHESS_INTERVAL = 4000; // 4 seconds between Lichess API calls
@@ -14,7 +120,7 @@ async function throttleLichessRequest(): Promise<void> {
   const now = Date.now();
   const timeSince = now - lastLichessRequest;
   if (timeSince < MIN_LICHESS_INTERVAL) {
-    await new Promise(r => setTimeout(r, MIN_LICHESS_INTERVAL - timeSince));
+    await sleep(MIN_LICHESS_INTERVAL - timeSince);
   }
   lastLichessRequest = Date.now();
 }
@@ -559,15 +665,33 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+  const startTime = Date.now();
+  let processed = 0, stored = 0, skipped = 0, rateLimited = false;
 
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  // v2.0-HARDENED: Pipeline lock to prevent overlapping runs
+  const lockName = "pipeline_lock_benchmark_runner";
+  const lockTtlMs = 15 * 60 * 1000; // 15 minutes TTL
+
+  const gotLock = await acquirePipelineLock(supabase, lockName, lockTtlMs);
+  if (!gotLock) {
+    return new Response(JSON.stringify({ 
+      success: true, 
+      skipped: true, 
+      reason: "lock_active",
+      version: PIPELINE_VERSION,
+      timestamp: new Date().toISOString(),
+    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+
+  try {
     const body = await req.json().catch(() => ({}));
     const { action = "run", gameCount = 15 } = body;
 
-    console.log(`[BenchmarkRunner] Action: ${action}, Requested games: ${gameCount}`);
+    console.log(`[${PIPELINE_VERSION}] Action: ${action}, Requested games: ${gameCount}`);
 
     if (action === "status") {
       // Return cumulative statistics
@@ -603,9 +727,11 @@ serve(async (req) => {
       }
 
       return new Response(JSON.stringify({ 
+        version: PIPELINE_VERSION,
         latest, 
         cumulative,
-        totalUniquePositions: totalAttempts || 0 
+        totalUniquePositions: totalAttempts || 0,
+        timestamp: new Date().toISOString(),
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
@@ -651,7 +777,7 @@ serve(async (req) => {
       hasMore = existingAttempts.length === pageSize;
     }
     
-    console.log(`[v4.0-DEDUP] Loaded ${existingGameIds.size} real Lichess IDs (skipped ${syntheticSkipped} synthetic)`);
+    console.log(`[${PIPELINE_VERSION}] Loaded ${existingGameIds.size} real Lichess IDs (skipped ${syntheticSkipped} synthetic)`);
 
     const runId = crypto.randomUUID();
     const attempts: any[] = [];
@@ -674,23 +800,31 @@ serve(async (req) => {
         const gamesNeeded = (gameCount - attempts.length) * 8;
         const targetFetch = Math.max(gamesNeeded, 100);
         
-        console.log(`[BenchmarkRunner] Fetch attempt ${totalFetchAttempts}: Need ${gameCount - attempts.length} more, fetching ${targetFetch} games...`);
+        console.log(`[${PIPELINE_VERSION}] Fetch attempt ${totalFetchAttempts}: Need ${gameCount - attempts.length} more, fetching ${targetFetch} games...`);
         
-        const newGames = await fetchLichessGames(targetFetch, existingGameIds);
-        if (newGames.length === 0 && totalFetchAttempts >= 3) {
-          console.warn(`[BenchmarkRunner] No new games after ${totalFetchAttempts} attempts`);
-          break;
+        try {
+          const newGames = await fetchLichessGames(targetFetch, existingGameIds);
+          if (newGames.length === 0 && totalFetchAttempts >= 3) {
+            console.warn(`[${PIPELINE_VERSION}] No new games after ${totalFetchAttempts} attempts`);
+            break;
+          }
+          
+          allGames = newGames;
+          gameIndex = 0;
+          console.log(`[${PIPELINE_VERSION}] Batch ${totalFetchAttempts}: Got ${newGames.length} games`);
+        } catch (fetchErr) {
+          console.warn(`[${PIPELINE_VERSION}] Fetch batch ${totalFetchAttempts} failed (isolated):`, fetchErr);
+          skipped++;
+          if (totalFetchAttempts >= 3) break;
+          continue;
         }
-        
-        allGames = newGames;
-        gameIndex = 0;
-        console.log(`[BenchmarkRunner] Batch ${totalFetchAttempts}: Got ${newGames.length} games`);
       }
 
       if (gameIndex >= allGames.length) break;
 
       const game = allGames[gameIndex];
       gameIndex++;
+      processed++;
       
       try {
         // First parse to check game length
@@ -717,7 +851,8 @@ serve(async (req) => {
           /^[a-zA-Z0-9]+$/.test(lichessId);
         
         if (!isRealLichessId) {
-          console.warn(`[BenchmarkRunner] SKIP: Invalid Lichess ID "${lichessId}" - must be 8 alphanumeric chars`);
+          console.warn(`[${PIPELINE_VERSION}] SKIP: Invalid Lichess ID "${lichessId}" - must be 8 alphanumeric chars`);
+          skipped++;
           continue;
         }
         
@@ -730,7 +865,7 @@ serve(async (req) => {
         // Track if this position appeared before in a different game (valuable insight!)
         const isRecurringPosition = existingPositionHashes.has(positionHash);
         if (isRecurringPosition) {
-          console.log(`[BenchmarkRunner] Found recurring position from different game - analyzing for pattern strength`);
+          console.log(`[${PIPELINE_VERSION}] Found recurring position from different game - analyzing for pattern strength`);
         }
         
         const result = game.winner === "white" ? "white" : game.winner === "black" ? "black" : "draw";
@@ -745,11 +880,14 @@ serve(async (req) => {
         const proxyFen = generateProxyFen(estimatedMaterial, moveNumber);
         
         // Stockfish prediction via cloud eval - now uses correct position
+        // v2.0-HARDENED: Skip gracefully if cloud eval fails (real-data-only)
         const cloudEval = await evaluatePosition(proxyFen);
         const stockfishPrediction = getStockfishPrediction(cloudEval);
         
-        // Skip if Stockfish couldn't evaluate
-        if (stockfishPrediction.prediction === "unknown") {
+        // v2.0-HARDENED: REAL-DATA-ONLY - Skip if Stockfish couldn't evaluate
+        if (stockfishPrediction.prediction === "unknown" || !cloudEval) {
+          console.log(`[${PIPELINE_VERSION}] Skipping ${lichessId} - no real cloud eval available`);
+          skipped++;
           continue;
         }
         
@@ -765,7 +903,7 @@ serve(async (req) => {
         existingGameIds.add(lichessId);
         existingPositionHashes.add(positionHash);
         
-        console.log(`[BenchmarkRunner] ✓ Analyzing REAL game ${lichessId} (verify: https://lichess.org/${lichessId})`);
+        console.log(`[${PIPELINE_VERSION}] ✓ Analyzing REAL game ${lichessId} (verify: https://lichess.org/${lichessId})`);
         
         attempts.push({
           game_id: lichessId, // ALWAYS the real 8-char Lichess ID
@@ -792,18 +930,27 @@ serve(async (req) => {
         });
         
       } catch (e) {
-        console.error("[BenchmarkRunner] Error processing game:", e);
+        console.error(`[${PIPELINE_VERSION}] Error processing game (isolated):`, e);
+        skipped++;
       }
     }
 
     const totalGames = attempts.length;
+    stored = totalGames;
     
+    // v2.0-HARDENED: Return success=true with reason instead of error
     if (totalGames === 0) {
+      console.log(`[${PIPELINE_VERSION}] No valid games processed - returning success with no_real_data`);
       return new Response(JSON.stringify({ 
-        success: false, 
-        error: "No valid games processed",
+        success: true, 
+        skipped: true,
+        reason: "no_real_data",
+        version: PIPELINE_VERSION,
+        processed,
+        stored: 0,
         skippedDuplicates,
-        fetchAttempts: totalFetchAttempts
+        fetchAttempts: totalFetchAttempts,
+        timestamp: new Date().toISOString(),
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
@@ -815,48 +962,70 @@ serve(async (req) => {
     const stockfishWins = attempts.filter(a => !a.hybrid_correct && a.stockfish_correct).length;
 
     // Save benchmark result
-    const { data: benchmark, error: benchmarkError } = await supabase
-      .from("chess_benchmark_results")
-      .insert({
-        run_id: runId,
-        total_games: totalGames,
-        completed_games: totalGames,
-        prediction_move_number: 20,
-        hybrid_accuracy: hybridAccuracy,
-        stockfish_accuracy: stockfishAccuracy,
-        hybrid_wins: hybridWins,
-        stockfish_wins: stockfishWins,
-        both_correct: bothCorrect,
-        both_wrong: bothWrong,
-        data_source: "lichess_grandmasters_auto",
-        data_quality_tier: "automated_learning",
-        games_analyzed: attempts.map(a => a.game_id),
-        stockfish_version: "17.1-nnue-cloud",
-        stockfish_mode: "cloud_api",
-        hybrid_version: "en-pensent-v2-trajectory",
-      })
-      .select()
-      .single();
+    let benchmark: any = null;
+    try {
+      const { data, error: benchmarkError } = await supabase
+        .from("chess_benchmark_results")
+        .insert({
+          run_id: runId,
+          total_games: totalGames,
+          completed_games: totalGames,
+          prediction_move_number: 20,
+          hybrid_accuracy: hybridAccuracy,
+          stockfish_accuracy: stockfishAccuracy,
+          hybrid_wins: hybridWins,
+          stockfish_wins: stockfishWins,
+          both_correct: bothCorrect,
+          both_wrong: bothWrong,
+          data_source: "lichess_grandmasters_auto",
+          data_quality_tier: "automated_learning",
+          games_analyzed: attempts.map(a => a.game_id),
+          stockfish_version: "17.1-nnue-cloud",
+          stockfish_mode: "cloud_api",
+          hybrid_version: "en-pensent-v2-trajectory",
+        })
+        .select()
+        .single();
 
-    if (benchmarkError) {
-      console.error("[BenchmarkRunner] Error saving benchmark:", benchmarkError);
+      if (benchmarkError) {
+        console.error(`[${PIPELINE_VERSION}] Error saving benchmark result:`, benchmarkError);
+      } else {
+        benchmark = data;
+      }
+    } catch (benchErr) {
+      console.error(`[${PIPELINE_VERSION}] Benchmark insert failed (isolated):`, benchErr);
     }
 
-    // Save individual attempts
-    if (benchmark) {
-      for (const attempt of attempts) {
-        await supabase.from("chess_prediction_attempts").insert({
+    // v2.0-HARDENED: Safe DB writes - catch each insert individually
+    let insertedCount = 0;
+    for (const attempt of attempts) {
+      try {
+        const { error: insertError } = await supabase.from("chess_prediction_attempts").insert({
           ...attempt,
-          benchmark_id: benchmark.id,
+          benchmark_id: benchmark?.id || null,
         });
+        
+        if (!insertError) {
+          insertedCount++;
+        } else {
+          console.warn(`[${PIPELINE_VERSION}] Insert failed for ${attempt.game_id}:`, insertError);
+        }
+      } catch (insertErr) {
+        console.warn(`[${PIPELINE_VERSION}] Insert exception for ${attempt.game_id} (isolated):`, insertErr);
       }
     }
 
-    console.log(`[BenchmarkRunner] ✓ Complete: En Pensent ${hybridAccuracy.toFixed(1)}% vs Stockfish ${stockfishAccuracy.toFixed(1)}% (${totalGames} games, ${skippedDuplicates} duplicates skipped)`);
+    stored = insertedCount;
+    console.log(`[${PIPELINE_VERSION}] ✓ Complete: En Pensent ${hybridAccuracy.toFixed(1)}% vs Stockfish ${stockfishAccuracy.toFixed(1)}% (${totalGames} games, ${skippedDuplicates} duplicates skipped, ${insertedCount} inserted)`);
 
     return new Response(JSON.stringify({
       success: true,
+      version: PIPELINE_VERSION,
       runId,
+      processed,
+      stored,
+      skipped,
+      rateLimited,
       totalGames,
       hybridAccuracy,
       stockfishAccuracy,
@@ -870,11 +1039,25 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    console.error("[BenchmarkRunner] Error:", error);
+    console.error(`[${PIPELINE_VERSION}] Error:`, error);
     const message = error instanceof Error ? error.message : "Unknown error";
-    return new Response(JSON.stringify({ error: message }), {
-      status: 500,
+    
+    // v2.0-HARDENED: Return success=true with partial to avoid cron failure cascade
+    return new Response(JSON.stringify({ 
+      success: true,
+      partial: true,
+      version: PIPELINE_VERSION,
+      processed,
+      stored,
+      skipped,
+      rateLimited,
+      error: message,
+      timestamp: new Date().toISOString(),
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
+  } finally {
+    // v2.0-HARDENED: ALWAYS release lock
+    await releasePipelineLock(supabase, lockName);
   }
 });
