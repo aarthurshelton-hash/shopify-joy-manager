@@ -548,9 +548,13 @@ const GameView = () => {
     }
   }, [effectivePgn, activePaletteId, primaryVision?.title]);
 
-  // Handle exports
+  // Handle exports - works for both saved visions AND freshly generated (session) games
   const handleExport = useCallback(async (type: 'hd' | 'gif' | 'print' | 'preview', exportState?: ExportState) => {
-    if (!primaryVision) return;
+    // For freshly generated games, we use session data - don't block on primaryVision
+    const displayTitle = primaryVision?.title || sessionTitle || `${gameData.white} vs ${gameData.black}`;
+    const visualizationId = primaryVision?.id;
+    const shareId = primaryVision?.public_share_id;
+    const imagePath = primaryVision?.image_path;
 
     const filteredBoard = exportState && exportState.currentMove < totalMoves && exportState.currentMove > 0
       ? board.map(row =>
@@ -606,7 +610,7 @@ const GameView = () => {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `${primaryVision.title.replace(/\s+/g, '-').toLowerCase()}-preview.png`;
+        link.download = `${displayTitle.replace(/\s+/g, '-').toLowerCase()}-preview.png`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -623,7 +627,7 @@ const GameView = () => {
       downloadTrademarkHD({
         board: filteredBoard,
         gameData,
-        title: primaryVision.title,
+        title: displayTitle,
         darkMode: exportState?.darkMode || false,
         highlightState,
         piecesState: exportState ? {
@@ -642,7 +646,7 @@ const GameView = () => {
         downloadGIF(
           { board, gameData, totalMoves },
           captureElement,
-          primaryVision.title,
+          displayTitle,
           undefined,
           exportState ? { showPieces: exportState.showPieces, pieceOpacity: exportState.pieceOpacity } : undefined
         );
@@ -657,7 +661,7 @@ const GameView = () => {
         setCapturedTimelineState({
           currentMove: exportState.currentMove,
           totalMoves,
-          title: primaryVision.title,
+          title: displayTitle,
           lockedPieces: exportState.lockedPieces.map(p => ({
             pieceType: p.pieceType as PieceType,
             pieceColor: p.pieceColor as 'w' | 'b',
@@ -669,8 +673,8 @@ const GameView = () => {
         });
       }
 
-      setCurrentSimulation({ board, gameData, totalMoves }, effectivePgn, primaryVision.title);
-      setSavedShareId(primaryVision.public_share_id || '');
+      setCurrentSimulation({ board, gameData, totalMoves }, effectivePgn, displayTitle);
+      setSavedShareId(shareId || '');
       setReturningFromOrder(true);
 
       // Detect famous game card for attribution
@@ -680,9 +684,9 @@ const GameView = () => {
         : undefined;
 
       const orderData: PrintOrderData = {
-        visualizationId: primaryVision.id,
-        title: primaryVision.title,
-        imagePath: primaryVision.image_path,
+        visualizationId,
+        title: displayTitle,
+        imagePath,
         gameData: {
           white: gameData.white,
           black: gameData.black,
@@ -691,7 +695,7 @@ const GameView = () => {
           result: gameData.result,
         },
         simulation: { board, gameData, totalMoves },
-        shareId: primaryVision.public_share_id || undefined,
+        shareId: shareId || undefined,
         returnPath: `/g/${gameHash}`,
         // Game metadata for cart display and navigation
         gameHash,
