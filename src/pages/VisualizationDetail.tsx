@@ -410,13 +410,33 @@ const VisualizationDetail: React.FC = () => {
     navigate('/my-vision');
   };
 
-  const handleShare = async () => {
+  const handleShare = async (exportState?: ExportState) => {
     if (!visualization?.public_share_id) {
       toast.error('This visualization has no public share link');
       return;
     }
     
-    const shareUrl = `${window.location.origin}/v/${visualization.public_share_id}`;
+    // Build share URL with optional state parameters
+    const baseUrl = `${window.location.origin}/v/${visualization.public_share_id}`;
+    const url = new URL(baseUrl);
+    
+    // Add state parameters if provided for WYSIWYG sharing
+    if (exportState) {
+      if (exportState.currentMove > 0 && exportState.currentMove < Infinity) {
+        url.searchParams.set('m', exportState.currentMove.toString());
+      }
+      if (exportState.darkMode) {
+        url.searchParams.set('d', '1');
+      }
+      if (exportState.showPieces) {
+        url.searchParams.set('sp', '1');
+        if (exportState.pieceOpacity !== 0.7) {
+          url.searchParams.set('o', exportState.pieceOpacity.toFixed(1));
+        }
+      }
+    }
+    
+    const shareUrl = url.toString();
     
     if (navigator.share) {
       try {
@@ -428,12 +448,16 @@ const VisualizationDetail: React.FC = () => {
       } catch (err) {
         if ((err as Error).name !== 'AbortError') {
           await navigator.clipboard.writeText(shareUrl);
-          toast.success('Link copied to clipboard');
+          toast.success('Link copied to clipboard', {
+            description: exportState ? 'Includes your current view settings!' : undefined,
+          });
         }
       }
     } else {
       await navigator.clipboard.writeText(shareUrl);
-      toast.success('Link copied to clipboard');
+      toast.success('Link copied to clipboard', {
+        description: exportState ? 'Includes your current view settings!' : undefined,
+      });
     }
   };
 
