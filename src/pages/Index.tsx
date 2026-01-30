@@ -1088,13 +1088,18 @@ const Index = () => {
                   setIsSaving(false);
                 }
               }}
-              onShare={() => {
+              onShare={(exportState) => {
                 if (currentPgn) {
-                  // Always use canonical game link based on PGN moves
-                  const url = buildCanonicalShareUrl(currentPgn, getActivePalette().id);
+                  // Build stateful share URL with current visualization state
+                  const url = buildCanonicalShareUrl(currentPgn, getActivePalette().id, exportState ? {
+                    move: exportState.currentMove,
+                    dark: exportState.darkMode,
+                    pieces: exportState.showPieces,
+                    opacity: exportState.pieceOpacity,
+                  } : undefined);
                   navigator.clipboard.writeText(url);
                   toast.success('Share link copied!', { 
-                    description: 'Universal link to this game!',
+                    description: exportState ? 'Link includes your current view settings!' : 'Universal link to this game!',
                   });
                 } else {
                   toast.info('Generate a visualization first to share');
