@@ -11,6 +11,8 @@ export * from './collectiveEntrainment';
 export * from './scientificFormulations';
 export * from './psychedelicEquivalence';
 export * from './synapticTruthNetwork';
+export * from './aiArchetypeClassifier';
+export * from './archetypalResonanceMatrix';
 
 /**
  * Module Overview:
