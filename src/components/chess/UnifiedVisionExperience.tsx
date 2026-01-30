@@ -81,6 +81,7 @@ import { detectOpeningFromPgn, DetectedOpening } from '@/lib/chess/openingDetect
 import { HybridPredictionPanel } from './HybridPredictionPanel';
 import TrajectoryTimelineOverlay from './TrajectoryTimelineOverlay';
 import { useHybridPrediction } from '@/hooks/useHybridPrediction';
+import OpeningKnowledgePanel from './OpeningKnowledgePanel';
 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -930,6 +931,16 @@ const AnalyticsPanel: React.FC<{
           </div>
         </div>
       )}
+
+      {/* Opening Knowledge Panel - Lichess data + similar games */}
+      <OpeningKnowledgePanel
+        pgn={effectivePgn}
+        archetype={gameAnalysis?.summary?.complexity}
+        localOpening={detectedOpening}
+        currentMove={totalMoves}
+        totalMoves={totalMoves}
+        darkMode={false}
+      />
 
       {/* Created date */}
       {createdAt && (
