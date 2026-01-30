@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { CartDrawer } from './CartDrawer';
 import { CurrencySelector } from './CurrencySelector';
-import { Menu, Gamepad2, Paintbrush, ShoppingBag, BookOpen, TrendingUp } from 'lucide-react';
+import { Menu, Gamepad2, Paintbrush, ShoppingBag, BookOpen, TrendingUp, Crown } from 'lucide-react';
 import UserMenu from '@/components/auth/UserMenu';
 import { useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/sheet';
 import { VisionScannerButton } from '@/components/scanner/VisionScannerButton';
 import { SubscriptionNotificationBell } from '@/components/notifications/SubscriptionNotificationBell';
+import { useAuth } from '@/hooks/useAuth';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 
 
@@ -31,6 +32,7 @@ export const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
   const isMarketplace = location.pathname === '/marketplace';
+  const { user, isPremium, isCheckingSubscription, openCheckout } = useAuth();
 
   // If on marketplace, clicking header links triggers a refresh
   const handleMarketplaceRefresh = () => {
@@ -94,6 +96,18 @@ export const Header = () => {
         
         {/* Right side - Scanner, User menu, cart, and mobile menu */}
         <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3">
+          {/* Go Premium CTA - hidden for premium users */}
+          {!isPremium && (
+            <Button
+              className="btn-luxury hidden sm:inline-flex"
+              size="sm"
+              disabled={isCheckingSubscription}
+              onClick={() => openCheckout()}
+            >
+              <Crown className="h-4 w-4 mr-2" />
+              Go Premium
+            </Button>
+          )}
           {/* Vision Scanner Button - hidden on mobile, show in menu */}
           <div className="hidden md:block">
             <VisionScannerButton variant="ghost" size="sm" showLabel={false} />
