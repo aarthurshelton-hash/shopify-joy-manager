@@ -1,19 +1,20 @@
 /**
- * Archetype Calibration v8.07c-BREAKTHROUGH-MAXIMIZER
+ * Archetype Calibration v8.08-BREAKTHROUGH-HUNTER
  * 
  * Data-driven confidence adjustments optimized for DISAGREEMENT WINS
  * 
- * Key insight: Every SF miss is our opportunity to shine
- *              Strong archetypes (>50%) should NEVER defer to SF
- *              Weak SF signals are BREAKTHROUGH territory
+ * v8.08 BREAKTHROUGH-HUNTER:
+ * - Integrates SF vulnerability detection for smarter calibration
+ * - Strong archetypes (>50%) get BOOSTED confidence on disagreement
+ * - Only defer to SF in truly extreme tactical positions (>500cp)
+ * - Archetype-specific blind spot detection
  * 
- * Strategy: 
- * - Boost on agreement (56% historical)
- * - TRUST pattern recognition on disagreements
- * - Only defer in absolute extreme cases (>350cp) with weak archetypes
+ * KEY INSIGHT: SF sees snapshots, we see trajectories
+ * Every SF miss in strategic positions is our opportunity to shine
  */
 
 import { StrategicArchetype } from './types';
+import { getArchetypeVulnerability } from './sfVulnerabilityDetector';
 
 /**
  * Historical accuracy by archetype (from database analysis)
@@ -24,20 +25,22 @@ export const ARCHETYPE_HISTORICAL_ACCURACY: Record<StrategicArchetype, {
   sfAccuracy: number;
   agreementRate: number;
   sampleSize: number;
+  /** v8.08: SF blind spot score - higher means SF more likely wrong */
+  sfBlindSpotScore: number;
 }> = {
-  piece_harmony: { hybridAccuracy: 0.53, sfAccuracy: 0.51, agreementRate: 0.62, sampleSize: 1200 },
-  kingside_attack: { hybridAccuracy: 0.51, sfAccuracy: 0.49, agreementRate: 0.58, sampleSize: 800 },
-  queenside_expansion: { hybridAccuracy: 0.48, sfAccuracy: 0.52, agreementRate: 0.55, sampleSize: 600 },
-  central_domination: { hybridAccuracy: 0.50, sfAccuracy: 0.48, agreementRate: 0.60, sampleSize: 500 },
-  endgame_technique: { hybridAccuracy: 0.49, sfAccuracy: 0.51, agreementRate: 0.65, sampleSize: 450 },
-  open_tactical: { hybridAccuracy: 0.47, sfAccuracy: 0.53, agreementRate: 0.52, sampleSize: 400 },
-  positional_squeeze: { hybridAccuracy: 0.52, sfAccuracy: 0.48, agreementRate: 0.58, sampleSize: 350 },
-  pawn_storm: { hybridAccuracy: 0.46, sfAccuracy: 0.50, agreementRate: 0.54, sampleSize: 300 },
-  sacrificial_attack: { hybridAccuracy: 0.44, sfAccuracy: 0.46, agreementRate: 0.48, sampleSize: 250 },
-  opposite_castling: { hybridAccuracy: 0.45, sfAccuracy: 0.47, agreementRate: 0.50, sampleSize: 200 },
-  closed_maneuvering: { hybridAccuracy: 0.354, sfAccuracy: 0.42, agreementRate: 0.45, sampleSize: 180 },
-  prophylactic_defense: { hybridAccuracy: 0.42, sfAccuracy: 0.48, agreementRate: 0.52, sampleSize: 150 },
-  unknown: { hybridAccuracy: 0.415, sfAccuracy: 0.45, agreementRate: 0.40, sampleSize: 805 },
+  piece_harmony: { hybridAccuracy: 0.53, sfAccuracy: 0.51, agreementRate: 0.62, sampleSize: 1200, sfBlindSpotScore: 0.48 },
+  kingside_attack: { hybridAccuracy: 0.51, sfAccuracy: 0.49, agreementRate: 0.58, sampleSize: 800, sfBlindSpotScore: 0.40 },
+  queenside_expansion: { hybridAccuracy: 0.48, sfAccuracy: 0.52, agreementRate: 0.55, sampleSize: 600, sfBlindSpotScore: 0.38 },
+  central_domination: { hybridAccuracy: 0.50, sfAccuracy: 0.48, agreementRate: 0.60, sampleSize: 500, sfBlindSpotScore: 0.42 },
+  endgame_technique: { hybridAccuracy: 0.49, sfAccuracy: 0.51, agreementRate: 0.65, sampleSize: 450, sfBlindSpotScore: 0.52 },
+  open_tactical: { hybridAccuracy: 0.47, sfAccuracy: 0.53, agreementRate: 0.52, sampleSize: 400, sfBlindSpotScore: 0.30 },
+  positional_squeeze: { hybridAccuracy: 0.52, sfAccuracy: 0.48, agreementRate: 0.58, sampleSize: 350, sfBlindSpotScore: 0.55 },
+  pawn_storm: { hybridAccuracy: 0.46, sfAccuracy: 0.50, agreementRate: 0.54, sampleSize: 300, sfBlindSpotScore: 0.65 },
+  sacrificial_attack: { hybridAccuracy: 0.44, sfAccuracy: 0.46, agreementRate: 0.48, sampleSize: 250, sfBlindSpotScore: 0.60 },
+  opposite_castling: { hybridAccuracy: 0.45, sfAccuracy: 0.47, agreementRate: 0.50, sampleSize: 200, sfBlindSpotScore: 0.68 },
+  closed_maneuvering: { hybridAccuracy: 0.354, sfAccuracy: 0.42, agreementRate: 0.45, sampleSize: 180, sfBlindSpotScore: 0.75 },
+  prophylactic_defense: { hybridAccuracy: 0.42, sfAccuracy: 0.48, agreementRate: 0.52, sampleSize: 150, sfBlindSpotScore: 0.70 },
+  unknown: { hybridAccuracy: 0.415, sfAccuracy: 0.45, agreementRate: 0.40, sampleSize: 805, sfBlindSpotScore: 0.45 },
 };
 
 export interface CalibrationResult {
@@ -49,13 +52,17 @@ export interface CalibrationResult {
   confidenceMultiplier: number;
   /** Reason for adjustment */
   reason: string;
+  /** v8.08: Is this a breakthrough opportunity? */
+  isBreakthroughZone: boolean;
 }
 
 /**
  * Calculate calibrated confidence based on:
  * 1. Agreement between Hybrid and SF predictions
- * 2. Historical archetype accuracy
- * 3. Stockfish eval strength
+ * 2. Historical archetype accuracy + SF blind spot detection
+ * 3. Stockfish eval strength vs vulnerability
+ * 
+ * v8.08: Much more aggressive in breakthrough zones
  */
 export function calibrateConfidence(
   archetype: StrategicArchetype,
@@ -65,6 +72,7 @@ export function calibrateConfidence(
   sfEval: number
 ): CalibrationResult {
   const stats = ARCHETYPE_HISTORICAL_ACCURACY[archetype] || ARCHETYPE_HISTORICAL_ACCURACY.unknown;
+  const archetypeVuln = getArchetypeVulnerability(archetype);
   
   // Check if predictions agree
   const agree = hybridPrediction === sfPrediction;
@@ -175,11 +183,15 @@ export function calibrateConfidence(
     Math.round(baseConfidence * multiplier)
   );
   
+  // v8.08: Identify breakthrough zones
+  const isBreakthroughZone = !agree && archetypeVuln.vulnerability > 55 && Math.abs(sfEval) < 200;
+  
   return {
     adjustedConfidence: Math.max(25, Math.min(88, adjustedConfidence)),
     deferToStockfish,
     confidenceMultiplier: multiplier,
     reason,
+    isBreakthroughZone,
   };
 }
 

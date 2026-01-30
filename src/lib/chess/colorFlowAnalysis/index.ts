@@ -34,6 +34,14 @@ export { predictFromColorFlow, getLastEquilibriumScores } from './predictionEngi
 // Re-export equilibrium predictor
 export { calculateEquilibriumScores, type EquilibriumScores } from './equilibriumPredictor';
 
+// Re-export SF vulnerability detector (v8.08)
+export { 
+  detectSfVulnerability, 
+  getArchetypeVulnerability,
+  isBreakthroughOpportunity,
+  type SfVulnerability 
+} from './sfVulnerabilityDetector';
+
 // Re-export prophylactic variation system
 export {
   classifyProphylacticVariation,
