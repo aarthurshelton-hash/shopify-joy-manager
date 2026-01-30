@@ -29,6 +29,16 @@ const FEE_DISTRIBUTION = {
   platformOps: 0.10,    // 10% to platform operations
 };
 
+// Input validation helper - validates UUID format
+const isValidUUID = (str: string): boolean => {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str);
+};
+
+// Allowed actions for the marketplace
+const ALLOWED_ACTIONS = ['purchase', 'gift', undefined] as const;
+type AllowedAction = typeof ALLOWED_ACTIONS[number];
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -69,9 +79,34 @@ serve(async (req) => {
     }
     logStep("Premium status verified");
 
-    const { listingId, action } = await req.json();
-    if (!listingId) throw new Error("Listing ID is required");
-    logStep("Request payload", { listingId, action });
+    // Parse and validate input
+    let requestBody: unknown;
+    try {
+      requestBody = await req.json();
+    } catch {
+      throw new Error("Invalid JSON in request body");
+    }
+    
+    // Type-safe input validation
+    if (typeof requestBody !== 'object' || requestBody === null) {
+      throw new Error("Request body must be an object");
+    }
+    
+    const body = requestBody as Record<string, unknown>;
+    const listingId = body.listingId;
+    const action = body.action as AllowedAction;
+    
+    // Validate listingId - must be a valid UUID
+    if (typeof listingId !== 'string' || !isValidUUID(listingId)) {
+      throw new Error("Invalid listing ID format - must be a valid UUID");
+    }
+    
+    // Validate action - must be one of the allowed values or undefined
+    if (action !== undefined && !ALLOWED_ACTIONS.includes(action)) {
+      throw new Error(`Invalid action - must be one of: ${ALLOWED_ACTIONS.filter(Boolean).join(', ')}`);
+    }
+    
+    logStep("Request payload validated", { listingId, action });
 
     // Fetch the listing
     const { data: listing, error: listingError } = await supabaseClient

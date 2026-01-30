@@ -18,6 +18,28 @@ const VISIONARY_EMAILS = [
   'opecoreug@gmail.com', // Product Specialist Analyst - overseas marketplace testing
 ];
 
+// Validate authorization header format
+const validateAuthHeader = (authHeader: string | null): string => {
+  if (!authHeader) {
+    throw new Error("No authorization header provided");
+  }
+  
+  // Must start with "Bearer " followed by a non-empty token
+  if (!authHeader.startsWith("Bearer ") || authHeader.length < 8) {
+    throw new Error("Invalid authorization header format");
+  }
+  
+  const token = authHeader.substring(7); // Remove "Bearer "
+  
+  // Basic JWT format validation (3 parts separated by dots)
+  const parts = token.split('.');
+  if (parts.length !== 3 || parts.some(part => part.length === 0)) {
+    throw new Error("Invalid token format");
+  }
+  
+  return token;
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -33,13 +55,10 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    // Authenticate user
+    // Validate and extract token from authorization header
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      throw new Error("No authorization header provided");
-    }
+    const token = validateAuthHeader(authHeader);
 
-    const token = authHeader.replace("Bearer ", "");
     const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
     if (userError) throw new Error(`Authentication error: ${userError.message}`);
     const user = userData.user;
