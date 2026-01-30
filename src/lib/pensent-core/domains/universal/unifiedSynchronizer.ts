@@ -15,6 +15,7 @@
 import { crossDomainEngine } from './crossDomainEngine';
 import { selfEvolvingSystem } from '../finance/selfEvolvingSystem';
 import { crossDomainLearningPipeline, ibkrIntelligenceCollector } from '../learning';
+import { aiArchetypeClassifier, AI_MODEL_PROFILES, type AIArchetype, type AIModelProfile } from './modules/aiArchetypeClassifier';
 import type { PredictionOutcome, MarketConditions } from '../finance/evolution/types';
 import type { UnifiedPrediction, DomainType } from './types';
 
@@ -40,6 +41,14 @@ export interface SynchronizationState {
   chessToMarketAccuracy: number;
   ibkrConnected: boolean;
   marketIntelligenceCount: number;
+  
+  // AI Archetype Intelligence
+  aiArchetypeInsights: {
+    modelsAnalyzed: number;
+    bestForEnPensent: string; // Model ID with highest alignment
+    archetypeDistribution: Record<AIArchetype, number>;
+    avgTemporalAwareness: number;
+  };
   
   // Domain contributions
   domainHealth: Record<DomainType, number>;
@@ -76,6 +85,12 @@ class UnifiedSynchronizer {
       chessToMarketAccuracy: 0.5,
       ibkrConnected: false,
       marketIntelligenceCount: 0,
+      aiArchetypeInsights: {
+        modelsAnalyzed: Object.keys(AI_MODEL_PROFILES).length,
+        bestForEnPensent: this.findBestAlignedAI(),
+        archetypeDistribution: this.calculateArchetypeDistribution(),
+        avgTemporalAwareness: this.calculateAvgTemporalAwareness(),
+      },
       domainHealth: {
         light: 0.5,
         network: 0.5,
@@ -95,6 +110,55 @@ class UnifiedSynchronizer {
         quantum: 0.5,
       },
     };
+  }
+
+  /**
+   * Find the AI model with highest En Pensent alignment
+   */
+  private findBestAlignedAI(): string {
+    let best = { id: 'unknown', alignment: 0 };
+    for (const [id, profile] of Object.entries(AI_MODEL_PROFILES)) {
+      if (profile.enPensentAlignment > best.alignment) {
+        best = { id, alignment: profile.enPensentAlignment };
+      }
+    }
+    return best.id;
+  }
+
+  /**
+   * Calculate distribution of AI archetypes across known models
+   */
+  private calculateArchetypeDistribution(): Record<AIArchetype, number> {
+    const dist: Record<AIArchetype, number> = {
+      analytical_oracle: 0,
+      creative_wanderer: 0,
+      pragmatic_engineer: 0,
+      philosophical_sage: 0,
+      rapid_responder: 0,
+      safety_guardian: 0,
+      pattern_synthesizer: 0,
+      code_artisan: 0,
+      conversational_mirror: 0,
+      knowledge_curator: 0,
+    };
+    
+    for (const profile of Object.values(AI_MODEL_PROFILES)) {
+      dist[profile.primaryArchetype]++;
+      if (profile.secondaryArchetype) {
+        dist[profile.secondaryArchetype] += 0.5;
+      }
+    }
+    
+    return dist;
+  }
+
+  /**
+   * Calculate average temporal awareness across AI models
+   */
+  private calculateAvgTemporalAwareness(): number {
+    const models = Object.values(AI_MODEL_PROFILES);
+    const total = models.reduce((sum, m) => sum + m.temporalAwareness, 0);
+    return models.length > 0 ? total / models.length : 0.5;
   }
 
   /**
@@ -320,6 +384,11 @@ class UnifiedSynchronizer {
     evolutionGeneration: number;
     activeDomains: DomainType[];
     topPatterns: number;
+    aiInsights: {
+      bestModel: string;
+      modelCount: number;
+      avgTemporalAwareness: number;
+    };
   } {
     const evolutionSummary = selfEvolvingSystem.getEvolutionSummary();
     const crossDomainState = crossDomainEngine.getState();
@@ -335,6 +404,28 @@ class UnifiedSynchronizer {
       evolutionGeneration: evolutionSummary.generation,
       activeDomains: crossDomainState.activeDomains,
       topPatterns: evolutionSummary.patternCount,
+      aiInsights: {
+        bestModel: this.state.aiArchetypeInsights.bestForEnPensent,
+        modelCount: this.state.aiArchetypeInsights.modelsAnalyzed,
+        avgTemporalAwareness: this.state.aiArchetypeInsights.avgTemporalAwareness,
+      },
+    };
+  }
+
+  /**
+   * Get AI archetype analysis for the universal intelligence
+   */
+  getAIArchetypeAnalysis(): {
+    profiles: Record<string, AIModelProfile>;
+    bestForTask: (task: 'reasoning' | 'creative' | 'code' | 'analysis' | 'conversation') => AIModelProfile[];
+    compareModels: (a: string, b: string) => { differences: Record<string, number>; recommendation: string };
+    archetypeDistribution: Record<AIArchetype, number>;
+  } {
+    return {
+      profiles: AI_MODEL_PROFILES,
+      bestForTask: aiArchetypeClassifier.recommendForTask,
+      compareModels: aiArchetypeClassifier.compare,
+      archetypeDistribution: this.state.aiArchetypeInsights.archetypeDistribution,
     };
   }
 
