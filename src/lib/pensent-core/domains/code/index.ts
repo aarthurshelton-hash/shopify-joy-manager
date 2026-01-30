@@ -1,11 +1,8 @@
 /**
- * Code Domain - Universal Pattern Recognition
+ * En Pensent™ Code Domain
  * 
- * Patent-Pending: En Pensent™ Code Flow Signatures
- * 
- * Just as Chess uses 64 squares for territorial analysis,
- * Code uses 64 metrics across 8 dimensions × 8 categories
- * to create universal exchange value signatures.
+ * Code Flow Signature analysis using the 64-metric grid
+ * mirroring chess board structure for codebase intelligence.
  * 
  * The 8 Dimensions:
  * 1. Complexity (cyclomatic, cognitive, halstead)
@@ -20,24 +17,45 @@
  * "Code is the BLOOD of the Universal Organism"
  */
 
-// Types
+// Core types
 export * from './types';
+export * from './archetypeTypes';
+export * from './healthTypes';
 
-// 64-Metric Signature Extractor
-export { extractCodeFlowSignature, type CodeFlowSignature } from './signatureExtractor';
+// Signature extraction
+export { extractCodeFlowSignature } from './signatureExtractor';
+export type { CodeFlowSignature } from './signatureExtractor';
 
-// Universal Exchange Value Calculator
+// Archetype classification
+export { classifyCodeArchetype, CODE_ARCHETYPES } from './archetypeClassifier';
+export type { CodeArchetype, ArchetypeDefinition, ArchetypeClassificationResult } from './archetypeTypes';
+
+// Exchange value
+export { calculateCodeExchangeValue } from './exchangeValue';
+export type { CodeExchangeValue, CodeValueFactors } from './exchangeValue';
+
+// Health analysis
+export { analyzeCodeHealth } from './healthAnalyzer';
+export type { 
+  CodeHealthReport,
+  HealthIssue,
+  HealthStrength,
+  HealthRecommendation,
+  DimensionHealth,
+  CategoryHealth,
+} from './healthTypes';
+
+// Pattern matching
+export { matchCodeToChessPatterns } from './patternMatcher';
+export type { CodeChessMapping } from './patternMatcher';
+
+// Sub-modules for direct access
+export { findCriticalIssues, findWarnings } from './issueFinder';
+export { findStrengths } from './strengthFinder';
+export { generateRecommendations } from './recommendationEngine';
 export { 
-  calculateCodeExchangeValue, 
-  type CodeExchangeValue,
-  type CodeValueFactors 
-} from './exchangeValue';
-
-// Code Archetype Classifier
-export { classifyCodeArchetype, CODE_ARCHETYPES, type CodeArchetype } from './archetypeClassifier';
-
-// Health Analyzer
-export { analyzeCodeHealth, type CodeHealthReport } from './healthAnalyzer';
-
-// Pattern Matcher (cross-domain)
-export { matchCodeToChessPatterns, type CodeChessMapping } from './patternMatcher';
+  analyzeDimensionHealth, 
+  analyzeCategoryHealth,
+  calculateOverallScore,
+  getGrade 
+} from './healthMetrics';
