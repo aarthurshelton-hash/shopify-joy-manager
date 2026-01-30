@@ -965,6 +965,12 @@ const ExportActionButtons: React.FC<{
   const { lockedPieces, lockedSquares, compareMode } = useLegendHighlight();
   
   const handleExport = useCallback((type: 'hd' | 'gif' | 'print' | 'preview') => {
+    if (!onExport) {
+      console.warn('[ExportActionButtons] No onExport handler provided');
+      toast.error('Export not available');
+      return;
+    }
+    
     const exportState: ExportState = {
       currentMove: currentMove >= totalMoves ? totalMoves : currentMove,
       lockedPieces: lockedPieces.map(p => ({
@@ -983,7 +989,15 @@ const ExportActionButtons: React.FC<{
       showPieces,
       pieceOpacity,
     };
-    onExport?.(type, exportState);
+    
+    console.log('[ExportActionButtons] Exporting:', type, 'state:', exportState);
+    
+    try {
+      onExport(type, exportState);
+    } catch (error) {
+      console.error('[ExportActionButtons] Export failed:', error);
+      toast.error('Export failed', { description: 'Please try again.' });
+    }
   }, [onExport, currentMove, totalMoves, lockedPieces, lockedSquares, compareMode, darkMode, showPieces, pieceOpacity]);
 
   if (!onExport) return null;
@@ -1091,7 +1105,15 @@ const ShareButtonWithState: React.FC<{
       showPieces,
       pieceOpacity,
     };
-    onShare(exportState);
+    
+    console.log('[ShareButtonWithState] Sharing with state:', exportState);
+    
+    try {
+      onShare(exportState);
+    } catch (error) {
+      console.error('[ShareButtonWithState] Share failed:', error);
+      toast.error('Share failed', { description: 'Please try again.' });
+    }
   }, [onShare, currentMove, totalMoves, lockedPieces, lockedSquares, compareMode, darkMode, showPieces, pieceOpacity]);
   
   return (
