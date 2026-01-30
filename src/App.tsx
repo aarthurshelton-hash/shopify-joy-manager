@@ -166,11 +166,11 @@ const App = () => (
                 
                 {/* ===== CEO ONLY - All Business & Proprietary Features ===== */}
                 
-                {/* Marketplace & Commerce */}
-                <Route path="/marketplace" element={<AdminRoute featureName="Marketplace"><Marketplace /></AdminRoute>} />
-                <Route path="/marketplace/:id" element={<AdminRoute featureName="Marketplace"><MarketplaceDetailRedirect /></AdminRoute>} />
-                <Route path="/order-print" element={<AdminRoute featureName="Print Orders"><OrderPrint /></AdminRoute>} />
-                <Route path="/book" element={<AdminRoute featureName="Book Generator"><BookGenerator /></AdminRoute>} />
+                {/* Marketplace & Commerce - PUBLIC */}
+                <Route path="/marketplace" element={<Marketplace />} />
+                <Route path="/marketplace/:id" element={<MarketplaceDetailRedirect />} />
+                <Route path="/order-print" element={<OrderPrint />} />
+                <Route path="/book" element={<BookGenerator />} />
                 
                 {/* Analytics & Dashboards */}
                 <Route path="/analytics" element={<AdminRoute featureName="Analytics"><Analytics /></AdminRoute>} />
@@ -178,8 +178,8 @@ const App = () => (
                 <Route path="/premium-analytics" element={<AdminRoute featureName="Premium Analytics"><PremiumAnalytics /></AdminRoute>} />
                 <Route path="/creator-dashboard" element={<AdminRoute featureName="Creator Dashboard"><CreatorDashboard /></AdminRoute>} />
                 
-                {/* Business & Investor Pages */}
-                <Route path="/investors" element={<AdminRoute featureName="Investors"><Investors /></AdminRoute>} />
+                {/* Business & Investor Pages - Investors PUBLIC for fundraising */}
+                <Route path="/investors" element={<Investors />} />
                 <Route path="/investor-portal" element={<AdminRoute featureName="Investor Portal"><InvestorPortal /></AdminRoute>} />
                 <Route path="/education-fund" element={<AdminRoute featureName="Education Fund"><EducationFund /></AdminRoute>} />
                 <Route path="/news" element={<AdminRoute featureName="News"><News /></AdminRoute>} />

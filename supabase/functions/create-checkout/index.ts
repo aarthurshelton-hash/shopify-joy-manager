@@ -50,7 +50,7 @@ serve(async (req) => {
       logStep("Existing customer found", { customerId });
     }
 
-    const origin = req.headers.get("origin") || "https://lovable.dev";
+    const origin = Deno.env.get("SITE_URL") || req.headers.get("origin") || "https://enpensent.com";
     
     // Create checkout session for premium subscription
     const session = await stripe.checkout.sessions.create({
