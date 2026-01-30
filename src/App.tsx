@@ -94,7 +94,6 @@ const App = () => (
             <StructuredData />
             <DynamicMetaTags />
             <VisionRestorer />
-            <VisionRestorer />
             <BackToMarketplaceButton />
             <Routes>
               {/* ===== PUBLIC ROUTES - Chess Visualization & Code Analyzer ===== */}
