@@ -52,6 +52,7 @@ import { useCodebaseSync, codebaseSyncManager } from "@/hooks/useCodebaseSync";
 import { useUnifiedEvolution } from "@/hooks/useUnifiedEvolution";
 import { AutoHealPanel } from "./AutoHealPanel";
 import { CodeIssue } from "@/hooks/useAutoHealSystem";
+import { EnhancedCodeAnalysisPanel } from "./EnhancedCodeAnalysisPanel";
 
 // Real file analysis data extracted from LIVE code content
 interface FileAnalysis {
@@ -1233,6 +1234,12 @@ const LiveCodebaseDebugger = ({
                 )}
               </CardContent>
             </Card>
+
+            {/* NEW: 64-Metric Engine Analysis Panel */}
+            <EnhancedCodeAnalysisPanel
+              analysisResult={result}
+              animated={true}
+            />
 
             {/* Self-Healing System Panel */}
             <AutoHealPanel 

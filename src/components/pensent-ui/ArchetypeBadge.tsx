@@ -1,6 +1,8 @@
 /**
  * ArchetypeBadge - Reusable archetype display component
- * Used across chess, code, and future domain adapters
+ * Used across chess, code, market, and future domain adapters
+ * 
+ * Patent-Pending: En Pensent™ Universal Archetype Classification
  */
 
 import { Badge } from "@/components/ui/badge";
@@ -16,11 +18,24 @@ import {
   Anchor,
   Wind,
   Mountain,
-  Waves
+  Waves,
+  Castle,
+  Rocket,
+  Brain,
+  Layers,
+  Box,
+  Grid3X3,
+  RefreshCw,
+  AlertCircle,
+  Sprout,
+  History,
+  Beaker,
+  Lock,
+  Crown
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type ArchetypeCategory = 'chess' | 'code' | 'universal';
+export type ArchetypeCategory = 'chess' | 'code' | 'market' | 'universal';
 
 export interface ArchetypeBadgeProps {
   archetype: string;
@@ -89,14 +104,14 @@ const ARCHETYPE_CONFIG: Record<string, {
     description: 'Patient defense followed by lethal counterattack'
   },
   'universal_player': {
-    icon: Sparkles,
+    icon: Crown,
     color: 'text-amber-400',
     bgColor: 'bg-amber-500/10',
     borderColor: 'border-amber-500/30',
     description: 'Master of all styles, adapts to any opponent'
   },
   
-  // Code archetypes
+  // Code archetypes - Legacy
   'rapid_growth': {
     icon: TrendingUp,
     color: 'text-green-400',
@@ -145,6 +160,92 @@ const ARCHETYPE_CONFIG: Record<string, {
     bgColor: 'bg-pink-500/10',
     borderColor: 'border-pink-500/30',
     description: 'Well-documented with clear knowledge transfer'
+  },
+  
+  // Code archetypes - 64-Metric Engine (new)
+  'core_fortress': {
+    icon: Castle,
+    color: 'text-purple-400',
+    bgColor: 'bg-purple-500/10',
+    borderColor: 'border-purple-500/30',
+    description: 'Strong foundational code with well-protected core modules'
+  },
+  'rapid_expansion': {
+    icon: Rocket,
+    color: 'text-green-400',
+    bgColor: 'bg-green-500/10',
+    borderColor: 'border-green-500/30',
+    description: 'Fast-growing codebase with high development velocity'
+  },
+  'pattern_master': {
+    icon: Brain,
+    color: 'text-amber-400',
+    bgColor: 'bg-amber-500/10',
+    borderColor: 'border-amber-500/30',
+    description: 'Highly pattern-integrated with strong En Pensent adoption'
+  },
+  'modular_army': {
+    icon: Layers,
+    color: 'text-blue-400',
+    bgColor: 'bg-blue-500/10',
+    borderColor: 'border-blue-500/30',
+    description: 'Well-organized with independent, reusable modules'
+  },
+  'monolith_giant': {
+    icon: Box,
+    color: 'text-red-400',
+    bgColor: 'bg-red-500/10',
+    borderColor: 'border-red-500/30',
+    description: 'Large, tightly coupled requiring careful refactoring'
+  },
+  'microservice_swarm': {
+    icon: Grid3X3,
+    color: 'text-cyan-400',
+    bgColor: 'bg-cyan-500/10',
+    borderColor: 'border-cyan-500/30',
+    description: 'Many small, specialized modules with distributed architecture'
+  },
+  'hybrid_fusion': {
+    icon: GitBranch,
+    color: 'text-violet-400',
+    bgColor: 'bg-violet-500/10',
+    borderColor: 'border-violet-500/30',
+    description: 'Balanced codebase with elements from multiple archetypes'
+  },
+  'technical_debt': {
+    icon: AlertCircle,
+    color: 'text-orange-400',
+    bgColor: 'bg-orange-500/10',
+    borderColor: 'border-orange-500/30',
+    description: 'Accumulated issues requiring systematic remediation'
+  },
+  'emerging_startup': {
+    icon: Sprout,
+    color: 'text-teal-400',
+    bgColor: 'bg-teal-500/10',
+    borderColor: 'border-teal-500/30',
+    description: 'Small but rapidly growing with high potential'
+  },
+  'legacy_evolution': {
+    icon: History,
+    color: 'text-slate-400',
+    bgColor: 'bg-slate-500/10',
+    borderColor: 'border-slate-500/30',
+    description: 'Older codebase being modernized with new patterns'
+  },
+  'innovation_lab': {
+    icon: Beaker,
+    color: 'text-pink-400',
+    bgColor: 'bg-pink-500/10',
+    borderColor: 'border-pink-500/30',
+    description: 'Experimental codebase with frequent changes and prototypes'
+  },
+  'production_stable': {
+    icon: Lock,
+    color: 'text-emerald-400',
+    bgColor: 'bg-emerald-500/10',
+    borderColor: 'border-emerald-500/30',
+    description: 'Mature codebase with low change rate and high stability'
   },
   
   // Default/fallback
