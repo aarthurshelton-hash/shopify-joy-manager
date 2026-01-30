@@ -56,6 +56,13 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // Premium product ID from Stripe
 const PREMIUM_PRODUCT_ID = "prod_TldXgoRfEQn0lX";
 
+// Visionary emails with permanent premium access (client-side fallback)
+const VISIONARY_EMAILS = [
+  'a.arthur.shelton@gmail.com',  // CEO Alec Arthur Shelton
+  'info@mawuli.xyz',              // Marketplace tester
+  'opecoreug@gmail.com',          // Product Specialist Analyst
+];
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -69,7 +76,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
 
-  const isPremium = subscriptionStatus?.subscribed && subscriptionStatus?.productId === PREMIUM_PRODUCT_ID;
+  // Check if user is a Visionary member (client-side fallback for instant premium access)
+  const isVisionary = user?.email ? VISIONARY_EMAILS.some(
+    email => email.toLowerCase() === user.email?.toLowerCase()
+  ) : false;
+
+  // Premium status: either Visionary member OR has active subscription with correct product
+  const isPremium = isVisionary || (subscriptionStatus?.subscribed && subscriptionStatus?.productId === PREMIUM_PRODUCT_ID);
   // User has an account but no active premium subscription
   const isFreeAccount = !!user && !isPremium;
 

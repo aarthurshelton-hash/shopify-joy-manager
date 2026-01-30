@@ -14,6 +14,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { usePrintOrderStore } from '@/stores/printOrderStore';
+import { validatePremiumDownload } from '@/lib/premium/validatePremiumDownload';
 import { useVisualizationStateStore } from '@/stores/visualizationStateStore';
 import { useSessionStore } from '@/stores/sessionStore';
 import { useTimeline } from '@/contexts/TimelineContext';
@@ -223,21 +224,25 @@ export function useVisionExport(options: UseVisionExportOptions): UseVisionExpor
   }, [getBoardElement, storeDarkMode, title, visualizationId]);
   
   /**
-   * Downloads HD image (premium only)
+   * Downloads HD image (premium only - with server-side validation)
    */
   const downloadHD = useCallback(async (): Promise<ExportResult> => {
-    if (!isPremium) {
-      onUpgradePrompt?.();
-      toast.info('HD downloads require Premium', {
-        description: 'Upgrade to download without watermarks',
-      });
-      return { success: false, error: 'Premium required' };
-    }
-    
     setIsExporting(true);
     setExportError(null);
     
     try {
+      // Server-side premium validation for security
+      const validation = await validatePremiumDownload();
+      
+      if (!validation.allowed) {
+        onUpgradePrompt?.();
+        toast.info('HD downloads require Premium', {
+          description: validation.message || 'Upgrade to download without watermarks',
+        });
+        setIsExporting(false);
+        return { success: false, error: 'Premium required' };
+      }
+      
       const element = getBoardElement();
       if (!element) {
         throw new Error('Board not ready for export');
@@ -266,27 +271,37 @@ export function useVisionExport(options: UseVisionExportOptions): UseVisionExpor
     } finally {
       setIsExporting(false);
     }
-  }, [isPremium, onUpgradePrompt, getBoardElement, storeDarkMode, title, visualizationId]);
+  }, [onUpgradePrompt, getBoardElement, storeDarkMode, title, visualizationId]);
   
   /**
-   * Downloads animated GIF (premium only)
+   * Downloads animated GIF (premium only - with server-side validation)
    */
   const downloadGIF = useCallback(async (): Promise<ExportResult> => {
-    if (!isPremium) {
-      onUpgradePrompt?.();
-      toast.info('GIF exports require Premium', {
-        description: 'Upgrade to create animated visualizations',
+    setIsExporting(true);
+    
+    try {
+      // Server-side premium validation for security
+      const validation = await validatePremiumDownload();
+      
+      if (!validation.allowed) {
+        onUpgradePrompt?.();
+        toast.info('GIF exports require Premium', {
+          description: validation.message || 'Upgrade to create animated visualizations',
+        });
+        setIsExporting(false);
+        return { success: false, error: 'Premium required' };
+      }
+      
+      // TODO: Implement GIF generation
+      toast.info('GIF export coming soon!', {
+        description: 'This feature is in development',
       });
-      return { success: false, error: 'Premium required' };
+      
+      return { success: false, error: 'Not implemented' };
+    } finally {
+      setIsExporting(false);
     }
-    
-    // TODO: Implement GIF generation
-    toast.info('GIF export coming soon!', {
-      description: 'This feature is in development',
-    });
-    
-    return { success: false, error: 'Not implemented' };
-  }, [isPremium, onUpgradePrompt]);
+  }, [onUpgradePrompt]);
   
   /**
    * Prepares and navigates to print order page
