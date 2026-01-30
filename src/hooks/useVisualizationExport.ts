@@ -219,19 +219,23 @@ export function useVisualizationExport(options: UseVisualizationExportOptions) {
         }
       }
       
-      // Convert base64 to blob for download
-      const response = await fetch(base64Image);
-      const blob = await response.blob();
+      // Use cross-browser download utility for Safari compatibility
+      const { downloadFromBase64, isSafari, openInNewTab } = await import('@/lib/utils/downloadUtils');
+      const filename = `${exportOptions.title.replace(/\s+/g, '-').toLowerCase()}-hd.png`;
       
-      // Create download link
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${exportOptions.title.replace(/\s+/g, '-').toLowerCase()}-hd.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      const success = await downloadFromBase64(base64Image, filename);
+      
+      if (!success) {
+        // Fallback: open in new tab for manual save
+        if (isSafari()) {
+          openInNewTab(base64Image);
+          toast.info('Image opened in new tab', {
+            description: 'Right-click or long-press to save the image.',
+          });
+          return true;
+        }
+        throw new Error('Download failed');
+      }
       
       // Record the download interaction
       if (visualizationId) {
@@ -328,15 +332,38 @@ export function useVisualizationExport(options: UseVisualizationExportOptions) {
         throw new Error('Generated GIF is empty');
       }
       
-      // Download the GIF
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${title.replace(/\s+/g, '-').toLowerCase()}.gif`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      // Download the GIF using cross-browser utility
+      const { downloadFromBlob, isSafari, isIOS } = await import('@/lib/utils/downloadUtils');
+      const filename = `${title.replace(/\s+/g, '-').toLowerCase()}.gif`;
+      
+      const success = await downloadFromBlob(blob, filename);
+      
+      if (!success && (isSafari() || isIOS())) {
+        // For Safari/iOS, convert to data URL and open in new tab
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = reader.result as string;
+          const newWindow = window.open();
+          if (newWindow) {
+            newWindow.document.write(`
+              <html><head><title>Save GIF</title></head>
+              <body style="margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#111;">
+                <div style="text-align:center;">
+                  <p style="color:white;font-family:system-ui;margin-bottom:20px;">Right-click or long-press to save</p>
+                  <img src="${dataUrl}" style="max-width:100%;max-height:90vh;" />
+                </div>
+              </body></html>
+            `);
+            newWindow.document.close();
+          }
+        };
+        reader.readAsDataURL(blob);
+        
+        toast.info('GIF opened in new tab', {
+          description: 'Right-click or long-press to save the image.',
+        });
+        return true;
+      }
       
       // Record the download interaction
       if (visualizationId) {

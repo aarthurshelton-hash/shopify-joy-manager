@@ -605,20 +605,25 @@ const GameView = () => {
             pgn: effectivePgn,
           }
         );
-        const response = await fetch(base64Image);
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${displayTitle.replace(/\s+/g, '-').toLowerCase()}-preview.png`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-        toast.success('Preview downloaded!');
+        // Use cross-browser download utility for Safari compatibility
+        const { downloadFromBase64, isSafari, openInNewTab } = await import('@/lib/utils/downloadUtils');
+        const filename = `${displayTitle.replace(/\s+/g, '-').toLowerCase()}-preview.png`;
+        
+        const success = await downloadFromBase64(base64Image, filename);
+        
+        if (success) {
+          toast.success('Preview downloaded!');
+        } else if (isSafari()) {
+          openInNewTab(base64Image);
+          toast.info('Image opened in new tab', {
+            description: 'Right-click or long-press to save the image.',
+          });
+        } else {
+          toast.error('Download failed');
+        }
       } catch (err) {
         console.error('Preview download failed:', err);
-        toast.error('Download failed');
+        toast.error('Download failed', { description: 'Please try again or use a different browser.' });
       }
       return;
     }
