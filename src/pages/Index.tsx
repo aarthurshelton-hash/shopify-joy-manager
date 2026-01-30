@@ -940,25 +940,30 @@ const Index = () => {
                       } : undefined,
                     });
                     
-                    // Convert base64 to blob for download
-                    const response = await fetch(base64Image);
-                    const blob = await response.blob();
+                    // Use cross-browser download utility for Safari compatibility
+                    const { downloadFromBase64, isSafari, openInNewTab } = await import('@/lib/utils/downloadUtils');
+                    const filename = `${visualTitle.replace(/\s+/g, '-').toLowerCase()}-preview.png`;
                     
-                    const url = URL.createObjectURL(blob);
-                    const link = document.createElement('a');
-                    link.href = url;
-                    link.download = `${visualTitle.replace(/\s+/g, '-').toLowerCase()}-preview.png`;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    URL.revokeObjectURL(url);
+                    const success = await downloadFromBase64(base64Image, filename);
                     
-                    toast.success('Preview downloaded!', {
-                      description: shouldWatermark ? 'Includes En Pensent branding.' : 'Full resolution image saved.',
-                    });
+                    if (success) {
+                      toast.success('Preview downloaded!', {
+                        description: shouldWatermark ? 'Includes En Pensent branding.' : 'Full resolution image saved.',
+                      });
+                    } else {
+                      // Fallback: open in new tab for manual save
+                      if (isSafari()) {
+                        openInNewTab(base64Image);
+                        toast.info('Image opened in new tab', {
+                          description: 'Right-click or long-press to save the image.',
+                        });
+                      } else {
+                        toast.error('Download failed', { description: 'Please try again.' });
+                      }
+                    }
                   } catch (error) {
                     console.error('Preview download failed:', error);
-                    toast.error('Download failed', { description: 'Please try again.' });
+                    toast.error('Download failed', { description: 'Please try again or use a different browser.' });
                   }
                 } else if (type === 'hd') {
                   // Use trademark HD export for proper "print-ready" look

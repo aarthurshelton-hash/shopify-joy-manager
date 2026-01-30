@@ -252,17 +252,20 @@ export async function downloadVisionImage(
     const theme = darkMode ? 'dark' : 'light';
     const filename = `EnPensent-${sanitizedTitle}-${theme}-${suffix}.png`;
     
-    // Trigger download using blob URL for reliability
-    const blobUrl = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = blobUrl;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Use cross-browser download utility for Safari compatibility
+    const { downloadFromBlob, isSafari, openInNewTab } = await import('@/lib/utils/downloadUtils');
     
-    // Cleanup blob URL after download starts
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+    const success = await downloadFromBlob(blob, filename);
+    
+    if (!success) {
+      // Fallback: open in new tab for manual save
+      if (isSafari()) {
+        openInNewTab(dataUrl);
+        // Still return success as user can save from new tab
+      } else {
+        throw new Error('Download failed');
+      }
+    }
     
     // Track HD download for vision scoring
     if (isHD && visualizationId) {
