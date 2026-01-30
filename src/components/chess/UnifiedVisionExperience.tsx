@@ -203,11 +203,15 @@ const TimelineBoard: React.FC<{
   
   const filteredBoard = useMemo(() => {
     if (currentMove >= totalMoves) return board;
+    
     return board.map(rank =>
-      rank.map(square => ({
-        ...square,
-        visits: square.visits.filter(visit => visit.moveNumber <= currentMove)
-      }))
+      rank.map(square => {
+        const visits = Array.isArray((square as any)?.visits) ? (square as any).visits : [];
+        return {
+          ...square,
+          visits: visits.filter((visit: any) => visit?.moveNumber <= currentMove),
+        };
+      })
     );
   }, [board, currentMove, totalMoves]);
 
@@ -1477,7 +1481,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
         const updatedBoard = simResult.board.map(rank =>
           rank.map(square => ({
             ...square,
-            visits: square.visits.map(visit => ({
+            visits: (Array.isArray((square as any)?.visits) ? (square as any).visits : []).map((visit: any) => ({
               ...visit,
               hexColor: getPieceColor(visit.piece, visit.color),
             })),
