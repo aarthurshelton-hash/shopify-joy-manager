@@ -20,6 +20,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { StructuredData } from "@/components/seo/StructuredData";
 import { DynamicMetaTags } from "@/components/seo/DynamicMetaTags";
 import { AdminRoute } from "@/components/auth/AdminRoute";
+import { PremiumRoute } from "@/components/auth/PremiumRoute";
 import { preloadRoutes } from "@/lib/device/adaptiveRouting";
 import { PageLoadingFallback } from "@/components/shared/PageLoadingFallback";
 
@@ -173,10 +174,10 @@ const App = () => (
                 <Route path="/book" element={<BookGenerator />} />
                 
                 {/* Analytics & Dashboards */}
-                <Route path="/analytics" element={<AdminRoute featureName="Analytics"><Analytics /></AdminRoute>} />
-                <Route path="/leaderboard" element={<AdminRoute featureName="Leaderboard"><Leaderboard /></AdminRoute>} />
-                <Route path="/premium-analytics" element={<AdminRoute featureName="Premium Analytics"><PremiumAnalytics /></AdminRoute>} />
-                <Route path="/creator-dashboard" element={<AdminRoute featureName="Creator Dashboard"><CreatorDashboard /></AdminRoute>} />
+                <Route path="/analytics" element={<PremiumRoute featureName="Analytics"><Analytics /></PremiumRoute>} />
+                <Route path="/leaderboard" element={<PremiumRoute featureName="Leaderboard"><Leaderboard /></PremiumRoute>} />
+                <Route path="/premium-analytics" element={<PremiumRoute featureName="Premium Analytics"><PremiumAnalytics /></PremiumRoute>} />
+                <Route path="/creator-dashboard" element={<PremiumRoute featureName="Creator Dashboard"><CreatorDashboard /></PremiumRoute>} />
                 
                 {/* Business & Investor Pages - Investors PUBLIC for fundraising */}
                 <Route path="/investors" element={<Investors />} />
