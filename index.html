@@ -2,15 +2,23 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5.0, user-scalable=yes" />
     <title>En Pensent - Chess Art Prints</title>
     <meta name="description" content="Transform any chess game into stunning generative art. Create, scan, and collect unique visualizations." />
     <meta name="author" content="En Pensent" />
-    <meta name="theme-color" content="#d4af37" />
+    <meta name="theme-color" content="#d4af37" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0f1419" media="(prefers-color-scheme: dark)" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="En Pensent" />
     <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="msapplication-tap-highlight" content="no" />
+    
+    <!-- Preconnect to critical origins -->
+    <link rel="preconnect" href="https://aufycarwflhsdgszbnop.supabase.co" />
+    <link rel="dns-prefetch" href="https://aufycarwflhsdgszbnop.supabase.co" />
+    
     <link rel="icon" href="/favicon.png" type="image/png" />
     <link rel="apple-touch-icon" href="/pwa-192.png" />
     <link rel="manifest" href="/manifest.json" />
@@ -18,14 +26,24 @@
     <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
     <link rel="alternate" type="application/rss+xml" title="En Pensent News" href="https://enpensent.com/rss.xml" />
 
+    <!-- Open Graph -->
     <meta property="og:title" content="En Pensent - Chess Art Prints" />
     <meta property="og:description" content="Transform any chess game into stunning generative art. Create, scan, and collect unique visualizations." />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+    <meta property="og:url" content="https://enpensent.com/" />
+    <meta property="og:site_name" content="En Pensent" />
 
+    <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@EnPensent" />
     <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+    
+    <!-- iOS Splash Screens (common sizes) -->
+    <link rel="apple-touch-startup-image" href="/pwa-512.png" />
+    
+    <!-- Optimize font loading -->
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="/fonts/inter-var.woff2" />
   </head>
 
   <body>

@@ -5,9 +5,13 @@
   "theme_color": "#d4af37",
   "background_color": "#0f1419",
   "display": "standalone",
-  "orientation": "portrait-primary",
+  "orientation": "any",
   "scope": "/",
   "start_url": "/",
+  "id": "/",
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
   "icons": [
     {
       "src": "/favicon.png",
@@ -33,22 +37,42 @@
       "purpose": "maskable"
     }
   ],
-  "categories": ["games", "lifestyle", "entertainment"],
+  "categories": ["games", "lifestyle", "entertainment", "art"],
   "screenshots": [],
   "shortcuts": [
     {
-      "name": "Vision Scanner",
-      "short_name": "Scan",
-      "description": "Scan any En Pensent visualization",
-      "url": "/?scan=true",
-      "icons": [{ "src": "/favicon.png", "sizes": "64x64" }]
-    },
-    {
-      "name": "Create Mode",
+      "name": "Create Vision",
       "short_name": "Create",
       "description": "Design your own chess art",
       "url": "/creative-mode",
       "icons": [{ "src": "/favicon.png", "sizes": "64x64" }]
+    },
+    {
+      "name": "My Visions",
+      "short_name": "Gallery",
+      "description": "View your saved visions",
+      "url": "/my-vision",
+      "icons": [{ "src": "/favicon.png", "sizes": "64x64" }]
+    },
+    {
+      "name": "Play Chess",
+      "short_name": "Play",
+      "description": "Play with live visualization",
+      "url": "/play",
+      "icons": [{ "src": "/favicon.png", "sizes": "64x64" }]
     }
-  ]
+  ],
+  "share_target": {
+    "action": "/",
+    "method": "GET",
+    "params": {
+      "text": "pgn"
+    }
+  },
+  "display_override": ["window-controls-overlay", "standalone", "browser"],
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
+  "handle_links": "preferred",
+  "prefer_related_applications": false
 }
