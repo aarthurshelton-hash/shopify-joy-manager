@@ -1,20 +1,20 @@
 /**
- * Equilibrium Predictor v8.06-EQUILIBRIUM
+ * Equilibrium Predictor v8.08-BREAKTHROUGH-HUNTER
  * 
- * v8.06 LEARNING FROM v8.05:
- * - v8.05 over-corrected: 69% black predictions but only 47.8% accurate
- * - Swinging between white-bias and black-bias doesn't work
+ * v8.08 BREAKTHROUGH-HUNTER:
+ * - Integrates SF Vulnerability Detection to identify breakthrough opportunities
+ * - Boosts pattern recognition confidence when SF is in a blind spot
+ * - More aggressive in archetype-specific scenarios where SF historically fails
  * 
- * SOLUTION: True equilibrium with balanced weights
- * - Reduce archetype-specific boosts to prevent overcorrection
- * - Use Stockfish as symmetric tiebreaker (same thresholds for both colors)
- * - Target ~50% white / ~35% black / ~15% draw distribution
+ * KEY INSIGHT: Every SF miss is our opportunity to shine
+ * Strong archetypes (>50% accuracy) should be trusted MORE when SF is vulnerable
  * 
- * TARGET: 55-60% accuracy with balanced prediction distribution
+ * TARGET: 60%+ accuracy by capitalizing on SF weaknesses
  */
 
 import { ColorFlowSignature, QuadrantProfile, TemporalFlow } from './types';
 import { ARCHETYPE_DEFINITIONS } from './archetypeDefinitions';
+import { detectSfVulnerability, type SfVulnerability } from './sfVulnerabilityDetector';
 
 export interface EquilibriumScores {
   /** Confidence that white will win (0-100) */
@@ -31,14 +31,18 @@ export interface EquilibriumScores {
   reasoning: string;
   /** Whether the prediction meets the clarity threshold */
   highClarity: boolean;
+  /** SF vulnerability assessment (v8.08) */
+  sfVulnerability?: SfVulnerability;
+  /** Is this a breakthrough opportunity? */
+  breakthroughOpportunity?: boolean;
 }
 
 /**
  * Calculate equilibrium scores for all three outcomes
  * 
- * This is the core of the balanced prediction system.
- * We calculate independent confidence for each outcome rather than
- * binary classification that can flip-flop.
+ * v8.08: Now includes SF vulnerability detection for breakthrough opportunities
+ * We calculate independent confidence for each outcome and boost pattern
+ * recognition when SF is in a known blind spot.
  */
 export function calculateEquilibriumScores(
   signature: ColorFlowSignature,
@@ -49,6 +53,10 @@ export function calculateEquilibriumScores(
   const archetype = ARCHETYPE_DEFINITIONS[signature.archetype];
   const quadrant = signature.quadrantProfile;
   const temporal = signature.temporalFlow;
+  
+  // ===== v8.08: DETECT SF VULNERABILITY =====
+  const sfVulnerability = detectSfVulnerability(signature, stockfishEval, stockfishDepth, currentMoveNumber);
+  const isBreakthroughOpportunity = sfVulnerability.highOpportunity;
   
   // ===== COMPONENT 1: Board Control Signals =====
   const controlSignal = calculateControlSignal(signature);
@@ -67,52 +75,99 @@ export function calculateEquilibriumScores(
   const phaseSignal = calculatePhaseSignal(currentMoveNumber, signature.intensity);
   
   // ===== FUSION: Weighted combination of all signals =====
-  // Weights determine how much each component contributes
+  // v8.08: DYNAMIC WEIGHTS based on SF vulnerability
+  // When SF is vulnerable, reduce its weight and boost pattern recognition
+  const sfVulnFactor = sfVulnerability.vulnerabilityScore / 100;
+  const patternBoostFactor = isBreakthroughOpportunity ? 1.3 : 1.0;
+  
   const weights = {
-    control: 0.25,    // Board control is fundamental
-    momentum: 0.20,   // Trajectory matters
-    archetype: 0.15,  // Historical patterns
-    stockfish: 0.30,  // Tactical assessment
-    phase: 0.10,      // Context adjustment
+    control: 0.25 * patternBoostFactor,    // Boost board control when SF vulnerable
+    momentum: 0.20 * patternBoostFactor,   // Boost trajectory when SF vulnerable
+    archetype: 0.15 * patternBoostFactor,  // Boost historical patterns when SF vulnerable
+    stockfish: 0.30 * (1 - sfVulnFactor * 0.4), // REDUCE SF weight when it's in a blind spot
+    phase: 0.10,                           // Phase stays constant
+  };
+  
+  // Normalize weights to sum to 1
+  const weightSum = weights.control + weights.momentum + weights.archetype + weights.stockfish + weights.phase;
+  const normalizedWeights = {
+    control: weights.control / weightSum,
+    momentum: weights.momentum / weightSum,
+    archetype: weights.archetype / weightSum,
+    stockfish: weights.stockfish / weightSum,
+    phase: weights.phase / weightSum,
   };
   
   // Calculate raw scores for each outcome
   let whiteRaw = 
-    controlSignal.white * weights.control +
-    momentumSignal.white * weights.momentum +
-    archetypeSignal.white * weights.archetype +
-    sfSignal.white * weights.stockfish +
-    phaseSignal.white * weights.phase;
+    controlSignal.white * normalizedWeights.control +
+    momentumSignal.white * normalizedWeights.momentum +
+    archetypeSignal.white * normalizedWeights.archetype +
+    sfSignal.white * normalizedWeights.stockfish +
+    phaseSignal.white * normalizedWeights.phase;
     
   let blackRaw = 
-    controlSignal.black * weights.control +
-    momentumSignal.black * weights.momentum +
-    archetypeSignal.black * weights.archetype +
-    sfSignal.black * weights.stockfish +
-    phaseSignal.black * weights.phase;
+    controlSignal.black * normalizedWeights.control +
+    momentumSignal.black * normalizedWeights.momentum +
+    archetypeSignal.black * normalizedWeights.archetype +
+    sfSignal.black * normalizedWeights.stockfish +
+    phaseSignal.black * normalizedWeights.phase;
     
   let drawRaw = 
-    controlSignal.draw * weights.control +
-    momentumSignal.draw * weights.momentum +
-    archetypeSignal.draw * weights.archetype +
-    sfSignal.draw * weights.stockfish +
-    phaseSignal.draw * weights.phase;
+    controlSignal.draw * normalizedWeights.control +
+    momentumSignal.draw * normalizedWeights.momentum +
+    archetypeSignal.draw * normalizedWeights.archetype +
+    sfSignal.draw * normalizedWeights.stockfish +
+    phaseSignal.draw * normalizedWeights.phase;
   
   // Normalize to sum to 100
   const total = whiteRaw + blackRaw + drawRaw;
-  const whiteConfidence = Math.round((whiteRaw / total) * 100);
-  const blackConfidence = Math.round((blackRaw / total) * 100);
-  const drawConfidence = Math.round((drawRaw / total) * 100);
+  let whiteConfidence = Math.round((whiteRaw / total) * 100);
+  let blackConfidence = Math.round((blackRaw / total) * 100);
+  let drawConfidence = Math.round((drawRaw / total) * 100);
   
   // Determine prediction from highest confidence
   let prediction: 'white_wins' | 'black_wins' | 'draw';
   let finalConfidence: number;
   let reasoning: string;
   
-  // v8.06-EQUILIBRIUM: Symmetric decision making with SF as balanced tiebreaker
-  
+  // v8.08-BREAKTHROUGH-HUNTER: More aggressive prediction when in breakthrough zone
+  if (isBreakthroughOpportunity) {
+    // In breakthrough zones, trust pattern recognition FIRST
+    // Only defer to SF in absolute extreme cases (>400cp)
+    const absoluteExtremeSf = Math.abs(stockfishEval) > 400;
+    
+    if (absoluteExtremeSf) {
+      // Even in breakthrough zone, respect massive tactical evaluations
+      if (stockfishEval > 400) {
+        prediction = 'white_wins';
+        finalConfidence = 75;
+        reasoning = `Breakthrough zone BUT SF extreme (+${stockfishEval}cp) - tactical override`;
+      } else {
+        prediction = 'black_wins';
+        finalConfidence = 75;
+        reasoning = `Breakthrough zone BUT SF extreme (${stockfishEval}cp) - tactical override`;
+      }
+    } else {
+      // TRUST PATTERN RECOGNITION - this is our edge!
+      if (whiteConfidence > blackConfidence && whiteConfidence > drawConfidence) {
+        prediction = 'white_wins';
+        finalConfidence = whiteConfidence + sfVulnerability.recommendedBoost;
+        reasoning = `🚀 BREAKTHROUGH: ${signature.archetype} pattern favors WHITE (SF vuln: ${sfVulnerability.vulnerabilityScore}%)`;
+      } else if (blackConfidence > whiteConfidence && blackConfidence > drawConfidence) {
+        prediction = 'black_wins';
+        finalConfidence = blackConfidence + sfVulnerability.recommendedBoost;
+        reasoning = `🚀 BREAKTHROUGH: ${signature.archetype} pattern favors BLACK (SF vuln: ${sfVulnerability.vulnerabilityScore}%)`;
+      } else {
+        prediction = 'draw';
+        finalConfidence = drawConfidence + sfVulnerability.recommendedBoost / 2;
+        reasoning = `🚀 BREAKTHROUGH: ${signature.archetype} pattern suggests DRAW (SF vuln: ${sfVulnerability.vulnerabilityScore}%)`;
+      }
+    }
+  }
+  // Standard equilibrium logic for non-breakthrough positions
   // CASE 1: Clear leader with significant margin (require 10% gap)
-  if (whiteConfidence > blackConfidence + 10 && whiteConfidence > drawConfidence + 8) {
+  else if (whiteConfidence > blackConfidence + 10 && whiteConfidence > drawConfidence + 8) {
     prediction = 'white_wins';
     finalConfidence = whiteConfidence;
     reasoning = `White leads clearly (${whiteConfidence}% vs B:${blackConfidence}% D:${drawConfidence}%)`;
@@ -125,48 +180,72 @@ export function calculateEquilibriumScores(
     finalConfidence = drawConfidence;
     reasoning = `Draw leads (${drawConfidence}% vs W:${whiteConfidence}% B:${blackConfidence}%)`;
   } 
-  // CASE 2: v8.06 - Stockfish as SYMMETRIC tiebreaker (equal thresholds)
-  else if (stockfishEval > 100) {
-    prediction = 'white_wins';
-    finalConfidence = Math.max(whiteConfidence + 8, 55);
-    reasoning = `SF strong white (+${stockfishEval}cp)`;
-  } else if (stockfishEval < -100) {
-    prediction = 'black_wins';
-    finalConfidence = Math.max(blackConfidence + 8, 55);
-    reasoning = `SF strong black (${stockfishEval}cp)`;
-  } else if (stockfishEval > 50) {
-    prediction = 'white_wins';
-    finalConfidence = Math.max(whiteConfidence, 48);
-    reasoning = `SF white advantage (+${stockfishEval}cp)`;
-  } else if (stockfishEval < -50) {
-    prediction = 'black_wins';
-    finalConfidence = Math.max(blackConfidence, 48);
-    reasoning = `SF black advantage (${stockfishEval}cp)`;
-  }
-  // CASE 3: Near-equal SF eval - use our confidence scores
-  else if (whiteConfidence > blackConfidence && whiteConfidence > drawConfidence) {
-    prediction = 'white_wins';
-    finalConfidence = whiteConfidence;
-    reasoning = `White edge (SF: ${stockfishEval}cp)`;
-  } else if (blackConfidence > whiteConfidence && blackConfidence > drawConfidence) {
-    prediction = 'black_wins';
-    finalConfidence = blackConfidence;
-    reasoning = `Black edge (SF: ${stockfishEval}cp)`;
-  } else if (drawConfidence >= whiteConfidence && drawConfidence >= blackConfidence) {
-    prediction = 'draw';
-    finalConfidence = drawConfidence;
-    reasoning = `Draw likely (SF: ${stockfishEval}cp)`;
-  }
-  // CASE 4: Truly tied - slight favor to higher Elo attacker
-  else {
-    if (stockfishEval >= 0) {
+  // CASE 2: v8.08 - Only use SF as tiebreaker when NOT vulnerable
+  else if (sfVulnerability.vulnerabilityScore < 45) {
+    // SF is reliable in this position type, use it as tiebreaker
+    if (stockfishEval > 100) {
       prediction = 'white_wins';
-      finalConfidence = Math.max(whiteConfidence, 42);
-      reasoning = `Tie broken: SF slightly favors white`;
-    } else {
+      finalConfidence = Math.max(whiteConfidence + 8, 55);
+      reasoning = `SF reliable here (+${stockfishEval}cp)`;
+    } else if (stockfishEval < -100) {
       prediction = 'black_wins';
-      finalConfidence = Math.max(blackConfidence, 42);
-      reasoning = `Tie broken: SF slightly favors black`;
+      finalConfidence = Math.max(blackConfidence + 8, 55);
+      reasoning = `SF reliable here (${stockfishEval}cp)`;
+    } else if (stockfishEval > 50) {
+      prediction = 'white_wins';
+      finalConfidence = Math.max(whiteConfidence, 48);
+      reasoning = `SF white advantage (+${stockfishEval}cp)`;
+    } else if (stockfishEval < -50) {
+      prediction = 'black_wins';
+      finalConfidence = Math.max(blackConfidence, 48);
+      reasoning = `SF black advantage (${stockfishEval}cp)`;
+    } else {
+      // Equal SF - use pattern confidence
+      if (whiteConfidence >= blackConfidence && whiteConfidence >= drawConfidence) {
+        prediction = 'white_wins';
+        finalConfidence = whiteConfidence;
+        reasoning = `Pattern edge: white (SF: ${stockfishEval}cp)`;
+      } else if (blackConfidence >= drawConfidence) {
+        prediction = 'black_wins';
+        finalConfidence = blackConfidence;
+        reasoning = `Pattern edge: black (SF: ${stockfishEval}cp)`;
+      } else {
+        prediction = 'draw';
+        finalConfidence = drawConfidence;
+        reasoning = `Pattern edge: draw (SF: ${stockfishEval}cp)`;
+      }
+    }
+  }
+  // CASE 3: SF is moderately vulnerable - trust patterns more
+  else {
+    // Trust our pattern recognition over SF
+    if (whiteConfidence > blackConfidence && whiteConfidence > drawConfidence) {
+      prediction = 'white_wins';
+      finalConfidence = whiteConfidence + Math.round(sfVulnerability.recommendedBoost / 2);
+      reasoning = `Pattern favors WHITE (SF vuln: ${sfVulnerability.vulnerabilityScore}%)`;
+    } else if (blackConfidence > whiteConfidence && blackConfidence > drawConfidence) {
+      prediction = 'black_wins';
+      finalConfidence = blackConfidence + Math.round(sfVulnerability.recommendedBoost / 2);
+      reasoning = `Pattern favors BLACK (SF vuln: ${sfVulnerability.vulnerabilityScore}%)`;
+    } else if (drawConfidence >= whiteConfidence && drawConfidence >= blackConfidence) {
+      prediction = 'draw';
+      finalConfidence = drawConfidence;
+      reasoning = `Pattern suggests DRAW (SF vuln: ${sfVulnerability.vulnerabilityScore}%)`;
+    } else {
+      // Tie-break using dominant side from color flow
+      if (signature.dominantSide === 'white') {
+        prediction = 'white_wins';
+        finalConfidence = Math.max(whiteConfidence, 45);
+        reasoning = `Color flow dominance: WHITE`;
+      } else if (signature.dominantSide === 'black') {
+        prediction = 'black_wins';
+        finalConfidence = Math.max(blackConfidence, 45);
+        reasoning = `Color flow dominance: BLACK`;
+      } else {
+        prediction = 'draw';
+        finalConfidence = Math.max(drawConfidence, 40);
+        reasoning = `Contested - draw likely`;
+      }
     }
   }
   
@@ -177,7 +256,12 @@ export function calculateEquilibriumScores(
       ? Math.max(whiteConfidence, drawConfidence)
       : Math.max(whiteConfidence, blackConfidence);
   
-  const highClarity = finalConfidence - secondHighest >= 15;
+  // v8.08: Higher clarity threshold in breakthrough zones (we're more confident)
+  const clarityThreshold = isBreakthroughOpportunity ? 10 : 15;
+  const highClarity = finalConfidence - secondHighest >= clarityThreshold;
+  
+  // Clamp final confidence
+  finalConfidence = Math.min(88, Math.max(30, finalConfidence));
   
   return {
     whiteConfidence,
@@ -187,6 +271,8 @@ export function calculateEquilibriumScores(
     finalConfidence,
     reasoning,
     highClarity,
+    sfVulnerability,
+    breakthroughOpportunity: isBreakthroughOpportunity,
   };
 }
 
