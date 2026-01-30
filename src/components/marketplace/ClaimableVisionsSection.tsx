@@ -22,9 +22,11 @@ interface OrphanedVision {
 
 interface ClaimableVisionsSectionProps {
   onClaim?: () => void;
+  onAuthRequired?: () => void;
+  onPremiumRequired?: () => void;
 }
 
-export const ClaimableVisionsSection: React.FC<ClaimableVisionsSectionProps> = ({ onClaim }) => {
+export const ClaimableVisionsSection: React.FC<ClaimableVisionsSectionProps> = ({ onClaim, onAuthRequired, onPremiumRequired }) => {
   const { user, isPremium } = useAuth();
   const navigate = useNavigate();
   const { setOrderData } = usePrintOrderStore();
@@ -86,10 +88,12 @@ export const ClaimableVisionsSection: React.FC<ClaimableVisionsSectionProps> = (
     });
 
     if (!user) {
+      onAuthRequired?.();
       toast.error('Please sign in to claim visions');
       return;
     }
     if (!isPremium) {
+      onPremiumRequired?.();
       toast.error('Premium membership required', {
         description: 'Upgrade to claim and own visions',
       });

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { ShoppingBag, Gift, DollarSign, Loader2, Crown, Package, Shield, Palette, Sparkles, TrendingUp, Eye, Printer, ArrowRight, RefreshCw, Gem } from 'lucide-react';
+import { ShoppingBag, Gift, DollarSign, Loader2, Crown, Package, Shield, Palette, Sparkles, TrendingUp, Eye, Printer, ArrowRight, RefreshCw, Gem, User } from 'lucide-react';
 import { ListingsGridSkeleton } from '@/components/marketplace/MarketplaceSkeletons';
 import { useRandomGameArt } from '@/hooks/useRandomGameArt';
 import { Card, CardContent } from '@/components/ui/card';
@@ -43,7 +43,7 @@ const ITEMS_PER_PAGE = 20;
 const Marketplace: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { user, isPremium } = useAuth();
+  const { user, isPremium, isCheckingSubscription, openCheckout } = useAuth();
   const gameArtImages = useRandomGameArt(16);
   const { setOrderData } = usePrintOrderStore();
   const {
@@ -452,13 +452,95 @@ const Marketplace: React.FC = () => {
           {!isPremium && user && (
             <div className="mt-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center gap-2">
               <Crown className="h-5 w-5 text-amber-500 shrink-0" />
-              <span className="text-sm text-amber-600">
-                Premium membership required to claim ownership. <span className="text-muted-foreground">Anyone can order prints.</span>
+              <span className="text-sm text-amber-600 dark:text-amber-400">
+                Premium members can claim free visions and purchase listings
               </span>
+            </div>
+          )}
+          
+          {/* Premium CTA Banner - High Intent */}
+          {!isPremium && user && (
+            <div className="mt-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-xl border border-primary/20 bg-gradient-to-r from-primary/10 to-primary/5">
+              <div className="text-sm">
+                <div className="font-medium text-foreground">Unlock Ownership</div>
+                <div className="text-muted-foreground">
+                  Premium members can claim free visions and purchase paid listings. Prints are available to everyone.
+                </div>
+              </div>
+              <Button
+                className="btn-luxury"
+                size="sm"
+                disabled={isCheckingSubscription}
+                onClick={() => setShowPremiumModal(true)}
+              >
+                <Crown className="h-4 w-4 mr-2" />
+                Upgrade
+              </Button>
+            </div>
+          )}
+          
+          {/* Sign-in CTA for guests */}
+          {!user && (
+            <div className="mt-4 p-4 rounded-xl border border-border/50 bg-card/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="text-sm">
+                <div className="font-medium text-foreground">Want to own a vision?</div>
+                <div className="text-muted-foreground">Sign in to claim free visions or purchase listings. Prints remain available to everyone.</div>
+              </div>
+              <Button size="sm" onClick={() => setShowAuthModal(true)} className="gap-2">
+                <User className="h-4 w-4" />
+                Sign In
+              </Button>
             </div>
           )}
         </div>
       </section>
+
+      {/* Quick stats */}
+      <section className="border-b border-border/40 bg-muted/30">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <Eye className="h-4 w-4" />
+              <span><strong className="text-foreground">{totalMarketVisions.toLocaleString()}</strong> total visions</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              <span><strong className="text-foreground">{totalActiveListed}</strong> available</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Package className="h-4 w-4" />
+              <span><strong className="text-foreground">{filteredListings.length}</strong> shown</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Main Content */}
+      <main className="container mx-auto px-4 py-6 sm:py-8 space-y-8">
+        
+        {/* Transparency Info + Education Fund */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-2">
+            <MarketplaceTransparency />
+          </div>
+          <div className="lg:col-span-1">
+            <EducationFundCard />
+          </div>
+        </div>
+        
+        {/* Claimable Visions Section */}
+        <ClaimableVisionsSection 
+          onClaim={refreshListings}
+          onAuthRequired={() => setShowAuthModal(true)}
+          onPremiumRequired={() => setShowPremiumModal(true)}
+        />
+
+        {/* Trending Visions by Royalty Activity */}
+        <TrendingVisions />
+
+        {/* Featured Book Showcase */}
+        <BookShowcase variant="compact" />
+      </main>
 
       {/* Content with Tabs */}
       <div className="container mx-auto px-4 py-6 sm:py-8">
@@ -486,7 +568,11 @@ const Marketplace: React.FC = () => {
             <RecentlyViewedSection />
             
             {/* Claimable Visions Section */}
-            <ClaimableVisionsSection onClaim={refreshListings} />
+            <ClaimableVisionsSection 
+              onClaim={refreshListings}
+              onAuthRequired={() => setShowAuthModal(true)}
+              onPremiumRequired={() => setShowPremiumModal(true)}
+            />
 
             {/* Trending Visions by Royalty Activity */}
             <TrendingVisions />
