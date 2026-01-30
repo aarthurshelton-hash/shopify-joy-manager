@@ -6,12 +6,15 @@
  * - SelfEvolvingSystem (Genes, Patterns, Thresholds)
  * - Market Prediction (Tick, Correlation, Accuracy)
  * - Code Health (Auto-Heal, Analysis)
+ * - Cross-Domain Learning (Chess → Code → Market pattern transfer)
+ * - IBKR Intelligence (Real-time market pattern learning)
  * 
- * "The Code is the BLOOD, the Market is the NERVOUS SYSTEM"
+ * "The Code is the BLOOD, the Market is the NERVOUS SYSTEM, Chess is the BRAIN"
  */
 
 import { crossDomainEngine } from './crossDomainEngine';
 import { selfEvolvingSystem } from '../finance/selfEvolvingSystem';
+import { crossDomainLearningPipeline, ibkrIntelligenceCollector } from '../learning';
 import type { PredictionOutcome, MarketConditions } from '../finance/evolution/types';
 import type { UnifiedPrediction, DomainType } from './types';
 
@@ -30,6 +33,13 @@ export interface SynchronizationState {
   autoHealTriggered: number;
   issuesResolved: number;
   healingEfficiency: number;
+  
+  // Cross-domain learning metrics
+  patternsLearned: number;
+  crossDomainTransfers: number;
+  chessToMarketAccuracy: number;
+  ibkrConnected: boolean;
+  marketIntelligenceCount: number;
   
   // Domain contributions
   domainHealth: Record<DomainType, number>;
@@ -61,6 +71,11 @@ class UnifiedSynchronizer {
       autoHealTriggered: 0,
       issuesResolved: 0,
       healingEfficiency: 1.0,
+      patternsLearned: 0,
+      crossDomainTransfers: 0,
+      chessToMarketAccuracy: 0.5,
+      ibkrConnected: false,
+      marketIntelligenceCount: 0,
       domainHealth: {
         light: 0.5,
         network: 0.5,
@@ -123,18 +138,22 @@ class UnifiedSynchronizer {
     // Get state from all systems
     const evolutionState = selfEvolvingSystem.getState();
     const crossDomainState = crossDomainEngine.getState();
+    const learningState = crossDomainLearningPipeline.getState();
+    const ibkrState = ibkrIntelligenceCollector.getState();
     
-    // Calculate universal fitness (weighted average)
+    // Calculate universal fitness (weighted average including learning)
     const evolutionFitness = evolutionState.metrics.currentFitness;
     const crossDomainAccuracy = crossDomainState.accuracy.overall;
-    this.state.universalFitness = evolutionFitness * 0.5 + crossDomainAccuracy * 0.5;
+    const learningFactor = Math.min(learningState.chessToMarketAccuracy, 1.0);
+    this.state.universalFitness = (evolutionFitness * 0.4 + crossDomainAccuracy * 0.3 + learningFactor * 0.3);
     
-    // Calculate cross-domain resonance
+    // Calculate cross-domain resonance (now includes learning)
     const topCorrelations = crossDomainEngine.getTopCorrelations(3);
     const avgCorrelation = topCorrelations.length > 0
       ? topCorrelations.reduce((sum, c) => sum + c.confidence, 0) / topCorrelations.length
       : 0.5;
-    this.state.crossDomainResonance = avgCorrelation;
+    const learningResonance = (learningState.codeToChessResonance + learningState.marketToCodeAlignment) / 2;
+    this.state.crossDomainResonance = (avgCorrelation + learningResonance) / 2;
     
     // Combine evolution velocities
     this.state.evolutionVelocity = (
@@ -142,14 +161,22 @@ class UnifiedSynchronizer {
       crossDomainState.learningVelocity
     ) / 2;
     
+    // Update learning metrics
+    this.state.patternsLearned = learningState.totalPatternsLearned;
+    this.state.crossDomainTransfers = learningState.crossDomainTransfers;
+    this.state.chessToMarketAccuracy = learningState.chessToMarketAccuracy;
+    this.state.ibkrConnected = ibkrState.isConnected;
+    this.state.marketIntelligenceCount = ibkrState.tradesCollected;
+    
     // Update domain health from cross-domain accuracy
     for (const [domain, accuracy] of Object.entries(crossDomainState.accuracy.byDomain)) {
       this.state.domainHealth[domain as DomainType] = accuracy;
     }
     
-    // Market and code health from evolution patterns
-    this.state.domainHealth.market = evolutionFitness;
+    // Market and code health from evolution patterns + learning
+    this.state.domainHealth.market = (evolutionFitness + ibkrState.winRate) / 2;
     this.state.domainHealth.code = this.state.healingEfficiency;
+    this.state.domainHealth.chess = learningState.chessToMarketAccuracy;
     
     // Update sync metadata
     this.state.lastSync = now;
