@@ -22,66 +22,49 @@ import { supabase } from '@/integrations/supabase/client';
 import CEOBusinessCard from '@/components/admin/CEOBusinessCard';
 
 const UserMenu: React.FC = () => {
-  const { user, profile, isLoading, isPremium, isFreeAccount, mfaStatus, signOut, openCheckout, openCustomerPortal } = useAuth();
+  const { user, profile, isLoading, isPremium, isFreeAccount, isAdmin, mfaStatus, signOut, openCheckout, openCustomerPortal } = useAuth();
   const navigate = useNavigate();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showVisionaryModal, setShowVisionaryModal] = useState(false);
   const [showMFASetup, setShowMFASetup] = useState(false);
   const [showCEOCard, setShowCEOCard] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [pendingWithdrawals, setPendingWithdrawals] = useState(0);
   const [pendingDMCA, setPendingDMCA] = useState(0);
 
-  // Check if user is admin and fetch pending withdrawals
+  // Fetch pending counts if admin
   useEffect(() => {
-    const checkAdminStatus = async () => {
-      if (!user) {
-        setIsAdmin(false);
+    const fetchAdminCounts = async () => {
+      if (!user || !isAdmin) {
         setPendingWithdrawals(0);
         setPendingDMCA(0);
         return;
       }
       
       try {
-        const { data, error } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', user.id)
-          .eq('role', 'admin')
-          .maybeSingle();
+        const [withdrawalsResult, dmcaResult] = await Promise.all([
+          supabase
+            .from('withdrawal_requests')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'pending'),
+          supabase
+            .from('dmca_reports')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'pending'),
+        ]);
         
-        if (error) throw error;
-        const adminStatus = !!data;
-        setIsAdmin(adminStatus);
-        
-        // Fetch pending counts if admin
-        if (adminStatus) {
-          const [withdrawalsResult, dmcaResult] = await Promise.all([
-            supabase
-              .from('withdrawal_requests')
-              .select('*', { count: 'exact', head: true })
-              .eq('status', 'pending'),
-            supabase
-              .from('dmca_reports')
-              .select('*', { count: 'exact', head: true })
-              .eq('status', 'pending'),
-          ]);
-          
-          if (!withdrawalsResult.error) {
-            setPendingWithdrawals(withdrawalsResult.count || 0);
-          }
-          if (!dmcaResult.error) {
-            setPendingDMCA(dmcaResult.count || 0);
-          }
+        if (!withdrawalsResult.error) {
+          setPendingWithdrawals(withdrawalsResult.count || 0);
+        }
+        if (!dmcaResult.error) {
+          setPendingDMCA(dmcaResult.count || 0);
         }
       } catch (error) {
-        console.error('Error checking admin status:', error);
-        setIsAdmin(false);
+        console.error('Error fetching admin counts:', error);
       }
     };
     
-    checkAdminStatus();
-  }, [user]);
+    fetchAdminCounts();
+  }, [user, isAdmin]);
 
   if (isLoading) {
     return (
