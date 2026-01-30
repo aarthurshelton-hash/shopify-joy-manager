@@ -22,3 +22,6 @@ export { MetricGrid64, type MetricGrid64Props } from './MetricGrid64';
 export { ExchangeValueDisplay, type ExchangeValueDisplayProps, type ExchangeValue } from './ExchangeValueDisplay';
 export { CodeHealthGauge, type CodeHealthGaugeProps, type CodeHealthData } from './CodeHealthGauge';
 export { ArchetypeEvolutionPath, type ArchetypeEvolutionPathProps } from './ArchetypeEvolutionPath';
+
+// Cross-Domain Learning visualizations
+export { CrossDomainLearningDashboard } from './CrossDomainLearningDashboard';
