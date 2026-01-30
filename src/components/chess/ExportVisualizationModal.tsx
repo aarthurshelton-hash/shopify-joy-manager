@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import html2canvas from 'html2canvas';
 import { 
   Dialog, 
@@ -16,24 +16,23 @@ import {
   Moon, 
   Printer, 
   Sparkles,
-  Bookmark,
-  Check,
   Crown,
   Camera,
-  Copy,
   FileText,
-  Activity
+  Eye,
+  EyeOff,
 } from 'lucide-react';
+import { Slider } from '@/components/ui/slider';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
-import { MoveHistoryEntry, EnPensentOverlay } from './EnPensentOverlay';
-import StaticPieceOverlay from './StaticPieceOverlay';
+import { MoveHistoryEntry } from './EnPensentOverlay';
 import { PieceType } from '@/lib/chess/pieceColors';
 import { usePrintOrderStore } from '@/stores/printOrderStore';
 import { useVisualizationStateStore } from '@/stores/visualizationStateStore';
 import { useSessionStore } from '@/stores/sessionStore';
-import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 import QRCode from 'qrcode';
 import { recordVisionInteraction } from '@/lib/visualizations/visionScoring';
 import { VisionaryMembershipCard } from '@/components/premium';
@@ -42,6 +41,7 @@ import { getBoardPositionFen, STARTING_FEN } from '@/lib/chess/fenUtils';
 import { useEnPensentPatterns } from '@/hooks/useEnPensentPatterns';
 import type { TemporalSignature } from '@/lib/pensent-core/types/core';
 import { classifyUniversalArchetype } from '@/lib/pensent-core/archetype/universalClassifier';
+import { UnifiedVisionRenderer, useBenchmarkGameLinks, VisionBenchmarkCard } from './vision';
 
 interface ExportVisualizationModalProps {
   isOpen: boolean;
@@ -81,12 +81,16 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
     captureState, 
     darkMode: storeDarkMode, 
     setDarkMode: setStoreDarkMode,
-    showPieces,
-    pieceOpacity,
+    showPieces: storeShowPieces,
+    pieceOpacity: storePieceOpacity,
+    setShowPieces: setStoreShowPieces,
+    setPieceOpacity: setStorePieceOpacity,
   } = useVisualizationStateStore();
   const { setCapturedTimelineState, setReturningFromOrder } = useSessionStore();
   const exportRef = useRef<HTMLDivElement>(null);
   const [darkMode, setDarkModeLocal] = useState(storeDarkMode);
+  const [showPieces, setShowPiecesLocal] = useState(storeShowPieces);
+  const [pieceOpacity, setPieceOpacityLocal] = useState(storePieceOpacity);
   const [isDownloading, setIsDownloading] = useState(false);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
   const [showVisionaryModal, setShowVisionaryModal] = useState(false);
@@ -98,6 +102,30 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
     signature ? classifyUniversalArchetype(signature) : null,
     [signature]
   );
+
+  // Benchmark game links - show related predictions
+  const { 
+    linkedPredictions, 
+    hasBreakthroughCase, 
+    accuracy,
+    isLoading: benchmarkLoading 
+  } = useBenchmarkGameLinks({
+    gameName: `${gameInfo.white} vs ${gameInfo.black}`,
+    whitePlayer: gameInfo.white,
+    blackPlayer: gameInfo.black,
+    enabled: isOpen,
+  });
+
+  // Sync piece settings with store
+  const setShowPieces = useCallback((value: boolean) => {
+    setShowPiecesLocal(value);
+    setStoreShowPieces(value);
+  }, [setStoreShowPieces]);
+
+  const setPieceOpacity = useCallback((value: number) => {
+    setPieceOpacityLocal(value);
+    setStorePieceOpacity(value);
+  }, [setStorePieceOpacity]);
 
   // Wrapped setDarkMode to sync with store
   const setDarkMode = useCallback((value: boolean) => {
@@ -310,56 +338,29 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
           </Button>
         </div>
 
-        {/* Visualization Preview - The Trademark Look - matches PrintPreview exactly */}
+        {/* Visualization Preview - Uses Unified Renderer for consistency */}
         <div className="flex justify-center py-4">
           <div 
             ref={exportRef}
             className={`p-6 md:p-8 rounded-sm border shadow-2xl transition-colors ${
               darkMode 
-                ? 'bg-[#0A0A0A] border-stone-800' 
-                : 'bg-[#FDFCFB] border-stone-200'
+                ? 'bg-background border-border' 
+                : 'bg-card border-border'
             }`}
             style={{ maxWidth: '420px' }}
           >
-            {/* The En Pensent board visualization */}
-            <div className="relative w-64 h-64 md:w-80 md:h-80" data-board-container="true">
-              {/* Chess board grid */}
-              <div className="absolute inset-0 grid grid-cols-8 grid-rows-8">
-                {Array.from({ length: 64 }).map((_, i) => {
-                  const row = Math.floor(i / 8);
-                  const col = i % 8;
-                  const isLight = (row + col) % 2 === 0;
-                  return (
-                    <div
-                      key={i}
-                      className={`${isLight ? 'bg-stone-200' : 'bg-stone-600'}`}
-                    />
-                  );
-                })}
-              </div>
-              
-              {/* En Pensent Overlay */}
-              <EnPensentOverlay
-                moveHistory={moveHistory}
-                whitePalette={whitePalette}
-                blackPalette={blackPalette}
-                opacity={0.85}
-                isEnabled={true}
-                flipped={false}
-              />
-              
-              {/* Pieces overlay when enabled - rendered absolutely on top */}
-              {showPieces && pgn && (
-                <div className="absolute inset-0">
-                  <StaticPieceOverlay
-                    pgn={pgn}
-                    currentMoveNumber={gameInfo.totalMoves}
-                    size={typeof window !== 'undefined' && window.innerWidth >= 768 ? 320 : 256}
-                    pieceOpacity={pieceOpacity}
-                  />
-                </div>
-              )}
-            </div>
+            {/* The En Pensent board visualization - Unified Renderer */}
+            <UnifiedVisionRenderer
+              moveHistory={moveHistory}
+              size={typeof window !== 'undefined' && window.innerWidth >= 768 ? 320 : 256}
+              whitePalette={whitePalette}
+              blackPalette={blackPalette}
+              showPieces={showPieces}
+              pieceOpacity={pieceOpacity}
+              darkMode={darkMode}
+              pgn={pgn}
+              currentMoveNumber={gameInfo.totalMoves}
+            />
 
             {/* Game Info - Trademark Style matching PrintPreview exactly */}
             <div className={`mt-6 pt-4 border-t ${darkMode ? 'border-stone-800' : 'border-stone-200'}`}>
@@ -455,6 +456,38 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
             </Button>
           </div>
 
+          {/* Pieces Toggle - What You See Is What You Get */}
+          <div className="flex items-center justify-center gap-4 py-2 px-4 rounded-lg bg-muted/50">
+            <div className="flex items-center gap-2">
+              <Switch
+                id="show-pieces"
+                checked={showPieces}
+                onCheckedChange={setShowPieces}
+              />
+              <Label htmlFor="show-pieces" className="text-xs flex items-center gap-1">
+                {showPieces ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                Show Pieces
+              </Label>
+            </div>
+            
+            {showPieces && (
+              <div className="flex items-center gap-2">
+                <Label className="text-xs">Opacity</Label>
+                <Slider
+                  value={[pieceOpacity * 100]}
+                  onValueChange={([v]) => setPieceOpacity(v / 100)}
+                  min={20}
+                  max={100}
+                  step={10}
+                  className="w-20"
+                />
+                <span className="text-xs text-muted-foreground w-8">
+                  {Math.round(pieceOpacity * 100)}%
+                </span>
+              </div>
+            )}
+          </div>
+
           {/* FEN Export Button */}
           <div className="flex justify-center">
             <Button
@@ -473,6 +506,17 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
               Copy Final Position (FEN)
             </Button>
           </div>
+
+          {/* Benchmark Intelligence Card - show linked predictions */}
+          {linkedPredictions.length > 0 && (
+            <VisionBenchmarkCard
+              predictions={linkedPredictions}
+              accuracy={accuracy}
+              hasBreakthroughCase={hasBreakthroughCase}
+              isLoading={benchmarkLoading}
+              compact
+            />
+          )}
 
           {/* Order Print CTA */}
           <motion.div 
