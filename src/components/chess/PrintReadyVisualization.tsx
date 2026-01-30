@@ -1,11 +1,9 @@
 import React from 'react';
-import ChessBoardVisualization from './ChessBoardVisualization';
 import GameInfoDisplay from './GameInfoDisplay';
-import { EnPensentOverlay, MoveHistoryEntry } from './EnPensentOverlay';
+import { MoveHistoryEntry } from './EnPensentOverlay';
 import { SquareData } from '@/lib/chess/gameSimulator';
 import { PieceType, PieceColor } from '@/lib/chess/pieceColors';
-import { HighlightedPiece } from '@/contexts/LegendHighlightContext';
-import StaticPieceOverlay from './StaticPieceOverlay';
+import { UnifiedVisionRenderer } from './vision';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 
 interface GameData {
@@ -105,69 +103,56 @@ export const PrintReadyVisualization: React.FC<PrintReadyVisualizationProps> = (
   // Get effective PGN for piece overlay
   const effectivePgn = pgn || gameData.pgn || '';
 
-  // Render the chess board - either EnPensent overlay or standard visualization
+  // Get highlighted pieces from state
+  const highlightedPieces = highlightState?.lockedPieces.map(p => ({
+    pieceType: p.pieceType,
+    pieceColor: p.pieceColor,
+  }));
+
+  // Render the chess board using unified renderer
   const renderBoard = () => {
+    // Prefer move history (EnPensent overlay) if available
     if (enPensentData) {
       return (
-        <div style={{ position: 'relative', width: boardSize, height: boardSize }}>
-          {/* Base chess grid */}
-          <div style={{ 
-            position: 'absolute', 
-            inset: 0, 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(8, 1fr)',
-            gridTemplateRows: 'repeat(8, 1fr)',
-          }}>
-            {Array.from({ length: 64 }).map((_, i) => {
-              const row = Math.floor(i / 8);
-              const col = i % 8;
-              const isLight = (row + col) % 2 === 0;
-              return (
-                <div
-                  key={i}
-                  style={{ backgroundColor: isLight ? '#e7e5e4' : '#78716c' }}
-                />
-              );
-            })}
-          </div>
-          {/* EnPensent Overlay */}
-          <EnPensentOverlay
-            moveHistory={enPensentData.moveHistory}
-            whitePalette={enPensentData.whitePalette}
-            blackPalette={enPensentData.blackPalette}
-            opacity={0.85}
-            isEnabled={true}
-            flipped={false}
-          />
-        </div>
+        <UnifiedVisionRenderer
+          moveHistory={enPensentData.moveHistory}
+          size={boardSize}
+          whitePalette={enPensentData.whitePalette}
+          blackPalette={enPensentData.blackPalette}
+          showPieces={piecesState?.showPieces || false}
+          pieceOpacity={piecesState?.pieceOpacity || 0.7}
+          darkMode={darkMode}
+          pgn={effectivePgn}
+          currentMoveNumber={piecesState?.currentMoveNumber}
+          highlightedPieces={highlightedPieces}
+          compareMode={highlightState?.compareMode}
+          withWatermark={withWatermark}
+          showQR={showQR}
+          qrDataUrl={qrDataUrl}
+        />
       );
     }
     
     if (board) {
-      // Convert highlight state to HighlightedPiece array for the visualization
-      const overrideHighlightedPieces: HighlightedPiece[] | undefined = highlightState?.lockedPieces.map(p => ({
-        pieceType: p.pieceType,
-        pieceColor: p.pieceColor,
-      }));
-      
+      // Need to create a minimal move history from board for the renderer
+      // For now, fall back to ChessBoardVisualization for board-based rendering
       return (
-        <div style={{ position: 'relative', width: boardSize, height: boardSize }}>
-          <ChessBoardVisualization 
-            board={board} 
-            size={boardSize}
-            overrideHighlightedPieces={overrideHighlightedPieces}
-            overrideCompareMode={highlightState?.compareMode}
-          />
-          {/* Pieces overlay using StaticPieceOverlay component */}
-          {piecesState?.showPieces && effectivePgn && (
-            <StaticPieceOverlay
-              pgn={effectivePgn}
-              currentMoveNumber={piecesState.currentMoveNumber}
-              size={boardSize}
-              pieceOpacity={piecesState.pieceOpacity}
-            />
-          )}
-        </div>
+        <UnifiedVisionRenderer
+          board={board}
+          size={boardSize}
+          whitePalette={{} as Record<PieceType, string>}
+          blackPalette={{} as Record<PieceType, string>}
+          showPieces={piecesState?.showPieces || false}
+          pieceOpacity={piecesState?.pieceOpacity || 0.7}
+          darkMode={darkMode}
+          pgn={effectivePgn}
+          currentMoveNumber={piecesState?.currentMoveNumber}
+          highlightedPieces={highlightedPieces}
+          compareMode={highlightState?.compareMode}
+          withWatermark={withWatermark}
+          showQR={showQR}
+          qrDataUrl={qrDataUrl}
+        />
       );
     }
     
