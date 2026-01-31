@@ -11,3 +11,8 @@ export { PhotonicCoherencePanel } from './PhotonicCoherencePanel';
 export { CrossDomainCorrelationsPanel } from './CrossDomainCorrelationsPanel';
 export { StyleProfilePanel } from './StyleProfilePanel';
 export { MethodologyPanel } from './MethodologyPanel';
+
+// New components based on AI reviewer feedback
+export { PublicBenchmarkDashboard } from './PublicBenchmarkDashboard';
+export { VisualAbstractionShowcase } from './VisualAbstractionShowcase';
+export { BlackSwanDiscoveryPanel } from './BlackSwanDiscoveryPanel';

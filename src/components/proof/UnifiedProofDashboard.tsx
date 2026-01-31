@@ -3,6 +3,8 @@
  * 
  * The central command center showing:
  * - Chess prediction breakthroughs
+ * - Visual abstraction showcase (NEW - AI reviewer strength)
+ * - Black swan cross-domain discoveries (NEW - AI reviewer strength)
  * - Cultural arbitrage opportunities
  * - Photonic coherence state
  * - Cross-domain correlations
@@ -15,7 +17,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { motion } from 'framer-motion';
 import { 
-  Brain, Crown, Globe, Radio, Link2, Sparkles, Activity, Timer, BookOpen
+  Brain, Crown, Globe, Radio, Link2, Sparkles, Activity, Timer, BookOpen,
+  Fingerprint, Zap, BarChart3
 } from 'lucide-react';
 import { ProofDashboard } from '@/components/chess/ProofDashboard';
 import { CulturalArbitragePanel } from './CulturalArbitragePanel';
@@ -23,6 +26,9 @@ import { PhotonicCoherencePanel } from './PhotonicCoherencePanel';
 import { CrossDomainCorrelationsPanel } from './CrossDomainCorrelationsPanel';
 import { StyleProfilePanel } from './StyleProfilePanel';
 import { MethodologyPanel } from './MethodologyPanel';
+import { PublicBenchmarkDashboard } from './PublicBenchmarkDashboard';
+import { VisualAbstractionShowcase } from './VisualAbstractionShowcase';
+import { BlackSwanDiscoveryPanel } from './BlackSwanDiscoveryPanel';
 
 export function UnifiedProofDashboard() {
   return (
@@ -53,29 +59,48 @@ export function UnifiedProofDashboard() {
           <span className="flex items-center gap-1"><Timer className="w-3 h-3 text-orange-400" /> Style</span>
           <span className="flex items-center gap-1"><Globe className="w-3 h-3 text-blue-400" /> Cultural</span>
           <span className="flex items-center gap-1"><Radio className="w-3 h-3 text-purple-400" /> Photonic</span>
+          <span className="flex items-center gap-1"><Sparkles className="w-3 h-3 text-yellow-400" /> Black Swan</span>
         </div>
       </motion.div>
 
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-flex">
+        <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8 lg:w-auto lg:inline-flex">
           <TabsTrigger value="overview" className="gap-2"><Brain className="w-4 h-4" /><span className="hidden sm:inline">Overview</span></TabsTrigger>
+          <TabsTrigger value="benchmark" className="gap-2"><BarChart3 className="w-4 h-4" /><span className="hidden sm:inline">Benchmark</span></TabsTrigger>
+          <TabsTrigger value="abstraction" className="gap-2"><Fingerprint className="w-4 h-4" /><span className="hidden sm:inline">Abstraction</span></TabsTrigger>
+          <TabsTrigger value="blackswan" className="gap-2"><Sparkles className="w-4 h-4" /><span className="hidden sm:inline">Black Swan</span></TabsTrigger>
           <TabsTrigger value="chess" className="gap-2"><Crown className="w-4 h-4" /><span className="hidden sm:inline">Chess</span></TabsTrigger>
           <TabsTrigger value="style" className="gap-2"><Timer className="w-4 h-4" /><span className="hidden sm:inline">Style DNA</span></TabsTrigger>
           <TabsTrigger value="cultural" className="gap-2"><Globe className="w-4 h-4" /><span className="hidden sm:inline">Cultural</span></TabsTrigger>
-          <TabsTrigger value="photonic" className="gap-2"><Radio className="w-4 h-4" /><span className="hidden sm:inline">Photonic</span></TabsTrigger>
           <TabsTrigger value="methodology" className="gap-2"><BookOpen className="w-4 h-4" /><span className="hidden sm:inline">Methodology</span></TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
+          {/* Highlight new AI-reviewer-driven features */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <VisualAbstractionShowcase />
+            <BlackSwanDiscoveryPanel />
+          </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <StyleProfilePanel />
             <MethodologyPanel />
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <CulturalArbitragePanel />
-            <PhotonicCoherencePanel />
-          </div>
           <CrossDomainCorrelationsPanel />
+        </TabsContent>
+
+        <TabsContent value="benchmark">
+          <PublicBenchmarkDashboard />
+        </TabsContent>
+
+        <TabsContent value="abstraction">
+          <VisualAbstractionShowcase />
+        </TabsContent>
+
+        <TabsContent value="blackswan">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <BlackSwanDiscoveryPanel />
+            <CrossDomainCorrelationsPanel />
+          </div>
         </TabsContent>
 
         <TabsContent value="chess"><ProofDashboard /></TabsContent>
