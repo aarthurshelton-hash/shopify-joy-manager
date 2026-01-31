@@ -101,3 +101,18 @@ verify_jwt = false
 
 [functions.benchmark-health]
 verify_jwt = false
+
+[functions.bulletproof-marketplace-purchase]
+verify_jwt = false
+
+[functions.distribute-royalties]
+verify_jwt = false
+
+[functions.marketplace-purchase]
+verify_jwt = false
+
+[functions.complete-marketplace-purchase]
+verify_jwt = false
+
+[functions.continuous-learning]
+verify_jwt = false

@@ -916,6 +916,65 @@ export type Database = {
         }
         Relationships: []
       }
+      digital_assets: {
+        Row: {
+          created_at: string | null
+          creator_id: string
+          current_owner_id: string
+          edition_number: number
+          freeze_reason: string | null
+          id: string
+          is_frozen: boolean | null
+          max_editions: number
+          metadata: Json | null
+          minted_at: string | null
+          ownership_proof: string
+          transfer_count: number | null
+          updated_at: string | null
+          visualization_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          creator_id: string
+          current_owner_id: string
+          edition_number?: number
+          freeze_reason?: string | null
+          id?: string
+          is_frozen?: boolean | null
+          max_editions?: number
+          metadata?: Json | null
+          minted_at?: string | null
+          ownership_proof: string
+          transfer_count?: number | null
+          updated_at?: string | null
+          visualization_id: string
+        }
+        Update: {
+          created_at?: string | null
+          creator_id?: string
+          current_owner_id?: string
+          edition_number?: number
+          freeze_reason?: string | null
+          id?: string
+          is_frozen?: boolean | null
+          max_editions?: number
+          metadata?: Json | null
+          minted_at?: string | null
+          ownership_proof?: string
+          transfer_count?: number | null
+          updated_at?: string | null
+          visualization_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "digital_assets_visualization_id_fkey"
+            columns: ["visualization_id"]
+            isOneToOne: false
+            referencedRelation: "saved_visualizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dmca_counter_notifications: {
         Row: {
           admin_notes: string | null
@@ -1536,6 +1595,45 @@ export type Database = {
         }
         Relationships: []
       }
+      marketplace_audit_events: {
+        Row: {
+          action: string
+          created_at: string | null
+          id: string
+          ip_address: string | null
+          metadata: Json | null
+          resource_id: string | null
+          resource_type: string
+          severity: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          resource_id?: string | null
+          resource_type: string
+          severity?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          resource_id?: string | null
+          resource_type?: string
+          severity?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       marketplace_offers: {
         Row: {
           buyer_id: string
@@ -1895,6 +1993,56 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_states: {
+        Row: {
+          amount_cents: number
+          buyer_id: string
+          completed_at: string | null
+          created_at: string | null
+          error_message: string | null
+          expires_at: string
+          id: string
+          listing_id: string
+          metadata: Json | null
+          payment_intent_id: string | null
+          state: string
+        }
+        Insert: {
+          amount_cents: number
+          buyer_id: string
+          completed_at?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          expires_at: string
+          id?: string
+          listing_id: string
+          metadata?: Json | null
+          payment_intent_id?: string | null
+          state?: string
+        }
+        Update: {
+          amount_cents?: number
+          buyer_id?: string
+          completed_at?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          expires_at?: string
+          id?: string
+          listing_id?: string
+          metadata?: Json | null
+          payment_intent_id?: string | null
+          state?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_states_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "visualization_listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pending_fixes: {
         Row: {
           ai_model: string | null
@@ -2224,6 +2372,33 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limits: {
+        Row: {
+          action: string
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          resource_id: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          resource_id?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          resource_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       revenue_stream_summary: {
         Row: {
           created_at: string
@@ -2265,6 +2440,72 @@ export type Database = {
           total_tax_collected_cents?: number
         }
         Relationships: []
+      }
+      royalty_distributions: {
+        Row: {
+          buyer_id: string
+          created_at: string | null
+          creator_id: string
+          creator_royalty_cents: number
+          distribution_metadata: Json | null
+          id: string
+          listing_id: string | null
+          marketplace_fee_cents: number
+          payment_intent_id: string | null
+          platform_share_cents: number
+          sale_amount_cents: number
+          seller_id: string
+          seller_proceeds_cents: number
+          visualization_id: string
+        }
+        Insert: {
+          buyer_id: string
+          created_at?: string | null
+          creator_id: string
+          creator_royalty_cents?: number
+          distribution_metadata?: Json | null
+          id?: string
+          listing_id?: string | null
+          marketplace_fee_cents?: number
+          payment_intent_id?: string | null
+          platform_share_cents?: number
+          sale_amount_cents: number
+          seller_id: string
+          seller_proceeds_cents: number
+          visualization_id: string
+        }
+        Update: {
+          buyer_id?: string
+          created_at?: string | null
+          creator_id?: string
+          creator_royalty_cents?: number
+          distribution_metadata?: Json | null
+          id?: string
+          listing_id?: string | null
+          marketplace_fee_cents?: number
+          payment_intent_id?: string | null
+          platform_share_cents?: number
+          sale_amount_cents?: number
+          seller_id?: string
+          seller_proceeds_cents?: number
+          visualization_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "royalty_distributions_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "visualization_listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "royalty_distributions_visualization_id_fkey"
+            columns: ["visualization_id"]
+            isOneToOne: false
+            referencedRelation: "saved_visualizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       saved_palettes: {
         Row: {
@@ -3491,6 +3732,23 @@ export type Database = {
     }
     Functions: {
       acknowledge_alert: { Args: { p_alert_id: string }; Returns: boolean }
+      acquire_listing_lock: {
+        Args: {
+          p_buyer_id: string
+          p_listing_id: string
+          p_lock_duration_minutes?: number
+        }
+        Returns: Json
+      }
+      atomic_transfer_visualization: {
+        Args: {
+          p_from_user_id: string
+          p_to_user_id: string
+          p_transfer_type?: string
+          p_visualization_id: string
+        }
+        Returns: Json
+      }
       calculate_portfolio_value: {
         Args: { p_user_id: string }
         Returns: number
@@ -3527,21 +3785,36 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: boolean
       }
-      check_rate_limit: {
-        Args: {
-          p_endpoint: string
-          p_identifier: string
-          p_max_requests?: number
-          p_window_seconds?: number
-        }
-        Returns: Json
-      }
+      check_rate_limit:
+        | {
+            Args: {
+              p_endpoint: string
+              p_identifier: string
+              p_max_requests?: number
+              p_window_seconds?: number
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_action: string
+              p_max_requests?: number
+              p_resource_id?: string
+              p_user_id: string
+              p_window_minutes?: number
+            }
+            Returns: Json
+          }
       check_scan_achievements: {
         Args: { p_user_id: string }
         Returns: {
           achievement_type: string
           just_earned: boolean
         }[]
+      }
+      cleanup_old_rate_limits: {
+        Args: { p_older_than_hours?: number }
+        Returns: number
       }
       cleanup_rate_limits: { Args: never; Returns: number }
       create_system_alert: {
@@ -3562,6 +3835,7 @@ export type Database = {
         }
         Returns: string
       }
+      expire_stale_payment_locks: { Args: never; Returns: number }
       generate_challenge_code: { Args: never; Returns: string }
       generate_premium_analytics: {
         Args: { p_analytics_type: string; p_user_id: string }
@@ -3655,6 +3929,19 @@ export type Database = {
       }
       is_premium_user: { Args: { p_user_id: string }; Returns: boolean }
       is_user_banned: { Args: { p_user_id: string }; Returns: boolean }
+      log_marketplace_audit: {
+        Args: {
+          p_action: string
+          p_ip_address?: string
+          p_metadata?: Json
+          p_resource_id?: string
+          p_resource_type: string
+          p_severity?: string
+          p_user_agent?: string
+          p_user_id: string
+        }
+        Returns: string
+      }
       log_security_event: {
         Args: {
           p_action_category?: string
