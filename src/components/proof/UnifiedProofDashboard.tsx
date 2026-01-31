@@ -18,7 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { motion } from 'framer-motion';
 import { 
   Brain, Crown, Globe, Radio, Link2, Sparkles, Activity, Timer, BookOpen,
-  Fingerprint, Zap, BarChart3
+  Fingerprint, Zap, BarChart3, Factory
 } from 'lucide-react';
 import { ProofDashboard } from '@/components/chess/ProofDashboard';
 import { CulturalArbitragePanel } from './CulturalArbitragePanel';
@@ -29,6 +29,7 @@ import { MethodologyPanel } from './MethodologyPanel';
 import { PublicBenchmarkDashboard } from './PublicBenchmarkDashboard';
 import { VisualAbstractionShowcase } from './VisualAbstractionShowcase';
 import { BlackSwanDiscoveryPanel } from './BlackSwanDiscoveryPanel';
+import { IndustryVerticalDashboard } from './IndustryVerticalDashboard';
 
 export function UnifiedProofDashboard() {
   return (
@@ -60,15 +61,17 @@ export function UnifiedProofDashboard() {
           <span className="flex items-center gap-1"><Globe className="w-3 h-3 text-blue-400" /> Cultural</span>
           <span className="flex items-center gap-1"><Radio className="w-3 h-3 text-purple-400" /> Photonic</span>
           <span className="flex items-center gap-1"><Sparkles className="w-3 h-3 text-yellow-400" /> Black Swan</span>
+          <span className="flex items-center gap-1"><Factory className="w-3 h-3 text-orange-400" /> Industry</span>
         </div>
       </motion.div>
 
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8 lg:w-auto lg:inline-flex">
+        <TabsList className="grid w-full grid-cols-5 lg:grid-cols-9 lg:w-auto lg:inline-flex">
           <TabsTrigger value="overview" className="gap-2"><Brain className="w-4 h-4" /><span className="hidden sm:inline">Overview</span></TabsTrigger>
           <TabsTrigger value="benchmark" className="gap-2"><BarChart3 className="w-4 h-4" /><span className="hidden sm:inline">Benchmark</span></TabsTrigger>
           <TabsTrigger value="abstraction" className="gap-2"><Fingerprint className="w-4 h-4" /><span className="hidden sm:inline">Abstraction</span></TabsTrigger>
           <TabsTrigger value="blackswan" className="gap-2"><Sparkles className="w-4 h-4" /><span className="hidden sm:inline">Black Swan</span></TabsTrigger>
+          <TabsTrigger value="industry" className="gap-2"><Factory className="w-4 h-4" /><span className="hidden sm:inline">Industry</span></TabsTrigger>
           <TabsTrigger value="chess" className="gap-2"><Crown className="w-4 h-4" /><span className="hidden sm:inline">Chess</span></TabsTrigger>
           <TabsTrigger value="style" className="gap-2"><Timer className="w-4 h-4" /><span className="hidden sm:inline">Style DNA</span></TabsTrigger>
           <TabsTrigger value="cultural" className="gap-2"><Globe className="w-4 h-4" /><span className="hidden sm:inline">Cultural</span></TabsTrigger>
@@ -100,6 +103,13 @@ export function UnifiedProofDashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <BlackSwanDiscoveryPanel />
             <CrossDomainCorrelationsPanel />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="industry">
+          <div className="space-y-6">
+            <IndustryVerticalDashboard />
+            <BlackSwanDiscoveryPanel showMonetization={true} />
           </div>
         </TabsContent>
 
