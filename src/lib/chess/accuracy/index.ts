@@ -85,6 +85,8 @@ export {
 
 // v7.85: ELO-Tier Adaptive Sampling
 export {
+  type EloTier,
+  type AdaptiveWeights,
   ELO_TIERS,
   getAdaptiveTierWeights,
   getEloTier,
@@ -100,6 +102,19 @@ export {
   buildUniversalContext,
   quickConfidenceAdjust,
 } from './chessTruthValidation';
+
+// v7.90: Enhanced Backoff
+export {
+  type BackoffConfig,
+  DEFAULT_BACKOFF_CONFIG,
+  AGGRESSIVE_BACKOFF_CONFIG,
+  CONSERVATIVE_BACKOFF_CONFIG,
+  calculateBackoffDelay,
+  withBackoff,
+  createRateLimitedFetcher,
+  RateLimitTracker,
+  globalRateLimitTracker,
+} from './enhancedBackoff';
 
 // v7.85: Enhanced Intelligence Compounding
 export {
