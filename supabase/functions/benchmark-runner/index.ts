@@ -164,9 +164,14 @@ async function fetchLichessGames(count: number, existingGameIds: Set<string>): P
         }
       );
       
+      // Exponential backoff for rate limits
+      let retryDelay = 10000; // Start at 10s
+      const MAX_RETRY_DELAY = 120000; // Cap at 2m
+      
       if (response.status === 429) {
-        console.warn(`[BenchmarkRunner] Rate limited for ${player}, waiting...`);
-        await new Promise(r => setTimeout(r, 60000));
+        console.warn(`[BenchmarkRunner] Rate limited for ${player}, waiting ${retryDelay}ms...`);
+        await new Promise(r => setTimeout(r, retryDelay));
+        retryDelay = Math.min(retryDelay * 2, MAX_RETRY_DELAY);
         continue;
       }
       
@@ -181,6 +186,10 @@ async function fetchLichessGames(count: number, existingGameIds: Set<string>): P
             if (game.moves && (game.status === "mate" || game.status === "resign" || game.status === "stalemate")) {
               const moveCount = game.moves.split(" ").length;
               if (moveCount >= 40) {
+                // STRICT: Only rated games with real ratings
+                if (!game.rated) continue;
+                if (!game.players?.white?.rating || !game.players?.black?.rating) continue;
+                if (game.speed === 'correspondence') continue;
                 // Build proper PGN
                 let resultTag = "1/2-1/2";
                 if (game.winner === "white") resultTag = "1-0";

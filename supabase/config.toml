@@ -98,3 +98,6 @@ cron = "*/2 * * * *"
 
 [functions.options-data]
 verify_jwt = false
+
+[functions.benchmark-health]
+verify_jwt = false
