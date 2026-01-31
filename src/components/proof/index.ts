@@ -19,3 +19,4 @@ export { BlackSwanDiscoveryPanel } from './BlackSwanDiscoveryPanel';
 
 // Industry vertical applications
 export { IndustryVerticalDashboard } from './IndustryVerticalDashboard';
+export { LiveIndustryPanel } from './LiveIndustryPanel';

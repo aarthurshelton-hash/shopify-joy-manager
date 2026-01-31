@@ -50,6 +50,8 @@ import {
 import { useLiveHeartbeat, formatNextPulse } from "@/hooks/useLiveHeartbeat";
 import { useCodebaseSync, codebaseSyncManager } from "@/hooks/useCodebaseSync";
 import { useUnifiedEvolution } from "@/hooks/useUnifiedEvolution";
+import { useLiveIndustryData } from "@/hooks/useLiveIndustryData";
+import { LiveColorGrid } from "@/components/pensent-ui/LiveColorGrid";
 import { AutoHealPanel } from "./AutoHealPanel";
 import { CodeIssue } from "@/hooks/useAutoHealSystem";
 import { EnhancedCodeAnalysisPanel } from "./EnhancedCodeAnalysisPanel";
@@ -1278,6 +1280,7 @@ const LiveCodebaseDebugger = ({
                 <li>✓ <strong className="text-foreground">Future state projection with preemptive actions</strong></li>
                 <li>✓ <strong className="text-foreground">Synchronized with unified evolution system</strong></li>
                 <li>✓ <strong className="text-foreground">Self-healing system with auto-fix capabilities</strong></li>
+                <li>✓ <strong className="text-foreground">Industry adapters: 8x8 grids for Manufacturing & Supply Chain</strong></li>
               </ul>
             </div>
 
