@@ -62,22 +62,24 @@ export interface HoveredMoveInfo {
 interface LegendHighlightContextValue {
   highlightedPiece: HighlightedPiece | null;
   lockedPieces: HighlightedPiece[];
-  lockedSquares: LockedSquare[]; // NEW: Locked squares for persistent highlighting
+  lockedSquares: LockedSquare[];
   compareMode: boolean;
   hoveredSquare: HoveredSquareInfo | null;
   // Annotation highlighting
   hoveredAnnotation: HoveredAnnotation | null;
-  highlightedAnnotations: AnnotationType[]; // Annotations to highlight based on piece selection
+  highlightedAnnotations: AnnotationType[];
   // Follow piece mode
   followPieceData: FollowPieceData | null;
   pieceArrows: PieceMoveArrow[];
   // Move notation hover
   hoveredMove: HoveredMoveInfo | null;
+  // Actions
   setHighlightedPiece: (piece: HighlightedPiece | null) => void;
   toggleLockedPiece: (piece: HighlightedPiece) => void;
-  toggleLockedSquare: (square: string, pieces: HighlightedPiece[]) => void; // NEW
+  toggleLockedSquare: (square: string, pieces: HighlightedPiece[]) => void;
   toggleCompareMode: () => void;
   clearLock: () => void;
+  clearLocks: () => void; // Alias for clearLock
   setHoveredSquare: (info: HoveredSquareInfo | null) => void;
   setHoveredAnnotation: (annotation: HoveredAnnotation | null) => void;
   setHighlightedAnnotations: (annotations: AnnotationType[]) => void;
@@ -88,6 +90,10 @@ interface LegendHighlightContextValue {
   prevPieceMove: () => number | null;
   // Move notation hover
   setHoveredMove: (move: HoveredMoveInfo | null) => void;
+  // Computed helpers
+  isPieceHighlighted: (piece: HighlightedPiece) => boolean;
+  isSquareHighlighted: (square: string) => boolean;
+  getHighlightedPieces: () => HighlightedPiece[];
 }
 
 const LegendHighlightContext = createContext<LegendHighlightContextValue | undefined>(undefined);
@@ -222,7 +228,31 @@ export function LegendHighlightProvider({
     setHighlightedAnnotationsState([]);
     setFollowPieceDataState(null);
     setPieceArrowsState([]);
+    setHighlightedPieceState(null);
   }, []);
+
+  // Alias for clearLock (consistent API)
+  const clearLocks = clearLock;
+
+  // Computed helpers for reliable state checking
+  const isPieceHighlighted = useCallback((piece: HighlightedPiece): boolean => {
+    return lockedPieces.some(
+      p => p.pieceType === piece.pieceType && p.pieceColor === piece.pieceColor
+    ) || (
+      highlightedPiece?.pieceType === piece.pieceType && 
+      highlightedPiece?.pieceColor === piece.pieceColor
+    );
+  }, [lockedPieces, highlightedPiece]);
+
+  const isSquareHighlighted = useCallback((square: string): boolean => {
+    return lockedSquares.some(s => s.square === square);
+  }, [lockedSquares]);
+
+  const getHighlightedPieces = useCallback((): HighlightedPiece[] => {
+    if (lockedPieces.length > 0) return lockedPieces;
+    if (highlightedPiece) return [highlightedPiece];
+    return [];
+  }, [lockedPieces, highlightedPiece]);
 
   return (
     <LegendHighlightContext.Provider value={{ 
@@ -241,12 +271,16 @@ export function LegendHighlightProvider({
       toggleLockedSquare,
       toggleCompareMode,
       clearLock,
+      clearLocks,
       setHoveredSquare,
       setHoveredAnnotation,
       setHighlightedAnnotations,
       setFollowPieceData,
       setPieceArrows,
       nextPieceMove,
+      isPieceHighlighted,
+      isSquareHighlighted,
+      getHighlightedPieces,
       prevPieceMove,
       setHoveredMove,
     }}>
