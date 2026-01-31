@@ -9,7 +9,7 @@
  * - Pattern matching predictions (80-move lookahead)
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -50,11 +50,15 @@ import { ColorFlowSignature, StrategicArchetype, ARCHETYPE_DEFINITIONS } from '@
 interface HybridPredictionPanelProps {
   pgn: string;
   compact?: boolean;
+  autoAnalyze?: boolean;
+  onAnalysisComplete?: (result: ReturnType<typeof useHybridPrediction>['result']) => void;
 }
 
 export const HybridPredictionPanel: React.FC<HybridPredictionPanelProps> = ({
   pgn,
   compact = false,
+  autoAnalyze = false,
+  onAnalysisComplete,
 }) => {
   const { 
     isAnalyzing, 
@@ -67,10 +71,37 @@ export const HybridPredictionPanel: React.FC<HybridPredictionPanelProps> = ({
 
   const [activeTab, setActiveTab] = useState<'fusion' | 'tactical' | 'strategic' | 'patterns'>('fusion');
 
+  // Validate PGN before analysis
+  const isValidPGN = useMemo(() => {
+    if (!pgn || typeof pgn !== 'string') return false;
+    const trimmedPGN = pgn.trim();
+    if (trimmedPGN.length < 10) return false;
+    // Check for basic move patterns
+    const hasMoves = /[KQRBNP]?[a-h]?[1-8]?x?[a-h][1-8][+#]?/i.test(trimmedPGN) || 
+                     /1\.\s*[a-h][1-8]/i.test(trimmedPGN) ||
+                     /O-O/i.test(trimmedPGN);
+    return hasMoves;
+  }, [pgn]);
+
   const handleAnalyze = () => {
+    if (!isValidPGN) return;
     clearResults();
     analyzeGame(pgn, { depth: 20 });
   };
+
+  // Auto-analyze when PGN changes if enabled
+  useEffect(() => {
+    if (autoAnalyze && isValidPGN && !result.hybridPrediction && !isAnalyzing && !error) {
+      handleAnalyze();
+    }
+  }, [pgn, isValidPGN, autoAnalyze]);
+
+  // Notify parent when analysis completes
+  useEffect(() => {
+    if (result.hybridPrediction && onAnalysisComplete) {
+      onAnalysisComplete(result);
+    }
+  }, [result.hybridPrediction, onAnalysisComplete]);
 
   if (compact) {
     return <CompactView 
@@ -78,6 +109,8 @@ export const HybridPredictionPanel: React.FC<HybridPredictionPanelProps> = ({
       isAnalyzing={isAnalyzing}
       result={result}
       onAnalyze={handleAnalyze}
+      isValidPGN={isValidPGN}
+      error={error}
     />;
   }
 
@@ -225,7 +258,9 @@ const CompactView: React.FC<{
   isAnalyzing: boolean;
   result: ReturnType<typeof useHybridPrediction>['result'];
   onAnalyze: () => void;
-}> = ({ pgn, isAnalyzing, result, onAnalyze }) => (
+  isValidPGN?: boolean;
+  error?: string | null;
+}> = ({ pgn, isAnalyzing, result, onAnalyze, isValidPGN = true, error }) => (
   <div className="p-3 rounded-lg border border-border/50 bg-card/50 space-y-2">
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-2">
@@ -239,12 +274,23 @@ const CompactView: React.FC<{
         size="sm"
         variant="outline"
         onClick={onAnalyze}
-        disabled={isAnalyzing || !pgn}
+        disabled={isAnalyzing || !pgn || !isValidPGN}
         className="h-7 text-xs"
       >
         {isAnalyzing ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Analyze'}
       </Button>
     </div>
+    
+    {error && (
+      <div className="flex items-center gap-2 text-xs text-destructive">
+        <AlertTriangle className="h-3 w-3" />
+        <span>{error}</span>
+      </div>
+    )}
+    
+    {!isValidPGN && !error && (
+      <div className="text-xs text-muted-foreground">Invalid PGN format</div>
+    )}
     
     {result.hybridPrediction && (
       <div className="grid grid-cols-2 gap-2 text-xs">
