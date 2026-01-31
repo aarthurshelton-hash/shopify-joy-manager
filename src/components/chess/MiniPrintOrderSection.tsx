@@ -9,6 +9,7 @@ import { SquareData, GameData } from '@/lib/chess/gameSimulator';
 import { FRAME_STYLES, getBaseFramePrice } from '@/lib/shop/framePricing';
 import { useTimeline } from '@/contexts/TimelineContext';
 import { useLegendHighlight } from '@/contexts/LegendHighlightContext';
+import { getActivePalette, PaletteId } from '@/lib/chess/pieceColors';
 
 interface ExportState {
   currentMove: number;
@@ -19,6 +20,7 @@ interface ExportState {
   showPieces: boolean;
   pieceOpacity: number;
   fen?: string; // Optional FEN for the current position
+  paletteId?: string; // Active palette for print order
 }
 
 interface MiniPrintOrderSectionProps {
@@ -28,6 +30,7 @@ interface MiniPrintOrderSectionProps {
   darkMode?: boolean;
   showPieces?: boolean;
   pieceOpacity?: number;
+  paletteId?: PaletteId; // Current palette
   onOrderPrint?: (exportState: ExportState) => void;
   className?: string;
 }
@@ -51,6 +54,7 @@ export const MiniPrintOrderSection: React.FC<MiniPrintOrderSectionProps> = ({
   darkMode = false,
   showPieces = false,
   pieceOpacity = 0.7,
+  paletteId,
   onOrderPrint,
   className = '',
 }) => {
@@ -59,6 +63,9 @@ export const MiniPrintOrderSection: React.FC<MiniPrintOrderSectionProps> = ({
   const [selectedFrame, setSelectedFrame] = useState<FrameStyleOption | null>(MINI_FRAME_OPTIONS[0]);
   const [selectedSize, setSelectedSize] = useState(POPULAR_SIZES[0]);
   const [roomSetting] = useState<RoomSetting>('living');
+
+  // Get active palette - use prop or global state
+  const activePaletteId = paletteId || getActivePalette().id;
 
   const handleOrderPrint = () => {
     const exportState: ExportState = {
@@ -78,7 +85,9 @@ export const MiniPrintOrderSection: React.FC<MiniPrintOrderSectionProps> = ({
       darkMode,
       showPieces,
       pieceOpacity,
+      paletteId: activePaletteId, // Include palette for print order
     };
+    console.log('[MiniPrintOrderSection] Capturing state for print order:', exportState);
     onOrderPrint?.(exportState);
   };
 

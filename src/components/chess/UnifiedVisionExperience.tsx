@@ -97,6 +97,8 @@ export interface ExportState {
   darkMode: boolean;
   showPieces: boolean;
   pieceOpacity: number;
+  paletteId?: string; // Active palette ID for print/export
+  fen?: string; // Optional FEN for position
 }
 
 export interface UnifiedVisionExperienceProps {
@@ -992,9 +994,15 @@ const ExportActionButtons: React.FC<{
       darkMode,
       showPieces,
       pieceOpacity,
+      // paletteId is captured from context in MiniPrintOrderSection
     };
     
-    console.log('[ExportActionButtons] Exporting:', type, 'state:', exportState);
+    console.log('[ExportActionButtons] Exporting:', type, 'with state:', {
+      currentMove: exportState.currentMove,
+      darkMode: exportState.darkMode,
+      showPieces: exportState.showPieces,
+      lockedPiecesCount: exportState.lockedPieces.length,
+    });
     
     try {
       onExport(type, exportState);
@@ -2226,6 +2234,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                       darkMode={darkMode}
                       showPieces={showPieces}
                       pieceOpacity={pieceOpacity}
+                      paletteId={localPaletteId}
                       onOrderPrint={(exportState) => onExport('print', exportState)}
                       className="mt-6"
                     />
