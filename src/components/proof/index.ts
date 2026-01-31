@@ -16,3 +16,6 @@ export { MethodologyPanel } from './MethodologyPanel';
 export { PublicBenchmarkDashboard } from './PublicBenchmarkDashboard';
 export { VisualAbstractionShowcase } from './VisualAbstractionShowcase';
 export { BlackSwanDiscoveryPanel } from './BlackSwanDiscoveryPanel';
+
+// Industry vertical applications
+export { IndustryVerticalDashboard } from './IndustryVerticalDashboard';
