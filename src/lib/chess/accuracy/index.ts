@@ -60,3 +60,49 @@ export {
   getArchetypePrediction,
   invalidateArchetypeCache,
 } from './archetypeHistoricalRates';
+
+// v7.85: Meta-Learning System
+export {
+  ARCHETYPE_LEARNING_RATES,
+  getAdaptiveLearningRate,
+  recalibrateConfidence,
+  ensemblePrediction,
+  analyzeMaterialTrajectory,
+  analyzeSpaceEvolution,
+  analyzeTimePressure,
+} from './metaLearning';
+
+// v7.85: Disagreement Analysis
+export {
+  recordDisagreementOutcome,
+  getDisagreementWinRate,
+  getConfidenceBoostFromDisagreements,
+  analyzeArchetypeDisagreements,
+  getGlobalDisagreementStats,
+  initializeDisagreementAnalysis,
+  detectPositionType,
+} from './disagreementAnalysis';
+
+// v7.85: ELO-Tier Adaptive Sampling
+export {
+  ELO_TIERS,
+  getAdaptiveTierWeights,
+  getEloTier,
+  getGameEloTier,
+  loadEloTierPerformance,
+  getCurrentAdaptiveWeights,
+  selectTierByWeight,
+} from './eloTierAdaptive';
+
+// v7.85: Chess Truth Validation (Cross-Domain)
+export {
+  validateChessPrediction,
+  buildUniversalContext,
+  quickConfidenceAdjust,
+} from './chessTruthValidation';
+
+// v7.85: Enhanced Intelligence Compounding
+export {
+  getMetaEnhancedConfidence,
+  recordPredictionWithContext,
+} from './intelligenceCompounding';

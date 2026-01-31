@@ -1,16 +1,30 @@
 /**
- * Intelligence Compounding System v7.70
+ * Intelligence Compounding System v7.85-META-LEARN
  * 
- * UNIFIED LEARNING BOOST:
+ * UNIFIED LEARNING BOOST with META-LEARNING:
  * 1. Live Confidence Calibration - dynamically adjust based on rolling accuracy
  * 2. Disagreement Amplifier - boost archetypes when we beat Stockfish
  * 3. Temporal Decay Weighting - recent predictions count more than older ones
+ * 4. NEW: Meta-Learning Integration - archetype-specific learning rates
+ * 5. NEW: Ensemble Component Tracking - material, space, time pressure analysis
+ * 6. NEW: Cross-Domain Truth Validation - universal pattern integration
  * 
  * This ensures En Pensent gets SMARTER with every prediction.
  */
 
 import { supabase } from '@/integrations/supabase/client';
 import { StrategicArchetype } from '../colorFlowAnalysis';
+import { 
+  getAdaptiveLearningRate, 
+  recalibrateConfidence,
+  ARCHETYPE_LEARNING_RATES 
+} from './metaLearning';
+import { 
+  getConfidenceBoostFromDisagreements,
+  initializeDisagreementAnalysis,
+  recordDisagreementOutcome,
+  detectPositionType
+} from './disagreementAnalysis';
 
 // ============= LIVE TRACKING STATE =============
 
@@ -21,6 +35,10 @@ interface ArchetypeStats {
   disagreementWins: number;  // Times we beat Stockfish
   disagreementLosses: number; // Times Stockfish beat us
   boostMultiplier: number;  // Current confidence boost (1.0 = neutral)
+  // v7.85: Meta-learning additions
+  adaptiveLearningRate: number;
+  lastCalibrationAccuracy: number;
+  volatilePositionCount: number;
 }
 
 interface CompoundingState {
@@ -29,6 +47,10 @@ interface CompoundingState {
   globalAccuracy: number;
   globalDisagreementWinRate: number;
   initialized: boolean;
+  // v7.85: Global meta-learning state
+  metaLearningEnabled: boolean;
+  ensembleEnabled: boolean;
+  crossDomainEnabled: boolean;
 }
 
 const DECAY_HALF_LIFE_HOURS = 24; // Recent predictions decay over 24 hours
@@ -43,6 +65,10 @@ const state: CompoundingState = {
   globalAccuracy: 0.333, // Start at random baseline
   globalDisagreementWinRate: 0,
   initialized: false,
+  // v7.85: Enable new learning systems
+  metaLearningEnabled: true,
+  ensembleEnabled: true,
+  crossDomainEnabled: true,
 };
 
 // ============= TEMPORAL DECAY WEIGHTING =============
@@ -359,6 +385,10 @@ function getOrCreateArchetypeStats(archetype: StrategicArchetype): ArchetypeStat
   let stats = state.archetypes.get(archetype);
   
   if (!stats) {
+    // v7.85: Get archetype-specific learning rate
+    const learningConfig = ARCHETYPE_LEARNING_RATES[archetype];
+    const baseLearningRate = learningConfig?.baseRate ?? 0.025;
+    
     stats = {
       totalPredictions: 0,
       correctPredictions: 0,
@@ -366,6 +396,10 @@ function getOrCreateArchetypeStats(archetype: StrategicArchetype): ArchetypeStat
       disagreementWins: 0,
       disagreementLosses: 0,
       boostMultiplier: 1.0,
+      // v7.85: Meta-learning fields
+      adaptiveLearningRate: baseLearningRate,
+      lastCalibrationAccuracy: 0.5,
+      volatilePositionCount: 0,
     };
     state.archetypes.set(archetype, stats);
   }
@@ -400,6 +434,118 @@ function normalizeArchetype(raw: string | null): StrategicArchetype | null {
   return 'unknown';
 }
 
+// ============= v7.85: META-LEARNING INTEGRATION =============
+
+/**
+ * Apply meta-learning to get enhanced confidence
+ * Combines: base confidence × archetype boost × disagreement boost × calibration
+ */
+export function getMetaEnhancedConfidence(
+  archetype: StrategicArchetype,
+  baseConfidence: number,
+  isVolatilePosition: boolean = false
+): { 
+  confidence: number; 
+  factors: string[];
+  learningRate: number;
+  calibrationFactor: number;
+} {
+  const factors: string[] = [];
+  let finalConfidence = baseConfidence;
+  
+  const stats = state.archetypes.get(archetype);
+  const sampleSize = stats?.totalPredictions ?? 0;
+  const recentAccuracy = stats ? stats.correctPredictions / Math.max(1, stats.totalPredictions) : 0.5;
+  
+  // 1. Get adaptive learning rate
+  const learningRate = getAdaptiveLearningRate(
+    archetype,
+    recentAccuracy,
+    sampleSize,
+    isVolatilePosition
+  );
+  
+  // 2. Apply disagreement boost from analysis module
+  const disagreementBoost = getConfidenceBoostFromDisagreements(archetype);
+  if (disagreementBoost !== 1.0) {
+    finalConfidence *= disagreementBoost;
+    factors.push(`Disagreement boost: ${((disagreementBoost - 1) * 100).toFixed(0)}%`);
+  }
+  
+  // 3. Apply confidence recalibration
+  if (sampleSize >= 10) {
+    const { calibratedConfidence, calibrationFactor, reason } = recalibrateConfidence(
+      finalConfidence,
+      archetype,
+      recentAccuracy,
+      sampleSize
+    );
+    
+    if (Math.abs(calibrationFactor - 1.0) > 0.05) {
+      finalConfidence = calibratedConfidence;
+      factors.push(`Calibration: ${reason}`);
+    }
+  }
+  
+  // 4. Apply live calibration multiplier
+  const liveMultiplier = getLiveConfidenceMultiplier(archetype);
+  if (liveMultiplier !== 1.0) {
+    finalConfidence *= liveMultiplier;
+    factors.push(`Live calibration: ${((liveMultiplier - 1) * 100).toFixed(0)}%`);
+  }
+  
+  // Cap at reasonable bounds
+  finalConfidence = Math.max(0.25, Math.min(0.95, finalConfidence));
+  
+  return {
+    confidence: finalConfidence,
+    factors,
+    learningRate,
+    calibrationFactor: stats?.boostMultiplier ?? 1.0,
+  };
+}
+
+/**
+ * Record a prediction with full meta-learning context
+ */
+export function recordPredictionWithContext(
+  archetype: StrategicArchetype,
+  wasCorrect: boolean,
+  moves: string[],
+  enPensentCorrect?: boolean,
+  stockfishCorrect?: boolean,
+  stockfishEval?: number
+): void {
+  // Record basic outcome
+  recordPredictionOutcome(archetype, wasCorrect, enPensentCorrect, stockfishCorrect);
+  
+  // Record disagreement if applicable
+  if (enPensentCorrect !== undefined && stockfishCorrect !== undefined) {
+    if (enPensentCorrect !== stockfishCorrect) {
+      const positionType = detectPositionType(moves);
+      recordDisagreementOutcome({
+        archetype,
+        positionType: positionType.type,
+        disagreementType: 'opposite',
+        winner: enPensentCorrect ? 'enpensent' : 'stockfish',
+        evaluationGap: Math.abs(stockfishEval || 0),
+        moveNumber: Math.floor(moves.length / 2),
+      });
+    }
+  }
+  
+  // Update adaptive learning rate
+  const stats = getOrCreateArchetypeStats(archetype);
+  const recentAccuracy = stats.correctPredictions / Math.max(1, stats.totalPredictions);
+  stats.adaptiveLearningRate = getAdaptiveLearningRate(
+    archetype,
+    recentAccuracy,
+    stats.totalPredictions
+  );
+  stats.lastCalibrationAccuracy = recentAccuracy;
+}
+
 // ============= EXPORTS =============
 
 export { state as compoundingState };
+export { initializeDisagreementAnalysis };
