@@ -54,7 +54,7 @@ export function useVisualizationExport(options: UseVisualizationExportOptions) {
   const boardRef = useRef<HTMLDivElement>(null);
 
   /**
-   * Download HD image of the visualization
+   * Download HD image of the visualization - SIMPLIFIED for reliability
    */
   const downloadHD = useCallback(async (
     captureElement: HTMLElement,
@@ -71,63 +71,75 @@ export function useVisualizationExport(options: UseVisualizationExportOptions) {
     try {
       const html2canvas = (await import('html2canvas')).default;
       
-      // Capture with high resolution
+      // Get element dimensions for proper capture
+      const rect = captureElement.getBoundingClientRect();
+      const width = Math.max(rect.width, 800);
+      const height = Math.max(rect.height, 800);
+      
+      // Capture with reasonable resolution (3x is good for HD, 5x can cause memory issues)
       const canvas = await html2canvas(captureElement, {
-        scale: 5, // 5x for print-quality resolution
+        scale: 3,
         useCORS: true,
         allowTaint: true,
         logging: false,
-        backgroundColor: darkMode ? '#0A0A0A' : '#FDFCFB',
-        // Ensure SVGs render correctly
+        backgroundColor: darkMode ? '#0A0A0A' : '#FFFFFF',
+        width,
+        height,
         onclone: (clonedDoc) => {
-          // Force any fonts to load
+          // Ensure SVGs render correctly
           const svgs = clonedDoc.querySelectorAll('svg');
           svgs.forEach(svg => {
             svg.style.overflow = 'visible';
+            // Force SVG sizing
+            if (!svg.getAttribute('width')) {
+              svg.setAttribute('width', '400');
+            }
+            if (!svg.getAttribute('height')) {
+              svg.setAttribute('height', '400');
+            }
           });
         },
       });
       
-      // Convert to base64 first for watermarking
-      let base64Image = canvas.toDataURL('image/png', 1.0);
+      // Simple blob download - most reliable approach
+      const downloadSuccess = await new Promise<boolean>((resolve) => {
+        canvas.toBlob((blob) => {
+          if (!blob) {
+            console.error('Failed to create blob from canvas');
+            resolve(false);
+            return;
+          }
+          
+          try {
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${title.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '')}_en_pensent_hd.png`;
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            // Cleanup after a delay
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            resolve(true);
+          } catch (err) {
+            console.error('Download link failed:', err);
+            resolve(false);
+          }
+        }, 'image/png', 0.95);
+      });
       
-      // Apply invisible watermark with ownership data
-      if (visualizationId && userId) {
-        try {
-          base64Image = await watermarkBase64Image(base64Image, {
-            visualizationId,
-            userId,
-            timestamp: Date.now(),
-          });
-        } catch (wmError) {
-          console.warn('Failed to apply watermark:', wmError);
-          // Continue without watermark
-        }
+      if (!downloadSuccess) {
+        throw new Error('Blob download failed');
       }
-      
-      // Convert base64 to blob for download
-      const response = await fetch(base64Image);
-      const blob = await response.blob();
-      
-      // Create download link
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${title.replace(/\s+/g, '-').toLowerCase()}-hd.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
       
       // Record the download interaction
       if (visualizationId) {
         recordVisionInteraction(visualizationId, 'download_hd');
       }
       
-      toast.success('HD image downloaded!', {
-        description: 'Your visualization has been saved to your device.',
-      });
-      
+      toast.success('HD image downloaded!');
       return true;
     } catch (error) {
       console.error('HD export failed:', error);
