@@ -91,6 +91,7 @@ const Showcase = lazy(() => import("./pages/Showcase"));
 const AdminSystemVitals = lazy(() => import("./pages/AdminSystemVitals"));
 const Benchmark = lazy(() => import("./pages/Benchmark"));
 const ProofCenter = lazy(() => import("./pages/ProofCenter"));
+const ProductionDashboard = lazy(() => import("./pages/admin/ProductionDashboard"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -216,6 +217,7 @@ const App = () => (
                 <Route path="/admin/watermark-verification" element={<AdminRoute featureName="Watermark Verification"><AdminWatermarkVerification /></AdminRoute>} />
                 <Route path="/admin/batch-watermark-verification" element={<AdminRoute featureName="Batch Watermark Verification"><AdminBatchWatermarkVerification /></AdminRoute>} />
                 <Route path="/admin/ai-art-bank" element={<AdminRoute featureName="AI Art Bank"><AdminAIArtBank /></AdminRoute>} />
+                <Route path="/admin/production" element={<ProductionDashboard />} />
                 
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
