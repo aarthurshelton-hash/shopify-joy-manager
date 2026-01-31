@@ -208,27 +208,29 @@ const ELO_TIERS: EloTier[] = [
 const TARGET_GAMES = 100000;
 const GAMES_PER_CYCLE = 12; // Increased for multi-tier sampling
 
+// Pre-computed initial board for performance
+const INITIAL_BOARD: string[][] = [
+  ['r','n','b','q','k','b','n','r'],
+  ['p','p','p','p','p','p','p','p'],
+  ['.','.','.','.','.','.','.','.'],
+  ['.','.','.','.','.','.','.','.'],
+  ['.','.','.','.','.','.','.','.'],
+  ['.','.','.','.','.','.','.','.'],
+  ['P','P','P','P','P','P','P','P'],
+  ['R','N','B','Q','K','B','N','R'],
+];
+
 /**
  * Compute FEN from move sequence
  */
 function computeFEN(moves: string[], upToMove: number): string {
-  // Initial position
-  let board = [
-    ['r','n','b','q','k','b','n','r'],
-    ['p','p','p','p','p','p','p','p'],
-    ['.','.','.','.','.','.','.','.'],
-    ['.','.','.','.','.','.','.','.'],
-    ['.','.','.','.','.','.','.','.'],
-    ['.','.','.','.','.','.','.','.'],
-    ['P','P','P','P','P','P','P','P'],
-    ['R','N','B','Q','K','B','N','R'],
-  ];
+  // Deep copy initial position for this computation
+  const board = INITIAL_BOARD.map(row => [...row]);
   
   // Process moves (simplified - handles basic cases)
-  const files = 'abcdefgh';
-  let castlingRights = 'KQkq';
-  let enPassant = '-';
-  let halfmove = 0;
+  const castlingRights = 'KQkq';
+  const enPassant = '-';
+  const halfmove = 0;
   let fullmove = 1;
   let whiteToMove = true;
   

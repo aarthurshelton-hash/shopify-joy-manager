@@ -140,12 +140,11 @@ serve(async (req) => {
   }
 });
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function handleSubscriptionChange(
-  supabase: SupabaseClient<any, any, any>,
+  supabase: SupabaseClient,
   stripe: Stripe,
   subscription: Stripe.Subscription
-) {
+): Promise<void> {
   logStep("Processing subscription change", { 
     subscriptionId: subscription.id, 
     status: subscription.status,
@@ -234,12 +233,11 @@ async function handleSubscriptionChange(
 }
 
 // Start grace period for canceled/paused subscriptions
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function startGracePeriod(
-  supabase: SupabaseClient<any, any, any>,
+  supabase: SupabaseClient,
   stripe: Stripe,
   subscription: Stripe.Subscription
-) {
+): Promise<void> {
   logStep("Starting grace period", { 
     subscriptionId: subscription.id, 
     status: subscription.status 
@@ -322,12 +320,11 @@ async function startGracePeriod(
 }
 
 // Clear grace period when subscription becomes active
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function clearGracePeriod(
-  supabase: SupabaseClient<any, any, any>,
+  supabase: SupabaseClient,
   stripe: Stripe,
   subscription: Stripe.Subscription
-) {
+): Promise<void> {
   logStep("Clearing grace period for renewed subscription", { 
     subscriptionId: subscription.id 
   });
@@ -381,12 +378,11 @@ async function clearGracePeriod(
 }
 
 // Record subscription revenue in financial tracking system
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function recordSubscriptionRevenue(
-  supabase: SupabaseClient<any, any, any>,
+  supabase: SupabaseClient,
   stripe: Stripe,
   invoice: Stripe.Invoice
-) {
+): Promise<void> {
   logStep("Recording subscription revenue", { 
     invoiceId: invoice.id,
     amountPaid: invoice.amount_paid,
