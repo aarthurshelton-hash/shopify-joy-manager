@@ -28,6 +28,92 @@ interface AnalysisRequest {
     whiteControl: number;
     blackControl: number;
   };
+  useAI?: boolean;
+}
+
+// OPTION 4: Rule-based analysis templates
+function generateRuleBasedInsights(
+  pieceActivity: PieceActivity[],
+  gameContext: GameContext,
+  territoryData?: { whiteControl: number; blackControl: number }
+) {
+  const sorted = [...pieceActivity].filter(p => p.count > 0).sort((a, b) => b.percentage - a.percentage);
+  const mvp = sorted[0];
+  const secondMvp = sorted[1];
+  
+  // Determine game characteristics
+  const isKnightDominant = sorted.slice(0, 2).some(p => p.pieceType.toLowerCase() === "knight");
+  const isBishopDominant = sorted.slice(0, 2).some(p => p.pieceType.toLowerCase() === "bishop");
+  const isQueenActive = sorted.slice(0, 3).some(p => p.pieceType.toLowerCase() === "queen");
+  const isRookEndgame = sorted.slice(0, 2).some(p => p.pieceType.toLowerCase() === "rook");
+  
+  // Build commentary based on patterns
+  let commentary = "";
+  if (mvp) {
+    commentary = `The ${mvp.color} ${mvp.pieceType} dominated with ${mvp.percentage.toFixed(1)}% of all piece activity`;
+    if (secondMvp) {
+      commentary += `, followed by the ${secondMvp.color} ${secondMvp.pieceType}.`;
+    } else {
+      commentary += ".";
+    }
+  }
+  
+  // Strategic insight based on piece types
+  let strategic = "";
+  if (isKnightDominant) {
+    strategic = "Knight activity suggests a closed position with complex maneuvering. Knights thrive in blocked pawn structures.";
+  } else if (isBishopDominant) {
+    strategic = "Bishop dominance indicates open diagonals and long-range pressure. This typically favors piece coordination.";
+  } else if (isQueenActive) {
+    strategic = "High queen activity often signals tactical complications and direct attacking play.";
+  } else if (isRookEndgame) {
+    strategic = "Rook activity suggests the game reached an endgame phase with open files becoming critical.";
+  } else {
+    strategic = "The piece activity shows balanced development with multiple pieces contributing to the game's dynamics.";
+  }
+  
+  // Recommendation
+  const leastActive = sorted[sorted.length - 1];
+  let recommendation = "";
+  if (leastActive && leastActive.percentage < 5) {
+    recommendation = `Explore the ${leastActive.color} ${leastActive.pieceType}'s heatmap - its low activity might reveal missed opportunities.`;
+  } else if (mvp) {
+    recommendation = `The ${mvp.color} ${mvp.pieceType}'s heatmap shows the key squares that decided this game.`;
+  } else {
+    recommendation = "Examine individual piece heatmaps to understand the positional battle.";
+  }
+  
+  // Comparison
+  let comparison = "";
+  if (gameContext.totalMoves > 60) {
+    comparison = "This was a long strategic battle with above-average piece maneuvering.";
+  } else if (gameContext.totalMoves < 30) {
+    comparison = "A short, decisive game with concentrated piece activity.";
+  } else {
+    comparison = "Typical game length with standard piece activity distribution.";
+  }
+  
+  // MVP insight
+  let mvpInsight = "";
+  if (mvp) {
+    if (mvp.percentage > 30) {
+      mvpInsight = `The ${mvp.color} ${mvp.pieceType} was clearly the star, responsible for nearly a third of all movement.`;
+    } else if (mvp.percentage > 20) {
+      mvpInsight = `The ${mvp.color} ${mvp.pieceType} played a crucial role in the game's outcome.`;
+    } else {
+      mvpInsight = `Activity was well-distributed, with the ${mvp.color} ${mvp.pieceType} slightly leading.`;
+    }
+  } else {
+    mvpInsight = "Balanced piece usage across the board.";
+  }
+  
+  return {
+    commentary,
+    strategic,
+    recommendation,
+    comparison,
+    mvpInsight,
+  };
 }
 
 serve(async (req) => {
@@ -36,14 +122,20 @@ serve(async (req) => {
   }
 
   try {
-    const { pieceActivity, gameContext, territoryData }: AnalysisRequest = await req.json();
+    const { pieceActivity, gameContext, territoryData, useAI = false }: AnalysisRequest = await req.json();
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    
+    // OPTION 4: Use rule-based analysis by default (free)
+    if (!useAI || !LOVABLE_API_KEY) {
+      const insights = generateRuleBasedInsights(pieceActivity, gameContext, territoryData);
+      console.log(`[HeatmapAnalysis] Generated rule-based insights for: ${gameContext.whiteName} vs ${gameContext.blackName}`);
+      return new Response(JSON.stringify({ insights, source: "rules" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    // Build context for the AI
+    // AI path - only when explicitly requested
     const activitySummary = pieceActivity
       .filter(p => p.count > 0)
       .sort((a, b) => b.percentage - a.percentage)
@@ -104,52 +196,36 @@ Provide insights about the movement patterns.`;
     });
 
     if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "AI credits depleted." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
-      throw new Error("AI analysis failed");
+      // Fallback to rule-based on any error
+      console.warn(`[HeatmapAnalysis] AI failed, falling back to rules`);
+      const insights = generateRuleBasedInsights(pieceActivity, gameContext, territoryData);
+      return new Response(JSON.stringify({ insights, source: "rules_fallback" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content;
 
-    // Parse the JSON response from the AI
     let insights;
     try {
-      // Extract JSON from the response (handle markdown code blocks)
       const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/) || [null, content];
       const jsonStr = jsonMatch[1] || content;
       insights = JSON.parse(jsonStr.trim());
     } catch {
-      // Fallback if parsing fails
-      insights = {
-        commentary: content.slice(0, 200),
-        strategic: "Analysis based on piece movement patterns.",
-        recommendation: "Explore the most active piece's heatmap for deeper insights.",
-        comparison: "This game shows unique tactical patterns.",
-        mvpInsight: "The most active piece played a crucial role.",
-      };
+      // Fallback to rule-based
+      insights = generateRuleBasedInsights(pieceActivity, gameContext, territoryData);
     }
 
-    return new Response(JSON.stringify({ insights }), {
+    return new Response(JSON.stringify({ insights, source: "ai" }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
     console.error("Analysis error:", error);
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Analysis failed" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    // Always return rule-based insights on error
+    const insights = generateRuleBasedInsights([], { totalMoves: 40 }, undefined);
+    return new Response(JSON.stringify({ insights, source: "error_fallback" }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
