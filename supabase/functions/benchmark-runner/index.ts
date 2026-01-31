@@ -242,7 +242,9 @@ ${game.moves} ${resultTag}`;
                 });
               }
             }
-          } catch {}
+          } catch (parseError) {
+            console.warn(`[BenchmarkRunner] Failed to parse game line: ${parseError instanceof Error ? parseError.message : String(parseError)}`);
+          }
         }
       }
     } catch (e) {
@@ -289,48 +291,67 @@ interface ArchetypeStats {
   beatsStockfishRate: number;
 }
 
-let historicalStats: Map<string, ArchetypeStats> = new Map();
-let statsLoaded = false;
+// Managed archetype stats - encapsulated to prevent race conditions
+class ArchetypeStatsManager {
+  private stats: Map<string, ArchetypeStats> = new Map();
+  private loaded = false;
 
-// Load historical archetype performance from database
-async function loadHistoricalStats(supabase: any): Promise<void> {
-  if (statsLoaded) return;
-  
-  console.log("[BenchmarkRunner] Loading historical archetype performance...");
-  
-  const { data, error } = await supabase
-    .from('chess_prediction_attempts')
-    .select('hybrid_archetype, hybrid_correct, stockfish_correct');
-  
-  if (error || !data) {
-    console.warn("[BenchmarkRunner] Could not load historical stats:", error);
-    return;
-  }
-  
-  // Aggregate by archetype
-  const stats: Record<string, { correct: number; total: number; beatsStockfish: number }> = {};
-  
-  for (const row of data) {
-    const arch = row.hybrid_archetype || 'unknown';
-    if (!stats[arch]) {
-      stats[arch] = { correct: 0, total: 0, beatsStockfish: 0 };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async loadStats(supabase: any): Promise<void> {
+    if (this.loaded) return;
+
+    console.log("[BenchmarkRunner] Loading historical archetype performance...");
+
+    const { data, error } = await supabase
+      .from('chess_prediction_attempts')
+      .select('hybrid_archetype, hybrid_correct, stockfish_correct');
+
+    if (error || !data) {
+      console.warn("[BenchmarkRunner] Could not load historical stats:", error);
+      return;
     }
-    stats[arch].total++;
-    if (row.hybrid_correct) stats[arch].correct++;
-    if (row.hybrid_correct && !row.stockfish_correct) stats[arch].beatsStockfish++;
+
+    // Aggregate by archetype
+    const statsAggr: Record<string, { correct: number; total: number; beatsStockfish: number }> = {};
+
+    for (const row of data as Array<{ hybrid_archetype: string | null; hybrid_correct: boolean; stockfish_correct: boolean }>) {
+      const arch = row.hybrid_archetype || 'unknown';
+      if (!statsAggr[arch]) {
+        statsAggr[arch] = { correct: 0, total: 0, beatsStockfish: 0 };
+      }
+      statsAggr[arch].total++;
+      if (row.hybrid_correct) statsAggr[arch].correct++;
+      if (row.hybrid_correct && !row.stockfish_correct) statsAggr[arch].beatsStockfish++;
+    }
+
+    // Convert to map
+    for (const [arch, s] of Object.entries(statsAggr)) {
+      this.stats.set(arch, {
+        accuracy: s.total > 0 ? s.correct / s.total : 0.5,
+        sampleSize: s.total,
+        beatsStockfishRate: s.total > 0 ? s.beatsStockfish / s.total : 0,
+      });
+    }
+
+    this.loaded = true;
+    console.log(`[BenchmarkRunner] Loaded stats for ${this.stats.size} archetypes from ${data.length} predictions`);
   }
-  
-  // Convert to map
-  for (const [arch, s] of Object.entries(stats)) {
-    historicalStats.set(arch, {
-      accuracy: s.total > 0 ? s.correct / s.total : 0.5,
-      sampleSize: s.total,
-      beatsStockfishRate: s.total > 0 ? s.beatsStockfish / s.total : 0,
-    });
+
+  getStats(archetype: string): ArchetypeStats | undefined {
+    return this.stats.get(archetype);
   }
-  
-  statsLoaded = true;
-  console.log(`[BenchmarkRunner] Loaded stats for ${historicalStats.size} archetypes from ${data.length} predictions`);
+
+  isLoaded(): boolean {
+    return this.loaded;
+  }
+}
+
+const archetypeManager = new ArchetypeStatsManager();
+
+// Helper function to load stats using the manager
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function loadHistoricalStats(supabase: any): Promise<void> {
+  await archetypeManager.loadStats(supabase);
 }
 
 // Advanced Color Flow analysis with trajectory detection
@@ -443,7 +464,7 @@ function analyzeColorFlow(moves: string[], moveNumber: number): { archetype: str
   }
   
   // CALIBRATE CONFIDENCE USING HISTORICAL ACCURACY
-  const historicalData = historicalStats.get(archetype);
+  const historicalData = archetypeManager.getStats(archetype);
   let confidence = baseConfidence;
   
   if (historicalData && historicalData.sampleSize >= 5) {
