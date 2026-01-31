@@ -29,6 +29,7 @@ import { useBenchmarkRateLimit } from '@/hooks/useRateLimitV2';
 import { GameDetailsModal } from '@/components/chess/GameDetailsModal';
 import { acquireBenchmarkLock, releaseBenchmarkLock } from '@/lib/chess/benchmarkCoordinator';
 import { useRealtimeAccuracyContext } from '@/providers/RealtimeAccuracyProvider';
+import { AdvancedAccuracyDashboard } from '@/components/proof/AdvancedAccuracyDashboard';
 
 interface CumulativeStats {
   totalRuns: number;
@@ -539,6 +540,10 @@ export default function Benchmark() {
               <Sparkles className="h-4 w-4" />
               Proof
             </TabsTrigger>
+            <TabsTrigger value="accuracy" className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              Accuracy
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="auto" className="mt-6">
@@ -565,6 +570,10 @@ export default function Benchmark() {
 
           <TabsContent value="proof" className="mt-6">
             <ProofDashboard />
+          </TabsContent>
+
+          <TabsContent value="accuracy" className="mt-6">
+            <AdvancedAccuracyDashboard />
           </TabsContent>
 
           <TabsContent value="benchmark" className="mt-6 space-y-8">
