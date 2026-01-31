@@ -351,6 +351,9 @@ async function fetchFreshGames(supabase: any, count: number): Promise<any[]> {
             if (analyzedIds.has(game.id)) continue;
             if (game.status !== 'mate' && game.status !== 'resign') continue;
             if (!game.moves || game.moves.split(' ').length < 40) continue;
+            if (!game.rated) continue; // ONLY rated games
+            if (!game.players?.white?.rating || !game.players?.black?.rating) continue; // Require ratings
+            if (game.speed === 'correspondence') continue; // Skip correspondence (too slow)
             
             // Extract ELO ratings
             const whiteRating = game.players?.white?.rating || 1500;

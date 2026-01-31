@@ -220,7 +220,7 @@ async function getEvaluation(fen: string, _characteristics: GameCharacteristics)
   // STRICT: Only accept real cloud SF17 evaluations
   const cloudEval = await tryCloudEval(fen);
   
-  if (cloudEval && cloudEval.depth >= 20) {
+  if (cloudEval && cloudEval.depth >= 22) { // Require deeper eval for higher confidence
     return { ...cloudEval, source: 'cloud-sf17' };
   }
   
