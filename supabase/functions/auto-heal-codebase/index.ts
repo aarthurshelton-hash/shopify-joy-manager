@@ -101,11 +101,54 @@ serve(async (req) => {
     
     if (action === 'generate_fix') {
       const request: FixRequest = fix_request;
+      const useAI = fix_request.useAI === true; // Explicitly opt-in to AI
       
-      if (!lovableApiKey) {
-        // Generate a detailed prompt without AI
-        const fixPrompt = generateFixPrompt(request);
+      // OPTION 3 & 4: Check cache first, then use templates
+      // Check if we already have a fix for this issue type
+      const { data: existingFix } = await supabase
+        .from('pending_fixes')
+        .select('fixed_code, fix_prompt')
+        .eq('file_path', request.file_path)
+        .eq('status', 'applied')
+        .order('applied_at', { ascending: false })
+        .limit(1)
+        .single();
+      
+      if (existingFix?.fixed_code) {
+        // OPTION 3: Return cached fix
+        console.log(`[AutoHeal] Using cached fix for: ${request.file_path}`);
+        const { data: pendingFix, error: fixError } = await supabase
+          .from('pending_fixes')
+          .insert({
+            issue_id: request.issue_id,
+            file_path: request.file_path,
+            fix_prompt: existingFix.fix_prompt,
+            fixed_code: existingFix.fixed_code,
+            confidence: request.confidence,
+            status: 'generated',
+            ai_model: 'cached'
+          })
+          .select()
+          .single();
         
+        if (fixError) throw fixError;
+        
+        return new Response(JSON.stringify({
+          success: true,
+          fix_id: pendingFix.id,
+          fixed_code: existingFix.fixed_code,
+          confidence: request.confidence,
+          source: 'cache'
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      
+      // OPTION 4: Generate prompt for manual fixing (no AI cost)
+      const fixPrompt = generateFixPrompt(request);
+      
+      if (!useAI || !lovableApiKey) {
+        // Return prompt only - user applies manually or uses external tools
         const { data: pendingFix, error: fixError } = await supabase
           .from('pending_fixes')
           .insert({
@@ -125,15 +168,14 @@ serve(async (req) => {
           success: true,
           fix_id: pendingFix.id,
           fix_prompt: fixPrompt,
-          requires_manual_application: true
+          requires_manual_application: true,
+          source: 'template'
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
       
-      // Use Lovable AI to generate fix
-      const fixPrompt = generateFixPrompt(request);
-      
+      // AI path - only when explicitly requested with useAI: true
       const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -159,6 +201,35 @@ serve(async (req) => {
           max_tokens: 2000
         })
       });
+      
+      if (!aiResponse.ok) {
+        // Return prompt on AI failure
+        console.warn(`[AutoHeal] AI failed, returning prompt only`);
+        const { data: pendingFix, error: fixError } = await supabase
+          .from('pending_fixes')
+          .insert({
+            issue_id: request.issue_id,
+            file_path: request.file_path,
+            fix_prompt: fixPrompt,
+            confidence: request.confidence,
+            status: 'prompt_generated',
+            ai_model: 'ai_failed'
+          })
+          .select()
+          .single();
+        
+        if (fixError) throw fixError;
+        
+        return new Response(JSON.stringify({
+          success: true,
+          fix_id: pendingFix.id,
+          fix_prompt: fixPrompt,
+          requires_manual_application: true,
+          source: 'ai_fallback'
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
       
       const aiData = await aiResponse.json();
       const fixedCode = aiData.choices?.[0]?.message?.content || '';
@@ -187,7 +258,8 @@ serve(async (req) => {
         success: true,
         fix_id: pendingFix.id,
         fixed_code: fixedCode,
-        confidence: request.confidence
+        confidence: request.confidence,
+        source: 'ai'
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
