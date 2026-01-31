@@ -25,3 +25,12 @@ export { ArchetypeEvolutionPath, type ArchetypeEvolutionPathProps } from './Arch
 
 // Cross-Domain Learning visualizations
 export { CrossDomainLearningDashboard } from './CrossDomainLearningDashboard';
+
+// Live Real-time visualizations
+export { 
+  LiveColorGrid, 
+  type LiveColorGridProps, 
+  type GridCell,
+  generateGridFromIndustryData,
+  createEmptyGrid 
+} from './LiveColorGrid';

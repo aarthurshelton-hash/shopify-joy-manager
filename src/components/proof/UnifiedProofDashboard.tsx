@@ -30,6 +30,7 @@ import { PublicBenchmarkDashboard } from './PublicBenchmarkDashboard';
 import { VisualAbstractionShowcase } from './VisualAbstractionShowcase';
 import { BlackSwanDiscoveryPanel } from './BlackSwanDiscoveryPanel';
 import { IndustryVerticalDashboard } from './IndustryVerticalDashboard';
+import { LiveIndustryPanel } from './LiveIndustryPanel';
 
 export function UnifiedProofDashboard() {
   return (
@@ -108,6 +109,10 @@ export function UnifiedProofDashboard() {
 
         <TabsContent value="industry">
           <div className="space-y-6">
+            {/* Live Industry Grids - Real-time 8x8 visualization */}
+            <LiveIndustryPanel enabled={true} refreshInterval={3000} />
+            
+            {/* Static Industry Overview */}
             <IndustryVerticalDashboard />
             <BlackSwanDiscoveryPanel showMonetization={true} />
           </div>
