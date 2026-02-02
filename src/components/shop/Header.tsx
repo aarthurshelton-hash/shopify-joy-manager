@@ -1,9 +1,9 @@
 import { useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { CartDrawer } from './CartDrawer';
 import { CurrencySelector } from './CurrencySelector';
 import { Menu, Gamepad2, Paintbrush, ShoppingBag, BookOpen, TrendingUp } from 'lucide-react';
 import UserMenu from '@/components/auth/UserMenu';
-import { useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -47,10 +47,8 @@ export const Header = () => {
         {/* Left side - Logo and navigation */}
         <div className="flex items-center gap-4 md:gap-8">
           {/* Logo link to homepage */}
-          <a 
-            href="/" 
-            target="_blank"
-            rel="noopener noreferrer"
+          <Link 
+            to="/" 
             className="flex items-center gap-2 sm:gap-3 group"
           >
             {/* Premium logo mark */}
@@ -69,16 +67,14 @@ export const Header = () => {
                 Chess Art Prints
               </p>
             </div>
-          </a>
+          </Link>
           
           {/* Desktop navigation links - show on lg+ */}
           <nav className="hidden lg:flex items-center gap-4 xl:gap-6 relative z-20">
             {navLinks.map((link) => (
-              <a 
+              <Link 
                 key={link.to}
-                href={link.to}
-                target="_blank"
-                rel="noopener noreferrer"
+                to={link.to}
                 className={`text-xs xl:text-sm font-medium transition-colors uppercase tracking-wider flex items-center gap-1.5 relative z-10 ${
                   link.highlight 
                     ? 'text-primary hover:text-primary/80' 
@@ -87,7 +83,7 @@ export const Header = () => {
               >
                 {link.icon && <link.icon className="h-3.5 w-3.5 xl:h-4 xl:w-4" />}
                 {link.label}
-              </a>
+              </Link>
             ))}
           </nav>
         </div>
@@ -116,10 +112,8 @@ export const Header = () => {
             <SheetContent side="right" className="w-80 sm:w-96 bg-background border-border">
               <div className="flex flex-col gap-6 mt-6">
                 {/* Mobile brand */}
-                <a 
-                  href="/"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <Link 
+                  to="/"
                   onClick={() => setMobileMenuOpen(false)}
                   className="flex items-center gap-3 pb-4 border-b border-border/50"
                 >
@@ -136,16 +130,14 @@ export const Header = () => {
                       Chess Art Prints
                     </span>
                   </div>
-                </a>
+                </Link>
                 
                 {/* Mobile nav links */}
                 <nav className="flex flex-col gap-1">
                   {navLinks.map((link) => (
-                    <a 
+                    <Link 
                       key={link.to}
-                      href={link.to}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      to={link.to}
                       onClick={() => setMobileMenuOpen(false)}
                       className={`text-base font-medium transition-colors uppercase tracking-wider py-3 px-3 rounded-lg flex items-center gap-3 ${
                         link.highlight 
@@ -155,7 +147,7 @@ export const Header = () => {
                     >
                       {link.icon && <link.icon className="h-5 w-5" />}
                       {link.label}
-                    </a>
+                    </Link>
                   ))}
                 </nav>
                 
