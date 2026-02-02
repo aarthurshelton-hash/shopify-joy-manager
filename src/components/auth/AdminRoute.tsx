@@ -3,10 +3,11 @@
  * Only allows CEO Alec Arthur Shelton access to private features
  */
 
-import { ReactNode } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Shield, Lock } from 'lucide-react';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 interface AdminRouteProps {
   children: ReactNode;
@@ -16,8 +17,21 @@ interface AdminRouteProps {
 export function AdminRoute({ children, featureName = 'This feature' }: AdminRouteProps) {
   const { user, isAdmin, isLoading, isCheckingAdmin } = useAuth();
   
-  // Wait for both auth and admin check to complete
-  if (isLoading || isCheckingAdmin) {
+  // Add timeout to prevent infinite loading state
+  const [checkTimeout, setCheckTimeout] = useState(false);
+  
+  useEffect(() => {
+    if (isCheckingAdmin) {
+      const timer = setTimeout(() => {
+        console.warn('[AdminRoute] Admin check timed out, allowing access attempt');
+        setCheckTimeout(true);
+      }, 5000); // 5 second timeout
+      return () => clearTimeout(timer);
+    }
+  }, [isCheckingAdmin]);
+  
+  // Wait for auth check but timeout if stuck
+  if (isLoading || (isCheckingAdmin && !checkTimeout)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-4">
@@ -70,5 +84,10 @@ export function AdminRoute({ children, featureName = 'This feature' }: AdminRout
     );
   }
   
-  return <>{children}</>;
+  // Wrap children in ErrorBoundary to catch any render errors
+  return (
+    <ErrorBoundary componentName={featureName}>
+      {children}
+    </ErrorBoundary>
+  );
 }
