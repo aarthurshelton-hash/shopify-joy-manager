@@ -75,7 +75,7 @@ export function fixPgn(pgn: string): PgnFixResult {
   chess.reset();
   
   for (let i = 0; i < tokens.length; i++) {
-    let token = tokens[i];
+    const token = tokens[i];
     
     // Skip move numbers
     if (token.match(/^\d+\.+$/)) {
@@ -93,7 +93,7 @@ export function fixPgn(pgn: string): PgnFixResult {
     }
     
     // Try the move as-is first
-    let moveResult = tryMove(chess, token);
+    const moveResult = tryMove(chess, token);
     
     if (moveResult) {
       fixedMoves.push(moveResult.san);

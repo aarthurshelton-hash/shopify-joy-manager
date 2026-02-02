@@ -134,7 +134,7 @@ const renderNestedSquares = (
   for (let i = 0; i < layers.length; i++) {
     const layer = layers[i];
     const offset = (squareSize - layer.layerSize) / 2;
-    let opacity = hasHighlight ? (layer.matches ? 1 : 0.15) : 1;
+    const opacity = hasHighlight ? (layer.matches ? 1 : 0.15) : 1;
     
     elements.push(
       <rect

@@ -59,14 +59,14 @@ export class TickPredictionEngine {
     const microTrend = detectMicroTrend(this.ticks);
     const volumeSignal = analyzeVolumePattern(this.ticks);
     
-    let signalSum = momentum * 0.35 + microTrend * 0.30 + volumeSignal * 0.20 + this.learningState.momentumBias * 0.15;
+    const signalSum = momentum * 0.35 + microTrend * 0.30 + volumeSignal * 0.20 + this.learningState.momentumBias * 0.15;
     
     let direction: 'up' | 'down' | 'flat';
     if (signalSum > 0.15) direction = 'up';
     else if (signalSum < -0.15) direction = 'down';
     else direction = 'flat';
     
-    let confidence = this.calculateConfidence(signalSum, volatility);
+    const confidence = this.calculateConfidence(signalSum, volatility);
     
     const avgMove = volatility * (effectiveHorizon / 1000);
     const targetPrice = direction === 'up' 

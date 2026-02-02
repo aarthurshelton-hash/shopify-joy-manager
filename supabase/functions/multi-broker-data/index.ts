@@ -55,7 +55,7 @@ async function fetchIBKR(symbol: string, assetType: 'stock' | 'crypto' | 'forex'
     const baseUrl = 'https://localhost:5000/v1/api'; // Local gateway
     
     // Convert symbol to IBKR format
-    let ibkrSymbol = symbol.toUpperCase().replace('/', '');
+    const ibkrSymbol = symbol.toUpperCase().replace('/', '');
     let secType = 'STK';
     let exchange = 'SMART';
     

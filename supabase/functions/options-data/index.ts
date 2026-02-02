@@ -297,7 +297,7 @@ serve(async (req) => {
 
     console.log(`[options-data] Action: ${action} | Symbol: ${underlying || symbol}`);
 
-    let result: any = { success: true };
+    const result: any = { success: true };
 
     switch (action) {
       case 'chain':

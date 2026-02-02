@@ -360,42 +360,35 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
   // Calculate tracked pieces with unique IDs for animation
   const trackedPieces = useMemo((): TrackedPiece[] => {
     // Early return if pieces shouldn't be shown
-    if (!showPieces) return [];
+    if (!showPieces) {
+      console.log('[InteractiveVisualizationBoard] showPieces is false, skipping piece rendering');
+      return [];
+    }
     
     // Validate PGN is a non-empty string
     if (!pgn || typeof pgn !== 'string') {
-      if (process.env.NODE_ENV !== 'production') {
-        console.warn('[InteractiveVisualizationBoard] No PGN for pieces - pgn is:', typeof pgn);
-      }
+      console.warn('[InteractiveVisualizationBoard] No PGN for pieces - pgn is:', typeof pgn, 'value:', pgn);
       return [];
     }
     
     const trimmedPgn = pgn.trim();
     if (trimmedPgn === '' || trimmedPgn.length < 2) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.warn('[InteractiveVisualizationBoard] Empty or too short PGN for pieces');
-      }
+      console.warn('[InteractiveVisualizationBoard] Empty or too short PGN for pieces, length:', trimmedPgn.length);
       return [];
     }
     
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('[InteractiveVisualizationBoard] Parsing PGN for pieces, length:', trimmedPgn.length, 'currentMove:', currentMoveNumber);
-    }
+    console.log('[InteractiveVisualizationBoard] Parsing PGN for pieces, length:', trimmedPgn.length, 'currentMove:', currentMoveNumber);
     
     try {
       // Use robust PGN parser
       const { success, moves: allMovesVerbose } = parsePgn(trimmedPgn);
       
       if (!success || allMovesVerbose.length === 0) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.warn('[InteractiveVisualizationBoard] PGN parsing failed or no moves found');
-        }
+        console.warn('[InteractiveVisualizationBoard] PGN parsing failed or no moves found');
         return [];
       }
       
-      if (process.env.NODE_ENV !== 'production') {
-        console.log('[InteractiveVisualizationBoard] Parsed', allMovesVerbose.length, 'moves successfully');
-      }
+      console.log('[InteractiveVisualizationBoard] Parsed', allMovesVerbose.length, 'moves successfully');
       
       // Track piece origins - each piece gets a unique ID based on starting square
       const pieceOrigins = new Map<string, string>(); // current square -> origin ID

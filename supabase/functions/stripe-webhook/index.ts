@@ -140,7 +140,7 @@ serve(async (req) => {
   }
 });
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 async function handleSubscriptionChange(
   supabase: SupabaseClient<any, any, any>,
   stripe: Stripe,
@@ -234,7 +234,7 @@ async function handleSubscriptionChange(
 }
 
 // Start grace period for canceled/paused subscriptions
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 async function startGracePeriod(
   supabase: SupabaseClient<any, any, any>,
   stripe: Stripe,
@@ -322,7 +322,7 @@ async function startGracePeriod(
 }
 
 // Clear grace period when subscription becomes active
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 async function clearGracePeriod(
   supabase: SupabaseClient<any, any, any>,
   stripe: Stripe,
@@ -381,7 +381,7 @@ async function clearGracePeriod(
 }
 
 // Record subscription revenue in financial tracking system
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 async function recordSubscriptionRevenue(
   supabase: SupabaseClient<any, any, any>,
   stripe: Stripe,

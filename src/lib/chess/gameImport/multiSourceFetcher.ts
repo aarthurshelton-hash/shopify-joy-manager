@@ -238,7 +238,7 @@ function chesscomToUnified(game: ChessComGame, username: string): UnifiedGameDat
   const result = getChessComResult(game);
   
   // Extract time control category
-  let speed = game.time_class || 'unknown';
+  const speed = game.time_class || 'unknown';
   
   return {
     pgn: game.pgn || '',  // v6.57: Allow empty PGN

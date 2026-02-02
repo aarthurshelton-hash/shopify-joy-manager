@@ -106,7 +106,7 @@ const GAMES_PER_CYCLE = 12; // Increased for multi-tier sampling
  */
 function computeFEN(moves: string[], upToMove: number): string {
   // Initial position
-  let board = [
+  const board = [
     ['r','n','b','q','k','b','n','r'],
     ['p','p','p','p','p','p','p','p'],
     ['.','.','.','.','.','.','.','.'],
@@ -119,9 +119,9 @@ function computeFEN(moves: string[], upToMove: number): string {
   
   // Process moves (simplified - handles basic cases)
   const files = 'abcdefgh';
-  let castlingRights = 'KQkq';
-  let enPassant = '-';
-  let halfmove = 0;
+  const castlingRights = 'KQkq';
+  const enPassant = '-';
+  const halfmove = 0;
   let fullmove = 1;
   let whiteToMove = true;
   

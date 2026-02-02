@@ -109,15 +109,27 @@ export function useVisualizationExport(options: UseVisualizationExportOptions) {
       const response = await fetch(base64Image);
       const blob = await response.blob();
       
-      // Create download link
+      // Create download link with better reliability
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
       link.download = `${title.replace(/\s+/g, '-').toLowerCase()}-hd.png`;
+      
+      // Ensure link is properly appended and clicked
       document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      
+      // Use setTimeout to ensure DOM is ready before click
+      setTimeout(() => {
+        link.click();
+        
+        // Cleanup after a short delay to ensure download starts
+        setTimeout(() => {
+          if (link.parentNode) {
+            document.body.removeChild(link);
+          }
+          URL.revokeObjectURL(url);
+        }, 100);
+      }, 0);
       
       // Record the download interaction
       if (visualizationId) {
@@ -223,15 +235,27 @@ export function useVisualizationExport(options: UseVisualizationExportOptions) {
       const response = await fetch(base64Image);
       const blob = await response.blob();
       
-      // Create download link
+      // Create download link with better reliability
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
       link.download = `${exportOptions.title.replace(/\s+/g, '-').toLowerCase()}-hd.png`;
+      
+      // Ensure link is properly appended and clicked
       document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      
+      // Use setTimeout to ensure DOM is ready before click
+      setTimeout(() => {
+        link.click();
+        
+        // Cleanup after a short delay to ensure download starts
+        setTimeout(() => {
+          if (link.parentNode) {
+            document.body.removeChild(link);
+          }
+          URL.revokeObjectURL(url);
+        }, 100);
+      }, 0);
       
       // Record the download interaction
       if (visualizationId) {

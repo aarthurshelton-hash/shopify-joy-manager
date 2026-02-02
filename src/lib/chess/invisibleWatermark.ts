@@ -102,7 +102,7 @@ export function embedInvisibleWatermark(
   
   // Embed data using LSB steganography
   // We modify the least significant bit of R, G, B channels
-  let bitIndex = 0;
+  const bitIndex = 0;
   
   // First, encode the length of the data (32 bits)
   const lengthBinary = binaryData.length.toString(2).padStart(32, '0');

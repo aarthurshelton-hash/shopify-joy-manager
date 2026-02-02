@@ -252,7 +252,7 @@ function analyzeColorFlowFullScope(moves: string[], timeControl?: string): {
   // Enhanced archetype detection using full scope of 25 domain adapters
   let archetype = "universal_player";
   let confidence = 0.6;
-  let modulesActive = EN_PENSENT_ADAPTERS;
+  const modulesActive = EN_PENSENT_ADAPTERS;
   
   // Tactical analysis (adapter 1-3)
   if (captures / moveCount > 0.35) {
@@ -534,8 +534,8 @@ export function useHybridBenchmark() {
       // v4.3: Create a SEPARATE set for tracking games processed in THIS run
       // This prevents any possibility of the same game being processed twice
       const processedThisRun = new Set<string>();
-      let skippedFromDb = 0;
-      let skippedThisRun = 0;
+      const skippedFromDb = 0;
+      const skippedThisRun = 0;
       
       // v5.0 ZERO-SKIP: Log exactly what's in the database
       console.log(`[v5.0 STARTUP] ========================================`);
@@ -578,7 +578,7 @@ export function useHybridBenchmark() {
       const failedGameIds = new Set<string>();
       
       // v6.78: Simple stats
-      let skipStats = { noId: 0, inDb: 0, inSession: 0, parseError: 0, engineTimeout: 0, analysisError: 0 };
+      const skipStats = { noId: 0, inDb: 0, inSession: 0, parseError: 0, engineTimeout: 0, analysisError: 0 };
       
       // v6.78-SIMPLE: Request games from BOTH sources
       const targetPerBatch = Math.max(200, gameCount * 5);

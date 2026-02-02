@@ -77,21 +77,21 @@ export function calculateEquilibriumScores(
   };
   
   // Calculate raw scores for each outcome
-  let whiteRaw = 
+  const whiteRaw = 
     controlSignal.white * weights.control +
     momentumSignal.white * weights.momentum +
     archetypeSignal.white * weights.archetype +
     sfSignal.white * weights.stockfish +
     phaseSignal.white * weights.phase;
     
-  let blackRaw = 
+  const blackRaw = 
     controlSignal.black * weights.control +
     momentumSignal.black * weights.momentum +
     archetypeSignal.black * weights.archetype +
     sfSignal.black * weights.stockfish +
     phaseSignal.black * weights.phase;
     
-  let drawRaw = 
+  const drawRaw = 
     controlSignal.draw * weights.control +
     momentumSignal.draw * weights.momentum +
     archetypeSignal.draw * weights.archetype +

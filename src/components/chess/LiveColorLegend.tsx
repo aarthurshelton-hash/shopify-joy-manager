@@ -146,7 +146,7 @@ export const LiveColorLegend: React.FC<LiveColorLegendProps> = ({
     
     // Calculate quadrant profile from move squares
     const quadrantProfile: QuadrantProfile = { q1: 0, q2: 0, q3: 0, q4: 0 };
-    let totalMoves = moveHistory.length;
+    const totalMoves = moveHistory.length;
     
     for (const move of moveHistory) {
       const file = move.square.charCodeAt(0) - 97;

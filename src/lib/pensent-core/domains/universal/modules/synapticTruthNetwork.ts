@@ -184,7 +184,7 @@ class SynapticTruthNetwork {
     
     // Propagate through network - truth will emerge where energy accumulates
     let cascadeDepth = 0;
-    let firedNeurons: PatternNeuron[] = [];
+    const firedNeurons: PatternNeuron[] = [];
     
     while (signals.length > 0 && cascadeDepth < this.MAX_CASCADE_DEPTH) {
       const signal = signals.shift()!;

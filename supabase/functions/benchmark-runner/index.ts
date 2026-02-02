@@ -174,7 +174,7 @@ interface ArchetypeStats {
   beatsStockfishRate: number;
 }
 
-let historicalStats: Map<string, ArchetypeStats> = new Map();
+const historicalStats: Map<string, ArchetypeStats> = new Map();
 let statsLoaded = false;
 
 // Load historical archetype performance from database

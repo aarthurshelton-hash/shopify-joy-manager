@@ -360,7 +360,7 @@ const CreativeMode = () => {
           // Draw nested squares for visits
           if (square.visits.length > 0) {
             const padding = squareSize * 0.08;
-            let currentSize = squareSize - padding * 2;
+            const currentSize = squareSize - padding * 2;
             const sizeReduction = (currentSize * 0.7) / Math.min(square.visits.length, 6);
             
             const uniqueColors = [...new Set(square.visits.map(v => v.hexColor))];

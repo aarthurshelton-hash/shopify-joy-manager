@@ -577,7 +577,7 @@ const MultiMarketScalpingTerminal: React.FC = () => {
     if (!mountedRef.current || !portfolio) return;
     
     const now = Date.now();
-    let portfolioUpdates = { ...currentPortfolio };
+    const portfolioUpdates = { ...currentPortfolio };
     let hasUpdates = false;
     
     setPredictions(prev => prev.map(pred => {

@@ -163,28 +163,49 @@ function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T
 }
 
 // Convert Stockfish centipawn evaluation to win probability and prediction
+// v8.1-SYMMETRIC: Fixed asymmetric thresholds causing white bias
 function stockfishEvalToPrediction(cp: number): {
   prediction: 'white_wins' | 'black_wins' | 'draw';
   confidence: number;
 } {
-  // Win probability using Lichess formula
-  const K = 0.00368208;
-  const winProbability = 50 + 50 * (2 / (1 + Math.exp(-K * cp)) - 1);
+  // SYMMETRIC thresholds - identical for both colors
+  const WINNING_THRESHOLD = 150;
+  const ADVANTAGE_THRESHOLD = 50;
+  const SLIGHT_THRESHOLD = 15;
   
-  // Calibrated thresholds based on actual game outcomes:
-  // +50cp = ~62% white wins, +100cp = ~70% white wins
-  if (cp > 50) {
-    const confidence = Math.min(95, 50 + Math.abs(cp) / 8);
+  // Winning positions - SYMMETRIC
+  if (cp > WINNING_THRESHOLD) {
+    const confidence = Math.min(85, 60 + (cp - WINNING_THRESHOLD) / 8);
     return { prediction: 'white_wins', confidence };
-  } else if (cp < -50) {
-    const confidence = Math.min(95, 50 + Math.abs(cp) / 8);
+  } else if (cp < -WINNING_THRESHOLD) {
+    const confidence = Math.min(85, 60 + (-cp - WINNING_THRESHOLD) / 8);
     return { prediction: 'black_wins', confidence };
-  } else if (cp > 15) {
-    return { prediction: 'white_wins', confidence: 40 + Math.abs(cp) };
-  } else if (cp < -15) {
-    return { prediction: 'black_wins', confidence: 40 + Math.abs(cp) };
-  } else {
-    return { prediction: 'draw', confidence: 35 + (15 - Math.abs(cp)) * 2 };
+  }
+  
+  // Advantage positions - SYMMETRIC
+  else if (cp > ADVANTAGE_THRESHOLD) {
+    const advantage = (cp - ADVANTAGE_THRESHOLD) / (WINNING_THRESHOLD - ADVANTAGE_THRESHOLD);
+    const confidence = 45 + advantage * 20;
+    return { prediction: 'white_wins', confidence };
+  } else if (cp < -ADVANTAGE_THRESHOLD) {
+    const advantage = (-cp - ADVANTAGE_THRESHOLD) / (WINNING_THRESHOLD - ADVANTAGE_THRESHOLD);
+    const confidence = 45 + advantage * 20;
+    return { prediction: 'black_wins', confidence };
+  }
+  
+  // Slight advantage - SYMMETRIC
+  else if (cp > SLIGHT_THRESHOLD) {
+    const confidence = 35 + ((cp - SLIGHT_THRESHOLD) / (ADVANTAGE_THRESHOLD - SLIGHT_THRESHOLD)) * 10;
+    return { prediction: 'white_wins', confidence };
+  } else if (cp < -SLIGHT_THRESHOLD) {
+    const confidence = 35 + ((-cp - SLIGHT_THRESHOLD) / (ADVANTAGE_THRESHOLD - SLIGHT_THRESHOLD)) * 10;
+    return { prediction: 'black_wins', confidence };
+  }
+  
+  // Equal position
+  else {
+    const confidence = 30 + (SLIGHT_THRESHOLD - Math.abs(cp)) * 2;
+    return { prediction: 'draw', confidence };
   }
 }
 
@@ -244,17 +265,18 @@ async function generateStockfishGame(
     }
   }
   
-  // Determine result
+  // Determine result - v8.1-SYMMETRIC: Use consistent threshold
   let result: 'white_wins' | 'black_wins' | 'draw' = 'draw';
   if (chess.isCheckmate()) {
     result = chess.turn() === 'w' ? 'black_wins' : 'white_wins';
   } else if (chess.isDraw()) {
     result = 'draw';
   } else if (moveCount >= maxMoves || Date.now() - gameStart > GAME_TIMEOUT) {
-    // Use quick eval with timeout
+    // SYMMETRIC timeout evaluation - same threshold as prediction
     const finalEval = await withTimeout(engine.quickEval(chess.fen()), 3000, 0);
-    if (finalEval > 200) result = 'white_wins';
-    else if (finalEval < -200) result = 'black_wins';
+    const TIMEOUT_THRESHOLD = 150; // Match WINNING_THRESHOLD in stockfishEvalToPrediction
+    if (finalEval > TIMEOUT_THRESHOLD) result = 'white_wins';
+    else if (finalEval < -TIMEOUT_THRESHOLD) result = 'black_wins';
     else result = 'draw';
   }
   
@@ -537,7 +559,7 @@ export async function runPredictionBenchmark(
     }
   }
   
-  // v7.56: Calculate fallback stats
+  // v8.1: Calculate fallback stats (for transparency)
   const fallbackStats = {
     full: result.predictionPoints.filter(p => p.fallbackTier === 'full').length,
     partial_sf: result.predictionPoints.filter(p => p.fallbackTier === 'partial_sf').length,
@@ -549,20 +571,22 @@ export async function runPredictionBenchmark(
   
   console.log(`[v7.56] Fallback stats: ${JSON.stringify(fallbackStats)}`);
   
-  // v7.56: Calculate final statistics EXCLUDING 'excluded' tier
-  const validPredictions = result.predictionPoints.filter(p => p.fallbackTier !== 'excluded');
-  const validCount = validPredictions.length;
+  // v8.1-FIXED: Calculate final statistics INCLUDING ALL predictions with actual results
+  // Previously excluded 'excluded' tier which skewed accuracy metrics
+  const predictionsWithResults = result.predictionPoints.filter(p => p.actualResult);
+  const totalCount = predictionsWithResults.length;
   
-  const sfCorrect = validPredictions.filter(p => p.stockfishCorrect).length;
-  const hybridCorrect = validPredictions.filter(p => p.hybridCorrect).length;
+  // Count ALL predictions with results (don't exclude based on fallback tier)
+  const sfCorrect = predictionsWithResults.filter(p => p.stockfishCorrect).length;
+  const hybridCorrect = predictionsWithResults.filter(p => p.hybridCorrect).length;
   
-  result.stockfishAccuracy = validCount > 0 ? (sfCorrect / validCount) * 100 : 0;
-  result.hybridAccuracy = validCount > 0 ? (hybridCorrect / validCount) * 100 : 0;
+  result.stockfishAccuracy = totalCount > 0 ? (sfCorrect / totalCount) * 100 : 0;
+  result.hybridAccuracy = totalCount > 0 ? (hybridCorrect / totalCount) * 100 : 0;
   
   // Statistical significance (binomial test approximation)
-  if (validCount > 0) {
+  if (totalCount > 0) {
     const diff = Math.abs(hybridCorrect - sfCorrect);
-    const n = validCount;
+    const n = totalCount;
     const variance = n * 0.5 * 0.5; // Under null hypothesis
     const zScore = diff / Math.sqrt(variance);
     result.pValue = 2 * (1 - normalCdf(zScore));
@@ -571,12 +595,15 @@ export async function runPredictionBenchmark(
   
   result.completedAt = new Date();
   
-  // Log summary
+  // Log summary with corrected counts
+  console.log(`[v8.1] Analyzed ${totalCount} predictions total`);
   if (fallbackStats.excluded > 0) {
-    console.log(`[v7.56] Excluded ${fallbackStats.excluded} predictions from metrics (both SF and Hybrid failed)`);
+    console.log(`[v8.1] Included ${fallbackStats.excluded} previously excluded predictions`);
   }
+  console.log(`[v8.1] Stockfish: ${sfCorrect}/${totalCount} (${result.stockfishAccuracy.toFixed(1)}%)`);
+  console.log(`[v8.1] Hybrid: ${hybridCorrect}/${totalCount} (${result.hybridAccuracy.toFixed(1)}%)`);
   if (fallbackStats.archetype_fallback > 0) {
-    console.log(`[v7.56] Used archetype-based smart fallback for ${fallbackStats.archetype_fallback} predictions`);
+    console.log(`[v8.1] Used archetype-based smart fallback for ${fallbackStats.archetype_fallback} predictions`);
   }
   
   return result;

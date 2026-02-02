@@ -93,7 +93,7 @@ const DEFAULT_CONFIG: EvolutionConfig = {
 const BATCH_TIMEOUT_MS = 90000; // 90 seconds max per batch
 
 // Singleton state
-let engineState: EvolutionState = {
+const engineState: EvolutionState = {
   isRunning: false,
   isPaused: false,
   totalPredictions: 0,

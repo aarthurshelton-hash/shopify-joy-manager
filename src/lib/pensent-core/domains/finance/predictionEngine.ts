@@ -73,7 +73,7 @@ function calculatePrediction(
   }
   
   // Confidence calculation
-  let baseConfidence = Math.max(followThrough.bullish, followThrough.bearish);
+  const baseConfidence = Math.max(followThrough.bullish, followThrough.bearish);
   
   // Adjust for signal strength
   const strengthMultiplier = {

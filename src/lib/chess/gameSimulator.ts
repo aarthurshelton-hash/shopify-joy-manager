@@ -140,7 +140,7 @@ export function simulateGame(pgn: string): SimulationResult {
     for (const moveToken of moveTokens) {
       try {
         // Try common notation fixes
-        let fixedMove = moveToken
+        const fixedMove = moveToken
           .replace(/0-0-0/gi, 'O-O-O')
           .replace(/0-0/gi, 'O-O')
           .replace(/[+#!?]+$/, ''); // Remove check/mate/annotation symbols for parsing
