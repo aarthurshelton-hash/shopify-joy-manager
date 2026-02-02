@@ -1,0 +1,45 @@
+{
+  "name": "chess-market-farm",
+  "version": "1.0.0",
+  "description": "Permanent compute farm for chess game generation and market prediction",
+  "workers": {
+    "chessGameGenerator": {
+      "enabled": true,
+      "instances": 2,
+      "batchSize": 5,
+      "depth": 18,
+      "maxMoves": 100,
+      "restBetweenBatchesMs": 5000,
+      "outputDir": "./farm/data/chess_games"
+    },
+    "marketAnalyzer": {
+      "enabled": true,
+      "instances": 1,
+      "analysisIntervalMs": 300000,
+      "symbols": ["SPY", "QQQ", "IWM", "VIX"],
+      "outputDir": "./farm/data/market_analysis"
+    },
+    "predictionBenchmark": {
+      "enabled": true,
+      "instances": 1,
+      "gamesPerBatch": 10,
+      "predictionMove": 20,
+      "depth": 18,
+      "restBetweenBatchesMs": 10000,
+      "outputDir": "./farm/data/benchmarks"
+    }
+  },
+  "logging": {
+    "level": "info",
+    "maxLogSizeMB": 100,
+    "maxLogFiles": 10,
+    "logDir": "./farm/logs"
+  },
+  "system": {
+    "maxMemoryPercent": 80,
+    "maxCpuPercent": 90,
+    "autoRestartOnFailure": true,
+    "restartDelayMs": 5000,
+    "maxRestartsPerHour": 10
+  }
+}
