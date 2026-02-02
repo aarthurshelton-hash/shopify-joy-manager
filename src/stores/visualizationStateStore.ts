@@ -94,7 +94,7 @@ const initialState = {
   darkMode: false,
   showTerritory: false,
   showHeatmaps: false,
-  showPieces: false,
+  showPieces: true,
   pieceOpacity: 0.7,
 };
 

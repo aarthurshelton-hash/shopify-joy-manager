@@ -796,7 +796,6 @@ const Index = () => {
         ) : (
           <div className="w-full px-4 py-8" ref={visionBoardRef}>
             <UnifiedVisionExperience
-              key={paletteKey}
               board={simulation.board}
               gameData={simulation.gameData}
               totalMoves={simulation.totalMoves}

@@ -13,6 +13,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { StructuredData } from "@/components/seo/StructuredData";
 import { DynamicMetaTags } from "@/components/seo/DynamicMetaTags";
 import { AdminRoute } from "@/components/auth/AdminRoute";
+import { ScrollToTop } from "@/components/shared/ScrollToTop";
 import Index from "./pages/Index";
 import MyPalettes from "./pages/MyPalettes";
 import MyVision from "./pages/MyVision";
@@ -90,7 +91,8 @@ const App = () => (
           <InstallPrompt />
           <LocationTracker />
           <GlobalAlertsBanner />
-          <BrowserRouter>
+            <BrowserRouter>
+            <ScrollToTop />
             <StructuredData />
             <DynamicMetaTags />
             <VisionRestorer />
