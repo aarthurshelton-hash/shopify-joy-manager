@@ -268,20 +268,40 @@ const BookGenerator: React.FC = () => {
   };
 
   const generateVisualization = async (game: GameType): Promise<string> => {
+    console.log(`[BookGenerator] Starting visualization generation for: ${game.title}`);
     try {
       const simulation = simulateGame(game.pgn);
       
+      if (!simulation || !simulation.board || simulation.board.length === 0) {
+        console.error('[BookGenerator] Simulation failed - empty board returned');
+        toast.error('Failed to simulate game', { description: 'Invalid PGN data' });
+        return '';
+      }
+      
+      console.log(`[BookGenerator] Simulation successful, generating image...`);
+      
       // Use the print image generator
-      // TODO: Add palette support to printImageGenerator for book-specific palettes
       const { generateCleanPrintImage } = await import('@/lib/chess/printImageGenerator');
       const imageDataUrl = await generateCleanPrintImage(simulation, {
         darkMode: false,
         includeQR: false,
       });
       
+      if (!imageDataUrl || imageDataUrl === '') {
+        console.error('[BookGenerator] generateCleanPrintImage returned empty string');
+        toast.error('Visualization generation failed', { description: 'Image generation returned empty result' });
+        return '';
+      }
+      
+      console.log(`[BookGenerator] Visualization generated successfully for: ${game.title}`);
       return imageDataUrl;
     } catch (error) {
-      console.error('Visualization generation failed:', error);
+      console.error('[BookGenerator] Visualization generation failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      toast.error('Failed to generate visualization', { 
+        description: errorMessage,
+        duration: 5000
+      });
       return '';
     }
   };

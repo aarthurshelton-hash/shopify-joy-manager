@@ -71,6 +71,25 @@ export async function generateCleanPrintImage(
   options: PrintOptionsExtended = {}
 ): Promise<string> {
   const { darkMode = false, includeQR = false, shareId, capturedState, withWatermark = false, highlightState: providedHighlightState, pgn: explicitPgn } = options;
+  
+  // Validate simulation data before attempting generation
+  if (!simulation) {
+    console.error('[printImageGenerator] Invalid simulation: null or undefined');
+    throw new Error('Invalid simulation data: simulation is null');
+  }
+  
+  if (!simulation.board || !Array.isArray(simulation.board) || simulation.board.length === 0) {
+    console.error('[printImageGenerator] Invalid simulation board:', simulation.board);
+    throw new Error('Invalid simulation data: board is empty or invalid');
+  }
+  
+  if (!simulation.gameData) {
+    console.error('[printImageGenerator] Invalid simulation gameData:', simulation.gameData);
+    throw new Error('Invalid simulation data: gameData is missing');
+  }
+  
+  console.log('[printImageGenerator] Starting image generation with valid simulation');
+  
   const html2canvas = (await import('html2canvas')).default;
   
   // Create a temporary container for rendering
@@ -81,24 +100,29 @@ export async function generateCleanPrintImage(
   document.body.appendChild(container);
   
   try {
+    console.log('[printImageGenerator] Creating temporary container');
     // Import React and ReactDOM for rendering
     const React = await import('react');
     const ReactDOM = await import('react-dom/client');
     const { default: PrintReadyVisualization } = await import('@/components/chess/PrintReadyVisualization');
+    console.log('[printImageGenerator] Dependencies imported successfully');
     
     // Apply captured state filtering if available - this ensures the print matches exactly what the user sees
     const filteredBoard = capturedState && capturedState.currentMove !== Infinity && capturedState.currentMove > 0
       ? filterBoardToMove(simulation.board, capturedState.currentMove)
       : simulation.board;
+    console.log(`[printImageGenerator] Board filtered: ${capturedState ? 'yes' : 'no'}, moves: ${capturedState?.currentMove ?? 'all'}`);
     
     // Use captured dark mode if available, otherwise fall back to passed option
     const effectiveDarkMode = capturedState?.darkMode ?? darkMode;
+    console.log(`[printImageGenerator] Dark mode: ${effectiveDarkMode}`);
     
     // Generate QR code if needed
     let qrDataUrl: string | undefined;
     if (includeQR && shareId) {
       try {
         qrDataUrl = await generateQRDataUrl(shareId, 96);
+        console.log('[printImageGenerator] QR code generated successfully');
       } catch (qrError) {
         console.warn('Failed to generate QR code for print:', qrError);
       }
@@ -136,7 +160,7 @@ export async function generateCleanPrintImage(
       currentMoveNumber: capturedState.currentMove !== Infinity ? capturedState.currentMove : undefined,
     } : undefined;
     
-    // Render the unified PrintReadyVisualization component
+    // Render the unified PrintReadyVisualization component with longer timeout
     const root = ReactDOM.createRoot(printContent);
     await new Promise<void>((resolve) => {
       root.render(
@@ -154,21 +178,40 @@ export async function generateCleanPrintImage(
           withWatermark, // Pass watermark flag to component
         })
       );
-      // Give React time to render
-      setTimeout(resolve, 150);
+      // Give React more time to render - increased from 150ms to 500ms
+      setTimeout(resolve, 500);
     });
     
-    // Wait for images to load
-    await new Promise(resolve => setTimeout(resolve, 200));
+    // Wait longer for images/fonts to load
+    await new Promise(resolve => setTimeout(resolve, 500));
     
-    // Capture with html2canvas
-    const canvas = await html2canvas(printContent, {
-      scale: 3, // High resolution for print quality
-      backgroundColor: effectiveDarkMode ? '#0A0A0A' : '#FDFCFB',
-      useCORS: true,
-      allowTaint: true,
-      logging: false,
-    });
+    // Capture with html2canvas with retry logic
+    let canvas;
+    let retries = 0;
+    const maxRetries = 3;
+    
+    while (retries < maxRetries) {
+      try {
+        canvas = await html2canvas(printContent, {
+          scale: 3, // High resolution for print quality
+          backgroundColor: effectiveDarkMode ? '#0A0A0A' : '#FDFCFB',
+          useCORS: true,
+          allowTaint: true,
+          logging: false,
+          // Add image timeout
+          imageTimeout: 15000,
+        });
+        break; // Success, exit retry loop
+      } catch (captureError) {
+        retries++;
+        console.warn(`[printImageGenerator] html2canvas attempt ${retries} failed:`, captureError);
+        if (retries >= maxRetries) {
+          throw new Error(`html2canvas failed after ${maxRetries} attempts: ${captureError}`);
+        }
+        // Wait before retry
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
     
     // Convert to base64
     const base64 = canvas.toDataURL('image/png', 1.0);
