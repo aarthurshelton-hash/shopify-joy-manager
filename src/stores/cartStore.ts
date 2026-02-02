@@ -117,6 +117,61 @@ const SHOPIFY_STORE_PERMANENT_DOMAIN = 'printify-shop-manager-fs4kw.myshopify.co
 const SHOPIFY_STOREFRONT_URL = `https://${SHOPIFY_STORE_PERMANENT_DOMAIN}/api/${SHOPIFY_API_VERSION}/graphql.json`;
 const SHOPIFY_STOREFRONT_TOKEN = 'a0ffa036b52f6150e7e1bfaf4b307ff4';
 
+// Retry configuration for heavy business load
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 1000;
+const CIRCUIT_BREAKER_THRESHOLD = 5;
+const CIRCUIT_BREAKER_RESET_MS = 60000; // 1 minute
+
+// Circuit breaker state
+let consecutiveFailures = 0;
+let circuitBreakerOpen = false;
+let lastFailureTime = 0;
+
+/**
+ * Check if circuit breaker is open
+ */
+function isCircuitBreakerOpen(): boolean {
+  if (!circuitBreakerOpen) return false;
+  
+  // Check if enough time has passed to try again
+  if (Date.now() - lastFailureTime > CIRCUIT_BREAKER_RESET_MS) {
+    circuitBreakerOpen = false;
+    consecutiveFailures = 0;
+    console.log('[CartStore] Circuit breaker reset');
+    return false;
+  }
+  
+  return true;
+}
+
+/**
+ * Record success - reset failure count
+ */
+function recordSuccess(): void {
+  consecutiveFailures = 0;
+}
+
+/**
+ * Record failure - increment failure count and potentially open circuit breaker
+ */
+function recordFailure(): void {
+  consecutiveFailures++;
+  lastFailureTime = Date.now();
+  
+  if (consecutiveFailures >= CIRCUIT_BREAKER_THRESHOLD) {
+    circuitBreakerOpen = true;
+    console.error(`[CartStore] Circuit breaker opened after ${consecutiveFailures} failures`);
+  }
+}
+
+/**
+ * Delay utility for retries
+ */
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 // Cart creation mutation with buyer identity for currency localization
 // Includes attributes for custom line item properties (print images, viz IDs, etc.)
 const CART_CREATE_MUTATION = `
@@ -133,6 +188,41 @@ const CART_CREATE_MUTATION = `
     }
   }
 `;
+
+async function createStorefrontCheckoutWithRetry(items: CartItem[], attempt = 1): Promise<string> {
+  // Check circuit breaker
+  if (isCircuitBreakerOpen()) {
+    throw new Error('Payment system temporarily unavailable. Please try again in a minute.');
+  }
+
+  try {
+    const result = await createStorefrontCheckout(items);
+    recordSuccess();
+    return result;
+  } catch (error) {
+    recordFailure();
+    
+    // Retry logic for transient errors
+    if (attempt < MAX_RETRIES) {
+      const isRetryable = error instanceof Error && (
+        error.message.includes('network') ||
+        error.message.includes('timeout') ||
+        error.message.includes('rate limit') ||
+        error.message.includes('502') ||
+        error.message.includes('503') ||
+        error.message.includes('504')
+      );
+      
+      if (isRetryable) {
+        console.log(`[CartStore] Retrying checkout (attempt ${attempt + 1}/${MAX_RETRIES})...`);
+        await delay(RETRY_DELAY_MS * attempt); // Exponential backoff
+        return createStorefrontCheckoutWithRetry(items, attempt + 1);
+      }
+    }
+    
+    throw error;
+  }
+}
 
 async function createStorefrontCheckout(items: CartItem[]): Promise<string> {
   const lines = items.map(item => {
@@ -304,15 +394,30 @@ export const useCartStore = create<CartStore>()(
 
       createCheckout: async () => {
         const { items } = get();
-        if (items.length === 0) return;
+        if (items.length === 0) {
+          toast.error('Your cart is empty');
+          return;
+        }
 
         set({ isLoading: true });
         try {
-          const checkoutUrl = await createStorefrontCheckout(items);
+          const checkoutUrl = await createStorefrontCheckoutWithRetry(items);
           set({ checkoutUrl });
+          
+          // Clear cart after successful checkout creation
+          set({ items: [] });
+          
+          toast.success('Checkout ready!', {
+            description: 'Redirecting to secure checkout...'
+          });
         } catch (error) {
           console.error('Failed to create checkout:', error);
-          toast.error('Checkout failed. Please try again.');
+          const message = error instanceof Error ? error.message : 'Checkout failed';
+          toast.error('Checkout failed', {
+            description: message.includes('circuit breaker') 
+              ? 'Payment system temporarily unavailable. Please try again shortly.'
+              : 'Please try again or contact support if the problem persists.'
+          });
         } finally {
           set({ isLoading: false });
         }

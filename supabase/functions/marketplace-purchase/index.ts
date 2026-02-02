@@ -29,6 +29,50 @@ const FEE_DISTRIBUTION = {
   platformOps: 0.10,    // 10% to platform operations
 };
 
+// Idempotency key store (in-memory for now - should be Redis in production)
+const processedKeys = new Map<string, number>();
+const IDEMPOTENCY_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+/**
+ * Generate idempotency key from request data
+ */
+function generateIdempotencyKey(userId: string, listingId: string, timestamp: number): string {
+  return `purchase:${userId}:${listingId}:${Math.floor(timestamp / 60000)}`; // 1-minute window
+}
+
+/**
+ * Check if idempotency key has been processed
+ */
+function isKeyProcessed(key: string): boolean {
+  const processedAt = processedKeys.get(key);
+  if (!processedAt) return false;
+  
+  // Check if within window
+  if (Date.now() - processedAt > IDEMPOTENCY_WINDOW_MS) {
+    processedKeys.delete(key);
+    return false;
+  }
+  
+  return true;
+}
+
+/**
+ * Mark key as processed
+ */
+function markKeyProcessed(key: string): void {
+  processedKeys.set(key, Date.now());
+  
+  // Cleanup old keys (simple approach - in production use Redis TTL)
+  if (processedKeys.size > 10000) {
+    const now = Date.now();
+    for (const [k, v] of processedKeys) {
+      if (now - v > IDEMPOTENCY_WINDOW_MS) {
+        processedKeys.delete(k);
+      }
+    }
+  }
+}
+
 // Input validation helper - validates UUID format
 const isValidUUID = (str: string): boolean => {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -99,6 +143,20 @@ serve(async (req) => {
     // Validate listingId - must be a valid UUID
     if (typeof listingId !== 'string' || !isValidUUID(listingId)) {
       throw new Error("Invalid listing ID format - must be a valid UUID");
+    }
+    
+    // Check idempotency to prevent duplicate charges
+    const idempotencyKey = generateIdempotencyKey(user.id, listingId, Date.now());
+    if (isKeyProcessed(idempotencyKey)) {
+      logStep("Duplicate request detected - already processed", { listingId });
+      return new Response(JSON.stringify({ 
+        success: true, 
+        message: "Request already processed",
+        duplicate: true 
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
     }
     
     // Validate action - must be one of the allowed values or undefined
@@ -210,6 +268,9 @@ serve(async (req) => {
         p_ip_hash: null,
       });
 
+      // Mark idempotency key as processed
+      markKeyProcessed(idempotencyKey);
+
       logStep("Free transfer completed");
       return new Response(JSON.stringify({ 
         success: true, 
@@ -285,6 +346,9 @@ serve(async (req) => {
     });
 
     logStep("Checkout session created", { sessionId: session.id });
+
+    // Mark idempotency key as processed for paid purchases
+    markKeyProcessed(idempotencyKey);
 
     return new Response(JSON.stringify({ 
       url: session.url,
