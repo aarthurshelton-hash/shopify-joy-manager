@@ -549,8 +549,8 @@ const AnalyticsPanel: React.FC<{
                 </Badge>
               </div>
               <div className="flex flex-wrap gap-1">
-                {gameAnalysis.specialMoves.map((move, i) => (
-                  <Badge key={i} variant="secondary" className="text-xs">
+                {gameAnalysis.specialMoves.map((move) => (
+                  <Badge key={`${move.type}-${move.moveNumber}`} variant="secondary" className="text-xs">
                     {move.type === 'castle_kingside' && '0-0'}
                     {move.type === 'castle_queenside' && '0-0-0'}
                     {move.type === 'en_passant' && 'e.p.'}
@@ -1253,10 +1253,12 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
               .replace(/[+#!?]+$/, '');
             const result = chess.move(fixedMove);
             if (result) parsedMoves.push(result.san);
-          } catch {}
+          } catch (e) {
+            // Ignore invalid moves during PGN parsing
+          }
         }
         return parsedMoves;
-      } catch {
+      } catch (e) {
         return [];
       }
     }
