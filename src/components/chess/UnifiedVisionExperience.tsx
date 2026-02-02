@@ -48,6 +48,8 @@ import { TimelineProvider, useTimeline, GamePhase } from '@/contexts/TimelineCon
 import { LegendHighlightProvider, useLegendHighlight, HighlightedPiece } from '@/contexts/LegendHighlightContext';
 import InteractiveVisualizationBoard from './InteractiveVisualizationBoard';
 import { EnhancedLegend } from './EnhancedLegend';
+import { VisionControls } from './VisionControls';
+import { VisionBoard } from './VisionBoard';
 import GameInfoDisplay from './GameInfoDisplay';
 import InteractiveGameInfoDisplay from './InteractiveGameInfoDisplay';
 import VerticalTimelineSlider from './VerticalTimelineSlider';
@@ -174,114 +176,8 @@ export interface UnifiedVisionExperienceProps {
   backButtonText?: string;
 }
 
-// Internal timeline-aware board with trademark look
-const TimelineBoard: React.FC<{
-  board: SquareData[][];
-  totalMoves: number;
-  size: number;
-  gameData: GameData;
-  darkMode?: boolean;
-  title?: string;
-  showCoordinates?: boolean;
-  showPieces?: boolean;
-  pieceOpacity?: number;
-  pgn?: string;
-}> = ({ board, totalMoves, size, gameData, darkMode = false, title, showCoordinates = false, showPieces = false, pieceOpacity = 0.7, pgn }) => {
-  const { currentMove, setCurrentMove } = useTimeline();
-  
-  // Ensure PGN is available - prefer prop, fallback to gameData.pgn
-  const effectivePgnForBoard = useMemo(() => {
-    if (pgn && typeof pgn === 'string' && pgn.trim().length > 0) {
-      return pgn.trim();
-    }
-    if (gameData?.pgn && typeof gameData.pgn === 'string' && gameData.pgn.trim().length > 0) {
-      return gameData.pgn.trim();
-    }
-    return '';
-  }, [pgn, gameData?.pgn]);
-  
-  const filteredBoard = useMemo(() => {
-    if (currentMove >= totalMoves) return board;
-    return board.map(rank =>
-      rank.map(square => ({
-        ...square,
-        visits: square.visits.filter(visit => visit.moveNumber <= currentMove)
-      }))
-    );
-  }, [board, currentMove, totalMoves]);
-
-  // Handle follow piece activation - jump to the move
-  const handleFollowPieceActivated = useCallback((moveNumber: number) => {
-    setCurrentMove(moveNumber);
-  }, [setCurrentMove]);
-
-  const bgColor = darkMode ? '#0A0A0A' : '#FDFCFB';
-  const borderColor = darkMode ? '#292524' : '#e7e5e4';
-  const mutedColor = darkMode ? '#78716c' : '#a8a29e';
-
-  return (
-    <div
-      style={{
-        backgroundColor: bgColor,
-        padding: 24,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: 20,
-        width: 'fit-content',
-        borderRadius: 8,
-        border: `1px solid ${borderColor}`,
-        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-      }}
-    >
-      {/* Chess Board - Now Interactive for square hover highlighting */}
-      <div style={{ position: 'relative' }}>
-        {showCoordinates && (
-          <BoardCoordinateGuide size={size} position="inside" />
-        )}
-        <InteractiveVisualizationBoard 
-          board={filteredBoard} 
-          size={size}
-          showPieces={showPieces}
-          pieceOpacity={pieceOpacity}
-          pgn={effectivePgnForBoard}
-          currentMoveNumber={currentMove}
-          onFollowPieceActivated={handleFollowPieceActivated}
-        />
-      </div>
-
-      {/* Game Info Section - Now Interactive */}
-      <div
-        style={{
-          width: '100%',
-          paddingTop: 16,
-          borderTop: `1px solid ${borderColor}`,
-        }}
-      >
-        <InteractiveGameInfoDisplay 
-          gameData={gameData}
-          title={title}
-          darkMode={darkMode} 
-        />
-      </div>
-
-      {/* Branding */}
-      <p
-        style={{
-          fontSize: 10,
-          letterSpacing: '0.3em',
-          textTransform: 'uppercase',
-          fontWeight: 500,
-          color: mutedColor,
-          margin: 0,
-          fontFamily: "'Inter', system-ui, sans-serif",
-        }}
-      >
-        ♔ En Pensent ♚
-      </p>
-    </div>
-  );
-};
+// Simplified - VisionBoard component handles this now
+// Removed TimelineBoard definition (~100 lines)
 
 // Timeline controls with key moments and trajectory overlay
 const TimelineControls: React.FC<{
@@ -1191,23 +1087,49 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
   
   const [showCoordinates, setShowCoordinates] = useState(true);
   const [showHeatmap, setShowHeatmap] = useState(initialState?.heatmaps ?? false);
-  const [showPieces, setShowPiecesLocal] = useState(initialState?.pieces ?? storeShowPieces ?? false);
-  const [pieceOpacity, setPieceOpacityLocal] = useState(initialState?.opacity ?? storePieceOpacity ?? 0.7);
+  const [showPieces, setShowPiecesLocal] = useState(storeShowPieces ?? false);
+  const [pieceOpacity, setPieceOpacityLocal] = useState(storePieceOpacity ?? 0.7);
   const [boardSize, setBoardSize] = useState(400);
-  const [darkMode, setDarkModeLocal] = useState(initialState?.dark ?? storeDarkMode ?? false);
+  const [darkMode, setDarkModeLocal] = useState(storeDarkMode ?? false);
+  
+  // Track if user has manually interacted with these settings
+  const hasUserSetPieces = useRef(false);
+  const hasUserSetOpacity = useRef(false);
+  const hasUserSetDarkMode = useRef(false);
+  
+  // Sync initial state to local state on mount only (not on re-renders)
+  useEffect(() => {
+    // Only apply initialState if user hasn't manually set the value
+    if (initialState?.pieces !== undefined && !hasUserSetPieces.current) {
+      setShowPiecesLocal(initialState.pieces);
+    }
+    if (initialState?.opacity !== undefined && !hasUserSetOpacity.current) {
+      setPieceOpacityLocal(initialState.opacity);
+    }
+    if (initialState?.dark !== undefined && !hasUserSetDarkMode.current) {
+      setDarkModeLocal(initialState.dark);
+    }
+    if (initialState?.heatmaps !== undefined) {
+      setShowHeatmap(initialState.heatmaps);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only on mount
   
   // Sync local state to global store for export modal to read
   const setShowPieces = useCallback((value: boolean) => {
+    hasUserSetPieces.current = true;
     setShowPiecesLocal(value);
     setStoreShowPieces(value);
   }, [setStoreShowPieces]);
   
   const setPieceOpacity = useCallback((value: number) => {
+    hasUserSetOpacity.current = true;
     setPieceOpacityLocal(value);
     setStorePieceOpacity(value);
   }, [setStorePieceOpacity]);
   
   const setDarkMode = useCallback((value: boolean) => {
+    hasUserSetDarkMode.current = true;
     setDarkModeLocal(value);
     setStoreDarkMode(value);
   }, [setStoreDarkMode]);
@@ -1215,19 +1137,6 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
   const [mobileLegendExpanded, setMobileLegendExpanded] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   
-  // Sync initial state to store on mount so exports see correct values
-  useEffect(() => {
-    if (initialState?.pieces !== undefined) {
-      setStoreShowPieces(initialState.pieces);
-    }
-    if (initialState?.opacity !== undefined) {
-      setStorePieceOpacity(initialState.opacity);
-    }
-    if (initialState?.dark !== undefined) {
-      setStoreDarkMode(initialState.dark);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only on mount - intentionally ignoring dependencies
   
   // Initial move position for TimelineProvider
   const initialMove = useMemo(() => {
@@ -1714,7 +1623,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
 
               {/* Fullscreen board - larger size */}
               <div className="relative" data-vision-board="true">
-                <TimelineBoard 
+                <VisionBoard 
                   board={localBoard} 
                   totalMoves={localTotalMoves} 
                   size={Math.min(window.innerHeight - 100, window.innerWidth - 100, 700)}
@@ -1812,90 +1721,28 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
               <div className="w-full">
                 <div className="space-y-4 w-full pb-4">
                   {/* Board Controls + Quick Actions Bar */}
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border/50">
-                    {/* Left: View controls */}
-                    <div className="flex flex-wrap items-center gap-3">
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div className="flex items-center gap-2">
-                              <Grid3X3 className="h-4 w-4 text-muted-foreground" />
-                              <Switch
-                                checked={showCoordinates}
-                                onCheckedChange={setShowCoordinates}
-                              />
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent>Toggle board coordinates (C)</TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-
-                      <div className="h-4 w-px bg-border" />
-
-                      <ShowPiecesToggle 
+                  <VisionControls
+                    showCoordinates={showCoordinates}
+                    onToggleCoordinates={setShowCoordinates}
+                    showPieces={showPieces}
+                    pieceOpacity={pieceOpacity}
+                    onTogglePieces={setShowPieces}
+                    onOpacityChange={setPieceOpacity}
+                    showLegend={showLegend}
+                    onToggleLegend={setShowLegend}
+                    onFullscreen={() => setIsFullscreen(true)}
+                  >
+                    {onExport && (
+                      <ExportActionButtons
+                        onExport={onExport}
+                        isPremium={isPremium}
+                        darkMode={darkMode}
+                        totalMoves={localTotalMoves}
                         showPieces={showPieces}
                         pieceOpacity={pieceOpacity}
-                        onToggle={setShowPieces}
-                        onOpacityChange={setPieceOpacity}
-                        compact
                       />
-
-                      {showLegend !== undefined && (
-                        <>
-                          <div className="h-4 w-px bg-border" />
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <div className="flex items-center gap-2">
-                                  <Eye className="h-4 w-4 text-muted-foreground" />
-                                  <Switch
-                                    checked={showLegend}
-                                    onCheckedChange={setShowLegend}
-                                  />
-                                </div>
-                              </TooltipTrigger>
-                              <TooltipContent>Toggle color legend (L)</TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </>
-                      )}
-
-                      {/* Fullscreen Button */}
-                      <div className="h-4 w-px bg-border" />
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setIsFullscreen(true)}
-                              className="h-8 w-8 p-0"
-                            >
-                              <Maximize2 className="h-4 w-4 text-muted-foreground" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Fullscreen mode (F)</TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
-                    
-                    {/* Right: Quick export actions - prominently visible */}
-                    {onExport && (
-                      <>
-                        <div className="hidden sm:block h-4 w-px bg-border mx-1" />
-                        <div className="flex items-center gap-2 sm:ml-auto">
-                          <ExportActionButtons
-                            onExport={onExport}
-                            isPremium={isPremium}
-                            darkMode={darkMode}
-                            totalMoves={localTotalMoves}
-                            showPieces={showPieces}
-                            pieceOpacity={pieceOpacity}
-                          />
-                        </div>
-                      </>
                     )}
-                  </div>
+                  </VisionControls>
                   
                   {/* Deep Analysis Teaser - Link to Analytics Tab */}
                   {gameAnalysis && (
@@ -1943,7 +1790,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                           <Loader2 className="h-8 w-8 animate-spin text-primary" />
                         </div>
                       )}
-                      <TimelineBoard 
+                      <VisionBoard 
                         board={localBoard} 
                         totalMoves={localTotalMoves} 
                         size={boardSize}
