@@ -210,6 +210,7 @@ function stockfishEvalToPrediction(cp: number): {
 }
 
 // Generate a high-quality Stockfish vs Stockfish game
+// v8.2-IMPROVED: Increased timeouts and better error handling
 async function generateStockfishGame(
   gameId: string,
   depth: number = 18,
@@ -219,28 +220,37 @@ async function generateStockfishGame(
   const chess = new Chess();
   const engine = getStockfishEngine();
   
-  // Timeout: 10s for engine ready
-  const ready = await withTimeout(engine.waitReady(), 10000, false);
+  // Timeout: 15s for engine ready (increased from 10s)
+  const ready = await withTimeout(engine.waitReady(), 15000, false);
   if (!ready) {
-    console.warn('[Benchmark] Stockfish not ready, returning short game');
+    console.warn(`[Benchmark] Stockfish not ready for game ${gameId}, returning short game`);
     return { pgn: '', result: 'draw', moveCount: 0 };
   }
   
   let moveCount = 0;
-  const MOVE_TIMEOUT = 5000; // 5s per move max
-  const GAME_TIMEOUT = 120000; // 2 min total game limit
+  const MOVE_TIMEOUT = 8000; // 8s per move max (increased from 5s)
+  const GAME_TIMEOUT = 180000; // 3 min total game limit (increased from 2min)
   const gameStart = Date.now();
+  
+  // Validate depth parameter
+  if (depth < 10 || depth > 25) {
+    console.warn(`[Benchmark] Depth ${depth} outside optimal range (10-25), using 18`);
+    depth = 18;
+  }
+  
+  let consecutiveFailures = 0;
+  const MAX_CONSECUTIVE_FAILURES = 3;
   
   while (!chess.isGameOver() && moveCount < maxMoves) {
     // Check total game timeout
     if (Date.now() - gameStart > GAME_TIMEOUT) {
-      console.warn(`[Benchmark] Game ${gameId} hit 2-minute limit at move ${moveCount}`);
+      console.warn(`[Benchmark] Game ${gameId} hit 3-minute limit at move ${moveCount}`);
       break;
     }
     
-    // Analysis with 5s timeout per move
+    // Analysis with 8s timeout per move
     const analysis = await withTimeout(
-      engine.analyzePosition(chess.fen(), { depth, nodes: 50000 }),
+      engine.analyzePosition(chess.fen(), { depth, nodes: 100000 }),
       MOVE_TIMEOUT,
       { bestMove: null, evaluation: { score: 0 } } as any
     );
@@ -253,15 +263,24 @@ async function generateStockfishGame(
         
         chess.move({ from, to, promotion });
         moveCount++;
+        consecutiveFailures = 0; // Reset on success
         
         onProgress?.(moveCount, chess.pgn());
       } catch (e) {
-        console.warn('Move failed:', analysis.bestMove, e);
-        break;
+        console.warn(`[Benchmark] Move failed in game ${gameId}:`, analysis.bestMove, e);
+        consecutiveFailures++;
+        if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+          console.error(`[Benchmark] Too many consecutive failures in game ${gameId}, aborting`);
+          break;
+        }
       }
     } else {
       console.warn(`[Benchmark] No best move returned for game ${gameId} at move ${moveCount}`);
-      break;
+      consecutiveFailures++;
+      if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+        console.error(`[Benchmark] Too many consecutive failures in game ${gameId}, aborting`);
+        break;
+      }
     }
   }
   
@@ -273,13 +292,14 @@ async function generateStockfishGame(
     result = 'draw';
   } else if (moveCount >= maxMoves || Date.now() - gameStart > GAME_TIMEOUT) {
     // SYMMETRIC timeout evaluation - same threshold as prediction
-    const finalEval = await withTimeout(engine.quickEval(chess.fen()), 3000, 0);
+    const finalEval = await withTimeout(engine.quickEval(chess.fen()), 5000, 0);
     const TIMEOUT_THRESHOLD = 150; // Match WINNING_THRESHOLD in stockfishEvalToPrediction
     if (finalEval > TIMEOUT_THRESHOLD) result = 'white_wins';
     else if (finalEval < -TIMEOUT_THRESHOLD) result = 'black_wins';
     else result = 'draw';
   }
   
+  console.log(`[Benchmark] Game ${gameId} completed: ${moveCount} moves, result: ${result}`);
   return { pgn: chess.pgn(), result, moveCount };
 }
 
@@ -504,58 +524,77 @@ export async function runPredictionBenchmark(
     startedAt: new Date(),
   };
   
-  for (let i = 0; i < numGames; i++) {
-    // CRITICAL: For internal benchmark (Stockfish vs Stockfish), we use a synthetic-style ID
-    // but mark it clearly as internal so it's never confused with real Lichess IDs
-    // Real Lichess IDs are ALWAYS 8 alphanumeric chars - this format is intentionally different
-    const gameId = `internal_sfvsf_${i}`;
+  // v8.2-PARALLEL: Process games in parallel batches for faster benchmarks
+  const BATCH_SIZE = 3; // Process 3 games concurrently
+  
+  for (let batchStart = 0; batchStart < numGames; batchStart += BATCH_SIZE) {
+    const batchEnd = Math.min(batchStart + BATCH_SIZE, numGames);
+    const batchIndices = Array.from({ length: batchEnd - batchStart }, (_, i) => batchStart + i);
     
-    onProgress?.(`Generating game ${i + 1}/${numGames}`, (i / numGames) * 100);
+    onProgress?.(`Generating games ${batchStart + 1}-${batchEnd}/${numGames}`, (batchStart / numGames) * 100);
     
-    try {
-      // Generate a Stockfish vs Stockfish game
-      const game = await generateStockfishGame(gameId, depth, 100);
+    // Generate games in parallel
+    const gamePromises = batchIndices.map(async (i) => {
+      const gameId = `internal_sfvsf_${i}`;
+      try {
+        const game = await generateStockfishGame(gameId, depth, 100);
+        return { i, gameId, game, error: null };
+      } catch (error) {
+        console.error(`[Benchmark] Failed to generate game ${i}:`, error);
+        return { i, gameId, game: null, error };
+      }
+    });
+    
+    const batchResults = await Promise.all(gamePromises);
+    
+    // Process results sequentially to maintain consistency
+    for (const { i, gameId, game, error } of batchResults) {
+      if (error || !game) {
+        console.error(`[Benchmark] Skipping game ${i} due to generation error`);
+        continue;
+      }
       
       if (game.moveCount < predictionMoveNumber) {
-        console.log(`Game ${i} too short (${game.moveCount} moves), skipping`);
+        console.log(`[Benchmark] Game ${i} too short (${game.moveCount} moves), skipping`);
         continue;
       }
       
       onProgress?.(`Analyzing game ${i + 1}/${numGames}`, ((i + 0.5) / numGames) * 100);
       
-      // Make predictions at the specified move
-      const prediction = await makePredictionAtMove(gameId, game.pgn, predictionMoveNumber, depth);
-      prediction.actualResult = game.result;
-      
-      // Score predictions
-      prediction.stockfishCorrect = prediction.stockfishPrediction === game.result;
-      prediction.hybridCorrect = prediction.hybridPrediction === game.result;
-      
-      result.predictionPoints.push(prediction);
-      result.completedGames++;
-      
-      // Update archetype performance
-      if (!result.archetypePerformance[prediction.hybridArchetype]) {
-        result.archetypePerformance[prediction.hybridArchetype] = { correct: 0, total: 0 };
+      try {
+        // Make predictions at the specified move
+        const prediction = await makePredictionAtMove(gameId, game.pgn, predictionMoveNumber, depth);
+        prediction.actualResult = game.result;
+        
+        // Score predictions
+        prediction.stockfishCorrect = prediction.stockfishPrediction === game.result;
+        prediction.hybridCorrect = prediction.hybridPrediction === game.result;
+        
+        result.predictionPoints.push(prediction);
+        result.completedGames++;
+        
+        // Update archetype performance
+        if (!result.archetypePerformance[prediction.hybridArchetype]) {
+          result.archetypePerformance[prediction.hybridArchetype] = { correct: 0, total: 0 };
+        }
+        result.archetypePerformance[prediction.hybridArchetype].total++;
+        if (prediction.hybridCorrect) {
+          result.archetypePerformance[prediction.hybridArchetype].correct++;
+        }
+        
+        // Update comparison counts
+        if (prediction.stockfishCorrect && prediction.hybridCorrect) {
+          result.bothCorrect++;
+        } else if (!prediction.stockfishCorrect && !prediction.hybridCorrect) {
+          result.bothWrong++;
+        } else if (prediction.hybridCorrect) {
+          result.hybridWins++;
+        } else {
+          result.stockfishWins++;
+        }
+      } catch (e) {
+        console.error(`[Benchmark] Error analyzing game ${i}:`, e);
       }
-      result.archetypePerformance[prediction.hybridArchetype].total++;
-      if (prediction.hybridCorrect) {
-        result.archetypePerformance[prediction.hybridArchetype].correct++;
-      }
-      
-      // Update comparison counts
-      if (prediction.stockfishCorrect && prediction.hybridCorrect) {
-        result.bothCorrect++;
-      } else if (!prediction.stockfishCorrect && !prediction.hybridCorrect) {
-        result.bothWrong++;
-      } else if (prediction.hybridCorrect) {
-        result.hybridWins++;
-      } else {
-        result.stockfishWins++;
-      }
-      
-    } catch (e) {
-      console.error(`Error in game ${i}:`, e);
     }
   }
   
@@ -584,6 +623,7 @@ export async function runPredictionBenchmark(
   result.hybridAccuracy = totalCount > 0 ? (hybridCorrect / totalCount) * 100 : 0;
   
   // Statistical significance (binomial test approximation)
+  // v8.2-IMPROVED: Added confidence intervals and better statistical reporting
   if (totalCount > 0) {
     const diff = Math.abs(hybridCorrect - sfCorrect);
     const n = totalCount;
@@ -591,6 +631,29 @@ export async function runPredictionBenchmark(
     const zScore = diff / Math.sqrt(variance);
     result.pValue = 2 * (1 - normalCdf(zScore));
     result.confidence = 100 * (1 - result.pValue);
+    
+    // Calculate 95% confidence intervals using Wilson score interval
+    const wilsonInterval = (successes: number, trials: number, z: number = 1.96) => {
+      if (trials === 0) return { lower: 0, upper: 0 };
+      const p = successes / trials;
+      const denominator = 1 + (z * z) / trials;
+      const centre = (p + (z * z) / (2 * trials)) / denominator;
+      const halfWidth = z * Math.sqrt((p * (1 - p) + (z * z) / (4 * trials)) / trials) / denominator;
+      return {
+        lower: Math.max(0, centre - halfWidth) * 100,
+        upper: Math.min(1, centre + halfWidth) * 100
+      };
+    };
+    
+    const sfCI = wilsonInterval(sfCorrect, totalCount);
+    const hybridCI = wilsonInterval(hybridCorrect, totalCount);
+    
+    console.log(`[v8.2] Statistical Analysis:`);
+    console.log(`[v8.2]   Sample size: ${totalCount} games`);
+    console.log(`[v8.2]   Stockfish: ${sfCorrect}/${totalCount} = ${result.stockfishAccuracy.toFixed(1)}% [95% CI: ${sfCI.lower.toFixed(1)}% - ${sfCI.upper.toFixed(1)}%]`);
+    console.log(`[v8.2]   Hybrid: ${hybridCorrect}/${totalCount} = ${result.hybridAccuracy.toFixed(1)}% [95% CI: ${hybridCI.lower.toFixed(1)}% - ${hybridCI.upper.toFixed(1)}%]`);
+    console.log(`[v8.2]   Difference: ${(result.hybridAccuracy - result.stockfishAccuracy).toFixed(1)} percentage points`);
+    console.log(`[v8.2]   p-value: ${result.pValue.toFixed(4)} (${result.pValue < 0.05 ? 'significant at α=0.05' : 'not significant'})`);
   }
   
   result.completedAt = new Date();
