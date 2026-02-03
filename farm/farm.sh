@@ -2,7 +2,7 @@
 # Chess-Market Farm CLI
 # Simple wrapper for the farm manager
 
-FARM_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+FARM_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MANAGER="$FARM_DIR/scripts/farm-manager.js"
 
 case "$1" in
