@@ -6,8 +6,12 @@
  * Usage: node chess-worker.js [workerId]
  */
 
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Configuration
 const CONFIG_PATH = path.join(__dirname, '../config/farm.config.json');
@@ -58,7 +62,7 @@ async function generateGameBatch(batchSize, depth, maxMoves) {
   
   try {
     // Dynamic import for ESM modules
-    const { generateStockfishGame } = await import('../../src/lib/chess/benchmark/predictionBenchmark.ts');
+    const { generateStockfishGame } = await import('../../dist/lib/chess/benchmark/predictionBenchmark.js');
     
     const games = [];
     for (let i = 0; i < batchSize; i++) {
