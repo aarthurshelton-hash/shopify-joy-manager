@@ -3,7 +3,7 @@
 # Simple wrapper for the farm manager
 
 FARM_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MANAGER="$FARM_DIR/scripts/farm-manager.js"
+MANAGER="$FARM_DIR/scripts/farm-manager.mjs"
 
 case "$1" in
   start)

@@ -164,7 +164,7 @@ function startAll() {
         'chess-game',
         i,
         'node',
-        [path.join(__dirname, 'chess-worker.js'), i.toString()]
+        [path.join(__dirname, 'chess-worker.cjs'), i.toString()]
       );
     }
   }
@@ -176,7 +176,7 @@ function startAll() {
         'market-analyzer',
         i,
         'node',
-        [path.join(__dirname, 'market-worker.js'), i.toString()]
+        [path.join(__dirname, 'market-worker.cjs'), i.toString()]
       );
     }
   }
