@@ -211,7 +211,7 @@ function stockfishEvalToPrediction(cp: number): {
 
 // Generate a high-quality Stockfish vs Stockfish game
 // v8.2-IMPROVED: Increased timeouts and better error handling
-async function generateStockfishGame(
+export async function generateStockfishGame(
   gameId: string,
   depth: number = 18,
   maxMoves: number = 100,

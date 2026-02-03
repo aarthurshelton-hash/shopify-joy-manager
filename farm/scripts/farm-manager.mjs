@@ -164,7 +164,7 @@ function startAll() {
         'chess-game',
         i,
         'node',
-        [path.join(__dirname, 'chess-worker-simple.js'), i.toString()]
+        [path.join(__dirname, 'chess-worker-stockfish.js'), i.toString()]
       );
     }
   }
