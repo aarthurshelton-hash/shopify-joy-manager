@@ -1734,16 +1734,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                     onToggleLegend={setShowLegend}
                     onFullscreen={() => setIsFullscreen(true)}
                   >
-                    {onExport && (
-                      <ExportActionButtons
-                        onExport={onExport}
-                        isPremium={isPremium}
-                        darkMode={darkMode}
-                        totalMoves={localTotalMoves}
-                        showPieces={showPieces}
-                        pieceOpacity={pieceOpacity}
-                      />
-                    )}
+                    {/* Export buttons moved to unified action buttons section below */}
                   </VisionControls>
                   
                   {/* Deep Analysis Teaser - Link to Analytics Tab */}

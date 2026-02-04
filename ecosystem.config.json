@@ -1,0 +1,57 @@
+{
+  "apps": [
+    {
+      "name": "ib-bridge",
+      "script": "./public/ib-gateway-bridge/server-simple.js",
+      "instances": 1,
+      "exec_mode": "fork",
+      "autorestart": true,
+      "max_restarts": 10,
+      "min_uptime": "10s",
+      "env": {
+        "NODE_ENV": "production"
+      },
+      "log_file": "/tmp/pm2-ib-bridge.log",
+      "error_file": "/tmp/pm2-ib-bridge-error.log",
+      "out_file": "/tmp/pm2-ib-bridge-out.log",
+      "merge_logs": true,
+      "max_memory_restart": "500M"
+    },
+    {
+      "name": "hf-trader",
+      "script": "./farm/workers/high-frequency-paper-trader.mjs",
+      "instances": 1,
+      "exec_mode": "fork",
+      "autorestart": true,
+      "max_restarts": 10,
+      "min_uptime": "10s",
+      "env": {
+        "NODE_ENV": "production"
+      },
+      "log_file": "/tmp/pm2-hf-trader.log",
+      "error_file": "/tmp/pm2-hf-trader-error.log",
+      "out_file": "/tmp/pm2-hf-trader-out.log",
+      "merge_logs": true,
+      "max_memory_restart": "1G",
+      "restart_delay": 5000
+    },
+    {
+      "name": "chess-benchmark",
+      "script": "./farm/workers/chess-benchmark-farm.mjs",
+      "instances": 1,
+      "exec_mode": "fork",
+      "autorestart": true,
+      "max_restarts": 10,
+      "min_uptime": "10s",
+      "env": {
+        "NODE_ENV": "production"
+      },
+      "log_file": "/tmp/pm2-chess-benchmark.log",
+      "error_file": "/tmp/pm2-chess-benchmark-error.log",
+      "out_file": "/tmp/pm2-chess-benchmark-out.log",
+      "merge_logs": true,
+      "max_memory_restart": "500M",
+      "restart_delay": 10000
+    }
+  ]
+}

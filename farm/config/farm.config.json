@@ -27,6 +27,22 @@
       "depth": 18,
       "restBetweenBatchesMs": 10000,
       "outputDir": "./farm/data/benchmarks"
+    },
+    "ibkrTrader": {
+      "enabled": false,
+      "instances": 1,
+      "bridgeUrl": "http://localhost:4000",
+      "gatewayHost": "127.0.0.1",
+      "gatewayPort": 4002,
+      "symbols": ["SPY", "QQQ", "AAPL", "NVDA", "TSLA", "AMD"]
+    },
+    "optionsScalping": {
+      "enabled": true,
+      "instances": 1,
+      "bridgeUrl": "http://localhost:4000",
+      "cycleIntervalMs": 20000,
+      "maxPositions": 3,
+      "underlyings": ["SPY", "QQQ", "IWM", "AAPL", "TSLA", "NVDA"]
     }
   },
   "logging": {

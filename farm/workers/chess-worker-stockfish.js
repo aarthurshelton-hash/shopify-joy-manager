@@ -35,22 +35,13 @@ function log(level, message, data = {}) {
 async function generateGame() {
   return new Promise((resolve, reject) => {
     const projectRoot = path.join(__dirname, '../..');
-    const script = `
-      const { generateStockfishGame } = require('${projectRoot}/src/lib/chess/benchmark/predictionBenchmark.ts');
-      generateStockfishGame('farm_${workerId}_${Date.now()}', 18, 80)
-        .then(game => {
-          console.log(JSON.stringify(game));
-          process.exit(0);
-        })
-        .catch(err => {
-          console.error(err.message);
-          process.exit(1);
-        });
-    `;
-    
-    const child = spawn('npx', ['tsx', '-e', script], {
+    const scriptPath = path.join(projectRoot, 'farm/workers/stockfish-generate.ts');
+    const gameId = `farm_${workerId}_${Date.now()}`;
+
+    const child = spawn('npx', ['tsx', scriptPath, gameId, '18', '80'], {
       cwd: projectRoot,
-      timeout: 300000 // 5 min timeout
+      timeout: 300000, // 5 min timeout
+      env: process.env // Pass through env vars including Supabase key
     });
     
     let output = '';

@@ -1173,6 +1173,63 @@ export type Database = {
         }
         Relationships: []
       }
+      farm_status: {
+        Row: {
+          benchmark_errors: number
+          benchmark_runs_completed: number
+          chess_errors: number
+          chess_games_generated: number
+          created_at: string
+          farm_id: string
+          farm_name: string | null
+          host_name: string | null
+          id: string
+          last_heartbeat_at: string
+          market_cycles_completed: number
+          market_errors: number
+          message: string | null
+          metadata: Json | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          benchmark_errors?: number
+          benchmark_runs_completed?: number
+          chess_errors?: number
+          chess_games_generated?: number
+          created_at?: string
+          farm_id: string
+          farm_name?: string | null
+          host_name?: string | null
+          id?: string
+          last_heartbeat_at?: string
+          market_cycles_completed?: number
+          market_errors?: number
+          message?: string | null
+          metadata?: Json | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          benchmark_errors?: number
+          benchmark_runs_completed?: number
+          chess_errors?: number
+          chess_games_generated?: number
+          created_at?: string
+          farm_id?: string
+          farm_name?: string | null
+          host_name?: string | null
+          id?: string
+          last_heartbeat_at?: string
+          market_cycles_completed?: number
+          market_errors?: number
+          message?: string | null
+          metadata?: Json | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       favorite_games: {
         Row: {
           created_at: string

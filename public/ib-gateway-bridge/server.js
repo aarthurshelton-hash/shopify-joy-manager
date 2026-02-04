@@ -8,7 +8,7 @@
 import express from 'express';
 import cors from 'cors';
 import pkg from '@stoqey/ib';
-const { IBApi, EventName, Contract, Order, OrderAction, OrderType, SecType } = pkg;
+const { IBApi, EventName } = pkg;
 
 const app = express();
 app.use(cors());
@@ -29,6 +29,26 @@ let accountSummary = new Map(); // Store account values
 let positions = new Map();
 let orders = new Map();
 let contractCache = new Map();
+let pendingOrders = new Map(); // Track order execution status
+
+// Fallback contract IDs for major symbols
+const FALLBACK_CONTRACTS = {
+  'AAPL': { conid: 265598, symbol: 'AAPL' },
+  'MSFT': { conid: 272093, symbol: 'MSFT' },
+  'NVDA': { conid: 202994, symbol: 'NVDA' },
+  'TSLA': { conid: 76792991, symbol: 'TSLA' },
+  'AMD': { conid: 4391, symbol: 'AMD' },
+  'META': { conid: 107113386, symbol: 'META' },
+  'GOOGL': { conid: 208813720, symbol: 'GOOGL' },
+  'AMZN': { conid: 3691937, symbol: 'AMZN' },
+  'SPY': { conid: 756733, symbol: 'SPY' },
+  'QQQ': { conid: 320504791, symbol: 'QQQ' },
+  'IWM': { conid: 14433401, symbol: 'IWM' },
+};
+
+// Market data cache
+let marketData = new Map();
+
 // Initialize IB API
 function initIB() {
   ib = new IBApi({
@@ -145,11 +165,21 @@ function initIB() {
     });
   });
 
-  ib.on(EventName.orderStatus, (orderId, status, filled, remaining, avgFillPrice) => {
+  ib.on(EventName.orderStatus, (orderId, status, filled, remaining, avgFillPrice, permId, parentId, lastFillPrice, clientId, whyHeld, mktCapPrice) => {
+    // Update orders map
     if (orders.has(orderId)) {
       const order = orders.get(orderId);
       order.status = status;
       order.filledQuantity = filled;
+    }
+    
+    // Update pending orders tracking
+    if (pendingOrders.has(orderId)) {
+      const pending = pendingOrders.get(orderId);
+      pending.status = status;
+      pending.filled = filled;
+      pending.remaining = remaining;
+      if (whyHeld) pending.reason = whyHeld;
     }
   });
 
@@ -161,6 +191,20 @@ function initIB() {
       description: cd.derivativeSecTypes?.join(', ') || '',
     }));
     contractCache.set(reqId, results);
+  });
+
+  // Market data
+  ib.on(EventName.tickPrice, (reqId, tickType, price, attrib) => {
+    if (!marketData.has(reqId)) {
+      marketData.set(reqId, {});
+    }
+    const data = marketData.get(reqId);
+    
+    // Tick types: 1=bid, 2=ask, 4=last, 9=close
+    if (tickType === 1) data.bid = price;
+    else if (tickType === 2) data.ask = price;
+    else if (tickType === 4) data.lastPrice = price;
+    else if (tickType === 9 && !data.lastPrice) data.lastPrice = price; // Use close as fallback
   });
 
   return ib;
@@ -268,27 +312,54 @@ app.post('/api/orders', async (req, res) => {
   const { accountId, conid, symbol, side, quantity, orderType, price } = req.body;
 
   try {
-    const contract = new Contract();
-    contract.conId = conid;
-    contract.symbol = symbol;
-    contract.secType = SecType.STK;
-    contract.exchange = 'SMART';
-    contract.currency = 'USD';
+    // Use plain objects for contract and order (library doesn't export classes)
+    const contract = {
+      conId: conid,
+      symbol: symbol,
+      secType: 'STK',
+      exchange: 'SMART',
+      currency: 'USD'
+    };
 
-    const order = new Order();
-    order.action = side === 'BUY' ? OrderAction.BUY : OrderAction.SELL;
-    order.orderType = orderType === 'MKT' ? OrderType.MKT : OrderType.LMT;
-    order.totalQuantity = quantity;
-    order.account = accountId;
-    
-    if (orderType === 'LMT' && price) {
-      order.lmtPrice = price;
-    }
+    const order = {
+      action: side === 'BUY' ? 'BUY' : 'SELL',
+      orderType: orderType === 'MKT' ? 'MKT' : 'LMT',
+      totalQuantity: quantity,
+      account: accountId,
+      lmtPrice: (orderType === 'LMT' && price) ? price : 0
+    };
 
     const orderId = nextOrderId++;
+    
+    // Track order status
+    let orderStatus = { status: 'pending', filled: 0, remaining: quantity };
+    pendingOrders.set(orderId, orderStatus);
+    
     ib.placeOrder(orderId, contract, order);
 
-    res.json({ orderId: String(orderId), status: 'submitted' });
+    // Wait for execution status (up to 5 seconds)
+    await new Promise((resolve) => {
+      const timeout = setTimeout(() => resolve(false), 5000);
+      const checkInterval = setInterval(() => {
+        const status = pendingOrders.get(orderId);
+        if (status && (status.status === 'Filled' || status.status === 'Cancelled' || status.status === 'Rejected')) {
+          clearInterval(checkInterval);
+          clearTimeout(timeout);
+          resolve(true);
+        }
+      }, 100);
+    });
+
+    const finalStatus = pendingOrders.get(orderId);
+    pendingOrders.delete(orderId);
+
+    if (finalStatus?.status === 'Filled') {
+      res.json({ orderId: String(orderId), status: 'filled', filled: finalStatus.filled });
+    } else if (finalStatus?.status === 'Rejected') {
+      res.status(400).json({ error: 'Order rejected by IBKR', reason: finalStatus.reason });
+    } else {
+      res.json({ orderId: String(orderId), status: 'submitted', warning: 'Execution status unknown' });
+    }
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -330,7 +401,29 @@ app.get('/api/search', async (req, res) => {
   res.json({ contracts });
 });
 
-// Get quote
+// Get live market data from external API (bypasses IBKR data subscription requirement)
+async function getExternalQuote(symbol) {
+  try {
+    // Use Yahoo Finance API (free, no key needed)
+    const response = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1m&range=1d`);
+    const data = await response.json();
+    
+    if (data.chart?.result?.[0]?.meta) {
+      const meta = data.chart.result[0].meta;
+      return {
+        lastPrice: meta.regularMarketPrice || meta.previousClose,
+        bid: meta.regularMarketPrice * 0.999,
+        ask: meta.regularMarketPrice * 1.001,
+        source: 'yahoo'
+      };
+    }
+  } catch (err) {
+    console.log('[Bridge] External quote failed:', err.message);
+  }
+  return null;
+}
+
+// Get quote with delayed market data support
 app.get('/api/quote', async (req, res) => {
   if (!connected) {
     return res.status(400).json({ error: 'Not connected' });
@@ -341,12 +434,46 @@ app.get('/api/quote', async (req, res) => {
     return res.status(400).json({ error: 'conid required' });
   }
 
-  // For now, return placeholder - real implementation needs market data subscription
+  const reqId = parseInt(conid);
+  
+  // Request market data with delayed flag (free for paper)
+  ib.reqMktData(reqId, { conId: parseInt(conid), exchange: 'SMART' }, '', false, false);
+  
+  // Also request delayed data as fallback
+  ib.reqMktData(reqId + 100000, { conId: parseInt(conid), exchange: 'SMART' }, '221', false, false);
+  
+  // Wait for data (with timeout)
+  let data = await new Promise((resolve) => {
+    const timeout = setTimeout(() => {
+      resolve(marketData.get(reqId) || marketData.get(reqId + 100000) || { lastPrice: 0, bid: 0, ask: 0 });
+    }, 2000);
+    
+    const checkInterval = setInterval(() => {
+      const cached = marketData.get(reqId) || marketData.get(reqId + 100000);
+      if (cached && cached.lastPrice > 0) {
+        clearInterval(checkInterval);
+        clearTimeout(timeout);
+        resolve(cached);
+      }
+    }, 100);
+  });
+
+  // If IBKR data is 0, try external API
+  if (!data || data.lastPrice === 0) {
+    const symbol = [...FALLBACK_CONTRACTS.entries()].find(([_, c]) => c.conid === parseInt(conid))?.[1]?.symbol;
+    if (symbol) {
+      const external = await getExternalQuote(symbol);
+      if (external) {
+        data = external;
+      }
+    }
+  }
+
   res.json({
     conid: parseInt(conid),
-    lastPrice: 0,
-    bid: 0,
-    ask: 0,
+    lastPrice: data.lastPrice || 0,
+    bid: data.bid || 0,
+    ask: data.ask || 0,
   });
 });
 

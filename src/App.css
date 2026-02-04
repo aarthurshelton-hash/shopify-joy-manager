@@ -1,5 +1,27 @@
 /* App-level styles - minimal to avoid conflicts with Tailwind */
 
+/* Benchmark page bar width custom properties */
+.ep-bar {
+  width: var(--bar-width, 0%);
+}
+
+.sf-bar {
+  width: var(--bar-width, 0%);
+}
+
+/* CreatorDashboard background images */
+.dashboard-bg-0,
+.dashboard-bg-1,
+.dashboard-bg-2 {
+  background-image: var(--bg-image);
+}
+
+/* CreatorDashboard progress bars */
+.value-bar,
+.platform-bar {
+  width: var(--bar-width, 0%);
+}
+
 /* Smooth animations for route changes */
 @keyframes page-fade-in {
   from {

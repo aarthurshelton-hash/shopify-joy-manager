@@ -187,8 +187,8 @@ const CreatorDashboard: React.FC = () => {
         >
           {backgroundImages[0] && (
             <div 
-              className="absolute inset-0 opacity-[0.1] bg-cover bg-center"
-              style={{ backgroundImage: `url(${backgroundImages[0]})` }}
+              className="absolute inset-0 opacity-[0.1] bg-cover bg-center dashboard-bg-0"
+              style={{ '--bg-image': `url(${backgroundImages[0]})` } as React.CSSProperties}
             />
           )}
           <div className="absolute inset-0 bg-gradient-to-br from-background/70 to-background/90" />
@@ -311,8 +311,8 @@ const CreatorDashboard: React.FC = () => {
               <Card className="relative overflow-hidden">
                 {backgroundImages[1] && (
                   <div 
-                    className="absolute inset-0 opacity-[0.08] bg-cover bg-center"
-                    style={{ backgroundImage: `url(${backgroundImages[1]})` }}
+                    className="absolute inset-0 opacity-[0.08] bg-cover bg-center dashboard-bg-1"
+                    style={{ '--bg-image': `url(${backgroundImages[1]})` } as React.CSSProperties}
                   />
                 )}
                 <div className="absolute inset-0 bg-gradient-to-br from-background/90 to-background/95" />
@@ -432,8 +432,8 @@ const CreatorDashboard: React.FC = () => {
               <Card className="relative overflow-hidden">
                 {backgroundImages[2] && (
                   <div 
-                    className="absolute inset-0 opacity-[0.08] bg-cover bg-center"
-                    style={{ backgroundImage: `url(${backgroundImages[2]})` }}
+                    className="absolute inset-0 opacity-[0.08] bg-cover bg-center dashboard-bg-2"
+                    style={{ '--bg-image': `url(${backgroundImages[2]})` } as React.CSSProperties}
                   />
                 )}
                 <div className="absolute inset-0 bg-gradient-to-br from-background/90 to-background/95" />
@@ -455,12 +455,12 @@ const CreatorDashboard: React.FC = () => {
                     </div>
                     <div className="flex h-4 rounded-full overflow-hidden bg-muted/30">
                       <div 
-                        className="bg-green-500 transition-all"
-                        style={{ width: `${valueAppreciationPercent}%` }}
+                        className="bg-green-500 transition-all value-bar"
+                        style={{ '--bar-width': `${valueAppreciationPercent}%` } as React.CSSProperties}
                       />
                       <div 
-                        className="bg-muted-foreground/30 transition-all"
-                        style={{ width: `${100 - valueAppreciationPercent}%` }}
+                        className="bg-muted-foreground/30 transition-all platform-bar"
+                        style={{ '--bar-width': `${100 - valueAppreciationPercent}%` } as React.CSSProperties}
                       />
                     </div>
                     <div className="flex items-center justify-between">

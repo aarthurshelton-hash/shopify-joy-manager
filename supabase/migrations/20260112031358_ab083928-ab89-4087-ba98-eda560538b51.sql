@@ -3,14 +3,26 @@
 -- 50 Non-En Pensent + 5 Premium Branded Visions
 -- ================================================
 
+CREATE SCHEMA IF NOT EXISTS extensions;
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
+
+ALTER TABLE public.saved_visualizations
+  DROP CONSTRAINT IF EXISTS saved_visualizations_user_id_fkey;
+
+ALTER TABLE public.saved_visualizations
+  ADD CONSTRAINT saved_visualizations_user_id_fkey
+  FOREIGN KEY (user_id)
+  REFERENCES auth.users(id)
+  ON DELETE CASCADE;
+
 -- Create the 5 demo users in auth.users (with minimal data)
 INSERT INTO auth.users (id, email, encrypted_password, email_confirmed_at, created_at, updated_at, raw_user_meta_data, aud, role, instance_id)
 VALUES
-  ('a1111111-1111-1111-1111-111111111111', 'demo1@enpensent.com', crypt('demo-password-123', gen_salt('bf')), now(), now(), now(), '{"display_name": "ChessMaster_Alpha"}'::jsonb, 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000'),
-  ('b2222222-2222-2222-2222-222222222222', 'demo2@enpensent.com', crypt('demo-password-123', gen_salt('bf')), now(), now(), now(), '{"display_name": "VisionCollector42"}'::jsonb, 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000'),
-  ('c3333333-3333-3333-3333-333333333333', 'demo3@enpensent.com', crypt('demo-password-123', gen_salt('bf')), now(), now(), now(), '{"display_name": "ArtfulPlayer"}'::jsonb, 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000'),
-  ('d4444444-4444-4444-4444-444444444444', 'demo4@enpensent.com', crypt('demo-password-123', gen_salt('bf')), now(), now(), now(), '{"display_name": "QueenGambitFan"}'::jsonb, 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000'),
-  ('e5555555-5555-5555-5555-555555555555', 'demo5@enpensent.com', crypt('demo-password-123', gen_salt('bf')), now(), now(), now(), '{"display_name": "KnightRider_Chess"}'::jsonb, 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000')
+  ('a1111111-1111-1111-1111-111111111111', 'demo1@enpensent.com', extensions.crypt('demo-password-123', extensions.gen_salt('bf')), now(), now(), now(), '{"display_name": "ChessMaster_Alpha"}'::jsonb, 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000'),
+  ('b2222222-2222-2222-2222-222222222222', 'demo2@enpensent.com', extensions.crypt('demo-password-123', extensions.gen_salt('bf')), now(), now(), now(), '{"display_name": "VisionCollector42"}'::jsonb, 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000'),
+  ('c3333333-3333-3333-3333-333333333333', 'demo3@enpensent.com', extensions.crypt('demo-password-123', extensions.gen_salt('bf')), now(), now(), now(), '{"display_name": "ArtfulPlayer"}'::jsonb, 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000'),
+  ('d4444444-4444-4444-4444-444444444444', 'demo4@enpensent.com', extensions.crypt('demo-password-123', extensions.gen_salt('bf')), now(), now(), now(), '{"display_name": "QueenGambitFan"}'::jsonb, 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000'),
+  ('e5555555-5555-5555-5555-555555555555', 'demo5@enpensent.com', extensions.crypt('demo-password-123', extensions.gen_salt('bf')), now(), now(), now(), '{"display_name": "KnightRider_Chess"}'::jsonb, 'authenticated', 'authenticated', '00000000-0000-0000-0000-000000000000')
 ON CONFLICT (id) DO NOTHING;
 
 -- Create profiles for demo users
@@ -102,6 +114,26 @@ INSERT INTO saved_visualizations (id, user_id, title, image_path, pgn, public_sh
 -- Using official palettes and famous games
 -- Owned by CEO: 2029eb39-ff40-416f-8b07-f065964ff8eb
 -- ================================================
+
+-- Ensure CEO user exists for branded visions
+INSERT INTO auth.users (id, email, encrypted_password, email_confirmed_at, created_at, updated_at, raw_user_meta_data, aud, role, instance_id)
+VALUES (
+  '2029eb39-ff40-416f-8b07-f065964ff8eb',
+  'ceo@enpensent.com',
+  extensions.crypt('ceo-password-123', extensions.gen_salt('bf')),
+  now(),
+  now(),
+  now(),
+  '{"display_name": "EnPensent_CEO"}'::jsonb,
+  'authenticated',
+  'authenticated',
+  '00000000-0000-0000-0000-000000000000'
+)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO profiles (user_id, display_name, elo_rating)
+VALUES ('2029eb39-ff40-416f-8b07-f065964ff8eb', 'EnPensent_CEO', 2000)
+ON CONFLICT (user_id) DO UPDATE SET display_name = EXCLUDED.display_name, elo_rating = EXCLUDED.elo_rating;
 
 INSERT INTO saved_visualizations (id, user_id, title, image_path, pgn, public_share_id, game_data) VALUES
   -- Hot & Cold palette with Kasparov's Immortal

@@ -37,7 +37,7 @@ import { GracePeriodBanner } from '@/components/notifications/GracePeriodBanner'
 import PrivacyToggle from '@/components/vision/PrivacyToggle';
 import { generateGameHash, buildCanonicalShareUrl } from '@/lib/visualizations/gameCanonical';
 
-// VisionCard component for gallery items
+// VisionCard component for gallery items - MOBILE OPTIMIZED with touch-friendly actions
 interface VisionCardProps {
   viz: SavedVisualization;
   listedIds: Set<string>;
@@ -65,9 +65,11 @@ const VisionCard: React.FC<VisionCardProps> = ({
   onViewPublic,
   isPrivate,
 }) => {
+  const [showActions, setShowActions] = useState(false);
+
   return (
     <Card 
-      className="overflow-hidden group cursor-pointer transition-all hover:ring-2 hover:ring-primary/50"
+      className="overflow-hidden group cursor-pointer transition-all hover:ring-2 hover:ring-primary/50 active:scale-[0.98]"
       onClick={onNavigate}
     >
       <div className="relative aspect-square">
@@ -75,61 +77,81 @@ const VisionCard: React.FC<VisionCardProps> = ({
           src={viz.image_path}
           alt={viz.title}
           className="w-full h-full object-cover"
+          loading="lazy"
         />
-        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 flex-wrap p-2">
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={(e) => {
-              e.stopPropagation();
-              onNavigate();
-            }}
-            className="gap-1"
-          >
-            <ExternalLink className="h-4 w-4" />
-            Open
-          </Button>
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDownload();
-            }}
-            className="gap-1"
-            disabled={isDownloading === viz.id}
-          >
-            {isDownloading === viz.id ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Download className="h-4 w-4" />
-            )}
-          </Button>
-          <Button
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              onPrint();
-            }}
-            className="gap-1 bg-gradient-to-r from-amber-500/80 to-amber-600/80 hover:from-amber-500 hover:to-amber-600 text-stone-900"
-          >
-            <Printer className="h-4 w-4" />
-            Print
-          </Button>
-          {!listedIds.has(viz.id) && !isPrivate && (
+        
+        {/* Mobile: Tap to show actions overlay / Desktop: Hover */}
+        <div 
+          className={`absolute inset-0 bg-black/60 transition-opacity flex flex-col items-center justify-center gap-2 p-3
+            ${showActions ? 'opacity-100' : 'opacity-0'}
+            sm:group-hover:opacity-100 sm:opacity-0`}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (window.innerWidth < 640) {
+              setShowActions(!showActions);
+            }
+          }}
+        >
+          {/* Action Buttons Grid - Mobile Optimized */}
+          <div className="grid grid-cols-2 gap-2 w-full max-w-[200px]">
             <Button
               size="sm"
               variant="secondary"
               onClick={(e) => {
                 e.stopPropagation();
-                onSell();
+                onNavigate();
               }}
-              className="gap-1"
+              className="gap-1 text-xs sm:text-sm"
             >
-              <Tag className="h-4 w-4" />
-              Sell
+              <ExternalLink className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Open</span>
+              <span className="sm:hidden">View</span>
             </Button>
-          )}
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDownload();
+              }}
+              className="gap-1 text-xs sm:text-sm"
+              disabled={isDownloading === viz.id}
+            >
+              {isDownloading === viz.id ? (
+                <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+              ) : (
+                <Download className="h-3 w-3 sm:h-4 sm:w-4" />
+              )}
+              <span>DL</span>
+            </Button>
+            <Button
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                onPrint();
+              }}
+              className="gap-1 bg-gradient-to-r from-amber-500/80 to-amber-600/80 hover:from-amber-500 hover:to-amber-600 text-stone-900 text-xs sm:text-sm"
+            >
+              <Printer className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span>Print</span>
+            </Button>
+            {!listedIds.has(viz.id) && !isPrivate && (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSell();
+                }}
+                className="gap-1 text-xs sm:text-sm"
+              >
+                <Tag className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span>Sell</span>
+              </Button>
+            )}
+          </div>
+          
+          {/* Delete button - full width on mobile */}
           <Button
             size="sm"
             variant="destructive"
@@ -137,31 +159,46 @@ const VisionCard: React.FC<VisionCardProps> = ({
               e.stopPropagation();
               onDelete();
             }}
-            className="gap-1"
+            className="gap-1 w-full max-w-[200px] text-xs sm:text-sm mt-2"
           >
-            <Trash2 className="h-4 w-4" />
+            <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+            Delete
           </Button>
+          
+          {/* Mobile hint */}
+          <span className="text-white/60 text-[10px] sm:hidden mt-1">
+            Tap image to close
+          </span>
         </div>
+
+        {/* Mobile: Tap indicator / Desktop: Hover hint */}
+        <div 
+          className={`absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/60 text-white/80 text-[10px] px-2 py-1 rounded-full backdrop-blur-sm transition-opacity sm:hidden
+            ${showActions ? 'opacity-0' : 'opacity-100'}`}
+        >
+          Tap for actions
+        </div>
+
         {listedIds.has(viz.id) && (
-          <Badge className="absolute top-2 left-2 bg-green-500/90">
-            <ShoppingBag className="h-3 w-3 mr-1" />
+          <Badge className="absolute top-2 left-2 bg-green-500/90 text-[10px] sm:text-xs">
+            <ShoppingBag className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1" />
             Listed
           </Badge>
         )}
         {isPrivate && (
-          <Badge variant="secondary" className="absolute top-2 right-2">
-            <Lock className="h-3 w-3 mr-1" />
+          <Badge variant="secondary" className="absolute top-2 right-2 text-[10px] sm:text-xs">
+            <Lock className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1" />
             Private
           </Badge>
         )}
       </div>
-      <CardContent className="p-4 space-y-2">
-        <h3 className="font-medium truncate">{viz.title}</h3>
-        <p className="text-sm text-muted-foreground">
+      <CardContent className="p-3 sm:p-4 space-y-2">
+        <h3 className="font-medium truncate text-sm sm:text-base">{viz.title}</h3>
+        <p className="text-xs sm:text-sm text-muted-foreground truncate">
           {viz.game_data.white} vs {viz.game_data.black}
         </p>
         <div className="flex items-center justify-between">
-          <p className="text-xs text-muted-foreground">
+          <p className="text-[10px] sm:text-xs text-muted-foreground">
             {new Date(viz.created_at).toLocaleDateString()}
           </p>
           {viz.public_share_id && (
@@ -169,26 +206,26 @@ const VisionCard: React.FC<VisionCardProps> = ({
               <Button
                 size="icon"
                 variant="ghost"
-                className="h-6 w-6"
+                className="h-7 w-7 sm:h-6 sm:w-6"
                 onClick={(e) => {
                   e.stopPropagation();
                   onCopyLink();
                 }}
                 title="Copy share link"
               >
-                <Link2 className="h-3 w-3" />
+                <Link2 className="h-3.5 w-3.5 sm:h-3 sm:w-3" />
               </Button>
               <Button
                 size="icon"
                 variant="ghost"
-                className="h-6 w-6"
+                className="h-7 w-7 sm:h-6 sm:w-6"
                 onClick={(e) => {
                   e.stopPropagation();
                   onViewPublic();
                 }}
                 title="View public page"
               >
-                <ExternalLink className="h-3 w-3" />
+                <ExternalLink className="h-3.5 w-3.5 sm:h-3 sm:w-3" />
               </Button>
             </div>
           )}
@@ -623,18 +660,18 @@ const MyVision: React.FC = () => {
         )}
 
         {/* Holdings Value Dashboard */}
-        <div className="mb-8">
+        <div className="mb-6 sm:mb-8">
           <HoldingsValueDashboard />
         </div>
         
         {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
             {[...Array(4)].map((_, i) => (
               <Card key={i} className="overflow-hidden">
                 <Skeleton className="aspect-square w-full" />
-                <CardContent className="p-4 space-y-2">
-                  <Skeleton className="h-5 w-3/4" />
-                  <Skeleton className="h-4 w-1/2" />
+                <CardContent className="p-3 sm:p-4 space-y-2">
+                  <Skeleton className="h-4 sm:h-5 w-3/4" />
+                  <Skeleton className="h-3 sm:h-4 w-1/2" />
                 </CardContent>
               </Card>
             ))}
@@ -668,7 +705,7 @@ const MyVision: React.FC = () => {
             </TabsList>
             
             <TabsContent value="public">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
                 {visualizations.filter(v => !(v.game_data as { is_private?: boolean }).is_private).map((viz) => (
                   <VisionCard 
                     key={viz.id} 
@@ -691,7 +728,7 @@ const MyVision: React.FC = () => {
             </TabsContent>
             
             <TabsContent value="private">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
                 {visualizations.filter(v => (v.game_data as { is_private?: boolean }).is_private).map((viz) => (
                   <VisionCard 
                     key={viz.id} 

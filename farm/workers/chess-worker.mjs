@@ -62,7 +62,7 @@ async function generateGameBatch(batchSize, depth, maxMoves) {
   
   try {
     // Dynamic import for ESM modules
-    const { generateStockfishGame } = await import('../../dist/lib/chess/benchmark/predictionBenchmark.js');
+    const { generateStockfishGame } = await import('../../src/lib/chess/benchmark/predictionBenchmark.ts');
     
     const games = [];
     for (let i = 0; i < batchSize; i++) {

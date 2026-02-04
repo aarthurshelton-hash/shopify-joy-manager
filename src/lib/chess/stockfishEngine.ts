@@ -10,7 +10,8 @@
  * We are NOT comparing different Stockfish versions.
  * We test if ADDING pattern recognition improves predictions.
  * 
- * Engine: Stockfish 10 (~ELO 3000)
+ * Engine: TCEC Stockfish 17 NNUE (ELO 3600)
+ * Used by BOTH sides of benchmark for fair comparison
  */
 
 import { Chess } from 'chess.js';

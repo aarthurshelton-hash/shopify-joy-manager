@@ -25,6 +25,8 @@ export type DomainType =
   | 'soul'       // The Spirit - Language, culture, archetypes
   | 'satellite'  // Orbital - Space-based observation
   | 'temporal-consciousness'  // Time perception across consciousness types
+  | 'security'   // Defense - Threat pattern recognition
+  | 'cosmic'     // Universal - Celestial and cosmic patterns
   // Future domains (Phase 2+)
   | 'photonic'   // Light-based computing
   | 'medical'    // Diagnostic patterns

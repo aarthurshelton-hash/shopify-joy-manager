@@ -598,6 +598,7 @@ const Marketplace: React.FC = () => {
                               src={listing.visualization.image_path}
                               alt={listing.visualization.title}
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                              loading="lazy"
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
@@ -605,28 +606,30 @@ const Marketplace: React.FC = () => {
                             </div>
                           )}
                           
-                        {/* Vision Tier Badge */}
+                        {/* Vision Tier Badge - Mobile optimized positioning */}
                         {isPremiumTier && (
                           <Badge 
-                            className="absolute bottom-3 left-3 bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-600 hover:from-amber-500 hover:to-amber-600 text-black gap-1 shadow-lg shadow-amber-500/30 pointer-events-none"
+                            className="absolute bottom-2 left-2 sm:bottom-3 sm:left-3 bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-600 hover:from-amber-500 hover:to-amber-600 text-black gap-1 shadow-lg shadow-amber-500/30 pointer-events-none text-[10px] sm:text-xs py-0.5 sm:py-1"
                           >
-                            <Gem className="h-3 w-3" />
-                            Premium
+                            <Gem className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                            <span className="hidden sm:inline">Premium</span>
+                            <span className="sm:hidden">PRO</span>
                           </Badge>
                         )}
                         
                         {isGenesisTier && !isPremiumTier && (
                           <Badge 
-                            className="absolute bottom-3 left-3 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white gap-1 shadow-lg shadow-violet-500/30 pointer-events-none"
+                            className="absolute bottom-2 left-2 sm:bottom-3 sm:left-3 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white gap-1 shadow-lg shadow-violet-500/30 pointer-events-none text-[10px] sm:text-xs py-0.5 sm:py-1"
                           >
-                            <Sparkles className="h-3 w-3" />
-                            Genesis
+                            <Sparkles className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                            <span className="hidden sm:inline">Genesis</span>
+                            <span className="sm:hidden">GN</span>
                           </Badge>
                         )}
                         
                         {/* Transfer Limit Badge */}
                         {listing.visualization?.id && (
-                          <div className="absolute bottom-3 right-3 pointer-events-none">
+                          <div className="absolute bottom-2 right-2 sm:bottom-3 sm:right-3 pointer-events-none">
                             <TransferLimitBadge 
                               visualizationId={listing.visualization.id} 
                               variant="compact" 
@@ -636,24 +639,24 @@ const Marketplace: React.FC = () => {
                         
                         {/* Price Badge */}
                         <Badge 
-                          className={`absolute top-3 right-3 pointer-events-none ${
+                          className={`absolute top-2 right-2 sm:top-3 sm:right-3 pointer-events-none text-[10px] sm:text-xs py-0.5 sm:py-1 ${
                             listing.price_cents === 0 
                               ? 'bg-green-500/90 hover:bg-green-500' 
                               : 'bg-primary/90 hover:bg-primary'
                           }`}
                         >
                           {listing.price_cents === 0 ? (
-                            <><Gift className="h-3 w-3 mr-1" /> Free</>
+                            <><Gift className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1" /> Free</>
                           ) : (
-                            <><DollarSign className="h-3 w-3 mr-0.5" />{(listing.price_cents / 100).toFixed(2)}</>
+                            <><DollarSign className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-0.5" />{(listing.price_cents / 100).toFixed(2)}</>
                           )}
                         </Badge>
 
-                          {/* Hover overlay to view details */}
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-                            <div className="px-3 py-2 rounded-md bg-secondary text-secondary-foreground text-sm font-medium flex items-center gap-2">
-                              <Eye className="h-4 w-4" />
-                              View Details
+                          {/* Mobile-friendly view indicator */}
+                          <div className="absolute inset-x-0 bottom-16 sm:bottom-20 flex justify-center sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                            <div className="px-2 py-1 rounded-full bg-black/60 text-white text-[10px] sm:text-xs backdrop-blur-sm flex items-center gap-1">
+                              <Eye className="h-3 w-3" />
+                              <span>Tap to view</span>
                             </div>
                           </div>
                         </div>

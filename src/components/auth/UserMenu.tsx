@@ -383,6 +383,14 @@ const UserMenu: React.FC = () => {
                 <Crown className="h-3 w-3 ml-auto" />
               </DropdownMenuItem>
               <DropdownMenuItem 
+                onClick={() => navigate('/benchmark')}
+                className="gap-2 cursor-pointer text-amber-500 font-semibold"
+              >
+                <BarChart3 className="h-4 w-4" />
+                Benchmark Engine
+                <Crown className="h-3 w-3 ml-auto" />
+              </DropdownMenuItem>
+              <DropdownMenuItem 
                 onClick={() => navigate('/stock-predictions')}
                 className="gap-2 cursor-pointer text-amber-500 font-semibold"
               >

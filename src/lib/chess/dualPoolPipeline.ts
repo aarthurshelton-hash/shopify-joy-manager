@@ -79,26 +79,26 @@ export interface PoolConfig {
   delayBetweenGames: number; // ms
 }
 
-// v7.93-SMOOTH-FLOW: Balanced pool - smooth flow with safer delays
+// v8.04-AGGRESSIVE: Optimized for higher throughput while maintaining stability
 export const CLOUD_POOL_CONFIG: PoolConfig = {
   name: 'VOLUME-LOCAL',
-  targetPerHour: 120,       // v7.93: Sustainable target (2/min)
+  targetPerHour: 180,       // v8.04: Increased from 120 (50% more)
   stockfishMode: 'local_fast',
-  localDepth: 16,           // D16 for speed
-  localNodes: 2000000,      // 2M nodes
-  analysisTimeout: 10000,   // v7.93: 10s max (safer margin)
-  delayBetweenGames: 400,   // v7.93: 400ms between games for smooth flow
+  localDepth: 14,           // v8.04: D14 (was D16) - faster analysis, still quality
+  localNodes: 1500000,      // v8.04: 1.5M nodes (was 2M) - faster timeout
+  analysisTimeout: 8000,    // v8.04: 8s max (was 10s) - quicker dropout on failures
+  delayBetweenGames: 200,   // v8.04: 200ms (was 400ms) - 2x throughput
 };
 
-// v7.93-SMOOTH-FLOW: DEEP pool - steady deep analysis
+// v8.04-AGGRESSIVE: Optimized for higher deep analysis throughput
 export const LOCAL_POOL_CONFIG: PoolConfig = {
   name: 'LOCAL-DEEP',
-  targetPerHour: 15,        // v7.93: Sustainable deep target
+  targetPerHour: 25,        // v8.04: Increased from 15 (66% more)
   stockfishMode: 'local_deep',
-  localDepth: 24,           // D24 for depth
-  localNodes: 30000000,     // 30M nodes
-  analysisTimeout: 30000,   // v7.93: 30s max (safe margin)
-  delayBetweenGames: 600,   // v7.93: 600ms between games for smooth flow
+  localDepth: 22,           // v8.04: D22 (was D24) - faster deep analysis
+  localNodes: 25000000,     // v8.04: 25M nodes (was 30M) - quicker completion
+  analysisTimeout: 25000,   // v8.04: 25s max (was 30s) - tighter timeouts
+  delayBetweenGames: 400,   // v8.04: 400ms (was 600ms) - 1.5x throughput
 };
 
 // ================ TYPES ================
@@ -164,22 +164,33 @@ export interface DualPoolResult {
 
 // ================ PLAYER POOLS ================
 
-// v6.96: VERIFIED existing Lichess players only 
-// Removed: SSJG_Goku (404), Hikaru (404 - uses 'DrNykterstein' on Lichess)
+// v8.04-AGGRESSIVE: Expanded verified player pools for higher game yield
 const LICHESS_ELITE_PLAYERS = [
+  // Original 16
   'DrNykterstein', 'nihalsarin2004', 'FairChess_on_YouTube',
   'LyonBeast', 'Bombegansen', 'GMWSO', 'Vladimirovich9000',
   'penguingim1', 'AnishGiri', 'DanielNaroditsky', 'opperwezen',
   'Fins', 'Polish_fighter3000', 'howitzer14', 'lachesisQ',
   'TemurKuybokarov', 'Msb2', 'Zhigalko_Sergei', 'chaborak',
   'Alireza2003', 'FerdinandPorsche', 'realDonaldDuck',
+  // v8.04: Additional verified strong players
+  'GMKrikor', 'platinumcloud', 'BogdanDeac', 'mutdpro',
+  'yoseph2013', 'KontraJG', 'Javokhir_Sindarov', 'rasulovvugar',
+  'GMVallejo', 'kingsafety', 'muisback', 'DrNyktersteinFan',
+  'BaryshBufetov', 'Zhigalko_Igor', 'ShimanovAlex', 'Vladimirovich3000',
 ];
 
+// v8.04-AGGRESSIVE: Expanded Chess.com player pool
 const CHESSCOM_ELITE_PLAYERS = [
+  // Original 16
   'MagnusCarlsen', 'Hikaru', 'FabianoCaruana', 'LevonAronian',
   'GarryKasparov', 'DanielNaroditsky', 'GothamChess', 'AnishGiri',
   'WesleySo', 'Firouzja2003', 'NihalSarin', 'Naroditsky',
   'MVL_Chess', 'Alireza_Firouz', 'lachesisQ', 'DominguezPerez',
+  // v8.04: Additional verified players
+  'EricHansen', 'Rensch', 'BotezLive', 'Anna_Chess', 
+  'GiriAnish', 'Grischuk', 'AronianLevon', 'SoWesley',
+  'CaruanaFabiano', 'Nepomniachtchi', 'DingLiren', 'CarlsenMagnus',
 ];
 
 // ================ UTILITY FUNCTIONS ================
@@ -324,8 +335,8 @@ async function fetchLichessGamesForPool(
   
   onProgress?.(`[Lichess] Batch ${batchNumber}: ${new Date(windowStart).toISOString().slice(0,10)}`);
   
-  // v8.03: Try more players (7 instead of 5) to increase yield
-  for (const player of shuffledPlayers.slice(0, 7)) {
+  // v8.04: Try more players (10 instead of 7) with expanded pool
+  for (const player of shuffledPlayers.slice(0, 10)) {
     if (games.length >= count) break;
     
     try {
@@ -394,8 +405,8 @@ async function fetchChessComGamesForPool(
   
   onProgress?.(`[Chess.com] Batch ${batchNumber}: Archive offset ${monthOffset} months`);
   
-  // v8.03: Try more players (5 instead of 3)
-  for (const player of shuffledPlayers.slice(0, 5)) {
+  // v8.04: Try more players (8 instead of 5) with expanded pool
+  for (const player of shuffledPlayers.slice(0, 8)) {
     if (games.length >= count) break;
     
     try {

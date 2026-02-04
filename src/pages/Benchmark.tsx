@@ -29,6 +29,7 @@ import { useBenchmarkRateLimit } from '@/hooks/useRateLimitV2';
 import { GameDetailsModal } from '@/components/chess/GameDetailsModal';
 import { acquireBenchmarkLock, releaseBenchmarkLock } from '@/lib/chess/benchmarkCoordinator';
 import { useRealtimeAccuracyContext } from '@/providers/RealtimeAccuracyProvider';
+import { BenchmarkSourceBreakdown } from '@/components/chess/BenchmarkSourceBreakdown';
 
 interface CumulativeStats {
   totalRuns: number;
@@ -56,6 +57,22 @@ interface LatestBenchmark {
   both_correct: number;
 }
 
+interface FarmStatus {
+  farm_id: string;
+  farm_name: string | null;
+  host_name: string | null;
+  status: string;
+  message: string | null;
+  chess_games_generated: number;
+  chess_errors: number;
+  market_cycles_completed: number;
+  market_errors: number;
+  benchmark_runs_completed: number;
+  benchmark_errors: number;
+  last_heartbeat_at: string;
+  updated_at: string;
+ }
+
 export default function Benchmark() {
   // v7.23: Use realtime context for live ELO (stats still use existing realtime subscription)
   const { liveEloState: realtimeEloState, chessStats: realtimeChessStats } = useRealtimeAccuracyContext();
@@ -76,6 +93,8 @@ export default function Benchmark() {
   const [depthMetrics, setDepthMetrics] = useState<DepthMetrics | null>(null);
   const [latestBenchmark, setLatestBenchmark] = useState<LatestBenchmark | null>(null);
   const [isLoadingLatest, setIsLoadingLatest] = useState(true);
+  const [farmStatus, setFarmStatus] = useState<FarmStatus | null>(null);
+  const [isLoadingFarmStatus, setIsLoadingFarmStatus] = useState(true);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number>(0);
 
@@ -134,6 +153,42 @@ export default function Benchmark() {
       ...prediction,
     };
     setLivePredictions(prev => [...prev, livePred]);
+  }, []);
+
+  useEffect(() => {
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    const loadFarmStatus = async () => {
+      try {
+        setIsLoadingFarmStatus(true);
+        const { data } = await supabase
+          .from('farm_status')
+          .select('*')
+          .order('last_heartbeat_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        setFarmStatus(data || null);
+      } finally {
+        setIsLoadingFarmStatus(false);
+      }
+    };
+
+    loadFarmStatus();
+
+    channel = supabase
+      .channel('realtime-farm-status')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'farm_status' },
+        () => {
+          loadFarmStatus();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      if (channel) supabase.removeChannel(channel);
+    };
   }, []);
 
   // Update ELO state when local result changes - fetch CUMULATIVE stats
@@ -575,6 +630,55 @@ export default function Benchmark() {
           currentDepth={benchmarkMode === 'local' ? localDepth : 35}
           isLive={isLiveElo}
         />
+
+        <Card className="border border-muted">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center justify-between text-base">
+              <div className="flex items-center gap-2">
+                <Cpu className="h-5 w-5" />
+                <span>Farm Status</span>
+              </div>
+              {farmStatus ? (
+                <Badge variant={farmStatus.status === 'healthy' ? 'default' : 'destructive'}>
+                  {farmStatus.status}
+                </Badge>
+              ) : (
+                <Badge variant="secondary">unknown</Badge>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {isLoadingFarmStatus ? (
+              <div className="text-sm text-muted-foreground">Loading farm status...</div>
+            ) : farmStatus ? (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div>
+                  <div className="text-xs text-muted-foreground">Farm</div>
+                  <div className="text-sm font-medium">{farmStatus.farm_name || farmStatus.farm_id}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">Last heartbeat</div>
+                  <div className="text-sm font-medium">{new Date(farmStatus.last_heartbeat_at).toLocaleString()}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">Chess games</div>
+                  <div className="text-sm font-medium">{farmStatus.chess_games_generated}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">Chess errors</div>
+                  <div className="text-sm font-medium">{farmStatus.chess_errors}</div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-sm text-muted-foreground">
+                No farm heartbeat yet.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Source Breakdown */}
+        <BenchmarkSourceBreakdown />
 
         {/* Cumulative Stats - Historical Performance - PROMINENT */}
         {cumulativeStats && cumulativeStats.totalRuns > 0 && (
@@ -1508,13 +1612,13 @@ export default function Benchmark() {
                         <span className="text-muted-foreground">{horizon.movesAhead}+ moves:</span>
                         <div className="flex gap-1 h-4">
                           <div 
-                            className="bg-purple-500 rounded-sm" 
-                            style={{ width: `${horizon.accuracy}%` }}
+                            className="bg-purple-500 rounded-sm ep-bar" 
+                            style={{ '--bar-width': `${horizon.accuracy}%` } as React.CSSProperties}
                             title={`En Pensent: ${horizon.accuracy.toFixed(1)}%`}
                           />
                           <div 
-                            className="bg-blue-500/50 rounded-sm" 
-                            style={{ width: `${horizon.stockfishAccuracyAtHorizon}%` }}
+                            className="bg-blue-500/50 rounded-sm sf-bar" 
+                            style={{ '--bar-width': `${horizon.stockfishAccuracyAtHorizon}%` } as React.CSSProperties}
                             title={`Stockfish: ${horizon.stockfishAccuracyAtHorizon.toFixed(1)}%`}
                           />
                         </div>

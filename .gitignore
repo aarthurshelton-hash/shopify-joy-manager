@@ -29,3 +29,57 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local Netlify folder
+.netlify
+
+# Farm and data directories (large file counts)
+data/
+memory/
+.vercel
+.env*.local
+
+# Chess games and farm workers (large file counts)
+chess-games/
+farm/workers/*.json
+*.training.json
+*.benchmark.json
+
+# Large media files
+*.mp4
+*.mov
+*.avi
+*.wmv
+*.mp3
+*.wav
+
+# Documentation directories (not needed for deployment)
+docs/
+supabase/
+
+# Farm directory (large data files)
+farm/
+
+# Scripts (not needed for web deployment)
+scripts/*.cjs
+scripts/*.mjs
+
+# Test files
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+tests/
+__tests__/
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Coverage reports
+coverage/
+.nyc_output/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/

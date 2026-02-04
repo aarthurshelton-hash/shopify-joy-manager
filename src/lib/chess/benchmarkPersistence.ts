@@ -372,7 +372,10 @@ export async function saveBenchmarkResults(result: BenchmarkResult): Promise<str
       position_hash: hashPosition(attempt.fen),
       lesson_learned: JSON.parse(JSON.stringify(analyzeLessonLearned(attempt))),
       data_quality_tier: 'tcec_calibrated',
-      lichess_id_verified: true, // All games from cloud benchmark are verified real Lichess IDs
+      data_source: 'web_client', // NEW: Distinguish from farm_terminal
+      engine_version: 'TCEC Stockfish 17 NNUE (ELO 3600)',
+      hybrid_engine: 'En Pensent Universal v2.1',
+      lichess_id_verified: true,
     }));
     
     console.log(`[v6.65] Saving ${attempts.length}/${result.predictionPoints.length} complete predictions (${result.predictionPoints.length - attempts.length} incomplete filtered out)`);

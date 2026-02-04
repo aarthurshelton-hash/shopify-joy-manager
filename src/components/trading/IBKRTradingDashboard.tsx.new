@@ -1,0 +1,820 @@
+/**
+ * IBKR Trading Dashboard
+ * 
+ * Unified dashboard for Interactive Brokers paper/live trading.
+ * Integrates En Pensent predictions with IBKR order execution.
+ * Now includes 24/7 autonomous trading with real IBKR data.
+ */
+
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Progress } from '@/components/ui/progress';
+import { useIBKRGateway } from '@/hooks/useIBKRGateway';
+import { useIBKRAutonomousTrading } from '@/hooks/useIBKRAutonomousTrading';
+import { useIBKROptionsTrading } from '@/hooks/useIBKROptionsTrading';
+import { supabase } from '@/integrations/supabase/client';
+import { 
+  Loader2, 
+  Wifi, 
+  WifiOff, 
+  RefreshCw, 
+  TrendingUp, 
+  TrendingDown,
+  AlertCircle,
+  CheckCircle2,
+  ExternalLink,
+  DollarSign,
+  Target,
+  Activity,
+  Briefcase,
+  ShoppingCart,
+  History,
+  BarChart3,
+  Zap,
+  Bot,
+  Play,
+  Square,
+  Brain,
+  LineChart,
+  Bolt,
+  Clock,
+} from 'lucide-react';
+
+// Tracked symbols for quick trading
+const QUICK_SYMBOLS = ['SPY', 'QQQ', 'AAPL', 'MSFT', 'NVDA', 'TSLA', 'AMD', 'META'];
+
+interface QuoteData {
+  symbol: string;
+  price: number;
+  change: number;
+  changePercent: number;
+}
+
+interface HfTrade {
+  id: string;
+  symbol: string;
+  direction: string;
+  entry_price: number;
+  shares: number;
+  status: string;
+  pnl?: number;
+  created_at: string;
+  predicted_direction?: string;
+  predicted_confidence?: number;
+  stop_loss?: number;
+  take_profit?: number;
+}
+
+export function IBKRTradingDashboard() {
+  const {
+    connected,
+    authenticated,
+    paperTrading,
+    accounts,
+    selectedAccount,
+    positions,
+    orders,
+    loading,
+    error,
+    checkConnection,
+    connectToGateway,
+    refreshData,
+    placeOrder,
+    cancelOrder,
+    selectAccount,
+  } = useIBKRGateway();
+
+  // Autonomous trading hook (stocks)
+  const autonomousTrading = useIBKRAutonomousTrading(
+    authenticated,
+    selectedAccount?.accountId || null
+  );
+
+  // Autonomous options trading hook
+  const optionsTrading = useIBKROptionsTrading(
+    authenticated,
+    selectedAccount?.accountId || null
+  );
+
+  const [activeTab, setActiveTab] = useState('overview');
+  const [quotes, setQuotes] = useState<QuoteData[]>([]);
+  const [loadingQuotes, setLoadingQuotes] = useState(false);
+  
+  // High-frequency trading state
+  const [hfTrades, setHfTrades] = useState<HfTrade[]>([]);
+  const [hfStats, setHfStats] = useState({ total: 0, today: 0, pnl: 0 });
+  const [hfConnected, setHfConnected] = useState(false);
+  
+  // Order form state
+  const [orderForm, setOrderForm] = useState({
+    symbol: 'SPY',
+    side: 'BUY' as 'BUY' | 'SELL',
+    quantity: 1,
+    orderType: 'MKT' as 'MKT' | 'LMT',
+    price: 0,
+  });
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+
+  // Load high-frequency trading data from Supabase with realtime
+  useEffect(() => {
+    const loadHfData = async () => {
+      try {
+        // Check farm_status for high-frequency worker - treat any recent update as running
+        const { data: statusData } = await supabase
+          .from('farm_status')
+          .select('*')
+          .eq('farm_name', 'high-frequency-paper-trader')
+          .single();
+        
+        if (statusData) {
+          // Consider worker running if status is 'trading' OR updated in last 2 minutes
+          const lastUpdate = new Date(statusData.updated_at);
+          const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
+          const isRecentlyActive = lastUpdate > twoMinutesAgo;
+          setHfConnected(statusData.status === 'trading' || isRecentlyActive);
+        }
+
+        // Load recent trades
+        const { data: trades } = await supabase
+          .from('autonomous_trades')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(50);
+
+        if (trades) {
+          setHfTrades(trades as HfTrade[]);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const todayTrades = (trades as HfTrade[]).filter(t => new Date(t.created_at) >= today);
+          const totalPnl = (trades as HfTrade[]).reduce((sum, t) => sum + (t.pnl || 0), 0);
+          setHfStats({
+            total: trades.length,
+            today: todayTrades.length,
+            pnl: totalPnl
+          });
+        }
+      } catch (err) {
+        console.error('[HF] Error loading data:', err);
+      }
+    };
+
+    loadHfData();
+
+    // Subscribe to realtime trades
+    const subscription = supabase
+      .channel('hf-trades')
+      .on('postgres_changes', 
+        { event: 'INSERT', schema: 'public', table: 'autonomous_trades' },
+        (payload) => {
+          const newTrade = payload.new as HfTrade;
+          setHfTrades(prev => [newTrade, ...prev].slice(0, 50));
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const isToday = new Date(newTrade.created_at) >= today;
+          setHfStats(prev => ({
+            total: prev.total + 1,
+            today: isToday ? prev.today + 1 : prev.today,
+            pnl: prev.pnl + (newTrade.pnl || 0)
+          }));
+        }
+      )
+      .subscribe();
+
+    // Also poll farm_status every 5s for worker health
+    const interval = setInterval(loadHfData, 5000);
+    
+    return () => {
+      clearInterval(interval);
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  // Handle gateway settings change - reconnect
+  const handleGatewaySettingsChange = useCallback(() => {
+    checkConnection();
+  }, [checkConnection]);
+
+  // Load quotes for quick symbols
+  useEffect(() => {
+    if (authenticated) {
+      loadQuotes();
+      const interval = setInterval(loadQuotes, 30000); // Refresh every 30s
+      return () => clearInterval(interval);
+    }
+  }, [authenticated]);
+
+  const loadQuotes = async () => {
+    setLoadingQuotes(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('stock-data', {
+        body: { action: 'batch', symbols: QUICK_SYMBOLS }
+      });
+      
+      if (!error && data?.stocks) {
+        setQuotes(data.stocks.map((s: any) => ({
+          symbol: s.symbol,
+          price: s.latestPrice,
+          change: s.change,
+          changePercent: s.changePercent,
+        })));
+      }
+    } catch (err) {
+      console.error('[IBKR] Quote load error:', err);
+    } finally {
+      setLoadingQuotes(false);
+    }
+  };
+
+  const handlePlaceOrder = async () => {
+    setIsPlacingOrder(true);
+    await placeOrder({
+      symbol: orderForm.symbol,
+      side: orderForm.side,
+      quantity: orderForm.quantity,
+      orderType: orderForm.orderType,
+      price: orderForm.orderType === 'LMT' ? orderForm.price : undefined,
+    });
+    setIsPlacingOrder(false);
+  };
+
+  const handleQuickBuy = (symbol: string) => {
+    setOrderForm(prev => ({ ...prev, symbol, side: 'BUY' }));
+    setActiveTab('trade');
+  };
+
+  // Calculate portfolio stats
+  const portfolioStats = useMemo(() => {
+    const totalValue = positions.reduce((sum, p) => sum + p.marketValue, 0);
+    const totalPnL = positions.reduce((sum, p) => sum + p.unrealizedPnl, 0);
+    const totalRealizedPnL = positions.reduce((sum, p) => sum + p.realizedPnl, 0);
+    
+    return {
+      totalValue,
+      totalPnL,
+      totalRealizedPnL,
+      pnlPercent: selectedAccount?.balance ? (totalPnL / selectedAccount.balance) * 100 : 0,
+    };
+  }, [positions, selectedAccount]);
+
+  // ========== LOADING STATE ==========
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              Connecting to IB Gateway Bridge...
+            </CardTitle>
+          </div>
+          <CardDescription>
+            Checking connection to gateway
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Progress value={33} className="h-2" />
+          <p className="text-sm text-muted-foreground">
+            Looking for the Client Portal Gateway...
+          </p>
+          
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Connection taking too long?</AlertTitle>
+            <AlertDescription className="space-y-2 mt-2">
+              <p>Your browser may be blocking the connection. Try:</p>
+              <ol className="list-decimal list-inside text-sm space-y-1">
+                <li>Click <strong>Gateway Settings</strong> above to configure your gateway URL</li>
+                <li>If using remotely, enter your machine's IP (e.g., https://192.168.1.100:5000)</li>
+                <li>Accept the <strong>self-signed certificate warning</strong> in your browser</li>
+                <li>Login if prompted, then return here</li>
+              </ol>
+            </AlertDescription>
+          </Alert>
+          
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => window.open('https://localhost:5000', '_blank')}
+          >
+            <ExternalLink className="h-4 w-4 mr-2" />
+            Open Gateway in New Tab
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // ========== NOT CONNECTED STATE ==========
+  if (!connected) {
+    return (
+      <Card className="border-destructive/50">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-destructive">
+              <WifiOff className="h-5 w-5" />
+              IB Gateway Bridge Not Running
+            </CardTitle>
+          </div>
+          <CardDescription>
+            {error || 'Start the IBKR Client Portal Gateway to begin trading.'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Quick Setup</AlertTitle>
+            <AlertDescription className="space-y-2">
+              <ol className="list-decimal list-inside space-y-2 mt-2">
+                <li>
+                  Download the <a 
+                    href="https://www.interactivebrokers.com/en/trading/ib-api.php" 
+                    target="_blank" 
+                    rel="noopener" 
+                    className="text-primary underline font-medium"
+                  >
+                    IBKR Client Portal Gateway
+                  </a>
+                </li>
+                <li>
+                  Run <code className="bg-muted px-1 rounded text-sm">bin/run.sh</code> (Mac) 
+                  or <code className="bg-muted px-1 rounded text-sm">bin/run.bat</code> (Windows)
+                </li>
+                <li>
+                  Login at <strong>https://localhost:5000</strong> with IBKR credentials
+                </li>
+                <li>
+                  <strong>Using remote access?</strong> Click Gateway Settings above and enter your machine's IP
+                </li>
+              </ol>
+            </AlertDescription>
+          </Alert>
+          
+          <div className="flex gap-2">
+            <Button onClick={checkConnection} className="flex-1">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retry Connection
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              onClick={() => window.open('https://localhost:5000', '_blank')}
+            >
+              <ExternalLink className="h-4 w-4 mr-2" />
+              Open Gateway
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // ========== NOT AUTHENTICATED STATE ==========
+  if (!authenticated) {
+    return (
+      <Card className="border-warning/50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-warning">
+            <Wifi className="h-5 w-5" />
+            Gateway Running - Login Required
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Alert variant="default">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Bridge is running but not connected to IB Gateway. 
+              Open IB Gateway desktop app, log in, then click "Connect to Gateway".
+            </AlertDescription>
+          </Alert>
+          
+          <div className="flex gap-2">
+            <Button 
+              onClick={connectToGateway}
+              className="flex-1"
+            >
+              <Wifi className="h-4 w-4 mr-2" />
+              Connect to Gateway
+            </Button>
+            
+            <Button variant="outline" onClick={checkConnection}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Check Status
+            </Button>
+          </div>
+          
+          <p className="text-xs text-muted-foreground">
+            IB Gateway must be running with API enabled (port 4002 for paper trading).
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // ========== CONNECTED & AUTHENTICATED ==========
+  return (
+    <div className="space-y-6">
+      {/* Account Header */}
+      <Card className="bg-gradient-to-br from-card via-card to-primary/5 border-primary/20">
+        <CardContent className="pt-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            {/* Connection Status & Account Selector */}
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5 text-primary" />
+                <span className="font-medium">IBKR Connected</span>
+                {paperTrading && (
+                  <Badge variant="outline" className="bg-primary/10 text-primary border-primary">
+                    Paper Trading
+                  </Badge>
+                )}
+              </div>
+              
+              <Select 
+                value={selectedAccount?.accountId || ''} 
+                onValueChange={selectAccount}
+              >
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Select Account" />
+                </SelectTrigger>
+                <SelectContent>
+                  {accounts.map(acc => (
+                    <SelectItem key={acc.accountId} value={acc.accountId}>
+                      {acc.accountId} ({acc.accountType})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              <Button variant="ghost" size="icon" onClick={refreshData}>
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Account Balance */}
+            {selectedAccount && (
+              <div className="flex items-center gap-6">
+                <div className="text-right">
+                  <div className="text-sm text-muted-foreground flex items-center gap-1">
+                    <DollarSign className="w-3 h-3" />
+                    Account Balance
+                  </div>
+                  <div className="text-3xl font-mono font-bold">
+                    ${selectedAccount.balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm text-muted-foreground">Buying Power</div>
+                  <div className="text-xl font-mono">
+                    ${selectedAccount.buyingPower.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Portfolio Stats */}
+          {positions.length > 0 && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t">
+              <div>
+                <div className="text-sm text-muted-foreground">Positions Value</div>
+                <div className="text-xl font-bold">
+                  ${portfolioStats.totalValue.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                </div>
+              </div>
+              <div>
+                <div className="text-sm text-muted-foreground">Unrealized P&L</div>
+                <div className={`text-xl font-bold ${portfolioStats.totalPnL >= 0 ? 'text-success' : 'text-destructive'}`}>
+                  {portfolioStats.totalPnL >= 0 ? '+' : ''}${portfolioStats.totalPnL.toFixed(2)}
+                </div>
+              </div>
+              <div>
+                <div className="text-sm text-muted-foreground">Realized P&L</div>
+                <div className={`text-xl font-bold ${portfolioStats.totalRealizedPnL >= 0 ? 'text-success' : 'text-destructive'}`}>
+                  {portfolioStats.totalRealizedPnL >= 0 ? '+' : ''}${portfolioStats.totalRealizedPnL.toFixed(2)}
+                </div>
+              </div>
+              <div>
+                <div className="text-sm text-muted-foreground">Open Positions</div>
+                <div className="text-xl font-bold">{positions.length}</div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Main Tabs - Simplified to only HF Trading */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-2 max-w-md">
+          <TabsTrigger value="overview" className="flex items-center gap-1">
+            <BarChart3 className="w-4 h-4" /> Overview
+          </TabsTrigger>
+          <TabsTrigger value="hf-trading" className="flex items-center gap-1">
+            <Bolt className="w-4 h-4" /> HF Trading
+            {hfConnected && (
+              <span className="ml-1 w-2 h-2 bg-success rounded-full animate-pulse" />
+            )}
+          </TabsTrigger>
+        </TabsList>
+
+        {/* ========== OVERVIEW TAB ========== */}
+        <TabsContent value="overview" className="mt-6">
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Quick Trade Buttons */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Zap className="w-5 h-5" />
+                  Quick Trade
+                </CardTitle>
+                <CardDescription>
+                  Click a symbol to start a trade
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-4 gap-2">
+                  {quotes.length > 0 ? quotes.map(q => (
+                    <Button
+                      key={q.symbol}
+                      variant="outline"
+                      className="flex flex-col h-auto py-3 hover:border-primary"
+                      onClick={() => handleQuickBuy(q.symbol)}
+                    >
+                      <span className="font-bold">{q.symbol}</span>
+                      <span className="text-sm">${q.price.toFixed(2)}</span>
+                      <span className={`text-xs ${q.changePercent >= 0 ? 'text-success' : 'text-destructive'}`}>
+                        {q.changePercent >= 0 ? '+' : ''}{q.changePercent.toFixed(2)}%
+                      </span>
+                    </Button>
+                  )) : QUICK_SYMBOLS.map(symbol => (
+                    <Button
+                      key={symbol}
+                      variant="outline"
+                      className="py-6"
+                      onClick={() => handleQuickBuy(symbol)}
+                    >
+                      {symbol}
+                    </Button>
+                  ))}
+                </div>
+                {loadingQuotes && (
+                  <div className="text-center text-sm text-muted-foreground mt-2">
+                    Updating quotes...
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Recent Positions */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Briefcase className="w-5 h-5" />
+                  Current Positions
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {positions.length === 0 ? (
+                  <div className="text-center text-muted-foreground py-8">
+                    <Activity className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                    <p>No open positions</p>
+                    <p className="text-sm">Place a trade to get started</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {positions.slice(0, 5).map(pos => (
+                      <div key={pos.conid} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                        <div>
+                          <div className="font-medium">{pos.symbol}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {pos.position > 0 ? '+' : ''}{pos.position} shares @ ${pos.avgCost.toFixed(2)}
+                          </div>
+                        </div>
+                        <div className={`text-right ${pos.unrealizedPnl >= 0 ? 'text-success' : 'text-destructive'}`}>
+                          <div className="font-medium">
+                            {pos.unrealizedPnl >= 0 ? '+' : ''}${pos.unrealizedPnl.toFixed(2)}
+                          </div>
+                          <div className="text-sm">
+                            ${pos.marketValue.toFixed(2)}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {positions.length > 5 && (
+                      <Button 
+                        variant="ghost" 
+                        className="w-full" 
+                        onClick={() => setActiveTab('positions')}
+                      >
+                        View all {positions.length} positions
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* ========== HIGH-FREQUENCY TRADING TAB ========== */}
+        <TabsContent value="hf-trading" className="mt-6">
+          <div className="space-y-6">
+            {/* HF Status Panel */}
+            <Card className={`border-2 ${hfConnected ? 'border-warning bg-warning/5' : 'border-dashed'}`}>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-3 rounded-full ${hfConnected ? 'bg-warning/20' : 'bg-muted'}`}>
+                      <Bolt className={`w-6 h-6 ${hfConnected ? 'text-warning animate-pulse' : 'text-muted-foreground'}`} />
+                    </div>
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        High-Frequency Paper Trading
+                        {hfConnected && (
+                          <Badge className="bg-warning text-warning-foreground">
+                            <Activity className="w-3 h-3 mr-1 animate-pulse" />
+                            LIVE
+                          </Badge>
+                        )}
+                      </CardTitle>
+                      <CardDescription>
+                        Terminal-based worker generating 100+ trades/day for En Pensent training
+                      </CardDescription>
+                    </div>
+                  </div>
+                  
+                  <div className="text-right">
+                    <div className="text-sm text-muted-foreground">Worker Status</div>
+                    <div className={`font-medium ${hfConnected ? 'text-warning' : 'text-muted-foreground'}`}>
+                      {hfConnected ? 'RUNNING' : 'OFFLINE'}
+                    </div>
+                  </div>
+                </div>
+              </CardHeader>
+              
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="text-center p-4 bg-muted/50 rounded-lg">
+                    <div className="text-3xl font-bold font-mono">{hfStats.total}</div>
+                    <div className="text-sm text-muted-foreground">Total Trades</div>
+                  </div>
+                  <div className="text-center p-4 bg-muted/50 rounded-lg">
+                    <div className="text-3xl font-bold font-mono">{hfStats.today}</div>
+                    <div className="text-sm text-muted-foreground">Today's Trades</div>
+                  </div>
+                  <div className="text-center p-4 bg-muted/50 rounded-lg">
+                    <div className={`text-3xl font-bold font-mono ${hfStats.pnl >= 0 ? 'text-success' : 'text-destructive'}`}>
+                      {hfStats.pnl >= 0 ? '+' : ''}${hfStats.pnl.toFixed(2)}
+                    </div>
+                    <div className="text-sm text-muted-foreground">Total P&L</div>
+                  </div>
+                  <div className="text-center p-4 bg-muted/50 rounded-lg">
+                    <div className="text-3xl font-bold font-mono text-warning">{hfConnected ? '30s' : 'N/A'}</div>
+                    <div className="text-sm text-muted-foreground">Cycle Time</div>
+                  </div>
+                </div>
+                
+                <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+                  <Clock className="w-4 h-4" />
+                  <span>Auto-refresh every 5 seconds from Supabase</span>
+                  <span className="mx-2">•</span>
+                  <span>11 symbols: AAPL, MSFT, NVDA, TSLA, AMD, META, GOOGL, AMZN, SPY, QQQ, IWM</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Live Trade Feed */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="w-5 h-5" />
+                  Live Trade Feed
+                  {hfTrades.length > 0 && (
+                    <Badge variant="secondary">{hfTrades.length} recent</Badge>
+                  )}
+                </CardTitle>
+                <CardDescription>
+                  Real-time trades from high-frequency worker (updates every 5s)
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {hfTrades.length === 0 ? (
+                  <div className="text-center text-muted-foreground py-12">
+                    <Bolt className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p className="text-lg">No trades yet</p>
+                    <p className="text-sm">Start the high-frequency worker to see activity</p>
+                    <code className="block mt-4 p-2 bg-muted rounded text-xs">
+                      node farm/workers/high-frequency-paper-trader.mjs
+                    </code>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                    {hfTrades.map((trade) => (
+                      <div 
+                        key={trade.id} 
+                        className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                      >
+                        <div className="flex items-center gap-3">
+                          {trade.direction === 'BUY' ? (
+                            <TrendingUp className="w-4 h-4 text-success" />
+                          ) : (
+                            <TrendingDown className="w-4 h-4 text-destructive" />
+                          )}
+                          <div>
+                            <div className="font-bold">{trade.symbol}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {new Date(trade.created_at).toLocaleTimeString()}
+                            </div>
+                          </div>
+                          <Badge variant={trade.direction === 'BUY' ? 'default' : 'destructive'}>
+                            {trade.direction}
+                          </Badge>
+                          <Badge variant="outline" className="text-xs">
+                            {trade.shares} shares
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <div className="text-right">
+                            <div className="font-mono">${trade.entry_price?.toFixed(2)}</div>
+                            <div className="text-xs text-muted-foreground">Entry</div>
+                          </div>
+                          {trade.predicted_confidence && (
+                            <div className="text-right">
+                              <div className="font-mono">{(trade.predicted_confidence * 100).toFixed(0)}%</div>
+                              <div className="text-xs text-muted-foreground">Conf</div>
+                            </div>
+                          )}
+                          {trade.pnl !== undefined && trade.pnl !== null && (
+                            <div className={`text-right font-mono ${trade.pnl >= 0 ? 'text-success' : 'text-destructive'}`}>
+                              <div>{trade.pnl >= 0 ? '+' : ''}${trade.pnl.toFixed(2)}</div>
+                              <div className="text-xs">P&L</div>
+                            </div>
+                          )}
+                          <Badge 
+                            variant="outline" 
+                            className={trade.status === 'open' ? 'bg-success/10 text-success' : 'bg-muted'}
+                          >
+                            {trade.status}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Open HF Positions */}
+            {hfTrades.filter(t => t.status === 'open').length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Briefcase className="w-5 h-5" />
+                    Open HF Positions
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Symbol</TableHead>
+                        <TableHead>Side</TableHead>
+                        <TableHead className="text-right">Shares</TableHead>
+                        <TableHead className="text-right">Entry</TableHead>
+                        <TableHead className="text-right">Stop Loss</TableHead>
+                        <TableHead className="text-right">Take Profit</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {hfTrades.filter(t => t.status === 'open').map((pos) => (
+                        <TableRow key={pos.id}>
+                          <TableCell className="font-bold">{pos.symbol}</TableCell>
+                          <TableCell>
+                            <Badge variant={pos.direction === 'BUY' ? 'default' : 'destructive'}>
+                              {pos.direction}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right font-mono">{pos.shares}</TableCell>
+                          <TableCell className="text-right font-mono">${pos.entry_price?.toFixed(2)}</TableCell>
+                          <TableCell className="text-right font-mono text-destructive">
+                            ${pos.stop_loss?.toFixed(2) || 'N/A'}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-success">
+                            ${pos.take_profit?.toFixed(2) || 'N/A'}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="bg-success/10 text-success border-success/30">
+                              Open
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>

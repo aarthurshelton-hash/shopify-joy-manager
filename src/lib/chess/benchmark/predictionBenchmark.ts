@@ -23,9 +23,30 @@ import { generateHybridPrediction } from '../hybridPrediction';
 import { extractColorFlowSignature } from '../colorFlowAnalysis';
 import { simulateGame } from '../gameSimulator';
 import { loadLearnedPatterns } from '../patternLearning/persistentPatternLoader';
-import { fetchChessCumulativeStats, invalidateChessStatsCache } from '@/hooks/useRealtimeAccuracy';
 import { updateAccuracyCache } from '../hybridPrediction/confidenceCalculator';
 import { loadArchetypeStats, getArchetypePrediction } from '../accuracy/archetypeHistoricalRates';
+
+type ChessCumulativeStats = {
+  totalGames: number;
+  hybridAccuracy: number;
+  stockfishAccuracy: number;
+};
+
+async function fetchChessCumulativeStatsSafe(): Promise<ChessCumulativeStats> {
+  // Farm workers run this file under Node (tsx). The realtime accuracy hook depends on
+  // browser-only globals like import.meta.env and localStorage.
+  if (typeof window === 'undefined') {
+    return { totalGames: 0, hybridAccuracy: 50, stockfishAccuracy: 50 };
+  }
+
+  try {
+    const mod = (await import('@/hooks/useRealtimeAccuracy')) as any;
+    const stats = (await mod.fetchChessCumulativeStats()) as ChessCumulativeStats;
+    return stats;
+  } catch {
+    return { totalGames: 0, hybridAccuracy: 50, stockfishAccuracy: 50 };
+  }
+}
 
 // v7.56: Fallback quality tiers
 export type FallbackTier = 'full' | 'partial_sf' | 'partial_hybrid' | 'archetype_fallback' | 'excluded';
@@ -495,7 +516,7 @@ export async function runPredictionBenchmark(
   onProgress?.('Fetching accuracy stats...', 2);
   try {
     const stats = await withTimeout(
-      fetchChessCumulativeStats(),
+      fetchChessCumulativeStatsSafe(),
       5000, // 5s timeout
       { totalGames: 0, hybridAccuracy: 50, stockfishAccuracy: 50 } as any
     );
@@ -702,7 +723,7 @@ export async function runQuickBenchmark(
   onProgress?.('Loading historical patterns...', 1);
   try {
     await withTimeout(loadLearnedPatterns(), 10000, { loaded: 0 } as any);
-    const stats = await withTimeout(fetchChessCumulativeStats(), 5000, { totalGames: 0, hybridAccuracy: 50 } as any);
+    const stats = await withTimeout(fetchChessCumulativeStatsSafe(), 5000, { totalGames: 0, hybridAccuracy: 50 } as any);
     if (stats.totalGames > 0) {
       const totalCorrect = Math.round((stats.hybridAccuracy / 100) * stats.totalGames);
       updateAccuracyCache(stats.totalGames, totalCorrect);

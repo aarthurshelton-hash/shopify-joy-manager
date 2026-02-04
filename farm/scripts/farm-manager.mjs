@@ -17,6 +17,7 @@ const __dirname = path.dirname(__filename);
 const CONFIG_PATH = path.join(__dirname, '../config/farm.config.json');
 const LOG_DIR = path.join(__dirname, '../logs');
 const PID_DIR = path.join(__dirname, '../pids');
+const WORKERS_DIR = path.join(__dirname, '../workers');
 
 // Ensure directories exist
 [LOG_DIR, PID_DIR].forEach(dir => {
@@ -164,7 +165,7 @@ function startAll() {
         'chess-game',
         i,
         'node',
-        [path.join(__dirname, 'chess-worker-stockfish.js'), i.toString()]
+        [path.join(WORKERS_DIR, 'chess-worker-stockfish.js'), i.toString()]
       );
     }
   }
@@ -176,20 +177,74 @@ function startAll() {
         'market-analyzer',
         i,
         'node',
-        [path.join(__dirname, 'market-worker.cjs'), i.toString()]
+        [path.join(WORKERS_DIR, 'market-worker.mjs'), i.toString()]
       );
     }
+  }
+
+  // Farm heartbeat publisher (public dashboard integration)
+  if (fs.existsSync(path.join(WORKERS_DIR, 'farm-heartbeat.js'))) {
+    startWorker(
+      'farm-heartbeat',
+      0,
+      'node',
+      [path.join(WORKERS_DIR, 'farm-heartbeat.js')]
+    );
+  } else {
+    log('farm-heartbeat.js not found; skipping heartbeat publisher', 'warn');
   }
   
   // Prediction benchmark runners
   if (config.workers.predictionBenchmark.enabled) {
     for (let i = 0; i < config.workers.predictionBenchmark.instances; i++) {
-      startWorker(
-        'prediction-benchmark',
-        i,
-        'node',
-        [path.join(__dirname, 'benchmark-worker.js'), i.toString()]
-      );
+      const benchmarkWorkerPath = path.join(WORKERS_DIR, 'benchmark-worker.mjs');
+      if (fs.existsSync(benchmarkWorkerPath)) {
+        startWorker(
+          'prediction-benchmark',
+          i,
+          'node',
+          [benchmarkWorkerPath, i.toString()]
+        );
+      } else {
+        log('benchmark-worker.mjs not found; skipping prediction-benchmark worker', 'warn');
+        break;
+      }
+    }
+  }
+  
+  // IBKR Autonomous Trading (paper account training)
+  if (config.workers.ibkrTrader?.enabled) {
+    for (let i = 0; i < config.workers.ibkrTrader.instances; i++) {
+      const ibkrWorkerPath = path.join(WORKERS_DIR, 'ibkr-autonomous-trader.mjs');
+      if (fs.existsSync(ibkrWorkerPath)) {
+        startWorker(
+          'ibkr-trader',
+          i,
+          'node',
+          [ibkrWorkerPath, i.toString()]
+        );
+      } else {
+        log('ibkr-autonomous-trader.mjs not found; skipping IBKR trader', 'warn');
+        break;
+      }
+    }
+  }
+  
+  // Options Scalping Worker
+  if (config.workers.optionsScalping?.enabled) {
+    for (let i = 0; i < config.workers.optionsScalping.instances; i++) {
+      const optionsWorkerPath = path.join(WORKERS_DIR, 'options-scalping-worker.mjs');
+      if (fs.existsSync(optionsWorkerPath)) {
+        startWorker(
+          'options-scalping',
+          i,
+          'node',
+          [optionsWorkerPath, i.toString()]
+        );
+      } else {
+        log('options-scalping-worker.mjs not found; skipping options scalping', 'warn');
+        break;
+      }
     }
   }
   
@@ -265,6 +320,7 @@ switch (command) {
     console.log('  chess-game-{n}      - Chess game generators');
     console.log('  market-analyzer-{n} - Market analysis workers');
     console.log('  prediction-benchmark-{n} - Prediction benchmark runners');
+    console.log('  ibkr-trader-{n}     - IBKR autonomous paper trading');
 }
 
 // Keep process alive if starting

@@ -1,4 +1,4 @@
-project_id = "aufycarwflhsdgszbnop"
+project_id = "ezvfslkjyjsqycztyfxh"
 
 [functions.autonomous-trading-engine]
 verify_jwt = false
@@ -33,20 +33,11 @@ verify_jwt = false
 [functions.check-grace-periods]
 verify_jwt = false
 
-[functions.check-grace-periods.schedule]
-cron = "0 2 * * *"
-
 [functions.data-maintenance]
 verify_jwt = false
 
-[functions.data-maintenance.schedule]
-cron = "0 3 * * *"
-
 [functions.health-check]
 verify_jwt = false
-
-[functions.health-check.schedule]
-cron = "0 */6 * * *"
 
 [functions.collect-error]
 verify_jwt = false
@@ -66,9 +57,6 @@ verify_jwt = false
 [functions.market-collector]
 verify_jwt = false
 
-[functions.market-collector.schedule]
-cron = "*/5 * * * *"
-
 [functions.auto-heal-codebase]
 verify_jwt = false
 
@@ -78,8 +66,8 @@ verify_jwt = false
 [functions.benchmark-runner]
 verify_jwt = false
 
-[functions.benchmark-runner.schedule]
-cron = "0 */4 * * *"
+[functions.farm-heartbeat]
+verify_jwt = false
 
 [functions.lichess-cloud-eval]
 verify_jwt = false
@@ -92,9 +80,6 @@ verify_jwt = false
 
 [functions.auto-evolve]
 verify_jwt = false
-
-[functions.auto-evolve.schedule]
-cron = "*/2 * * * *"
 
 [functions.options-data]
 verify_jwt = false

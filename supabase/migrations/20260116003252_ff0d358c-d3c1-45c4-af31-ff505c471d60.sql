@@ -3,6 +3,91 @@
 -- Live tracking of all profit pools with proper fee distribution
 -- ============================================================
 
+-- Create required tables first
+CREATE TABLE IF NOT EXISTS public.company_profit_pool (
+  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  source_type TEXT NOT NULL,
+  period_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  gross_revenue_cents BIGINT NOT NULL DEFAULT 0,
+  stripe_fees_cents BIGINT NOT NULL DEFAULT 0,
+  tax_collected_cents BIGINT NOT NULL DEFAULT 0,
+  net_profit_cents BIGINT NOT NULL DEFAULT 0,
+  extractable_profit_cents BIGINT NOT NULL DEFAULT 0,
+  reinvested_cents BIGINT NOT NULL DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  UNIQUE (source_type, period_date)
+);
+
+CREATE TABLE IF NOT EXISTS public.revenue_stream_summary (
+  stream_type TEXT NOT NULL PRIMARY KEY,
+  total_gross_revenue_cents BIGINT NOT NULL DEFAULT 0,
+  total_stripe_fees_cents BIGINT NOT NULL DEFAULT 0,
+  total_tax_collected_cents BIGINT NOT NULL DEFAULT 0,
+  total_net_profit_cents BIGINT NOT NULL DEFAULT 0,
+  total_extractable_cents BIGINT NOT NULL DEFAULT 0,
+  total_reinvested_cents BIGINT NOT NULL DEFAULT 0,
+  reinvestment_rate NUMERIC NOT NULL DEFAULT 1,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  last_updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.gamecard_value_pool (
+  game_id TEXT NOT NULL PRIMARY KEY,
+  game_title TEXT NOT NULL,
+  base_value_cents BIGINT NOT NULL DEFAULT 0,
+  earned_value_cents BIGINT NOT NULL DEFAULT 0,
+  total_interactions BIGINT NOT NULL DEFAULT 0,
+  total_print_orders BIGINT NOT NULL DEFAULT 0,
+  total_marketplace_trades BIGINT NOT NULL DEFAULT 0,
+  last_interaction_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.palette_value_pool (
+  palette_id TEXT NOT NULL PRIMARY KEY,
+  palette_name TEXT NOT NULL,
+  base_value_cents BIGINT NOT NULL DEFAULT 0,
+  earned_value_cents BIGINT NOT NULL DEFAULT 0,
+  total_interactions BIGINT NOT NULL DEFAULT 0,
+  total_print_orders BIGINT NOT NULL DEFAULT 0,
+  total_marketplace_trades BIGINT NOT NULL DEFAULT 0,
+  last_interaction_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.opening_value_pool (
+  opening_eco TEXT NOT NULL PRIMARY KEY,
+  opening_name TEXT NOT NULL,
+  base_value_cents BIGINT NOT NULL DEFAULT 0,
+  earned_value_cents BIGINT NOT NULL DEFAULT 0,
+  total_interactions BIGINT NOT NULL DEFAULT 0,
+  total_print_orders BIGINT NOT NULL DEFAULT 0,
+  total_marketplace_trades BIGINT NOT NULL DEFAULT 0,
+  last_interaction_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.order_financials (
+  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  order_type TEXT NOT NULL,
+  user_id UUID REFERENCES auth.users(id),
+  visualization_id UUID REFERENCES public.saved_visualizations(id),
+  gross_revenue_cents BIGINT NOT NULL DEFAULT 0,
+  fulfillment_costs_cents BIGINT NOT NULL DEFAULT 0,
+  platform_fees_cents BIGINT NOT NULL DEFAULT 0,
+  net_revenue_cents BIGINT NOT NULL DEFAULT 0,
+  creator_royalty_cents BIGINT NOT NULL DEFAULT 0,
+  gamecard_pool_cents BIGINT NOT NULL DEFAULT 0,
+  palette_pool_cents BIGINT NOT NULL DEFAULT 0,
+  game_id TEXT,
+  palette_id TEXT,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
 -- 1. Create or replace the process_marketplace_sale function
 -- This handles wallet-based purchases with proper 5% fee distribution
 CREATE OR REPLACE FUNCTION public.process_marketplace_sale(
