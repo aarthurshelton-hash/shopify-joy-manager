@@ -1,0 +1,1 @@
+const n="import { useLocationRefresh } from '@/hooks/useLocationRefresh';\n\n// This component silently tracks user location on return to app\nexport function LocationTracker() {\n  // Just use the hook - it handles everything via useEffect\n  useLocationRefresh();\n  \n  return null;\n}\n";export{n as default};

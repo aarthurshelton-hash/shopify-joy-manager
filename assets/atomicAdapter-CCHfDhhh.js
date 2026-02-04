@@ -1,0 +1,1 @@
+const o="/**\n * ATOMIC DOMAIN ADAPTER - Re-export Module\n * \n * Re-exports from modular structure for backward compatibility.\n */\n\nexport * from './atomic/index';\nexport { atomicAdapter, default } from './atomic/index';\n";export{o as default};

@@ -1,0 +1,1 @@
+const e="/**\n * En Pensent Core SDK - Archetype Resolution\n * \n * Re-exports from modular archetype files for backward compatibility.\n */\n\nexport * from './archetype/index';\n";export{e as default};

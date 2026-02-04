@@ -1,0 +1,1 @@
+const n="/**\n * En Pensent Core SDK - Universal Types\n * \n * Re-exports from modular type files for backward compatibility.\n * Domain-agnostic pattern recognition interfaces.\n */\n\nexport * from './types/index';\n";export{n as default};

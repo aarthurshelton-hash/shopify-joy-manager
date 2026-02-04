@@ -1,0 +1,1 @@
+const e="/**\n * Game Import Index - Re-exports for historical game imports\n */\n\nexport * from './lichessApi';\nexport * from './chesscomApi';\nexport * from './archetypeAnalyzer';\n";export{e as default};

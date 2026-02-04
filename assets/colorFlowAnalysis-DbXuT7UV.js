@@ -1,0 +1,1 @@
+const o="/**\n * Color Flow Analysis Engine\n * \n * Re-exports from modular structure for backward compatibility.\n */\n\nexport * from './colorFlowAnalysis/index';\nexport { default } from './colorFlowAnalysis/index';\n";export{o as default};

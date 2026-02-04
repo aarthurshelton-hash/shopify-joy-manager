@@ -1,0 +1,1 @@
+const t='import { AdminRoute } from "@/components/auth/AdminRoute";\nimport { SystemVitalsDashboard } from "@/components/admin/SystemVitalsDashboard";\n\nconst AdminSystemVitals = () => {\n  return (\n    <AdminRoute featureName="System Vitals">\n      <SystemVitalsDashboard />\n    </AdminRoute>\n  );\n};\n\nexport default AdminSystemVitals;\n';export{t as default};

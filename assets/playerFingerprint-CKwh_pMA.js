@@ -1,0 +1,1 @@
+const e="/**\n * Player Fingerprint System - Re-export Module\n * \n * Re-exports from modular structure for backward compatibility.\n * \n * Creates unique behavioral signatures WITHOUT storing personal data.\n * We only care about the PATTERN, not the person.\n */\n\nexport * from './fingerprint/index';\n";export{e as default};

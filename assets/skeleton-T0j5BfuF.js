@@ -1,0 +1,1 @@
+const e='import { cn } from "@/lib/utils";\n\nfunction Skeleton({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {\n  return <div className={cn("animate-pulse rounded-md bg-muted", className)} {...props} />;\n}\n\nexport { Skeleton };\n';export{e as default};
