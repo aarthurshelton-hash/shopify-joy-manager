@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Server, Monitor, Cloud, TrendingUp, Target } from 'lucide-react';
+import { Server, Monitor, Cloud, TrendingUp, Target, Puzzle } from 'lucide-react';
 
 interface SourceStats {
   data_source: string;
@@ -46,7 +46,7 @@ export function BenchmarkSourceBreakdown() {
       setTotalPredictions(total || 0);
 
       // Fetch stats by source using a raw query approach
-      const sources = ['web_client', 'farm_terminal', 'lichess_cloud'];
+      const sources = ['web_client', 'farm_terminal', 'lichess_cloud', 'lichess_live', 'chesscom_live', 'puzzle', 'puzzle_cc'];
       const sourceStats: SourceStats[] = [];
 
       for (const source of sources) {
@@ -107,7 +107,13 @@ export function BenchmarkSourceBreakdown() {
       case 'web_client':
         return <Monitor className="h-5 w-5 text-green-500" />;
       case 'lichess_cloud':
+      case 'lichess_live':
         return <Cloud className="h-5 w-5 text-purple-500" />;
+      case 'chesscom_live':
+        return <Cloud className="h-5 w-5 text-orange-500" />;
+      case 'puzzle':
+      case 'puzzle_cc':
+        return <Puzzle className="h-5 w-5 text-yellow-500" />;
       default:
         return <Target className="h-5 w-5 text-gray-500" />;
     }
@@ -121,6 +127,14 @@ export function BenchmarkSourceBreakdown() {
         return 'Web Dashboard';
       case 'lichess_cloud':
         return 'Lichess Cloud';
+      case 'lichess_live':
+        return 'Lichess Live';
+      case 'chesscom_live':
+        return 'Chess.com Live';
+      case 'puzzle':
+        return 'Lichess Puzzles';
+      case 'puzzle_cc':
+        return 'Chess.com Puzzles';
       default:
         return source;
     }
@@ -133,7 +147,13 @@ export function BenchmarkSourceBreakdown() {
       case 'web_client':
         return 'bg-green-500';
       case 'lichess_cloud':
+      case 'lichess_live':
         return 'bg-purple-500';
+      case 'chesscom_live':
+        return 'bg-orange-500';
+      case 'puzzle':
+      case 'puzzle_cc':
+        return 'bg-yellow-500';
       default:
         return 'bg-gray-500';
     }

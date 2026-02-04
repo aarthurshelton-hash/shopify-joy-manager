@@ -594,7 +594,7 @@ export function useHybridBenchmark() {
         setProgress(prev => ({ 
           ...prev!, 
           currentPhase: 'fetching',
-          message: `Fetching from Lichess + Chess.com (batch ${batchNumber})...` 
+          message: `Fetching from Lichess + Chess.com + Terminal (batch ${batchNumber})...` 
         }));
         
         // v6.78-SIMPLE: Exclude only DB IDs + failed IDs
@@ -612,10 +612,10 @@ export function useHybridBenchmark() {
           targetCount: targetPerBatch,
           batchNumber,
           excludeIds: fetchExcludeIds,
-          sources: ['lichess', 'chesscom'],  // BOTH sources
+          sources: ['lichess', 'chesscom', 'terminal'],  // ALL THREE sources
         });
         
-        console.log(`[v6.78] Fetched: ${result.games.length} (Lichess: ${result.lichessCount}, Chess.com: ${result.chesscomCount})`);
+        console.log(`[v6.78] Fetched: ${result.games.length} (Lichess: ${result.lichessCount}, Chess.com: ${result.chesscomCount}, Terminal: ${result.terminalCount})`);
         
         if (result.errors.length > 0) {
           console.warn(`[v6.78] Errors:`, result.errors.slice(0, 3));
@@ -634,8 +634,8 @@ export function useHybridBenchmark() {
           const prefixedId = g.gameId;
           if (!prefixedId) continue;
           
-          // v6.78: Extract raw ID (what we store in DB)
-          const rawId = prefixedId.replace(/^(li_|cc_)/, '');
+          // v6.78: Extract raw ID (what we store in DB) - handles li_, cc_, term_ prefixes
+          const rawId = prefixedId.replace(/^(li_|cc_|term_)/, '');
           
           // v6.78-SIMPLE: One check - is this raw ID known?
           if (analyzedData.gameIds.has(rawId)) {
@@ -904,8 +904,8 @@ export function useHybridBenchmark() {
           continue;
         }
         
-        // v6.80: Get raw ID (without prefix) - this is what we store in DB
-        const rawGameId = gameId.replace(/^(li_|cc_)/, '');
+        // v6.80: Get raw ID (without prefix) - handles li_, cc_, term_
+        const rawGameId = gameId.replace(/^(li_|cc_|term_)/, '');
         
         // Skip 2: Already in DB (includes games predicted earlier THIS session)
         if (analyzedData.gameIds.has(rawGameId)) {
@@ -936,6 +936,88 @@ export function useHybridBenchmark() {
                           game.winner === 'black' ? 'black' : 'draw';
         
         console.log(`[v6.77] Game ${gameId}: winner=${game.winner} → ${gameResult}`);
+        
+        // v8.0-TERMINAL: Terminal games are already analyzed - fetch existing result
+        if (source === 'terminal' || gameId.startsWith('term_')) {
+          console.log(`[v8.0] 📦 Terminal game ${gameId} - fetching existing prediction from DB`);
+          
+          try {
+            const { data: existingPrediction } = await supabase
+              .from('chess_prediction_attempts')
+              .select('*')
+              .eq('game_id', rawGameId)
+              .eq('data_source', 'farm_terminal')
+              .maybeSingle();
+            
+            if (existingPrediction) {
+              // Add existing prediction to our totals
+              const attemptData = {
+                game_id: rawGameId,
+                game_name: existingPrediction.game_name || 'Terminal Game',
+                fen: existingPrediction.fen,
+                move_number: existingPrediction.move_number,
+                position_hash: existingPrediction.position_hash,
+                hybrid_prediction: existingPrediction.hybrid_prediction,
+                hybrid_confidence: existingPrediction.hybrid_confidence,
+                hybrid_archetype: existingPrediction.hybrid_archetype,
+                hybrid_correct: existingPrediction.hybrid_correct,
+                stockfish_prediction: existingPrediction.stockfish_prediction,
+                stockfish_confidence: existingPrediction.stockfish_confidence,
+                stockfish_depth: existingPrediction.stockfish_depth,
+                stockfish_eval: existingPrediction.stockfish_eval,
+                stockfish_correct: existingPrediction.stockfish_correct,
+                actual_result: existingPrediction.actual_result,
+                data_quality_tier: existingPrediction.data_quality_tier || 'tcec_unlimited',
+                pgn: existingPrediction.pgn,
+                data_source: 'terminal',
+                time_control: existingPrediction.time_control,
+                white_elo: existingPrediction.white_elo,
+                black_elo: existingPrediction.black_elo,
+                lichess_id_verified: true,
+              };
+              
+              attempts.push(attemptData);
+              
+              // Update counters
+              if (existingPrediction.hybrid_correct) hybridCorrect++;
+              if (existingPrediction.stockfish_correct) stockfishCorrect++;
+              if (existingPrediction.hybrid_correct && existingPrediction.stockfish_correct) bothCorrect++;
+              if (!existingPrediction.hybrid_correct && !existingPrediction.stockfish_correct) bothWrong++;
+              
+              predictedCount++;
+              analyzedData.gameIds.add(rawGameId);
+              
+              console.log(`[v8.0] ✅ Terminal prediction added: ${rawGameId} (EP: ${existingPrediction.hybrid_correct ? '✓' : '✗'}, SF: ${existingPrediction.stockfish_correct ? '✓' : '✗'})`);
+              
+              // Stream to UI
+              if (onPrediction) {
+                onPrediction({
+                  id: crypto.randomUUID(),
+                  gameName: attemptData.game_name,
+                  moveNumber: attemptData.move_number,
+                  fen: attemptData.fen,
+                  hybridPrediction: attemptData.hybrid_prediction,
+                  hybridArchetype: attemptData.hybrid_archetype,
+                  hybridConfidence: attemptData.hybrid_confidence,
+                  hybridCorrect: attemptData.hybrid_correct,
+                  stockfishPrediction: attemptData.stockfish_prediction,
+                  stockfishEval: attemptData.stockfish_eval,
+                  stockfishDepth: attemptData.stockfish_depth,
+                  stockfishCorrect: attemptData.stockfish_correct,
+                  actualResult: attemptData.actual_result,
+                  gameMode: game.gameMode,
+                  timestamp: Date.now(),
+                });
+              }
+              
+              continue; // Skip to next game
+            } else {
+              console.warn(`[v8.0] ⚠️ No existing prediction found for terminal game ${rawGameId}`);
+            }
+          } catch (err) {
+            console.error(`[v8.0] ❌ Error fetching terminal prediction:`, err);
+          }
+        }
         
         // Parse moves and generate FEN
         let moves: string[];

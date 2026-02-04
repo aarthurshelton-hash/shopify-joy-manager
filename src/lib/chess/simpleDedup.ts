@@ -37,11 +37,14 @@ let initPromise: Promise<void> | null = null;
 /**
  * Extract raw ID from any format
  * "li_ABC123XY" → "ABC123XY"
- * "cc_123456789" → "123456789" 
+ * "cc_123456789" → "123456789"
+ * "term_XYZ789" → "XYZ789"
+ * "puz_abc123" → "abc123"
+ * "ccp_def456" → "def456"
  * "ABC123XY" → "ABC123XY"
  */
 export function toRawId(gameId: string): string {
-  return gameId.replace(/^(li_|cc_)/, '');
+  return gameId.replace(/^(li_|cc_|term_|puz_|ccp_)/, '');
 }
 
 /**

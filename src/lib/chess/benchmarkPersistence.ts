@@ -352,31 +352,43 @@ export async function saveBenchmarkResults(result: BenchmarkResult): Promise<str
     });
 
     // Insert individual prediction attempts for learning
-    const attempts = validAttempts.map(attempt => ({
-      benchmark_id: benchmarkId,
-      game_id: attempt.gameId,
-      game_name: attempt.gameName,
-      move_number: attempt.moveNumber,
-      fen: attempt.fen,
-      pgn: attempt.pgn,
-      stockfish_eval: attempt.stockfishEval,
-      stockfish_depth: attempt.stockfishDepth,
-      stockfish_prediction: attempt.stockfishPrediction,
-      stockfish_confidence: attempt.stockfishConfidence,
-      hybrid_prediction: attempt.hybridPrediction,
-      hybrid_confidence: attempt.hybridConfidence,
-      hybrid_archetype: attempt.hybridArchetype,
-      actual_result: attempt.actualResult,
-      stockfish_correct: attempt.stockfishCorrect,
-      hybrid_correct: attempt.hybridCorrect,
-      position_hash: hashPosition(attempt.fen),
-      lesson_learned: JSON.parse(JSON.stringify(analyzeLessonLearned(attempt))),
-      data_quality_tier: 'tcec_calibrated',
-      data_source: 'web_client', // NEW: Distinguish from farm_terminal
-      engine_version: 'TCEC Stockfish 17 NNUE (ELO 3600)',
-      hybrid_engine: 'En Pensent Universal v2.1',
-      lichess_id_verified: true,
-    }));
+    const attempts = validAttempts.map(attempt => {
+      // v8.0-SOURCE: Determine data_source based on game ID prefix
+      let dataSource: string = 'web_client';
+      if (attempt.gameId?.startsWith('li_')) {
+        dataSource = 'lichess_live';
+      } else if (attempt.gameId?.startsWith('cc_')) {
+        dataSource = 'chesscom_live';
+      } else if (attempt.gameId?.startsWith('term_')) {
+        dataSource = 'farm_terminal';
+      }
+      
+      return {
+        benchmark_id: benchmarkId,
+        game_id: attempt.gameId,
+        game_name: attempt.gameName,
+        move_number: attempt.moveNumber,
+        fen: attempt.fen,
+        pgn: attempt.pgn,
+        stockfish_eval: attempt.stockfishEval,
+        stockfish_depth: attempt.stockfishDepth,
+        stockfish_prediction: attempt.stockfishPrediction,
+        stockfish_confidence: attempt.stockfishConfidence,
+        hybrid_prediction: attempt.hybridPrediction,
+        hybrid_confidence: attempt.hybridConfidence,
+        hybrid_archetype: attempt.hybridArchetype,
+        actual_result: attempt.actualResult,
+        stockfish_correct: attempt.stockfishCorrect,
+        hybrid_correct: attempt.hybridCorrect,
+        position_hash: hashPosition(attempt.fen),
+        lesson_learned: JSON.parse(JSON.stringify(analyzeLessonLearned(attempt))),
+        data_quality_tier: 'tcec_calibrated',
+        data_source: dataSource, // v8.0: Dynamic source based on game origin
+        engine_version: 'TCEC Stockfish 17 NNUE (ELO 3600)',
+        hybrid_engine: 'En Pensent Universal v2.1',
+        lichess_id_verified: true,
+      };
+    });
     
     console.log(`[v6.65] Saving ${attempts.length}/${result.predictionPoints.length} complete predictions (${result.predictionPoints.length - attempts.length} incomplete filtered out)`);
 

@@ -23,12 +23,14 @@
 import { supabase } from "@/integrations/supabase/client";
 import { fetchChessComGames, ChessComGame, getChessComResult } from "./chesscomApi";
 import { isKnown, toRawId } from "../simpleDedup";
+import { fetchLichessPuzzles, puzzleToUnified } from "./lichessPuzzleApi";
+import { fetchChessComPuzzles, chessComPuzzleToUnified } from "./chesscomPuzzleApi";
 
 export interface UnifiedGameData {
   pgn: string;
   moves?: string;
-  gameId: string;           // Unique ID (prefixed by source)
-  source: 'lichess' | 'chesscom';
+  gameId: string;           // Unique ID (prefixed: li_, cc_, term_, puz_, ccp_)
+  source: 'lichess' | 'chesscom' | 'terminal' | 'puzzle' | 'puzzle_cc';
   // Result fields
   winner?: 'white' | 'black';
   status?: string;
@@ -51,6 +53,13 @@ export interface UnifiedGameData {
   openingName?: string;
   // Termination
   termination?: string;
+  // Source tracking for terminal games
+  terminalId?: string;      // Original terminal import ID
+  importBatch?: string;     // Terminal import batch identifier
+  // Puzzle-specific fields
+  puzzleThemes?: string[];  // For puzzles: themes like 'mate', 'fork', etc.
+  puzzleRating?: number;    // Puzzle difficulty rating
+  isPuzzle?: boolean;       // Flag for puzzle vs game
 }
 
 // Chess.com top players (VERIFIED active accounts)
@@ -177,13 +186,15 @@ export interface FetchOptions {
   targetCount: number;
   batchNumber: number;
   excludeIds?: Set<string>;
-  sources?: ('lichess' | 'chesscom')[];
+  sources?: ('lichess' | 'chesscom' | 'terminal' | 'puzzle' | 'puzzle_cc')[];
 }
 
 export interface FetchResult {
   games: UnifiedGameData[];
   lichessCount: number;
   chesscomCount: number;
+  terminalCount: number;
+  puzzleCount: number;
   errors: string[];
 }
 
@@ -584,27 +595,212 @@ async function fetchFromLichess(
 }
 
 /**
- * Fetch games from multiple sources in parallel
+ * Fetch games from Terminal/IBKR imports stored in database
+ * v8.0-TERMINAL: Pulls games imported via terminal/farm system
  */
-export async function fetchMultiSourceGames(options: FetchOptions): Promise<FetchResult> {
-  const { targetCount, batchNumber, excludeIds = new Set(), sources = ['lichess', 'chesscom'] } = options;
+async function fetchFromTerminal(
+  targetCount: number,
+  excludeIds: Set<string>
+): Promise<{ games: UnifiedGameData[]; errors: string[] }> {
+  const games: UnifiedGameData[] = [];
+  const errors: string[] = [];
   
-  console.log(`[MultiSource] ========== BATCH ${batchNumber} ==========`);
-  console.log(`[MultiSource] Target: ${targetCount} games from ${sources.join(' + ')}`);
-  console.log(`[MultiSource] Excluded IDs: ${excludeIds.size}`);
+  try {
+    console.log(`[Terminal v8.0] Fetching ${targetCount} games from terminal imports...`);
+    
+    // Fetch games from chess_prediction_attempts that came from terminal
+    const { data, error } = await supabase
+      .from('chess_prediction_attempts')
+      .select('*')
+      .eq('data_source', 'farm_terminal')
+      .not('pgn', 'is', null)
+      .limit(targetCount * 2); // Fetch extra for dedup filtering
+    
+    if (error) {
+      console.error('[Terminal] Database error:', error);
+      return { games: [], errors: [error.message] };
+    }
+    
+    if (!data || data.length === 0) {
+      console.log('[Terminal] No terminal games found in database');
+      return { games: [], errors: [] };
+    }
+    
+    console.log(`[Terminal] Found ${data.length} raw terminal games`);
+    
+    for (const record of data) {
+      // Generate terminal game ID
+      const terminalId = `term_${record.game_id || record.id}`;
+      
+      // Check if already known
+      if (isKnown(terminalId)) continue;
+      if (excludeIds.has(terminalId)) continue;
+      
+      // Parse result
+      let result: '1-0' | '0-1' | '1/2-1/2' | '*' = '*';
+      let winner: 'white' | 'black' | undefined = undefined;
+      
+      if (record.actual_result === 'white_wins' || record.actual_result === '1-0') {
+        result = '1-0';
+        winner = 'white';
+      } else if (record.actual_result === 'black_wins' || record.actual_result === '0-1') {
+        result = '0-1';
+        winner = 'black';
+      } else if (record.actual_result === 'draw' || record.actual_result === '1/2-1/2') {
+        result = '1/2-1/2';
+      }
+      
+      games.push({
+        pgn: record.pgn || '',
+        moves: record.pgn, // Terminal stores full PGN
+        gameId: terminalId,
+        source: 'terminal',
+        winner,
+        result,
+        whiteName: record.game_name?.split(' vs ')?.[0]?.split(' (')?.[0] || 'Unknown',
+        blackName: record.game_name?.split(' vs ')?.[1]?.split(' (')?.[0] || 'Unknown',
+        whiteElo: record.white_elo,
+        blackElo: record.black_elo,
+        playedAt: record.created_at,
+        gameYear: record.created_at ? new Date(record.created_at).getFullYear() : undefined,
+        gameMonth: record.created_at ? new Date(record.created_at).getMonth() + 1 : undefined,
+        terminalId: record.game_id,
+        importBatch: record.benchmark_id,
+      });
+      
+      if (games.length >= targetCount) break;
+    }
+    
+    console.log(`[Terminal v8.0] ✓ Added ${games.length} terminal games`);
+    return { games, errors };
+    
+  } catch (e) {
+    const errorMsg = e instanceof Error ? e.message : 'Unknown error';
+    console.error('[Terminal] Fetch error:', errorMsg);
+    return { games: [], errors: [errorMsg] };
+  }
+}
+
+/**
+ * Fetch puzzles from both Lichess and Chess.com
+ * v8.1-PUZZLES: Temporal pattern training source
+ */
+async function fetchFromPuzzles(
+  targetCount: number,
+  excludeIds: Set<string>
+): Promise<{ games: UnifiedGameData[]; errors: string[] }> {
+  const games: UnifiedGameData[] = [];
+  const errors: string[] = [];
   
-  const halfTarget = Math.ceil(targetCount / 2);
-  const results: { games: UnifiedGameData[]; errors: string[] }[] = [];
+  console.log(`[Puzzles v8.1] Fetching ${targetCount} puzzles from Lichess + Chess.com...`);
   
   // Fetch from both sources in parallel
+  const halfTarget = Math.ceil(targetCount / 2);
+  
+  try {
+    // Lichess puzzles
+    const lichessPromise = fetchLichessPuzzles({ max: halfTarget });
+    
+    // Chess.com puzzles  
+    const chesscomPromise = fetchChessComPuzzles({ max: halfTarget });
+    
+    const [lichessResult, chesscomResult] = await Promise.all([lichessPromise, chesscomPromise]);
+    
+    // Process Lichess puzzles
+    for (const puzzle of lichessResult.puzzles) {
+      const unified = puzzleToUnified(puzzle);
+      const gameId = unified.gameId;
+      
+      if (isKnown(gameId)) continue;
+      if (excludeIds.has(gameId)) continue;
+      
+      games.push({
+        pgn: unified.pgn,
+        moves: unified.solution.join(' '),
+        gameId,
+        source: 'puzzle',
+        winner: 'white', // Puzzles are from perspective of player to move
+        result: '1-0',
+        whiteName: 'Puzzle Solver',
+        blackName: 'Puzzle Position',
+        isPuzzle: true,
+        puzzleThemes: unified.themes,
+        puzzleRating: unified.rating,
+      });
+    }
+    
+    errors.push(...lichessResult.errors);
+    
+    // Process Chess.com puzzles
+    for (const puzzle of chesscomResult.puzzles) {
+      const unified = chessComPuzzleToUnified(puzzle);
+      const gameId = unified.gameId;
+      
+      if (isKnown(gameId)) continue;
+      if (excludeIds.has(gameId)) continue;
+      
+      games.push({
+        pgn: unified.pgn,
+        moves: unified.solution.join(' '),
+        gameId,
+        source: 'puzzle_cc',
+        winner: 'white',
+        result: '1-0',
+        whiteName: 'Puzzle Solver',
+        blackName: 'Puzzle Position',
+        isPuzzle: true,
+        puzzleThemes: unified.themes,
+        puzzleRating: unified.rating,
+      });
+    }
+    
+    errors.push(...chesscomResult.errors);
+    
+    console.log(`[Puzzles v8.1] ✓ Added ${games.length} puzzles (Lichess: ${lichessResult.puzzles.length}, Chess.com: ${chesscomResult.puzzles.length})`);
+    
+  } catch (e) {
+    errors.push(`Puzzle fetch error: ${e instanceof Error ? e.message : 'Unknown'}`);
+  }
+  
+  return { games, errors };
+}
+
+/**
+ * Fetch games from multiple sources in parallel
+ * v8.1-UNIFIED: Now includes puzzles as fourth source
+ */
+export async function fetchMultiSourceGames(options: FetchOptions): Promise<FetchResult> {
+  const { targetCount, batchNumber, excludeIds = new Set(), sources = ['lichess', 'chesscom', 'terminal'] } = options;
+  
+  console.log(`[MultiSource v8.1] ========== BATCH ${batchNumber} ==========`);
+  console.log(`[MultiSource v8.1] Target: ${targetCount} games from ${sources.join(' + ')}`);
+  console.log(`[MultiSource v8.1] Excluded IDs: ${excludeIds.size}`);
+  
+  // Calculate target per source (only count actual game sources, not puzzles separately)
+  const gameSources = sources.filter(s => s !== 'puzzle' && s !== 'puzzle_cc');
+  const hasPuzzles = sources.includes('puzzle') || sources.includes('puzzle_cc');
+  const perSourceTarget = Math.ceil(targetCount / (gameSources.length + (hasPuzzles ? 0.5 : 0)));
+  
+  const results: { games: UnifiedGameData[]; errors: string[] }[] = [];
+  
+  // Fetch from all active sources in parallel
   const fetchPromises: Promise<{ games: UnifiedGameData[]; errors: string[] }>[] = [];
   
   if (sources.includes('lichess')) {
-    fetchPromises.push(fetchFromLichess(halfTarget, batchNumber, excludeIds));
+    fetchPromises.push(fetchFromLichess(perSourceTarget, batchNumber, excludeIds));
   }
   
   if (sources.includes('chesscom')) {
-    fetchPromises.push(fetchFromChessCom(halfTarget, batchNumber, excludeIds));
+    fetchPromises.push(fetchFromChessCom(perSourceTarget, batchNumber, excludeIds));
+  }
+  
+  if (sources.includes('terminal')) {
+    fetchPromises.push(fetchFromTerminal(perSourceTarget, excludeIds));
+  }
+  
+  if (hasPuzzles) {
+    // Puzzles get smaller allocation but are included
+    fetchPromises.push(fetchFromPuzzles(Math.ceil(targetCount * 0.2), excludeIds));
   }
   
   const fetchResults = await Promise.all(fetchPromises);
@@ -614,6 +810,8 @@ export async function fetchMultiSourceGames(options: FetchOptions): Promise<Fetc
   let allErrors: string[] = [];
   let lichessCount = 0;
   let chesscomCount = 0;
+  let terminalCount = 0;
+  let puzzleCount = 0;
   
   for (const result of fetchResults) {
     allGames = [...allGames, ...result.games];
@@ -623,18 +821,22 @@ export async function fetchMultiSourceGames(options: FetchOptions): Promise<Fetc
     for (const game of result.games) {
       if (game.source === 'lichess') lichessCount++;
       if (game.source === 'chesscom') chesscomCount++;
+      if (game.source === 'terminal') terminalCount++;
+      if (game.source === 'puzzle' || game.source === 'puzzle_cc') puzzleCount++;
     }
   }
   
   // Shuffle combined games
   allGames = allGames.sort(() => Math.random() - 0.5);
   
-  console.log(`[MultiSource] RESULT: ${allGames.length} total (Lichess: ${lichessCount}, Chess.com: ${chesscomCount})`);
+  console.log(`[MultiSource v8.1] RESULT: ${allGames.length} total (Lichess: ${lichessCount}, Chess.com: ${chesscomCount}, Terminal: ${terminalCount}, Puzzles: ${puzzleCount})`);
   
   return {
     games: allGames,
     lichessCount,
     chesscomCount,
+    terminalCount,
+    puzzleCount,
     errors: allErrors
   };
 }
