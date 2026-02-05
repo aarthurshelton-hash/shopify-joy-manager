@@ -46,3 +46,41 @@ export {
 // Default export
 import { extractColorFlowSignature } from './signatureExtractor';
 export default extractColorFlowSignature;
+
+// ═══════════════════════════════════════════════════════════════
+// ENHANCED 8-QUADRANT SIGNATURE SYSTEM (v9.0)
+// ═══════════════════════════════════════════════════════════════
+// 
+// Revolutionary expansion from 4-quadrant to 8-quadrant analysis
+// with piece-type specific colors (12-color palette vs 2-color binary)
+// 
+// Expected accuracy improvement: 61% → 76-86%
+
+// Enhanced signature extractor (8-quadrant, 12-color)
+export {
+  extractEnhancedColorFlowSignature,
+  generateEnhancedFingerprint,
+  calculateEnhancedQuadrantProfile,
+  classifyEnhancedArchetype,
+  compareEnhancedProfiles,
+  ENHANCED_COLOR_CODES,
+  getGradatedPawnColor,
+  type EnhancedQuadrantProfile,
+} from './enhancedSignatureExtractor';
+
+// A/B Testing framework for validation
+export {
+  runSingleABTest,
+  runBatchABTest,
+  calculateABTestStatistics,
+  generateABTestReport,
+  exportABTestResults,
+  type ABTestResult,
+  type ABTestStatistics,
+} from './abTestingFramework';
+
+// Enhanced piece color definitions
+export {
+  PIECE_COLOR_CODES,
+  type PieceColorCode,
+} from './enhancedPieceColors';

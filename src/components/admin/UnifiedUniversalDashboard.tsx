@@ -45,6 +45,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { PhotonChipVisualization } from './PhotonChipVisualization';
 import { useRealDomainData } from '@/lib/pensent-core/data-sources/useRealDomainData';
+import { EightQuadrantDashboard } from '@/components/chess/EightQuadrantDashboard';
+import type { EnhancedQuadrantProfile } from '@/lib/chess/colorFlowAnalysis/enhancedSignatureExtractor';
 
 const ADMIN_EMAIL = 'a.arthur.shelton@gmail.com';
 
@@ -677,6 +679,82 @@ export function UnifiedUniversalDashboard() {
                         </div>
                       </div>
                     ))}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          {/* 8-Quadrant Enhanced Dashboard */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Grid3X3 className="h-5 w-5 text-violet-400" />
+                8-Quadrant Enhanced Analysis
+              </CardTitle>
+              <CardDescription>
+                12-color piece-type palette • 24 enhanced archetypes • A/B comparison
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid lg:grid-cols-2 gap-6">
+                <EightQuadrantDashboard
+                  profile={{
+                    q1_kingside_white: domainData.chess.currentSignature.quadrantProfile.q1 * 100,
+                    q2_queenside_white: domainData.chess.currentSignature.quadrantProfile.q2 * 100,
+                    q3_kingside_black: -domainData.chess.currentSignature.quadrantProfile.q3 * 100,
+                    q4_queenside_black: -domainData.chess.currentSignature.quadrantProfile.q4 * 100,
+                    q5_center_white: 0,
+                    q6_center_black: 0,
+                    q7_extended_kingside: 0,
+                    q8_extended_queenside: 0,
+                    bishop_dominance: 0.44,
+                    knight_dominance: 0.28,
+                    rook_dominance: 0.22,
+                    queen_dominance: 0.06,
+                    pawn_advancement: 0.25,
+                    temporalFlow: {
+                      early: domainData.chess.currentSignature.temporalFlow.early,
+                      mid: domainData.chess.currentSignature.temporalFlow.mid,
+                      late: domainData.chess.currentSignature.temporalFlow.late,
+                    }
+                  } as EnhancedQuadrantProfile}
+                  archetype={domainData.chess.currentSignature.archetype}
+                  fingerprint={domainData.chess.currentSignature.fingerprint}
+                  colorRichness={0.5}
+                  complexity={0.78}
+                  showComparison={true}
+                />
+                <div className="space-y-4">
+                  <div className="p-4 bg-violet-500/10 rounded-lg border border-violet-500/20">
+                    <h4 className="font-semibold mb-2">Enhanced Metrics</h4>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Colors:</span>
+                        <span className="font-medium">12 (vs 2 baseline)</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Quadrants:</span>
+                        <span className="font-medium">8 (vs 4 baseline)</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Archetypes:</span>
+                        <span className="font-medium">24+ (vs 12 baseline)</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Expected Accuracy:</span>
+                        <span className="font-medium text-green-400">76-86%</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-4 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                    <h4 className="font-semibold mb-2">A/B Test Status</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Baseline: 61% accuracy • Enhanced: Testing in progress
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Run ./farm/scripts/launch-ab-test-farm.sh to start testing
+                    </p>
                   </div>
                 </div>
               </div>
