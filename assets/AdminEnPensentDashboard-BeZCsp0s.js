@@ -1,0 +1,1 @@
+const n="/**\n * Admin En Pensent Dashboard\n * CEO-only access to 55-adapter universal engine\n * For Alec Arthur Shelton (a.arthur.shelton@gmail.com)\n */\n\nimport { UnifiedUniversalDashboard } from './UnifiedUniversalDashboard';\n\nexport function AdminEnPensentDashboard() {\n  return <UnifiedUniversalDashboard />;\n}\n";export{n as default};
