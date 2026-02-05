@@ -8,6 +8,7 @@
 
 import { SquareData, GameData, SimulationResult } from '../gameSimulator';
 import { PieceType, PieceColor } from '../pieceColors';
+import { ColorFlowSignature, QuadrantProfile as BaseQuadrantProfile, TemporalFlow, CriticalMoment } from './types';
 
 /**
  * Enhanced 12-color palette with piece-type differentiation
@@ -404,15 +405,14 @@ export function classifyEnhancedArchetype(profile: EnhancedQuadrantProfile): str
 /**
  * Extract complete enhanced color flow signature
  * This is the main entry point for signature extraction
+ * Returns full ColorFlowSignature + enhanced properties
  */
 export function extractEnhancedColorFlowSignature(
   simulationResult: SimulationResult
-): {
-  fingerprint: string;
-  quadrantProfile: EnhancedQuadrantProfile;
-  archetype: string;
+): ColorFlowSignature & {
   complexity: number;
   colorRichness: number;
+  enhancedProfile: EnhancedQuadrantProfile;
 } {
   const { board, totalMoves } = simulationResult;
   
@@ -442,12 +442,60 @@ export function extractEnhancedColorFlowSignature(
   const complexity = totalActivity / 64; // Average visits per square
   const colorRichness = uniquePieces.size / 12; // Ratio of piece types present (out of 12 possible)
   
+  // Calculate base ColorFlowSignature properties from enhanced profile
+  const whiteScore = quadrantProfile.q1_kingside_white + quadrantProfile.q2_queenside_white +
+    quadrantProfile.q5_center_white + quadrantProfile.q7_extended_kingside * 0.5;
+  const blackScore = Math.abs(quadrantProfile.q3_kingside_black + quadrantProfile.q4_queenside_black +
+    quadrantProfile.q6_center_black + quadrantProfile.q7_extended_kingside * 0.5);
+  const dominantSide: 'white' | 'black' | 'contested' = whiteScore > blackScore + 10 ? 'white' : 
+    blackScore > whiteScore + 10 ? 'black' : 'contested';
+  
+  const flowDirection: 'kingside' | 'queenside' | 'central' | 'balanced' | 'diagonal' = 
+    Math.abs(quadrantProfile.q7_extended_kingside) > Math.abs(quadrantProfile.q8_extended_queenside) * 1.5 ? 'kingside' :
+    Math.abs(quadrantProfile.q8_extended_queenside) > Math.abs(quadrantProfile.q7_extended_kingside) * 1.5 ? 'queenside' :
+    Math.abs(quadrantProfile.q5_center_white) + Math.abs(quadrantProfile.q6_center_black) > 30 ? 'central' :
+    'balanced';
+  
+  const intensity = Math.min(100, (Math.abs(whiteScore) + Math.abs(blackScore)) / 2);
+  
+  // Map to base QuadrantProfile format
+  const baseQuadrantProfile: BaseQuadrantProfile = {
+    kingsideWhite: quadrantProfile.q1_kingside_white,
+    kingsideBlack: quadrantProfile.q3_kingside_black,
+    queensideWhite: quadrantProfile.q2_queenside_white,
+    queensideBlack: quadrantProfile.q4_queenside_black,
+    center: quadrantProfile.q5_center_white + quadrantProfile.q6_center_black
+  };
+  
+  // Map temporalFlow to base format
+  const temporalFlow: TemporalFlow = {
+    opening: quadrantProfile.temporalFlow.early,
+    middlegame: quadrantProfile.temporalFlow.mid,
+    endgame: quadrantProfile.temporalFlow.late,
+    volatility: Math.abs(quadrantProfile.q1_kingside_white - quadrantProfile.q3_kingside_black) / 100
+  };
+  
+  // Map archetype to base type (cast safely)
+  const baseArchetype = archetype.includes('kingside') ? 'kingside_attack' :
+    archetype.includes('queenside') ? 'queenside_expansion' :
+    archetype.includes('central') ? 'central_domination' :
+    archetype.includes('pawn') ? 'pawn_storm' :
+    'positional_squeeze' as any;
+  
   return {
+    // Base ColorFlowSignature properties
     fingerprint,
-    quadrantProfile,
-    archetype,
+    quadrantProfile: baseQuadrantProfile,
+    archetype: baseArchetype,
+    dominantSide,
+    flowDirection,
+    intensity,
+    temporalFlow,
+    criticalMoments: [], // Enhanced tracking not yet implemented
+    // Enhanced properties
     complexity,
     colorRichness,
+    enhancedProfile: quadrantProfile,
   };
 }
 

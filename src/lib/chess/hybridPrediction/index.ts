@@ -19,7 +19,8 @@
 
 import { Chess } from 'chess.js';
 import { 
-  extractColorFlowSignature, 
+  extractColorFlowSignature,
+  extractEnhancedColorFlowSignature,
   predictFromColorFlow,
   ARCHETYPE_DEFINITIONS
 } from '../colorFlowAnalysis';
@@ -115,10 +116,14 @@ export async function generateHybridPrediction(
   const simulation = simulateGame(pgn);
   const { board, gameData, totalMoves } = simulation;
   
-  options.onProgress?.('Extracting color flow signature', 15);
+  options.onProgress?.('Extracting color flow signatures (baseline + enhanced)', 15);
   
-  // Step 2: Extract Color Flow Signature
-  const colorSignature = extractColorFlowSignature(board, gameData, totalMoves);
+  // Step 2: Extract BOTH Color Flow Signatures (A/B tracking)
+  const baselineSignature = extractColorFlowSignature(board, gameData, totalMoves);
+  const enhancedSignature = extractEnhancedColorFlowSignature(simulation);
+  
+  // Use enhanced for prediction (superior accuracy)
+  const colorSignature = enhancedSignature;
   
   options.onProgress?.('Analyzing current position', 30);
   

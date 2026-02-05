@@ -37,14 +37,16 @@
     },
     {
       "name": "chess-benchmark",
-      "script": "./farm/workers/chess-benchmark-farm.mjs",
+      "script": "./farm/workers/ep-enhanced-worker.mjs",
       "instances": 1,
       "exec_mode": "fork",
       "autorestart": true,
       "max_restarts": 10,
       "min_uptime": "10s",
       "env": {
-        "NODE_ENV": "production"
+        "NODE_ENV": "production",
+        "USE_ENHANCED": "true",
+        "WORKER_ID": "ep-farm-prod-1"
       },
       "log_file": "/tmp/pm2-chess-benchmark.log",
       "error_file": "/tmp/pm2-chess-benchmark-error.log",
