@@ -1,16 +1,26 @@
 {
   "name": "chess-market-farm",
-  "version": "1.0.0",
-  "description": "Permanent compute farm for chess game generation and market prediction",
+  "version": "2.0.0",
+  "description": "High-throughput compute farm for chess game generation, puzzles, and market prediction",
   "workers": {
     "chessGameGenerator": {
       "enabled": true,
-      "instances": 2,
-      "batchSize": 5,
-      "depth": 18,
+      "instances": 4,
+      "batchSize": 10,
+      "depth": 24,
       "maxMoves": 100,
-      "restBetweenBatchesMs": 5000,
-      "outputDir": "./farm/data/chess_games"
+      "restBetweenBatchesMs": 2000,
+      "outputDir": "./farm/data/chess_games",
+      "qualityThreshold": 2200
+    },
+    "puzzleProcessor": {
+      "enabled": true,
+      "instances": 2,
+      "batchSize": 25,
+      "sources": ["lichess", "chesscom"],
+      "ratingRange": [1200, 2800],
+      "restBetweenBatchesMs": 3000,
+      "outputDir": "./farm/data/puzzles"
     },
     "marketAnalyzer": {
       "enabled": true,
@@ -20,13 +30,24 @@
       "outputDir": "./farm/data/market_analysis"
     },
     "predictionBenchmark": {
+      "enabled": false,
+      "instances": 0,
+      "gamesPerBatch": 20,
+      "predictionMove": 20,
+      "depth": 24,
+      "restBetweenBatchesMs": 5000,
+      "outputDir": "./farm/data/benchmarks"
+    },
+    "enpensentBenchmark": {
       "enabled": true,
-      "instances": 1,
+      "instances": 3,
       "gamesPerBatch": 10,
       "predictionMove": 20,
-      "depth": 18,
-      "restBetweenBatchesMs": 10000,
-      "outputDir": "./farm/data/benchmarks"
+      "restBetweenBatchesMs": 30000,
+      "outputDir": "./farm/data/benchmarks",
+      "useRealGames": true,
+      "workerFile": "ep-benchmark-worker.mjs",
+      "description": "Real EP engine with Color Flow Analysis"
     },
     "ibkrTrader": {
       "enabled": false,
@@ -47,15 +68,16 @@
   },
   "logging": {
     "level": "info",
-    "maxLogSizeMB": 100,
-    "maxLogFiles": 10,
+    "maxLogSizeMB": 200,
+    "maxLogFiles": 20,
     "logDir": "./farm/logs"
   },
   "system": {
-    "maxMemoryPercent": 80,
-    "maxCpuPercent": 90,
+    "maxMemoryPercent": 85,
+    "maxCpuPercent": 95,
     "autoRestartOnFailure": true,
-    "restartDelayMs": 5000,
-    "maxRestartsPerHour": 10
+    "restartDelayMs": 3000,
+    "maxRestartsPerHour": 20,
+    "parallelProcessing": true
   }
 }

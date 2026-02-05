@@ -165,7 +165,7 @@ function startAll() {
         'chess-game',
         i,
         'node',
-        [path.join(WORKERS_DIR, 'chess-worker-stockfish.js'), i.toString()]
+        [path.join(WORKERS_DIR, 'chess-worker-stockfish.cjs'), i.toString()]
       );
     }
   }
@@ -183,34 +183,35 @@ function startAll() {
   }
 
   // Farm heartbeat publisher (public dashboard integration)
-  if (fs.existsSync(path.join(WORKERS_DIR, 'farm-heartbeat.js'))) {
+  if (fs.existsSync(path.join(WORKERS_DIR, 'farm-heartbeat.cjs'))) {
     startWorker(
       'farm-heartbeat',
       0,
       'node',
-      [path.join(WORKERS_DIR, 'farm-heartbeat.js')]
+      [path.join(WORKERS_DIR, 'farm-heartbeat.cjs')]
     );
   } else {
-    log('farm-heartbeat.js not found; skipping heartbeat publisher', 'warn');
+    log('farm-heartbeat.cjs not found; skipping heartbeat publisher', 'warn');
   }
   
-  // Prediction benchmark runners
-  if (config.workers.predictionBenchmark.enabled) {
-    for (let i = 0; i < config.workers.predictionBenchmark.instances; i++) {
-      const benchmarkWorkerPath = path.join(WORKERS_DIR, 'benchmark-worker.mjs');
-      if (fs.existsSync(benchmarkWorkerPath)) {
-        startWorker(
-          'prediction-benchmark',
-          i,
-          'node',
-          [benchmarkWorkerPath, i.toString()]
-        );
-      } else {
-        log('benchmark-worker.mjs not found; skipping prediction-benchmark worker', 'warn');
-        break;
-      }
-    }
-  }
+  // EP Benchmark Workers (disabled - superseded by ep-benchmark-worker.mjs)
+  // These used simplified material counting instead of real Color Flow Analysis
+  // if (config.workers.predictionBenchmark?.enabled) {
+  //   for (let i = 0; i < config.workers.predictionBenchmark.instances; i++) {
+  //     const benchmarkWorkerPath = path.join(WORKERS_DIR, 'benchmark-worker.mjs');
+  //     if (fs.existsSync(benchmarkWorkerPath)) {
+  //       startWorker(
+  //         'prediction-benchmark',
+  //         i,
+  //         'node',
+  //         [benchmarkWorkerPath, i.toString()]
+  //       );
+  //     } else {
+  //       log('benchmark-worker.mjs not found; skipping prediction-benchmark worker', 'warn');
+  //       break;
+  //     }
+  //   }
+  // }
   
   // IBKR Autonomous Trading (paper account training)
   if (config.workers.ibkrTrader?.enabled) {
@@ -248,6 +249,43 @@ function startAll() {
     }
   }
   
+  // Puzzle Processor Worker (v8.1-PUZZLES)
+  if (config.workers.puzzleProcessor?.enabled) {
+    for (let i = 0; i < config.workers.puzzleProcessor.instances; i++) {
+      const puzzleWorkerPath = path.join(WORKERS_DIR, 'puzzle-processor.cjs');
+      if (fs.existsSync(puzzleWorkerPath)) {
+        startWorker(
+          'puzzle-processor',
+          i,
+          'node',
+          [puzzleWorkerPath, i.toString()]
+        );
+      } else {
+        log('puzzle-processor.cjs not found; skipping puzzle processor', 'warn');
+        break;
+      }
+    }
+  }
+
+  // En Pensent Benchmark Workers (using compiled EP engine with Color Flow Analysis)
+  if (config.workers.enpensentBenchmark?.enabled) {
+    const workerFile = config.workers.enpensentBenchmark.workerFile || 'ep-benchmark-worker.mjs';
+    for (let i = 0; i < config.workers.enpensentBenchmark.instances; i++) {
+      const epWorkerPath = path.join(WORKERS_DIR, workerFile);
+      if (fs.existsSync(epWorkerPath)) {
+        startWorker(
+          'ep-benchmark',
+          i,
+          'node',
+          [epWorkerPath, i.toString()]
+        );
+      } else {
+        log(`${workerFile} not found; skipping EP benchmark`, 'warn');
+        break;
+      }
+    }
+  }
+
   log('All workers started');
 }
 

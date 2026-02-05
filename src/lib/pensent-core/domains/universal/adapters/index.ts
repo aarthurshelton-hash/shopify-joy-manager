@@ -20,6 +20,22 @@ export { lightAdapter } from './lightAdapter';
 export { cosmicAdapter } from './cosmicAdapter';
 export { geologicalTectonicAdapter } from './geologicalTectonicAdapter';
 export { climateAtmosphericAdapter } from './climateAtmosphericAdapter';
+export { 
+  extractSpatialSignature, 
+  predictSpatialOutcome,
+  SPATIAL_ARCHETYPES,
+  type SpatialData,
+  type SpatialPoint,
+  type SpatialArchetype
+} from './spatialAdapter';
+export { 
+  extractNuclearSignature, 
+  predictNuclearOutcome,
+  NUCLEAR_ARCHETYPES,
+  type NuclearData,
+  type NuclearPoint,
+  type NuclearArchetype
+} from './nuclearAdapter';
 
 // Biological adapters
 export { bioAdapter } from './bioAdapter';
