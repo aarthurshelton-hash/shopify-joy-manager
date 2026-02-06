@@ -8,6 +8,7 @@
 import express from 'express';
 import cors from 'cors';
 import pkg from '@stoqey/ib';
+import { execSync } from 'child_process';
 const { IBApi, EventName } = pkg;
 
 const app = express();
@@ -15,10 +16,66 @@ app.use(cors());
 app.use(express.json());
 
 // Configuration from environment
-const BRIDGE_PORT = parseInt(process.env.BRIDGE_PORT || '4000');
+const DEFAULT_BRIDGE_PORT = 4000;
 const IB_HOST = process.env.IB_HOST || '127.0.0.1';
 const IB_PORT = parseInt(process.env.IB_PORT || '4002');
 const CLIENT_ID = parseInt(process.env.CLIENT_ID || '1');
+
+// Find available port
+function findAvailablePort(startPort) {
+  for (let port = startPort; port < startPort + 10; port++) {
+    try {
+      execSync(`lsof -i :${port}`, { stdio: 'ignore' });
+      // If lsof returns successfully, port is in use
+      console.log(`[Bridge] Port ${port} is in use, checking next...`);
+    } catch {
+      // If lsof fails, port is available
+      return port;
+    }
+  }
+  throw new Error('No available ports found in range');
+}
+
+// Kill existing process on port
+function killProcessOnPort(port) {
+  try {
+    const pid = execSync(`lsof -t -i :${port}`, { encoding: 'utf8' }).trim();
+    if (pid) {
+      console.log(`[Bridge] Killing existing process ${pid} on port ${port}`);
+      execSync(`kill -9 ${pid}`, { stdio: 'ignore' });
+      // Wait for port to be released
+      let attempts = 0;
+      while (attempts < 10) {
+        try {
+          execSync(`lsof -i :${port}`, { stdio: 'ignore' });
+          attempts++;
+          // Still in use, wait
+        } catch {
+          // Port is now free
+          console.log(`[Bridge] Port ${port} is now free`);
+          return true;
+        }
+      }
+    }
+  } catch {
+    // No process found on port
+    return true;
+  }
+  return false;
+}
+
+// Get final bridge port
+let BRIDGE_PORT;
+try {
+  // First try to kill any existing process on default port
+  killProcessOnPort(DEFAULT_BRIDGE_PORT);
+  BRIDGE_PORT = DEFAULT_BRIDGE_PORT;
+} catch (err) {
+  console.warn(`[Bridge] Could not free port ${DEFAULT_BRIDGE_PORT}, finding alternative...`);
+  BRIDGE_PORT = findAvailablePort(DEFAULT_BRIDGE_PORT + 1);
+}
+
+console.log(`[Bridge] Using port ${BRIDGE_PORT}`);
 
 // IB API instance
 let ib = null;
