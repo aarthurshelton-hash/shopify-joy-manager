@@ -499,7 +499,7 @@ const LiveCodebaseDebugger = ({
       archetypeDescription: 'Combines domain-specific implementations with a universal core SDK',
       fingerprint: `EP-LIVE-v${codebaseSyncManager.getVersion()}-${Date.now().toString(36).toUpperCase()}`,
       intensity: avgPatternDensity * 0.95,
-      momentum: 0.88 + Math.random() * 0.1,
+      momentum: Math.min(0.98, avgPatternDensity * 0.95 + (filesToScan.length / 500) * 0.05),
       prediction: {
         outcome: 'success',
         confidence: avgPatternDensity * 0.92,
