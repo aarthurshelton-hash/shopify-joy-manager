@@ -49,9 +49,18 @@
       "workerFile": "enpensent-benchmark-worker.mjs",
       "description": "Real Lichess games with data integrity validation"
     },
+    "highFrequencyTrader": {
+      "enabled": true,
+      "instances": 1,
+      "workerFile": "high-frequency-paper-trader.mjs",
+      "bridgeUrl": "http://localhost:4000",
+      "gatewayHost": "127.0.0.1",
+      "gatewayPort": 4002,
+      "description": "High-frequency equity scalping with real IBKR paper execution"
+    },
     "ibkrTrader": {
       "enabled": false,
-      "instances": 1,
+      "instances": 0,
       "bridgeUrl": "http://localhost:4000",
       "gatewayHost": "127.0.0.1",
       "gatewayPort": 4002,

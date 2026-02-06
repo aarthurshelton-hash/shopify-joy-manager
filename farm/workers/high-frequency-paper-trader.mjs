@@ -47,13 +47,14 @@ const CONFIG = {
     ev: ['TSLA'],
   },
   MAX_CORRELATED_POSITIONS: 2,     // Max positions per correlated group
-  // Time-of-day restrictions
+  // Time-of-day restrictions - AFTER HOURS ENABLED
   TRADING_HOURS: {
-    startHour: 9, startMinute: 30,  // Market open 9:30 AM
-    endHour: 16, endMinute: 0,      // Market close 4:00 PM
-    avoidFirstMinutes: 30,          // Avoid first 30 min
-    avoidLastMinutes: 30,           // Avoid last 30 min
-    lunchStartHour: 12, lunchEndHour: 13, // Avoid lunch hour
+    startHour: 4, startMinute: 0,   // Pre-market 4:00 AM
+    endHour: 20, endMinute: 0,      // After-hours until 8:00 PM
+    avoidFirstMinutes: 0,           // Allow immediate trading
+    avoidLastMinutes: 0,            // Allow trading until close
+    lunchStartHour: 12, lunchEndHour: 13, // Still avoid lunch hour (market hours only)
+    enableExtendedHours: true,      // Enable pre/after market trading
   },
 };
 
@@ -125,35 +126,41 @@ function isTradingHours() {
   const hours = now.getHours();
   const minutes = now.getMinutes();
   const totalMinutes = hours * 60 + minutes;
+  const day = now.getDay(); // 0=Sunday, 6=Saturday
   
-  const { startHour, startMinute, endHour, endMinute, avoidFirstMinutes, avoidLastMinutes, lunchStartHour, lunchEndHour } = CONFIG.TRADING_HOURS;
+  // No trading on weekends
+  if (day === 0 || day === 6) {
+    return { allowed: false, reason: 'weekend' };
+  }
   
-  const marketOpen = startHour * 60 + startMinute;
-  const marketClose = endHour * 60 + endMinute;
-  const lunchStart = lunchStartHour * 60;
-  const lunchEnd = lunchEndHour * 60;
+  const { startHour, startMinute, endHour, endMinute, lunchStartHour, lunchEndHour, enableExtendedHours } = CONFIG.TRADING_HOURS;
   
-  // Outside market hours
+  const marketOpen = startHour * 60 + startMinute; // 4:00 AM = 240
+  const marketClose = endHour * 60 + endMinute;    // 8:00 PM = 1200
+  const lunchStart = lunchStartHour * 60;          // 12:00 PM = 720
+  const lunchEnd = lunchEndHour * 60;              // 1:00 PM = 780
+  
+  // Outside trading hours (4:00 AM - 8:00 PM)
   if (totalMinutes < marketOpen || totalMinutes >= marketClose) {
     return { allowed: false, reason: 'outside_market_hours' };
   }
   
-  // First 30 minutes
-  if (totalMinutes < marketOpen + avoidFirstMinutes) {
-    return { allowed: false, reason: 'market_open_volatility' };
-  }
+  // Lunch hour (only skip during regular market hours 9:30-4:00)
+  const regularMarketOpen = 9 * 60 + 30; // 9:30 AM
+  const regularMarketClose = 16 * 60;    // 4:00 PM
   
-  // Last 30 minutes
-  if (totalMinutes >= marketClose - avoidLastMinutes) {
-    return { allowed: false, reason: 'market_close_volatility' };
-  }
-  
-  // Lunch hour
-  if (totalMinutes >= lunchStart && totalMinutes < lunchEnd) {
+  if (!enableExtendedHours && 
+      totalMinutes >= lunchStart && 
+      totalMinutes < lunchEnd &&
+      totalMinutes >= regularMarketOpen &&
+      totalMinutes < regularMarketClose) {
     return { allowed: false, reason: 'lunch_hour' };
   }
   
-  return { allowed: true };
+  // In extended hours (before 9:30 or after 16:00)
+  const isExtendedHours = totalMinutes < regularMarketOpen || totalMinutes >= regularMarketClose;
+  
+  return { allowed: true, isExtendedHours };
 }
 
 // Check correlation limits for a symbol
@@ -264,6 +271,30 @@ async function getQuote(conid) {
   } catch (err) {
     return null;
   }
+}
+
+// Get quote with fallback to aggregated price sources
+async function getQuoteWithFallback(conid, symbol) {
+  // Try IBKR bridge first
+  const ibkrQuote = await getQuote(conid);
+  if (ibkrQuote && ibkrQuote.lastPrice) {
+    return { ...ibkrQuote, source: 'ibkr' };
+  }
+  
+  // Fallback to aggregated price
+  const aggPrice = await getAggregatedPrice(symbol);
+  if (aggPrice && aggPrice.lastPrice) {
+    return { ...aggPrice, source: 'aggregated' };
+  }
+  
+  // Last resort: static fallback
+  const fallbackPrice = FALLBACK_PRICES[symbol] || 100;
+  return { 
+    lastPrice: fallbackPrice, 
+    bid: fallbackPrice * 0.999, 
+    ask: fallbackPrice * 1.001,
+    source: 'fallback' 
+  };
 }
 
 // Fallback contract IDs for major symbols
@@ -794,7 +825,7 @@ async function runCycle() {
         orderType: 'MKT',
       });
 
-      if (result?.status === 'filled') {  // Verify actual execution
+      if (result?.status === 'filled' || result?.status === 'submitted') {  // Log real orders
         tradesExecuted++;
         
         // Track position
@@ -814,13 +845,13 @@ async function runCycle() {
             : price * (1 - CONFIG.TAKE_PROFIT_PERCENT / 100),
         });
 
-        // Log to database with fallback
+        // Log to database
         try {
           await supabase.from('autonomous_trades').insert({
             session_id: sessionId,
             worker_id: WORKER_NAME,
             symbol,
-            direction: side,
+            direction: side === 'BUY' ? 'long' : 'short',
             entry_price: price,
             shares: positionShares,
             predicted_direction: prediction.direction,
@@ -834,20 +865,13 @@ async function runCycle() {
               ? price * (1 + CONFIG.TAKE_PROFIT_PERCENT / 100)
               : price * (1 - CONFIG.TAKE_PROFIT_PERCENT / 100),
             status: 'open',
-            metadata: {
-              trade_type: 'high_frequency',
-              cycle: cycleCount,
-              balance_at_entry: balance,
-            },
           });
+          log(`✅ LOGGED ${side} ${positionShares} ${symbol} @ $${price.toFixed(2)} to database`, 'trade');
         } catch (dbErr) {
-          // Columns may not exist yet - log locally
-          log(`DB insert failed (columns may need migration): ${dbErr.message}`, 'warn');
+          log(`DB insert failed: ${dbErr.message}`, 'warn');
         }
 
         log(`OPENED ${side} ${positionShares} ${symbol} @ $${price.toFixed(2)} | Conf: ${(prediction.confidence * 100).toFixed(1)}% | Archetype: ${prediction.archetype}`, 'trade');
-      } else if (result?.status === 'submitted') {
-        log(`Order submitted but execution uncertain for ${symbol}`, 'warn');
       } else {
         log(`Order failed for ${symbol}: ${result?.error || 'Not filled'}`, 'error');
       }

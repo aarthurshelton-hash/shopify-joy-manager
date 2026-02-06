@@ -248,7 +248,25 @@ function startAll() {
       }
     }
   }
-  
+
+  // High-Frequency Paper Trading Worker
+  if (config.workers.highFrequencyTrader?.enabled) {
+    for (let i = 0; i < config.workers.highFrequencyTrader.instances; i++) {
+      const hfWorkerPath = path.join(WORKERS_DIR, 'high-frequency-paper-trader.mjs');
+      if (fs.existsSync(hfWorkerPath)) {
+        startWorker(
+          'high-frequency-trader',
+          i,
+          'node',
+          [hfWorkerPath, i.toString()]
+        );
+      } else {
+        log('high-frequency-paper-trader.mjs not found; skipping HF trading', 'warn');
+        break;
+      }
+    }
+  }
+
   // Puzzle Processor Worker (v8.1-PUZZLES)
   if (config.workers.puzzleProcessor?.enabled) {
     for (let i = 0; i < config.workers.puzzleProcessor.instances; i++) {
