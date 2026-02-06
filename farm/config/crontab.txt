@@ -1,0 +1,17 @@
+SHELL=/bin/bash
+PATH=/usr/local/bin:/usr/bin:/bin
+HOME=/Users/alecshelts
+
+# Data Integrity Cron Jobs for En Pensent Benchmarking
+
+# Data integrity monitor every 15 minutes
+*/15 * * * * cd /Users/alecshelts/shopify-joy-manager/farm && /usr/local/bin/node scripts/data-integrity-monitor.mjs >> /Users/alecshelts/shopify-joy-manager/farm/logs/cron-integrity.log 2>&1
+
+# Cross-system reconciliation every hour
+0 * * * * cd /Users/alecshelts/shopify-joy-manager/farm && /usr/local/bin/node scripts/data-reconciler.mjs >> /Users/alecshelts/shopify-joy-manager/farm/logs/cron-reconciler.log 2>&1
+
+# Throughput verification every 30 minutes
+*/30 * * * * cd /Users/alecshelts/shopify-joy-manager/farm && /usr/local/bin/node scripts/verify-throughput.mjs >> /Users/alecshelts/shopify-joy-manager/farm/logs/cron-throughput.log 2>&1
+
+# Log cleanup daily at 2am
+0 2 * * * find /Users/alecshelts/shopify-joy-manager/farm/logs -name "*.json" -mtime +30 -delete

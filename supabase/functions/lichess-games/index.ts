@@ -52,6 +52,59 @@ function getRequestInterval(): number {
   return baseInterval;
 }
 
+// Enhanced fetch with exponential backoff and retry logic
+const MAX_RETRIES = 3;
+const BASE_DELAY_MS = 2500;
+
+async function fetchWithRetry(url: string, options: RequestInit, maxRetries = MAX_RETRIES): Promise<Response> {
+  let lastError: Error | null = null;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+      
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
+      
+      // If rate limited, don't retry - let caller handle it
+      if (response.status === 429) {
+        return response;
+      }
+      
+      // Handle HTTP/2 errors specifically
+      if (!response.ok && response.status >= 500) {
+        throw new Error(`Server error: ${response.status}`);
+      }
+      
+      return response;
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      const isLastAttempt = attempt === maxRetries;
+      const isRetryable = lastError.message?.includes('http2') || 
+                         lastError.message?.includes('connection') ||
+                         lastError.message?.includes('timeout') ||
+                         lastError.message?.includes('abort') ||
+                         lastError.name === 'AbortError';
+      
+      if (isLastAttempt || !isRetryable) {
+        throw lastError;
+      }
+      
+      // Exponential backoff: 2.5s, 5s, 10s
+      const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1);
+      console.log(`[Lichess Games] Attempt ${attempt} failed, retrying in ${delay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  
+  throw lastError || new Error('Fetch failed after all retries');
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -128,39 +181,42 @@ serve(async (req) => {
       (until ? `until=${until}&` : '') +
       `sort=dateDesc`;
 
-    // v7.55: Retry logic for transient HTTP/2 connection errors
-    let response: Response | null = null;
-    let lastError: Error | null = null;
-    const maxRetries = 3;
-    
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        response = await fetch(url, {
-          headers: {
-            'Accept': 'application/x-ndjson',
-            'User-Agent': 'EnPensent Chess Analysis (https://enpensent.com)'
-          }
-        });
-        break; // Success, exit retry loop
-      } catch (err) {
-        lastError = err instanceof Error ? err : new Error(String(err));
-        const isTransient = lastError.message.includes('http2') || 
-                           lastError.message.includes('connection error') ||
-                           lastError.message.includes('SendRequest');
-        
-        console.warn(`[Lichess Games v7.55] Fetch attempt ${attempt}/${maxRetries} failed: ${lastError.message}`);
-        
-        if (!isTransient || attempt === maxRetries) {
-          throw lastError;
+    // Enhanced fetch with retry logic
+    let response;
+    try {
+      response = await fetchWithRetry(url, {
+        headers: {
+          'Accept': 'application/x-ndjson',
+          'User-Agent': 'EnPensent Chess Analysis (https://enpensent.com)'
         }
-        
-        // Exponential backoff: 500ms, 1000ms, 2000ms
-        await new Promise(resolve => setTimeout(resolve, 500 * Math.pow(2, attempt - 1)));
-      }
+      });
+    } catch (err) {
+      console.error(`[Lichess Games v7.55] All retry attempts failed:`, err.message);
+      return new Response(
+        JSON.stringify({ 
+          error: `Failed to fetch after ${MAX_RETRIES} attempts: ${err.message}`,
+          games: [],
+          count: 0,
+          retryable: true
+        }),
+        { 
+          status: 503, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
     }
     
-    if (!response) {
-      throw lastError || new Error('Fetch failed without error');
+    // Handle specific error cases
+    if (response.status === 404) {
+      console.warn(`[Lichess Games] Player "${player}" not found - returning empty games`);
+      return new Response(
+        JSON.stringify({ games: [], count: 0, skipped: true, reason: 'Player not found' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    if (!response.ok) {
+      throw new Error(`Lichess API error: ${response.status}`);
     }
 
     if (response.status === 429) {
