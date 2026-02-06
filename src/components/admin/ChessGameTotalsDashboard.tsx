@@ -88,23 +88,36 @@ interface FilterState {
   showRealOnly: boolean;
 }
 
-// Helper to load local prediction files
+// Helper to load local prediction files via HTTP (works in production)
 async function loadLocalPredictions(): Promise<GamePrediction[]> {
   const predictions: GamePrediction[] = [];
   
-  try {
-    // Dynamically import all prediction files from farm/data
-    const predictionModules = import.meta.glob('/farm/data/predictions*.json', { eager: true });
-    
-    for (const [path, module] of Object.entries(predictionModules)) {
-      const data = (module as { default?: GamePrediction[] })?.default || [];
-      predictions.push(...data.map(p => ({
-        ...p,
-        data_source: p.worker_id?.includes('chess-benchmark') ? 'local_benchmark' : 'local_farm',
-      })));
+  // List of known prediction files to fetch
+  const predictionFiles = [
+    '/farm/data/predictions-chess-benchmark-24x7.json',
+    '/farm/data/predictions-ep-farm-prod-1.json',
+    '/farm/data/predictions-ep-enhanced-1.json',
+    '/farm/data/predictions-ep-enhanced-2.json',
+    '/farm/data/predictions-ep-enhanced-3.json',
+    '/farm/data/predictions-ep-enhanced-4.json',
+    '/farm/data/predictions-ep-enhanced-5.json',
+  ];
+  
+  for (const filePath of predictionFiles) {
+    try {
+      const response = await fetch(filePath);
+      if (response.ok) {
+        const data = await response.json();
+        if (Array.isArray(data)) {
+          predictions.push(...data.map((p: GamePrediction) => ({
+            ...p,
+            data_source: p.worker_id?.includes('chess-benchmark') ? 'local_benchmark' : 'local_farm',
+          })));
+        }
+      }
+    } catch (error) {
+      // File doesn't exist or failed to load - skip silently
     }
-  } catch (error) {
-    console.warn('Failed to load local predictions:', error);
   }
   
   return predictions;
