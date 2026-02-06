@@ -46,6 +46,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { PhotonChipVisualization } from './PhotonChipVisualization';
 import { useRealDomainData } from '@/lib/pensent-core/data-sources/useRealDomainData';
 import { EightQuadrantDashboard } from '@/components/chess/EightQuadrantDashboard';
+import { useRealtimeAccuracyContext } from '@/providers/RealtimeAccuracyProvider';
 import type { EnhancedQuadrantProfile } from '@/lib/chess/colorFlowAnalysis/enhancedSignatureExtractor';
 
 const ADMIN_EMAIL = 'a.arthur.shelton@gmail.com';
@@ -81,6 +82,9 @@ export function UnifiedUniversalDashboard() {
   
   // Real data hook for Climate and Energy
   const { realData, refreshClimate, refreshEnergy, getDomainData } = useRealDomainData();
+  
+  // Real-time chess stats from context
+  const { chessStats } = useRealtimeAccuracyContext();
 
   // Domain data source tracking - REAL vs SIMULATED
   const [dataSourceStatus, setDataSourceStatus] = useState<Record<string, 'real' | 'simulated' | 'cached'>>({
@@ -95,26 +99,22 @@ export function UnifiedUniversalDashboard() {
     energy: 'real'      // EIA API - now active!
   });
   
-  // Live domain data
+  // Live domain data - Initialize with empty/default states, fill with real data
   const [domainData, setDomainData] = useState<Record<string, DomainLiveData>>({
     chess: {
       domain: 'chess',
       active: true,
       lastUpdate: Date.now(),
-      predictionsThisHour: 127,
-      accuracy: 0.61,
+      predictionsThisHour: 0,
+      accuracy: 0,
       currentSignature: {
-        fingerprint: 'cf-7a3b9f2',
-        archetype: 'kingside_attack',
-        quadrantProfile: { q1: 0.73, q2: 0.45, q3: 0.62, q4: 0.28 },
-        temporalFlow: { early: 0.35, mid: 0.68, late: 0.52 },
-        intensity: 0.77
+        fingerprint: 'loading...',
+        archetype: 'loading...',
+        quadrantProfile: { q1: 0.25, q2: 0.25, q3: 0.25, q4: 0.25 },
+        temporalFlow: { early: 0.33, mid: 0.33, late: 0.34 },
+        intensity: 0.5
       },
-      recentPredictions: [
-        { id: '1', prediction: 'white_win', confidence: 0.68, timestamp: Date.now() - 60000 },
-        { id: '2', prediction: 'black_win', confidence: 0.72, timestamp: Date.now() - 120000 },
-        { id: '3', prediction: 'draw', confidence: 0.45, timestamp: Date.now() - 180000 },
-      ]
+      recentPredictions: []
     },
     code: {
       domain: 'code',
@@ -269,7 +269,99 @@ export function UnifiedUniversalDashboard() {
 
   const isAdmin = user?.email === ADMIN_EMAIL;
 
-  // Simulate live updates
+  // Fetch real chess data from Supabase
+  useEffect(() => {
+    const fetchChessData = async () => {
+      try {
+        // Get last hour predictions count
+        const oneHourAgo = new Date(Date.now() - 3600000).toISOString();
+        const { count: recentCount } = await supabase
+          .from('chess_prediction_attempts')
+          .select('*', { count: 'exact', head: true })
+          .gte('created_at', oneHourAgo);
+
+        // Get latest archetype distribution
+        const { data: recentAttempts } = await supabase
+          .from('chess_prediction_attempts')
+          .select('hybrid_archetype, hybrid_confidence, hybrid_prediction, created_at, game_name')
+          .order('created_at', { ascending: false })
+          .limit(10);
+
+        // Get latest signature profile from color_flow_patterns if available
+        const { data: latestPattern } = await supabase
+          .from('color_flow_patterns')
+          .select('archetype, fingerprint, characteristics')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        // Calculate archetype distribution for quadrant profile
+        const archetypeCounts: Record<string, number> = {};
+        recentAttempts?.forEach(attempt => {
+          const archetype = attempt.hybrid_archetype || 'unknown';
+          archetypeCounts[archetype] = (archetypeCounts[archetype] || 0) + 1;
+        });
+
+        // Map archetypes to quadrants (simplified mapping)
+        const quadrantProfile = {
+          q1: 0.25, // Kingside
+          q2: 0.25, // Queenside  
+          q3: 0.25, // Central
+          q4: 0.25  // Tactical
+        };
+
+        // Determine dominant archetype
+        const dominantArchetype = Object.entries(archetypeCounts)
+          .sort((a, b) => b[1] - a[1])[0]?.[0] || 'balanced_position';
+
+        // Build recent predictions
+        const predictions = recentAttempts?.map((attempt, i) => ({
+          id: `pred-${i}`,
+          prediction: attempt.hybrid_prediction || 'unknown',
+          confidence: attempt.hybrid_confidence || 0.5,
+          timestamp: new Date(attempt.created_at).getTime()
+        })) || [];
+
+        // Update chess domain with real data
+        setDomainData(prev => ({
+          ...prev,
+          chess: {
+            ...prev.chess,
+            predictionsThisHour: recentCount || 0,
+            accuracy: chessStats?.hybridAccuracy ? chessStats.hybridAccuracy / 100 : 0,
+            currentSignature: {
+              fingerprint: latestPattern?.fingerprint || `live-${Date.now().toString(36)}`,
+              archetype: dominantArchetype,
+              quadrantProfile,
+              temporalFlow: { early: 0.33, mid: 0.33, late: 0.34 },
+              intensity: Math.min(0.95, (recentCount || 0) / 50) // Scale with activity
+            },
+            recentPredictions: predictions,
+            lastUpdate: Date.now()
+          }
+        }));
+      } catch (error) {
+        console.error('Failed to fetch chess data:', error);
+      }
+    };
+
+    // Initial fetch
+    fetchChessData();
+
+    // Subscribe to realtime updates
+    const channel = supabase
+      .channel('chess-dashboard-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'chess_prediction_attempts' },
+        () => fetchChessData()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [chessStats]);
   useEffect(() => {
     if (!isLive) return;
 
@@ -277,6 +369,9 @@ export function UnifiedUniversalDashboard() {
       setDomainData(prev => {
         const updated = { ...prev };
         Object.keys(updated).forEach(key => {
+          // Skip chess - it has real data from Supabase
+          if (key === 'chess') return;
+          
           const domain = updated[key];
           // Update intensity
           domain.currentSignature.intensity = Math.max(0.1, 
