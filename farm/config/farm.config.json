@@ -40,14 +40,14 @@
     },
     "enpensentBenchmark": {
       "enabled": true,
-      "instances": 3,
+      "instances": 2,
       "gamesPerBatch": 10,
       "predictionMove": 20,
-      "restBetweenBatchesMs": 30000,
+      "restBetweenBatchesMs": 60000,
       "outputDir": "./farm/data/benchmarks",
       "useRealGames": true,
-      "workerFile": "ep-benchmark-worker.mjs",
-      "description": "Real EP engine with Color Flow Analysis"
+      "workerFile": "enpensent-benchmark-worker.mjs",
+      "description": "Real Lichess games with data integrity validation"
     },
     "ibkrTrader": {
       "enabled": false,
