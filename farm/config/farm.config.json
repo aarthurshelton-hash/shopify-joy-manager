@@ -73,6 +73,12 @@
       "workerFile": "alpaca-chess-battle-trader.mjs",
       "description": "DISABLED - Alpaca not available in Canada"
     },
+    "questradeMarketData": {
+      "enabled": false,
+      "instances": 0,
+      "workerFile": "questrade-market-data.mjs",
+      "description": "TSX/CAD market data fetcher (requires Questrade API token)"
+    },
     "ibkrTrader": {
       "enabled": false,
       "instances": 0,
