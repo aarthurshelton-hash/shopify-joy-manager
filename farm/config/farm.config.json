@@ -67,6 +67,12 @@
       "gatewayPort": 4002,
       "description": "24/7 E-mini futures trading (/ES, /NQ) with real IBKR execution"
     },
+    "alpacaChessBattle": {
+      "enabled": true,
+      "instances": 1,
+      "workerFile": "alpaca-chess-battle-trader.mjs",
+      "description": "Alpaca paper trading with chess battle mode (white=long vs black=short)"
+    },
     "ibkrTrader": {
       "enabled": false,
       "instances": 0,

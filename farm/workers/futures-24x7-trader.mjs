@@ -184,27 +184,47 @@ async function placeFuturesOrder(order) {
   }
 }
 
+// Get real futures price from Yahoo Finance
+async function getFuturesPrice(symbol) {
+  try {
+    // Yahoo Finance futures symbols: ES=F, NQ=F
+    const yahooSymbol = symbol === 'ES' ? 'ES=F' : 'NQ=F';
+    const response = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1m&range=1d`);
+    if (!response.ok) {
+      return null;
+    }
+    
+    const data = await response.json();
+    const result = data.chart?.result?.[0];
+    if (!result) return null;
+    
+    const meta = result.meta;
+    const lastPrice = meta?.regularMarketPrice || meta?.previousClose;
+    const bid = meta?.bid || lastPrice * 0.9995;
+    const ask = meta?.ask || lastPrice * 1.0005;
+    
+    if (!lastPrice) return null;
+    
+    return { lastPrice, bid, ask, source: 'yahoo' };
+  } catch (err) {
+    return null;
+  }
+}
+
 // Get futures signal based on real market momentum
 async function getFuturesSignal(symbol) {
   try {
-    // Fetch real futures data from IBKR or external source
-    const response = await fetch(`${BRIDGE_URL}/api/quote?conid=${symbol === 'ES' ? 458996 : 459994}`);
-    if (!response.ok) {
-      log(`Failed to fetch ${symbol} quote`, 'warn');
+    // Fetch real futures data
+    const quote = await getFuturesPrice(symbol);
+    if (!quote) {
       return { direction: 'neutral', confidence: 0 };
     }
     
-    const quote = await response.json();
-    if (!quote || !quote.lastPrice) {
-      log(`No price data for ${symbol}`, 'warn');
-      return { direction: 'neutral', confidence: 0 };
-    }
-    
-    // Calculate momentum based on bid/ask spread and price action
+    // Calculate momentum based on bid/ask spread
     const spread = (quote.ask - quote.bid) / quote.lastPrice;
-    const momentum = spread > 0.0002 ? (quote.bid > quote.lastPrice * 0.999 ? 'long' : 'short') : 'neutral';
+    const momentum = spread > 0.0003 ? (quote.bid > quote.lastPrice * 0.9998 ? 'long' : 'short') : 'neutral';
     
-    // Check recent prediction outcomes for this futures symbol
+    // Check recent prediction outcomes
     const { data: recent } = await supabase
       .from('prediction_outcomes')
       .select('*')
@@ -223,14 +243,13 @@ async function getFuturesSignal(symbol) {
       }
     }
     
-    // Fallback to market momentum if no En Pensent data
+    // Fallback to market momentum
     if (momentum !== 'neutral') {
       return { direction: momentum, confidence: 0.45, source: 'market_momentum' };
     }
     
     return { direction: 'neutral', confidence: 0 };
   } catch (err) {
-    log(`Signal error for ${symbol}: ${err.message}`, 'error');
     return { direction: 'neutral', confidence: 0 };
   }
 }
@@ -321,12 +340,10 @@ async function runCycle() {
         continue;
       }
 
-      // Get real price quote from IBKR
-      const quoteRes = await fetch(`${BRIDGE_URL}/api/quote?conid=${futures.conid}`);
-      const quote = quoteRes.ok ? await quoteRes.json() : null;
+      // Get real price from Yahoo Finance
+      const quote = await getFuturesPrice(futures.symbol);
       
       if (!quote || !quote.lastPrice) {
-        log(`No real price for ${futures.symbol}, skipping`, 'warn');
         continue;
       }
       

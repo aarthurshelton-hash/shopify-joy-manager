@@ -285,6 +285,24 @@ function startAll() {
     }
   }
 
+  // Alpaca Chess Battle Trader
+  if (config.workers.alpacaChessBattle?.enabled) {
+    for (let i = 0; i < config.workers.alpacaChessBattle.instances; i++) {
+      const alpacaWorkerPath = path.join(WORKERS_DIR, 'alpaca-chess-battle-trader.mjs');
+      if (fs.existsSync(alpacaWorkerPath)) {
+        startWorker(
+          'alpaca-chess-battle',
+          i,
+          'node',
+          [alpacaWorkerPath, i.toString()]
+        );
+      } else {
+        log('alpaca-chess-battle-trader.mjs not found; skipping Alpaca chess battle', 'warn');
+        break;
+      }
+    }
+  }
+
   // Puzzle Processor Worker (v8.1-PUZZLES)
   if (config.workers.puzzleProcessor?.enabled) {
     for (let i = 0; i < config.workers.puzzleProcessor.instances; i++) {
