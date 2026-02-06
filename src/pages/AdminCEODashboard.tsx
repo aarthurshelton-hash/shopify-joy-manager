@@ -21,7 +21,8 @@ import {
   LineChart,
   Presentation,
   FileText,
-  Sparkles
+  Sparkles,
+  Network
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -44,6 +45,8 @@ import { AdminEconomicsPanel } from '@/components/admin/AdminEconomicsPanel';
 import { AdminUserCountBadge } from '@/components/admin/AdminUserCountBadge';
 import { AutoHealPanel } from '@/components/pensent-code/AutoHealPanel';
 import LiveCodebaseDebugger from '@/components/pensent-code/LiveCodebaseDebugger';
+import { UniversalAdapterMonitor } from '@/components/admin/UniversalAdapterMonitor';
+import { UnifiedSystemDashboard } from '@/components/admin/UnifiedSystemDashboard';
 
 const AdminCEODashboard: React.FC = () => {
   const { user, isLoading: authLoading } = useAuth();
@@ -278,7 +281,7 @@ const AdminCEODashboard: React.FC = () => {
 
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-10">
+          <TabsList className="grid w-full grid-cols-11">
             <TabsTrigger value="users" className="gap-2">
               <Users className="h-4 w-4" />
               <span className="hidden sm:inline">Users</span>
@@ -318,6 +321,10 @@ const AdminCEODashboard: React.FC = () => {
             <TabsTrigger value="codebase" className="gap-2 text-amber-500">
               <Code className="h-4 w-4" />
               <span className="hidden sm:inline">Code</span>
+            </TabsTrigger>
+            <TabsTrigger value="universal" className="gap-2 text-violet-500">
+              <Network className="h-4 w-4" />
+              <span className="hidden sm:inline">Universal</span>
             </TabsTrigger>
           </TabsList>
 
@@ -378,6 +385,23 @@ const AdminCEODashboard: React.FC = () => {
               
               {/* Live Codebase Debugger */}
               <LiveCodebaseDebugger />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="universal">
+            <div className="space-y-6">
+              <div className="text-center mb-4">
+                <h2 className="text-2xl font-bold flex items-center justify-center gap-2">
+                  <Network className="h-6 w-6 text-violet-500" />
+                  Unified System Command Center
+                </h2>
+                <p className="text-muted-foreground">
+                  Real-time telemetry from code analysis, adapters, evolution events, and cross-domain resonance
+                </p>
+              </div>
+              
+              {/* Unified System Dashboard with live visualizations */}
+              <UnifiedSystemDashboard />
             </div>
           </TabsContent>
         </Tabs>

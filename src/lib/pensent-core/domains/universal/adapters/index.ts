@@ -10,6 +10,26 @@
 
 import type { DomainSignature } from '../types';
 
+// Evolution event emitter type
+type EvolutionEventListener = (event: {
+  type: 'adapter_evolved' | 'resonance_detected' | 'cross_domain_learning';
+  adapter?: string;
+  resonance?: { adapter1: string; adapter2: string; score: number };
+  timestamp: number;
+}) => void;
+
+// Evolution event emitter
+const evolutionListeners: Set<EvolutionEventListener> = new Set();
+
+export function subscribeToAdapterEvolution(listener: EvolutionEventListener): () => void {
+  evolutionListeners.add(listener);
+  return () => evolutionListeners.delete(listener);
+}
+
+function emitEvolutionEvent(event: Parameters<EvolutionEventListener>[0]) {
+  evolutionListeners.forEach(listener => listener(event));
+}
+
 // Core market adapters
 export { multiBrokerAdapter } from './multiBrokerAdapter';
 
@@ -287,6 +307,15 @@ export class UniversalAdapterRegistry {
             sharedPatterns: ['domain_compatible', 'temporal_aligned'],
             lastSynced: Date.now(),
           });
+
+          // Emit resonance event for high-resonance pairs
+          if (resonance > 0.85) {
+            emitEvolutionEvent({
+              type: 'resonance_detected',
+              resonance: { adapter1: name1, adapter2: name2, score: resonance },
+              timestamp: Date.now()
+            });
+          }
         }
       }
     }
@@ -329,6 +358,14 @@ export class UniversalAdapterRegistry {
       })),
       resonances: Array.from(this.crossResonance.values()),
     };
+
+    // Emit evolution events for significant changes
+    if (this.evolutionCycle > 0 && this.evolutionCycle % 5 === 0) {
+      emitEvolutionEvent({
+        type: 'adapter_evolved',
+        timestamp: Date.now()
+      });
+    }
   }
 
   getAdapter(name: string): AdapterRegistry | undefined {

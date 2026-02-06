@@ -50,8 +50,10 @@ import {
 import { useLiveHeartbeat, formatNextPulse } from "@/hooks/useLiveHeartbeat";
 import { useCodebaseSync, codebaseSyncManager } from "@/hooks/useCodebaseSync";
 import { useUnifiedEvolution } from "@/hooks/useUnifiedEvolution";
+import { UniversalAdapterMonitor } from "@/components/admin/UniversalAdapterMonitor";
 import { AutoHealPanel } from "./AutoHealPanel";
 import { CodeIssue } from "@/hooks/useAutoHealSystem";
+import { recordCodeAnalysis, recordIssueDetected, recordHealApplied } from "@/lib/pensent-core/telemetry";
 
 // Real file analysis data extracted from LIVE code content
 interface FileAnalysis {
@@ -536,6 +538,29 @@ const LiveCodebaseDebugger = ({
       archetype: analysisResult.archetype,
       health: Math.round(avgPatternDensity * 100),
       recommendations: detectedIssues.slice(0, 3).map(i => i.title)
+    });
+
+    // Record to unified telemetry hub for dashboard visualization
+    recordCodeAnalysis({
+      archetype: analysisResult.archetype,
+      health: Math.round(avgPatternDensity * 100),
+      patternDensity: avgPatternDensity,
+      fileCount: filesToScan.length,
+      linesOfCode: totalLines,
+      issuesDetected: detectedIssues.length,
+      timestamp: Date.now()
+    });
+
+    // Record each detected issue to telemetry
+    detectedIssues.forEach(issue => {
+      recordIssueDetected({
+        id: issue.id,
+        type: issue.type,
+        severity: issue.severity,
+        file: issue.file || 'unknown',
+        title: issue.title,
+        timestamp: Date.now()
+      });
     });
 
     setResult(analysisResult);
@@ -1271,8 +1296,21 @@ const LiveCodebaseDebugger = ({
                 <li>✓ <strong className="text-foreground">Future state projection with preemptive actions</strong></li>
                 <li>✓ <strong className="text-foreground">Synchronized with unified evolution system</strong></li>
                 <li>✓ <strong className="text-foreground">Self-healing system with auto-fix capabilities</strong></li>
+                <li>✓ <strong className="text-foreground">Cross-domain adapter resonance monitoring</strong></li>
               </ul>
             </div>
+
+            {/* Universal Adapter Integration */}
+            <UniversalAdapterMonitor 
+              compact={false}
+              showCodeIntegration={true}
+              codeHealth={Math.round(result.totalPatternDensity * 100)}
+              onAdapterClick={(adapter) => {
+                toast.info(`Adapter: ${adapter.name}`, {
+                  description: `${adapter.domain} domain • ${adapter.signalCount} signals • Health: ${adapter.healthScore}%`
+                });
+              }}
+            />
 
             <Button onClick={() => { setStage('idle'); setResult(null); codebaseSyncManager.invalidateCache(); }} variant="outline" className="w-full gap-2">
               <RefreshCw className="w-4 h-4" />
