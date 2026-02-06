@@ -31,6 +31,7 @@ import { acquireBenchmarkLock, releaseBenchmarkLock } from '@/lib/chess/benchmar
 import { useRealtimeAccuracyContext } from '@/providers/RealtimeAccuracyProvider';
 import { BenchmarkSourceBreakdown } from '@/components/chess/BenchmarkSourceBreakdown';
 import { ChessGameTotalsDashboard } from '@/components/admin/ChessGameTotalsDashboard';
+import './Benchmark.css';
 
 interface CumulativeStats {
   totalRuns: number;
@@ -1622,12 +1623,12 @@ export default function Benchmark() {
                         <div className="flex gap-1 h-4">
                           <div 
                             className="bg-purple-500 rounded-sm ep-bar" 
-                            style={{ '--bar-width': `${horizon.accuracy}%` } as React.CSSProperties}
+                            style={{ width: `${horizon.accuracy}%` }}
                             title={`En Pensent: ${horizon.accuracy.toFixed(1)}%`}
                           />
                           <div 
                             className="bg-blue-500/50 rounded-sm sf-bar" 
-                            style={{ '--bar-width': `${horizon.stockfishAccuracyAtHorizon}%` } as React.CSSProperties}
+                            style={{ width: `${horizon.stockfishAccuracyAtHorizon}%` }}
                             title={`Stockfish: ${horizon.stockfishAccuracyAtHorizon.toFixed(1)}%`}
                           />
                         </div>

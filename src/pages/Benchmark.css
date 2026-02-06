@@ -1,0 +1,10 @@
+/* Benchmark page - Progress bar animations */
+.ep-bar {
+  transition: width 0.3s ease;
+  height: 100%;
+}
+
+.sf-bar {
+  transition: width 0.3s ease;
+  height: 100%;
+}
