@@ -56,7 +56,7 @@
       "bridgeUrl": "http://localhost:4000",
       "gatewayHost": "127.0.0.1",
       "gatewayPort": 4002,
-      "description": "High-frequency equity scalping with real IBKR paper execution (4AM-8PM)"
+      "description": "High-frequency equity scalping with chess battle tracking (4AM-8PM)"
     },
     "futures24x7Trader": {
       "enabled": true,
@@ -68,10 +68,10 @@
       "description": "24/7 E-mini futures trading (/ES, /NQ) with real IBKR execution"
     },
     "alpacaChessBattle": {
-      "enabled": true,
-      "instances": 1,
+      "enabled": false,
+      "instances": 0,
       "workerFile": "alpaca-chess-battle-trader.mjs",
-      "description": "Alpaca paper trading with chess battle mode (white=long vs black=short)"
+      "description": "DISABLED - Alpaca not available in Canada"
     },
     "ibkrTrader": {
       "enabled": false,

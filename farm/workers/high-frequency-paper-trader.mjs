@@ -79,7 +79,16 @@ let totalPnL = 0;
 let dailyStartPnL = 0;
 let dailyHighPnL = 0;
 let dailyLowPnL = 0;
-let pnlBySymbol = new Map(); // symbol -> { wins, losses, totalPnL, trades }
+let pnlBySymbol = new Map();
+
+// Chess Battle Statistics (White=Long/Buy, Black=Short/Sell)
+const CHESS_STATS = {
+  white: { wins: 0, losses: 0, totalPnL: 0, trades: 0, bestMove: null, worstMove: null, streak: 0 },
+  black: { wins: 0, losses: 0, totalPnL: 0, trades: 0, bestMove: null, worstMove: null, streak: 0 },
+  temporalWins: [],
+  currentLeader: null,
+  battleLog: []
+}; // symbol -> { wins, losses, totalPnL, trades }
 
 // Logging
 function log(message, level = 'info') {
@@ -96,6 +105,9 @@ function log(message, level = 'info') {
   } else if (level === 'trade') {
     fullMessage = `${prefix} 💰 ${message}`;
     console.log(fullMessage);
+  } else if (level === 'chess') {
+    fullMessage = `${prefix} ♟️  ${message}`;
+    console.log(fullMessage);
   } else {
     fullMessage = `${prefix} ℹ️  ${message}`;
     console.log(fullMessage);
@@ -105,6 +117,19 @@ function log(message, level = 'info') {
   if (CONFIG.SLACK_WEBHOOK && (level === 'error' || level === 'trade')) {
     sendSlackNotification(fullMessage).catch(() => {});
   }
+}
+
+// Log chess battle status
+function logChessBattle() {
+  const whiteWR = CHESS_STATS.white.trades > 0 ? (CHESS_STATS.white.wins / CHESS_STATS.white.trades * 100).toFixed(1) : 0;
+  const blackWR = CHESS_STATS.black.trades > 0 ? (CHESS_STATS.black.wins / CHESS_STATS.black.trades * 100).toFixed(1) : 0;
+  const leader = CHESS_STATS.white.totalPnL > CHESS_STATS.black.totalPnL ? 'WHITE' : 'BLACK';
+  const totalTrades = CHESS_STATS.white.trades + CHESS_STATS.black.trades;
+  
+  log(`⚔️  CHESS BATTLE [${totalTrades} trades]`, 'chess');
+  log(`♙ WHITE (Long): ${CHESS_STATS.white.wins}W/${CHESS_STATS.white.losses}L | PnL: $${CHESS_STATS.white.totalPnL.toFixed(2)} | WR: ${whiteWR}%`, 'chess');
+  log(`♟️ BLACK (Short): ${CHESS_STATS.black.wins}W/${CHESS_STATS.black.losses}L | PnL: $${CHESS_STATS.black.totalPnL.toFixed(2)} | WR: ${blackWR}%`, 'chess');
+  log(`🏆 Leader: ${leader} | Net PnL: $${(CHESS_STATS.white.totalPnL + CHESS_STATS.black.totalPnL).toFixed(2)}`, 'chess');
 }
 
 // Send Slack notification
@@ -759,7 +784,47 @@ async function runCycle() {
             }
           }
 
-          log(`CLOSED ${symbol} | PnL: $${pnl.toFixed(2)} (${pnlPercent.toFixed(2)}%) | Reason: ${holdTime > CONFIG.MAX_HOLD_MS ? 'timeout' : 'signal'}`, 'trade');
+          // Update chess battle stats
+          if (pos.chessSide) {
+            const stats = CHESS_STATS[pos.chessSide];
+            stats.trades++;
+            stats.totalPnL += pnl;
+            
+            if (pnl > 0) {
+              stats.wins++;
+              stats.streak = (stats.streak > 0) ? stats.streak + 1 : 1;
+              if (!stats.bestMove || pnl > stats.bestMove.pnl) {
+                stats.bestMove = { symbol, pnl, duration: holdTime };
+              }
+            } else {
+              stats.losses++;
+              stats.streak = 0;
+              if (!stats.worstMove || pnl < stats.worstMove.pnl) {
+                stats.worstMove = { symbol, pnl, duration: holdTime };
+              }
+            }
+            
+            // Log temporal win
+            CHESS_STATS.temporalWins.push({
+              timestamp: new Date().toISOString(),
+              side: pos.chessSide,
+              pnl,
+              symbol,
+              duration: holdTime,
+            });
+            
+            // Update leader
+            CHESS_STATS.currentLeader = CHESS_STATS.white.totalPnL > CHESS_STATS.black.totalPnL ? 'white' : 'black';
+          }
+
+          const chessEmoji = pos.chessSide === 'white' ? '♙' : '♟️';
+          log(`${chessEmoji} ${pos.chessSide?.toUpperCase() || 'UNKNOWN'} CLOSED ${symbol} | PnL: $${pnl.toFixed(2)} | Reason: ${holdTime > CONFIG.MAX_HOLD_MS ? 'timeout' : 'signal'}`, 'chess');
+          
+          // Log chess battle status every 5 trades
+          const totalTrades = CHESS_STATS.white.trades + CHESS_STATS.black.trades;
+          if (totalTrades % 5 === 0 && totalTrades > 0) {
+            logChessBattle();
+          }
         }
       }
     }
@@ -828,12 +893,14 @@ async function runCycle() {
       if (result?.status === 'filled' || result?.status === 'submitted') {  // Log real orders
         tradesExecuted++;
         
-        // Track position
+        // Track position with chess side (White=Long, Black=Short)
+        const chessSide = prediction.direction === 'up' ? 'white' : 'black';
         positions.set(symbol, {
           id: result.orderId,
           symbol,
           conid: contract.conid,
           side: prediction.direction === 'up' ? 'long' : 'short',
+          chessSide,
           entryPrice: price,
           quantity: positionShares,
           entryTime: Date.now(),
@@ -845,30 +912,31 @@ async function runCycle() {
             : price * (1 - CONFIG.TAKE_PROFIT_PERCENT / 100),
         });
 
-        // Log to database
+        // Log to database with chess battle metadata
         try {
-          await supabase.from('autonomous_trades').insert({
-            session_id: sessionId,
-            worker_id: WORKER_NAME,
+          const { data: insertData, error: insertError } = await supabase.from('autonomous_trades').insert({
             symbol,
             direction: side === 'BUY' ? 'long' : 'short',
             entry_price: price,
             shares: positionShares,
             predicted_direction: prediction.direction,
             predicted_confidence: prediction.confidence,
-            predicted_archetype: prediction.archetype,
-            prediction_source: prediction.source,
-            stop_loss: prediction.direction === 'up' 
-              ? price * (1 - CONFIG.STOP_LOSS_PERCENT / 100)
-              : price * (1 + CONFIG.STOP_LOSS_PERCENT / 100),
-            take_profit: prediction.direction === 'up'
-              ? price * (1 + CONFIG.TAKE_PROFIT_PERCENT / 100)
-              : price * (1 - CONFIG.TAKE_PROFIT_PERCENT / 100),
             status: 'open',
-          });
-          log(`✅ LOGGED ${side} ${positionShares} ${symbol} @ $${price.toFixed(2)} to database`, 'trade');
+            metadata: {
+              chess_battle: true,
+              chess_side: chessSide,
+              trade_type: 'high_frequency'
+            }
+          }).select();
+          
+          if (insertError) {
+            log(`❌ DB ERROR for ${symbol}: ${insertError.message}`, 'error');
+          } else {
+            const chessEmoji = chessSide === 'white' ? '♙' : '♟️';
+            log(`${chessEmoji} ${chessSide.toUpperCase()} OPENED ${side} ${positionShares} ${symbol} @ $${price.toFixed(2)} | Conf: ${(prediction.confidence * 100).toFixed(1)}%`, 'chess');
+          }
         } catch (dbErr) {
-          log(`DB insert failed: ${dbErr.message}`, 'warn');
+          log(`❌ DB EXCEPTION for ${symbol}: ${dbErr.message}`, 'error');
         }
 
         log(`OPENED ${side} ${positionShares} ${symbol} @ $${price.toFixed(2)} | Conf: ${(prediction.confidence * 100).toFixed(1)}% | Archetype: ${prediction.archetype}`, 'trade');
@@ -935,6 +1003,14 @@ async function reportStatus(status) {
         top_symbol: pnlBySymbol.size > 0 
           ? Array.from(pnlBySymbol.entries()).sort((a, b) => b[1].totalPnL - a[1].totalPnL)[0][0]
           : null,
+        // Chess battle stats
+        chess_battle: {
+          white: CHESS_STATS.white,
+          black: CHESS_STATS.black,
+          current_leader: CHESS_STATS.currentLeader,
+          total_trades: CHESS_STATS.white.trades + CHESS_STATS.black.trades,
+          net_pnl: CHESS_STATS.white.totalPnL + CHESS_STATS.black.totalPnL,
+        },
         ...status,
       },
       updated_at: new Date().toISOString(),
@@ -1023,6 +1099,10 @@ async function start() {
   log(`Symbols: ${CONFIG.SYMBOLS.join(', ')}`);
   log(`Cycle Interval: ${CONFIG.CYCLE_INTERVAL_MS}ms`);
   log(`Target: 100+ trades/day for En Pensent training`);
+  log('═══════════════════════════════════════');
+  log('♟️  CHESS BATTLE MODE ENABLED ♟️');
+  log('♙ WHITE (BUY/Long) vs ♟️ BLACK (SELL/Short)');
+  log('Tracking temporal victories through market chaos...');
   log('═══════════════════════════════════════');
 
   sessionId = `hf-${Date.now()}-${WORKER_ID}`;
