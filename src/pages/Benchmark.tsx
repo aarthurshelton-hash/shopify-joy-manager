@@ -30,6 +30,7 @@ import { GameDetailsModal } from '@/components/chess/GameDetailsModal';
 import { acquireBenchmarkLock, releaseBenchmarkLock } from '@/lib/chess/benchmarkCoordinator';
 import { useRealtimeAccuracyContext } from '@/providers/RealtimeAccuracyProvider';
 import { BenchmarkSourceBreakdown } from '@/components/chess/BenchmarkSourceBreakdown';
+import { ChessGameTotalsDashboard } from '@/components/admin/ChessGameTotalsDashboard';
 
 interface CumulativeStats {
   totalRuns: number;
@@ -569,7 +570,7 @@ export default function Benchmark() {
 
         {/* Main Tabs */}
         <Tabs defaultValue="benchmark" className="w-full">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="auto" className="flex items-center gap-2">
               <Rocket className="h-4 w-4" />
               Auto-Evolution
@@ -577,6 +578,10 @@ export default function Benchmark() {
             <TabsTrigger value="benchmark" className="flex items-center gap-2">
               <Brain className="h-4 w-4" />
               Benchmark
+            </TabsTrigger>
+            <TabsTrigger value="game-totals" className="flex items-center gap-2">
+              <Database className="h-4 w-4 text-emerald-400" />
+              Game Totals
             </TabsTrigger>
             <TabsTrigger value="intelligence" className="flex items-center gap-2">
               <BookOpen className="h-4 w-4" />
@@ -620,6 +625,10 @@ export default function Benchmark() {
 
           <TabsContent value="proof" className="mt-6">
             <ProofDashboard />
+          </TabsContent>
+
+          <TabsContent value="game-totals" className="mt-6">
+            <ChessGameTotalsDashboard />
           </TabsContent>
 
           <TabsContent value="benchmark" className="mt-6 space-y-8">

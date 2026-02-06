@@ -105,7 +105,7 @@ async function fetchWithRetry(url: string, options: RequestInit, maxRetries = MA
   throw lastError || new Error('Fetch failed after all retries');
 }
 
-serve(async (req) => {
+serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -190,11 +190,12 @@ serve(async (req) => {
           'User-Agent': 'EnPensent Chess Analysis (https://enpensent.com)'
         }
       });
-    } catch (err) {
-      console.error(`[Lichess Games v7.55] All retry attempts failed:`, err.message);
+    } catch (err: unknown) {
+      console.error(`[Lichess Games v7.55] All retry attempts failed:`, err instanceof Error ? err.message : String(err));
+      const errorMessage = err instanceof Error ? err.message : String(err);
       return new Response(
         JSON.stringify({ 
-          error: `Failed to fetch after ${MAX_RETRIES} attempts: ${err.message}`,
+          error: `Failed to fetch after ${MAX_RETRIES} attempts: ${errorMessage}`,
           games: [],
           count: 0,
           retryable: true

@@ -39,7 +39,8 @@ import {
   Box,
   Radiation,
   Heart,
-  Cloud
+  Cloud,
+  Database
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -47,6 +48,7 @@ import { PhotonChipVisualization } from './PhotonChipVisualization';
 import { useRealDomainData } from '@/lib/pensent-core/data-sources/useRealDomainData';
 import { EightQuadrantDashboard } from '@/components/chess/EightQuadrantDashboard';
 import { useRealtimeAccuracyContext } from '@/providers/RealtimeAccuracyProvider';
+import { ChessGameTotalsDashboard } from './ChessGameTotalsDashboard';
 import type { EnhancedQuadrantProfile } from '@/lib/chess/colorFlowAnalysis/enhancedSignatureExtractor';
 
 const ADMIN_EMAIL = 'a.arthur.shelton@gmail.com';
@@ -528,7 +530,7 @@ export function UnifiedUniversalDashboard() {
 
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-10">
+        <TabsList className="grid w-full grid-cols-11">
           <TabsTrigger value="overview" className="gap-2">
             <Grid3X3 className="h-4 w-4" />
             Overview
@@ -536,6 +538,10 @@ export function UnifiedUniversalDashboard() {
           <TabsTrigger value="chess" className="gap-2">
             <Brain className="h-4 w-4 text-blue-400" />
             Chess (Brain)
+          </TabsTrigger>
+          <TabsTrigger value="game-totals" className="gap-2">
+            <Database className="h-4 w-4 text-emerald-400" />
+            Game Totals
           </TabsTrigger>
           <TabsTrigger value="code" className="gap-2">
             <Code className="h-4 w-4 text-green-400" />
@@ -874,6 +880,11 @@ export function UnifiedUniversalDashboard() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Game Totals Tab */}
+        <TabsContent value="game-totals" className="space-y-6">
+          <ChessGameTotalsDashboard />
         </TabsContent>
 
         {/* Code Tab */}
