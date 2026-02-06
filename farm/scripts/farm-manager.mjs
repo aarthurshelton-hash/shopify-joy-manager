@@ -267,6 +267,24 @@ function startAll() {
     }
   }
 
+  // 24/7 Futures Trading Worker
+  if (config.workers.futures24x7Trader?.enabled) {
+    for (let i = 0; i < config.workers.futures24x7Trader.instances; i++) {
+      const futuresWorkerPath = path.join(WORKERS_DIR, 'futures-24x7-trader.mjs');
+      if (fs.existsSync(futuresWorkerPath)) {
+        startWorker(
+          'futures-24x7-trader',
+          i,
+          'node',
+          [futuresWorkerPath, i.toString()]
+        );
+      } else {
+        log('futures-24x7-trader.mjs not found; skipping futures trading', 'warn');
+        break;
+      }
+    }
+  }
+
   // Puzzle Processor Worker (v8.1-PUZZLES)
   if (config.workers.puzzleProcessor?.enabled) {
     for (let i = 0; i < config.workers.puzzleProcessor.instances; i++) {

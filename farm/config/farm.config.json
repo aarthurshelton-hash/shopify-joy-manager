@@ -56,7 +56,16 @@
       "bridgeUrl": "http://localhost:4000",
       "gatewayHost": "127.0.0.1",
       "gatewayPort": 4002,
-      "description": "High-frequency equity scalping with real IBKR paper execution"
+      "description": "High-frequency equity scalping with real IBKR paper execution (4AM-8PM)"
+    },
+    "futures24x7Trader": {
+      "enabled": true,
+      "instances": 1,
+      "workerFile": "futures-24x7-trader.mjs",
+      "bridgeUrl": "http://localhost:4000",
+      "gatewayHost": "127.0.0.1",
+      "gatewayPort": 4002,
+      "description": "24/7 E-mini futures trading (/ES, /NQ) with real IBKR execution"
     },
     "ibkrTrader": {
       "enabled": false,
