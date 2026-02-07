@@ -11,6 +11,7 @@ import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { EdgeFunctionMonitor } from './EdgeFunctionMonitor';
 
 interface SystemVital {
   vital_name: string;
@@ -387,6 +388,8 @@ export function SystemVitalsDashboard() {
           </CardContent>
         </Card>
       )}
+      {/* Edge Function Monitor */}
+      <EdgeFunctionMonitor />
     </div>
   );
 }

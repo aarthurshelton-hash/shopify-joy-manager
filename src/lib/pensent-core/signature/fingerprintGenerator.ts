@@ -38,6 +38,7 @@ function buildComponentString(
     Math.round(temporalFlow.opening * 100),
     Math.round(temporalFlow.middle * 100),
     Math.round(temporalFlow.ending * 100),
+    Math.round(temporalFlow.momentum * 100),
     temporalFlow.trend.charAt(0),
     archetype.substring(0, 4),
     Math.round(intensity * 100)
@@ -45,16 +46,16 @@ function buildComponentString(
 }
 
 /**
- * Compute a simple hash from a string
+ * Compute a robust hash from a string using FNV-1a algorithm
  */
 function computeHash(str: string): number {
-  let hash = 0;
+  // FNV-1a 32-bit hash
+  let hash = 2166136261; // FNV offset basis
   for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32-bit integer
+    hash ^= str.charCodeAt(i);
+    hash = Math.imul(hash, 16777619); // FNV prime
   }
-  return hash;
+  return hash >>> 0; // Convert to unsigned 32-bit
 }
 
 /**

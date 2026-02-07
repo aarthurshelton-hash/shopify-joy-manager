@@ -29,7 +29,7 @@ interface SignInResult {
   requiresMFA?: boolean;
 }
 
-interface AuthContextType {
+export interface AuthContextType {
   user: User | null;
   session: Session | null;
   profile: Profile | null;

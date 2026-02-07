@@ -46,8 +46,8 @@ describe('signatureExtractor', () => {
       const quadrantProfile: QuadrantProfile = { q1: 0.25, q2: 0.25, q3: 0.25, q4: 0.25 };
       const temporalFlow: TemporalFlow = { opening: 0.5, middle: 0.5, ending: 0.5, trend: 'stable', momentum: 0 };
       
-      const fp1 = generateFingerprint(quadrantProfile, temporalFlow, 'archetype_a', 0.5);
-      const fp2 = generateFingerprint(quadrantProfile, temporalFlow, 'archetype_b', 0.5);
+      const fp1 = generateFingerprint(quadrantProfile, temporalFlow, 'alpha_type', 0.5);
+      const fp2 = generateFingerprint(quadrantProfile, temporalFlow, 'beta_type', 0.5);
       
       expect(fp1).not.toBe(fp2);
     });
@@ -367,8 +367,10 @@ describe('signatureExtractor', () => {
     });
 
     it('should respect custom balance threshold', () => {
-      const resultLowThreshold = determineDominantForce(0.5, 0.52, 0.01);
-      const resultHighThreshold = determineDominantForce(0.5, 0.52, 0.1);
+      // With low threshold (0.01), a difference of 0.02 exceeds it, so not balanced
+      const resultLowThreshold = determineDominantForce(0.52, 0.5, 0.01);
+      // With high threshold (0.1), a difference of 0.02 is within it, so balanced
+      const resultHighThreshold = determineDominantForce(0.52, 0.5, 0.1);
       
       expect(resultLowThreshold).toBe('primary');
       expect(resultHighThreshold).toBe('balanced');

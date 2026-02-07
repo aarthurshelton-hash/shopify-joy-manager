@@ -73,25 +73,30 @@ function determineTrend(
   openingAvg: number,
   endingAvg: number
 ): TemporalFlow['trend'] {
+  // Check for volatility first (high variation between consecutive values)
+  if (activityLevels.length > 1) {
+    const avgChange = activityLevels.slice(1).reduce((sum, val, i) =>
+      sum + Math.abs(val - activityLevels[i]), 0) / (activityLevels.length - 1);
+    if (avgChange > 0.3) {
+      return 'volatile';
+    }
+  }
+
   const variance = Math.abs(endingAvg - openingAvg);
-  
+
   if (variance < 0.1) {
     return 'stable';
   }
-  
+
   if (endingAvg > openingAvg * 1.2) {
     return 'accelerating';
   }
-  
+
   if (endingAvg < openingAvg * 0.8) {
     return 'declining';
   }
-  
-  // Check for volatility
-  const avgChange = activityLevels.slice(1).reduce((sum, val, i) => 
-    sum + Math.abs(val - activityLevels[i]), 0) / (activityLevels.length - 1);
-  
-  return avgChange > 0.3 ? 'volatile' : 'stable';
+
+  return 'stable';
 }
 
 /**
