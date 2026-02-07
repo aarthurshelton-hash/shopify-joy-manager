@@ -18,18 +18,15 @@ interface SkeletonProps {
 /**
  * Base skeleton pulse animation
  */
-export function Skeleton({ className, width, height, style }: SkeletonProps) {
+export function Skeleton({ className, width, height }: SkeletonProps) {
   return (
     <div
       className={cn(
         'animate-pulse rounded-md bg-muted',
+        width && `w-[${width}px]`,
+        height && `h-[${height}px]`,
         className
       )}
-      style={{
-        width,
-        height,
-        ...style,
-      }}
       aria-hidden="true"
     />
   );
@@ -79,7 +76,7 @@ export function ChartSkeleton({ className }: { className?: string }) {
           <Skeleton
             key={i}
             className="flex-1 rounded-t"
-            style={{ height: `${20 + Math.random() * 80}%` }}
+            height={20 + Math.floor(Math.random() * 80)}
           />
         ))}
       </div>
@@ -104,7 +101,7 @@ export function TableSkeleton({ rows = 5, columns = 4 }: { rows?: number; column
         {Array.from({ length: rows }).map((_, row) => (
           <div key={row} className="flex gap-4">
             {Array.from({ length: columns }).map((_, col) => (
-              <Skeleton key={col} className="h-5 flex-1" style={{ width: col === 0 ? '60%' : undefined }} />
+              <Skeleton key={col} className={cn("h-5 flex-1", col === 0 && "w-3/5")} />
             ))}
           </div>
         ))}
