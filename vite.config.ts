@@ -35,18 +35,7 @@ export default defineConfig(({ mode }) => ({
         comments: false,
       },
     },
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          // Vendor chunks
-          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-          'vendor-ui': ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-tabs'],
-          'vendor-chess': ['chess.js', 'stockfish'],
-          'vendor-charts': ['recharts'],
-          'vendor-utils': ['date-fns', 'zod'],
-        },
-      },
-    },
+    rollupOptions: {},
   },
   resolve: {
     alias: {
