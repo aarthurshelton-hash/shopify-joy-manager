@@ -23,6 +23,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { selfEvolvingSystem } from '@/lib/pensent-core/domains/finance/selfEvolvingSystem';
+import { getCorrelationEngine, normalizeMarketSignal } from '@/lib/pensent-core/crossDomainCorrelation';
 
 // ============================================
 // TYPES
@@ -570,6 +571,31 @@ const MultiMarketScalpingTerminal: React.FC = () => {
     };
     
     setPredictions(prev => [...prev, prediction].slice(-200));
+    
+    // Feed into cross-domain correlation engine
+    const engine = getCorrelationEngine();
+    engine.start(); // Ensure engine is running
+    
+    // Calculate volatility from price history
+    const history = priceHistories[randomSymbol.symbol] || [];
+    const recentPrices = history.slice(-20).map(h => h.price);
+    const volatility = recentPrices.length > 1 
+      ? Math.sqrt(recentPrices.reduce((sum, p, i) => {
+          if (i === 0) return 0;
+          const change = (p - recentPrices[i-1]) / recentPrices[i-1];
+          return sum + change * change;
+        }, 0) / (recentPrices.length - 1))
+      : 0.01;
+    
+    engine.ingestMarketSignal(
+      normalizeMarketSignal(
+        randomSymbol.symbol,
+        randomSymbol.category,
+        direction,
+        confidence / 100,
+        volatility
+      )
+    );
   }, [availableSymbols, quotes, currentPortfolio.balance]);
   
   // Resolve predictions

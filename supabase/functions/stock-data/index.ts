@@ -87,7 +87,7 @@ const ALL_MARKETS = {
   ],
 };
 
-// Base prices for fallback simulation
+// Base prices for reference only (not for simulation)
 const BASE_PRICES: Record<string, number> = {
   // Stocks
   'AAPL': 178, 'GOOGL': 142, 'MSFT': 425, 'AMZN': 188, 'TSLA': 245,
@@ -109,32 +109,6 @@ const BASE_PRICES: Record<string, number> = {
   'EURUSD=X': 1.085, 'GBPUSD=X': 1.265, 'USDJPY=X': 154.5,
   'AUDUSD=X': 0.655, 'USDCAD=X': 1.365, 'USDCHF=X': 0.885,
 };
-
-// Volatility profiles for realistic simulation
-const VOLATILITY: Record<string, number> = {
-  // Stocks - moderate volatility
-  'AAPL': 0.015, 'GOOGL': 0.018, 'MSFT': 0.014, 'AMZN': 0.02, 'TSLA': 0.035,
-  'NVDA': 0.03, 'META': 0.025, 'JPM': 0.018, 'V': 0.012, 'JNJ': 0.01,
-  // ETFs - lower volatility
-  'SPY': 0.008, 'QQQ': 0.012, 'DIA': 0.007, 'IWM': 0.015, 'VTI': 0.008,
-  // Crypto - high volatility
-  'BTC-USD': 0.025, 'ETH-USD': 0.035, 'SOL-USD': 0.05, 'BNB-USD': 0.03,
-  'XRP-USD': 0.04, 'ADA-USD': 0.045, 'DOGE-USD': 0.06,
-  // Commodities - varies
-  'GC=F': 0.012, 'SI=F': 0.025, 'CL=F': 0.03, 'NG=F': 0.045,
-  'HG=F': 0.02, 'PL=F': 0.018,
-  // Bonds - low volatility
-  '^TNX': 0.02, '^TYX': 0.018, 'TLT': 0.015, 'IEF': 0.008, 'SHY': 0.003, 'BND': 0.005,
-  // Futures
-  'ES=F': 0.01, 'NQ=F': 0.015, 'YM=F': 0.009, 'RTY=F': 0.018,
-  'ZB=F': 0.012, 'ZN=F': 0.008,
-  // Forex - low volatility
-  'EURUSD=X': 0.005, 'GBPUSD=X': 0.006, 'USDJPY=X': 0.008,
-  'AUDUSD=X': 0.007, 'USDCAD=X': 0.005, 'USDCHF=X': 0.006,
-};
-
-// Cache for simulated prices to maintain continuity
-const priceCache: Record<string, { price: number; lastUpdate: number }> = {};
 
 /**
  * Get category for a symbol
@@ -159,31 +133,6 @@ function getSymbolInfo(symbol: string): { name: string; is24h: boolean; category
     }
   }
   return null;
-}
-
-/**
- * Generate realistic simulated price with momentum
- */
-function getSimulatedPrice(symbol: string): number {
-  const basePrice = BASE_PRICES[symbol] || 100;
-  const volatility = VOLATILITY[symbol] || 0.02;
-  const now = Date.now();
-  
-  // Check cache
-  const cached = priceCache[symbol];
-  if (cached && now - cached.lastUpdate < 60000) {
-    // Update with small movement
-    const change = (Math.random() - 0.5) * cached.price * volatility * 0.1;
-    const newPrice = cached.price + change;
-    priceCache[symbol] = { price: newPrice, lastUpdate: now };
-    return newPrice;
-  }
-  
-  // Initialize or refresh with some randomization from base
-  const randomOffset = (Math.random() - 0.5) * basePrice * 0.02;
-  const price = basePrice + randomOffset;
-  priceCache[symbol] = { price, lastUpdate: now };
-  return price;
 }
 
 /**
@@ -236,34 +185,11 @@ async function fetchRealQuote(symbol: string): Promise<QuoteData | null> {
 }
 
 /**
- * Get quote with fallback to simulation
+ * Get quote - only real data, no simulation
  */
-async function getQuote(symbol: string): Promise<QuoteData> {
-  // Try real data first
-  const realData = await fetchRealQuote(symbol);
-  if (realData) {
-    // Update cache with real price
-    priceCache[symbol] = { price: realData.price, lastUpdate: Date.now() };
-    return realData;
-  }
-  
-  // Fall back to simulated data
-  const info = getSymbolInfo(symbol);
-  const price = getSimulatedPrice(symbol);
-  const basePrice = BASE_PRICES[symbol] || 100;
-  const change = price - basePrice;
-  const changePercent = (change / basePrice) * 100;
-  
-  return {
-    symbol,
-    name: info?.name || symbol,
-    category: info?.category || 'unknown',
-    price: Math.round(price * 10000) / 10000,
-    change: Math.round(change * 10000) / 10000,
-    changePercent: Math.round(changePercent * 100) / 100,
-    is24h: info?.is24h || false,
-    lastUpdated: Date.now(),
-  };
+async function getQuote(symbol: string): Promise<QuoteData | null> {
+  // Only return real data from Yahoo Finance
+  return await fetchRealQuote(symbol);
 }
 
 serve(async (req) => {
@@ -322,7 +248,8 @@ serve(async (req) => {
       
       for (const batch of batches) {
         const batchResults = await Promise.all(batch.map(s => getQuote(s)));
-        quotes.push(...batchResults);
+        // Filter out nulls (failed fetches) - only keep real data
+        quotes.push(...batchResults.filter((q): q is QuoteData => q !== null));
       }
       
       return new Response(
@@ -342,7 +269,9 @@ serve(async (req) => {
         }
       }
       
-      const quotes = await Promise.all(allSymbols.slice(0, 20).map(s => getQuote(s)));
+      const results = await Promise.all(allSymbols.slice(0, 20).map(s => getQuote(s)));
+      // Filter out nulls - only return real data
+      const quotes = results.filter((q): q is QuoteData => q !== null);
       
       return new Response(
         JSON.stringify({ quotes, lastUpdated: Date.now() }),

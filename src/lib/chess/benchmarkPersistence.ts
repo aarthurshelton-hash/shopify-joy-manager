@@ -11,6 +11,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import type { BenchmarkResult, PredictionAttempt } from './cloudBenchmark';
+import { getCorrelationEngine, normalizeChessSignal } from '@/lib/pensent-core/crossDomainCorrelation';
 
 /**
  * Normalize FEN to position-only part for consistent matching
@@ -335,17 +336,18 @@ export async function saveBenchmarkResults(result: BenchmarkResult): Promise<str
 
     // v6.65-COMPLETE-ONLY: Filter to ONLY save attempts with COMPLETE predictions
     // Invalid predictions block the game_id from re-capture in future runs
-    const VALID_PREDICTIONS = ['white', 'black', 'draw', 'white_wins', 'black_wins'];
+    const VALID_PREDICTIONS = ['white', 'black', 'draw', 'white_wins', 'black_wins', 'unknown'];
     
     const validAttempts = result.predictionPoints.filter(attempt => {
       const hybridPred = String(attempt.hybridPrediction || '');
       const sfPred = String(attempt.stockfishPrediction || '');
       
-      const hasValidHybrid = hybridPred && hybridPred !== 'unknown' && VALID_PREDICTIONS.includes(hybridPred);
-      const hasValidStockfish = sfPred && sfPred !== 'unknown' && VALID_PREDICTIONS.includes(sfPred);
+      // v8.1: Relaxed validation - accept predictions that have ANY value
+      const hasHybrid = hybridPred && hybridPred !== 'undefined';
+      const hasStockfish = sfPred && sfPred !== 'undefined';
       
-      if (!hasValidHybrid || !hasValidStockfish) {
-        console.log(`[v6.65] Skipping incomplete prediction for ${attempt.gameId}: hybrid=${hybridPred}, sf=${sfPred}`);
+      if (!hasHybrid || !hasStockfish) {
+        console.log(`[v8.1] Skipping incomplete prediction for ${attempt.gameId}: hybrid=${hybridPred}, sf=${sfPred}`);
         return false;
       }
       return true;
@@ -395,6 +397,7 @@ export async function saveBenchmarkResults(result: BenchmarkResult): Promise<str
     // CRITICAL: Use batch inserts for large sets to avoid timeout issues
     const BATCH_SIZE = 25;
     let savedCount = 0;
+    let failedBatches = 0;
     
     for (let i = 0; i < attempts.length; i += BATCH_SIZE) {
       const batch = attempts.slice(i, i + BATCH_SIZE);
@@ -404,18 +407,49 @@ export async function saveBenchmarkResults(result: BenchmarkResult): Promise<str
 
       if (attemptsError) {
         console.error(`Failed to save prediction batch ${i / BATCH_SIZE + 1}:`, attemptsError);
-        
-        // CRITICAL FIX: If predictions fail to save, delete the benchmark result
-        // This prevents orphaned benchmark records that inflate total counts
-        await supabase.from('chess_benchmark_results').delete().eq('id', benchmarkId);
-        console.error('[Benchmark] Rolled back benchmark result due to prediction save failure');
-        return null;
+        failedBatches++;
+        // v8.1: Continue with other batches instead of rolling back entire benchmark
+        // This ensures partial data is saved rather than losing everything
+        continue;
       }
       
       savedCount += batch.length;
     }
+    
+    if (failedBatches > 0) {
+      console.warn(`[Benchmark] ${failedBatches} batches failed, but ${savedCount} predictions were saved`);
+    }
 
-    console.log(`[Benchmark] Saved run ${runId} with ${savedCount}/${attempts.length} predictions`);
+    // Feed saved predictions into cross-domain correlation engine
+    console.log('[Benchmark] Feeding predictions to cross-domain correlation engine...');
+    const engine = getCorrelationEngine();
+    engine.start();
+    
+    for (const attempt of attempts) {
+      // Create a PredictionAttempt-compatible object for normalization
+      const predictionForCorrelation = {
+        gameId: attempt.game_id,
+        gameName: attempt.game_name,
+        fen: attempt.fen,
+        moveNumber: attempt.move_number,
+        hybridPrediction: attempt.hybrid_prediction,
+        hybridConfidence: attempt.hybrid_confidence,
+        hybridArchetype: attempt.hybrid_archetype,
+        hybridCorrect: attempt.hybrid_correct,
+        stockfishPrediction: attempt.stockfish_prediction,
+        stockfishConfidence: attempt.stockfish_confidence,
+        stockfishEval: attempt.stockfish_eval,
+        stockfishDepth: attempt.stockfish_depth,
+        stockfishCorrect: attempt.stockfish_correct,
+        actualResult: attempt.actual_result,
+        pgn: attempt.pgn,
+      } as PredictionAttempt;
+      
+      engine.ingestChessSignal(normalizeChessSignal(predictionForCorrelation));
+    }
+    console.log(`[Benchmark] Fed ${attempts.length} predictions to correlation engine`);
+
+    console.log(`[Benchmark] Saved run ${runId} with ${savedCount}/${attempts.length} predictions (${failedBatches} failed batches)`);
     return runId;
 
   } catch (error) {

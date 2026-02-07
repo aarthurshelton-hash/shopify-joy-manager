@@ -22,7 +22,8 @@ import {
   Presentation,
   FileText,
   Sparkles,
-  Network
+  Network,
+  Link2
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -47,6 +48,7 @@ import { AutoHealPanel } from '@/components/pensent-code/AutoHealPanel';
 import LiveCodebaseDebugger from '@/components/pensent-code/LiveCodebaseDebugger';
 import { UniversalAdapterMonitor } from '@/components/admin/UniversalAdapterMonitor';
 import { UnifiedSystemDashboard } from '@/components/admin/UnifiedSystemDashboard';
+import { CrossDomainCorrelationPanel } from '@/components/admin/CrossDomainCorrelationPanel';
 
 const AdminCEODashboard: React.FC = () => {
   const { user, isLoading: authLoading } = useAuth();
@@ -400,8 +402,16 @@ const AdminCEODashboard: React.FC = () => {
                 </p>
               </div>
               
-              {/* Unified System Dashboard with live visualizations */}
-              <UnifiedSystemDashboard />
+              {/* Cross-Domain Correlation Panel */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-1">
+                  <CrossDomainCorrelationPanel />
+                </div>
+                <div className="lg:col-span-2">
+                  {/* Unified System Dashboard with live visualizations */}
+                  <UnifiedSystemDashboard />
+                </div>
+              </div>
             </div>
           </TabsContent>
         </Tabs>

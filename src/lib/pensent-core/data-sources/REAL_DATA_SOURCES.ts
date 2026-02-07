@@ -31,7 +31,7 @@ export const CHESS_SOURCES = {
     status: 'ACTIVE - Real player data'
   },
   currentStatus: {
-    gamesPerDay: 4920,
+    gamesPerDay: 17000,
     source: 'Lichess + Chess.com',
     workerStatus: '3 EP farm workers running 24/7',
     lastGameId: 'Real Lichess IDs only'

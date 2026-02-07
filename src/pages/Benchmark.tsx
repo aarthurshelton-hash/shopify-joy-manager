@@ -31,6 +31,7 @@ import { acquireBenchmarkLock, releaseBenchmarkLock } from '@/lib/chess/benchmar
 import { useRealtimeAccuracyContext } from '@/providers/RealtimeAccuracyProvider';
 import { BenchmarkSourceBreakdown } from '@/components/chess/BenchmarkSourceBreakdown';
 import { ChessGameTotalsDashboard } from '@/components/admin/ChessGameTotalsDashboard';
+import { getCorrelationEngine, normalizeChessSignal } from '@/lib/pensent-core/crossDomainCorrelation';
 import './Benchmark.css';
 
 interface CumulativeStats {
@@ -478,6 +479,11 @@ export default function Benchmark() {
           // Add completed attempts to live view
           if (attempt) {
             setLiveAttempts(prev => [...prev, attempt]);
+            
+            // Feed into cross-domain correlation engine
+            const engine = getCorrelationEngine();
+            engine.start(); // Ensure engine is running
+            engine.ingestChessSignal(normalizeChessSignal(attempt));
           }
         }
       );

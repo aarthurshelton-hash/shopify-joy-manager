@@ -37,22 +37,35 @@ import {
 } from '@/components/ui/select';
 import { isRealLichessId } from '@/lib/chess/benchmarkPersistence';
 
-// Types
+// Types - supports both database and farm file formats
 interface GamePrediction {
   game_id: string;
   worker_id?: string;
   fen?: string;
   data_source?: string;
   hybrid_archetype?: string;
+  // Farm file alternative field names
+  enhancedArchetype?: string;
+  baselineArchetype?: string;
   created_at?: string;
   actual_result?: string;
   stockfish_prediction?: string;
   hybrid_prediction?: string;
+  // Farm file alternative field names
+  baselinePrediction?: string;
+  enhancedPrediction?: string;
+  sf17_prediction?: string;
   whiteName?: string;
   blackName?: string;
   gameMode?: string;
   rated?: boolean;
   variant?: string;
+  // Correctness fields (both formats)
+  hybrid_correct?: boolean;
+  stockfish_correct?: boolean;
+  baselineCorrect?: boolean;
+  enhancedCorrect?: boolean;
+  sf17_correct?: boolean;
 }
 
 interface AggregatedStats {
@@ -88,36 +101,58 @@ interface FilterState {
   showRealOnly: boolean;
 }
 
-// Helper to load local prediction files via HTTP (works in production)
+// Helper to load ALL local prediction files dynamically
 async function loadLocalPredictions(): Promise<GamePrediction[]> {
   const predictions: GamePrediction[] = [];
   
-  // List of known prediction files to fetch
-  const predictionFiles = [
-    '/farm/data/predictions-chess-benchmark-24x7.json',
-    '/farm/data/predictions-ep-farm-prod-1.json',
-    '/farm/data/predictions-ep-enhanced-1.json',
-    '/farm/data/predictions-ep-enhanced-2.json',
-    '/farm/data/predictions-ep-enhanced-3.json',
-    '/farm/data/predictions-ep-enhanced-4.json',
-    '/farm/data/predictions-ep-enhanced-5.json',
-  ];
-  
-  for (const filePath of predictionFiles) {
-    try {
-      const response = await fetch(filePath);
-      if (response.ok) {
-        const data = await response.json();
-        if (Array.isArray(data)) {
-          predictions.push(...data.map((p: GamePrediction) => ({
-            ...p,
-            data_source: p.worker_id?.includes('chess-benchmark') ? 'local_benchmark' : 'local_farm',
-          })));
+  // Dynamically discover all prediction files
+  try {
+    // Try to fetch directory listing or use known patterns
+    const possibleFiles = [
+      '/farm/data/predictions-chess-benchmark-24x7.json',
+      '/farm/data/predictions-ep-farm-prod-1.json',
+      '/farm/data/predictions-ep-enhanced-1.json',
+      '/farm/data/predictions-ep-enhanced-2.json',
+      '/farm/data/predictions-ep-enhanced-3.json',
+      '/farm/data/predictions-ep-enhanced-4.json',
+      '/farm/data/predictions-ep-enhanced-5.json',
+      '/farm/data/predictions-chess-24x7.json',
+      '/farm/data/predictions-chess-24x7-v3.json',
+      '/farm/data/predictions-bulletproof.json',
+      '/farm/data/predictions-fresh.json',
+      '/farm/data/predictions-fresh-v2.json',
+      '/farm/data/predictions-fresh-supabase.json',
+      '/farm/data/predictions-live.json',
+      '/farm/data/predictions-live-data.json',
+      '/farm/data/predictions-live-sync.json',
+      '/farm/data/predictions-live-dashboard.json',
+      '/farm/data/predictions-production-v1.json',
+      '/farm/data/predictions-supabase-fixed.json',
+      '/farm/data/predictions-rls-off.json',
+      '/farm/data/predictions-test-rls.json',
+      '/farm/data/predictions-dashboard-sync.json',
+      '/farm/data/predictions.json',
+    ];
+    
+    for (const filePath of possibleFiles) {
+      try {
+        const response = await fetch(filePath);
+        if (response.ok) {
+          const data = await response.json();
+          if (Array.isArray(data)) {
+            predictions.push(...data.map((p: GamePrediction) => ({
+              ...p,
+              data_source: p.worker_id?.includes('chess-benchmark') ? 'local_benchmark' : 
+                          p.worker_id?.includes('farm') ? 'local_farm' : 'local_other',
+            })));
+          }
         }
+      } catch (error) {
+        // File doesn't exist or failed to load - skip silently
       }
-    } catch (error) {
-      // File doesn't exist or failed to load - skip silently
     }
+  } catch (error) {
+    console.error('Error loading local predictions:', error);
   }
   
   return predictions;
@@ -201,7 +236,7 @@ export const ChessGameTotalsDashboard: React.FC = () => {
       idCount.set(gameId, (idCount.get(gameId) || 0) + 1);
       uniqueIds.add(gameId);
       
-      // Check if real game ID
+      // Check if real game ID (Lichess 8-char or Chess.com cc_ prefix)
       if (isRealLichessId(gameId)) {
         realGameIds++;
       } else {
@@ -212,8 +247,8 @@ export const ChessGameTotalsDashboard: React.FC = () => {
       const source = pred.data_source || 'unknown';
       byDataSource[source] = (byDataSource[source] || 0) + 1;
       
-      // Archetype breakdown
-      const archetype = pred.hybrid_archetype || 'unknown';
+      // Archetype breakdown (handle both field names)
+      const archetype = pred.hybrid_archetype || pred.enhancedArchetype || pred.baselineArchetype || 'unknown';
       byArchetype[archetype] = (byArchetype[archetype] || 0) + 1;
       
       // Game mode breakdown
