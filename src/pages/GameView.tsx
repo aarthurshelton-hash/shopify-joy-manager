@@ -12,7 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
 import { motion } from 'framer-motion';
-import { Crown, Loader2, ChevronLeft, Sparkles } from 'lucide-react';
+import { Crown, Loader2, ChevronLeft, Sparkles, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
@@ -31,6 +31,9 @@ import { recordVisionInteraction, getVisionScore, VisionScore } from '@/lib/visu
 import { generateGameHash, extractMovesFromPgn, buildCanonicalShareUrl } from '@/lib/visualizations/gameCanonical';
 import { detectGameCard } from '@/lib/chess/gameCardDetection';
 import { useRecentlyViewedStore } from '@/stores/recentlyViewedStore';
+import { VisionFloorPrice } from '@/components/nfts/VisionFloorPrice';
+import { VisionValueChart } from '@/components/nfts/VisionValueChart';
+import { useVisionNFT } from '@/hooks/useVisionNFT';
 
 interface GameVision {
   id: string;
@@ -104,6 +107,12 @@ const GameView = () => {
   const [sessionTotalMoves, setSessionTotalMoves] = useState<number>(0);
   
   const viewRecordedRef = useRef(false);
+
+  // Get NFT data for saved visions
+  const { visionNFT, history } = useVisionNFT({ 
+    visualizationId: primaryVision?.id || undefined,
+    enabled: !!primaryVision?.id 
+  });
 
   // Get initial state from URL params
   const initialState = useMemo(() => ({
@@ -928,6 +937,12 @@ const GameView = () => {
                   Score: {visionScore.totalScore.toLocaleString()}
                 </span>
               )}
+              {/* NFT Floor Price Display */}
+              {visionNFT && (
+                <div className="flex items-center gap-2">
+                  <VisionFloorPrice visionNFT={visionNFT} showDetails={false} />
+                </div>
+              )}
             </div>
           </motion.div>
 
@@ -973,6 +988,25 @@ const GameView = () => {
               }}
             />
           </motion.div>
+
+          {/* Value History Chart - only for saved visions with NFT data */}
+          {visionNFT && history.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="mt-6 bg-card/50 rounded-xl border border-border/50 p-4 md:p-6"
+            >
+              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-primary" />
+                Value History
+              </h2>
+              <VisionValueChart 
+                history={history} 
+                mintPrice={visionNFT.mint_price_cents} 
+              />
+            </motion.div>
+          )}
         </div>
       </main>
 

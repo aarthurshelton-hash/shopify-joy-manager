@@ -36,6 +36,9 @@ import HoldingsValueDashboard from '@/components/vision/HoldingsValueDashboard';
 import { GracePeriodBanner } from '@/components/notifications/GracePeriodBanner';
 import PrivacyToggle from '@/components/vision/PrivacyToggle';
 import { generateGameHash, buildCanonicalShareUrl } from '@/lib/visualizations/gameCanonical';
+import { VisionFloorPrice } from '@/components/nfts/VisionFloorPrice';
+import { useVisionNFT } from '@/hooks/useVisionNFT';
+import type { VisionNFT } from '@/lib/nfts/visionNftApi';
 
 // VisionCard component for gallery items - MOBILE OPTIMIZED with touch-friendly actions
 interface VisionCardProps {
@@ -66,6 +69,10 @@ const VisionCard: React.FC<VisionCardProps> = ({
   isPrivate,
 }) => {
   const [showActions, setShowActions] = useState(false);
+  const { visionNFT, isLoading: nftLoading } = useVisionNFT({ 
+    visualizationId: viz.id,
+    enabled: true 
+  });
 
   return (
     <Card 
@@ -197,6 +204,12 @@ const VisionCard: React.FC<VisionCardProps> = ({
         <p className="text-xs sm:text-sm text-muted-foreground truncate">
           {viz.game_data.white} vs {viz.game_data.black}
         </p>
+        {/* NFT Floor Price Display */}
+        {visionNFT && (
+          <div className="pt-1 border-t border-border/50">
+            <VisionFloorPrice visionNFT={visionNFT} showDetails={false} />
+          </div>
+        )}
         <div className="flex items-center justify-between">
           <p className="text-[10px] sm:text-xs text-muted-foreground">
             {new Date(viz.created_at).toLocaleDateString()}

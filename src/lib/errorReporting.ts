@@ -4,7 +4,7 @@ interface ErrorReport {
   message: string;
   stack?: string;
   componentName?: string;
-  errorType?: 'runtime' | 'network' | 'validation' | 'render';
+  errorType?: 'runtime' | 'network' | 'validation' | 'render' | 'performance';
   url?: string;
   metadata?: Record<string, unknown>;
 }

@@ -124,23 +124,23 @@ export function detectBotBehavior(): boolean {
   const indicators: boolean[] = [];
   
   // Check for headless browser
-  indicators.push(!!(navigator as any).webdriver);
+  indicators.push(!!(navigator as Navigator & { webdriver?: boolean }).webdriver);
   
   // Check for missing plugins (common in headless)
   indicators.push(navigator.plugins.length === 0);
   
   // Check for automation-related properties
-  indicators.push(!!(window as any).callPhantom || !!(window as any)._phantom);
-  indicators.push(!!(window as any).__nightmare);
-  indicators.push(!!(window as any).Buffer);
-  indicators.push(!!(window as any).emit);
-  indicators.push(!!(window as any).spawn);
+  indicators.push(!!(window as Window & { callPhantom?: unknown; _phantom?: unknown }).callPhantom || !!(window as Window & { _phantom?: unknown })._phantom);
+  indicators.push(!!(window as Window & { __nightmare?: unknown }).__nightmare);
+  indicators.push(!!(window as Window & { Buffer?: unknown }).Buffer);
+  indicators.push(!!(window as Window & { emit?: unknown }).emit);
+  indicators.push(!!(window as Window & { spawn?: unknown }).spawn);
   
   // Check for Selenium
   indicators.push(
-    !!(document as any).__selenium_unwrapped ||
-    !!(document as any).__webdriver_evaluate ||
-    !!(document as any).__driver_evaluate
+    !!(document as Document & { __selenium_unwrapped?: unknown }).__selenium_unwrapped ||
+    !!(document as Document & { __webdriver_evaluate?: unknown }).__webdriver_evaluate ||
+    !!(document as Document & { __driver_evaluate?: unknown }).__driver_evaluate
   );
   
   // Check for Puppeteer/Playwright

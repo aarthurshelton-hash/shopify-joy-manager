@@ -37,8 +37,34 @@ import { extractPaletteId, extractPgn, getPaletteArt, getPaletteDisplayName, cla
 import { supabase } from '@/integrations/supabase/client';
 import { detectOpeningFromPgn, DetectedOpening } from '@/lib/chess/openingDetector';
 import { OpeningBadge } from '@/components/chess/OpeningBadge';
+import { VisionFloorPrice } from '@/components/nfts/VisionFloorPrice';
+import { useVisionNFT } from '@/hooks/useVisionNFT';
 
 const ITEMS_PER_PAGE = 20;
+
+// Sub-component for NFT floor price display in marketplace cards
+const ListingFloorPrice: React.FC<{ visualizationId: string }> = ({ visualizationId }) => {
+  const { visionNFT } = useVisionNFT({ 
+    visualizationId,
+    enabled: !!visualizationId 
+  });
+  
+  if (!visionNFT) return null;
+  
+  return (
+    <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+      <span className="font-medium">Floor:</span>
+      <span className={visionNFT.current_floor_price_cents > visionNFT.mint_price_cents ? 'text-green-500' : ''}>
+        ${(visionNFT.current_floor_price_cents / 100).toFixed(2)}
+      </span>
+      {visionNFT.current_floor_price_cents > visionNFT.mint_price_cents && (
+        <span className="text-green-500 text-[10px]">
+          (+{((visionNFT.current_floor_price_cents - visionNFT.mint_price_cents) / visionNFT.mint_price_cents * 100).toFixed(0)}%)
+        </span>
+      )}
+    </div>
+  );
+};
 
 const Marketplace: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -723,6 +749,11 @@ const Marketplace: React.FC = () => {
                             <div className="mb-2">
                               <OpeningBadge opening={detectedOpening} variant="card" />
                             </div>
+                          )}
+                          
+                          {/* NFT Floor Price - shows calculated value vs list price */}
+                          {listing.visualization?.id && (
+                            <ListingFloorPrice visualizationId={listing.visualization.id} />
                           )}
                           
                           {/* Order Print CTA - Available to everyone */}

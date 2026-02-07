@@ -425,7 +425,11 @@ export async function fetchRealGames(
 }
 
 /**
- * Run benchmark using Lichess Cloud API with REAL Lichess games
+ * Run chess benchmark using Lichess Cloud API with REAL Lichess games
+ * 
+ * This function compares En Pensent's hybrid prediction algorithm against Stockfish 17
+ * using actual Grandmaster games from Lichess. It implements a dual-pool architecture
+ * for both volume (100+ games/hour) and depth (SF17 D30 with 100M nodes) analysis.
  * 
  * DATA INTEGRITY GUARANTEES:
  * 1. Cross-run deduplication - no position analyzed more than once ever
@@ -434,6 +438,51 @@ export async function fetchRealGames(
  * 4. Position hash verification before analysis
  * 5. Stockfish evaluation from SAME position we predict from
  * 6. No access to moves beyond prediction point
+ * 
+ * @param {Object} [options] - Benchmark configuration options
+ * @param {number} [options.gameCount=50] - Number of games to analyze (default: 50)
+ * @param {number} [options.predictionMoveNumber] - Fixed move number for predictions. If not provided, randomizes 15-35 per game
+ * @param {boolean} [options.useRealGames=true] - Use real Lichess games vs famous games fallback
+ * @param {boolean} [options.skipDuplicates=true] - Enable cross-run deduplication (default: true, recommended)
+ * 
+ * @param {Function} [onProgress] - Progress callback function
+ * @param {string} onProgress.status - Current operation status message
+ * @param {number} onProgress.progress - Progress percentage (0-100)
+ * @param {PredictionAttempt} [onProgress.attempt] - Current prediction attempt details (optional)
+ * 
+ * @returns {Promise<BenchmarkResult>} Complete benchmark results including:
+ *   - stockfishAccuracy: Stockfish 17 prediction accuracy percentage
+ *   - hybridAccuracy: En Pensent hybrid algorithm accuracy percentage
+ *   - predictionPoints: Array of individual prediction attempts
+ *   - archetypePerformance: Performance breakdown by strategic archetype
+ *   - pValue: Statistical significance of results
+ * 
+ * @throws {Error} When Stockfish engine fails repeatedly or abort signal received
+ * 
+ * @example
+ * ```typescript
+ * // Standard benchmark with progress tracking
+ * const result = await runCloudBenchmark(
+ *   { gameCount: 50, skipDuplicates: true },
+ *   (status, progress, attempt) => {
+ *     console.log(`[${progress}%] ${status}`);
+ *     if (attempt) {
+ *       console.log(`Game: ${attempt.gameName}, Move ${attempt.moveNumber}`);
+ *     }
+ *   }
+ * );
+ * 
+ * console.log(`Stockfish: ${result.stockfishAccuracy.toFixed(1)}%`);
+ * console.log(`En Pensent: ${result.hybridAccuracy.toFixed(1)}%`);
+ * console.log(`Statistical significance: p=${result.pValue.toFixed(4)}`);
+ * ```
+ * 
+ * @see {@link fetchRealGames} for game fetching implementation
+ * @see {@link getStockfishEngine} for Stockfish 17 integration
+ * @see {@link generateHybridPrediction} for hybrid algorithm details
+ * @see {@link https://lichess.org/api} Lichess API documentation
+ * 
+ * @version 6.92-DUAL-POOL
  */
 export async function runCloudBenchmark(
   options: {
@@ -719,7 +768,7 @@ export async function runCloudBenchmark(
         stockfishDepth,
         stockfishPrediction: stockfishResult.prediction,
         stockfishConfidence: stockfishResult.confidence,
-        hybridPrediction: hybridPrediction as any,
+        hybridPrediction: hybridPrediction as PredictionAttempt['hybridPrediction'],
         hybridConfidence: hybridResult.confidence.overall,
         hybridArchetype: hybridResult.strategicAnalysis.archetype,
         actualResult: game.result,

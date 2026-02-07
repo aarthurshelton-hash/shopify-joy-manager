@@ -174,7 +174,7 @@ export async function analyzePositionPotential(
     bestMove: primaryAnalysis.bestMove,
     bestMoveReadable: convertUciToSan(chess, primaryAnalysis.bestMove),
     principalVariation: pvLine,
-    alternativeLines: [], // TODO: Implement multi-PV
+    alternativeLines: await generateAlternativeLines(fen, chess, Math.min(lines - 1, 2), depth),
     futurePositions,
     tacticalThemes,
     positionType,
@@ -800,6 +800,77 @@ function findKing(chess: Chess, color: 'w' | 'b'): string | null {
     }
   }
   return null;
+}
+
+/**
+ * Generate alternative analysis lines using multi-PV
+ */
+async function generateAlternativeLines(
+  fen: string,
+  chess: Chess,
+  count: number,
+  depth: number
+): Promise<PredictedLine[]> {
+  const engine = getStockfishEngine();
+  const alternatives: PredictedLine[] = [];
+  
+  // Get all legal moves
+  const legalMoves = chess.moves({ verbose: true });
+  
+  // Sort by capture value (prioritize captures)
+  const sortedMoves = legalMoves.sort((a, b) => {
+    const aValue = a.captured ? getPieceValue(a.captured) : 0;
+    const bValue = b.captured ? getPieceValue(b.captured) : 0;
+    return bValue - aValue;
+  });
+  
+  // Analyze top candidate moves
+  const candidates = sortedMoves.slice(0, Math.min(count + 1, sortedMoves.length));
+  
+  // Skip the best move (already in principal variation)
+  for (let i = 1; i < candidates.length && alternatives.length < count; i++) {
+    const move = candidates[i];
+    
+    try {
+      const testChess = new Chess(fen);
+      testChess.move(move.san);
+      
+      const analysis = await engine.analyzePosition(testChess.fen(), { 
+        depth: depth - 2, 
+        nodes: 50000 
+      });
+      
+      const line = await buildPredictedLine(
+        testChess.fen(),
+        analysis.evaluation.pv,
+        analysis.evaluation.score,
+        analysis.evaluation.scoreType === 'mate',
+        analysis.evaluation.mateIn
+      );
+      
+      line.moves.unshift(move.san);
+      alternatives.push(line);
+    } catch (error) {
+      console.warn(`[PredictiveAnalysis] Failed to analyze alternative ${move.san}:`, error);
+    }
+  }
+  
+  return alternatives;
+}
+
+/**
+ * Get piece value for move prioritization
+ */
+function getPieceValue(piece: string): number {
+  const values: Record<string, number> = {
+    'p': 100,
+    'n': 320,
+    'b': 330,
+    'r': 500,
+    'q': 900,
+    'k': 20000
+  };
+  return values[piece.toLowerCase()] || 0;
 }
 
 // Default export
