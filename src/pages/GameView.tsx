@@ -407,7 +407,7 @@ const GameView = () => {
     };
 
     fetchGameByHash();
-  }, [gameHash, initialState.paletteId, sessionSimulation, sessionPgn, searchParams]);
+  }, [gameHash, initialState.paletteId, sessionSimulation, sessionPgn, searchParams, user, activePaletteId, setOrderData]);
 
   // Reconstruct board and game data - supports both saved and session-based games
   const { board, gameData, totalMoves, effectivePgn } = useMemo(() => {
@@ -515,12 +515,115 @@ const GameView = () => {
   ]);
 
   // Clear active vision when intentionally navigating away
+  const handleSaveToGallery = useCallback(async () => {
+    if (!user) {
+      setShowAuthModal(true);
+      return null;
+    }
+    if (!isPremium) {
+      setShowVisionaryModal(true);
+      return null;
+    }
+    
+    if (!board || !gameData || !effectivePgn) {
+      toast.error('No visualization to save');
+      return null;
+    }
+    
+    try {
+      const { checkDuplicateVisualization, saveVisualization } = await import('@/lib/visualizations/visualizationStorage');
+      const { getActivePalette } = await import('@/lib/chess/pieceColors');
+      
+      // Build visualization state for ownership check
+      const activePalette = getActivePalette();
+      const visualizationState = {
+        paletteId: activePalette.id,
+        darkMode: false,
+      };
+      
+      // Build simulation from current state
+      const simulation = {
+        board,
+        gameData,
+        totalMoves,
+      };
+      
+      // Check if this visualization is already owned
+      const checkResult = await checkDuplicateVisualization(
+        user.id,
+        effectivePgn,
+        gameData,
+        visualizationState
+      );
+      
+      if (checkResult.isDuplicate) {
+        if (checkResult.ownedByCurrentUser) {
+          toast.info('Already in your gallery', {
+            description: 'This visualization is already saved to your collection.',
+          });
+        } else {
+          toast.error('This vision is already owned', {
+            description: `Owned by ${checkResult.ownerDisplayName || 'another collector'}. Try a different palette!`,
+          });
+        }
+        return null;
+      }
+      
+      if (checkResult.isTooSimilar) {
+        toast.error('Too similar to an existing vision', {
+          description: `${Math.round(checkResult.colorSimilarity || 30)}% similar to a vision by ${checkResult.ownerDisplayName || 'another collector'}. Change at least 8 colors.`,
+        });
+        return null;
+      }
+      
+      // Generate image for storage
+      const { generateCleanPrintImage } = await import('@/lib/chess/printImageGenerator');
+      const base64Image = await generateCleanPrintImage(simulation, {
+        darkMode: false,
+      });
+      
+      // Convert base64 to blob
+      const response = await fetch(base64Image);
+      const blob = await response.blob();
+      
+      // Save to database
+      const visualTitle = isFromSession 
+        ? (sessionTitle || `${sessionGameData?.white || 'White'} vs ${sessionGameData?.black || 'Black'}`)
+        : (primaryVision?.title || `${gameData.white} vs ${gameData.black}`);
+      const result = await saveVisualization(
+        user.id,
+        visualTitle,
+        simulation,
+        blob,
+        effectivePgn,
+        visualizationState
+      );
+      
+      if (result.error) {
+        toast.error('Save failed', { description: result.error.message });
+        return null;
+      }
+      
+      if (result.data) {
+        toast.success('Saved to your gallery!', {
+          description: 'You now own this unique visualization.',
+        });
+        return result.data.id;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Save to gallery failed:', error);
+      toast.error('Save failed', { description: 'Please try again.' });
+      return null;
+    }
+  }, [user, isPremium, board, gameData, totalMoves, effectivePgn, isFromSession, primaryVision?.title, sessionGameData, sessionTitle]);
+
+  // Clear active vision when intentionally navigating away
   const handleBackClick = useCallback(() => {
     clearActiveVision();
     navigate(backLink.href);
   }, [clearActiveVision, navigate, backLink.href]);
-
-  // Handle share with stateful URL
   const handleShare = useCallback(async (exportState?: ExportState) => {
     const url = buildCanonicalShareUrl(effectivePgn, activePaletteId, exportState ? {
       move: exportState.currentMove,
@@ -550,7 +653,15 @@ const GameView = () => {
 
   // Handle exports
   const handleExport = useCallback(async (type: 'hd' | 'gif' | 'print' | 'preview', exportState?: ExportState) => {
-    if (!primaryVision) return;
+    // Support both saved visions and session-based games
+    const hasVision = primaryVision || isFromSession;
+    if (!hasVision) return;
+    
+    // Use primaryVision data if available, otherwise use session/game data
+    const visionTitle = primaryVision?.title || (isFromSession && sessionTitle) || (isFromSession && sessionGameData ? `${sessionGameData.white || 'White'} vs ${sessionGameData.black || 'Black'}` : 'Visualization');
+    const visionId = primaryVision?.id;
+    const visionImagePath = primaryVision?.image_path;
+    const publicShareId = primaryVision?.public_share_id;
 
     const filteredBoard = exportState && exportState.currentMove < totalMoves && exportState.currentMove > 0
       ? board.map(row =>
@@ -606,7 +717,7 @@ const GameView = () => {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `${primaryVision.title.replace(/\s+/g, '-').toLowerCase()}-preview.png`;
+        link.download = `${visionTitle.replace(/\s+/g, '-').toLowerCase()}-preview.png`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -623,7 +734,7 @@ const GameView = () => {
       downloadTrademarkHD({
         board: filteredBoard,
         gameData,
-        title: primaryVision.title,
+        title: visionTitle,
         darkMode: exportState?.darkMode || false,
         highlightState,
         piecesState: exportState ? {
@@ -642,7 +753,7 @@ const GameView = () => {
         downloadGIF(
           { board, gameData, totalMoves },
           captureElement,
-          primaryVision.title,
+          visionTitle,
           undefined,
           exportState ? { showPieces: exportState.showPieces, pieceOpacity: exportState.pieceOpacity } : undefined
         );
@@ -657,7 +768,7 @@ const GameView = () => {
         setCapturedTimelineState({
           currentMove: exportState.currentMove,
           totalMoves,
-          title: primaryVision.title,
+          title: visionTitle,
           lockedPieces: exportState.lockedPieces.map(p => ({
             pieceType: p.pieceType as PieceType,
             pieceColor: p.pieceColor as 'w' | 'b',
@@ -669,8 +780,8 @@ const GameView = () => {
         });
       }
 
-      setCurrentSimulation({ board, gameData, totalMoves }, effectivePgn, primaryVision.title);
-      setSavedShareId(primaryVision.public_share_id || '');
+      setCurrentSimulation({ board, gameData, totalMoves }, effectivePgn, visionTitle);
+      setSavedShareId(publicShareId || '');
       setReturningFromOrder(true);
 
       // Detect famous game card for attribution
@@ -680,9 +791,9 @@ const GameView = () => {
         : undefined;
 
       const orderData: PrintOrderData = {
-        visualizationId: primaryVision.id,
-        title: primaryVision.title,
-        imagePath: primaryVision.image_path,
+        visualizationId: visionId,
+        title: visionTitle,
+        imagePath: visionImagePath,
         gameData: {
           white: gameData.white,
           black: gameData.black,
@@ -691,7 +802,7 @@ const GameView = () => {
           result: gameData.result,
         },
         simulation: { board, gameData, totalMoves },
-        shareId: primaryVision.public_share_id || undefined,
+        shareId: publicShareId || undefined,
         returnPath: `/g/${gameHash}`,
         // Game metadata for cart display and navigation
         gameHash,
@@ -715,7 +826,7 @@ const GameView = () => {
       setOrderData(orderData);
       navigate('/order-print');
     }
-  }, [primaryVision, board, gameData, totalMoves, effectivePgn, gameHash, isPremium, downloadTrademarkHD, downloadGIF, navigate, setOrderData, setCapturedTimelineState, setCurrentSimulation, setSavedShareId, setReturningFromOrder]);
+  }, [primaryVision, board, gameData, totalMoves, effectivePgn, gameHash, isPremium, downloadTrademarkHD, downloadGIF, navigate, setOrderData, setCapturedTimelineState, setCurrentSimulation, setSavedShareId, setReturningFromOrder, isFromSession, isCheckingSubscription, activePaletteId, sessionGameData, sessionTitle]);
 
   if (loading) {
     return (
@@ -853,6 +964,7 @@ const GameView = () => {
               } : null}
               onShare={handleShare}
               onExport={handleExport}
+              onSaveToGallery={displayContext === 'generator' ? handleSaveToGallery : undefined}
               initialState={{
                 move: initialState.move,
                 dark: initialState.dark,
