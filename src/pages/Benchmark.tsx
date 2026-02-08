@@ -1,49 +1,29 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Brain, Cpu, Trophy, Play, Loader2, Clock, CheckCircle, XCircle, Cloud, Database, RefreshCw, Zap, Server, ChevronRight, ExternalLink } from 'lucide-react';
+import { Play, Loader2, Clock, Database, Server, ChevronRight, ExternalLink, RefreshCw } from 'lucide-react';
 import { runCloudBenchmark, type BenchmarkResult, type PredictionAttempt } from '@/lib/chess/cloudBenchmark';
 import { checkLichessAvailability } from '@/lib/chess/lichessCloudEval';
-import { saveBenchmarkResults, getCumulativeStats } from '@/lib/chess/benchmarkPersistence';
+import { saveBenchmarkResults } from '@/lib/chess/benchmarkPersistence';
 import { supabase } from '@/integrations/supabase/client';
-import { useHybridBenchmark, type LivePredictionData } from '@/hooks/useHybridBenchmark';
-import { useStockfishAnalysis } from '@/hooks/useStockfishAnalysis';
-import { createInitialEloState, calculateEloFromBenchmark, type LiveEloState } from '@/lib/chess/liveEloTracker';
 import { useBenchmarkRateLimit } from '@/hooks/useRateLimitV2';
 import { acquireBenchmarkLock, releaseBenchmarkLock } from '@/lib/chess/benchmarkCoordinator';
-import { useRealtimeAccuracyContext } from '@/providers/RealtimeAccuracyProvider';
-import { BenchmarkSourceBreakdown } from '@/components/chess/BenchmarkSourceBreakdown';
-import { getCorrelationEngine, normalizeChessSignal } from '@/lib/pensent-core/crossDomainCorrelation';
 import './Benchmark.css';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-interface CumulativeStats {
-  totalRuns: number;
-  totalGamesAnalyzed: number;
-  overallHybridAccuracy: number;
-  overallStockfishAccuracy: number;
-  hybridNetWins: number;
-  hybridWins: number;
-  stockfishWins: number;
+interface Stats {
+  total: number;
+  sfCorrect: number;
+  epCorrect: number;
   bothCorrect: number;
-  bestArchetype: string | null;
-  worstArchetype: string | null;
-  validPredictionCount: number;
-  invalidPredictionCount: number;
-}
-
-interface FarmStatus {
-  farm_id: string;
-  farm_name: string | null;
-  status: string;
-  message: string | null;
-  chess_games_generated: number;
-  last_heartbeat_at: string;
+  bothWrong: number;
+  epOnly: number;
+  sfOnly: number;
 }
 
 interface GameDetail {
@@ -74,10 +54,109 @@ interface GameDetail {
   lichess_id_verified: boolean | null;
 }
 
+// ─── Direct DB Stats Hook ────────────────────────────────────────────────────
+// Single source of truth: chess_prediction_attempts table ONLY
+
+function useDbStats() {
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const refresh = async () => {
+    const [
+      { count: total },
+      { count: sfCorrect },
+      { count: epCorrect },
+      { count: bothCorrect },
+      { count: epOnly },
+      { count: sfOnly },
+    ] = await Promise.all([
+      supabase.from('chess_prediction_attempts').select('*', { count: 'exact', head: true }),
+      supabase.from('chess_prediction_attempts').select('*', { count: 'exact', head: true }).eq('stockfish_correct', true),
+      supabase.from('chess_prediction_attempts').select('*', { count: 'exact', head: true }).eq('hybrid_correct', true),
+      supabase.from('chess_prediction_attempts').select('*', { count: 'exact', head: true }).eq('stockfish_correct', true).eq('hybrid_correct', true),
+      supabase.from('chess_prediction_attempts').select('*', { count: 'exact', head: true }).eq('hybrid_correct', true).eq('stockfish_correct', false),
+      supabase.from('chess_prediction_attempts').select('*', { count: 'exact', head: true }).eq('stockfish_correct', true).eq('hybrid_correct', false),
+    ]);
+
+    const t = total || 0;
+    const bw = t - (bothCorrect || 0) - (epOnly || 0) - (sfOnly || 0);
+    setStats({
+      total: t,
+      sfCorrect: sfCorrect || 0,
+      epCorrect: epCorrect || 0,
+      bothCorrect: bothCorrect || 0,
+      bothWrong: Math.max(0, bw),
+      epOnly: epOnly || 0,
+      sfOnly: sfOnly || 0,
+    });
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    refresh();
+    // Realtime: refresh on new predictions
+    const channel = supabase
+      .channel('benchmark-stats')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chess_prediction_attempts' }, () => refresh())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
+  return { stats, loading, refresh };
+}
+
+// ─── Source Breakdown Hook ───────────────────────────────────────────────────
+
+interface SourceStat { source: string; count: number; sfAcc: number; epAcc: number }
+
+function useSourceBreakdown() {
+  const [sources, setSources] = useState<SourceStat[]>([]);
+
+  useEffect(() => {
+    const load = async () => {
+      // Get all distinct data_source values and their counts
+      const { data } = await supabase
+        .from('chess_prediction_attempts')
+        .select('data_source, stockfish_correct, hybrid_correct');
+
+      if (!data || data.length === 0) { setSources([]); return; }
+
+      const map: Record<string, { n: number; sf: number; ep: number }> = {};
+      for (const r of data) {
+        const src = r.data_source || 'unknown';
+        if (!map[src]) map[src] = { n: 0, sf: 0, ep: 0 };
+        map[src].n++;
+        if (r.stockfish_correct) map[src].sf++;
+        if (r.hybrid_correct) map[src].ep++;
+      }
+
+      setSources(
+        Object.entries(map)
+          .map(([source, s]) => ({
+            source,
+            count: s.n,
+            sfAcc: s.n > 0 ? (s.sf / s.n) * 100 : 0,
+            epAcc: s.n > 0 ? (s.ep / s.n) * 100 : 0,
+          }))
+          .sort((a, b) => b.count - a.count)
+      );
+    };
+    load();
+
+    const channel = supabase
+      .channel('source-breakdown')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chess_prediction_attempts' }, () => load())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
+  return sources;
+}
+
 // ─── Game Detail Modal ───────────────────────────────────────────────────────
 
 function GameDetailModal({ game }: { game: GameDetail }) {
-  const isLichess = game.game_id && !game.game_id.startsWith('cc_') && game.game_id.length === 8;
+  const isLichess = game.game_id && !game.game_id.startsWith('cc_') && !game.game_id.startsWith('puzzle') && game.game_id.length === 8;
   const isChessCom = game.game_id?.startsWith('cc_');
   const rawId = game.game_id?.replace(/^(li_|cc_)/, '');
 
@@ -89,9 +168,7 @@ function GameDetailModal({ game }: { game: GameDetail }) {
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <span className="font-mono text-sm font-medium truncate">{game.game_id}</span>
-                <Badge variant="outline" className="text-xs shrink-0">
-                  {game.data_source || 'unknown'}
-                </Badge>
+                <Badge variant="outline" className="text-xs shrink-0">{game.data_source || '?'}</Badge>
               </div>
               <p className="text-xs text-muted-foreground truncate mt-0.5">
                 {game.game_name || 'Unknown'} — {game.actual_result?.replace('_', ' ')}
@@ -113,7 +190,7 @@ function GameDetailModal({ game }: { game: GameDetail }) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Database className="h-5 w-5" />
-            Game Details: {game.game_id}
+            Game: {game.game_id}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
@@ -141,7 +218,6 @@ function GameDetailModal({ game }: { game: GameDetail }) {
             <Row label="Quality Tier" value={game.data_quality_tier} />
             <Row label="Worker ID" value={game.worker_id} />
             <Row label="Created" value={game.created_at ? new Date(game.created_at).toLocaleString() : null} />
-            <Row label="Lichess Verified" value={game.lichess_id_verified ? 'Yes' : 'No'} />
           </Section>
 
           {/* Position */}
@@ -149,54 +225,56 @@ function GameDetailModal({ game }: { game: GameDetail }) {
             <Row label="Move Number" value={game.move_number?.toString()} />
             <Row label="FEN" value={game.fen} mono small />
             <Row label="Position Hash" value={game.position_hash} mono small />
-            {game.pgn && (
-              <div className="mt-2">
-                <p className="text-xs text-muted-foreground mb-1">PGN</p>
-                <pre className="text-xs bg-muted/50 p-2 rounded overflow-x-auto max-h-32 whitespace-pre-wrap">{game.pgn}</pre>
-              </div>
-            )}
           </Section>
 
           {/* Predictions */}
           <Section title="Predictions vs Actual">
             <div className="grid grid-cols-3 gap-3 text-center">
-              <div className={`p-3 rounded-lg border ${game.stockfish_correct ? 'border-green-500/50 bg-green-500/10' : 'border-red-500/50 bg-red-500/10'}`}>
-                <p className="text-xs text-muted-foreground">Stockfish 17</p>
-                <p className="font-bold text-lg">{game.stockfish_prediction?.replace('_', ' ') || '—'}</p>
-                <p className="text-xs">Eval: {game.stockfish_eval ?? '—'} | Depth: {game.stockfish_depth ?? '—'}</p>
-                <p className="text-xs">Confidence: {game.stockfish_confidence ?? '—'}%</p>
-                <Badge className={`mt-1 ${game.stockfish_correct ? 'bg-green-500' : 'bg-red-500'}`}>
-                  {game.stockfish_correct ? 'CORRECT' : 'WRONG'}
-                </Badge>
-              </div>
-              <div className={`p-3 rounded-lg border ${game.hybrid_correct ? 'border-green-500/50 bg-green-500/10' : 'border-red-500/50 bg-red-500/10'}`}>
-                <p className="text-xs text-muted-foreground">En Pensent</p>
-                <p className="font-bold text-lg">{game.hybrid_prediction?.replace('_', ' ') || '—'}</p>
-                <p className="text-xs">Archetype: {game.hybrid_archetype || '—'}</p>
-                <p className="text-xs">Confidence: {game.hybrid_confidence ?? '—'}%</p>
-                <Badge className={`mt-1 ${game.hybrid_correct ? 'bg-green-500' : 'bg-red-500'}`}>
-                  {game.hybrid_correct ? 'CORRECT' : 'WRONG'}
-                </Badge>
-              </div>
+              <PredCard
+                title="Stockfish 17"
+                prediction={game.stockfish_prediction}
+                correct={game.stockfish_correct}
+                extra={`Eval: ${game.stockfish_eval ?? '—'} | Depth: ${game.stockfish_depth ?? '—'} | Conf: ${game.stockfish_confidence ?? '—'}%`}
+              />
+              <PredCard
+                title="En Pensent"
+                prediction={game.hybrid_prediction}
+                correct={game.hybrid_correct}
+                extra={`Archetype: ${game.hybrid_archetype || '—'} | Conf: ${game.hybrid_confidence ?? '—'}%`}
+              />
               <div className="p-3 rounded-lg border border-border bg-muted/30">
-                <p className="text-xs text-muted-foreground">Actual Result</p>
+                <p className="text-xs text-muted-foreground">Actual</p>
                 <p className="font-bold text-lg">{game.actual_result?.replace('_', ' ') || '—'}</p>
                 <p className="text-xs mt-1">&nbsp;</p>
-                <p className="text-xs">&nbsp;</p>
                 <Badge variant="outline" className="mt-1">GROUND TRUTH</Badge>
               </div>
             </div>
           </Section>
 
-          {/* Game Metadata */}
-          <Section title="Game Metadata">
-            <Row label="White ELO" value={game.white_elo?.toString()} />
-            <Row label="Black ELO" value={game.black_elo?.toString()} />
-            <Row label="Time Control" value={game.time_control} />
-          </Section>
+          {/* ELO */}
+          {(game.white_elo || game.black_elo) && (
+            <Section title="Ratings">
+              <Row label="White ELO" value={game.white_elo?.toString()} />
+              <Row label="Black ELO" value={game.black_elo?.toString()} />
+              <Row label="Time Control" value={game.time_control} />
+            </Section>
+          )}
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function PredCard({ title, prediction, correct, extra }: { title: string; prediction: string | null; correct: boolean | null; extra: string }) {
+  return (
+    <div className={`p-3 rounded-lg border ${correct ? 'border-green-500/50 bg-green-500/10' : 'border-red-500/50 bg-red-500/10'}`}>
+      <p className="text-xs text-muted-foreground">{title}</p>
+      <p className="font-bold text-lg">{prediction?.replace('_', ' ') || '—'}</p>
+      <p className="text-xs mt-1">{extra}</p>
+      <Badge className={`mt-1 ${correct ? 'bg-green-500' : 'bg-red-500'}`}>
+        {correct ? 'CORRECT' : 'WRONG'}
+      </Badge>
+    </div>
   );
 }
 
@@ -228,35 +306,25 @@ function GameListPanel({ filter, title }: { filter?: string; title: string }) {
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 50;
 
-  useEffect(() => {
-    loadGames();
-  }, [page, filter]);
-
-  async function loadGames() {
+  const loadGames = async () => {
     setLoading(true);
-    try {
-      let query = supabase
-        .from('chess_prediction_attempts')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+    let query = supabase
+      .from('chess_prediction_attempts')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
-      if (filter === 'hybrid_wins') {
-        query = query.eq('hybrid_correct', true).eq('stockfish_correct', false);
-      } else if (filter === 'stockfish_wins') {
-        query = query.eq('stockfish_correct', true).eq('hybrid_correct', false);
-      } else if (filter === 'both_correct') {
-        query = query.eq('hybrid_correct', true).eq('stockfish_correct', true);
-      } else if (filter === 'both_wrong') {
-        query = query.eq('hybrid_correct', false).eq('stockfish_correct', false);
-      }
+    if (filter === 'ep_wins') query = query.eq('hybrid_correct', true).eq('stockfish_correct', false);
+    else if (filter === 'sf_wins') query = query.eq('stockfish_correct', true).eq('hybrid_correct', false);
+    else if (filter === 'both_correct') query = query.eq('hybrid_correct', true).eq('stockfish_correct', true);
+    else if (filter === 'both_wrong') query = query.eq('hybrid_correct', false).eq('stockfish_correct', false);
 
-      const { data } = await query;
-      setGames((data as GameDetail[]) || []);
-    } finally {
-      setLoading(false);
-    }
-  }
+    const { data } = await query;
+    setGames((data as GameDetail[]) || []);
+    setLoading(false);
+  };
+
+  useEffect(() => { loadGames(); }, [page, filter]);
 
   return (
     <Dialog>
@@ -270,25 +338,15 @@ function GameListPanel({ filter, title }: { filter?: string; title: string }) {
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         {loading ? (
-          <div className="flex items-center justify-center p-8">
-            <Loader2 className="h-6 w-6 animate-spin" />
-          </div>
+          <div className="flex items-center justify-center p-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
         ) : (
           <div className="space-y-2">
-            {games.map((game) => (
-              <GameDetailModal key={game.id} game={game} />
-            ))}
-            {games.length === 0 && (
-              <p className="text-center text-muted-foreground py-8">No games found</p>
-            )}
+            {games.map((g) => <GameDetailModal key={g.id} game={g} />)}
+            {games.length === 0 && <p className="text-center text-muted-foreground py-8">No games yet</p>}
             <div className="flex justify-between pt-4">
-              <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>
-                Previous
-              </Button>
+              <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>Previous</Button>
               <span className="text-sm text-muted-foreground">Page {page + 1}</span>
-              <Button variant="outline" size="sm" disabled={games.length < PAGE_SIZE} onClick={() => setPage(p => p + 1)}>
-                Next
-              </Button>
+              <Button variant="outline" size="sm" disabled={games.length < PAGE_SIZE} onClick={() => setPage(p => p + 1)}>Next</Button>
             </div>
           </div>
         )}
@@ -300,7 +358,8 @@ function GameListPanel({ filter, title }: { filter?: string; title: string }) {
 // ─── Main Benchmark Page ─────────────────────────────────────────────────────
 
 export default function Benchmark() {
-  const { chessStats: realtimeChessStats } = useRealtimeAccuracyContext();
+  const { stats, loading, refresh } = useDbStats();
+  const sources = useSourceBreakdown();
 
   const [isRunning, setIsRunning] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -308,8 +367,6 @@ export default function Benchmark() {
   const [result, setResult] = useState<BenchmarkResult | null>(null);
   const [liveAttempts, setLiveAttempts] = useState<PredictionAttempt[]>([]);
   const [apiReady, setApiReady] = useState(false);
-  const [cumulativeStats, setCumulativeStats] = useState<CumulativeStats | null>(null);
-  const [farmStatus, setFarmStatus] = useState<FarmStatus | null>(null);
   const [gameCount, setGameCount] = useState(30);
   const [elapsedTime, setElapsedTime] = useState(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -317,210 +374,144 @@ export default function Benchmark() {
 
   const { check: checkBenchmarkLimit } = useBenchmarkRateLimit();
 
-  // Sync from realtime context
   useEffect(() => {
-    if (realtimeChessStats && !isRunning) {
-      setCumulativeStats({
-        totalRuns: realtimeChessStats.totalRuns,
-        totalGamesAnalyzed: realtimeChessStats.totalGames,
-        overallHybridAccuracy: realtimeChessStats.hybridAccuracy,
-        overallStockfishAccuracy: realtimeChessStats.stockfishAccuracy,
-        hybridNetWins: realtimeChessStats.hybridNetWins,
-        hybridWins: realtimeChessStats.hybridWins,
-        stockfishWins: realtimeChessStats.stockfishWins,
-        bothCorrect: realtimeChessStats.bothCorrect,
-        bestArchetype: null,
-        worstArchetype: null,
-        validPredictionCount: realtimeChessStats.totalGames,
-        invalidPredictionCount: 0,
-      });
-    }
-  }, [realtimeChessStats, isRunning]);
-
-  // Load farm status
-  useEffect(() => {
-    const load = async () => {
-      const { data } = await supabase
-        .from('farm_status')
-        .select('farm_id, farm_name, status, message, chess_games_generated, last_heartbeat_at')
-        .order('last_heartbeat_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      setFarmStatus(data || null);
-    };
-    load();
+    checkLichessAvailability().then(r => setApiReady(r.available));
   }, []);
 
-  // Realtime subscription
-  useEffect(() => {
-    let lastRefresh = 0;
-    const refreshStats = async () => {
-      if (Date.now() - lastRefresh < 2000) return;
-      lastRefresh = Date.now();
-      const newStats = await getCumulativeStats();
-      setCumulativeStats(newStats);
-    };
-
-    const channel = supabase
-      .channel('benchmark-realtime')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chess_prediction_attempts' }, refreshStats)
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, []);
-
-  // Init
-  useEffect(() => {
-    const init = async () => {
-      const [available, stats] = await Promise.all([
-        checkLichessAvailability(),
-        getCumulativeStats(),
-      ]);
-      setApiReady(available.available);
-      setCumulativeStats(stats);
-    };
-    init();
-  }, []);
-
-  // Timer
   useEffect(() => {
     if (isRunning) {
       startTimeRef.current = Date.now();
-      timerRef.current = setInterval(() => {
-        setElapsedTime(Math.floor((Date.now() - startTimeRef.current) / 1000));
-      }, 1000);
-    } else if (timerRef.current) {
-      clearInterval(timerRef.current);
-    }
+      timerRef.current = setInterval(() => setElapsedTime(Math.floor((Date.now() - startTimeRef.current) / 1000)), 1000);
+    } else if (timerRef.current) clearInterval(timerRef.current);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [isRunning]);
 
-  const formatTime = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
+  const fmt = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
 
   const runBenchmark = async () => {
     const r = checkBenchmarkLimit();
     if (!r.allowed) return;
     await acquireBenchmarkLock();
-    setIsRunning(true);
-    setProgress(0);
-    setStatus('Fetching games...');
-    setResult(null);
-    setLiveAttempts([]);
-    setElapsedTime(0);
-
+    setIsRunning(true); setProgress(0); setStatus('Fetching games...'); setResult(null); setLiveAttempts([]); setElapsedTime(0);
     try {
-      const benchmarkResult = await runCloudBenchmark(
+      const res = await runCloudBenchmark(
         { gameCount, predictionMoveNumber: 20, useRealGames: true },
-        (statusText, prog, attempt) => {
-          setStatus(statusText);
-          setProgress(prog);
-          if (attempt) {
-            setLiveAttempts(prev => [...prev, attempt]);
-            const engine = getCorrelationEngine();
-            engine.start();
-            engine.ingestChessSignal(normalizeChessSignal(attempt));
-          }
-        }
+        (s, p, a) => { setStatus(s); setProgress(p); if (a) setLiveAttempts(prev => [...prev, a]); }
       );
-      setResult(benchmarkResult);
-      await saveBenchmarkResults(benchmarkResult);
-      const newStats = await getCumulativeStats();
-      setCumulativeStats(newStats);
-      setStatus(`Done! ${benchmarkResult.completedGames} games analyzed.`);
-    } catch (error) {
-      setStatus(`Error: ${error instanceof Error ? error.message : 'Unknown'}`);
+      setResult(res);
+      await saveBenchmarkResults(res);
+      await refresh();
+      setStatus(`Done! ${res.completedGames} games analyzed.`);
+    } catch (e) {
+      setStatus(`Error: ${e instanceof Error ? e.message : 'Unknown'}`);
     } finally {
       setIsRunning(false);
       await releaseBenchmarkLock();
     }
   };
 
-  const s = cumulativeStats;
+  const sfAcc = stats && stats.total > 0 ? ((stats.sfCorrect / stats.total) * 100).toFixed(1) : '—';
+  const epAcc = stats && stats.total > 0 ? ((stats.epCorrect / stats.total) * 100).toFixed(1) : '—';
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-5xl mx-auto space-y-6">
+      <div className="max-w-4xl mx-auto space-y-6">
 
         {/* Header */}
-        <div className="text-center space-y-2">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 bg-clip-text text-transparent">
-            EN PENSENT vs STOCKFISH 17
-          </h1>
-          <p className="text-muted-foreground">Real predictions • Real games • Real results</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Chess Benchmark</h1>
+            <p className="text-sm text-muted-foreground">En Pensent vs Stockfish 17 — real games, real predictions</p>
+          </div>
+          <Button variant="ghost" size="sm" onClick={refresh} className="gap-1">
+            <RefreshCw className="h-4 w-4" /> Refresh
+          </Button>
         </div>
 
-        {/* ─── Grand Total ─────────────────────────────────────────────── */}
-        <Card className="border-2 border-primary/40 bg-gradient-to-r from-purple-500/10 to-orange-500/10">
+        {/* ─── Total Games ─────────────────────────────────────────── */}
+        <Card>
           <CardContent className="py-6">
             <div className="text-center">
-              <p className="text-5xl font-bold">{s?.totalGamesAnalyzed?.toLocaleString() ?? '—'}</p>
-              <p className="text-muted-foreground mt-1">Total Games Analyzed (All Engines)</p>
-              <div className="flex justify-center gap-1 mt-2">
-                <GameListPanel filter="all" title="All Games" />
+              <p className="text-6xl font-bold tabular-nums">{loading ? '...' : stats?.total.toLocaleString()}</p>
+              <p className="text-muted-foreground mt-1">Games Analyzed</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Every row is one real game from Lichess or Chess.com with verified predictions
+              </p>
+              <div className="mt-2">
+                <GameListPanel title="All Games" />
               </div>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-6 text-center">
-              <Stat label="EP Accuracy" value={s ? `${s.overallHybridAccuracy.toFixed(1)}%` : '—'} color="text-purple-500" />
-              <Stat label="SF Accuracy" value={s ? `${s.overallStockfishAccuracy.toFixed(1)}%` : '—'} color="text-blue-500" />
-              <StatWithDrill label="EP Wins" value={s?.hybridWins ?? 0} color="text-green-500" filter="hybrid_wins" title="EP Wins (EP correct, SF wrong)" />
-              <StatWithDrill label="SF Wins" value={s?.stockfishWins ?? 0} color="text-blue-500" filter="stockfish_wins" title="SF Wins (SF correct, EP wrong)" />
-              <StatWithDrill label="Both Correct" value={s?.bothCorrect ?? 0} color="text-emerald-500" filter="both_correct" title="Both Correct (Consensus)" />
             </div>
           </CardContent>
         </Card>
 
-        {/* ─── Three Engine Cards ──────────────────────────────────────── */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* ─── Accuracy Comparison ─────────────────────────────────── */}
+        {stats && stats.total > 0 && (
+          <div className="grid grid-cols-2 gap-4">
+            <Card className={`border-2 ${stats.sfCorrect > stats.epCorrect ? 'border-blue-500/50' : 'border-muted'}`}>
+              <CardContent className="py-6 text-center">
+                <p className="text-4xl font-bold text-blue-500">{sfAcc}%</p>
+                <p className="text-sm text-muted-foreground mt-1">Stockfish 17</p>
+                <p className="text-xs text-muted-foreground">{stats.sfCorrect.toLocaleString()} / {stats.total.toLocaleString()} correct</p>
+              </CardContent>
+            </Card>
+            <Card className={`border-2 ${stats.epCorrect > stats.sfCorrect ? 'border-purple-500/50' : 'border-muted'}`}>
+              <CardContent className="py-6 text-center">
+                <p className="text-4xl font-bold text-purple-500">{epAcc}%</p>
+                <p className="text-sm text-muted-foreground mt-1">En Pensent</p>
+                <p className="text-xs text-muted-foreground">{stats.epCorrect.toLocaleString()} / {stats.total.toLocaleString()} correct</p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
-          {/* Original Engine */}
+        {/* ─── Breakdown ───────────────────────────────────────────── */}
+        {stats && stats.total > 0 && (
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <Trophy className="h-4 w-4 text-yellow-500" />
-                Original Engine
-              </CardTitle>
+              <CardTitle className="text-sm">Prediction Breakdown</CardTitle>
             </CardHeader>
             <CardContent>
-              <OriginalEngineStats />
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                <StatDrill label="Both Correct" value={stats.bothCorrect} total={stats.total} color="text-green-500" filter="both_correct" />
+                <StatDrill label="EP Only" value={stats.epOnly} total={stats.total} color="text-purple-500" filter="ep_wins" />
+                <StatDrill label="SF Only" value={stats.sfOnly} total={stats.total} color="text-blue-500" filter="sf_wins" />
+                <StatDrill label="Both Wrong" value={stats.bothWrong} total={stats.total} color="text-red-500" filter="both_wrong" />
+              </div>
             </CardContent>
           </Card>
+        )}
 
-          {/* Farm Workers */}
+        {/* ─── Source Breakdown ─────────────────────────────────────── */}
+        {sources.length > 0 && (
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <Server className="h-4 w-4 text-blue-500" />
-                Farm Workers
-              </CardTitle>
+              <CardTitle className="text-sm">By Data Source</CardTitle>
             </CardHeader>
             <CardContent>
-              <FarmEngineStats farmStatus={farmStatus} />
+              <div className="space-y-3">
+                {sources.map(s => (
+                  <div key={s.source} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Server className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">{s.source}</span>
+                    </div>
+                    <div className="flex items-center gap-4 text-sm">
+                      <span>{s.count.toLocaleString()} games</span>
+                      <span className="text-blue-500">SF {s.sfAcc.toFixed(1)}%</span>
+                      <span className="text-purple-500">EP {s.epAcc.toFixed(1)}%</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
+        )}
 
-          {/* Web Benchmark */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <Cloud className="h-4 w-4 text-green-500" />
-                Web Benchmark
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <WebEngineStats />
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* ─── Source Breakdown (Cross-Engine Relations) ────────────────── */}
-        <BenchmarkSourceBreakdown />
-
-        {/* ─── Run Benchmark ───────────────────────────────────────────── */}
+        {/* ─── Run Benchmark ───────────────────────────────────────── */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <Play className="h-4 w-4" />
-              Run New Benchmark
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Play className="h-4 w-4" /> Run Web Benchmark
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -542,17 +533,14 @@ export default function Benchmark() {
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span>{status}</span>
-                  <span className="text-muted-foreground">{formatTime(elapsedTime)}</span>
+                  <span className="text-muted-foreground">{fmt(elapsedTime)}</span>
                 </div>
                 <Progress value={progress} className="h-2" />
               </div>
             )}
 
-            {!isRunning && result && (
-              <div className="text-sm text-muted-foreground">{status}</div>
-            )}
+            {!isRunning && result && <p className="text-sm text-muted-foreground">{status}</p>}
 
-            {/* Live results during run */}
             {liveAttempts.length > 0 && (
               <div className="space-y-1 max-h-48 overflow-y-auto">
                 {liveAttempts.slice(-10).map((a, i) => (
@@ -580,106 +568,15 @@ export default function Benchmark() {
   );
 }
 
-// ─── Stat Components ─────────────────────────────────────────────────────────
+// ─── Stat with drill-down ────────────────────────────────────────────────────
 
-function Stat({ label, value, color }: { label: string; value: string | number; color: string }) {
-  return (
-    <div>
-      <p className={`text-2xl font-bold ${color}`}>{value}</p>
-      <p className="text-xs text-muted-foreground">{label}</p>
-    </div>
-  );
-}
-
-function StatWithDrill({ label, value, color, filter, title }: { label: string; value: number; color: string; filter: string; title: string }) {
+function StatDrill({ label, value, total, color, filter }: { label: string; value: number; total: number; color: string; filter: string }) {
+  const pct = total > 0 ? ((value / total) * 100).toFixed(1) : '0';
   return (
     <div>
       <p className={`text-2xl font-bold ${color}`}>{value.toLocaleString()}</p>
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <GameListPanel filter={filter} title={title} />
-    </div>
-  );
-}
-
-// ─── Per-Engine Stats ────────────────────────────────────────────────────────
-
-function OriginalEngineStats() {
-  const [legacyTotal, setLegacyTotal] = useState<number | null>(null);
-  const [legacyDbCount, setLegacyDbCount] = useState<number | null>(null);
-
-  useEffect(() => {
-    // Legacy summary total from chess_benchmark_results
-    supabase
-      .from('chess_benchmark_results')
-      .select('completed_games')
-      .eq('data_source', 'original_engine')
-      .then(({ data }) => {
-        const sum = (data || []).reduce((s: number, r: { completed_games: number }) => s + (r.completed_games || 0), 0);
-        setLegacyTotal(sum);
-      });
-    // Individual legacy predictions in chess_prediction_attempts
-    supabase
-      .from('chess_prediction_attempts')
-      .select('*', { count: 'exact', head: true })
-      .eq('data_quality_tier', 'legacy')
-      .then(({ count: c }) => setLegacyDbCount(c || 0));
-  }, []);
-
-  const total = (legacyTotal || 0) > 0 ? legacyTotal : legacyDbCount;
-
-  return (
-    <div className="space-y-2">
-      <p className="text-3xl font-bold text-yellow-500">{total?.toLocaleString() ?? '—'}</p>
-      <p className="text-xs text-muted-foreground">Games from original engine</p>
-      {legacyDbCount !== null && legacyDbCount > 0 && (
-        <p className="text-xs text-muted-foreground">{legacyDbCount.toLocaleString()} with individual details</p>
-      )}
-    </div>
-  );
-}
-
-function FarmEngineStats({ farmStatus }: { farmStatus: FarmStatus | null }) {
-  const [count, setCount] = useState<number | null>(null);
-
-  useEffect(() => {
-    supabase
-      .from('chess_prediction_attempts')
-      .select('*', { count: 'exact', head: true })
-      .in('data_quality_tier', ['farm_generated', 'farm_enhanced_8quad'])
-      .then(({ count: c }) => setCount(c || 0));
-  }, []);
-
-  return (
-    <div className="space-y-2">
-      <p className="text-3xl font-bold text-blue-500">{count?.toLocaleString() ?? '—'}</p>
-      <p className="text-xs text-muted-foreground">Individual predictions with full details</p>
-      {farmStatus && (
-        <div className="text-xs space-y-0.5">
-          <p>Status: <Badge variant={farmStatus.status === 'healthy' ? 'default' : 'destructive'} className="text-xs">{farmStatus.status}</Badge></p>
-          <p className="text-muted-foreground">Last heartbeat: {new Date(farmStatus.last_heartbeat_at).toLocaleString()}</p>
-        </div>
-      )}
-      <GameListPanel filter="all" title="Farm Worker Games" />
-    </div>
-  );
-}
-
-function WebEngineStats() {
-  const [count, setCount] = useState<number | null>(null);
-
-  useEffect(() => {
-    supabase
-      .from('chess_prediction_attempts')
-      .select('*', { count: 'exact', head: true })
-      .not('data_quality_tier', 'in', '(legacy,farm_generated,farm_enhanced_8quad)')
-      .then(({ count: c }) => setCount(c || 0));
-  }, []);
-
-  return (
-    <div className="space-y-2">
-      <p className="text-3xl font-bold text-green-500">{count?.toLocaleString() ?? '—'}</p>
-      <p className="text-xs text-muted-foreground">Web benchmark predictions with full details</p>
-      <GameListPanel filter="all" title="Web Benchmark Games" />
+      <p className="text-xs text-muted-foreground">{label} ({pct}%)</p>
+      <GameListPanel filter={filter} title={`${label} Games`} />
     </div>
   );
 }
