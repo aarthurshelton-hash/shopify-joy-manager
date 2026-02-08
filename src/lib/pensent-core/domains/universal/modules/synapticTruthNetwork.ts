@@ -70,6 +70,7 @@ export interface TruthFiring {
   cascadeDepth: number;     // How many neurons fired in chain
   recognitionLatency: number; // Time from input to firing (ms)
   universalResonance: number; // Alignment with accumulated truth
+  timestamp: number;          // When this firing occurred (epoch ms)
 }
 
 // ============================================================================
@@ -242,7 +243,8 @@ class SynapticTruthNetwork {
       confidence: dominantFiring.truthAccuracy,
       cascadeDepth,
       recognitionLatency: Date.now() - startTime,
-      universalResonance
+      universalResonance,
+      timestamp: Date.now()
     };
     
     this.firingHistory.push(firing);
@@ -495,7 +497,7 @@ class SynapticTruthNetwork {
   } {
     const neurons = Array.from(this.neurons.values());
     const recentFirings = this.firingHistory.filter(
-      f => Date.now() - f.recognitionLatency < 60000
+      f => Date.now() - f.timestamp < 60000
     ).length;
     
     const topArchetypes = neurons
