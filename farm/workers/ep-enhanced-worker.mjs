@@ -853,8 +853,8 @@ async function runBenchmarkCycle(epEngine) {
           
           console.log(drawFingerprint(predictions.enhanced.fingerprint || '', predictions.enhanced.colorRichness || 0.5));
           console.log(COLORS.bright + '━'.repeat(60) + COLORS.reset + '\n');
-        } catch (vizErr) {
-          // Visualization is non-critical, don't block predictions
+        } catch (_) {
+          // Viz is cosmetic — silent fail
         }
       }
       
