@@ -136,58 +136,84 @@ function useDbStats() {
 }
 
 // ─── System Breakdown Hook ───────────────────────────────────────────────────
-// Groups all data_source values into three meaningful system categories
+// Classifies rows by data_quality_tier (NOT data_source) because farm workers
+// write 'lichess'/'chess.com' as data_source but 'farm_enhanced_8quad' etc. as tier.
+// Uses server-side count queries to avoid Supabase's 1000-row default limit.
 
 interface SystemStat { label: string; description: string; count: number; sfAcc: number; epAcc: number }
 
-function classifySource(src: string): 'engine' | 'farm' | 'correlation' {
-  if (src.includes('correlation')) return 'correlation';
-  if (src.includes('farm') || src.includes('terminal') || src.includes('worker') || src.includes('8quad')) return 'farm';
-  return 'engine';
-}
+// Farm tiers written by farm workers (ep-enhanced-worker, benchmark-worker, etc.)
+const FARM_TIERS = ['farm_enhanced_8quad', 'farm_generated', 'farm_hybrid_v2', 'farm_integrated'];
+// Terminal tiers written by terminal workers
+const TERMINAL_TIERS = ['terminal_live'];
 
 function useSystemBreakdown() {
   const [systems, setSystems] = useState<SystemStat[]>([]);
 
   useEffect(() => {
     const load = async () => {
-      const { data } = await supabase
-        .from('chess_prediction_attempts')
-        .select('data_source, stockfish_correct, hybrid_correct');
+      // Server-side counts by system category using data_quality_tier
+      // Farm: any tier containing 'farm' or known farm tiers
+      // Terminal: terminal_live tier
+      // Web/Engine: everything else (web_client, null, etc.)
 
-      if (!data || data.length === 0) { setSystems([]); return; }
+      const farmFilter = (q: ReturnType<typeof supabase.from>) =>
+        q.or(FARM_TIERS.map(t => `data_quality_tier.eq.${t}`).join(','));
+      const terminalFilter = (q: ReturnType<typeof supabase.from>) =>
+        q.in('data_quality_tier', TERMINAL_TIERS);
+      // Web = everything NOT farm and NOT terminal
+      const webFilter = (q: ReturnType<typeof supabase.from>) =>
+        q.not('data_quality_tier', 'in', `(${[...FARM_TIERS, ...TERMINAL_TIERS].join(',')})`);
 
-      const buckets: Record<string, { n: number; sf: number; ep: number }> = {
-        engine: { n: 0, sf: 0, ep: 0 },
-        farm: { n: 0, sf: 0, ep: 0 },
-        correlation: { n: 0, sf: 0, ep: 0 },
-      };
+      const [
+        { count: farmTotal },
+        { count: farmSf },
+        { count: farmEp },
+        { count: termTotal },
+        { count: termSf },
+        { count: termEp },
+        { count: webTotal },
+        { count: webSf },
+        { count: webEp },
+      ] = await Promise.all([
+        farmFilter(supabase.from('chess_prediction_attempts').select('*', { count: 'exact', head: true })),
+        farmFilter(supabase.from('chess_prediction_attempts').select('*', { count: 'exact', head: true })).eq('stockfish_correct', true),
+        farmFilter(supabase.from('chess_prediction_attempts').select('*', { count: 'exact', head: true })).eq('hybrid_correct', true),
+        terminalFilter(supabase.from('chess_prediction_attempts').select('*', { count: 'exact', head: true })),
+        terminalFilter(supabase.from('chess_prediction_attempts').select('*', { count: 'exact', head: true })).eq('stockfish_correct', true),
+        terminalFilter(supabase.from('chess_prediction_attempts').select('*', { count: 'exact', head: true })).eq('hybrid_correct', true),
+        webFilter(supabase.from('chess_prediction_attempts').select('*', { count: 'exact', head: true })),
+        webFilter(supabase.from('chess_prediction_attempts').select('*', { count: 'exact', head: true })).eq('stockfish_correct', true),
+        webFilter(supabase.from('chess_prediction_attempts').select('*', { count: 'exact', head: true })).eq('hybrid_correct', true),
+      ]);
 
-      for (const r of data) {
-        const key = classifySource(r.data_source || 'unknown');
-        buckets[key].n++;
-        if (r.stockfish_correct) buckets[key].sf++;
-        if (r.hybrid_correct) buckets[key].ep++;
-      }
-
-      const meta: Record<string, { label: string; description: string }> = {
-        engine: { label: 'Prediction Engine', description: 'Core En Pensent vs Stockfish 17 analysis' },
-        farm: { label: 'Terminal Farms', description: '24/7 automated game harvesting & analysis' },
-        correlation: { label: 'Correlation Engine', description: 'Cross-domain pattern detection signals' },
-      };
+      const categories = [
+        {
+          label: 'Terminal Farms',
+          description: '24/7 automated game harvesting & 8-quadrant analysis',
+          total: (farmTotal || 0) + (termTotal || 0),
+          sf: (farmSf || 0) + (termSf || 0),
+          ep: (farmEp || 0) + (termEp || 0),
+        },
+        {
+          label: 'Prediction Engine',
+          description: 'Web-based En Pensent vs Stockfish 17 analysis',
+          total: webTotal || 0,
+          sf: webSf || 0,
+          ep: webEp || 0,
+        },
+      ];
 
       setSystems(
-        ['engine', 'farm', 'correlation']
-          .filter(k => buckets[k].n > 0)
-          .map(k => {
-            const b = buckets[k];
-            return {
-              ...meta[k],
-              count: b.n,
-              sfAcc: b.n > 0 ? (b.sf / b.n) * 100 : 0,
-              epAcc: b.n > 0 ? (b.ep / b.n) * 100 : 0,
-            };
-          })
+        categories
+          .filter(c => c.total > 0)
+          .map(c => ({
+            label: c.label,
+            description: c.description,
+            count: c.total,
+            sfAcc: c.total > 0 ? (c.sf / c.total) * 100 : 0,
+            epAcc: c.total > 0 ? (c.ep / c.total) * 100 : 0,
+          }))
       );
     };
     load();
