@@ -130,27 +130,14 @@ let currentSourceIndex = workerOffset * 7; // Each worker starts at a different 
 const analyzedGameIds = new Set();
 
 /**
- * Pre-load already-analyzed game IDs from local JSON + database
- * Prevents re-analyzing the same games across restarts
+ * Session-only dedup: we only track game IDs analyzed in THIS session.
+ * The DB's ON CONFLICT (game_id) DO NOTHING handles cross-session duplicates.
+ * This maximizes throughput — workers never block on stale dedup sets.
  */
 async function loadAnalyzedGameIds() {
-  // Only load from database — local JSON files are NOT loaded to avoid
-  // over-deduplication. The DB's ON CONFLICT (game_id) DO NOTHING handles
-  // true duplicates at insert time.
-  try {
-    const client = await pool.connect();
-    const result = await client.query(
-      `SELECT game_id FROM chess_prediction_attempts ORDER BY created_at DESC LIMIT 10000`
-    );
-    client.release();
-    for (const row of result.rows) {
-      if (row.game_id) analyzedGameIds.add(row.game_id);
-    }
-  } catch (e) {
-    console.log('[FARM] Could not pre-load DB game IDs:', e.message);
-  }
-
-  console.log(`[FARM] Pre-loaded ${analyzedGameIds.size} analyzed game IDs for deduplication`);
+  // No pre-load. Fresh session = fresh games.
+  // DB constraint handles true duplicates at insert time.
+  console.log(`[FARM] Session-only dedup active (DB ON CONFLICT handles cross-session)`);
 }
 
 /**
@@ -410,7 +397,7 @@ async function fetchChessComGames(count = 5) {
       const result = g.white.result === 'win' ? '1-0' : 
                      g.black.result === 'win' ? '0-1' : '1/2-1/2';
       return {
-        id: `cc_${g.url?.match(/\/(\d+)$/)?.[1] || Date.now()}`,
+        id: `${g.url?.match(/\/(\d+)$/)?.[1] || Date.now()}`,
         pgn: g.pgn,
         white: g.white.username,
         black: g.black.username,
@@ -631,32 +618,52 @@ function evaluateMaterialFallback(fen) {
 }
 
 /**
- * Generate BOTH baseline and enhanced EP predictions
+ * Generate BOTH 4-quadrant and 8-quadrant EP predictions
+ * Uses the SHARED predictFromColorFlow engine (same as web app)
+ * This ensures balanced predictions via the equilibrium system
  */
-async function generateBothPredictions(pgn, gameData, epEngine) {
-  const { simulateGame, extractColorFlowSignature, extractEnhancedSignature } = epEngine;
+async function generateBothPredictions(pgn, gameData, epEngine, sfEvalCp = 0) {
+  const { simulateGame, extractColorFlowSignature, predictFromColorFlow, extractEnhancedSignature } = epEngine;
   
   // Simulate game
   const simulation = simulateGame(pgn);
   const { board, totalMoves, gameData: simGameData } = simulation;
   
-  // BASELINE: 4-quadrant signature
+  // 4-QUADRANT ENGINE: Extract signature + predict via shared equilibrium system
   const baselineSignature = extractColorFlowSignature(board, gameData, totalMoves);
-  const baselinePrediction = predictFromBaseline(baselineSignature, totalMoves);
+  const baselineColorPrediction = predictFromColorFlow(baselineSignature, totalMoves, sfEvalCp, 18);
+  const baselinePrediction = {
+    predictedWinner: baselineColorPrediction.predictedWinner === 'white' ? 'white_wins' :
+                     baselineColorPrediction.predictedWinner === 'black' ? 'black_wins' : 'draw',
+    confidence: baselineColorPrediction.confidence / 100,
+    whiteAdvantage: baselineColorPrediction.predictedWinner === 'white' ? 0.3 :
+                    baselineColorPrediction.predictedWinner === 'black' ? -0.3 : 0,
+  };
   
-  // ENHANCED: 8-quadrant signature (if available)
+  // 8-QUADRANT ENGINE: Enhanced signature + predict via shared equilibrium system
   let enhancedResult = null;
+  let enhancedPrediction = baselinePrediction;
   if (extractEnhancedSignature && USE_ENHANCED_SIGNATURES) {
     try {
       enhancedResult = extractEnhancedSignature(simulation);
+      // Use the enhanced archetype/dominantSide with the shared predictor
+      const enhancedSig = {
+        ...baselineSignature,
+        archetype: enhancedResult.archetype || baselineSignature.archetype,
+        dominantSide: enhancedResult.dominantSide || baselineSignature.dominantSide,
+      };
+      const enhancedColorPrediction = predictFromColorFlow(enhancedSig, totalMoves, sfEvalCp, 18);
+      enhancedPrediction = {
+        predictedWinner: enhancedColorPrediction.predictedWinner === 'white' ? 'white_wins' :
+                         enhancedColorPrediction.predictedWinner === 'black' ? 'black_wins' : 'draw',
+        confidence: enhancedColorPrediction.confidence / 100,
+        whiteAdvantage: enhancedColorPrediction.predictedWinner === 'white' ? 0.3 :
+                        enhancedColorPrediction.predictedWinner === 'black' ? -0.3 : 0,
+      };
     } catch (e) {
-      console.log('Enhanced extraction failed, using baseline only');
+      // 8-quad extraction failed, fall back to 4-quad prediction
     }
   }
-  
-  const enhancedPrediction = enhancedResult 
-    ? predictFromEnhanced(enhancedResult, totalMoves)
-    : baselinePrediction;
   
   return {
     baseline: {
@@ -676,122 +683,9 @@ async function generateBothPredictions(pgn, gameData, epEngine) {
   };
 }
 
-/**
- * Predict from baseline 4-quadrant signature
- */
-function predictFromBaseline(colorSignature, totalMoves) {
-  const { quadrantProfile } = colorSignature;
-  
-  // Calculate advantage symmetrically: white quadrants vs black quadrants
-  let whiteAdvantage = 0;
-  whiteAdvantage += ((quadrantProfile.kingsideWhite || 0) - (quadrantProfile.kingsideBlack || 0)) / 100 * 0.5;
-  whiteAdvantage += ((quadrantProfile.queensideWhite || 0) - (quadrantProfile.queensideBlack || 0)) / 100 * 0.4;
-  
-  // Subtract inherent white first-move bias (white naturally controls more space)
-  // Without this, whiteAdvantage is ~0.5+ for nearly all games
-  whiteAdvantage -= 0.25;
-  
-  // Confidence based on magnitude of advantage
-  let confidence = 0.5;
-  const advantageMagnitude = Math.abs(whiteAdvantage);
-  if (advantageMagnitude > 0.2) confidence += 0.12;
-  else if (advantageMagnitude > 0.1) confidence += 0.06;
-  
-  // Determine winner
-  const threshold = 0.08;
-  let predictedWinner;
-  if (whiteAdvantage > threshold) {
-    predictedWinner = 'white_wins';
-  } else if (whiteAdvantage < -threshold) {
-    predictedWinner = 'black_wins';
-  } else {
-    predictedWinner = 'draw';
-  }
-  
-  confidence = Math.min(confidence, 0.95);
-  
-  return {
-    predictedWinner,
-    confidence,
-    whiteAdvantage,
-  };
-}
-
-/**
- * Predict from enhanced 8-quadrant signature
- */
-function predictFromEnhanced(enhancedResult, totalMoves) {
-  const { quadrantProfile } = enhancedResult;
-  const archetype = enhancedResult.archetype;
-  
-  // Calculate white vs black advantage from quadrant profile
-  // Positive = white advantage, negative = black advantage
-  let whiteAdvantage = 0;
-  
-  // Core quadrants: white activity vs black activity
-  const whiteActivity = (quadrantProfile.q1_kingside_white || 0) / 100
-                      + (quadrantProfile.q2_queenside_white || 0) / 100
-                      + (quadrantProfile.q5_center_white || 0) / 100;
-  const blackActivity = (quadrantProfile.q3_kingside_black || 0) / 100
-                      + (quadrantProfile.q4_queenside_black || 0) / 100
-                      + (quadrantProfile.q6_center_black || 0) / 100;
-  
-  // Center is the strongest signal
-  whiteAdvantage += ((quadrantProfile.q5_center_white || 0) - (quadrantProfile.q6_center_black || 0)) / 100 * 0.4;
-  // Flanks
-  whiteAdvantage += ((quadrantProfile.q1_kingside_white || 0) - (quadrantProfile.q3_kingside_black || 0)) / 100 * 0.2;
-  whiteAdvantage += ((quadrantProfile.q2_queenside_white || 0) - (quadrantProfile.q4_queenside_black || 0)) / 100 * 0.2;
-  // Extended quadrants: compare to each other (not unconditionally white)
-  whiteAdvantage += ((quadrantProfile.q7_extended_kingside || 0) - (quadrantProfile.q8_extended_queenside || 0)) / 100 * 0.1;
-  
-  // Piece-type signals: these indicate WHO has the advantage, not always white
-  // bishop_dominance > 0.5 means white has bishop advantage, < 0.5 means black
-  let confidence = 0.5;
-  const bishopDom = quadrantProfile.bishop_dominance || 0.5;
-  const knightDom = quadrantProfile.knight_dominance || 0.5;
-  const pawnAdv = quadrantProfile.pawn_advancement || 0.5;
-  
-  // Piece dominance pushes advantage toward the dominant side
-  whiteAdvantage += (bishopDom - 0.5) * 0.3;
-  whiteAdvantage += (knightDom - 0.5) * 0.2;
-  whiteAdvantage += (pawnAdv - 0.5) * 0.2;
-  
-  // Subtract inherent white first-move bias from center/flank quadrants
-  // The color flow signature naturally skews ~0.10 positive for white
-  whiteAdvantage -= 0.06;
-  
-  // Confidence from magnitude of advantage (either direction)
-  const advantageMagnitude = Math.abs(whiteAdvantage);
-  if (advantageMagnitude > 0.2) confidence += 0.15;
-  else if (advantageMagnitude > 0.1) confidence += 0.08;
-  
-  // Archetype confidence boost (does NOT affect direction)
-  const highConfArchetypes = ['central_bishop_cross', 'center_kingside_break', 'knight_complex_superiority', 'central_domination'];
-  if (highConfArchetypes.some(a => archetype.includes(a))) {
-    confidence += 0.10;
-  }
-  
-  // Predict winner based on balanced advantage
-  const threshold = 0.05;
-  let predictedWinner;
-  if (whiteAdvantage > threshold) {
-    predictedWinner = 'white_wins';
-  } else if (whiteAdvantage < -threshold) {
-    predictedWinner = 'black_wins';
-  } else {
-    predictedWinner = 'draw';
-  }
-  
-  confidence = Math.min(confidence, 0.95);
-  
-  return {
-    predictedWinner,
-    confidence,
-    whiteAdvantage,
-    pieceTypeBonus: bishopDom + knightDom,
-    isGainArchetype: highConfArchetypes.some(a => archetype.includes(a)),
-  };
-}
+// Standalone prediction functions REMOVED
+// Both 4-quad and 8-quad engines now use the shared predictFromColorFlow
+// from farm/dist/lib/chess/colorFlowAnalysis (same equilibrium system as web app)
 
 /**
  * Run a single benchmark cycle with A/B testing
@@ -814,14 +708,14 @@ async function runBenchmarkCycle(epEngine) {
     console.log(`[${workerId}] Skipped ${skipped}/${allGames.length} already-analyzed games`);
   }
   if (games.length === 0) {
-    // Move time window back by 7 days to find fresh games faster
-    lichessBeforeMs -= 7 * 24 * 60 * 60 * 1000;
+    // Move time window back by 14 days to find fresh games faster
+    lichessBeforeMs -= 14 * 24 * 60 * 60 * 1000;
     // Don't go further back than 5 years
     const fiveYearsAgo = Date.now() - (5 * 365 * 24 * 60 * 60 * 1000);
     if (lichessBeforeMs < fiveYearsAgo) {
       lichessBeforeMs = Date.now(); // Reset to present
     }
-    currentSourceIndex += 5; // Advance player rotation faster
+    currentSourceIndex += 8; // Advance player rotation faster
     console.log(`[${workerId}] All games already analyzed, sliding window back to ${new Date(lichessBeforeMs).toISOString().split('T')[0]}`);
     return;
   }
@@ -885,27 +779,13 @@ async function runBenchmarkCycle(epEngine) {
         pgn: partialPgn,
       };
       
-      const predictions = await generateBothPredictions(partialPgn, gameData, epEngine);
+      // Pass SF eval (centipawns) into the shared equilibrium predictor
+      // The equilibrium system uses SF as 30% weighted signal alongside
+      // board control, momentum, archetype, and phase signals
+      const sfEvalCp = sf17Eval.evaluation ?? 0;
+      const predictions = await generateBothPredictions(partialPgn, gameData, epEngine, sfEvalCp);
       const baselinePred = predictions.baseline.prediction;
       const enhancedPred = predictions.enhanced?.prediction || baselinePred;
-      
-      // HYBRID FUSION: Blend SF eval direction into EP prediction
-      // EP provides archetype + confidence, SF provides directional signal
-      // This creates a true hybrid that leverages both engines
-      const sfEvalVal = sf17Eval.evaluation || 0;
-      const epAdv = enhancedPred.whiteAdvantage || baselinePred.whiteAdvantage || 0;
-      // Weighted blend: 40% EP color flow + 60% SF eval direction
-      const fusedAdvantage = (epAdv * 0.4) + (Math.tanh(sfEvalVal) * 0.6);
-      const fusionThreshold = 0.15;
-      
-      if (fusedAdvantage > fusionThreshold) {
-        enhancedPred.predictedWinner = 'white_wins';
-      } else if (fusedAdvantage < -fusionThreshold) {
-        enhancedPred.predictedWinner = 'black_wins';
-      } else {
-        enhancedPred.predictedWinner = 'draw';
-      }
-      enhancedPred.whiteAdvantage = fusedAdvantage;
       
       // Visualize enhanced signature if available
       if (predictions.enhanced) {
@@ -1245,7 +1125,7 @@ async function fetchChessComPuzzles(count = 3) {
     const result = puzzle.solution?.length > 0 ? '1-0' : '1/2-1/2';
     
     return [{
-      id: `puzzle_${puzzle.puzzle_id || Date.now()}`,
+      id: `${puzzle.puzzle_id || Date.now()}`,
       pgn: `[Event "Chess.com Puzzle"][Result "${result}"][FEN "${puzzle.fen}"] 1. ${puzzle.solution?.[0] || 'e4'}`,
       white: 'Puzzle',
       black: 'Solver',
@@ -1275,7 +1155,7 @@ async function fetchLichessPuzzles(count = 3) {
     const result = puzzle.solution?.length > 0 ? '1-0' : '1/2-1/2';
     
     return [{
-      id: `lichess_puzzle_${puzzle.id || Date.now()}`,
+      id: `${puzzle.id || Date.now()}`,
       pgn: `[Event "Lichess Puzzle"][Result "${result}"][FEN "${puzzle.fen}"] 1. ${puzzle.solution?.[0] || 'e4'}`,
       white: 'Puzzle',
       black: 'Solver',
