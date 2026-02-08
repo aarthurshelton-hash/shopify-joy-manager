@@ -705,57 +705,8 @@ export function useHybridBenchmark() {
         console.log(`[v6.43] 💾 Incremental save: ${newAttempts.length} new predictions (total: ${attempts.length})`);
         
         try {
-          // Upsert benchmark record
-          const { data: existingBenchmark } = await supabase
-            .from('chess_benchmark_results')
-            .select('id')
-            .eq('run_id', runId)
-            .maybeSingle();
-          
-          let benchmarkId: string;
-          
-          if (existingBenchmark) {
-            // Update existing
-            await supabase
-              .from('chess_benchmark_results')
-              .update({
-                completed_games: attempts.length,
-                hybrid_accuracy: attempts.length > 0 ? (hybridCorrect / attempts.length) * 100 : 0,
-                stockfish_accuracy: attempts.length > 0 ? (stockfishCorrect / attempts.length) * 100 : 0,
-                hybrid_wins: attempts.filter(a => a.hybrid_correct && !a.stockfish_correct).length,
-                stockfish_wins: attempts.filter(a => !a.hybrid_correct && a.stockfish_correct).length,
-                both_correct: bothCorrect,
-                both_wrong: bothWrong,
-                games_analyzed: attempts.map(a => a.game_id),
-              })
-              .eq('id', existingBenchmark.id);
-            benchmarkId = existingBenchmark.id;
-          } else {
-            // Create new
-            const { data: newBenchmark } = await supabase
-              .from('chess_benchmark_results')
-              .insert({
-                run_id: runId,
-                total_games: gameCount,
-                completed_games: attempts.length,
-                prediction_move_number: Math.round((predictionMoveRange[0] + predictionMoveRange[1]) / 2),
-                hybrid_accuracy: attempts.length > 0 ? (hybridCorrect / attempts.length) * 100 : 0,
-                stockfish_accuracy: attempts.length > 0 ? (stockfishCorrect / attempts.length) * 100 : 0,
-                hybrid_wins: attempts.filter(a => a.hybrid_correct && !a.stockfish_correct).length,
-                stockfish_wins: attempts.filter(a => !a.hybrid_correct && a.stockfish_correct).length,
-                both_correct: bothCorrect,
-                both_wrong: bothWrong,
-                data_source: 'lichess_grandmasters',
-                games_analyzed: attempts.map(a => a.game_id),
-                stockfish_version: 'Stockfish 17 WASM (Local Maximum Depth)',
-                stockfish_mode: 'local_wasm_unlimited',
-                hybrid_version: 'en-pensent-v1',
-                data_quality_tier: 'tcec_unlimited',
-              })
-              .select()
-              .single();
-            benchmarkId = newBenchmark?.id || '';
-          }
+          // Save individual predictions to chess_prediction_attempts ONLY
+          // No summary rows to chess_benchmark_results
           
           // v6.65-COMPLETE-ONLY: Only save attempts with COMPLETE predictions
           // This allows failed game IDs to be re-captured in future runs
@@ -780,7 +731,6 @@ export function useHybridBenchmark() {
           for (const attempt of completeAttempts) {
             const { error: insertError } = await supabase.from('chess_prediction_attempts').insert({
               ...attempt,
-              benchmark_id: benchmarkId,
             });
             if (insertError && !insertError.message?.includes('duplicate')) {
               console.error(`[v6.65] Failed to save ${attempt.game_id}:`, insertError.message);
@@ -1306,58 +1256,9 @@ export function useHybridBenchmark() {
         message: 'Finalizing benchmark results...'
       }));
       
-      // Update the benchmark record with final stats
-      const { data: existingBenchmark } = await supabase
-        .from('chess_benchmark_results')
-        .select('id')
-        .eq('run_id', runId)
-        .maybeSingle();
-      
-      // v7.29: Calculate duration for final save
+      // Individual predictions already saved incrementally to chess_prediction_attempts
       const benchmarkDurationMs = Date.now() - benchmarkStartTime;
-      
-      if (existingBenchmark) {
-        await supabase
-          .from('chess_benchmark_results')
-          .update({
-            total_games: totalGames,
-            completed_games: totalGames,
-            hybrid_accuracy: hybridAccuracy,
-            stockfish_accuracy: stockfishAccuracy,
-            hybrid_wins: hybridWins,
-            stockfish_wins: stockfishWins,
-            both_correct: bothCorrect,
-            both_wrong: bothWrong,
-            games_analyzed: attempts.map(a => a.game_id),
-            duration_ms: benchmarkDurationMs, // v7.29: NOW SAVED!
-          })
-          .eq('id', existingBenchmark.id);
-        console.log(`[v7.29] ✅ Final benchmark update complete (duration: ${Math.round(benchmarkDurationMs/1000)}s)`);
-      } else {
-        // Create benchmark if incremental saves didn't create it yet
-        await supabase
-          .from('chess_benchmark_results')
-          .insert({
-            run_id: runId,
-            total_games: totalGames,
-            completed_games: totalGames,
-            prediction_move_number: Math.round((predictionMoveRange[0] + predictionMoveRange[1]) / 2),
-            hybrid_accuracy: hybridAccuracy,
-            stockfish_accuracy: stockfishAccuracy,
-            hybrid_wins: hybridWins,
-            stockfish_wins: stockfishWins,
-            both_correct: bothCorrect,
-            both_wrong: bothWrong,
-            data_source: 'lichess_grandmasters',
-            games_analyzed: attempts.map(a => a.game_id),
-            stockfish_version: 'Stockfish 17 WASM (Local Maximum Depth)',
-            stockfish_mode: 'local_wasm_unlimited',
-            hybrid_version: 'en-pensent-v1',
-            data_quality_tier: 'tcec_unlimited',
-            duration_ms: benchmarkDurationMs, // v7.29: NOW SAVED!
-          });
-        console.log(`[v7.29] ✅ Created final benchmark record (duration: ${Math.round(benchmarkDurationMs/1000)}s)`);
-      }
+      console.log(`[Benchmark] Complete: ${totalGames} games in ${Math.round(benchmarkDurationMs/1000)}s`);
       
       // Collect unique archetypes detected
       const archetypesDetected = [...new Set(attempts.map(a => a.hybrid_archetype))];
@@ -1402,77 +1303,20 @@ export function useHybridBenchmark() {
       const message = e instanceof Error ? e.message : 'Unknown error';
       console.error(`[v6.43] Benchmark error: ${message}`);
       
-      // v6.43-BULLETPROOF: Emergency save - predictions should already be in DB from incremental saves
-      // Just log what we had in case anything was lost
+      // Predictions should already be in DB from incremental saves
       if (attempts.length > 0) {
-        console.log(`[v6.43] ⚠️ Error occurred after ${attempts.length} predictions (most should already be saved incrementally)`);
+        console.log(`[Benchmark] Error after ${attempts.length} predictions (most already saved incrementally)`);
         
-        // Try one more emergency save in case incremental saves didn't complete
+        // Emergency save any unsaved predictions directly to chess_prediction_attempts
         try {
-          const { data: existingBenchmark } = await supabase
-            .from('chess_benchmark_results')
-            .select('id')
-            .eq('run_id', runId)
-            .maybeSingle();
-          
-          if (existingBenchmark) {
-            // Update existing benchmark with final count + duration
-            const errorDurationMs = Date.now() - benchmarkStartTime; // v7.29
-            await supabase
-              .from('chess_benchmark_results')
-              .update({
-                completed_games: attempts.length,
-                hybrid_accuracy: attempts.length > 0 ? (hybridCorrect / attempts.length) * 100 : 0,
-                stockfish_accuracy: attempts.length > 0 ? (stockfishCorrect / attempts.length) * 100 : 0,
-                duration_ms: errorDurationMs, // v7.29: Save duration even on error
-              })
-              .eq('id', existingBenchmark.id);
-            console.log(`[v7.29] ✅ Updated benchmark with ${attempts.length} predictions (error path, ${Math.round(errorDurationMs/1000)}s)`);
-          } else {
-            // Create benchmark record if it doesn't exist
-            const errorDurationMs = Date.now() - benchmarkStartTime; // v7.29
-            const { data: newBenchmark } = await supabase
-              .from('chess_benchmark_results')
-              .insert({
-                run_id: runId,
-                total_games: gameCount,
-                completed_games: attempts.length,
-                prediction_move_number: Math.round((predictionMoveRange[0] + predictionMoveRange[1]) / 2),
-                hybrid_accuracy: attempts.length > 0 ? (hybridCorrect / attempts.length) * 100 : 0,
-                stockfish_accuracy: attempts.length > 0 ? (stockfishCorrect / attempts.length) * 100 : 0,
-                hybrid_wins: attempts.filter(a => a.hybrid_correct && !a.stockfish_correct).length,
-                stockfish_wins: attempts.filter(a => !a.hybrid_correct && a.stockfish_correct).length,
-                both_correct: bothCorrect,
-                both_wrong: bothWrong,
-                data_source: 'lichess_grandmasters_error',
-                games_analyzed: attempts.map(a => a.game_id),
-                stockfish_version: 'Stockfish 17 WASM (Local Maximum Depth)',
-                stockfish_mode: 'local_wasm_unlimited',
-                hybrid_version: 'en-pensent-v1',
-                data_quality_tier: 'tcec_unlimited',
-                duration_ms: errorDurationMs, // v7.29: Save duration even on error
-              })
-              .select()
-              .single();
-            
-            if (newBenchmark) {
-              // Save any unsaved attempts (ignore errors for duplicates)
-              for (const attempt of attempts) {
-                const { error: insertErr } = await supabase.from('chess_prediction_attempts').insert({
-                  ...attempt,
-                  benchmark_id: newBenchmark.id,
-                });
-                // Silently ignore duplicate errors
-                if (insertErr && !insertErr.message?.includes('duplicate')) {
-                  console.error(`[v6.63] Insert error:`, insertErr.message);
-                } else {
-                  // v6.63: Invalidate cache for realtime sync
-                  invalidateChessStatsCache();
-                }
-              }
-              console.log(`[v6.63] ✅ Emergency saved ${attempts.length} predictions`);
+          for (const attempt of attempts) {
+            const { error: insertErr } = await supabase.from('chess_prediction_attempts').insert(attempt);
+            if (insertErr && !insertErr.message?.includes('duplicate')) {
+              console.error(`[Benchmark] Emergency insert error:`, insertErr.message);
             }
           }
+          invalidateChessStatsCache();
+          console.log(`[Benchmark] Emergency save attempted for ${attempts.length} predictions (duplicates skipped)`);
         } catch (saveError) {
           console.error(`[v6.43] ❌ Emergency save failed:`, saveError);
         }

@@ -846,57 +846,20 @@ export async function savePoolPredictions(
   const runId = `pool-${poolName}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
   
   try {
-    // Calculate stats
-    const sfCorrect = predictions.filter(p => p.stockfishCorrect).length;
-    const hybridCorrect = predictions.filter(p => p.hybridCorrect).length;
-    
-    // Save benchmark result
-    const { data: benchmarkData, error: benchmarkError } = await supabase
-      .from('chess_benchmark_results')
-      .insert({
-        run_id: runId,
-        data_source: 'dual_pool_pipeline',
-        total_games: predictions.length,
-        completed_games: predictions.length,
-        prediction_move_number: 25, // Average
-        stockfish_accuracy: (sfCorrect / predictions.length) * 100,
-        hybrid_accuracy: (hybridCorrect / predictions.length) * 100,
-        stockfish_wins: predictions.filter(p => p.stockfishCorrect && !p.hybridCorrect).length,
-        hybrid_wins: predictions.filter(p => p.hybridCorrect && !p.stockfishCorrect).length,
-        both_correct: predictions.filter(p => p.stockfishCorrect && p.hybridCorrect).length,
-        both_wrong: predictions.filter(p => !p.stockfishCorrect && !p.hybridCorrect).length,
-        stockfish_version: poolName === 'LOCAL-DEEP' ? 'Stockfish 17 NNUE Local D30' : 'Lichess Cloud SF17',
-        stockfish_mode: poolName.toLowerCase(),
-        hybrid_version: `En Pensent v6.92 (${poolName})`,
-        data_quality_tier: 'dual_pool',
-        games_analyzed: predictions.map(p => p.gameName),
-      })
-      .select('id')
-      .single();
-    
-    if (benchmarkError) {
-      console.error(`[v6.92] Failed to save benchmark:`, benchmarkError);
-      return null;
-    }
-    
-    const benchmarkId = benchmarkData.id;
-    
-    // Save individual predictions
-    // v7.17-SCHEMA-ALIGNED: Ensure all fields match DB schema exactly
+    // Save individual predictions to chess_prediction_attempts ONLY
+    // No summary rows to chess_benchmark_results
     const attempts = predictions.map(p => ({
-      benchmark_id: benchmarkId,
-      // v7.17: Strip prefix from game_id for DB consistency (raw ID only)
       game_id: toRawId(p.gameId),
       game_name: p.gameName,
       move_number: p.moveNumber,
       fen: p.fen,
       pgn: p.pgn,
-      stockfish_eval: p.stockfishEval,
+      stockfish_eval: Math.round(p.stockfishEval),
       stockfish_depth: p.stockfishDepth,
       stockfish_prediction: p.stockfishPrediction,
-      stockfish_confidence: p.stockfishConfidence,
+      stockfish_confidence: Math.round(p.stockfishConfidence),
       hybrid_prediction: p.hybridPrediction,
-      hybrid_confidence: p.hybridConfidence,
+      hybrid_confidence: Math.round(p.hybridConfidence),
       hybrid_archetype: p.hybridArchetype,
       actual_result: p.actualResult,
       stockfish_correct: p.stockfishCorrect,
@@ -911,23 +874,33 @@ export async function savePoolPredictions(
       black_elo: p.blackElo || null,
     }));
     
-    // v7.90: Batch upsert with conflict handling to prevent duplicate key errors
+    // v8.1-FIX: Use insert instead of upsert to avoid silent conflicts
+    // The game_id should be unique - if conflict, we want to know about it
     const BATCH_SIZE = 25;
+    let savedCount = 0;
+    let failedCount = 0;
+    
     for (let i = 0; i < attempts.length; i += BATCH_SIZE) {
       const batch = attempts.slice(i, i + BATCH_SIZE);
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('chess_prediction_attempts')
-        .upsert(batch, { 
-          onConflict: 'game_id',
-          ignoreDuplicates: true 
-        });
+        .insert(batch)
+        .select('id, game_id');
       
       if (error) {
-        console.error(`[v7.90] Batch ${i / BATCH_SIZE + 1} failed:`, error);
+        console.error(`[v8.1] Batch ${i / BATCH_SIZE + 1} FAILED:`, error);
+        failedCount += batch.length;
+        // Log details for debugging
+        if (error.message?.includes('duplicate')) {
+          console.warn(`[v8.1] Duplicate game_ids in batch:`, batch.map(a => a.game_id));
+        }
+      } else {
+        savedCount += data?.length || 0;
+        console.log(`[v8.1] Batch ${i / BATCH_SIZE + 1} saved: ${data?.length || 0} predictions`);
       }
     }
     
-    console.log(`[v6.92] Saved ${predictions.length} predictions to run ${runId}`);
+    console.log(`[v8.1] Saved ${savedCount}/${predictions.length} predictions (${failedCount} failed)`);
     return runId;
     
   } catch (err) {
