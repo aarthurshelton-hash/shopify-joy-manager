@@ -231,8 +231,8 @@ function useSystemBreakdown() {
 // ─── Game Detail Modal ───────────────────────────────────────────────────────
 
 function GameDetailModal({ game }: { game: GameDetail }) {
-  const isLichess = game.game_id && !game.game_id.startsWith('cc_') && !game.game_id.startsWith('puzzle') && game.game_id.length === 8;
-  const isChessCom = game.game_id?.startsWith('cc_');
+  const isLichess = game.data_source === 'lichess' || (game.game_id && !game.game_id.startsWith('cc_') && /^[a-zA-Z0-9]{8}$/.test(game.game_id));
+  const isChessCom = game.data_source === 'chess.com' || game.game_id?.startsWith('cc_');
   const rawId = game.game_id?.replace(/^(li_|cc_)/, '');
 
   return (

@@ -299,11 +299,11 @@ async function fetchLichessGames(count = 5, perfType = 'blitz') {
           console.log(`[FARM] Lichess HTTP ${response.status} for ${player}: ${await response.text().catch(() => 'Unknown error')}`);
         }
       } catch (error) {
-        const errorMsg = error.message || 'Unknown fetch error';
+        const errorMsg = error?.message || 'Unknown fetch error';
         console.log(`[FARM] Lichess error (${player}) attempt ${attempt}: ${errorMsg}`);
         
         // If this is a network/abort error, don't retry immediately
-        if (error.name === 'AbortError' || errorMsg.includes('fetch failed')) {
+        if (error?.name === 'AbortError' || errorMsg.includes('fetch failed')) {
           console.log(`[FARM] Network issue - waiting 5s before retry...`);
           await new Promise(r => setTimeout(r, 5000));
         }
