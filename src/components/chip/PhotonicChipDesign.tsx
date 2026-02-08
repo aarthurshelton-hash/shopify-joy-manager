@@ -115,10 +115,11 @@ export default function PhotonicChipDesign() {
           activeAdapters: 27,
         });
 
-        // Distribute signal counts across processors based on prediction volume
+        // Distribute signal counts evenly across processors (deterministic)
+        const perProcessor = Math.floor(total / 27);
         setProcessors(prev => prev.map(p => ({
           ...p,
-          signalCount: Math.floor(total / 27 + Math.random() * (total / 10)),
+          signalCount: perProcessor,
           isActive: true,
         })));
       } catch (e) {

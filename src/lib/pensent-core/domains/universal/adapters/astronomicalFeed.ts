@@ -92,25 +92,6 @@ export class AstronomicalDataFeed {
     }
   }
 
-  private generateSyntheticAPOD(): NASAAstronomyData['apod'] {
-    const titles = [
-      'The Great Spiral Galaxy',
-      'Supernova Remnant',
-      'Planetary Nebula',
-      'Star Formation Region',
-      'Distant Galaxy Cluster'
-    ];
-    
-    return {
-      date: new Date().toISOString().split('T')[0],
-      explanation: 'A fascinating astronomical object showcasing the beauty of the cosmos.',
-      media_type: 'image',
-      service_version: 'v1',
-      title: titles[Math.floor(Math.random() * titles.length)],
-      url: 'https://apod.nasa.gov/image.jpg'
-    };
-  }
-
   calculateSupernovaProbability(neoData: NASAAstronomyData['neo']): number {
     if (!neoData) return 0;
     
@@ -136,14 +117,14 @@ export class AstronomicalDataFeed {
     
     return {
       timestamp: Date.now(),
-      stellarAge: 4.6 + Math.random() * 0.1, // Our sun's age in billions
-      orbitalPeriod: 365.25 + (Math.random() - 0.5) * 10,
-      luminosity: 1 + (Math.random() - 0.5) * 0.1,
-      redshift: Math.random() * 0.5,
+      stellarAge: 4.6, // Our sun's age in billions of years (known constant)
+      orbitalPeriod: 365.25, // Earth's orbital period in days (known constant)
+      luminosity: 1.0, // Solar luminosity baseline (known constant)
+      redshift: 0.0, // Local frame redshift (zero for our reference frame)
       supernovaProbability: neoProbability,
-      exoplanetDetection: Math.random() * 0.3, // Increasing detection rate
+      exoplanetDetection: 0.15, // Static baseline until real exoplanet API integrated
       darkMatterDensity: 0.27, // Current cosmological estimate
-      cosmicRayIntensity: 0.5 + Math.random() * 0.5
+      cosmicRayIntensity: 0.5 // Static baseline until real cosmic ray data integrated
     };
   }
 

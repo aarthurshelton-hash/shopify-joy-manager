@@ -168,16 +168,15 @@ export function getSeasonalityAdjustment(
   const dayEffect = getDayEffect(date);
   const sessionProfile = SESSION_PROFILES[session];
   
-  let { direction, confidence } = basePrediction;
+  const { direction } = basePrediction;
+  let { confidence } = basePrediction;
   
   // Adjust confidence based on trend reliability
   confidence = confidence * sessionProfile.trendReliability;
   
-  // Apply reversal probability
-  if (Math.random() < sessionProfile.reversalProbability * 0.3) {
-    // Reduce confidence when reversal likely
-    confidence *= 0.7;
-  }
+  // Apply reversal probability as deterministic discount
+  // Higher reversal probability → proportionally lower confidence
+  confidence *= (1 - sessionProfile.reversalProbability * 0.3);
   
   // Day of week bias
   if (direction === 'bullish' && dayEffect.bullishBias < 0) {

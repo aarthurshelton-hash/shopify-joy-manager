@@ -579,7 +579,7 @@ const Analytics = () => {
                 <StatCard
                   icon={Trophy}
                   label="Creator Rank"
-                  value={isPremium ? '#' + Math.floor(Math.random() * 100 + 1) : '???'}
+                  value={isPremium ? 'Coming soon' : '???'}
                   sublabel="In community"
                   locked={!isPremium}
                 />

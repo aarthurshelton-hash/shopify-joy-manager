@@ -411,7 +411,7 @@ class TemporalConsciousnessSpeedrunAdapter {
       
       return {
         type,
-        confidence: 0.5 + Math.random() * 0.4, // 0.5-0.9
+        confidence: 0.7, // Deterministic baseline confidence for detected glitches
         description: category?.market || 'Unknown optimization pathway'
       };
     });
@@ -435,7 +435,7 @@ class TemporalConsciousnessSpeedrunAdapter {
     if (data.observerType === 'HUMAN') return 0.5;
     
     // Other consciousnesses have varying resonance
-    return 0.3 + Math.random() * 0.4;
+    return 0.5; // Deterministic baseline resonance for non-special consciousness types
   }
   
   extractSignature(signals: TemporalSignal[]): DomainSignature {

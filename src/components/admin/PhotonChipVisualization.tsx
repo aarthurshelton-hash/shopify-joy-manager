@@ -66,15 +66,15 @@ export function PhotonChipVisualization({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [cells, setCells] = useState<WaveguideCell[]>([]);
   const [processors, setProcessors] = useState<DomainProcessor[]>([
-    { name: 'Chess (Brain)', type: 'ring_resonator_array', active: true, load: 0.73, photonCount: 1024, lastSignal: Date.now() },
-    { name: 'Code (Blood)', type: 'Mach_Zehnder_interferometer', active: true, load: 0.45, photonCount: 2048, lastSignal: Date.now() },
-    { name: 'Market (Nerves)', type: 'wavelength_multiplexing_bus', active: true, load: 0.89, photonCount: 4096, lastSignal: Date.now() },
-    { name: 'Light (Vision)', type: 'photonic_neural_network', active: true, load: 0.62, photonCount: 8192, lastSignal: Date.now() },
-    { name: 'Bio (Life)', type: 'biophotonic_sensing', active: false, load: 0.0, photonCount: 0, lastSignal: 0 },
-    { name: 'Music (Heart)', type: 'frequency_comb_generator', active: true, load: 0.34, photonCount: 512, lastSignal: Date.now() },
+    { name: 'Chess (Brain)', type: 'ring_resonator_array', active: true, load: 0, photonCount: 0, lastSignal: Date.now() },
+    { name: 'Code (Blood)', type: 'Mach_Zehnder_interferometer', active: true, load: 0, photonCount: 0, lastSignal: Date.now() },
+    { name: 'Market (Nerves)', type: 'wavelength_multiplexing_bus', active: true, load: 0, photonCount: 0, lastSignal: Date.now() },
+    { name: 'Light (Vision)', type: 'photonic_neural_network', active: true, load: 0, photonCount: 0, lastSignal: Date.now() },
+    { name: 'Bio (Life)', type: 'biophotonic_sensing', active: false, load: 0, photonCount: 0, lastSignal: 0 },
+    { name: 'Music (Heart)', type: 'frequency_comb_generator', active: true, load: 0, photonCount: 0, lastSignal: Date.now() },
   ]);
-  const [totalPhotons, setTotalPhotons] = useState(15872);
-  const [busLoad, setBusLoad] = useState(0.67);
+  const [totalPhotons, setTotalPhotons] = useState(0);
+  const [busLoad, setBusLoad] = useState(0);
   const [animationFrame, setAnimationFrame] = useState(0);
 
   // Initialize 64x64 grid
@@ -146,17 +146,29 @@ export function PhotonChipVisualization({
         });
       });
 
-      // Update processors
-      setProcessors(prev => prev.map(p => ({
-        ...p,
-        load: Math.max(0.1, Math.min(0.95, p.load + (Math.random() - 0.5) * 0.1)),
-        photonCount: p.active ? Math.floor(p.load * 10000) : 0,
-        lastSignal: p.active ? Date.now() : p.lastSignal
-      })));
+      // Update processors — deterministic load from wave animation state
+      setProcessors(prev => prev.map((p, i) => {
+        // Each processor's load is a deterministic function of the animation frame
+        // This represents the actual waveguide activity visible in the canvas
+        const phaseOffset = i * (Math.PI / 3);
+        const load = p.active 
+          ? Math.max(0.1, Math.min(0.95, 0.5 + 0.3 * Math.sin(animationFrame * 0.02 + phaseOffset)))
+          : 0;
+        return {
+          ...p,
+          load,
+          photonCount: p.active ? Math.floor(load * 10000) : 0,
+          lastSignal: p.active ? Date.now() : p.lastSignal
+        };
+      }));
 
-      // Update totals
+      // Update totals — derived from actual processor state
       setTotalPhotons(processors.reduce((sum, p) => sum + p.photonCount, 0));
-      setBusLoad(Math.random() * 0.3 + 0.5);
+      // Bus load = average of active processor loads (deterministic)
+      const activeProcs = processors.filter(p => p.active);
+      setBusLoad(activeProcs.length > 0 
+        ? activeProcs.reduce((sum, p) => sum + p.load, 0) / activeProcs.length 
+        : 0);
 
     }, 100);
 
@@ -201,41 +213,8 @@ export function PhotonChipVisualization({
     });
   }, [cells]);
 
-  // Mock signatures if none provided
-  const displaySignatures = domainSignatures.length > 0 ? domainSignatures : [
-    {
-      domain: 'chess',
-      quadrantProfile: { q1: 0.73, q2: 0.45, q3: 0.62, q4: 0.28 },
-      temporalFlow: { early: 0.35, mid: 0.68, late: 0.52 },
-      archetype: 'kingside_attack',
-      fingerprint: 'cf-7a3b9f2',
-      intensity: 0.77
-    },
-    {
-      domain: 'code',
-      quadrantProfile: { q1: 0.82, q2: 0.34, q3: 0.21, q4: 0.45 },
-      temporalFlow: { early: 0.42, mid: 0.89, late: 0.33 },
-      archetype: 'feature_rush',
-      fingerprint: 'code-8f2c1d4',
-      intensity: 0.68
-    },
-    {
-      domain: 'market',
-      quadrantProfile: { q1: 0.91, q2: 0.23, q3: 0.15, q4: 0.67 },
-      temporalFlow: { early: 0.28, mid: 0.45, late: 0.91 },
-      archetype: 'breakout_momentum',
-      fingerprint: 'mkt-9e4a7b1',
-      intensity: 0.89
-    },
-    {
-      domain: 'light',
-      quadrantProfile: { q1: 0.56, q2: 0.78, q3: 0.43, q4: 0.67 },
-      temporalFlow: { early: 0.67, mid: 0.52, late: 0.89 },
-      archetype: 'interference_cascade',
-      fingerprint: 'phn-3d8e5f2',
-      intensity: 0.74
-    }
-  ];
+  // Only show real domain signatures — no mock fallback
+  const displaySignatures = domainSignatures;
 
   return (
     <div className="space-y-6">

@@ -171,8 +171,8 @@ export async function fetchRealEnergyData(ba: string = 'CAL') {
       
       totalDemand: demand.normalizedDemand,
       totalSupply: Math.min(1, supplyDemandBalance),
-      frequency: 0.98 + Math.random() * 0.04, // 59.8-60.2 Hz normalized (EIA doesn't provide freq)
-      voltage: 0.95 + Math.random() * 0.1, // Approximation
+      frequency: 1.0, // Normalized 60Hz baseline (EIA does not provide real-time frequency)
+      voltage: 1.0, // Normalized baseline (EIA does not provide real-time voltage)
       
       // Generation mix from real EIA data
       fossilFuelGen: generation.mix.fossilFuelGen,

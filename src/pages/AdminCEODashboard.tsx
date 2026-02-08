@@ -51,6 +51,7 @@ import { UniversalAdapterMonitor } from '@/components/admin/UniversalAdapterMoni
 import { UnifiedSystemDashboard } from '@/components/admin/UnifiedSystemDashboard';
 import { CrossDomainCorrelationPanel } from '@/components/admin/CrossDomainCorrelationPanel';
 import { PhotonChipVisualization } from '@/components/admin/PhotonChipVisualization';
+import PhotonicChipDesign from '@/components/chip/PhotonicChipDesign';
 import { synapticTruthNetwork } from '@/lib/pensent-core/domains/universal/modules/synapticTruthNetwork';
 import { Progress } from '@/components/ui/progress';
 
@@ -556,8 +557,11 @@ const AdminCEODashboard: React.FC = () => {
               {/* Synaptic Truth Network State */}
               <SynapticNetworkPanel />
 
-              {/* Photonic Chip Visualization */}
+              {/* Photonic Chip Visualization - Animated Waveguide Matrix */}
               <PhotonChipVisualization liveData={true} />
+
+              {/* Physical Chip Design - Interactive SVG with Zoom Detail */}
+              <PhotonicChipDesign />
             </div>
           </TabsContent>
         </Tabs>

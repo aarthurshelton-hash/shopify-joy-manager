@@ -507,15 +507,15 @@ class SensoryMemoryHumorAdapter {
 
     return {
       physiologicalState,
-      sensoryTriggers: channels.map(channel => ({
+      sensoryTriggers: channels.map((channel, i) => ({
         channel,
-        intensity: Math.random() * volatility,
+        intensity: volatility * ((i + 1) / channels.length), // Deterministic spread across channels
         valence: momentum > 0 ? 'positive' : momentum < 0 ? 'negative' : 'mixed'
       })),
       nostalgiaLevel: Math.abs(sentiment) * 0.5,  // Strong feelings trigger nostalgia
-      humorDetected: Math.random() < 0.2,         // Occasional humor/absurdity detection
-      contextDepth: Math.floor(volume * 10),      // Volume = participation depth
-      authenticityScore: 1 - volatility * 0.5    // High volatility = more pretending
+      humorDetected: volatility > 0.8,             // Humor/absurdity detected only at extreme volatility
+      contextDepth: Math.floor(volume * 10),       // Volume = participation depth
+      authenticityScore: 1 - volatility * 0.5     // High volatility = more pretending
     };
   }
 }
