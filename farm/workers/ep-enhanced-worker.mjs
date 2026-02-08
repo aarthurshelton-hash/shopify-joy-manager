@@ -829,34 +829,7 @@ async function runBenchmarkCycle(epEngine) {
       const baselinePred = predictions.baseline.prediction;
       const enhancedPred = predictions.enhanced?.prediction || baselinePred;
       
-      // Visualize enhanced signature if available
-      if (predictions.enhanced) {
-        try {
-          console.log('\n' + COLORS.bright + '━'.repeat(60) + COLORS.reset);
-          console.log(COLORS.bright + '  8-QUADRANT ENHANCED SIGNATURE' + COLORS.reset);
-          console.log(COLORS.bright + '━'.repeat(60) + COLORS.reset);
-          
-          console.log(drawArchetypeBadge(predictions.enhanced.archetype || 'balanced_flow', 'chess'));
-          
-          // 8-quadrant radar
-          const ep = predictions.enhanced.signature?.quadrantProfile || {};
-          console.log(drawQuadrantRadar({
-            q1: ((ep.q1_kingside_white || 0) + 100) / 200,
-            q2: ((ep.q2_queenside_white || 0) + 100) / 200,
-            q3: ((ep.q3_kingside_black || 0) + 100) / 200,
-            q4: ((ep.q4_queenside_black || 0) + 100) / 200,
-            q5: ((ep.q5_center_white || 0) + 100) / 200,
-            q6: ((ep.q6_center_black || 0) + 100) / 200,
-            q7: ((ep.q7_extended_kingside || 0) + 100) / 200,
-            q8: ((ep.q8_extended_queenside || 0) + 100) / 200,
-          }, 16));
-          
-          console.log(drawFingerprint(predictions.enhanced.fingerprint || '', predictions.enhanced.colorRichness || 0.5));
-          console.log(COLORS.bright + '━'.repeat(60) + COLORS.reset + '\n');
-        } catch (_) {
-          // Viz is cosmetic — silent fail
-        }
-      }
+      // Enhanced signature data captured in predictions object — viz removed to keep logs clean
       
       // Determine actual outcome - parse from PGN header
       let actualOutcome;
