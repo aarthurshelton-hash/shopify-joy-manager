@@ -33,6 +33,7 @@ import { PieceType } from '@/lib/chess/pieceColors';
 import { usePrintOrderStore } from '@/stores/printOrderStore';
 import { useVisualizationStateStore } from '@/stores/visualizationStateStore';
 import { useSessionStore } from '@/stores/sessionStore';
+import { ShowPiecesToggle } from './ShowPiecesToggle';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 import QRCode from 'qrcode';
 import { recordVisionInteraction } from '@/lib/visualizations/visionScoring';
@@ -81,9 +82,13 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
     captureState, 
     darkMode: storeDarkMode, 
     setDarkMode: setStoreDarkMode,
-    showPieces,
-    pieceOpacity,
+    showPieces: storeShowPieces,
+    pieceOpacity: storePieceOpacity,
+    setShowPieces: setStoreShowPieces,
+    setPieceOpacity: setStorePieceOpacity,
   } = useVisualizationStateStore();
+  const [showPieces, setShowPiecesLocal] = useState(storeShowPieces);
+  const [pieceOpacity, setPieceOpacityLocal] = useState(storePieceOpacity);
   const { setCapturedTimelineState, setReturningFromOrder } = useSessionStore();
   const exportRef = useRef<HTMLDivElement>(null);
   const [darkMode, setDarkModeLocal] = useState(storeDarkMode);
@@ -105,12 +110,24 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
     setStoreDarkMode(value);
   }, [setStoreDarkMode]);
 
-  // Sync local darkMode from store on modal open
+  // Sync local state from store on modal open
   useEffect(() => {
     if (isOpen) {
       setDarkModeLocal(storeDarkMode);
+      setShowPiecesLocal(storeShowPieces);
+      setPieceOpacityLocal(storePieceOpacity);
     }
-  }, [isOpen, storeDarkMode]);
+  }, [isOpen, storeDarkMode, storeShowPieces, storePieceOpacity]);
+
+  const setShowPieces = useCallback((value: boolean) => {
+    setShowPiecesLocal(value);
+    setStoreShowPieces(value);
+  }, [setStoreShowPieces]);
+
+  const setPieceOpacity = useCallback((value: number) => {
+    setPieceOpacityLocal(value);
+    setStorePieceOpacity(value);
+  }, [setStorePieceOpacity]);
 
   // Generate QR code on mount
   useEffect(() => {
@@ -288,26 +305,36 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
           </DialogDescription>
         </DialogHeader>
 
-        {/* Mode Toggle */}
-        <div className="flex justify-center gap-2 py-2">
-          <Button
-            variant={darkMode ? "outline" : "default"}
-            size="sm"
-            onClick={() => setDarkMode(false)}
-            className="gap-2 text-xs"
-          >
-            <Sun className="h-3 w-3" />
-            Light
-          </Button>
-          <Button
-            variant={darkMode ? "default" : "outline"}
-            size="sm"
-            onClick={() => setDarkMode(true)}
-            className="gap-2 text-xs"
-          >
-            <Moon className="h-3 w-3" />
-            Dark
-          </Button>
+        {/* Controls Row - Mode Toggle + Show Pieces */}
+        <div className="flex items-center justify-center gap-4 py-2">
+          <div className="flex gap-2">
+            <Button
+              variant={darkMode ? "outline" : "default"}
+              size="sm"
+              onClick={() => setDarkMode(false)}
+              className="gap-2 text-xs"
+            >
+              <Sun className="h-3 w-3" />
+              Light
+            </Button>
+            <Button
+              variant={darkMode ? "default" : "outline"}
+              size="sm"
+              onClick={() => setDarkMode(true)}
+              className="gap-2 text-xs"
+            >
+              <Moon className="h-3 w-3" />
+              Dark
+            </Button>
+          </div>
+          <div className="h-4 w-px bg-border" />
+          <ShowPiecesToggle
+            showPieces={showPieces}
+            pieceOpacity={pieceOpacity}
+            onToggle={setShowPieces}
+            onOpacityChange={setPieceOpacity}
+            compact
+          />
         </div>
 
         {/* Visualization Preview - The Trademark Look - matches PrintPreview exactly */}

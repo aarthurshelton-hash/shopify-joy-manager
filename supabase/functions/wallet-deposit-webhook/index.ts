@@ -54,8 +54,8 @@ serve(async (req) => {
         { auth: { persistSession: false } }
       );
 
-      // Get or create wallet
-      const { data: wallet, error: walletError } = await supabaseAdmin
+      // Ensure wallet exists
+      const { error: walletError } = await supabaseAdmin
         .rpc('get_or_create_wallet', { p_user_id: userId });
 
       if (walletError) {
@@ -63,18 +63,48 @@ serve(async (req) => {
         throw new Error(`Failed to get wallet: ${walletError.message}`);
       }
 
-      // Update wallet balance
-      const { error: updateError } = await supabaseAdmin
-        .from('user_wallets')
-        .update({
-          balance_cents: wallet.balance_cents + amountCents,
-          total_deposited_cents: wallet.total_deposited_cents + amountCents,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('user_id', userId);
+      // Optimistic-lock update: read current balance, then update with WHERE clause
+      // to prevent race conditions when multiple deposits arrive simultaneously
+      const MAX_RETRIES = 3;
+      let newBalance = 0;
 
-      if (updateError) {
-        throw new Error(`Failed to update wallet: ${updateError.message}`);
+      for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+        const { data: currentWallet } = await supabaseAdmin
+          .from('user_wallets')
+          .select('balance_cents, total_deposited_cents')
+          .eq('user_id', userId)
+          .single();
+
+        if (!currentWallet) throw new Error("Wallet not found after creation");
+
+        const expectedBalance = currentWallet.balance_cents;
+        newBalance = expectedBalance + amountCents;
+
+        const { data: updated, error: updateError } = await supabaseAdmin
+          .from('user_wallets')
+          .update({
+            balance_cents: newBalance,
+            total_deposited_cents: currentWallet.total_deposited_cents + amountCents,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('user_id', userId)
+          .eq('balance_cents', expectedBalance) // Optimistic lock — fails if balance changed
+          .select('balance_cents')
+          .single();
+
+        if (updateError && attempt < MAX_RETRIES - 1) {
+          logStep(`Optimistic lock conflict, retry ${attempt + 1}/${MAX_RETRIES}`);
+          continue;
+        }
+
+        if (updated) {
+          newBalance = updated.balance_cents;
+          break;
+        }
+
+        if (attempt === MAX_RETRIES - 1) {
+          throw new Error("Failed to update wallet after retries — possible concurrent modification");
+        }
       }
 
       // Record transaction
@@ -84,7 +114,7 @@ serve(async (req) => {
           user_id: userId,
           transaction_type: 'deposit',
           amount_cents: amountCents,
-          balance_after_cents: wallet.balance_cents + amountCents,
+          balance_after_cents: newBalance,
           description: `Deposit via Stripe (${session.payment_intent})`,
         });
 
@@ -92,7 +122,7 @@ serve(async (req) => {
         logStep("Transaction record error", { error: txError.message });
       }
 
-      logStep("Deposit completed successfully", { userId, amountCents, newBalance: wallet.balance_cents + amountCents });
+      logStep("Deposit completed successfully", { userId, amountCents, newBalance });
     }
 
     return new Response(JSON.stringify({ received: true }), {

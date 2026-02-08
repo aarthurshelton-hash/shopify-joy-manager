@@ -200,10 +200,14 @@ export async function createListing(
 
 export async function cancelListing(listingId: string): Promise<{ error: Error | null }> {
   try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
     const { error } = await supabase
       .from('visualization_listings')
       .update({ status: 'cancelled' })
-      .eq('id', listingId);
+      .eq('id', listingId)
+      .eq('seller_id', user.id); // Only the seller can cancel their own listing
 
     if (error) throw error;
     return { error: null };
@@ -241,26 +245,6 @@ export async function purchaseListing(listingId: string): Promise<{
 }> {
   try {
     const { data, error } = await supabase.functions.invoke('marketplace-purchase', {
-      body: { listingId },
-    });
-
-    if (error) throw error;
-    if (data.error) throw new Error(data.error);
-
-    return { ...data, error: null };
-  } catch (error) {
-    return { error: error as Error };
-  }
-}
-
-export async function completePurchase(listingId: string): Promise<{
-  success?: boolean;
-  message?: string;
-  visualizationId?: string;
-  error: Error | null;
-}> {
-  try {
-    const { data, error } = await supabase.functions.invoke('complete-marketplace-purchase', {
       body: { listingId },
     });
 

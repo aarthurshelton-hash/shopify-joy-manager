@@ -25,7 +25,7 @@ dotenv.config({ path: join(__dirname, '../../.env') });
 const WORKER_ID = process.argv[2] || '0';
 const WORKER_NAME = `options-scalping-${WORKER_ID}`;
 
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://aufycarwflhsdgszbnop.supabase.co';
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://ezvfslkjyjsqycztyfxh.supabase.co';
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 const BRIDGE_URL = process.env.IB_BRIDGE_URL || 'http://localhost:4000';
 

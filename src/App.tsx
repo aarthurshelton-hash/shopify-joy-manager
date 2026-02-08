@@ -39,6 +39,7 @@ const AdminSeedMarketplace = lazy(() => import("./pages/AdminSeedMarketplace"));
 const VisualizationRedirect = lazy(() => import("./pages/VisualizationRedirect"));
 const GalleryDetailRedirect = lazy(() => import("./pages/GalleryDetailRedirect"));
 const MarketplaceDetailRedirect = lazy(() => import("./pages/MarketplaceDetailRedirect"));
+const MarketplaceVisionDetail = lazy(() => import("./pages/MarketplaceVisionDetail"));
 const PaletteAdminPage = lazy(() => import("./components/admin/PaletteAdminPage"));
 const AdminModeration = lazy(() => import("./pages/AdminModeration"));
 const AdminEconomics = lazy(() => import("./pages/AdminEconomics"));
@@ -132,14 +133,15 @@ const App = () => (
               <Route path="/dmca/counter-notification" element={<Suspense fallback={<PageLoadingSkeleton />}><DMCACounterNotification /></Suspense>} />
               <Route path="/dmca/status" element={<Suspense fallback={<PageLoadingSkeleton />}><DMCAStatusTracking /></Suspense>} />
               
+              {/* ===== MARKETPLACE & COMMERCE - Public Access ===== */}
+              <Route path="/marketplace" element={<Suspense fallback={<PageLoadingSkeleton />}><Marketplace /></Suspense>} />
+              <Route path="/marketplace/:id" element={<Suspense fallback={<PageLoadingSkeleton />}><MarketplaceDetailRedirect /></Suspense>} />
+              <Route path="/marketplace/vision/:id" element={<Suspense fallback={<PageLoadingSkeleton />}><MarketplaceVisionDetail /></Suspense>} />
+              <Route path="/order-print" element={<Suspense fallback={<PageLoadingSkeleton />}><OrderPrint /></Suspense>} />
+              <Route path="/book" element={<Suspense fallback={<PageLoadingSkeleton />}><BookGenerator /></Suspense>} />
+
               {/* ===== CEO ONLY - All Business & Proprietary Features ===== */}
               {/* Alec Arthur Shelton (a.arthur.shelton@gmail.com) exclusive access */}
-              
-              {/* Marketplace & Commerce */}
-              <Route path="/marketplace" element={<AdminRoute featureName="Marketplace"><Suspense fallback={<PageLoadingSkeleton />}><Marketplace /></Suspense></AdminRoute>} />
-              <Route path="/marketplace/:id" element={<AdminRoute featureName="Marketplace"><Suspense fallback={<PageLoadingSkeleton />}><MarketplaceDetailRedirect /></Suspense></AdminRoute>} />
-              <Route path="/order-print" element={<AdminRoute featureName="Print Orders"><Suspense fallback={<PageLoadingSkeleton />}><OrderPrint /></Suspense></AdminRoute>} />
-              <Route path="/book" element={<AdminRoute featureName="Book Generator"><Suspense fallback={<PageLoadingSkeleton />}><BookGenerator /></Suspense></AdminRoute>} />
               
               {/* Analytics & Dashboards */}
               <Route path="/analytics" element={<AdminRoute featureName="Analytics"><Suspense fallback={<PageLoadingSkeleton />}><Analytics /></Suspense></AdminRoute>} />

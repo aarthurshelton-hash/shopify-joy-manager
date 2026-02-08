@@ -49,7 +49,7 @@ const CONFIG = {
 };
 
 // Connection
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://aufycarwflhsdgszbnop.supabase.co';
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://ezvfslkjyjsqycztyfxh.supabase.co';
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 const BRIDGE_URL = process.env.IB_BRIDGE_URL || 'http://localhost:4000';
 const GATEWAY_HOST = process.env.IB_GATEWAY_HOST || '127.0.0.1';

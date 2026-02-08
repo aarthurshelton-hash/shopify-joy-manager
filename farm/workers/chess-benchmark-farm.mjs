@@ -25,7 +25,7 @@ const WORKER_NAME = `chess-farm-${workerId}`;
 dotenv.config({ path: path.join(__dirname, '../../.env') });
 
 // Supabase client
-const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://aufycarwflhsdgszbnop.supabase.co';
+const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://ezvfslkjyjsqycztyfxh.supabase.co';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseKey) {

@@ -54,6 +54,82 @@
       "merge_logs": true,
       "max_memory_restart": "500M",
       "restart_delay": 10000
+    },
+    {
+      "name": "chess-benchmark-2",
+      "script": "./farm/workers/ep-enhanced-worker.mjs",
+      "instances": 1,
+      "exec_mode": "fork",
+      "autorestart": true,
+      "max_restarts": 10,
+      "min_uptime": "10s",
+      "env": {
+        "NODE_ENV": "production",
+        "USE_ENHANCED": "true",
+        "WORKER_ID": "ep-farm-2"
+      },
+      "log_file": "/tmp/pm2-chess-benchmark-2.log",
+      "error_file": "/tmp/pm2-chess-benchmark-2-error.log",
+      "out_file": "/tmp/pm2-chess-benchmark-2-out.log",
+      "merge_logs": true,
+      "max_memory_restart": "500M",
+      "restart_delay": 12000
+    },
+    {
+      "name": "chess-benchmark-3",
+      "script": "./farm/workers/ep-enhanced-worker.mjs",
+      "instances": 1,
+      "exec_mode": "fork",
+      "autorestart": true,
+      "max_restarts": 10,
+      "min_uptime": "10s",
+      "env": {
+        "NODE_ENV": "production",
+        "USE_ENHANCED": "true",
+        "WORKER_ID": "ep-farm-3"
+      },
+      "log_file": "/tmp/pm2-chess-benchmark-3.log",
+      "error_file": "/tmp/pm2-chess-benchmark-3-error.log",
+      "out_file": "/tmp/pm2-chess-benchmark-3-out.log",
+      "merge_logs": true,
+      "max_memory_restart": "500M",
+      "restart_delay": 14000
+    },
+    {
+      "name": "server-auto-evolution",
+      "script": "./farm/workers/server-auto-evolution.mjs",
+      "instances": 1,
+      "exec_mode": "fork",
+      "autorestart": true,
+      "max_restarts": 10,
+      "min_uptime": "10s",
+      "env": {
+        "NODE_ENV": "production"
+      },
+      "log_file": "/tmp/pm2-server-evolution.log",
+      "error_file": "/tmp/pm2-server-evolution-error.log",
+      "out_file": "/tmp/pm2-server-evolution-out.log",
+      "merge_logs": true,
+      "max_memory_restart": "300M",
+      "restart_delay": 5000
+    },
+    {
+      "name": "system-monitor",
+      "script": "./farm/monitor/system-monitor.mjs",
+      "instances": 1,
+      "exec_mode": "fork",
+      "autorestart": true,
+      "max_restarts": 5,
+      "min_uptime": "30s",
+      "env": {
+        "NODE_ENV": "production"
+      },
+      "log_file": "/tmp/pm2-system-monitor.log",
+      "error_file": "/tmp/pm2-system-monitor-error.log",
+      "out_file": "/tmp/pm2-system-monitor-out.log",
+      "merge_logs": true,
+      "max_memory_restart": "200M",
+      "restart_delay": 10000
     }
   ]
 }

@@ -193,9 +193,9 @@ export class DataIntegrityValidator {
       return;
     }
     
-    // Should be 16 hex characters
-    if (!/^[a-f0-9]{16}$/i.test(hash)) {
-      this.errors.push(`Invalid position hash format: ${hash}`);
+    // Accept both legacy 16-char and SHA-256 64-char hex hashes
+    if (!/^[a-f0-9]{16}$/i.test(hash) && !/^[a-f0-9]{64}$/i.test(hash)) {
+      this.errors.push(`Invalid position hash format: ${hash} (expected 16 or 64 hex chars)`);
     }
   }
 

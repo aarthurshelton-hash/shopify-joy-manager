@@ -23,6 +23,7 @@ interface PlayableChessBoardProps {
   moveHistory?: MoveHistoryEntry[];
   // Show pieces overlay (like PrintReady)
   showPieces?: boolean;
+  pieceOpacity?: number;
 }
 
 const PIECE_SYMBOLS: Record<string, string> = {
@@ -70,6 +71,7 @@ export const PlayableChessBoard = ({
   enPensentOpacity = 1, // Default to full opacity (solid, not translucent)
   moveHistory = [],
   showPieces = true, // Default to showing pieces
+  pieceOpacity = 1,
 }: PlayableChessBoardProps) => {
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
   const [availableMoves, setAvailableMoves] = useState<Square[]>([]);
@@ -288,7 +290,7 @@ export const PlayableChessBoard = ({
           <motion.div
             layout
             initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
+            animate={{ scale: 1, opacity: pieceOpacity }}
             className="absolute inset-0 flex items-center justify-center z-10"
             style={{
               color: getPieceDisplayColor(piece),

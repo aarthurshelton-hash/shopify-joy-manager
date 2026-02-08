@@ -358,6 +358,8 @@ const VisualizationDetail: React.FC = () => {
           })),
           compareMode: exportState.compareMode,
           darkMode: exportState.darkMode,
+          showPieces: exportState.showPieces,
+          pieceOpacity: exportState.pieceOpacity,
         });
       }
       
@@ -375,6 +377,7 @@ const VisualizationDetail: React.FC = () => {
         visualizationId: visualization.id,
         title: visualization.title,
         imagePath: visualization.image_path,
+        pgn: visualization.pgn || vizData.gameData.pgn || '',
         gameData: {
           white: vizData.gameData.white,
           black: vizData.gameData.black,
@@ -398,6 +401,8 @@ const VisualizationDetail: React.FC = () => {
           darkMode: exportState.darkMode,
           showTerritory: false,
           showHeatmaps: false,
+          showPieces: exportState.showPieces,
+          pieceOpacity: exportState.pieceOpacity,
           capturedAt: new Date(),
         } : undefined,
       };

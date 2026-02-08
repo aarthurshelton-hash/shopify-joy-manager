@@ -20,59 +20,6 @@ const DEFAULT_OPTIONS: TransactionOptions = {
 };
 
 /**
- * Execute operations within a database transaction
- * Automatically handles rollback on failure
- */
-export async function withTransaction<T>(
-  operations: (client: typeof supabase) => Promise<T>,
-  options: TransactionOptions = {}
-): Promise<{ success: boolean; result?: T; error?: string }> {
-  const opts = { ...DEFAULT_OPTIONS, ...options };
-  
-  for (let attempt = 1; attempt <= opts.maxRetries!; attempt++) {
-    try {
-      // Start transaction
-      const { error: beginError } = await supabase.rpc('begin_transaction');
-      if (beginError) throw beginError;
-      
-      try {
-        // Execute operations
-        const result = await operations(supabase);
-        
-        // Commit transaction
-        const { error: commitError } = await supabase.rpc('commit_transaction');
-        if (commitError) throw commitError;
-        
-        return { success: true, result };
-      } catch (error) {
-        // Rollback on error
-        await supabase.rpc('rollback_transaction').catch(() => {});
-        throw error;
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      
-      // Check if retryable
-      const isRetryable = 
-        message.includes('deadlock') ||
-        message.includes('lock timeout') ||
-        message.includes('connection') ||
-        message.includes('network');
-      
-      if (isRetryable && attempt < opts.maxRetries!) {
-        console.log(`[Transaction] Retry ${attempt}/${opts.maxRetries} after error: ${message}`);
-        await delay(opts.retryDelayMs! * attempt);
-        continue;
-      }
-      
-      return { success: false, error: message };
-    }
-  }
-  
-  return { success: false, error: 'Max retries exceeded' };
-}
-
-/**
  * Safe update with optimistic locking
  * Prevents lost updates in concurrent scenarios
  */

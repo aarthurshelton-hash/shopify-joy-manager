@@ -73,7 +73,7 @@ async function applyMigration() {
   if (errorCount > 0) {
     console.log('⚠️  Some statements require superuser access.');
     console.log('   Apply remaining changes via Supabase Dashboard SQL Editor:');
-    console.log('   https://supabase.com/dashboard/project/aufycarwflhsdgszbnop/sql');
+    console.log('   https://supabase.com/dashboard/project/ezvfslkjyjsqycztyfxh/sql');
   } else {
     console.log('✅ All migration statements applied successfully!');
   }

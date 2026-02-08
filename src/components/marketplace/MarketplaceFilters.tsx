@@ -19,7 +19,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { useRandomGameArt } from '@/hooks/useRandomGameArt';
 
-export type SortOption = 'newest' | 'oldest' | 'price-low' | 'price-high' | 'score' | 'name';
+export type SortOption = 'newest' | 'oldest' | 'price-low' | 'price-high' | 'name';
 export type CategoryFilter = 'all' | 'premium' | 'genesis' | 'free' | 'paid';
 
 interface MarketplaceFiltersProps {
@@ -54,7 +54,6 @@ export const MarketplaceFilters: React.FC<MarketplaceFiltersProps> = ({
     { value: 'oldest', label: 'Oldest First', icon: <Calendar className="h-3.5 w-3.5" /> },
     { value: 'price-low', label: 'Price: Low to High', icon: <SortAsc className="h-3.5 w-3.5" /> },
     { value: 'price-high', label: 'Price: High to Low', icon: <SortAsc className="h-3.5 w-3.5 rotate-180" /> },
-    { value: 'score', label: 'Vision Score', icon: <TrendingUp className="h-3.5 w-3.5" /> },
     { value: 'name', label: 'Name (A-Z)', icon: <Tag className="h-3.5 w-3.5" /> },
   ];
 

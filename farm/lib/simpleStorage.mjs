@@ -53,6 +53,7 @@ export async function savePredictionLocal(attempt, workerId) {
       colorRichness: attempt.colorRichness,
       complexity: attempt.complexity,
       abTest: attempt.abTest || false,
+      dataSource: attempt.dataSource || 'unknown',
       eightQuadrantProfile: attempt.eightQuadrantProfile || null,
       pieceTypeMetrics: attempt.pieceTypeMetrics || null,
       timestamp: new Date().toISOString()

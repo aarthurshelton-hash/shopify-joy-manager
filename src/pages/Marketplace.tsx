@@ -29,7 +29,6 @@ import { useMarketplaceRealtime } from '@/hooks/useMarketplaceRealtime';
 import { useMarketplaceCache } from '@/hooks/useMarketplaceCache';
 import { 
   getActiveListings, 
-  completePurchase,
   MarketplaceListing 
 } from '@/lib/marketplace/marketplaceApi';
 import { trackMarketplaceClick } from '@/lib/analytics/marketplaceAnalytics';
@@ -322,15 +321,21 @@ const Marketplace: React.FC = () => {
     loadInitialListings();
   }, [cache, loadInitialListings]);
 
-  // Handle successful purchase redirect
+  // Handle successful wallet purchase redirect
   useEffect(() => {
     const success = searchParams.get('success');
-    const listingId = searchParams.get('listing');
-
-    if (success === 'true' && listingId) {
-      handlePurchaseComplete(listingId);
+    if (success === 'true') {
+      toast.success('Purchase complete!', {
+        description: 'Vision added to your gallery.',
+      });
+      refreshListings();
+      navigate('/marketplace', { replace: true });
     }
-  }, [searchParams]);
+    const cancelled = searchParams.get('cancelled');
+    if (cancelled === 'true') {
+      navigate('/marketplace', { replace: true });
+    }
+  }, [searchParams, refreshListings, navigate]);
 
   // Filter and sort listings
   const filteredListings = useMemo(() => {
@@ -342,7 +347,7 @@ const Marketplace: React.FC = () => {
       result = result.filter((listing) => {
         const title = listing.visualization?.title?.toLowerCase() || '';
         const seller = listing.seller?.display_name?.toLowerCase() || '';
-        const gameData = listing.visualization?.game_data as any;
+        const gameData = listing.visualization?.game_data as Record<string, string | undefined>;
         const white = gameData?.white?.toLowerCase() || '';
         const black = gameData?.black?.toLowerCase() || '';
         
@@ -394,9 +399,6 @@ const Marketplace: React.FC = () => {
           return b.price_cents - a.price_cents;
         case 'name':
           return (a.visualization?.title || '').localeCompare(b.visualization?.title || '');
-        case 'score':
-          // Would need vision scores loaded - for now sort by price as proxy
-          return b.price_cents - a.price_cents;
         default:
           return 0;
       }
@@ -404,25 +406,6 @@ const Marketplace: React.FC = () => {
 
     return result;
   }, [listings, searchQuery, sortBy, category, showGenesisOnly]);
-
-  const handlePurchaseComplete = async (listingId: string) => {
-    const { success, message, visualizationId, error } = await completePurchase(listingId);
-
-    if (error) {
-      toast.error('Transfer failed', { description: error.message });
-    } else if (success) {
-      toast.success('Congratulations!', { 
-        description: message || 'Visualization added to your gallery!',
-        action: visualizationId ? {
-          label: 'View',
-          onClick: () => navigate(`/my-vision/${visualizationId}`),
-        } : undefined,
-      });
-      refreshListings();
-      // Clear URL params
-      navigate('/marketplace', { replace: true });
-    }
-  };
 
   const formatPrice = (cents: number) => {
     if (cents === 0) return 'Free';
@@ -452,7 +435,7 @@ const Marketplace: React.FC = () => {
             <div className="flex items-center gap-2 self-start sm:self-center sm:ml-4">
               <Badge variant="outline" className="gap-1.5 bg-card/50 backdrop-blur-sm">
                 <Shield className="h-3.5 w-3.5" />
-                0% Commission
+                5% Fee · 95% to Seller
               </Badge>
               <Button
                 onClick={refreshListings}

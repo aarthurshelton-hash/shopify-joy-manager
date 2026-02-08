@@ -103,7 +103,7 @@ const MarketplaceTransparency = React.forwardRef<HTMLDivElement, Record<string, 
             </Badge>
             <Badge variant="outline" className="gap-1">
               <CheckCircle2 className="h-3 w-3 text-green-500" />
-              20% Value Appreciation
+              17% Value Appreciation
             </Badge>
           </div>
         </CardContent>
@@ -371,13 +371,13 @@ const MarketplaceTransparency = React.forwardRef<HTMLDivElement, Record<string, 
               
               <div className="flex justify-between items-center p-2 bg-muted/50 rounded-lg">
                 <span className="text-sm">Print Value Split</span>
-                <span className="text-sm text-muted-foreground">20% to holdings / 80% operations</span>
+                <span className="text-sm text-muted-foreground">17% to holdings / 83% operations</span>
               </div>
             </div>
 
             <p className="text-xs text-muted-foreground">
               Our revenue comes from a small 5% marketplace fee and premium memberships. Print orders 
-              add value to your holdings (20%), which you realize when selling on the marketplace.
+              add value to your holdings (17% of profit), which you realize when selling on the marketplace.
             </p>
           </AccordionContent>
         </AccordionItem>

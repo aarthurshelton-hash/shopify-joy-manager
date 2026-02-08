@@ -100,6 +100,7 @@ const Play = () => {
   // En Pensent mode state
   const [enPensentEnabled, setEnPensentEnabled] = useState(true);
   const [showPieces, setShowPieces] = useState(true);
+  const [pieceOpacity, setPieceOpacity] = useState(1);
   
   // Multiplayer move history for En Pensent
   const [multiplayerMoveHistory, setMultiplayerMoveHistory] = useState<MoveHistoryEntry[]>([]);
@@ -1150,7 +1151,9 @@ const Play = () => {
                       onToggle={() => setEnPensentEnabled(!enPensentEnabled)}
                       totalMoves={multiplayerMoveHistory.length}
                       showPieces={showPieces}
-                      onShowPiecesToggle={() => setShowPieces(!showPieces)}
+                      pieceOpacity={pieceOpacity}
+                      onShowPiecesToggle={setShowPieces}
+                      onPieceOpacityChange={setPieceOpacity}
                     />
                     
                     {gameState.status === 'active' && (
@@ -1184,6 +1187,7 @@ const Play = () => {
                       enPensentEnabled={enPensentEnabled}
                       moveHistory={multiplayerMoveHistory}
                       showPieces={showPieces}
+                      pieceOpacity={pieceOpacity}
                     />
                     
                     {/* Live Color Legend - The Legendary System */}
@@ -1293,7 +1297,9 @@ const Play = () => {
                       onToggle={() => setEnPensentEnabled(!enPensentEnabled)}
                       totalMoves={botMoveHistory.length}
                       showPieces={showPieces}
-                      onShowPiecesToggle={() => setShowPieces(!showPieces)}
+                      pieceOpacity={pieceOpacity}
+                      onShowPiecesToggle={setShowPieces}
+                      onPieceOpacityChange={setPieceOpacity}
                     />
                     
                     {!botGameResult && (
@@ -1321,6 +1327,7 @@ const Play = () => {
                       enPensentEnabled={enPensentEnabled}
                       moveHistory={botMoveHistory}
                       showPieces={showPieces}
+                      pieceOpacity={pieceOpacity}
                     />
                     
                     {/* Live Color Legend - The Legendary System */}

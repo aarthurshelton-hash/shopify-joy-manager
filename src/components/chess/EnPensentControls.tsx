@@ -8,6 +8,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { ShowPiecesToggle } from './ShowPiecesToggle';
 import { useEnPensentPatterns } from '@/hooks/useEnPensentPatterns';
 import { TemporalSignature } from '@/lib/pensent-core/types/core';
 
@@ -16,7 +17,9 @@ interface EnPensentControlsProps {
   onToggle: () => void;
   totalMoves: number;
   showPieces?: boolean;
-  onShowPiecesToggle?: () => void;
+  pieceOpacity?: number;
+  onShowPiecesToggle?: (show: boolean) => void;
+  onPieceOpacityChange?: (opacity: number) => void;
   signature?: TemporalSignature | null;
 }
 
@@ -25,7 +28,9 @@ export const EnPensentControls: React.FC<EnPensentControlsProps> = ({
   onToggle,
   totalMoves,
   showPieces = true,
+  pieceOpacity = 1,
   onShowPiecesToggle,
+  onPieceOpacityChange,
   signature,
 }) => {
   const pattern = useEnPensentPatterns(signature);
@@ -111,34 +116,13 @@ export const EnPensentControls: React.FC<EnPensentControlsProps> = ({
       </TooltipProvider>
 
       {onShowPiecesToggle && (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant={showPieces ? "default" : "outline"}
-                size="sm"
-                onClick={onShowPiecesToggle}
-                className={`
-                  gap-1.5 h-9 sm:h-10 px-3 sm:px-4 rounded-full touch-manipulation font-display text-xs uppercase tracking-wider
-                  ${showPieces 
-                    ? 'bg-foreground text-background hover:bg-foreground/90' 
-                    : 'border-border/50'
-                  }
-                `}
-              >
-                {showPieces ? (
-                  <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                ) : (
-                  <EyeOff className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                )}
-                <span className="hidden sm:inline">Pieces</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">
-              <p>{showPieces ? 'Hide' : 'Show'} Chess Pieces</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <ShowPiecesToggle
+          showPieces={showPieces}
+          pieceOpacity={pieceOpacity}
+          onToggle={onShowPiecesToggle}
+          onOpacityChange={onPieceOpacityChange || (() => {})}
+          compact
+        />
       )}
     </div>
   );
