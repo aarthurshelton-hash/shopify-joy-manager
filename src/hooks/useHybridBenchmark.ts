@@ -81,7 +81,7 @@ interface LichessGameData {
   // CRITICAL: Game ID for cross-run deduplication (prefixed: li_XXX or cc_XXX)
   lichessId?: string;               // The game ID with source prefix
   // v6.53: Explicit source tracking
-  source?: 'lichess' | 'chesscom';  // Which platform this game came from
+  source?: 'lichess' | 'chesscom' | 'terminal';  // Which platform this game came from
   // v6.10-WINNER: Result determination fields
   winner?: 'white' | 'black';       // 'white' | 'black' | undefined (draw)
   status?: string;                  // 'mate' | 'resign' | 'stalemate' | 'timeout' | 'draw' | etc.
@@ -612,7 +612,7 @@ export function useHybridBenchmark() {
           targetCount: targetPerBatch,
           batchNumber,
           excludeIds: fetchExcludeIds,
-          sources: ['lichess', 'chesscom', 'terminal'],  // ALL THREE sources
+          sources: ['lichess', 'chesscom', 'terminal'],
         });
         
         console.log(`[v6.78] Fetched: ${result.games.length} (Lichess: ${result.lichessCount}, Chess.com: ${result.chesscomCount}, Terminal: ${result.terminalCount})`);

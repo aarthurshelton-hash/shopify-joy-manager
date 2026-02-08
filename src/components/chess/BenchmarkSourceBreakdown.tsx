@@ -45,8 +45,8 @@ export function BenchmarkSourceBreakdown() {
       
       setTotalPredictions(total || 0);
 
-      // Fetch stats by source using a raw query approach
-      const sources = ['web_client', 'farm_terminal', 'lichess_cloud', 'lichess_live', 'chesscom_live', 'puzzle', 'puzzle_cc'];
+      // Fetch stats by source — query actual DB values
+      const sources = ['lichess', 'chess.com', 'chesscom', 'sql_worker', 'lichess_live', 'chesscom_live', 'farm_terminal', 'chesscom_puzzle', 'web_client'];
       const sourceStats: SourceStats[] = [];
 
       for (const source of sources) {
@@ -103,16 +103,18 @@ export function BenchmarkSourceBreakdown() {
   const getSourceIcon = (source: string) => {
     switch (source) {
       case 'farm_terminal':
+      case 'sql_worker':
         return <Server className="h-5 w-5 text-blue-500" />;
       case 'web_client':
         return <Monitor className="h-5 w-5 text-green-500" />;
-      case 'lichess_cloud':
+      case 'lichess':
       case 'lichess_live':
         return <Cloud className="h-5 w-5 text-purple-500" />;
+      case 'chess.com':
+      case 'chesscom':
       case 'chesscom_live':
         return <Cloud className="h-5 w-5 text-orange-500" />;
-      case 'puzzle':
-      case 'puzzle_cc':
+      case 'chesscom_puzzle':
         return <Puzzle className="h-5 w-5 text-yellow-500" />;
       default:
         return <Target className="h-5 w-5 text-gray-500" />;
@@ -123,17 +125,21 @@ export function BenchmarkSourceBreakdown() {
     switch (source) {
       case 'farm_terminal':
         return 'Compute Farm';
+      case 'sql_worker':
+        return 'SQL Worker';
       case 'web_client':
         return 'Web Dashboard';
-      case 'lichess_cloud':
-        return 'Lichess Cloud';
+      case 'lichess':
+        return 'Lichess';
       case 'lichess_live':
         return 'Lichess Live';
+      case 'chess.com':
+        return 'Chess.com';
+      case 'chesscom':
+        return 'Chess.com (alt)';
       case 'chesscom_live':
         return 'Chess.com Live';
-      case 'puzzle':
-        return 'Lichess Puzzles';
-      case 'puzzle_cc':
+      case 'chesscom_puzzle':
         return 'Chess.com Puzzles';
       default:
         return source;
@@ -143,16 +149,18 @@ export function BenchmarkSourceBreakdown() {
   const getSourceColor = (source: string) => {
     switch (source) {
       case 'farm_terminal':
+      case 'sql_worker':
         return 'bg-blue-500';
       case 'web_client':
         return 'bg-green-500';
-      case 'lichess_cloud':
+      case 'lichess':
       case 'lichess_live':
         return 'bg-purple-500';
+      case 'chess.com':
+      case 'chesscom':
       case 'chesscom_live':
         return 'bg-orange-500';
-      case 'puzzle':
-      case 'puzzle_cc':
+      case 'chesscom_puzzle':
         return 'bg-yellow-500';
       default:
         return 'bg-gray-500';

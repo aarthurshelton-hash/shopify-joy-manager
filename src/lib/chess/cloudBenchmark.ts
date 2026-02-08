@@ -32,14 +32,15 @@
  * SEE ALSO: dualPoolPipeline.ts for automated high-volume processing
  */
 
-const CLOUD_BENCHMARK_VERSION = "6.92-DUAL-POOL";
-console.log(`[v6.92] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
+const CLOUD_BENCHMARK_VERSION = "9.0-MULTI-SOURCE";
+console.log(`[v9.0] cloudBenchmark.ts LOADED - Version: ${CLOUD_BENCHMARK_VERSION}`);
 
 import { Chess } from 'chess.js';
 import { getStockfishEngine } from './stockfishEngine';
 import { generateHybridPrediction } from './hybridPrediction';
 import { extractColorFlowSignature } from './colorFlowAnalysis';
 import { fetchLichessGames, lichessGameToPgn, type LichessGame } from './gameImport/lichessApi';
+import { fetchMultiSourceGames, type UnifiedGameData } from './gameImport/multiSourceFetcher';
 import { ProvenanceTracker } from './dataAuthenticity';
 import { 
   getAlreadyAnalyzedData, 
@@ -277,150 +278,131 @@ function normalCdf(z: number): number {
 }
 
 /**
- * v6.3-INFINITE: Fetch from Lichess's near-infinite game pool
+ * v9.1-MULTI-SOURCE: Fetch from Lichess + Chess.com (NOT Terminal)
  * 
- * PHILOSOPHY: With millions of GM games since 2010, we should NEVER hit duplicates.
- * Deduplication is a safety net, NOT a primary mechanism.
+ * REPLACES: v6.3 Lichess-only fetcher
  * 
- * STRATEGY:
- * 1. Use FULL Lichess history (2010-present = 14+ years)
- * 2. Completely random time windows across that span
- * 3. Large player pool (20+)
- * 4. If duplicates found, IMMEDIATELY try different time window
- * 5. Never fall back to famous games - keep trying fresh windows
+ * Now uses fetchMultiSourceGames() which pulls from:
+ * 1. Lichess (via Edge Function proxy) - dynamic leaderboard + fallback pool
+ * 2. Chess.com (public API) - top player games
+ * 
+ * NOTE: Terminal/farm games are EXCLUDED because the farm already runs predictions
+ * on those games and stores results in chess_prediction_attempts. Including them
+ * here would cause double-prediction on the same games.
+ * 
+ * Converts UnifiedGameData → BenchmarkGame for compatibility with runCloudBenchmark.
  */
 export async function fetchRealGames(
   count: number = 50,
   onProgress?: (status: string) => void,
   existingGameIds?: Set<string>
 ): Promise<BenchmarkGame[]> {
-  const games: BenchmarkGame[] = [];
   const targetGames = count;
   const dbSize = existingGameIds?.size || 0;
   
-  console.log(`[v6.3 INFINITE] Target: ${targetGames} fresh games, DB has ${dbSize} analyzed`);
+  console.log(`[v9.1 MULTI-SOURCE] Target: ${targetGames} fresh games, DB has ${dbSize} analyzed`);
+  onProgress?.(`Fetching from Lichess + Chess.com... (target: ${targetGames})`);
   
-  // OPTIMIZED POOL: Focus on 2018-present where GM data density is highest
-  // Earlier years (2010-2017) have sparse data and cause empty fetches
-  const now = Date.now();
-  const dataRichEpoch = new Date('2018-01-01').getTime(); // GM activity peak starts ~2018
-  const totalHistoryMs = now - dataRichEpoch;
+  const games: BenchmarkGame[] = [];
+  let batchNumber = 0;
+  const maxBatches = 5;
   
-  // Try multiple completely random time windows until we have enough games
-  let attempts = 0;
-  const maxAttempts = 10; // Each attempt uses a totally different time slice
-  
-  while (games.length < targetGames && attempts < maxAttempts) {
-    attempts++;
+  while (games.length < targetGames && batchNumber < maxBatches) {
+    batchNumber++;
+    const remaining = targetGames - games.length;
+    const fetchTarget = Math.max(remaining * 2, 20); // 2x buffer
     
-    // COMPLETELY RANDOM time window across data-rich years (2018+)
-    const randomStart = dataRichEpoch + Math.floor(Math.random() * (totalHistoryMs - 90 * 24 * 60 * 60 * 1000));
-    const windowSize = 90 * 24 * 60 * 60 * 1000; // 90-day windows
-    const sinceTimestamp = randomStart;
-    const untilTimestamp = Math.min(now, randomStart + windowSize);
+    console.log(`[v9.0] Batch ${batchNumber}/${maxBatches}: Need ${remaining} more, fetching ${fetchTarget}`);
+    onProgress?.(`Batch ${batchNumber}: Fetching from all sources... (${games.length}/${targetGames} collected)`);
     
-    const windowDate = new Date(randomStart).toISOString().split('T')[0];
-    console.log(`[v6.3] Attempt ${attempts}: Sampling from ${windowDate} (${games.length}/${targetGames} found)`);
+    const result = await fetchMultiSourceGames({
+      targetCount: fetchTarget,
+      batchNumber,
+      excludeIds: existingGameIds || new Set(),
+      sources: ['lichess', 'chesscom', 'terminal'],
+    });
     
-    // Use ALL players, shuffled
-    const shuffledPlayers = shuffleArray([...TOP_PLAYERS]);
-    const playersThisAttempt = shuffledPlayers.slice(0, Math.min(5, shuffledPlayers.length));
+    console.log(`[v9.1] Batch ${batchNumber} result: ${result.games.length} games (Lichess: ${result.lichessCount}, Chess.com: ${result.chesscomCount})`);
     
-      for (const player of playersThisAttempt) {
-      if (games.length >= targetGames) break;
-      
-      // v6.13: Show pre-fetch status with clearer wording
-      onProgress?.(`Fetching ${player}... (${games.length}/${targetGames} collected)`);
-      
-      try {
-        const result = await fetchLichessGames(player, {
-          max: 20, // Fetch 20 per player per window
-          since: sinceTimestamp,
-          until: untilTimestamp,
-          rated: true,
-          opening: true,
-          moves: true,
-          pgnInJson: true,
-        });
-        
-        if (result.games.length === 0) {
-          console.log(`[v6.3] No games for ${player} in window ${windowDate}`);
-          continue;
-        }
-        
-        // Shuffle player's games
-        const playerGames = shuffleArray([...result.games]);
-        let duplicatesThisPlayer = 0;
-        let addedThisPlayer = 0;
-        
-        for (const lichessGame of playerGames) {
-          if (games.length >= targetGames) break;
-          
-          // v6.88-YIELD-MAXIMIZER: Accept games with at least 15 half-moves
-          // Previous filter of 10 was too aggressive
-          const moveCount = lichessGame.moves?.split(' ').length || 0;
-          if (!lichessGame.moves || moveCount < 15) continue;
-          
-          // SAFETY NET: Check for duplicates (should be rare with random windows)
-          const isInCurrentBatch = games.some(g => g.id === lichessGame.id);
-          const isInDatabase = existingGameIds?.has(lichessGame.id) ?? false;
-          
-          if (isInCurrentBatch || isInDatabase) {
-            duplicatesThisPlayer++;
-            continue; // Silently skip - don't log every duplicate
-          }
-          
-          const pgn = lichessGameToPgn(lichessGame);
-          const whiteName = lichessGame.players.white.user?.name || 'Anonymous';
-          const blackName = lichessGame.players.black.user?.name || 'Anonymous';
-          const whiteRating = lichessGame.players.white.rating || 0;
-          const blackRating = lichessGame.players.black.rating || 0;
-          
-          games.push({
-            id: lichessGame.id,
-            name: `${whiteName} (${whiteRating}) vs ${blackName} (${blackRating})`,
-            pgn,
-            result: lichessGame.winner === 'white' ? 'white_wins' : 
-                   lichessGame.winner === 'black' ? 'black_wins' : 'draw',
-            source: 'lichess',
-            rating: Math.max(whiteRating, blackRating),
-          });
-          addedThisPlayer++;
-        }
-        
-        // v6.13: Update progress AFTER collecting games from this player
-        if (addedThisPlayer > 0) {
-          onProgress?.(`✓ ${player}: +${addedThisPlayer} games (${games.length}/${targetGames} total)`);
-        }
-        
-        if (duplicatesThisPlayer > 0) {
-          console.log(`[v6.3] ${player}: ${duplicatesThisPlayer} duplicates skipped (rare - safety net working)`);
-        }
-        
-        // Respect rate limits
-        await new Promise(resolve => setTimeout(resolve, 300));
-        
-      } catch (error) {
-        console.warn(`[v6.3] Failed to fetch from ${player}:`, error);
-      }
+    if (result.errors.length > 0) {
+      console.warn(`[v9.0] Batch ${batchNumber} errors:`, result.errors.slice(0, 3));
     }
     
-    // If this window yielded nothing, try a completely different one
-    if (games.length === 0 && attempts < maxAttempts) {
-      console.log(`[v6.3] Window ${attempts} empty, trying different time slice...`);
+    // Convert UnifiedGameData → BenchmarkGame
+    let addedThisBatch = 0;
+    for (const unified of result.games) {
+      if (games.length >= targetGames) break;
+      
+      // Require moves/PGN with at least 15 half-moves
+      const moveText = unified.moves || unified.pgn || '';
+      const moveCount = moveText.split(' ').filter(m => /^[a-hKQRBNO]/.test(m) || /^\d+\./.test(m)).length;
+      if (!moveText || moveCount < 15) continue;
+      
+      // Strip prefix for raw game ID (dedup compatibility)
+      const rawId = unified.gameId.replace(/^(li_|cc_|term_)/, '');
+      
+      // Check for duplicates against current batch
+      const isInCurrentBatch = games.some(g => g.id === rawId || g.id === unified.gameId);
+      if (isInCurrentBatch) continue;
+      
+      // Check against existing DB IDs
+      const isInDatabase = existingGameIds?.has(rawId) || existingGameIds?.has(unified.gameId);
+      if (isInDatabase) continue;
+      
+      const whiteName = unified.whiteName || 'Anonymous';
+      const blackName = unified.blackName || 'Anonymous';
+      const whiteRating = unified.whiteElo || 0;
+      const blackRating = unified.blackElo || 0;
+      
+      // Determine result
+      let gameResult: 'white_wins' | 'black_wins' | 'draw';
+      if (unified.winner === 'white' || unified.result === '1-0') {
+        gameResult = 'white_wins';
+      } else if (unified.winner === 'black' || unified.result === '0-1') {
+        gameResult = 'black_wins';
+      } else {
+        gameResult = 'draw';
+      }
+      
+      // Map source - terminal games are originally from lichess/chesscom
+      const source: 'lichess' | 'chesscom' = unified.source === 'chesscom' ? 'chesscom' : 'lichess';
+      
+      games.push({
+        id: unified.gameId, // Keep prefixed ID for source tracking
+        name: `${whiteName} (${whiteRating}) vs ${blackName} (${blackRating})`,
+        pgn: unified.pgn || moveText,
+        result: gameResult,
+        source,
+        rating: Math.max(whiteRating, blackRating),
+      });
+      addedThisBatch++;
+    }
+    
+    if (addedThisBatch > 0) {
+      onProgress?.(`✓ Batch ${batchNumber}: +${addedThisBatch} games (${games.length}/${targetGames} total)`);
+    }
+    
+    if (result.games.length === 0) {
+      console.warn(`[v9.0] Batch ${batchNumber} returned 0 games, stopping`);
+      break;
     }
   }
   
-  console.log(`[v6.3 COMPLETE] Found ${games.length} fresh games in ${attempts} attempts`);
+  console.log(`[v9.1 COMPLETE] Found ${games.length} fresh games in ${batchNumber} batches`);
   
-  // Only fall back to famous games if we truly got NOTHING (API down, etc.)
+  // Count sources for logging
+  const lichessCount = games.filter(g => g.source === 'lichess').length;
+  const chesscomCount = games.filter(g => g.source === 'chesscom').length;
+  console.log(`[v9.0] Source breakdown: Lichess: ${lichessCount}, Chess.com: ${chesscomCount}`);
+  
+  // Only fall back to famous games if we truly got NOTHING (all APIs down)
   if (games.length === 0) {
-    console.warn('[v6.3] API appears down - using famous games as last resort');
-    onProgress?.('API unavailable - using classic games...');
+    console.warn('[v9.0] All sources unavailable - using famous games as last resort');
+    onProgress?.('All APIs unavailable - using classic games...');
     return shuffleArray([...FAMOUS_GAMES]);
   }
   
-  onProgress?.(`Found ${games.length} fresh games from Lichess history`);
+  onProgress?.(`Found ${games.length} fresh games from Lichess + Chess.com`);
   return shuffleArray(games);
 }
 
@@ -547,7 +529,7 @@ export async function runCloudBenchmark(
       gameIds: loadedData.gameIds,
       fenStrings: loadedData.fenStrings,
     };
-    onProgress?.(`Loaded ${analyzedData.gameIds.size} real Lichess game IDs for deduplication.`, 2);
+    onProgress?.(`Loaded ${analyzedData.gameIds.size} real game IDs for deduplication.`, 2);
   }
   
   // Track how many unique new games we've analyzed
@@ -560,7 +542,7 @@ export async function runCloudBenchmark(
   let allGames: BenchmarkGame[] = [];
   let gameIndex = 0;
   
-  onProgress?.('Fetching FRESH real games from Lichess (randomized)...', 3);
+  onProgress?.('Fetching FRESH real games from Lichess + Chess.com + Terminal...', 3);
 
   // v7.27-COORDINATOR-AWARE: Check abort signal at start of each iteration
   while (analyzedCount < targetCount && totalFetchAttempts < maxFetchAttempts) {
@@ -586,7 +568,7 @@ export async function runCloudBenchmark(
         // v6.1: Pass existing game IDs for early deduplication at fetch time
         newGames = await fetchRealGames(targetFetch, (status) => {
           onProgress?.(status, 5);
-          provenance.recordApiCall('lichess');
+          provenance.recordApiCall('multi_source');
         }, analyzedData.gameIds);
         newGames = shuffleWithProvenance(newGames, provenance);
       } else {

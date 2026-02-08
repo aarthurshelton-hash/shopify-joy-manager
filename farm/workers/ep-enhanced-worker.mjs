@@ -27,6 +27,7 @@ import {
 } from '../lib/visualization/backendViz.mjs';
 import { FARM_CONFIG, THROUGHPUT } from '../config/optimizedFarmConfig.mjs';
 import { savePredictionLocal, getLocalStats } from '../lib/simpleStorage.mjs';
+import { createHash } from 'crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -46,7 +47,7 @@ const pool = new Pool({
 });
 
 // Initialize Supabase client for reading
-const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://aufycarwflhsdgszbnop.supabase.co';
+const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://ezvfslkjyjsqycztyfxh.supabase.co';
 const supabaseKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 let supabase = null;
@@ -106,7 +107,49 @@ const GAME_SOURCES = {
 };
 
 // Track which source we're using for rotation
-let currentSourceIndex = 0;
+// Stagger per worker so multiple workers don't all hit the same player
+const workerOffset = parseInt((process.env.WORKER_ID || '').replace(/\D/g, '') || '0', 10);
+let currentSourceIndex = workerOffset * 7; // Each worker starts at a different offset
+
+// In-memory deduplication: track all game IDs we've already analyzed
+const analyzedGameIds = new Set();
+
+/**
+ * Pre-load already-analyzed game IDs from local JSON + database
+ * Prevents re-analyzing the same games across restarts
+ */
+async function loadAnalyzedGameIds() {
+  // 1. Load from local JSON files
+  const dataDir = join(__dirname, '..', 'data');
+  try {
+    const files = fs.readdirSync(dataDir).filter(f => f.startsWith('predictions-') && f.endsWith('.json'));
+    for (const file of files) {
+      try {
+        const data = JSON.parse(fs.readFileSync(join(dataDir, file), 'utf8'));
+        for (const p of data) {
+          const gid = p.game_id || p.gameId;
+          if (gid) analyzedGameIds.add(gid);
+        }
+      } catch (e) { /* skip corrupted files */ }
+    }
+  } catch (e) { /* data dir may not exist yet */ }
+
+  // 2. Load from database (last 10K game IDs)
+  try {
+    const client = await pool.connect();
+    const result = await client.query(
+      `SELECT game_id FROM chess_prediction_attempts ORDER BY created_at DESC LIMIT 10000`
+    );
+    client.release();
+    for (const row of result.rows) {
+      if (row.game_id) analyzedGameIds.add(row.game_id);
+    }
+  } catch (e) {
+    console.log('[FARM] Could not pre-load DB game IDs:', e.message);
+  }
+
+  console.log(`[FARM] Pre-loaded ${analyzedGameIds.size} analyzed game IDs for deduplication`);
+}
 
 /**
  * Load the EP engine modules (both baseline and enhanced)
@@ -189,7 +232,14 @@ async function loadLocalGames(count = 5) {
  * Fetch real games from Lichess API - BULLETPROOF VERSION
  * Never fails - tries multiple players, longer timeouts, exponential backoff
  */
+// Sliding time window: moves back when all recent games are exhausted
+let lichessBeforeMs = Date.now();
+const PERF_TYPES = ['blitz', 'rapid', 'bullet', 'classical'];
+
 async function fetchLichessGames(count = 5, perfType = 'blitz') {
+  // Rotate perfType based on cycle to access different game pools
+  const actualPerfType = PERF_TYPES[stats.cycles % PERF_TYPES.length];
+  
   const playersToTry = [
     GAME_SOURCES.LICHESS_PLAYERS[currentSourceIndex % GAME_SOURCES.LICHESS_PLAYERS.length],
     GAME_SOURCES.LICHESS_PLAYERS[(currentSourceIndex + 1) % GAME_SOURCES.LICHESS_PLAYERS.length],
@@ -210,7 +260,8 @@ async function fetchLichessGames(count = 5, perfType = 'blitz') {
           await new Promise(r => setTimeout(r, delay));
         }
         
-        const url = `https://lichess.org/api/games/user/${player}?max=${count}&perfType=${perfType}&rated=true&finished=true&ongoing=false`;
+        // Use 'before' param to fetch older games when recent ones are exhausted
+        const url = `https://lichess.org/api/games/user/${player}?max=${count}&perfType=${actualPerfType}&rated=true&finished=true&ongoing=false&before=${lichessBeforeMs}`;
         
         console.log(`[FARM] Fetching from Lichess (${player}) attempt ${attempt}/3...`);
         
@@ -324,24 +375,26 @@ async function fetchChessComGames(count = 5) {
     const archives = await archivesRes.json();
     if (!archives.archives || archives.archives.length === 0) return [];
     
-    // Get most recent month
-    const latestArchive = archives.archives[archives.archives.length - 1];
-    const gamesRes = await fetch(latestArchive);
+    // Rotate through archive months based on cycle count to access different game pools
+    const archiveIndex = Math.max(0, archives.archives.length - 1 - (stats.cycles % Math.min(archives.archives.length, 12)));
+    const selectedArchive = archives.archives[archiveIndex];
+    const gamesRes = await fetch(selectedArchive);
     if (!gamesRes.ok) throw new Error('Failed to fetch games');
     
     const data = await gamesRes.json();
     const games = data.games || [];
     
-    // Filter for decisive games
+    // Filter for decisive games and shuffle to avoid always getting the same ones
     const decisiveGames = games
       .filter(g => {
         const result = g.white.result === 'win' ? '1-0' : 
                       g.black.result === 'win' ? '0-1' : '1/2-1/2';
         return result !== '1/2-1/2' && g.pgn;
       })
+      .sort(() => Math.random() - 0.5)
       .slice(0, count);
     
-    console.log(`[FARM] Fetched ${decisiveGames.length} games from Chess.com (${player})`);
+    console.log(`[FARM] Fetched ${decisiveGames.length} games from Chess.com (${player}, archive ${archiveIndex})`);
     
     return decisiveGames.map(g => {
       const result = g.white.result === 'win' ? '1-0' : 
@@ -638,10 +691,10 @@ function predictFromBaseline(colorSignature, totalMoves) {
   // Previous 0.6 threshold was still too high for 4-quadrant normalized values
   let predictedWinner;
   if (whiteAdvantage > 0.25) {
-    predictedWinner = 'white';
+    predictedWinner = 'white_wins';
     confidence += 0.1;
   } else if (whiteAdvantage < -0.25) {
-    predictedWinner = 'black';
+    predictedWinner = 'black_wins';
     confidence += 0.1;
   } else {
     predictedWinner = 'draw';
@@ -722,10 +775,10 @@ function predictFromEnhanced(enhancedResult, totalMoves) {
   const threshold = isGainArchetype ? 0.25 : 0.3;
   let predictedWinner;
   if (whiteAdvantage > threshold) {
-    predictedWinner = 'white';
+    predictedWinner = 'white_wins';
     confidence += 0.12;
   } else if (whiteAdvantage < -threshold) {
-    predictedWinner = 'black';
+    predictedWinner = 'black_wins';
     confidence += 0.12;
   } else {
     predictedWinner = 'draw';
@@ -749,17 +802,56 @@ async function runBenchmarkCycle(epEngine) {
   console.log(`[${workerId}] Starting cycle #${stats.cycles + 1} ${USE_ENHANCED_SIGNATURES ? '(8-Quadrant)' : '(4-Quadrant)'}`);
   
   // Fetch games from MULTIPLE SOURCES (Lichess + Chess.com rotation)
-  const games = await fetchGamesMultiSource(FARM_CONFIG.cycle.gamesPerFetch, 'blitz');
+  const allGames = await fetchGamesMultiSource(FARM_CONFIG.cycle.gamesPerFetch, 'blitz');
   
-  if (games.length === 0) {
+  if (allGames.length === 0) {
     console.log(`[${workerId}] No games fetched, waiting...`);
+    return;
+  }
+  
+  // Filter out already-analyzed games BEFORE processing
+  const games = allGames.filter(g => !analyzedGameIds.has(g.id));
+  const skipped = allGames.length - games.length;
+  if (skipped > 0) {
+    console.log(`[${workerId}] Skipped ${skipped}/${allGames.length} already-analyzed games`);
+  }
+  if (games.length === 0) {
+    // Move time window back by 30 days to find fresh games faster
+    lichessBeforeMs -= 30 * 24 * 60 * 60 * 1000;
+    // Don't go further back than 2 years
+    const twoYearsAgo = Date.now() - (2 * 365 * 24 * 60 * 60 * 1000);
+    if (lichessBeforeMs < twoYearsAgo) {
+      lichessBeforeMs = Date.now(); // Reset to present
+    }
+    currentSourceIndex += 3; // Also advance player rotation
+    console.log(`[${workerId}] All games already analyzed, sliding window back to ${new Date(lichessBeforeMs).toISOString().split('T')[0]}`);
     return;
   }
   
   for (const game of games) {
     try {
       const chess = new Chess();
-      chess.loadPgn(game.pgn);
+      // Sanitize PGN: extract moves only, strip headers that cause parse errors
+      let cleanPgn = game.pgn;
+      try {
+        // Remove PGN headers and extract move text
+        const moveText = cleanPgn.replace(/\[.*?\]\s*/g, '').trim();
+        // Remove result at end
+        const movesOnly = moveText.replace(/\s*(1-0|0-1|1\/2-1\/2|\*)\s*$/, '').trim();
+        if (movesOnly.length > 5) {
+          chess.loadPgn(movesOnly);
+        } else {
+          throw new Error('Move text too short after sanitization');
+        }
+      } catch (pgnErr) {
+        // Fallback: try loading the raw PGN (works for well-formed PGNs)
+        try {
+          chess.loadPgn(cleanPgn);
+        } catch (rawErr) {
+          console.error(`[${workerId}] Error: Invalid move in PGN: ${rawErr.message?.substring(0, 40)}`);
+          continue; // Skip this game entirely
+        }
+      }
       
       // Get position at move 20
       const moves = chess.history();
@@ -775,8 +867,8 @@ async function runBenchmarkCycle(epEngine) {
       
       // Get SF17 evaluation
       const sf17Eval = await evaluateWithSF17(fen, 18);
-      const sf17Prediction = sf17Eval.evaluation > 0.3 ? 'white' : 
-                            sf17Eval.evaluation < -0.3 ? 'black' : 'draw';
+      const sf17Prediction = sf17Eval.evaluation > 0.3 ? 'white_wins' : 
+                            sf17Eval.evaluation < -0.3 ? 'black_wins' : 'draw';
       
       // Generate BOTH baseline and enhanced predictions
       const gameData = {
@@ -820,8 +912,9 @@ async function runBenchmarkCycle(epEngine) {
       const resultMatch = game.pgn.match(/\[Result "([^"]+)"\]/);
       const result = resultMatch ? resultMatch[1] : game.result;
       
-      if (result === '1-0') actualOutcome = 'white';
-      else if (result === '0-1') actualOutcome = 'black';
+      // Convert to standard format for database (white_wins/black_wins/draw)
+      if (result === '1-0') actualOutcome = 'white_wins';
+      else if (result === '0-1') actualOutcome = 'black_wins';
       else actualOutcome = 'draw'; // Handles '1/2-1/2' and '*'
       
       // Track A/B test accuracy
@@ -860,6 +953,7 @@ async function runBenchmarkCycle(epEngine) {
         complexity: predictions.enhanced?.complexity || 0,
         gameMetadata: gameData,
         abTest: true,
+        dataSource: game.source || 'unknown',
         // Full 8-quadrant profile for tracking
         eightQuadrantProfile: predictions.enhanced?.signature?.quadrantProfile || null,
         pieceTypeMetrics: predictions.enhanced?.signature?.quadrantProfile ? {
@@ -870,6 +964,9 @@ async function runBenchmarkCycle(epEngine) {
           pawnAdvancement: predictions.enhanced.signature.quadrantProfile.pawn_advancement,
         } : null,
       });
+      
+      // Mark as analyzed to prevent re-processing
+      analyzedGameIds.add(game.id);
       
       // Log progress with A/B comparison
       const baselineAccuracy = ((stats.epCorrect / stats.predictionsMade) * 100).toFixed(1);
@@ -932,6 +1029,9 @@ async function main() {
   console.log(`Workers: ${THROUGHPUT.workers} | Games/cycle: ${THROUGHPUT.gamesPerCycle}`);
   console.log('Loading EP engine...');
   
+  // Pre-load analyzed game IDs for deduplication
+  await loadAnalyzedGameIds();
+  
   const epEngine = await loadEPEngine();
   console.log(`✓ EP engine loaded`);
   console.log(`✓ Baseline 4-quadrant: ACTIVE`);
@@ -989,46 +1089,25 @@ async function main() {
         console.log(`[${workerId}] Farm status update failed: ${err.message}`);
       }
       
-      // Insert into chess_benchmark_results for cumulative stats
-      if (stats.predictionsMade > 0) {
-        try {
-          const sfAccuracy = stats.predictionsMade > 0 ? stats.sf17Correct / stats.predictionsMade : 0;
-          const hybAccuracy = stats.predictionsMade > 0 ? stats.epCorrect / stats.predictionsMade : 0;
-          const bothCorrect = Math.min(stats.sf17Correct, stats.epCorrect);
-          const hybridWins = stats.epCorrect - bothCorrect;
-          const stockfishWins = stats.sf17Correct - bothCorrect;
-          
-          await pool.query(`
-            INSERT INTO chess_benchmark_results (
-              id, hybrid_accuracy, stockfish_accuracy, completed_games,
-              hybrid_wins, stockfish_wins, both_correct,
-              avg_depth, total_time_ms, source,
-              created_at
-            ) VALUES (
-              gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, NOW()
-            )
-          `, [
-            hybAccuracy,
-            sfAccuracy,
-            stats.predictionsMade,
-            hybridWins,
-            stockfishWins,
-            bothCorrect,
-            20, // avg depth for enhanced
-            0, // total_time_ms - could track but keeping simple
-            workerId
-          ]);
-          console.log(`[${workerId}] Benchmark results saved: SF=${(sfAccuracy*100).toFixed(1)}% HYB=${(hybAccuracy*100).toFixed(1)}%`);
-        } catch (err) {
-          console.log(`[${workerId}] Benchmark results save failed: ${err.message}`);
-        }
-      }
+      // NOTE: chess_benchmark_results summary rows are NOT written here.
+      // Individual predictions are saved per-game in savePrediction().
+      // The old code wrote cumulative stats.predictionsMade as completed_games
+      // every cycle, which inflated the totals massively.
       
       // Wait between cycles
       await new Promise(r => setTimeout(r, FARM_CONFIG.cycle.waitBetweenCycles));
       
     } catch (error) {
       console.error(`[${workerId}] Fatal cycle error:`, error.message);
+      // Reset Stockfish engine on fatal errors to recover from stuck state
+      if (stockfishProcess) {
+        try {
+          stockfishProcess.kill();
+        } catch (e) { /* ignore */ }
+        stockfishProcess = null;
+        engineReady = false;
+        console.log(`[${workerId}] Stockfish engine reset for recovery`);
+      }
       await new Promise(r => setTimeout(r, 30000));
     }
   }
@@ -1054,6 +1133,14 @@ main().catch(error => {
 });
 
 /**
+ * Generate SHA-256 hash of position (FEN)
+ */
+function hashPosition(fen) {
+  if (!fen || fen.length < 10) return null;
+  return createHash('sha256').update(fen).digest('hex').substring(0, 64);
+}
+
+/**
  * Save prediction to BOTH local JSON and Supabase
  * Includes full 8-quadrant A/B test data
  */
@@ -1062,40 +1149,51 @@ async function savePrediction(attempt) {
   await savePredictionLocal(attempt, workerId);
   
   // 2. Save to Supabase via DIRECT SQL (bypasses RLS)
-  // Schema mapping: baseline->stockfish, enhanced->hybrid
+  // FIXED: stockfish_prediction = real SF17 eval, hybrid = EP enhanced prediction
   try {
+    const positionHash = hashPosition(attempt.fen);
+    const gameName = attempt.gameMetadata 
+      ? `${attempt.gameMetadata.white || 'Unknown'} vs ${attempt.gameMetadata.black || 'Unknown'}`
+      : `Game ${attempt.gameId}`;
+    
     const query = `
       INSERT INTO chess_prediction_attempts (
         game_id, game_name, move_number, fen, position_hash,
+        stockfish_eval, stockfish_depth,
         stockfish_prediction, stockfish_confidence, stockfish_correct,
         hybrid_prediction, hybrid_confidence, hybrid_archetype, hybrid_correct,
-        actual_result, data_quality_tier, worker_id, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW())
+        actual_result, data_quality_tier, worker_id, data_source, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW())
       ON CONFLICT (game_id) DO NOTHING
       RETURNING game_id
     `;
     
     const values = [
       attempt.gameId,
-      `Game ${attempt.gameId}`,
+      gameName,
       20,
       attempt.fen,
-      attempt.gameId,
-      attempt.baselinePrediction,  // Maps to stockfish
-      0.7,  // baseline confidence
-      attempt.baselineCorrect,
-      attempt.enhancedPrediction || attempt.baselinePrediction,  // Maps to hybrid
+      positionHash,
+      attempt.sf17Eval,                                          // Real SF17 centipawn eval
+      18,                                                        // SF depth
+      attempt.sf17Prediction,                                    // Real SF17 prediction
+      Math.min(95, 50 + Math.abs(attempt.sf17Eval || 0) * 10),  // SF confidence from eval
+      attempt.sf17Correct,                                       // Real SF17 correctness
+      attempt.enhancedPrediction || attempt.baselinePrediction,  // EP hybrid prediction
       attempt.enhanced?.confidence || 0.7,
       attempt.enhancedArchetype || attempt.baselineArchetype || 'unknown',
       attempt.enhancedCorrect ?? attempt.baselineCorrect,
       attempt.actualOutcome,
       'farm_enhanced_8quad',
-      workerId
+      workerId,
+      attempt.dataSource || 'unknown'
     ];
     
     const result = await pool.query(query, values);
     if (result.rowCount > 0) {
-      console.log(`[${workerId}] ✓ Saved via SQL: ${attempt.gameId} (B:${attempt.baselinePrediction} E:${attempt.enhancedPrediction})`);
+      console.log(`[${workerId}] ✓ Saved: ${attempt.gameId} | SF17=${attempt.sf17Prediction}(${attempt.sf17Correct?'✓':'✗'}) EP=${attempt.enhancedPrediction}(${attempt.enhancedCorrect?'✓':'✗'}) Actual=${attempt.actualOutcome}`);
+    } else {
+      console.log(`[${workerId}] ⏭ Duplicate skipped: ${attempt.gameId}`);
     }
   } catch (err) {
     console.log(`[${workerId}] SQL save failed: ${err.message}`);

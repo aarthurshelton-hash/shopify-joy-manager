@@ -653,6 +653,7 @@ export async function getCumulativeStats(): Promise<{
     { count: hybridExclusiveWins },
     { count: sfExclusiveWins },
     { count: totalRuns },
+    legacyRows,
   ] = await Promise.all([
     // Total predictions (ALL records)
     supabase
@@ -696,9 +697,20 @@ export async function getCumulativeStats(): Promise<{
     supabase
       .from('chess_benchmark_results')
       .select('*', { count: 'exact', head: true }),
+    // Legacy engine totals (games tracked only in summaries, not individual rows)
+    supabase
+      .from('chess_benchmark_results')
+      .select('completed_games')
+      .eq('data_source', 'original_engine'),
   ]);
 
-  const total = totalPredictions || 0;
+  // Sum legacy engine games from chess_benchmark_results (original engine before individual tracking)
+  const legacyData: { completed_games: number }[] = legacyRows?.data ?? [];
+  const legacyGames = legacyData.reduce(
+    (sum, r) => sum + (r.completed_games || 0), 0
+  );
+
+  const total = (totalPredictions || 0) + legacyGames;
   const hybridTotal = hybridCorrectCount || 0;
   const sfTotal = sfCorrectCount || 0;
   const bothC = bothCorrectCount || 0;
