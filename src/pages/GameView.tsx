@@ -74,7 +74,7 @@ const GameView = () => {
   const { gameHash } = useParams<{ gameHash: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { user, isPremium, isCheckingSubscription } = useAuth();
+  const { user, isPremium, isCheckingSubscription, isCheckingAdmin } = useAuth();
   const {
     setCurrentSimulation,
     setSavedShareId,
@@ -95,7 +95,18 @@ const GameView = () => {
   const [error, setError] = useState<string | null>(null);
   const [primaryVision, setPrimaryVision] = useState<GameVision | null>(null);
   const [paletteVariations, setPaletteVariations] = useState<PaletteVariation[]>([]);
-  const [activePaletteId, setActivePaletteId] = useState<string>('modern');
+  // Initialize palette from URL param immediately to avoid flash of wrong colors
+  const [activePaletteId, setActivePaletteId] = useState<string>(() => {
+    const urlPalette = searchParams.get('p');
+    if (urlPalette && urlPalette !== 'custom') {
+      // Eagerly set the global palette module variable before first render
+      setActivePalette(urlPalette as PaletteId);
+      return urlPalette;
+    }
+    // Default to modern and sync the global module variable
+    setActivePalette('modern');
+    return 'modern';
+  });
   const [visionScore, setVisionScore] = useState<VisionScore | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showVisionaryModal, setShowVisionaryModal] = useState(false);
@@ -416,7 +427,10 @@ const GameView = () => {
     };
 
     fetchGameByHash();
-  }, [gameHash, initialState.paletteId, sessionSimulation, sessionPgn, searchParams, user, activePaletteId, setOrderData]);
+  // NOTE: activePaletteId intentionally excluded - it's SET inside this effect,
+  // including it would cause an infinite re-fetch loop
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameHash, initialState.paletteId, sessionSimulation, sessionPgn, searchParams, user, setOrderData]);
 
   // Reconstruct board and game data - supports both saved and session-based games
   const { board, gameData, totalMoves, effectivePgn } = useMemo(() => {
@@ -487,10 +501,12 @@ const GameView = () => {
 
   // Save active vision state for refresh persistence
   useEffect(() => {
-    if (!gameHash || loading || !primaryVision) return;
+    if (!gameHash || loading) return;
+    // Support both DB-loaded and session-based games
+    if (!primaryVision && !isFromSession) return;
     
     // Build the full route with current palette
-    const currentRoute = `/g/${gameHash}${activePaletteId ? `?p=${activePaletteId}` : ''}`;
+    const currentRoute = `/g/${gameHash}${activePaletteId && activePaletteId !== 'modern' ? `?p=${activePaletteId}` : ''}`;
     
     // Save state
     saveActiveVision({
@@ -512,6 +528,7 @@ const GameView = () => {
     activePaletteId, 
     loading,
     primaryVision,
+    isFromSession,
     effectivePgn,
     visualizationState.currentMove,
     visualizationState.selectedPhase,
@@ -708,8 +725,8 @@ const GameView = () => {
           capturedAt: new Date(),
         } : undefined;
         
-        // Always apply watermark if not premium or still checking subscription status
-        const shouldWatermark = !isPremium || isCheckingSubscription;
+        // Apply watermark only if confirmed non-premium (wait for both subscription and admin checks)
+        const shouldWatermark = !isPremium && !isCheckingSubscription && !isCheckingAdmin;
         
         const base64Image = await generateCleanPrintImage(
           { board: filteredBoard, gameData, totalMoves },
@@ -812,7 +829,7 @@ const GameView = () => {
         },
         simulation: { board, gameData, totalMoves },
         shareId: publicShareId || undefined,
-        returnPath: `/g/${gameHash}`,
+        returnPath: `/g/${gameHash}${activePaletteId && activePaletteId !== 'modern' ? `?p=${activePaletteId}` : ''}`,
         // Game metadata for cart display and navigation
         gameHash,
         gameId: detectedGameId, // For game card art in cart
@@ -835,7 +852,7 @@ const GameView = () => {
       setOrderData(orderData);
       navigate('/order-print');
     }
-  }, [primaryVision, board, gameData, totalMoves, effectivePgn, gameHash, isPremium, downloadTrademarkHD, downloadGIF, navigate, setOrderData, setCapturedTimelineState, setCurrentSimulation, setSavedShareId, setReturningFromOrder, isFromSession, isCheckingSubscription, activePaletteId, sessionGameData, sessionTitle]);
+  }, [primaryVision, board, gameData, totalMoves, effectivePgn, gameHash, isPremium, downloadTrademarkHD, downloadGIF, navigate, setOrderData, setCapturedTimelineState, setCurrentSimulation, setSavedShareId, setReturningFromOrder, isFromSession, isCheckingSubscription, isCheckingAdmin, activePaletteId, sessionGameData, sessionTitle]);
 
   if (loading) {
     return (

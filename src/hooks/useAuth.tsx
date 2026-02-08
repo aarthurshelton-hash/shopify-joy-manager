@@ -69,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
 
-  const isPremium = subscriptionStatus?.subscribed && subscriptionStatus?.productId === PREMIUM_PRODUCT_ID;
+  const isPremium = isAdmin || (subscriptionStatus?.subscribed && subscriptionStatus?.productId === PREMIUM_PRODUCT_ID);
   // User has an account but no active premium subscription
   const isFreeAccount = !!user && !isPremium;
 

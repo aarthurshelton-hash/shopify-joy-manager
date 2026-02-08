@@ -75,7 +75,7 @@ export function useVisualizationHandlers({
     switch (type) {
       case 'preview': {
         try {
-          const shouldWatermark = !isPremium || isCheckingSubscription;
+          const shouldWatermark = !isPremium && !isCheckingSubscription;
           const base64Image = await generateCleanPrintImage(exportSimulation, {
             darkMode: exportState?.darkMode || false,
             withWatermark: shouldWatermark,
