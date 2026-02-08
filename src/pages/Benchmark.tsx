@@ -604,24 +604,36 @@ function StatWithDrill({ label, value, color, filter, title }: { label: string; 
 // ─── Per-Engine Stats ────────────────────────────────────────────────────────
 
 function OriginalEngineStats() {
-  const [total, setTotal] = useState<number | null>(null);
+  const [legacyTotal, setLegacyTotal] = useState<number | null>(null);
+  const [legacyDbCount, setLegacyDbCount] = useState<number | null>(null);
 
   useEffect(() => {
+    // Legacy summary total from chess_benchmark_results
     supabase
       .from('chess_benchmark_results')
       .select('completed_games')
       .eq('data_source', 'original_engine')
       .then(({ data }) => {
         const sum = (data || []).reduce((s: number, r: { completed_games: number }) => s + (r.completed_games || 0), 0);
-        setTotal(sum);
+        setLegacyTotal(sum);
       });
+    // Individual legacy predictions in chess_prediction_attempts
+    supabase
+      .from('chess_prediction_attempts')
+      .select('*', { count: 'exact', head: true })
+      .eq('data_quality_tier', 'legacy')
+      .then(({ count: c }) => setLegacyDbCount(c || 0));
   }, []);
+
+  const total = (legacyTotal || 0) > 0 ? legacyTotal : legacyDbCount;
 
   return (
     <div className="space-y-2">
       <p className="text-3xl font-bold text-yellow-500">{total?.toLocaleString() ?? '—'}</p>
-      <p className="text-xs text-muted-foreground">Games from original pre-Windsurf engine</p>
-      <p className="text-xs text-muted-foreground">Stored as aggregate summaries</p>
+      <p className="text-xs text-muted-foreground">Games from original engine</p>
+      {legacyDbCount !== null && legacyDbCount > 0 && (
+        <p className="text-xs text-muted-foreground">{legacyDbCount.toLocaleString()} with individual details</p>
+      )}
     </div>
   );
 }
@@ -633,7 +645,7 @@ function FarmEngineStats({ farmStatus }: { farmStatus: FarmStatus | null }) {
     supabase
       .from('chess_prediction_attempts')
       .select('*', { count: 'exact', head: true })
-      .in('data_source', ['lichess', 'chess.com', 'chesscom', 'sql_worker', 'farm_terminal'])
+      .in('data_quality_tier', ['farm_generated', 'farm_enhanced_8quad'])
       .then(({ count: c }) => setCount(c || 0));
   }, []);
 
@@ -659,7 +671,7 @@ function WebEngineStats() {
     supabase
       .from('chess_prediction_attempts')
       .select('*', { count: 'exact', head: true })
-      .in('data_source', ['web_client', 'lichess_live', 'chesscom_live'])
+      .not('data_quality_tier', 'in', '(legacy,farm_generated,farm_enhanced_8quad)')
       .then(({ count: c }) => setCount(c || 0));
   }, []);
 
