@@ -87,20 +87,35 @@ let stats = {
 // Multi-source game fetching configuration
 const GAME_SOURCES = {
   LICHESS_PLAYERS: [
+    // Top GMs
     'DrNykterstein', 'nihalsarin2004', 'penguingm1', 'Msb2', 'Fins',
-    'Firouzja2003', 'BogdanDeac', 'Arjun_Erigaisi', 'chessbrah',
-    'opperwezen', 'EricRosen', 'ChessNetwork', 'Oleksandr_Bortnyk',
-    'duhless', 'howitzer14', 'Jospem', 'lance5500', 'Navaraok',
-    'Nodirbek2004', 'VincentKeymer2004', 'WesleyS8', 'NeverEnough',
-    'lovlas', 'nepoking', 'Andrej_Esipenko', 'Naroditsky',
+    'chessbrah', 'opperwezen', 'EricRosen', 'ChessNetwork', 'Oleksandr_Bortnyk',
+    'duhless', 'howitzer14', 'lance5500', 'Navaraok',
+    'VincentKeymer2004', 'WesleyS8', 'NeverEnough',
+    'lovlas', 'nepoking', 'Naroditsky',
+    // Magnus alts + more GMs
+    'DrDrunkenstein', 'manwithavan', 'STL_Caruana',
+    'gmwso', 'LyonBeast', 'chessbrahs', 'aprilchess',
+    'RealDavidNavara', 'German11', 'Zhigalko_Sergei',
+    // Lichess staff + popular streamers (always have games)
+    'thibault', 'Bombegansen', 'penguin',
+    // Strong IMs/GMs with lots of games
+    'Konavets', 'Csjh', 'Zsjh', 'RebeccaHarris',
+    'IM_not_a_GM', 'Ssjh', 'Fins', 'Ssjh',
+    // Additional active players for volume
+    'alireza2003', 'GMWSO', 'Zhigalko_Sergei',
+    'Bombegansen', 'Ssjh', 'Ssjh',
   ],
   CHESSCOM_PLAYERS: [
     'Hikaru', 'MagnusCarlsen', 'nihalsarin', 'FabianoCaruana',
-    'Firouzja2003', 'DanielNaroditsky', 'GothamChess', 'AnishGiri',
+    'DanielNaroditsky', 'GothamChess', 'AnishGiri',
     'WesleySo', 'Praggnanandhaa', 'DominguezPerez', 'Grischuk',
     'ArjunErigaisi', 'HansMokeNiemann', 'LevonAronian', 'ViditGujrathi',
-    'DingLiren', 'AlirezaFirouzja', 'RichardRapport', 'IanNepomniachtchi',
+    'DingLiren', 'RichardRapport', 'IanNepomniachtchi',
     'RameshbabuPraggnanandhaa', 'VincentKeymer', 'NodirbekAbdusattorov',
+    'Firouzja2003', 'AlirezaFirouzja', 'Duhless', 'Vladimirkramnik',
+    'ChessWarrior7197', 'LachesisQ', 'Lyonbeast', 'Msb2',
+    'Bigfish1995', 'Oleksandr_Bortnyk', 'Zhigalko_Sergei',
   ],
   // Puzzles provide training positions with known outcomes
   PUZZLE_SOURCES: ['chesscom_rated', 'lichess_puzzle'],
@@ -119,22 +134,9 @@ const analyzedGameIds = new Set();
  * Prevents re-analyzing the same games across restarts
  */
 async function loadAnalyzedGameIds() {
-  // 1. Load from local JSON files
-  const dataDir = join(__dirname, '..', 'data');
-  try {
-    const files = fs.readdirSync(dataDir).filter(f => f.startsWith('predictions-') && f.endsWith('.json'));
-    for (const file of files) {
-      try {
-        const data = JSON.parse(fs.readFileSync(join(dataDir, file), 'utf8'));
-        for (const p of data) {
-          const gid = p.game_id || p.gameId;
-          if (gid) analyzedGameIds.add(gid);
-        }
-      } catch (e) { /* skip corrupted files */ }
-    }
-  } catch (e) { /* data dir may not exist yet */ }
-
-  // 2. Load from database (last 10K game IDs)
+  // Only load from database — local JSON files are NOT loaded to avoid
+  // over-deduplication. The DB's ON CONFLICT (game_id) DO NOTHING handles
+  // true duplicates at insert time.
   try {
     const client = await pool.connect();
     const result = await client.query(
@@ -232,33 +234,31 @@ async function loadLocalGames(count = 5) {
  * Fetch real games from Lichess API - BULLETPROOF VERSION
  * Never fails - tries multiple players, longer timeouts, exponential backoff
  */
-// Sliding time window: moves back when all recent games are exhausted
-let lichessBeforeMs = Date.now();
+// Sliding time window: each worker starts at a random point 1-4 years back
+// This ensures workers explore different time periods and don't compete
+const randomYearsBack = 1 + Math.random() * 3; // 1-4 years
+let lichessBeforeMs = Date.now() - (randomYearsBack * 365 * 24 * 60 * 60 * 1000);
+console.log(`[${workerId}] Starting time window: ${new Date(lichessBeforeMs).toISOString().split('T')[0]} (${randomYearsBack.toFixed(1)} years back)`);
 const PERF_TYPES = ['blitz', 'rapid', 'bullet', 'classical'];
 
 async function fetchLichessGames(count = 5, perfType = 'blitz') {
   // Rotate perfType based on cycle to access different game pools
   const actualPerfType = PERF_TYPES[stats.cycles % PERF_TYPES.length];
   
-  const playersToTry = [
-    GAME_SOURCES.LICHESS_PLAYERS[currentSourceIndex % GAME_SOURCES.LICHESS_PLAYERS.length],
-    GAME_SOURCES.LICHESS_PLAYERS[(currentSourceIndex + 1) % GAME_SOURCES.LICHESS_PLAYERS.length],
-    GAME_SOURCES.LICHESS_PLAYERS[(currentSourceIndex + 2) % GAME_SOURCES.LICHESS_PLAYERS.length],
-    'thibault', // fallback to Lichess founder account (always has games)
-  ];
+  // Try 6 different players per fetch to maximize chances of finding new games
+  const playerCount = GAME_SOURCES.LICHESS_PLAYERS.length;
+  const playersToTry = [];
+  for (let i = 0; i < 6; i++) {
+    playersToTry.push(GAME_SOURCES.LICHESS_PLAYERS[(currentSourceIndex + i) % playerCount]);
+  }
+  playersToTry.push('thibault'); // fallback
   
-  // Wait 2s at start to avoid rate limits
-  await new Promise(r => setTimeout(r, 2000));
+  // Brief pause to respect rate limits
+  await new Promise(r => setTimeout(r, 500));
   
   for (const player of playersToTry) {
-    for (let attempt = 1; attempt <= 3; attempt++) {
+    for (let attempt = 1; attempt <= 1; attempt++) {
       try {
-        // Exponential backoff: 2s, 4s, 8s
-        if (attempt > 1) {
-          const delay = Math.pow(2, attempt) * 1000;
-          console.log(`[FARM] Waiting ${delay}ms before retry...`);
-          await new Promise(r => setTimeout(r, delay));
-        }
         
         // Use 'before' param to fetch older games when recent ones are exhausted
         const url = `https://lichess.org/api/games/user/${player}?max=${count}&perfType=${actualPerfType}&rated=true&finished=true&ongoing=false&before=${lichessBeforeMs}`;
@@ -348,11 +348,21 @@ function parsePgnGames(pgnText) {
     const whiteMatch = pgn.match(/\[White "([^"]*)"\]/);
     const blackMatch = pgn.match(/\[Black "([^"]*)"\]/);
     
+    // Extract ELOs and time control from PGN headers
+    const whiteEloMatch = pgn.match(/\[WhiteElo "(\d+)"\]/);
+    const blackEloMatch = pgn.match(/\[BlackElo "(\d+)"\]/);
+    const timeControlMatch = pgn.match(/\[TimeControl "([^"]+)"\]/);
+    const eventMatch = pgn.match(/\[Event "([^"]+)"\]/);
+    
     games.push({
       id,
       pgn,
       white: whiteMatch?.[1] || 'White',
       black: blackMatch?.[1] || 'Black',
+      whiteElo: whiteEloMatch ? parseInt(whiteEloMatch[1]) : null,
+      blackElo: blackEloMatch ? parseInt(blackEloMatch[1]) : null,
+      timeControl: timeControlMatch?.[1] || null,
+      event: eventMatch?.[1] || null,
       result,
       moves: [],
     });
@@ -406,9 +416,11 @@ async function fetchChessComGames(count = 5) {
         black: g.black.username,
         result,
         moves: [],
-        source: 'chess.com', // Track source
+        source: 'chess.com',
         whiteElo: g.white.rating,
         blackElo: g.black.rating,
+        timeControl: g.time_control ? String(g.time_control) : null,
+        event: g.time_class || 'chess.com',
       };
     });
   } catch (error) {
@@ -668,34 +680,26 @@ async function generateBothPredictions(pgn, gameData, epEngine) {
  * Predict from baseline 4-quadrant signature
  */
 function predictFromBaseline(colorSignature, totalMoves) {
-  const { quadrantProfile, temporalFlow } = colorSignature;
+  const { quadrantProfile } = colorSignature;
   
-  // Calculate advantage - NORMALIZED (divide by 100 since raw values are -100 to 100)
+  // Calculate advantage symmetrically: white quadrants vs black quadrants
   let whiteAdvantage = 0;
-  whiteAdvantage += (quadrantProfile.kingsideWhite / 100) * 0.5;
-  whiteAdvantage += (quadrantProfile.queensideWhite / 100) * 0.4;
-  whiteAdvantage -= (quadrantProfile.kingsideBlack / 100) * 0.5;
-  whiteAdvantage -= (quadrantProfile.queensideBlack / 100) * 0.4;
+  whiteAdvantage += ((quadrantProfile.kingsideWhite || 0) - (quadrantProfile.kingsideBlack || 0)) / 100 * 0.5;
+  whiteAdvantage += ((quadrantProfile.queensideWhite || 0) - (quadrantProfile.queensideBlack || 0)) / 100 * 0.4;
   
-  // Confidence based on archetype
+  // Confidence based on magnitude of advantage
   let confidence = 0.5;
-  const archetype = colorSignature.archetype;
+  const advantageMagnitude = Math.abs(whiteAdvantage);
+  if (advantageMagnitude > 0.3) confidence += 0.12;
+  else if (advantageMagnitude > 0.15) confidence += 0.06;
   
-  if (archetype.includes('kingside_attack') || archetype.includes('sacrificial')) {
-    confidence += 0.15;
-  } else if (archetype.includes('prophylactic') || archetype.includes('closed')) {
-    confidence += 0.08;
-  }
-  
-  // Determine winner - threshold 0.25 matches actual advantage range (0.2-0.8)
-  // Previous 0.6 threshold was still too high for 4-quadrant normalized values
+  // Determine winner
+  const threshold = 0.10;
   let predictedWinner;
-  if (whiteAdvantage > 0.25) {
+  if (whiteAdvantage > threshold) {
     predictedWinner = 'white_wins';
-    confidence += 0.1;
-  } else if (whiteAdvantage < -0.25) {
+  } else if (whiteAdvantage < -threshold) {
     predictedWinner = 'black_wins';
-    confidence += 0.1;
   } else {
     predictedWinner = 'draw';
   }
@@ -716,70 +720,56 @@ function predictFromEnhanced(enhancedResult, totalMoves) {
   const { quadrantProfile } = enhancedResult;
   const archetype = enhancedResult.archetype;
   
-  // ULTRA-AGGRESSIVE AMPLIFICATION
-  // 4x multiplier for gain archetypes, 3x for others - maximum sensitivity
-  const gainArchetypes = ['central_bishop_cross', 'center_kingside_break', 'knight_complex_superiority', 'central_domination', 'minor_piece_coordination'];
-  const isGainArchetype = gainArchetypes.some(a => archetype.includes(a));
-  const multiplier = isGainArchetype ? 4.0 : 3.0;
-  
+  // Calculate white vs black advantage from quadrant profile
+  // Positive = white advantage, negative = black advantage
   let whiteAdvantage = 0;
-  // Standard quadrants
-  whiteAdvantage += (quadrantProfile.q1_kingside_white / 100) * 0.3 * multiplier;
-  whiteAdvantage += (quadrantProfile.q2_queenside_white / 100) * 0.3 * multiplier;
-  whiteAdvantage -= (quadrantProfile.q3_kingside_black / 100) * 0.3 * multiplier;
-  whiteAdvantage -= (quadrantProfile.q4_queenside_black / 100) * 0.3 * multiplier;
-  // Center quadrants - MAXIMUM weight for key differentiator
-  whiteAdvantage += (quadrantProfile.q5_center_white / 100) * 1.0 * multiplier;
-  whiteAdvantage -= (quadrantProfile.q6_center_black / 100) * 1.0 * multiplier;
-  // Extended quadrants
-  whiteAdvantage += (quadrantProfile.q7_extended_kingside / 100) * 0.5 * multiplier;
-  whiteAdvantage += (quadrantProfile.q8_extended_queenside / 100) * 0.5 * multiplier;
   
-  // Piece-type bonuses - ULTRA for gain archetypes
+  // Core quadrants: white activity vs black activity
+  const whiteActivity = (quadrantProfile.q1_kingside_white || 0) / 100
+                      + (quadrantProfile.q2_queenside_white || 0) / 100
+                      + (quadrantProfile.q5_center_white || 0) / 100;
+  const blackActivity = (quadrantProfile.q3_kingside_black || 0) / 100
+                      + (quadrantProfile.q4_queenside_black || 0) / 100
+                      + (quadrantProfile.q6_center_black || 0) / 100;
+  
+  // Center is the strongest signal
+  whiteAdvantage += ((quadrantProfile.q5_center_white || 0) - (quadrantProfile.q6_center_black || 0)) / 100 * 0.4;
+  // Flanks
+  whiteAdvantage += ((quadrantProfile.q1_kingside_white || 0) - (quadrantProfile.q3_kingside_black || 0)) / 100 * 0.2;
+  whiteAdvantage += ((quadrantProfile.q2_queenside_white || 0) - (quadrantProfile.q4_queenside_black || 0)) / 100 * 0.2;
+  // Extended quadrants: compare to each other (not unconditionally white)
+  whiteAdvantage += ((quadrantProfile.q7_extended_kingside || 0) - (quadrantProfile.q8_extended_queenside || 0)) / 100 * 0.1;
+  
+  // Piece-type signals: these indicate WHO has the advantage, not always white
+  // bishop_dominance > 0.5 means white has bishop advantage, < 0.5 means black
   let confidence = 0.5;
-  if (quadrantProfile.bishop_dominance > 0.30) {
-    whiteAdvantage += isGainArchetype ? 0.5 : 0.35;
-    confidence += isGainArchetype ? 0.10 : 0.06;
-  }
-  if (quadrantProfile.knight_dominance > 0.35) {
-    whiteAdvantage += isGainArchetype ? 0.4 : 0.25;
-    confidence += isGainArchetype ? 0.07 : 0.04;
-  }
-  if (quadrantProfile.pawn_advancement > 0.55) {
-    whiteAdvantage += isGainArchetype ? 0.4 : 0.25;
-    confidence += isGainArchetype ? 0.08 : 0.05;
+  const bishopDom = quadrantProfile.bishop_dominance || 0.5;
+  const knightDom = quadrantProfile.knight_dominance || 0.5;
+  const pawnAdv = quadrantProfile.pawn_advancement || 0.5;
+  
+  // Piece dominance pushes advantage toward the dominant side
+  whiteAdvantage += (bishopDom - 0.5) * 0.3;
+  whiteAdvantage += (knightDom - 0.5) * 0.2;
+  whiteAdvantage += (pawnAdv - 0.5) * 0.2;
+  
+  // Confidence from magnitude of advantage (either direction)
+  const advantageMagnitude = Math.abs(whiteAdvantage);
+  if (advantageMagnitude > 0.3) confidence += 0.15;
+  else if (advantageMagnitude > 0.15) confidence += 0.08;
+  
+  // Archetype confidence boost (does NOT affect direction)
+  const highConfArchetypes = ['central_bishop_cross', 'center_kingside_break', 'knight_complex_superiority', 'central_domination'];
+  if (highConfArchetypes.some(a => archetype.includes(a))) {
+    confidence += 0.10;
   }
   
-  // Archetype-specific ULTRA boosts
-  if (archetype.includes('central_bishop_cross')) {
-    confidence += 0.20;
-    whiteAdvantage += 0.15;
-  }
-  if (archetype.includes('center_kingside_break')) {
-    confidence += 0.15;
-    whiteAdvantage += 0.12;
-  }
-  if (archetype.includes('central_domination')) {
-    confidence += 0.12;
-    whiteAdvantage += 0.10;
-  }
-  if (archetype.includes('kingside') && archetype.includes('blitz')) {
-    confidence += 0.12;
-  }
-  if (archetype.includes('bishop_pair')) {
-    confidence += 0.12;
-  }
-  
-  // ULTRA-AGGRESSIVE thresholds - 0.25 for gain, 0.3 for others
-  // Baseline uses 1.5, so this creates massive differentiation
-  const threshold = isGainArchetype ? 0.25 : 0.3;
+  // Predict winner based on balanced advantage
+  const threshold = 0.08;
   let predictedWinner;
   if (whiteAdvantage > threshold) {
     predictedWinner = 'white_wins';
-    confidence += 0.12;
   } else if (whiteAdvantage < -threshold) {
     predictedWinner = 'black_wins';
-    confidence += 0.12;
   } else {
     predictedWinner = 'draw';
   }
@@ -790,8 +780,8 @@ function predictFromEnhanced(enhancedResult, totalMoves) {
     predictedWinner,
     confidence,
     whiteAdvantage,
-    pieceTypeBonus: quadrantProfile.bishop_dominance + quadrantProfile.knight_dominance,
-    isGainArchetype,
+    pieceTypeBonus: bishopDom + knightDom,
+    isGainArchetype: highConfArchetypes.some(a => archetype.includes(a)),
   };
 }
 
@@ -816,14 +806,14 @@ async function runBenchmarkCycle(epEngine) {
     console.log(`[${workerId}] Skipped ${skipped}/${allGames.length} already-analyzed games`);
   }
   if (games.length === 0) {
-    // Move time window back by 30 days to find fresh games faster
-    lichessBeforeMs -= 30 * 24 * 60 * 60 * 1000;
-    // Don't go further back than 2 years
-    const twoYearsAgo = Date.now() - (2 * 365 * 24 * 60 * 60 * 1000);
-    if (lichessBeforeMs < twoYearsAgo) {
+    // Move time window back by 7 days to find fresh games faster
+    lichessBeforeMs -= 7 * 24 * 60 * 60 * 1000;
+    // Don't go further back than 5 years
+    const fiveYearsAgo = Date.now() - (5 * 365 * 24 * 60 * 60 * 1000);
+    if (lichessBeforeMs < fiveYearsAgo) {
       lichessBeforeMs = Date.now(); // Reset to present
     }
-    currentSourceIndex += 3; // Also advance player rotation
+    currentSourceIndex += 5; // Advance player rotation faster
     console.log(`[${workerId}] All games already analyzed, sliding window back to ${new Date(lichessBeforeMs).toISOString().split('T')[0]}`);
     return;
   }
@@ -834,22 +824,27 @@ async function runBenchmarkCycle(epEngine) {
       // Sanitize PGN: extract moves only, strip headers that cause parse errors
       let cleanPgn = game.pgn;
       try {
-        // Remove PGN headers and extract move text
-        const moveText = cleanPgn.replace(/\[.*?\]\s*/g, '').trim();
-        // Remove result at end
-        const movesOnly = moveText.replace(/\s*(1-0|0-1|1\/2-1\/2|\*)\s*$/, '').trim();
-        if (movesOnly.length > 5) {
-          chess.loadPgn(movesOnly);
-        } else {
-          throw new Error('Move text too short after sanitization');
-        }
-      } catch (pgnErr) {
-        // Fallback: try loading the raw PGN (works for well-formed PGNs)
+        // Strategy 1: Try full PGN with headers (chess.js handles well-formed PGNs)
+        chess.loadPgn(cleanPgn);
+      } catch (e1) {
         try {
-          chess.loadPgn(cleanPgn);
-        } catch (rawErr) {
-          console.error(`[${workerId}] Error: Invalid move in PGN: ${rawErr.message?.substring(0, 40)}`);
-          continue; // Skip this game entirely
+          // Strategy 2: Strip headers, load moves only
+          const moveText = cleanPgn.replace(/\[.*?\]\s*/g, '').trim();
+          const movesOnly = moveText.replace(/\s*(1-0|0-1|1\/2-1\/2|\*)\s*$/, '').trim();
+          if (movesOnly.length < 10) throw new Error('Too short');
+          chess.reset();
+          chess.loadPgn(movesOnly);
+        } catch (e2) {
+          try {
+            // Strategy 3: Fix Chess.com castling FEN issues - strip FEN header and retry
+            const noFen = cleanPgn.replace(/\[FEN "[^"]*"\]\s*/g, '').replace(/\[SetUp "[^"]*"\]\s*/g, '');
+            chess.reset();
+            chess.loadPgn(noFen);
+          } catch (e3) {
+            // All strategies failed - skip silently (don't spam logs)
+            stats.pgnErrors = (stats.pgnErrors || 0) + 1;
+            continue;
+          }
         }
       }
       
@@ -874,8 +869,12 @@ async function runBenchmarkCycle(epEngine) {
       const gameData = {
         white: game.white,
         black: game.black,
-        event: 'Lichess Blitz',
+        whiteElo: game.whiteElo || null,
+        blackElo: game.blackElo || null,
+        timeControl: game.timeControl || null,
+        event: game.event || 'Unknown',
         date: new Date().toISOString().split('T')[0],
+        pgn: partialPgn,
       };
       
       const predictions = await generateBothPredictions(partialPgn, gameData, epEngine);
@@ -1156,14 +1155,17 @@ async function savePrediction(attempt) {
       ? `${attempt.gameMetadata.white || 'Unknown'} vs ${attempt.gameMetadata.black || 'Unknown'}`
       : `Game ${attempt.gameId}`;
     
+    const meta = attempt.gameMetadata || {};
+    
     const query = `
       INSERT INTO chess_prediction_attempts (
         game_id, game_name, move_number, fen, position_hash,
         stockfish_eval, stockfish_depth,
         stockfish_prediction, stockfish_confidence, stockfish_correct,
         hybrid_prediction, hybrid_confidence, hybrid_archetype, hybrid_correct,
-        actual_result, data_quality_tier, worker_id, data_source, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW())
+        actual_result, data_quality_tier, worker_id, data_source,
+        white_elo, black_elo, time_control, pgn, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, NOW())
       ON CONFLICT (game_id) DO NOTHING
       RETURNING game_id
     `;
@@ -1174,19 +1176,23 @@ async function savePrediction(attempt) {
       20,
       attempt.fen,
       positionHash,
-      attempt.sf17Eval,                                          // Real SF17 centipawn eval
+      Math.round((attempt.sf17Eval || 0) * 100),                  // Convert to centipawns (integer)
       18,                                                        // SF depth
       attempt.sf17Prediction,                                    // Real SF17 prediction
-      Math.min(95, 50 + Math.abs(attempt.sf17Eval || 0) * 10),  // SF confidence from eval
+      Math.round(Math.min(95, 50 + Math.abs(attempt.sf17Eval || 0) * 10)),  // SF confidence (integer)
       attempt.sf17Correct,                                       // Real SF17 correctness
       attempt.enhancedPrediction || attempt.baselinePrediction,  // EP hybrid prediction
-      attempt.enhanced?.confidence || 0.7,
+      Math.round((attempt.enhanced?.confidence || 0.7) * 100),  // EP confidence (integer %)
       attempt.enhancedArchetype || attempt.baselineArchetype || 'unknown',
       attempt.enhancedCorrect ?? attempt.baselineCorrect,
       attempt.actualOutcome,
       'farm_enhanced_8quad',
       workerId,
-      attempt.dataSource || 'unknown'
+      attempt.dataSource || 'unknown',
+      meta.whiteElo || null,                                     // Player ELO (white)
+      meta.blackElo || null,                                     // Player ELO (black)
+      meta.timeControl || null,                                  // Time control (e.g. 180+0)
+      meta.pgn || null                                           // Truncated PGN up to prediction move
     ];
     
     const result = await pool.query(query, values);

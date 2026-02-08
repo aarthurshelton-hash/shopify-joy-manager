@@ -463,6 +463,7 @@ export function useHybridBenchmark() {
     
     // v6.41: Declare these OUTSIDE try block so they're accessible in catch for partial save
     const runId = crypto.randomUUID();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const attempts: any[] = [];
     let hybridCorrect = 0;
     let stockfishCorrect = 0;
@@ -1192,6 +1193,7 @@ export function useHybridBenchmark() {
         if (colorFlow.archetype) {
           const archetypeNormalized = colorFlow.archetype.toLowerCase().replace(/\s+/g, '_');
           recordPredictionOutcome(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             archetypeNormalized as any,
             hybridIsCorrect,
             hybridIsCorrect,
