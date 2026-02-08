@@ -14,6 +14,9 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import type { PredictionAttempt } from '@/lib/chess/cloudBenchmark';
+import { universalAdapterRegistry } from './domains/universal/adapters/index';
+
+function getUniversalAdapterRegistry() { return universalAdapterRegistry; }
 
 // ═════════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -256,6 +259,16 @@ class CorrelationEngine {
       this.chessBuffer.shift();
     }
     
+    // Feed signal to universal adapter registry for cross-domain learning
+    try {
+      const registry = getUniversalAdapterRegistry();
+      registry.incrementSignalCount('universalPatterns');
+      registry.incrementSignalCount('competitiveDynamics');
+      if (signal.normalizedIntensity > 0.7) {
+        registry.incrementSignalCount('gameTheory');
+      }
+    } catch { /* registry not critical */ }
+    
     // Immediate check for high-intensity signals
     if (signal.normalizedIntensity > 0.85) {
       this.detectCorrelations();
@@ -409,9 +422,142 @@ class CorrelationEngine {
     console.log(`  Chess: ${correlation.chessSignal.archetype} (${(correlation.chessSignal.normalizedIntensity * 100).toFixed(0)}%)`);
     console.log(`  Market: ${correlation.marketSignal.symbol} ${correlation.marketSignal.direction} (${(correlation.marketSignal.normalizedIntensity * 100).toFixed(0)}%)`);
 
-    // TODO: Enable database persistence after running migration:
-    // supabase/migrations/001_cross_domain_correlations.sql
-    // For now, correlations are stored in memory and logged to console
+    // v8.1: Persist to database
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any)
+        .from('cross_domain_correlations')
+        .insert({
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          correlation_id: (correlation as any).correlationId || crypto.randomUUID(),
+          pattern_id: pattern.patternId,
+          pattern_name: pattern.patternName,
+          correlation_score: correlation.correlationScore,
+          chess_archetype: correlation.chessSignal.archetype,
+          chess_confidence: correlation.chessSignal.confidence,
+          chess_intensity: correlation.chessSignal.normalizedIntensity,
+          market_symbol: correlation.marketSignal.symbol,
+          market_direction: correlation.marketSignal.direction,
+          market_confidence: correlation.marketSignal.confidence,
+          market_intensity: correlation.marketSignal.normalizedIntensity,
+          detected_at: correlation.detectedAt,
+          validated: false
+        });
+      
+      if (error) {
+        console.warn('[CorrelationEngine] DB persistence warning:', error.message);
+      } else {
+        console.log('[CorrelationEngine] ✅ Saved to database');
+      }
+    } catch (err) {
+      console.warn('[CorrelationEngine] DB persistence failed:', err);
+    }
+  }
+
+  /**
+   * Validate a correlation with actual outcome
+   * Called when chess game ends or market prediction resolves
+   */
+  async validateCorrelation(
+    correlationId: string,
+    chessOutcome: 'confirmed' | 'rejected' | 'pending',
+    marketOutcome: 'confirmed' | 'rejected' | 'pending'
+  ): Promise<void> {
+    // Determine overall validation outcome
+    let validationOutcome: 'confirmed' | 'rejected' | 'pending' = 'pending';
+    
+    if (chessOutcome === 'confirmed' && marketOutcome === 'confirmed') {
+      validationOutcome = 'confirmed';
+    } else if (chessOutcome === 'rejected' || marketOutcome === 'rejected') {
+      validationOutcome = 'rejected';
+    }
+    
+    // Update local correlation
+    const correlation = this.correlations.find(c => c.id === correlationId);
+    if (correlation) {
+      correlation.validated = true;
+      correlation.validationOutcome = validationOutcome;
+      
+      console.log(`[CorrelationEngine] ✅ Validated: ${correlationId} → ${validationOutcome}`);
+    }
+    
+    // Update database
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any)
+        .from('cross_domain_correlations')
+        .update({
+          validated: true,
+          validation_outcome: validationOutcome,
+          chess_outcome: chessOutcome,
+          market_outcome: marketOutcome,
+          validated_at: new Date().toISOString()
+        })
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .eq('id', correlationId as any);
+      
+      if (error) {
+        console.warn('[CorrelationEngine] Validation update failed:', error.message);
+      } else {
+        // Update pattern accuracy
+        this.updatePatternAccuracy(correlation?.patternType || 'momentum', validationOutcome === 'confirmed');
+      }
+    } catch (err) {
+      console.warn('[CorrelationEngine] Validation DB update failed:', err);
+    }
+  }
+
+  /**
+   * Update pattern accuracy based on validation outcome
+   */
+  private updatePatternAccuracy(patternType: string, wasCorrect: boolean): void {
+    const pattern = UNIVERSAL_PATTERNS.find(p => 
+      p.patternId.toLowerCase().includes(patternType.toLowerCase())
+    );
+    
+    if (!pattern) return;
+    
+    // Calculate rolling accuracy
+    const currentAccuracy = pattern.historicalAccuracy;
+    const totalOccurrences = pattern.occurrences;
+    
+    // Bayesian update: weight recent outcomes more heavily
+    const newAccuracy = totalOccurrences === 0
+      ? (wasCorrect ? 1.0 : 0.0)
+      : (currentAccuracy * (totalOccurrences - 1) + (wasCorrect ? 1.0 : 0.0)) / totalOccurrences;
+    
+    pattern.historicalAccuracy = Math.max(0, Math.min(1, newAccuracy));
+    
+    console.log(`[CorrelationEngine] 📊 Pattern "${pattern.patternName}" accuracy: ${(pattern.historicalAccuracy * 100).toFixed(1)}%`);
+  }
+
+  /**
+   * Get validation statistics
+   */
+  getValidationStats(): {
+    total: number;
+    validated: number;
+    confirmed: number;
+    rejected: number;
+    pending: number;
+    accuracyRate: number;
+  } {
+    const total = this.correlations.length;
+    const validated = this.correlations.filter(c => c.validated).length;
+    const confirmed = this.correlations.filter(c => c.validationOutcome === 'confirmed').length;
+    const rejected = this.correlations.filter(c => c.validationOutcome === 'rejected').length;
+    const pending = total - validated;
+    
+    const accuracyRate = validated > 0 ? confirmed / validated : 0;
+    
+    return {
+      total,
+      validated,
+      confirmed,
+      rejected,
+      pending,
+      accuracyRate
+    };
   }
 
   /**
@@ -454,6 +600,14 @@ export function useCrossDomainCorrelations() {
   const [correlations, setCorrelations] = useState<PatternCorrelation[]>([]);
   const [patterns, setPatterns] = useState<UniversalPattern[]>([]);
   const [isMonitoring, setIsMonitoring] = useState(false);
+  const [validationStats, setValidationStats] = useState({
+    total: 0,
+    validated: 0,
+    confirmed: 0,
+    rejected: 0,
+    pending: 0,
+    accuracyRate: 0
+  });
 
   useEffect(() => {
     const eng = getCorrelationEngine();
@@ -461,11 +615,13 @@ export function useCrossDomainCorrelations() {
     // Initial load
     setCorrelations(eng.getRecentCorrelations());
     setPatterns(eng.getPatternStats());
+    setValidationStats(eng.getValidationStats());
 
     // Poll for updates
     const interval = setInterval(() => {
       setCorrelations(eng.getRecentCorrelations());
       setPatterns(eng.getPatternStats());
+      setValidationStats(eng.getValidationStats());
     }, 5000);
 
     return () => clearInterval(interval);
@@ -497,14 +653,26 @@ export function useCrossDomainCorrelations() {
     getCorrelationEngine().ingestMarketSignal(signal);
   }, []);
 
+  const validateCorrelation = useCallback(async (
+    correlationId: string,
+    chessOutcome: 'confirmed' | 'rejected' | 'pending',
+    marketOutcome: 'confirmed' | 'rejected' | 'pending'
+  ) => {
+    await getCorrelationEngine().validateCorrelation(correlationId, chessOutcome, marketOutcome);
+    // Refresh stats after validation
+    setValidationStats(getCorrelationEngine().getValidationStats());
+  }, []);
+
   return {
     correlations,
     patterns,
     isMonitoring,
+    validationStats,
     startMonitoring,
     stopMonitoring,
     ingestChess,
-    ingestMarket
+    ingestMarket,
+    validateCorrelation
   };
 }
 

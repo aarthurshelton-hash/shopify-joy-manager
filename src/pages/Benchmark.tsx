@@ -12,6 +12,7 @@ import { saveBenchmarkResults } from '@/lib/chess/benchmarkPersistence';
 import { supabase } from '@/integrations/supabase/client';
 import { useBenchmarkRateLimit } from '@/hooks/useRateLimitV2';
 import { acquireBenchmarkLock, releaseBenchmarkLock } from '@/lib/chess/benchmarkCoordinator';
+import { getCorrelationEngine, normalizeChessSignal } from '@/lib/pensent-core/crossDomainCorrelation';
 import './Benchmark.css';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -46,7 +47,7 @@ interface GameDetail {
   position_hash: string | null;
   data_source: string | null;
   data_quality_tier: string | null;
-  worker_id: string | null;
+  worker_id?: string | null;
   created_at: string;
   white_elo: number | null;
   black_elo: number | null;
@@ -94,10 +95,39 @@ function useDbStats() {
 
   useEffect(() => {
     refresh();
-    // Realtime: refresh on new predictions
+    // Realtime: refresh stats + feed correlation engine on every new prediction
+    const correlationEngine = getCorrelationEngine();
+    correlationEngine.start();
+
     const channel = supabase
       .channel('benchmark-stats')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chess_prediction_attempts' }, () => refresh())
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chess_prediction_attempts' }, (payload) => {
+        refresh();
+        // Feed into correlation engine so farm + web predictions are all tracked
+        try {
+          const row = payload.new as Record<string, unknown>;
+          if (row.hybrid_prediction && row.stockfish_prediction) {
+            const signal = normalizeChessSignal({
+              gameId: String(row.game_id || ''),
+              gameName: String(row.game_name || ''),
+              fen: String(row.fen || ''),
+              moveNumber: Number(row.move_number || 20),
+              hybridPrediction: row.hybrid_prediction as PredictionAttempt['hybridPrediction'],
+              hybridConfidence: Number(row.hybrid_confidence || 0),
+              hybridArchetype: String(row.hybrid_archetype || 'unknown'),
+              hybridCorrect: Boolean(row.hybrid_correct),
+              stockfishPrediction: row.stockfish_prediction as PredictionAttempt['stockfishPrediction'],
+              stockfishConfidence: Number(row.stockfish_confidence || 0),
+              stockfishEval: Number(row.stockfish_eval || 0),
+              stockfishDepth: Number(row.stockfish_depth || 18),
+              stockfishCorrect: Boolean(row.stockfish_correct),
+              actualResult: row.actual_result as PredictionAttempt['actualResult'],
+              pgn: String(row.pgn || ''),
+            } as PredictionAttempt);
+            correlationEngine.ingestChessSignal(signal);
+          }
+        } catch { /* don't break stats refresh on correlation error */ }
+      })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, []);

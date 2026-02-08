@@ -294,79 +294,29 @@ export async function saveBenchmarkResults(result: BenchmarkResult): Promise<str
   const runId = `benchmark-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   
   try {
-    // Calculate duration
-    const durationMs = result.completedAt 
-      ? result.completedAt.getTime() - result.startedAt.getTime()
-      : 0;
-
-    // Insert main benchmark result with TCEC calibration markers
-    const { data: benchmarkData, error: benchmarkError } = await supabase
-      .from('chess_benchmark_results')
-      .insert({
-        run_id: runId,
-        data_source: result.dataSource,
-        total_games: result.totalGames,
-        completed_games: result.completedGames,
-        prediction_move_number: 20,
-        stockfish_accuracy: result.stockfishAccuracy,
-        hybrid_accuracy: result.hybridAccuracy,
-        stockfish_wins: result.stockfishWins,
-        hybrid_wins: result.hybridWins,
-        both_correct: result.bothCorrect,
-        both_wrong: result.bothWrong,
-        p_value: result.pValue,
-        confidence: result.confidence,
-        archetype_performance: result.archetypePerformance,
-        games_analyzed: result.gamesAnalyzed,
-        duration_ms: durationMs,
-        stockfish_version: 'TCEC Stockfish 17 NNUE (ELO 3600) Unlimited',
-        hybrid_version: 'En Pensent Hybrid v2.0 (TCEC Calibrated)',
-        data_quality_tier: 'tcec_calibrated',
-        stockfish_mode: 'tcec_unlimited',
-      })
-      .select('id')
-      .single();
-
-    if (benchmarkError) {
-      console.error('Failed to save benchmark:', benchmarkError);
-      return null;
-    }
-
-    const benchmarkId = benchmarkData.id;
-
-    // v6.65-COMPLETE-ONLY: Filter to ONLY save attempts with COMPLETE predictions
-    // Invalid predictions block the game_id from re-capture in future runs
-    const VALID_PREDICTIONS = ['white', 'black', 'draw', 'white_wins', 'black_wins', 'unknown'];
-    
+    // Filter to ONLY save attempts with COMPLETE predictions
     const validAttempts = result.predictionPoints.filter(attempt => {
       const hybridPred = String(attempt.hybridPrediction || '');
       const sfPred = String(attempt.stockfishPrediction || '');
-      
-      // v8.1: Relaxed validation - accept predictions that have ANY value
       const hasHybrid = hybridPred && hybridPred !== 'undefined';
       const hasStockfish = sfPred && sfPred !== 'undefined';
       
       if (!hasHybrid || !hasStockfish) {
-        console.log(`[v8.1] Skipping incomplete prediction for ${attempt.gameId}: hybrid=${hybridPred}, sf=${sfPred}`);
+        console.log(`[Benchmark] Skipping incomplete prediction for ${attempt.gameId}: hybrid=${hybridPred}, sf=${sfPred}`);
         return false;
       }
       return true;
     });
 
-    // Insert individual prediction attempts for learning
+    // Save individual predictions to chess_prediction_attempts ONLY
+    // No summary rows — the benchmark page queries predictions directly
     const attempts = validAttempts.map(attempt => {
-      // v8.0-SOURCE: Determine data_source based on game ID prefix
       let dataSource: string = 'web_client';
-      if (attempt.gameId?.startsWith('li_')) {
-        dataSource = 'lichess_live';
-      } else if (attempt.gameId?.startsWith('cc_')) {
-        dataSource = 'chesscom_live';
-      } else if (attempt.gameId?.startsWith('term_')) {
-        dataSource = 'farm_terminal';
-      }
+      if (attempt.gameId?.startsWith('li_')) dataSource = 'lichess_live';
+      else if (attempt.gameId?.startsWith('cc_')) dataSource = 'chesscom_live';
+      else if (attempt.gameId?.startsWith('term_')) dataSource = 'farm_terminal';
       
       return {
-        benchmark_id: benchmarkId,
         game_id: attempt.gameId,
         game_name: attempt.gameName,
         move_number: attempt.moveNumber,
@@ -384,17 +334,15 @@ export async function saveBenchmarkResults(result: BenchmarkResult): Promise<str
         hybrid_correct: attempt.hybridCorrect,
         position_hash: hashPosition(attempt.fen),
         lesson_learned: JSON.parse(JSON.stringify(analyzeLessonLearned(attempt))),
-        data_quality_tier: 'tcec_calibrated',
-        data_source: dataSource, // v8.0: Dynamic source based on game origin
-        engine_version: 'TCEC Stockfish 17 NNUE (ELO 3600)',
-        hybrid_engine: 'En Pensent Universal v2.1',
+        data_quality_tier: 'web_benchmark',
+        data_source: dataSource,
+        worker_id: 'web_client',
         lichess_id_verified: true,
       };
     });
     
-    console.log(`[v6.65] Saving ${attempts.length}/${result.predictionPoints.length} complete predictions (${result.predictionPoints.length - attempts.length} incomplete filtered out)`);
+    console.log(`[Benchmark] Saving ${attempts.length}/${result.predictionPoints.length} complete predictions`);
 
-    // CRITICAL: Use batch inserts for large sets to avoid timeout issues
     const BATCH_SIZE = 25;
     let savedCount = 0;
     let failedBatches = 0;
@@ -408,11 +356,8 @@ export async function saveBenchmarkResults(result: BenchmarkResult): Promise<str
       if (attemptsError) {
         console.error(`Failed to save prediction batch ${i / BATCH_SIZE + 1}:`, attemptsError);
         failedBatches++;
-        // v8.1: Continue with other batches instead of rolling back entire benchmark
-        // This ensures partial data is saved rather than losing everything
         continue;
       }
-      
       savedCount += batch.length;
     }
     
@@ -420,13 +365,10 @@ export async function saveBenchmarkResults(result: BenchmarkResult): Promise<str
       console.warn(`[Benchmark] ${failedBatches} batches failed, but ${savedCount} predictions were saved`);
     }
 
-    // Feed saved predictions into cross-domain correlation engine
-    console.log('[Benchmark] Feeding predictions to cross-domain correlation engine...');
+    // Feed predictions into cross-domain correlation engine
     const engine = getCorrelationEngine();
     engine.start();
-    
     for (const attempt of attempts) {
-      // Create a PredictionAttempt-compatible object for normalization
       const predictionForCorrelation = {
         gameId: attempt.game_id,
         gameName: attempt.game_name,
@@ -444,12 +386,11 @@ export async function saveBenchmarkResults(result: BenchmarkResult): Promise<str
         actualResult: attempt.actual_result,
         pgn: attempt.pgn,
       } as PredictionAttempt;
-      
       engine.ingestChessSignal(normalizeChessSignal(predictionForCorrelation));
     }
     console.log(`[Benchmark] Fed ${attempts.length} predictions to correlation engine`);
 
-    console.log(`[Benchmark] Saved run ${runId} with ${savedCount}/${attempts.length} predictions (${failedBatches} failed batches)`);
+    console.log(`[Benchmark] Saved run ${runId}: ${savedCount}/${attempts.length} predictions`);
     return runId;
 
   } catch (error) {
