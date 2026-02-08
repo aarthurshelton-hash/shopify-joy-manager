@@ -44,7 +44,7 @@ Create `.env` file in project root:
 
 ```bash
 # Supabase (Required)
-VITE_SUPABASE_URL=https://aufycarwflhsdgszbnop.supabase.co
+VITE_SUPABASE_URL=https://ezvfslkjyjsqycztyfxh.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=your_key_here
 SUPABASE_SERVICE_ROLE_KEY=your_service_key_here
 

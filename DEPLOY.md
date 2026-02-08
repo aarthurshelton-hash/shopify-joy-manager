@@ -47,7 +47,7 @@ node farm/workers/high-frequency-paper-trader.mjs > /tmp/trader.log 2>&1 &
 
 - **Dashboard**: http://localhost:5173/stock-predictions
 - **Bridge Status**: http://localhost:4000/api/status
-- **Supabase**: https://aufycarwflhsdgszbnop.supabase.co
+- **Supabase**: https://ezvfslkjyjsqycztyfxh.supabase.co
 
 ## Auto-Restart on Boot (macOS)
 

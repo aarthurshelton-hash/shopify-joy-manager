@@ -19,7 +19,7 @@ BEGIN
     $CRON$
     SELECT net.http_post(
       url := 'https://ezvfslkjyjsqycztyfxh.supabase.co/functions/v1/system-heartbeat',
-      headers := '{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF1ZnljYXJ3Zmxoc2Rnc3pibm9wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc5ODUwOTEsImV4cCI6MjA4MzU2MTA5MX0.uNxFLqJ3BGKkAj1pj77fxnCfDGTcdKFuCIF8HMPYiXw"}'::jsonb,
+      headers := '{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV6dmZzbGtqeWpzcXljenR5ZnhoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAwODMwMjksImV4cCI6MjA4NTY1OTAyOX0.pEFtxIisThrkNbXJPg0UThjscT0qqpxmv970PihxWMo"}'::jsonb,
       body := '{"trigger": "cron"}'::jsonb
     ) AS request_id;
     $CRON$

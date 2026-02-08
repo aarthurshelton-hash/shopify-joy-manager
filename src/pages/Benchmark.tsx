@@ -135,52 +135,71 @@ function useDbStats() {
   return { stats, loading, refresh };
 }
 
-// ─── Source Breakdown Hook ───────────────────────────────────────────────────
+// ─── System Breakdown Hook ───────────────────────────────────────────────────
+// Groups all data_source values into three meaningful system categories
 
-interface SourceStat { source: string; count: number; sfAcc: number; epAcc: number }
+interface SystemStat { label: string; description: string; count: number; sfAcc: number; epAcc: number }
 
-function useSourceBreakdown() {
-  const [sources, setSources] = useState<SourceStat[]>([]);
+function classifySource(src: string): 'engine' | 'farm' | 'correlation' {
+  if (src.includes('correlation')) return 'correlation';
+  if (src.includes('farm') || src.includes('terminal') || src.includes('worker') || src.includes('8quad')) return 'farm';
+  return 'engine';
+}
+
+function useSystemBreakdown() {
+  const [systems, setSystems] = useState<SystemStat[]>([]);
 
   useEffect(() => {
     const load = async () => {
-      // Get all distinct data_source values and their counts
       const { data } = await supabase
         .from('chess_prediction_attempts')
         .select('data_source, stockfish_correct, hybrid_correct');
 
-      if (!data || data.length === 0) { setSources([]); return; }
+      if (!data || data.length === 0) { setSystems([]); return; }
 
-      const map: Record<string, { n: number; sf: number; ep: number }> = {};
+      const buckets: Record<string, { n: number; sf: number; ep: number }> = {
+        engine: { n: 0, sf: 0, ep: 0 },
+        farm: { n: 0, sf: 0, ep: 0 },
+        correlation: { n: 0, sf: 0, ep: 0 },
+      };
+
       for (const r of data) {
-        const src = r.data_source || 'unknown';
-        if (!map[src]) map[src] = { n: 0, sf: 0, ep: 0 };
-        map[src].n++;
-        if (r.stockfish_correct) map[src].sf++;
-        if (r.hybrid_correct) map[src].ep++;
+        const key = classifySource(r.data_source || 'unknown');
+        buckets[key].n++;
+        if (r.stockfish_correct) buckets[key].sf++;
+        if (r.hybrid_correct) buckets[key].ep++;
       }
 
-      setSources(
-        Object.entries(map)
-          .map(([source, s]) => ({
-            source,
-            count: s.n,
-            sfAcc: s.n > 0 ? (s.sf / s.n) * 100 : 0,
-            epAcc: s.n > 0 ? (s.ep / s.n) * 100 : 0,
-          }))
-          .sort((a, b) => b.count - a.count)
+      const meta: Record<string, { label: string; description: string }> = {
+        engine: { label: 'Prediction Engine', description: 'Core En Pensent vs Stockfish 17 analysis' },
+        farm: { label: 'Terminal Farms', description: '24/7 automated game harvesting & analysis' },
+        correlation: { label: 'Correlation Engine', description: 'Cross-domain pattern detection signals' },
+      };
+
+      setSystems(
+        ['engine', 'farm', 'correlation']
+          .filter(k => buckets[k].n > 0)
+          .map(k => {
+            const b = buckets[k];
+            return {
+              ...meta[k],
+              count: b.n,
+              sfAcc: b.n > 0 ? (b.sf / b.n) * 100 : 0,
+              epAcc: b.n > 0 ? (b.ep / b.n) * 100 : 0,
+            };
+          })
       );
     };
     load();
 
     const channel = supabase
-      .channel('source-breakdown')
+      .channel('system-breakdown')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chess_prediction_attempts' }, () => load())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  return sources;
+  return systems;
 }
 
 // ─── Game Detail Modal ───────────────────────────────────────────────────────
@@ -389,7 +408,7 @@ function GameListPanel({ filter, title }: { filter?: string; title: string }) {
 
 export default function Benchmark() {
   const { stats, loading, refresh } = useDbStats();
-  const sources = useSourceBreakdown();
+  const systems = useSystemBreakdown();
 
   const [isRunning, setIsRunning] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -511,21 +530,24 @@ export default function Benchmark() {
           </Card>
         )}
 
-        {/* ─── Source Breakdown ─────────────────────────────────────── */}
-        {sources.length > 0 && (
+        {/* ─── System Breakdown ─────────────────────────────────────── */}
+        {systems.length > 0 && (
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">By Data Source</CardTitle>
+              <CardTitle className="text-sm">By System</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {sources.map(s => (
-                  <div key={s.source} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Server className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">{s.source}</span>
+                {systems.map(s => (
+                  <div key={s.label} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Server className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <div className="min-w-0">
+                        <span className="text-sm font-medium">{s.label}</span>
+                        <p className="text-xs text-muted-foreground truncate">{s.description}</p>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-4 text-sm">
+                    <div className="flex items-center gap-4 text-sm shrink-0 ml-4">
                       <span>{s.count.toLocaleString()} games</span>
                       <span className="text-blue-500">SF {s.sfAcc.toFixed(1)}%</span>
                       <span className="text-purple-500">EP {s.epAcc.toFixed(1)}%</span>
