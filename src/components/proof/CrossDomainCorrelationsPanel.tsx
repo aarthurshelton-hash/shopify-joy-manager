@@ -19,7 +19,8 @@ import {
   TrendingUp, 
   ArrowRight,
   Sparkles,
-  Timer
+  Timer,
+  WifiOff
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -45,116 +46,86 @@ interface CorrelationSummary {
   }>;
 }
 
-// Generate synthetic correlations from real data patterns
-async function generateCorrelations(): Promise<CorrelationSummary> {
-  const correlations: DomainCorrelation[] = [];
-  
-  // Chess ↔ Market correlation
-  // When chess pattern intensity spikes, check market volatility
-  const chessMarketCorr: DomainCorrelation = {
-    id: 'chess_market',
-    domainA: { name: 'Chess', metric: 'Pattern Intensity', value: 0.6 + Math.random() * 0.3 },
-    domainB: { name: 'Market', metric: 'Volatility Index', value: 0.5 + Math.random() * 0.4 },
-    correlation: 0.45 + Math.random() * 0.35,
-    lag: Math.floor(Math.random() * 5000),
-    confidence: 0.6 + Math.random() * 0.3,
-    lastUpdated: new Date(),
-    significance: 'moderate'
-  };
-  chessMarketCorr.significance = chessMarketCorr.correlation > 0.7 ? 'strong' : 
-    chessMarketCorr.correlation > 0.4 ? 'moderate' : 'weak';
-  correlations.push(chessMarketCorr);
+// Fetch real correlations from the cross_domain_correlations Supabase table
+// Returns null when no real data is available (OFFLINE state)
+async function fetchRealCorrelations(): Promise<CorrelationSummary | null> {
+  try {
+    // Table may not be in generated types yet — use type assertion
+    const { data, error } = await (supabase as any)
+      .from('cross_domain_correlations')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(50);
 
-  // Code ↔ Market correlation
-  // Code health affects trading confidence
-  const codeMarketCorr: DomainCorrelation = {
-    id: 'code_market',
-    domainA: { name: 'Code', metric: 'Health Score', value: 0.7 + Math.random() * 0.25 },
-    domainB: { name: 'Market', metric: 'Prediction Accuracy', value: 0.55 + Math.random() * 0.35 },
-    correlation: 0.5 + Math.random() * 0.4,
-    lag: 0, // Immediate effect
-    confidence: 0.7 + Math.random() * 0.25,
-    lastUpdated: new Date(),
-    significance: 'moderate'
-  };
-  codeMarketCorr.significance = codeMarketCorr.correlation > 0.7 ? 'strong' : 
-    codeMarketCorr.correlation > 0.4 ? 'moderate' : 'weak';
-  correlations.push(codeMarketCorr);
-
-  // Chess ↔ Code correlation
-  // Pattern learning from games improves code pattern detection
-  const chessCodeCorr: DomainCorrelation = {
-    id: 'chess_code',
-    domainA: { name: 'Chess', metric: 'Games Learned', value: 50 + Math.random() * 200 },
-    domainB: { name: 'Code', metric: 'Issue Detection', value: 0.6 + Math.random() * 0.35 },
-    correlation: 0.35 + Math.random() * 0.45,
-    lag: Math.floor(Math.random() * 60000), // Minutes of processing
-    confidence: 0.55 + Math.random() * 0.35,
-    lastUpdated: new Date(),
-    significance: 'moderate'
-  };
-  chessCodeCorr.significance = chessCodeCorr.correlation > 0.7 ? 'strong' : 
-    chessCodeCorr.correlation > 0.4 ? 'moderate' : 'weak';
-  correlations.push(chessCodeCorr);
-
-  // Cultural ↔ Market
-  const culturalMarketCorr: DomainCorrelation = {
-    id: 'cultural_market',
-    domainA: { name: 'Cultural', metric: 'Arbitrage Count', value: 3 + Math.random() * 5 },
-    domainB: { name: 'Market', metric: 'Trade Confidence', value: 0.5 + Math.random() * 0.4 },
-    correlation: 0.4 + Math.random() * 0.4,
-    lag: Math.floor(Math.random() * 30000),
-    confidence: 0.5 + Math.random() * 0.4,
-    lastUpdated: new Date(),
-    significance: 'moderate'
-  };
-  culturalMarketCorr.significance = culturalMarketCorr.correlation > 0.7 ? 'strong' : 
-    culturalMarketCorr.correlation > 0.4 ? 'moderate' : 'weak';
-  correlations.push(culturalMarketCorr);
-
-  // Consciousness ↔ Chess
-  const consciousnessChessCorr: DomainCorrelation = {
-    id: 'consciousness_chess',
-    domainA: { name: 'Consciousness', metric: 'Resonance Level', value: 0.4 + Math.random() * 0.5 },
-    domainB: { name: 'Chess', metric: 'Prediction Accuracy', value: 0.5 + Math.random() * 0.4 },
-    correlation: 0.3 + Math.random() * 0.5,
-    lag: Math.floor(Math.random() * 10000),
-    confidence: 0.45 + Math.random() * 0.4,
-    lastUpdated: new Date(),
-    significance: 'moderate'
-  };
-  consciousnessChessCorr.significance = consciousnessChessCorr.correlation > 0.7 ? 'strong' : 
-    consciousnessChessCorr.correlation > 0.4 ? 'moderate' : 'weak';
-  correlations.push(consciousnessChessCorr);
-
-  // Sort by correlation strength
-  correlations.sort((a, b) => b.correlation - a.correlation);
-
-  // Generate recent events
-  const events = [
-    { 
-      timestamp: new Date(Date.now() - 60000), 
-      event: 'Pattern spike in Chess correlated with Market volatility increase',
-      domains: ['Chess', 'Market']
-    },
-    { 
-      timestamp: new Date(Date.now() - 180000), 
-      event: 'Code health improvement boosted prediction confidence by 12%',
-      domains: ['Code', 'Market']
-    },
-    { 
-      timestamp: new Date(Date.now() - 300000), 
-      event: 'Cultural arbitrage opportunity detected between Japan and USA sessions',
-      domains: ['Cultural', 'Market']
+    if (error) {
+      console.warn('[CrossDomain] DB fetch error:', error.message);
+      return null;
     }
-  ];
 
-  return {
-    correlations,
-    strongestPair: correlations[0] || null,
-    averageCorrelation: correlations.reduce((s, c) => s + c.correlation, 0) / correlations.length,
-    recentEvents: events
-  };
+    if (!data || (data as any[]).length === 0) {
+      return null;
+    }
+
+    const rows = data as any[];
+
+    // Group by domain pair and take the most recent correlation for each pair
+    const pairMap = new Map<string, any>();
+    for (const row of rows) {
+      const pairKey = `${row.domain_a}_${row.domain_b}`;
+      if (!pairMap.has(pairKey)) {
+        pairMap.set(pairKey, row);
+      }
+    }
+
+    const correlations: DomainCorrelation[] = Array.from(pairMap.values()).map(row => {
+      const corrValue = typeof row.correlation_strength === 'number' ? row.correlation_strength : 0;
+      const conf = typeof row.confidence === 'number' ? row.confidence : 0;
+      const significance: 'strong' | 'moderate' | 'weak' = 
+        corrValue > 0.7 ? 'strong' : corrValue > 0.4 ? 'moderate' : 'weak';
+
+      return {
+        id: row.id,
+        domainA: { 
+          name: row.domain_a || 'Unknown', 
+          metric: row.metric_a || 'Signal', 
+          value: typeof row.value_a === 'number' ? row.value_a : 0 
+        },
+        domainB: { 
+          name: row.domain_b || 'Unknown', 
+          metric: row.metric_b || 'Signal', 
+          value: typeof row.value_b === 'number' ? row.value_b : 0 
+        },
+        correlation: corrValue,
+        lag: typeof row.lag_ms === 'number' ? row.lag_ms : 0,
+        confidence: conf,
+        lastUpdated: new Date(row.created_at),
+        significance,
+      };
+    });
+
+    correlations.sort((a, b) => b.correlation - a.correlation);
+
+    // Build recent events from actual DB rows (most recent entries)
+    const recentEvents = rows.slice(0, 3).map(row => ({
+      timestamp: new Date(row.created_at),
+      event: row.description || `${row.domain_a} ↔ ${row.domain_b} correlation detected (${((row.correlation_strength || 0) * 100).toFixed(0)}%)`,
+      domains: [row.domain_a || 'Unknown', row.domain_b || 'Unknown'],
+    }));
+
+    const avgCorrelation = correlations.length > 0
+      ? correlations.reduce((s, c) => s + c.correlation, 0) / correlations.length
+      : 0;
+
+    return {
+      correlations,
+      strongestPair: correlations[0] || null,
+      averageCorrelation: avgCorrelation,
+      recentEvents,
+    };
+  } catch (err) {
+    console.error('[CrossDomain] Unexpected error:', err);
+    return null;
+  }
 }
 
 const getDomainIcon = (domain: string) => {
@@ -178,25 +149,53 @@ const getSignificanceColor = (sig: string) => {
 export function CrossDomainCorrelationsPanel() {
   const [summary, setSummary] = useState<CorrelationSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [offline, setOffline] = useState(false);
 
   const refreshData = useCallback(async () => {
-    const data = await generateCorrelations();
-    setSummary(data);
+    const data = await fetchRealCorrelations();
+    if (data) {
+      setSummary(data);
+      setOffline(false);
+    } else {
+      setSummary(null);
+      setOffline(true);
+    }
     setLoading(false);
   }, []);
 
   useEffect(() => {
     refreshData();
-    const interval = setInterval(refreshData, 5000);
+    const interval = setInterval(refreshData, 30000);
     return () => clearInterval(interval);
   }, [refreshData]);
 
-  if (loading || !summary) {
+  if (loading) {
     return (
       <Card className="bg-card/50 backdrop-blur border-primary/20">
         <CardContent className="p-8 text-center">
           <Link2 className="w-8 h-8 mx-auto animate-pulse text-primary" />
           <p className="mt-4 text-muted-foreground">Mapping cross-domain correlations...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (offline || !summary) {
+    return (
+      <Card className="bg-card/50 backdrop-blur border-primary/20">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Link2 className="w-5 h-5 text-primary" />
+            Cross-Domain Correlations
+          </CardTitle>
+          <CardDescription>
+            Chess ↔ Code ↔ Market pattern synchronization
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-8 text-center">
+          <WifiOff className="w-8 h-8 mx-auto text-muted-foreground" />
+          <p className="mt-4 text-muted-foreground font-medium">OFFLINE</p>
+          <p className="mt-1 text-xs text-muted-foreground">No real correlation data available yet. Data will appear as the cross-domain engine detects patterns.</p>
         </CardContent>
       </Card>
     );

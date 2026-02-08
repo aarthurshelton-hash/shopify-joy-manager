@@ -132,13 +132,13 @@ export async function loadLearnedPatterns(): Promise<{
       const archetype = normalizeArchetype(pattern.hybrid_archetype);
       
       if (outcome && archetype) {
-        // Create a synthetic pattern record from the learned prediction
-        const syntheticPattern: PatternRecord = {
+        // Reconstruct a pattern record from the real DB prediction
+        const reconstructedPattern: PatternRecord = {
           id: pattern.id,
           fingerprint: pattern.fen.substring(0, 20), // Use FEN as fingerprint
           archetype,
           outcome,
-          totalMoves: 30, // Estimate
+          totalMoves: 30, // Default — exact move count not stored in predictions table
           characteristics: {
             flowDirection: 'balanced',
             intensity: pattern.hybrid_confidence || 0.5,
@@ -149,14 +149,14 @@ export async function loadLearnedPatterns(): Promise<{
             queensideActivity: 0.5,
           },
           gameMetadata: {
-            event: 'Learned Pattern',
-            white: 'GM',
-            black: 'GM',
+            event: 'DB Prediction (Reconstructed)',
+            white: 'Unknown',
+            black: 'Unknown',
           },
         };
 
         // Add to in-memory database for pattern matching
-        patternDatabase.injectLearnedPattern(syntheticPattern);
+        patternDatabase.injectLearnedPattern(reconstructedPattern);
       }
     }
   }

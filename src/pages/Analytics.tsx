@@ -136,29 +136,7 @@ const Analytics = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const backgroundImages = useRandomGameArt(12);
 
-  // Projected baseline data for early-stage analytics
-  const PROJECTED_BASELINES = {
-    visualizations: 847,
-    creators: 234,
-    favorites: 1892,
-    palettes: 156,
-    publicPalettes: 42,
-    views: 12500,
-    downloads: 1850,
-    gifDownloads: 420,
-    trades: 127,
-    printOrders: 89,
-    printRevenue: 445000,
-    defaultTopGames: [
-      { gameId: 'immortal-game', favoriteCount: 127 },
-      { gameId: 'opera-game', favoriteCount: 98 },
-      { gameId: 'game-of-century', favoriteCount: 86 },
-      { gameId: 'evergreen-game', favoriteCount: 72 },
-      { gameId: 'kasparov-immortal', favoriteCount: 65 }
-    ]
-  };
-
-  // Projected subscriber count for market cap
+  // Projected subscriber count for market cap forward-looking model
   const PROJECTED_SUBSCRIBERS = 150;
 
   useEffect(() => {
@@ -214,76 +192,57 @@ const Analytics = () => {
           };
         }
 
-        // Calculate projected + actual community stats
-        const projectedViz = PROJECTED_BASELINES.visualizations + actualViz;
-        const projectedCreators = PROJECTED_BASELINES.creators + actualCreators;
-        const projectedFav = PROJECTED_BASELINES.favorites + actualFav;
-        const projectedPalettes = PROJECTED_BASELINES.palettes + actualPalettes;
-        const projectedPublicPalettes = PROJECTED_BASELINES.publicPalettes + actualPublicPalettes;
-
+        // Real-only community stats — no inflated baselines
         // Trending data
-        let topGames: { gameId: string; favoriteCount: number }[] = [];
-        
-        // Calculate real top games
         const gameFrequency: Record<string, number> = {};
         favResult.data?.forEach(fav => {
           gameFrequency[fav.game_id] = (gameFrequency[fav.game_id] || 0) + 1;
         });
         
-        const realTopGames = Object.entries(gameFrequency)
+        const topGames = Object.entries(gameFrequency)
           .map(([gameId, count]) => ({ gameId, favoriteCount: count }))
           .sort((a, b) => b.favoriteCount - a.favoriteCount)
           .slice(0, 5);
-
-        // Merge real data with projections for top games
-        if (realTopGames.length > 0) {
-          topGames = realTopGames.map((game, index) => ({
-            gameId: game.gameId,
-            favoriteCount: game.favoriteCount + (PROJECTED_BASELINES.defaultTopGames[index]?.favoriteCount || 20)
-          }));
-        } else {
-          topGames = PROJECTED_BASELINES.defaultTopGames;
-        }
 
         const trending = {
           topGames: isPremium ? topGames : [],
           topVisions: isPremium ? topVisions : [],
           recentActivity: [
-            { type: 'New Visualizations', count: projectedViz, change: '+18%' },
-            { type: 'Active Creators', count: projectedCreators, change: '+12%' },
-            { type: 'Games Favorited', count: projectedFav, change: '+27%' }
+            { type: 'New Visualizations', count: actualViz, change: '' },
+            { type: 'Active Creators', count: actualCreators, change: '' },
+            { type: 'Games Favorited', count: actualFav, change: '' }
           ]
         };
 
-        // Vision economy stats
+        // Vision economy stats — real data only
         const visionEconomy = {
-          totalViews: PROJECTED_BASELINES.views + platformStats.totalViews,
-          totalDownloads: PROJECTED_BASELINES.downloads + platformStats.totalDownloads,
-          totalGifDownloads: PROJECTED_BASELINES.gifDownloads + platformStats.totalGifDownloads,
-          totalTrades: PROJECTED_BASELINES.trades + platformStats.totalTrades,
-          totalPrintOrders: PROJECTED_BASELINES.printOrders + platformStats.totalPrintOrders,
-          totalPrintRevenue: PROJECTED_BASELINES.printRevenue + platformStats.totalPrintRevenue,
+          totalViews: platformStats.totalViews,
+          totalDownloads: platformStats.totalDownloads,
+          totalGifDownloads: platformStats.totalGifDownloads,
+          totalTrades: platformStats.totalTrades,
+          totalPrintOrders: platformStats.totalPrintOrders,
+          totalPrintRevenue: platformStats.totalPrintRevenue,
           totalScore: platformStats.totalScore,
-          uniqueCollectors: platformStats.uniqueCollectors + PROJECTED_BASELINES.creators,
+          uniqueCollectors: platformStats.uniqueCollectors,
         };
 
-        // Market cap with projected baseline
+        // Market cap — real data only
         const marketCap = {
-          totalMarketCap: marketCapData.totalMarketCap + 2500, // Add projected baseline
+          totalMarketCap: marketCapData.totalMarketCap,
           baseMarketCap: marketCapData.baseMarketCap,
-          membershipContribution: marketCapData.membershipContribution + 945, // 6 months * $1.05 * 150 baseline
-          organicValue: marketCapData.organicValue + 1555,
+          membershipContribution: marketCapData.membershipContribution,
+          organicValue: marketCapData.organicValue,
           membershipMultiplier: marketCapData.membershipMultiplier,
-          totalVisions: marketCapData.totalVisions + PROJECTED_BASELINES.visualizations,
+          totalVisions: marketCapData.totalVisions,
         };
 
         setData({
           community: {
-            totalVisualizations: projectedViz,
-            totalCreators: projectedCreators,
-            totalFavorites: projectedFav,
-            totalPalettes: projectedPalettes,
-            publicPalettes: projectedPublicPalettes
+            totalVisualizations: actualViz,
+            totalCreators: actualCreators,
+            totalFavorites: actualFav,
+            totalPalettes: actualPalettes,
+            publicPalettes: actualPublicPalettes
           },
           personal,
           trending,
@@ -292,14 +251,14 @@ const Analytics = () => {
         });
       } catch (error) {
         console.error('Error fetching analytics:', error);
-        // Fallback to pure projections on error
+        // Fallback to zeros on error — never show fake data
         setData({
           community: {
-            totalVisualizations: PROJECTED_BASELINES.visualizations,
-            totalCreators: PROJECTED_BASELINES.creators,
-            totalFavorites: PROJECTED_BASELINES.favorites,
-            totalPalettes: PROJECTED_BASELINES.palettes,
-            publicPalettes: PROJECTED_BASELINES.publicPalettes
+            totalVisualizations: 0,
+            totalCreators: 0,
+            totalFavorites: 0,
+            totalPalettes: 0,
+            publicPalettes: 0
           },
           personal: { 
             myVisualizations: 0, 
@@ -312,31 +271,31 @@ const Analytics = () => {
             appreciationFromMemberships: 0,
           },
           trending: {
-            topGames: isPremium ? PROJECTED_BASELINES.defaultTopGames : [],
+            topGames: [],
             topVisions: [],
             recentActivity: [
-              { type: 'New Visualizations', count: PROJECTED_BASELINES.visualizations, change: '+18%' },
-              { type: 'Active Creators', count: PROJECTED_BASELINES.creators, change: '+12%' },
-              { type: 'Games Favorited', count: PROJECTED_BASELINES.favorites, change: '+27%' }
+              { type: 'New Visualizations', count: 0, change: '' },
+              { type: 'Active Creators', count: 0, change: '' },
+              { type: 'Games Favorited', count: 0, change: '' }
             ]
           },
           visionEconomy: {
-            totalViews: PROJECTED_BASELINES.views,
-            totalDownloads: PROJECTED_BASELINES.downloads,
-            totalGifDownloads: PROJECTED_BASELINES.gifDownloads,
-            totalTrades: PROJECTED_BASELINES.trades,
-            totalPrintOrders: PROJECTED_BASELINES.printOrders,
-            totalPrintRevenue: PROJECTED_BASELINES.printRevenue,
+            totalViews: 0,
+            totalDownloads: 0,
+            totalGifDownloads: 0,
+            totalTrades: 0,
+            totalPrintOrders: 0,
+            totalPrintRevenue: 0,
             totalScore: 0,
-            uniqueCollectors: PROJECTED_BASELINES.creators,
+            uniqueCollectors: 0,
           },
           marketCap: {
-            totalMarketCap: MEMBERSHIP_ECONOMICS.baseMarketCap + 2500,
+            totalMarketCap: MEMBERSHIP_ECONOMICS.baseMarketCap,
             baseMarketCap: MEMBERSHIP_ECONOMICS.baseMarketCap,
-            membershipContribution: 945,
-            organicValue: 1555,
+            membershipContribution: 0,
+            organicValue: 0,
             membershipMultiplier: 1.0,
-            totalVisions: PROJECTED_BASELINES.visualizations,
+            totalVisions: 0,
           },
         });
       } finally {

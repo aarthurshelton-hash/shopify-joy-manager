@@ -23,9 +23,10 @@ import {
   FileText,
   Sparkles,
   Network,
-  Link2
+  Link2,
+  Cpu
 } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -49,6 +50,127 @@ import LiveCodebaseDebugger from '@/components/pensent-code/LiveCodebaseDebugger
 import { UniversalAdapterMonitor } from '@/components/admin/UniversalAdapterMonitor';
 import { UnifiedSystemDashboard } from '@/components/admin/UnifiedSystemDashboard';
 import { CrossDomainCorrelationPanel } from '@/components/admin/CrossDomainCorrelationPanel';
+import { PhotonChipVisualization } from '@/components/admin/PhotonChipVisualization';
+import { synapticTruthNetwork } from '@/lib/pensent-core/domains/universal/modules/synapticTruthNetwork';
+import { Progress } from '@/components/ui/progress';
+
+/** Live Synaptic Truth Network state panel */
+function SynapticNetworkPanel() {
+  const [networkState, setNetworkState] = React.useState(synapticTruthNetwork.getNetworkState());
+
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setNetworkState(synapticTruthNetwork.getNetworkState());
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Network Overview */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Network className="h-4 w-4 text-purple-400" />
+            Synaptic Truth Network
+          </CardTitle>
+          <CardDescription className="text-xs">Patent Pending — Alec Arthur Shelton</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Neurons</span>
+            <span className="font-bold">{networkState.totalNeurons}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Synapses</span>
+            <span className="font-bold">{networkState.totalSynapses}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Recent Firings</span>
+            <span className="font-bold">{networkState.recentFirings}</span>
+          </div>
+          <div className="space-y-1">
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">Avg Resonance</span>
+              <span>{(networkState.averageResonance * 100).toFixed(1)}%</span>
+            </div>
+            <Progress value={networkState.averageResonance * 100} className="h-1.5" />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Top Archetypes */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Zap className="h-4 w-4 text-yellow-400" />
+            Top Firing Archetypes
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {networkState.topArchetypes.length > 0 ? (
+            networkState.topArchetypes.map((arch) => (
+              <div key={arch.archetype} className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground truncate mr-2">
+                  {arch.archetype.replace(/_/g, ' ')}
+                </span>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-xs">
+                    {(arch.accuracy * 100).toFixed(0)}%
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">{arch.firings}×</span>
+                </div>
+              </div>
+            ))
+          ) : (
+            <p className="text-sm text-muted-foreground italic">
+              No firings yet — network awaiting real prediction signals
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Chip Spec Summary */}
+      <Card className="border-purple-500/20 bg-gradient-to-br from-purple-500/5 to-transparent">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Cpu className="h-4 w-4 text-purple-400" />
+            EnPensent-27 Chip Spec
+          </CardTitle>
+          <CardDescription className="text-xs">Target: Silicon Photonics 45nm</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Cores</span>
+            <span className="font-bold">27 photonic</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Waveguides/core</span>
+            <span className="font-bold">1,024</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Bus Bandwidth</span>
+            <span className="font-bold">10 Tbps/ch</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Die Size</span>
+            <span className="font-bold">20×20mm</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Power</span>
+            <span className="font-bold text-green-400">50W (vs 500W)</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Status</span>
+            <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30 text-xs">
+              Algorithm Proven
+            </Badge>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
 const AdminCEODashboard: React.FC = () => {
   const { user, isLoading: authLoading } = useAuth();
@@ -283,7 +405,7 @@ const AdminCEODashboard: React.FC = () => {
 
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-11">
+          <TabsList className="grid w-full grid-cols-12">
             <TabsTrigger value="users" className="gap-2">
               <Users className="h-4 w-4" />
               <span className="hidden sm:inline">Users</span>
@@ -327,6 +449,10 @@ const AdminCEODashboard: React.FC = () => {
             <TabsTrigger value="universal" className="gap-2 text-violet-500">
               <Network className="h-4 w-4" />
               <span className="hidden sm:inline">Universal</span>
+            </TabsTrigger>
+            <TabsTrigger value="photonic" className="gap-2 text-purple-500">
+              <Cpu className="h-4 w-4" />
+              <span className="hidden sm:inline">Chip</span>
             </TabsTrigger>
           </TabsList>
 
@@ -412,6 +538,26 @@ const AdminCEODashboard: React.FC = () => {
                   <UnifiedSystemDashboard />
                 </div>
               </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="photonic">
+            <div className="space-y-6">
+              <div className="text-center mb-4">
+                <h2 className="text-2xl font-bold flex items-center justify-center gap-2">
+                  <Cpu className="h-6 w-6 text-purple-500" />
+                  Photonic Microchip Architecture
+                </h2>
+                <p className="text-muted-foreground">
+                  EnPensent-27 — Live waveguide matrix, synaptic truth network, and chip specification
+                </p>
+              </div>
+
+              {/* Synaptic Truth Network State */}
+              <SynapticNetworkPanel />
+
+              {/* Photonic Chip Visualization */}
+              <PhotonChipVisualization liveData={true} />
             </div>
           </TabsContent>
         </Tabs>

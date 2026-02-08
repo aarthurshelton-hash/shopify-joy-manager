@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { motion } from 'framer-motion';
-import { Sparkles, Radio, Waves, Zap, Eye, Activity } from 'lucide-react';
+import { Sparkles, Radio, Waves, Zap, Eye, Activity, WifiOff } from 'lucide-react';
 import {
   photonicEngine,
   DOMAIN_WAVELENGTHS,
@@ -52,16 +52,8 @@ export function PhotonicCoherencePanel() {
   const [loading, setLoading] = useState(true);
 
   const refreshData = useCallback(() => {
-    // Inject some random signals to simulate activity
-    const domains = Object.keys(DOMAIN_WAVELENGTHS) as PhotonicDomain[];
-    domains.forEach(domain => {
-      photonicEngine.injectSignal(domain, {
-        amplitude: 0.3 + Math.random() * 0.7,
-        phase: Math.random() * 2 * Math.PI,
-        coherence: 0.5 + Math.random() * 0.5
-      });
-    });
-
+    // Read the engine's actual state — no fake signal injection
+    // Signals are injected by real prediction processes (chess benchmark, market analysis)
     const state = photonicEngine.getUnifiedState();
     const glitch = photonicEngine.detectGlitchInMatrix();
 

@@ -11,9 +11,8 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { motion } from 'framer-motion';
-import { Globe, Clock, Languages, Users, Zap, TrendingUp } from 'lucide-react';
+import { Globe, Clock, Languages, Users, Zap, TrendingUp, WifiOff } from 'lucide-react';
 import {
-  culturalArbitrageEngine,
   CulturalArbitrageOpportunity,
   CULTURAL_PROFILES
 } from '@/lib/pensent-core/domains/finance/culturalArbitrageEngine';
@@ -30,19 +29,7 @@ export function CulturalArbitragePanel() {
   const [loading, setLoading] = useState(true);
 
   const refreshData = useCallback(() => {
-    // Generate mock market data for analysis
-    const mockMarketData: Record<string, { price: number; volume: number; sentiment: number }> = {};
-    Object.keys(CULTURAL_PROFILES).forEach(culture => {
-      mockMarketData[culture] = {
-        price: 100 + Math.random() * 10,
-        volume: 0.8 + Math.random() * 0.4,
-        sentiment: (Math.random() - 0.5) * 2
-      };
-    });
-
-    const opportunities = culturalArbitrageEngine.analyzeArbitrageOpportunities(mockMarketData);
-    
-    // Get currently active trading cultures
+    // Get currently active trading cultures based on REAL timezone data
     const now = new Date();
     const utcHour = now.getUTCHours();
     const activeCultures = Object.entries(CULTURAL_PROFILES).filter(([, profile]) => {
@@ -55,15 +42,12 @@ export function CulturalArbitragePanel() {
       return localHour >= profile.tradingHours.open && localHour < profile.tradingHours.close;
     }).map(([name]) => name);
 
-    const avgConfidence = opportunities.length > 0 
-      ? opportunities.reduce((s, o) => s + o.confidence, 0) / opportunities.length
-      : 0;
-
+    // No mock data — opportunities will only appear when real market data feeds are connected
     setSummary({
-      opportunities: opportunities.slice(0, 10),
+      opportunities: [],
       activeCultures,
-      bestOpportunity: opportunities[0] || null,
-      averageConfidence: avgConfidence
+      bestOpportunity: null,
+      averageConfidence: 0
     });
     setLoading(false);
   }, []);

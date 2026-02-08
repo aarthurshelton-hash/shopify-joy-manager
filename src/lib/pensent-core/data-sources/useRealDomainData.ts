@@ -186,7 +186,7 @@ export function useRealDomainData() {
             {
               id: '1',
               prediction: point.precipitation > 0.3 ? 'precipitation' : 'clear_skies',
-              confidence: 0.6 + Math.random() * 0.2,
+              confidence: data.verified ? 0.8 : 0.5,
               timestamp: Date.now() - 600000
             }
           ]
@@ -224,7 +224,7 @@ export function useRealDomainData() {
             {
               id: '1',
               prediction: point.totalDemand > 0.8 ? 'peak_demand' : 'stable_load',
-              confidence: 0.7 + Math.random() * 0.2,
+              confidence: data.verified ? 0.8 : 0.5,
               timestamp: Date.now() - 900000
             }
           ]

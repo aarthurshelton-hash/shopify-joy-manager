@@ -41,24 +41,8 @@ const TrendingWidget = forwardRef<HTMLElement, Record<string, never>>(function T
   const [data, setData] = useState<TrendingData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Projected baseline data for early-stage analytics
-  const PROJECTED_BASELINES = {
-    visualizations: 847,
-    creators: 234,
-    views: 12500,
-    downloads: 1850,
-    trades: 127,
-    printOrders: 89,
-    printRevenue: 445000, // $4,450 in cents
-    defaultTopGames: [
-      { gameId: 'immortal-game', favoriteCount: 127 },
-      { gameId: 'opera-game', favoriteCount: 98 },
-      { gameId: 'game-of-century', favoriteCount: 86 }
-    ]
-  };
-
-  // Projected baseline for subscriber count (for market cap calculation)
-  const PROJECTED_SUBSCRIBERS = 150; // Conservative early-stage estimate
+  // Projected subscriber count for market cap forward-looking model
+  const PROJECTED_SUBSCRIBERS = 150;
 
   useEffect(() => {
     const fetchTrending = async () => {
@@ -86,45 +70,46 @@ const TrendingWidget = forwardRef<HTMLElement, Record<string, never>>(function T
           .slice(0, 3);
 
         setData({
-          totalVisualizations: PROJECTED_BASELINES.visualizations + actualViz,
-          totalCreators: PROJECTED_BASELINES.creators + actualCreators,
-          topGames: realTopGames.length > 0 ? realTopGames : PROJECTED_BASELINES.defaultTopGames,
+          totalVisualizations: actualViz,
+          totalCreators: actualCreators,
+          topGames: realTopGames,
           topVisions,
-          recentGrowth: '+18%',
+          recentGrowth: '',
           platformStats: {
-            totalViews: PROJECTED_BASELINES.views + platformStats.totalViews,
-            totalDownloads: PROJECTED_BASELINES.downloads + platformStats.totalDownloads,
-            totalTrades: PROJECTED_BASELINES.trades + platformStats.totalTrades,
-            totalPrintOrders: PROJECTED_BASELINES.printOrders + platformStats.totalPrintOrders,
-            totalPrintRevenue: PROJECTED_BASELINES.printRevenue + platformStats.totalPrintRevenue,
+            totalViews: platformStats.totalViews,
+            totalDownloads: platformStats.totalDownloads,
+            totalTrades: platformStats.totalTrades,
+            totalPrintOrders: platformStats.totalPrintOrders,
+            totalPrintRevenue: platformStats.totalPrintRevenue,
             totalScore: platformStats.totalScore,
           },
           marketCap: {
-            totalMarketCap: marketCapData.totalMarketCap + 2500, // Add projected baseline
+            totalMarketCap: marketCapData.totalMarketCap,
             membershipMultiplier: marketCapData.membershipMultiplier,
-            totalVisions: marketCapData.totalVisions + PROJECTED_BASELINES.visualizations,
+            totalVisions: marketCapData.totalVisions,
           },
         });
       } catch (error) {
         console.error('Error fetching trending data:', error);
+        // Fallback to zeros — never show fake data
         setData({
-          totalVisualizations: PROJECTED_BASELINES.visualizations,
-          totalCreators: PROJECTED_BASELINES.creators,
-          topGames: PROJECTED_BASELINES.defaultTopGames,
+          totalVisualizations: 0,
+          totalCreators: 0,
+          topGames: [],
           topVisions: [],
-          recentGrowth: '+18%',
+          recentGrowth: '',
           platformStats: {
-            totalViews: PROJECTED_BASELINES.views,
-            totalDownloads: PROJECTED_BASELINES.downloads,
-            totalTrades: PROJECTED_BASELINES.trades,
-            totalPrintOrders: PROJECTED_BASELINES.printOrders,
-            totalPrintRevenue: PROJECTED_BASELINES.printRevenue,
+            totalViews: 0,
+            totalDownloads: 0,
+            totalTrades: 0,
+            totalPrintOrders: 0,
+            totalPrintRevenue: 0,
             totalScore: 0,
           },
           marketCap: {
-            totalMarketCap: MEMBERSHIP_ECONOMICS.baseMarketCap + 2500,
+            totalMarketCap: MEMBERSHIP_ECONOMICS.baseMarketCap,
             membershipMultiplier: 1.0,
-            totalVisions: PROJECTED_BASELINES.visualizations,
+            totalVisions: 0,
           },
         });
       } finally {
