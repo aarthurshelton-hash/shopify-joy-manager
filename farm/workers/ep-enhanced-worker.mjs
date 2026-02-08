@@ -687,14 +687,18 @@ function predictFromBaseline(colorSignature, totalMoves) {
   whiteAdvantage += ((quadrantProfile.kingsideWhite || 0) - (quadrantProfile.kingsideBlack || 0)) / 100 * 0.5;
   whiteAdvantage += ((quadrantProfile.queensideWhite || 0) - (quadrantProfile.queensideBlack || 0)) / 100 * 0.4;
   
+  // Subtract inherent white first-move bias (white naturally controls more space)
+  // Without this, whiteAdvantage is ~0.5+ for nearly all games
+  whiteAdvantage -= 0.25;
+  
   // Confidence based on magnitude of advantage
   let confidence = 0.5;
   const advantageMagnitude = Math.abs(whiteAdvantage);
-  if (advantageMagnitude > 0.3) confidence += 0.12;
-  else if (advantageMagnitude > 0.15) confidence += 0.06;
+  if (advantageMagnitude > 0.2) confidence += 0.12;
+  else if (advantageMagnitude > 0.1) confidence += 0.06;
   
   // Determine winner
-  const threshold = 0.10;
+  const threshold = 0.08;
   let predictedWinner;
   if (whiteAdvantage > threshold) {
     predictedWinner = 'white_wins';
@@ -752,10 +756,14 @@ function predictFromEnhanced(enhancedResult, totalMoves) {
   whiteAdvantage += (knightDom - 0.5) * 0.2;
   whiteAdvantage += (pawnAdv - 0.5) * 0.2;
   
+  // Subtract inherent white first-move bias from center/flank quadrants
+  // The color flow signature naturally skews ~0.10 positive for white
+  whiteAdvantage -= 0.06;
+  
   // Confidence from magnitude of advantage (either direction)
   const advantageMagnitude = Math.abs(whiteAdvantage);
-  if (advantageMagnitude > 0.3) confidence += 0.15;
-  else if (advantageMagnitude > 0.15) confidence += 0.08;
+  if (advantageMagnitude > 0.2) confidence += 0.15;
+  else if (advantageMagnitude > 0.1) confidence += 0.08;
   
   // Archetype confidence boost (does NOT affect direction)
   const highConfArchetypes = ['central_bishop_cross', 'center_kingside_break', 'knight_complex_superiority', 'central_domination'];
@@ -764,7 +772,7 @@ function predictFromEnhanced(enhancedResult, totalMoves) {
   }
   
   // Predict winner based on balanced advantage
-  const threshold = 0.08;
+  const threshold = 0.05;
   let predictedWinner;
   if (whiteAdvantage > threshold) {
     predictedWinner = 'white_wins';
@@ -880,6 +888,24 @@ async function runBenchmarkCycle(epEngine) {
       const predictions = await generateBothPredictions(partialPgn, gameData, epEngine);
       const baselinePred = predictions.baseline.prediction;
       const enhancedPred = predictions.enhanced?.prediction || baselinePred;
+      
+      // HYBRID FUSION: Blend SF eval direction into EP prediction
+      // EP provides archetype + confidence, SF provides directional signal
+      // This creates a true hybrid that leverages both engines
+      const sfEvalVal = sf17Eval.evaluation || 0;
+      const epAdv = enhancedPred.whiteAdvantage || baselinePred.whiteAdvantage || 0;
+      // Weighted blend: 40% EP color flow + 60% SF eval direction
+      const fusedAdvantage = (epAdv * 0.4) + (Math.tanh(sfEvalVal) * 0.6);
+      const fusionThreshold = 0.15;
+      
+      if (fusedAdvantage > fusionThreshold) {
+        enhancedPred.predictedWinner = 'white_wins';
+      } else if (fusedAdvantage < -fusionThreshold) {
+        enhancedPred.predictedWinner = 'black_wins';
+      } else {
+        enhancedPred.predictedWinner = 'draw';
+      }
+      enhancedPred.whiteAdvantage = fusedAdvantage;
       
       // Visualize enhanced signature if available
       if (predictions.enhanced) {

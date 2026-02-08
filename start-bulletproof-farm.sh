@@ -30,7 +30,7 @@ export ENGINE_VERSION="2.0-SF17-REAL"
 # Run worker in background with auto-restart logic
 while true; do
     echo "[$(date)] Starting worker cycle (v2.0-SF17-REAL)..."
-    node farm/workers/enpensent-benchmark-worker-v2.mjs 0 >> "$LOG_FILE" 2>&1
+    node farm/workers/ep-enhanced-worker.mjs 0 >> "$LOG_FILE" 2>&1
     echo "[$(date)] Worker exited, restarting in 5 seconds..."
     sleep 5
 done &
