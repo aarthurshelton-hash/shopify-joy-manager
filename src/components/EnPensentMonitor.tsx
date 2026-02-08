@@ -71,22 +71,15 @@ export function EnPensentMonitor() {
     const interval = setInterval(() => {
       setUptime(prev => prev + 1);
       
-      // Simulate event updates
+      // TODO: Replace with real telemetry from PM2 workers / Supabase
+      // For now, just update timestamps — no fake event counts or latency jitter
       setFeeds(prev => prev.map(f => ({
         ...f,
-        events: f.connected ? f.events + Math.floor(Math.random() * 3) : f.events,
-        latency: f.connected ? Math.max(50, f.latency + (Math.random() - 0.5) * 20) : 0,
-        lastUpdate: Date.now()
+        lastUpdate: f.connected ? Date.now() : f.lastUpdate
       })));
 
-      // Update total events
+      // Update total events from current state
       setTotalEvents(feeds.reduce((sum, f) => sum + f.events, 0));
-
-      // Simulate domain resonance fluctuations
-      setDomains(prev => prev.map(d => ({
-        ...d,
-        resonance: d.active ? Math.min(1, Math.max(0.3, d.resonance + (Math.random() - 0.5) * 0.1)) : 0
-      })));
     }, 1000);
 
     return () => clearInterval(interval);

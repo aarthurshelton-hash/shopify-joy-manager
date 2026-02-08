@@ -57,8 +57,8 @@ export function useEnPensentTrading() {
         signals.push({
           id: `weather-${index}`,
           symbol: 'XLE',
-          direction: Math.random() > 0.5 ? 'BUY' : 'HOLD',
-          confidence: 0.7,
+          direction: 'HOLD',
+          confidence: 0.5,
           source: 'Weather-Energy Correlation',
           reasoning: insight,
           timestamp: Date.now(),
@@ -70,8 +70,8 @@ export function useEnPensentTrading() {
         signals.push({
           id: `sports-${index}`,
           symbol: 'DIS',
-          direction: Math.random() > 0.5 ? 'BUY' : 'HOLD',
-          confidence: 0.65,
+          direction: 'HOLD',
+          confidence: 0.5,
           source: 'Sports Sentiment Analysis',
           reasoning: insight,
           timestamp: Date.now(),
@@ -80,7 +80,7 @@ export function useEnPensentTrading() {
       }
     });
     
-    return signals.length > 0 ? signals : generateMockSignals();
+    return signals; // No fake fallback signals
   }, []);
 
   // Start En Pensent engine integration
@@ -137,38 +137,7 @@ export function useEnPensentTrading() {
   };
 }
 
-// Generate mock signals for testing (when live feeds unavailable)
+// No mock signals — when live feeds are unavailable, return empty array
 export function generateMockSignals(): TradingSignal[] {
-  return [
-    {
-      id: 'mock-1',
-      symbol: 'SPY',
-      direction: 'BUY',
-      confidence: 0.72,
-      source: 'Cross-Domain Synthesis',
-      reasoning: 'Weather patterns align with historical bull runs',
-      timestamp: Date.now(),
-      domains: ['meteorological', 'market']
-    },
-    {
-      id: 'mock-2',
-      symbol: 'XLE',
-      direction: 'HOLD',
-      confidence: 0.65,
-      source: 'Energy Sector Analysis',
-      reasoning: 'Ocean temperature anomalies suggest energy demand shift',
-      timestamp: Date.now(),
-      domains: ['oceanographic', 'economicCircuitry']
-    },
-    {
-      id: 'mock-3',
-      symbol: 'VIX',
-      direction: 'SELL',
-      confidence: 0.58,
-      source: 'Sentiment Resonance',
-      reasoning: 'Sports sentiment and seismic activity both calm',
-      timestamp: Date.now(),
-      domains: ['sports', 'geologicalTectonic']
-    }
-  ];
+  return [];
 }

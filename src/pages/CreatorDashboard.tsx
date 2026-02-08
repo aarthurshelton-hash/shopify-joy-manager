@@ -59,15 +59,15 @@ interface PortfolioStats {
   visions: VisionStats[];
 }
 
-// Mock monthly data for charts (would be real in production)
+// Monthly data — evenly distribute total royalty across months until real monthly tracking is implemented
 const generateMonthlyData = (totalRoyalty: number) => {
   const months = ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan'];
-  const baseAmount = totalRoyalty / 7;
+  const perMonth = Math.floor(totalRoyalty / months.length);
   
-  return months.map((month, i) => ({
+  return months.map((month) => ({
     month,
-    royalties: Math.floor(baseAmount * (0.5 + Math.random()) * (1 + i * 0.15)),
-    orders: Math.floor(Math.random() * 10 + 2),
+    royalties: perMonth,
+    orders: 0, // Real monthly order breakdown not yet tracked
   }));
 };
 

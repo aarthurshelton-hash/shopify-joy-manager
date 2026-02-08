@@ -239,20 +239,7 @@ const SimplifiedScalpingTerminal: React.FC = () => {
       setFetchError(error instanceof Error ? error.message : 'Failed to fetch');
       setIsLive(false);
       
-      // Generate simulated tick as fallback
-      if (currentPrice) {
-        const change = (Math.random() - 0.5) * currentPrice * 0.0005;
-        const newPrice = currentPrice + change;
-        
-        setTicks(prev => [...prev, {
-          price: newPrice,
-          timestamp: Date.now(),
-          symbol: selectedSymbol,
-          isReal: false
-        }].slice(-200));
-        
-        setCurrentPrice(newPrice);
-      }
+      // No simulated fallback — keep last known real price, show OFFLINE state
     }
   }, [selectedSymbol, currentPrice]);
 

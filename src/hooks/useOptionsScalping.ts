@@ -207,8 +207,8 @@ export function useOptionsScalping(): OptionsScalpingState & OptionsScalpingActi
           actual: pred.wasCorrect ? (pred.direction === 'long' ? 'up' : 'down') : (pred.direction === 'long' ? 'down' : 'up'),
           confidence: pred.confidence,
           directionCorrect: pred.wasCorrect || false,
-          magnitudeAccuracy: Math.random() * 0.3 + 0.7,
-          timingAccuracy: Math.random() * 0.3 + 0.7,
+          magnitudeAccuracy: pred.wasCorrect ? 0.85 : 0.5,
+          timingAccuracy: pred.wasCorrect ? 0.8 : 0.5,
           marketConditions: {
             correlationStrength: 0.7,
             volatility: 0.5,

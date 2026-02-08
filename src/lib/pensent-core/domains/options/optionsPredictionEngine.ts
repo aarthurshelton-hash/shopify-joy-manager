@@ -502,13 +502,8 @@ class OptionsPredictionEngine {
         pred.pnl = (pred.actualPrice - pred.entryPrice) * 100;
         pred.wasCorrect = pred.pnl > 0;
       } else {
-        // Simulate resolution
-        const random = Math.random();
-        const expectedWinRate = 0.55; // Target 55% win rate
-        pred.wasCorrect = random < expectedWinRate;
-        pred.pnl = pred.wasCorrect 
-          ? pred.entryPrice * 0.25 * 100 
-          : -pred.entryPrice * 0.20 * 100;
+        // No real quote available — cannot resolve, skip
+        continue;
       }
 
       pred.resolved = true;
@@ -545,12 +540,11 @@ class OptionsPredictionEngine {
   private selectOptimalTimeframe(): TimeframeType {
     const session = optionsDataProvider.getMarketSession();
     
-    // More aggressive in regular hours
+    // More aggressive in regular hours — deterministic rotation
     if (session === 'regular') {
-      const weights = [0.3, 0.4, 0.3]; // Favor 1m, 5m, 15m
-      const rand = Math.random();
-      if (rand < weights[0]) return '1m';
-      if (rand < weights[0] + weights[1]) return '5m';
+      const cycle = this.state.accuracy.total % 3;
+      if (cycle === 0) return '1m';
+      if (cycle === 1) return '5m';
       return '15m';
     }
 

@@ -375,21 +375,8 @@ export function UnifiedUniversalDashboard() {
           if (key === 'chess') return;
           
           const domain = updated[key];
-          // Update intensity
-          domain.currentSignature.intensity = Math.max(0.1, 
-            Math.min(0.95, domain.currentSignature.intensity + (Math.random() - 0.5) * 0.1)
-          );
-          // Update temporal flow
-          domain.currentSignature.temporalFlow.early += (Math.random() - 0.5) * 0.05;
-          domain.currentSignature.temporalFlow.mid += (Math.random() - 0.5) * 0.05;
-          domain.currentSignature.temporalFlow.late += (Math.random() - 0.5) * 0.05;
-          // Normalize
-          const total = domain.currentSignature.temporalFlow.early + 
-                       domain.currentSignature.temporalFlow.mid + 
-                       domain.currentSignature.temporalFlow.late;
-          domain.currentSignature.temporalFlow.early /= total;
-          domain.currentSignature.temporalFlow.mid /= total;
-          domain.currentSignature.temporalFlow.late /= total;
+          // TODO: Replace with real domain telemetry — no fake jitter
+          // Intensity and temporal flow stay at their initialized values until real data arrives
           domain.lastUpdate = Date.now();
         });
         return updated;

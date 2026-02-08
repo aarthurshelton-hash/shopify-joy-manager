@@ -125,7 +125,7 @@ function predictDirection(symbol: string): { direction: 'up' | 'down' | 'flat'; 
   const history = priceHistories[symbol] || [];
   
   if (history.length < 5) {
-    return { direction: Math.random() > 0.5 ? 'up' : 'down', confidence: 52 };
+    return { direction: 'flat', confidence: 50 }; // Insufficient data — no random guess
   }
   
   const recent = history.slice(-20);
@@ -158,7 +158,7 @@ function predictDirection(symbol: string): { direction: 'up' | 'down' | 'flat'; 
   let direction: 'up' | 'down' | 'flat';
   if (signal > 0.15) direction = 'up';
   else if (signal < -0.15) direction = 'down';
-  else direction = Math.random() > 0.5 ? 'up' : 'down';
+  else direction = 'flat'; // Signal unclear — no random coin flip
   
   // Confidence based on signal clarity and volatility
   const signalStrength = Math.min(Math.abs(signal) * 25, 30);

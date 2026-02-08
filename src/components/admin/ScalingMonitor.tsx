@@ -47,16 +47,11 @@ export function ScalingMonitor() {
   useEffect(() => {
     if (!isAdmin) return;
 
+    // TODO: Replace with real infrastructure metrics from Supabase/Vercel analytics
+    // For now, show static defaults — no fake jitter
     const interval = setInterval(() => {
-      setMetrics(prev => ({
-        activeUsers: prev.activeUsers + Math.floor(Math.random() * 10),
-        cacheHitRate: Math.min(99, Math.max(90, prev.cacheHitRate + (Math.random() - 0.5) * 2)),
-        rateLimitViolations: prev.rateLimitViolations,
-        adapterPoolLoad: Math.min(100, prev.adapterPoolLoad + (Math.random() - 0.5) * 5),
-        dbQueriesPerSecond: 120 + Math.floor(Math.random() * 50),
-        apiLatency: 45 + Math.floor(Math.random() * 20)
-      }));
-    }, 2000);
+      setMetrics(prev => ({ ...prev }));
+    }, 10000);
 
     return () => clearInterval(interval);
   }, [isAdmin]);

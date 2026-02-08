@@ -59,7 +59,7 @@ const LiveMarketWidget = forwardRef<HTMLElement, object>(function LiveMarketWidg
           id: p.id,
           name: p.palette_name,
           totalValue: (p.base_value_cents + p.earned_value_cents) / 100,
-          change24h: Math.random() * 10 - 2, // Simulated for now
+          change24h: 0, // Real 24h change requires historical snapshots — show 0 until implemented
           type: 'palette' as const,
         }));
 
@@ -68,7 +68,7 @@ const LiveMarketWidget = forwardRef<HTMLElement, object>(function LiveMarketWidg
           id: g.id,
           name: g.game_title.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
           totalValue: (g.base_value_cents + g.earned_value_cents) / 100,
-          change24h: Math.random() * 15 - 3, // Simulated for now
+          change24h: 0, // Real 24h change requires historical snapshots — show 0 until implemented
           type: 'gamecard' as const,
         }));
 
@@ -83,12 +83,8 @@ const LiveMarketWidget = forwardRef<HTMLElement, object>(function LiveMarketWidg
         );
         setTotalMarketValue((paletteTotal + gamecardTotal) / 100);
 
-        // Simulated recent activities
-        setActivities([
-          { id: '1', type: 'print', description: 'Print order completed', value: 49.99, timestamp: new Date(Date.now() - 120000) },
-          { id: '2', type: 'trade', description: 'Vision traded', value: 125, timestamp: new Date(Date.now() - 300000) },
-          { id: '3', type: 'listing', description: 'New marketplace listing', timestamp: new Date(Date.now() - 600000) },
-        ]);
+        // Activities populated by realtime Supabase subscription below — no fake seed data
+        // setActivities stays empty until real events arrive
 
         setLastUpdate(new Date());
       } catch (error) {
