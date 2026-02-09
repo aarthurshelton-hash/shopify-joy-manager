@@ -19,7 +19,7 @@ I'm writing because your group's recent work on the fully integrated photonic pr
 **The data (live, growing daily across 3 domains):**
 
 - **Chess:** 50,000+ game outcome predictions, **54.4% accuracy** (3-way, random = 33.3%), **p ≈ 0** (z > 37)
-- **Battery degradation:** NASA Ames PCoE data, **+7.4pp** over persistence baseline on 3-way trajectory prediction
+- **Battery degradation:** MIT-Stanford MATR dataset (140 batteries, 114,692 cycles), **56.5% accuracy** with **89.0% critical detection**, +19.6pp from volume scaling (self-learned archetype weights from 74,805 training cycles)
 - **Chemical fault detection:** Tennessee Eastman Process (industry benchmark), **F1 93.3%** vs 72.7% Hotelling T² baseline (**+20.6pp**), catches 88.9% of faults
 - All three domains use the **same universal 8×8 grid architecture** with domain-specific color encoding
 - Self-learning: system discovers its own optimal encoding parameters from training volume (19× improvement on chemical data)

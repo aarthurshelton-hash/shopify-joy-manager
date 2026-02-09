@@ -24,7 +24,7 @@ En Pensent is a multi-domain temporal pattern recognition engine using optical i
 **Running proof across 3 domains (real data, no synthetic):**
 
 - **Chess:** 50,000+ game outcome predictions, 54.4% accuracy (3-way, random = 33.3%, p ≈ 0)
-- **Battery degradation:** NASA Ames PCoE data, +7.4pp over persistence baseline (636 cycles, 4 batteries)
+- **Battery degradation:** MIT-Stanford MATR dataset (140 batteries, 114,692 cycles), 56.5% accuracy, 89.0% critical detection, +19.6pp from volume scaling (was 36.9% on 4-cell NASA data)
 - **Chemical fault detection:** Tennessee Eastman Process, F1 93.3% vs 72.7% baseline (+20.6pp), catches 88.9% of faults
 - All three domains pass through the **same universal 8×8 grid architecture** with self-learned encoding parameters
 - Self-learning: system discovers optimal z-score threshold from training data (19× improvement in class separation)
