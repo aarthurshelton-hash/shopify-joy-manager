@@ -95,7 +95,7 @@ export default function AcademicPaper() {
             </p>
             <p className="text-sm text-muted-foreground">
               En Pensent Technologies<br />
-              alec@enpensent.com
+              a.arthur.shelton@gmail.com
             </p>
             <div className="flex items-center justify-center gap-4 mt-4 text-xs text-muted-foreground">
               <span>Submitted: January 2025</span>

@@ -199,7 +199,7 @@ export const STRATEGIC_POSITIONING = {
     forCreators: 'Own your chess legacy. Earn perpetual royalties on your visualizations while contributing to chess education worldwide.',
   },
   industryAwareness: 'We are aware of the acquisition histories of major chess platforms. En Pensent is designed to complement and enhance existing ecosystems, not compete with them. Our technology creates new revenue streams without cannibalizing core chess products.',
-  callToAction: 'Strategic partnership inquiries: investors@enpensent.com',
+  callToAction: 'Strategic partnership inquiries: a.arthur.shelton@gmail.com',
 } as const;
 
 // IP Protection Claims
@@ -337,10 +337,10 @@ export const COMPANY_INFO = {
   headquarters: 'United States',
   website: 'enpensent.com',
   email: {
-    general: 'hello@enpensent.com',
-    investors: 'investors@enpensent.com',
-    support: 'support@enpensent.com',
-    legal: 'legal@enpensent.com',
+    general: 'a.arthur.shelton@gmail.com',
+    investors: 'a.arthur.shelton@gmail.com',
+    support: 'a.arthur.shelton@gmail.com',
+    legal: 'a.arthur.shelton@gmail.com',
   },
   social: {
     twitter: '@enpensent',

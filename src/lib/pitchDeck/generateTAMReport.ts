@@ -467,7 +467,7 @@ export async function generateTAMReport(): Promise<Blob> {
   doc.setFontSize(10);
   doc.text('To reach full potential — processing millions of daily visualizations for 800M+ players —', margin + 15, yPos + 50);
   doc.text('this technology requires enterprise-scale infrastructure. Acquisition-ready architecture.', margin + 15, yPos + 65);
-  doc.text('Contact: investors@enpensent.com', margin + 15, yPos + 85);
+  doc.text('Contact: a.arthur.shelton@gmail.com', margin + 15, yPos + 85);
 
   // Footer on all pages
   const totalPages = doc.getNumberOfPages();

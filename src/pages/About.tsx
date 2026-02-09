@@ -444,9 +444,9 @@ const About = () => {
             <p className="text-muted-foreground font-serif">
               Have questions, ideas, or partnership opportunities? We'd love to hear from you.
             </p>
-            <p className="text-primary font-medium">hello@enpensent.com</p>
+            <p className="text-primary font-medium">a.arthur.shelton@gmail.com</p>
             <p className="text-xs text-muted-foreground mt-2">
-              Strategic partnerships: <span className="text-primary">investors@enpensent.com</span>
+              Strategic partnerships: <span className="text-primary">a.arthur.shelton@gmail.com</span>
             </p>
           </div>
         </div>

@@ -512,7 +512,7 @@ const DMCA = () => {
             <p>
               <strong>En Pensent LLC</strong><br />
               DMCA Agent<br />
-              Email: <span className="text-primary">dmca@enpensent.com</span>
+              Email: <span className="text-primary">a.arthur.shelton@gmail.com</span>
             </p>
             <p className="pt-2">
               You may also send DMCA notices to our designated agent by email. Please include all

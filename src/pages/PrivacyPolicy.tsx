@@ -140,7 +140,7 @@ const PrivacyPolicy = () => {
             <CardContent className="text-sm text-muted-foreground">
               <p>
                 For privacy-related inquiries, contact us at:{' '}
-                <span className="text-primary">privacy@enpensent.com</span>
+                <span className="text-primary">a.arthur.shelton@gmail.com</span>
               </p>
             </CardContent>
           </Card>

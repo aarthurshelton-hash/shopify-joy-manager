@@ -429,7 +429,7 @@ const DMCAStatusTracking = () => {
           <CardContent className="text-sm text-muted-foreground space-y-2">
             <p>
               If you have questions about your report status or need to provide additional information,
-              please contact our legal team at <a href="mailto:legal@enpensent.com" className="text-primary hover:underline">legal@enpensent.com</a>.
+              please contact our legal team at <a href="mailto:a.arthur.shelton@gmail.com" className="text-primary hover:underline">a.arthur.shelton@gmail.com</a>.
             </p>
             <p>
               Include your report ID in all correspondence for faster processing.

@@ -510,7 +510,7 @@ export async function generatePitchDeck(): Promise<Blob> {
   
   doc.setFontSize(32);
   centerText('🌐  enpensent.com', 580, 32);
-  centerText('📧  investors@enpensent.com', 650, 32);
+  centerText('📧  a.arthur.shelton@gmail.com', 650, 32);
   
   // Key stats reminder
   const finalStats = [

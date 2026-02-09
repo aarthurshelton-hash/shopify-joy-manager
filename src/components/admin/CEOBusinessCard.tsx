@@ -23,7 +23,7 @@ const CEOBusinessCard: React.FC<CEOBusinessCardProps> = ({ isOpen, onClose }) =>
     cityStateZip: 'New York, N.Y. 10099',
     fax: '212 555 6390',
     telex: '10 4534',
-    email: 'ceo@enpensent.com',
+    email: 'a.arthur.shelton@gmail.com',
     website: 'enpensent.com',
   };
 
@@ -61,7 +61,7 @@ N:Shelton;Alec;Arthur;;
 FN:Alec Arthur Shelton
 TITLE:Chief Executive Officer
 ORG:En Pensent
-EMAIL:ceo@enpensent.com
+EMAIL:a.arthur.shelton@gmail.com
 URL:https://www.enpensent.com
 TEL:+1 212 555 3287
 ADR:;;358 Exchange Place;New York;N.Y.;10099;USA

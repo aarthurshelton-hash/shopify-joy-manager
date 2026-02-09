@@ -213,7 +213,7 @@ const TermsOfService = () => {
             <CardContent className="text-sm text-muted-foreground">
               <p>
                 For questions about these Terms or to report violations of intellectual property rights,
-                please contact us at: <span className="text-primary">legal@enpensent.com</span>
+                please contact us at: <span className="text-primary">a.arthur.shelton@gmail.com</span>
               </p>
             </CardContent>
           </Card>

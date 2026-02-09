@@ -1429,7 +1429,7 @@ const Investors = () => {
               Interested in learning more about investment opportunities? 
               We'd love to share our vision with you.
             </p>
-            <p className="text-primary font-medium">investors@enpensent.com</p>
+            <p className="text-primary font-medium">a.arthur.shelton@gmail.com</p>
           </div>
         </div>
       </main>

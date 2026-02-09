@@ -12,7 +12,7 @@ export default function InvestorPortal() {
   const [emailCopied, setEmailCopied] = useState(false);
 
   const copyEmail = () => {
-    navigator.clipboard.writeText('invest@enpensent.com');
+    navigator.clipboard.writeText('a.arthur.shelton@gmail.com');
     setEmailCopied(true);
     setTimeout(() => setEmailCopied(false), 2000);
   };

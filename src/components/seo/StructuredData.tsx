@@ -25,7 +25,7 @@ const ORGANIZATION_DATA = {
   ],
   "contactPoint": {
     "@type": "ContactPoint",
-    "email": "hello@enpensent.com",
+    "email": "a.arthur.shelton@gmail.com",
     "contactType": "customer service"
   },
   "address": {
