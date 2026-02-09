@@ -520,7 +520,7 @@ async function runBenchmark() {
       epPred = predictFromBatterySignature(battSig, classes);
     }
     
-    // Grid centroid fusion: override only if grid strongly disagrees and is confident
+    // Grid centroid fusion: override only when grid is very confident and archetype is uncertain
     if (classCentroids && Object.keys(classCentroids).length >= 2) {
       const gridPred = predictFromGridSignature(gridSig, battSig, classCentroids, classes);
       if (gridPred.confidence > 0.7 && epPred.confidence < 0.4 && gridPred.prediction !== epPred.prediction) {

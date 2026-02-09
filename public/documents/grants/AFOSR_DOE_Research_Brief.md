@@ -17,10 +17,11 @@ Modern defense systems face a critical bottleneck: fusing data from multiple sen
 
 En Pensent's photonic architecture performs **multi-domain correlation detection as a native optical operation**. By encoding each sensor domain on a dedicated wavelength channel and combining them in a photonic interference junction, the system detects cross-domain patterns at light-speed (<1ns).
 
-**Proof of concept (running, real data):**
-- 27 domain adapters processing simultaneously
-- 54.4% accuracy on complex 3-way classification (50K+ predictions)
-- Cross-domain correlation detection: 12,000+ pattern matches tracked
+**Proof of concept (running, real data, 3 domains validated):**
+- **Chess:** 54.4% accuracy on 50K+ 3-way predictions (p ≈ 0, z > 37)
+- **Battery:** 56.5% accuracy on MIT-Stanford MATR dataset (140 batteries, 114K cycles), 89.0% critical detection
+- **Chemical:** F1 93.3% fault detection on Tennessee Eastman Process (+20.6pp over baseline)
+- All 3 domains pass through the same universal 8×8 grid with self-learned encoding parameters
 - Architecture maps to standard SOI photonic fabrication
 
 **Defense-specific value:**
@@ -66,8 +67,8 @@ Both AFOSR and DOE currently fund the MIT Soljačić group (listed as sponsors a
 | Dataset | Size | Accuracy | Significance |
 |---|---|---|---|
 | Chess predictions (3-way) | 50,000+ | 54.4% | p ≈ 0 (z > 37) |
-| Cross-domain correlations | 12,000+ | Tracked | Growing daily |
-| Market predictions | Active | Accumulating | 10 symbols, 3 horizons |
+| Battery degradation (MIT-Stanford MATR) | 140 batteries, 114K cycles | 56.5% (89.0% critical) | +19.6pp from volume scaling |
+| Chemical fault detection (TEP) | 2,200 records | F1 93.3% | +20.6pp over Hotelling T² |
 | Archetype classification | 24 types | 59-63% per type | Pattern differentiation confirmed |
 
 All data is real, SHA-256 timestamped, audited (3 rounds, 24 violations fixed). Live at https://enpensent.com.

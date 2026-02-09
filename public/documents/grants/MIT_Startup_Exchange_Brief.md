@@ -22,11 +22,11 @@
 
 En Pensent has developed and validated a cross-domain temporal pattern recognition architecture built on optical interference equations. The system processes signals from 27 domain-specific adapters through a Synaptic Truth Network where constructive interference amplifies correlated patterns across domains.
 
-**Key metrics (real data, growing daily):**
-- 50,000+ chess game predictions at 54.4% accuracy (3-way, random = 33.3%)
-- p ≈ 0 (z > 37), beating Stockfish 75.5% in disagreements
-- Market prediction pipeline active (10 equities, 3 time horizons)
-- 12,000+ cross-domain correlations tracked
+**Key metrics (real data, growing daily, 3 domains validated):**
+- **Chess:** 50,000+ game predictions at 54.4% accuracy (3-way, random = 33.3%, p ≈ 0, z > 37)
+- **Battery:** MIT-Stanford MATR dataset (140 batteries, 114K cycles), 56.5% accuracy, 89.0% critical detection — self-learned archetype weights from 74,805 training cycles
+- **Chemical:** Tennessee Eastman Process, F1 93.3% fault detection (+20.6pp over Hotelling T² baseline), catches 88.9% of faults
+- **All 3 domains** pass through the same universal 8×8 grid architecture with self-learned encoding parameters
 - Zero synthetic data — 3 rounds of integrity audit
 
 ## MIT RESEARCH INTERESTS

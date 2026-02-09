@@ -1,0 +1,12 @@
+# Entire farm directory (server-side only, not needed for frontend)
+farm/
+
+# Node modules
+node_modules/
+
+# Git
+.git/
+
+# Large/unnecessary dirs
+*.mat
+*.zip
