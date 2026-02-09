@@ -1,178 +1,341 @@
-# En Pensent — Grant Application Playbook
-### Master Tracker: 13 Applications, ~$50M+ Potential Funding
+# En Pensent — Grant Application Playbook (Canadian Entity)
+### Master Tracker: Canadian + US Programs, ~$50M+ Potential Funding
 **Last Updated:** February 9, 2026
+**Entity Jurisdiction:** Canada
 **Owner:** Alec Arthur Shelton (a.arthur.shelton@gmail.com)
+
+---
+
+## ⚠️ CRITICAL: CANADIAN ENTITY ELIGIBILITY
+
+En Pensent is a **Canadian corporation**. This has major implications:
+
+**BLOCKED — US programs requiring >51% US ownership:**
+- All US SBIR/STTR programs (NASA, DoD, NSF, DOE) — requires US small business
+- CHIPS Act / NIST — domestic US manufacturing focus
+
+**ACCESSIBLE — US programs open to foreign entities:**
+- DARPA BAAs (including PICASSO) — foreign entities CAN apply, may need US-based work
+- DOE ARPA-E — allows foreign participants (usually needs US subcontractor or partner)
+- IARPA BAAs — allows foreign participants (usually needs US prime or cleared facility)
+- NSF non-SBIR programs (Convergence Accelerator, POSE) — some allow foreign PIs
+- MIT programs (Startup Exchange, Deshpande Center) — no citizenship requirement
+
+**UNLOCKED — Strong Canadian programs:**
+- NRC IRAP ($50K–$1M) — Canada's #1 startup R&D grant
+- SR&ED Tax Credits (35% refundable) — automatic R&D tax rebate
+- SDTC / Canada Growth Fund — clean tech focus
+- IDEaS (Canadian defence innovation) — direct analog to US DoD SBIR
+- NSERC Alliance — academic partnership grants
+- Mitacs — R&D internship/postdoc funding
+- CanExport Innovation — international R&D partnerships
+
+**STRATEGIC OPTION: US Subsidiary**
+Many Canadian tech companies form a US subsidiary (Delaware C-corp or LLC) to access SBIR programs. This unlocks ~$30M+ in additional funding. See "US Subsidiary Strategy" section below.
 
 ---
 
 ## PREREQUISITE REGISTRATIONS (DO THESE FIRST)
 
-Before you can apply to ANY federal grant, you need these accounts. **Start these immediately — SAM.gov alone can take 2-4 weeks.**
+### Canadian Registrations
 
-### 1. SAM.gov (System for Award Management) — REQUIRED FOR ALL FEDERAL GRANTS
+#### 1. CRA Business Number (BN) — REQUIRED FOR ALL CANADIAN GRANTS
+- **URL:** https://www.canada.ca/en/revenue-agency/services/tax/businesses/topics/registering-your-business/register.html
+- **What:** Canada Revenue Agency business registration
+- **You need:** BN with RT (GST/HST), RP (payroll), RC (corporate tax) accounts
+- **Time:** Instant online if sole prop; 1-2 weeks for corporation
+- **Status:** [ ] CHECK IF REGISTERED
+
+#### 2. NRC IRAP Client Registration — REQUIRED FOR IRAP GRANTS
+- **URL:** https://nrc.canada.ca/en/support-technology-innovation/about-nrc-industrial-research-assistance-program
+- **What:** Register as an IRAP client to access funding
+- **How:** Contact your regional IRAP office, request an Industrial Technology Advisor (ITA)
+- **Time:** 2-4 weeks to get assigned an ITA
+- **Status:** [ ] NOT STARTED → START TODAY (this is the Canadian bottleneck)
+
+#### 3. SR&ED Registration — FOR TAX CREDITS
+- **URL:** https://www.canada.ca/en/revenue-agency/services/scientific-research-experimental-development-tax-incentive-program.html
+- **What:** Scientific Research & Experimental Development tax incentive
+- **How:** Claimed on annual corporate tax return (T661 form)
+- **You need:** Documented R&D activities, time tracking, project descriptions
+- **Status:** [ ] NOT STARTED → consult SR&ED advisor
+
+#### 4. Innovation Canada Account
+- **URL:** https://innovation.ised-isde.canada.ca/innovation/s/?language=en
+- **What:** Portal for federal innovation programs (ISED, SDTC, SIF, etc.)
+- **Status:** [ ] NOT STARTED → REGISTER
+
+#### 5. IDEaS Portal — FOR CANADIAN DEFENCE GRANTS
+- **URL:** https://www.canada.ca/en/department-national-defence/programs/defence-ideas.html
+- **What:** Innovation for Defence Excellence and Security
+- **How:** Watch for Competitive Projects and Innovation Networks calls
+- **Status:** [ ] NOT STARTED → REGISTER
+
+### US Registrations (for accessible US programs)
+
+#### 6. SAM.gov — REQUIRED FOR DARPA, ARPA-E, IARPA
 - **URL:** https://sam.gov/
-- **What:** Federal contractor/grant recipient registration
-- **Time to complete:** 2-4 weeks (involves IRS validation)
-- **You need:**
-  - EIN (Employer Identification Number) — get one free at https://www.irs.gov/businesses/small-businesses-self-employed/apply-for-an-employer-identification-number-ein-online if you don't have one
-  - DUNS number (now UEI — Unique Entity Identifier) — assigned during SAM registration
-  - Business address, banking info, CEO info
-- **Status:** [ ] NOT STARTED → START TODAY
+- **What:** US federal contractor registration (foreign entities CAN register)
+- **Foreign entity process:** Request NCAGE code (NATO Commercial and Government Entity) first
+  - NCAGE portal: https://eportal.nspa.nato.int/AC135Public/scage/CageList.aspx
+  - Takes 1-2 weeks
+- **Then:** Register on SAM.gov using NCAGE code instead of CAGE code
+- **Time:** 3-5 weeks total for foreign entities
+- **Status:** [ ] NOT STARTED → START NCAGE REQUEST TODAY
 
-### 2. Grants.gov — REQUIRED FOR NSF, DOE, NASA, DoD
+#### 7. Grants.gov — FOR DARPA, ARPA-E, NSF SUBMISSIONS
 - **URL:** https://www.grants.gov/
-- **What:** Federal grant application portal
-- **Requires:** SAM.gov registration first (needs UEI)
-- **Time to complete:** 1-2 days after SAM.gov is done
+- **Requires:** SAM.gov registration
 - **Status:** [ ] NOT STARTED → START AFTER SAM.gov
-
-### 3. Research.gov — REQUIRED FOR NSF GRANTS
-- **URL:** https://www.research.gov/
-- **What:** NSF-specific application and award management
-- **Requires:** SAM.gov UEI
-- **Status:** [ ] NOT STARTED → START AFTER SAM.gov
-
-### 4. SBIR.gov Company Registration — REQUIRED FOR ALL SBIR/STTR
-- **URL:** https://www.sbir.gov/registration
-- **What:** Small business eligibility verification
-- **Requires:** SAM.gov UEI, proof of US small business status
-- **You need:** <500 employees, >51% US-owned
-- **Status:** [ ] NOT STARTED → START AFTER SAM.gov
-
-### 5. NASA SBIR Portal
-- **URL:** https://sbir.nasa.gov/
-- **What:** NASA-specific SBIR submission
-- **Requires:** SBIR.gov registration
-- **Status:** [ ] NOT STARTED → START AFTER SBIR.gov
-
-### 6. DSIP (Defense SBIR/STTR Innovation Portal)
-- **URL:** https://www.dodsbirsttr.mil/
-- **What:** DoD SBIR submission portal
-- **Requires:** SBIR.gov registration
-- **Status:** [ ] NOT STARTED → START AFTER SBIR.gov
 
 ---
 
 ## IMMEDIATE ACTIONS (THIS WEEK)
 
 ### Day 1 (Today — Feb 9, 2026)
-- [ ] **Apply for EIN** if En Pensent doesn't have one: https://www.irs.gov/businesses/small-businesses-self-employed/apply-for-an-employer-identification-number-ein-online (instant, free)
-- [ ] **Start SAM.gov registration** — this is the bottleneck, everything else depends on it
-- [ ] **Set up business bank account** if not already done (required for SAM.gov)
+- [ ] **Verify CRA Business Number** — confirm En Pensent has active BN/RC accounts
+- [ ] **Request NCAGE code** at https://eportal.nspa.nato.int/AC135Public/scage/CageList.aspx (needed for SAM.gov as foreign entity — takes 1-2 weeks)
+- [ ] **Call NRC IRAP** — request an Industrial Technology Advisor assignment (1-877-994-4727)
+- [ ] **Register on Innovation Canada** portal
 
-### Day 2-3
-- [ ] **Complete SAM.gov** — may need to wait for IRS validation
-- [ ] **Research current open solicitations** on SBIR.gov for NASA, Navy, Air Force, Army
-- [ ] **Sign up for SBIR.gov email alerts** for new solicitations
+### Day 2-5
+- [ ] **Start SAM.gov registration** once NCAGE code arrives
+- [ ] **Research IDEaS open calls** at https://www.canada.ca/en/department-national-defence/programs/defence-ideas.html
+- [ ] **Contact SR&ED advisor** — all your current R&D (universal grid, benchmarks, self-learning) likely qualifies for 35% refundable tax credits
+- [ ] **Register on Mitacs portal** for potential R&D internship funding
 
-### Week 2 (After SAM.gov approved)
-- [ ] **Register on Grants.gov** with UEI
-- [ ] **Register on Research.gov** with UEI
-- [ ] **Register on SBIR.gov** company registry
-- [ ] **Register on DSIP** (DoD SBIR portal)
-- [ ] **Register on NASA SBIR portal**
+### Week 2-3 (After registrations)
+- [ ] **Meet with IRAP ITA** — present En Pensent, discuss project funding
+- [ ] **Complete SAM.gov** with NCAGE code
+- [ ] **Register on Grants.gov**
+- [ ] **Search IDEaS for open calls** matching sensor fusion / photonics
 
 ### Week 3-4
-- [ ] **Submit first applications** to any open solicitations
+- [ ] **Submit IRAP application** (highest probability Canadian grant)
+- [ ] **Submit DARPA PICASSO** if SAM.gov is approved in time (March 6 deadline)
+- [ ] **File SR&ED claim** with accountant for current tax year
 
 ---
 
 ## GRANT STATUS TRACKER
 
-### Tier 1: Apply NOW or ASAP (open/rolling programs)
+### Tier 1: Canadian Programs — Apply NOW (Highest Probability)
 
 | # | Grant | Amount | Portal | Deadline | Status |
 |---|---|---|---|---|---|
-| 1 | **MIT Startup Exchange** | Free (partnership) | https://startupexchange.mit.edu | Rolling | ✅ APPLIED Feb 9, 2026 |
-| 2 | **MIT Deshpande Center** | $125K | Direct to MIT | Rolling | 📝 BRIEF READY — needs MIT co-PI |
-| 3 | **NASA SBIR** | $150K–$750K | sbir.nasa.gov | Check for open topics | 📝 BRIEF READY — check solicitations |
-| 4 | **DoD Navy SBIR** | $250K–$1.75M | dodsbirsttr.mil | Check for open topics | 📝 BRIEF READY — check solicitations |
-| 5 | **DoD Air Force SBIR** | $250K–$1.75M | dodsbirsttr.mil | Check for open topics | 📝 BRIEF READY — check solicitations |
-| 6 | **DoD Army SBIR** | $250K–$1.75M | dodsbirsttr.mil | Check for open topics | 📝 BRIEF READY — check solicitations |
+| 1 | **NRC IRAP** | $50K–$1M | Via ITA advisor | Rolling | 📝 START — call IRAP today |
+| 2 | **SR&ED Tax Credits** | ~35% of R&D spend | CRA T661 | Annual tax filing | 📝 START — contact SR&ED advisor |
+| 3 | **IDEaS (Defence)** | $200K–$1M | IDEaS portal | Watch for calls | 📝 BRIEF READY — monitor calls |
+| 4 | **Mitacs Accelerate** | $15K–$60K per intern | Mitacs portal | Rolling | 📝 Can fund R&D interns |
+| 5 | **CanExport Innovation** | Up to $75K | CanExport portal | Rolling | 📝 For international R&D partnerships |
 
-### Tier 2: Upcoming Deadlines
-
-| # | Grant | Amount | Portal | Deadline | Status |
-|---|---|---|---|---|---|
-| 7 | **DARPA PICASSO** | $35M | SAM.gov / Grants.gov | March 6, 2026 | 📝 BRIEF READY — HIGHEST PRIORITY |
-| 8 | **NSF SBIR Phase I** | $305K | Research.gov | Watch for reopen | ⏸ PAUSED — monitor NSF |
-| 9 | **AFOSR/DOE** | Varies | Via MIT partner | Via faculty | 📝 BRIEF READY — needs MIT contact |
-
-### Tier 3: Concept Paper / BAA Programs
+### Tier 2: US Programs — Accessible to Canadian Entity
 
 | # | Grant | Amount | Portal | Deadline | Status |
 |---|---|---|---|---|---|
-| 10 | **DOE ARPA-E** | $500K–$10M | ARPA-E eXCHANGE | Watch for OPEN BAA | 📝 BRIEF READY — monitor |
-| 11 | **IARPA** | $1M–$20M | SAM.gov / iarpa.gov | Watch for BAAs | 📝 BRIEF READY — monitor |
-| 12 | **NSF Convergence Accelerator** | $750K–$5M | Research.gov | Track-dependent | 📝 BRIEF READY — monitor tracks |
-| 13 | **CHIPS Act / NIST** | $500K–$10M | CHIPS.gov | Program-dependent | 📝 BRIEF READY — monitor |
+| 6 | **MIT Startup Exchange** | Free (partnership) | startupexchange.mit.edu | Rolling | ✅ APPLIED Feb 9, 2026 |
+| 7 | **MIT Deshpande Center** | $125K USD | Direct to MIT | Rolling | 📝 BRIEF READY — needs MIT co-PI |
+| 8 | **DARPA PICASSO** | $35M USD | SAM.gov / Grants.gov | March 6, 2026 | 📝 BRIEF READY — needs SAM.gov (NCAGE) |
+| 9 | **DOE ARPA-E** | $500K–$10M USD | ARPA-E eXCHANGE | Watch for OPEN BAA | 📝 BRIEF READY — may need US partner |
+| 10 | **IARPA** | $1M–$20M USD | SAM.gov | Watch for BAAs | 📝 BRIEF READY — may need US prime |
+| 11 | **NSF Convergence Accelerator** | $750K–$5M USD | Research.gov | Track-dependent | 📝 CHECK foreign PI eligibility |
+| 12 | **NSF POSE** | $300K–$1.5M USD | Research.gov | Annual | 📝 CHECK foreign PI eligibility |
+| 13 | **AFOSR/DOE via MIT** | Varies | Via MIT partner | Via faculty | 📝 BRIEF READY — MIT routes around restriction |
+| 14 | **ONR Young Investigator** | $510K USD | Via MIT PI | Annual (fall) | 📝 BRIEF READY — MIT PI applies |
 
-### Tier 4: Requires Partnership First
+### Tier 3: Blocked — Requires US Entity (see US Subsidiary Strategy below)
 
-| # | Grant | Amount | Portal | Deadline | Status |
-|---|---|---|---|---|---|
-| 14 | **NSF POSE** | $300K–$1.5M | Research.gov | Annual cycle | 📝 BRIEF READY — needs open-source first |
-| 15 | **ONR Young Investigator** | $510K | ONR portal | Annual (usually fall) | 📝 BRIEF READY — needs MIT PI |
+| # | Grant | Amount | Blocker | Strategy |
+|---|---|---|---|---|
+| 15 | **NASA SBIR** | $150K–$750K USD | >51% US-owned required | Form US subsidiary |
+| 16 | **DoD SBIR (Navy/AF/Army)** | $250K–$1.75M USD | >51% US-owned required | Form US subsidiary |
+| 17 | **NSF SBIR Phase I** | $305K USD | >51% US-owned required | Form US subsidiary |
+| 18 | **CHIPS Act / NIST** | $500K–$10M USD | Domestic US manufacturing | Form US subsidiary + US fab partner |
 
 ---
 
-## HOW SBIR SOLICITATIONS WORK
+## CANADIAN GRANT DETAILS
 
-SBIR programs (NASA, Navy, Air Force, Army) don't have a single deadline — they release **topic solicitations** throughout the year. Here's how to find and respond to them:
+### NRC IRAP — Your #1 Priority
 
-### Step 1: Search for Open Topics
-- **NASA:** https://sbir.nasa.gov/solicitations → search "photonic", "battery health", "pattern recognition"
-- **DoD:** https://www.dodsbirsttr.mil/topics-702/ → search by keyword
-- **All agencies:** https://www.sbir.gov/sbirsearch/topic/current → unified search
+**What:** Canada's premier R&D funding for tech SMEs. Non-repayable contributions (free money).
 
-### Step 2: Match Your Brief to a Topic
-Each topic has a specific description. Your brief needs to be tailored to match the topic's language and goals. The briefs we've written are foundations — customize the abstract and section 1 for each specific topic.
+**Why it's your best shot:**
+- Rolling applications, no fixed deadline
+- High approval rate for strong technical projects
+- Your ITA (Industrial Technology Advisor) helps you apply — they WANT to fund you
+- Covers salary costs for R&D work
+- No equity dilution
 
-### Step 3: Submit Phase I Proposal
-- Typically 10-25 pages
-- Our briefs are 80% of the content you'll need
-- Add: company capability statement, resumes, budget justification
-- Submit through the agency's portal before topic deadline
+**Amounts:**
+- Youth Employment: up to $30K (for hiring young R&D talent)
+- Advisory Services: free technical/business advice
+- Project Funding: $50K–$1M for R&D projects
 
-### Step 4: Typical SBIR Timeline
-1. **Topic released** → you have 30-90 days to submit
-2. **Review** → 3-6 months
-3. **Award notification** → if selected, negotiate contract
-4. **Phase I performance** → 6-12 months
-5. **Phase II invitation** → based on Phase I results
+**How to apply:**
+1. Call 1-877-994-4727 or visit https://nrc.canada.ca/en/support-technology-innovation
+2. Get assigned an Industrial Technology Advisor (ITA)
+3. ITA visits your company, understands your technology
+4. ITA helps you write the application
+5. Submit through ITA → internal NRC review → approval
+
+**What to tell your ITA:**
+- Universal photonic pattern recognition architecture
+- Validated on 3 domains (chess, battery, chemical)
+- Self-learning system that improves with data volume
+- Hardware pathway: software → silicon photonics chip
+- 5,000× more energy-efficient than GPU inference
+
+### SR&ED Tax Credits — Automatic R&D Rebate
+
+**What:** 35% refundable tax credit on qualified R&D expenditures for CCPCs (Canadian-Controlled Private Corporations).
+
+**Your qualifying R&D activities:**
+- Universal grid architecture development
+- Self-learning threshold optimization algorithms
+- Battery degradation prediction system
+- Chemical fault detection system
+- Cross-domain pattern recognition research
+- Photonic chip architecture design work
+
+**Approximate value (example):**
+- If you spent $100K on qualifying R&D → $35K refundable tax credit
+- If you spent $200K → $70K back
+- This is CASH BACK, not just a deduction
+
+**How to claim:**
+1. Track R&D hours and expenses throughout the year
+2. Document technical uncertainty, systematic investigation, technological advancement
+3. File T661 form with corporate tax return
+4. Consider hiring an SR&ED consultant ($2K–$5K, but they typically 3-5x their fee in recovered credits)
+
+### IDEaS — Canadian Defence Innovation
+
+**What:** Canada's defence innovation program. Direct analog to US DoD SBIR. Run by DND (Department of National Defence).
+
+**Programs:**
+- **Competitive Projects:** $200K–$1M for solving specific DND challenges
+- **Innovation Networks:** Collaborative R&D with defence partners
+- **Test Drives:** Small contracts to test solutions with CAF (Canadian Armed Forces)
+- **Sandbox:** Rapidly prototype solutions for specific military needs
+
+**Your fit:**
+- Multi-sensor fusion for RCAF (Royal Canadian Air Force) platforms
+- Naval sensor fusion for RCN (Royal Canadian Navy) — AOPS, CSC frigates
+- Battery health monitoring for CAF vehicle fleet
+- Photonic computing for defence — radiation-tolerant, SWaP-optimal
+
+**How to apply:**
+- Watch for calls at https://www.canada.ca/en/department-national-defence/programs/defence-ideas.html
+- Submit through IDEaS portal when relevant call opens
+- Our DoD SBIR brief adapts directly — change US military references to CAF
+
+### NSERC Alliance — Academic Partnership
+
+**What:** NSERC funds university-industry R&D partnerships. University researcher is PI, En Pensent is industry partner.
+
+**Requirements:**
+- Canadian university researcher as lead PI
+- Industry cash contribution (typically 25-50% of total)
+- Clear industry benefit
+
+**Your pathway:**
+- Partner with a Canadian university photonics lab (UBC, UofT, Waterloo, Laval)
+- PI applies to NSERC Alliance
+- En Pensent provides in-kind contribution (data, software, domain expertise)
+- NSERC funds the university research portion
+
+**Amounts:** $20K–$1M+ per year (depends on project scope)
+
+### Mitacs Accelerate
+
+**What:** Funds graduate students and postdocs to work on industry R&D projects.
+
+**How it works:**
+- En Pensent partners with a Canadian university
+- Mitacs funds $15K per 4-month internship (you contribute $7.5K, Mitacs matches $7.5K)
+- Student/postdoc works on your project at your company
+- Can stack multiple internships
+
+**Your fit:** Hire photonics grad students to work on chip design, additional domain adapters, or benchmark expansion.
+
+### CanExport Innovation
+
+**What:** Up to $75K for Canadian companies to pursue international R&D partnerships.
+
+**Your fit:**
+- Fund travel and collaboration with MIT Photonics
+- Support international conference presentations
+- Cover costs of establishing US research partnerships
 
 ---
 
-## KEY SEARCH TERMS FOR TOPIC MATCHING
+## US SUBSIDIARY STRATEGY
 
-Use these terms when searching SBIR.gov and agency portals for relevant open topics:
+### Why Consider It
 
-| Category | Search Terms |
-|---|---|
-| **Photonics** | photonic computing, silicon photonics, optical processing, integrated photonics |
-| **AI/ML** | pattern recognition, machine learning hardware, neural network accelerator, edge AI |
-| **Sensor Fusion** | multi-sensor fusion, data fusion, sensor integration, multi-INT |
-| **Battery** | battery health monitoring, battery prognostics, degradation prediction, state of health |
-| **Energy** | energy-efficient computing, low-power AI, sustainable computing |
-| **Manufacturing** | photonic manufacturing, silicon-on-insulator, domestic semiconductor |
+A US subsidiary (typically a Delaware C-corp) would unlock:
+- **NASA SBIR** ($150K–$750K) — battery work on NASA's own data
+- **DoD SBIR Navy/AF/Army** ($250K–$1.75M each) — multi-sensor fusion
+- **NSF SBIR** ($305K) — photonic computing
+- **CHIPS Act** ($500K–$10M) — domestic photonic manufacturing
+- **Total unlocked:** ~$15M+ in additional funding eligibility
+
+### How to Set It Up
+
+1. **Incorporate in Delaware** — $90 filing fee + ~$300/year franchise tax
+2. **Registered agent** in Delaware — ~$100/year
+3. **EIN** — free from IRS (instant online)
+4. **US bank account** — some banks offer to Canadian-owned corps (Mercury, Relay, Brex)
+5. **SAM.gov registration** — straightforward with US entity
+6. **SBIR eligibility:** US subsidiary must be >51% US-owned OR >51% owned by individual US citizens/permanent residents
+
+**⚠️ SBIR Ownership Requirement:**
+- The US subsidiary must be majority-owned by US citizens, permanent residents, or other qualifying US entities
+- A Canadian parent company owning >51% of the US sub does NOT qualify
+- **Workaround:** If Alec Arthur Shelton is a US citizen or permanent resident, he can personally own >51% of the US subsidiary
+- **Alternative:** If not a US person, consider STTR (Small Business Technology Transfer) which allows university partnerships with different ownership rules
+
+### Cost Estimate
+
+| Item | Cost | Frequency |
+|---|---|---|
+| Delaware incorporation | $90–$300 | One-time |
+| Registered agent | $100–$200 | Annual |
+| US bank account | Free–$30/mo | Monthly |
+| US tax filing | $500–$2,000 | Annual |
+| **Total Year 1** | **~$1,000–$3,000** | |
+
+### Recommendation
+
+If you're a Canadian citizen (not US), focus on:
+1. **Canadian grants first** (IRAP, SR&ED, IDEaS) — no citizenship barriers
+2. **US programs open to foreign entities** (DARPA, ARPA-E, MIT programs)
+3. **US subsidiary later** when you have revenue or a US co-founder to satisfy SBIR ownership rules
 
 ---
 
 ## DARPA PICASSO — SPECIAL HANDLING (March 6, 2026)
 
-This is your highest-value single application ($35M program). Special preparation needed:
+DARPA BAAs **do accept foreign entities**, but with conditions:
+- Must register on SAM.gov (foreign process via NCAGE code)
+- May require that classified work be performed in the US
+- Budget may need to show US-based work components
+- ITAR (International Traffic in Arms Regulations) may apply to some deliverables
 
 ### Pre-Submission (Now → March 1)
-- [ ] Register on SAM.gov (MANDATORY)
-- [ ] Review full PICASSO BAA on SAM.gov for exact submission requirements
-- [ ] Identify required formats (page limits, font, margin requirements)
+- [ ] **Request NCAGE code** immediately (1-2 weeks)
+- [ ] **Start SAM.gov** once NCAGE arrives
+- [ ] Review full PICASSO BAA on SAM.gov for exact requirements
+- [ ] Check if BAA has foreign entity restrictions
 - [ ] Prepare Volume I: Technical Proposal
-- [ ] Prepare Volume II: Cost Proposal
+- [ ] Prepare Volume II: Cost Proposal (may need US subcontractor line item)
 - [ ] Prepare Volume III: Administrative (company info, resumes, references)
+- [ ] Consider listing MIT or a US university as US-based subcontractor
 
 ### Submission (March 1-6)
 - [ ] Final review of all volumes
-- [ ] Submit through SAM.gov/Grants.gov before deadline
+- [ ] Submit through Grants.gov before deadline
 - [ ] Confirm receipt (save confirmation number)
 
 ---
@@ -181,49 +344,69 @@ This is your highest-value single application ($35M program). Special preparatio
 
 Every Monday, check these for new opportunities:
 
-- [ ] https://www.sbir.gov/sbirsearch/topic/current — new SBIR topics
-- [ ] https://sbir.nasa.gov/solicitations — NASA SBIR openings
-- [ ] https://www.dodsbirsttr.mil/topics-702/ — DoD SBIR topics
+**Canadian:**
+- [ ] https://nrc.canada.ca/en/support-technology-innovation — NRC IRAP updates
+- [ ] https://www.canada.ca/en/department-national-defence/programs/defence-ideas.html — IDEaS calls
+- [ ] https://innovation.ised-isde.canada.ca/innovation/s/ — ISED innovation programs
+- [ ] https://www.nserc-crsng.gc.ca/Professors-Professeurs/RPP-PP/Alliance-Alliance_eng.asp — NSERC Alliance
+- [ ] https://www.mitacs.ca/our-programs/ — Mitacs opportunities
+- [ ] https://www.tradecommissioner.gc.ca/funding-financement/canexport/innovation.aspx — CanExport
+
+**US (accessible programs):**
 - [ ] https://arpa-e.energy.gov/technologies/open-funding-opportunities — ARPA-E
 - [ ] https://www.iarpa.gov/research-programs — IARPA new programs
-- [ ] https://new.nsf.gov/funding/opportunities — NSF solicitations
-- [ ] https://sam.gov/search/?index=opp — SAM.gov contract opportunities
-- [ ] https://www.nist.gov/chips/funding-opportunities — CHIPS Act
+- [ ] https://new.nsf.gov/funding/opportunities — NSF (non-SBIR programs)
+- [ ] https://sam.gov/search/?index=opp — SAM.gov opportunities (DARPA BAAs appear here)
 
 ---
 
 ## COMPANY DOCUMENTS NEEDED
 
-These are required for most federal grant applications. Prepare them once, reuse everywhere:
-
-### Must Have
-- [ ] **EIN** (Employer Identification Number)
-- [ ] **UEI** (Unique Entity Identifier, via SAM.gov)
-- [ ] **Articles of Incorporation** (proves En Pensent is a legal entity)
-- [ ] **Business bank account** (for fund disbursement)
-- [ ] **CEO Resume/CV** (Alec Arthur Shelton — 2-page max, highlight technical qualifications)
-- [ ] **Company capability statement** (1-2 pages: who you are, what you do, past performance)
+### Canadian Entity Documents
+- [ ] **CRA Business Number (BN)** with active accounts
+- [ ] **Articles of Incorporation** (federal or provincial)
+- [ ] **Canadian business bank account**
+- [ ] **CEO Resume/CV** (Alec Arthur Shelton — 2-page max)
+- [ ] **Company capability statement** (1-2 pages)
 - [ ] **Patent filing documentation** (Synaptic Truth Network — pending)
+- [ ] **R&D activity log** (for SR&ED — hours, experiments, results)
+- [ ] **Financial statements** (required for IRAP, IDEaS)
 
-### Nice to Have
-- [ ] **Financial statements** (even simple ones — revenue, expenses, runway)
-- [ ] **Letters of support** (from MIT if partnership established)
-- [ ] **Subcontractor quotes** (for budget justification)
-- [ ] **Facilities description** (where work will be performed)
+### For US Programs
+- [ ] **NCAGE code** (NATO entity code — replaces CAGE for foreign entities)
+- [ ] **SAM.gov UEI** (Unique Entity Identifier via SAM.gov foreign registration)
+- [ ] **Grants.gov account**
 
 ---
 
 ## BUDGET: ESTIMATED APPLICATION COSTS
 
-| Item | Cost | Notes |
+| Item | Cost (CAD) | Notes |
 |---|---|---|
-| SAM.gov registration | Free | |
+| CRA BN registration | Free | |
+| IRAP registration | Free | |
+| NCAGE code | Free | |
+| SAM.gov (foreign) | Free | |
 | Grants.gov | Free | |
-| EIN | Free | |
-| State business registration | $50-$500 | Depends on state |
-| Patent filing (provisional) | $1,600-$3,000 | If not already filed |
-| Accountant for financial docs | $500-$1,500 | One-time prep |
-| **Total startup cost** | **~$2,000-$5,000** | One-time, enables all 13 applications |
+| Provincial business registration | $200–$500 | If not already done |
+| SR&ED consultant | $2,000–$5,000 | They typically recover 3-5x their fee |
+| Patent filing (Canadian provisional) | $2,000–$4,000 | If not already filed |
+| Accountant for financials | $500–$2,000 | One-time prep |
+| US subsidiary (optional) | $1,000–$3,000 | Only if pursuing US SBIR |
+| **Total startup cost** | **~$5,000–$15,000** | One-time, enables all programs |
+
+---
+
+## FUNDING SUMMARY BY CATEGORY
+
+| Category | Programs | Total Potential | Eligibility |
+|---|---|---|---|
+| **Canadian Grants** | IRAP, IDEaS, NSERC, Mitacs, CanExport | ~$2M–$3M CAD | ✅ Eligible now |
+| **Canadian Tax Credits** | SR&ED | ~35% of R&D spend | ✅ Eligible now |
+| **US (open to foreign)** | DARPA, ARPA-E, IARPA, MIT programs | ~$40M+ USD | ✅ With SAM.gov (NCAGE) |
+| **US (needs subsidiary)** | NASA SBIR, DoD SBIR, NSF SBIR, CHIPS | ~$15M+ USD | ❌ Needs US entity |
+
+**Immediate accessible total: ~$2M–$3M CAD + $40M+ USD**
 
 ---
 
@@ -233,9 +416,12 @@ These are required for most federal grant applications. Prepare them once, reuse
 - Email: a.arthur.shelton@gmail.com
 - Website: https://enpensent.com
 
-**SBIR Help:** 1-866-SBIRSUP (1-866-724-7787)
-**SAM.gov Help:** https://sam.gov/content/entity-registration
+**NRC IRAP:** 1-877-994-4727
+**SR&ED Help:** https://www.canada.ca/en/revenue-agency/services/scientific-research-experimental-development-tax-incentive-program.html
+**IDEaS:** https://www.canada.ca/en/department-national-defence/programs/defence-ideas.html
+**SAM.gov (foreign entities):** https://sam.gov/content/entity-registration
 **Grants.gov Help:** 1-800-518-4726
 
 ---
 *This playbook is a living document. Update status fields as applications progress.*
+*Entity: Canadian corporation. US subsidiary strategy available if SBIR access needed.*
