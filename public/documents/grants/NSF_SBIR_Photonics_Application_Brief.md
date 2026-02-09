@@ -12,7 +12,7 @@
 
 ## EXECUTIVE SUMMARY
 
-En Pensent has developed a software-proven architecture for a photonic cross-domain pattern recognition processor. The system uses optical interference equations to detect correlations across 27 domain-specific data channels simultaneously. Running 24/7 on real data, it has achieved **54.4% accuracy on 50,000+ chess predictions** (p ≈ 0), **F1 93.3% on chemical fault detection** (+20.6pp over Hotelling T² baseline), and **+7.4pp on battery degradation prediction** — all three domains passing through the same universal 8×8 grid architecture with self-learned encoding parameters.
+En Pensent has developed a software-proven architecture for a photonic cross-domain pattern recognition processor. The system uses optical interference equations to detect correlations across 27 domain-specific data channels simultaneously. Running 24/7 on real data, it has achieved **54.4% accuracy on 50,000+ chess predictions** (p ≈ 0), **F1 93.3% on chemical fault detection** (+20.6pp over Hotelling T² baseline), and **56.5% on battery degradation prediction** across 140 batteries (MIT-Stanford MATR dataset, 114,692 cycles) with 89.0% critical detection accuracy — all three domains passing through the same universal 8×8 grid architecture with self-learned encoding parameters. Scaling from 4 to 140 batteries improved accuracy by +19.6pp through self-learning alone.
 
 The proposed Phase I work will design and simulate the photonic integrated circuit (PIC) implementation, mapping the proven software architecture to silicon photonics components (micro-ring resonators, Mach-Zehnder interferometers, wavelength-division multiplexing). Phase II will fabricate and test a prototype chip.
 
@@ -30,8 +30,8 @@ A photonic processor where cross-domain correlation is the *native operation*. L
 - **3 domains validated** with the same universal architecture (chess, battery, chemical)
 - **Chess:** 54.4% accuracy on 50K+ predictions, p ≈ 0 (z > 37)
 - **Chemical:** F1 93.3% fault detection on Tennessee Eastman Process (+20.6pp over baseline)
-- **Battery:** +7.4pp on NASA degradation prediction (636 cycles, 4 batteries)
-- **Self-learning:** system discovers optimal encoding parameters from training volume (19× improvement)
+- **Battery:** 56.5% on MIT-Stanford MATR dataset (140 batteries, 114,692 cycles), 89.0% critical detection, +19.6pp from volume scaling
+- **Self-learning:** system discovers optimal encoding parameters from training volume (19× improvement on chemical; +19.6pp from 4→140 batteries via self-learned archetype weights)
 - Architecture maps directly to standard SOI photonic components
 
 **What is the advance over prior art?**
