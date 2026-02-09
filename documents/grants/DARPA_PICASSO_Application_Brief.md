@@ -123,7 +123,7 @@ Different archetypes produce different accuracy rates across all domains, confir
 
 ## 7. WHY EN PENSENT FOR PICASSO
 
-1. **Running proof, not theory** — 50K+ chess predictions (p ≈ 0), 636 battery cycles (+7.4pp), 2200 chemical records (F1 93.3%). Most proposals will be PowerPoint. We have data across three domains.
+1. **Running proof, not theory** — 50K+ chess predictions (p ≈ 0), 140 batteries / 114K battery cycles (56.5% accuracy, 89.0% critical detection), 2200 chemical records (F1 93.3%). Most proposals will be PowerPoint. We have data across three domains.
 2. **The architecture IS optical** — Built from first principles on wave interference equations. Not retrofitted from digital.
 3. **Cross-domain is the killer feature** — PICASSO wants "functional expansion." Our universal grid portal processes chess, battery degradation, and chemical fault detection through the **same 8×8 grid architecture** with domain-specific color encoding.
 4. **Self-learning from volume** — The system discovers its own optimal encoding parameters from training data. More data = better parameters = better accuracy. This is the fundamental scaling law for the photonic circuit.
