@@ -315,10 +315,10 @@ function calculateArchetypeSignal(
     opposite_castling: { whiteBoost: -2, blackBoost: 2, drawBoost: 0 },
     open_tactical: { whiteBoost: -1, blackBoost: 2, drawBoost: -3 },
     
-    // Strategic archetypes
-    central_domination: { whiteBoost: 2, blackBoost: 0, drawBoost: -3 },
-    positional_squeeze: { whiteBoost: 2, blackBoost: -1, drawBoost: -2 },
-    piece_harmony: { whiteBoost: 0, blackBoost: 1, drawBoost: 0 },
+    // Strategic archetypes — side-neutral (dominantSide already assigns the advantage)
+    central_domination: { whiteBoost: 0, blackBoost: 0, drawBoost: -3 },
+    positional_squeeze: { whiteBoost: 0, blackBoost: 0, drawBoost: -2 },
+    piece_harmony: { whiteBoost: 0, blackBoost: 0, drawBoost: 0 },
     
     // Endgame/pawn archetypes
     endgame_technique: { whiteBoost: -1, blackBoost: 2, drawBoost: 6 },
@@ -348,16 +348,21 @@ function calculateArchetypeSignal(
   let whiteShare: number;
   let blackShare: number;
   
+  // v8.08: Side-symmetric archetype signal
+  // The dominant side gets the attacker boost, the other gets defender boost
+  // This eliminates structural white bias from ARCHETYPE_WEIGHTS
   if (dominantSide === 'white') {
     whiteShare = (decisiveProb * 0.55) + weights.whiteBoost;
     blackShare = (decisiveProb * 0.45) + weights.blackBoost;
   } else if (dominantSide === 'black') {
-    blackShare = (decisiveProb * 0.55) + weights.blackBoost;
-    whiteShare = (decisiveProb * 0.45) + weights.whiteBoost;
+    // Mirror: black gets the attacker share + whiteBoost (attacker bonus),
+    // white gets defender share + blackBoost (defender bonus)
+    blackShare = (decisiveProb * 0.55) + weights.whiteBoost;
+    whiteShare = (decisiveProb * 0.45) + weights.blackBoost;
   } else {
     // Contested: exactly 50/50
-    whiteShare = (decisiveProb / 2) + weights.whiteBoost;
-    blackShare = (decisiveProb / 2) + weights.blackBoost;
+    whiteShare = (decisiveProb / 2);
+    blackShare = (decisiveProb / 2);
   }
   
   // Normalize
@@ -411,9 +416,9 @@ function calculatePhaseSignal(
   moveNumber: number,
   intensity: number
 ): { white: number; black: number; draw: number } {
-  // Early game: predictions are less reliable, slightly favor white (first-move advantage)
+  // Early game: predictions are less reliable, keep symmetric
   if (moveNumber < 15) {
-    return { white: 36, black: 32, draw: 32 };
+    return { white: 34, black: 33, draw: 33 };
   }
   
   // Middlegame: balanced predictions

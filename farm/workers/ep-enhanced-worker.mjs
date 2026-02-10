@@ -26,6 +26,7 @@ import {
   COLORS
 } from '../lib/visualization/backendViz.mjs';
 import { FARM_CONFIG, THROUGHPUT } from '../config/optimizedFarmConfig.mjs';
+import { fetchLichessPuzzleBatch, processPuzzle, loadCalibration, updateCalibration } from './puzzleArchetypeCalibrator.mjs';
 import { savePredictionLocal, getLocalStats } from '../lib/simpleStorage.mjs';
 import { createHash } from 'crypto';
 
@@ -39,12 +40,33 @@ if (fs.existsSync(envPath)) {
 }
 
 // Direct SQL pool - bypasses RLS completely
+// max: 3 per worker (3 workers × 3 = 9 total, safe for Supabase connection limits)
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
-  max: 10,
-  idleTimeoutMillis: 30000
+  max: 3,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
 });
+
+// Prevent pool errors from crashing the process
+pool.on('error', (err) => {
+  console.error(`[POOL] Unexpected error on idle client: ${err.message}`);
+});
+
+// Resilient query wrapper: retries up to 3 times with backoff
+async function resilientQuery(queryText, values, retries = 3) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      return await pool.query(queryText, values);
+    } catch (err) {
+      if (attempt === retries) throw err;
+      const delay = attempt * 2000;
+      console.log(`[POOL] Query failed (attempt ${attempt}/${retries}): ${err.message}, retrying in ${delay}ms...`);
+      await new Promise(r => setTimeout(r, delay));
+    }
+  }
+}
 
 // Initialize Supabase client for reading
 const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://ezvfslkjyjsqycztyfxh.supabase.co';
@@ -121,23 +143,49 @@ const GAME_SOURCES = {
   PUZZLE_SOURCES: ['chesscom_rated', 'lichess_puzzle'],
 };
 
-// Track which source we're using for rotation
-// Stagger per worker so multiple workers don't all hit the same player
-const workerOffset = parseInt((process.env.WORKER_ID || '').replace(/\D/g, '') || '0', 10);
-let currentSourceIndex = workerOffset * 7; // Each worker starts at a different offset
+// ═══════════════════════════════════════════════════════════════════
+// WORKER COORDINATION: Deterministic partitioning — no overlap ever
+// ═══════════════════════════════════════════════════════════════════
+const workerNum = parseInt((process.env.WORKER_ID || '').replace(/\D/g, '') || '1', 10);
+
+// Partition Lichess players into exclusive slices per worker
+const allLichessPlayers = GAME_SOURCES.LICHESS_PLAYERS.filter((v, i, a) => a.indexOf(v) === i); // dedupe
+const allChesscomPlayers = GAME_SOURCES.CHESSCOM_PLAYERS.filter((v, i, a) => a.indexOf(v) === i);
+const TOTAL_WORKERS = 3;
+const lichessSlice = Math.ceil(allLichessPlayers.length / TOTAL_WORKERS);
+const chesscomSlice = Math.ceil(allChesscomPlayers.length / TOTAL_WORKERS);
+const myLichessPlayers = allLichessPlayers.slice((workerNum - 1) * lichessSlice, workerNum * lichessSlice);
+const myChesscomPlayers = allChesscomPlayers.slice((workerNum - 1) * chesscomSlice, workerNum * chesscomSlice);
+console.log(`[${workerId}] Exclusive Lichess pool: ${myLichessPlayers.length} players (${myLichessPlayers.slice(0,3).join(', ')}...)`);
+console.log(`[${workerId}] Exclusive Chess.com pool: ${myChesscomPlayers.length} players (${myChesscomPlayers.slice(0,3).join(', ')}...)`);
+
+// Each worker gets a deterministic source rotation offset
+let currentSourceIndex = (workerNum - 1) * 100;
 
 // In-memory deduplication: track all game IDs we've already analyzed
 const analyzedGameIds = new Set();
 
 /**
- * Session-only dedup: we only track game IDs analyzed in THIS session.
- * The DB's ON CONFLICT (game_id) DO NOTHING handles cross-session duplicates.
- * This maximizes throughput — workers never block on stale dedup sets.
+ * Pre-load recent game IDs from database so we never re-fetch/re-analyze
+ * games that were already saved (even across restarts).
+ * DB ON CONFLICT is the last-resort safety net, not the primary dedup.
  */
 async function loadAnalyzedGameIds() {
-  // No pre-load. Fresh session = fresh games.
-  // DB constraint handles true duplicates at insert time.
-  console.log(`[FARM] Session-only dedup active (DB ON CONFLICT handles cross-session)`);
+  try {
+    const result = await resilientQuery(
+      `SELECT game_id FROM chess_prediction_attempts ORDER BY created_at DESC LIMIT 20000`
+    );
+    if (result.rows.length > 0) {
+      for (const row of result.rows) {
+        analyzedGameIds.add(row.game_id);
+      }
+      console.log(`[${workerId}] Pre-loaded ${analyzedGameIds.size} game IDs from DB (dedup active)`);
+    } else {
+      console.log(`[${workerId}] No existing games in DB — fresh start`);
+    }
+  } catch (err) {
+    console.log(`[${workerId}] DB dedup pre-load failed (will rely on ON CONFLICT): ${err.message}`);
+  }
 }
 
 /**
@@ -221,24 +269,31 @@ async function loadLocalGames(count = 5) {
  * Fetch real games from Lichess API - BULLETPROOF VERSION
  * Never fails - tries multiple players, longer timeouts, exponential backoff
  */
-// Sliding time window: each worker starts at a random point 1-4 years back
-// This ensures workers explore different time periods and don't compete
-const randomYearsBack = 1 + Math.random() * 3; // 1-4 years
-let lichessBeforeMs = Date.now() - (randomYearsBack * 365 * 24 * 60 * 60 * 1000);
-console.log(`[${workerId}] Starting time window: ${new Date(lichessBeforeMs).toISOString().split('T')[0]} (${randomYearsBack.toFixed(1)} years back)`);
+// Deterministic time window per worker — NO randomness, NO overlap
+// Worker 1: recent games (0-1.5 years back)
+// Worker 2: mid-range (1.5-3 years back)  
+// Worker 3: historical (3-5 years back)
+const TIME_WINDOWS = [
+  { startYears: 0, endYears: 1.5 },   // Worker 1
+  { startYears: 1.5, endYears: 3 },   // Worker 2
+  { startYears: 3, endYears: 5 },     // Worker 3
+];
+const myWindow = TIME_WINDOWS[Math.min(workerNum - 1, TIME_WINDOWS.length - 1)];
+let lichessBeforeMs = Date.now() - (myWindow.startYears * 365.25 * 24 * 60 * 60 * 1000);
+const lichessFloorMs = Date.now() - (myWindow.endYears * 365.25 * 24 * 60 * 60 * 1000);
+console.log(`[${workerId}] Time window: ${new Date(lichessBeforeMs).toISOString().split('T')[0]} → ${new Date(lichessFloorMs).toISOString().split('T')[0]}`);
+console.log(`[${workerId}] Range: ${myWindow.startYears}-${myWindow.endYears} years back`);
 const PERF_TYPES = ['blitz', 'rapid', 'bullet', 'classical'];
 
 async function fetchLichessGames(count = 5, perfType = 'blitz') {
   // Rotate perfType based on cycle to access different game pools
   const actualPerfType = PERF_TYPES[stats.cycles % PERF_TYPES.length];
   
-  // Try 6 different players per fetch to maximize chances of finding new games
-  const playerCount = GAME_SOURCES.LICHESS_PLAYERS.length;
+  // Use THIS worker's exclusive player partition — no overlap with other workers
   const playersToTry = [];
-  for (let i = 0; i < 6; i++) {
-    playersToTry.push(GAME_SOURCES.LICHESS_PLAYERS[(currentSourceIndex + i) % playerCount]);
+  for (let i = 0; i < Math.min(6, myLichessPlayers.length); i++) {
+    playersToTry.push(myLichessPlayers[(currentSourceIndex + i) % myLichessPlayers.length]);
   }
-  playersToTry.push('thibault'); // fallback
   
   // Brief pause to respect rate limits
   await new Promise(r => setTimeout(r, 500));
@@ -362,7 +417,7 @@ function parsePgnGames(pgnText) {
  * Fetch games from Chess.com API with rotating players
  */
 async function fetchChessComGames(count = 5) {
-  const player = GAME_SOURCES.CHESSCOM_PLAYERS[currentSourceIndex % GAME_SOURCES.CHESSCOM_PLAYERS.length];
+  const player = myChesscomPlayers[currentSourceIndex % myChesscomPlayers.length];
   
   try {
     // Get monthly archives
@@ -420,8 +475,8 @@ async function fetchChessComGames(count = 5) {
  * Multi-source game fetcher - rotates between Lichess, Chess.com, and Puzzles
  */
 async function fetchGamesMultiSource(count = 5, perfType = 'blitz') {
-  // Extended rotation: games → puzzles → games → puzzles
-  const sources = ['lichess', 'chesscom', 'lichess', 'chesscom', 'puzzles'];
+  // Alternate between Lichess and Chess.com — puzzles REMOVED (fabricated PGNs, 4.3% accuracy)
+  const sources = ['lichess', 'chesscom', 'lichess', 'chesscom'];
   const currentSource = sources[currentSourceIndex % sources.length];
   currentSourceIndex++;
   
@@ -429,13 +484,7 @@ async function fetchGamesMultiSource(count = 5, perfType = 'blitz') {
   
   console.log(`[FARM] Multi-source fetch: ${currentSource.toUpperCase()}`);
   
-  if (currentSource === 'puzzles') {
-    // Try both puzzle sources
-    games = await fetchChessComPuzzles(count);
-    if (games.length === 0) {
-      games = await fetchLichessPuzzles(count);
-    }
-  } else if (currentSource === 'lichess') {
+  if (currentSource === 'lichess') {
     games = await fetchLichessGames(count, perfType);
   } else {
     games = await fetchChessComGames(count);
@@ -444,9 +493,7 @@ async function fetchGamesMultiSource(count = 5, perfType = 'blitz') {
   // Fallback chain
   if (games.length === 0) {
     console.log(`[FARM] Primary source ${currentSource} failed, trying fallback...`);
-    if (currentSource === 'puzzles') {
-      games = await fetchChessComGames(count);
-    } else if (currentSource === 'lichess') {
+    if (currentSource === 'lichess') {
       games = await fetchChessComGames(count);
     } else {
       games = await fetchLichessGames(count, perfType);
@@ -752,10 +799,11 @@ async function runBenchmarkCycle(epEngine) {
   if (games.length === 0) {
     // Move time window back by 14 days to find fresh games faster
     lichessBeforeMs -= 14 * 24 * 60 * 60 * 1000;
-    // Don't go further back than 5 years
-    const fiveYearsAgo = Date.now() - (5 * 365 * 24 * 60 * 60 * 1000);
-    if (lichessBeforeMs < fiveYearsAgo) {
-      lichessBeforeMs = Date.now(); // Reset to present
+    // Don't cross into another worker's time territory
+    if (lichessBeforeMs < lichessFloorMs) {
+      // Reset to the TOP of this worker's window (not present — that's another worker's zone)
+      lichessBeforeMs = Date.now() - (myWindow.startYears * 365.25 * 24 * 60 * 60 * 1000);
+      console.log(`[${workerId}] Time window wrapped to top: ${new Date(lichessBeforeMs).toISOString().split('T')[0]}`);
     }
     currentSourceIndex += 8; // Advance player rotation faster
     console.log(`[${workerId}] All games already analyzed, sliding window back to ${new Date(lichessBeforeMs).toISOString().split('T')[0]}`);
@@ -893,11 +941,10 @@ async function runBenchmarkCycle(epEngine) {
       // This links live chess data → correlation engine → adapter registry → photonic bus
       // The web app's realtime subscription ingests these for universal pattern detection
       try {
-        const corrClient = await pool.connect();
         const corrId = `farm_${game.id}_${Date.now()}`;
         const consensus = enhancedPred.predictedWinner === sf17Prediction ? 'agree' : 'disagree';
         const corrScore = enhancedCorrect ? 0.8 : (consensus === 'agree' ? 0.5 : 0.3);
-        await corrClient.query(
+        await resilientQuery(
           `INSERT INTO cross_domain_correlations (
             correlation_id, pattern_id, pattern_name,
             correlation_score, chess_archetype, chess_confidence,
@@ -919,7 +966,6 @@ async function runBenchmarkCycle(epEngine) {
             enhancedCorrect
           ]
         );
-        corrClient.release();
       } catch (corrErr) {
         // Correlation save is non-critical — don't block predictions
       }
@@ -1016,7 +1062,7 @@ async function main() {
       // Update farm_status for admin dashboard visibility
       try {
         const farmId = workerId.replace('ep-farm-', 'enhanced-farm-');
-        await pool.query(`
+        await resilientQuery(`
           INSERT INTO farm_status (
             farm_id, farm_name, host_name, status, message,
             chess_games_generated, chess_errors,
@@ -1052,6 +1098,35 @@ async function main() {
       // Individual predictions are saved per-game in savePrediction().
       // The old code wrote cumulative stats.predictionsMade as completed_games
       // every cycle, which inflated the totals massively.
+      
+      // PUZZLE ARCHETYPE CALIBRATION: Every 10 cycles, worker 1 processes
+      // themed puzzles as labeled archetype reference data (not game predictions).
+      // This builds a calibration library that improves archetype detection accuracy.
+      if (stats.cycles % 10 === 0 && workerNum === 1) {
+        try {
+          console.log(`[${workerId}] Running puzzle archetype calibration...`);
+          const puzzles = await fetchLichessPuzzleBatch(3);
+          const calibration = loadCalibration();
+          let matched = 0;
+          for (const puzzle of puzzles) {
+            const result = await processPuzzle(puzzle, epEngine);
+            if (result) {
+              updateCalibration(calibration, result);
+              if (result.archetypeMatch) matched++;
+              console.log(`[${workerId}] Puzzle ${puzzle.id}: expected=${result.expectedArchetype} detected=${result.detectedArchetype} ${result.archetypeMatch ? '✓' : '✗'}`);
+            }
+          }
+          // Save calibration to disk (loadCalibration reads it back)
+          const fs = await import('fs');
+          const path = await import('path');
+          const calPath = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'archetype-calibration.json');
+          calibration.lastUpdated = new Date().toISOString();
+          fs.writeFileSync(calPath, JSON.stringify(calibration, null, 2));
+          console.log(`[${workerId}] Puzzle calibration: ${matched}/${puzzles.length} matched, ${calibration.totalPuzzles} total`);
+        } catch (calErr) {
+          console.log(`[${workerId}] Puzzle calibration non-critical error: ${calErr.message}`);
+        }
+      }
       
       // Wait between cycles
       await new Promise(r => setTimeout(r, FARM_CONFIG.cycle.waitBetweenCycles));
@@ -1155,7 +1230,7 @@ async function savePrediction(attempt) {
       meta.pgn || null                                           // Truncated PGN up to prediction move
     ];
     
-    const result = await pool.query(query, values);
+    const result = await resilientQuery(query, values);
     if (result.rowCount > 0) {
       console.log(`[${workerId}] ✓ Saved: ${attempt.gameId} | SF17=${attempt.sf17Prediction}(${attempt.sf17Correct?'✓':'✗'}) EP=${attempt.enhancedPrediction}(${attempt.enhancedCorrect?'✓':'✗'}) Actual=${attempt.actualOutcome}`);
     } else {

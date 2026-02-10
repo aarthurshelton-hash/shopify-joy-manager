@@ -35,7 +35,7 @@ export function getLastCalibrationReason() {
 export function predictFromColorFlow(signature, currentMoveNumber, stockfishEval = 0, stockfishDepth = 18) {
     // v8.07: Force-assign archetype if unknown
     const effectiveArchetype = forceArchetypeAssignment(signature.archetype, signature.dominantSide, signature.flowDirection, signature.intensity);
-    const archetypeDef = ARCHETYPE_DEFINITIONS[effectiveArchetype] || { name: effectiveArchetype, lookaheadConfidence: 5 };
+    const archetypeDef = ARCHETYPE_DEFINITIONS[effectiveArchetype];
     // v7.90 EQUILIBRIUM: Calculate all three outcome confidences
     const equilibrium = calculateEquilibriumScores({ ...signature, archetype: effectiveArchetype }, stockfishEval, stockfishDepth, currentMoveNumber);
     // Store for debugging access
@@ -148,7 +148,7 @@ function predictCriticalSquares(signature) {
     return squares.slice(0, 4);
 }
 function describeExpectedEvolution(signature, currentMove) {
-    const archetype = ARCHETYPE_DEFINITIONS[signature.archetype] || { name: signature.archetype || 'unknown' };
+    const archetype = ARCHETYPE_DEFINITIONS[signature.archetype];
     if (currentMove < 15) {
         return `Opening phase suggests ${archetype.name}. Expect color intensity to ${signature.temporalFlow.volatility > 50 ? 'increase rapidly' : 'develop gradually'} toward the ${signature.flowDirection}.`;
     }
