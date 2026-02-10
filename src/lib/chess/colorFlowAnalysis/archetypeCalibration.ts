@@ -19,7 +19,11 @@ import { StrategicArchetype } from './types';
  * Historical accuracy by archetype (from database analysis)
  * Updated from actual chess_prediction_attempts data
  */
-export const ARCHETYPE_HISTORICAL_ACCURACY: Record<StrategicArchetype, {
+/**
+ * Hardcoded fallback weights — used when live weights are unavailable.
+ * These are the initial values from the first database snapshot.
+ */
+const HARDCODED_ACCURACY: Record<string, {
   hybridAccuracy: number;
   sfAccuracy: number;
   agreementRate: number;
@@ -39,6 +43,56 @@ export const ARCHETYPE_HISTORICAL_ACCURACY: Record<StrategicArchetype, {
   prophylactic_defense: { hybridAccuracy: 0.42, sfAccuracy: 0.48, agreementRate: 0.52, sampleSize: 150 },
   unknown: { hybridAccuracy: 0.415, sfAccuracy: 0.45, agreementRate: 0.40, sampleSize: 805 },
 };
+
+/**
+ * Runtime override store for live weights.
+ * Call updateLiveArchetypeWeights() to inject fresh data from Supabase/farm.
+ * When set, these override the hardcoded fallback for any archetype present.
+ */
+let liveWeightsOverride: Record<string, {
+  hybridAccuracy: number;
+  sfAccuracy: number;
+  agreementRate: number;
+  sampleSize: number;
+}> | null = null;
+
+/**
+ * Inject live archetype weights at runtime.
+ * Called by the web app after fetching from Supabase or the farm's live-archetype-weights.json.
+ * Puzzle calibration data (detection accuracy) is already merged into these weights by the farm.
+ */
+export function updateLiveArchetypeWeights(weights: Record<string, {
+  hybridAccuracy: number;
+  sfAccuracy: number;
+  agreementRate: number;
+  sampleSize: number;
+}>) {
+  liveWeightsOverride = weights;
+}
+
+/**
+ * Get the effective accuracy stats for an archetype.
+ * Prefers live weights (which include puzzle calibration), falls back to hardcoded.
+ */
+function getEffectiveStats(archetype: StrategicArchetype) {
+  return liveWeightsOverride?.[archetype] || HARDCODED_ACCURACY[archetype] || HARDCODED_ACCURACY.unknown;
+}
+
+/**
+ * Exported for backward compatibility — returns hardcoded + live merged.
+ * Consumers should prefer getEffectiveStats() internally.
+ */
+export const ARCHETYPE_HISTORICAL_ACCURACY = new Proxy(HARDCODED_ACCURACY, {
+  get(target, prop: string) {
+    if (liveWeightsOverride?.[prop]) return liveWeightsOverride[prop];
+    return target[prop as keyof typeof target];
+  }
+}) as Record<StrategicArchetype, {
+  hybridAccuracy: number;
+  sfAccuracy: number;
+  agreementRate: number;
+  sampleSize: number;
+}>;
 
 export interface CalibrationResult {
   /** Adjusted confidence after calibration */
@@ -64,7 +118,7 @@ export function calibrateConfidence(
   baseConfidence: number,
   sfEval: number
 ): CalibrationResult {
-  const stats = ARCHETYPE_HISTORICAL_ACCURACY[archetype] || ARCHETYPE_HISTORICAL_ACCURACY.unknown;
+  const stats = getEffectiveStats(archetype);
   
   // Check if predictions agree
   const agree = hybridPrediction === sfPrediction;

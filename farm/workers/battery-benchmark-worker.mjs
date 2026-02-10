@@ -448,7 +448,73 @@ async function runBenchmark() {
     console.log(`  ${arch}: stable=${(learnedArchetypeWeights[arch].stable * 100).toFixed(1)}%, accelerating=${(learnedArchetypeWeights[arch].accelerating * 100).toFixed(1)}%, critical=${(learnedArchetypeWeights[arch].critical * 100).toFixed(1)}% (n=${total})`);
   }
   
-  // Evaluate on test set with self-learned threshold + centroids + archetype weights
+  // ═══════════════════════════════════════════════════
+  // SELF-LEARNING: Find optimal ensemble alpha (archetype vs centroid blend)
+  // Try alpha values [0.3, 0.5, 0.7, 0.9, 1.0] on training validation subset
+  // alpha=1.0 = pure archetype, alpha=0.0 = pure centroid
+  // ═══════════════════════════════════════════════════
+  console.log('\nLearning optimal ensemble alpha (archetype vs centroid blend)...');
+  const alphasCandidates = [0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
+  let bestAlpha = 0.7;
+  let bestAlphaAcc = 0;
+  
+  if (classCentroids && Object.keys(classCentroids).length >= 2) {
+    // Use last 20% of training data as validation for alpha calibration
+    const valStart = Math.floor(trainData.length * 0.8);
+    const valData = trainData.slice(valStart);
+    
+    for (const alpha of alphasCandidates) {
+      let correct = 0;
+      let valTotal = 0;
+      
+      for (const cycle of valData) {
+        const battCycles = byBattery[cycle.battery_id] || [];
+        const cycleIdx = battCycles.findIndex(c => c.cycle_number === cycle.cycle_number);
+        if (cycleIdx < 0) continue;
+        
+        const wStart = Math.max(0, cycleIdx + 1 - GRID_WINDOW);
+        const windowedHistory = battCycles.slice(wStart, Math.max(1, cycleIdx + 1));
+        const { signature: gSig } = processBatteryThroughGrid(windowedHistory, ranges, bestDevThreshold);
+        const fullHistory = battCycles.slice(0, Math.max(1, cycleIdx + 1));
+        const bSig = extractBatterySignature(cycle, fullHistory, ranges);
+        bSig.cyclePosition = (cycleIdx + 1) / (battCycles.length || 1);
+        
+        // Get archetype prediction
+        const arch = bSig.archetype;
+        const lp = learnedArchetypeWeights[arch];
+        let archScores = {};
+        if (lp) {
+          for (const cls of classes) archScores[cls] = lp[cls] || 0.33;
+        } else {
+          for (const cls of classes) archScores[cls] = 0.33;
+        }
+        
+        // Get centroid prediction
+        const gridPred = predictFromGridSignature(gSig, bSig, classCentroids, classes);
+        
+        // Blend
+        let bestCls = classes[0], bestSc = -1;
+        for (const cls of classes) {
+          const blended = alpha * (archScores[cls] || 0) + (1 - alpha) * (gridPred.scores[cls] || 0);
+          if (blended > bestSc) { bestSc = blended; bestCls = cls; }
+        }
+        
+        valTotal++;
+        if (bestCls === cycle.label) correct++;
+      }
+      
+      const acc = valTotal > 0 ? correct / valTotal : 0;
+      console.log(`  alpha=${alpha.toFixed(1)}: ${(acc * 100).toFixed(1)}% (${correct}/${valTotal})`);
+      if (acc > bestAlphaAcc) { bestAlphaAcc = acc; bestAlpha = alpha; }
+    }
+    console.log(`  → Optimal alpha: ${bestAlpha.toFixed(1)} (${(bestAlphaAcc * 100).toFixed(1)}% on validation)`);
+  } else {
+    console.log('  Insufficient centroids for ensemble — using pure archetype (alpha=1.0)');
+    bestAlpha = 1.0;
+  }
+  const ensembleAlpha = bestAlpha;
+  
+  // Evaluate on test set with self-learned threshold + centroids + archetype weights + ensemble alpha
   console.log('\n--- EVALUATION PHASE (Fully Self-Learned) ---');
   let epCorrect = 0;
   let baselineCorrect = 0;
@@ -520,12 +586,39 @@ async function runBenchmark() {
       epPred = predictFromBatterySignature(battSig, classes);
     }
     
-    // Grid centroid fusion: override only when grid is very confident and archetype is uncertain
+    // ENSEMBLE BLEND: Combine archetype prediction with grid centroid prediction
+    // Uses alpha weighting — alpha=1.0 means pure archetype, alpha=0.0 means pure centroid
+    // Alpha is self-adjusted based on which predictor is more accurate on training validation
     if (classCentroids && Object.keys(classCentroids).length >= 2) {
       const gridPred = predictFromGridSignature(gridSig, battSig, classCentroids, classes);
-      if (gridPred.confidence > 0.7 && epPred.confidence < 0.4 && gridPred.prediction !== epPred.prediction) {
-        epPred = gridPred;
+      
+      // Blend scores: ensemble_score = alpha * archetype_score + (1-alpha) * centroid_score
+      const blendedScores = {};
+      for (const cls of classes) {
+        blendedScores[cls] = ensembleAlpha * (epPred.scores[cls] || 0) + 
+                             (1 - ensembleAlpha) * (gridPred.scores[cls] || 0);
       }
+      
+      // Re-pick best class from blended scores
+      let bestClass = classes[0];
+      let bestScore = -1;
+      for (const cls of classes) {
+        if (blendedScores[cls] > bestScore) {
+          bestScore = blendedScores[cls];
+          bestClass = cls;
+        }
+      }
+      
+      const sorted = Object.values(blendedScores).sort((a, b) => b - a);
+      const blendedConf = sorted.length > 1 ? sorted[0] - sorted[1] : 0.3;
+      
+      epPred = {
+        prediction: bestClass,
+        confidence: Math.max(0.1, Math.min(0.9, 0.3 + blendedConf)),
+        scores: blendedScores,
+        archetype: epPred.archetype,
+        direction: epPred.direction,
+      };
     }
     
     // Baseline prediction (persistence model)

@@ -28,6 +28,7 @@ import {
 import { FARM_CONFIG, THROUGHPUT } from '../config/optimizedFarmConfig.mjs';
 import { fetchLichessPuzzleBatch, processPuzzle, loadCalibration, updateCalibration } from './puzzleArchetypeCalibrator.mjs';
 import { savePredictionLocal, getLocalStats } from '../lib/simpleStorage.mjs';
+import { computeLiveArchetypeWeights, saveLiveWeights, loadLiveWeights, logWeightComparison, loadPuzzleCalibration, mergePuzzleCalibration } from '../lib/liveArchetypeWeights.mjs';
 import { createHash } from 'crypto';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -105,6 +106,9 @@ let stats = {
     enhancedOnly: 0,
   }
 };
+
+// Live archetype weights — refreshed from DB every 50 cycles
+let liveArchetypeWeights = loadLiveWeights();
 
 // Multi-source game fetching configuration
 const GAME_SOURCES = {
@@ -1037,6 +1041,27 @@ async function main() {
   // Pre-load analyzed game IDs for deduplication
   await loadAnalyzedGameIds();
   
+  // Compute live archetype weights from DB on startup (worker 1 only)
+  if (workerNum === 1 && !liveArchetypeWeights) {
+    try {
+      console.log('Computing live archetype weights from DB...');
+      const newWeights = await computeLiveArchetypeWeights(resilientQuery);
+      if (newWeights) {
+        // Merge puzzle calibration data (detection accuracy from labeled puzzles)
+        const puzzleCal = loadPuzzleCalibration();
+        if (puzzleCal) {
+          mergePuzzleCalibration(newWeights, puzzleCal);
+          console.log(`✓ Puzzle calibration merged: ${puzzleCal.totalPuzzles} puzzles, detection data for ${Object.keys(puzzleCal.archetypeAccuracy || {}).length} archetypes`);
+        }
+        liveArchetypeWeights = newWeights;
+        saveLiveWeights(newWeights);
+        logWeightComparison(newWeights);
+      }
+    } catch (err) {
+      console.log(`Live weight init non-critical: ${err.message}`);
+    }
+  }
+  
   const epEngine = await loadEPEngine();
   console.log(`✓ EP engine loaded`);
   console.log(`✓ Baseline 4-quadrant: ACTIVE`);
@@ -1125,6 +1150,29 @@ async function main() {
           console.log(`[${workerId}] Puzzle calibration: ${matched}/${puzzles.length} matched, ${calibration.totalPuzzles} total`);
         } catch (calErr) {
           console.log(`[${workerId}] Puzzle calibration non-critical error: ${calErr.message}`);
+        }
+      }
+      
+      // LIVE ARCHETYPE WEIGHT REFRESH: Every 50 cycles, worker 1 recomputes
+      // real per-archetype accuracy from the database. This replaces the hardcoded
+      // ARCHETYPE_HISTORICAL_ACCURACY with data-driven weights that improve with volume.
+      if (stats.cycles % 50 === 0 && workerNum === 1) {
+        try {
+          console.log(`[${workerId}] Refreshing live archetype weights from DB...`);
+          const newWeights = await computeLiveArchetypeWeights(resilientQuery);
+          if (newWeights) {
+            // Merge latest puzzle calibration data
+            const puzzleCal = loadPuzzleCalibration();
+            if (puzzleCal) {
+              mergePuzzleCalibration(newWeights, puzzleCal);
+              console.log(`[${workerId}] Puzzle calibration merged: ${puzzleCal.totalPuzzles} puzzles`);
+            }
+            liveArchetypeWeights = newWeights;
+            saveLiveWeights(newWeights);
+            logWeightComparison(newWeights);
+          }
+        } catch (weightErr) {
+          console.log(`[${workerId}] Live weight refresh non-critical error: ${weightErr.message}`);
         }
       }
       
