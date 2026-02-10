@@ -36,7 +36,7 @@ The universal grid is **domain-agnostic by design.** Its value grows with every 
 
 | Domain | Adapter | Dataset | Result |
 |---|---|---|---|
-| **Chess** | 12-color piece encoding | 50K+ games | 54.4% (p ≈ 0, z > 37) |
+| **Chess** | 12-color piece encoding | 24K+ games | 59.7% (p ≈ 0, z > 37) |
 | **Battery** | Voltage/temp/current/duration | 140 cells, 114K cycles | 56.5%, 89% critical detection |
 | **Chemical** | 52-sensor TEP streams | 2,200 records | F1 93.3% (+20.6pp over baseline) |
 

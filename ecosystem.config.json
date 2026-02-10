@@ -114,6 +114,24 @@
       "restart_delay": 5000
     },
     {
+      "name": "market-prediction",
+      "script": "./farm/workers/market-prediction-worker.mjs",
+      "instances": 1,
+      "exec_mode": "fork",
+      "autorestart": true,
+      "max_restarts": 10,
+      "min_uptime": "10s",
+      "env": {
+        "NODE_ENV": "production"
+      },
+      "log_file": "/tmp/pm2-market-prediction.log",
+      "error_file": "/tmp/pm2-market-prediction-error.log",
+      "out_file": "/tmp/pm2-market-prediction-out.log",
+      "merge_logs": true,
+      "max_memory_restart": "300M",
+      "restart_delay": 10000
+    },
+    {
       "name": "system-monitor",
       "script": "./farm/monitor/system-monitor.mjs",
       "instances": 1,

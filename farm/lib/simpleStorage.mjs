@@ -56,6 +56,7 @@ export async function savePredictionLocal(attempt, workerId) {
       dataSource: attempt.dataSource || 'unknown',
       eightQuadrantProfile: attempt.eightQuadrantProfile || null,
       pieceTypeMetrics: attempt.pieceTypeMetrics || null,
+      specialMoves: attempt.specialMoves || null,
       timestamp: new Date().toISOString()
     });
     

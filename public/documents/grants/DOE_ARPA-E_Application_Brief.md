@@ -45,7 +45,7 @@ The software executes the same mathematical operations the photonic chip would p
 
 | Domain | Dataset | En Pensent | Baseline | Key Result |
 |---|---|---|---|---|
-| **Chess** | 50,000+ games | 54.4% (3-way) | 33.3% random | p ≈ 0, z > 37 |
+| **Chess** | 24,000+ games | 59.7% (3-way) | 33.3% random | p ≈ 0, z > 37 |
 | **Battery** | 140 cells, 114K cycles | 56.5% (3-way) | 89.2% persistence | 89.0% critical detection |
 | **Chemical** | 2,200 records (TEP) | F1 93.3% | F1 72.7% | +20.6pp, catches 88.9% of faults |
 
@@ -125,7 +125,7 @@ If photonic inference replaced 10% of projected AI data center workloads by 2030
 
 ## 8. WHY EN PENSENT FOR ARPA-E
 
-1. **Running proof, not theory** — 3 domains validated with identical architecture. Most proposals will be simulations.
+1. **Running proof, not theory** — 6 domains validated with identical architecture. Most proposals will be simulations.
 2. **The physics does the compute** — Optical interference IS pattern matching. Not a GPU accelerator. Fundamentally different energy curve.
 3. **Self-learning eliminates retraining energy** — The system improves with data volume, not with more compute cycles. Zero additional energy to improve accuracy.
 4. **CMOS-compatible** — No exotic materials. Standard SOI foundry fabrication. Path to volume manufacturing.

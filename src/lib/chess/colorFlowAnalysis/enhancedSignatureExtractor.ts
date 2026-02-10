@@ -292,18 +292,18 @@ export function classifyEnhancedArchetype(profile: EnhancedQuadrantProfile): str
   const centerControl = Math.abs(profile.q5_center_white) + Math.abs(profile.q6_center_black);
   const wingExpansion = Math.abs(profile.q7_extended_kingside) + Math.abs(profile.q8_extended_queenside);
   
-  // Piece-type specific patterns
-  const bishopPair = profile.bishop_dominance > 0.30;
-  const knightDominant = profile.knight_dominance > 0.35;
-  const rookActivity = profile.rook_dominance > 0.25;
-  const queenEarly = profile.queen_dominance > 0.30 && profile.temporalFlow.early > 0.3;
-  const pawnStorm = profile.pawn_advancement > 0.5;
-  const wingPlay = wingExpansion > 20;
+  // Piece-type specific patterns (v2: relaxed thresholds for richer archetype detection)
+  const bishopPair = profile.bishop_dominance > 0.20;
+  const knightDominant = profile.knight_dominance > 0.25;
+  const rookActivity = profile.rook_dominance > 0.18;
+  const queenEarly = profile.queen_dominance > 0.22 && profile.temporalFlow.early > 0.25;
+  const pawnStorm = profile.pawn_advancement > 0.35;
+  const wingPlay = wingExpansion > 12;
   
   // 24 enhanced archetypes
   
   // 1-4: Kingside attacks with piece-type variations
-  if (kingsidePressure > queensidePressure * 1.5 && profile.temporalFlow.mid > 0.4) {
+  if (kingsidePressure > queensidePressure * 1.25 && profile.temporalFlow.mid > 0.3) {
     if (rookActivity && pawnStorm) {
       return 'kingside_rook_lift_blitz';
     }
@@ -317,7 +317,7 @@ export function classifyEnhancedArchetype(profile: EnhancedQuadrantProfile): str
   }
   
   // 5-8: Queenside pressure with piece-type variations
-  if (queensidePressure > kingsidePressure * 1.2 && profile.temporalFlow.late > 0.3) {
+  if (queensidePressure > kingsidePressure * 1.1 && profile.temporalFlow.late > 0.2) {
     if (bishopPair) {
       return 'queenside_bishop_squeeze';
     }
@@ -331,7 +331,7 @@ export function classifyEnhancedArchetype(profile: EnhancedQuadrantProfile): str
   }
   
   // 9-12: Central control patterns
-  if (centerControl > 40 && profile.temporalFlow.early > 0.5) {
+  if (centerControl > 25 && profile.temporalFlow.early > 0.35) {
     if (knightDominant) {
       return 'central_knight_outpost';
     }
@@ -358,20 +358,20 @@ export function classifyEnhancedArchetype(profile: EnhancedQuadrantProfile): str
     return 'wing_play';
   }
   
-  // 17-20: Piece-type specific patterns
-  if (profile.bishop_dominance > 0.35 && profile.knight_dominance < 0.20) {
+  // 17-20: Piece-type specific patterns (v2: relaxed)
+  if (profile.bishop_dominance > 0.25 && profile.knight_dominance < 0.15) {
     return 'bishop_pair_mastery';
   }
   
-  if (profile.knight_dominance > 0.40 && profile.bishop_dominance < 0.15) {
+  if (profile.knight_dominance > 0.30 && profile.bishop_dominance < 0.12) {
     return 'knight_complex_superiority';
   }
   
-  if (profile.rook_dominance > 0.35 && profile.temporalFlow.mid > 0.5) {
+  if (profile.rook_dominance > 0.25 && profile.temporalFlow.mid > 0.35) {
     return 'rook_activity_maximum';
   }
   
-  if (pawnStorm && profile.pawn_advancement > 0.6) {
+  if (pawnStorm && profile.pawn_advancement > 0.45) {
     return 'pawn_storm_assault';
   }
   
@@ -384,11 +384,11 @@ export function classifyEnhancedArchetype(profile: EnhancedQuadrantProfile): str
     return 'rook_wing_domination';
   }
   
-  if (centerControl > 30 && kingsidePressure > 20) {
+  if (centerControl > 18 && kingsidePressure > 12) {
     return 'center_kingside_break';
   }
   
-  if (profile.pawn_advancement > 0.7 && profile.temporalFlow.late > 0.4) {
+  if (profile.pawn_advancement > 0.5 && profile.temporalFlow.late > 0.3) {
     return 'passed_pawn_race';
   }
   

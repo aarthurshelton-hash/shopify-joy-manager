@@ -6,7 +6,7 @@ export default defineConfig({
     globals: true,
     environment: 'happy-dom',
     setupFiles: ['./src/test/setup.ts'],
-    include: ['src/**/*.{test,spec}.{js,ts,tsx}'],
+    include: ['src/**/*.{test,spec}.{js,ts,tsx}', 'farm/**/*.{test,spec}.{js,ts,mjs}'],
     exclude: ['node_modules', 'dist', '.idea', '.git', '.cache'],
     coverage: {
       provider: 'v8',

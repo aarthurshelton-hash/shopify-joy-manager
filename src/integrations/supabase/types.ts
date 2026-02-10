@@ -507,6 +507,90 @@ export type Database = {
           },
         ]
       }
+      market_prediction_attempts: {
+        Row: {
+          id: string
+          created_at: string
+          symbol: string
+          time_horizon: string
+          prediction_source: string
+          predicted_direction: string
+          confidence: number
+          archetype: string | null
+          signature_hash: string | null
+          target_move: number | null
+          price_at_prediction: number
+          volume_at_prediction: number | null
+          baseline_direction: string | null
+          baseline_confidence: number | null
+          chess_archetype_resonance: string | null
+          cross_domain_confidence: number | null
+          resolved_at: string | null
+          price_at_resolution: number | null
+          actual_direction: string | null
+          actual_move: number | null
+          ep_correct: boolean | null
+          baseline_correct: boolean | null
+          data_source: string | null
+          candle_count: number | null
+          prediction_metadata: Json | null
+        }
+        Insert: {
+          id?: string
+          created_at?: string
+          symbol: string
+          time_horizon: string
+          prediction_source?: string
+          predicted_direction: string
+          confidence: number
+          archetype?: string | null
+          signature_hash?: string | null
+          target_move?: number | null
+          price_at_prediction: number
+          volume_at_prediction?: number | null
+          baseline_direction?: string | null
+          baseline_confidence?: number | null
+          chess_archetype_resonance?: string | null
+          cross_domain_confidence?: number | null
+          resolved_at?: string | null
+          price_at_resolution?: number | null
+          actual_direction?: string | null
+          actual_move?: number | null
+          ep_correct?: boolean | null
+          baseline_correct?: boolean | null
+          data_source?: string | null
+          candle_count?: number | null
+          prediction_metadata?: Json | null
+        }
+        Update: {
+          id?: string
+          created_at?: string
+          symbol?: string
+          time_horizon?: string
+          prediction_source?: string
+          predicted_direction?: string
+          confidence?: number
+          archetype?: string | null
+          signature_hash?: string | null
+          target_move?: number | null
+          price_at_prediction?: number
+          volume_at_prediction?: number | null
+          baseline_direction?: string | null
+          baseline_confidence?: number | null
+          chess_archetype_resonance?: string | null
+          cross_domain_confidence?: number | null
+          resolved_at?: string | null
+          price_at_resolution?: number | null
+          actual_direction?: string | null
+          actual_move?: number | null
+          ep_correct?: boolean | null
+          baseline_correct?: boolean | null
+          data_source?: string | null
+          candle_count?: number | null
+          prediction_metadata?: Json | null
+        }
+        Relationships: []
+      }
       client_errors: {
         Row: {
           component_name: string | null

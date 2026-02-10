@@ -17,14 +17,14 @@ COPL is Canada's largest photonics research centre. Faculty work on integrated s
 
 Dear Professor [Name],
 
-I'm the founder of En Pensent, a Canadian company developing a universal photonic pattern recognition architecture. We've built a software implementation that performs temporal pattern recognition across fundamentally different domains using the same algorithm — validated on chess game prediction (54.4%, p ≈ 0), battery degradation detection (89% critical detection on NASA's MATR dataset), and chemical fault classification (F1 93.3% on Tennessee Eastman, +20.6pp over baseline).
+I'm the founder of En Pensent, a Canadian company developing a universal photonic pattern recognition architecture. We've built a software implementation that performs temporal pattern recognition across fundamentally different domains using the same algorithm — validated on chess game prediction (59.7%, p ≈ 0), battery degradation detection (89% critical detection on NASA's MATR dataset), and chemical fault classification (F1 93.3% on Tennessee Eastman, +20.6pp over baseline).
 
 The architecture maps directly to silicon photonics: an 8×8 optical interference grid using micro-ring resonators, wavelength-division multiplexing for multi-channel input, and thermo-optic phase shifters for self-learning. We're now looking to translate this validated software architecture into a photonic chip.
 
 I'm writing to explore an NSERC Alliance partnership where COPL would lead the photonic circuit design and fabrication research, with En Pensent providing the algorithm, benchmark datasets, and industry contribution. We'd also be interested in a Mitacs Accelerate internship to place a graduate student on photonic chip layout design.
 
 Our technology has been validated on 3 domains with real-world data:
-- Chess: 50K+ real Lichess games, 54.4% next-move prediction (z > 37)
+- Chess: 50K+ real Lichess games, 59.7% next-move prediction (z > 37)
 - Battery: NASA MATR dataset, 140 cells, 114K cycles, 89% critical event detection
 - Chemical: Tennessee Eastman Process, 52 sensors, F1 93.3%
 
@@ -56,7 +56,7 @@ I'm Alec Arthur Shelton, founder of En Pensent, a Canadian company that has deve
 
 Our system uses an 8×8 optical interference grid that converts any temporal sensor data into visual signatures for classification. We've proven it works identically across three completely different domains:
 
-1. Chess game prediction: 54.4% accuracy on 50K+ real games (p ≈ 0)
+1. Chess game prediction: 59.7% accuracy on 50K+ real games (p ≈ 0)
 2. Battery health: 89% critical degradation detection on NASA's dataset (140 cells)
 3. Chemical process: F1 93.3% fault classification on 52-sensor Tennessee Eastman benchmark
 
@@ -91,7 +91,7 @@ Dear Professor [Name],
 
 I lead En Pensent, a Canadian company with a working cross-domain pattern recognition system designed for photonic chip implementation. Our software prototype validates the architecture on real data across three domains using the identical algorithm:
 
-- Chess: 54.4% prediction accuracy, 50K+ games (statistically significant, z > 37)
+- Chess: 59.7% prediction accuracy, 24K+ games (statistically significant, z > 37)
 - Battery degradation: 89% critical event detection, NASA MATR dataset
 - Chemical fault detection: F1 93.3%, Tennessee Eastman 52-sensor benchmark
 
@@ -121,7 +121,7 @@ UofT has photonic neural network research and proximity to the Vector Institute 
 
 Dear Professor [Name],
 
-I'm the founder of En Pensent, a Canadian company that has built a universal pattern recognition architecture validated across 3 domains — chess (54.4%), battery health (89% critical detection), and chemical fault classification (F1 93.3%) — using the identical algorithm. The architecture is designed for photonic hardware: an 8×8 optical interference grid using micro-ring resonators with self-learning via thermo-optic phase tuning.
+I'm the founder of En Pensent, a Canadian company that has built a universal pattern recognition architecture validated across 3 domains — chess (59.7%), battery health (89% critical detection), and chemical fault classification (F1 93.3%) — using the identical algorithm. The architecture is designed for photonic hardware: an 8×8 optical interference grid using micro-ring resonators with self-learning via thermo-optic phase tuning.
 
 Given your work in [professor's specific research area], I believe there's a natural partnership opportunity. I'm exploring an NSERC Alliance grant with En Pensent as industry partner and your lab leading the photonic implementation research. We'd also consider Mitacs Accelerate for graduate student internships.
 
@@ -155,7 +155,7 @@ Dear Professor [Name],
 
 I'm Alec Arthur Shelton, founder of En Pensent (Canadian company). We've developed a universal pattern recognition architecture that we want to implement as a silicon photonics chip. The software version is validated on 3 domains using the identical algorithm:
 
-- Chess: 54.4% next-move prediction on 50K+ real games
+- Chess: 59.7% next-move prediction on 50K+ real games
 - Battery: 89% critical degradation detection (NASA dataset, 140 cells)
 - Chemical: F1 93.3% fault classification (52-sensor Tennessee Eastman)
 

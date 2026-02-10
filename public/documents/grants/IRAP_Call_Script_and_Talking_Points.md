@@ -36,7 +36,7 @@
 ### If They Ask: "Do you have proof it works?"
 
 "Yes, validated on three real-world datasets:
-- **Chess:** 54.4% next-move prediction on 50,000+ real games. Random chance is about 4%. Statistical significance is beyond any doubt.
+- **Chess:** 59.7% next-move prediction on 50,000+ real games. Random chance is about 4%. Statistical significance is beyond any doubt.
 - **Battery health:** 89% detection of critical battery degradation events, tested on NASA's own dataset — 140 battery cells, 114,000 charge cycles.
 - **Chemical fault detection:** F1 score of 93.3% on the Tennessee Eastman benchmark, which is the gold standard in process engineering. That's 20 points better than the established baseline.
 

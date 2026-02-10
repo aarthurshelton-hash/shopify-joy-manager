@@ -52,6 +52,7 @@ import { UnifiedSystemDashboard } from '@/components/admin/UnifiedSystemDashboar
 import { CrossDomainCorrelationPanel } from '@/components/admin/CrossDomainCorrelationPanel';
 import { PhotonChipVisualization } from '@/components/admin/PhotonChipVisualization';
 import PhotonicChipDesign from '@/components/chip/PhotonicChipDesign';
+import TranslationAnalysisReport from '@/components/chip/TranslationAnalysisReport';
 import { synapticTruthNetwork } from '@/lib/pensent-core/domains/universal/modules/synapticTruthNetwork';
 import { Progress } from '@/components/ui/progress';
 
@@ -562,6 +563,9 @@ const AdminCEODashboard: React.FC = () => {
 
               {/* Physical Chip Design - Interactive SVG with Zoom Detail */}
               <PhotonicChipDesign />
+
+              {/* Mark 8:36 Cross-Domain Translation Analysis */}
+              <TranslationAnalysisReport />
             </div>
           </TabsContent>
         </Tabs>

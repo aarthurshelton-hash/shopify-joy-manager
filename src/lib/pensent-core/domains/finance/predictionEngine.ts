@@ -12,6 +12,8 @@ import {
   CandleStick 
 } from './types';
 import { extractMarketSignature } from './signatureExtractor';
+import { logMarketPrediction } from './marketPredictionAudit';
+import { getChessResonanceSignal } from './crossDomainBridge';
 
 export interface PredictionConfig {
   timeHorizon: '1h' | '4h' | '1d' | '1w';
@@ -41,7 +43,7 @@ export function generatePrediction(
   // Calculate prediction based on archetype and signature
   const prediction = calculatePrediction(signature, archetypeDef, fullConfig);
   
-  return {
+  const result: StockPrediction = {
     symbol,
     timestamp: Date.now(),
     archetype,
@@ -49,6 +51,24 @@ export function generatePrediction(
     prediction,
     priceAtPrediction: candles[candles.length - 1]?.close || 0
   };
+
+  // Fire-and-forget audit trail logging with cross-domain chess resonance
+  const baseline = generateBaselinePrediction(candles);
+  (async () => {
+    try {
+      const chessSignal = await getChessResonanceSignal();
+      await logMarketPrediction(result, {
+        baselineDirection: baseline.direction,
+        baselineConfidence: baseline.confidence,
+        candleCount: candles.length,
+        volume: candles[candles.length - 1]?.volume,
+        chessArchetypeResonance: chessSignal?.dominantArchetype,
+        crossDomainConfidence: chessSignal?.confidence,
+      });
+    } catch { /* non-blocking */ }
+  })();
+
+  return result;
 }
 
 /**

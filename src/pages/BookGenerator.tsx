@@ -427,7 +427,6 @@ const BookGenerator: React.FC = () => {
     try {
       const React = await import('react');
       const ReactDOM = await import('react-dom/client');
-      const { BookSpread } = await import('@/components/book/BookSpread');
       
       const spreadElement = document.createElement('div');
       container.appendChild(spreadElement);

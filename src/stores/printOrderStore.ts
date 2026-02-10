@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { SimulationResult } from '@/lib/chess/gameSimulator';
 import { MoveHistoryEntry } from '@/components/chess/EnPensentOverlay';
 import { PieceType } from '@/lib/chess/pieceColors';
@@ -70,14 +71,32 @@ interface PrintOrderStore {
   setFen: (fen: string) => void;
 }
 
-export const usePrintOrderStore = create<PrintOrderStore>((set) => ({
-  orderData: null,
-  setOrderData: (data) => set({ orderData: data }),
-  clearOrderData: () => set({ orderData: null }),
-  setPreviewImage: (imageBase64) => set((state) => ({
-    orderData: state.orderData ? { ...state.orderData, previewImageBase64: imageBase64 } : null,
-  })),
-  setFen: (fen) => set((state) => ({
-    orderData: state.orderData ? { ...state.orderData, fen } : null,
-  })),
-}));
+export const usePrintOrderStore = create<PrintOrderStore>()(
+  persist(
+    (set) => ({
+      orderData: null,
+      setOrderData: (data) => set({ orderData: data }),
+      clearOrderData: () => set({ orderData: null }),
+      setPreviewImage: (imageBase64) => set((state) => ({
+        orderData: state.orderData ? { ...state.orderData, previewImageBase64: imageBase64 } : null,
+      })),
+      setFen: (fen) => set((state) => ({
+        orderData: state.orderData ? { ...state.orderData, fen } : null,
+      })),
+    }),
+    {
+      name: 'en-pensent-print-order',
+      storage: createJSONStorage(() => sessionStorage),
+      partialize: (state) => ({
+        // Persist order data so palette/game state survives refresh on /order-print
+        // Uses sessionStorage so it doesn't leak across tabs
+        orderData: state.orderData ? {
+          ...state.orderData,
+          // Exclude large simulation data from persistence to avoid storage limits
+          simulation: undefined,
+          previewImageBase64: undefined,
+        } : null,
+      }),
+    }
+  )
+);

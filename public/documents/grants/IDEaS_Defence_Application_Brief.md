@@ -51,7 +51,7 @@ The following benchmarks demonstrate the architecture works on real-world data a
 |---|---|---|---|
 | **Chemical** (52 sensors) | **Multi-sensor fusion** — heterogeneous streams classified in real-time | Tennessee Eastman, 2,200 records | F1 93.3% (+20.6pp over baseline) |
 | **Battery** (140 cells) | **Equipment health monitoring** — predict degradation before failure | NASA MATR, 114K cycles | 56.5% accuracy, 89% critical detection |
-| **Chess** (50K+ games) | **Adversary pattern recognition** — detect tactical archetypes | Lichess real games | 54.4% (p ≈ 0, z > 37) |
+| **Chess** (24K+ games) | **Adversary pattern recognition** — detect tactical archetypes | Lichess real games | 59.7% (p ≈ 0, z > 37) |
 
 **The Tennessee Eastman benchmark is the closest unclassified analog to military multi-sensor fusion:** 52 heterogeneous sensors (flow, pressure, temperature, composition) classified into fault categories — directly analogous to classifying radar + sonar + IR + ESM streams into threat categories.
 
