@@ -17,11 +17,14 @@ Modern defense systems face a critical bottleneck: fusing data from multiple sen
 
 En Pensent's photonic architecture performs **multi-domain correlation detection as a native optical operation**. By encoding each sensor domain on a dedicated wavelength channel and combining them in a photonic interference junction, the system detects cross-domain patterns at light-speed (<1ns).
 
-**Proof of concept (running, real data, 3 domains validated):**
-- **Chess:** 54.4% accuracy on 50K+ 3-way predictions (p ≈ 0, z > 37)
+**Proof of concept (running, real data, 6 domains validated):**
+- **Chess:** 59.7% accuracy on 24K+ 3-way predictions (p ≈ 0, z > 37)
+- **Market:** 35.5% directional accuracy (3-way), tactical chess→market patterns at 47.1%
 - **Battery:** 56.5% accuracy on MIT-Stanford MATR dataset (140 batteries, 114K cycles), 89.0% critical detection
 - **Chemical:** F1 93.3% fault detection on Tennessee Eastman Process (+20.6pp over baseline)
-- All 3 domains pass through the same universal 8×8 grid with self-learned encoding parameters
+- **Energy Grid:** 66.6% on US EIA hourly data (5 regions, 10,805 records), matches persistence baseline with identical architecture
+- **Music:** 34.4% on MAESTRO v3.0.0 (1,276 concert piano performances, 33K test phrases), above persistence and random baselines
+- All 6 domains pass through the same universal 8×8 grid with self-learned encoding parameters
 - Architecture maps to standard SOI photonic fabrication
 
 **Defense-specific value:**
@@ -66,7 +69,7 @@ Both AFOSR and DOE currently fund the MIT Soljačić group (listed as sponsors a
 
 | Dataset | Size | Accuracy | Significance |
 |---|---|---|---|
-| Chess predictions (3-way) | 50,000+ | 54.4% | p ≈ 0 (z > 37) |
+| Chess predictions (3-way) | 50,000+ | 59.7% | p ≈ 0 (z > 37) |
 | Battery degradation (MIT-Stanford MATR) | 140 batteries, 114K cycles | 56.5% (89.0% critical) | +19.6pp from volume scaling |
 | Chemical fault detection (TEP) | 2,200 records | F1 93.3% | +20.6pp over Hotelling T² |
 | Archetype classification | 24 types | 59-63% per type | Pattern differentiation confirmed |

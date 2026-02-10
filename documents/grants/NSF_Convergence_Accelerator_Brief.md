@@ -13,13 +13,16 @@
 
 The NSF Convergence Accelerator funds "use-inspired research" that **bridges disciplines to solve societal challenges faster than any single field could alone.** En Pensent's architecture is convergence made literal:
 
-**One universal architecture processes three fundamentally different domains:**
+**One universal architecture processes six fundamentally different domains:**
 
 | Domain | Field | Data Type | En Pensent Result |
 |---|---|---|---|
-| **Chess** | Game theory / strategy | Move sequences | 54.4% accuracy (50K+ games, p ≈ 0) |
+| **Chess** | Game theory / strategy | Move sequences | 59.7% accuracy (24K+ games, p ≈ 0) |
+| **Market** | Financial prediction | Candle time series | 35.5% directional (3-way), tactical 47.1% |
 | **Battery** | Electrochemistry / energy | Sensor time series | 56.5% accuracy (140 cells, 89% critical) |
 | **Chemical** | Process engineering / safety | Multi-sensor streams | F1 93.3% fault detection |
+| **Energy Grid** | Power systems / demand | Hourly grid data | 66.6% (5 US regions, 10.8K hours) |
+| **Music** | Temporal art / performance | MIDI note events | 34.4% (1,276 concerts, 33K phrases) |
 
 The same 8×8 universal grid, same self-learning algorithm, same signature extraction — only the domain adapter changes. **This is not multi-task learning or transfer learning. It is a single architectural principle that naturally spans disciplines.**
 
