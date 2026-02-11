@@ -41,7 +41,7 @@ En Pensent has developed a universal temporal pattern recognition architecture t
 
 | Domain | Metric | Result |
 |---|---|---|
-| **Chess** | 3-way prediction (24K+ games) | 59.7% (p ≈ 0, z > 37) |
+| **Chess** | 3-way prediction (343K+ games) | 61.4% (p ≈ 0, z > 100) |
 | **Chemical** | Fault detection F1 (TEP, 2200 records) | 93.3% (+20.6pp over Hotelling T²) |
 | **Battery** | 3-way degradation (140 cells, 114K cycles) | 56.5% (89% critical detection) |
 

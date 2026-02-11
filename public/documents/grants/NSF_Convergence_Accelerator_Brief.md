@@ -17,8 +17,8 @@ The NSF Convergence Accelerator funds "use-inspired research" that **bridges dis
 
 | Domain | Field | Data Type | En Pensent Result |
 |---|---|---|---|
-| **Chess** | Game theory / strategy | Move sequences | 59.7% accuracy (24K+ games, p ≈ 0) |
-| **Market** | Financial prediction | Candle time series | 35.5% directional (3-way), tactical 47.1% |
+| **Chess** | Game theory / strategy | Move sequences | 61.4% accuracy (343K+ games, p ≈ 0) |
+| **Market** | Financial prediction | Candle time series | 42.9% directional (3-way), tactical 47.1% |
 | **Battery** | Electrochemistry / energy | Sensor time series | 56.5% accuracy (140 cells, 89% critical) |
 | **Chemical** | Process engineering / safety | Multi-sensor streams | F1 93.3% fault detection |
 | **Energy Grid** | Power systems / demand | Hourly grid data | 66.6% (5 US regions, 10.8K hours) |

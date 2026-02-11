@@ -195,7 +195,7 @@ Subject: Industry Partnership Opportunity — Photonic Cross-Domain Pattern Reco
 
 *Dear Professor [Name],*
 
-*I'm the founder of En Pensent, a Canadian company that has developed a universal photonic pattern recognition architecture. We've validated it on 3 domains — chess (59.7%), battery degradation (89% critical detection), and chemical fault detection (F1 93.3%) — using the identical algorithm. The next step is translating this software architecture into a silicon photonic chip.*
+*I'm the founder of En Pensent, a Canadian company that has developed a universal photonic pattern recognition architecture. We've validated it on 3 domains — chess (61.4%), battery degradation (89% critical detection), and chemical fault detection (F1 93.3%) — using the identical algorithm. The next step is translating this software architecture into a silicon photonic chip.*
 
 *I'm writing to explore an NSERC Alliance partnership. En Pensent would contribute our software platform, benchmark datasets, and domain expertise as the industry partner. We're seeking a PI with expertise in integrated photonics to lead the academic research program.*
 

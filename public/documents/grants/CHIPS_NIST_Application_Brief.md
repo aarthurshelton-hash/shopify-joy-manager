@@ -52,7 +52,7 @@ The software executes the identical mathematical operations the chip would perfo
 
 | Domain | Dataset | Result | Hardware Implication |
 |---|---|---|---|
-| **Chess** | 24K+ games | 59.7% (p ≈ 0) | Pattern recognition works across temporal sequences |
+| **Chess** | 343K+ games | 61.4% (p ≈ 0) | Pattern recognition works across temporal sequences |
 | **Battery** | 140 cells, 114K cycles | 56.5%, 89% critical | Self-learning improves with volume (no hardware change) |
 | **Chemical** | 2,200 records | F1 93.3% | Multi-sensor fusion at chip-level confirmed |
 

@@ -47,7 +47,7 @@ En Pensent's architecture fuses multiple sensor domains as a **single optical op
 |---|---|---|
 | **Chemical** (52 sensors, TEP) | **Multi-sensor fusion** — heterogeneous sensor streams classified in real-time | F1 93.3% (+20.6pp over baseline) |
 | **Battery** (140 cells, 114K cycles) | **Equipment health monitoring** — predict degradation before failure | 56.5% accuracy, 89% critical detection |
-| **Chess** (24K+ games) | **Strategic pattern recognition** — detect adversary tactical archetypes | 59.7% (p ≈ 0, z > 37) |
+| **Chess** (343K+ games) | **Strategic pattern recognition** — detect adversary tactical archetypes | 61.4% (p ≈ 0, z > 100) |
 
 **The Tennessee Eastman chemical benchmark is the closest unclassified analog to naval multi-sensor fusion:** 52 heterogeneous sensor streams (flow, pressure, temperature, composition) classified into fault categories. The same architecture would process sonar, radar, IR, and ESM streams.
 
