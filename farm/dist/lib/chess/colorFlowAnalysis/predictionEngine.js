@@ -1,3 +1,4 @@
+"use strict";
 /**
  * Color Flow Prediction Engine v8.07-AGREEMENT-CALIBRATED
  *
@@ -9,22 +10,26 @@
  * - Eliminate FALLBACK/unknown archetypes
  * - Apply historical archetype calibration
  */
-import { ARCHETYPE_DEFINITIONS } from './archetypeDefinitions.js';
-import { calculateEquilibriumScores } from './equilibriumPredictor.js';
-import { calibrateConfidence, getSfPrediction, forceArchetypeAssignment } from './archetypeCalibration.js';
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.getLastEquilibriumScores = getLastEquilibriumScores;
+exports.getLastCalibrationReason = getLastCalibrationReason;
+exports.predictFromColorFlow = predictFromColorFlow;
+const archetypeDefinitions_1 = require("./archetypeDefinitions");
+const equilibriumPredictor_1 = require("./equilibriumPredictor");
+const archetypeCalibration_1 = require("./archetypeCalibration");
 // Store last equilibrium scores for debugging/transparency
 let lastEquilibriumScores = null;
 let lastCalibrationReason = '';
 /**
  * Get the last equilibrium calculation (for debugging/UI display)
  */
-export function getLastEquilibriumScores() {
+function getLastEquilibriumScores() {
     return lastEquilibriumScores;
 }
 /**
  * Get the last calibration reason (for debugging/UI display)
  */
-export function getLastCalibrationReason() {
+function getLastCalibrationReason() {
     return lastCalibrationReason;
 }
 /**
@@ -32,18 +37,18 @@ export function getLastCalibrationReason() {
  *
  * v8.07 AGREEMENT-CALIBRATED: Uses agreement weighting + historical calibration
  */
-export function predictFromColorFlow(signature, currentMoveNumber, stockfishEval = 0, stockfishDepth = 18) {
+function predictFromColorFlow(signature, currentMoveNumber, stockfishEval = 0, stockfishDepth = 18) {
     // v8.07: Force-assign archetype if unknown
-    const effectiveArchetype = forceArchetypeAssignment(signature.archetype, signature.dominantSide, signature.flowDirection, signature.intensity);
-    const archetypeDef = ARCHETYPE_DEFINITIONS[effectiveArchetype];
+    const effectiveArchetype = (0, archetypeCalibration_1.forceArchetypeAssignment)(signature.archetype, signature.dominantSide, signature.flowDirection, signature.intensity);
+    const archetypeDef = archetypeDefinitions_1.ARCHETYPE_DEFINITIONS[effectiveArchetype];
     // v7.90 EQUILIBRIUM: Calculate all three outcome confidences
-    const equilibrium = calculateEquilibriumScores({ ...signature, archetype: effectiveArchetype }, stockfishEval, stockfishDepth, currentMoveNumber);
+    const equilibrium = (0, equilibriumPredictor_1.calculateEquilibriumScores)({ ...signature, archetype: effectiveArchetype }, stockfishEval, stockfishDepth, currentMoveNumber);
     // Store for debugging access
     lastEquilibriumScores = equilibrium;
     // Get SF-only prediction for agreement check
-    const sfPrediction = getSfPrediction(stockfishEval);
+    const sfPrediction = (0, archetypeCalibration_1.getSfPrediction)(stockfishEval);
     // v8.07: Apply agreement-based calibration
-    const calibration = calibrateConfidence(effectiveArchetype, equilibrium.prediction, sfPrediction, equilibrium.finalConfidence, stockfishEval);
+    const calibration = (0, archetypeCalibration_1.calibrateConfidence)(effectiveArchetype, equilibrium.prediction, sfPrediction, equilibrium.finalConfidence, stockfishEval);
     lastCalibrationReason = calibration.reason;
     // Determine final prediction
     let predictedWinner;
@@ -148,7 +153,7 @@ function predictCriticalSquares(signature) {
     return squares.slice(0, 4);
 }
 function describeExpectedEvolution(signature, currentMove) {
-    const archetype = ARCHETYPE_DEFINITIONS[signature.archetype];
+    const archetype = archetypeDefinitions_1.ARCHETYPE_DEFINITIONS[signature.archetype];
     if (currentMove < 15) {
         return `Opening phase suggests ${archetype.name}. Expect color intensity to ${signature.temporalFlow.volatility > 50 ? 'increase rapidly' : 'develop gradually'} toward the ${signature.flowDirection}.`;
     }
