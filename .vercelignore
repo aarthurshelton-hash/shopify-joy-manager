@@ -1,12 +1,36 @@
-# Entire farm directory (server-side only, not needed for frontend)
+# Server-side only
 farm/
+scripts/
+e2e/
 
-# Node modules
+# Node modules & build artifacts
 node_modules/
-
-# Git
 .git/
+dist/
 
-# Large/unnecessary dirs
+# Large data directories (not needed for Vite build)
+data/
+chess-games/
+memory/
+/supabase/
+
+# Large/unnecessary files
 *.mat
 *.zip
+*.lockb
+*.log
+*.pgn
+*.zst
+*.mid
+*.wasm
+bun.lockb
+package-lock.json
+
+# Public server-side modules (not needed for Vite build)
+public/ib-gateway-bridge/
+public/ib-headless-trader/
+
+# Dev/test configs
+*.config.json
+.env*
+!.env.example
