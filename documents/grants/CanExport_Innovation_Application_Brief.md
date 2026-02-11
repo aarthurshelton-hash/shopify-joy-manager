@@ -50,7 +50,7 @@ CanExport Innovation funds Canadian companies to pursue **international R&D coll
 ### Background
 
 En Pensent has developed a universal photonic pattern recognition architecture validated on 3 domains:
-- **Chess:** 59.7% next-move prediction (p ≈ 0, z > 37) on 50K+ real games
+- **Chess:** 61.4% next-move prediction (p ≈ 0, z > 100) on 50K+ real games
 - **Battery:** 56.5% accuracy, 89% critical detection on NASA MATR dataset (140 cells, 114K cycles)
 - **Chemical:** F1 93.3% (+20.6pp over baseline) on Tennessee Eastman benchmark (52 sensors)
 

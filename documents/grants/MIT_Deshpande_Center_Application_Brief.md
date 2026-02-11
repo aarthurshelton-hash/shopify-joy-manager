@@ -23,8 +23,8 @@ En Pensent is a multi-domain temporal pattern recognition engine using optical i
 
 **Running proof across 6 domains (real data, no synthetic):**
 
-- **Chess:** 24,000+ game outcome predictions, 59.7% accuracy (3-way, random = 33.3%, p ≈ 0)
-- **Market:** 35.5% directional accuracy (3-way: bullish/bearish/neutral), tactical chess→market patterns at 47.1% — self-learning thresholds adapt to volatility regime
+- **Chess:** 24,000+ game outcome predictions, 61.4% accuracy (3-way, random = 33.3%, p ≈ 0)
+- **Market:** 42.9% directional accuracy (3-way: bullish/bearish/neutral), tactical chess→market patterns at 47.1% — self-learning thresholds adapt to volatility regime
 - **Battery degradation:** MIT-Stanford MATR dataset (140 batteries, 114,692 cycles), 56.5% accuracy, 89.0% critical detection, +19.6pp from volume scaling (was 36.9% on 4-cell NASA data)
 - **Chemical fault detection:** Tennessee Eastman Process, F1 93.3% vs 72.7% baseline (+20.6pp), catches 88.9% of faults
 - **Energy Grid:** US EIA hourly data (5 regions, 10,805 records), 66.6% accuracy — matches persistence baseline with identical universal architecture

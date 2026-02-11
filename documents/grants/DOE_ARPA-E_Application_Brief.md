@@ -45,7 +45,7 @@ The software executes the same mathematical operations the photonic chip would p
 
 | Domain | Dataset | En Pensent | Baseline | Key Result |
 |---|---|---|---|---|
-| **Chess** | 24,000+ games | 59.7% (3-way) | 33.3% random | p ≈ 0, z > 37 |
+| **Chess** | 343,000+ games | 61.4% (3-way) | 33.3% random | p ≈ 0, z > 100 |
 | **Battery** | 140 cells, 114K cycles | 56.5% (3-way) | 89.2% persistence | 89.0% critical detection |
 | **Chemical** | 2,200 records (TEP) | F1 93.3% | F1 72.7% | +20.6pp, catches 88.9% of faults |
 

@@ -29,9 +29,9 @@ Unlike most PICASSO proposals that will be theoretical, En Pensent has **running
 
 | Domain | Metric | En Pensent | Baseline | Improvement |
 |---|---|---|---|---|
-| **Chess** | 3-way classification accuracy | **59.7%** (24K+ predictions) | 33.3% random | **+26.4 pp** |
-| **Chess** | Statistical significance | **p ≈ 0** (z > 37) | — | 37σ |
-| **Market** | 3-way directional (bull/bear/neutral) | **35.5%** (214 resolved) | 33.3% random | **+2.2 pp** (tactical: 47.1%) |
+| **Chess** | 3-way classification accuracy | **61.4%** (343K+ predictions) | 33.3% random | **+28.0 pp** |
+| **Chess** | Statistical significance | **p ≈ 0** (z > 100) | — | >100σ |
+| **Market** | 3-way directional (bull/bear/neutral) | **42.9%** (21K+ resolved) | 35.2% baseline | **+7.7 pp** |
 | **Battery** | 3-way degradation trajectory | **56.5%** (140 cells, 114K cycles) | 89.2% persistence | **+23.2 pp vs random** |
 | **Chemical** | Fault detection F1 score | **93.3%** (2200 records) | 72.7% Hotelling T² | **+20.6 pp** |
 | **Chemical** | Fault recall (faults caught) | **88.9%** | 57.1% | **+31.8 pp** |
@@ -58,9 +58,9 @@ For VLPI circuits, this means: **the same photonic hardware self-optimizes with 
 
 | Chess Archetype | EP Accuracy | Edge over Baseline | Universal Pattern |
 |---|---|---|---|
-| Kingside attack | 63.0% | +21.8pp | Aggressive early commitment |
-| Queenside expansion | 59.4% | +24.4pp | Patient accumulation |
-| Positional squeeze | 59.3% | +17.2pp | Resource denial |
+| Kingside attack | 65.4% | +32.1pp | Aggressive early commitment |
+| Queenside expansion | 62.1% | +28.8pp | Patient accumulation |
+| Positional squeeze | 59.2% | +25.9pp | Resource denial |
 
 Different archetypes produce different accuracy rates across all domains, confirming the system learns distinct strategic patterns — the foundation for VLPI circuit specialization. Battery degradation archetypes (calendar aging, cycle aging, thermal abuse) map directly to chess archetypes (positional squeeze, queenside expansion, kingside attack).
 
@@ -113,7 +113,7 @@ Different archetypes produce different accuracy rates across all domains, confir
 
 - **Patent Pending:** Synaptic Truth Network — multi-domain interference-based pattern recognition (Alec Arthur Shelton)
 - **4 additional filings planned:** Optical temporal signature extraction, holographic pattern storage, photonic cross-domain correlation, light-speed prediction architecture
-- **Prior art defense:** 50,000+ predictions with SHA-256 timestamps
+- **Prior art defense:** 343,000+ predictions with SHA-256 timestamps
 - **IP position re: DARPA:** Willing to grant Government Purpose Rights per solicitation requirements. Core algorithm IP retained by En Pensent.
 
 ## 6. BUDGET ESTIMATE
@@ -126,7 +126,7 @@ Different archetypes produce different accuracy rates across all domains, confir
 
 ## 7. WHY EN PENSENT FOR PICASSO
 
-1. **Running proof, not theory** — 50K+ chess predictions (p ≈ 0), 140 batteries / 114K battery cycles (56.5% accuracy, 89.0% critical detection), 2200 chemical records (F1 93.3%). Most proposals will be PowerPoint. We have data across three domains.
+1. **Running proof, not theory** — 343K+ chess predictions (p ≈ 0), 27K+ market predictions (42.9%), 140 batteries / 114K battery cycles (56.5% accuracy, 89.0% critical detection), 2200 chemical records (F1 93.3%). Most proposals will be PowerPoint. We have data across six domains.
 2. **The architecture IS optical** — Built from first principles on wave interference equations. Not retrofitted from digital.
 3. **Cross-domain is the killer feature** — PICASSO wants "functional expansion." Our universal grid portal processes chess, battery degradation, and chemical fault detection through the **same 8×8 grid architecture** with domain-specific color encoding.
 4. **Self-learning from volume** — The system discovers its own optimal encoding parameters from training data. More data = better parameters = better accuracy. This is the fundamental scaling law for the photonic circuit.

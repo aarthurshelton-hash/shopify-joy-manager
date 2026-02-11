@@ -45,8 +45,8 @@ Our architecture performs multi-domain pattern correlation as a **native optical
 
 | Domain | Dataset | En Pensent | Baseline | Key Insight |
 |---|---|---|---|---|
-| **Chess** (strategy patterns) | 24,000+ games | 59.7% (3-way) | 33.3% random | Detects strategic archetypes across temporal sequences |
-| **Market** (directional prediction) | 214 resolved | 35.5% (3-way) | 33.3% random | Tactical chess→market patterns at 47.1%; position-relative thresholds |
+| **Chess** (strategy patterns) | 343,000+ games | 61.4% (3-way) | 33.3% random | Detects strategic archetypes across temporal sequences |
+| **Market** (directional prediction) | 21,000+ resolved | 42.9% (3-way) | 33.3% random | Tactical chess→market patterns at 47.1%; position-relative thresholds |
 | **Battery** (sensor degradation) | 140 cells, 114K cycles | 56.5% | 89.2% persistence | 89% critical detection; self-learned from 74,805 training cycles |
 | **Chemical** (fault detection) | 2,200 records (TEP) | F1 93.3% | F1 72.7% | Multi-sensor fault classification — directly analogous to multi-INT fusion |
 | **Energy Grid** (demand direction) | 10,805 hours, 5 US regions | 66.6% (3-way) | 66.9% persistence | Matches domain baseline with identical universal architecture |
