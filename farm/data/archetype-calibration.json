@@ -1,0 +1,125 @@
+{
+  "lastUpdated": "2026-02-14T17:36:27.795Z",
+  "totalPuzzles": 4,
+  "archetypeAccuracy": {
+    "closed_maneuvering": {
+      "correct": 0,
+      "total": 4,
+      "accuracy": 0
+    }
+  },
+  "themeMapping": {
+    "mateIn1": {
+      "kingside_attack": 1
+    },
+    "attackingF2F7": {
+      "kingside_attack": 1
+    },
+    "endgame": {
+      "queenside_expansion": 1
+    },
+    "mateIn2": {
+      "queenside_expansion": 1
+    },
+    "crushing": {
+      "sacrificial_attack": 1
+    },
+    "long": {
+      "sacrificial_attack": 1,
+      "queenside_expansion": 1
+    },
+    "kingsideAttack": {
+      "sacrificial_attack": 1
+    },
+    "discoveredAttack": {
+      "sacrificial_attack": 1
+    },
+    "defensiveMove": {
+      "queenside_expansion": 1
+    },
+    "advantage": {
+      "queenside_expansion": 1
+    }
+  },
+  "archetypeSignatures": {
+    "kingside_attack": {
+      "totalIntensity": 14.499999999999998,
+      "totalRating": 788,
+      "sampleCount": 1,
+      "avgIntensity": 14.499999999999998,
+      "avgRating": 788
+    },
+    "queenside_expansion": {
+      "totalIntensity": 64.5,
+      "totalRating": 3088,
+      "sampleCount": 2,
+      "avgIntensity": 32.25,
+      "avgRating": 1544
+    },
+    "sacrificial_attack": {
+      "totalIntensity": 15.75,
+      "totalRating": 1307,
+      "sampleCount": 1,
+      "avgIntensity": 15.75,
+      "avgRating": 1307
+    }
+  },
+  "puzzleHistory": [
+    {
+      "puzzleId": "SGju7",
+      "rating": 788,
+      "themes": [
+        "middlegame",
+        "oneMove",
+        "mateIn1",
+        "attackingF2F7"
+      ],
+      "detected": "kingside_attack",
+      "expected": "closed_maneuvering",
+      "match": false,
+      "timestamp": "2026-02-14T17:36:27.757Z"
+    },
+    {
+      "puzzleId": "AUe2J",
+      "rating": 1043,
+      "themes": [
+        "short",
+        "endgame",
+        "mateIn2"
+      ],
+      "detected": "queenside_expansion",
+      "expected": "closed_maneuvering",
+      "match": false,
+      "timestamp": "2026-02-14T17:36:27.777Z"
+    },
+    {
+      "puzzleId": "ObODo",
+      "rating": 1307,
+      "themes": [
+        "middlegame",
+        "crushing",
+        "long",
+        "kingsideAttack",
+        "discoveredAttack"
+      ],
+      "detected": "sacrificial_attack",
+      "expected": "closed_maneuvering",
+      "match": false,
+      "timestamp": "2026-02-14T17:36:27.784Z"
+    },
+    {
+      "puzzleId": "7HTVz",
+      "rating": 2045,
+      "themes": [
+        "middlegame",
+        "defensiveMove",
+        "long",
+        "advantage"
+      ],
+      "detected": "queenside_expansion",
+      "expected": "closed_maneuvering",
+      "match": false,
+      "timestamp": "2026-02-14T17:36:27.794Z"
+    }
+  ]
+}

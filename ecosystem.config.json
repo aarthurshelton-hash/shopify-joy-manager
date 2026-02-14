@@ -19,24 +19,6 @@
       "restart_delay": 30000
     },
     {
-      "name": "chess-bulk",
-      "script": "./farm/workers/ep-bulk-worker.mjs",
-      "args": "--mode=grandmaster --twic-start=920 --twic-end=1575 --min-elo=1300",
-      "instances": 1,
-      "exec_mode": "fork",
-      "autorestart": true,
-      "max_restarts": 10,
-      "min_uptime": "30s",
-      "kill_timeout": 5000,
-      "env": {
-        "NODE_ENV": "production",
-        "WORKER_ID": "ep-bulk-1"
-      },
-      "merge_logs": true,
-      "max_memory_restart": "500M",
-      "restart_delay": 30000
-    },
-    {
       "name": "chess-db-ingest",
       "script": "./farm/workers/chess-db-ingest-worker.mjs",
       "args": "--min-elo=1500 --max-per-source=50000 --sf-depth=14",
@@ -52,22 +34,6 @@
       },
       "merge_logs": true,
       "max_memory_restart": "500M",
-      "restart_delay": 30000
-    },
-    {
-      "name": "auto-evolution",
-      "script": "./farm/workers/server-auto-evolution.mjs",
-      "instances": 1,
-      "exec_mode": "fork",
-      "autorestart": true,
-      "max_restarts": 10,
-      "min_uptime": "30s",
-      "kill_timeout": 5000,
-      "env": {
-        "NODE_ENV": "production"
-      },
-      "merge_logs": true,
-      "max_memory_restart": "300M",
       "restart_delay": 30000
     },
     {
