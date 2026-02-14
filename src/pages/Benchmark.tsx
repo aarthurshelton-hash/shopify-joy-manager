@@ -143,7 +143,7 @@ function useDbStats() {
 interface SystemStat { label: string; description: string; count: number; sfAcc: number; epAcc: number }
 
 // Farm tiers written by farm workers (ep-enhanced-worker, benchmark-worker, etc.)
-const FARM_TIERS = ['farm_enhanced_8quad', 'farm_generated', 'farm_hybrid_v2', 'farm_integrated', 'farm_bulk_8quad', 'farm_gm_8quad', 'farm_tournament_8quad'];
+const FARM_TIERS = ['farm_enhanced_8quad', 'farm_generated', 'farm_hybrid_v2', 'farm_integrated', 'farm_bulk_8quad', 'farm_gm_8quad', 'farm_tournament_8quad', 'farm_puzzle_8quad'];
 // Terminal tiers written by terminal workers
 const TERMINAL_TIERS = ['terminal_live'];
 

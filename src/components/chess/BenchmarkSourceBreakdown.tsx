@@ -46,7 +46,7 @@ export function BenchmarkSourceBreakdown() {
       setTotalPredictions(total || 0);
 
       // Fetch stats by source — query actual DB values
-      const sources = ['lichess_gm', 'lichess_tournament', 'lichess_db', 'chess.com', 'lichess', 'chesscom', 'sql_worker', 'lichess_live', 'chesscom_live', 'farm_terminal', 'chesscom_puzzle', 'web_client'];
+      const sources = ['lichess_gm', 'lichess_tournament', 'lichess_db', 'chess.com', 'lichess', 'lichess_puzzle', 'chesscom', 'sql_worker', 'lichess_live', 'chesscom_live', 'farm_terminal', 'chesscom_puzzle', 'web_client'];
       const sourceStats: SourceStats[] = [];
 
       for (const source of sources) {
