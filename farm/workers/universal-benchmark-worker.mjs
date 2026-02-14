@@ -27,6 +27,8 @@ const __dirname = dirname(__filename);
 const WORKER_ID = `universal-bench-${process.pid}`;
 const CYCLE_DELAY_MS = 60000; // 1 minute between cycles
 const CONTEXT_SIZE = 8; // windows for grid context
+const LEARNING_CYCLES = 1; // Cycles of pure persistence before EP starts overriding
+const EP_OVERRIDE_THRESHOLD = 0.36; // EP overrides persistence when learned confidence > this
 const DB_URL = process.env.DATABASE_URL || process.env.SUPABASE_DB_URL;
 
 const log = (msg, level = 'info') => {
@@ -69,8 +71,9 @@ const DOMAINS = {
       const curr = windows[idx].features.ch0;
       const prev = windows[idx - 1].features.ch0;
       const diff = curr - prev;
-      if (diff > 0.5) return 'warming';
-      if (diff < -0.5) return 'cooling';
+      // Threshold ~0.1°C/hr gives ~40/30/30 split instead of 15/15/70
+      if (diff > 0.1) return 'warming';
+      if (diff < -0.1) return 'cooling';
       return 'stable';
     },
     classes: ['warming', 'cooling', 'stable'],
@@ -132,8 +135,9 @@ const DOMAINS = {
     classify: (windows, idx) => {
       if (idx < 1) return 'stable';
       const diff = windows[idx].features.ch0 - windows[idx - 1].features.ch0;
-      if (diff > 0.1) return 'rising';
-      if (diff < -0.1) return 'falling';
+      // Wave height changes ~0.02m/hr on average, threshold at 0.01 for balanced classes
+      if (diff > 0.01) return 'rising';
+      if (diff < -0.01) return 'falling';
       return 'stable';
     },
     classes: ['rising', 'falling', 'stable'],
@@ -162,8 +166,9 @@ const DOMAINS = {
     classify: (windows, idx) => {
       if (idx < 1) return 'stable';
       const diff = windows[idx].features.ch0 - windows[idx - 1].features.ch0;
-      if (diff > 2) return 'worsening';
-      if (diff < -2) return 'improving';
+      // PM2.5 changes ~0.5 µg/m³/hr, threshold at 0.3 for balanced classes
+      if (diff > 0.3) return 'worsening';
+      if (diff < -0.3) return 'improving';
       return 'stable';
     },
     classes: ['improving', 'worsening', 'stable'],
@@ -215,31 +220,42 @@ const DOMAINS = {
       }));
     },
     classify: (windows, idx) => {
-      const idx_name = windows[idx].index;
-      if (idx_name === 'very low' || idx_name === 'low') return 'low';
-      if (idx_name === 'moderate') return 'moderate';
-      return 'high';
+      if (idx < 1) return 'stable';
+      const diff = windows[idx].features.ch1 - windows[idx - 1].features.ch1;
+      // Use actual intensity change direction instead of absolute level
+      if (diff > 5) return 'rising';
+      if (diff < -5) return 'falling';
+      return 'stable';
     },
-    classes: ['low', 'moderate', 'high'],
+    classes: ['rising', 'falling', 'stable'],
     interval_ms: 1800000,
   },
 
   cyber: {
     name: 'Cyber Threats (URLhaus)',
-    url: 'https://urlhaus-api.abuse.ch/v1/urls/recent/limit/200/',
+    url: 'https://urlhaus-api.abuse.ch/v1/urls/recent/',
     channels: ['threat', 'url_status'],
-    extractWindows: (json) => {
-      if (!json.urls) return [];
-      return json.urls.map(u => ({
-        time: u.date_added,
-        features: {
-          ch0: u.threat === 'malware_download' ? 1 : u.threat === 'phishing' ? 2 : 0,
-          ch1: u.url_status === 'online' ? 1 : 0,
-          ch2: u.tags?.length || 0,
-          ch3: 0, ch4: 0, ch5: 0,
-        },
-        threatType: u.threat || 'unknown',
-      })).reverse();
+    fetchCustom: async () => {
+      try {
+        const res = await fetch('https://urlhaus-api.abuse.ch/v1/urls/recent/limit/200/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          signal: AbortSignal.timeout(15000),
+        });
+        if (!res.ok) return [];
+        const json = await res.json();
+        if (!json.urls) return [];
+        return json.urls.map(u => ({
+          time: u.date_added,
+          features: {
+            ch0: u.threat === 'malware_download' ? 1 : u.threat === 'phishing' ? 2 : 0,
+            ch1: u.url_status === 'online' ? 1 : 0,
+            ch2: u.tags?.length || 0,
+            ch3: 0, ch4: 0, ch5: 0,
+          },
+          threatType: u.threat || 'unknown',
+        })).reverse();
+      } catch { return []; }
     },
     classify: (windows, idx) => {
       return windows[idx].threatType || 'unknown';
@@ -373,30 +389,30 @@ function classifyUniversalArchetype(signature) {
   return 'equilibrium';
 }
 
-const ARCHETYPE_PRIORS = {
-  surge:        { 0: 0.5, 1: 0.2, 2: 0.3 },
-  collapse:     { 0: 0.2, 1: 0.5, 2: 0.3 },
-  oscillation:  { 0: 0.3, 1: 0.3, 2: 0.4 },
-  convergence:  { 0: 0.3, 1: 0.3, 2: 0.4 },
-  divergence:   { 0: 0.35, 1: 0.35, 2: 0.3 },
-  gradual_rise: { 0: 0.45, 1: 0.25, 2: 0.3 },
-  gradual_fall: { 0: 0.25, 1: 0.45, 2: 0.3 },
-  high_energy:  { 0: 0.35, 1: 0.35, 2: 0.3 },
-  equilibrium:  { 0: 0.3, 1: 0.3, 2: 0.4 },
-  dormant:      { 0: 0.3, 1: 0.3, 2: 0.4 },
-};
+// NO hardcoded directional priors — the mapping from archetype→class
+// is domain-specific and MUST be learned from data.
+// Cycle 1 = pure persistence (learning phase)
+// Cycle 2+ = learned weights override when confident
 
-function predictFromArchetype(archetype, classes, learnedWeights = null) {
-  const priors = learnedWeights?.[archetype] || ARCHETYPE_PRIORS[archetype] || ARCHETYPE_PRIORS.equilibrium;
-  
-  let bestIdx = 0;
-  let bestScore = -1;
-  for (let i = 0; i < classes.length; i++) {
-    const score = priors[i] || (1 / classes.length);
-    if (score > bestScore) { bestScore = score; bestIdx = i; }
+function predictFromArchetype(archetype, classes, learnedWeights = null, persistenceClass = null, cycleCount = 0) {
+  // Phase 1: Learning — use persistence only (builds training data)
+  if (cycleCount <= LEARNING_CYCLES || !learnedWeights || !learnedWeights[archetype]) {
+    return { prediction: persistenceClass || classes[0], confidence: 1 / classes.length, archetype };
   }
   
-  return { prediction: classes[bestIdx], confidence: bestScore, archetype };
+  // Phase 2: EP with learned weights
+  const learned = learnedWeights[archetype];
+  let epBestClass = classes[0];
+  let epBestScore = -1;
+  for (let i = 0; i < classes.length; i++) {
+    const score = learned[i] || (1 / classes.length);
+    if (score > epBestScore) { epBestScore = score; epBestClass = classes[i]; }
+  }
+  
+  // EP overrides persistence when learned confidence exceeds threshold
+  const prediction = epBestScore > EP_OVERRIDE_THRESHOLD ? epBestClass : (persistenceClass || epBestClass);
+  
+  return { prediction, confidence: epBestScore, archetype };
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -520,7 +536,7 @@ async function fetchDomainData(domain) {
   }
 }
 
-function processDomain(domainId, domainDef, windows, learnedWeights) {
+function processDomain(domainId, domainDef, windows, learnedWeights, cycleCount = 0) {
   if (windows.length < CONTEXT_SIZE + 2) return [];
   
   const predictions = [];
@@ -536,7 +552,7 @@ function processDomain(domainId, domainDef, windows, learnedWeights) {
     const persistence = domainDef.classify(windows, i); // baseline: predict same as current
     
     const { prediction, confidence } = predictFromArchetype(
-      archetype, domainDef.classes, learnedWeights?.[domainId]
+      archetype, domainDef.classes, learnedWeights?.[domainId], persistence, cycleCount
     );
     
     predictions.push({
@@ -592,7 +608,7 @@ async function main() {
         }
         
         const predictions = processDomain(
-          domainId, domainDef, windows, domainLearnedWeights
+          domainId, domainDef, windows, domainLearnedWeights, cycleCount
         );
         
         let correct = 0, persistCorrect = 0;
@@ -620,19 +636,19 @@ async function main() {
       }
     }
     
-    // Self-learn every 5 cycles
-    if (cycleCount % 5 === 0) {
-      log('\n  🧠 Self-learning archetype weights...');
-      for (const [domainId, domainDef] of Object.entries(DOMAINS)) {
-        if (domainHistory[domainId].length >= 50) {
-          domainLearnedWeights[domainId] = learnArchetypeWeights(
-            domainHistory[domainId], domainDef.classes
-          );
-          const nArch = Object.keys(domainLearnedWeights[domainId]).length;
-          log(`    ${domainDef.name}: learned ${nArch} archetype weights from ${domainHistory[domainId].length} samples`);
-        }
+    // Self-learn EVERY cycle (volume builds fast — 150+ preds per domain per cycle)
+    log('\n  🧠 Self-learning archetype weights...');
+    let learnedCount = 0;
+    for (const [domainId, domainDef] of Object.entries(DOMAINS)) {
+      if (domainHistory[domainId].length >= 20) {
+        domainLearnedWeights[domainId] = learnArchetypeWeights(
+          domainHistory[domainId], domainDef.classes
+        );
+        learnedCount++;
       }
     }
+    log(`    Learned weights for ${learnedCount} domains (cycle ${cycleCount}, EP active from cycle ${LEARNING_CYCLES + 1})`);
+    
     
     // Summary every 10 cycles
     if (cycleCount % 10 === 0) {
