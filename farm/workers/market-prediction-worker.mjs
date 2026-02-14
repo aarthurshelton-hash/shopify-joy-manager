@@ -716,31 +716,52 @@ function generateGridPrediction(symbol, candles, priceData, symbolOptionsData = 
 
 /**
  * Refresh self-learned market archetype weights from resolved predictions in DB.
+ * 
+ * IMPORTANT: Re-computes actual direction from raw price changes using per-sector
+ * thresholds instead of trusting the DB's actual_direction column. The DB column
+ * was scored with the OLD universal threshold that treated forex the same as stocks,
+ * causing 90-95% of forex to be classified as "neutral" when it wasn't.
  */
 async function refreshLearnedWeights() {
   try {
+    // Fetch raw prices so we can recompute direction with correct sector thresholds
     const { data, error } = await supabase
       .from('market_prediction_attempts')
-      .select('archetype, predicted_direction, actual_direction')
+      .select('symbol, archetype, predicted_direction, price_at_prediction, price_at_resolution')
       .not('resolved_at', 'is', null)
-      .not('actual_direction', 'is', null)
+      .not('price_at_resolution', 'is', null)
       .order('created_at', { ascending: false })
-      .limit(5000); // Pro tier: more data for better self-learning
+      .limit(5000);
     
     if (error || !data || data.length < 50) return;
     
-    const resolved = data.map(r => ({
-      archetype: r.archetype || 'choppy',
-      predictedDirection: r.predicted_direction === 'bullish' ? 'up' : r.predicted_direction === 'bearish' ? 'down' : 'flat',
-      actualDirection: r.actual_direction === 'bullish' ? 'up' : r.actual_direction === 'bearish' ? 'down' : 'flat',
-    }));
+    // Per-sector thresholds for recomputing actual direction
+    const sectorThresholds = {
+      forex: 0.0005, crypto: 0.0075, commodities: 0.004,
+      energy: 0.004, tech: 0.005, indices: 0.005,
+    };
+    
+    const resolved = [];
+    for (const r of data) {
+      if (!r.price_at_prediction || !r.price_at_resolution) continue;
+      const sector = getSector(r.symbol);
+      const threshold = sectorThresholds[sector] || 0.005;
+      const change = (r.price_at_resolution - r.price_at_prediction) / r.price_at_prediction;
+      // Recompute actual direction with CORRECT per-sector threshold
+      const actualDir = change > threshold ? 'up' : change < -threshold ? 'down' : 'flat';
+      resolved.push({
+        archetype: r.archetype || 'choppy',
+        predictedDirection: r.predicted_direction === 'bullish' ? 'up' : r.predicted_direction === 'bearish' ? 'down' : 'flat',
+        actualDirection: actualDir,
+      });
+    }
     
     learnedMarketWeights = learnMarketArchetypeWeights(resolved);
     learnedWeightsRefreshedAt = cycleCount;
     persistToFile(WEIGHTS_FILE, learnedMarketWeights);
     
     const archetypeCount = Object.keys(learnedMarketWeights).length;
-    log(`Self-learned market weights refreshed: ${archetypeCount} archetypes from ${resolved.length} resolved predictions`);
+    log(`Self-learned market weights refreshed: ${archetypeCount} archetypes from ${resolved.length} resolved (sector-aware thresholds)`);
     
     for (const [arch, w] of Object.entries(learnedMarketWeights)) {
       log(`  ${arch}: up=${(w.up*100).toFixed(0)}% down=${(w.down*100).toFixed(0)}% flat=${(w.flat*100).toFixed(0)}% (n=${w.sampleSize})`);
@@ -762,68 +783,68 @@ async function refreshLearnedWeights() {
  */
 async function refreshLearnedDirThresholds() {
   try {
+    // Fetch symbol alongside prices so we can group by sector
     const { data, error } = await supabase
       .from('market_prediction_attempts')
-      .select('time_horizon, predicted_direction, price_at_prediction, price_at_resolution')
+      .select('symbol, time_horizon, predicted_direction, price_at_prediction, price_at_resolution')
       .not('resolved_at', 'is', null)
       .not('price_at_resolution', 'is', null)
       .order('created_at', { ascending: false })
-      .limit(8000); // Pro tier: deeper history for threshold learning
+      .limit(8000);
     
     if (error || !data || data.length < 100) return;
     
-    // Group by timeframe
+    // Group by timeframe (global) — the per-sector scaling is applied at resolution time
+    // But we ALSO learn per-sector×timeframe for diagnostics
     const byTH = {};
+    const bySectorTH = {};
     for (const r of data) {
       const th = r.time_horizon;
       if (!th || !r.price_at_prediction || !r.price_at_resolution) continue;
-      if (!byTH[th]) byTH[th] = [];
       const change = (r.price_at_resolution - r.price_at_prediction) / r.price_at_prediction;
-      // Normalize direction: handle both 'up'/'down'/'flat' and 'bullish'/'bearish'/'neutral'
       const normDir = (d) => d === 'up' || d === 'bullish' ? 'bullish' : d === 'down' || d === 'bearish' ? 'bearish' : 'neutral';
-      byTH[th].push({ change, predicted: normDir(r.predicted_direction) });
+      const entry = { change, predicted: normDir(r.predicted_direction) };
+      
+      if (!byTH[th]) byTH[th] = [];
+      byTH[th].push(entry);
+      
+      // Also group by sector for per-sector learning
+      const sector = getSector(r.symbol);
+      const sectorKey = `${sector}|${th}`;
+      if (!bySectorTH[sectorKey]) bySectorTH[sectorKey] = [];
+      bySectorTH[sectorKey].push(entry);
     }
     
-    // For each timeframe, find the threshold that maximizes accuracy
+    // Learn the BASE threshold per timeframe (stocks-calibrated)
+    // The per-sector SECTOR_THRESHOLD_SCALE in resolution multiplies this base
     const candidates = [0.0002, 0.0005, 0.0008, 0.001, 0.0015, 0.002, 0.003, 0.004, 0.005, 0.008, 0.01];
-    // Minimum floors: prevent degenerate near-zero thresholds
     const minThreshold = { '5m': 0.0002, '30m': 0.0005, '1h': 0.001, '2h': 0.0015, '4h': 0.002, '8h': 0.003, '1d': 0.003, '1w': 0.005 };
-    const learned = {};
     
-    for (const [th, records] of Object.entries(byTH)) {
-      if (records.length < 30) continue;
-      
-      const floor = minThreshold[th] || 0.001;
+    const findBestThreshold = (records, floor) => {
       let bestThreshold = floor;
       let bestScore = 0;
-      
       for (const t of candidates) {
-        if (t < floor) continue; // Enforce minimum floor
-        
-        let correct = 0;
-        let directional = 0;
-        
+        if (t < floor) continue;
+        let correct = 0, directional = 0;
         for (const r of records) {
           const actualDir = r.change > t ? 'bullish' : r.change < -t ? 'bearish' : 'neutral';
           if (actualDir === 'neutral') continue;
           directional++;
           if (r.predicted === actualDir) correct++;
         }
-        
         const acc = directional > 0 ? correct / directional : 0;
         const directionalPct = directional / records.length;
-        // Penalize if too few directional (<30%) OR too many directional (>95%)
-        // Sweet spot: 40-80% directional means the threshold is meaningful
         const coveragePenalty = directionalPct > 0.95 ? 0.7 : directionalPct < 0.30 ? 0.5 : 1.0;
         const score = acc * Math.min(1, directionalPct / 0.4) * coveragePenalty;
-        
-        if (score > bestScore) {
-          bestScore = score;
-          bestThreshold = t;
-        }
+        if (score > bestScore) { bestScore = score; bestThreshold = t; }
       }
-      
-      learned[th] = bestThreshold;
+      return bestThreshold;
+    };
+    
+    const learned = {};
+    for (const [th, records] of Object.entries(byTH)) {
+      if (records.length < 30) continue;
+      learned[th] = findBestThreshold(records, minThreshold[th] || 0.001);
     }
     
     if (Object.keys(learned).length > 0) {
@@ -831,6 +852,20 @@ async function refreshLearnedDirThresholds() {
       dirThresholdsRefreshedAt = cycleCount;
       persistToFile(THRESHOLDS_FILE, learnedDirThresholds);
       log(`♻️ Self-learned directional thresholds: ${Object.entries(learned).map(([k,v]) => `${k}=${(v*100).toFixed(2)}%`).join(' ')}`);
+      
+      // Log per-sector diagnostic — shows if sector scaling is correct
+      for (const [sectorKey, records] of Object.entries(bySectorTH)) {
+        if (records.length < 20) continue;
+        const [sector, th] = sectorKey.split('|');
+        const optimal = findBestThreshold(records, 0.0002);
+        const base = learned[th] || 0.005;
+        const impliedScale = base > 0 ? optimal / base : 1;
+        // Only log if the optimal differs significantly from what our scaling gives
+        const currentScale = ({ forex: 0.10, crypto: 1.5, commodities: 0.8, energy: 0.8 })[sector] || 1.0;
+        if (Math.abs(impliedScale - currentScale) > 0.3 && records.length >= 50) {
+          log(`  ⚠️ ${sector}/${th}: optimal=${(optimal*100).toFixed(3)}% implied_scale=${impliedScale.toFixed(2)} vs current_scale=${currentScale.toFixed(2)} (n=${records.length})`);
+        }
+      }
     }
   } catch (err) {
     log(`Dir threshold learning error: ${err.message}`, 'warn');
@@ -852,29 +887,49 @@ async function refreshLearnedDirThresholds() {
  */
 async function refreshTacticalCalibration() {
   try {
+    // Fetch raw prices + symbol to recompute correctness with sector-aware thresholds
+    // Don't trust ep_correct — it was scored with the old universal threshold
     const { data, error } = await supabase
       .from('market_prediction_attempts')
-      .select('archetype, ep_correct, prediction_metadata')
+      .select('symbol, predicted_direction, price_at_prediction, price_at_resolution, prediction_metadata')
       .not('resolved_at', 'is', null)
-      .not('ep_correct', 'is', null)
+      .not('price_at_resolution', 'is', null)
       .order('created_at', { ascending: false })
-      .limit(8000); // Pro tier: more data for tactical calibration
+      .limit(8000);
     
     if (error || !data || data.length < 50) return;
     
-    // Split by tactical vs base
+    // Per-sector thresholds for recomputing correctness
+    const sectorThresholds = {
+      forex: 0.0005, crypto: 0.0075, commodities: 0.004,
+      energy: 0.004, tech: 0.005, indices: 0.005,
+    };
+    
+    // Split by tactical vs base, recomputing correctness
     const byPattern = {};
     let baseN = 0, baseCorrect = 0;
     
     for (const r of data) {
+      if (!r.price_at_prediction || !r.price_at_resolution) continue;
+      const normPred = r.predicted_direction === 'bullish' ? 'bullish' : r.predicted_direction === 'bearish' ? 'bearish' : 'neutral';
+      if (normPred === 'neutral') continue; // Only score directional
+
+      const sector = getSector(r.symbol);
+      const threshold = sectorThresholds[sector] || 0.005;
+      const change = (r.price_at_resolution - r.price_at_prediction) / r.price_at_prediction;
+      const actualDir = change > threshold ? 'bullish' : change < -threshold ? 'bearish' : null;
+      if (!actualDir) continue; // Genuinely flat — skip
+
+      const isCorrect = normPred === actualDir;
+
       const tact = r.prediction_metadata?.tactical_override?.pattern;
       if (tact) {
         if (!byPattern[tact]) byPattern[tact] = { n: 0, correct: 0 };
         byPattern[tact].n++;
-        if (r.ep_correct) byPattern[tact].correct++;
+        if (isCorrect) byPattern[tact].correct++;
       } else {
         baseN++;
-        if (r.ep_correct) baseCorrect++;
+        if (isCorrect) baseCorrect++;
       }
     }
     
