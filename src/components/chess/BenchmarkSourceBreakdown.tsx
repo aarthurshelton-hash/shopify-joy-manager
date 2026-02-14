@@ -46,7 +46,7 @@ export function BenchmarkSourceBreakdown() {
       setTotalPredictions(total || 0);
 
       // Fetch stats by source — query actual DB values
-      const sources = ['lichess', 'chess.com', 'chesscom', 'sql_worker', 'lichess_live', 'chesscom_live', 'farm_terminal', 'chesscom_puzzle', 'web_client'];
+      const sources = ['lichess_gm', 'lichess_tournament', 'lichess_db', 'chess.com', 'lichess', 'chesscom', 'sql_worker', 'lichess_live', 'chesscom_live', 'farm_terminal', 'chesscom_puzzle', 'web_client'];
       const sourceStats: SourceStats[] = [];
 
       for (const source of sources) {
@@ -109,6 +109,9 @@ export function BenchmarkSourceBreakdown() {
         return <Monitor className="h-5 w-5 text-green-500" />;
       case 'lichess':
       case 'lichess_live':
+      case 'lichess_gm':
+      case 'lichess_db':
+      case 'lichess_tournament':
         return <Cloud className="h-5 w-5 text-purple-500" />;
       case 'chess.com':
       case 'chesscom':
@@ -133,6 +136,12 @@ export function BenchmarkSourceBreakdown() {
         return 'Lichess';
       case 'lichess_live':
         return 'Lichess Live';
+      case 'lichess_gm':
+        return 'Lichess GM/Elite';
+      case 'lichess_db':
+        return 'Lichess Database';
+      case 'lichess_tournament':
+        return 'Lichess Tournaments';
       case 'chess.com':
         return 'Chess.com';
       case 'chesscom':
@@ -155,6 +164,9 @@ export function BenchmarkSourceBreakdown() {
         return 'bg-green-500';
       case 'lichess':
       case 'lichess_live':
+      case 'lichess_gm':
+      case 'lichess_db':
+      case 'lichess_tournament':
         return 'bg-purple-500';
       case 'chess.com':
       case 'chesscom':

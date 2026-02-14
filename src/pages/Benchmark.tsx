@@ -143,7 +143,7 @@ function useDbStats() {
 interface SystemStat { label: string; description: string; count: number; sfAcc: number; epAcc: number }
 
 // Farm tiers written by farm workers (ep-enhanced-worker, benchmark-worker, etc.)
-const FARM_TIERS = ['farm_enhanced_8quad', 'farm_generated', 'farm_hybrid_v2', 'farm_integrated'];
+const FARM_TIERS = ['farm_enhanced_8quad', 'farm_generated', 'farm_hybrid_v2', 'farm_integrated', 'farm_bulk_8quad', 'farm_gm_8quad', 'farm_tournament_8quad'];
 // Terminal tiers written by terminal workers
 const TERMINAL_TIERS = ['terminal_live'];
 
@@ -238,21 +238,24 @@ function useSourceBreakdown() {
 
   useEffect(() => {
     const load = async () => {
+      // Match all lichess variants (lichess, lichess_gm, lichess_db, lichess_tournament) and chess.com
+      const lichessFilter = 'data_source.eq.lichess,data_source.like.lichess_%';
+      const chesscomFilter = 'data_source.eq.chess.com,data_source.like.chesscom%';
       const [
         { count: liTotal }, { count: liSf }, { count: liEp },
         { count: ccTotal }, { count: ccSf }, { count: ccEp },
       ] = await Promise.all([
-        supabase.from('chess_prediction_attempts').select('*', { count: 'exact', head: true }).eq('data_source', 'lichess'),
-        supabase.from('chess_prediction_attempts').select('*', { count: 'exact', head: true }).eq('data_source', 'lichess').eq('stockfish_correct', true),
-        supabase.from('chess_prediction_attempts').select('*', { count: 'exact', head: true }).eq('data_source', 'lichess').eq('hybrid_correct', true),
-        supabase.from('chess_prediction_attempts').select('*', { count: 'exact', head: true }).eq('data_source', 'chess.com'),
-        supabase.from('chess_prediction_attempts').select('*', { count: 'exact', head: true }).eq('data_source', 'chess.com').eq('stockfish_correct', true),
-        supabase.from('chess_prediction_attempts').select('*', { count: 'exact', head: true }).eq('data_source', 'chess.com').eq('hybrid_correct', true),
+        supabase.from('chess_prediction_attempts').select('*', { count: 'exact', head: true }).or(lichessFilter),
+        supabase.from('chess_prediction_attempts').select('*', { count: 'exact', head: true }).or(lichessFilter).eq('stockfish_correct', true),
+        supabase.from('chess_prediction_attempts').select('*', { count: 'exact', head: true }).or(lichessFilter).eq('hybrid_correct', true),
+        supabase.from('chess_prediction_attempts').select('*', { count: 'exact', head: true }).or(chesscomFilter),
+        supabase.from('chess_prediction_attempts').select('*', { count: 'exact', head: true }).or(chesscomFilter).eq('stockfish_correct', true),
+        supabase.from('chess_prediction_attempts').select('*', { count: 'exact', head: true }).or(chesscomFilter).eq('hybrid_correct', true),
       ]);
 
       // Get average ELO per source (sample recent 200 games)
-      const { data: liEloData } = await supabase.from('chess_prediction_attempts').select('white_elo, black_elo').eq('data_source', 'lichess').not('white_elo', 'is', null).order('created_at', { ascending: false }).limit(200);
-      const { data: ccEloData } = await supabase.from('chess_prediction_attempts').select('white_elo, black_elo').eq('data_source', 'chess.com').not('white_elo', 'is', null).order('created_at', { ascending: false }).limit(200);
+      const { data: liEloData } = await supabase.from('chess_prediction_attempts').select('white_elo, black_elo').or(lichessFilter).not('white_elo', 'is', null).order('created_at', { ascending: false }).limit(200);
+      const { data: ccEloData } = await supabase.from('chess_prediction_attempts').select('white_elo, black_elo').or(chesscomFilter).not('white_elo', 'is', null).order('created_at', { ascending: false }).limit(200);
 
       const avgElo = (rows: { white_elo: number | null; black_elo: number | null }[] | null) => {
         if (!rows || rows.length === 0) return 0;
@@ -395,8 +398,8 @@ function useCorrelationSummary() {
 // ─── Game Detail Modal ───────────────────────────────────────────────────────
 
 function GameDetailModal({ game }: { game: GameDetail }) {
-  const isLichess = game.data_source === 'lichess' || (game.game_id && !game.game_id.startsWith('cc_') && /^[a-zA-Z0-9]{8}$/.test(game.game_id));
-  const isChessCom = game.data_source === 'chess.com' || game.game_id?.startsWith('cc_');
+  const isLichess = game.data_source?.startsWith('lichess') || (game.game_id && !game.game_id.startsWith('cc_') && /^[a-zA-Z0-9]{8}$/.test(game.game_id));
+  const isChessCom = game.data_source === 'chess.com' || game.data_source?.startsWith('chesscom') || game.game_id?.startsWith('cc_');
   const rawId = game.game_id?.replace(/^(li_|cc_)/, '');
 
   return (
