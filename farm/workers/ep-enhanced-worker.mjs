@@ -29,6 +29,7 @@ import { FARM_CONFIG, THROUGHPUT } from '../config/optimizedFarmConfig.mjs';
 import { fetchLichessPuzzleBatch, processPuzzle, loadCalibration, updateCalibration } from './puzzleArchetypeCalibrator.mjs';
 import { savePredictionLocal, getLocalStats } from '../lib/simpleStorage.mjs';
 import { getIntelligentFusionWeights, updateLiveArchetypeAccuracy } from './fusion-intelligence.mjs';
+import { refreshPlayerIntelligence, getPlayerIntelSummary } from './player-intelligence.mjs';
 import { computeLiveArchetypeWeights, saveLiveWeights, loadLiveWeights, logWeightComparison, loadPuzzleCalibration, mergePuzzleCalibration } from '../lib/liveArchetypeWeights.mjs';
 import { createHash } from 'crypto';
 
@@ -1254,10 +1255,15 @@ async function runBenchmarkCycle(epEngine) {
       
       const sf17Correct = sf17Prediction === actualOutcome;
       
-      // v13: INTELLIGENT HYBRID FUSION
-      // Archetype-specific + time-control-aware + game-phase-aware weights
+      // v14: INTELLIGENT HYBRID FUSION + PLAYER INTELLIGENCE
+      // Archetype + time-control + game-phase + player-specific weights
       const fusionArchetype = predictions.enhanced?.archetype || predictions.baseline.archetype;
-      const fw = getIntelligentFusionWeights(fusionArchetype, game.timeControl || null, moveNumber);
+      const playerCtx = {
+        whiteName: game.whiteName || game.players?.white || null,
+        blackName: game.blackName || game.players?.black || null,
+        platform: game.source || 'lichess',
+      };
+      const fw = getIntelligentFusionWeights(fusionArchetype, game.timeControl || null, moveNumber, playerCtx);
       const fusionScores = { white_wins: 0, black_wins: 0, draw: 0 };
       fusionScores[baselinePred.predictedWinner] += fw.baselineWeight;
       fusionScores[enhancedPred.predictedWinner] += fw.enhancedWeight;
@@ -1590,6 +1596,12 @@ async function main() {
           }
         } catch (weightErr) {
           console.log(`[${workerId}] Live weight refresh non-critical error: ${weightErr.message}`);
+        }
+        // Player intelligence refresh (same cadence as archetype weights)
+        try {
+          await refreshPlayerIntelligence(resilientQuery);
+        } catch (piErr) {
+          console.log(`[${workerId}] Player intel refresh non-critical: ${piErr.message}`);
         }
       }
       

@@ -38,6 +38,7 @@ import { spawn, exec } from 'child_process';
 import { promisify } from 'util';
 import crypto from 'crypto';
 import { getIntelligentFusionWeights } from './fusion-intelligence.mjs';
+import { refreshPlayerIntelligence } from './player-intelligence.mjs';
 import fs from 'fs';
 const execAsync = promisify(exec);
 
@@ -573,10 +574,14 @@ async function processGame(game, moveNumber, epEngine, source) {
   // Position hash
   const positionHash = crypto.createHash('sha256').update(fen).digest('hex').substring(0, 16);
   
-  // ─── v13: INTELLIGENT HYBRID FUSION ───
-  // Archetype-specific + time-control-aware + game-phase-aware weights
+  // ─── v14: INTELLIGENT HYBRID FUSION + PLAYER INTELLIGENCE ───
   const fusionArchetype = enhancedSig?.archetype || baselineSig.archetype;
-  const fw = getIntelligentFusionWeights(fusionArchetype, game.headers.TimeControl || null, moveNumber);
+  const playerCtx = {
+    whiteName: game.headers.White || null,
+    blackName: game.headers.Black || null,
+    platform: game.source || 'lichess_db',
+  };
+  const fw = getIntelligentFusionWeights(fusionArchetype, game.headers.TimeControl || null, moveNumber, playerCtx);
   const votes = { white_wins: 0, black_wins: 0, draw: 0 };
   const baseConf = baselineResult.confidence;
   const enhConf = enhancedResult.confidence;
@@ -1605,6 +1610,15 @@ async function main() {
     const elapsed = (Date.now() - cycleStart) / 1000 / 60;
     console.log(`\nCycle ${cycleCount} complete: ${totalGames.toLocaleString()} games in ${elapsed.toFixed(1)} min`);
     console.log(`DB totals: Saved=${dbSaved.toLocaleString()} | Dupes=${dbDupes} | FEN=${dbFenInvalid}`);
+    
+    // Refresh player intelligence every 5 cycles (~30K games between refreshes)
+    if (cycleCount % 5 === 1) {
+      try {
+        await refreshPlayerIntelligence(resilientQuery);
+      } catch (piErr) {
+        console.log(`[${workerId}] Player intel refresh non-critical: ${piErr.message}`);
+      }
+    }
     
     saveState();
     

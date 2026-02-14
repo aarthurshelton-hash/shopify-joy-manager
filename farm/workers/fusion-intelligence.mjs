@@ -1,8 +1,8 @@
 /**
- * Fusion Intelligence Module v1.0
+ * Fusion Intelligence Module v2.0
  * 
- * Provides archetype-specific, time-control-aware, and game-phase-aware
- * confidence adjustments for the hybrid fusion step.
+ * Provides archetype-specific, time-control-aware, game-phase-aware,
+ * and PLAYER-SPECIFIC confidence adjustments for the hybrid fusion step.
  * 
  * DESIGN PRINCIPLE: These are multiplicative modifiers on the EXISTING fusion
  * weights (baseline 0.25, enhanced 0.45, SF 0.30). They cannot break the system —
@@ -10,6 +10,8 @@
  * 
  * Imported by: ep-enhanced-worker, ep-bulk-worker, chess-db-ingest-worker
  */
+
+import { getPlayerBoost } from './player-intelligence.mjs';
 
 // ═══════════════════════════════════════════════════════════════
 // 1. ARCHETYPE-SPECIFIC CONFIDENCE BOOST
@@ -160,16 +162,34 @@ export function getGamePhaseBoost(moveNumber) {
  * @param {string} archetype - Classified archetype
  * @param {string|null} timeControl - Time control string
  * @param {number} moveNumber - Move number being evaluated
- * @returns {{ baselineWeight: number, enhancedWeight: number, sfWeight: number, boostFactor: number }}
+ * @param {Object} [playerContext] - Optional player context for player-specific boost
+ * @param {string|null} [playerContext.whiteName] - White player name
+ * @param {string|null} [playerContext.blackName] - Black player name
+ * @param {string|null} [playerContext.platform] - Data source/platform
+ * @returns {{ baselineWeight: number, enhancedWeight: number, sfWeight: number, boostFactor: number, playerBoost: number, playerReason: string }}
  */
-export function getIntelligentFusionWeights(archetype, timeControl, moveNumber) {
+export function getIntelligentFusionWeights(archetype, timeControl, moveNumber, playerContext) {
   const archetypeBoost = getArchetypeBoost(archetype);
   const timeBoost = getTimeControlBoost(timeControl);
   const phaseBoost = getGamePhaseBoost(moveNumber);
   
+  // Player-specific boost (new in v2) — learned from per-player accuracy data
+  let playerBoostVal = 1.0;
+  let playerReason = '';
+  if (playerContext) {
+    const pb = getPlayerBoost(
+      playerContext.whiteName || null,
+      playerContext.blackName || null,
+      playerContext.platform || null,
+      timeControl
+    );
+    playerBoostVal = pb.boost;
+    playerReason = pb.reason;
+  }
+  
   // Combined boost: multiplicative (all independent signals)
-  // Widened to [0.60, 1.40] — lets archetype accuracy actually drive fusion weights
-  const combinedBoost = Math.max(0.60, Math.min(1.40, archetypeBoost * timeBoost * phaseBoost));
+  // Widened to [0.55, 1.45] — archetype + player intelligence drives fusion weights
+  const combinedBoost = Math.max(0.55, Math.min(1.45, archetypeBoost * timeBoost * phaseBoost * playerBoostVal));
   
   // Apply boost to enhanced weight
   const rawBaseline = 0.25;
@@ -184,5 +204,7 @@ export function getIntelligentFusionWeights(archetype, timeControl, moveNumber) 
     enhancedWeight: rawEnhanced / total,
     sfWeight: rawSf / total,
     boostFactor: combinedBoost,
+    playerBoost: playerBoostVal,
+    playerReason,
   };
 }
