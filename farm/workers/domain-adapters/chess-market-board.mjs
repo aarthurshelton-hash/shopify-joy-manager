@@ -374,12 +374,11 @@ export async function runParallelScenarios(position, sqlPool, scenarioCount = 10
         hybrid_confidence,
         hybrid_archetype,
         enhanced_prediction,
-        enhanced_confidence,
-        sf17_prediction,
-        actual_outcome
+        enhanced_correct,
+        actual_result
       FROM chess_prediction_attempts
       WHERE hybrid_archetype = $1
-        AND actual_outcome IS NOT NULL
+        AND actual_result IS NOT NULL
         AND hybrid_prediction IS NOT NULL
         AND hybrid_confidence IS NOT NULL
       ORDER BY RANDOM()
@@ -394,9 +393,9 @@ export async function runParallelScenarios(position, sqlPool, scenarioCount = 10
           hybrid_confidence,
           hybrid_archetype,
           enhanced_prediction,
-          actual_outcome
+          actual_result
         FROM chess_prediction_attempts
-        WHERE actual_outcome IS NOT NULL
+        WHERE actual_result IS NOT NULL
           AND hybrid_prediction IS NOT NULL
         ORDER BY RANDOM()
         LIMIT $1
@@ -421,33 +420,33 @@ export async function runParallelScenarios(position, sqlPool, scenarioCount = 10
  * Black wins (buy wins) → bullish
  * Draw → neutrality
  */
+// Chess baseline win rates from 1.1M+ games (structural first-mover advantage).
+// The SIGNAL is in how much an archetype DEVIATES from this baseline.
+// If sacrificial_queenside_break has 48% white (vs 52% baseline), that 4% deviation
+// means the responding/buying side does better in this pattern → bullish signal.
+const CHESS_BASELINE = { whiteWinRate: 0.466, blackWinRate: 0.418, drawRate: 0.116 };
+
 function computeOutcomeDistribution(rows, position) {
   let whiteWins = 0, blackWins = 0, draws = 0;
-  let whiteConfSum = 0, blackConfSum = 0, drawConfSum = 0;
   let whiteCorrect = 0, blackCorrect = 0, drawCorrect = 0;
   let enhancedAgree = 0;
 
   for (const row of rows) {
-    const actual = row.actual_outcome;
+    const actual = row.actual_result;
     const predicted = row.hybrid_prediction;
-    const conf = (row.hybrid_confidence || 50) / 100;
     const enhanced = row.enhanced_prediction;
 
     if (actual === 'white_wins') {
       whiteWins++;
-      whiteConfSum += conf;
       if (predicted === 'white_wins') whiteCorrect++;
     } else if (actual === 'black_wins') {
       blackWins++;
-      blackConfSum += conf;
       if (predicted === 'black_wins') blackCorrect++;
     } else {
       draws++;
-      drawConfSum += conf;
       if (predicted === 'draw') drawCorrect++;
     }
 
-    // Track enhanced agreement (does the 32-piece system agree with outcome?)
     if (enhanced === actual) enhancedAgree++;
   }
 
@@ -456,38 +455,52 @@ function computeOutcomeDistribution(rows, position) {
   const buyWinRate = blackWins / total;
   const drawRate = draws / total;
 
-  // Prediction accuracy within this archetype
+  // DEVIATION from chess baseline — THIS is the real signal.
+  // Raw rates are biased by chess first-mover advantage (white always wins more).
+  // Deviation tells us: in THIS archetype, does buy or sell do BETTER than expected?
+  const sellDeviation = sellWinRate - CHESS_BASELINE.whiteWinRate;  // Positive = sell stronger than usual
+  const buyDeviation = buyWinRate - CHESS_BASELINE.blackWinRate;    // Positive = buy stronger than usual
+  const drawDeviation = drawRate - CHESS_BASELINE.drawRate;         // Positive = more draws than usual
+
   const predictionAccuracy = (whiteCorrect + blackCorrect + drawCorrect) / total;
   const enhancedAccuracy = enhancedAgree / total;
 
-  // Determine market direction from the chess outcome distribution
+  // Direction from DEVIATION, not raw rates
   let direction, confidence;
-  const spread = Math.abs(sellWinRate - buyWinRate);
+  const netDeviation = buyDeviation - sellDeviation; // Positive = buy outperforms, negative = sell outperforms
 
-  if (drawRate > 0.45) {
+  if (Math.abs(drawDeviation) > 0.10 || Math.abs(netDeviation) < 0.02) {
+    // Draw deviation dominates OR deviations cancel → neutral
     direction = 'neutral';
-    confidence = drawRate;
-  } else if (sellWinRate > buyWinRate + 0.05) {
-    direction = 'bearish'; // White (sell) wins more
-    confidence = Math.min(0.85, spread * 2 + predictionAccuracy * 0.3);
-  } else if (buyWinRate > sellWinRate + 0.05) {
-    direction = 'bullish'; // Black (buy) wins more
-    confidence = Math.min(0.85, spread * 2 + predictionAccuracy * 0.3);
+    confidence = 0.40 + Math.abs(drawDeviation) * 2;
+  } else if (netDeviation > 0.02) {
+    // Buy side deviates more positively → bullish
+    direction = 'bullish';
+    confidence = Math.min(0.80, 0.45 + netDeviation * 5 + predictionAccuracy * 0.2);
+  } else if (netDeviation < -0.02) {
+    // Sell side deviates more positively → bearish
+    direction = 'bearish';
+    confidence = Math.min(0.80, 0.45 + Math.abs(netDeviation) * 5 + predictionAccuracy * 0.2);
   } else {
     direction = 'neutral';
-    confidence = 1 - spread;
+    confidence = 0.40;
   }
 
-  // Determine draw type from volume
   const drawType = position.drawType || 'unknown';
 
   return {
     direction,
     confidence: +confidence.toFixed(3),
     distribution: {
-      sellWins: +sellWinRate.toFixed(3),  // White wins = bearish
-      buyWins: +buyWinRate.toFixed(3),     // Black wins = bullish
-      draw: +drawRate.toFixed(3),          // Neutrality
+      sellWins: +sellWinRate.toFixed(3),
+      buyWins: +buyWinRate.toFixed(3),
+      draw: +drawRate.toFixed(3),
+    },
+    deviation: {
+      sell: +sellDeviation.toFixed(4),
+      buy: +buyDeviation.toFixed(4),
+      draw: +drawDeviation.toFixed(4),
+      net: +netDeviation.toFixed(4),
     },
     drawType,
     scenarioCount: total,
