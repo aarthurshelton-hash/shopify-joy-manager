@@ -28,7 +28,7 @@ import {
 import { FARM_CONFIG, THROUGHPUT } from '../config/optimizedFarmConfig.mjs';
 import { fetchLichessPuzzleBatch, processPuzzle, loadCalibration, updateCalibration } from './puzzleArchetypeCalibrator.mjs';
 import { savePredictionLocal, getLocalStats } from '../lib/simpleStorage.mjs';
-import { getIntelligentFusionWeights } from './fusion-intelligence.mjs';
+import { getIntelligentFusionWeights, updateLiveArchetypeAccuracy } from './fusion-intelligence.mjs';
 import { computeLiveArchetypeWeights, saveLiveWeights, loadLiveWeights, logWeightComparison, loadPuzzleCalibration, mergePuzzleCalibration } from '../lib/liveArchetypeWeights.mjs';
 import { createHash } from 'crypto';
 
@@ -1574,6 +1574,19 @@ async function main() {
             liveArchetypeWeights = newWeights;
             saveLiveWeights(newWeights);
             logWeightComparison(newWeights);
+            
+            // Feed fresh accuracy data back to fusion-intelligence (self-improving)
+            // Extract accuracy per archetype from the live weights
+            const liveAccuracy = {};
+            for (const [arch, data] of Object.entries(newWeights)) {
+              if (data && typeof data.accuracy === 'number') {
+                liveAccuracy[arch] = data.accuracy;
+              }
+            }
+            if (Object.keys(liveAccuracy).length > 0) {
+              updateLiveArchetypeAccuracy(liveAccuracy);
+              console.log(`[${workerId}] Fusion intelligence updated with ${Object.keys(liveAccuracy).length} live archetype accuracies`);
+            }
           }
         } catch (weightErr) {
           console.log(`[${workerId}] Live weight refresh non-critical error: ${weightErr.message}`);
