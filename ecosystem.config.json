@@ -1,153 +1,187 @@
 {
   "apps": [
     {
-      "name": "ib-bridge",
-      "script": "./public/ib-gateway-bridge/server-simple.js",
-      "instances": 1,
-      "exec_mode": "fork",
-      "autorestart": true,
-      "max_restarts": 10,
-      "min_uptime": "10s",
-      "env": {
-        "NODE_ENV": "production"
-      },
-      "log_file": "/tmp/pm2-ib-bridge.log",
-      "error_file": "/tmp/pm2-ib-bridge-error.log",
-      "out_file": "/tmp/pm2-ib-bridge-out.log",
-      "merge_logs": true,
-      "max_memory_restart": "500M"
-    },
-    {
-      "name": "hf-trader",
-      "script": "./farm/workers/high-frequency-paper-trader.mjs",
-      "instances": 1,
-      "exec_mode": "fork",
-      "autorestart": true,
-      "max_restarts": 10,
-      "min_uptime": "10s",
-      "env": {
-        "NODE_ENV": "production"
-      },
-      "log_file": "/tmp/pm2-hf-trader.log",
-      "error_file": "/tmp/pm2-hf-trader-error.log",
-      "out_file": "/tmp/pm2-hf-trader-out.log",
-      "merge_logs": true,
-      "max_memory_restart": "1G",
-      "restart_delay": 5000
-    },
-    {
-      "name": "chess-benchmark",
+      "name": "chess-benchmark-0",
       "script": "./farm/workers/ep-enhanced-worker.mjs",
       "instances": 1,
       "exec_mode": "fork",
       "autorestart": true,
       "max_restarts": 10,
-      "min_uptime": "10s",
+      "min_uptime": "30s",
+      "kill_timeout": 5000,
       "env": {
         "NODE_ENV": "production",
         "USE_ENHANCED": "true",
         "WORKER_ID": "ep-farm-prod-1"
       },
-      "log_file": "/tmp/pm2-chess-benchmark.log",
-      "error_file": "/tmp/pm2-chess-benchmark-error.log",
-      "out_file": "/tmp/pm2-chess-benchmark-out.log",
       "merge_logs": true,
       "max_memory_restart": "500M",
-      "restart_delay": 10000
+      "restart_delay": 30000
     },
     {
-      "name": "chess-benchmark-2",
-      "script": "./farm/workers/ep-enhanced-worker.mjs",
+      "name": "chess-bulk",
+      "script": "./farm/workers/ep-bulk-worker.mjs",
+      "args": "--mode=grandmaster --twic-start=920 --twic-end=1575 --min-elo=1300",
       "instances": 1,
       "exec_mode": "fork",
       "autorestart": true,
       "max_restarts": 10,
-      "min_uptime": "10s",
+      "min_uptime": "30s",
+      "kill_timeout": 5000,
       "env": {
         "NODE_ENV": "production",
-        "USE_ENHANCED": "true",
-        "WORKER_ID": "ep-farm-2"
+        "WORKER_ID": "ep-bulk-1"
       },
-      "log_file": "/tmp/pm2-chess-benchmark-2.log",
-      "error_file": "/tmp/pm2-chess-benchmark-2-error.log",
-      "out_file": "/tmp/pm2-chess-benchmark-2-out.log",
       "merge_logs": true,
       "max_memory_restart": "500M",
-      "restart_delay": 12000
+      "restart_delay": 30000
     },
     {
-      "name": "chess-benchmark-3",
-      "script": "./farm/workers/ep-enhanced-worker.mjs",
+      "name": "chess-db-ingest",
+      "script": "./farm/workers/chess-db-ingest-worker.mjs",
+      "args": "--min-elo=1500 --max-per-source=50000 --sf-depth=14",
       "instances": 1,
       "exec_mode": "fork",
       "autorestart": true,
       "max_restarts": 10,
-      "min_uptime": "10s",
+      "min_uptime": "30s",
+      "kill_timeout": 5000,
       "env": {
         "NODE_ENV": "production",
-        "USE_ENHANCED": "true",
-        "WORKER_ID": "ep-farm-3"
+        "WORKER_ID": "db-ingest-1"
       },
-      "log_file": "/tmp/pm2-chess-benchmark-3.log",
-      "error_file": "/tmp/pm2-chess-benchmark-3-error.log",
-      "out_file": "/tmp/pm2-chess-benchmark-3-out.log",
       "merge_logs": true,
       "max_memory_restart": "500M",
-      "restart_delay": 14000
+      "restart_delay": 30000
     },
     {
-      "name": "server-auto-evolution",
+      "name": "auto-evolution",
       "script": "./farm/workers/server-auto-evolution.mjs",
       "instances": 1,
       "exec_mode": "fork",
       "autorestart": true,
       "max_restarts": 10,
-      "min_uptime": "10s",
+      "min_uptime": "30s",
+      "kill_timeout": 5000,
       "env": {
         "NODE_ENV": "production"
       },
-      "log_file": "/tmp/pm2-server-evolution.log",
-      "error_file": "/tmp/pm2-server-evolution-error.log",
-      "out_file": "/tmp/pm2-server-evolution-out.log",
       "merge_logs": true,
       "max_memory_restart": "300M",
-      "restart_delay": 5000
+      "restart_delay": 30000
     },
     {
-      "name": "market-prediction",
+      "name": "market-worker",
       "script": "./farm/workers/market-prediction-worker.mjs",
       "instances": 1,
       "exec_mode": "fork",
       "autorestart": true,
       "max_restarts": 10,
-      "min_uptime": "10s",
+      "min_uptime": "30s",
+      "kill_timeout": 5000,
       "env": {
         "NODE_ENV": "production"
       },
-      "log_file": "/tmp/pm2-market-prediction.log",
-      "error_file": "/tmp/pm2-market-prediction-error.log",
-      "out_file": "/tmp/pm2-market-prediction-out.log",
       "merge_logs": true,
       "max_memory_restart": "300M",
-      "restart_delay": 10000
+      "restart_delay": 30000
     },
     {
-      "name": "system-monitor",
-      "script": "./farm/monitor/system-monitor.mjs",
+      "name": "depth-analysis",
+      "script": "./farm/workers/ep-depth-analysis-worker.mjs",
       "instances": 1,
       "exec_mode": "fork",
       "autorestart": true,
       "max_restarts": 5,
+      "min_uptime": "60s",
+      "kill_timeout": 5000,
+      "env": {
+        "NODE_ENV": "production",
+        "WORKER_ID": "ep-depth-analysis"
+      },
+      "merge_logs": true,
+      "max_memory_restart": "300M",
+      "restart_delay": 60000
+    },
+    {
+      "name": "options-scalper",
+      "script": "./farm/workers/options-scalping-engine.mjs",
+      "instances": 1,
+      "exec_mode": "fork",
+      "autorestart": true,
+      "max_restarts": 10,
       "min_uptime": "30s",
+      "kill_timeout": 5000,
       "env": {
         "NODE_ENV": "production"
       },
-      "log_file": "/tmp/pm2-system-monitor.log",
-      "error_file": "/tmp/pm2-system-monitor-error.log",
-      "out_file": "/tmp/pm2-system-monitor-out.log",
+      "merge_logs": true,
+      "max_memory_restart": "300M",
+      "restart_delay": 30000
+    },
+    {
+      "name": "paper-tracker",
+      "script": "./farm/workers/paper-portfolio-tracker.mjs",
+      "instances": 1,
+      "exec_mode": "fork",
+      "autorestart": true,
+      "max_restarts": 10,
+      "min_uptime": "30s",
+      "kill_timeout": 5000,
+      "env": {
+        "NODE_ENV": "production"
+      },
       "merge_logs": true,
       "max_memory_restart": "200M",
-      "restart_delay": 10000
+      "restart_delay": 30000
+    },
+    {
+      "name": "music-worker",
+      "script": "./farm/workers/music-continuous-worker.mjs",
+      "instances": 1,
+      "exec_mode": "fork",
+      "autorestart": true,
+      "max_restarts": 10,
+      "min_uptime": "30s",
+      "kill_timeout": 5000,
+      "env": {
+        "NODE_ENV": "production"
+      },
+      "merge_logs": true,
+      "max_memory_restart": "300M",
+      "restart_delay": 30000
+    },
+    {
+      "name": "cross-intel",
+      "script": "./farm/workers/cross-engine-intel-worker.mjs",
+      "instances": 1,
+      "exec_mode": "fork",
+      "autorestart": true,
+      "max_restarts": 10,
+      "min_uptime": "30s",
+      "kill_timeout": 5000,
+      "env": {
+        "NODE_ENV": "production"
+      },
+      "merge_logs": true,
+      "max_memory_restart": "300M",
+      "restart_delay": 30000
+    },
+    {
+      "name": "universal-bench",
+      "script": "./farm/workers/universal-benchmark-worker.mjs",
+      "instances": 1,
+      "exec_mode": "fork",
+      "autorestart": true,
+      "max_restarts": 10,
+      "min_uptime": "30s",
+      "kill_timeout": 5000,
+      "env": {
+        "NODE_ENV": "production"
+      },
+      "merge_logs": true,
+      "max_memory_restart": "300M",
+      "restart_delay": 60000
     }
   ]
 }
