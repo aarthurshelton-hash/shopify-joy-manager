@@ -35,6 +35,9 @@ jobs:
         node-version: '18'
     - run: npm ci
     - run: npm run build
+      env:
+        VITE_SUPABASE_URL: https://ezvfslkjyjsqycztyfxh.supabase.co
+        VITE_SUPABASE_PUBLISHABLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV6dmZzbGtqeWpzcXljenR5ZnhoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAwODMwMjksImV4cCI6MjA4NTY1OTAyOX0.pEFtxIisThrkNbXJPg0UThjscT0qqpxmv970PihyWMo
     - uses: peaceiris/actions-gh-pages@v4
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
