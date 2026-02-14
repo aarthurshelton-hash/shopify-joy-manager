@@ -141,8 +141,91 @@ export function getGamePhaseBoost(moveNumber) {
   if (moveNumber >= 18 && moveNumber <= 32) return 1.08;  // Sweet spot: rich middlegame
   if (moveNumber >= 12 && moveNumber <= 40) return 1.04;  // Good range: still informative
   if (moveNumber >= 8  && moveNumber <= 50) return 1.00;  // Neutral: adequate data
-  if (moveNumber < 8)                       return 0.94;  // Too early: opening book territory
-  return 0.92;                                             // Very late: endgame shuffling
+  // v16: DATA-DRIVEN — moves 1-10 are at 47.6% accuracy (below 3-class random)
+  // Penalize EP weight hard so SF eval drives the prediction in the opening
+  if (moveNumber <= 5)                      return 0.70;  // Moves 1-5: pure opening book, EP is noise
+  if (moveNumber <= 10)                     return 0.80;  // Moves 6-10: still bookish, 47.6% acc
+  return 0.88;                                             // 51+: endgame shuffling, 51.3% acc
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// 3b. DRAW PROPENSITY DETECTION
+// Data shows: when hybrid confidence ≤30, actual draw rate is 21-23%
+// (2x the baseline 11.6%). Certain archetypes have even higher draw rates:
+//   central_domination: 22%, positional_squeeze: 13.3%, piece_harmony: 17.6%
+// Instead of guessing a side and being wrong, predict "draw".
+// ═══════════════════════════════════════════════════════════════
+
+const HIGH_DRAW_ARCHETYPES = new Set([
+  'central_domination',   // 22.0% draws
+  'piece_harmony',        // 17.6% draws
+  'positional_squeeze',   // 13.3% draws
+  'closed_maneuvering',   // 10.6% draws
+]);
+
+// Archetypes with zero or negative edge over baseline — EP adds nothing
+const ZERO_EDGE_ARCHETYPES = new Set([
+  'piece_harmony',            // -0.3pp edge
+  'kingside_bishop_battery',  // -0.4pp edge
+  'central_knight_outpost',   // 0.0pp edge
+  'development_focus',        // 8.4% in opening — catastrophic
+]);
+
+/**
+ * Determine whether a position should be predicted as "draw" based on
+ * confidence, archetype, and game phase. Returns an object with the
+ * recommendation and adjusted confidence.
+ * 
+ * THIS NEVER SKIPS A GAME — it only changes what we predict.
+ * 
+ * @param {string} archetype - Classified archetype
+ * @param {number} moveNumber - Move number
+ * @param {number} hybridConf - Current hybrid confidence (0-1 scale)
+ * @param {Object} votes - Current vote distribution {white_wins, black_wins, draw}
+ * @returns {{ shouldPredictDraw: boolean, adjustedConf: number, reason: string }}
+ */
+export function getPostFusionDrawGate(archetype, moveNumber, hybridConf, votes) {
+  // Signal 1: Very low confidence → system is uncertain → draws are 2x more likely
+  const isLowConf = hybridConf <= 0.30;
+  
+  // Signal 2: High-draw archetype
+  const isHighDrawArch = HIGH_DRAW_ARCHETYPES.has(archetype);
+  
+  // Signal 3: Vote spread is tight (no clear winner among engines)
+  const voteValues = Object.values(votes || {});
+  const maxVote = Math.max(...voteValues);
+  const minVote = Math.min(...voteValues);
+  const tightSpread = voteValues.length >= 3 && (maxVote - minVote) < 0.15;
+  
+  // Signal 4: Opening phase where EP is weakest
+  const isEarlyOpening = moveNumber <= 7;
+  
+  // Combined: need at least 2 signals to override to draw
+  const drawSignals = (isLowConf ? 1 : 0) + (isHighDrawArch ? 1 : 0) + (tightSpread ? 1 : 0) + (isEarlyOpening ? 0.5 : 0);
+  
+  if (isLowConf && drawSignals >= 1.5) {
+    return {
+      shouldPredictDraw: true,
+      adjustedConf: Math.min(0.35, hybridConf * 1.1),
+      reason: `low_conf(${hybridConf.toFixed(2)})` + (isHighDrawArch ? '+high_draw_arch' : '') + (tightSpread ? '+tight_spread' : ''),
+    };
+  }
+  
+  return { shouldPredictDraw: false, adjustedConf: hybridConf, reason: '' };
+}
+
+/**
+ * Get confidence dampening for zero-edge archetypes.
+ * These archetypes perform no better than baseline — reduce confidence
+ * so they don't pollute downstream learning with false signal.
+ * 
+ * @param {string} archetype
+ * @returns {number} Multiplier (0.7 - 1.0)
+ */
+export function getArchetypeEdgeDampener(archetype) {
+  if (ZERO_EDGE_ARCHETYPES.has(archetype)) return 0.75;
+  return 1.0;
 }
 
 
@@ -191,10 +274,15 @@ export function getIntelligentFusionWeights(archetype, timeControl, moveNumber, 
   // Widened to [0.55, 1.45] — archetype + player intelligence drives fusion weights
   const combinedBoost = Math.max(0.55, Math.min(1.45, archetypeBoost * timeBoost * phaseBoost * playerBoostVal));
   
-  // Apply boost to enhanced weight
+  // v16: In deep endgame (51+), boost SF weight — material is decisive
+  // Data: SF at 51.0-52.5% in endgame, hybrid at 51.3-53.0%
+  // But the combined signal with more SF weight should improve
+  const sfEndgameBoost = moveNumber >= 51 ? 1.25 : moveNumber >= 41 ? 1.10 : 1.0;
+  
+  // Apply boost to enhanced weight, endgame boost to SF
   const rawBaseline = 0.25;
   const rawEnhanced = 0.45 * combinedBoost;
-  const rawSf = 0.30;
+  const rawSf = 0.30 * sfEndgameBoost;
   
   // Renormalize so weights sum to 1.0
   const total = rawBaseline + rawEnhanced + rawSf;

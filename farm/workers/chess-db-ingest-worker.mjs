@@ -37,7 +37,7 @@ import { createInterface } from 'readline';
 import { spawn, exec } from 'child_process';
 import { promisify } from 'util';
 import crypto from 'crypto';
-import { getIntelligentFusionWeights } from './fusion-intelligence.mjs';
+import { getIntelligentFusionWeights, getPostFusionDrawGate, getArchetypeEdgeDampener } from './fusion-intelligence.mjs';
 import { refreshPlayerIntelligence } from './player-intelligence.mjs';
 import fs from 'fs';
 const execAsync = promisify(exec);
@@ -592,7 +592,7 @@ async function processGame(game, moveNumber, epEngine, source) {
   votes[sf17Prediction] += fw.sfWeight * sfConf;
   
   const sortedVotes = Object.entries(votes).sort((a, b) => b[1] - a[1]);
-  const hybridPrediction = sortedVotes[0][0];
+  let hybridPrediction = sortedVotes[0][0];
   const hybridRawConf = sortedVotes[0][1] / (sortedVotes[0][1] + sortedVotes[1][1] + sortedVotes[2][1] + 0.001);
   
   const allAgree = baselineResult.predictedWinner === enhancedResult.predictedWinner &&
@@ -604,6 +604,24 @@ async function processGame(game, moveNumber, epEngine, source) {
   if (allAgree) hybridConf = Math.min(0.69, hybridConf * 1.15);
   else if (!twoAgree) hybridConf *= 0.75;
   hybridConf = Math.min(0.69, Math.max(0.15, hybridConf));
+  
+  // v16: POST-FUSION INTELLIGENCE GATES
+  // Games are ALWAYS processed — these change the PREDICTION, not whether we process
+  const fusionArch = enhancedSig ? classifyArchetype32(enhancedSig) : baselineSig.archetype;
+  
+  // Gate 1: Draw detection — low conf + high-draw archetype → predict draw
+  const drawGate = getPostFusionDrawGate(fusionArch, moveNumber, hybridConf, votes);
+  if (drawGate.shouldPredictDraw) {
+    hybridPrediction = 'draw';
+    hybridConf = drawGate.adjustedConf;
+  }
+  
+  // Gate 2: Zero-edge archetype dampener
+  hybridConf *= getArchetypeEdgeDampener(fusionArch);
+  hybridConf = Math.min(0.69, Math.max(0.15, hybridConf));
+  
+  // Recompute correctness after potential draw override
+  const hybridCorrect = hybridPrediction === actualOutcome;
   
   const enhDelta = (enhancedResult.predictedWinner === actualOutcome && baselineResult.predictedWinner !== actualOutcome) ? 1 :
                    (enhancedResult.predictedWinner !== actualOutcome && baselineResult.predictedWinner === actualOutcome) ? -1 : 0;

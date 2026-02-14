@@ -28,7 +28,7 @@ import {
 import { FARM_CONFIG, THROUGHPUT } from '../config/optimizedFarmConfig.mjs';
 import { fetchLichessPuzzleBatch, processPuzzle, loadCalibration, updateCalibration } from './puzzleArchetypeCalibrator.mjs';
 import { savePredictionLocal, getLocalStats } from '../lib/simpleStorage.mjs';
-import { getIntelligentFusionWeights, updateLiveArchetypeAccuracy } from './fusion-intelligence.mjs';
+import { getIntelligentFusionWeights, updateLiveArchetypeAccuracy, getPostFusionDrawGate, getArchetypeEdgeDampener } from './fusion-intelligence.mjs';
 import { refreshPlayerIntelligence, getPlayerIntelSummary } from './player-intelligence.mjs';
 import { computeLiveArchetypeWeights, saveLiveWeights, loadLiveWeights, logWeightComparison, loadPuzzleCalibration, mergePuzzleCalibration } from '../lib/liveArchetypeWeights.mjs';
 import { createHash } from 'crypto';
@@ -1268,9 +1268,20 @@ async function runBenchmarkCycle(epEngine) {
       fusionScores[baselinePred.predictedWinner] += fw.baselineWeight;
       fusionScores[enhancedPred.predictedWinner] += fw.enhancedWeight;
       fusionScores[sf17Prediction] += fw.sfWeight;
-      const hybridPrediction = Object.entries(fusionScores)
+      let hybridPrediction = Object.entries(fusionScores)
         .sort((a, b) => b[1] - a[1])[0][0];
-      const hybridConfidence = Math.max(...Object.values(fusionScores));
+      let hybridConfidence = Math.max(...Object.values(fusionScores));
+      
+      // v16: POST-FUSION INTELLIGENCE GATES
+      // Games are ALWAYS processed — these change the PREDICTION, not whether we process
+      const drawGate = getPostFusionDrawGate(fusionArchetype, moveNumber, hybridConfidence, fusionScores);
+      if (drawGate.shouldPredictDraw) {
+        hybridPrediction = 'draw';
+        hybridConfidence = drawGate.adjustedConf;
+      }
+      hybridConfidence *= getArchetypeEdgeDampener(fusionArchetype);
+      hybridConfidence = Math.max(0.15, hybridConfidence);
+      
       const hybridCorrect = hybridPrediction === actualOutcome;
       
       if (baselineCorrect) stats.epCorrect++;
