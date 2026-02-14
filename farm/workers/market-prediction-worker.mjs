@@ -75,9 +75,13 @@ if (sqlPool) sqlPool.on('error', (err) => console.error(`[MARKET-POOL] ${err.mes
 // v15: SYMBOL UNIVERSE — data-driven, only symbols with demonstrated edge
 // Removed (Feb 14, 2026): ALL forex (0-1% on 2000+ resolved), ALL intl indices (0%),
 // European indices (0%), bond yields (0%). These were pure pollution.
-const STOCK_SYMBOLS = ['AMD', 'AMZN', 'MSFT', 'NVDA', 'AAPL', 'GOOGL', 'META', 'SPY', 'QQQ'];
+// v16 audit (24K+ resolved): AMD 48.2%, AMZN 38.6%, MSFT 35.9%, NVDA 35.0%, META 34.4%
+// Removed: AAPL 27.8%, GOOGL 24.1%, SPY 20.4%, QQQ 35.3% (borderline but low edge)
+const STOCK_SYMBOLS = ['AMD', 'AMZN', 'MSFT', 'NVDA', 'META'];
 const FOREX_SYMBOLS = []; // KILLED: 0.2-1.1% accuracy on 2000+ resolved. No edge, pure noise.
-const COMMODITY_SYMBOLS = ['GC=F', 'SI=F', 'CL=F', 'NG=F', 'HG=F']; // Gold 39.8%, Silver 53.5%, Oil 39.8%, NatGas 53.0%, Copper 39.5%
+// v16 audit: SI=F 53.5%, NG=F 53.0%, CL=F 39.8%, HG=F 39.5% — keep.
+// Removed: GC=F 15.3% — way below random, no edge.
+const COMMODITY_SYMBOLS = ['SI=F', 'CL=F', 'NG=F', 'HG=F'];
 const INDEX_SYMBOLS = []; // KILLED: ^FTSE 0%, ^GDAXI 0%. Re-enable when model handles intl hours.
 const INTL_INDEX_SYMBOLS = { asia_pacific: [], middle_east: [], canada: [] }; // KILLED: all 0%. Re-enable with proper timezone/session modeling.
 const BOND_SYMBOLS = [];
