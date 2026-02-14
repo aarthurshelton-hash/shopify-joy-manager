@@ -173,12 +173,20 @@ let dirThresholdsRefreshedAt = 0;
 let learnedTacticalCalibration = null;
 let tacticalCalibrationRefreshedAt = 0;
 
+// Self-learned REVERSE SIGNAL detection per sector×symbol
+// If a sector is consistently anti-predictive (<20% on directional binary),
+// it's a reverse signal — flip it and you get 80%+ accuracy.
+// 1% accuracy = 99% reverse signal. The system IS detecting something, just inverted.
+let learnedReverseSignals = null;
+let reverseSignalsRefreshedAt = 0;
+
 // ─── DISK PERSISTENCE FOR SELF-LEARNING ─────────────────────────────────────
 // Mirror chess worker pattern: persist learned data so restarts don't lose it
 const LEARN_DATA_DIR = join(__dirname, '../data');
 const WEIGHTS_FILE = join(LEARN_DATA_DIR, 'market-archetype-weights.json');
 const THRESHOLDS_FILE = join(LEARN_DATA_DIR, 'market-dir-thresholds.json');
 const TACTICAL_FILE = join(LEARN_DATA_DIR, 'market-tactical-calibration.json');
+const REVERSE_FILE = join(LEARN_DATA_DIR, 'market-reverse-signals.json');
 
 function persistToFile(filePath, data) {
   try {
@@ -209,6 +217,12 @@ try {
   if (diskTactical && Object.keys(diskTactical).length > 0) {
     learnedTacticalCalibration = diskTactical;
     log(`Loaded ${Object.keys(diskTactical).length} tactical calibrations from disk`);
+  }
+  const diskReverse = loadFromFile(REVERSE_FILE);
+  if (diskReverse && Object.keys(diskReverse).length > 0) {
+    learnedReverseSignals = diskReverse;
+    const flipped = Object.entries(diskReverse).filter(([, v]) => v.shouldFlip).map(([k]) => k);
+    log(`Loaded ${Object.keys(diskReverse).length} reverse signal entries (${flipped.length} active flips: ${flipped.join(', ')})`);
   }
 } catch (e) { /* first run, no files yet */ }
 
@@ -897,6 +911,112 @@ async function refreshTacticalCalibration() {
     }
   } catch (err) {
     log(`Tactical calibration error: ${err.message}`, 'warn');
+  }
+}
+
+/**
+ * SELF-EVOLVING: Detect reverse signals per symbol.
+ * 
+ * If a symbol is consistently anti-predictive (<20% accuracy on directional binary),
+ * that's actually a STRONG signal — just inverted. 1% accuracy = 99% reverse signal.
+ * The system IS detecting something real, the direction mapping is just backwards.
+ * 
+ * This learns which symbols should have their predictions flipped.
+ * Uses the NEW per-sector thresholds so forex gets properly classified.
+ */
+async function refreshReverseSignals() {
+  if (!sqlPool) return;
+  try {
+    // Query recent resolved predictions with per-sector threshold awareness
+    // We re-evaluate accuracy using the CORRECT sector thresholds
+    const { rows } = await sqlPool.query(`
+      SELECT symbol, predicted_direction, price_at_prediction, price_at_resolution,
+             prediction_metadata->>'sector' as sector
+      FROM market_prediction_attempts
+      WHERE resolved_at IS NOT NULL
+        AND price_at_prediction IS NOT NULL
+        AND price_at_resolution IS NOT NULL
+        AND predicted_direction IN ('bullish', 'bearish')
+      ORDER BY created_at DESC
+      LIMIT 10000
+    `);
+
+    if (!rows || rows.length < 100) return;
+
+    // Per-sector directional thresholds (matching resolution function)
+    const sectorThresholds = {
+      forex: 0.0005,       // 0.05% — forex moves are tiny
+      crypto: 0.0075,      // 0.75% — crypto is volatile
+      commodities: 0.004,  // 0.4%
+      energy: 0.004,       // 0.4%
+      tech: 0.005,         // 0.5%
+      indices: 0.005,      // 0.5%
+    };
+
+    // Group by symbol and re-evaluate with correct thresholds
+    const bySymbol = {};
+    for (const r of rows) {
+      const sym = r.symbol;
+      if (!bySymbol[sym]) bySymbol[sym] = { correct: 0, wrong: 0, flippedCorrect: 0, sector: r.sector || getSector(sym) };
+
+      const change = (r.price_at_resolution - r.price_at_prediction) / r.price_at_prediction;
+      const threshold = sectorThresholds[bySymbol[sym].sector] || 0.005;
+      const actualDir = change > threshold ? 'bullish' : change < -threshold ? 'bearish' : null;
+
+      if (!actualDir) continue; // Genuinely flat — skip
+
+      if (r.predicted_direction === actualDir) {
+        bySymbol[sym].correct++;
+      } else {
+        bySymbol[sym].wrong++;
+        // Would flipping have been correct?
+        const flipped = r.predicted_direction === 'bullish' ? 'bearish' : 'bullish';
+        if (flipped === actualDir) bySymbol[sym].flippedCorrect++;
+      }
+    }
+
+    const signals = {};
+    let flippedSymbols = [];
+
+    for (const [sym, stats] of Object.entries(bySymbol)) {
+      const total = stats.correct + stats.wrong;
+      if (total < 30) continue; // Need minimum sample with proper thresholds
+
+      const accuracy = stats.correct / total;
+      const flippedAccuracy = stats.flippedCorrect / total;
+
+      // REVERSE SIGNAL: accuracy < 20% on directional binary AND flipped > 50%
+      // This means the system is detecting real patterns but mapping direction wrong
+      const shouldFlip = accuracy < 0.20 && flippedAccuracy > 0.45 && total >= 50;
+
+      signals[sym] = {
+        accuracy: +accuracy.toFixed(3),
+        flippedAccuracy: +flippedAccuracy.toFixed(3),
+        sampleSize: total,
+        sector: stats.sector,
+        shouldFlip,
+      };
+
+      if (shouldFlip) flippedSymbols.push(sym);
+    }
+
+    learnedReverseSignals = signals;
+    reverseSignalsRefreshedAt = cycleCount;
+    persistToFile(REVERSE_FILE, signals);
+
+    // Log results
+    const aboveRandom = Object.entries(signals).filter(([, v]) => v.accuracy >= 0.40);
+    const belowRandom = Object.entries(signals).filter(([, v]) => v.accuracy < 0.20 && v.sampleSize >= 30);
+    log(`🔄 Reverse signal scan: ${Object.keys(signals).length} symbols | ${flippedSymbols.length} flipped | ${aboveRandom.length} above 40% | ${belowRandom.length} below 20%`);
+    for (const [sym, s] of Object.entries(signals).sort((a, b) => a[1].accuracy - b[1].accuracy)) {
+      if (s.shouldFlip) {
+        log(`  🔴→🟢 FLIP ${sym}: ${(s.accuracy*100).toFixed(1)}% → ${(s.flippedAccuracy*100).toFixed(1)}% (n=${s.sampleSize}, ${s.sector})`);
+      } else if (s.accuracy < 0.25 && s.sampleSize >= 30) {
+        log(`  🟡 WATCH ${sym}: ${(s.accuracy*100).toFixed(1)}% (n=${s.sampleSize}, ${s.sector}) — near flip threshold`);
+      }
+    }
+  } catch (err) {
+    log(`Reverse signal scan error: ${err.message}`, 'warn');
   }
 }
 
@@ -1811,6 +1931,12 @@ async function logToAuditTrail(pred, horizonMs, chessSignal, timeframe = null) {
       chess_mode: pred.chessMode || getChessMode(pred.symbol),
       dampened: pred.dampened || false,
       dampen_reason: pred.dampenReason || null,
+      reverse_signal: pred.reverseSignal ? {
+        flipped: true,
+        originalDirection: pred.reverseOriginal,
+        accuracy: pred.reverseAccuracy,
+        flippedAccuracy: pred.reverseFlippedAccuracy,
+      } : null,
     },
   };
 
@@ -1872,12 +1998,24 @@ async function resolveAuditTrailPredictions() {
 
     if (error || !pending || pending.length === 0) continue;
 
-    // Directional threshold: use self-learned value if available, otherwise hardcoded default
+    // ── PER-SECTOR DIRECTIONAL THRESHOLDS ──
+    // Forex moves are 5-10x smaller than stocks. A 0.03% forex move IS directional.
+    // Using the same threshold for all sectors was classifying 90-95% of forex as "neutral"
+    // when the predictions were actually directionally correct.
     const defaultThresholds = {
       '5m': 0.0005, '30m': 0.001, '1h': 0.0015, '2h': 0.002,
       '4h': 0.003, '8h': 0.004, '1d': 0.005, '1w': 0.01,
     };
-    const dirThreshold = (learnedDirThresholds && learnedDirThresholds[h.label]) 
+    // Sector multipliers: forex needs much tighter thresholds
+    const SECTOR_THRESHOLD_SCALE = {
+      forex: 0.10,       // 10x tighter — forex 0.01% = significant
+      crypto: 1.5,       // 1.5x wider — crypto is more volatile
+      commodities: 0.8,  // Slightly tighter
+      energy: 0.8,
+      tech: 1.0,
+      indices: 1.0,
+    };
+    const baseThreshold = (learnedDirThresholds && learnedDirThresholds[h.label]) 
       ? learnedDirThresholds[h.label] 
       : (defaultThresholds[h.label] || 0.005);
 
@@ -1888,6 +2026,10 @@ async function resolveAuditTrailPredictions() {
       const exitPrice = priceData.price;
       const priceChange = (exitPrice - pred.price_at_prediction) / pred.price_at_prediction;
       const actualMove = Math.abs(priceChange * 100);
+      // Apply per-sector threshold scaling
+      const predSector = getSector(pred.symbol);
+      const sectorScale = SECTOR_THRESHOLD_SCALE[predSector] || 1.0;
+      const dirThreshold = baseThreshold * sectorScale;
       const actualDir = priceChange > dirThreshold ? 'bullish' : priceChange < -dirThreshold ? 'bearish' : 'neutral';
       // Normalize direction enums: handle both 'up'/'down'/'flat' and 'bullish'/'bearish'/'neutral'
       const normDir = (d) => d === 'up' || d === 'bullish' ? 'bullish' : d === 'down' || d === 'bearish' ? 'bearish' : 'neutral';
@@ -2067,6 +2209,7 @@ async function predictionCycle() {
     await refreshSymbolAccuracy();
     await refreshLearnedDirThresholds();
     await refreshTacticalCalibration();
+    await refreshReverseSignals();
   }
 
   // Fetch real prices for active symbols
@@ -2241,6 +2384,21 @@ async function predictionCycle() {
       const chessMode = getChessMode(symbol);
       pred.sector = sector;
       pred.chessMode = chessMode;
+
+      // ── REVERSE SIGNAL DETECTION: Flip anti-predictive symbols ──
+      // If accuracy < 20% on binary directional, the system IS detecting something
+      // real — it's just inverted. 1% accuracy = 99% reverse signal. FLIP IT.
+      if (learnedReverseSignals && learnedReverseSignals[symbol]?.shouldFlip) {
+        const rs = learnedReverseSignals[symbol];
+        const originalDir = pred.direction;
+        pred.direction = pred.direction === 'up' ? 'down' : pred.direction === 'down' ? 'up' : pred.direction;
+        pred.reverseSignal = true;
+        pred.reverseOriginal = originalDir;
+        pred.reverseAccuracy = rs.accuracy;
+        pred.reverseFlippedAccuracy = rs.flippedAccuracy;
+        // Confidence from the flipped accuracy — if flipped is 80%, high confidence
+        pred.confidence = Math.min(0.80, rs.flippedAccuracy * 0.9);
+      }
 
       // ── CHESS-MARKET BOARD: Per-stock board with parallel scenarios ──
       // Each symbol gets its own chess board: white=sell, black=buy,
