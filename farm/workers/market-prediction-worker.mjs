@@ -1899,6 +1899,49 @@ function classifyMarketAsChess(signature) {
   return { chessArchetype: 'positional_squeeze', ...CHESS_ARCHETYPE_PROVEN.positional_squeeze };
 }
 
+// ─── TRADE GRADE SYSTEM ──────────────────────────────────────────────────────
+// Two-track: LEARN from everything, TRADE only the best.
+// A-grade: Multiple high-confidence signals align. Hunt these.
+// B-grade: Decent pattern, moderate confidence. Consider.
+// C-grade: Learning value only. Record but don't trade.
+//
+// From 24K+ resolved predictions + 1.1M chess games:
+const A_GRADE_ARCHETYPES = new Set(['false_breakout']);  // 60% market accuracy
+const A_GRADE_CHESS_RESONANCE = new Set(['sacrificial_queenside_break', 'sacrificial_kingside_assault']); // 63-67% chess accuracy
+const B_GRADE_ARCHETYPES = new Set(['cultural_harmony', 'trap_queen_sac', 'overbought_fade', 'gap_continuation_up']);
+const C_GRADE_ARCHETYPES = new Set([
+  'bullish_momentum', 'mean_reversion_up', 'mean_reversion_down', 'regime_shift_down',
+  'blunder_free_queen', 'castling_reposition', 'institutional_accumulation', 'oversold_bounce',
+]);
+
+function computeTradeGrade(pred, chessSignal) {
+  const arch = pred.archetype;
+  const conf = pred.confidence;
+  const chessArch = chessSignal?.archetype;
+  const chessAcc = chessSignal?.accuracy || 0;
+
+  // C-grade: Known bad archetypes — learn only
+  if (C_GRADE_ARCHETYPES.has(arch)) return { grade: 'C', reason: 'low_accuracy_archetype' };
+  if (conf < 0.45) return { grade: 'C', reason: 'low_confidence' };
+
+  // A-grade: Proven archetype + high confidence + chess resonance alignment
+  const hasAGradeArch = A_GRADE_ARCHETYPES.has(arch);
+  const hasChessResonance = A_GRADE_CHESS_RESONANCE.has(chessArch) && chessAcc >= 0.60;
+  const highConf = conf >= 0.60;
+
+  if (hasAGradeArch && highConf) return { grade: 'A', reason: 'proven_archetype+high_conf' };
+  if (hasAGradeArch && hasChessResonance) return { grade: 'A', reason: 'proven_archetype+chess_resonance' };
+  if (highConf && hasChessResonance) return { grade: 'A', reason: 'high_conf+chess_resonance' };
+
+  // B-grade: Decent archetype or moderate confidence
+  if (B_GRADE_ARCHETYPES.has(arch) && conf >= 0.50) return { grade: 'B', reason: 'decent_archetype+moderate_conf' };
+  if (conf >= 0.55) return { grade: 'B', reason: 'moderate_high_conf' };
+  if (hasChessResonance) return { grade: 'B', reason: 'chess_resonance_only' };
+
+  // Default: C-grade (learn only)
+  return { grade: 'C', reason: 'default' };
+}
+
 // ─── AUDIT TRAIL (market_prediction_attempts) ────────────────────────────────
 async function logToAuditTrail(pred, horizonMs, chessSignal, timeframe = null) {
   // Use timeframe label if available, otherwise fall back to horizon map
@@ -2001,6 +2044,7 @@ async function logToAuditTrail(pred, horizonMs, chessSignal, timeframe = null) {
         passes_confidence: passesConfidenceGate,
         passes_archetype: passesArchetypeGate,
         tradeable: passesConfidenceGate && passesArchetypeGate,
+        trade_grade: computeTradeGrade(pred, chessSignal),
       },
       // v12.1: Sector intelligence — per-sector archetype learning
       sector: pred.sector || getSector(pred.symbol),
