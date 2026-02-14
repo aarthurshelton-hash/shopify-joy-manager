@@ -37,7 +37,7 @@ import { createInterface } from 'readline';
 import { spawn, exec } from 'child_process';
 import { promisify } from 'util';
 import crypto from 'crypto';
-import { getIntelligentFusionWeights, getPostFusionDrawGate, getArchetypeEdgeDampener } from './fusion-intelligence.mjs';
+import { getIntelligentFusionWeights, getPostFusionDrawGate, getArchetypeEdgeDampener, shouldSuppressEnhancedDraw } from './fusion-intelligence.mjs';
 import { refreshPlayerIntelligence } from './player-intelligence.mjs';
 import fs from 'fs';
 const execAsync = promisify(exec);
@@ -587,9 +587,19 @@ async function processGame(game, moveNumber, epEngine, source) {
   const enhConf = enhancedResult.confidence;
   const sfConf = hasRealEval ? Math.min(0.95, 0.5 + Math.abs(sfEvalCp) / 500) : 0.3;
   
-  votes[baselineResult.predictedWinner] += fw.baselineWeight * baseConf;
-  votes[enhancedResult.predictedWinner] += fw.enhancedWeight * enhConf;
-  votes[sf17Prediction] += fw.sfWeight * sfConf;
+  // v17: Enhanced draw suppression — enhanced predicts "draw" 27-35% on archetypes
+  // where draws only happen 4-7%. These 2.7% accuracy predictions are pure poison.
+  // When suppressed, redistribute enhanced's weight to baseline (61.7% > enhanced 59.3%).
+  const drawSuppress = shouldSuppressEnhancedDraw(enhancedResult.predictedWinner, fusionArchetype);
+  if (drawSuppress.suppress) {
+    // Zero enhanced vote, give its weight to baseline
+    votes[baselineResult.predictedWinner] += (fw.baselineWeight + fw.enhancedWeight) * baseConf;
+    votes[sf17Prediction] += fw.sfWeight * sfConf;
+  } else {
+    votes[baselineResult.predictedWinner] += fw.baselineWeight * baseConf;
+    votes[enhancedResult.predictedWinner] += fw.enhancedWeight * enhConf;
+    votes[sf17Prediction] += fw.sfWeight * sfConf;
+  }
   
   const sortedVotes = Object.entries(votes).sort((a, b) => b[1] - a[1]);
   let hybridPrediction = sortedVotes[0][0];

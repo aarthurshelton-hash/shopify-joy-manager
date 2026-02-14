@@ -230,6 +230,71 @@ export function getArchetypeEdgeDampener(archetype) {
 
 
 // ═══════════════════════════════════════════════════════════════
+// 3b-2. ENHANCED DRAW SUPPRESSION (v17)
+// Enhanced 8-quad has a massive false draw bias on certain archetypes.
+// It predicts "draw" ~30% of the time when actual draws are 4-7%.
+// These draw predictions are 2.7-3.0% accurate — pure poison.
+//
+// Data from 1,137,597 labeled games:
+//   balanced_flow:    EN predicts draw 26.7% → actual draw 4.0% → 2.7% acc
+//   tactical_melee:   EN predicts draw 34.5% → actual draw 6.7% → 2.9% acc
+//   flank_operations: EN predicts draw 30.6% → actual draw 3.9% → 3.0% acc
+//
+// Without draw predictions, enhanced is GOOD on these archetypes:
+//   balanced_flow white_wins: 57.0%, black_wins: 64.3%
+//   tactical_melee white_wins: 53.9%, black_wins: 59.0%
+//
+// Fix: when enhanced predicts "draw" on a low-draw archetype,
+// suppress its vote in the fusion. The fusion redistributes weight
+// to baseline (which never predicts draw and hits 60.6% on these).
+// ═══════════════════════════════════════════════════════════════
+
+// Actual draw rates by archetype (from 1.15M games)
+const ARCHETYPE_DRAW_RATES = {
+  balanced_flow: 0.040,          // 4.0% draws
+  tactical_melee: 0.067,         // 6.7% draws
+  flank_operations: 0.039,       // 3.9% draws
+  sacrificial_queenside_break: 0.10,
+  sacrificial_kingside_assault: 0.08,
+  sacrificial_attack: 0.06,
+  kingside_attack: 0.08,
+  queenside_expansion: 0.07,
+  closed_maneuvering: 0.106,
+  central_domination: 0.22,
+  positional_squeeze: 0.133,
+  piece_harmony: 0.176,
+};
+
+/**
+ * Check if enhanced prediction of "draw" should be suppressed in the fusion.
+ * Returns true if enhanced is predicting draw on an archetype where draws
+ * are rare (<10% actual rate) — indicating the draw prediction is noise.
+ *
+ * When suppressed, the caller should zero out enhanced's vote and redistribute
+ * its weight to baseline (the stronger non-draw predictor).
+ *
+ * @param {string} enhancedPrediction - Enhanced engine's prediction
+ * @param {string} archetype - Enhanced archetype classification
+ * @returns {{ suppress: boolean, reason: string }}
+ */
+export function shouldSuppressEnhancedDraw(enhancedPrediction, archetype) {
+  if (enhancedPrediction !== 'draw') {
+    return { suppress: false, reason: '' };
+  }
+  
+  const drawRate = ARCHETYPE_DRAW_RATES[archetype];
+  if (drawRate !== undefined && drawRate < 0.10) {
+    return {
+      suppress: true,
+      reason: `enhanced_draw_on_${archetype}(${(drawRate*100).toFixed(1)}%_actual)`,
+    };
+  }
+  
+  return { suppress: false, reason: '' };
+}
+
+
+// ═══════════════════════════════════════════════════════════════
 // 3c. SF RELIABILITY GATE (v17)
 // The #1 predictor of SF being wrong: its own eval magnitude.
 // When |eval| < 50cp, SF is wrong 65-70% of the time (30-34% acc on 3-way).

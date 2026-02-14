@@ -34,7 +34,7 @@ import { spawn, exec } from 'child_process';
 import { pipeline } from 'stream/promises';
 import { promisify } from 'util';
 import crypto from 'crypto';
-import { getIntelligentFusionWeights } from './fusion-intelligence.mjs';
+import { getIntelligentFusionWeights, shouldSuppressEnhancedDraw } from './fusion-intelligence.mjs';
 const execAsync = promisify(exec);
 
 const __filename = fileURLToPath(import.meta.url);
@@ -661,9 +661,16 @@ async function processGame(game, moveNumber, epEngine) {
   const enhConf = enhancedResult.confidence;
   const sfConf = hasRealEval ? Math.min(0.95, 0.5 + Math.abs(sfEvalCp) / 500) : 0.3;
   
-  votes[baselineResult.predictedWinner] += fw.baselineWeight * baseConf;
-  votes[enhancedResult.predictedWinner] += fw.enhancedWeight * enhConf;
-  votes[sf17Prediction] += fw.sfWeight * sfConf;
+  // v17: Enhanced draw suppression
+  const drawSuppress = shouldSuppressEnhancedDraw(enhancedResult.predictedWinner, fusionArchetype);
+  if (drawSuppress.suppress) {
+    votes[baselineResult.predictedWinner] += (fw.baselineWeight + fw.enhancedWeight) * baseConf;
+    votes[sf17Prediction] += fw.sfWeight * sfConf;
+  } else {
+    votes[baselineResult.predictedWinner] += fw.baselineWeight * baseConf;
+    votes[enhancedResult.predictedWinner] += fw.enhancedWeight * enhConf;
+    votes[sf17Prediction] += fw.sfWeight * sfConf;
+  }
   
   const sortedVotes = Object.entries(votes).sort((a, b) => b[1] - a[1]);
   const hybridPrediction = sortedVotes[0][0];

@@ -28,7 +28,7 @@ import {
 import { FARM_CONFIG, THROUGHPUT } from '../config/optimizedFarmConfig.mjs';
 import { fetchLichessPuzzleBatch, processPuzzle, loadCalibration, updateCalibration } from './puzzleArchetypeCalibrator.mjs';
 import { savePredictionLocal, getLocalStats } from '../lib/simpleStorage.mjs';
-import { getIntelligentFusionWeights, updateLiveArchetypeAccuracy, getPostFusionDrawGate, getArchetypeEdgeDampener } from './fusion-intelligence.mjs';
+import { getIntelligentFusionWeights, updateLiveArchetypeAccuracy, getPostFusionDrawGate, getArchetypeEdgeDampener, shouldSuppressEnhancedDraw } from './fusion-intelligence.mjs';
 import { refreshPlayerIntelligence, getPlayerIntelSummary } from './player-intelligence.mjs';
 import { computeLiveArchetypeWeights, saveLiveWeights, loadLiveWeights, logWeightComparison, loadPuzzleCalibration, mergePuzzleCalibration } from '../lib/liveArchetypeWeights.mjs';
 import { createHash } from 'crypto';
@@ -1265,9 +1265,16 @@ async function runBenchmarkCycle(epEngine) {
       };
       const fw = getIntelligentFusionWeights(fusionArchetype, game.timeControl || null, moveNumber, playerCtx, sfEvalCp);
       const fusionScores = { white_wins: 0, black_wins: 0, draw: 0 };
-      fusionScores[baselinePred.predictedWinner] += fw.baselineWeight;
-      fusionScores[enhancedPred.predictedWinner] += fw.enhancedWeight;
-      fusionScores[sf17Prediction] += fw.sfWeight;
+      // v17: Enhanced draw suppression — kill enhanced's 2.7% accuracy draw predictions
+      const drawSuppress = shouldSuppressEnhancedDraw(enhancedPred.predictedWinner, fusionArchetype);
+      if (drawSuppress.suppress) {
+        fusionScores[baselinePred.predictedWinner] += fw.baselineWeight + fw.enhancedWeight;
+        fusionScores[sf17Prediction] += fw.sfWeight;
+      } else {
+        fusionScores[baselinePred.predictedWinner] += fw.baselineWeight;
+        fusionScores[enhancedPred.predictedWinner] += fw.enhancedWeight;
+        fusionScores[sf17Prediction] += fw.sfWeight;
+      }
       let hybridPrediction = Object.entries(fusionScores)
         .sort((a, b) => b[1] - a[1])[0][0];
       let hybridConfidence = Math.max(...Object.values(fusionScores));
