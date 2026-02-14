@@ -1263,7 +1263,7 @@ async function runBenchmarkCycle(epEngine) {
         blackName: game.blackName || game.players?.black || null,
         platform: game.source || 'lichess',
       };
-      const fw = getIntelligentFusionWeights(fusionArchetype, game.timeControl || null, moveNumber, playerCtx);
+      const fw = getIntelligentFusionWeights(fusionArchetype, game.timeControl || null, moveNumber, playerCtx, sfEvalCp);
       const fusionScores = { white_wins: 0, black_wins: 0, draw: 0 };
       fusionScores[baselinePred.predictedWinner] += fw.baselineWeight;
       fusionScores[enhancedPred.predictedWinner] += fw.enhancedWeight;

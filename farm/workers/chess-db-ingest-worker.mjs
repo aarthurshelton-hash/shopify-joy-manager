@@ -581,7 +581,7 @@ async function processGame(game, moveNumber, epEngine, source) {
     blackName: game.headers.Black || null,
     platform: game.source || 'lichess_db',
   };
-  const fw = getIntelligentFusionWeights(fusionArchetype, game.headers.TimeControl || null, moveNumber, playerCtx);
+  const fw = getIntelligentFusionWeights(fusionArchetype, game.headers.TimeControl || null, moveNumber, playerCtx, hasRealEval ? sfEvalCp : null);
   const votes = { white_wins: 0, black_wins: 0, draw: 0 };
   const baseConf = baselineResult.confidence;
   const enhConf = enhancedResult.confidence;

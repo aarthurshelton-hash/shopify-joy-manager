@@ -230,6 +230,81 @@ export function getArchetypeEdgeDampener(archetype) {
 
 
 // ═══════════════════════════════════════════════════════════════
+// 3c. SF RELIABILITY GATE (v17)
+// The #1 predictor of SF being wrong: its own eval magnitude.
+// When |eval| < 50cp, SF is wrong 65-70% of the time (30-34% acc on 3-way).
+// That means the real answer is one of the 2 options SF DIDN'T pick.
+// Even random between 2 = 50%. EP's pattern recognition is better than
+// random → guaranteed accuracy gain by stripping SF's bad vote.
+//
+// Data from 1,156,558 labeled games:
+//   |eval| < 20cp:  SF 30.7%, EP 40.7% → EP +10.0pp
+//   |eval| < 50cp:  SF 34.3%, EP 45.8% → EP +11.5pp
+//   |eval| < 100cp: SF 50.7%, EP 53.7% → EP +3.0pp
+//   |eval| > 200cp: SF 73.1%, EP 73.2% → tied (trust SF)
+//   |eval| > 500cp: SF 68.9%, EP 69.0% → tied (trust SF)
+//
+// On disagreements specifically:
+//   low_eval + early: EP 56.0% vs SF 17.2% (!!)
+//   low_eval + mid:   EP 48.9% vs SF 25.3%
+//   low_eval + late:  EP 36.3% vs SF 39.0% (only zone SF wins)
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Compute SF reliability multiplier based on eval magnitude and game phase.
+ * When SF eval is near zero, SF is essentially guessing → reduce its weight.
+ * When SF eval is decisive, it knows what it's doing → trust it.
+ *
+ * @param {number|null} sfEvalCp - Stockfish eval in centipawns (absolute value used)
+ * @param {number} moveNumber - Current move number
+ * @returns {{ sfMultiplier: number, redistributeToBaseline: number, reason: string }}
+ */
+export function getSfReliabilityWeight(sfEvalCp, moveNumber) {
+  if (sfEvalCp === null || sfEvalCp === undefined) {
+    return { sfMultiplier: 1.0, redistributeToBaseline: 0, reason: 'no_eval' };
+  }
+
+  const absEval = Math.abs(sfEvalCp);
+  const isEarly = moveNumber <= 25;
+  const isLate = moveNumber > 45;
+
+  let sfMult, reason;
+
+  if (absEval < 20) {
+    // Dead equal: SF 30.7% — wrong 69% of the time
+    // Early: EP 56.0% on disagreements → strip SF almost entirely
+    // Late: SF 39.0% vs EP 36.3% → still reduce but less
+    sfMult = isLate ? 0.35 : isEarly ? 0.10 : 0.15;
+    reason = 'dead_equal';
+  } else if (absEval < 50) {
+    // Slight: SF 34.3% — wrong 66%
+    sfMult = isLate ? 0.45 : isEarly ? 0.20 : 0.30;
+    reason = 'slight_eval';
+  } else if (absEval < 100) {
+    // Small: SF 50.7% — coin flip
+    sfMult = isLate ? 0.75 : isEarly ? 0.50 : 0.65;
+    reason = 'small_eval';
+  } else if (absEval < 200) {
+    // Clear: SF 59.5% — decent, trust normally
+    sfMult = 1.0;
+    reason = 'clear_eval';
+  } else {
+    // Winning/decisive: SF 73%+ — trust it
+    sfMult = 1.15;
+    reason = 'decisive_eval';
+  }
+
+  // When we reduce SF weight, redistribute mostly to baseline (61.7%)
+  // rather than enhanced (59.3%) — baseline is the stronger non-SF engine
+  const sfReduction = (1.0 - sfMult) * 0.30; // How much raw weight we're removing
+  const redistributeToBaseline = sfReduction > 0 ? sfReduction * 0.65 : 0; // 65% of freed weight → baseline
+  // Remaining 35% of freed weight → enhanced (handled in main function)
+
+  return { sfMultiplier: sfMult, redistributeToBaseline, reason };
+}
+
+
+// ═══════════════════════════════════════════════════════════════
 // 4. COMBINED FUSION INTELLIGENCE
 // Single function that computes all boosts and returns adjusted
 // fusion weights. Drop-in replacement for the hardcoded weights.
@@ -249,9 +324,10 @@ export function getArchetypeEdgeDampener(archetype) {
  * @param {string|null} [playerContext.whiteName] - White player name
  * @param {string|null} [playerContext.blackName] - Black player name
  * @param {string|null} [playerContext.platform] - Data source/platform
- * @returns {{ baselineWeight: number, enhancedWeight: number, sfWeight: number, boostFactor: number, playerBoost: number, playerReason: string }}
+ * @param {number|null} [sfEvalCp] - Stockfish eval in centipawns (for SF reliability gate)
+ * @returns {{ baselineWeight: number, enhancedWeight: number, sfWeight: number, boostFactor: number, playerBoost: number, playerReason: string, sfReliability: string }}
  */
-export function getIntelligentFusionWeights(archetype, timeControl, moveNumber, playerContext) {
+export function getIntelligentFusionWeights(archetype, timeControl, moveNumber, playerContext, sfEvalCp) {
   const archetypeBoost = getArchetypeBoost(archetype);
   const timeBoost = getTimeControlBoost(timeControl);
   const phaseBoost = getGamePhaseBoost(moveNumber);
@@ -279,10 +355,16 @@ export function getIntelligentFusionWeights(archetype, timeControl, moveNumber, 
   // But the combined signal with more SF weight should improve
   const sfEndgameBoost = moveNumber >= 51 ? 1.25 : moveNumber >= 41 ? 1.10 : 1.0;
   
-  // Apply boost to enhanced weight, endgame boost to SF
-  const rawBaseline = 0.25;
-  const rawEnhanced = 0.45 * combinedBoost;
-  const rawSf = 0.30 * sfEndgameBoost;
+  // v17: SF RELIABILITY GATE — the biggest single upgrade
+  // When SF eval is near zero, SF is wrong 65-70% of the time.
+  // Strip its vote and let EP pick between the remaining 2 answers.
+  // Even random between 2 = 50% (vs SF's 30-34%). EP is better than random.
+  const sfRel = getSfReliabilityWeight(sfEvalCp !== undefined ? sfEvalCp : null, moveNumber);
+  
+  // Apply boost to enhanced weight, endgame + reliability to SF
+  const rawBaseline = 0.25 + sfRel.redistributeToBaseline; // Gets most of SF's freed weight
+  const rawEnhanced = 0.45 * combinedBoost + (sfRel.redistributeToBaseline > 0 ? sfRel.redistributeToBaseline * 0.538 : 0); // Gets 35% of freed weight (0.35/0.65 ratio)
+  const rawSf = 0.30 * sfEndgameBoost * sfRel.sfMultiplier;
   
   // Renormalize so weights sum to 1.0
   const total = rawBaseline + rawEnhanced + rawSf;
@@ -294,5 +376,6 @@ export function getIntelligentFusionWeights(archetype, timeControl, moveNumber, 
     boostFactor: combinedBoost,
     playerBoost: playerBoostVal,
     playerReason,
+    sfReliability: sfRel.reason,
   };
 }

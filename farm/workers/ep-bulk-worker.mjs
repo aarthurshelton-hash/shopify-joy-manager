@@ -655,7 +655,7 @@ async function processGame(game, moveNumber, epEngine) {
   // ─── v13: INTELLIGENT HYBRID FUSION ───
   // Archetype-specific + time-control-aware + game-phase-aware weights
   const fusionArchetype = enhancedSig?.archetype || baselineSig.archetype;
-  const fw = getIntelligentFusionWeights(fusionArchetype, game.headers.TimeControl || null, moveNumber);
+  const fw = getIntelligentFusionWeights(fusionArchetype, game.headers.TimeControl || null, moveNumber, null, hasRealEval ? sfEvalCp : null);
   const votes = { white_wins: 0, black_wins: 0, draw: 0 };
   const baseConf = baselineResult.confidence;
   const enhConf = enhancedResult.confidence;
