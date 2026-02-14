@@ -28,6 +28,7 @@ import {
 import { FARM_CONFIG, THROUGHPUT } from '../config/optimizedFarmConfig.mjs';
 import { fetchLichessPuzzleBatch, processPuzzle, loadCalibration, updateCalibration } from './puzzleArchetypeCalibrator.mjs';
 import { savePredictionLocal, getLocalStats } from '../lib/simpleStorage.mjs';
+import { getIntelligentFusionWeights } from './fusion-intelligence.mjs';
 import { computeLiveArchetypeWeights, saveLiveWeights, loadLiveWeights, logWeightComparison, loadPuzzleCalibration, mergePuzzleCalibration } from '../lib/liveArchetypeWeights.mjs';
 import { createHash } from 'crypto';
 
@@ -41,13 +42,14 @@ if (fs.existsSync(envPath)) {
 }
 
 // Direct SQL pool - bypasses RLS completely
-// max: 3 per worker (3 workers × 3 = 9 total, safe for Supabase connection limits)
+// v11: Reduced pool size to prevent Supabase pooler exhaustion
+// 3 workers × 2 = 6 connections (was 3×8=24, exhausting 60-conn pooler)
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
-  max: 3,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000,
+  max: 2,
+  idleTimeoutMillis: 10000,
+  connectionTimeoutMillis: 15000,
 });
 
 // Prevent pool errors from crashing the process
@@ -61,9 +63,11 @@ async function resilientQuery(queryText, values, retries = 3) {
     try {
       return await pool.query(queryText, values);
     } catch (err) {
+      // Don't retry constraint violations — they'll never succeed on retry
+      if (err.code === '23505' || err.code === '23514' || err.code === '23502') throw err;
       if (attempt === retries) throw err;
       const delay = attempt * 2000;
-      console.log(`[POOL] Query failed (attempt ${attempt}/${retries}): ${err.message}, retrying in ${delay}ms...`);
+      console.log(`[POOL] Query failed (attempt ${attempt}/${retries}): ${err.message} [query: ${queryText.replace(/\s+/g,' ').slice(0,60)}...], retrying in ${delay}ms...`);
       await new Promise(r => setTimeout(r, delay));
     }
   }
@@ -85,7 +89,8 @@ const workerId = process.env.WORKER_ID || 'ep-farm-1';
 const workerType = 'ep-benchmark-enhanced';
 
 // Feature flag: Enable enhanced 8-quadrant signatures
-const USE_ENHANCED_SIGNATURES = process.env.USE_ENHANCED === 'true' || false;
+// v9.2: Enabled by default — was false, making Enhanced ≡ Baseline (no differentiation)
+const USE_ENHANCED_SIGNATURES = process.env.USE_ENHANCED !== 'false';
 
 // Stats tracking with A/B test data
 let stats = {
@@ -95,6 +100,12 @@ let stats = {
   sf17Correct: 0,
   epCorrect: 0,
   epEnhancedCorrect: 0,
+  // 3-way class tracking (draws are critical for unbiased accuracy)
+  drawsTotal: 0,
+  drawsEpCorrect: 0,
+  drawsSfCorrect: 0,
+  decisiveTotal: 0,
+  decisiveEpCorrect: 0,
   startTime: Date.now(),
   // A/B test tracking
   abTestStats: {
@@ -107,7 +118,7 @@ let stats = {
   }
 };
 
-// Live archetype weights — refreshed from DB every 50 cycles
+// Live archetype weights — refreshed from DB every 25 cycles (Pro tier)
 let liveArchetypeWeights = loadLiveWeights();
 
 // Multi-source game fetching configuration
@@ -175,21 +186,86 @@ const GAME_SOURCES = {
   PUZZLE_SOURCES: ['chesscom_rated', 'lichess_puzzle'],
 };
 
+/**
+ * Dynamic player discovery — fetch active titled players from Lichess leaderboard.
+ * Returns hundreds of active usernames we haven't seen before.
+ */
+async function discoverLichessPlayers() {
+  const discovered = new Set();
+  const perfTypes = ['bullet', 'blitz', 'rapid', 'classical'];
+  for (const perf of perfTypes) {
+    try {
+      const res = await fetch(`https://lichess.org/api/player/top/200/${perf}`, {
+        headers: { 'Accept': 'application/json' }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const users = data.users || [];
+        for (const u of users) {
+          if (u.username) discovered.add(u.username);
+        }
+      }
+      await new Promise(r => setTimeout(r, 1500)); // Rate limit
+    } catch (e) {
+      console.log(`[DISCOVER] Lichess ${perf} leaderboard failed: ${e.message}`);
+    }
+  }
+  return [...discovered];
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // WORKER COORDINATION: Deterministic partitioning — no overlap ever
 // ═══════════════════════════════════════════════════════════════════
 const workerNum = parseInt((process.env.WORKER_ID || '').replace(/\D/g, '') || '1', 10);
 
-// Partition Lichess players into exclusive slices per worker
-const allLichessPlayers = GAME_SOURCES.LICHESS_PLAYERS.filter((v, i, a) => a.indexOf(v) === i); // dedupe
+// Partition players into exclusive slices per worker — mutable so discovery can expand
+const allLichessBase = GAME_SOURCES.LICHESS_PLAYERS.filter((v, i, a) => a.indexOf(v) === i);
 const allChesscomPlayers = GAME_SOURCES.CHESSCOM_PLAYERS.filter((v, i, a) => a.indexOf(v) === i);
 const TOTAL_WORKERS = 3;
-const lichessSlice = Math.ceil(allLichessPlayers.length / TOTAL_WORKERS);
+let myLichessPlayers = [];
 const chesscomSlice = Math.ceil(allChesscomPlayers.length / TOTAL_WORKERS);
-const myLichessPlayers = allLichessPlayers.slice((workerNum - 1) * lichessSlice, workerNum * lichessSlice);
 const myChesscomPlayers = allChesscomPlayers.slice((workerNum - 1) * chesscomSlice, workerNum * chesscomSlice);
-console.log(`[${workerId}] Exclusive Lichess pool: ${myLichessPlayers.length} players (${myLichessPlayers.slice(0,3).join(', ')}...)`);
-console.log(`[${workerId}] Exclusive Chess.com pool: ${myChesscomPlayers.length} players (${myChesscomPlayers.slice(0,3).join(', ')}...)`);
+
+// Initialize with static list, will be expanded by discovery
+const lichessSlice = Math.ceil(allLichessBase.length / TOTAL_WORKERS);
+myLichessPlayers = allLichessBase.slice((workerNum - 1) * lichessSlice, workerNum * lichessSlice);
+
+/**
+ * Expand Lichess player pool with dynamically discovered players from leaderboards.
+ * Each worker gets a deterministic slice of discovered players (no overlap).
+ */
+async function expandPlayerPool() {
+  try {
+    const discovered = await discoverLichessPlayers();
+    if (discovered.length === 0) return;
+    // Merge with static list, dedupe
+    const knownSet = new Set(allLichessBase);
+    const newPlayers = discovered.filter(p => !knownSet.has(p));
+    if (newPlayers.length === 0) {
+      console.log(`[${workerId}] Discovery: ${discovered.length} players found, all already known`);
+      return;
+    }
+    // Sort for deterministic partitioning, then take this worker's slice
+    newPlayers.sort();
+    const discSlice = Math.ceil(newPlayers.length / TOTAL_WORKERS);
+    const myNewSlice = newPlayers.slice((workerNum - 1) * discSlice, workerNum * discSlice);
+    // Add to pool (dedupe against existing)
+    const existing = new Set(myLichessPlayers);
+    let added = 0;
+    for (const p of myNewSlice) {
+      if (!existing.has(p)) {
+        myLichessPlayers.push(p);
+        added++;
+      }
+    }
+    console.log(`[${workerId}] Discovery: +${added} new Lichess players (pool now ${myLichessPlayers.length})`);
+  } catch (e) {
+    console.log(`[${workerId}] Discovery failed: ${e.message}`);
+  }
+}
+
+console.log(`[${workerId}] Initial Lichess pool: ${myLichessPlayers.length} players`);
+console.log(`[${workerId}] Chess.com pool: ${myChesscomPlayers.length} players`);
 
 // Each worker gets a deterministic source rotation offset
 let currentSourceIndex = (workerNum - 1) * 100;
@@ -204,13 +280,30 @@ const analyzedGameIds = new Set();
  */
 async function loadAnalyzedGameIds() {
   try {
-    const result = await resilientQuery(
-      `SELECT game_id FROM chess_prediction_attempts ORDER BY created_at DESC LIMIT 20000`
-    );
-    if (result.rows.length > 0) {
+    // Paginated load — handles 500K+ games without timeout
+    const PAGE_SIZE = 100000; // Pro tier: larger pages for faster dedup loading
+    let offset = 0;
+    let totalLoaded = 0;
+    
+    while (true) {
+      const result = await resilientQuery(
+        `SELECT game_id FROM chess_prediction_attempts ORDER BY created_at LIMIT $1 OFFSET $2`,
+        [PAGE_SIZE, offset]
+      );
+      
+      if (!result.rows || result.rows.length === 0) break;
+      
       for (const row of result.rows) {
         analyzedGameIds.add(row.game_id);
       }
+      totalLoaded += result.rows.length;
+      
+      if (result.rows.length < PAGE_SIZE) break; // Last page
+      offset += PAGE_SIZE;
+      console.log(`[${workerId}] Dedup loading... ${totalLoaded} IDs so far`);
+    }
+    
+    if (totalLoaded > 0) {
       console.log(`[${workerId}] Pre-loaded ${analyzedGameIds.size} game IDs from DB (dedup active)`);
     } else {
       console.log(`[${workerId}] No existing games in DB — fresh start`);
@@ -231,12 +324,23 @@ async function loadEPEngine() {
     const colorFlowModule = await import(join(distPath, 'colorFlowAnalysis', 'index.js'));
     const gameSimModule = await import(join(distPath, 'gameSimulator.js'));
     
-    // Try to load enhanced signature extractor
+    // Try to load enhanced signature extractor (legacy 12-color)
     let enhancedModule = null;
     try {
       enhancedModule = await import(join(distPath, 'colorFlowAnalysis', 'enhancedSignatureExtractor.js'));
     } catch (e) {
-      console.log('Enhanced signatures not available, using baseline only');
+      console.log('Legacy enhanced signatures not available');
+    }
+    
+    // Load the TRUE 32-piece color flow system
+    let piece32Module = null;
+    try {
+      const { createRequire } = await import('module');
+      const require = createRequire(import.meta.url);
+      piece32Module = require(join(distPath, 'colorFlowAnalysis', 'pieceColorFlow32.js'));
+      console.log('✓ 32-piece color flow system loaded (32 unique hues, squares-within-squares)');
+    } catch (e) {
+      console.log('32-piece module not available:', e.message);
     }
     
     return {
@@ -245,9 +349,13 @@ async function loadEPEngine() {
       predictFromColorFlow: colorFlowModule.predictFromColorFlow,
       simulateGame: gameSimModule.simulateGame,
       
-      // Enhanced 8-quadrant (if available)
+      // Legacy enhanced (12-color, kept for archetype classification)
       extractEnhancedSignature: enhancedModule?.extractEnhancedColorFlowSignature || null,
       compareEnhancedProfiles: enhancedModule?.compareEnhancedProfiles || null,
+      
+      // TRUE 32-piece system (each piece unique hue, own predictor)
+      extract32PieceSignature: piece32Module?.extract32PieceSignature || null,
+      predictFrom32Piece: piece32Module?.predictFrom32PieceSignature || null,
     };
   } catch (error) {
     console.error('Failed to load EP engine:', error.message);
@@ -301,20 +409,11 @@ async function loadLocalGames(count = 5) {
  * Fetch real games from Lichess API - BULLETPROOF VERSION
  * Never fails - tries multiple players, longer timeouts, exponential backoff
  */
-// Deterministic time window per worker — NO randomness, NO overlap
-// Worker 1: recent games (0-1.5 years back)
-// Worker 2: mid-range (1.5-3 years back)  
-// Worker 3: historical (3-5 years back)
-const TIME_WINDOWS = [
-  { startYears: 0, endYears: 1.5 },   // Worker 1
-  { startYears: 1.5, endYears: 3 },   // Worker 2
-  { startYears: 3, endYears: 5 },     // Worker 3
-];
-const myWindow = TIME_WINDOWS[Math.min(workerNum - 1, TIME_WINDOWS.length - 1)];
-let lichessBeforeMs = Date.now() - (myWindow.startYears * 365.25 * 24 * 60 * 60 * 1000);
-const lichessFloorMs = Date.now() - (myWindow.endYears * 365.25 * 24 * 60 * 60 * 1000);
-console.log(`[${workerId}] Time window: ${new Date(lichessBeforeMs).toISOString().split('T')[0]} → ${new Date(lichessFloorMs).toISOString().split('T')[0]}`);
-console.log(`[${workerId}] Range: ${myWindow.startYears}-${myWindow.endYears} years back`);
+// FRESH GAMES: Fetch most recent games (no time window lock).
+// Player pools are already partitioned between workers — no overlap.
+// Dedup set catches anything already in DB.
+// Billions of public games available; players play new games every day.
+console.log(`[${workerId}] Mode: FRESH — fetching most recent games from ${myLichessPlayers.length} Lichess + ${myChesscomPlayers.length} Chess.com players`);
 const PERF_TYPES = ['blitz', 'rapid', 'bullet', 'classical'];
 
 async function fetchLichessGames(count = 5, perfType = 'blitz') {
@@ -334,8 +433,12 @@ async function fetchLichessGames(count = 5, perfType = 'blitz') {
     for (let attempt = 1; attempt <= 1; attempt++) {
       try {
         
-        // Use 'before' param to fetch older games when recent ones are exhausted
-        const url = `https://lichess.org/api/games/user/${player}?max=${count}&perfType=${actualPerfType}&rated=true&finished=true&ongoing=false&before=${lichessBeforeMs}`;
+        // Fetch games — go deeper into history when recent games exhausted
+        // Rotate 'since' back in time: cycle 0 = recent, cycle 1 = 1 month ago, etc.
+        const monthsBack = Math.floor(stats.cycles / myLichessPlayers.length) % 24; // up to 2 years back
+        const sinceMs = monthsBack > 0 ? Date.now() - (monthsBack * 30 * 24 * 60 * 60 * 1000) : undefined;
+        const sinceParam = sinceMs ? `&until=${sinceMs}&since=${sinceMs - 30 * 24 * 60 * 60 * 1000}` : '';
+        const url = `https://lichess.org/api/games/user/${player}?max=${Math.max(count, 200)}&perfType=${actualPerfType}&rated=true&finished=true&ongoing=false&evals=true&clocks=true${sinceParam}`;
         
         console.log(`[FARM] Fetching from Lichess (${player}) attempt ${attempt}/3...`);
         
@@ -368,13 +471,16 @@ async function fetchLichessGames(count = 5, perfType = 'blitz') {
           const games = parsePgnGames(pgnText);
           games.forEach(g => g.source = 'lichess'); // Track source
           
-          const decisiveGames = games.filter(g => g.result === '1-0' || g.result === '0-1');
+          // Include ALL results: wins, losses, AND draws
+          // Draws are critical at high-level chess (50%+ of GM games)
+          // Filtering them out creates fundamental prediction bias
+          const validGames = games.filter(g => g.result && g.pgn);
           
-          if (decisiveGames.length > 0) {
-            console.log(`[FARM] ✓ Fetched ${decisiveGames.length} decisive games from Lichess (${player})`);
+          if (validGames.length > 0) {
+            console.log(`[FARM] ✓ Fetched ${validGames.length} games from Lichess (${player}) [W:${validGames.filter(g=>g.result==='1-0').length} B:${validGames.filter(g=>g.result==='0-1').length} D:${validGames.filter(g=>g.result==='1/2-1/2').length}]`);
             // Rate limit: wait 2s after successful fetch
             await new Promise(r => setTimeout(r, 2000));
-            return decisiveGames.slice(0, count);
+            return validGames.slice(0, count);
           }
         } else if (response.status === 429) {
           console.log(`[FARM] Rate limited by Lichess, waiting 10s...`);
@@ -428,6 +534,42 @@ function parsePgnGames(pgnText) {
     const timeControlMatch = pgn.match(/\[TimeControl "([^"]+)"\]/);
     const eventMatch = pgn.match(/\[Event "([^"]+)"\]/);
     
+    // v12.1: PLAYER PROFILING — extract rich metadata for per-player learning
+    // Titles: GM, IM, FM, NM, CM, WGM, WIM, WFM — reveals caliber + playing style
+    const whiteTitleMatch = pgn.match(/\[WhiteTitle "([^"]*)"\]/);
+    const blackTitleMatch = pgn.match(/\[BlackTitle "([^"]*)"\]/);
+    // Opening: ECO code (e.g. B90) + name (e.g. "Sicilian Defense: Najdorf Variation")
+    const ecoMatch = pgn.match(/\[ECO "([^"]*)"\]/);
+    const openingMatch = pgn.match(/\[Opening "([^"]*)"\]/);
+    // Time of game: UTC date + time — enables time-of-day analysis
+    // (morning players think differently than midnight grinders)
+    const utcDateMatch = pgn.match(/\[UTCDate "([^"]*)"\]/);
+    const utcTimeMatch = pgn.match(/\[UTCTime "([^"]*)"\]/);
+    // Termination: Normal, Time forfeit, Abandoned — how the game ended
+    const terminationMatch = pgn.match(/\[Termination "([^"]*)"\]/);
+    
+    // Compute time-of-day bucket for temporal profiling
+    let timeOfDay = null;
+    if (utcTimeMatch?.[1]) {
+      const hour = parseInt(utcTimeMatch[1].split(':')[0]);
+      if (hour >= 5 && hour < 12) timeOfDay = 'morning';
+      else if (hour >= 12 && hour < 17) timeOfDay = 'afternoon';
+      else if (hour >= 17 && hour < 22) timeOfDay = 'evening';
+      else timeOfDay = 'night';
+    }
+    
+    // Compute ELO tier for archetype grouping
+    const avgElo = (whiteEloMatch && blackEloMatch) ? 
+      Math.round((parseInt(whiteEloMatch[1]) + parseInt(blackEloMatch[1])) / 2) : null;
+    let eloTier = null;
+    if (avgElo) {
+      if (avgElo >= 2500) eloTier = 'super_gm';       // Elite — deep preparation, rare blunders
+      else if (avgElo >= 2200) eloTier = 'master';     // Titled — consistent, theory-heavy
+      else if (avgElo >= 1800) eloTier = 'expert';     // Strong club — knows openings, makes tactical errors
+      else if (avgElo >= 1400) eloTier = 'intermediate'; // Developing — pattern-based, frequent inaccuracies
+      else eloTier = 'beginner';                        // Learning — chaotic, unpredictable
+    }
+    
     games.push({
       id,
       pgn,
@@ -439,6 +581,19 @@ function parsePgnGames(pgnText) {
       event: eventMatch?.[1] || null,
       result,
       moves: [],
+      // v12.1: Player profiling fields
+      playerProfile: {
+        whiteTitle: whiteTitleMatch?.[1] || null,
+        blackTitle: blackTitleMatch?.[1] || null,
+        eco: ecoMatch?.[1] || null,
+        opening: openingMatch?.[1] || null,
+        utcDate: utcDateMatch?.[1] || null,
+        utcTime: utcTimeMatch?.[1] || null,
+        timeOfDay,
+        termination: terminationMatch?.[1] || null,
+        avgElo,
+        eloTier,
+      },
     });
   }
   
@@ -459,8 +614,8 @@ async function fetchChessComGames(count = 5) {
     const archives = await archivesRes.json();
     if (!archives.archives || archives.archives.length === 0) return [];
     
-    // Rotate through archive months based on cycle count to access different game pools
-    const archiveIndex = Math.max(0, archives.archives.length - 1 - (stats.cycles % Math.min(archives.archives.length, 12)));
+    // Fetch most recent archive first, then rotate to older ones as dedup filters out known games
+    const archiveIndex = Math.max(0, archives.archives.length - 1 - (stats.cycles % archives.archives.length));
     const selectedArchive = archives.archives[archiveIndex];
     const gamesRes = await fetch(selectedArchive);
     if (!gamesRes.ok) throw new Error('Failed to fetch games');
@@ -468,33 +623,75 @@ async function fetchChessComGames(count = 5) {
     const data = await gamesRes.json();
     const games = data.games || [];
     
-    // Filter for decisive games and shuffle to avoid always getting the same ones
-    const decisiveGames = games
-      .filter(g => {
-        const result = g.white.result === 'win' ? '1-0' : 
-                      g.black.result === 'win' ? '0-1' : '1/2-1/2';
-        return result !== '1/2-1/2' && g.pgn;
-      })
+    // Include ALL results: wins, losses, AND draws
+    // Draws are critical data — filtering them biases the entire model
+    const validGames = games
+      .filter(g => g.pgn)
       .sort(() => Math.random() - 0.5)
-      .slice(0, count);
+      .slice(0, Math.max(count, 200));
     
-    console.log(`[FARM] Fetched ${decisiveGames.length} games from Chess.com (${player}, archive ${archiveIndex})`);
+    const wCount = validGames.filter(g => g.white.result === 'win').length;
+    const bCount = validGames.filter(g => g.black.result === 'win').length;
+    const dCount = validGames.length - wCount - bCount;
+    console.log(`[FARM] Fetched ${validGames.length} games from Chess.com (${player}, archive ${archiveIndex}) [W:${wCount} B:${bCount} D:${dCount}]`);
     
-    return decisiveGames.map(g => {
+    return validGames.map(g => {
       const result = g.white.result === 'win' ? '1-0' : 
                      g.black.result === 'win' ? '0-1' : '1/2-1/2';
+      const whiteName = g.white?.username || g.white?.['@id']?.split('/')?.pop() || 'Unknown';
+      const blackName = g.black?.username || g.black?.['@id']?.split('/')?.pop() || 'Unknown';
+      const wElo = g.white?.rating || null;
+      const bElo = g.black?.rating || null;
+      const avgElo = (wElo && bElo) ? Math.round((wElo + bElo) / 2) : null;
+      
+      // Extract opening from PGN headers if present
+      const ecoMatch = g.pgn?.match(/\[ECO "([^"]*)"\]/);
+      const openingMatch = g.pgn?.match(/\[Opening "([^"]*)"\]/);
+      // Extract UTC time from PGN for time-of-day analysis
+      const utcTimeMatch = g.pgn?.match(/\[EndTime "([^"]*)"\]/) || g.pgn?.match(/\[StartTime "([^"]*)"\]/);
+      let timeOfDay = null;
+      if (utcTimeMatch?.[1]) {
+        const hour = parseInt(utcTimeMatch[1].split(':')[0]);
+        if (hour >= 5 && hour < 12) timeOfDay = 'morning';
+        else if (hour >= 12 && hour < 17) timeOfDay = 'afternoon';
+        else if (hour >= 17 && hour < 22) timeOfDay = 'evening';
+        else timeOfDay = 'night';
+      }
+      
+      let eloTier = null;
+      if (avgElo) {
+        if (avgElo >= 2500) eloTier = 'super_gm';
+        else if (avgElo >= 2200) eloTier = 'master';
+        else if (avgElo >= 1800) eloTier = 'expert';
+        else if (avgElo >= 1400) eloTier = 'intermediate';
+        else eloTier = 'beginner';
+      }
+      
       return {
         id: `${g.url?.match(/\/(\d+)$/)?.[1] || Date.now()}`,
         pgn: g.pgn,
-        white: g.white.username,
-        black: g.black.username,
+        white: whiteName,
+        black: blackName,
         result,
         moves: [],
         source: 'chess.com',
-        whiteElo: g.white.rating,
-        blackElo: g.black.rating,
+        whiteElo: wElo,
+        blackElo: bElo,
         timeControl: g.time_control ? String(g.time_control) : null,
         event: g.time_class || 'chess.com',
+        // v12.1: Player profiling for chess.com games
+        playerProfile: {
+          whiteTitle: null,  // Chess.com API doesn't expose titles in game data
+          blackTitle: null,
+          eco: ecoMatch?.[1] || null,
+          opening: openingMatch?.[1] || null,
+          utcDate: null,
+          utcTime: utcTimeMatch?.[1] || null,
+          timeOfDay,
+          termination: g.white?.result === 'timeout' || g.black?.result === 'timeout' ? 'Time forfeit' : 'Normal',
+          avgElo,
+          eloTier,
+        },
       };
     });
   } catch (error) {
@@ -708,23 +905,30 @@ function evaluateMaterialFallback(fen) {
  * All data is real — simulation is EP's analysis method, not fake data.
  */
 function generateBothPredictions(fullPgn, gameData, epEngine, sfEvalCp, moveCount, eloDiff = 0) {
-  const { simulateGame, extractColorFlowSignature, predictFromColorFlow, extractEnhancedSignature } = epEngine;
+  const { simulateGame, extractColorFlowSignature, predictFromColorFlow, extract32PieceSignature, predictFrom32Piece } = epEngine;
   
-  // Replay real moves to build color flow board
+  // ── 4-QUADRANT BASELINE (always runs) ──
   let simulation, board, totalMoves;
+  let baselineSignature, baselinePrediction;
   try {
     simulation = simulateGame(fullPgn);
     board = simulation.board;
     totalMoves = simulation.totalMoves || moveCount;
+    baselineSignature = extractColorFlowSignature(board, gameData, totalMoves);
+    const baselineColorPred = predictFromColorFlow(baselineSignature, totalMoves, sfEvalCp, 18);
+    baselinePrediction = {
+      predictedWinner: baselineColorPred.predictedWinner === 'white' ? 'white_wins' :
+                       baselineColorPred.predictedWinner === 'black' ? 'black_wins' : 'draw',
+      confidence: baselineColorPred.confidence / 100,
+      whiteAdvantage: sfEvalCp / 100,
+    };
   } catch (e) {
-    // PGN parse failed — use SF eval + ELO as primary signals
-    // Build signature directly (no color flow data, but still a real prediction)
+    // Simulation failed — SF eval fallback
     const absSf = Math.abs(sfEvalCp);
-    const sfDir = sfEvalCp > 0 ? 'white' : sfEvalCp < 0 ? 'black' : 'contested';
     const phase = moveCount < 15 ? 'opening' : moveCount < 30 ? 'middlegame' : 'endgame';
     const fallbackSig = {
       archetype: absSf > 200 ? 'central_domination' : absSf > 80 ? 'kingside_attack' : 'balanced_flow',
-      dominantSide: sfDir,
+      dominantSide: sfEvalCp > 0 ? 'white' : sfEvalCp < 0 ? 'black' : 'contested',
       flowDirection: absSf > 100 ? (sfEvalCp > 0 ? 'kingside' : 'queenside') : 'central',
       intensity: Math.max(0.1, Math.min(1.0, absSf / 300)),
       quadrantProfile: {
@@ -742,50 +946,49 @@ function generateBothPredictions(fullPgn, gameData, epEngine, sfEvalCp, moveCoun
       fingerprint: `farm_sf_${Date.now()}`,
     };
     const fallbackPred = predictFromColorFlow(fallbackSig, moveCount, sfEvalCp, 18);
-    const pred = {
+    baselinePrediction = {
       predictedWinner: fallbackPred.predictedWinner === 'white' ? 'white_wins' :
                        fallbackPred.predictedWinner === 'black' ? 'black_wins' : 'draw',
       confidence: fallbackPred.confidence / 100,
       whiteAdvantage: sfEvalCp / 100,
     };
-    return {
-      baseline: { signature: fallbackSig, prediction: pred, fingerprint: fallbackSig.fingerprint, archetype: fallbackSig.archetype },
-      enhanced: null,
-    };
+    baselineSignature = fallbackSig;
   }
   
-  // 4-QUADRANT ENGINE: Real color flow signature from board heatmap
-  const baselineSignature = extractColorFlowSignature(board, gameData, totalMoves);
-  const baselineColorPred = predictFromColorFlow(baselineSignature, totalMoves, sfEvalCp, 18);
-  const baselinePrediction = {
-    predictedWinner: baselineColorPred.predictedWinner === 'white' ? 'white_wins' :
-                     baselineColorPred.predictedWinner === 'black' ? 'black_wins' : 'draw',
-    confidence: baselineColorPred.confidence / 100,
-    whiteAdvantage: sfEvalCp / 100,
-  };
+  // ── 32-PIECE ENHANCED ENGINE ──
+  // Each of 32 pieces gets unique hue. Traces through squares.
+  // Overlapping traces = squares within squares. Own predictor.
+  let piece32Sig = null;
+  let enhancedPrediction = baselinePrediction; // fallback if 32-piece fails
   
-  // 8-QUADRANT ENGINE: Enhanced signature with ELO as supplementary signal
-  let enhancedResult = null;
-  let enhancedPrediction = baselinePrediction;
-  if (extractEnhancedSignature && USE_ENHANCED_SIGNATURES) {
+  if (extract32PieceSignature && predictFrom32Piece && USE_ENHANCED_SIGNATURES) {
     try {
-      enhancedResult = extractEnhancedSignature(simulation);
-      const enhancedSig = {
-        ...baselineSignature,
-        archetype: enhancedResult.archetype || baselineSignature.archetype,
-        dominantSide: enhancedResult.dominantSide || baselineSignature.dominantSide,
-      };
-      const enhancedColorPred = predictFromColorFlow(enhancedSig, totalMoves, sfEvalCp, 18);
-      enhancedPrediction = {
-        predictedWinner: enhancedColorPred.predictedWinner === 'white' ? 'white_wins' :
-                         enhancedColorPred.predictedWinner === 'black' ? 'black_wins' : 'draw',
-        confidence: enhancedColorPred.confidence / 100,
-        whiteAdvantage: sfEvalCp / 100,
-      };
+      piece32Sig = extract32PieceSignature(fullPgn, moveCount);
     } catch (e) {
-      enhancedResult = null;
+      // 32-piece extraction failed — stays on baseline
+    }
+    if (piece32Sig) {
+      try {
+        // Use the 32-piece predictor — calibrated FOR 32-piece data
+        const pred32 = predictFrom32Piece(piece32Sig, sfEvalCp, moveCount);
+        if (pred32) {
+          enhancedPrediction = {
+            predictedWinner: pred32.predictedWinner === 'white' ? 'white_wins' :
+                             pred32.predictedWinner === 'black' ? 'black_wins' : 'draw',
+            confidence: pred32.confidence,
+            whiteAdvantage: pred32.ensembleScore,
+            agreement: pred32.agreement,
+            signalCount: pred32.signalCount,
+          };
+        }
+      } catch (e) {
+        // Prediction failed — 32-piece sig preserved for DB storage
+      }
     }
   }
+  
+  // Classify archetype from 32-piece data or fall back to baseline
+  const enhancedArchetype = piece32Sig ? classifyArchetypeFrom32Piece(piece32Sig) : baselineSignature.archetype;
   
   return {
     baseline: {
@@ -794,20 +997,61 @@ function generateBothPredictions(fullPgn, gameData, epEngine, sfEvalCp, moveCoun
       fingerprint: baselineSignature.fingerprint,
       archetype: baselineSignature.archetype,
     },
-    enhanced: enhancedResult ? {
-      signature: enhancedResult,
+    enhanced: piece32Sig ? {
+      signature: piece32Sig,
       prediction: enhancedPrediction,
-      fingerprint: enhancedResult.fingerprint,
-      archetype: enhancedResult.archetype,
-      colorRichness: enhancedResult.colorRichness,
-      complexity: enhancedResult.complexity,
+      fingerprint: piece32Sig.fingerprint,
+      archetype: enhancedArchetype,
+      colorRichness: piece32Sig.traceDepth?.avg || 0,
+      complexity: piece32Sig.interactions?.total || 0,
     } : null,
   };
 }
 
-// Standalone prediction functions REMOVED
-// Both 4-quad and 8-quad engines now use the shared predictFromColorFlow
-// from farm/dist/lib/chess/colorFlowAnalysis (same equilibrium system as web app)
+/**
+ * Classify archetype from 32-piece signature data.
+ * Uses the richer per-piece spatial data to detect archetypes
+ * that the 4-quadrant system can't distinguish.
+ */
+function classifyArchetypeFrom32Piece(sig) {
+  const q = sig.quadrants;
+  const ksPressure = Math.abs(q.q1_kingside_white) + Math.abs(q.q3_kingside_black);
+  const qsPressure = Math.abs(q.q2_queenside_white) + Math.abs(q.q4_queenside_black);
+  const centerControl = Math.abs(q.q5_center_white) + Math.abs(q.q6_center_black);
+  const wingExpansion = Math.abs(q.q7_extended_kingside) + Math.abs(q.q8_extended_queenside);
+  
+  const pt = sig.pieceTypeInfluence;
+  const bishopActive = (pt.bishop.white + pt.bishop.black) > (pt.knight.white + pt.knight.black);
+  const rookActive = (pt.rook.white + pt.rook.black) > 15;
+  const queenEarly = (pt.queen.white + pt.queen.black) > 20 && sig.temporal.opening > 0.25;
+  const pawnStorm = sig.pawnProfiles && Object.values(sig.pawnProfiles).some(p => p.advancement >= 4);
+  const highInteractions = sig.interactions.cross > 10;
+  const materialImbalance = Math.abs(sig.materialFlow.balance) > 3;
+  
+  // Sacrifice-driven attacks
+  if (materialImbalance && highInteractions && ksPressure > qsPressure) return 'sacrificial_kingside_assault';
+  if (materialImbalance && highInteractions && qsPressure > ksPressure) return 'sacrificial_queenside_break';
+  
+  // Piece-specific archetypes (32-piece system can distinguish these)
+  if (bishopActive && wingExpansion > 10) return 'bishop_pair_mastery';
+  if (!bishopActive && centerControl > 15) return 'central_knight_outpost';
+  if (rookActive && sig.temporal.endgame > 0.35) return 'rook_endgame_dominance';
+  if (queenEarly && ksPressure > 15) return 'queen_raid';
+  
+  // Spatial archetypes
+  if (pawnStorm && ksPressure > qsPressure) return 'pawn_storm';
+  if (ksPressure > qsPressure * 1.5 && ksPressure > 12) return 'kingside_attack';
+  if (qsPressure > ksPressure * 1.5 && qsPressure > 12) return 'queenside_expansion';
+  if (centerControl > ksPressure + qsPressure) return 'central_domination';
+  if (wingExpansion > centerControl) return 'flank_operations';
+  
+  // Structure archetypes
+  if (sig.traceDepth.avg > 3.5) return 'closed_maneuvering';
+  if (sig.captures > 10) return 'tactical_melee';
+  if (sig.temporal.endgame > 0.4) return 'endgame_technique';
+  
+  return 'balanced_flow';
+}
 
 /**
  * Run a single benchmark cycle with A/B testing
@@ -816,7 +1060,7 @@ async function runBenchmarkCycle(epEngine) {
   console.log(`[${workerId}] Starting cycle #${stats.cycles + 1} ${USE_ENHANCED_SIGNATURES ? '(8-Quadrant)' : '(4-Quadrant)'}`);
   
   // Fetch games from MULTIPLE SOURCES (Lichess + Chess.com rotation)
-  const allGames = await fetchGamesMultiSource(FARM_CONFIG.cycle.gamesPerFetch, 'blitz');
+  const allGames = await fetchGamesMultiSource(Math.max(FARM_CONFIG.cycle.gamesPerFetch, 200), 'blitz');
   
   if (allGames.length === 0) {
     console.log(`[${workerId}] No games fetched, waiting...`);
@@ -824,22 +1068,28 @@ async function runBenchmarkCycle(epEngine) {
   }
   
   // Filter out already-analyzed games BEFORE processing
-  const games = allGames.filter(g => !analyzedGameIds.has(g.id));
+  const deduped = allGames.filter(g => !analyzedGameIds.has(g.id));
+  
+  // Source quality filter: skip low-ELO, bullet, and incomplete games
+  const games = deduped.filter(g => {
+    const wElo = g.whiteElo || 0;
+    const bElo = g.blackElo || 0;
+    const avgElo = (wElo && bElo) ? (wElo + bElo) / 2 : 0;
+    if (avgElo > 0 && avgElo < 1500) return false; // Low-ELO games = noisy
+    const tc = g.timeControl || '';
+    const tcBase = parseInt(tc.match(/^(\d+)/)?.[1] || '300');
+    if (tcBase < 60) return false; // Bullet/ultrabullet = too noisy
+    if (!g.result || g.result === '*') return false;
+    return true;
+  });
   const skipped = allGames.length - games.length;
   if (skipped > 0) {
-    console.log(`[${workerId}] Skipped ${skipped}/${allGames.length} already-analyzed games`);
+    console.log(`[${workerId}] Skipped ${skipped}/${allGames.length} (${allGames.length - deduped.length} dupes, ${deduped.length - games.length} quality-filtered)`);
   }
   if (games.length === 0) {
-    // Move time window back by 14 days to find fresh games faster
-    lichessBeforeMs -= 14 * 24 * 60 * 60 * 1000;
-    // Don't cross into another worker's time territory
-    if (lichessBeforeMs < lichessFloorMs) {
-      // Reset to the TOP of this worker's window (not present — that's another worker's zone)
-      lichessBeforeMs = Date.now() - (myWindow.startYears * 365.25 * 24 * 60 * 60 * 1000);
-      console.log(`[${workerId}] Time window wrapped to top: ${new Date(lichessBeforeMs).toISOString().split('T')[0]}`);
-    }
-    currentSourceIndex += 8; // Advance player rotation faster
-    console.log(`[${workerId}] All games already analyzed, sliding window back to ${new Date(lichessBeforeMs).toISOString().split('T')[0]}`);
+    // All fetched games already analyzed — advance player rotation to find fresh ones
+    currentSourceIndex += 8;
+    console.log(`[${workerId}] All games already analyzed, advancing player rotation`);
     return;
   }
   
@@ -873,10 +1123,12 @@ async function runBenchmarkCycle(epEngine) {
         }
       }
       
-      // Get position at move 20
+      // Variable move number — each game analyzed at a different position
+      // Builds interlinkage data across opening, middlegame, and endgame
       const moves = chess.history({ verbose: true });
+      if (moves.length < 20) { stats.pgnErrors = (stats.pgnErrors || 0) + 1; continue; } // Skip short games (<20 moves = opening noise)
       const moveSans = moves.map(m => m.san);
-      const moveNumber = Math.min(20, Math.floor(moves.length * 0.6));
+      const moveNumber = selectAnalysisMoveNumber(moves.length, game.id);
       
       // ♟️ SPECIAL MOVE DETECTION: Track en passant, castling, promotion, sacrifice
       // These map to market tactical patterns in the cross-domain bridge
@@ -979,17 +1231,17 @@ async function runBenchmarkCycle(epEngine) {
         event: game.event || 'Unknown',
         date: new Date().toISOString().split('T')[0],
         pgn: partialPgn,
+        // v12.1: Player profiling — flows through to lesson_learned jsonb
+        playerProfile: game.playerProfile || null,
       };
       
       // Pass SF eval in centipawns into the shared equilibrium predictor
       // sf17Eval.evaluation is in pawns (e.g. 1.5), predictor expects centipawns (e.g. 150)
       const sfEvalCp = Math.round((sf17Eval.evaluation ?? 0) * 100);
       const eloDiff = (game.whiteElo || 1500) - (game.blackElo || 1500);
-      const predictions = generateBothPredictions(game.pgn, gameData, epEngine, sfEvalCp, moveNumber, eloDiff);
+      const predictions = generateBothPredictions(partialPgn, gameData, epEngine, sfEvalCp, moveNumber, eloDiff);
       const baselinePred = predictions.baseline.prediction;
-      const enhancedPred = predictions.enhanced?.prediction || baselinePred;
-      
-      // Enhanced signature data captured in predictions object — viz removed to keep logs clean
+      let enhancedPred = predictions.enhanced?.prediction || baselinePred;
       
       // Determine actual outcome - parse from PGN header
       let actualOutcome;
@@ -997,16 +1249,48 @@ async function runBenchmarkCycle(epEngine) {
       const result = resultMatch ? resultMatch[1] : game.result;
       
       // Convert to standard format for database (white_wins/black_wins/draw)
+      // v9.2: Skip games with unknown/in-progress results (*) — they are NOT draws
       if (result === '1-0') actualOutcome = 'white_wins';
       else if (result === '0-1') actualOutcome = 'black_wins';
-      else actualOutcome = 'draw'; // Handles '1/2-1/2' and '*'
+      else if (result === '1/2-1/2') actualOutcome = 'draw';
+      else {
+        console.log(`[${workerId}] ⏭ Skipped unknown result: ${game.id || 'unknown'} (result="${result}")`);
+        continue;
+      }
       
       // Track A/B test accuracy
       const baselineCorrect = baselinePred.predictedWinner === actualOutcome;
       const enhancedCorrect = enhancedPred.predictedWinner === actualOutcome;
       
+      const sf17Correct = sf17Prediction === actualOutcome;
+      
+      // v13: INTELLIGENT HYBRID FUSION
+      // Archetype-specific + time-control-aware + game-phase-aware weights
+      const fusionArchetype = predictions.enhanced?.archetype || predictions.baseline.archetype;
+      const fw = getIntelligentFusionWeights(fusionArchetype, game.timeControl || null, moveNumber);
+      const fusionScores = { white_wins: 0, black_wins: 0, draw: 0 };
+      fusionScores[baselinePred.predictedWinner] += fw.baselineWeight;
+      fusionScores[enhancedPred.predictedWinner] += fw.enhancedWeight;
+      fusionScores[sf17Prediction] += fw.sfWeight;
+      const hybridPrediction = Object.entries(fusionScores)
+        .sort((a, b) => b[1] - a[1])[0][0];
+      const hybridConfidence = Math.max(...Object.values(fusionScores));
+      const hybridCorrect = hybridPrediction === actualOutcome;
+      
       if (baselineCorrect) stats.epCorrect++;
       if (enhancedCorrect) stats.epEnhancedCorrect++;
+      if (sf17Correct) stats.sf17Correct++;
+      if (hybridCorrect) stats.hybridCorrect = (stats.hybridCorrect || 0) + 1;
+      
+      // Track draw vs decisive accuracy separately
+      if (actualOutcome === 'draw') {
+        stats.drawsTotal++;
+        if (enhancedCorrect) stats.drawsEpCorrect++;
+        if (sf17Correct) stats.drawsSfCorrect++;
+      } else {
+        stats.decisiveTotal++;
+        if (enhancedCorrect) stats.decisiveEpCorrect++;
+      }
       
       // A/B test tracking
       if (baselineCorrect && enhancedCorrect) stats.abTestStats.bothCorrect++;
@@ -1014,18 +1298,24 @@ async function runBenchmarkCycle(epEngine) {
       else if (baselineCorrect && !enhancedCorrect) stats.abTestStats.baselineOnly++;
       else if (!baselineCorrect && enhancedCorrect) stats.abTestStats.enhancedOnly++;
       
-      const sf17Correct = sf17Prediction === actualOutcome;
-      if (sf17Correct) stats.sf17Correct++;
-      
       stats.predictionsMade++;
       
-      // Save with A/B data and full 8-quadrant profile
+      // Generate creative language attribution — deterministic from position hash
+      const posHash = hashPosition(fen);
+      const archetype = predictions.enhanced?.archetype || predictions.baseline.archetype;
+      const poetry = generateGamePoetry(posHash, archetype, specialMoves, gamePhase, sfEvalCp);
+      
+      // Save with A/B data, variable move number, poetry, and full 8-quadrant profile
       await savePrediction({
         gameId: game.id,
         fen,
+        moveNumber,
         sf17Eval: sf17Eval.evaluation,
         baselinePrediction: baselinePred.predictedWinner,
         enhancedPrediction: enhancedPred.predictedWinner,
+        hybridPrediction,
+        hybridConfidence,
+        hybridCorrect,
         sf17Prediction,
         actualOutcome,
         baselineCorrect,
@@ -1038,14 +1328,16 @@ async function runBenchmarkCycle(epEngine) {
         gameMetadata: gameData,
         abTest: true,
         dataSource: game.source || 'unknown',
-        // Full 8-quadrant profile for tracking
-        eightQuadrantProfile: predictions.enhanced?.signature?.quadrantProfile || null,
-        pieceTypeMetrics: predictions.enhanced?.signature?.quadrantProfile ? {
-          bishopDominance: predictions.enhanced.signature.quadrantProfile.bishop_dominance,
-          knightDominance: predictions.enhanced.signature.quadrantProfile.knight_dominance,
-          rookDominance: predictions.enhanced.signature.quadrantProfile.rook_dominance,
-          queenDominance: predictions.enhanced.signature.quadrantProfile.queen_dominance,
-          pawnAdvancement: predictions.enhanced.signature.quadrantProfile.pawn_advancement,
+        poetry,
+        gamePhase,
+        // Full 8-quadrant profile for tracking (enhancedProfile = real 8-quad data)
+        eightQuadrantProfile: predictions.enhanced?.signature?.enhancedProfile || null,
+        pieceTypeMetrics: predictions.enhanced?.signature?.enhancedProfile ? {
+          bishopDominance: predictions.enhanced.signature.enhancedProfile.bishop_dominance,
+          knightDominance: predictions.enhanced.signature.enhancedProfile.knight_dominance,
+          rookDominance: predictions.enhanced.signature.enhancedProfile.rook_dominance,
+          queenDominance: predictions.enhanced.signature.enhancedProfile.queen_dominance,
+          pawnAdvancement: predictions.enhanced.signature.enhancedProfile.pawn_advancement,
         } : null,
         specialMoves,
       });
@@ -1053,34 +1345,43 @@ async function runBenchmarkCycle(epEngine) {
       // SELF-EVOLVING: Feed prediction into cross-domain correlation engine
       // This links live chess data → correlation engine → adapter registry → photonic bus
       // The web app's realtime subscription ingests these for universal pattern detection
-      try {
-        const corrId = `farm_${game.id}_${Date.now()}`;
-        const consensus = enhancedPred.predictedWinner === sf17Prediction ? 'agree' : 'disagree';
-        const corrScore = enhancedCorrect ? 0.8 : (consensus === 'agree' ? 0.5 : 0.3);
-        await resilientQuery(
-          `INSERT INTO cross_domain_correlations (
-            correlation_id, pattern_id, pattern_name,
-            correlation_score, chess_archetype, chess_confidence,
-            chess_intensity, market_symbol, market_direction,
-            market_confidence, market_intensity, validated, detected_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())`,
-          [
-            corrId,
-            consensus === 'agree' ? 'ep-sf-consensus' : 'ep-sf-divergence',
-            consensus === 'agree' ? 'EP-SF Consensus' : 'EP-SF Divergence',
-            corrScore,
-            predictions.enhanced?.archetype || predictions.baseline.archetype,
-            enhancedPred.confidence,
-            Math.abs(enhancedPred.whiteAdvantage),
-            game.source || 'chess',
-            enhancedPred.predictedWinner === 'white_wins' ? 'up' : enhancedPred.predictedWinner === 'black_wins' ? 'down' : 'flat',
-            sf17Eval.evaluation ? Math.min(1, Math.abs(sf17Eval.evaluation)) : 0.5,
-            Math.min(1, Math.abs(sfEvalCp) / 300),
-            enhancedCorrect
-          ]
-        );
-      } catch (corrErr) {
-        // Correlation save is non-critical — don't block predictions
+      // v12: Real correlation scores (not hardcoded 0.8/0.3)
+      if (stats.predictionsMade % 20 === 0) {
+        try {
+          const enginesAgree = baselineCorrect === enhancedCorrect;
+          const sfAgrees = sf17Correct === enhancedCorrect;
+          const allAgree = enginesAgree && sfAgrees;
+          const confLevel = hybridConfidence || 0.5;
+          const posComplexity = Math.min(1, Math.abs(sfEvalCp) / 300);
+          const realScore = (
+            (confLevel * 0.4) +
+            (allAgree ? 0.25 : enginesAgree ? 0.15 : 0) +
+            (hybridCorrect ? 0.25 : 0) +
+            (posComplexity > 0.3 ? 0.10 : 0)
+          );
+          await resilientQuery(
+            `INSERT INTO cross_domain_correlations (
+              correlation_id, pattern_id, pattern_name,
+              correlation_score, chess_archetype, chess_confidence,
+              chess_intensity, market_symbol, market_direction,
+              market_confidence, market_intensity, validated, detected_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())`,
+            [
+              `farm_${game.id}_${Date.now()}`,
+              allAgree ? 'consensus-correct' : hybridCorrect ? 'ep-correct' : 'ep-incorrect',
+              allAgree ? 'All Engines Agree (Correct)' : hybridCorrect ? 'EP Correct' : 'EP Incorrect',
+              Math.round(realScore * 100) / 100,
+              predictions.enhanced?.archetype || predictions.baseline.archetype,
+              Math.round(confLevel * 100),
+              posComplexity,
+              `chess:${game.source || 'lichess'}`,
+              hybridPrediction === 'white_wins' ? 'up' : hybridPrediction === 'black_wins' ? 'down' : 'flat',
+              Math.round(confLevel * 100),
+              posComplexity,
+              hybridCorrect
+            ]
+          );
+        } catch (corrErr) { /* non-critical */ }
       }
       
       // Mark as analyzed to prevent re-processing
@@ -1097,7 +1398,10 @@ async function runBenchmarkCycle(epEngine) {
         ? ` | Enhanced: ${enhancedAccuracy}%`
         : '';
       
-      console.log(`[${workerId}] ${game.id}: B=${baselinePred.predictedWinner}(adv:${baselinePred.whiteAdvantage.toFixed(2)}) E=${enhancedPred.predictedWinner}(adv:${enhancedPred.whiteAdvantage.toFixed(2)}) SF17=${sf17Prediction} A=${actualOutcome} | Baseline: ${baselineAccuracy}%${improvement} | SF17: ${sf17Accuracy}%`);
+      const drawInfo = stats.drawsTotal > 0 ? ` | Draws: ${stats.drawsEpCorrect}/${stats.drawsTotal}` : '';
+      console.log(`[${workerId}] ${game.id} m${moveNumber}: B=${baselinePred.predictedWinner}(adv:${baselinePred.whiteAdvantage.toFixed(2)}) E=${enhancedPred.predictedWinner}(adv:${enhancedPred.whiteAdvantage.toFixed(2)}) SF17=${sf17Prediction} A=${actualOutcome} | Baseline: ${baselineAccuracy}%${improvement} | SF17: ${sf17Accuracy}%${drawInfo}`);
+      console.log(`[${workerId}]   ✦ ${poetry.verse}`);
+      console.log(`[${workerId}]   ◆ ${poetry.essence} [${poetry.motif}]`);
       
       // Small delay
       await new Promise(r => setTimeout(r, FARM_CONFIG.cycle.waitBetweenGames));
@@ -1150,6 +1454,9 @@ async function main() {
   // Pre-load analyzed game IDs for deduplication
   await loadAnalyzedGameIds();
   
+  // Expand player pool with dynamically discovered players from Lichess leaderboards
+  await expandPlayerPool();
+  
   // Compute live archetype weights from DB on startup (worker 1 only)
   if (workerNum === 1 && !liveArchetypeWeights) {
     try {
@@ -1196,33 +1503,27 @@ async function main() {
       // Update farm_status for admin dashboard visibility
       try {
         const farmId = workerId.replace('ep-farm-', 'enhanced-farm-');
-        await resilientQuery(`
-          INSERT INTO farm_status (
-            farm_id, farm_name, host_name, status, message,
-            chess_games_generated, chess_errors,
-            benchmark_runs_completed, benchmark_errors,
-            last_heartbeat_at, updated_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
-          ON CONFLICT (farm_id) DO UPDATE SET
-            status = EXCLUDED.status,
-            message = EXCLUDED.message,
-            chess_games_generated = EXCLUDED.chess_games_generated,
-            chess_errors = EXCLUDED.chess_errors,
-            benchmark_runs_completed = EXCLUDED.benchmark_runs_completed,
-            benchmark_errors = EXCLUDED.benchmark_errors,
-            last_heartbeat_at = EXCLUDED.last_heartbeat_at,
-            updated_at = EXCLUDED.updated_at
-        `, [
-          farmId,
-          workerId,
-          'mac-enhanced-local',
-          'healthy',
-          `Cycle ${stats.cycles} complete: ${stats.totalGames} games processed`,
-          stats.totalGames,
-          0,
-          stats.cycles,
-          0
-        ]);
+        // Two-step upsert (UPDATE then INSERT) — works through PgBouncer
+        const statusMsg = `Cycle ${stats.cycles} complete: ${stats.totalGames} games processed`;
+        const updateResult = await resilientQuery(`
+          UPDATE farm_status SET
+            status = $1, message = $2,
+            chess_games_generated = $3, chess_errors = $4,
+            benchmark_runs_completed = $5, benchmark_errors = $6,
+            last_heartbeat_at = NOW(), updated_at = NOW()
+          WHERE farm_id = $7
+        `, ['healthy', statusMsg, stats.totalGames, 0, stats.cycles, 0, farmId]);
+        if (updateResult.rowCount === 0) {
+          await resilientQuery(`
+            INSERT INTO farm_status (
+              farm_id, farm_name, host_name, status, message,
+              chess_games_generated, chess_errors,
+              benchmark_runs_completed, benchmark_errors,
+              last_heartbeat_at, updated_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+          `, [farmId, workerId, 'mac-enhanced-local', 'healthy', statusMsg,
+              stats.totalGames, 0, stats.cycles, 0]);
+        }
         console.log(`[${workerId}] Farm status updated: ${stats.totalGames} games, ${stats.cycles} cycles`);
       } catch (err) {
         console.log(`[${workerId}] Farm status update failed: ${err.message}`);
@@ -1262,10 +1563,14 @@ async function main() {
         }
       }
       
-      // LIVE ARCHETYPE WEIGHT REFRESH: Every 50 cycles, worker 1 recomputes
+      // LIVE ARCHETYPE WEIGHT REFRESH: Every 25 cycles, worker 1 recomputes
       // real per-archetype accuracy from the database. This replaces the hardcoded
       // ARCHETYPE_HISTORICAL_ACCURACY with data-driven weights that improve with volume.
-      if (stats.cycles % 50 === 0 && workerNum === 1) {
+      // Refresh player pool every 25 cycles to discover new active players (Pro tier)
+      if (stats.cycles % 25 === 0) {
+        await expandPlayerPool();
+      }
+      if (stats.cycles % 25 === 0 && workerNum === 1) {
         try {
           console.log(`[${workerId}] Refreshing live archetype weights from DB...`);
           const newWeights = await computeLiveArchetypeWeights(resilientQuery);
@@ -1331,6 +1636,154 @@ function hashPosition(fen) {
   return createHash('sha256').update(fen).digest('hex').substring(0, 64);
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// CREATIVE LANGUAGE ATTRIBUTION — Deterministic poetry from game signature
+// At millions of games per country, this builds a linguistic pattern corpus
+// where language interpretation maps to position characteristics
+// ═══════════════════════════════════════════════════════════════════
+
+const POETRY_NOUNS = [
+  'horizon', 'cathedral', 'eclipse', 'resonance', 'labyrinth', 'prism', 'glacier',
+  'meridian', 'constellation', 'helix', 'aurora', 'tidewater', 'ember', 'zenith',
+  'mosaic', 'tempest', 'oracle', 'fortress', 'cascade', 'phantom', 'chrysalis',
+  'nebula', 'quarry', 'mirage', 'pinnacle', 'vortex', 'requiem', 'sentinel',
+  'silhouette', 'tributary', 'axiom', 'paradox', 'crucible', 'archipelago',
+  'fjord', 'monolith', 'caldera', 'citadel', 'genesis', 'apex', 'theorem',
+  'compass', 'obelisk', 'tapestry', 'fulcrum', 'reverie', 'harmonic', 'bastion',
+];
+const POETRY_VERBS = [
+  'unfolds', 'converges', 'reverberates', 'dissolves', 'crystallizes', 'transcends',
+  'illuminates', 'cascades', 'pierces', 'blooms', 'fractures', 'weaves', 'ignites',
+  'surrenders', 'emerges', 'resonates', 'awakens', 'descends', 'spirals', 'transforms',
+  'echoes', 'devours', 'sculpts', 'bridges', 'reclaims', 'suspends', 'orbits',
+  'anchors', 'whispers', 'shatters', 'envelops', 'distills',
+];
+const POETRY_ADJ = [
+  'luminous', 'fractured', 'crystalline', 'ephemeral', 'relentless', 'sovereign',
+  'molten', 'mercurial', 'verdant', 'obsidian', 'gilded', 'spectral', 'tethered',
+  'boundless', 'nascent', 'ethereal', 'volcanic', 'harmonic', 'prismatic', 'veiled',
+  'incandescent', 'temperate', 'celestial', 'austere', 'radiant', 'kinetic',
+  'subterranean', 'iridescent', 'stoic', 'volatile', 'serene', 'fervent',
+];
+const POETRY_IMAGERY = [
+  'where light bends through stone', 'as rivers find the sea',
+  'beneath the weight of stars', 'through corridors of time',
+  'like fire reflected in still water', 'where silence speaks in color',
+  'across the geometry of doubt', 'through the architecture of intention',
+  'where every path remembers its origin', 'as the tide reads the shore',
+  'in the space between certainty and wonder', 'where patterns breathe',
+  'through the lattice of becoming', 'as shadows trace the truth',
+  'where the grid meets the infinite', 'beneath the canopy of logic',
+  'across the spectrum of resolve', 'where tension finds its voice',
+  'in the calculus of beauty', 'as the position reveals its nature',
+  'where intuition and structure collide', 'through the fabric of decision',
+  'like a theorem written in light', 'where chaos distills to form',
+];
+
+/**
+ * Generate deterministic creative poetry from game signature.
+ * Same game + position always yields same words (hash-seeded).
+ * Returns { verse, essence, motif } for storage and display.
+ */
+function generateGamePoetry(positionHash, archetype, specialMoves, gamePhase, eval_cp) {
+  if (!positionHash) return { verse: 'position without echo', essence: 'unknown', motif: 'void' };
+  
+  // Use hash bytes as deterministic seed
+  const h = positionHash;
+  const seed = (offset) => parseInt(h.substring(offset, offset + 4), 16) || 0;
+  
+  const noun1 = POETRY_NOUNS[seed(0) % POETRY_NOUNS.length];
+  const noun2 = POETRY_NOUNS[seed(4) % POETRY_NOUNS.length];
+  const verb = POETRY_VERBS[seed(8) % POETRY_VERBS.length];
+  const adj1 = POETRY_ADJ[seed(12) % POETRY_ADJ.length];
+  const adj2 = POETRY_ADJ[seed(16) % POETRY_ADJ.length];
+  const imagery = POETRY_IMAGERY[seed(20) % POETRY_IMAGERY.length];
+  
+  // Archetype colors the tone
+  const toneMap = {
+    'aggressive_attacker': 'with fury',
+    'positional_maestro': 'with patience',
+    'tactical_genius': 'with precision',
+    'endgame_specialist': 'with inevitability',
+    'solid_defender': 'with resolve',
+    'dynamic_player': 'with transformation',
+    'quiet_strategist': 'with subtlety',
+    'sacrificial_artist': 'with sacrifice',
+  };
+  const tone = toneMap[archetype] || 'with intention';
+  
+  // Special moves add flavor
+  let flourish = '';
+  if (specialMoves?.sacrifice > 0) flourish = '— the offering accepted';
+  else if (specialMoves?.promotion > 0) flourish = '— crowned in passage';
+  else if (specialMoves?.enPassant > 0) flourish = '— the ghost step taken';
+  else if (specialMoves?.castleK > 0 || specialMoves?.castleQ > 0) flourish = '— the king finds shelter';
+  
+  // Game phase shapes structure
+  const phaseWord = gamePhase === 'opening' ? 'genesis' : gamePhase === 'endgame' ? 'twilight' : 'crucible';
+  
+  // Eval shapes emotion
+  const evalWord = Math.abs(eval_cp || 0) > 300 ? 'decisive' : Math.abs(eval_cp || 0) > 100 ? 'contested' : 'balanced';
+  
+  const verse = `The ${adj1} ${noun1} ${verb} ${imagery}, ${tone}${flourish}`;
+  const essence = `${adj2} ${phaseWord} of ${evalWord} ${noun2}`;
+  const motif = `${noun1}-${verb}-${noun2}`;
+  
+  return { verse, essence, motif };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// VARIABLE MOVE NUMBER — Analyze different positions per game
+// Builds interlinkage data across ALL move numbers
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Select analysis move number — proportional to actual game length.
+ * 
+ * A 25-move blitz → analyzed in its opening/middlegame (m6-m21)
+ * A 45-move standard → analyzed across all phases (m10-m38)
+ * A 90-move endgame grind → deep endgame coverage (m20-m76)
+ * 
+ * Zones are defined as PERCENTAGES of the game, so reports naturally
+ * group by game phase (opening/middlegame/endgame) relative to each game.
+ * When aggregated across millions of games, this reveals how accuracy
+ * and archetype distributions shift across proportional game phases.
+ */
+function selectAnalysisMoveNumber(totalMoves, gameId) {
+  // Deterministic seed from game ID
+  const idHash = createHash('md5').update(gameId).digest('hex');
+  const seed = parseInt(idHash.substring(0, 8), 16);
+  
+  // Zones as proportions of THIS game's total moves
+  // Each zone maps to a game phase — reports aggregate by phase label
+  const zones = [
+    { pctStart: 0.15, pctEnd: 0.30, weight: 2, phase: 'opening' },        // 15-30% of game
+    { pctStart: 0.30, pctEnd: 0.45, weight: 3, phase: 'early_middle' },    // 30-45%
+    { pctStart: 0.45, pctEnd: 0.60, weight: 3, phase: 'deep_middle' },     // 45-60%
+    { pctStart: 0.60, pctEnd: 0.75, weight: 2, phase: 'late_middle' },     // 60-75%
+    { pctStart: 0.75, pctEnd: 0.90, weight: 1, phase: 'endgame' },         // 75-90%
+  ];
+  
+  // Pick zone based on seed (weighted selection)
+  const totalWeight = zones.reduce((s, z) => s + z.weight, 0);
+  let pick = seed % totalWeight;
+  let zone = zones[0];
+  for (const z of zones) {
+    if (pick < z.weight) { zone = z; break; }
+    pick -= z.weight;
+  }
+  
+  // Convert percentage range to actual move numbers for this game
+  const minMove = Math.max(12, Math.round(totalMoves * zone.pctStart));
+  const maxMove = Math.max(minMove + 1, Math.round(totalMoves * zone.pctEnd));
+  
+  // Pick specific move within the range (deterministic from seed)
+  const range = maxMove - minMove;
+  const moveNum = minMove + (seed % Math.max(1, range));
+  
+  return Math.max(12, Math.min(moveNum, totalMoves - 2)); // Never analyze last 2 moves (min 12 — opening <12 is near-random)
+}
+
 /**
  * Save prediction to BOTH local JSON and Supabase
  * Includes full 8-quadrant A/B test data
@@ -1342,7 +1795,16 @@ async function savePrediction(attempt) {
   // 2. Save to Supabase via DIRECT SQL (bypasses RLS)
   // FIXED: stockfish_prediction = real SF17 eval, hybrid = EP enhanced prediction
   try {
-    const positionHash = hashPosition(attempt.fen);
+    // FEN validation: must match DB constraint regex
+    // ^[rnbqkpRNBQKP1-8/]+ [wb] [KQkq-]+ [a-h1-8-]+ \d+ \d+$
+    const fen = attempt.fen;
+    if (!fen || typeof fen !== 'string' || fen.length <= 20 ||
+        !/^[rnbqkpRNBQKP1-8/]+ [wb] [KQkq-]+ [a-h1-8-]+ \d+ \d+$/.test(fen)) {
+      console.log(`[${workerId}] ⚠ Skipping save: invalid FEN for ${attempt.gameId}`);
+      return;
+    }
+    
+    const positionHash = hashPosition(fen);
     const gameName = attempt.gameMetadata 
       ? `${attempt.gameMetadata.white || 'Unknown'} vs ${attempt.gameMetadata.black || 'Unknown'}`
       : `Game ${attempt.gameId}`;
@@ -1350,7 +1812,7 @@ async function savePrediction(attempt) {
     const meta = attempt.gameMetadata || {};
     
     const query = `
-      INSERT INTO chess_prediction_attempts (
+      /* v4-enriched */ INSERT INTO chess_prediction_attempts (
         game_id, game_name, move_number, fen, position_hash,
         stockfish_eval, stockfish_depth,
         stockfish_prediction, stockfish_confidence, stockfish_correct,
@@ -1358,16 +1820,20 @@ async function savePrediction(attempt) {
         enhanced_prediction, enhanced_correct, enhanced_archetype, enhanced_confidence,
         baseline_prediction, baseline_correct,
         actual_result, data_quality_tier, worker_id, data_source,
-        white_elo, black_elo, time_control, pgn, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, NOW())
-      ON CONFLICT (game_id) DO NOTHING
-      RETURNING game_id
+        white_elo, black_elo, time_control, pgn, lesson_learned,
+        eight_quadrant_profile, piece_type_metrics, color_richness, complexity_score, baseline_vs_enhanced_delta,
+        created_at
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,NOW())
     `;
+    
+    // Compute baseline_vs_enhanced_delta: difference in correctness
+    const enhDelta = (attempt.enhancedCorrect === true && attempt.baselineCorrect === false) ? 1 :
+                     (attempt.enhancedCorrect === false && attempt.baselineCorrect === true) ? -1 : 0;
     
     const values = [
       attempt.gameId,
       gameName,
-      20,
+      attempt.moveNumber || 20,
       attempt.fen,
       positionHash,
       Math.max(-9999, Math.min(9999, Math.round((attempt.sf17Eval || 0) * 100))),  // Centipawns (capped)
@@ -1375,10 +1841,10 @@ async function savePrediction(attempt) {
       attempt.sf17Prediction,                                    // Real SF17 prediction
       Math.round(Math.min(95, 50 + Math.abs(attempt.sf17Eval || 0) * 10)),  // SF confidence (integer)
       attempt.sf17Correct,                                       // Real SF17 correctness
-      attempt.enhancedPrediction || attempt.baselinePrediction,  // EP hybrid prediction (legacy)
-      Math.round((attempt.enhanced?.confidence || 0.7) * 100),  // EP confidence (integer %)
+      attempt.hybridPrediction || attempt.enhancedPrediction || attempt.baselinePrediction,  // v12: real 3-engine fusion
+      Math.round(Math.min(69, Math.max(15, (attempt.hybridConfidence || 0.5) * 100))),  // hybrid confidence (capped 15-69)
       attempt.enhancedArchetype || attempt.baselineArchetype || 'unknown',
-      attempt.enhancedCorrect ?? attempt.baselineCorrect,        // hybrid_correct (legacy)
+      attempt.hybridCorrect ?? attempt.enhancedCorrect ?? attempt.baselineCorrect,  // v12: real hybrid correctness
       attempt.enhancedPrediction || null,                        // enhanced_prediction (8-quad)
       attempt.enhancedCorrect ?? null,                           // enhanced_correct
       attempt.enhancedArchetype || null,                         // enhanced_archetype
@@ -1392,17 +1858,40 @@ async function savePrediction(attempt) {
       meta.whiteElo || null,
       meta.blackElo || null,
       meta.timeControl || null,
-      meta.pgn || null
+      meta.pgn || null,
+      JSON.stringify({
+        verse: attempt.poetry?.verse || null,
+        essence: attempt.poetry?.essence || null,
+        motif: attempt.poetry?.motif || null,
+        move_number: attempt.moveNumber || 20,
+        game_phase: attempt.gamePhase || 'unknown',
+        special_moves: attempt.specialMoves || {},
+        // v12.1: Player profiling — foundation for per-player archetype learning
+        player_profile: meta.playerProfile || null,
+      }),
+      attempt.eightQuadrantProfile ? JSON.stringify(attempt.eightQuadrantProfile) : null,  // eight_quadrant_profile
+      attempt.pieceTypeMetrics ? JSON.stringify(attempt.pieceTypeMetrics) : null,           // piece_type_metrics
+      attempt.colorRichness || 0,                                                           // color_richness
+      attempt.complexity || 0,                                                              // complexity_score
+      enhDelta,                                                                             // baseline_vs_enhanced_delta
     ];
     
     const result = await resilientQuery(query, values);
     if (result.rowCount > 0) {
+      analyzedGameIds.add(attempt.gameId); // Add to dedup set for this session
       console.log(`[${workerId}] ✓ Saved: ${attempt.gameId} | SF17=${attempt.sf17Prediction}(${attempt.sf17Correct?'✓':'✗'}) EP=${attempt.enhancedPrediction}(${attempt.enhancedCorrect?'✓':'✗'}) Actual=${attempt.actualOutcome}`);
-    } else {
-      console.log(`[${workerId}] ⏭ Duplicate skipped: ${attempt.gameId}`);
     }
   } catch (err) {
-    console.log(`[${workerId}] SQL save failed: ${err.message}`);
+    // PostgreSQL 23505 = unique_violation — game already exists, skip silently
+    if (err.code === '23505') {
+      analyzedGameIds.add(attempt.gameId); // Mark as known so we don't re-analyze
+      console.log(`[${workerId}] ⏭ Duplicate skipped: ${attempt.gameId}`);
+    } else if (err.code === '23514') {
+      // Check constraint violation (e.g. valid_fen_format) — bad data, skip
+      console.log(`[${workerId}] ⚠ Check constraint failed for ${attempt.gameId}: ${err.constraint || err.message}`);
+    } else {
+      console.log(`[${workerId}] SQL save failed: ${err.message}`);
+    }
   }
 }
 
