@@ -130,7 +130,7 @@ for (const sig of ['SIGTERM', 'SIGINT']) {
   });
 }
 
-const FAST_FAIL_CODES = new Set(['23505', '23514', '23502']);
+const FAST_FAIL_CODES = new Set(['23505', '23514', '23502', '22003', '42703']);
 
 async function resilientQuery(text, params, retries = 3) {
   for (let i = 0; i < retries; i++) {
