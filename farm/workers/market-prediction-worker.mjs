@@ -1108,10 +1108,16 @@ function shouldPredictSymbol(symbol) {
   // Check auto-exclude list (catastrophic performers)
   if (autoExcludedSymbols.has(symbol)) return false;
   
+  // NEVER block reverse-signal symbols — they're anti-predictive and we FLIP them.
+  // Blocking them prevents the reverse signal from activating and kills the feedback loop.
+  if (learnedReverseSignals && learnedReverseSignals[symbol]?.shouldFlip) return true;
+  
   const stats = symbolAccuracyCache.get(symbol);
   if (!stats || stats.total < 20) return true; // Not enough data to judge
-  // Skip symbols consistently below 40% accuracy (below 2-way random baseline)
-  if (stats.accuracy < 0.35) {
+  // NOTE: security_accuracy_metrics may have contaminated data from old universal thresholds.
+  // As new predictions resolve with per-sector thresholds, these metrics will self-correct.
+  // For now, be lenient — only block truly catastrophic symbols with high sample size.
+  if (stats.accuracy < 0.35 && stats.total >= 100) {
     return false;
   }
   return true;
