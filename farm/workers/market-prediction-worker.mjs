@@ -50,6 +50,11 @@ import {
 import {
   createChessMarketBoard,
 } from './domain-adapters/chess-market-board.mjs';
+import {
+  refreshMarketIntelligence,
+  getMarketEntityBoost,
+  shouldSkipSymbol,
+} from './market-entity-intelligence.mjs';
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://ezvfslkjyjsqycztyfxh.supabase.co';
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -67,25 +72,21 @@ const sqlPool = process.env.DATABASE_URL ? new pg.Pool({
 if (sqlPool) sqlPool.on('error', (err) => console.error(`[MARKET-POOL] ${err.message}`));
 
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
-const STOCK_SYMBOLS = ['AMD', 'AMZN', 'MSFT', 'NVDA', 'AAPL', 'GOOGL', 'META', 'SPY', 'QQQ']; // v12.1: Restored all for sector learning — confidence dampened, not blocked
-// Real economies, real currencies, real physical goods
-const FOREX_SYMBOLS = ['EURUSD=X', 'GBPUSD=X', 'USDJPY=X', 'USDCAD=X', 'AUDUSD=X', 'USDCHF=X', 'NZDUSD=X', 'EURGBP=X'];
-const COMMODITY_SYMBOLS = ['GC=F', 'SI=F', 'CL=F', 'NG=F', 'HG=F']; // Gold, Silver, Oil, NatGas, Copper
-const INDEX_SYMBOLS = ['^FTSE', '^GDAXI']; // European
-// v10: International market expansion — global pattern learning
-const INTL_INDEX_SYMBOLS = {
-  asia_pacific: ['^AXJO', '000001.SS'],     // ASX 200 (Sydney), Shanghai Composite
-  middle_east: ['^TASI.SR'],                // Tadawul All Share (Saudi)
-  canada: ['^GSPTSE'],                      // S&P/TSX Composite (Toronto)
-};
-const BOND_SYMBOLS = []; // Removed — no demonstrated edge
-const CRYPTO_SYMBOLS = []; // Removed from conventional prediction — 24-26% accuracy
-// Cultural harmony experiment: crypto + volatile stocks predicted via chess archetype → musical patterns
-const HARMONY_SYMBOLS = ['BTC-USD', 'ETH-USD', 'SOL-USD']; // Dead weight via conventional → try abstract harmony
-// Options symbols (non-disruptive addition)
-const OPTIONS_UNIVERSE = [...OPTIONS_SYMBOLS.stocks, ...OPTIONS_SYMBOLS.etfs]; // MSFT, AMD, AMZN, NVDA + currency ETFs
+// v15: SYMBOL UNIVERSE — data-driven, only symbols with demonstrated edge
+// Removed (Feb 14, 2026): ALL forex (0-1% on 2000+ resolved), ALL intl indices (0%),
+// European indices (0%), bond yields (0%). These were pure pollution.
+const STOCK_SYMBOLS = ['AMD', 'AMZN', 'MSFT', 'NVDA', 'AAPL', 'GOOGL', 'META', 'SPY', 'QQQ'];
+const FOREX_SYMBOLS = []; // KILLED: 0.2-1.1% accuracy on 2000+ resolved. No edge, pure noise.
+const COMMODITY_SYMBOLS = ['GC=F', 'SI=F', 'CL=F', 'NG=F', 'HG=F']; // Gold 39.8%, Silver 53.5%, Oil 39.8%, NatGas 53.0%, Copper 39.5%
+const INDEX_SYMBOLS = []; // KILLED: ^FTSE 0%, ^GDAXI 0%. Re-enable when model handles intl hours.
+const INTL_INDEX_SYMBOLS = { asia_pacific: [], middle_east: [], canada: [] }; // KILLED: all 0%. Re-enable with proper timezone/session modeling.
+const BOND_SYMBOLS = [];
+const CRYPTO_SYMBOLS = [];
+// Cultural harmony: crypto via chess archetype → musical patterns (SOL 52.8%, ETH 40.7%, BTC 38.3%)
+const HARMONY_SYMBOLS = ['BTC-USD', 'ETH-USD', 'SOL-USD'];
+const OPTIONS_UNIVERSE = [...OPTIONS_SYMBOLS.stocks, ...OPTIONS_SYMBOLS.etfs];
 const ALL_INTL = [...INTL_INDEX_SYMBOLS.asia_pacific, ...INTL_INDEX_SYMBOLS.middle_east, ...INTL_INDEX_SYMBOLS.canada];
-const ALL_SYMBOLS = [...STOCK_SYMBOLS, ...FOREX_SYMBOLS, ...COMMODITY_SYMBOLS, ...INDEX_SYMBOLS, ...ALL_INTL, ...HARMONY_SYMBOLS, ...OPTIONS_UNIVERSE];
+const ALL_SYMBOLS = [...STOCK_SYMBOLS, ...COMMODITY_SYMBOLS, ...HARMONY_SYMBOLS, ...OPTIONS_UNIVERSE];
 const PREDICTION_INTERVAL_MS = 2 * 60 * 1000;   // New predictions every 2 min (was 5 — need volume for strategy testing)
 const RESOLUTION_INTERVAL_MS = 60 * 1000;        // Check resolutions every 60s
 const MIN_MOVE = 0.0001;
@@ -644,10 +645,24 @@ function generateGridPrediction(symbol, candles, priceData, symbolOptionsData = 
     };
   }
   
-  // v9.5: MARKET OVERCONFIDENCE CORRECTION + ARCHETYPE ACCURACY GATING
+  // v15: ARCHETYPE ACCURACY from 24K+ resolved predictions (Feb 14, 2026)
   const ARCHETYPE_ACCURACY = {
-    false_breakout: 0.60, bearish_momentum: 0.518, gap_continuation_up: 0.44,
-    overbought_fade: 0.40, trap_queen_sac: 0.38, cultural_harmony: 0.29,
+    false_breakout: 0.60,                  // 60.0% (n=919) — best pattern
+    bearish_momentum: 0.486,               // 48.6% (n=1351)
+    cultural_harmony: 0.483,               // 48.3% (n=3820)
+    gap_continuation_up: 0.442,            // 44.2% (n=231)
+    trap_queen_sac: 0.418,                 // 41.8% (n=2207)
+    overbought_fade: 0.405,               // 40.5% (n=111)
+    gap_continuation_down: 0.364,          // 36.4% (n=33)
+    institutional_distribution: 0.331,     // 33.1% (n=359)
+    castling_reposition: 0.293,            // 29.3% (n=3267)
+    oversold_bounce: 0.292,               // 29.2% (n=202)
+    institutional_accumulation: 0.291,     // 29.1% (n=791)
+    mean_reversion_down: 0.245,           // 24.5% (n=2399)
+    regime_shift_down: 0.235,             // 23.5% (n=3401) — high volume garbage
+    blunder_free_queen: 0.189,            // 18.9% (n=864)
+    bullish_momentum: 0.172,              // 17.2% (n=2273) — BELOW RANDOM
+    mean_reversion_up: 0.164,             // 16.4% (n=1838) — BELOW RANDOM
   };
   const finalArch = tacticalOverride ? tacticalResult.tactical : archetype;
   const archAccuracy = ARCHETYPE_ACCURACY[finalArch] || 0.33;
@@ -2271,6 +2286,11 @@ async function predictionCycle() {
     await refreshLearnedDirThresholds();
     await refreshTacticalCalibration();
     await refreshReverseSignals();
+    // Market entity intelligence: per-symbol, per-archetype, per-resonance learning
+    try {
+      const resilientQ = async (q, v) => sqlPool ? sqlPool.query(q, v) : null;
+      await refreshMarketIntelligence(resilientQ);
+    } catch (e) { log(`Market intel refresh: ${e.message}`, 'warn'); }
   }
 
   // Fetch real prices for active symbols
@@ -2382,7 +2402,7 @@ async function predictionCycle() {
     if (HARMONY_SYMBOLS.includes(symbol)) continue;
     
     // SELECTIVE PREDICTION: Skip symbols with proven poor accuracy
-    if (!shouldPredictSymbol(symbol)) {
+    if (!shouldPredictSymbol(symbol) || shouldSkipSymbol(symbol)) {
       skippedLowSignal++;
       continue;
     }
@@ -2479,14 +2499,12 @@ async function predictionCycle() {
           const predDir = pred.direction === 'up' ? 'bullish' : pred.direction === 'down' ? 'bearish' : 'neutral';
           const boardDirNorm = boardDir === 'bullish' ? 'bullish' : boardDir === 'bearish' ? 'bearish' : 'neutral';
 
-          // Cyclical confirmation: board agrees with grid prediction
-          if (predDir === boardDirNorm && boardDirNorm !== 'neutral') {
-            pred.confidence = Math.min(0.90, pred.confidence * 1.12);
-            pred.chessConfirmed = true;
-          } else if (predDir !== 'neutral' && boardDirNorm !== 'neutral' && predDir !== boardDirNorm) {
-            pred.confidence *= 0.75; // Contradiction — reduce confidence
-            pred.chessConfirmed = false;
-          }
+          // v15: DISABLED confidence modification from chess board confirmation.
+          // Data: chess_confirmed=true → 20.9% accuracy, chess_confirmed=null → 33.9%.
+          // The directional confirmation is ANTI-CORRELATED with market accuracy.
+          // Keep tracking for learning, but DO NOT modify confidence.
+          pred.chessConfirmed = (predDir === boardDirNorm && boardDirNorm !== 'neutral') ? true :
+            (predDir !== 'neutral' && boardDirNorm !== 'neutral' && predDir !== boardDirNorm) ? false : null;
           pred.chessBridge = {
             chessArchetype: boardResult.position.archetype,
             direction: boardDir,
@@ -2497,42 +2515,41 @@ async function predictionCycle() {
             accuracy: boardResult.prediction.predictionAccuracy,
           };
         }
-      } catch (boardErr) {
-        // Non-fatal — chess board is an enhancement, not a requirement
-      }
 
-      // FLAT/NO-TRADE: Save to audit trail as 'neutral' but skip legacy prediction_outcomes
-      // The system must get credit when market is genuinely flat (~70% of outcomes)
-      if (pred.direction === 'flat') {
-        flatSkipped++;
-        // Still log to audit trail for proper accuracy tracking
-        pred.direction = 'flat'; // Keep as-is for conversion in logToAuditTrail ('flat' → 'neutral')
-        await logToAuditTrail(pred, tf.resolutionMs, tfChess, tf).catch(() => {});
-        continue;
-      }
+        // ...
 
-      // ─── CYCLICAL CONFIRMATION: Chess consensus × Market grid ───────────
-      // When two independent systems agree → truth amplification.
-      // When they disagree → conflict dampening.
-      if (chessConsensus && chessConsensus.direction !== 'neutral') {
-        const marketDir = pred.direction === 'up' ? 'bullish' : pred.direction === 'down' ? 'bearish' : 'neutral';
-        if (chessConsensus.direction === marketDir) {
-          // CONFIRMATION: chess and market grid agree → boost confidence
-          pred.confidence = Math.min(0.85, pred.confidence * 1.15);
-          pred.chessConfirmed = true;
-        } else {
-          // CONFLICT: chess and market disagree → dampen confidence
-          pred.confidence *= 0.85;
-          pred.chessConfirmed = false;
+        // ─── CHESS CONSENSUS: Track but DO NOT modify confidence ────────────
+        // v15: DISABLED consensus confirmation boost.
+        // Data: chess=bullish+market=bullish → 4.0% accuracy (catastrophic)
+        //       chess=null+market=bullish → 59.7% accuracy (excellent)
+        // The consensus signal is ANTI-CORRELATED with market accuracy.
+        // Keep tracking in metadata for future learning, but stop poisoning confidence.
+        if (chessConsensus && chessConsensus.direction !== 'neutral') {
+          pred.chessConsensus = chessConsensus;
+          // NO confidence modification — data proves this hurts predictions
         }
-        pred.chessConsensus = chessConsensus;
-      }
 
-      // CONFIDENCE RECALIBRATION
-      const symStats = symbolAccuracyCache.get(symbol);
-      if (symStats && symStats.total >= 10) {
-        const maxCredibleConf = Math.min(0.90, symStats.accuracy + 0.20);
+        // v15: ARCHETYPE RESONANCE BOOST — this IS the real chess→market edge
+        // sacrificial_queenside_break: 67.7% on 1,462 predictions
+        // The archetype CLASSIFICATION has signal; the directional CONFIRMATION does not.
+        const CHESS_RESONANCE_EDGE = {
+          sacrificial_queenside_break: 1.15,   // 67.7% — strong edge
+          sacrificial_kingside_assault: 1.05,  // 45.5% — modest edge
+          central_domination: 1.02,            // 34.7% — slight edge
+          positional_squeeze: 0.97,            // 32.9% — neutral
+          closed_maneuvering: 0.97,            // 32.5% — neutral
+          queenside_expansion: 0.93,           // 29.7% — slight drag
+          kingside_attack: 0.90,               // 27.5% — drag
+          sacrificial_attack: 0.90,            // 27.5% — drag
+        };
+        const resonanceArch = pred.chessBridge?.chessArchetype || null;
+        if (resonanceArch && CHESS_RESONANCE_EDGE[resonanceArch]) {
+          const rBoost = CHESS_RESONANCE_EDGE[resonanceArch];
+          pred.confidence = Math.min(0.85, pred.confidence * rBoost);
+        }
         pred.confidence = Math.min(pred.confidence, maxCredibleConf);
+      } catch (boardErr) {
+        // Chess-market board is non-critical
       }
 
       // Log to audit trail with timeframe-MATCHED chess signal
