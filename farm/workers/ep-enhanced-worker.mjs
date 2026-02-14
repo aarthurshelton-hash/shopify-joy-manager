@@ -270,47 +270,33 @@ console.log(`[${workerId}] Chess.com pool: ${myChesscomPlayers.length} players`)
 // Each worker gets a deterministic source rotation offset
 let currentSourceIndex = (workerNum - 1) * 100;
 
-// In-memory deduplication: track all game IDs we've already analyzed
+// Session-only dedup: tracks game IDs processed THIS session only.
+// Cross-session dedup: lightweight batch DB check before processing (not 1M+ preload).
+// Final safety net: DB unique constraint + ON CONFLICT DO NOTHING.
 const analyzedGameIds = new Set();
 
 /**
- * Pre-load recent game IDs from database so we never re-fetch/re-analyze
- * games that were already saved (even across restarts).
- * DB ON CONFLICT is the last-resort safety net, not the primary dedup.
+ * Lightweight batch dedup: check a batch of game IDs against the DB.
+ * Returns Set of IDs that already exist. Fast — just one SELECT per batch.
  */
-async function loadAnalyzedGameIds() {
+async function checkDuplicateBatch(gameIds) {
+  if (gameIds.length === 0) return new Set();
+  const toCheck = gameIds.filter(id => !analyzedGameIds.has(id));
+  if (toCheck.length === 0) return new Set();
+  const existingIds = new Set();
   try {
-    // Paginated load — handles 500K+ games without timeout
-    const PAGE_SIZE = 100000; // Pro tier: larger pages for faster dedup loading
-    let offset = 0;
-    let totalLoaded = 0;
-    
-    while (true) {
-      const result = await resilientQuery(
-        `SELECT game_id FROM chess_prediction_attempts ORDER BY created_at LIMIT $1 OFFSET $2`,
-        [PAGE_SIZE, offset]
-      );
-      
-      if (!result.rows || result.rows.length === 0) break;
-      
-      for (const row of result.rows) {
-        analyzedGameIds.add(row.game_id);
-      }
-      totalLoaded += result.rows.length;
-      
-      if (result.rows.length < PAGE_SIZE) break; // Last page
-      offset += PAGE_SIZE;
-      console.log(`[${workerId}] Dedup loading... ${totalLoaded} IDs so far`);
-    }
-    
-    if (totalLoaded > 0) {
-      console.log(`[${workerId}] Pre-loaded ${analyzedGameIds.size} game IDs from DB (dedup active)`);
-    } else {
-      console.log(`[${workerId}] No existing games in DB — fresh start`);
+    const result = await resilientQuery(
+      `SELECT game_id FROM chess_prediction_attempts WHERE game_id = ANY($1)`,
+      [toCheck]
+    );
+    for (const row of result.rows) {
+      existingIds.add(row.game_id);
+      analyzedGameIds.add(row.game_id); // Cache for session
     }
   } catch (err) {
-    console.log(`[${workerId}] DB dedup pre-load failed (will rely on ON CONFLICT): ${err.message}`);
+    console.log(`[${workerId}] Batch dedup check failed (will use ON CONFLICT): ${err.message}`);
   }
+  return existingIds;
 }
 
 /**
@@ -1068,7 +1054,11 @@ async function runBenchmarkCycle(epEngine) {
   }
   
   // Filter out already-analyzed games BEFORE processing
-  const deduped = allGames.filter(g => !analyzedGameIds.has(g.id));
+  // Step 1: Session cache (instant)
+  const sessionFiltered = allGames.filter(g => !analyzedGameIds.has(g.id));
+  // Step 2: Lightweight DB batch check (one SELECT, not 1M+ preload)
+  const existingInDb = await checkDuplicateBatch(sessionFiltered.map(g => g.id));
+  const deduped = sessionFiltered.filter(g => !existingInDb.has(g.id));
   
   // Source quality filter: skip low-ELO, bullet, and incomplete games
   const games = deduped.filter(g => {
@@ -1370,14 +1360,14 @@ async function runBenchmarkCycle(epEngine) {
               `farm_${game.id}_${Date.now()}`,
               allAgree ? 'consensus-correct' : hybridCorrect ? 'ep-correct' : 'ep-incorrect',
               allAgree ? 'All Engines Agree (Correct)' : hybridCorrect ? 'EP Correct' : 'EP Incorrect',
-              Math.round(realScore * 100) / 100,
+              Math.min(9.99, Math.round(realScore * 100) / 100),
               predictions.enhanced?.archetype || predictions.baseline.archetype,
-              Math.round(confLevel * 100),
-              posComplexity,
+              Math.min(9.99, Math.round(confLevel * 100) / 100),  // numeric(3,2): 0.00-9.99
+              Math.min(9.99, posComplexity),
               `chess:${game.source || 'lichess'}`,
               hybridPrediction === 'white_wins' ? 'up' : hybridPrediction === 'black_wins' ? 'down' : 'flat',
-              Math.round(confLevel * 100),
-              posComplexity,
+              Math.min(9.99, Math.round(confLevel * 100) / 100),  // numeric(3,2): 0.00-9.99
+              Math.min(9.99, posComplexity),
               hybridCorrect
             ]
           );
@@ -1451,8 +1441,8 @@ async function main() {
   console.log(`Workers: ${THROUGHPUT.workers} | Games/cycle: ${THROUGHPUT.gamesPerCycle}`);
   console.log('Loading EP engine...');
   
-  // Pre-load analyzed game IDs for deduplication
-  await loadAnalyzedGameIds();
+  // Dedup: session-only Set + DB ON CONFLICT DO NOTHING (no preload needed)
+  console.log(`[${workerId}] Dedup: session-local Set + DB ON CONFLICT (instant startup)`);
   
   // Expand player pool with dynamically discovered players from Lichess leaderboards
   await expandPlayerPool();
@@ -1871,8 +1861,8 @@ async function savePrediction(attempt) {
       }),
       attempt.eightQuadrantProfile ? JSON.stringify(attempt.eightQuadrantProfile) : null,  // eight_quadrant_profile
       attempt.pieceTypeMetrics ? JSON.stringify(attempt.pieceTypeMetrics) : null,           // piece_type_metrics
-      attempt.colorRichness || 0,                                                           // color_richness
-      attempt.complexity || 0,                                                              // complexity_score
+      Math.min(9.9999, Math.max(0, parseFloat(attempt.colorRichness) || 0)),                  // color_richness (numeric 5,4 max 9.9999)
+      Math.min(9.9999, Math.max(0, (parseFloat(attempt.complexity) || 0) / 100)),               // complexity_score (numeric 5,4, normalized /100)
       enhDelta,                                                                             // baseline_vs_enhanced_delta
     ];
     

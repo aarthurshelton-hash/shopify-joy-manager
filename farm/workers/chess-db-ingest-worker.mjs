@@ -761,8 +761,8 @@ async function batchInsert(attempts) {
           a.enhDelta,
           a.eightQuadrantProfile ? JSON.stringify(a.eightQuadrantProfile) : null,
           a.pieceTypeMetrics ? JSON.stringify(a.pieceTypeMetrics) : null,
-          Number.isFinite(a.colorRichness) ? a.colorRichness : 0,
-          Number.isFinite(a.complexity) ? a.complexity : 0,
+          Math.min(9.9999, Math.max(0, Number.isFinite(a.colorRichness) ? a.colorRichness : 0)),
+          Math.min(9.9999, Math.max(0, Number.isFinite(a.complexity) ? a.complexity / 100 : 0)),
           a.metadata ? JSON.stringify(a.metadata) : null,
         ]
       );
@@ -796,14 +796,14 @@ async function batchInsert(attempts) {
                 `dbi_${a.gameId}_${Date.now()}`,
                 allAgree ? 'consensus-correct' : a.enhancedCorrect ? 'ep-correct' : 'ep-incorrect',
                 allAgree ? 'All Engines Agree (Correct)' : a.enhancedCorrect ? 'EP Correct' : 'EP Incorrect',
-                Math.round(realScore * 100) / 100,
+                Math.min(9.99, Math.round(realScore * 100) / 100),
                 a.enhancedArchetype || 'unknown',
-                Math.round((a.enhancedConfidence || 0.5) * 100),
-                posComplexity,
+                Math.min(9.99, Math.round((a.enhancedConfidence || 0.5) * 100) / 100),
+                Math.min(9.99, posComplexity),
                 `chess:${a.dataSource || 'lichess_db'}`,
                 a.enhancedPrediction === 'white_wins' ? 'up' : a.enhancedPrediction === 'black_wins' ? 'down' : 'flat',
-                Math.round(confLevel * 100),
-                posComplexity,
+                Math.min(9.99, Math.round(confLevel * 100) / 100),
+                Math.min(9.99, posComplexity),
                 a.enhancedCorrect,
               ]
             );
