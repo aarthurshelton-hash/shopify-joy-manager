@@ -552,8 +552,10 @@ function extract32PieceSignature(pgn, analysisMoveNumber) {
   // Compute white vs black spatial dominance from quadrants
   const whiteSpatial = quadrants.q1_kingside_white + quadrants.q2_queenside_white +
                        quadrants.q5_center_white;
-  const blackSpatial = quadrants.q3_kingside_black + quadrants.q4_queenside_black +
-                       quadrants.q6_center_black;
+  // q3/q4/q6 are signed with sideVal (-1 for black traces). Use magnitude so
+  // black dominance is measured as positive influence rather than negative artifact.
+  const blackSpatial = Math.abs(quadrants.q3_kingside_black) + Math.abs(quadrants.q4_queenside_black) +
+                       Math.abs(quadrants.q6_center_black);
 
   // Piece activity balance
   const whiteActivity = Object.values(pieceTypeQuadrants).reduce((s, v) => s + v.white, 0);
@@ -709,15 +711,15 @@ function predictFrom32PieceSignature(sig, sfEvalCp, moveNumber) {
   signals.push({ name: 'traceDepth', value: traceAsymmetry, weight: 1.0 });
 
   // ── 5. Piece Mobility Differential ──
-  const mob = sig.mobility;
-  const whiteMob = (mob.n || 0) + (mob.b || 0) + (mob.r || 0) + (mob.q || 0);
-  const blackMob = whiteMob; // Symmetric by type avg — use reach instead
-  const reach = sig.reach;
-  const whiteReach = (reach.n || 0) + (reach.b || 0) + (reach.r || 0);
-  const blackReach = whiteReach; // Symmetric — differentiate via pair diffs
-  // Use knight pair diff as proxy for coordination advantage
+  // BUGFIX: prior code used symmetric white/black mobility placeholders, effectively
+  // zeroing this channel and forcing over-reliance on near-zero ensemble scores (draw bias).
+  const pti = sig.pieceTypeInfluence || {};
+  const whiteMob = (pti.knight?.white || 0) + (pti.bishop?.white || 0) + (pti.rook?.white || 0) + (pti.queen?.white || 0);
+  const blackMob = (pti.knight?.black || 0) + (pti.bishop?.black || 0) + (pti.rook?.black || 0) + (pti.queen?.black || 0);
+  const mobilityDelta = whiteMob - blackMob;
+  // Keep pair asymmetry signal, but combine with true side-aware mobility.
   const pairAdvantage = (sig.pairDiffs.knight?.white || 0) - (sig.pairDiffs.knight?.black || 0);
-  const mobSignal = Math.tanh(pairAdvantage / 5);
+  const mobSignal = Math.tanh((mobilityDelta / 40) + (pairAdvantage / 8));
   signals.push({ name: 'mobility', value: mobSignal, weight: 0.6 });
 
   // ── 6. Pawn Structure Signal ──
@@ -772,10 +774,14 @@ function predictFrom32PieceSignature(sig, sfEvalCp, moveNumber) {
   const ensembleScore = totalWeight > 0 ? weightedSum / totalWeight : 0;
 
   // ── Convert to prediction ──
-  const drawThreshold = 0.08;
+  const absSf = Math.abs(sfEvalCp || 0);
+  // In decisive eval zones, draws should be rare; tighten threshold aggressively.
+  const drawThreshold = absSf >= 200 ? 0.02 : absSf >= 100 ? 0.04 : absSf >= 50 ? 0.06 : 0.08;
   let predictedWinner;
   if (ensembleScore > drawThreshold) predictedWinner = 'white';
   else if (ensembleScore < -drawThreshold) predictedWinner = 'black';
+  // If ensemble is near zero but SF is clearly decisive, follow SF sign instead of draw.
+  else if (absSf >= 100) predictedWinner = sfEvalCp > 0 ? 'white' : 'black';
   else predictedWinner = 'draw';
 
   // Confidence from signal agreement (how many channels agree with the prediction)

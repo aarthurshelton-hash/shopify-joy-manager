@@ -590,7 +590,7 @@ async function processGame(game, moveNumber, epEngine, source) {
   // v17: Enhanced draw suppression — enhanced predicts "draw" 27-35% on archetypes
   // where draws only happen 4-7%. These 2.7% accuracy predictions are pure poison.
   // When suppressed, redistribute enhanced's weight to baseline (61.7% > enhanced 59.3%).
-  const drawSuppress = shouldSuppressEnhancedDraw(enhancedResult.predictedWinner, fusionArchetype);
+  const drawSuppress = shouldSuppressEnhancedDraw(enhancedResult.predictedWinner, fusionArchetype, hasRealEval ? sfEvalCp : null, moveNumber);
   if (drawSuppress.suppress) {
     // Zero enhanced vote, give its weight to baseline
     votes[baselineResult.predictedWinner] += (fw.baselineWeight + fw.enhancedWeight) * baseConf;

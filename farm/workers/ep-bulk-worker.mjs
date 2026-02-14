@@ -662,7 +662,7 @@ async function processGame(game, moveNumber, epEngine) {
   const sfConf = hasRealEval ? Math.min(0.95, 0.5 + Math.abs(sfEvalCp) / 500) : 0.3;
   
   // v17: Enhanced draw suppression
-  const drawSuppress = shouldSuppressEnhancedDraw(enhancedResult.predictedWinner, fusionArchetype);
+  const drawSuppress = shouldSuppressEnhancedDraw(enhancedResult.predictedWinner, fusionArchetype, hasRealEval ? sfEvalCp : null, moveNumber);
   if (drawSuppress.suppress) {
     votes[baselineResult.predictedWinner] += (fw.baselineWeight + fw.enhancedWeight) * baseConf;
     votes[sf17Prediction] += fw.sfWeight * sfConf;

@@ -5,7 +5,7 @@
  * and PLAYER-SPECIFIC confidence adjustments for the hybrid fusion step.
  * 
  * DESIGN PRINCIPLE: These are multiplicative modifiers on the EXISTING fusion
- * weights (baseline 0.25, enhanced 0.45, SF 0.30). They cannot break the system —
+ * weights (baseline 0.50, enhanced 0.15, SF 0.35). They cannot break the system —
  * at worst they're neutral (1.0 multiplier). No new architecture, no 3-body chaos.
  * 
  * Imported by: ep-enhanced-worker, ep-bulk-worker, chess-db-ingest-worker
@@ -277,9 +277,22 @@ const ARCHETYPE_DRAW_RATES = {
  * @param {string} archetype - Enhanced archetype classification
  * @returns {{ suppress: boolean, reason: string }}
  */
-export function shouldSuppressEnhancedDraw(enhancedPrediction, archetype) {
+export function shouldSuppressEnhancedDraw(enhancedPrediction, archetype, sfEvalCp = null, moveNumber = null) {
   if (enhancedPrediction !== 'draw') {
     return { suppress: false, reason: '' };
+  }
+
+  // Strong SF eval + enhanced draw is a recurrent failure mode.
+  // Last-hour evidence: 30.4% draw rate at |eval|>=200 with only 47.7% EN accuracy
+  // vs 62.5% baseline on the same bucket. Draw is rarely correct there.
+  if (sfEvalCp !== null && sfEvalCp !== undefined) {
+    const absEval = Math.abs(sfEvalCp);
+    if (absEval >= 200) {
+      return { suppress: true, reason: 'enhanced_draw_vs_decisive_sf' };
+    }
+    if (absEval >= 100 && (moveNumber === null || moveNumber >= 12)) {
+      return { suppress: true, reason: 'enhanced_draw_vs_clear_sf' };
+    }
   }
   
   const drawRate = ARCHETYPE_DRAW_RATES[archetype];
@@ -359,11 +372,11 @@ export function getSfReliabilityWeight(sfEvalCp, moveNumber) {
     reason = 'decisive_eval';
   }
 
-  // When we reduce SF weight, redistribute mostly to baseline (61.7%)
-  // rather than enhanced (59.3%) — baseline is the stronger non-SF engine
+  // When we reduce SF weight, redistribute overwhelmingly to baseline (61.7%)
+  // rather than enhanced (currently unstable intraday at ~45%).
   const sfReduction = (1.0 - sfMult) * 0.30; // How much raw weight we're removing
-  const redistributeToBaseline = sfReduction > 0 ? sfReduction * 0.65 : 0; // 65% of freed weight → baseline
-  // Remaining 35% of freed weight → enhanced (handled in main function)
+  const redistributeToBaseline = sfReduction > 0 ? sfReduction * 0.85 : 0; // 85% of freed weight → baseline
+  // Remaining 15% of freed weight → enhanced (handled in main function)
 
   return { sfMultiplier: sfMult, redistributeToBaseline, reason };
 }
@@ -378,7 +391,7 @@ export function getSfReliabilityWeight(sfEvalCp, moveNumber) {
 /**
  * Compute intelligence-adjusted fusion weights.
  * 
- * Base weights: baseline=0.25, enhanced=0.45, sf=0.30
+ * Base weights: baseline=0.50, enhanced=0.15, sf=0.35
  * The enhanced weight gets multiplied by the combined boost factor,
  * then all weights are renormalized to sum to 1.0.
  * 
@@ -427,9 +440,10 @@ export function getIntelligentFusionWeights(archetype, timeControl, moveNumber, 
   const sfRel = getSfReliabilityWeight(sfEvalCp !== undefined ? sfEvalCp : null, moveNumber);
   
   // Apply boost to enhanced weight, endgame + reliability to SF
-  const rawBaseline = 0.25 + sfRel.redistributeToBaseline; // Gets most of SF's freed weight
-  const rawEnhanced = 0.45 * combinedBoost + (sfRel.redistributeToBaseline > 0 ? sfRel.redistributeToBaseline * 0.538 : 0); // Gets 35% of freed weight (0.35/0.65 ratio)
-  const rawSf = 0.30 * sfEndgameBoost * sfRel.sfMultiplier;
+  // v17.1 rebalance: baseline is strongest live engine, enhanced is unstable intraday.
+  const rawBaseline = 0.50 + sfRel.redistributeToBaseline;
+  const rawEnhanced = 0.15 * combinedBoost + (sfRel.redistributeToBaseline > 0 ? sfRel.redistributeToBaseline * 0.176 : 0); // 15% of freed SF weight (0.15/0.85 ratio)
+  const rawSf = 0.35 * sfEndgameBoost * sfRel.sfMultiplier;
   
   // Renormalize so weights sum to 1.0
   const total = rawBaseline + rawEnhanced + rawSf;

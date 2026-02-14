@@ -1266,7 +1266,7 @@ async function runBenchmarkCycle(epEngine) {
       const fw = getIntelligentFusionWeights(fusionArchetype, game.timeControl || null, moveNumber, playerCtx, sfEvalCp);
       const fusionScores = { white_wins: 0, black_wins: 0, draw: 0 };
       // v17: Enhanced draw suppression — kill enhanced's 2.7% accuracy draw predictions
-      const drawSuppress = shouldSuppressEnhancedDraw(enhancedPred.predictedWinner, fusionArchetype);
+      const drawSuppress = shouldSuppressEnhancedDraw(enhancedPred.predictedWinner, fusionArchetype, sfEvalCp, moveNumber);
       if (drawSuppress.suppress) {
         fusionScores[baselinePred.predictedWinner] += fw.baselineWeight + fw.enhancedWeight;
         fusionScores[sf17Prediction] += fw.sfWeight;
