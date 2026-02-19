@@ -101,12 +101,19 @@ export function calculateEquilibriumScores(
     minor_piece_coordination: 'piece_harmony',            // 57.1% golden zone
     central_knight_outpost: 'central_domination',         // 71.1% golden zone
     bishop_pair_mastery: 'positional_squeeze',            // 79.3% golden zone
-    // v32: piece_balanced_activity -0.3pp (n=2,825) → closed_maneuvering 70.2%
-    // Balanced positions structurally match closed maneuvering: no forcing lines,
-    // mutual pressure, equilibrium — same grid signature as closed maneuvering.
-    piece_balanced_activity: 'closed_maneuvering',        // -0.3pp → 70.2% golden zone
-    // v32: piece_rook_activity — no remap needed (+1.6pp on small sample, let it learn)
-    // v32: piece_queen_dominance — no remap needed (-0.3pp but large n=375, let calibration handle)
+    // v32: piece_balanced_activity → closed_maneuvering (balanced = no forcing lines, mutual pressure)
+    piece_balanced_activity: 'closed_maneuvering',
+    // v32.1: piece_* archetypes from Lichess DB ingest — NOT in ARCHETYPE_DEFINITIONS.
+    // Without remaps these fall through to undefined → zero archetype calibration signal.
+    // Mapped by structural similarity to calibrated tactical archetypes:
+    piece_queen_dominance:  'central_domination',   // Queen dominating open files = central control
+    piece_rook_activity:    'open_tactical',         // Active rooks = open files = open tactical battle
+    piece_bishop_control:   'positional_squeeze',    // Bishop pair long diagonals = positional squeeze
+    piece_knight_maneuver:  'closed_maneuvering',    // Knight outposts = closed/semi-closed maneuvering
+    piece_activity:         'open_tactical',         // Generic high piece activity = open tactical
+    piece_endgame:          'endgame_technique',     // Piece endgame = technique
+    piece_attack:           'sacrificial_attack',    // Direct piece attack = sacrificial attack
+    piece_defense:          'prophylactic_defense',  // Defensive piece play = prophylactic
   };
   const effectiveArchetypeName = ARCHETYPE_REMAP[signature.archetype] || signature.archetype;
   const archetype = ARCHETYPE_DEFINITIONS[effectiveArchetypeName] || ARCHETYPE_DEFINITIONS[signature.archetype];

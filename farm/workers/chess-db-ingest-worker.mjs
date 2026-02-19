@@ -1014,9 +1014,28 @@ function selectMultiPositions(totalMoves) {
 
 let enhFailCount = 0;
 
+// v32.1: Normalize piece_* archetypes from pieceColorFlow32 to tactical equivalents.
+// piece_* names are NOT in ARCHETYPE_DEFINITIONS — they break signal calibration by
+// generating uncalibrated archetype entries that dilute the learned signal weights.
+const PIECE_ARCHETYPE_REMAP = {
+  piece_queen_dominance:  'central_domination',
+  piece_rook_activity:    'open_tactical',
+  piece_bishop_control:   'positional_squeeze',
+  piece_knight_maneuver:  'closed_maneuvering',
+  piece_balanced_activity:'closed_maneuvering',
+  piece_activity:         'open_tactical',
+  piece_endgame:          'endgame_technique',
+  piece_attack:           'sacrificial_attack',
+  piece_defense:          'prophylactic_defense',
+  piece_material_advantage:'open_tactical',
+  piece_advancement_pressure:'queenside_expansion',
+};
+
 function classifyArchetype32(sig) {
   // v26.0: New 32-piece module provides archetype directly
-  if (sig?.archetype) return sig.archetype;
+  if (sig?.archetype) {
+    return PIECE_ARCHETYPE_REMAP[sig.archetype] || sig.archetype;
+  }
   if (!sig?.quadrants) return 'balanced_flow';
   const q = sig.quadrants;
   const ksPressure = Math.abs(q.q1_kingside_white) + Math.abs(q.q3_kingside_black);
