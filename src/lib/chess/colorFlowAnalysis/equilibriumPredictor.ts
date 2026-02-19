@@ -226,6 +226,9 @@ export function calculateEquilibriumScores(
   // and color flow grids are sparser (fewer pieces = fewer visits). Boost SF + pawnStructure,
   // reduce control + momentum which rely on grid density.
   const isEndgame = currentMoveNumber >= 46;
+  // v32: EARLY DEEP ENDGAME (51-60) — live 200K data: EP 76.3% vs SF 76.8% → -0.5pp.
+  // SF holds a micro-lead here. Add mild confidence cap + phase SF boost to correct.
+  const isEarlyDeepEndgame = currentMoveNumber >= 51 && currentMoveNumber < 61;
   const isDeepEndgame = currentMoveNumber >= 61;
   // v29.6: Very deep endgame (66+) — EP -4.2pp vs SF on 307 games.
   // Color flow grids are extremely sparse here. SF's tablebase-like depth dominates.
@@ -263,8 +266,8 @@ export function calculateEquilibriumScores(
                       currentMoveNumber <= 30 ? 0.98 :
                       currentMoveNumber <= 35 ? 1.0 :
                       currentMoveNumber <= 45 ? 1.05 :
-                      currentMoveNumber <= 55 ? 1.08 :
-                      0.95;  // 56+: SF also weak in deep endgame
+                      currentMoveNumber <= 55 ? 1.12 :  // v32: boosted to match phaseSfMult
+                      1.02;  // v32: 56+ SF respectable even in deep endgame
   
   // v22.2: ZONE-AWARE mirror eval weights (tuned from v22.0-v22.1 data)
   // Data from 25K+ games per iteration:
@@ -358,7 +361,7 @@ export function calculateEquilibriumScores(
     archetypePhase: hasArchPhase ? 0.05 : 0,
     mirrorEval: mirrorEvalWeight,
     deepSignals: deepWeight,
-    photonic: hasPhotonic && absEval < 200 ? 0.10 : 0, // v29.3: Boosted from 8% to 10%
+    photonic: hasPhotonic && absEval < 100 ? 0.10 : 0, // v32: Tightened 200→100 (data: 50-200cp -1.7pp, 0-50cp +0.9pp)
     piece32: hasPiece32 && absEval < 200 ? 0.08 * combinedEpBoost : 0, // v29.4: 32-piece in 0-200cp zone
   } : {
     control: 0.25,
@@ -735,6 +738,8 @@ export function calculateEquilibriumScores(
     finalConfidence = Math.min(finalConfidence, 38); // v29.6: was 45, data shows -4.2pp
   } else if (isDeepEndgame) {
     finalConfidence = Math.min(finalConfidence, 48);
+  } else if (isEarlyDeepEndgame) {
+    finalConfidence = Math.min(finalConfidence, 55); // v32: 51-60 SF micro-edge zone (-0.5pp)
   }
   
   // v29.6: 45-50 CONFIDENCE CORRECTION — data shows 30.9% actual accuracy (n=327)
