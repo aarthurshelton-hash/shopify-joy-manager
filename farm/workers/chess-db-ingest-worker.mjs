@@ -2607,7 +2607,7 @@ async function processSourceStream(stream, epEngine, source) {
 // ════════════════════════════════════════════════════════
 
 const completedLichessMonths = new Set();
-const STATE_FILE = join(DATA_DIR, 'ingest-state.json');
+const STATE_FILE = join(DATA_DIR, `ingest-state-${workerId}.json`);
 
 function loadState() {
   try {

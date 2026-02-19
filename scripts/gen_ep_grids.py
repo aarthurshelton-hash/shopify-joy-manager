@@ -716,25 +716,35 @@ def fig_ztf_grid():
 # MAIN
 # ══════════════════════════════════════════════════════════════════════════════
 if __name__ == '__main__':
-    import sys
+    import sys, base64
     print('[EP-GRIDS] Generating enhanced visualization suite...')
+    # Short keys match what build_pdf_academic.mjs and build_pdf_report.mjs expect
     figs = [
-        ('fig10_chess_grid_32piece',  fig_chess_grid),
-        ('fig11_all_domain_grids',    fig_all_domain_grids),
-        ('fig12_squares_in_squares',  fig_squares_in_squares),
-        ('fig13_ep_progression',      fig_ep_progression),
-        ('fig14_photonic_chip',       fig_photonic_chip),
-        ('fig15_ztf_grid',            fig_ztf_grid),
+        ('fig10', fig_chess_grid),
+        ('fig11', fig_all_domain_grids),
+        ('fig12', fig_squares_in_squares),
+        ('fig13', fig_ep_progression),
+        ('fig14', fig_photonic_chip),
+        ('fig15', fig_ztf_grid),
     ]
+    # Merge into existing manifest (gen_ep_charts.py writes fig1-9 first)
+    mpath = os.path.join(OUT, 'manifest.json')
     manifest = {}
-    for name, fn in figs:
+    if os.path.exists(mpath):
+        with open(mpath, 'r') as f:
+            manifest = json.load(f)
+
+    ok = 0
+    for key, fn in figs:
         try:
             path = fn()
-            manifest[name] = path
-            print(f'  ✓ {name}  →  {path}')
+            with open(path, 'rb') as f:
+                manifest[key] = base64.b64encode(f.read()).decode()
+            print(f'  ✓ {key}  →  {path}')
+            ok += 1
         except Exception as e:
-            print(f'  ✗ {name}: {e}', file=sys.stderr)
+            print(f'  ✗ {key}: {e}', file=sys.stderr)
 
-    mpath = os.path.join(OUT,'manifest.json')
-    with open(mpath,'w') as f: json.dump(manifest,f,indent=2)
-    print(f'[EP-GRIDS] Done. {len(manifest)}/6 figures. Manifest: {mpath}')
+    with open(mpath, 'w') as f:
+        json.dump(manifest, f)
+    print(f'[EP-GRIDS] Done. {ok}/6 grid figures merged into manifest ({len(manifest)} total keys).')
