@@ -2282,7 +2282,7 @@ async function batchInsert(attempts) {
       params.push(
         a.gameId,
         a.gameName,
-        a.moveNumber,
+        Math.round(a.moveNumber || 0),
         a.fen,
         a.positionHash,
         Math.max(-9999, Math.min(9999, Number.isFinite(a.sfEvalCp) ? a.sfEvalCp : 0)),
@@ -2368,7 +2368,7 @@ async function batchInsert(attempts) {
               ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37)
               ON CONFLICT (game_id) DO NOTHING`,
               [
-                a.gameId, a.gameName, a.moveNumber, a.fen, a.positionHash,
+                a.gameId, a.gameName, Math.round(a.moveNumber || 0), a.fen, a.positionHash,
                 Math.max(-9999, Math.min(9999, Number.isFinite(a.sfEvalCp) ? a.sfEvalCp : 0)),
                 a.hasRealEval ? 18 : 0, a.sf17Prediction || 'unknown',
                 a.hasRealEval ? Math.round(Math.min(95, 50 + Math.abs((Number.isFinite(a.sfEvalCp) ? a.sfEvalCp : 0) / 100) * 10)) : 0,
@@ -2883,6 +2883,7 @@ async function ingestChessCom(epEngine) {
   for (let i = 0; i < playersPerCycle && totalGames < CONFIG.maxGamesPerSource; i++) {
     const player = CHESSCOM_PLAYERS[chesscomPlayerIndex % CHESSCOM_PLAYERS.length];
     chesscomPlayerIndex++;
+    const savedBeforePlayer = dbSaved;
     
     try {
       // Get player's monthly archives
@@ -2987,7 +2988,14 @@ async function ingestChessCom(epEngine) {
         }
       }
       
-      console.log(`[CHESS.COM] ${player}: ${playerGames} games processed${consecutiveDryMonths >= 3 ? ' (exhausted — skipped remaining archives)' : ''}`);
+      const newForPlayer = dbSaved - savedBeforePlayer;
+      if (playerGames > 0 && newForPlayer === 0) {
+        // All games were DB dupes — player fully saturated, skip ahead to find fresh players faster
+        chesscomPlayerIndex += 5;
+        console.log(`[CHESS.COM] ${player}: saturated (0/${playerGames} new) — skipping +5 players`);
+      } else {
+        console.log(`[CHESS.COM] ${player}: ${playerGames} games processed, ${newForPlayer} new${consecutiveDryMonths >= 3 ? ' (exhausted)' : ''}`);
+      }
       
       // Polite delay between players
       await new Promise(r => setTimeout(r, 2000));
