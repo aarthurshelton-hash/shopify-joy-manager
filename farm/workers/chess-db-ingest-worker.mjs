@@ -2469,7 +2469,13 @@ async function processSourceStream(stream, epEngine, source) {
   let processed = 0, skipped = 0, errors = 0;
   let epCorrect = 0, sfCorrect = 0;
   const startTime = Date.now();
-  
+  let saturated = false;
+
+  // Dupe-spiral detection: rolling window over last DUPE_WINDOW games checked
+  const DUPE_WINDOW = 3000;
+  const DUPE_BAIL_RATIO = 0.85;
+  let windowChecked = 0, windowDupes = 0;
+
   // Collect games in small batches for dedup checking
   let gameBuffer = [];
   
@@ -2497,10 +2503,24 @@ async function processSourceStream(stream, epEngine, source) {
         
         // v19.1: PARALLEL GAME PROCESSING — process N games concurrently
         const newGames = gameBuffer.filter(g => {
-          if (existingIds.has(g.id)) { skipped++; sessionDedup.add(g.id); return false; }
+          if (existingIds.has(g.id)) { skipped++; sessionDedup.add(g.id); windowDupes++; return false; }
           return true;
         });
-        
+        windowChecked += gameBuffer.length;
+
+        // Self-healing: if this section is a dupe spiral, abort and let the caller advance
+        if (windowChecked >= DUPE_WINDOW) {
+          const ratio = windowDupes / windowChecked;
+          if (ratio >= DUPE_BAIL_RATIO) {
+            console.log(`[${workerId}] [${source}] ⚠ Dupe spiral detected (${(ratio*100).toFixed(0)}% dupes over ${windowChecked} games) — bailing out, advancing to next month`);
+            saturated = true;
+            try { stream.destroy?.(); } catch {}
+            break;
+          }
+          // Slide window
+          windowChecked = 0; windowDupes = 0;
+        }
+
         // Process in parallel chunks of CONFIG.parallelGames
         for (let pi = 0; pi < newGames.length; pi += CONFIG.parallelGames) {
           if (processed >= CONFIG.maxGamesPerSource) break;
@@ -2697,18 +2717,17 @@ async function ingestLichessDB(epEngine) {
     try { zstd.kill(); } catch {}
   }, streamMinutes * 60 * 1000);
   
-  const games = await processSourceStream(zstd.stdout, epEngine, 'lichess_db');
+  const { count: games, saturated: isSaturated } = await processSourceStream(zstd.stdout, epEngine, 'lichess_db');
   
   clearTimeout(streamTimeout);
   try { curl.kill(); } catch {}
   try { zstd.kill(); } catch {}
   
-  // v29.9: NEVER mark a month as "complete" — each month has 80M+ games.
-  // The stream starts from the beginning each time, so we'll hit dupes at the start.
-  // Instead, just move to the next month on the next cycle to spread coverage.
-  // The month generator will cycle back eventually.
-  if (games === 0) {
-    console.log(`[LICHESS-DB] ${monthStr}: 0 new games (all dupes from stream start) — moving to next month`);
+  // Self-healing: mark saturated months complete so worker never re-enters a dupe spiral
+  if (isSaturated || games === 0) {
+    completedLichessMonths.add(monthStr);
+    saveState();
+    console.log(`[LICHESS-DB] ${monthStr}: saturated — marked complete, auto-advancing to next month`);
   } else {
     console.log(`[LICHESS-DB] ${monthStr}: ${games} new games ingested${timedOut ? ' (timed out, millions more available)' : ''}`);
   }
@@ -2739,7 +2758,7 @@ async function ingestFICS(epEngine) {
           const bzcat = spawn('bzcat', ['-']);
           curl.stdout.pipe(bzcat.stdin);
           
-          const games = await processSourceStream(bzcat.stdout, epEngine, `fics_${year}`);
+          const { count: games } = await processSourceStream(bzcat.stdout, epEngine, `fics_${year}`);
           try { curl.kill(); } catch {}
           try { bzcat.kill(); } catch {}
           
@@ -2795,7 +2814,7 @@ async function ingestKingBase(epEngine) {
   for (const pgnFile of finalPgns) {
     console.log(`[KINGBASE] Processing: ${pgnFile}`);
     const stream = createReadStream(join(kbDir, pgnFile), { encoding: 'utf-8' });
-    totalGames += await processSourceStream(stream, epEngine, 'kingbase');
+    totalGames += (await processSourceStream(stream, epEngine, 'kingbase')).count;
     if (totalGames >= CONFIG.maxGamesPerSource * (CONFIG.sourceWeights.kingbase || 1.0)) break;
   }
   return totalGames;
@@ -2868,7 +2887,7 @@ async function ingestCCRL(epEngine) {
       if (existsSync(pgnPath)) {
         console.log(`[CCRL] Processing: ${pgnName} (${(statSync(pgnPath).size / 1024 / 1024).toFixed(1)} MB)`);
         const stream = createReadStream(pgnPath, { encoding: 'utf-8' });
-        const gamesFromFile = await processSourceStream(stream, epEngine, 'ccrl');
+        const { count: gamesFromFile } = await processSourceStream(stream, epEngine, 'ccrl');
         totalGames += gamesFromFile;
         console.log(`[CCRL] ${pgnName}: ${gamesFromFile} games processed (total: ${totalGames})`);
       }
@@ -3587,11 +3606,11 @@ async function ingestLichessPuzzles(epEngine) {
     `══════════════════════════════════════════════════════`
   );
   
-  return processed;
+  return { count: processed, saturated: false };
 }
 
 // ════════════════════════════════════════════════════════
-// SOURCE 8: FISHTEST — Stockfish Testing Framework
+// SOURCE 2: FISHTTEST — Stockfish Testing Framework
 // ════════════════════════════════════════════════════════
 // v28.0: Fishtest runs thousands of engine-vs-engine games per test.
 // The API exposes finished runs with W/D/L stats and opening book info.
@@ -3657,7 +3676,7 @@ async function ingestFishtest(epEngine) {
           
           if (statSync(pgnPath).size > 1000) {
             const stream = createReadStream(pgnPath, { encoding: 'utf-8' });
-            const gamesFromRun = await processSourceStream(stream, epEngine, 'fishtest');
+            const { count: gamesFromRun } = await processSourceStream(stream, epEngine, 'fishtest');
             totalGames += gamesFromRun;
             console.log(`[FISHTEST] Run ${runId.slice(-8)}: ${gamesFromRun} games processed`);
           }
