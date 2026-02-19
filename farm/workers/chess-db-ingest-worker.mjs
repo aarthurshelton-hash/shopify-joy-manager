@@ -105,8 +105,8 @@ const CONFIG = {
   // Rate limiting to prevent database collapse
   maxPredictionsPerHour: 1000000,     // Scaled for mass ingestion
   maxGamesPerMinute: 20000,           // Increased burst capacity
-  batchSize: 500,                    // Larger batch for efficiency
-  dedupBatchSize: 1000,               // Faster dedup checking
+  batchSize: 1000,                   // v32: doubled — cuts DB round-trips in half, no quality impact
+  dedupBatchSize: 2000,              // v32: doubled to match batch size
   dbInsertCooldown: 0,               // No cooldown — batch INSERT handles it
   minElo: parseInt(process.argv.find(a => a.startsWith('--min-elo='))?.split('=')[1] || '1500'),
   requireEval: false,
