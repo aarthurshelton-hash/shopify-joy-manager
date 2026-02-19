@@ -42,9 +42,9 @@ dotenv.config({ path: join(__dirname, '..', '..', '.env') });
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
-  max: 2,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000,
+  max: 4,
+  idleTimeoutMillis: 60000,
+  connectionTimeoutMillis: 15000,
 });
 
 pool.on('error', (err) => {
@@ -458,10 +458,11 @@ async function runBenchmark() {
   let bestAlpha = 0.7;
   let bestAlphaAcc = 0;
   
+  // Use last 20% of training data as validation for alpha + hybrid margin calibration
+  const valStart = Math.floor(trainData.length * 0.8);
+  const valData = trainData.slice(valStart);
+  
   if (classCentroids && Object.keys(classCentroids).length >= 2) {
-    // Use last 20% of training data as validation for alpha calibration
-    const valStart = Math.floor(trainData.length * 0.8);
-    const valData = trainData.slice(valStart);
     
     for (const alpha of alphasCandidates) {
       let correct = 0;
@@ -514,10 +515,72 @@ async function runBenchmark() {
   }
   const ensembleAlpha = bestAlpha;
   
-  // Evaluate on test set with self-learned threshold + centroids + archetype weights + ensemble alpha
+  // ═══ SELF-LEARN OPTIMAL HYBRID MARGIN ═══
+  // Sweep critical margin thresholds on validation set to find where
+  // grid-overrides-persistence yields the best hybrid accuracy.
+  // This is the Renaissance approach: let data find the parameter.
+  console.log('\nLearning optimal hybrid critical margin...');
+  let optimalHybridMargin = 0.15;
+  let bestHybridAcc = 0;
+  for (const margin of [0.05, 0.10, 0.20, 0.30, 0.50, 0.70, 0.90]) {
+    let hCorrect = 0, hTotal = 0;
+    for (const cycle of valData) {
+      const battCycles = byBattery[cycle.battery_id] || [];
+      const cycleIdx = battCycles.findIndex(c => c.cycle_number === cycle.cycle_number);
+      if (cycleIdx < 0) continue;
+      
+      const wStart = Math.max(0, cycleIdx + 1 - GRID_WINDOW);
+      const windowedHistory = battCycles.slice(wStart, Math.max(1, cycleIdx + 1));
+      const { signature: gSig } = processBatteryThroughGrid(windowedHistory, ranges, bestDevThreshold);
+      const fullHistory = battCycles.slice(0, Math.max(1, cycleIdx + 1));
+      const bSig = extractBatterySignature(cycle, fullHistory, ranges);
+      bSig.cyclePosition = (cycleIdx + 1) / (battCycles.length || 1);
+      
+      const arch = bSig.archetype;
+      const lp = learnedArchetypeWeights[arch];
+      let archScores = {};
+      if (lp) {
+        for (const cls of classes) archScores[cls] = lp[cls] || 0.33;
+      } else {
+        for (const cls of classes) archScores[cls] = 0.33;
+      }
+      
+      const gridPred = predictFromGridSignature(gSig, bSig, classCentroids, classes);
+      
+      let bestCls = classes[0], bestSc = -1;
+      for (const cls of classes) {
+        const blended = ensembleAlpha * (archScores[cls] || 0) + (1 - ensembleAlpha) * (gridPred.scores[cls] || 0);
+        if (blended > bestSc) { bestSc = blended; bestCls = cls; }
+      }
+      
+      const basePred = baselinePredict(cycle, battCycles, thresholds);
+      const cScore = gridPred.scores?.critical || 0;
+      const sScore = gridPred.scores?.stable || 0;
+      const aScore = gridPred.scores?.accelerating || 0;
+      const cMargin = cScore - Math.max(sScore, aScore);
+      
+      let hPred;
+      if (bestCls === 'critical' && cMargin > margin && basePred !== 'stable') {
+        hPred = 'critical';
+      } else {
+        hPred = basePred;
+      }
+      
+      hTotal++;
+      if (hPred === cycle.label) hCorrect++;
+    }
+    
+    const hAcc = hTotal > 0 ? hCorrect / hTotal : 0;
+    console.log(`  margin=${margin.toFixed(2)}: ${(hAcc * 100).toFixed(1)}% (${hCorrect}/${hTotal})`);
+    if (hAcc > bestHybridAcc) { bestHybridAcc = hAcc; optimalHybridMargin = margin; }
+  }
+  console.log(`  → Optimal hybrid margin: ${optimalHybridMargin.toFixed(2)} (${(bestHybridAcc * 100).toFixed(1)}% on validation)`);
+  
+  // Evaluate on test set with self-learned threshold + centroids + archetype weights + ensemble alpha + hybrid margin
   console.log('\n--- EVALUATION PHASE (Fully Self-Learned) ---');
   let epCorrect = 0;
   let baselineCorrect = 0;
+  let hybridCorrectTotal = 0;
   let total = 0;
   const confusionMatrix = {};
   const predictions = [];
@@ -624,8 +687,27 @@ async function runBenchmark() {
     // Baseline prediction (persistence model)
     const basePred = baselinePredict(cycle, battCycles, thresholds);
     
+    // ═══ HYBRID PREDICTION: Best of both worlds ═══
+    // Persistence excels at gradual drift (stable/accelerating): ~89% overall
+    // Grid excels at critical detection: 99.2% recall on critical class
+    // Strategy: use persistence as base, let grid override ONLY for critical when
+    // (a) grid has strong margin AND (b) persistence also sees abnormality
+    const criticalScore = epPred.scores?.critical || 0;
+    const stableScore = epPred.scores?.stable || 0;
+    const accelScore = epPred.scores?.accelerating || 0;
+    const criticalMargin = criticalScore - Math.max(stableScore, accelScore);
+    let hybridPred;
+    if (epPred.prediction === 'critical' && criticalMargin > optimalHybridMargin && basePred !== 'stable') {
+      hybridPred = 'critical';
+    } else {
+      hybridPred = basePred;
+    }
+    
     const actual = cycle.label;
     total++;
+    
+    let hybridCorrect = hybridPred === actual ? 1 : 0;
+    hybridCorrectTotal = (hybridCorrectTotal || 0) + hybridCorrect;
     
     if (epPred.prediction === actual) epCorrect++;
     if (basePred === actual) baselineCorrect++;
@@ -687,9 +769,13 @@ async function runBenchmark() {
   console.log('  HONEST RESULTS — UNIVERSAL GRID PORTAL');
   console.log('═══════════════════════════════════════════════════');
   console.log(`  Total test cycles:     ${total}`);
+  const hybridAccuracy = (hybridCorrectTotal / total * 100);
+  const hybridImprovement = hybridAccuracy - baselineAccuracy;
   console.log(`  En Pensent accuracy:   ${epAccuracy.toFixed(1)}% (${epCorrect}/${total})`);
   console.log(`  Baseline accuracy:     ${baselineAccuracy.toFixed(1)}% (${baselineCorrect}/${total})`);
-  console.log(`  Improvement:           ${improvement > 0 ? '+' : ''}${improvement.toFixed(1)} pp`);
+  console.log(`  HYBRID accuracy:       ${hybridAccuracy.toFixed(1)}% (${hybridCorrectTotal}/${total})`);
+  console.log(`  EP improvement:        ${improvement > 0 ? '+' : ''}${improvement.toFixed(1)} pp`);
+  console.log(`  HYBRID improvement:    ${hybridImprovement > 0 ? '+' : ''}${hybridImprovement.toFixed(1)} pp`);
   console.log(`  Random baseline:       33.3% (3-way classification)`);
   console.log('');
   console.log('  Per-class accuracy (EP / Baseline):');

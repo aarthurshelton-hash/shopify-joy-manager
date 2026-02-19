@@ -272,7 +272,7 @@ class LightDomainAdapter implements DomainAdapter<PhotonicData> {
       wavelength,
       intensity: Math.max(0, Math.min(1, intensity)),
       phase: phase % (2 * Math.PI),
-      polarization: Math.random() * 360,
+      polarization: (phase * 180 / Math.PI) % 360,
       timestamp: Date.now(),
     };
   }

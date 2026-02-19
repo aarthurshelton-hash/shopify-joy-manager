@@ -46,7 +46,8 @@ export function predictFromColorFlow(
   signature: ColorFlowSignature,
   currentMoveNumber: number,
   stockfishEval: number = 0,
-  stockfishDepth: number = 18
+  stockfishDepth: number = 18,
+  piece32Data?: any
 ): ColorFlowPrediction {
   // v8.07: Force-assign archetype if unknown
   const effectiveArchetype = forceArchetypeAssignment(
@@ -63,7 +64,8 @@ export function predictFromColorFlow(
     { ...signature, archetype: effectiveArchetype },
     stockfishEval,
     stockfishDepth,
-    currentMoveNumber
+    currentMoveNumber,
+    piece32Data || null
   );
   
   // Store for debugging access
@@ -112,6 +114,18 @@ export function predictFromColorFlow(
   // If low clarity, reduce confidence further
   if (!equilibrium.highClarity) {
     finalConfidence = Math.max(30, finalConfidence - 8);
+  }
+  
+  // v19.0: OPENING HARD SUPPRESSION — moves 1-10 at 47.5% accuracy
+  // Applied AFTER calibration so it can't be overridden
+  if (currentMoveNumber <= 10) {
+    finalConfidence = Math.min(finalConfidence, 38);
+  }
+  
+  // v19.0: DEEP ENDGAME DAMPENING — moves 61+ at 42.2% accuracy
+  // Both EP and SF struggle here. Cap to prevent overconfident wrong predictions.
+  if (currentMoveNumber >= 61) {
+    finalConfidence = Math.min(finalConfidence, 45);
   }
   
   // Clamp to reasonable range
@@ -199,17 +213,18 @@ function describeExpectedEvolution(
   currentMove: number
 ): string {
   const archetype = ARCHETYPE_DEFINITIONS[signature.archetype];
+  const archName = archetype?.name || signature.archetype || 'unknown';
   
   if (currentMove < 15) {
-    return `Opening phase suggests ${archetype.name}. Expect color intensity to ${
+    return `Opening phase suggests ${archName}. Expect color intensity to ${
       signature.temporalFlow.volatility > 50 ? 'increase rapidly' : 'develop gradually'
     } toward the ${signature.flowDirection}.`;
   } else if (currentMove < 30) {
-    return `Middlegame ${archetype.name} pattern established. Color flow is ${
+    return `Middlegame ${archName} pattern established. Color flow is ${
       signature.dominantSide === 'contested' ? 'evenly contested' : `favoring ${signature.dominantSide}`
     }. Watch for tactical breaks in the ${signature.flowDirection}.`;
   } else {
-    return `Late game ${archetype.name}. Pattern suggests ${
+    return `Late game ${archName}. Pattern suggests ${
       signature.dominantSide === 'contested' ? 'drawing tendencies' : 
       `favorable conversion for ${signature.dominantSide}`
     }.`;

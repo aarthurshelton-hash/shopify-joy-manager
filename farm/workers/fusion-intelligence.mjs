@@ -23,6 +23,9 @@ import { getPlayerBoost } from './player-intelligence.mjs';
 
 // Production accuracy from 1,088,000+ games (Feb 14, 2026)
 // Updated by workers via updateLiveArchetypeAccuracy()
+// NOTE (Feb 16): Classifier now produces piece_* archetypes. These all have
+// narrow accuracy spread (70.9-73.4%) so archetype boost is effectively neutral.
+// piece_general_pressure (48.5%) is the only weak one but n=71 — too rare to matter.
 let ARCHETYPE_ACCURACY = {
   // Tier 1: Strong signal (>60%) — trust EP heavily
   sacrificial_queenside_break: 0.639,  // n=128K
@@ -439,10 +442,14 @@ export function getIntelligentFusionWeights(archetype, timeControl, moveNumber, 
   // Even random between 2 = 50% (vs SF's 30-34%). EP is better than random.
   const sfRel = getSfReliabilityWeight(sfEvalCp !== undefined ? sfEvalCp : null, moveNumber);
   
+  // v17.2: Low-eval focus boost - strengthen EP where it consistently beats SF
+  // Data shows EP edge is strongest at |eval|<50cp (+4.9pp advantage)
+  const lowEvalFocus = (sfEvalCp !== null && sfEvalCp !== undefined && Math.abs(sfEvalCp) < 50) ? 1.15 : 1.0;
+  
   // Apply boost to enhanced weight, endgame + reliability to SF
   // v17.1 rebalance: baseline is strongest live engine, enhanced is unstable intraday.
   const rawBaseline = 0.50 + sfRel.redistributeToBaseline;
-  const rawEnhanced = 0.15 * combinedBoost + (sfRel.redistributeToBaseline > 0 ? sfRel.redistributeToBaseline * 0.176 : 0); // 15% of freed SF weight (0.15/0.85 ratio)
+  const rawEnhanced = 0.15 * combinedBoost * lowEvalFocus + (sfRel.redistributeToBaseline > 0 ? sfRel.redistributeToBaseline * 0.176 : 0); // 15% of freed SF weight (0.15/0.85 ratio)
   const rawSf = 0.35 * sfEndgameBoost * sfRel.sfMultiplier;
   
   // Renormalize so weights sum to 1.0

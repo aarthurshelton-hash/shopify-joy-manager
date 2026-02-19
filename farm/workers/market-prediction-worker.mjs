@@ -55,6 +55,10 @@ import {
   getMarketEntityBoost,
   shouldSkipSymbol,
 } from './market-entity-intelligence.mjs';
+import {
+  PhotonicInterferenceEngine,
+  loadFramesFromDB,
+} from './domain-adapters/photonic-interference.mjs';
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://ezvfslkjyjsqycztyfxh.supabase.co';
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -67,7 +71,8 @@ const sqlPool = process.env.DATABASE_URL ? new pg.Pool({
   ssl: { rejectUnauthorized: false },
   max: 2,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000,
+  connectionTimeoutMillis: 30000,
+  statement_timeout: 15000,
 }) : null;
 if (sqlPool) sqlPool.on('error', (err) => console.error(`[MARKET-POOL] ${err.message}`));
 
@@ -86,11 +91,11 @@ const INDEX_SYMBOLS = []; // KILLED: ^FTSE 0%, ^GDAXI 0%. Re-enable when model h
 const INTL_INDEX_SYMBOLS = { asia_pacific: [], middle_east: [], canada: [] }; // KILLED: all 0%. Re-enable with proper timezone/session modeling.
 const BOND_SYMBOLS = [];
 const CRYPTO_SYMBOLS = [];
-// Cultural harmony: crypto via chess archetype → musical patterns (SOL 52.8%, ETH 40.7%, BTC 38.3%)
-const HARMONY_SYMBOLS = ['BTC-USD', 'ETH-USD', 'SOL-USD'];
+// KILLED: crypto harmony was 14-19% accuracy on 24h data. No edge.
+const HARMONY_SYMBOLS = [];
 const OPTIONS_UNIVERSE = [...OPTIONS_SYMBOLS.stocks, ...OPTIONS_SYMBOLS.etfs];
 const ALL_INTL = [...INTL_INDEX_SYMBOLS.asia_pacific, ...INTL_INDEX_SYMBOLS.middle_east, ...INTL_INDEX_SYMBOLS.canada];
-const ALL_SYMBOLS = [...STOCK_SYMBOLS, ...COMMODITY_SYMBOLS, ...HARMONY_SYMBOLS, ...OPTIONS_UNIVERSE];
+const ALL_SYMBOLS = [...STOCK_SYMBOLS, ...COMMODITY_SYMBOLS, ...OPTIONS_UNIVERSE];
 const PREDICTION_INTERVAL_MS = 2 * 60 * 1000;   // New predictions every 2 min (was 5 — need volume for strategy testing)
 const RESOLUTION_INTERVAL_MS = 60 * 1000;        // Check resolutions every 60s
 const MIN_MOVE = 0.0001;
@@ -135,11 +140,11 @@ function getChessMode(symbol) { return SECTOR_CHESS_MODE[getSector(symbol)] || '
 // Different candle intervals → different grid signatures → different archetypes.
 // Like chess time windows (recent/mid/historical), each timeframe may reveal different edges.
 const TIMEFRAMES = [
-  // v11: Added 1h and 4h for more scalp-friendly resolution windows
-  // More timeframes = more data points per cycle = faster strategy learning
+  // v30: Killed mid_4h (5.0% accuracy on 322 resolved — catastrophic, worse than random)
+  // 1h and 2h are our best timeframes (30.7% and 30.8%) — keep and focus
   { label: 'scalp_1h',candleInterval: '5m',  candleRange: '2d',  resolutionMs: 1 * 60 * 60 * 1000, timeHorizon: '1h', minCandles: 10 },
   { label: 'medium',  candleInterval: '15m', candleRange: '5d',  resolutionMs: 2 * 60 * 60 * 1000, timeHorizon: '2h', minCandles: 10 },
-  { label: 'mid_4h',  candleInterval: '30m', candleRange: '10d', resolutionMs: 4 * 60 * 60 * 1000, timeHorizon: '4h', minCandles: 10 },
+  // mid_4h KILLED: 5.0% accuracy (16/322) — anti-predictive noise
   { label: 'swing',   candleInterval: '1h',  candleRange: '1mo', resolutionMs: 8 * 60 * 60 * 1000, timeHorizon: '8h', minCandles: 10 },
   { label: 'daily',   candleInterval: '1d',  candleRange: '3mo', resolutionMs: 24 * 60 * 60 * 1000, timeHorizon: '1d', minCandles: 10 },
 ];
@@ -184,6 +189,36 @@ let tacticalCalibrationRefreshedAt = 0;
 // 1% accuracy = 99% reverse signal. The system IS detecting something, just inverted.
 let learnedReverseSignals = null;
 let reverseSignalsRefreshedAt = 0;
+
+// ─── HISTORICAL REPLAY ENGINE ────────────────────────────────────────────────
+// v30.2: SMART REPLAY — live data ALWAYS takes priority, replay fills dead time.
+//   - Weekend (all closed): full replay on ALL symbols
+//   - Weekday after-hours/pre-market (stocks closed, forex open): replay STOCKS only
+//     while live commodity/forex predictions run in parallel
+//   - Market hours: no replay, all live
+// Fetch past candle windows → run grid predictions → resolve against known outcomes.
+// Cross-references replay patterns with today's live conditions for similarity signals.
+const REPLAY_INTERVAL_MS = 5 * 60 * 1000; // Replay every 5 min when markets closed
+const REPLAY_STOCK_SYMBOLS = ['AMD', 'AMZN', 'MSFT', 'NVDA', 'META'];
+const REPLAY_COMMODITY_SYMBOLS = ['SI=F', 'CL=F', 'NG=F', 'HG=F'];
+const REPLAY_ALL_SYMBOLS = [...REPLAY_STOCK_SYMBOLS, ...REPLAY_COMMODITY_SYMBOLS];
+const REPLAY_LOOKBACK_DAYS = [5, 10, 20, 40, 60]; // Rotate through different lookback windows
+let replayState = {
+  cycleCount: 0,
+  totalReplayed: 0,
+  totalCorrect: 0,
+  byArchetype: {},   // archetype → { n, correct }
+  bySector: {},       // sector → { n, correct }
+  byTimeframe: {},    // tf.label → { n, correct }
+  byDayOfWeek: {},    // 0-6 → { n, correct }
+  byHourOfDay: {},    // 0-23 → { n, correct }
+  lastReportAt: 0,
+  // v30.2: Similarity cross-reference — replay patterns that match today's conditions
+  recentReplaySignatures: [], // Last N replay results with archetype+direction+accuracy
+};
+const REPLAY_STATE_FILE = join(__dirname, '../data/market-replay-state.json');
+const REPLAY_REPORT_INTERVAL = 20; // Print report every 20 replay cycles
+const MAX_RECENT_REPLAY_SIGS = 200; // Keep last 200 replay signatures for cross-reference
 
 // ─── DISK PERSISTENCE FOR SELF-LEARNING ─────────────────────────────────────
 // Mirror chess worker pattern: persist learned data so restarts don't lose it
@@ -240,6 +275,24 @@ let symbolAccuracyCache = new Map();
 const circuitBreaker = new CircuitBreaker();
 const edgeDecayMonitor = new EdgeDecayMonitor();
 let shadowBankroll = 100; // Paper bankroll for shadow sizing ($100 start)
+
+// ─── PHOTONIC INTERFERENCE ENGINE ─────────────────────────────────────────
+// Stack temporal visualizations and shine light through to see discrepancies.
+// Feeds every prediction frame into the engine, uses coherence to adjust confidence.
+const INTERFERENCE_FILE = join(LEARN_DATA_DIR, 'photonic-interference-state.json');
+const INTERFERENCE_REPORT_INTERVAL = 100; // Print report every 100 cycles
+const INTERFERENCE_SEED_INTERVAL = 500;   // Re-seed from DB every 500 cycles
+let interferenceEngine = new PhotonicInterferenceEngine();
+let interferenceSeededAt = 0;
+
+// Load persisted interference state on startup
+try {
+  const diskState = loadFromFile(INTERFERENCE_FILE);
+  if (diskState && diskState.version === 1) {
+    interferenceEngine = PhotonicInterferenceEngine.deserialize(diskState);
+    log(`🔬 Photonic interference loaded: ${interferenceEngine.totalFrames} frames (${interferenceEngine.correctFrames} correct, ${interferenceEngine.incorrectFrames} incorrect)`);
+  }
+} catch (e) { /* first run */ }
 
 // Chess resonance cache (refreshed every 30 min)
 let chessResonanceCache = null;
@@ -568,7 +621,7 @@ function generatePrediction(symbol, priceData, allPrices, historicalData) {
  * This is the new path — routes market data through the same architecture as chess/battery/TEP.
  * Falls back to the legacy weighted ensemble if candle data is unavailable.
  */
-function generateGridPrediction(symbol, candles, priceData, symbolOptionsData = null) {
+function generateGridPrediction(symbol, candles, priceData, symbolOptionsData = null, marketTimeframe = 'medium') {
   if (!candles || candles.length < 10) return null;
   
   // Route through universal grid portal (with options flow if available)
@@ -599,18 +652,27 @@ function generateGridPrediction(symbol, candles, priceData, symbolOptionsData = 
       pred.direction
     );
     
-    if (override.override) {
-      // Tactical pattern OVERRIDES the base prediction
-      // Like seeing the queen sac is a trap — don't take the bait
+    // v30.1: ACCURACY GATE — only proven tactical patterns can override
+    // castling_reposition was 13.3% on 353 resolved — it was CAUSING the bearish bias
+    // Only patterns with >25% accuracy earn the right to override the flat gate
+    const TACTICAL_ACCURACY = {
+      blunder_free_queen: 0.790,    // 79.0% — TRUST completely
+      trap_queen_sac: 0.388,        // 38.8% — above random, trust
+      regime_shift_down: 0.375,     // 37.5% — borderline, allow
+      en_passant_window: 0.250,     // estimated — allow cautiously
+      pawn_promotion: 0.250,        // estimated — allow cautiously
+      castling_reposition: 0.133,   // 13.3% — ANTI-PREDICTIVE, block override
+    };
+    const tacticalAcc = TACTICAL_ACCURACY[tacticalResult.tactical] ?? 0.25;
+    const tacticalAllowed = tacticalAcc >= 0.25;
+    
+    if (override.override && tacticalAllowed) {
       finalDirection = override.direction;
-      // Apply self-learned tactical calibration if available
       let calibratedTacticalConf = override.confidence;
       if (learnedTacticalCalibration && learnedTacticalCalibration[tacticalResult.tactical]) {
         calibratedTacticalConf *= learnedTacticalCalibration[tacticalResult.tactical].multiplier;
         calibratedTacticalConf = Math.max(0.20, Math.min(0.90, calibratedTacticalConf));
       }
-      // Blend confidence: calibrated tactical conviction + base separation
-      // v9.5: Removed 0.85 cap — let archetype accuracy gate confidence instead
       finalConfidence = Math.min(0.75, (calibratedTacticalConf * 0.6) + (pred.confidence * 0.4));
       tacticalOverride = {
         pattern: tacticalResult.tactical,
@@ -649,26 +711,30 @@ function generateGridPrediction(symbol, candles, priceData, symbolOptionsData = 
     };
   }
   
-  // v15: ARCHETYPE ACCURACY from 24K+ resolved predictions (Feb 14, 2026)
+  // v30: ARCHETYPE ACCURACY from latest 1K resolved (Feb 18, 2026)
+  // CRITICAL: Previous table was STALE and WRONG (blunder_free_queen listed 18.9%, actual 79%)
   const ARCHETYPE_ACCURACY = {
-    false_breakout: 0.60,                  // 60.0% (n=919) — best pattern
-    bearish_momentum: 0.486,               // 48.6% (n=1351)
-    cultural_harmony: 0.483,               // 48.3% (n=3820)
-    gap_continuation_up: 0.442,            // 44.2% (n=231)
-    trap_queen_sac: 0.418,                 // 41.8% (n=2207)
-    overbought_fade: 0.405,               // 40.5% (n=111)
-    gap_continuation_down: 0.364,          // 36.4% (n=33)
-    institutional_distribution: 0.331,     // 33.1% (n=359)
-    castling_reposition: 0.293,            // 29.3% (n=3267)
-    oversold_bounce: 0.292,               // 29.2% (n=202)
-    institutional_accumulation: 0.291,     // 29.1% (n=791)
-    mean_reversion_down: 0.245,           // 24.5% (n=2399)
-    regime_shift_down: 0.235,             // 23.5% (n=3401) — high volume garbage
-    blunder_free_queen: 0.189,            // 18.9% (n=864)
-    bullish_momentum: 0.172,              // 17.2% (n=2273) — BELOW RANDOM
-    mean_reversion_up: 0.164,             // 16.4% (n=1838) — BELOW RANDOM
+    blunder_free_queen: 0.790,             // 79.0% (64/81) — BEST PATTERN by far
+    trap_queen_sac: 0.388,                 // 38.8% (50/129) — above random
+    regime_shift_down: 0.309,              // 30.9% (25/81)
+    bullish_momentum: 0.183,               // 18.3% (17/93) — below random
+    mean_reversion_down: 0.073,            // 7.3% (9/123) — catastrophic
+    castling_reposition: 0.102,            // 10.2% (25/245) — catastrophic
+    institutional_distribution: 0.001,     // 0.0% (0/152) — DEAD, hard block
+    mean_reversion_up: 0.014,              // 1.4% (1/71) — DEAD, hard block
+    bearish_momentum: 0.001,               // 0.0% (0/25) — DEAD, hard block
   };
   const finalArch = tacticalOverride ? tacticalResult.tactical : archetype;
+  // v30: HARD BLOCK archetypes with 0% accuracy — these are pure poison
+  const DEAD_ARCHETYPES = new Set(['institutional_distribution', 'mean_reversion_up', 'bearish_momentum']);
+  if (DEAD_ARCHETYPES.has(finalArch)) {
+    return {
+      symbol, direction: 'flat', confidence: 0.01, archetype: finalArch,
+      entryPrice: priceData?.price || candles[candles.length - 1].close,
+      predicted_magnitude: 0, market_conditions: { gridIntensity: signature.intensity },
+      source: 'universal_grid_blocked',
+    };
+  }
   const archAccuracy = ARCHETYPE_ACCURACY[finalArch] || 0.33;
   const archMultiplier = Math.min(1.2, archAccuracy / 0.50);
   finalConfidence = Math.min(0.75, finalConfidence * archMultiplier);
@@ -680,11 +746,93 @@ function generateGridPrediction(symbol, candles, priceData, symbolOptionsData = 
   // The en pensent grid visualization IS temporal data — classify which
   // chess tendency this market pattern resembles, then use proven chess accuracy.
   const chessBridge = classifyMarketAsChess(signature);
+  
+  // v17.7: Map chess color dynamics to market signals
+  // white=sell (down), black=buy (up)
+  let marketSignal = 'neutral';
+  if (chessBridge.dominantColor === 'white') marketSignal = 'down';
+  else if (chessBridge.dominantColor === 'black') marketSignal = 'up';
+  
+  // If chess color dynamics contradict grid direction, dampen confidence
+  if (marketSignal !== 'neutral' && marketSignal !== finalDirection) {
+    finalConfidence *= 0.85; // 15% penalty for color-signal disagreement
+  } else if (marketSignal === finalDirection) {
+    finalConfidence = Math.min(0.90, finalConfidence * 1.05); // 5% boost for agreement
+  }
+
   // Chess archetype accuracy modulates confidence:
   // If market pattern resembles queenside_expansion (80.2% proven) → boost
   // If it resembles closed_maneuvering (70.4% proven, range-bound) → reduce
   const chessAccuracyMultiplier = chessBridge.accuracy / 0.75; // Normalized: 1.0 at 75%
   finalConfidence = Math.min(0.80, finalConfidence * Math.max(0.7, Math.min(1.3, chessAccuracyMultiplier)));
+
+  // ─── v17.8: ARCHETYPE×PHASE TEMPORAL MULTIPLIER ────────────────────────
+  // Different archetypes peak at different game phases. Market timeframes map to phases:
+  //   scalp→opening, short→early_middle, medium→late_middle, swing→early_endgame, daily→deep_endgame
+  // If the matched chess archetype is in its peak phase for this timeframe → boost confidence.
+  // If it's in a weak phase → dampen. This is the temporal sweet spot gating.
+  let archPhaseMultiplierData = null;
+  if (archPhaseIntelCache && chessBridge.archetype) {
+    const MARKET_TF_TO_PHASE = {
+      scalp: 'opening', short: 'early_middle', medium: 'late_middle',
+      swing: 'early_endgame', daily: 'deep_endgame',
+    };
+    const phase = MARKET_TF_TO_PHASE[marketTimeframe] || 'late_middle';
+    const key = `${chessBridge.archetype}__${phase}`;
+    const current = archPhaseIntelCache[key];
+    
+    if (current && current.n >= 10) {
+      // Find peak phase for this archetype
+      let peakPhase = null, peakAccuracy = 0;
+      for (const [k, stats] of Object.entries(archPhaseIntelCache)) {
+        if (stats.archetype === chessBridge.archetype && stats.n >= 10 && stats.accuracy > peakAccuracy) {
+          peakAccuracy = stats.accuracy;
+          peakPhase = stats.phase;
+        }
+      }
+      
+      const temporalMultiplier = Math.max(0.7, Math.min(1.3, current.accuracy / 0.50));
+      finalConfidence = Math.min(0.85, finalConfidence * temporalMultiplier);
+      
+      archPhaseMultiplierData = {
+        archetype: chessBridge.archetype,
+        phase,
+        multiplier: temporalMultiplier,
+        currentAccuracy: current.accuracy,
+        currentN: current.n,
+        peakPhase,
+        peakAccuracy,
+        atPeak: phase === peakPhase,
+      };
+    }
+  }
+
+  // ─── v17.9: SIGNAL D: Puzzle Tactical Likelihood Gate ───────────────────
+  // Rare chess tactics (low playerLikelihood) = hidden patterns few players spot
+  // In markets: rare pattern = contrarian edge = boost confidence
+  // Obvious patterns (high likelihood) = crowded trade = dampen confidence
+  let puzzleTacticalData = null;
+  if (puzzleTacticalCache && chessBridge.archetype) {
+    const tacticalIntel = puzzleTacticalCache[chessBridge.archetype];
+    if (tacticalIntel && tacticalIntel.n >= 5) {
+      // rarityScore: 0.5 (obvious) to 2.0 (rare hidden edge)
+      // Convert to confidence multiplier: 0.90 (obvious) to 1.10 (rare edge)
+      const rarityMultiplier = Math.max(0.90, Math.min(1.10,
+        0.90 + (tacticalIntel.rarityScore - 0.5) * 0.133
+      ));
+      finalConfidence = Math.min(0.85, finalConfidence * rarityMultiplier);
+      
+      puzzleTacticalData = {
+        archetype: chessBridge.archetype,
+        rarityScore: tacticalIntel.rarityScore,
+        avgLikelihood: tacticalIntel.avgLikelihood,
+        avgComplexity: tacticalIntel.avgComplexity,
+        puzzleAccuracy: tacticalIntel.accuracy,
+        multiplier: rarityMultiplier,
+        n: tacticalIntel.n,
+      };
+    }
+  }
 
   // ─── SIGNAL C: Piece-Tier Institutional Profile ────────────────────────
   // Maps market signals to chess piece hierarchy (King=Fed, Queen=institutions, etc.)
@@ -698,6 +846,19 @@ function generateGridPrediction(symbol, candles, priceData, symbolOptionsData = 
       finalConfidence *= 0.85; // 15% penalty for institutional disagreement
     }
   }
+
+  // v29.4: HARD ACCURACY-BASED CONFIDENCE CEILING
+  // Root cause of confidence inversion: 7 multiplicative boosters can inflate
+  // confidence for anti-predictive archetypes (bullish_momentum 17.2%, mean_reversion_up 16.4%).
+  // No amount of signal agreement should produce high confidence for a pattern that's
+  // historically below random. The ceiling is the archetype's actual accuracy + 10pp headroom.
+  // This ensures: <33% accuracy → max ~43% confidence, 60% accuracy → max ~70% confidence.
+  const accuracyCeiling = Math.min(0.85, archAccuracy + 0.10);
+  if (finalConfidence > accuracyCeiling) {
+    finalConfidence = accuracyCeiling;
+  }
+  // Floor: never below 0.20 (system always has some signal)
+  finalConfidence = Math.max(0.20, finalConfidence);
 
   return {
     symbol,
@@ -722,6 +883,8 @@ function generateGridPrediction(symbol, candles, priceData, symbolOptionsData = 
     },
     tacticalOverride,
     chessBridge, // Track which chess tendency matched for self-learning
+    archPhaseTemporalMap: archPhaseMultiplierData, // v17.8: Track temporal sweet spot for self-learning
+    puzzleTactical: puzzleTacticalData, // v17.9: Track tactical rarity for self-learning
     pieceTier: pieceTier ? {
       dominantTier: pieceTier.dominantTier,
       netDirection: pieceTier.netDirection,
@@ -1575,6 +1738,217 @@ let crossTimeframeCache = null;
 let crossTimeframeFetchedAt = 0;
 const CROSS_TF_CACHE_TTL = 10 * 60 * 1000; // Refresh every 10min
 
+// v17.8: Archetype×Phase temporal intelligence cache
+// Maps chess archetype + game phase → accuracy, used for market confidence gating
+let archPhaseIntelCache = null;
+let archPhaseIntelFetchedAt = 0;
+const ARCH_PHASE_CACHE_TTL = 15 * 60 * 1000; // Refresh every 15min
+
+/**
+ * Build archetype×phase temporal intelligence from chess DB.
+ * Returns: { "kingside_attack__late_middle": { n, accuracy, conf }, ... }
+ * This tells us WHEN each archetype is most predictive.
+ */
+async function buildArchetypePhaseIntelligence() {
+  if (archPhaseIntelCache && Date.now() - archPhaseIntelFetchedAt < ARCH_PHASE_CACHE_TTL) {
+    return archPhaseIntelCache;
+  }
+  
+  try {
+    const { data, error } = await supabase
+      .from('chess_prediction_attempts')
+      .select('hybrid_archetype, move_number, hybrid_correct, hybrid_confidence')
+      .not('hybrid_archetype', 'is', null)
+      .not('hybrid_correct', 'is', null)
+      .not('move_number', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(5000);
+    
+    if (error || !data || data.length === 0) return null;
+    
+    const intel = {};
+    for (const r of data) {
+      const arch = r.hybrid_archetype;
+      let phase;
+      if (r.move_number < 15) phase = 'opening';
+      else if (r.move_number < 25) phase = 'early_middle';
+      else if (r.move_number < 35) phase = 'late_middle';
+      else if (r.move_number < 50) phase = 'early_endgame';
+      else phase = 'deep_endgame';
+      
+      const key = `${arch}__${phase}`;
+      if (!intel[key]) intel[key] = { n: 0, correct: 0, conf: 0, archetype: arch, phase };
+      intel[key].n++;
+      if (r.hybrid_correct) intel[key].correct++;
+      intel[key].conf += (r.hybrid_confidence || 0);
+    }
+    
+    // Compute accuracy
+    for (const stats of Object.values(intel)) {
+      stats.accuracy = stats.n > 0 ? stats.correct / stats.n : 0;
+      stats.avgConf = stats.n > 0 ? stats.conf / stats.n : 0;
+    }
+    
+    archPhaseIntelCache = intel;
+    archPhaseIntelFetchedAt = Date.now();
+    
+    // Find peak phase per archetype for logging
+    const archPeaks = {};
+    for (const [key, stats] of Object.entries(intel)) {
+      if (stats.n < 10) continue;
+      const arch = stats.archetype;
+      if (!archPeaks[arch] || stats.accuracy > archPeaks[arch].accuracy) {
+        archPeaks[arch] = { phase: stats.phase, accuracy: stats.accuracy, n: stats.n };
+      }
+    }
+    const peakSummary = Object.entries(archPeaks)
+      .sort((a, b) => b[1].accuracy - a[1].accuracy)
+      .slice(0, 5)
+      .map(([arch, p]) => `${arch}→${p.phase}(${(p.accuracy*100).toFixed(0)}%)`)
+      .join(' ');
+    log(`Arch×Phase intel refreshed: ${peakSummary} (${data.length} games)`);
+    
+    return intel;
+  } catch (err) {
+    log(`Arch×Phase intelligence error: ${err.message}`, 'warn');
+    return archPhaseIntelCache;
+  }
+}
+
+// v17.9: Puzzle Tactical Likelihood Intelligence cache
+// Maps chess archetype → { avgLikelihood, avgComplexity, n }
+// Low likelihood = rare tactic = hidden edge = higher market confidence
+let puzzleTacticalCache = null;
+let puzzleTacticalFetchedAt = 0;
+const PUZZLE_TACTICAL_CACHE_TTL = 20 * 60 * 1000; // Refresh every 20min
+
+/**
+ * Build puzzle tactical intelligence from chess DB.
+ * Queries puzzle records and aggregates playerLikelihood + tacticalComplexity by archetype.
+ * Returns: { "kingside_attack": { avgLikelihood, avgComplexity, n, rarityScore }, ... }
+ */
+async function buildPuzzleTacticalIntelligence() {
+  if (puzzleTacticalCache && Date.now() - puzzleTacticalFetchedAt < PUZZLE_TACTICAL_CACHE_TTL) {
+    return puzzleTacticalCache;
+  }
+  
+  try {
+    const { data, error } = await supabase
+      .from('chess_prediction_attempts')
+      .select('hybrid_archetype, metadata, hybrid_correct')
+      .eq('data_source', 'lichess_puzzle')
+      .not('hybrid_archetype', 'is', null)
+      .not('metadata', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(3000);
+    
+    if (error || !data || data.length === 0) return null;
+    
+    const intel = {};
+    for (const r of data) {
+      const arch = r.hybrid_archetype;
+      const meta = typeof r.metadata === 'string' ? JSON.parse(r.metadata) : r.metadata;
+      if (!meta) continue;
+      
+      const likelihood = meta.playerLikelihood || meta.player_likelihood || 0;
+      const complexity = meta.tacticalComplexity || meta.tactical_complexity || 0;
+      
+      if (!intel[arch]) intel[arch] = { n: 0, likelihoodSum: 0, complexitySum: 0, correct: 0 };
+      intel[arch].n++;
+      intel[arch].likelihoodSum += likelihood;
+      intel[arch].complexitySum += complexity;
+      if (r.hybrid_correct) intel[arch].correct++;
+    }
+    
+    // Compute averages and rarity score
+    const result = {};
+    for (const [arch, stats] of Object.entries(intel)) {
+      if (stats.n < 5) continue;
+      const avgLikelihood = stats.likelihoodSum / stats.n;
+      const avgComplexity = stats.complexitySum / stats.n;
+      const accuracy = stats.correct / stats.n;
+      
+      // Rarity score: inverse of likelihood, boosted by complexity
+      // Low likelihood + high complexity = rare, hard tactic = hidden edge
+      // Range: 0.5 (obvious) to 2.0 (rare hidden edge)
+      const rarityScore = Math.max(0.5, Math.min(2.0, 
+        (1.0 - avgLikelihood) * 1.5 + avgComplexity * 0.5
+      ));
+      
+      result[arch] = { avgLikelihood, avgComplexity, accuracy, n: stats.n, rarityScore };
+    }
+    
+    puzzleTacticalCache = result;
+    puzzleTacticalFetchedAt = Date.now();
+    
+    const topRarity = Object.entries(result)
+      .sort((a, b) => b[1].rarityScore - a[1].rarityScore)
+      .slice(0, 5)
+      .map(([arch, s]) => `${arch}(r=${s.rarityScore.toFixed(2)},n=${s.n})`)
+      .join(' ');
+    log(`Puzzle tactical intel refreshed: ${topRarity} (${data.length} puzzles)`);
+    
+    return result;
+  } catch (err) {
+    log(`Puzzle tactical intelligence error: ${err.message}`, 'warn');
+    return puzzleTacticalCache;
+  }
+}
+
+/**
+ * Get the temporal confidence multiplier for a chess archetype at a market-mapped phase.
+ * Market timeframes map to chess phases:
+ *   scalp → opening (fast, early decisions)
+ *   short → early_middle (developing patterns)
+ *   medium → late_middle (peak complexity)
+ *   swing → early_endgame (positional clarity)
+ *   daily → deep_endgame (long-term resolution)
+ * Returns: { multiplier: 0.7-1.3, peakPhase, peakAccuracy, currentAccuracy }
+ */
+async function getArchetypePhaseMultiplier(archetype, marketTimeframe) {
+  const intel = await buildArchetypePhaseIntelligence();
+  if (!intel || !archetype) return null;
+  
+  const MARKET_TF_TO_PHASE = {
+    scalp: 'opening',
+    short: 'early_middle',
+    medium: 'late_middle',
+    swing: 'early_endgame',
+    daily: 'deep_endgame',
+  };
+  
+  const phase = MARKET_TF_TO_PHASE[marketTimeframe] || 'late_middle';
+  const key = `${archetype}__${phase}`;
+  const current = intel[key];
+  
+  // Find the peak phase for this archetype
+  let peakPhase = null, peakAccuracy = 0;
+  for (const [k, stats] of Object.entries(intel)) {
+    if (stats.archetype === archetype && stats.n >= 10 && stats.accuracy > peakAccuracy) {
+      peakAccuracy = stats.accuracy;
+      peakPhase = stats.phase;
+    }
+  }
+  
+  if (!current || current.n < 10) {
+    return { multiplier: 1.0, peakPhase, peakAccuracy, currentAccuracy: null, phase };
+  }
+  
+  // Multiplier: ratio of current phase accuracy to baseline (50% = random for 2-way)
+  // If this archetype at this phase is 70% accurate → 1.4x multiplier (capped at 1.3)
+  // If it's 40% accurate → 0.8x multiplier (floored at 0.7)
+  const multiplier = Math.max(0.7, Math.min(1.3, current.accuracy / 0.50));
+  
+  return {
+    multiplier,
+    peakPhase,
+    peakAccuracy,
+    currentAccuracy: current.accuracy,
+    currentN: current.n,
+    phase,
+  };
+}
+
 function classifyChessTimeControl(timeControlStr) {
   if (!timeControlStr) return 'unknown';
   const s = String(timeControlStr).toLowerCase().trim();
@@ -1763,6 +2137,163 @@ async function getChessResonance() {
   return chessResonanceCache;
 }
 
+// ─── TEMPORAL PARABLE CONFIRMATION ───────────────────────────────────────────
+// The same story told three ways: chess, music, market.
+// A "parable" is when all three temporal domains agree on direction.
+// Chess: adversarial dynamics (white=sell, black=buy) → temporal flow
+// Music: cultural harmony (tempo, consonance, narrative arc) → emotional flow
+// Market: price/volume grid (8-quadrant signature) → structural flow
+//
+// When all three parables align → HIGH CONVICTION signal.
+// When they disagree → LOW CONVICTION or FLAT.
+// This is the cyclical confirmation loop that creates real edge.
+//
+// The insight: each domain sees the same underlying reality through a different lens.
+// Chess sees it as adversarial strategy. Music sees it as emotional narrative.
+// Market sees it as structural flow. When all three lenses converge → truth.
+
+let parableCache = { signal: null, timestamp: 0 };
+const PARABLE_CACHE_TTL = 2 * 60 * 1000; // 2 min — fresh each prediction cycle
+
+/**
+ * TEMPORAL PARABLE CONFIRMATION ENGINE
+ * 
+ * Queries live chess consensus + cultural harmony + market grid signature
+ * and computes a three-domain agreement score.
+ * 
+ * Returns: { direction, confidence, agreement, domains: { chess, music, market } }
+ * 
+ * Agreement levels:
+ *   3/3 = PARABLE (all agree) → 1.25x confidence boost
+ *   2/3 = PARTIAL (majority) → 1.10x confidence boost
+ *   1/3 = DISCORD (no agreement) → 0.85x confidence dampen
+ *   0/3 = SILENCE (no signals) → no modification
+ */
+async function getTemporalParableSignal(marketDirection, marketArchetype, priceData) {
+  // Check cache
+  if (parableCache.signal && Date.now() - parableCache.timestamp < PARABLE_CACHE_TTL) {
+    return applyParableToDirection(parableCache.signal, marketDirection);
+  }
+
+  const domains = { chess: null, music: null, market: null };
+  
+  // DOMAIN 1: Chess temporal consensus (live games → white/black/draw → bearish/bullish/neutral)
+  const chessConsensus = await getChessConsensusSignal().catch(() => null);
+  if (chessConsensus && chessConsensus.direction !== 'neutral') {
+    domains.chess = {
+      direction: chessConsensus.direction === 'bullish' ? 'up' : chessConsensus.direction === 'bearish' ? 'down' : 'neutral',
+      confidence: Math.min(0.80, chessConsensus.confidence || 0.50),
+      source: 'live_chess_consensus',
+      detail: `W:${chessConsensus.whitePct}% B:${chessConsensus.blackPct}% D:${chessConsensus.drawPct}% arch=${chessConsensus.dominantArchetype}`,
+    };
+  }
+  
+  // DOMAIN 2: Musical harmony (chess archetypes → musical properties → crowd sentiment)
+  const harmonySignal = harmonyCache.signal;
+  if (harmonySignal && harmonySignal.direction !== 'neutral') {
+    domains.music = {
+      direction: harmonySignal.direction,
+      confidence: harmonySignal.confidence || 0.40,
+      source: 'cultural_harmony',
+      detail: `${harmonySignal.dominantMood || 'unknown'} votes:${JSON.stringify(harmonySignal.votes || {})}`,
+    };
+  }
+  
+  // DOMAIN 3: Market grid direction (already computed by caller)
+  if (marketDirection && marketDirection !== 'flat' && marketDirection !== 'neutral') {
+    domains.market = {
+      direction: marketDirection,
+      confidence: 0.50, // Base — will be modified by parable
+      source: 'market_grid',
+      detail: `arch=${marketArchetype} price=$${priceData?.price?.toFixed(2) || '?'}`,
+    };
+  }
+  
+  // Count agreements
+  const activeDomains = Object.values(domains).filter(d => d !== null);
+  if (activeDomains.length < 2) {
+    // Not enough domains to form a parable — return neutral
+    parableCache = { signal: { agreement: 0, domains, direction: 'neutral', activeDomainCount: activeDomains.length }, timestamp: Date.now() };
+    return applyParableToDirection(parableCache.signal, marketDirection);
+  }
+  
+  // Compute directional consensus
+  let upVotes = 0, downVotes = 0;
+  let totalConfidence = 0;
+  for (const d of activeDomains) {
+    if (d.direction === 'up') upVotes++;
+    else if (d.direction === 'down') downVotes++;
+    totalConfidence += d.confidence;
+  }
+  
+  const avgConfidence = totalConfidence / activeDomains.length;
+  const maxVotes = Math.max(upVotes, downVotes);
+  const agreement = maxVotes; // How many domains agree on the majority direction
+  const consensusDirection = upVotes > downVotes ? 'up' : downVotes > upVotes ? 'down' : 'neutral';
+  
+  // Parable strength: 3/3 = full parable, 2/3 = partial, 1/3 = discord
+  const parableStrength = activeDomains.length > 0 ? agreement / activeDomains.length : 0;
+  
+  const signal = {
+    direction: consensusDirection,
+    agreement,
+    activeDomainCount: activeDomains.length,
+    parableStrength,
+    avgConfidence,
+    domains,
+    // The parable multiplier — applied to market prediction confidence
+    // Full parable (3/3): 1.25x — all three lenses see the same truth
+    // Partial (2/3): 1.10x — majority agreement
+    // Discord (1/3 or split): 0.85x — disagreement dampens confidence
+    multiplier: parableStrength >= 0.90 ? 1.25 :
+                parableStrength >= 0.60 ? 1.10 :
+                activeDomains.length >= 2 ? 0.85 : 1.0,
+  };
+  
+  parableCache = { signal, timestamp: Date.now() };
+  
+  // Log the parable
+  const domainSummary = Object.entries(domains)
+    .filter(([, v]) => v !== null)
+    .map(([k, v]) => `${k}=${v.direction}(${(v.confidence*100).toFixed(0)}%)`)
+    .join(' ');
+  const parableIcon = parableStrength >= 0.90 ? '📖✨' : parableStrength >= 0.60 ? '📖' : '📖❌';
+  log(`${parableIcon} PARABLE: ${domainSummary} → ${consensusDirection} (${agreement}/${activeDomains.length} agree, ×${signal.multiplier.toFixed(2)})`);
+  
+  return applyParableToDirection(signal, marketDirection);
+}
+
+/**
+ * Apply the parable signal to a specific market direction.
+ * If the parable consensus AGREES with market direction → boost.
+ * If it DISAGREES → dampen harder.
+ * If neutral → no modification.
+ */
+function applyParableToDirection(parableSignal, marketDirection) {
+  if (!parableSignal || parableSignal.activeDomainCount < 2) {
+    return { multiplier: 1.0, parable: parableSignal };
+  }
+  
+  const agrees = parableSignal.direction === marketDirection;
+  const disagrees = parableSignal.direction !== 'neutral' && marketDirection !== 'flat' && 
+                    marketDirection !== 'neutral' && parableSignal.direction !== marketDirection;
+  
+  let multiplier = parableSignal.multiplier;
+  
+  if (agrees) {
+    // Parable confirms market direction — full boost
+    multiplier = parableSignal.multiplier;
+  } else if (disagrees) {
+    // Parable contradicts market direction — stronger dampen
+    multiplier = Math.min(0.80, parableSignal.multiplier * 0.75);
+  } else {
+    // Neutral parable — slight dampen (no confirmation)
+    multiplier = 0.95;
+  }
+  
+  return { multiplier, parable: parableSignal, agrees, disagrees };
+}
+
 // ─── CHESS→MARKET BRIDGE ─────────────────────────────────────────────────────
 // The adversarial dynamics of chess map to buyer/seller dynamics in markets.
 // White (initiator/aggressor) = Sell pressure. Black (responder/defender) = Buy pressure.
@@ -1910,12 +2441,15 @@ function classifyMarketAsChess(signature) {
 // C-grade: Learning value only. Record but don't trade.
 //
 // From 24K+ resolved predictions + 1.1M chess games:
-const A_GRADE_ARCHETYPES = new Set(['false_breakout']);  // 60% market accuracy
-const A_GRADE_CHESS_RESONANCE = new Set(['sacrificial_queenside_break', 'sacrificial_kingside_assault']); // 63-67% chess accuracy
-const B_GRADE_ARCHETYPES = new Set(['cultural_harmony', 'trap_queen_sac', 'overbought_fade', 'gap_continuation_up']);
+// v30: Trade grades updated from real 1K resolved data (Feb 18, 2026)
+// blunder_free_queen is 79% — it's A-grade, not C-grade!
+const A_GRADE_ARCHETYPES = new Set(['blunder_free_queen', 'false_breakout']);  // 79% and 60%
+const A_GRADE_CHESS_RESONANCE = new Set(['sacrificial_queenside_break', 'sacrificial_kingside_assault']);
+const B_GRADE_ARCHETYPES = new Set(['trap_queen_sac', 'regime_shift_down', 'cultural_harmony']);
 const C_GRADE_ARCHETYPES = new Set([
-  'bullish_momentum', 'mean_reversion_up', 'mean_reversion_down', 'regime_shift_down',
-  'blunder_free_queen', 'castling_reposition', 'institutional_accumulation', 'oversold_bounce',
+  'bullish_momentum', 'mean_reversion_up', 'mean_reversion_down',
+  'castling_reposition', 'institutional_distribution', 'bearish_momentum',
+  'institutional_accumulation', 'oversold_bounce',
 ]);
 
 function computeTradeGrade(pred, chessSignal) {
@@ -2061,6 +2595,8 @@ async function logToAuditTrail(pred, horizonMs, chessSignal, timeframe = null) {
         accuracy: pred.reverseAccuracy,
         flippedAccuracy: pred.reverseFlippedAccuracy,
       } : null,
+      // v30: Temporal parable confirmation (chess+music+market interlink)
+      parable: pred.parableConfirmation || null,
     },
   };
 
@@ -2299,10 +2835,314 @@ async function updateSecurityMetrics(symbol, dirCorrect, magAcc, calAcc, composi
   }
 }
 
+// ─── HISTORICAL REPLAY ENGINE (v18.0) ────────────────────────────────────────
+// When markets are closed, replay past data through the grid to learn.
+// Fetches historical candles, runs predictions, resolves against known outcomes.
+
+function isAllMarketsClosed() {
+  // True when stocks, forex, and commodities are ALL closed (only crypto open)
+  return !isStockMarketOpen() && !isForexOpen();
+}
+
+function loadReplayState() {
+  try {
+    if (fs.existsSync(REPLAY_STATE_FILE)) {
+      const data = JSON.parse(fs.readFileSync(REPLAY_STATE_FILE, 'utf8'));
+      replayState = { ...replayState, ...data };
+      log(`📼 Replay state loaded: ${replayState.totalReplayed} historical predictions`);
+    }
+  } catch { /* start fresh */ }
+}
+
+function saveReplayState() {
+  try {
+    mkdirSync(join(__dirname, '../data'), { recursive: true });
+    writeFileSync(REPLAY_STATE_FILE, JSON.stringify(replayState, null, 2));
+  } catch { /* non-critical */ }
+}
+
+function recordReplayResult(archetype, sector, tfLabel, timestamp, correct) {
+  replayState.totalReplayed++;
+  if (correct) replayState.totalCorrect++;
+
+  // By archetype
+  if (!replayState.byArchetype[archetype]) replayState.byArchetype[archetype] = { n: 0, correct: 0 };
+  replayState.byArchetype[archetype].n++;
+  if (correct) replayState.byArchetype[archetype].correct++;
+
+  // By sector
+  if (!replayState.bySector[sector]) replayState.bySector[sector] = { n: 0, correct: 0 };
+  replayState.bySector[sector].n++;
+  if (correct) replayState.bySector[sector].correct++;
+
+  // By timeframe
+  if (!replayState.byTimeframe[tfLabel]) replayState.byTimeframe[tfLabel] = { n: 0, correct: 0 };
+  replayState.byTimeframe[tfLabel].n++;
+  if (correct) replayState.byTimeframe[tfLabel].correct++;
+
+  // By day of week (0=Sun, 6=Sat)
+  const dt = new Date(timestamp * 1000);
+  const dow = dt.getUTCDay().toString();
+  if (!replayState.byDayOfWeek[dow]) replayState.byDayOfWeek[dow] = { n: 0, correct: 0 };
+  replayState.byDayOfWeek[dow].n++;
+  if (correct) replayState.byDayOfWeek[dow].correct++;
+
+  // By hour of day (UTC)
+  const hour = dt.getUTCHours().toString();
+  if (!replayState.byHourOfDay[hour]) replayState.byHourOfDay[hour] = { n: 0, correct: 0 };
+  replayState.byHourOfDay[hour].n++;
+  if (correct) replayState.byHourOfDay[hour].correct++;
+}
+
+function printReplayReport() {
+  const { totalReplayed: n, totalCorrect: c, byArchetype, bySector, byTimeframe, byDayOfWeek, byHourOfDay } = replayState;
+  if (n === 0) return;
+
+  const pct = (k, t) => t > 0 ? (k / t * 100).toFixed(1) + '%' : 'N/A';
+  const sortByAcc = (obj) => Object.entries(obj).sort((a, b) => (b[1].n > 10 ? b[1].correct / b[1].n : 0) - (a[1].n > 10 ? a[1].correct / a[1].n : 0));
+
+  log('');
+  log('╔══════════════════════════════════════════════════════════════╗');
+  log('║          HISTORICAL REPLAY ACCURACY REPORT                  ║');
+  log(`║  Total: ${n.toLocaleString()} replayed | ${pct(c, n)} correct                    ║`);
+  log('╠══════════════════════════════════════════════════════════════╣');
+
+  // Top archetypes
+  log('║ BY ARCHETYPE:');
+  for (const [arch, s] of sortByAcc(byArchetype).slice(0, 10)) {
+    const acc = pct(s.correct, s.n);
+    const icon = s.n >= 20 && s.correct / s.n > 0.5 ? '🟢' : s.n >= 20 && s.correct / s.n < 0.3 ? '🔴' : '⚪';
+    log(`║   ${icon} ${arch.padEnd(30)} ${acc.padStart(6)} (n=${s.n})`);
+  }
+
+  // By sector
+  log('║ BY SECTOR:');
+  for (const [sec, s] of sortByAcc(bySector)) {
+    log(`║   ${sec.padEnd(20)} ${pct(s.correct, s.n).padStart(6)} (n=${s.n})`);
+  }
+
+  // By timeframe
+  log('║ BY TIMEFRAME:');
+  for (const [tf, s] of sortByAcc(byTimeframe)) {
+    log(`║   ${tf.padEnd(15)} ${pct(s.correct, s.n).padStart(6)} (n=${s.n})`);
+  }
+
+  // By day of week
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  log('║ BY DAY OF WEEK:');
+  for (const [d, s] of Object.entries(byDayOfWeek).sort((a, b) => parseInt(a[0]) - parseInt(b[0]))) {
+    log(`║   ${dayNames[parseInt(d)].padEnd(10)} ${pct(s.correct, s.n).padStart(6)} (n=${s.n})`);
+  }
+
+  // Best/worst hours
+  const hourEntries = Object.entries(byHourOfDay).filter(([, s]) => s.n >= 5).sort((a, b) => (b[1].correct / b[1].n) - (a[1].correct / a[1].n));
+  if (hourEntries.length > 0) {
+    log('║ BEST HOURS (UTC):');
+    for (const [h, s] of hourEntries.slice(0, 5)) {
+      log(`║   ${h.padStart(2, '0')}:00  ${pct(s.correct, s.n).padStart(6)} (n=${s.n})`);
+    }
+  }
+
+  log('╚══════════════════════════════════════════════════════════════╝');
+  log('');
+}
+
+/**
+ * Historical Replay Cycle — runs when markets are closed for specific asset classes.
+ * v30.2: Smart routing — can replay just stocks (after-hours) or all symbols (weekends).
+ * Fetches past candle data, slides a prediction window through it,
+ * generates grid predictions, and resolves against known future prices.
+ * Cross-references replay patterns with today's live conditions.
+ * @param {'stocks_only'|'commodities_only'|'all'} mode - Which symbols to replay
+ */
+async function historicalReplayCycle(mode = 'all') {
+  const replaySymbols = mode === 'stocks_only' ? REPLAY_STOCK_SYMBOLS
+    : mode === 'commodities_only' ? REPLAY_COMMODITY_SYMBOLS
+    : REPLAY_ALL_SYMBOLS;
+
+  replayState.cycleCount++;
+  const lookbackIdx = (replayState.cycleCount - 1) % REPLAY_LOOKBACK_DAYS.length;
+  const lookbackDays = REPLAY_LOOKBACK_DAYS[lookbackIdx];
+  const symbolIdx = (replayState.cycleCount - 1) % replaySymbols.length;
+  const symbol = replaySymbols[symbolIdx];
+  const sector = getSector(symbol);
+
+  // Pick a timeframe to replay (rotate through them)
+  const tfIdx = Math.floor((replayState.cycleCount - 1) / replaySymbols.length) % TIMEFRAMES.length;
+  const tf = TIMEFRAMES[tfIdx];
+
+  log(`📼 Replay #${replayState.cycleCount} | ${symbol} (${sector}) | ${tf.label} | lookback=${lookbackDays}d | total=${replayState.totalReplayed}`);
+
+  try {
+    // Fetch historical candles — Yahoo supports range like '5d', '1mo', '3mo'
+    const range = lookbackDays <= 5 ? '5d' : lookbackDays <= 30 ? '1mo' : '3mo';
+    const candles = await fetchIntradayCandles(symbol, tf.candleInterval, range);
+    if (!candles || candles.length < tf.minCandles + 5) {
+      log(`📼 Replay: insufficient candles for ${symbol} ${tf.label} (got ${candles?.length || 0})`);
+      return;
+    }
+
+    // Determine resolution window in candle count
+    // e.g., for 'medium' (15m candles, 2h resolution) → 8 candles ahead
+    const candleIntervalMs = {
+      '1m': 60000, '5m': 300000, '15m': 900000, '30m': 1800000,
+      '1h': 3600000, '1d': 86400000,
+    }[tf.candleInterval] || 300000;
+    const resolutionCandles = Math.max(1, Math.round(tf.resolutionMs / candleIntervalMs));
+
+    // Slide window: for each position, use candles[0..i] as input, candles[i+resolution] as outcome
+    let replayed = 0;
+    let correct = 0;
+    const maxWindows = Math.min(20, candles.length - tf.minCandles - resolutionCandles); // Cap at 20 per cycle
+
+    for (let i = tf.minCandles; i < tf.minCandles + maxWindows && i + resolutionCandles < candles.length; i++) {
+      const windowCandles = candles.slice(Math.max(0, i - 50), i); // Up to 50 candles as input
+      if (windowCandles.length < tf.minCandles) continue;
+
+      const entryPrice = windowCandles[windowCandles.length - 1].close;
+      const exitPrice = candles[i + resolutionCandles - 1]?.close;
+      if (!entryPrice || !exitPrice || entryPrice <= 0) continue;
+
+      // Run the SAME grid prediction pipeline as live trading
+      const priceData = { symbol, price: entryPrice, change: 0 };
+      const pred = generateGridPrediction(symbol, windowCandles, priceData, null, tf.label);
+      if (!pred || !pred.direction || pred.direction === 'flat' || pred.direction === 'neutral') continue;
+
+      // Resolve: did the price move in the predicted direction?
+      const actualMove = (exitPrice - entryPrice) / entryPrice;
+      const threshold = 0.001; // 0.1% minimum move
+      const actualDir = actualMove > threshold ? 'up' : actualMove < -threshold ? 'down' : 'flat';
+      const isCorrect = pred.direction === actualDir;
+
+      replayed++;
+      if (isCorrect) correct++;
+
+      const archetype = pred.archetype || 'unknown';
+      const timestamp = windowCandles[windowCandles.length - 1].timestamp || 0;
+      recordReplayResult(archetype, sector, tf.label, timestamp, isCorrect);
+
+      // v30.2: Record replay signature for cross-reference with today's live conditions
+      replayState.recentReplaySignatures.push({
+        symbol, archetype, direction: pred.direction, correct: isCorrect,
+        confidence: pred.confidence, sector, timeframe: tf.label,
+        lookbackDays, actualMove, timestamp: Date.now(),
+      });
+      if (replayState.recentReplaySignatures.length > MAX_RECENT_REPLAY_SIGS) {
+        replayState.recentReplaySignatures = replayState.recentReplaySignatures.slice(-MAX_RECENT_REPLAY_SIGS);
+      }
+
+      // Save to DB for the calibration system to learn from (tagged as replay)
+      // Uses same column names as the live INSERT (line ~2387)
+      if (sqlPool && replayed <= 10) { // Limit DB writes to 10 per cycle
+        try {
+          await sqlPool.query(
+            `INSERT INTO market_prediction_attempts (
+              symbol, time_horizon, prediction_source, predicted_direction, confidence,
+              archetype, price_at_prediction, data_source, prediction_metadata
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            ON CONFLICT DO NOTHING`,
+            [
+              symbol,
+              tf.timeHorizon,
+              'historical_replay',
+              pred.direction,
+              pred.confidence,
+              archetype,
+              entryPrice,
+              'yahoo_historical',
+              JSON.stringify({
+                source: 'historical_replay',
+                replay_cycle: replayState.cycleCount,
+                lookback_days: lookbackDays,
+                sector: sector,
+                exit_price: exitPrice,
+                actual_direction: actualDir,
+                replay_correct: isCorrect,
+                base_archetype: pred.baseArchetype || null,
+                tactical_override: pred.tacticalOverride?.pattern || null,
+                chess_bridge: pred.chessBridge ? { archetype: pred.chessBridge.chessArchetype, accuracy: pred.chessBridge.accuracy } : null,
+                window_timestamp: timestamp,
+              }),
+            ]
+          );
+        } catch (dbErr) {
+          if (dbErr.code !== '23505') { // Ignore dupes
+            log(`📼 Replay DB error: ${dbErr.message?.substring(0, 100)}`, 'warn');
+          }
+        }
+      }
+    }
+
+    const acc = replayed > 0 ? (correct / replayed * 100).toFixed(1) : 'N/A';
+    log(`📼 Replay result: ${symbol} ${tf.label} | ${correct}/${replayed} = ${acc}% | cumulative: ${replayState.totalCorrect}/${replayState.totalReplayed} = ${replayState.totalReplayed > 0 ? (replayState.totalCorrect / replayState.totalReplayed * 100).toFixed(1) : 'N/A'}%`);
+
+    // Print full report periodically
+    if (replayState.cycleCount % REPLAY_REPORT_INTERVAL === 0) {
+      printReplayReport();
+    }
+
+    // Persist state
+    saveReplayState();
+
+  } catch (err) {
+    log(`📼 Replay error: ${err.message}`, 'warn');
+  }
+}
+
+// ─── REPLAY SIMILARITY CROSS-REFERENCE (v30.2) ──────────────────────────────
+// When live predictions fire, check if recent replay patterns match.
+// "Cross reference any similarities to today" — if overnight replay found
+// that archetype X on symbol Y was 70% accurate in the last 5 days,
+// and today's live prediction is archetype X on symbol Y, boost confidence.
+function getReplaySimilaritySignal(symbol, archetype, direction, sector) {
+  const sigs = replayState.recentReplaySignatures;
+  if (!sigs || sigs.length < 10) return null; // Need minimum data
+
+  // Match 1: Exact symbol + archetype (strongest signal)
+  const exactMatches = sigs.filter(s => s.symbol === symbol && s.archetype === archetype);
+  // Match 2: Same sector + archetype (broader signal)
+  const sectorMatches = sigs.filter(s => s.sector === sector && s.archetype === archetype);
+  // Match 3: Same symbol + direction (directional signal)
+  const dirMatches = sigs.filter(s => s.symbol === symbol && s.direction === direction);
+
+  const calcAcc = (matches) => {
+    if (matches.length < 3) return null;
+    const correct = matches.filter(m => m.correct).length;
+    return { accuracy: correct / matches.length, n: matches.length };
+  };
+
+  const exact = calcAcc(exactMatches);
+  const bySector = calcAcc(sectorMatches);
+  const byDir = calcAcc(dirMatches);
+
+  // Pick the best signal with enough data
+  let bestSignal = null;
+  let bestType = null;
+  if (exact && exact.n >= 3) { bestSignal = exact; bestType = 'exact'; }
+  else if (bySector && bySector.n >= 5) { bestSignal = bySector; bestType = 'sector'; }
+  else if (byDir && byDir.n >= 5) { bestSignal = byDir; bestType = 'direction'; }
+
+  if (!bestSignal) return null;
+
+  // Convert accuracy to confidence multiplier:
+  // >60% → boost (1.0-1.15), 40-60% → neutral (0.95-1.05), <40% → dampen (0.80-0.95)
+  const acc = bestSignal.accuracy;
+  const multiplier = acc > 0.60 ? 1.0 + (acc - 0.60) * 0.375  // 60%→1.0, 80%→1.075, 100%→1.15
+    : acc < 0.40 ? 0.80 + acc * 0.375                          // 0%→0.80, 20%→0.875, 40%→0.95
+    : 0.95 + (acc - 0.40) * 0.5;                               // 40%→0.95, 50%→1.0, 60%→1.05
+
+  return {
+    multiplier: Math.round(multiplier * 1000) / 1000,
+    accuracy: Math.round(acc * 1000) / 1000,
+    n: bestSignal.n,
+    matchType: bestType,
+  };
+}
+
 // ─── MULTI-TIMEFRAME CANDLE CACHE ────────────────────────────────────────────
 // Slower timeframes don't need fresh candles every 5-min cycle.
 // candleRefreshCycles: how often to re-fetch for each timeframe
-const CANDLE_REFRESH = { scalp: 1, short: 1, scalp_1h: 1, medium: 2, mid_4h: 5, swing: 15, daily: 60 };
+const CANDLE_REFRESH = { scalp: 1, short: 1, scalp_1h: 1, medium: 2, swing: 15, daily: 60 };
 const candleCache = new Map(); // key: `${symbol}|${timeframe.label}` → candles
 
 async function fetchCandlesForTimeframe(symbols, tf) {
@@ -2320,10 +3160,28 @@ async function fetchCandlesForTimeframe(symbols, tf) {
 // ─── MAIN LOOP ───────────────────────────────────────────────────────────────
 async function predictionCycle() {
   cycleCount++;
-  const activeSymbols = getActiveSymbols();
+
+  // v30.2: SMART REPLAY — live data ALWAYS takes priority, replay fills dead time.
+  // Priority: live predictions > replay learning > idle
+  //   - All markets closed (weekends): full replay on ALL symbols
+  //   - Stocks closed, forex open (weekday evenings/mornings): replay STOCKS while live commodities run
+  //   - All open: no replay, all live
   const stocksOpen = isStockMarketOpen();
   const forexOpen = isForexOpen();
-  const marketLabel = stocksOpen ? 'All markets' : forexOpen ? 'Forex+Crypto' : 'Crypto only';
+  const allClosed = isAllMarketsClosed();
+
+  if (allClosed) {
+    log(`📼 All markets closed — full replay mode (cycle #${cycleCount})`);
+    await historicalReplayCycle('all');
+  } else if (!stocksOpen && forexOpen) {
+    // Weekday after-hours/pre-market: stocks are dead, replay them while commodities trade live
+    log(`📼 Stocks closed — replaying stocks while commodities trade live (cycle #${cycleCount})`);
+    await historicalReplayCycle('stocks_only');
+  }
+
+  const activeSymbols = getActiveSymbols();
+  const replayMode = allClosed ? '📼 REPLAY ALL' : (!stocksOpen && forexOpen) ? '📼 REPLAY stocks + LIVE commodities' : null;
+  const marketLabel = stocksOpen ? 'All markets' : forexOpen ? (replayMode || 'Forex+Commodities') : allClosed ? '📼 REPLAY + Crypto' : 'Crypto only';
 
   log(`Cycle #${cycleCount} | ${marketLabel} (${activeSymbols.length} symbols × ${TIMEFRAMES.length} timeframes) | Predictions: ${totalPredictions} | Resolved: ${totalResolved} | Correct: ${totalCorrect} | Acc: ${totalResolved > 0 ? (totalCorrect / totalResolved * 100).toFixed(1) + '%' : 'N/A'} | Audit: ${auditTrailTotal}`);
 
@@ -2392,6 +3250,10 @@ async function predictionCycle() {
   for (const tf of TIMEFRAMES) {
     tfChessSignals[tf.label] = await withTimeout(getTimeframeChessResonance(tf.label), 5000);
   }
+  // v17.8: Pre-populate archetype×phase temporal intelligence cache
+  await withTimeout(buildArchetypePhaseIntelligence(), 10000);
+  // v17.9: Pre-populate puzzle tactical likelihood intelligence cache
+  await withTimeout(buildPuzzleTacticalIntelligence(), 10000);
   // SIGNAL A: Live chess consensus (white=sell/black=buy)
   const chessConsensus = await withTimeout(getChessConsensusSignal(), 5000);
   const tfChessSummary = Object.entries(tfChessSignals)
@@ -2474,7 +3336,7 @@ async function predictionCycle() {
       let pred = null;
       if (candles && candles.length >= tf.minCandles) {
         const symOpts = optionsData?.get(symbol) || null;
-        pred = generateGridPrediction(symbol, candles, priceData, symOpts);
+        pred = generateGridPrediction(symbol, candles, priceData, symOpts, tf.label);
         if (pred) pred.timeframe = tf.label;
       }
       
@@ -2489,17 +3351,19 @@ async function predictionCycle() {
       // Like chess poison zones: don't block predictions, dampen confidence & tag for learning.
       // The system needs ALL data to learn sector×archetype patterns.
       // Hard-blocked archetypes were 85% of volume — killing the feedback loop.
+      // v30: ARCHETYPE_PENALTY updated from real 1K resolved data (Feb 18, 2026)
+      // blunder_free_queen was WRONGLY penalized at 0.65 — it's actually 79% accurate!
       const ARCHETYPE_PENALTY = {
-        'no_signal': 0.15,               // 0% — almost certainly noise, heavy dampen
-        'regime_shift_down': 0.25,       // 3.9% — catastrophic but still record
-        'bullish_momentum': 0.5,         // 14.9% — below random but may improve per-sector
-        'mean_reversion_up': 0.55,       // 19.1%
-        'mean_reversion_down': 0.6,      // 22.3%
-        'blunder_free_queen': 0.65,      // 23.7%
-        'castling_reposition': 0.7,      // 25.8%
-        'institutional_distribution': 0.7, // 27.4%
-        'oversold_bounce': 0.75,         // 29.2%
-        'institutional_accumulation': 0.75, // 29.1%
+        'no_signal': 0.15,               // flat/noise — heavy dampen
+        'institutional_distribution': 0.10, // 0.0% (0/152) — near-dead
+        'mean_reversion_up': 0.10,       // 1.4% (1/71) — near-dead
+        'bearish_momentum': 0.10,        // 0.0% (0/25) — near-dead
+        'mean_reversion_down': 0.20,     // 7.3% (9/123) — catastrophic
+        'castling_reposition': 0.25,     // 10.2% (25/245) — catastrophic
+        'bullish_momentum': 0.40,        // 18.3% (17/93) — below random
+        'regime_shift_down': 0.60,       // 30.9% (25/81) — near random
+        // blunder_free_queen: NO PENALTY — 79.0% accuracy, our BEST pattern
+        // trap_queen_sac: NO PENALTY — 38.8% accuracy, above random
       };
       const penalty = pred.archetype ? (ARCHETYPE_PENALTY[pred.archetype] || 1.0) : 1.0;
       if (penalty < 1.0) {
@@ -2600,6 +3464,74 @@ async function predictionCycle() {
         // Chess-market board is non-critical
       }
 
+      // ── v30: TEMPORAL PARABLE CONFIRMATION ──────────────────────────────
+      // The three-domain interlink: chess + music + market temporal agreement
+      // When all three tell the same story → parable → confidence boost
+      // When they disagree → discord → confidence dampen
+      // This is the cyclical confirmation that creates real edge
+      try {
+        const parableResult = await getTemporalParableSignal(pred.direction, pred.archetype, priceData);
+        if (parableResult && parableResult.multiplier !== 1.0) {
+          pred.confidence = Math.max(0.15, Math.min(0.90, pred.confidence * parableResult.multiplier));
+          pred.parableConfirmation = {
+            multiplier: parableResult.multiplier,
+            agrees: parableResult.agrees,
+            disagrees: parableResult.disagrees,
+            domains: parableResult.parable?.activeDomainCount || 0,
+            direction: parableResult.parable?.direction || 'neutral',
+            strength: parableResult.parable?.parableStrength || 0,
+          };
+        }
+      } catch (parableErr) {
+        // Parable is non-critical — prediction still valid without it
+      }
+
+      // ── v30: PHOTONIC INTERFERENCE — feed frame + coherence gate ──────
+      // Every prediction feeds a frame into the interference stack.
+      // The coherence multiplier adjusts confidence based on how consistent
+      // this signature is with the historical pattern of correct predictions.
+      try {
+        if (pred.market_conditions && interferenceEngine.totalFrames >= 50) {
+          const coherenceMult = interferenceEngine.getCoherenceMultiplier({
+            quadrantProfile: {
+              q1: pred.market_conditions.momentum || 0,
+              q2: pred.market_conditions.volatility || 0,
+              q3: pred.market_conditions.gridIntensity || 0,
+              q4: pred.market_conditions.dailyChange || 0,
+              q5: 0, q6: 0, q7: 0, q8: 0,
+            },
+            temporalFlow: { early: 0, mid: 0, late: pred.market_conditions.dailyChange || 0 },
+            intensity: pred.market_conditions.gridIntensity || 10,
+            direction: pred.direction === 'up' ? 'positive' : pred.direction === 'down' ? 'negative' : 'contested',
+          });
+          pred.confidence = Math.max(0.10, Math.min(0.90, pred.confidence * coherenceMult));
+          pred.photonicCoherence = Math.round(coherenceMult * 1000) / 1000;
+        }
+        // Feed this prediction as a frame (outcome unknown yet — will be fed on resolution)
+        interferenceEngine.addFrame({
+          quadrantProfile: {
+            q1: pred.market_conditions?.momentum || 0,
+            q2: pred.market_conditions?.volatility || 0,
+            q3: pred.market_conditions?.gridIntensity || 0,
+            q4: pred.market_conditions?.dailyChange || 0,
+            q5: 0, q6: 0, q7: 0, q8: 0,
+          },
+          temporalFlow: { early: 0, mid: 0, late: pred.market_conditions?.dailyChange || 0 },
+          intensity: pred.market_conditions?.gridIntensity || 10,
+          direction: pred.direction === 'up' ? 'positive' : pred.direction === 'down' ? 'negative' : 'contested',
+        }, { domain: 'market', archetype: pred.archetype, correct: null, timestamp: Date.now() });
+      } catch (photErr) { /* non-critical */ }
+
+      // ── v30.2: REPLAY SIMILARITY — cross-reference overnight learning ──────
+      // If overnight replay found patterns matching this prediction, adjust confidence.
+      try {
+        const replaySig = getReplaySimilaritySignal(symbol, pred.archetype, pred.direction, getSector(symbol));
+        if (replaySig) {
+          pred.confidence = Math.max(0.10, Math.min(0.90, pred.confidence * replaySig.multiplier));
+          pred.replaySimilarity = replaySig;
+        }
+      } catch (repErr) { /* non-critical */ }
+
       // Log to audit trail with timeframe-MATCHED chess signal
       const auditOk = await logToAuditTrail(pred, tf.resolutionMs, tfChess, tf).then(() => true).catch(err => { log(`Audit trail INSERT failed: ${err.message}`, 'error'); return false; });
       // Also save to legacy prediction_outcomes
@@ -2611,7 +3543,9 @@ async function predictionCycle() {
         if (pred.tacticalOverride) tacticalCounts[pred.tacticalOverride.pattern] = (tacticalCounts[pred.tacticalOverride.pattern] || 0) + 1;
         const src = pred.source === 'universal_grid_tactical' ? ' ♟️TACTICAL' : pred.source === 'universal_grid' ? ' [GRID]' : pred.source?.includes('flat') ? ' [FLAT]' : ' [LEGACY]';
         const tacticalTag = pred.tacticalOverride ? ` | ♟️${pred.tacticalOverride.pattern}: ${pred.tacticalOverride.baseDirection}→${pred.tacticalOverride.overrideDirection}` : '';
-        log(`${pred.direction.toUpperCase()} ${symbol} @ $${pred.entryPrice.toFixed(2)} | ${tf.label}/${tf.timeHorizon} | conf: ${(pred.confidence * 100).toFixed(0)}% | arch: ${pred.archetype}${src}${tacticalTag}`, 'trade');
+        const photTag = pred.photonicCoherence ? ` | 🔬×${pred.photonicCoherence}` : '';
+        const replayTag = pred.replaySimilarity ? ` | 📼×${pred.replaySimilarity.multiplier}(${pred.replaySimilarity.matchType},n=${pred.replaySimilarity.n})` : '';
+        log(`${pred.direction.toUpperCase()} ${symbol} @ $${pred.entryPrice.toFixed(2)} | ${tf.label}/${tf.timeHorizon} | conf: ${(pred.confidence * 100).toFixed(0)}% | arch: ${pred.archetype}${src}${tacticalTag}${photTag}${replayTag}`, 'trade');
       }
     }
   }
@@ -2648,6 +3582,126 @@ async function resolutionCycle() {
   if (resolutionCycleCount % EDGE_MONITOR_INTERVAL === 0) {
     await runEdgeMonitor();
   }
+
+  // ── v30: PHOTONIC INTERFERENCE — seed from DB + feed resolved outcomes ──
+  // Periodically seed the interference engine from the DB so it has
+  // correct/incorrect outcome data to compute discrepancies.
+  if (resolutionCycleCount % INTERFERENCE_SEED_INTERVAL === 0 || (interferenceEngine.totalFrames < 100 && sqlPool)) {
+    try {
+      const marketLoaded = await loadFramesFromDB(sqlPool, interferenceEngine, { domain: 'market', limit: 5000 });
+      const chessLoaded = await loadFramesFromDB(sqlPool, interferenceEngine, { domain: 'chess', limit: 5000 });
+      if (marketLoaded + chessLoaded > 0) {
+        log(`🔬 Photonic interference seeded: +${marketLoaded} market +${chessLoaded} chess frames (total: ${interferenceEngine.totalFrames})`);
+        // Persist to disk after seeding
+        persistToFile(INTERFERENCE_FILE, interferenceEngine.serialize());
+      }
+    } catch (seedErr) {
+      log(`🔬 Interference seed error: ${seedErr.message}`, 'warn');
+    }
+  }
+
+  // Periodic interference report with strategy discovery
+  if (resolutionCycleCount % INTERFERENCE_REPORT_INTERVAL === 0 && interferenceEngine.totalFrames >= 50) {
+    try {
+      const pattern = interferenceEngine.computeInterferencePattern();
+      printInterferenceReport(pattern);
+      // Persist state after report
+      persistToFile(INTERFERENCE_FILE, interferenceEngine.serialize());
+    } catch (repErr) {
+      log(`🔬 Interference report error: ${repErr.message}`, 'warn');
+    }
+  }
+}
+
+// ─── PHOTONIC INTERFERENCE REPORT + STRATEGY DISCOVERY ──────────────────────
+// "Find the strategy within and which correlations to trust"
+// The interference pattern reveals:
+//   - BRIGHT SPOTS: cells where all predictions agree → trust these signals
+//   - DARK SPOTS: cells where predictions cancel out → these are noise, ignore
+//   - DISCREPANCIES: cells that differ between correct and incorrect → the EDGE
+//   - CROSS-DOMAIN: where chess and market agree/disagree → trust agreements
+function printInterferenceReport(pattern) {
+  if (!pattern || pattern.error) return;
+
+  log('');
+  log('╔══════════════════════════════════════════════════════════════════════╗');
+  log('║          🔬 PHOTONIC INTERFERENCE PATTERN REPORT                    ║');
+  log(`║  Frames: ${pattern.totalFrames.toLocaleString()} | Correct: ${pattern.correctFrames} | Incorrect: ${pattern.incorrectFrames} | Acc: ${pattern.overallAccuracy ? (pattern.overallAccuracy * 100).toFixed(1) + '%' : 'N/A'}  ║`);
+  log('╠══════════════════════════════════════════════════════════════════════╣');
+
+  // BRIGHT SPOTS — cells to trust
+  log('║ ☀️  BRIGHT SPOTS (constructive interference — TRUST these):');
+  for (const cell of pattern.coherenceMap.filter(c => c.type === 'BRIGHT')) {
+    log(`║   ☀️  ${cell.cell.padEnd(18)} coherence=${cell.coherence.toFixed(3)} mean=${cell.mean.toFixed(4)} σ=${cell.stddev.toFixed(4)}`);
+  }
+
+  // DARK SPOTS — cells that are noise
+  log('║ 🌑 DARK SPOTS (destructive interference — IGNORE these):');
+  for (const cell of pattern.coherenceMap.filter(c => c.type === 'DARK')) {
+    log(`║   🌑 ${cell.cell.padEnd(18)} coherence=${cell.coherence.toFixed(3)} mean=${cell.mean.toFixed(4)} σ=${cell.stddev.toFixed(4)}`);
+  }
+
+  // DISCREPANCIES — the gold: where correct differs from incorrect
+  if (pattern.topDiscrepancies.length > 0) {
+    log('║ 💎 DISCREPANCIES (correct ≠ incorrect — THIS IS THE EDGE):');
+    for (const d of pattern.topDiscrepancies) {
+      const arrow = d.signal === 'correct_is_higher' ? '↑' : d.signal === 'correct_is_lower' ? '↓' : '=';
+      log(`║   💎 ${d.cell.padEnd(18)} effect=${d.effectSize.toFixed(3)} ${d.significance} | correct=${d.correctMean.toFixed(4)} ${arrow} incorrect=${d.incorrectMean.toFixed(4)}`);
+    }
+  }
+
+  // TEMPORAL PHASE SIGNAL
+  if (pattern.phaseAnalysis && Object.keys(pattern.phaseAnalysis).length > 0) {
+    log('║ ⏱️  TEMPORAL PHASE SIGNAL:');
+    for (const [phase, data] of Object.entries(pattern.phaseAnalysis)) {
+      log(`║   ⏱️  ${phase.padEnd(8)} effect=${data.effectSize.toFixed(3)} ${data.signalStrength} | correct=${data.correctMean.toFixed(4)} incorrect=${data.incorrectMean.toFixed(4)} → ${data.recommendation}`);
+    }
+  }
+
+  // ARCHETYPE COHERENCE — which archetypes produce reliable signals
+  if (pattern.archetypePatterns.length > 0) {
+    log('║ 🎯 ARCHETYPE COHERENCE (which patterns to trust):');
+    for (const a of pattern.archetypePatterns.slice(0, 8)) {
+      const accStr = a.accuracy !== null ? `${(a.accuracy * 100).toFixed(1)}%` : 'N/A';
+      const icon = a.type === 'COHERENT' ? '🟢' : a.type === 'PARTIAL' ? '🟡' : '🔴';
+      log(`║   ${icon} ${a.archetype.padEnd(28)} ${a.type.padEnd(11)} coh=${a.coherence.toFixed(3)} acc=${accStr} n=${a.n} | blind_spot=${a.maxDiscrepancyCell}`);
+    }
+  }
+
+  // CROSS-DOMAIN — chess vs market agreement
+  if (pattern.crossDomain.length > 0) {
+    log('║ 🌐 CROSS-DOMAIN INTERFERENCE (which correlations to trust):');
+    for (const cd of pattern.crossDomain) {
+      const icon = cd.type === 'CONSTRUCTIVE' ? '✅' : cd.type === 'PARTIAL' ? '⚠️' : '❌';
+      log(`║   ${icon} ${cd.domains.join(' × ').padEnd(20)} ${cd.type} (${cd.agreement}% agreement)`);
+      if (cd.disagreementCells.length > 0) {
+        for (const dc of cd.disagreementCells.slice(0, 3)) {
+          log(`║      ↳ ${dc.cell}: ${cd.domains[0]}=${dc.domain1Mean} vs ${cd.domains[1]}=${dc.domain2Mean} (Δ=${dc.delta})`);
+        }
+      }
+    }
+  }
+
+  // STRATEGY DISCOVERY SUMMARY
+  log('╠══════════════════════════════════════════════════════════════════════╣');
+  log('║ 🧠 STRATEGY DISCOVERY:');
+  log(`║   ${pattern.summary.recommendation}`);
+  log(`║   Reliable cells: ${pattern.summary.brightCells}/13 | Noise cells: ${pattern.summary.darkCells}/13`);
+  log(`║   Most reliable: ${pattern.summary.mostReliableCell} | Least reliable: ${pattern.summary.leastReliableCell}`);
+  log(`║   Strongest temporal phase: ${pattern.summary.strongestPhase}`);
+  
+  // Actionable: which archetypes to trust for trading
+  const trustworthy = pattern.archetypePatterns.filter(a => a.type === 'COHERENT' && a.accuracy !== null && a.accuracy > 0.40);
+  const avoid = pattern.archetypePatterns.filter(a => a.type === 'INCOHERENT' || (a.accuracy !== null && a.accuracy < 0.20));
+  if (trustworthy.length > 0) {
+    log(`║   ✅ TRUST: ${trustworthy.map(a => `${a.archetype}(${(a.accuracy*100).toFixed(0)}%)`).join(', ')}`);
+  }
+  if (avoid.length > 0) {
+    log(`║   ❌ AVOID: ${avoid.map(a => `${a.archetype}(${a.accuracy !== null ? (a.accuracy*100).toFixed(0) + '%' : 'N/A'})`).join(', ')}`);
+  }
+
+  log('╚══════════════════════════════════════════════════════════════════════╝');
+  log('');
 }
 
 // ─── STARTUP: Seed auto-exclude from DB ──────────────────────────────────────
@@ -2761,6 +3815,9 @@ log(`Edge gate: >${EDGE_MIN_ACCURACY * 100}% acc, p<${EDGE_SIGNIFICANCE_THRESHOL
 
 // Seed counters from DB so Resolved/Total are accurate after restarts
 await seedAuditCounters();
+
+// Load historical replay state (persists across restarts)
+loadReplayState();
 
 // Start prediction cycles immediately (edge monitor + auto-exclude run during cycles)
 log('Startup complete — beginning prediction cycles');

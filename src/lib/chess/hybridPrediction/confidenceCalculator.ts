@@ -82,26 +82,27 @@ export function calculateHybridConfidence(
   const actualAccuracy = getActualAccuracy();
   factors.push(`Historical accuracy: ${actualAccuracy.toFixed(1)}%`);
   
-  // SECONDARY: Tactical quality (minor modifier, max ±5%)
+  // SECONDARY: Tactical quality (±10% range — deeper analysis = more confidence)
   const depthQuality = Math.min(1, analysis.evaluation.depth / 25); // 0-1 scale
-  const tacticalModifier = (depthQuality - 0.5) * 10; // -5 to +5
+  const evalMagnitude = Math.min(1, Math.abs(analysis.evaluation.score) / 500); // 0-1, how decisive
+  const tacticalModifier = (depthQuality - 0.5) * 12 + evalMagnitude * 8; // -6 to +14
   const tacticalConf = Math.max(20, Math.min(95, actualAccuracy + tacticalModifier));
-  factors.push(`Depth ${analysis.evaluation.depth} (${tacticalModifier > 0 ? '+' : ''}${tacticalModifier.toFixed(1)}%)`);
+  factors.push(`Depth ${analysis.evaluation.depth} eval ${analysis.evaluation.score} (${tacticalModifier > 0 ? '+' : ''}${tacticalModifier.toFixed(1)}%)`);
   
-  // SECONDARY: Archetype clarity (minor modifier, max ±5%)
+  // SECONDARY: Archetype clarity (±10% range — strong archetype signal = more confidence)
   const archetypeDef = ARCHETYPE_DEFINITIONS[signature.archetype];
   const archetypeModifier = signature.archetype !== 'unknown' 
-    ? (archetypeDef.historicalWinRate - 0.5) * 10 + signature.intensity / 20
-    : -5;
+    ? (archetypeDef.historicalWinRate - 0.5) * 16 + signature.intensity / 10
+    : -10;
   const strategicConf = Math.max(20, Math.min(95, actualAccuracy + archetypeModifier));
   factors.push(`${archetypeDef.name} archetype (${archetypeModifier > 0 ? '+' : ''}${archetypeModifier.toFixed(1)}%)`);
   
   // Alignment: do tactics and strategy point same direction?
   const alignment = calculateAlignment(analysis, signature, factors);
-  const alignmentModifier = (alignment - 50) / 10; // -1 to +3.5
+  const alignmentModifier = (alignment - 50) / 5; // -2 to +7
   
-  // BASE: Actual accuracy + small modifiers
-  const baseConfidence = actualAccuracy + (tacticalModifier + archetypeModifier + alignmentModifier) / 3;
+  // BASE: Actual accuracy + meaningful modifiers (not averaged down)
+  const baseConfidence = actualAccuracy + tacticalModifier * 0.4 + archetypeModifier * 0.3 + alignmentModifier * 0.3;
   
   // v3.0: APPLY COMPOUND INTELLIGENCE CALIBRATION
   const calibrated = getCalibratedConfidence(signature.archetype, baseConfidence);
@@ -113,7 +114,7 @@ export function calculateHybridConfidence(
     console.log(`[Intelligence] Learning active: ${metrics.archetypeCount} archetypes, ${(metrics.globalDisagreementWinRate * 100).toFixed(0)}% disagreement wins`);
   }
   
-  const maxConfidence = Math.min(95, actualAccuracy + 15); // Allow +15% with compounding
+  const maxConfidence = Math.min(95, actualAccuracy + 30); // Allow +30% for strong signals
   const overall = Math.round(Math.max(20, Math.min(maxConfidence, calibrated.confidence)));
   
   return {

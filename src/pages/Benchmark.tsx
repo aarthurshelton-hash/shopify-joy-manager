@@ -157,13 +157,7 @@ function useSystemBreakdown() {
       // Terminal: terminal_live tier
       // Web/Engine: everything else (web_client, null, etc.)
 
-      const farmFilter = (q: ReturnType<typeof supabase.from>) =>
-        q.or(FARM_TIERS.map(t => `data_quality_tier.eq.${t}`).join(','));
-      const terminalFilter = (q: ReturnType<typeof supabase.from>) =>
-        q.in('data_quality_tier', TERMINAL_TIERS);
-      // Web = everything NOT farm and NOT terminal
-      const webFilter = (q: ReturnType<typeof supabase.from>) =>
-        q.not('data_quality_tier', 'in', `(${[...FARM_TIERS, ...TERMINAL_TIERS].join(',')})`);
+      const baseQuery = () => supabase.from('chess_prediction_attempts').select('*', { count: 'exact', head: true });
 
       const [
         { count: farmTotal },
@@ -176,15 +170,15 @@ function useSystemBreakdown() {
         { count: webSf },
         { count: webEp },
       ] = await Promise.all([
-        farmFilter(supabase.from('chess_prediction_attempts').select('*', { count: 'exact', head: true })),
-        farmFilter(supabase.from('chess_prediction_attempts').select('*', { count: 'exact', head: true })).eq('stockfish_correct', true),
-        farmFilter(supabase.from('chess_prediction_attempts').select('*', { count: 'exact', head: true })).eq('hybrid_correct', true),
-        terminalFilter(supabase.from('chess_prediction_attempts').select('*', { count: 'exact', head: true })),
-        terminalFilter(supabase.from('chess_prediction_attempts').select('*', { count: 'exact', head: true })).eq('stockfish_correct', true),
-        terminalFilter(supabase.from('chess_prediction_attempts').select('*', { count: 'exact', head: true })).eq('hybrid_correct', true),
-        webFilter(supabase.from('chess_prediction_attempts').select('*', { count: 'exact', head: true })),
-        webFilter(supabase.from('chess_prediction_attempts').select('*', { count: 'exact', head: true })).eq('stockfish_correct', true),
-        webFilter(supabase.from('chess_prediction_attempts').select('*', { count: 'exact', head: true })).eq('hybrid_correct', true),
+        baseQuery().or(FARM_TIERS.map(t => `data_quality_tier.eq.${t}`).join(',')),
+        baseQuery().or(FARM_TIERS.map(t => `data_quality_tier.eq.${t}`).join(',')).eq('stockfish_correct', true),
+        baseQuery().or(FARM_TIERS.map(t => `data_quality_tier.eq.${t}`).join(',')).eq('hybrid_correct', true),
+        baseQuery().in('data_quality_tier', TERMINAL_TIERS),
+        baseQuery().in('data_quality_tier', TERMINAL_TIERS).eq('stockfish_correct', true),
+        baseQuery().in('data_quality_tier', TERMINAL_TIERS).eq('hybrid_correct', true),
+        baseQuery().not('data_quality_tier', 'in', `(${[...FARM_TIERS, ...TERMINAL_TIERS].join(',')})`),
+        baseQuery().not('data_quality_tier', 'in', `(${[...FARM_TIERS, ...TERMINAL_TIERS].join(',')})`).eq('stockfish_correct', true),
+        baseQuery().not('data_quality_tier', 'in', `(${[...FARM_TIERS, ...TERMINAL_TIERS].join(',')})`).eq('hybrid_correct', true),
       ]);
 
       const categories = [

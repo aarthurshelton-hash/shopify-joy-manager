@@ -557,14 +557,8 @@ async function getEnPensentPrediction(symbol) {
     });
     
     if (error || !data) {
-      // Fallback: random direction for volume
-      return {
-        symbol,
-        direction: Math.random() > 0.5 ? 'up' : 'down',
-        confidence: 0.5 + Math.random() * 0.3,
-        archetype: 'random_fallback',
-        source: 'fallback',
-      };
+      // No real signal available — skip this symbol (never generate fake predictions)
+      return null;
     }
     
     return {
@@ -575,14 +569,9 @@ async function getEnPensentPrediction(symbol) {
       source: 'generated',
     };
   } catch (err) {
-    // Last resort: random for volume
-    return {
-      symbol,
-      direction: Math.random() > 0.5 ? 'up' : 'down',
-      confidence: 0.5,
-      archetype: 'error_fallback',
-      source: 'error',
-    };
+    // Error getting prediction — skip this symbol (never generate fake predictions)
+    log(`Prediction error for ${symbol}: ${err.message}`, 'warn');
+    return null;
   }
 }
 
@@ -848,7 +837,7 @@ async function runCycle() {
       // Get En Pensent prediction
       const prediction = await getEnPensentPrediction(symbol);
       
-      if (prediction.confidence < CONFIG.MIN_CONFIDENCE || prediction.direction === 'neutral') {
+      if (!prediction || prediction.confidence < CONFIG.MIN_CONFIDENCE || prediction.direction === 'neutral') {
         continue;
       }
 

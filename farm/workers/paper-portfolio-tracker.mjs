@@ -159,6 +159,7 @@ function calculateCADFromUSD(usdAmount) {
 }
 
 async function getUnprocessedPredictions(startedAt, strategyId) {
+  const blacklist = [...GLOBAL_GATES.ARCHETYPE_BLACKLIST];
   const { rows } = await pool.query(`
     SELECT m.id, m.symbol, m.predicted_direction, m.archetype, m.confidence,
            m.time_horizon, m.price_at_prediction, m.price_at_resolution,
@@ -173,9 +174,11 @@ async function getUnprocessedPredictions(startedAt, strategyId) {
       AND m.price_at_resolution IS NOT NULL AND m.price_at_resolution > 0
       AND m.actual_move IS NOT NULL
       AND pt.id IS NULL
+      AND m.confidence >= $3
+      AND m.archetype NOT IN (${blacklist.map((_, i) => `$${i + 4}`).join(',')})
     ORDER BY m.resolved_at ASC
     LIMIT 100
-  `, [startedAt, strategyId]);
+  `, [startedAt, strategyId, GLOBAL_GATES.MIN_CONFIDENCE, ...blacklist]);
   return rows;
 }
 

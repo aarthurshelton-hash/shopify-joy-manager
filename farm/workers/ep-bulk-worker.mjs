@@ -217,6 +217,10 @@ async function evaluateWithStockfish(fen, depth = SF_DEPTH) {
     const engine = await initStockfish();
     if (!engineReady) throw new Error('Engine not ready');
     
+    // v29.1 FIX: SF returns eval from side-to-move perspective. Normalize to white's.
+    const sideToMove = (fen || '').split(' ')[1] || 'w';
+    const flipSign = sideToMove === 'b' ? -1 : 1;
+    
     return new Promise((resolve, reject) => {
       let evaluation = 0;
       let currentDepth = 0;
@@ -246,7 +250,8 @@ async function evaluateWithStockfish(fen, depth = SF_DEPTH) {
               resolved = true;
               clearTimeout(timeout);
               engine.stdout.off('data', onData);
-              resolve({ evaluation, depth: currentDepth, bestMove, source: 'stockfish_18' });
+              // v29.1: Normalize to white's perspective
+              resolve({ evaluation: evaluation * flipSign, depth: currentDepth, bestMove, source: 'stockfish_18' });
             }
           }
           
@@ -892,18 +897,29 @@ async function flushBatch() {
 // MODE 1: BULK DATABASE INGESTION
 // ═══════════════════════════════════════════════════════
 
+// v29.9: Generate all available Lichess months from a starting month backwards
+function generateBulkMonths(startMonth) {
+  const months = [];
+  const [startY, startM] = startMonth.split('-').map(Number);
+  let y = startY, m = startM;
+  // Go back to 2013 (Lichess started)
+  while (y > 2013 || (y === 2013 && m >= 1)) {
+    months.push(`${y}-${String(m).padStart(2, '0')}`);
+    m--;
+    if (m < 1) { m = 12; y--; }
+  }
+  return months;
+}
+
 async function runBulkMode(epEngine) {
-  let pgnStream;
-  
   if (CONFIG.bulkFile) {
-    // Read from local file
+    // Local file mode — single pass
     if (!existsSync(CONFIG.bulkFile)) {
       console.error(`[BULK] File not found: ${CONFIG.bulkFile}`);
       process.exit(1);
     }
-    
+    let pgnStream;
     if (CONFIG.bulkFile.endsWith('.zst')) {
-      // Decompress with zstd
       console.log(`[BULK] Streaming zstd-compressed PGN: ${CONFIG.bulkFile}`);
       const zstd = spawn('zstdcat', [CONFIG.bulkFile]);
       pgnStream = zstd.stdout;
@@ -912,26 +928,63 @@ async function runBulkMode(epEngine) {
       console.log(`[BULK] Streaming PGN: ${CONFIG.bulkFile}`);
       pgnStream = createReadStream(CONFIG.bulkFile, { encoding: 'utf-8' });
     }
-  } else if (CONFIG.bulkMonth) {
-    // Download from Lichess database
-    const url = `https://database.lichess.org/standard/lichess_db_standard_rated_${CONFIG.bulkMonth}.pgn.zst`;
-    console.log(`[BULK] Downloading Lichess database: ${url}`);
-    console.log(`[BULK] This may take a while (files are 10-50GB compressed)...`);
-    
-    // Stream download through zstd decompression
-    const curl = spawn('curl', ['-sL', url]);
-    const zstd = spawn('zstdcat', ['-']);
-    curl.stdout.pipe(zstd.stdin);
-    pgnStream = zstd.stdout;
-    
-    curl.stderr.on('data', d => console.error(`[curl] ${d}`));
-    zstd.stderr.on('data', d => console.error(`[zstd] ${d}`));
-  } else {
+    await processStream(pgnStream, epEngine);
+    return;
+  }
+  
+  if (!CONFIG.bulkMonth) {
     console.error('[BULK] Must specify --month=YYYY-MM or --file=/path/to/pgn');
     process.exit(1);
   }
-  
-  await processStream(pgnStream, epEngine);
+
+  // v29.9: CONTINUOUS OVERNIGHT MODE — loop through months forever, never exit.
+  // Each month has 80-100M games. Stream them with curl | zstdcat, no timeout.
+  // SF18 evaluates every position. The worker runs until manually stopped.
+  const allMonths = generateBulkMonths(CONFIG.bulkMonth);
+  let monthIndex = 0;
+  let cycleCount = 0;
+
+  while (true) {
+    cycleCount++;
+    const monthStr = allMonths[monthIndex % allMonths.length];
+    monthIndex++;
+    
+    const url = `https://database.lichess.org/standard/lichess_db_standard_rated_${monthStr}.pgn.zst`;
+    console.log(`\n[BULK] ══════ Cycle ${cycleCount}: month ${monthStr} (${allMonths.length} months available) ══════`);
+    console.log(`[BULK] Streaming: ${url}`);
+    console.log(`[BULK] No timeout — will process entire month (27-30GB compressed, 80M+ games)`);
+    
+    try {
+      // Check if month exists
+      const { stdout: httpCode } = await execAsync(`curl -sL -o /dev/null -w '%{http_code}' --head '${url}'`, { timeout: 15000 });
+      if (httpCode.trim() !== '200') {
+        console.log(`[BULK] Month ${monthStr} not available (HTTP ${httpCode.trim()}) — skipping`);
+        continue;
+      }
+
+      // Stream download through zstd — NO TIMEOUT. Let it run until the file is done.
+      const curl = spawn('curl', ['-sL', url]);
+      const zstd = spawn('zstdcat', ['-']);
+      curl.stdout.pipe(zstd.stdin);
+      const pgnStream = zstd.stdout;
+      
+      curl.stderr.on('data', d => console.error(`[curl] ${d}`));
+      zstd.stderr.on('data', d => console.error(`[zstd] ${d}`));
+      
+      // Process the ENTIRE month — no timeout, no early exit
+      await processStream(pgnStream, epEngine);
+      
+      console.log(`[BULK] ✓ Month ${monthStr} complete — moving to next month`);
+      
+      // Brief pause between months to let DB catch up
+      await new Promise(r => setTimeout(r, 5000));
+      
+    } catch (err) {
+      console.error(`[BULK] Month ${monthStr} error (non-fatal): ${err.message}`);
+      // Wait 30s and try next month
+      await new Promise(r => setTimeout(r, 30000));
+    }
+  }
 }
 
 // ═══════════════════════════════════════════════════════

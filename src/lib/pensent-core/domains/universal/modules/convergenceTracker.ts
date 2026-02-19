@@ -5,6 +5,7 @@
  */
 
 import { DomainType, DomainSignature, UnifiedPrediction } from '../types';
+import { EPSILON, floor, LivingParameter } from '../positiveField';
 
 // Convergence Event Structure
 export interface ConvergenceEvent {
@@ -37,7 +38,7 @@ export const SIGNIFICANCE_LEVELS = {
   highly_significant: 0.99,  // <1% chance by random
   significant: 0.95,         // <5% chance by random
   marginally_significant: 0.90, // <10% chance by random
-  not_significant: 0.0       // Could be random
+  not_significant: 0.001     // Could be random (ε — nothing is truly zero)
 };
 
 // Calculate probability of N domains aligning by chance
@@ -67,6 +68,11 @@ export class ConvergenceTracker {
   private totalDomains: number;
   private minimumAlignmentForEvent: number;
 
+  // v29.9: Living thresholds — breathe within bounds, self-tune from feedback
+  // Positive-field: > 1.0 = bullish, < 1.0 = bearish (never zero, never negative)
+  private readonly bullishThreshold = new LivingParameter(1.2, 1.05, 1.4, 0.03, 0.05, 0.002);
+  private readonly bearishThreshold = new LivingParameter(0.8, 0.6, 0.95, 0.03, 0.05, 0.002);
+
   constructor(totalDomains: number = 21, minimumAlignment: number = 10) {
     this.totalDomains = totalDomains;
     this.minimumAlignmentForEvent = minimumAlignment;
@@ -85,16 +91,22 @@ export class ConvergenceTracker {
     const bearishDomains: DomainType[] = [];
     const neutralDomains: DomainType[] = [];
 
-    let totalMomentum = 0;
-    let totalConfidence = 0;
+    let totalMomentum = EPSILON;
+    let totalConfidence = EPSILON;
+
+    // v29.9: Positive-field momentum encoding
+    // > 1.0 = advancing/bullish, < 1.0 = retreating/bearish, ~1.0 = neutral
+    // The threshold breathes — it's a living parameter, never static
+    const bullThresh = this.bullishThreshold.value;
+    const bearThresh = this.bearishThreshold.value;
 
     for (const [domain, signature] of domains) {
-      totalMomentum += signature.momentum;
-      totalConfidence += signature.intensity * signature.harmonicResonance;
+      totalMomentum += floor(signature.momentum);
+      totalConfidence += floor(signature.intensity) * floor(signature.harmonicResonance);
 
-      if (signature.momentum > 0.2) {
+      if (signature.momentum > bullThresh) {
         bullishDomains.push(domain);
-      } else if (signature.momentum < -0.2) {
+      } else if (signature.momentum < bearThresh) {
         bearishDomains.push(domain);
       } else {
         neutralDomains.push(domain);

@@ -114,7 +114,7 @@ export class JournalisticDataFeed {
     
     return {
       timestamp: Date.now(),
-      storyNovelty: Math.random() * 0.5 + 0.5, // 0.5-1.0
+      storyNovelty: 0.75, // Deterministic midpoint (no random data)
       sourceCredibility: 7,
       publicInterest: Math.min(shareVelocity * 1.5, 10),
       verificationStatus: 0.7,

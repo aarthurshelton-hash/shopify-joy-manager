@@ -101,6 +101,40 @@ export const LOCAL_POOL_CONFIG: PoolConfig = {
   delayBetweenGames: 400,   // v8.04: 400ms (was 600ms) - 1.5x throughput
 };
 
+// ================ v29.0: CROSS-PLATFORM PLAYER ALIASES ================
+// Maps platform usernames to canonical real names for unified tracking.
+// Mirrors the server-side map in chess-db-ingest-worker.mjs.
+
+const PLAYER_ALIASES: Record<string, string> = {
+  // Lichess → Canonical
+  'DrNykterstein': 'Magnus Carlsen', 'DrDrunkenstein': 'Magnus Carlsen',
+  'GMHikaru': 'Hikaru Nakamura', 'Hikaru': 'Hikaru Nakamura',
+  'alireza2003': 'Alireza Firouzja', 'nihalsarin': 'Nihal Sarin', 'nihalsarin2004': 'Nihal Sarin',
+  'AnishGiri': 'Anish Giri', 'GMWSO': 'Wesley So', 'rpragchess': 'R Praggnanandhaa',
+  'Vladimirovich9000': 'Ian Nepomniachtchi', 'lachesisQ': 'Ian Nepomniachtchi',
+  'Grischuk': 'Alexander Grischuk', 'Bombegansen2': 'Jan-Krzysztof Duda',
+  'LyonBeast': 'Maxime Vachier-Lagrave', 'EricRosen': 'Eric Rosen',
+  'penguingm1': 'Andrew Tang', 'opperwezen': 'Jorden van Foreest',
+  'Fins': 'John Bartholomew', 'Zhigalko_Sergei': 'Sergei Zhigalko',
+  'Oleksandr_Bortnyk': 'Oleksandr Bortnyk',
+  // Chess.com → Canonical
+  'MagnusCarlsen': 'Magnus Carlsen', 'FabianoCaruana': 'Fabiano Caruana',
+  'Firouzja2003': 'Alireza Firouzja', 'WesleySo1993': 'Wesley So', 'So_Wesley': 'Wesley So',
+  'LevonAronian': 'Levon Aronian', 'GothamChess': 'Levy Rozman', 'Levy_Rozman': 'Levy Rozman',
+  'IMRosen': 'Eric Rosen', 'penguin_gm': 'Andrew Tang', 'Fins0905': 'John Bartholomew',
+  'Bartholomew': 'John Bartholomew', 'VladimirKramnik': 'Vladimir Kramnik',
+  'Gukesh': 'D Gukesh', 'Nodirbek': 'Nodirbek Abdusattorov',
+  'Keymer_Vincent': 'Vincent Keymer', 'Erigaisi': 'Arjun Erigaisi',
+  'Duda_JK': 'Jan-Krzysztof Duda', 'lyonbeast': 'Maxime Vachier-Lagrave',
+  'Pragg': 'R Praggnanandhaa', 'Vidit_Gujrathi': 'Vidit Gujrathi',
+  'Rapport_Richard': 'Richard Rapport', 'Mamedyarov_Shakhriyar': 'Shakhriyar Mamedyarov',
+};
+
+function resolveCanonicalPlayer(username: string | undefined): string | undefined {
+  if (!username) return undefined;
+  return PLAYER_ALIASES[username] || username;
+}
+
 // ================ TYPES ================
 
 export interface PoolPrediction {
@@ -140,6 +174,11 @@ export interface PoolPrediction {
   whiteElo?: number;
   blackElo?: number;
   timeControl?: string;
+  
+  // v29.0: Granular accuracy tracking
+  whitePlayer?: string;
+  blackPlayer?: string;
+  gameType?: string;
 }
 
 export interface PoolProgress {
@@ -309,6 +348,9 @@ interface UnifiedGame {
   whiteElo?: number;
   blackElo?: number;
   timeControl?: string;
+  // v29.0: Granular accuracy tracking
+  whitePlayer?: string;
+  blackPlayer?: string;
 }
 
 async function fetchLichessGamesForPool(
@@ -377,6 +419,8 @@ async function fetchLichessGamesForPool(
           whiteElo: whiteRating,
           blackElo: blackRating,
           timeControl: game.speed || undefined,
+          whitePlayer: resolveCanonicalPlayer(whiteName),
+          blackPlayer: resolveCanonicalPlayer(blackName),
         });
       }
       
@@ -441,6 +485,8 @@ async function fetchChessComGamesForPool(
           whiteElo: game.white.rating,
           blackElo: game.black.rating,
           timeControl: game.time_class || undefined,
+          whitePlayer: resolveCanonicalPlayer(game.white.username),
+          blackPlayer: resolveCanonicalPlayer(game.black.username),
         });
       }
       
@@ -693,6 +739,10 @@ export async function runCloudPoolBatch(
         whiteElo: game.whiteElo,
         blackElo: game.blackElo,
         timeControl: game.timeControl,
+        // v29.0: Granular accuracy tracking
+        whitePlayer: resolveCanonicalPlayer(game.whitePlayer),
+        blackPlayer: resolveCanonicalPlayer(game.blackPlayer),
+        gameType: 'PvP',
       };
       
       predictions.push(prediction);
@@ -814,6 +864,10 @@ export async function runLocalPoolBatch(
         whiteElo: game.whiteElo,
         blackElo: game.blackElo,
         timeControl: game.timeControl,
+        // v29.0: Granular accuracy tracking
+        whitePlayer: resolveCanonicalPlayer(game.whitePlayer),
+        blackPlayer: resolveCanonicalPlayer(game.blackPlayer),
+        gameType: 'PvP',
       };
       
       predictions.push(prediction);
@@ -872,6 +926,10 @@ export async function savePoolPredictions(
       time_control: p.timeControl || null,
       white_elo: p.whiteElo || null,
       black_elo: p.blackElo || null,
+      // v29.0: Granular accuracy tracking
+      white_player: p.whitePlayer || null,
+      black_player: p.blackPlayer || null,
+      game_type: p.gameType || 'PvP',
     }));
     
     // v8.1-FIX: Use insert instead of upsert to avoid silent conflicts

@@ -63,6 +63,7 @@ const AdminAIArtBank = lazy(() => import("./pages/AdminAIArtBank"));
 const OpeningEncyclopedia = lazy(() => import("./pages/OpeningEncyclopedia"));
 const CodeAnalysis = lazy(() => import("./pages/CodeAnalysis"));
 const AcademicPaper = lazy(() => import("./pages/AcademicPaper"));
+const EnPensentWhitepaper = lazy(() => import("./pages/EnPensentWhitepaper"));
 const SDKDocs = lazy(() => import("./pages/SDKDocs"));
 const SharedAnalysisReport = lazy(() => import("./pages/SharedAnalysisReport"));
 const WhyThisMatters = lazy(() => import("./pages/WhyThisMatters"));
@@ -161,6 +162,7 @@ const App = () => (
               
               {/* Academic & Documentation */}
               <Route path="/academic-paper" element={<AdminRoute featureName="Academic Paper"><Suspense fallback={<PageLoadingSkeleton />}><AcademicPaper /></Suspense></AdminRoute>} />
+              <Route path="/whitepaper" element={<Suspense fallback={<PageLoadingSkeleton />}><EnPensentWhitepaper /></Suspense>} />
               <Route path="/sdk-docs" element={<AdminRoute featureName="SDK Documentation"><Suspense fallback={<PageLoadingSkeleton />}><SDKDocs /></Suspense></AdminRoute>} />
               
               {/* Vision Scanner */}

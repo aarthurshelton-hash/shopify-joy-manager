@@ -148,6 +148,26 @@
       "merge_logs": true,
       "max_memory_restart": "300M",
       "restart_delay": 60000
+    },
+    {
+      "name": "ibkr-trader",
+      "script": "./farm/workers/ibkr-autonomous-trader.mjs",
+      "args": "0",
+      "instances": 1,
+      "exec_mode": "fork",
+      "autorestart": false,
+      "max_restarts": 3,
+      "min_uptime": "30s",
+      "kill_timeout": 5000,
+      "env": {
+        "NODE_ENV": "production",
+        "IB_BRIDGE_URL": "http://localhost:4000",
+        "IB_GATEWAY_PORT": "4002",
+        "IB_CLIENT_ID": "1"
+      },
+      "merge_logs": true,
+      "max_memory_restart": "200M",
+      "restart_delay": 30000
     }
   ]
 }

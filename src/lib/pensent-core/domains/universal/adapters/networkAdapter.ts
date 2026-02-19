@@ -272,7 +272,7 @@ class NetworkDomainAdapter implements DomainAdapter<NetworkData> {
   generateMarketCorrelatedSignal(marketVolume: number, marketVolatility: number): NetworkData {
     // High market activity = high network activity
     const packetsPerSecond = 1000 + (marketVolume * 5000);
-    const bytesPerSecond = packetsPerSecond * (500 + Math.random() * 500);
+    const bytesPerSecond = packetsPerSecond * 750;
     
     // Market volatility increases latency (uncertainty)
     const latencyMs = 20 + (marketVolatility * 180);

@@ -34,6 +34,9 @@ export { predictFromColorFlow, getLastEquilibriumScores } from './predictionEngi
 // Re-export equilibrium predictor
 export { calculateEquilibriumScores, type EquilibriumScores } from './equilibriumPredictor';
 
+// Re-export signal calibration (self-learning from outcomes)
+export { ensureCalibrationLoaded, loadCalibration, isCalibrated } from './signalCalibration';
+
 // Re-export prophylactic variation system
 export {
   classifyProphylacticVariation,
@@ -42,6 +45,9 @@ export {
   type ProphylacticVariation,
   type ProphylacticAnalysis,
 } from './prophylacticVariations';
+
+// EP Mirror Eval — 3D position evaluation (spatial × force × temporal)
+export { computeMirrorEval, mirrorEvalToWinProb, mirrorEvalDirection, type MirrorEvalResult } from './mirrorEval';
 
 // Default export
 import { extractColorFlowSignature } from './signatureExtractor';

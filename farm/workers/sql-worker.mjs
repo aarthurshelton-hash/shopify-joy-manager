@@ -24,8 +24,9 @@ const LOG_FILE = path.join(LOG_DIR, 'worker-sql.log');
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
-  max: 5,
-  idleTimeoutMillis: 30000
+  max: 1,
+  idleTimeoutMillis: 10000,
+  connectionTimeoutMillis: 15000,
 });
 
 function log(level, message, data = {}) {

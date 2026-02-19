@@ -28,6 +28,8 @@ import type {
   DomainContribution,
   UniversalEngineState,
 } from './types';
+import { enforcePositiveSignature } from './types';
+import { EPSILON, floor, toPositiveField, toRatio, positiveCosineSimilarity, LivingParameter } from './positiveField';
 
 import { lightAdapter } from './adapters/lightAdapter';
 import { networkAdapter } from './adapters/networkAdapter';
@@ -97,7 +99,7 @@ class CrossDomainEngine {
   private readonly CORRELATION_WINDOW = 100;
   private priceHistory: number[] = [];
   private volumeHistory: number[] = [];
-  private swingHigh: number = 0;
+  private swingHigh: number = EPSILON;
   private swingLow: number = Infinity;
   
   // Multi-timeframe data for fractal analysis
@@ -105,6 +107,22 @@ class CrossDomainEngine {
   private hourData: number[] = [];
   private dayData: number[] = [];
   private weekData: number[] = [];
+
+  // v29.9: LIVING PARAMETERS — these breathe within bounds, always evolving
+  // Nothing is static. Every threshold self-tunes from feedback.
+  private readonly livingParams = {
+    // Correlation weights (how much each signal dimension matters)
+    quadrantWeight:   new LivingParameter(0.30, 0.20, 0.40, 0.02, 0.07, 0.003),
+    temporalWeight:   new LivingParameter(0.20, 0.12, 0.28, 0.02, 0.07, 0.003),
+    momentumWeight:   new LivingParameter(0.20, 0.12, 0.28, 0.02, 0.07, 0.003),
+    volatilityWeight: new LivingParameter(0.15, 0.08, 0.22, 0.02, 0.07, 0.003),
+    harmonicWeight:   new LivingParameter(0.15, 0.08, 0.22, 0.02, 0.07, 0.003),
+    // Convergence thresholds
+    bullishThreshold: new LivingParameter(0.20, 0.10, 0.35, 0.03, 0.05, 0.002),
+    bearishThreshold: new LivingParameter(0.20, 0.10, 0.35, 0.03, 0.05, 0.002),
+    // Confidence scaling
+    confidenceFloor:  new LivingParameter(0.30, 0.15, 0.45, 0.02, 0.08, 0.002),
+  };
   
   constructor() {
     this.state = this.createInitialState();
@@ -237,12 +255,13 @@ class CrossDomainEngine {
     const musicSignal = musicAdapter.processRawData(musicData);
     const soulSignal = soulAdapter.processRawData(soulData);
     
-    signatures.set('light', lightAdapter.extractSignature([lightSignal]));
-    signatures.set('network', networkAdapter.extractSignature([networkSignal]));
-    signatures.set('bio', bioAdapter.extractSignature([bioSignal]));
-    signatures.set('audio', audioAdapter.extractSignature([audioSignal]));
-    signatures.set('music', musicAdapter.extractSignature([musicSignal]));
-    signatures.set('soul', soulAdapter.extractSignature([soulSignal]));
+    // v29.9: Every signature passes through the Positive Field — nothing doesn't exist
+    signatures.set('light', enforcePositiveSignature(lightAdapter.extractSignature([lightSignal])));
+    signatures.set('network', enforcePositiveSignature(networkAdapter.extractSignature([networkSignal])));
+    signatures.set('bio', enforcePositiveSignature(bioAdapter.extractSignature([bioSignal])));
+    signatures.set('audio', enforcePositiveSignature(audioAdapter.extractSignature([audioSignal])));
+    signatures.set('music', enforcePositiveSignature(musicAdapter.extractSignature([musicSignal])));
+    signatures.set('soul', enforcePositiveSignature(soulAdapter.extractSignature([soulSignal])));
     
     // === DEEP SCIENCE DOMAINS (6) ===
     const atomicDirection: 'up' | 'down' | 'sideways' = marketDirection > 0 ? 'up' : marketDirection < 0 ? 'down' : 'sideways';
@@ -577,54 +596,55 @@ class CrossDomainEngine {
    * Calculate correlation between two domain signatures
    */
   private calculateSignatureCorrelation(s1: DomainSignature, s2: DomainSignature): number {
-    // Compare quadrant profiles
-    const quadrantCorr = this.vectorCorrelation(
+    // Compare quadrant profiles (positive cosine — never zero)
+    const quadrantCorr = positiveCosineSimilarity(
       [s1.quadrantProfile.aggressive, s1.quadrantProfile.defensive, s1.quadrantProfile.tactical, s1.quadrantProfile.strategic],
       [s2.quadrantProfile.aggressive, s2.quadrantProfile.defensive, s2.quadrantProfile.tactical, s2.quadrantProfile.strategic]
     );
     
-    // Compare temporal flows
-    const temporalCorr = this.vectorCorrelation(
+    // Compare temporal flows (positive cosine — never zero)
+    const temporalCorr = positiveCosineSimilarity(
       [s1.temporalFlow.early, s1.temporalFlow.mid, s1.temporalFlow.late],
       [s2.temporalFlow.early, s2.temporalFlow.mid, s2.temporalFlow.late]
     );
     
-    // Compare scalar metrics
-    const momentumCorr = 1 - Math.abs(s1.momentum - s2.momentum);
-    const volatilityCorr = 1 - Math.abs(s1.volatility - s2.volatility);
-    const harmonicCorr = 1 - Math.abs(s1.harmonicResonance - s2.harmonicResonance);
+    // Compare scalar metrics using ratio proximity (always positive)
+    const momentumCorr = floor(1 / (1 + Math.abs(floor(s1.momentum) - floor(s2.momentum))));
+    const volatilityCorr = floor(1 / (1 + Math.abs(floor(s1.volatility) - floor(s2.volatility))));
+    const harmonicCorr = floor(1 / (1 + Math.abs(floor(s1.harmonicResonance) - floor(s2.harmonicResonance))));
     
-    // Weighted combination
-    return (
-      quadrantCorr * 0.3 +
-      temporalCorr * 0.2 +
-      momentumCorr * 0.2 +
-      volatilityCorr * 0.15 +
-      harmonicCorr * 0.15
+    // v29.9: Living weights — breathe within bounds, always evolving
+    const qw = this.livingParams.quadrantWeight.value;
+    const tw = this.livingParams.temporalWeight.value;
+    const mw = this.livingParams.momentumWeight.value;
+    const vw = this.livingParams.volatilityWeight.value;
+    const hw = this.livingParams.harmonicWeight.value;
+    const total = qw + tw + mw + vw + hw;
+    
+    return floor(
+      quadrantCorr * (qw / total) +
+      temporalCorr * (tw / total) +
+      momentumCorr * (mw / total) +
+      volatilityCorr * (vw / total) +
+      harmonicCorr * (hw / total)
     );
   }
 
   private vectorCorrelation(v1: number[], v2: number[]): number {
-    let dotProduct = 0;
-    let mag1 = 0;
-    let mag2 = 0;
-    
-    for (let i = 0; i < v1.length; i++) {
-      dotProduct += v1[i] * v2[i];
-      mag1 += v1[i] * v1[i];
-      mag2 += v2[i] * v2[i];
-    }
-    
-    const denom = Math.sqrt(mag1) * Math.sqrt(mag2);
-    return denom > 0 ? dotProduct / denom : 0;
+    // Delegate to positive-field cosine similarity (never returns 0)
+    return positiveCosineSimilarity(v1, v2);
   }
 
   private calculateLeadLag(s1: DomainSignature, s2: DomainSignature): number {
-    // Positive = s1 leads, Negative = s2 leads
-    // Based on momentum and temporal flow differences
-    const momentumDiff = s1.momentum - s2.momentum;
-    const temporalDiff = (s1.temporalFlow.late - s1.temporalFlow.early) - 
-                         (s2.temporalFlow.late - s2.temporalFlow.early);
+    // v29.9: Ratio encoding — > 1.0 = s1 leads, < 1.0 = s2 leads, 1.0 = synchronized
+    // No negatives. Nothing doesn't exist.
+    const momentumRatio = toRatio(s1.momentum, s2.momentum);
+    const s1Forward = floor(s1.temporalFlow.late) / floor(s1.temporalFlow.early);
+    const s2Forward = floor(s2.temporalFlow.late) / floor(s2.temporalFlow.early);
+    const temporalRatio = toRatio(s1Forward, s2Forward);
+    // Legacy compat: convert ratio back to the old scale for downstream consumers
+    const momentumDiff = momentumRatio - 1.0;
+    const temporalDiff = temporalRatio - 1.0;
     
     return (momentumDiff + temporalDiff) / 2;
   }

@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
     "outDir": "./farm/dist",
     "rootDir": "./src",
     "strict": false,
@@ -20,9 +20,11 @@
     }
   },
   "include": [
-    "src/lib/chess/**/*.ts",
-    "src/lib/pensent-core/**/*.ts",
-    "src/lib/visualizations/gameCanonical.ts"
+    "src/lib/chess/colorFlowAnalysis/**/*.ts",
+    "src/lib/chess/gameSimulator.ts",
+    "src/lib/chess/pieceColors.ts",
+    "src/lib/chess/cloudBenchmark.ts",
+    "src/lib/chess/hybridPrediction/**/*.ts"
   ],
   "exclude": [
     "node_modules",

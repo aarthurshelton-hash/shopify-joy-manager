@@ -429,7 +429,7 @@ export function generateMarketCorrelatedCosmicData(
   return {
     lunarPhase,
     solarCyclePhase: solarPhase,
-    seasonalPosition: Math.floor(Math.random() * 365),
+    seasonalPosition: Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000),
     currentStellarArchetype: stellarArchetype,
     galacticAlignment: marketMomentum,
     cosmicExpansionRate: (marketMomentum + (1 - marketVolatility)) / 2,

@@ -1,16 +1,32 @@
 /**
  * Universal En Pensent Domain Types
  * Cross-domain temporal pattern recognition
+ * 
+ * UNIVERSAL CONSTRAINT: NO ZEROS. NO NEGATIVES. EVER.
+ * 
+ * In the real universe, nothing doesn't exist. A photon at rest still has
+ * energy E = hf > 0. The vacuum itself has zero-point energy > 0.
+ * All values in En Pensent are strictly positive (> 0).
+ * 
+ * - Instead of 0: use EPSILON (0.001) — the smallest observable quantity
+ * - Instead of negatives: use values < 1.0 (retreat) vs > 1.0 (advance)
+ * - Instead of subtraction: use ratios (A/B > 1 means A dominates)
+ * 
+ * See positiveField.ts for transform utilities.
  */
+
+import { EPSILON, floor, toPositiveField, toPositiveTemporalFlow, toPositiveQuadrant, toPositiveHarmonics } from './positiveField';
+
+export { EPSILON } from './positiveField';
 
 export interface UniversalSignal {
   domain: DomainType;
-  timestamp: number;
-  intensity: number;
-  frequency: number;
-  phase: number;
-  harmonics: number[];
-  rawData: number[];
+  timestamp: number;        // Always > 0 (epoch ms)
+  intensity: number;        // Always > 0 (ε minimum)
+  frequency: number;        // Always > 0 (Hz, ε minimum)
+  phase: number;            // Always > 0 (radians, ε to 2π)
+  harmonics: number[];      // All elements > 0
+  rawData: number[];        // All elements > 0
 }
 
 export type DomainType = 
@@ -36,31 +52,66 @@ export type DomainType =
 
 export interface DomainSignature {
   domain: DomainType;
-  quadrantProfile: {
+  quadrantProfile: {        // All > 0, should sum to ~1.0
     aggressive: number;
     defensive: number;
     tactical: number;
     strategic: number;
   };
-  temporalFlow: {
+  temporalFlow: {           // All > 0, should sum to ~1.0
     early: number;
     mid: number;
     late: number;
   };
-  intensity: number;
-  momentum: number;
-  volatility: number;
-  dominantFrequency: number;
-  harmonicResonance: number;
-  phaseAlignment: number;
-  extractedAt: number;
+  intensity: number;        // > 0 (ε to ∞)
+  momentum: number;         // > 0 (< 1.0 = retreating, 1.0 = neutral, > 1.0 = advancing)
+  volatility: number;       // > 0 (ε minimum)
+  dominantFrequency: number;// > 0 (Hz)
+  harmonicResonance: number;// > 0 (ε to 1.0)
+  phaseAlignment: number;   // > 0 (ε to 1.0)
+  extractedAt: number;      // > 0 (epoch ms)
+}
+
+/**
+ * Enforce the Positive Field constraint on any DomainSignature.
+ * Call this at the boundary of every adapter's extractSignature() output.
+ * Nothing doesn't exist — every value gets floored to EPSILON.
+ */
+export function enforcePositiveSignature(sig: DomainSignature): DomainSignature {
+  return {
+    ...sig,
+    quadrantProfile: toPositiveQuadrant(sig.quadrantProfile),
+    temporalFlow: toPositiveTemporalFlow(sig.temporalFlow),
+    intensity: floor(sig.intensity),
+    momentum: sig.momentum <= 0 ? toPositiveField(sig.momentum) : floor(sig.momentum),
+    volatility: floor(sig.volatility),
+    dominantFrequency: floor(sig.dominantFrequency),
+    harmonicResonance: floor(sig.harmonicResonance),
+    phaseAlignment: floor(sig.phaseAlignment),
+    extractedAt: sig.extractedAt || Date.now(),
+  };
+}
+
+/**
+ * Enforce the Positive Field constraint on any UniversalSignal.
+ */
+export function enforcePositiveSignal(signal: UniversalSignal): UniversalSignal {
+  return {
+    ...signal,
+    timestamp: signal.timestamp || Date.now(),
+    intensity: floor(signal.intensity),
+    frequency: floor(signal.frequency),
+    phase: floor(signal.phase),
+    harmonics: toPositiveHarmonics(signal.harmonics),
+    rawData: signal.rawData.map(v => floor(Math.abs(v) || EPSILON)),
+  };
 }
 
 export interface CrossDomainCorrelation {
   domain1: DomainType;
   domain2: DomainType;
   correlation: number;
-  leadLag: number; // positive = domain1 leads, negative = domain2 leads
+  leadLag: number; // > 0 always: > 1.0 = domain1 leads, < 1.0 = domain2 leads, 1.0 = synchronized
   confidence: number;
   sampleSize: number;
   lastUpdated: number;

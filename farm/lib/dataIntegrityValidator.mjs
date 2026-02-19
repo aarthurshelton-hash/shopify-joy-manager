@@ -107,7 +107,7 @@ export class DataIntegrityValidator {
     }
     
     // Validate en passant
-    if (!/^[a-h36-]$/.test(enPassant)) {
+    if (!/^[a-h1-8-]+$/.test(enPassant)) {
       this.errors.push(`Invalid FEN en passant: ${enPassant}`);
     }
     

@@ -31,6 +31,7 @@ const MIN_SAMPLE_SIZE = 30; // Need at least 30 predictions to trust an archetyp
  */
 export async function computeLiveArchetypeWeights(queryFn) {
   try {
+    // v29.0: Use TABLESAMPLE to avoid full table scan timeout on 3M+ rows
     const result = await queryFn(`
       SELECT 
         hybrid_archetype,
@@ -39,14 +40,14 @@ export async function computeLiveArchetypeWeights(queryFn) {
         SUM(CASE WHEN stockfish_correct = true THEN 1 ELSE 0 END) as sf_correct,
         SUM(CASE WHEN hybrid_prediction = stockfish_prediction THEN 1 ELSE 0 END) as agreement_count,
         AVG(hybrid_confidence) as avg_confidence
-      FROM chess_prediction_attempts
+      FROM chess_prediction_attempts TABLESAMPLE SYSTEM(1)
       WHERE hybrid_archetype IS NOT NULL
         AND actual_result IS NOT NULL
         AND hybrid_archetype != 'unknown'
       GROUP BY hybrid_archetype
       HAVING COUNT(*) >= $1
       ORDER BY COUNT(*) DESC
-    `, [MIN_SAMPLE_SIZE]);
+    `, [Math.max(5, Math.floor(MIN_SAMPLE_SIZE / 100))]);
 
     if (!result.rows || result.rows.length === 0) {
       console.log('[LIVE-WEIGHTS] No archetype data meets minimum sample size');
@@ -75,12 +76,13 @@ export async function computeLiveArchetypeWeights(queryFn) {
 
     // Always include 'unknown' fallback from overall stats
     if (!weights.unknown) {
+      // v29.0: Use TABLESAMPLE to avoid full table scan timeout
       const overallResult = await queryFn(`
         SELECT 
           COUNT(*) as total,
           SUM(CASE WHEN hybrid_correct = true THEN 1 ELSE 0 END) as ep_correct,
           SUM(CASE WHEN stockfish_correct = true THEN 1 ELSE 0 END) as sf_correct
-        FROM chess_prediction_attempts
+        FROM chess_prediction_attempts TABLESAMPLE SYSTEM(1)
         WHERE actual_result IS NOT NULL
       `);
       if (overallResult.rows.length > 0) {
@@ -139,11 +141,12 @@ export function loadLiveWeights() {
     const raw = fs.readFileSync(WEIGHTS_PATH, 'utf-8');
     const meta = JSON.parse(raw);
     
-    // Check staleness — 24 hours max
+    // v29.0: Return stale weights instead of null — prevents blocking startup on DB timeout
+    // The worker will refresh them in the background every 25 cycles anyway
     const age = Date.now() - new Date(meta.computedAt).getTime();
     if (age > 24 * 60 * 60 * 1000) {
-      console.log('[LIVE-WEIGHTS] Cached weights are stale (>24h), will recompute');
-      return null;
+      console.log(`[LIVE-WEIGHTS] Cached weights are stale (${(age / 3600000).toFixed(1)}h) — using anyway, will refresh in background`);
+      // Still return them — stale weights are better than no weights + timeout
     }
     
     console.log(`[LIVE-WEIGHTS] Loaded cached weights: ${meta.archetypeCount} archetypes, ${meta.totalPredictions} predictions (age: ${(age / 3600000).toFixed(1)}h)`);

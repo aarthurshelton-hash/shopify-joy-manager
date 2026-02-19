@@ -24,7 +24,6 @@ const navLinks = [
   { to: '/marketplace', label: 'Marketplace', icon: ShoppingBag, highlight: false },
   { to: '/openings', label: 'Openings', icon: BookOpen, highlight: false },
   { to: '/about', label: 'About Us' },
-  { to: '/investors', label: 'Investors' },
 ];
 
 export const Header = () => {
@@ -64,7 +63,7 @@ export const Header = () => {
                 En Pensent
               </h1>
               <p className="text-2xs sm:text-[9px] uppercase tracking-[0.25em] sm:tracking-[0.3em] text-muted-foreground font-sans">
-                Chess Art Prints
+                Universal Pattern Intelligence
               </p>
             </div>
           </Link>
@@ -127,7 +126,7 @@ export const Header = () => {
                       En Pensent
                     </span>
                     <span className="text-2xs uppercase tracking-widest text-muted-foreground">
-                      Chess Art Prints
+                      Universal Pattern Intelligence
                     </span>
                   </div>
                 </Link>

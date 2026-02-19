@@ -66,8 +66,31 @@ function getPathSquares(from: Square, to: Square, pieceType: string): Square[] {
   const fileDir = Math.sign(toIndices.file - fromIndices.file);
   const rankDir = Math.sign(toIndices.rank - fromIndices.rank);
   
-  // Knights jump, don't pass through squares
+  // Knights trace the L-shape path (long leg first, then short leg)
   if (pieceType.toLowerCase() === 'n') {
+    const fileDiff = Math.abs(toIndices.file - fromIndices.file);
+    const rankDiff = Math.abs(toIndices.rank - fromIndices.rank);
+    // Long leg = 2 squares, short leg = 1 square
+    // Trace intermediate squares along the L-shape
+    if (rankDiff === 2 && fileDiff === 1) {
+      // 2 ranks first, then 1 file
+      const midRank1 = fromIndices.rank + rankDir;
+      const midFile1 = String.fromCharCode('a'.charCodeAt(0) + fromIndices.file);
+      const midRankStr1 = (midRank1 + 1).toString();
+      squares.push((midFile1 + midRankStr1) as Square);
+      const midRank2 = fromIndices.rank + rankDir * 2;
+      const midFile2 = String.fromCharCode('a'.charCodeAt(0) + fromIndices.file);
+      const midRankStr2 = (midRank2 + 1).toString();
+      squares.push((midFile2 + midRankStr2) as Square);
+    } else if (fileDiff === 2 && rankDiff === 1) {
+      // 2 files first, then 1 rank
+      const midFile1 = String.fromCharCode('a'.charCodeAt(0) + fromIndices.file + fileDir);
+      const midRankStr1 = (fromIndices.rank + 1).toString();
+      squares.push((midFile1 + midRankStr1) as Square);
+      const midFile2 = String.fromCharCode('a'.charCodeAt(0) + fromIndices.file + fileDir * 2);
+      const midRankStr2 = (fromIndices.rank + 1).toString();
+      squares.push((midFile2 + midRankStr2) as Square);
+    }
     squares.push(to);
     return squares;
   }
@@ -151,7 +174,6 @@ export function simulateGame(pgn: string): SimulationResult {
         }
       } catch {
         // Skip moves that can't be parsed - continue with what we have
-        console.log(`Skipping unparseable move: ${moveToken}`);
       }
     }
   }

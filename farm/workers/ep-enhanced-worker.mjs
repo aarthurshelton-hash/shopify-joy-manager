@@ -269,7 +269,10 @@ console.log(`[${workerId}] Initial Lichess pool: ${myLichessPlayers.length} play
 console.log(`[${workerId}] Chess.com pool: ${myChesscomPlayers.length} players`);
 
 // Each worker gets a deterministic source rotation offset
-let currentSourceIndex = (workerNum - 1) * 100;
+// v29.0: Start at a high offset so we don't re-fetch the same recent games after restart
+// The player pool has ~154 players; cycling through them with monthsBack=0 just gets dupes.
+// Starting at a high index forces immediate deep-history fetching.
+let currentSourceIndex = (workerNum - 1) * 100 + Math.floor(Date.now() / 86400000) % 500;
 
 // Session-only dedup: tracks game IDs processed THIS session only.
 // Cross-session dedup: lightweight batch DB check before processing (not 1M+ preload).
@@ -421,8 +424,9 @@ async function fetchLichessGames(count = 5, perfType = 'blitz') {
       try {
         
         // Fetch games — go deeper into history when recent games exhausted
-        // Rotate 'since' back in time: cycle 0 = recent, cycle 1 = 1 month ago, etc.
-        const monthsBack = Math.floor(stats.cycles / myLichessPlayers.length) % 24; // up to 2 years back
+        // v29.0: Use currentSourceIndex (persists across cycles) instead of stats.cycles (resets on restart)
+        // This ensures we don't re-fetch the same recent games after a PM2 restart
+        const monthsBack = Math.floor(currentSourceIndex / Math.max(1, myLichessPlayers.length)) % 24; // up to 2 years back
         const sinceMs = monthsBack > 0 ? Date.now() - (monthsBack * 30 * 24 * 60 * 60 * 1000) : undefined;
         const sinceParam = sinceMs ? `&until=${sinceMs}&since=${sinceMs - 30 * 24 * 60 * 60 * 1000}` : '';
         const url = `https://lichess.org/api/games/user/${player}?max=${Math.max(count, 200)}&perfType=${actualPerfType}&rated=true&finished=true&ongoing=false&evals=true&clocks=true${sinceParam}`;
@@ -770,6 +774,10 @@ async function evaluateWithSF17(fen, depth = 18) {
       throw new Error('Engine not ready');
     }
     
+    // v29.1 FIX: SF returns eval from side-to-move perspective. Normalize to white's.
+    const sideToMove = (fen || '').split(' ')[1] || 'w';
+    const flipSign = sideToMove === 'b' ? -1 : 1;
+    
     return new Promise((resolve, reject) => {
       let bestMove = 'e2e4';
       let evaluation = 0;
@@ -806,8 +814,9 @@ async function evaluateWithSF17(fen, depth = 18) {
               resolved = true;
               clearTimeout(timeout);
               engine.stdout.off('data', onData);
+              // v29.1: Normalize to white's perspective
               resolve({
-                evaluation,
+                evaluation: evaluation * flipSign,
                 depth: currentDepth,
                 bestMove,
                 source: 'stockfish_18'
@@ -894,6 +903,16 @@ function evaluateMaterialFallback(fen) {
 function generateBothPredictions(fullPgn, gameData, epEngine, sfEvalCp, moveCount, eloDiff = 0) {
   const { simulateGame, extractColorFlowSignature, predictFromColorFlow, extract32PieceSignature, predictFrom32Piece } = epEngine;
   
+  // ── v29.4: Extract 32-piece FIRST so it feeds into baseline fusion as Component 15 ──
+  let piece32Sig = null;
+  if (extract32PieceSignature && predictFrom32Piece && USE_ENHANCED_SIGNATURES) {
+    try {
+      piece32Sig = extract32PieceSignature(fullPgn, moveCount);
+    } catch (e) {
+      // 32-piece extraction failed — stays on baseline
+    }
+  }
+  
   // ── 4-QUADRANT BASELINE (always runs) ──
   let simulation, board, totalMoves;
   let baselineSignature, baselinePrediction;
@@ -902,7 +921,7 @@ function generateBothPredictions(fullPgn, gameData, epEngine, sfEvalCp, moveCoun
     board = simulation.board;
     totalMoves = simulation.totalMoves || moveCount;
     baselineSignature = extractColorFlowSignature(board, gameData, totalMoves);
-    const baselineColorPred = predictFromColorFlow(baselineSignature, totalMoves, sfEvalCp, 18);
+    const baselineColorPred = predictFromColorFlow(baselineSignature, totalMoves, sfEvalCp, 18, piece32Sig || undefined);
     baselinePrediction = {
       predictedWinner: baselineColorPred.predictedWinner === 'white' ? 'white_wins' :
                        baselineColorPred.predictedWinner === 'black' ? 'black_wins' : 'draw',
@@ -945,15 +964,10 @@ function generateBothPredictions(fullPgn, gameData, epEngine, sfEvalCp, moveCoun
   // ── 32-PIECE ENHANCED ENGINE ──
   // Each of 32 pieces gets unique hue. Traces through squares.
   // Overlapping traces = squares within squares. Own predictor.
-  let piece32Sig = null;
   let enhancedPrediction = baselinePrediction; // fallback if 32-piece fails
   
-  if (extract32PieceSignature && predictFrom32Piece && USE_ENHANCED_SIGNATURES) {
-    try {
-      piece32Sig = extract32PieceSignature(fullPgn, moveCount);
-    } catch (e) {
-      // 32-piece extraction failed — stays on baseline
-    }
+  if (piece32Sig && predictFrom32Piece) {
+    // v29.4: piece32Sig already extracted above for fusion — reuse it here
     if (piece32Sig) {
       try {
         // Use the 32-piece predictor — calibrated FOR 32-piece data

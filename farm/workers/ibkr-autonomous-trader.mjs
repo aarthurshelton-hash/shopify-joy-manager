@@ -33,16 +33,27 @@ const CLIENT_ID = parseInt(process.env.IB_CLIENT_ID || '1');
 
 // Trading config
 const CONFIG = {
-  MIN_CONFIDENCE: 0.70,
+  MIN_CONFIDENCE: 0.55,
   MAX_RISK_PERCENT: 3,
   POSITION_SIZE_PERCENT: 5,
-  CYCLE_INTERVAL_MS: 15000,
-  STOP_LOSS_PERCENT: 1.0,
-  TAKE_PROFIT_PERCENT: 1.5,
-  SCALP_HORIZON_MS: 60000,
+  CYCLE_INTERVAL_MS: 30000,
+  STOP_LOSS_PERCENT: 1.5,
+  TAKE_PROFIT_PERCENT: 2.5,
+  SCALP_HORIZON_MS: 8 * 3600 * 1000, // 8h horizon matches best market timeframe
+  MAX_DAILY_LOSS: 300,
+  MAX_CONCURRENT_POSITIONS: 3,
 };
 
-const SYMBOLS = ['SPY', 'QQQ', 'AAPL', 'NVDA', 'TSLA', 'AMD'];
+// Match the market-prediction-worker symbol universe
+const SYMBOLS = ['AMD', 'AMZN', 'MSFT', 'NVDA', 'META', 'SI=F', 'CL=F', 'NG=F', 'HG=F'];
+
+// Archetype blacklist (below-random accuracy)
+const ARCHETYPE_BLACKLIST = new Set([
+  'cultural_harmony', 'bearish_momentum', 'bullish_momentum',
+  'regime_shift_down', 'mean_reversion_up', 'mean_reversion_down',
+  'blunder_free_queen', 'castling_reposition',
+  'institutional_accumulation', 'oversold_bounce',
+]);
 
 // State
 let isRunning = false;
@@ -163,39 +174,42 @@ async function placeOrder(order) {
   }
 }
 
-// Get prediction signal from Supabase
+// Get prediction signal from market_prediction_attempts (same table market-worker writes to)
 async function getPatternSignal(symbol) {
   try {
+    // Get the most recent unresolved prediction for this symbol
     const { data: predictions } = await supabase
-      .from('prediction_outcomes')
-      .select('*')
+      .from('market_prediction_attempts')
+      .select('predicted_direction, confidence, archetype, time_horizon, price_at_prediction, created_at')
       .eq('symbol', symbol)
+      .is('resolved_at', null)
       .order('created_at', { ascending: false })
       .limit(5);
 
-    if (!predictions || predictions.length === 0) {
-      // Generate via edge function
-      const { data, error } = await supabase.functions.invoke('stock-data', {
-        body: { action: 'prediction', symbol }
-      });
-      if (error || !data) return null;
-      return {
-        direction: data.direction || 'neutral',
-        confidence: data.confidence || 0.5,
-        archetype: data.archetype || 'unknown',
-      };
-    }
+    if (!predictions || predictions.length === 0) return null;
 
-    const upVotes = predictions.filter(p => p.predicted_direction === 'up').length;
-    const downVotes = predictions.filter(p => p.predicted_direction === 'down').length;
-    const avgConfidence = predictions.reduce((sum, p) => sum + (p.predicted_confidence || 0), 0) / predictions.length;
+    // Filter out blacklisted archetypes
+    const valid = predictions.filter(p => !ARCHETYPE_BLACKLIST.has(p.archetype));
+    if (valid.length === 0) return null;
 
-    let direction = 'neutral';
-    if (upVotes > downVotes && upVotes >= 3) direction = 'up';
-    else if (downVotes > upVotes && downVotes >= 3) direction = 'down';
+    // Use the most recent valid prediction
+    const best = valid[0];
+    const conf = parseFloat(best.confidence) / 100; // DB stores 0-100, we need 0-1
 
-    return { direction, confidence: avgConfidence, archetype: 'consensus' };
+    if (conf < CONFIG.MIN_CONFIDENCE / 100) return null;
+
+    const direction = best.predicted_direction === 'bullish' ? 'up' :
+                      best.predicted_direction === 'bearish' ? 'down' : 'neutral';
+
+    return {
+      direction,
+      confidence: conf,
+      archetype: best.archetype || 'unknown',
+      entryPrice: parseFloat(best.price_at_prediction) || 0,
+      timeHorizon: best.time_horizon,
+    };
   } catch (err) {
+    log(`Signal error for ${symbol}: ${err.message}`, 'error');
     return null;
   }
 }
