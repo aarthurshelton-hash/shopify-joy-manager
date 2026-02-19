@@ -8,7 +8,9 @@
  * Expected accuracy gain: +15-25% (from 61% to 76-86%)
  */
 
-import { SquareData, GameData, PieceType } from '../gameSimulator';
+import { SquareData, GameData } from '../gameSimulator';
+
+type PieceType = 'K' | 'Q' | 'R' | 'B' | 'N' | 'P' | 'k' | 'q' | 'r' | 'b' | 'n' | 'p';
 
 /**
  * Extended color palette for piece-type differentiation
@@ -34,6 +36,95 @@ export const PIECE_COLOR_CODES: Record<PieceType, string> = {
   
   // Dynamic pawn colors based on advancement will be calculated at runtime
 };
+
+/**
+ * 32-PIECE INDIVIDUAL COLOR HEX PALETTE
+ * Every one of the 32 chess pieces has its own unique visual identity.
+ * Individual piece = individual color = individual temporal entity.
+ *
+ * Piece identity is derived from:
+ *   - Rooks/Bishops/Knights: queenside (file <=3) vs kingside (file >=4)
+ *   - Pawns: file index (a=0 through h=7)
+ *   - Kings/Queens: unique (only one each)
+ *
+ * White pieces — bright spectrum (active/initiative side)
+ * Black pieces — deep spectrum (mirror of white, same family)
+ */
+// Natural palette: HOT (black side) vs COLD (white side)
+// White = cold spectrum — blues, teals, cyans, cool violets
+// Black = hot spectrum — reds, oranges, ambers, crimsons
+// Each individual piece = its own shade within its thermal family
+export const INDIVIDUAL_PIECE_HEX: Record<string, string> = {
+  // ── WHITE PIECES — COLD spectrum ────────────────────────────────────────
+  'WK':    '#BFDBFE', // King e1       — ice blue (coldest, highest authority)
+  'WQ':    '#A5B4FC', // Queen d1      — cool indigo-violet (dominant cold force)
+  'WR_qs': '#67E8F9', // Rook a1 (qs)  — cyan (long structural cold)
+  'WR_ks': '#22D3EE', // Rook h1 (ks)  — bright cyan (tactical cold)
+  'WB_ds': '#6EE7B7', // Bishop c1 ds  — cool emerald (dark-square cold diagonal)
+  'WB_ls': '#34D399', // Bishop f1 ls  — cool mint (light-square cold diagonal)
+  'WN_qs': '#93C5FD', // Knight b1 qs  — sky blue (patient cold jump)
+  'WN_ks': '#60A5FA', // Knight g1 ks  — royal sky (tactical cold jump)
+  'WP_a':  '#E0F2FE', // Pawn a2  — pale ice  (a-file cold retail)
+  'WP_b':  '#DBEAFE', // Pawn b2  — pale sky
+  'WP_c':  '#EDE9FE', // Pawn c2  — pale indigo
+  'WP_d':  '#D1FAE5', // Pawn d2  — pale mint (central cold)
+  'WP_e':  '#CFFAFE', // Pawn e2  — pale cyan (central cold)
+  'WP_f':  '#E0E7FF', // Pawn f2  — pale lavender
+  'WP_g':  '#F0F9FF', // Pawn g2  — pale glacier
+  'WP_h':  '#ECFDF5', // Pawn h2  — pale aqua
+  // ── BLACK PIECES — HOT spectrum ─────────────────────────────────────────
+  'BK':    '#F59E0B', // King e8       — amber gold (hottest, sovereign fire)
+  'BQ':    '#DC2626', // Queen d8      — crimson (dominant hot force)
+  'BR_qs': '#EA580C', // Rook a8 (qs)  — orange (structural hot)
+  'BR_ks': '#F97316', // Rook h8 (ks)  — bright orange (tactical hot)
+  'BB_ds': '#D97706', // Bishop f8 ds  — dark amber (hot dark diagonal)
+  'BB_ls': '#B45309', // Bishop c8 ls  — burnt amber (hot light diagonal)
+  'BN_qs': '#9A3412', // Knight b8 qs  — maroon (patient hot jump)
+  'BN_ks': '#C2410C', // Knight g8 ks  — rust-red (tactical hot jump)
+  'BP_a':  '#FEF3C7', // Pawn a7  — pale amber  (a-file hot retail)
+  'BP_b':  '#FED7AA', // Pawn b7  — pale peach
+  'BP_c':  '#FECACA', // Pawn c7  — pale crimson
+  'BP_d':  '#FDE68A', // Pawn d7  — pale gold (central hot)
+  'BP_e':  '#FFEDD5', // Pawn e7  — pale apricot (central hot)
+  'BP_f':  '#FEE2E2', // Pawn f7  — pale rose (f7 vulnerability)
+  'BP_g':  '#FEF9C3', // Pawn g7  — pale straw
+  'BP_h':  '#FFF7ED', // Pawn h7  — pale cream
+};
+
+/**
+ * Resolve the individual piece key for a given piece + side + square.
+ * Returns a key into INDIVIDUAL_PIECE_HEX.
+ *
+ * @param piece  Piece character ('K','Q','R','B','N','P' uppercase = white, lowercase = black)
+ * @param file   0-7 (a=0, b=1, ..., h=7)
+ * @param rank   0-7 (rank1=0 ... rank8=7)
+ */
+export function getIndividualPieceKey(piece: string, file: number, rank: number): string {
+  const isWhite = piece === piece.toUpperCase() && piece !== piece.toLowerCase();
+  const side = isWhite ? 'W' : 'B';
+  const p = piece.toUpperCase();
+  if (p === 'K') return `${side}K`;
+  if (p === 'Q') return `${side}Q`;
+  if (p === 'R') return file <= 3 ? `${side}R_qs` : `${side}R_ks`;
+  if (p === 'B') {
+    // Dark-square bishop: (rank + file) is odd
+    const isDark = (rank + file) % 2 === 1;
+    return isDark ? `${side}B_ds` : `${side}B_ls`;
+  }
+  if (p === 'N') return file <= 3 ? `${side}N_qs` : `${side}N_ks`;
+  if (p === 'P') {
+    const files = ['a','b','c','d','e','f','g','h'];
+    return `${side}P_${files[file] || 'e'}`;
+  }
+  return `${side}K`; // fallback
+}
+
+/**
+ * Get individual piece hex color directly.
+ */
+export function getIndividualPieceHex(piece: string, file: number, rank: number): string {
+  return INDIVIDUAL_PIECE_HEX[getIndividualPieceKey(piece, file, rank)] || '#94A3B8';
+}
 
 /**
  * Calculate pawn gradation based on how far advanced
@@ -113,7 +204,7 @@ export function calculateEnhancedQuadrantProfile(
       
       const lastVisit = square.visits[square.visits.length - 1];
       const piece = lastVisit.piece;
-      const color = lastVisit.pieceColor; // 'w' or 'b'
+      const color = lastVisit.color; // 'w' or 'b'
       
       // Calculate piece-type specific activity
       if (piece?.toLowerCase() === 'b') bishopActivity++;
@@ -218,7 +309,7 @@ export function generateEnhancedFingerprint(board: SquareData[][]): string {
       
       const lastVisit = square.visits[square.visits.length - 1];
       const piece = lastVisit.piece;
-      const pieceColor = lastVisit.pieceColor;
+      const pieceColor = lastVisit.color;
       
       let colorCode: string;
       

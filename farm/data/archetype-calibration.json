@@ -1,21 +1,21 @@
 {
-  "lastUpdated": "2026-02-19T04:17:52.939Z",
-  "totalPuzzles": 680,
+  "lastUpdated": "2026-02-19T04:58:50.812Z",
+  "totalPuzzles": 684,
   "archetypeAccuracy": {
     "closed_maneuvering": {
       "correct": 62,
-      "total": 483,
-      "accuracy": 0.12836438923395446
+      "total": 485,
+      "accuracy": 0.12783505154639174
     },
     "kingside_attack": {
       "correct": 26,
-      "total": 161,
-      "accuracy": 0.16149068322981366
+      "total": 162,
+      "accuracy": 0.16049382716049382
     },
     "sacrificial_attack": {
       "correct": 13,
-      "total": 34,
-      "accuracy": 0.38235294117647056
+      "total": 35,
+      "accuracy": 0.37142857142857144
     },
     "queenside_expansion": {
       "correct": 0,
@@ -27,7 +27,7 @@
     "mateIn1": {
       "kingside_attack": 37,
       "sacrificial_attack": 35,
-      "queenside_expansion": 33,
+      "queenside_expansion": 34,
       "closed_maneuvering": 16,
       "central_domination": 1,
       "piece_harmony": 1
@@ -41,7 +41,7 @@
       "queenside_expansion": 39,
       "kingside_attack": 127,
       "closed_maneuvering": 50,
-      "sacrificial_attack": 104,
+      "sacrificial_attack": 105,
       "central_domination": 4
     },
     "mateIn2": {
@@ -51,7 +51,7 @@
       "kingside_attack": 24
     },
     "crushing": {
-      "sacrificial_attack": 58,
+      "sacrificial_attack": 59,
       "kingside_attack": 39,
       "queenside_expansion": 25,
       "closed_maneuvering": 24,
@@ -59,16 +59,16 @@
       "piece_harmony": 1
     },
     "long": {
-      "sacrificial_attack": 55,
+      "sacrificial_attack": 56,
       "queenside_expansion": 66,
       "kingside_attack": 89,
       "closed_maneuvering": 69,
       "central_domination": 1
     },
     "kingsideAttack": {
-      "sacrificial_attack": 40,
+      "sacrificial_attack": 41,
       "kingside_attack": 14,
-      "queenside_expansion": 18,
+      "queenside_expansion": 19,
       "closed_maneuvering": 6,
       "piece_harmony": 1
     },
@@ -87,8 +87,8 @@
     },
     "advantage": {
       "queenside_expansion": 47,
-      "kingside_attack": 25,
-      "sacrificial_attack": 45,
+      "kingside_attack": 26,
+      "sacrificial_attack": 46,
       "piece_harmony": 3,
       "closed_maneuvering": 17
     },
@@ -124,7 +124,7 @@
       "queenside_expansion": 7
     },
     "fork": {
-      "sacrificial_attack": 26,
+      "sacrificial_attack": 27,
       "kingside_attack": 25,
       "queenside_expansion": 20,
       "central_domination": 2,
@@ -132,8 +132,8 @@
       "piece_harmony": 1
     },
     "pin": {
-      "kingside_attack": 9,
-      "sacrificial_attack": 24,
+      "kingside_attack": 10,
+      "sacrificial_attack": 25,
       "queenside_expansion": 5,
       "closed_maneuvering": 3
     },
@@ -182,7 +182,7 @@
       "sacrificial_attack": 1
     },
     "veryLong": {
-      "sacrificial_attack": 19,
+      "sacrificial_attack": 20,
       "kingside_attack": 1,
       "closed_maneuvering": 2,
       "queenside_expansion": 3
@@ -245,25 +245,25 @@
   },
   "archetypeSignatures": {
     "kingside_attack": {
-      "totalIntensity": 6257.75,
-      "totalRating": 265974,
-      "sampleCount": 191,
-      "avgIntensity": 32.7630890052356,
-      "avgRating": 1392.5340314136126
+      "totalIntensity": 6267.25,
+      "totalRating": 267573,
+      "sampleCount": 192,
+      "avgIntensity": 32.641927083333336,
+      "avgRating": 1393.609375
     },
     "queenside_expansion": {
-      "totalIntensity": 3817,
-      "totalRating": 208767,
-      "sampleCount": 150,
-      "avgIntensity": 25.446666666666665,
-      "avgRating": 1391.78
+      "totalIntensity": 3830,
+      "totalRating": 209685,
+      "sampleCount": 151,
+      "avgIntensity": 25.364238410596027,
+      "avgRating": 1388.6423841059602
     },
     "sacrificial_attack": {
-      "totalIntensity": 5641.25,
-      "totalRating": 239073,
-      "sampleCount": 199,
-      "avgIntensity": 28.347989949748744,
-      "avgRating": 1201.3718592964824
+      "totalIntensity": 5718.75,
+      "totalRating": 242018,
+      "sampleCount": 201,
+      "avgIntensity": 28.45149253731343,
+      "avgRating": 1204.0696517412935
     },
     "closed_maneuvering": {
       "totalIntensity": 3994,
@@ -288,64 +288,6 @@
     }
   },
   "puzzleHistory": [
-    {
-      "puzzleId": "E0Rer",
-      "rating": 798,
-      "themes": [
-        "swallowstailMate",
-        "endgame",
-        "oneMove",
-        "mateIn1"
-      ],
-      "detected": "queenside_expansion",
-      "expected": "closed_maneuvering",
-      "match": false,
-      "timestamp": "2026-02-18T02:03:59.626Z"
-    },
-    {
-      "puzzleId": "pTNOT",
-      "rating": 1207,
-      "themes": [
-        "mateIn1",
-        "oneMove",
-        "middlegame"
-      ],
-      "detected": "sacrificial_attack",
-      "expected": "closed_maneuvering",
-      "match": false,
-      "timestamp": "2026-02-18T02:03:59.638Z"
-    },
-    {
-      "puzzleId": "Bfaar",
-      "rating": 1528,
-      "themes": [
-        "short",
-        "advantage",
-        "capturingDefender",
-        "master",
-        "middlegame"
-      ],
-      "detected": "closed_maneuvering",
-      "expected": "closed_maneuvering",
-      "match": true,
-      "timestamp": "2026-02-18T02:03:59.646Z"
-    },
-    {
-      "puzzleId": "BWB2K",
-      "rating": 2081,
-      "themes": [
-        "deflection",
-        "middlegame",
-        "long",
-        "mateIn3",
-        "sacrifice",
-        "backRankMate"
-      ],
-      "detected": "closed_maneuvering",
-      "expected": "kingside_attack",
-      "match": false,
-      "timestamp": "2026-02-18T02:03:59.659Z"
-    },
     {
       "puzzleId": "j86Oz",
       "rating": 780,
@@ -3203,6 +3145,63 @@
       "expected": "closed_maneuvering",
       "match": false,
       "timestamp": "2026-02-19T04:17:52.938Z"
+    },
+    {
+      "puzzleId": "49b48",
+      "rating": 912,
+      "themes": [
+        "endgame",
+        "crushing",
+        "fork",
+        "long"
+      ],
+      "detected": "sacrificial_attack",
+      "expected": "kingside_attack",
+      "match": false,
+      "timestamp": "2026-02-19T04:58:50.791Z"
+    },
+    {
+      "puzzleId": "2fcx1",
+      "rating": 918,
+      "themes": [
+        "oneMove",
+        "opening",
+        "mateIn1",
+        "kingsideAttack"
+      ],
+      "detected": "queenside_expansion",
+      "expected": "closed_maneuvering",
+      "match": false,
+      "timestamp": "2026-02-19T04:58:50.797Z"
+    },
+    {
+      "puzzleId": "qtGFE",
+      "rating": 1599,
+      "themes": [
+        "opening",
+        "pin",
+        "advantage",
+        "short"
+      ],
+      "detected": "kingside_attack",
+      "expected": "sacrificial_attack",
+      "match": false,
+      "timestamp": "2026-02-19T04:58:50.801Z"
+    },
+    {
+      "puzzleId": "KBqcC",
+      "rating": 2033,
+      "themes": [
+        "veryLong",
+        "middlegame",
+        "advantage",
+        "kingsideAttack",
+        "pin"
+      ],
+      "detected": "sacrificial_attack",
+      "expected": "closed_maneuvering",
+      "match": false,
+      "timestamp": "2026-02-19T04:58:50.811Z"
     }
   ]
 }

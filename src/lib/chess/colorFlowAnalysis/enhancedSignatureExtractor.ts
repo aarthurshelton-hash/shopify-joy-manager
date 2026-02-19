@@ -8,29 +8,36 @@
 
 import { SquareData, GameData, SimulationResult } from '../gameSimulator';
 import { PieceType, PieceColor } from '../pieceColors';
+import { getIndividualPieceKey } from './enhancedPieceColors';
 import { ColorFlowSignature, QuadrantProfile as BaseQuadrantProfile, TemporalFlow, CriticalMoment } from './types';
 
 /**
- * Enhanced 12-color palette with piece-type differentiation
- * Each piece gets a unique color code character
+ * 32-PIECE individual color code system.
+ * Each piece on the board has its own unique code based on type + file position.
+ * This replaces the 12-type system — now every entity is tracked individually.
+ *
+ * Encoding rules (derived from current square's file):
+ *   Kings/Queens: unique (only one each side)
+ *   Rooks:   file 0-3 = queenside (_qs), file 4-7 = kingside (_ks)
+ *   Bishops: (rank+file) odd = dark-square (_ds), even = light-square (_ls)
+ *   Knights: file 0-3 = queenside (_qs), file 4-7 = kingside (_ks)
+ *   Pawns:   file 0-7 = a-h (each pawn is its own entity)
  */
 export const ENHANCED_COLOR_CODES: Record<string, string> = {
-  // White pieces (uppercase)
-  'K': 'W',  // White King - Royal White
-  'Q': 'G',  // White Queen - Gold
-  'R': 'R',  // White Rook - Crimson Red
-  'B': 'B',  // White Bishop - Azure Blue
-  'N': 'N',  // White Knight - Amber Orange
-  'P': 'E',  // White Pawn - Emerald (gradated below)
-  
-  // Black pieces (lowercase)
-  'k': 'z',  // Black King - Royal Black
-  'q': 'g',  // Black Queen - Dark Gold
-  'r': 'r',  // Black Rook - Dark Red
-  'b': 'b',  // Black Bishop - Dark Blue
-  'n': 'n',  // Black Knight - Dark Orange
-  'p': 'e',  // Black Pawn - Dark Emerald (gradated below)
+  // White pieces (uppercase) — kept for legacy fallback only
+  'K': 'W',  'Q': 'G',  'R': 'R',  'B': 'B',  'N': 'N',  'P': 'E',
+  // Black pieces (lowercase) — kept for legacy fallback only
+  'k': 'z',  'q': 'g',  'r': 'r',  'b': 'b',  'n': 'n',  'p': 'e',
 };
+
+/**
+ * Get the individual piece color code for fingerprinting.
+ * Returns a 4-char code like 'WP_a', 'BR_ks', 'WN_qs' — unique per piece entity.
+ */
+export function getIndividualPieceCode(piece: string, isWhite: boolean, file: number, rank: number): string {
+  const p = isWhite ? piece.toUpperCase() : piece.toLowerCase();
+  return getIndividualPieceKey(isWhite ? p.toUpperCase() : p, file, rank);
+}
 
 /**
  * Calculate gradated pawn color based on advancement
@@ -334,15 +341,11 @@ export function generateEnhancedFingerprint(board: SquareData[][]): string {
       
       let colorCode: string;
       
-      if (piece === 'p') {
-        // Pawns get gradated colors based on advancement
-        // Use color to distinguish white ('P') vs black ('p') pawns
-        colorCode = getGradatedPawnColor(lastVisit.color === 'w' ? 'P' : 'p', rank);
-      } else if (piece) {
-        // Other pieces get their type-specific color (piece is lowercase, map to uppercase for white)
+    if (piece) {
+        // Use individual 32-piece identity: each piece is its own color entity.
+        // Identity is derived from piece type + file (+ rank for bishops).
         const isWhite = lastVisit.color === 'w';
-        const lookupKey = isWhite ? piece.toUpperCase() : piece;
-        colorCode = ENHANCED_COLOR_CODES[lookupKey] || 'x';
+        colorCode = getIndividualPieceCode(piece, isWhite, file, rank);
       } else {
         colorCode = 'x';
       }

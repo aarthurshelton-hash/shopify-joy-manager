@@ -85,8 +85,13 @@ export {
   type ABTestStatistics,
 } from './abTestingFramework';
 
-// Enhanced piece color definitions
+// Enhanced piece color definitions (12-type legacy + 32-piece individual system)
 export {
   PIECE_COLOR_CODES,
-  type PieceColorCode,
+  INDIVIDUAL_PIECE_HEX,
+  getIndividualPieceKey,
+  getIndividualPieceHex,
 } from './enhancedPieceColors';
+
+// Individual piece code resolution for fingerprinting
+export { getIndividualPieceCode } from './enhancedSignatureExtractor';
