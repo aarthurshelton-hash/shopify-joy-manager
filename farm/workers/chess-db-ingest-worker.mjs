@@ -2614,6 +2614,7 @@ function loadState() {
     if (existsSync(STATE_FILE)) {
       const state = JSON.parse(fs.readFileSync(STATE_FILE, 'utf-8'));
       if (state.completedLichessMonths) state.completedLichessMonths.forEach(m => completedLichessMonths.add(m));
+      if (typeof state.lichessMonthIndex === 'number') lichessMonthIndex = state.lichessMonthIndex;
       return state;
     }
   } catch {}
@@ -2624,6 +2625,7 @@ function saveState() {
   try {
     fs.writeFileSync(STATE_FILE, JSON.stringify({
       completedLichessMonths: [...completedLichessMonths],
+      lichessMonthIndex,
       lastUpdate: new Date().toISOString(),
     }, null, 2));
   } catch {}
@@ -2642,18 +2644,26 @@ function getAllLichessMonths() {
   }
   return months;
 }
-let lichessMonthIndex = 0;
+let lichessMonthIndex = 0; // persisted to disk — survives restarts
 
 async function ingestLichessDB(epEngine) {
   console.log('\n[LICHESS-DB] Starting Lichess Open Database ingestion...');
   
   const allMonths = getAllLichessMonths();
   if (allMonths.length === 0) { console.log('[LICHESS-DB] No months configured!'); return 0; }
-  
-  // Rotate through months — each cycle picks the next one
+
+  // Skip months already completed (404d or fully ingested) — find next valid one
+  let skipped = 0;
+  while (completedLichessMonths.has(allMonths[lichessMonthIndex % allMonths.length]) && skipped < allMonths.length) {
+    lichessMonthIndex++;
+    skipped++;
+  }
+  if (skipped > 0) console.log(`[LICHESS-DB] Skipped ${skipped} completed months, advancing to next available`);
+
   const monthStr = allMonths[lichessMonthIndex % allMonths.length];
   lichessMonthIndex++;
-  console.log(`[LICHESS-DB] Cycle ${lichessMonthIndex}: month ${monthStr} (${allMonths.length} total months available)`);
+  saveState(); // persist index so restart continues from here
+  console.log(`[LICHESS-DB] Cycle ${lichessMonthIndex}: month ${monthStr} (${allMonths.length} total, ${completedLichessMonths.size} completed)`);
   const url = `https://database.lichess.org/standard/lichess_db_standard_rated_${monthStr}.pgn.zst`;
   
   console.log(`[LICHESS-DB] Streaming month: ${monthStr}`);
