@@ -150,6 +150,23 @@
       "restart_delay": 60000
     },
     {
+      "name": "nrc-live",
+      "script": "./farm/workers/nrc-live-worker.mjs",
+      "instances": 1,
+      "exec_mode": "fork",
+      "autorestart": false,
+      "cron_restart": "0 7 * * *",
+      "max_restarts": 3,
+      "min_uptime": "10s",
+      "kill_timeout": 30000,
+      "env": {
+        "NODE_ENV": "production"
+      },
+      "merge_logs": true,
+      "max_memory_restart": "200M",
+      "restart_delay": 60000
+    },
+    {
       "name": "ibkr-trader",
       "script": "./farm/workers/ibkr-autonomous-trader.mjs",
       "args": "0",
