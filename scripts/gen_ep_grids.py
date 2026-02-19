@@ -18,11 +18,11 @@ PHI = 1.618033988749895
 
 # ── LIVE ACCURACY DATA ──────────────────────────────────────────────────────
 EP_LIVE = {
-    'chess':    {'ep':74.18,'base':71.52,'edge':2.67, 'n':'2.8M games',   'top':'sacrificial_queenside_break 90.8%'},
+    'chess':    {'ep':74.18,'base':71.52,'edge':2.67, 'n':'3.09M games',  'top':'sacrificial_queenside_break 90.8%'},
     'nuclear':  {'ep':72.1, 'base':40.7, 'edge':31.4, 'n':'182 faults',   'top':'F1=100% binary / 72.1% 18-class'},
     'chemical': {'ep':93.3, 'base':0.0,  'edge':93.3, 'n':'TEP 52-var',   'top':'F1=93.3% recall=88.9%'},
     'battery':  {'ep':56.5, 'base':50.0, 'edge':6.5,  'n':'140 cells',    'top':'89.0% critical detection'},
-    'market':   {'ep':36.1, 'base':18.1, 'edge':15.7, 'n':'36K resolved', 'top':'false_breakout 60.0%'},
+    'market':   {'ep':36.1, 'base':18.1, 'edge':15.7, 'n':'55.9K preds',  'top':'false_breakout 60.0%'},
     'energy':   {'ep':66.6, 'base':66.9, 'edge':-0.3, 'n':'EIA hourly',   'top':'temporal channels z>0.5'},
     'music':    {'ep':34.4, 'base':33.3, 'edge':1.1,  'n':'33K phrases',  'top':'stable class +2.8pp'},
     'ztf':      {'ep':None, 'base':None, 'edge':None,  'n':'Live ALeRCE', 'top':'z>3.0 = alert threshold'},
