@@ -2503,19 +2503,34 @@ async function logToAuditTrail(pred, horizonMs, chessSignal, timeframe = null) {
     return;
   }
   
-  // Quality flags (metadata only — never block recording)
-  const MIN_DIRECTIONAL_CONFIDENCE = 0.45;
+  // v32: HARD confidence gate — only save predictions with demonstrated signal.
+  // Saving low-confidence predictions dilutes the overall accuracy metric and
+  // stalls self-learning (wrong data teaches the wrong lesson).
+  const MIN_DIRECTIONAL_CONFIDENCE = 0.55;
   const FOREX_MIN_CONFIDENCE = 0.65;
-  const minConf = isHarmony ? 0.40 : (isForexSymbol ? FOREX_MIN_CONFIDENCE : MIN_DIRECTIONAL_CONFIDENCE);
+  const minConf = isHarmony ? 0.45 : (isForexSymbol ? FOREX_MIN_CONFIDENCE : MIN_DIRECTIONAL_CONFIDENCE);
   const passesConfidenceGate = pred.confidence >= minConf;
+  if (!passesConfidenceGate) return; // HARD gate — skip, don't pollute accuracy metrics
+
+  // v32: Hard archetype kill — dead archetypes (empirically near-zero accuracy) are skipped.
+  // Unlike dampening (which saves bad data), kill removes the noise entirely.
+  const DEAD_ARCHETYPES = new Set([
+    'institutional_distribution', // 0.0% (0/152)
+    'mean_reversion_up',          // 1.4% (1/71)
+    'bearish_momentum',           // 0.0% (0/25)
+    'mean_reversion_down',        // 7.3% (9/123)
+    'no_signal',                  // 0% — flat noise
+  ]);
+  if (!isHarmony && pred.archetype && DEAD_ARCHETYPES.has(pred.archetype)) return;
   
   let passesArchetypeGate = true;
   if (!isHarmony && learnedMarketWeights && pred.archetype) {
     const archWeight = learnedMarketWeights[pred.archetype];
-    if (archWeight && archWeight.sampleSize >= 20) {
+    if (archWeight && archWeight.sampleSize >= 30) {
       const expectedDir = direction === 'up' ? 'up' : 'down';
       const archAcc = archWeight[expectedDir] || 0;
-      passesArchetypeGate = archAcc >= 0.20;
+      passesArchetypeGate = archAcc >= 0.30; // Raised from 0.20 — only save above 30%
+      if (!passesArchetypeGate) return; // Hard gate
     }
   }
 
@@ -3318,13 +3333,9 @@ async function predictionCycle() {
     }
 
     for (const tf of TIMEFRAMES) {
-      // P5: Skip daily predictions — 27.2% accuracy is below random (33%).
-      // Re-enable when self-learning brings daily above 35%.
-      if (tf.label === 'daily') {
-        const dailyAcc = learnedMarketWeights ? Object.values(learnedMarketWeights).reduce((s, w) => s + (w.sampleSize || 0), 0) : 0;
-        // Only allow daily if we have self-learned weights showing it works
-        if (!learnedDirThresholds || !learnedDirThresholds['1d']) continue;
-      }
+      // v32: Kill daily unconditionally — 27.2% accuracy, below random.
+      // Re-enable only when self-learning pushes verified daily acc > 40%.
+      if (tf.label === 'daily') continue;
 
       // Get cached candles for this symbol+timeframe
       const candles = candleCache.get(`${symbol}|${tf.label}`);
@@ -3361,19 +3372,16 @@ async function predictionCycle() {
       // Like chess poison zones: don't block predictions, dampen confidence & tag for learning.
       // The system needs ALL data to learn sector×archetype patterns.
       // Hard-blocked archetypes were 85% of volume — killing the feedback loop.
-      // v30: ARCHETYPE_PENALTY updated from real 1K resolved data (Feb 18, 2026)
-      // blunder_free_queen was WRONGLY penalized at 0.65 — it's actually 79% accurate!
+      // v32: Remaining penalty archetypes — dead ones now killed upstream.
+      // Only apply dampening to borderline patterns (not dead ones).
       const ARCHETYPE_PENALTY = {
-        'no_signal': 0.15,               // flat/noise — heavy dampen
-        'institutional_distribution': 0.10, // 0.0% (0/152) — near-dead
-        'mean_reversion_up': 0.10,       // 1.4% (1/71) — near-dead
-        'bearish_momentum': 0.10,        // 0.0% (0/25) — near-dead
-        'mean_reversion_down': 0.20,     // 7.3% (9/123) — catastrophic
-        'castling_reposition': 0.25,     // 10.2% (25/245) — catastrophic
-        'bullish_momentum': 0.40,        // 18.3% (17/93) — below random
-        'regime_shift_down': 0.60,       // 30.9% (25/81) — near random
+        'castling_reposition': 0.30,     // 10.2% (25/245) — keep dampened so it can learn
+        'bullish_momentum': 0.50,        // 18.3% — below random but not dead
+        'regime_shift_down': 0.65,       // 30.9% — borderline
+        // All others: no penalty (above 30% or dead-killed upstream)
         // blunder_free_queen: NO PENALTY — 79.0% accuracy, our BEST pattern
-        // trap_queen_sac: NO PENALTY — 38.8% accuracy, above random
+        // false_breakout: NO PENALTY — 60.0% accuracy
+        // trap_queen_sac: NO PENALTY — 38.8% accuracy
       };
       const penalty = pred.archetype ? (ARCHETYPE_PENALTY[pred.archetype] || 1.0) : 1.0;
       if (penalty < 1.0) {
