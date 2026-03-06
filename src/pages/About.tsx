@@ -47,7 +47,7 @@ const About = () => {
               </h2>
               <p className="text-muted-foreground font-serif leading-relaxed mt-3">
                 At En Pensent, we're building the world's most advanced chess pattern recognition system — 
-                where visual art meets predictive intelligence. By combining Stockfish 17 NNUE with our 
+                where visual art meets predictive intelligence. By combining Stockfish 18 NNUE with our 
                 proprietary visual encryption technology, we're creating a platform that will revolutionize 
                 how the world understands and plays chess.
               </p>
@@ -156,7 +156,7 @@ const About = () => {
               
               <p className="text-muted-foreground font-serif leading-relaxed">
                 Every En Pensent visualization is more than art — it's a <strong className="text-foreground">scannable digital fingerprint</strong> 
-                powering the world's most advanced chess pattern recognition system. Combined with our Stockfish 17 integration, 
+                powering the world's most advanced chess pattern recognition system. Combined with our Stockfish 18 integration, 
                 this visual encryption creates an unprecedented analytical foundation that grows smarter with every visualization.
               </p>
               
@@ -199,7 +199,7 @@ const About = () => {
                 <p className="text-sm text-muted-foreground font-serif">
                   Every visualization feeds into our growing intelligence system. While users can't cross-reference 
                   millions of patterns at once, our AI continuously learns from the collective data. Combined with 
-                  Stockfish 17's grandmaster-strength analysis, we're building a system that will eventually suggest 
+                  Stockfish 18's grandmaster-strength analysis, we're building a system that will eventually suggest 
                   optimal moves with <strong className="text-foreground">accuracy surpassing traditional engines</strong>.
                 </p>
               </div>
@@ -356,7 +356,7 @@ const About = () => {
               </div>
               <div className="p-4 rounded-lg bg-gradient-to-r from-blue-500/5 to-cyan-500/5 border border-blue-500/30">
                 <div className="flex items-center gap-2">
-                  <h3 className="font-display font-bold text-sm uppercase tracking-wide text-blue-500">Stockfish 17 Analysis</h3>
+                  <h3 className="font-display font-bold text-sm uppercase tracking-wide text-blue-500">Stockfish 18 Analysis</h3>
                   <Badge className="bg-blue-500/20 text-blue-600 border-blue-500/30 text-xs">~3200 ELO</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground font-serif mt-1">

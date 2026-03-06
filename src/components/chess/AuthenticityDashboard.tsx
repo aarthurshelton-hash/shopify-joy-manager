@@ -103,7 +103,7 @@ export function AuthenticityDashboard({ provenance }: AuthenticityDashboardProps
           minRating: Math.min(...gmRatings),
           maxRating: Math.max(...gmRatings),
           stockfishSource: 'lichess_cloud',
-          stockfishVersion: benchmarkResult?.stockfish_version || 'TCEC Stockfish 17 NNUE (ELO 3600)',
+          stockfishVersion: benchmarkResult?.stockfish_version || 'TCEC Stockfish 18 NNUE (ELO 3600)',
           stockfishDepths: depths,
           averageDepth: avgDepth,
           maxDepthReached: depths.length > 0 ? Math.max(...depths) : 60,
@@ -205,7 +205,7 @@ export function AuthenticityDashboard({ provenance }: AuthenticityDashboardProps
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-lg">
             <Cpu className="h-5 w-5 text-green-500" />
-            TCEC Stockfish 17 Unlimited Analysis
+            TCEC Stockfish 18 Unlimited Analysis
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -275,7 +275,7 @@ export function AuthenticityDashboard({ provenance }: AuthenticityDashboardProps
                       </li>
                       <li className="flex items-start gap-2">
                         <CheckCircle className="h-3 w-3 text-green-500 mt-0.5" />
-                        <span><strong>Stockfish 17 WASM</strong> running locally in your browser</span>
+                        <span><strong>Stockfish 18 WASM</strong> running locally in your browser</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <CheckCircle className="h-3 w-3 text-green-500 mt-0.5" />
@@ -290,7 +290,7 @@ export function AuthenticityDashboard({ provenance }: AuthenticityDashboardProps
                       </li>
                       <li className="flex items-start gap-2">
                         <CheckCircle className="h-3 w-3 text-green-500 mt-0.5" />
-                        <span><strong>TCEC Stockfish 17 NNUE (ELO 3600)</strong> - Unlimited baseline</span>
+                        <span><strong>TCEC Stockfish 18 NNUE (ELO 3600)</strong> - Unlimited baseline</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <AlertTriangle className="h-3 w-3 text-yellow-500 mt-0.5" />
@@ -384,22 +384,22 @@ export function AuthenticityDashboard({ provenance }: AuthenticityDashboardProps
               <div className="grid grid-cols-3 gap-4 text-center">
               <div className="p-3 bg-background/50 rounded-lg">
                 <p className="text-2xl font-bold text-blue-500">~3200</p>
-                <p className="text-xs text-muted-foreground">Lichess Cloud SF17</p>
+                <p className="text-xs text-muted-foreground">Lichess Cloud SF18</p>
                 <p className="text-xs text-muted-foreground">(Depth ~35)</p>
               </div>
               <div className="p-3 bg-background/50 rounded-lg">
                 <p className="text-2xl font-bold text-purple-500">3400+</p>
-                <p className="text-xs text-muted-foreground">Local WASM SF17</p>
+                <p className="text-xs text-muted-foreground">Local WASM SF18</p>
                 <p className="text-xs text-muted-foreground">(Depth 40-60)</p>
               </div>
               <div className="p-3 bg-background/50 rounded-lg border-2 border-green-500/50 bg-green-500/10">
                 <p className="text-2xl font-bold text-green-500">3600</p>
-                <p className="text-xs text-muted-foreground font-medium">TCEC SF17 (Baseline)</p>
+                <p className="text-xs text-muted-foreground font-medium">TCEC SF18 (Baseline)</p>
                 <p className="text-xs text-green-600">(Unlimited)</p>
               </div>
             </div>
             <p className="text-xs text-center text-green-600 font-medium">
-              ✓ Benchmark uses TCEC SF17 Unlimited as baseline - no depth restrictions
+              ✓ Benchmark uses TCEC SF18 Unlimited as baseline - no depth restrictions
             </p>
           </div>
         </CardContent>
@@ -441,7 +441,7 @@ export function AuthenticityDashboard({ provenance }: AuthenticityDashboardProps
               <div className="p-3 bg-background/50 rounded-lg space-y-2">
                 <p className="text-sm font-medium text-emerald-600">✓ Maximum Depth Mode Active</p>
                 <ul className="text-xs text-muted-foreground space-y-1">
-                  <li>• Stockfish 17 WASM: Depth {depthStats.avgDepth.toFixed(0)}+ (100% capacity)</li>
+                  <li>• Stockfish 18 WASM: Depth {depthStats.avgDepth.toFixed(0)}+ (100% capacity)</li>
                   <li>• En Pensent: All 25 domain adapters active (100% scope)</li>
                   <li>• Fair comparison: Both systems at maximum capacity</li>
                 </ul>

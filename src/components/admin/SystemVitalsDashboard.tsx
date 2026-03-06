@@ -96,12 +96,12 @@ export function SystemVitalsDashboard() {
     queryFn: async () => {
       const [ticksResult, predictionsResult, resolvedResult] = await Promise.all([
         supabase.from('market_tick_history').select('id', { count: 'exact', head: true }),
-        supabase.from('prediction_outcomes').select('id', { count: 'exact', head: true }),
-        supabase.from('prediction_outcomes').select('direction_correct').not('resolved_at', 'is', null),
+        supabase.from('market_prediction_attempts').select('id', { count: 'exact', head: true }), // migrated Feb 22 2026
+        supabase.from('market_prediction_attempts').select('ep_correct').not('resolved_at', 'is', null),
       ]);
 
       const resolved = resolvedResult.data || [];
-      const correct = resolved.filter(p => p.direction_correct).length;
+      const correct = resolved.filter(p => p.ep_correct === true).length;
 
       return {
         totalTicks: ticksResult.count || 0,

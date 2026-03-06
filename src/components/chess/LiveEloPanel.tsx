@@ -2,7 +2,7 @@
  * Live ELO Panel
  * 
  * Displays continuously updating FIDE ELO comparison between
- * En Pensent and Stockfish 17 (3600-3700 baseline).
+ * En Pensent and Stockfish 18 (3600-3700 baseline).
  */
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -96,7 +96,7 @@ export function LiveEloPanel({ eloState, currentDepth = 60, isLive = false }: Li
             <p className="text-3xl font-bold text-blue-500">
               {formatElo(stockfishDepthElo)}
             </p>
-            <p className="text-sm text-muted-foreground">Stockfish 17</p>
+            <p className="text-sm text-muted-foreground">Stockfish 18</p>
             <p className="text-xs text-blue-400 mt-1">
               Depth {currentDepth}
             </p>
@@ -143,7 +143,7 @@ export function LiveEloPanel({ eloState, currentDepth = 60, isLive = false }: Li
           />
           <div className="flex justify-between text-xs text-muted-foreground">
             <span>3400 (Elite)</span>
-            <span>3600 (SF17)</span>
+            <span>3600 (SF18)</span>
             <span>3800+ (Beyond)</span>
           </div>
         </div>
@@ -152,7 +152,7 @@ export function LiveEloPanel({ eloState, currentDepth = 60, isLive = false }: Li
         <div className="p-3 bg-blue-500/5 rounded-lg border border-blue-500/20 space-y-2">
           <p className="text-xs font-medium text-blue-400 flex items-center gap-2">
             <Target className="h-3 w-3" />
-            Stockfish 17 ELO Reference (TCEC/CCRL Calibrated)
+            Stockfish 18 ELO Reference (TCEC/CCRL Calibrated)
           </p>
           <div className="grid grid-cols-3 gap-2 text-xs">
             <div className="text-center">

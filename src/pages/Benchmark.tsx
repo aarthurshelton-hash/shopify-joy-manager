@@ -191,7 +191,7 @@ function useSystemBreakdown() {
         },
         {
           label: 'Prediction Engine',
-          description: 'Web-based En Pensent vs Stockfish 17 analysis',
+          description: 'Web-based En Pensent vs Stockfish 18 analysis',
           total: webTotal || 0,
           sf: webSf || 0,
           ep: webEp || 0,
@@ -467,7 +467,7 @@ function GameDetailModal({ game }: { game: GameDetail }) {
           <Section title="Predictions vs Actual">
             <div className="grid grid-cols-3 gap-3 text-center">
               <PredCard
-                title="Stockfish 17"
+                title="Stockfish 18"
                 prediction={game.stockfish_prediction}
                 correct={game.stockfish_correct}
                 extra={`Eval: ${game.stockfish_eval ?? '—'} | Depth: ${game.stockfish_depth ?? '—'} | Conf: ${game.stockfish_confidence ?? '—'}%`}
@@ -671,7 +671,7 @@ export default function Benchmark() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">Chess Benchmark</h1>
-            <p className="text-sm text-muted-foreground">En Pensent vs Stockfish 17 — real games, real predictions</p>
+            <p className="text-sm text-muted-foreground">En Pensent vs Stockfish 18 — real games, real predictions</p>
           </div>
           <Button variant="ghost" size="sm" onClick={refresh} className="gap-1">
             <RefreshCw className="h-4 w-4" /> Refresh
@@ -700,7 +700,7 @@ export default function Benchmark() {
             <Card className={`border-2 ${stats.sfCorrect > stats.epCorrect ? 'border-blue-500/50' : 'border-muted'}`}>
               <CardContent className="py-6 text-center">
                 <p className="text-4xl font-bold text-blue-500">{sfAcc}%</p>
-                <p className="text-sm text-muted-foreground mt-1">Stockfish 17</p>
+                <p className="text-sm text-muted-foreground mt-1">Stockfish 18</p>
                 <p className="text-xs text-muted-foreground">{stats.sfCorrect.toLocaleString()} / {stats.total.toLocaleString()} correct</p>
               </CardContent>
             </Card>
@@ -779,7 +779,7 @@ export default function Benchmark() {
                     <div className="grid grid-cols-3 gap-2 text-center text-sm">
                       <div>
                         <p className="text-blue-500 font-bold">{s.sfAcc.toFixed(1)}%</p>
-                        <p className="text-xs text-muted-foreground">SF17</p>
+                        <p className="text-xs text-muted-foreground">SF18</p>
                       </div>
                       <div>
                         <p className="text-purple-500 font-bold">{s.epAcc.toFixed(1)}%</p>
@@ -807,15 +807,15 @@ export default function Benchmark() {
           </Card>
         )}
 
-        {/* ─── ELO Bracket Analysis (SF17 Real-World Comparison) ──── */}
+        {/* ─── ELO Bracket Analysis (SF18 Real-World Comparison) ──── */}
         {eloBrackets.length > 0 && (
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
-                <BarChart3 className="h-4 w-4" /> Stockfish 17 ELO Comparison
+                <BarChart3 className="h-4 w-4" /> Stockfish 18 ELO Comparison
               </CardTitle>
               <p className="text-xs text-muted-foreground">
-                SF17 NNUE (ELO ~3600) vs En Pensent Hybrid — accuracy by player rating bracket
+                SF18 NNUE (ELO ~3600) vs En Pensent Hybrid — accuracy by player rating bracket
               </p>
             </CardHeader>
             <CardContent>
@@ -853,7 +853,7 @@ export default function Benchmark() {
                 })}
               </div>
               <p className="text-xs text-muted-foreground mt-3 border-t border-border pt-2">
-                Stockfish 17 NNUE runs at depth 18 locally with 128MB hash. En Pensent adds 25 temporal domain adapters on top of the same engine.
+                Stockfish 18 NNUE runs at depth 18 locally with 128MB hash. En Pensent adds 25 temporal domain adapters on top of the same engine.
               </p>
             </CardContent>
           </Card>

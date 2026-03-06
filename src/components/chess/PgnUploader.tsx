@@ -413,7 +413,7 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit, onFenSubmit }) =
       <button
         key={game.id}
         onClick={() => handleLoadGame(game)}
-        className={`group text-left rounded-lg border transition-all duration-200 overflow-hidden ${
+        className={`group text-left rounded-lg border transition-all duration-200 overflow-hidden touch-manipulation ${
           isMobile ? 'flex flex-col' : 'flex gap-3 p-2 hover:scale-[1.02]'
         } ${
           selectedGame?.id === game.id 
@@ -500,7 +500,7 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit, onFenSubmit }) =
                   <button
                     key={game.id}
                     onClick={() => handleLoadGame(game)}
-                    className={`group flex-shrink-0 w-40 sm:w-48 text-left rounded-lg border transition-all duration-200 overflow-hidden hover:scale-[1.02] ${
+                    className={`group flex-shrink-0 w-40 sm:w-48 text-left rounded-lg border transition-all duration-200 overflow-hidden hover:scale-[1.02] touch-manipulation ${
                       selectedGame?.id === game.id 
                         ? 'border-amber-500 ring-1 ring-amber-500/30 bg-amber-500/10' 
                         : 'border-amber-500/20 bg-card/50 hover:border-amber-500/50 hover:bg-card active:scale-[0.98]'

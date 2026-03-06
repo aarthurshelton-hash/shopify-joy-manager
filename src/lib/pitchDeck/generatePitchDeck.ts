@@ -51,7 +51,7 @@ export async function generatePitchDeck(): Promise<Blob> {
   doc.setFontSize(28);
   doc.setTextColor(cream[0], cream[1], cream[2]);
   centerText('Transforming Chess Games into Collectible Art', 560, 32);
-  centerText('Powered by AI Pattern Recognition & Stockfish 17 NNUE', 610, 28);
+  centerText('Powered by AI Pattern Recognition & Stockfish 18 NNUE', 610, 28);
   
   // Key metrics row
   const metrics = [
@@ -144,7 +144,7 @@ export async function generatePitchDeck(): Promise<Blob> {
   // Three pillars
   const pillars = [
     { 
-      title: 'Stockfish 17 NNUE',
+      title: 'Stockfish 18 NNUE',
       elo: '~3200 ELO',
       features: ['Grandmaster-strength analysis', 'Centipawn accuracy', 'Win probability', 'Move classification']
     },
@@ -422,7 +422,7 @@ export async function generatePitchDeck(): Promise<Blob> {
   
   const advantages = [
     { title: 'Patent-Pending Algorithm', desc: 'Proprietary visual encryption — server-side, obfuscated, legally protected', icon: '🔒' },
-    { title: 'Novel Technology Fusion', desc: 'Stockfish 17 + color theory — unique combination that took years to perfect', icon: '⚡' },
+    { title: 'Novel Technology Fusion', desc: 'Stockfish 18 + color theory — unique combination that took years to perfect', icon: '⚡' },
     { title: 'Growing Data Moat', desc: 'Millions of visual patterns cross-referenced — more data = smarter predictions', icon: '📊' },
     { title: 'Natural Vision™', desc: 'Technically challenging reverse-lookup — camera to game in milliseconds', icon: '👁️' },
     { title: 'Hustlenomics™ System', desc: 'Complex, battle-tested economic engine — sustainable creator rewards', icon: '💰' },

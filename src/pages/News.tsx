@@ -94,7 +94,7 @@ const newsImages = Object.values(gameImageImports);
 const newsItems = [
   {
     date: "January 2026",
-    title: "Stockfish 17 NNUE Integration",
+    title: "Stockfish 18 NNUE Integration",
     description: "Real grandmaster-strength analysis with ~3200 ELO engine. Centipawn accuracy, win probability, depth 20+ evaluation. Play against or analyze with the world's strongest open-source engine.",
     icon: Zap,
     link: "/play",
@@ -355,7 +355,7 @@ const News = () => {
               <div className="flex gap-6 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory md:grid md:grid-cols-5 md:overflow-visible md:pb-0">
                 <div className="min-w-[120px] md:min-w-0 snap-start shrink-0">
                   <p className="text-2xl md:text-3xl font-display font-bold text-primary">~3,200</p>
-                  <p className="text-xs text-muted-foreground font-serif uppercase tracking-wide whitespace-nowrap">Stockfish 17 ELO</p>
+                  <p className="text-xs text-muted-foreground font-serif uppercase tracking-wide whitespace-nowrap">Stockfish 18 ELO</p>
                 </div>
                 <div className="min-w-[120px] md:min-w-0 snap-start shrink-0">
                   <p className="text-2xl md:text-3xl font-display font-bold text-primary">75+</p>

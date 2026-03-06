@@ -134,7 +134,7 @@ export function UnifiedProofDashboard() {
               <CardContent className="prose prose-invert prose-sm max-w-none">
                 <p><strong>Scientific Rigor:</strong> Every benchmark follows identical protocols. Both systems see the same position. Results are reproducible.</p>
                 <p><strong>No Memorization:</strong> Games fetched fresh from random time windows. Everything shuffled. Each run is unique.</p>
-                <p><strong>Fair Comparison:</strong> SF17 TCEC (ELO 3600) at maximum depth. No handicaps. En Pensent wins only by genuine superiority.</p>
+                <p><strong>Fair Comparison:</strong> SF18 TCEC (ELO 3600) at maximum depth. No handicaps. En Pensent wins only by genuine superiority.</p>
                 <p><strong>Continuous Learning:</strong> Every benchmark feeds the learning pipeline. The system evolves with each game analyzed.</p>
               </CardContent>
             </Card>

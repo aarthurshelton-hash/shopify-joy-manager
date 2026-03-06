@@ -1,11 +1,11 @@
 /**
- * En Pensent™ vs LOCAL Stockfish 17 Benchmark
+ * En Pensent™ vs LOCAL Stockfish 18 Benchmark
  * VERSION: 6.92-DUAL-POOL (2026-01-21)
  * 
  * v6.92 CHANGES (Dual-Pool Pipeline):
  * - NEW: Dual-pool architecture for volume + depth
  * - CLOUD-VOLUME pool: 100+ games/hour via Lichess Cloud API
- * - LOCAL-DEEP pool: 5 games/hour with SF17 D30 (100M nodes)
+ * - LOCAL-DEEP pool: 5 games/hour with SF18 D30 (100M nodes)
  * - Cross-validates predictions across Stockfish configurations
  * - Tracks stockfish_mode (cloud/local) in database
  * 
@@ -19,7 +19,7 @@
  * - CRITICAL FIX: Use LOCAL Stockfish engine, not Lichess Cloud eval
  * - Removes circular dependency: was filtering games by cloud eval availability
  * - Now ANY position can be analyzed - no bias toward "popular" positions
- * - Local SF17 NNUE provides consistent baseline across all games
+ * - Local SF18 NNUE provides consistent baseline across all games
  * 
  * DATA SOURCES:
  * - Lichess: 5+ BILLION games via Edge Function proxy
@@ -121,7 +121,7 @@ export interface BenchmarkGame {
  * In GM games at move 15-35, most positions are within ±50cp.
  * Using ±80cp caused almost all predictions to be "draw" which is wrong.
  * 
- * TCEC SF17 Unlimited uses aggressive prediction thresholds based on:
+ * TCEC SF18 Unlimited uses aggressive prediction thresholds based on:
  * - Win probability from centipawn evaluation
  * - Statistical analysis of game outcomes from similar positions
  * 
@@ -409,9 +409,9 @@ export async function fetchRealGames(
 /**
  * Run chess benchmark using Lichess Cloud API with REAL Lichess games
  * 
- * This function compares En Pensent's hybrid prediction algorithm against Stockfish 17
+ * This function compares En Pensent's hybrid prediction algorithm against Stockfish 18
  * using actual Grandmaster games from Lichess. It implements a dual-pool architecture
- * for both volume (100+ games/hour) and depth (SF17 D30 with 100M nodes) analysis.
+ * for both volume (100+ games/hour) and depth (SF18 D30 with 100M nodes) analysis.
  * 
  * DATA INTEGRITY GUARANTEES:
  * 1. Cross-run deduplication - no position analyzed more than once ever
@@ -433,7 +433,7 @@ export async function fetchRealGames(
  * @param {PredictionAttempt} [onProgress.attempt] - Current prediction attempt details (optional)
  * 
  * @returns {Promise<BenchmarkResult>} Complete benchmark results including:
- *   - stockfishAccuracy: Stockfish 17 prediction accuracy percentage
+ *   - stockfishAccuracy: Stockfish 18 prediction accuracy percentage
  *   - hybridAccuracy: En Pensent hybrid algorithm accuracy percentage
  *   - predictionPoints: Array of individual prediction attempts
  *   - archetypePerformance: Performance breakdown by strategic archetype
@@ -460,7 +460,7 @@ export async function fetchRealGames(
  * ```
  * 
  * @see {@link fetchRealGames} for game fetching implementation
- * @see {@link getStockfishEngine} for Stockfish 17 integration
+ * @see {@link getStockfishEngine} for Stockfish 18 integration
  * @see {@link generateHybridPrediction} for hybrid algorithm details
  * @see {@link https://lichess.org/api} Lichess API documentation
  * 
@@ -505,7 +505,7 @@ export async function runCloudBenchmark(
   // Initialize provenance tracker for this run
   const provenance = new ProvenanceTracker();
   provenance.setSource(useRealGames ? 'lichess_live' : 'famous_games');
-  provenance.setStockfishConfig('lichess_cloud', 'TCEC Stockfish 17 NNUE (ELO 3600)');
+  provenance.setStockfishConfig('lichess_cloud', 'TCEC Stockfish 18 NNUE (ELO 3600)');
   
   // CRITICAL: Load already-analyzed data for cross-run deduplication
   // v4.0: gameIds now contains ONLY real 8-char Lichess IDs
@@ -680,7 +680,7 @@ export async function runCloudBenchmark(
       
       // v6.91-BULLETPROOF-LOCAL: Use LOCAL Stockfish engine with error handling
       // This eliminates the circular dependency where we filtered games by cloud availability
-      onProgress?.(`[SF17 LOCAL] Evaluating position after move ${movesToPlay}...`, progressPercent + 3);
+      onProgress?.(`[SF18 LOCAL] Evaluating position after move ${movesToPlay}...`, progressPercent + 3);
       
       let stockfishEval: number;
       let stockfishDepth: number;

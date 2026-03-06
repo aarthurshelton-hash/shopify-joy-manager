@@ -142,7 +142,7 @@ export function EloDepthDashboard() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* FIDE Reference - Stockfish Official */}
             <div className="text-center p-6 bg-muted/50 rounded-xl border border-muted">
-              <div className="text-sm text-muted-foreground mb-2">FIDE Reference: Stockfish 17</div>
+              <div className="text-sm text-muted-foreground mb-2">FIDE Reference: Stockfish 18</div>
               <div className="text-5xl font-bold text-muted-foreground">
                 3600
               </div>

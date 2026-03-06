@@ -15,6 +15,7 @@ import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { readFileSync, writeFileSync, mkdirSync } from 'fs';
+import { getCelestialContext } from './domain-adapters/celestial-clock.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -38,10 +39,7 @@ import {
   EdgeDecayMonitor,
   BROKER_PROFILES,
 } from './risk-management.mjs';
-import {
-  computeCulturalHarmony,
-  aggregateCulturalSignals,
-} from './cultural-harmony-signal.mjs';
+// cultural-harmony-signal.mjs removed: HARMONY_SYMBOLS=[] was dead (no symbols, zero market impact)
 import {
   fetchOptionsData,
   calculateLeverageMetrics,
@@ -72,7 +70,7 @@ const sqlPool = process.env.DATABASE_URL ? new pg.Pool({
   max: 2,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 30000,
-  statement_timeout: 15000,
+  statement_timeout: 45000,
 }) : null;
 if (sqlPool) sqlPool.on('error', (err) => console.error(`[MARKET-POOL] ${err.message}`));
 
@@ -80,22 +78,27 @@ if (sqlPool) sqlPool.on('error', (err) => console.error(`[MARKET-POOL] ${err.mes
 // v15: SYMBOL UNIVERSE — data-driven, only symbols with demonstrated edge
 // Removed (Feb 14, 2026): ALL forex (0-1% on 2000+ resolved), ALL intl indices (0%),
 // European indices (0%), bond yields (0%). These were pure pollution.
-// v16 audit (24K+ resolved): AMD 48.2%, AMZN 38.6%, MSFT 35.9%, NVDA 35.0%, META 34.4%
-// Removed: AAPL 27.8%, GOOGL 24.1%, SPY 20.4%, QQQ 35.3% (borderline but low edge)
-const STOCK_SYMBOLS = ['AMD', 'AMZN', 'MSFT', 'NVDA', 'META'];
+// v31 audit (57K+ resolved, 7-day window): AMD 52.2%, AMZN 48.6%, MSFT 40.8%, NVDA 35.1%, META 23.2%
+// v31: Re-enabled QQQ (61.5% n=234), SPY (34.9% n=241), AAPL+GOOGL for learning volume
+// Feb 22, 2026 prune: AAPL 41.2% (262 resolved) — below random. KILLED.
+// GOOGL restored: all-time 28.8% was threshold-contaminated. Reverse signals shows 91.1% on 56 recent samples (sector-aware thresholds).
+// All-time leaders: AMD 68.1% (2320), AMZN 56.7% (2273), HG=F 53.2% (2202)
+const STOCK_SYMBOLS = ['AMD', 'AMZN', 'MSFT', 'NVDA', 'META', 'QQQ', 'SPY', 'GOOGL', 'SLV', 'GLD', 'USO'];
 const FOREX_SYMBOLS = []; // KILLED: 0.2-1.1% accuracy on 2000+ resolved. No edge, pure noise.
 // v16 audit: SI=F 53.5%, NG=F 53.0%, CL=F 39.8%, HG=F 39.5% — keep.
-// Removed: GC=F 15.3% — way below random, no edge.
-const COMMODITY_SYMBOLS = ['SI=F', 'CL=F', 'NG=F', 'HG=F'];
-const INDEX_SYMBOLS = []; // KILLED: ^FTSE 0%, ^GDAXI 0%. Re-enable when model handles intl hours.
+// GC=F restored Feb 22: raw 0% but shouldFlip=true (100% flipped, n=51) — strong anti-signal.
+// PL=F (platinum) + PA=F (palladium) added Feb 22 — BullionVault panel support.
+const COMMODITY_SYMBOLS = ['SI=F', 'CL=F', 'NG=F', 'HG=F', 'GC=F', 'PL=F', 'PA=F'];
+const INDEX_SYMBOLS = []; // KILLED: ^FTSE 0%, ^GDAXI 0%. Still 0% — keep dead.
 const INTL_INDEX_SYMBOLS = { asia_pacific: [], middle_east: [], canada: [] }; // KILLED: all 0%. Re-enable with proper timezone/session modeling.
 const BOND_SYMBOLS = [];
-const CRYPTO_SYMBOLS = [];
-// KILLED: crypto harmony was 14-19% accuracy on 24h data. No edge.
-const HARMONY_SYMBOLS = [];
+// v31: Re-enabled crypto — SOL-USD 50.2% (n=1853), ETH-USD 41.2% (n=1862), BTC-USD 39.6% (n=1751)
+// These were killed at 14-19% but have improved massively with v30+ grid upgrades
+const CRYPTO_SYMBOLS = ['SOL-USD', 'ETH-USD', 'BTC-USD'];
+// HARMONY_SYMBOLS removed: was always [] — cultural harmony pipeline deprecated
 const OPTIONS_UNIVERSE = [...OPTIONS_SYMBOLS.stocks, ...OPTIONS_SYMBOLS.etfs];
 const ALL_INTL = [...INTL_INDEX_SYMBOLS.asia_pacific, ...INTL_INDEX_SYMBOLS.middle_east, ...INTL_INDEX_SYMBOLS.canada];
-const ALL_SYMBOLS = [...STOCK_SYMBOLS, ...COMMODITY_SYMBOLS, ...OPTIONS_UNIVERSE];
+const ALL_SYMBOLS = [...STOCK_SYMBOLS, ...COMMODITY_SYMBOLS, ...CRYPTO_SYMBOLS, ...OPTIONS_UNIVERSE];
 const PREDICTION_INTERVAL_MS = 2 * 60 * 1000;   // New predictions every 2 min (was 5 — need volume for strategy testing)
 const RESOLUTION_INTERVAL_MS = 60 * 1000;        // Check resolutions every 60s
 const MIN_MOVE = 0.0001;
@@ -121,6 +124,9 @@ const SECTOR_MAP = {
   'AUDUSD=X': 'forex', 'USDCHF=X': 'forex', 'NZDUSD=X': 'forex', 'EURGBP=X': 'forex',
   // Commodities (classical — deep positional)
   'GC=F': 'commodities', 'SI=F': 'commodities', 'CL=F': 'energy', 'NG=F': 'energy', 'HG=F': 'commodities',
+  'PL=F': 'commodities', 'PA=F': 'commodities', // platinum + palladium (BullionVault panel)
+  // Commodity ETFs (track SI=F and CL=F — same edge, adds options vehicle)
+  'SLV': 'commodities', 'GLD': 'commodities', 'USO': 'energy',
   // Crypto (puzzle — pure pattern)
   'BTC-USD': 'crypto', 'ETH-USD': 'crypto', 'SOL-USD': 'crypto',
 };
@@ -135,18 +141,105 @@ const SECTOR_CHESS_MODE = {
 function getSector(symbol) { return SECTOR_MAP[symbol] || 'unknown'; }
 function getChessMode(symbol) { return SECTOR_CHESS_MODE[getSector(symbol)] || 'blitz'; }
 
+// ─── ARCHETYPE PARABLES ───────────────────────────────────────────────────────
+// Each chess archetype maps to a narrative, a trading moral, and a classification.
+// Black = BUY (bullish), White = SELL (bearish) — universal chess-market invariant.
+const ARCHETYPE_PARABLES = {
+  choppy: {
+    story: 'Pawns clash in the center — no piece gains decisive control. The board pulses with tension but no army claims the initiative.',
+    moral: 'Indecision reigns; price oscillates without commitment. Trade the range, not the trend.',
+    mechanism: 'range', driver: 'technical', piece_tier: 'pawn', color_bias: 'neutral',
+  },
+  false_breakout: {
+    story: 'The knight leaps over the pawn wall, appearing to breach enemy lines — then the defenders close in and the knight is trapped behind its own advance.',
+    moral: 'A breakout lacking the army to sustain it. The crowd follows the feint; the position punishes them.',
+    mechanism: 'reversal', driver: 'technical', piece_tier: 'knight', color_bias: 'contrarian',
+  },
+  trap_queen_sac: {
+    story: 'White sacrifices the queen — the opponent captures in disbelief, certain of winning. Three moves later: checkmate. The gift was the trap.',
+    moral: 'Apparent strength is a disguise. The dominant-looking move hides a fatal reversal beneath it.',
+    mechanism: 'reversal', driver: 'institutional', piece_tier: 'queen', color_bias: 'inverted',
+  },
+  bearish_momentum: {
+    story: 'White rooks double on the open file. Every black piece retreats. The pressure is relentless, coordinated, and multiplying.',
+    moral: 'Selling pressure builds across timeframes. White (sell) has the initiative and the army.',
+    mechanism: 'momentum', driver: 'sentiment', piece_tier: 'rook', color_bias: 'white',
+  },
+  bullish_momentum: {
+    story: "Black's pieces flood every open line — knights outposted, bishops dominating diagonals. The position is won before white realizes.",
+    moral: 'Buying pressure compounds. Black (buy) controls the tempo and the long game.',
+    mechanism: 'momentum', driver: 'sentiment', piece_tier: 'rook', color_bias: 'black',
+  },
+  regime_shift_down: {
+    story: 'The king walks into an open file. The position collapses — not from a blunder but from a structural weakness built over 20 moves.',
+    moral: 'Fundamental change in market structure. The old equilibrium is gone; trend accelerates downward.',
+    mechanism: 'breakdown', driver: 'macro', piece_tier: 'king', color_bias: 'white',
+  },
+  mean_reversion_up: {
+    story: 'A pawn sacrificed four moves ago quietly queens. What looked like weakness was preparation — the position snaps back with force.',
+    moral: 'Price stretched too far below value. The rubber band snaps upward; black (buy) recovers what was owed.',
+    mechanism: 'reversion', driver: 'technical', piece_tier: 'pawn', color_bias: 'black',
+  },
+  mean_reversion_down: {
+    story: 'The bishop that controlled the diagonal oversteps — its line is cut, suddenly trapped and worthless. The position corrects.',
+    moral: 'Price stretched too far above value. White (sell) reclaims fair value from overextension.',
+    mechanism: 'reversion', driver: 'technical', piece_tier: 'bishop', color_bias: 'white',
+  },
+  blunder_free_queen: {
+    story: 'The queen maneuvers freely across the entire board — no square unsafe, no piece threatening. The opponent slowly runs out of moves.',
+    moral: 'Dominant position with no contradiction. A clean, uncontested signal.',
+    mechanism: 'continuation', driver: 'technical', piece_tier: 'queen', color_bias: 'neutral',
+  },
+  castling_reposition: {
+    story: 'The king castles into safety behind a wall of pawns. The army reorganizes for the long campaign ahead.',
+    moral: 'Defensive consolidation before the next move. Volatility compressing; range tightening for a breakout.',
+    mechanism: 'consolidation', driver: 'technical', piece_tier: 'king', color_bias: 'neutral',
+  },
+  institutional_accumulation: {
+    story: "Black's knights quietly maneuver to perfect outposts — d5, e4. No dramatic move. Three moves later the position is strategically won.",
+    moral: 'Slow deliberate accumulation by large players. Dark matter buying — visible only in aggregate.',
+    mechanism: 'accumulation', driver: 'institutional', piece_tier: 'knight', color_bias: 'black',
+  },
+  oversold_bounce: {
+    story: 'Deep in a losing position, a pawn promotion changes everything. From the ashes a queen appears — the position rebalances.',
+    moral: 'Price fell too fast and too far. Mechanical recovery is inevitable; black (buy) reclaims stolen ground.',
+    mechanism: 'bounce', driver: 'technical', piece_tier: 'pawn', color_bias: 'black',
+  },
+  cultural_harmony: {
+    story: 'Every piece perfectly placed — bishop on its diagonal, rook on open file, knight outposted. The harmony creates a fortress of equilibrium.',
+    moral: 'All signals agree but none dominates. Balanced position lacks a catalyst; holds its ground.',
+    mechanism: 'range', driver: 'sentiment', piece_tier: 'bishop', color_bias: 'neutral',
+  },
+  drawish_endgame: {
+    story: 'Kings wander, pawns trade off, rooks neutralize each other. Both players see the draw — neither can win, neither needs to lose.',
+    moral: 'Exhausted trend. Volume drying up. Needs fresh capital or a macro event to move.',
+    mechanism: 'exhaustion', driver: 'technical', piece_tier: 'king', color_bias: 'neutral',
+  },
+  balanced_flow: {
+    story: 'The middlegame is alive with complexity — pieces everywhere, tensions unresolved. The engine evaluates: 0.00.',
+    moral: 'No clear edge in either direction. Wait for the position to clarify before committing.',
+    mechanism: 'range', driver: 'technical', piece_tier: 'bishop', color_bias: 'neutral',
+  },
+  piece_queen_dominance: {
+    story: 'The queen alone controls half the board — her reach unmatched by any piece remaining. The pressure is everywhere at once.',
+    moral: 'A dominant single force drives the market. High-conviction directional signal from the strongest player.',
+    mechanism: 'momentum', driver: 'institutional', piece_tier: 'queen', color_bias: 'neutral',
+  },
+};
+
 // ─── MULTI-TIMEFRAME CONFIG ──────────────────────────────────────────────────
 // Each timeframe feeds different candle granularity through the SAME universal grid portal.
 // Different candle intervals → different grid signatures → different archetypes.
 // Like chess time windows (recent/mid/historical), each timeframe may reveal different edges.
 const TIMEFRAMES = [
-  // v30: Killed mid_4h (5.0% accuracy on 322 resolved — catastrophic, worse than random)
-  // 1h and 2h are our best timeframes (30.7% and 30.8%) — keep and focus
-  { label: 'scalp_1h',candleInterval: '5m',  candleRange: '2d',  resolutionMs: 1 * 60 * 60 * 1000, timeHorizon: '1h', minCandles: 10 },
-  { label: 'medium',  candleInterval: '15m', candleRange: '5d',  resolutionMs: 2 * 60 * 60 * 1000, timeHorizon: '2h', minCandles: 10 },
+  // BEST ACCURACY — scale these up (60% and 55.1% on resolved data)
+  { label: 'scalp_5m', candleInterval: '1m',  candleRange: '1d',  resolutionMs:  5 * 60 * 1000,        timeHorizon: '5m',  minCandles: 10 },
+  { label: 'scalp_30m',candleInterval: '5m',  candleRange: '2d',  resolutionMs: 30 * 60 * 1000,        timeHorizon: '30m', minCandles: 10 },
+  { label: 'scalp_1h', candleInterval: '5m',  candleRange: '2d',  resolutionMs:  1 * 60 * 60 * 1000,   timeHorizon: '1h',  minCandles: 10 },
+  { label: 'medium',   candleInterval: '15m', candleRange: '5d',  resolutionMs:  2 * 60 * 60 * 1000,   timeHorizon: '2h',  minCandles: 10 },
   // mid_4h KILLED: 5.0% accuracy (16/322) — anti-predictive noise
-  { label: 'swing',   candleInterval: '1h',  candleRange: '1mo', resolutionMs: 8 * 60 * 60 * 1000, timeHorizon: '8h', minCandles: 10 },
-  { label: 'daily',   candleInterval: '1d',  candleRange: '3mo', resolutionMs: 24 * 60 * 60 * 1000, timeHorizon: '1d', minCandles: 10 },
+  { label: 'swing',    candleInterval: '1h',  candleRange: '1mo', resolutionMs:  8 * 60 * 60 * 1000,   timeHorizon: '8h',  minCandles: 10 },
+  // KILLED daily/1d: 45.9% on 9,853 resolved — below random at high sample size. No edge.
 ];
 // Legacy compat
 const HORIZONS_MS = TIMEFRAMES.map(t => t.resolutionMs);
@@ -190,6 +283,94 @@ let tacticalCalibrationRefreshedAt = 0;
 let learnedReverseSignals = null;
 let reverseSignalsRefreshedAt = 0;
 
+// Self-learned VOLUME FLOW WEIGHTS — per-symbol flow agreement accuracy
+// Tracks whether Finnhub bid/ask flow agreement with predicted direction improves accuracy.
+// Only applied when: flow is fresh (<15min), symbol has ≥50 flow-resolved samples,
+// accuracy delta between agrees vs disagrees is ≥10pp.
+let learnedFlowWeights = null;
+let flowWeightsRefreshedAt = 0;
+
+// ─── v31: LIVE ARCHETYPE ACCURACY CACHE ──────────────────────────────────────
+// CRITICAL FIX: The old hardcoded ARCHETYPE_ACCURACY table was stale within hours.
+// regime_shift_down was listed at 30.9% but actual recent accuracy is 96.8% on AMD/1h.
+// mean_reversion_up was BLOCKED as "dead" but is 100% on MSFT/1h (n=80).
+// Now we query the DB every 10 min for LIVE accuracy at 3 tiers:
+//   1. archetype+symbol+timeframe (most specific, most reliable)
+//   2. archetype only (fallback)
+//   3. 0.33 (random baseline, last resort)
+let liveAccuracyCache = {
+  byCombo: {},      // "archetype|symbol|timeframe" → { accuracy, n }
+  byArchetype: {},  // "archetype" → { accuracy, n }
+  lastRefresh: 0,
+  refreshIntervalMs: 10 * 60 * 1000, // 10 min
+};
+
+async function refreshLiveAccuracyCache() {
+  if (!sqlPool) return;
+  try {
+    // Tier 1: by archetype+symbol+timeframe (last 7 days for recency)
+    const combos = await sqlPool.query(`
+      SELECT archetype, symbol, time_horizon,
+        COUNT(*) as n,
+        COUNT(CASE WHEN ep_correct = true THEN 1 END) as correct
+      FROM market_prediction_attempts
+      WHERE resolved_at IS NOT NULL AND created_at > NOW() - INTERVAL '7 days'
+      GROUP BY archetype, symbol, time_horizon
+      HAVING COUNT(*) >= 10
+    `);
+    const byCombo = {};
+    for (const r of combos.rows) {
+      const key = `${r.archetype}|${r.symbol}|${r.time_horizon}`;
+      byCombo[key] = { accuracy: parseInt(r.correct) / parseInt(r.n), n: parseInt(r.n) };
+    }
+
+    // Tier 2: by archetype only (last 7 days)
+    const archs = await sqlPool.query(`
+      SELECT archetype,
+        COUNT(*) as n,
+        COUNT(CASE WHEN ep_correct = true THEN 1 END) as correct
+      FROM market_prediction_attempts
+      WHERE resolved_at IS NOT NULL AND created_at > NOW() - INTERVAL '7 days'
+      GROUP BY archetype
+      HAVING COUNT(*) >= 20
+    `);
+    const byArchetype = {};
+    for (const r of archs.rows) {
+      byArchetype[r.archetype] = { accuracy: parseInt(r.correct) / parseInt(r.n), n: parseInt(r.n) };
+    }
+
+    liveAccuracyCache = { byCombo, byArchetype, lastRefresh: Date.now(), refreshIntervalMs: liveAccuracyCache.refreshIntervalMs };
+    const comboCount = Object.keys(byCombo).length;
+    const archCount = Object.keys(byArchetype).length;
+    log(`[v31] Live accuracy cache refreshed: ${comboCount} combos, ${archCount} archetypes`);
+
+    // Log top performers
+    const topCombos = Object.entries(byCombo)
+      .filter(([, v]) => v.n >= 20 && v.accuracy >= 0.80)
+      .sort((a, b) => b[1].n - a[1].n)
+      .slice(0, 5);
+    if (topCombos.length > 0) {
+      log(`[v31] 🔥 Top combos: ${topCombos.map(([k, v]) => `${k} ${(v.accuracy * 100).toFixed(0)}% n=${v.n}`).join(' | ')}`);
+    }
+  } catch (err) {
+    log(`[v31] Accuracy cache refresh failed: ${err.message}`, 'warn');
+  }
+}
+
+function getLiveAccuracy(archetype, symbol, timeframe) {
+  // Tier 1: exact combo (most reliable)
+  const comboKey = `${archetype}|${symbol}|${timeframe}`;
+  const combo = liveAccuracyCache.byCombo[comboKey];
+  if (combo && combo.n >= 15) return { accuracy: combo.accuracy, n: combo.n, tier: 'combo' };
+
+  // Tier 2: archetype only
+  const arch = liveAccuracyCache.byArchetype[archetype];
+  if (arch && arch.n >= 20) return { accuracy: arch.accuracy, n: arch.n, tier: 'archetype' };
+
+  // Tier 3: random baseline
+  return { accuracy: 0.33, n: 0, tier: 'fallback' };
+}
+
 // ─── HISTORICAL REPLAY ENGINE ────────────────────────────────────────────────
 // v30.2: SMART REPLAY — live data ALWAYS takes priority, replay fills dead time.
 //   - Weekend (all closed): full replay on ALL symbols
@@ -200,7 +381,7 @@ let reverseSignalsRefreshedAt = 0;
 // Cross-references replay patterns with today's live conditions for similarity signals.
 const REPLAY_INTERVAL_MS = 5 * 60 * 1000; // Replay every 5 min when markets closed
 const REPLAY_STOCK_SYMBOLS = ['AMD', 'AMZN', 'MSFT', 'NVDA', 'META'];
-const REPLAY_COMMODITY_SYMBOLS = ['SI=F', 'CL=F', 'NG=F', 'HG=F'];
+const REPLAY_COMMODITY_SYMBOLS = ['SI=F', 'CL=F', 'NG=F', 'HG=F', 'GC=F', 'PL=F', 'PA=F'];
 const REPLAY_ALL_SYMBOLS = [...REPLAY_STOCK_SYMBOLS, ...REPLAY_COMMODITY_SYMBOLS];
 const REPLAY_LOOKBACK_DAYS = [5, 10, 20, 40, 60]; // Rotate through different lookback windows
 let replayState = {
@@ -227,6 +408,19 @@ const WEIGHTS_FILE = join(LEARN_DATA_DIR, 'market-archetype-weights.json');
 const THRESHOLDS_FILE = join(LEARN_DATA_DIR, 'market-dir-thresholds.json');
 const TACTICAL_FILE = join(LEARN_DATA_DIR, 'market-tactical-calibration.json');
 const REVERSE_FILE = join(LEARN_DATA_DIR, 'market-reverse-signals.json');
+const FLOW_WEIGHTS_FILE = join(LEARN_DATA_DIR, 'market-flow-weights.json');
+// v33: Live order flow from market-flow-worker (Finnhub WebSocket volume delta)
+const FLOW_FILE = join(LEARN_DATA_DIR, 'volume-flow.json');
+let volumeFlowCache = { symbols: {}, updated_at: null, loaded_at: 0 };
+const FLOW_REFRESH_MS = 30 * 1000; // Re-read disk every 30s (flow-worker writes every 5s)
+function loadVolumeFlow() {
+  if (Date.now() - volumeFlowCache.loaded_at < FLOW_REFRESH_MS) return;
+  try {
+    const raw = readFileSync(FLOW_FILE, 'utf8');
+    const data = JSON.parse(raw);
+    volumeFlowCache = { ...data, loaded_at: Date.now() };
+  } catch (e) { /* flow worker not running or file not yet written */ }
+}
 
 function persistToFile(filePath, data) {
   try {
@@ -263,6 +457,12 @@ try {
     learnedReverseSignals = diskReverse;
     const flipped = Object.entries(diskReverse).filter(([, v]) => v.shouldFlip).map(([k]) => k);
     log(`Loaded ${Object.keys(diskReverse).length} reverse signal entries (${flipped.length} active flips: ${flipped.join(', ')})`);
+  }
+  const diskFlowWeights = loadFromFile(FLOW_WEIGHTS_FILE);
+  if (diskFlowWeights && Object.keys(diskFlowWeights).length > 0) {
+    learnedFlowWeights = diskFlowWeights;
+    const active = Object.entries(diskFlowWeights).filter(([, v]) => Math.abs(v.multiplier - 1.0) > 0.01).map(([k, v]) => `${k}(×${v.multiplier})`);
+    log(`Loaded ${Object.keys(diskFlowWeights).length} flow weight entries (${active.length} active: ${active.join(', ')})`);
   }
 } catch (e) { /* first run, no files yet */ }
 
@@ -307,6 +507,9 @@ function log(msg, level = 'info') {
   else console.log(`${pfx} ${level === 'trade' ? '📈' : 'ℹ️'} ${msg}`);
 }
 
+// ─── IB GATEWAY BRIDGE URL ───────────────────────────────────────────────────
+const IB_BRIDGE = process.env.IB_BRIDGE_URL || 'http://localhost:4000';
+
 // ─── YAHOO FINANCE ───────────────────────────────────────────────────────────
 async function fetchPrice(symbol) {
   try {
@@ -332,51 +535,90 @@ async function fetchPrice(symbol) {
 }
 
 /**
- * Fetch intraday OHLCV candles from Yahoo Finance for universal grid processing.
+ * Fetch intraday OHLCV candles — IB USHMDS primary, Yahoo Finance fallback.
  * Returns proper candle objects: { open, high, low, close, volume, timestamp }
  */
 async function fetchIntradayCandles(symbol, interval = '5m', range = '1d') {
+  // ── Try IB USHMDS first (same feed as order execution) ──
   try {
-    const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=${interval}&range=${range}`);
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 16000);
+    let res;
+    try {
+      res = await fetch(`${IB_BRIDGE}/api/historical?symbol=${encodeURIComponent(symbol)}&interval=${interval}&range=${range}`, { signal: ctrl.signal });
+    } finally { clearTimeout(timer); }
+    if (res.ok) {
+      const data = await res.json();
+      if (data.candles && data.candles.length >= 5) {
+        return data.candles; // already in {open,high,low,close,volume,timestamp} format
+      }
+    }
+  } catch (_) { /* fall through to Yahoo */ }
+
+  // ── Yahoo Finance fallback ──
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 15000);
+    let res;
+    try {
+      res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=${interval}&range=${range}`, { signal: ctrl.signal });
+    } finally { clearTimeout(timer); }
     if (!res.ok) return null;
     const data = await res.json();
     const r = data.chart?.result?.[0];
     if (!r) return null;
-    
     const quotes = r.indicators?.quote?.[0];
     const timestamps = r.timestamp || [];
     if (!quotes || timestamps.length === 0) return null;
-    
     const candles = [];
     for (let i = 0; i < timestamps.length; i++) {
-      const o = quotes.open?.[i];
-      const h = quotes.high?.[i];
-      const l = quotes.low?.[i];
-      const c = quotes.close?.[i];
-      const v = quotes.volume?.[i];
+      const o = quotes.open?.[i], h = quotes.high?.[i], l = quotes.low?.[i], c = quotes.close?.[i], v = quotes.volume?.[i];
       if (o != null && h != null && l != null && c != null) {
         candles.push({ open: o, high: h, low: l, close: c, volume: v || 0, timestamp: timestamps[i] });
       }
     }
     return candles.length >= 5 ? candles : null;
-  } catch (err) {
-    return null;
-  }
+  } catch (_) { return null; }
 }
 
 async function fetchHistorical(symbol, range = '6mo', interval = '1d') {
+  // ── Try IB USHMDS for shorter ranges (IB supports up to 1 Y with daily bars) ──
+  const ibRanges = new Set(['1d','2d','5d','1mo','3mo','6mo','1y']);
+  if (ibRanges.has(range)) {
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 16000);
+      let res;
+      try {
+        res = await fetch(`${IB_BRIDGE}/api/historical?symbol=${encodeURIComponent(symbol)}&interval=${interval}&range=${range}`, { signal: ctrl.signal });
+      } finally { clearTimeout(timer); }
+      if (res.ok) {
+        const data = await res.json();
+        if (data.candles && data.candles.length >= 5) {
+          const closes = data.candles.map(c => c.close);
+          const timestamps = data.candles.map(c => c.timestamp);
+          return { symbol, closes, timestamps, range, interval, source: 'ib-ushmds' };
+        }
+      }
+    } catch (_) { /* fall through */ }
+  }
+
+  // ── Yahoo Finance fallback ──
   try {
-    const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=${interval}&range=${range}`);
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 15000);
+    let res;
+    try {
+      res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=${interval}&range=${range}`, { signal: ctrl.signal });
+    } finally { clearTimeout(timer); }
     if (!res.ok) return null;
     const data = await res.json();
     const r = data.chart?.result?.[0];
     if (!r) return null;
     const closes = r.indicators?.quote?.[0]?.close?.filter(c => c != null) || [];
     const timestamps = r.timestamp || [];
-    return { symbol, closes, timestamps, range, interval };
-  } catch (err) {
-    return null;
-  }
+    return { symbol, closes, timestamps, range, interval, source: 'yahoo' };
+  } catch (_) { return null; }
 }
 
 // ─── PAWN PRESSURE: VIX + FINRA SHORT VOLUME ────────────────────────────────
@@ -444,59 +686,11 @@ async function fetchFINRAShortVolume() {
   return shortVolumeCache;
 }
 
-// ─── CULTURAL HARMONY: Chess Archetype → Musical Pattern → Abstract Signal ───
-// For symbols where conventional analysis fails (crypto at 25%), use the abstract
-// musical/cultural resonance of live chess archetypes as the prediction signal.
-let harmonyCache = { signal: null, timestamp: 0 };
-const HARMONY_CACHE_TTL = 10 * 60 * 1000; // 10 min
-
-async function fetchChessArchetypeStats() {
-  if (!sqlPool) return null;
-  try {
-    const { rows } = await sqlPool.query(`
-      SELECT hybrid_archetype as archetype, COUNT(*) as count,
-             COUNT(CASE WHEN hybrid_correct THEN 1 END)::float / NULLIF(COUNT(*), 0) as accuracy
-      FROM chess_prediction_attempts 
-      WHERE created_at > NOW() - INTERVAL '2 hours'
-      AND hybrid_archetype IS NOT NULL
-      GROUP BY hybrid_archetype HAVING COUNT(*) >= 5
-      ORDER BY COUNT(*) DESC
-    `);
-    return rows.map(r => ({
-      archetype: r.archetype,
-      count: parseInt(r.count),
-      accuracy: parseFloat(r.accuracy) || 0.5,
-      temporalFlow: null, // Could enrich later from 8Q profile data
-    }));
-  } catch (e) {
-    return null;
-  }
-}
-
-async function getHarmonySignal(symbol, priceData) {
-  // Refresh archetype stats periodically
-  if (Date.now() - harmonyCache.timestamp > HARMONY_CACHE_TTL || !harmonyCache.signal) {
-    const stats = await fetchChessArchetypeStats();
-    if (stats && stats.length > 0) {
-      // Use a generic price context for the aggregate signal
-      const recentPrice = priceData ? { change: priceData.change || 0, volatility: 0.02 } : { change: 0, volatility: 0.02 };
-      harmonyCache.signal = aggregateCulturalSignals(stats, recentPrice);
-      harmonyCache.timestamp = Date.now();
-    }
-  }
-  
-  if (!harmonyCache.signal) return null;
-  
-  // Adjust the aggregate signal for this specific symbol's recent price action
-  const symbolPrice = priceData ? { change: priceData.change || 0, volatility: 0.03 } : null;
-  
-  return {
-    ...harmonyCache.signal,
-    symbol,
-    source: 'cultural_harmony',
-    description: `Chess archetype chorus → ${harmonyCache.signal.direction} (${harmonyCache.signal.dominantMood})`,
-  };
-}
+// ─── CULTURAL HARMONY: removed Feb 22 2026 ──────────────────────────────────
+// HARMONY_SYMBOLS was always []. fetchChessArchetypeStats/getHarmonySignal
+// executed every cycle returning null. Zero market impact — pure dead weight.
+// Re-enable by restoring cultural-harmony-signal.mjs import + HARMONY_SYMBOLS
+// if cross-domain music→chess→market signal is productionised.
 
 // ─── PREDICTION ENGINE ───────────────────────────────────────────────────────
 function generatePrediction(symbol, priceData, allPrices, historicalData) {
@@ -621,7 +815,7 @@ function generatePrediction(symbol, priceData, allPrices, historicalData) {
  * This is the new path — routes market data through the same architecture as chess/battery/TEP.
  * Falls back to the legacy weighted ensemble if candle data is unavailable.
  */
-function generateGridPrediction(symbol, candles, priceData, symbolOptionsData = null, marketTimeframe = 'medium') {
+function generateGridPrediction(symbol, candles, priceData, symbolOptionsData = null, marketTimeframe = 'medium', tf = null) {
   if (!candles || candles.length < 10) return null;
   
   // Route through universal grid portal (with options flow if available)
@@ -652,19 +846,11 @@ function generateGridPrediction(symbol, candles, priceData, symbolOptionsData = 
       pred.direction
     );
     
-    // v30.1: ACCURACY GATE — only proven tactical patterns can override
-    // castling_reposition was 13.3% on 353 resolved — it was CAUSING the bearish bias
-    // Only patterns with >25% accuracy earn the right to override the flat gate
-    const TACTICAL_ACCURACY = {
-      blunder_free_queen: 0.790,    // 79.0% — TRUST completely
-      trap_queen_sac: 0.388,        // 38.8% — above random, trust
-      regime_shift_down: 0.375,     // 37.5% — borderline, allow
-      en_passant_window: 0.250,     // estimated — allow cautiously
-      pawn_promotion: 0.250,        // estimated — allow cautiously
-      castling_reposition: 0.133,   // 13.3% — ANTI-PREDICTIVE, block override
-    };
-    const tacticalAcc = TACTICAL_ACCURACY[tacticalResult.tactical] ?? 0.25;
-    const tacticalAllowed = tacticalAcc >= 0.25;
+    // v31: ACCURACY GATE — uses LIVE accuracy from DB instead of stale hardcoded table
+    // Only patterns with >20% live accuracy earn the right to override the flat gate
+    const tacticalLiveAcc = getLiveAccuracy(tacticalResult.tactical, symbol, tf?.timeHorizon || '1h');
+    const tacticalAcc = tacticalLiveAcc.accuracy;
+    const tacticalAllowed = tacticalAcc >= 0.20 || tacticalLiveAcc.n < 10; // Allow unknown patterns (need data)
     
     if (override.override && tacticalAllowed) {
       finalDirection = override.direction;
@@ -711,33 +897,26 @@ function generateGridPrediction(symbol, candles, priceData, symbolOptionsData = 
     };
   }
   
-  // v30: ARCHETYPE ACCURACY from latest 1K resolved (Feb 18, 2026)
-  // CRITICAL: Previous table was STALE and WRONG (blunder_free_queen listed 18.9%, actual 79%)
-  const ARCHETYPE_ACCURACY = {
-    blunder_free_queen: 0.790,             // 79.0% (64/81) — BEST PATTERN by far
-    trap_queen_sac: 0.388,                 // 38.8% (50/129) — above random
-    regime_shift_down: 0.309,              // 30.9% (25/81)
-    bullish_momentum: 0.183,               // 18.3% (17/93) — below random
-    mean_reversion_down: 0.073,            // 7.3% (9/123) — catastrophic
-    castling_reposition: 0.102,            // 10.2% (25/245) — catastrophic
-    institutional_distribution: 0.001,     // 0.0% (0/152) — DEAD, hard block
-    mean_reversion_up: 0.014,              // 1.4% (1/71) — DEAD, hard block
-    bearish_momentum: 0.001,               // 0.0% (0/25) — DEAD, hard block
-  };
-  const finalArch = tacticalOverride ? tacticalResult.tactical : archetype;
-  // v30: HARD BLOCK archetypes with 0% accuracy — these are pure poison
-  const DEAD_ARCHETYPES = new Set(['institutional_distribution', 'mean_reversion_up', 'bearish_momentum']);
-  if (DEAD_ARCHETYPES.has(finalArch)) {
-    return {
-      symbol, direction: 'flat', confidence: 0.01, archetype: finalArch,
-      entryPrice: priceData?.price || candles[candles.length - 1].close,
-      predicted_magnitude: 0, market_conditions: { gridIntensity: signature.intensity },
-      source: 'universal_grid_blocked',
-    };
+  // v31: LIVE ARCHETYPE ACCURACY — replaces stale hardcoded table
+  // The old table was wrong within hours (regime_shift_down listed 30.9%, actual 96.8% on AMD/1h).
+  // mean_reversion_up was BLOCKED but is 100% on MSFT/1h (n=80).
+  // Now uses getLiveAccuracy() which queries real DB performance every 10 min.
+  // Always use the MARKET archetype for DB storage + live accuracy lookup.
+  // Chess tactical pattern names (trap_queen_sac, castling_reposition, etc.) belong
+  // only in tacticalOverride.pattern — storing them as market archetypes poisons the
+  // live accuracy cache with chess accuracy data, causing directional lockup.
+  const finalArch = archetype; // always the market archetype
+  const liveAcc = getLiveAccuracy(finalArch, symbol, tf?.timeHorizon || '1h');
+  const archAccuracy = liveAcc.accuracy;
+  
+  // v31: Soft gate instead of hard block. If accuracy < 5% on 50+ samples, dampen to near-zero
+  // but still save the prediction for learning. No more permanent blocks that miss recoveries.
+  if (archAccuracy < 0.05 && liveAcc.n >= 50) {
+    finalConfidence *= 0.10; // 90% penalty — nearly blocked but still saved for learning
+  } else {
+    const archMultiplier = Math.min(1.5, archAccuracy / 0.40); // v31: raised cap from 1.2→1.5, base from 0.50→0.40
+    finalConfidence = Math.min(0.85, finalConfidence * archMultiplier); // v31: raised cap from 0.75→0.85
   }
-  const archAccuracy = ARCHETYPE_ACCURACY[finalArch] || 0.33;
-  const archMultiplier = Math.min(1.2, archAccuracy / 0.50);
-  finalConfidence = Math.min(0.75, finalConfidence * archMultiplier);
   if (scoreSpread < 0.20) {
     finalConfidence *= (scoreSpread / 0.20);
   }
@@ -847,18 +1026,16 @@ function generateGridPrediction(symbol, candles, priceData, symbolOptionsData = 
     }
   }
 
-  // v29.4: HARD ACCURACY-BASED CONFIDENCE CEILING
-  // Root cause of confidence inversion: 7 multiplicative boosters can inflate
-  // confidence for anti-predictive archetypes (bullish_momentum 17.2%, mean_reversion_up 16.4%).
-  // No amount of signal agreement should produce high confidence for a pattern that's
-  // historically below random. The ceiling is the archetype's actual accuracy + 10pp headroom.
-  // This ensures: <33% accuracy → max ~43% confidence, 60% accuracy → max ~70% confidence.
-  const accuracyCeiling = Math.min(0.85, archAccuracy + 0.10);
+  // v31: ACCURACY-BASED CONFIDENCE CEILING (now using LIVE accuracy from DB)
+  // archAccuracy comes from getLiveAccuracy() — refreshed every 10 min from real resolved predictions.
+  // Ceiling = live accuracy + 15pp headroom (raised from 10pp to let improving patterns breathe).
+  // 96% live accuracy → cap at 0.85. 40% → cap at 0.55. 10% → cap at 0.25.
+  const accuracyCeiling = Math.min(0.85, archAccuracy + 0.15);
   if (finalConfidence > accuracyCeiling) {
     finalConfidence = accuracyCeiling;
   }
-  // Floor: never below 0.20 (system always has some signal)
-  finalConfidence = Math.max(0.20, finalConfidence);
+  // Floor: 0.05 for patterns with data, 0.20 for new/unknown patterns (need learning volume)
+  finalConfidence = Math.max(liveAcc.n >= 20 ? 0.05 : 0.20, finalConfidence);
 
   return {
     symbol,
@@ -892,6 +1069,7 @@ function generateGridPrediction(symbol, candles, priceData, symbolOptionsData = 
       topTierCoord: pieceTier.topTierCoordination,
       boost: pieceTier.coordinationBoost,
     } : null,
+    liveAccuracy: { accuracy: liveAcc.accuracy, n: liveAcc.n, tier: liveAcc.tier }, // v31: live accuracy used for confidence calibration
     source: tacticalOverride ? 'universal_grid_tactical' : 'universal_grid',
   };
 }
@@ -971,6 +1149,7 @@ async function refreshLearnedDirThresholds() {
       .select('symbol, time_horizon, predicted_direction, price_at_prediction, price_at_resolution')
       .not('resolved_at', 'is', null)
       .not('price_at_resolution', 'is', null)
+      .eq('data_source', 'yahoo_finance')  // Live only — historical replay uses daily fallback candles (huge moves) that corrupt threshold learning
       .order('created_at', { ascending: false })
       .limit(8000);
     
@@ -1002,6 +1181,7 @@ async function refreshLearnedDirThresholds() {
     const candidates = [0.0002, 0.0005, 0.0008, 0.001, 0.0015, 0.002, 0.003, 0.004, 0.005, 0.008, 0.01];
     const minThreshold = { '5m': 0.0002, '30m': 0.0005, '1h': 0.001, '2h': 0.0015, '4h': 0.002, '8h': 0.003, '1d': 0.003, '1w': 0.005 };
     
+    const MAX_NEUTRAL_RATE = 0.20; // Never allow > 20% of predictions to resolve as neutral
     const findBestThreshold = (records, floor) => {
       let bestThreshold = floor;
       let bestScore = 0;
@@ -1016,6 +1196,9 @@ async function refreshLearnedDirThresholds() {
         }
         const acc = directional > 0 ? correct / directional : 0;
         const directionalPct = directional / records.length;
+        const neutralRate = 1 - directionalPct;
+        // HARD CAP: reject thresholds that cause > 20% neutral resolution rate
+        if (neutralRate > MAX_NEUTRAL_RATE) continue;
         const coveragePenalty = directionalPct > 0.95 ? 0.7 : directionalPct < 0.30 ? 0.5 : 1.0;
         const score = acc * Math.min(1, directionalPct / 0.4) * coveragePenalty;
         if (score > bestScore) { bestScore = score; bestThreshold = t; }
@@ -1180,14 +1363,15 @@ async function refreshReverseSignals() {
 
     if (!rows || rows.length < 100) return;
 
-    // Per-sector directional thresholds (matching resolution function)
+    // Per-sector directional thresholds — must match the corrected resolution thresholds
+    // (Old values of 0.5% for tech were above avg actual moves of 0.26%, causing false neutrals)
     const sectorThresholds = {
-      forex: 0.0005,       // 0.05% — forex moves are tiny
+      forex: 0.00007,      // 0.007% — forex moves are tiny
       crypto: 0.0075,      // 0.75% — crypto is volatile
-      commodities: 0.004,  // 0.4%
-      energy: 0.004,       // 0.4%
-      tech: 0.005,         // 0.5%
-      indices: 0.005,      // 0.5%
+      commodities: 0.0016, // 0.16% (0.002 base * 0.8 scale)
+      energy: 0.0016,      // 0.16%
+      tech: 0.001,         // 0.10% — corrected from old 0.5%
+      indices: 0.001,      // 0.10%
     };
 
     // Group by symbol and re-evaluate with correct thresholds
@@ -1222,9 +1406,10 @@ async function refreshReverseSignals() {
       const accuracy = stats.correct / total;
       const flippedAccuracy = stats.flippedCorrect / total;
 
-      // REVERSE SIGNAL: accuracy < 20% on directional binary AND flipped > 50%
-      // This means the system is detecting real patterns but mapping direction wrong
-      const shouldFlip = accuracy < 0.20 && flippedAccuracy > 0.45 && total >= 50;
+      // REVERSE SIGNAL: accuracy < 45% on directional binary AND flipped > 50%
+      // <20% = strong inversion (AMZN-style), 20-45% = weak/drifting signal (MSFT/META/NG=F)
+      // Both are worth flipping — at <45% even random (50%) beats us, so inverting wins
+      const shouldFlip = accuracy < 0.45 && flippedAccuracy > 0.50 && total >= 50;
 
       signals[sym] = {
         accuracy: +accuracy.toFixed(3),
@@ -1278,6 +1463,139 @@ async function refreshSymbolAccuracy() {
     }
   } catch (err) {
     // Non-critical
+  }
+}
+
+/**
+ * SELF-EVOLVING: Learn volume flow signal reliability per symbol.
+ *
+ * Finnhub WebSocket flow (buy_pct vs sell_pct) is stored in prediction_metadata.
+ * This function measures whether flow AGREEMENT with predicted direction improves accuracy.
+ * Only activates a multiplier when:
+ *   - n >= 50 resolved predictions in each category (agrees / disagrees)
+ *   - accuracy delta >= 10pp between agrees and disagrees
+ *   - flow was NOT stale at prediction time
+ *
+ * Result stored in market-flow-weights.json — same pattern as market-reverse-signals.json.
+ * Applied in the confidence chain AFTER reverse signal flip.
+ */
+async function refreshFlowWeights() {
+  if (!sqlPool) return;
+  try {
+    const { rows } = await sqlPool.query(`
+      SELECT
+        symbol,
+        predicted_direction,
+        ep_correct,
+        (prediction_metadata->'volume_flow'->>'buy_pct')::numeric  AS buy_pct,
+        (prediction_metadata->'volume_flow'->>'sell_pct')::numeric AS sell_pct,
+        (prediction_metadata->'volume_flow'->>'stale')::text        AS stale_str,
+        (prediction_metadata->'volume_flow'->>'last_trade_ms')::bigint AS last_trade_ms,
+        EXTRACT(EPOCH FROM created_at)*1000 AS created_ms
+      FROM market_prediction_attempts
+      WHERE resolved_at IS NOT NULL
+        AND ep_correct IS NOT NULL
+        AND prediction_metadata->'volume_flow' IS NOT NULL
+        AND (prediction_metadata->'volume_flow'->>'buy_pct') IS NOT NULL
+        AND (prediction_metadata->'volume_flow'->>'stale') = 'false'
+      ORDER BY created_at DESC
+      LIMIT 20000
+    `);
+
+    if (!rows || rows.length < 100) return;
+
+    const FLOW_MIN_SAMPLES  = 50;   // minimum resolved per category before applying
+    const FLOW_MIN_DELTA    = 0.10; // 10pp minimum difference to be considered reliable
+    const FLOW_FRESH_MS     = 15 * 60 * 1000; // 15 minutes: flow must be recent at prediction time
+    const FLOW_AGREE_THRESH = 0.55; // buy_pct/sell_pct >= 55% = directional agreement
+
+    const bySymbol = {};
+
+    for (const r of rows) {
+      const sym = r.symbol;
+      if (!bySymbol[sym]) bySymbol[sym] = { agrees: { n: 0, correct: 0 }, disagrees: { n: 0, correct: 0 } };
+
+      // Skip if flow was too stale at prediction time (last_trade_ms vs created_ms)
+      if (r.last_trade_ms && r.created_ms) {
+        const ageMs = Number(r.created_ms) - Number(r.last_trade_ms);
+        if (ageMs > FLOW_FRESH_MS) continue;
+      }
+
+      const buyPct  = Number(r.buy_pct  || 0);
+      const sellPct = Number(r.sell_pct || 0);
+
+      let flowAgrees = false;
+      let flowActive = false;
+      if (r.predicted_direction === 'bullish' && buyPct  >= FLOW_AGREE_THRESH) { flowActive = true; flowAgrees = true;  }
+      if (r.predicted_direction === 'bearish' && sellPct >= FLOW_AGREE_THRESH) { flowActive = true; flowAgrees = true;  }
+      if (r.predicted_direction === 'bullish' && sellPct >= FLOW_AGREE_THRESH) { flowActive = true; flowAgrees = false; }
+      if (r.predicted_direction === 'bearish' && buyPct  >= FLOW_AGREE_THRESH) { flowActive = true; flowAgrees = false; }
+
+      if (!flowActive) continue; // neutral flow — skip (not informative)
+
+      const bucket = flowAgrees ? bySymbol[sym].agrees : bySymbol[sym].disagrees;
+      bucket.n++;
+      if (r.ep_correct === true) bucket.correct++;
+    }
+
+    const weights = {};
+    const active  = [];
+
+    for (const [sym, stats] of Object.entries(bySymbol)) {
+      const ag  = stats.agrees;
+      const dis = stats.disagrees;
+      const agAcc  = ag.n  > 0 ? ag.correct  / ag.n  : null;
+      const disAcc = dis.n > 0 ? dis.correct / dis.n : null;
+
+      // Need enough samples in BOTH categories to compare
+      if (ag.n < FLOW_MIN_SAMPLES || dis.n < FLOW_MIN_SAMPLES) {
+        weights[sym] = { agrees_n: ag.n, agrees_acc: agAcc, disagrees_n: dis.n, disagrees_acc: disAcc, multiplier: 1.0, validated: false };
+        continue;
+      }
+
+      const delta = Math.abs(agAcc - disAcc);
+      if (delta < FLOW_MIN_DELTA) {
+        // Flow has no meaningful signal for this symbol — neutral weight
+        weights[sym] = { agrees_n: ag.n, agrees_acc: agAcc, disagrees_n: dis.n, disagrees_acc: disAcc, multiplier: 1.0, validated: true, delta };
+        continue;
+      }
+
+      // Flow IS informative for this symbol
+      // If agAcc > disAcc: flow agreement → boost, disagreement → penalty
+      // If disAcc > agAcc: flow agreement → penalty (anti-signal), disagreement → boost
+      const flowIsProSignal = agAcc > disAcc;
+      const strength = Math.min(delta, 0.25); // cap at 25pp → max ×1.10 or ×0.92
+      const boost   = 1.0 + (strength * 0.4); // 10pp delta → ×1.04, 25pp → ×1.10
+      const penalty = 1.0 - (strength * 0.32); // 10pp delta → ×0.97, 25pp → ×0.92
+
+      weights[sym] = {
+        agrees_n:       ag.n,
+        agrees_acc:     +agAcc.toFixed(3),
+        disagrees_n:    dis.n,
+        disagrees_acc:  +disAcc.toFixed(3),
+        flowIsProSignal,
+        multiplier_agrees:    flowIsProSignal ? +boost.toFixed(3) : +penalty.toFixed(3),
+        multiplier_disagrees: flowIsProSignal ? +penalty.toFixed(3) : +boost.toFixed(3),
+        multiplier: 1.0, // default (overridden at application time based on agreement)
+        validated: true,
+        delta: +delta.toFixed(3),
+      };
+      active.push(sym);
+    }
+
+    learnedFlowWeights = weights;
+    flowWeightsRefreshedAt = resolutionCycleCount || 0;
+    persistToFile(FLOW_WEIGHTS_FILE, weights);
+
+    const summary = active.map(s => {
+      const w = weights[s];
+      const icon = w.flowIsProSignal ? '✅' : '🔄';
+      return `${icon} ${s} agree=${( w.agrees_acc*100).toFixed(1)}%(n=${w.agrees_n}) disagree=${(w.disagrees_acc*100).toFixed(1)}%(n=${w.disagrees_n}) Δ=${(w.delta*100).toFixed(1)}pp`;
+    });
+    log(`📊 Flow weights refreshed (${Object.keys(weights).length} symbols, ${active.length} validated):`);
+    if (summary.length > 0) summary.forEach(s => log(`   ${s}`));
+  } catch (err) {
+    log(`Flow weights refresh error: ${err.message}`, 'warn');
   }
 }
 
@@ -1595,6 +1913,65 @@ async function alertEdgeDiscovery(edgeSymbols) {
 }
 
 // ─── MARKET HOURS ────────────────────────────────────────────────────────────
+/**
+ * Returns the current US equity trading session.
+ * Every prediction is tagged with this so off-hours trades are clearly noted.
+ */
+function getMarketSession() {
+  const now = new Date();
+  const day = now.getDay(); // 0=Sun, 6=Sat
+  if (day === 0 || day === 6) return 'weekend';
+  const et = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+  const mins = et.getHours() * 60 + et.getMinutes();
+  if (mins >= 570 && mins < 960)  return 'regular';      // 9:30am–4:00pm ET
+  if (mins >= 240 && mins < 570)  return 'pre_market';   // 4:00am–9:30am ET
+  if (mins >= 960 && mins < 1200) return 'after_hours';  // 4:00pm–8:00pm ET
+  return 'overnight';                                     // 8:00pm–4:00am ET
+}
+
+// Returns structured temporal context for a prediction
+function getTemporalContext() {
+  const now = new Date();
+  const m = now.getMonth(); // 0-11
+  const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const season = m >= 2 && m <= 4 ? 'spring' : m >= 5 && m <= 7 ? 'summer' : m >= 8 && m <= 10 ? 'fall' : 'winter';
+  const startOfYear = new Date(now.getFullYear(), 0, 1);
+  const weekOfYear = Math.ceil(((now - startOfYear) / 86400000 + startOfYear.getDay() + 1) / 7);
+  return {
+    day_of_week: DAYS[now.getDay()],
+    day_num: now.getDay(),
+    month: MONTHS[m],
+    month_num: m + 1,
+    season,
+    week_of_year: weekOfYear,
+    year: now.getFullYear(),
+    iso_date: now.toISOString().slice(0, 10),
+  };
+}
+
+// Vera Rubin score: dark matter forces in the market — institutional flows you cannot see
+// directly but whose effects are measurable. Like Vera Rubin's galaxy rotation curves,
+// the hidden mass drives the visible behavior.
+// Score: 0.01 = strong hidden buying (black/buy pressure), 0.99 = strong hidden selling (white/sell pressure)
+function computeVeraRubin(symbol, predMomentum) {
+  const shortData = shortVolumeCache.get(symbol);
+  const vix = vixCache.value;
+  const shortPct = shortData?.shortPct ?? 0.40;
+  const vixNorm = vix ? Math.min(1, vix.current / 40) : 0.30;
+  const momFactor = predMomentum ? Math.max(0, Math.min(1, (predMomentum + 100) / 200)) : 0.50;
+  const score = Math.max(0.01, Math.min(0.99, (shortPct * 0.50) + (vixNorm * 0.30) + ((1 - momFactor) * 0.20)));
+  const dark_force_direction = score > 0.55 ? 'bearish' : score < 0.45 ? 'bullish' : 'neutral';
+  // Piece tier = institutional level of the unseen force
+  const piece_tier = score > 0.80 ? 'king'    // Central bank / Fed
+    : score > 0.65 ? 'queen'   // Mega-institution (BlackRock/Vanguard)
+    : score > 0.55 ? 'rook'    // Major bank (JPMorgan/Goldman)
+    : score > 0.45 ? 'bishop'  // Hedge fund
+    : score > 0.30 ? 'knight'  // Active fund manager
+    : 'pawn';                   // Retail flow
+  return { score: +score.toFixed(3), dark_force_direction, piece_tier, short_pressure: +shortPct.toFixed(3), vix_regime: vix?.level || 'unknown' };
+}
+
 function isStockMarketOpen() {
   const now = new Date();
   const day = now.getDay();
@@ -1696,10 +2073,7 @@ function getActiveSymbols() {
   if (isShanghaiOpen()) symbols.push(...INTL_INDEX_SYMBOLS.asia_pacific.filter(s => s === '000001.SS'));
   if (isSaudiOpen())    symbols.push(...INTL_INDEX_SYMBOLS.middle_east);
   if (isTSXOpen())      symbols.push(...INTL_INDEX_SYMBOLS.canada);
-  // Crypto: 24/7/365 (training data)
-  symbols.push(...CRYPTO_SYMBOLS);
-  // Harmony experiment symbols: 24/7 (cultural signal, not conventional)
-  symbols.push(...HARMONY_SYMBOLS);
+  // Crypto: NOT a prediction target — used only as market sentiment signal
   return symbols;
 }
 
@@ -2177,14 +2551,16 @@ async function getTemporalParableSignal(marketDirection, marketArchetype, priceD
 
   const domains = { chess: null, music: null, market: null };
   
-  // DOMAIN 1: Chess temporal consensus (live games → white/black/draw → bearish/bullish/neutral)
+  // DOMAIN 1: Chess temporal consensus — INVERTED (v33)
+  // chess=bearish → inverted=up (81.6% accuracy), chess=bullish → inverted=down (72.5% accuracy)
   const chessConsensus = await getChessConsensusSignal().catch(() => null);
   if (chessConsensus && chessConsensus.direction !== 'neutral') {
+    const invertedChessDir = chessConsensus.direction === 'bearish' ? 'up' : chessConsensus.direction === 'bullish' ? 'down' : 'neutral';
     domains.chess = {
-      direction: chessConsensus.direction === 'bullish' ? 'up' : chessConsensus.direction === 'bearish' ? 'down' : 'neutral',
+      direction: invertedChessDir,
       confidence: Math.min(0.80, chessConsensus.confidence || 0.50),
-      source: 'live_chess_consensus',
-      detail: `W:${chessConsensus.whitePct}% B:${chessConsensus.blackPct}% D:${chessConsensus.drawPct}% arch=${chessConsensus.dominantArchetype}`,
+      source: 'live_chess_consensus_inverted',
+      detail: `W:${chessConsensus.whitePct}% B:${chessConsensus.blackPct}% D:${chessConsensus.drawPct}% arch=${chessConsensus.dominantArchetype} [INVERTED]`,
     };
   }
   
@@ -2444,7 +2820,7 @@ function classifyMarketAsChess(signature) {
 // v30: Trade grades updated from real 1K resolved data (Feb 18, 2026)
 // blunder_free_queen is 79% — it's A-grade, not C-grade!
 const A_GRADE_ARCHETYPES = new Set(['blunder_free_queen', 'false_breakout']);  // 79% and 60%
-const A_GRADE_CHESS_RESONANCE = new Set(['sacrificial_queenside_break', 'sacrificial_kingside_assault']);
+const A_GRADE_CHESS_RESONANCE = new Set(['sacrificial_queenside_break', 'sacrificial_kingside_assault', 'central_knight_outpost']); // v31: +central_knight_outpost 58.8% from Mar 4 2026 report
 const B_GRADE_ARCHETYPES = new Set(['trap_queen_sac', 'regime_shift_down', 'cultural_harmony']);
 const C_GRADE_ARCHETYPES = new Set([
   'bullish_momentum', 'mean_reversion_up', 'mean_reversion_down',
@@ -2506,20 +2882,26 @@ async function logToAuditTrail(pred, horizonMs, chessSignal, timeframe = null) {
   // v32: HARD confidence gate — only save predictions with demonstrated signal.
   // Saving low-confidence predictions dilutes the overall accuracy metric and
   // stalls self-learning (wrong data teaches the wrong lesson).
-  const MIN_DIRECTIONAL_CONFIDENCE = 0.55;
+  // TEMP: Lowered to 0.30 (30%) to allow stock trades with current market conditions
+  const MIN_DIRECTIONAL_CONFIDENCE = 0.30;
   const FOREX_MIN_CONFIDENCE = 0.65;
   const minConf = isHarmony ? 0.45 : (isForexSymbol ? FOREX_MIN_CONFIDENCE : MIN_DIRECTIONAL_CONFIDENCE);
   const passesConfidenceGate = pred.confidence >= minConf;
   if (!passesConfidenceGate) return; // HARD gate — skip, don't pollute accuracy metrics
 
-  // v32: Hard archetype kill — dead archetypes (empirically near-zero accuracy) are skipped.
-  // Unlike dampening (which saves bad data), kill removes the noise entirely.
+  // v35: Dead horizon combos — 0% accuracy on ≥50 resolved samples = confirmed anti-signal.
+  // Not flipped (no reverse signal file entry), just suppressed: system has learned nothing useful here.
+  // GOOGL: 70% avg_conf but 38.96% acc (n=1,012) — systematic inversion across all horizons (Mar 4 2026)
+  const DEAD_HORIZON_COMBOS = new Set(['NVDA|1d', 'GOOGL|1d', 'QQQ|1d', 'GOOGL|30m', 'GOOGL|1h', 'GOOGL|2h', 'GOOGL|8h']);
+  if (DEAD_HORIZON_COMBOS.has(`${pred.symbol}|${timeHorizon}`)) return;
+
+  // v34: Reduced kill list — only kill archetypes with ZERO symbol-specific value.
+  // Previous list was blocking SI=F mean_reversion_down (100% n=29), GC=F mean_reversion_down (83% n=53),
+  // AMD institutional_distribution (100% n=90), AMZN regime_shift_down (100% n=195).
+  // Terminal Gate 2 (≥60% combo accuracy) handles display quality downstream.
   const DEAD_ARCHETYPES = new Set([
-    'institutional_distribution', // 0.0% (0/152)
-    'mean_reversion_up',          // 1.4% (1/71)
-    'bearish_momentum',           // 0.0% (0/25)
-    'mean_reversion_down',        // 7.3% (9/123)
-    'no_signal',                  // 0% — flat noise
+    'no_signal',       // 0% — flat noise, no directional info
+    'oversold_bounce', // 29.2% with no strong symbol-specific use case
   ]);
   if (!isHarmony && pred.archetype && DEAD_ARCHETYPES.has(pred.archetype)) return;
   
@@ -2529,7 +2911,7 @@ async function logToAuditTrail(pred, horizonMs, chessSignal, timeframe = null) {
     if (archWeight && archWeight.sampleSize >= 30) {
       const expectedDir = direction === 'up' ? 'up' : 'down';
       const archAcc = archWeight[expectedDir] || 0;
-      passesArchetypeGate = archAcc >= 0.30; // Raised from 0.20 — only save above 30%
+      passesArchetypeGate = archAcc >= 0.20; // Lowered: global weights miss symbol-specific edges (SI=F, GC=F)
       if (!passesArchetypeGate) return; // Hard gate
     }
   }
@@ -2538,7 +2920,7 @@ async function logToAuditTrail(pred, horizonMs, chessSignal, timeframe = null) {
     symbol: pred.symbol,
     time_horizon: timeHorizon,
     prediction_source: 'ep_farm_market_worker',
-    predicted_direction: direction === 'up' ? 'bullish' : direction === 'down' ? 'bearish' : 'neutral',
+    predicted_direction: direction === 'up' || direction === 'bullish' ? 'bullish' : direction === 'down' || direction === 'bearish' ? 'bearish' : 'neutral',
     confidence: Math.round(pred.confidence * 100),
     archetype: pred.archetype,
     signature_hash: signatureHash,
@@ -2552,6 +2934,7 @@ async function logToAuditTrail(pred, horizonMs, chessSignal, timeframe = null) {
     data_source: 'yahoo_finance',
     candle_count: null,
     prediction_metadata: {
+      market_session: getMarketSession(),
       market_conditions: pred.market_conditions,
       worker_id: WORKER_ID,
       horizon_ms: horizonMs,
@@ -2612,6 +2995,27 @@ async function logToAuditTrail(pred, horizonMs, chessSignal, timeframe = null) {
       } : null,
       // v30: Temporal parable confirmation (chess+music+market interlink)
       parable: pred.parableConfirmation || null,
+      // v32: Celestial temporal coordinate — cosmic clock state at prediction time
+      celestial: getCelestialContext(),
+      // v33: Chess color invariant — black=BUY (bullish), white=SELL (bearish)
+      chess_color: (direction === 'up' || direction === 'bullish') ? 'black' : (direction === 'down' || direction === 'bearish') ? 'white' : 'grey',
+      // v33: Archetype story — narrative encoding of what this chess pattern means in market terms
+      archetype_story: ARCHETYPE_PARABLES[pred.archetype] || ARCHETYPE_PARABLES[pred.baseArchetype] || null,
+      // v33: Temporal context — when this prediction was made (season, day-of-week, week-of-year)
+      temporal: getTemporalContext(),
+      // v33: Vera Rubin score — hidden institutional dark force (short pressure + VIX + momentum)
+      // Named after Vera Rubin's dark matter discovery: the unseen mass drives the visible motion
+      vera_rubin: computeVeraRubin(pred.symbol, pred.market_conditions?.momentum),
+      // v33: Live order flow — volume delta from Finnhub WebSocket (market-flow-worker)
+      // buy_pct > 0.55 = black (buy pressure), < 0.45 = white (sell pressure)
+      volume_flow: (() => { loadVolumeFlow(); return volumeFlowCache.symbols?.[pred.symbol] || null; })(),
+      // v33: Classification (5W+H completions — who/how/why derived from archetype + dark force)
+      classification: {
+        how: ARCHETYPE_PARABLES[pred.archetype]?.mechanism || 'unknown',
+        why: ARCHETYPE_PARABLES[pred.archetype]?.driver || 'technical',
+        who: computeVeraRubin(pred.symbol, pred.market_conditions?.momentum).piece_tier,
+        color_bias: ARCHETYPE_PARABLES[pred.archetype]?.color_bias || 'neutral',
+      },
     },
   };
 
@@ -2673,6 +3077,10 @@ async function resolveAuditTrailPredictions() {
 
     if (error || !pending || pending.length === 0) continue;
 
+    // Crypto is signal-only — skip resolution entirely
+    const cryptoFiltered = pending.filter(p => !['BTC-USD','ETH-USD','SOL-USD'].includes(p.symbol));
+    if (cryptoFiltered.length === 0) continue;
+
     // ── PER-SECTOR DIRECTIONAL THRESHOLDS ──
     // Forex moves are 5-10x smaller than stocks. A 0.03% forex move IS directional.
     // Using the same threshold for all sectors was classifying 90-95% of forex as "neutral"
@@ -2694,11 +3102,14 @@ async function resolveAuditTrailPredictions() {
       ? learnedDirThresholds[h.label] 
       : (defaultThresholds[h.label] || 0.005);
 
-    for (const pred of pending) {
+    for (const pred of cryptoFiltered) {
       const priceData = await fetchPrice(pred.symbol);
       if (!priceData) continue;
 
       const exitPrice = priceData.price;
+      // Skip if market is closed / price is stale — same price means no real movement data yet
+      // This prevents zero-move artificial neutral resolutions over weekends
+      if (Math.abs(exitPrice - pred.price_at_prediction) / pred.price_at_prediction < 0.00005) continue;
       const priceChange = (exitPrice - pred.price_at_prediction) / pred.price_at_prediction;
       const actualMove = Math.abs(priceChange * 100);
       // Apply per-sector threshold scaling
@@ -2724,7 +3135,7 @@ async function resolveAuditTrailPredictions() {
       const { error: upErr } = await supabase.from('market_prediction_attempts').update({
         resolved_at: now.toISOString(),
         price_at_resolution: exitPrice,
-        actual_direction: actualDir,
+        actual_direction: actualNorm, // Store normalized direction so ep_correct works
         actual_move: Math.round(actualMove * 100) / 100,
         ep_correct: epCorrect,
         baseline_correct: baselineCorrect,
@@ -2770,8 +3181,12 @@ async function resolvePendingPredictions() {
 
   if (error || !pending || pending.length === 0) return 0;
 
+  // Crypto is signal-only — never resolve predictions for it
+  const CRYPTO_SYMBOLS_SET = new Set(['BTC-USD', 'ETH-USD', 'SOL-USD']);
+
   let resolved = 0;
   for (const pred of pending) {
+    if (CRYPTO_SYMBOLS_SET.has(pred.symbol)) continue;
     const horizonMs = pred.prediction_horizon_ms || 5 * 60 * 1000;
     const createdAt = new Date(pred.created_at).getTime();
     const now = Date.now();
@@ -2855,7 +3270,7 @@ async function updateSecurityMetrics(symbol, dirCorrect, magAcc, calAcc, composi
 // Fetches historical candles, runs predictions, resolves against known outcomes.
 
 function isAllMarketsClosed() {
-  // True when stocks, forex, and commodities are ALL closed (only crypto open)
+  // True when stocks, forex, and commodities are ALL closed
   return !isStockMarketOpen() && !isForexOpen();
 }
 
@@ -2991,7 +3406,15 @@ async function historicalReplayCycle(mode = 'all') {
   try {
     // Fetch historical candles — Yahoo supports range like '5d', '1mo', '3mo'
     const range = lookbackDays <= 5 ? '5d' : lookbackDays <= 30 ? '1mo' : '3mo';
-    const candles = await fetchIntradayCandles(symbol, tf.candleInterval, range);
+    let candles = await fetchIntradayCandles(symbol, tf.candleInterval, range);
+    // v33.1: On weekends/after-hours Yahoo returns 0 intraday candles (markets closed).
+    // Fall back to daily candles (1d/6mo) — always available regardless of market status.
+    if (!candles || candles.length < tf.minCandles + 5) {
+      candles = await fetchIntradayCandles(symbol, '1d', '6mo');
+      if (candles && candles.length >= tf.minCandles + 5) {
+        log(`📼 Replay: using daily fallback for ${symbol} ${tf.label} (${candles.length} daily candles)`);
+      }
+    }
     if (!candles || candles.length < tf.minCandles + 5) {
       log(`📼 Replay: insufficient candles for ${symbol} ${tf.label} (got ${candles?.length || 0})`);
       return;
@@ -3020,7 +3443,7 @@ async function historicalReplayCycle(mode = 'all') {
 
       // Run the SAME grid prediction pipeline as live trading
       const priceData = { symbol, price: entryPrice, change: 0 };
-      const pred = generateGridPrediction(symbol, windowCandles, priceData, null, tf.label);
+      const pred = generateGridPrediction(symbol, windowCandles, priceData, null, tf.label, tf);
       if (!pred || !pred.direction || pred.direction === 'flat' || pred.direction === 'neutral') continue;
 
       // Resolve: did the price move in the predicted direction?
@@ -3037,10 +3460,27 @@ async function historicalReplayCycle(mode = 'all') {
       recordReplayResult(archetype, sector, tf.label, timestamp, isCorrect);
 
       // v30.2: Record replay signature for cross-reference with today's live conditions
+      // v33: Enriched with temporal + vera_rubin + mechanism for richer historical matching
+      const replaySigTime = new Date(timestamp || Date.now());
+      const replaySigMonth = replaySigTime.getMonth();
+      const replaySigSeason = replaySigMonth >= 2 && replaySigMonth <= 4 ? 'spring'
+        : replaySigMonth >= 5 && replaySigMonth <= 7 ? 'summer'
+        : replaySigMonth >= 8 && replaySigMonth <= 10 ? 'fall' : 'winter';
+      const replaySigDow = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][replaySigTime.getDay()];
+      const replaySigMechanism = ARCHETYPE_PARABLES[archetype]?.mechanism || 'unknown';
+      const replaySigMom = pred.market_conditions?.momentum ?? 0;
+      const replaySigMomFactor = Math.max(0, Math.min(1, (replaySigMom + 100) / 200));
+      const replaySigVRScore = Math.max(0.01, Math.min(0.99, 0.40 * 0.50 + 0.30 * 0.30 + (1 - replaySigMomFactor) * 0.20));
+      const replaySigDarkForce = replaySigVRScore > 0.55 ? 'bearish' : replaySigVRScore < 0.45 ? 'bullish' : 'neutral';
       replayState.recentReplaySignatures.push({
         symbol, archetype, direction: pred.direction, correct: isCorrect,
         confidence: pred.confidence, sector, timeframe: tf.label,
         lookbackDays, actualMove, timestamp: Date.now(),
+        day_of_week: replaySigDow,
+        season: replaySigSeason,
+        mechanism: replaySigMechanism,
+        dark_force: replaySigDarkForce,
+        color_bias: ARCHETYPE_PARABLES[archetype]?.color_bias || 'neutral',
       });
       if (replayState.recentReplaySignatures.length > MAX_RECENT_REPLAY_SIGS) {
         replayState.recentReplaySignatures = replayState.recentReplaySignatures.slice(-MAX_RECENT_REPLAY_SIGS);
@@ -3048,13 +3488,24 @@ async function historicalReplayCycle(mode = 'all') {
 
       // Save to DB for the calibration system to learn from (tagged as replay)
       // Uses same column names as the live INSERT (line ~2387)
-      if (sqlPool && replayed <= 10) { // Limit DB writes to 10 per cycle
+      const DEAD_ARCHETYPES_REPLAY = new Set([
+        'no_signal', 'oversold_bounce',
+      ]);
+      if (DEAD_ARCHETYPES_REPLAY.has(archetype)) { /* skip dead archetype replay inserts */ }
+      else if (sqlPool && replayed <= 10) { // Limit DB writes to 10 per cycle
         try {
+          // Write resolved columns immediately — walk-forward replay knows the outcome
+          // (prediction was generated from candles[0..i] only, exitPrice is candles[i+resolution])
+          // This feeds ep_correct directly into security_accuracy_metrics and self-learning.
+          const replayTs = new Date(timestamp || Date.now()).toISOString();
+          const resolvedTs = new Date((timestamp || Date.now()) + tf.resolutionMs).toISOString();
           await sqlPool.query(
             `INSERT INTO market_prediction_attempts (
               symbol, time_horizon, prediction_source, predicted_direction, confidence,
-              archetype, price_at_prediction, data_source, prediction_metadata
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+              archetype, price_at_prediction, price_at_resolution, actual_direction,
+              ep_correct, baseline_correct, resolved_at, data_source,
+              created_at, prediction_metadata
+            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
             ON CONFLICT DO NOTHING`,
             [
               symbol,
@@ -3064,19 +3515,22 @@ async function historicalReplayCycle(mode = 'all') {
               pred.confidence,
               archetype,
               entryPrice,
+              exitPrice,
+              actualDir,
+              isCorrect,
+              actualDir === (pred.baselineDirection || pred.direction), // baseline vs actual
+              resolvedTs,
               'yahoo_historical',
+              replayTs,
               JSON.stringify({
                 source: 'historical_replay',
                 replay_cycle: replayState.cycleCount,
                 lookback_days: lookbackDays,
-                sector: sector,
-                exit_price: exitPrice,
-                actual_direction: actualDir,
-                replay_correct: isCorrect,
+                sector,
                 base_archetype: pred.baseArchetype || null,
                 tactical_override: pred.tacticalOverride?.pattern || null,
                 chess_bridge: pred.chessBridge ? { archetype: pred.chessBridge.chessArchetype, accuracy: pred.chessBridge.accuracy } : null,
-                window_timestamp: timestamp,
+                replay_similarity: pred.replaySimilarity || null,
               }),
             ]
           );
@@ -3104,53 +3558,89 @@ async function historicalReplayCycle(mode = 'all') {
   }
 }
 
-// ─── REPLAY SIMILARITY CROSS-REFERENCE (v30.2) ──────────────────────────────
-// When live predictions fire, check if recent replay patterns match.
-// "Cross reference any similarities to today" — if overnight replay found
-// that archetype X on symbol Y was 70% accurate in the last 5 days,
-// and today's live prediction is archetype X on symbol Y, boost confidence.
+// ─── REPLAY SIMILARITY CROSS-REFERENCE (v33) ────────────────────────────────
+// "Map the web of history repeating itself" — 7 match dimensions:
+//   1. Exact: symbol + archetype (strongest)
+//   2. Sector: sector + archetype
+//   3. Direction: symbol + direction
+//   4. Temporal: day_of_week + archetype (Mon trap_queen_sac historically 80%?)
+//   5. Seasonal: season + mechanism (fall reversals historically different from spring?)
+//   6. Dark force: dark_force_direction + archetype (bearish dark force + false_breakout = ?)
+//   7. Market state: mechanism + dark_force (accumulation under bullish dark force = ?)
 function getReplaySimilaritySignal(symbol, archetype, direction, sector) {
   const sigs = replayState.recentReplaySignatures;
-  if (!sigs || sigs.length < 10) return null; // Need minimum data
+  if (!sigs || sigs.length < 10) return null;
 
-  // Match 1: Exact symbol + archetype (strongest signal)
+  const now = new Date();
+  const nowMonth = now.getMonth();
+  const currentSeason = nowMonth >= 2 && nowMonth <= 4 ? 'spring'
+    : nowMonth >= 5 && nowMonth <= 7 ? 'summer'
+    : nowMonth >= 8 && nowMonth <= 10 ? 'fall' : 'winter';
+  const currentDow = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][now.getDay()];
+  const currentMechanism = ARCHETYPE_PARABLES[archetype]?.mechanism || 'unknown';
+  // Estimate current dark force from VIX level only (short data not available at call time)
+  const currentVixLevel = vixCache.value?.level || 'neutral';
+  const currentDarkForce = currentVixLevel === 'high' || currentVixLevel === 'extreme' ? 'bearish'
+    : currentVixLevel === 'low' ? 'bullish' : 'neutral';
+
+  // Match 1: Exact symbol + archetype (strongest)
   const exactMatches = sigs.filter(s => s.symbol === symbol && s.archetype === archetype);
-  // Match 2: Same sector + archetype (broader signal)
+  // Match 2: Same sector + archetype
   const sectorMatches = sigs.filter(s => s.sector === sector && s.archetype === archetype);
-  // Match 3: Same symbol + direction (directional signal)
+  // Match 3: Same symbol + direction
   const dirMatches = sigs.filter(s => s.symbol === symbol && s.direction === direction);
+  // Match 4: Same day-of-week + archetype — history repeats on the SAME weekday
+  const temporalMatches = sigs.filter(s => s.day_of_week === currentDow && s.archetype === archetype);
+  // Match 5: Same season + mechanism — seasonal pattern (fall breakdowns vs spring breakouts)
+  const seasonalMatches = sigs.filter(s => s.season === currentSeason && s.mechanism === currentMechanism);
+  // Match 6: Same dark force direction + archetype — hidden force confirming pattern
+  const darkForceMatches = sigs.filter(s => s.dark_force === currentDarkForce && s.archetype === archetype);
+  // Match 7: Same mechanism under same dark force — market-state pattern
+  const stateMatches = sigs.filter(s => s.mechanism === currentMechanism && s.dark_force === currentDarkForce);
 
-  const calcAcc = (matches) => {
-    if (matches.length < 3) return null;
+  const calcAcc = (matches, minN = 3) => {
+    if (matches.length < minN) return null;
     const correct = matches.filter(m => m.correct).length;
     return { accuracy: correct / matches.length, n: matches.length };
   };
 
-  const exact = calcAcc(exactMatches);
-  const bySector = calcAcc(sectorMatches);
-  const byDir = calcAcc(dirMatches);
+  const exact      = calcAcc(exactMatches, 3);
+  const bySector   = calcAcc(sectorMatches, 5);
+  const byDir      = calcAcc(dirMatches, 5);
+  const byTemporal = calcAcc(temporalMatches, 5);
+  const bySeasonal = calcAcc(seasonalMatches, 8);
+  const byDark     = calcAcc(darkForceMatches, 5);
+  const byState    = calcAcc(stateMatches, 10);
 
-  // Pick the best signal with enough data
-  let bestSignal = null;
-  let bestType = null;
-  if (exact && exact.n >= 3) { bestSignal = exact; bestType = 'exact'; }
-  else if (bySector && bySector.n >= 5) { bestSignal = bySector; bestType = 'sector'; }
-  else if (byDir && byDir.n >= 5) { bestSignal = byDir; bestType = 'direction'; }
+  // Pick highest-priority signal with sufficient data
+  // Exact > temporal > dark force > sector > direction > seasonal > state
+  const candidates = [
+    { sig: exact,      type: 'exact',      priority: 1 },
+    { sig: byTemporal, type: 'temporal',   priority: 2 },
+    { sig: byDark,     type: 'dark_force', priority: 3 },
+    { sig: bySector,   type: 'sector',     priority: 4 },
+    { sig: byDir,      type: 'direction',  priority: 5 },
+    { sig: bySeasonal, type: 'seasonal',   priority: 6 },
+    { sig: byState,    type: 'state',      priority: 7 },
+  ].filter(c => c.sig !== null);
 
-  if (!bestSignal) return null;
+  if (candidates.length === 0) return null;
+  const best = candidates[0]; // Already in priority order
 
-  // Convert accuracy to confidence multiplier:
-  // >60% → boost (1.0-1.15), 40-60% → neutral (0.95-1.05), <40% → dampen (0.80-0.95)
-  const acc = bestSignal.accuracy;
-  const multiplier = acc > 0.60 ? 1.0 + (acc - 0.60) * 0.375  // 60%→1.0, 80%→1.075, 100%→1.15
-    : acc < 0.40 ? 0.80 + acc * 0.375                          // 0%→0.80, 20%→0.875, 40%→0.95
-    : 0.95 + (acc - 0.40) * 0.5;                               // 40%→0.95, 50%→1.0, 60%→1.05
+  // Confidence multiplier: >60%→boost, 40-60%→neutral, <40%→dampen
+  const acc = best.sig.accuracy;
+  const multiplier = acc > 0.60 ? 1.0 + (acc - 0.60) * 0.375
+    : acc < 0.40 ? 0.80 + acc * 0.375
+    : 0.95 + (acc - 0.40) * 0.5;
 
   return {
     multiplier: Math.round(multiplier * 1000) / 1000,
     accuracy: Math.round(acc * 1000) / 1000,
-    n: bestSignal.n,
-    matchType: bestType,
+    n: best.sig.n,
+    matchType: best.type,
+    // Include all active signals for full context
+    allSignals: candidates.map(c => ({ type: c.type, acc: Math.round(c.sig.accuracy * 1000) / 1000, n: c.sig.n })),
+    context: { day: currentDow, season: currentSeason, mechanism: currentMechanism, dark_force: currentDarkForce },
   };
 }
 
@@ -3196,9 +3686,14 @@ async function predictionCycle() {
 
   const activeSymbols = getActiveSymbols();
   const replayMode = allClosed ? '📼 REPLAY ALL' : (!stocksOpen && forexOpen) ? '📼 REPLAY stocks + LIVE commodities' : null;
-  const marketLabel = stocksOpen ? 'All markets' : forexOpen ? (replayMode || 'Forex+Commodities') : allClosed ? '📼 REPLAY + Crypto' : 'Crypto only';
+  const marketLabel = stocksOpen ? 'All markets' : forexOpen ? (replayMode || 'Forex+Commodities') : allClosed ? '📼 FULL REPLAY' : 'Weekend replay';
 
   log(`Cycle #${cycleCount} | ${marketLabel} (${activeSymbols.length} symbols × ${TIMEFRAMES.length} timeframes) | Predictions: ${totalPredictions} | Resolved: ${totalResolved} | Correct: ${totalCorrect} | Acc: ${totalResolved > 0 ? (totalCorrect / totalResolved * 100).toFixed(1) + '%' : 'N/A'} | Audit: ${auditTrailTotal}`);
+
+  // v31: Refresh live accuracy cache every 10 min (time-based, not cycle-based)
+  if (Date.now() - liveAccuracyCache.lastRefresh > liveAccuracyCache.refreshIntervalMs) {
+    await refreshLiveAccuracyCache();
+  }
 
   // Self-learning: refresh archetype weights, thresholds, and calibration periodically
   if (cycleCount > 1 && cycleCount % WEIGHT_REFRESH_INTERVAL === 1) {
@@ -3214,16 +3709,20 @@ async function predictionCycle() {
     } catch (e) { log(`Market intel refresh: ${e.message}`, 'warn'); }
   }
 
-  // Fetch real prices for active symbols
-  const allPrices = new Map();
-  const prices = await Promise.all(activeSymbols.map(s => fetchPrice(s)));
-  for (const p of prices) {
-    if (p) allPrices.set(p.symbol, p);
-  }
+  // Skip live price fetching on weekends — replay mode handles everything
+  let allPrices = new Map();
+  if (!allClosed) {
+    const prices = await Promise.all(activeSymbols.map(s => fetchPrice(s)));
+    for (const p of prices) {
+      if (p) allPrices.set(p.symbol, p);
+    }
 
-  if (allPrices.size === 0) {
-    log('No prices fetched. Yahoo may be down.', 'warn');
-    return;
+    if (allPrices.size === 0) {
+      log('No prices fetched. Yahoo may be down.', 'warn');
+      return;
+    }
+  } else {
+    log('Weekend replay mode — skipping live price fetch');
   }
 
   // Fetch VIX + FINRA short volume (pawn pressure gauges)
@@ -3284,47 +3783,7 @@ async function predictionCycle() {
   const tfMade = {};
   const tacticalCounts = {};
 
-  // ── HARMONY PREDICTIONS: crypto via chess archetype → musical patterns ──
-  let harmonyMade = 0;
-  for (const symbol of HARMONY_SYMBOLS) {
-    const priceData = allPrices.get(symbol);
-    if (!priceData) continue;
-    
-    const harmony = await getHarmonySignal(symbol, priceData);
-    if (!harmony || harmony.direction === 'neutral') continue;
-    
-    // Use medium + swing timeframes for harmony (crypto moves on hours, not minutes)
-    for (const tf of TIMEFRAMES.filter(t => t.label === 'medium' || t.label === 'swing')) {
-      const pred = {
-        symbol,
-        direction: harmony.direction,
-        confidence: harmony.confidence,
-        entryPrice: priceData.price,
-        archetype: 'cultural_harmony',
-        timeframe: tf.label,
-        market_conditions: { momentum: priceData.change || 0 },
-        predicted_magnitude: null,
-        baselineDirection: null,
-        baselineConfidence: null,
-        tacticalOverride: null,
-        baseArchetype: null,
-        harmonySignal: harmony,
-      };
-      
-      await logToAuditTrail(pred, tf.resolutionMs, chessSignal, tf);
-      totalPredictions++;
-      harmonyMade++;
-      tfMade[tf.label] = (tfMade[tf.label] || 0) + 1;
-      
-      const dirEmoji = pred.direction === 'up' ? '📈' : pred.direction === 'down' ? '📉' : '➡️';
-      log(`${dirEmoji} ${pred.direction.toUpperCase()} ${symbol} @ $${priceData.price.toFixed(2)} | ${tf.label}/${tf.timeHorizon} | 🎵 HARMONY conf: ${Math.round(harmony.confidence*100)}% | ${harmony.dominantMood}`, 'trade');
-    }
-  }
-  if (harmonyMade > 0) log(`🎵 Cultural harmony: ${harmonyMade} predictions (${HARMONY_SYMBOLS.join(', ')})`);
-
   for (const [symbol, priceData] of allPrices) {
-    // Skip harmony symbols — already predicted above via cultural signal
-    if (HARMONY_SYMBOLS.includes(symbol)) continue;
     
     // SELECTIVE PREDICTION: Skip symbols with proven poor accuracy
     if (!shouldPredictSymbol(symbol) || shouldSkipSymbol(symbol)) {
@@ -3347,7 +3806,7 @@ async function predictionCycle() {
       let pred = null;
       if (candles && candles.length >= tf.minCandles) {
         const symOpts = optionsData?.get(symbol) || null;
-        pred = generateGridPrediction(symbol, candles, priceData, symOpts, tf.label);
+        pred = generateGridPrediction(symbol, candles, priceData, symOpts, tf.label, tf);
         if (pred) pred.timeframe = tf.label;
       }
       
@@ -3363,7 +3822,8 @@ async function predictionCycle() {
       // Applied as mild per-timeframe confidence scaler — validated by cross-domain convergence.
       // scalp=early(0.90x) | medium=mid(1.00x baseline) | swing=late-mid(1.08x) | daily=late(1.15x)
       // Constrained by existing accuracyCeiling — can't inflate beyond empirical archetype performance.
-      const NUCLEAR_PHASE_W = { 'scalp_1h': 0.90, 'medium': 1.00, 'swing': 1.08, 'daily': 1.15 };
+      // scalp_5m: paper WR 16.67% → dampen hard | scalp_30m: paper WR 83.33% → boost | scalp_1h: 0.90x (original)
+      const NUCLEAR_PHASE_W = { 'scalp_5m': 0.82, 'scalp_30m': 1.08, 'scalp_1h': 0.90, 'medium': 1.00, 'swing': 1.08, 'daily': 1.15 };
       const nuclearPhaseMultiplier = NUCLEAR_PHASE_W[tf.label] || 1.00;
       pred.confidence = Math.min(0.85, pred.confidence * nuclearPhaseMultiplier);
       pred.nuclearPhaseCalibration = nuclearPhaseMultiplier;
@@ -3402,7 +3862,10 @@ async function predictionCycle() {
       if (learnedReverseSignals && learnedReverseSignals[symbol]?.shouldFlip) {
         const rs = learnedReverseSignals[symbol];
         const originalDir = pred.direction;
-        pred.direction = pred.direction === 'up' ? 'down' : pred.direction === 'down' ? 'up' : pred.direction;
+        // Handle both legacy ('up'/'down') and normalized ('bullish'/'bearish') direction enums
+        pred.direction = (pred.direction === 'up' || pred.direction === 'bullish') ? 'bearish'
+          : (pred.direction === 'down' || pred.direction === 'bearish') ? 'bullish'
+          : pred.direction;
         pred.reverseSignal = true;
         pred.reverseOriginal = originalDir;
         pred.reverseAccuracy = rs.accuracy;
@@ -3448,29 +3911,51 @@ async function predictionCycle() {
 
         // ...
 
-        // ─── CHESS CONSENSUS: Track but DO NOT modify confidence ────────────
-        // v15: DISABLED consensus confirmation boost.
-        // Data: chess=bullish+market=bullish → 4.0% accuracy (catastrophic)
-        //       chess=null+market=bullish → 59.7% accuracy (excellent)
-        // The consensus signal is ANTI-CORRELATED with market accuracy.
-        // Keep tracking in metadata for future learning, but stop poisoning confidence.
+        // ─── CHESS CONSENSUS: INVERTED contrarian signal ─────────────────
+        // v15: Disabled because direct mapping hurt predictions.
+        // v33: RECONNECTED as INVERTED signal — data on 10,528 resolved predictions proves:
+        //   chess=bearish → market actually UP → flipped accuracy 81.6% (n=4,989)
+        //   chess=bullish → market actually DOWN → flipped accuracy 72.5% (n=5,539)
+        // White=sell/black=buy is backwards: white winning = buyers exhausted = reversal UP.
+        // When chess shows "aggressor wins" → the defenders (buyers) are about to respond.
         if (chessConsensus && chessConsensus.direction !== 'neutral') {
           pred.chessConsensus = chessConsensus;
-          // NO confidence modification — data proves this hurts predictions
+          const invertedDir = chessConsensus.direction === 'bearish' ? 'up' : 'down';
+          if (pred.direction === invertedDir) {
+            pred.confidence = Math.min(0.85, pred.confidence * 1.10); // +10% inverted chess confirms
+          } else {
+            pred.confidence = pred.confidence * 0.92; // -8% inverted chess disagrees
+          }
         }
 
-        // v15: ARCHETYPE RESONANCE BOOST — this IS the real chess→market edge
-        // sacrificial_queenside_break: 67.7% on 1,462 predictions
-        // The archetype CLASSIFICATION has signal; the directional CONFIRMATION does not.
+        // v31: ARCHETYPE RESONANCE BOOST — recalibrated Mar 4 2026 from 8,634 resolved predictions
+        // Accuracy → multiplier: ≥59%→1.18, ≥58%→1.15, ≥57%→1.12, ≥53%→1.05, ≥51%→1.02, ≥50%→1.00, ≥48%→0.97, <48%→0.94
+        // v34: Recalibrated Mar 4 2026. piece_balanced_activity added — largest arch (n≈1.8M), +8.95pp EP edge
+        // v35: Phase-aware sub-archetype priors (post-10M). Institutional mapping theory:
+        //   Queen = Mega-institutions (BlackRock/Vanguard). Rooks = Major banks (JPM/Goldman).
+        //   Phase context reveals WHERE in the institutional cycle the signal fires.
+        //   Initial values are theoretical priors — will self-correct once 1K+ resolved market samples/sub-type.
         const CHESS_RESONANCE_EDGE = {
-          sacrificial_queenside_break: 1.15,   // 67.7% — strong edge
-          sacrificial_kingside_assault: 1.05,  // 45.5% — modest edge
-          central_domination: 1.02,            // 34.7% — slight edge
-          positional_squeeze: 0.97,            // 32.9% — neutral
-          closed_maneuvering: 0.97,            // 32.5% — neutral
-          queenside_expansion: 0.93,           // 29.7% — slight drag
-          kingside_attack: 0.90,               // 27.5% — drag
-          sacrificial_attack: 0.90,            // 27.5% — drag
+          piece_general_pressure:         0.97,  // v35 LIVE: 40% market acc n=100 — chess edge +16pp but market resonance is POOR (Mar 5). Dampen until n≥500.
+          piece_harmony:                  0.90,  // v35: CORRECTED — chess EP edge +11pp but market resonance 31.97% (n=147) — inverting market signal, dampen hard
+          sacrificial_kingside_assault:   1.18,  // 59.4% n=218  — TOP chess→market resonance
+          central_knight_outpost:         1.15,  // 58.8% n=376  — strong chess→market resonance
+          sacrificial_queenside_break:    1.12,  // 57.8% n=442  — confirmed strong
+          positional_squeeze:             1.05,  // 53.3% n=387  — positive
+          sacrificial_attack:             1.02,  // 52.1% n=2256 — positive
+          piece_balanced_activity:        0.97,  // v35 LIVE: 47.95% market acc n=2480 — large sample confirmed below random. Was wrongly boosted.
+          queenside_expansion:            1.00,  // 50.3% n=3838 — neutral
+          central_domination:             0.97,  // 48.6% n=154  — slight drag
+          piece_queen_dominance:          0.97,  // 48.4% n=4457 — middlegame queen (mega-inst active push), slight drag
+          piece_queen_dominance_early:    0.97,  // v35 prior — early queen = front-running mega-inst, volatile signal (same as parent until data)
+          piece_queen_dominance_endgame:  1.05,  // v35 LIVE: 56.34% market acc n=154 — institutional theory confirmed, late-cycle mega-inst IS predictive → boost
+          piece_rook_endgame:             0.95,  // v35 prior — rook endgame = major banks de-risking (n=54, accumulating)
+          piece_rook_activity:             0.90,  // v35 LIVE: 41.58% market acc n=5641 — below random, was neutral, now dampened
+          piece_bishop_control:            0.90,  // v35 LIVE: 40.69% market acc n=2229 — below random, was neutral, now dampened
+          piece_knight_maneuver:          0.97,  // 48.4% n=3889 — slight drag
+          king_hunt:                      0.94,  // 47.7% n=318  — drag
+          closed_maneuvering:             0.94,  // 47.4% n=691  — drag
+          kingside_attack:                0.90,  // <46%          — confirmed drag
         };
         const resonanceArch = pred.chessBridge?.chessArchetype || null;
         if (resonanceArch && CHESS_RESONANCE_EDGE[resonanceArch]) {
@@ -3550,11 +4035,50 @@ async function predictionCycle() {
         }
       } catch (repErr) { /* non-critical */ }
 
+      // ── VOLUME FLOW SIGNAL — apply learned flow weights ──────────────────
+      // Only applies when: flow is fresh, symbol is validated, delta >= 10pp.
+      // Pattern identical to chess consensus: track everything, apply only when signal is real.
+      try {
+        loadVolumeFlow();
+        const flow = volumeFlowCache.symbols?.[symbol];
+        if (flow && !flow.stale && learnedFlowWeights?.[symbol]?.validated) {
+          const fw = learnedFlowWeights[symbol];
+          const flowAgeMs = Date.now() - (flow.last_trade_ms || 0);
+          if (flowAgeMs < 15 * 60 * 1000) { // fresh within 15 minutes
+            const predDir = pred.direction === 'up' ? 'bullish' : pred.direction === 'down' ? 'bearish' : null;
+            if (predDir) {
+              const flowAgrees = (predDir === 'bullish' && flow.buy_pct >= 0.55) ||
+                                 (predDir === 'bearish' && flow.sell_pct >= 0.55);
+              const flowActive = (flow.buy_pct >= 0.55 || flow.sell_pct >= 0.55);
+              if (flowActive && fw.multiplier_agrees !== undefined) {
+                const mult = flowAgrees ? fw.multiplier_agrees : fw.multiplier_disagrees;
+                pred.confidence = Math.max(0.10, Math.min(0.90, pred.confidence * mult));
+                pred.flowSignal = {
+                  agrees: flowAgrees,
+                  buy_pct: flow.buy_pct,
+                  sell_pct: flow.sell_pct,
+                  multiplier: mult,
+                  delta: fw.delta,
+                  flowIsProSignal: fw.flowIsProSignal,
+                };
+              }
+            }
+          }
+        }
+      } catch (flowErr) { /* non-critical */ }
+
+      // v34: Reduced upstream gate — only kill archetypes with zero symbol-specific value.
+      // Terminal Gate 2 (≥60% combo accuracy) handles display quality.
+      const DEAD_ARCHETYPES_UPSTREAM = new Set([
+        'no_signal', 'oversold_bounce',
+      ]);
+      if (pred.archetype && DEAD_ARCHETYPES_UPSTREAM.has(pred.archetype) && pred.archetype !== 'cultural_harmony') {
+        continue;
+      }
+
       // Log to audit trail with timeframe-MATCHED chess signal
       const auditOk = await logToAuditTrail(pred, tf.resolutionMs, tfChess, tf).then(() => true).catch(err => { log(`Audit trail INSERT failed: ${err.message}`, 'error'); return false; });
-      // Also save to legacy prediction_outcomes
-      const saved = await savePrediction(pred, tf.resolutionMs);
-      if (auditOk || saved) {
+      if (auditOk) { // market_prediction_attempts is sole write path (prediction_outcomes retired Feb 22 2026)
         made++;
         totalPredictions++;
         tfMade[tf.label] = (tfMade[tf.label] || 0) + 1;
@@ -3565,13 +4089,12 @@ async function predictionCycle() {
         const replayTag = pred.replaySimilarity ? ` | 📼×${pred.replaySimilarity.multiplier}(${pred.replaySimilarity.matchType},n=${pred.replaySimilarity.n})` : '';
         log(`${pred.direction.toUpperCase()} ${symbol} @ $${pred.entryPrice.toFixed(2)} | ${tf.label}/${tf.timeHorizon} | conf: ${(pred.confidence * 100).toFixed(0)}% | arch: ${pred.archetype}${src}${tacticalTag}${photTag}${replayTag}`, 'trade');
       }
-    }
-  }
+    } // end tf loop
+  } // end symbol loop
 
   if (skippedLowSignal > 0) log(`Skipped ${skippedLowSignal} symbols (selective prediction)`);
   if (flatSkipped > 0) log(`Skipped ${flatSkipped} flat/no-signal predictions`);
-  const totalMade = made + harmonyMade;
-  log(`Made ${totalMade} predictions (${made} market + ${harmonyMade} harmony): ${Object.entries(tfMade).map(([k, v]) => `${k}=${v}`).join(' ')}`);
+  log(`Made ${made} predictions (${made} market + 0 harmony): ${Object.entries(tfMade).map(([k, v]) => `${k}=${v}`).join(' ')}`);
 
   // Tactical summary: count tactical overrides this cycle
   if (tacticalCounts && Object.keys(tacticalCounts).length > 0) {
@@ -3585,12 +4108,7 @@ let resolutionCycleCount = 0;
 async function resolutionCycle() {
   resolutionCycleCount++;
   
-  // Always run resolution — crypto predictions need resolving 24/7
-  const resolved = await resolvePendingPredictions();
-  if (resolved > 0) {
-    log(`Resolved ${resolved} predictions | Running accuracy: ${totalResolved > 0 ? (totalCorrect / totalResolved * 100).toFixed(1) + '%' : 'N/A'}`);
-  }
-  // Also resolve audit trail predictions
+  // Resolve market_prediction_attempts (sole resolution path since prediction_outcomes retired Feb 22 2026)
   const auditResolved = await resolveAuditTrailPredictions().catch(() => 0);
   if (auditResolved > 0) {
     log(`Audit trail: resolved ${auditResolved} | Total: ${auditTrailTotal} | Resolved: ${auditTrailResolved} | Correct: ${auditTrailCorrect} | Acc: ${auditTrailResolved > 0 ? (auditTrailCorrect / auditTrailResolved * 100).toFixed(1) + '%' : 'N/A'}`);
@@ -3599,6 +4117,11 @@ async function resolutionCycle() {
   // EDGE MONITOR: Run periodically after resolutions
   if (resolutionCycleCount % EDGE_MONITOR_INTERVAL === 0) {
     await runEdgeMonitor();
+  }
+
+  // FLOW WEIGHTS: Refresh every 10 edge-monitor intervals (same cadence as heavy learning)
+  if (resolutionCycleCount % (EDGE_MONITOR_INTERVAL * 10) === 0 || resolutionCycleCount === 5) {
+    await refreshFlowWeights().catch(e => log(`Flow weights error: ${e.message}`, 'warn'));
   }
 
   // ── v30: PHOTONIC INTERFERENCE — seed from DB + feed resolved outcomes ──
@@ -3749,51 +4272,9 @@ async function seedAutoExclude() {
   }
 }
 
-// ─── ONE-TIME REPAIR: Fix ep_correct for enum mismatch ──────────────────────
-// Old predictions stored 'up'/'down'/'flat' but resolution compared against 'bullish'/'bearish'/'neutral'
-// This re-computes ep_correct for all resolved predictions using normalized comparison
-async function repairEpCorrect() {
-  try {
-    const { data, error } = await supabase
-      .from('market_prediction_attempts')
-      .select('id, predicted_direction, actual_direction, ep_correct, baseline_direction')
-      .not('resolved_at', 'is', null)
-      .not('actual_direction', 'is', null);
-
-    if (error || !data || data.length === 0) return;
-
-    const normDir = (d) => d === 'up' || d === 'bullish' ? 'bullish' : d === 'down' || d === 'bearish' ? 'bearish' : 'neutral';
-    let fixed = 0;
-
-    for (const r of data) {
-      const predNorm = normDir(r.predicted_direction);
-      const actualNorm = normDir(r.actual_direction);
-      // v10: neutral→neutral = null (no predictive value), not true
-      const bothNeutral = predNorm === 'neutral' && actualNorm === 'neutral';
-      const shouldBeCorrect = bothNeutral ? null : (predNorm === actualNorm);
-      const baselineNorm = r.baseline_direction ? normDir(r.baseline_direction) : null;
-      const baselineCorrect = baselineNorm
-        ? (baselineNorm === 'neutral' && actualNorm === 'neutral' ? null : (baselineNorm === actualNorm))
-        : null;
-      
-      if (r.ep_correct !== shouldBeCorrect || r.baseline_correct !== baselineCorrect) {
-        const { error: upErr } = await supabase
-          .from('market_prediction_attempts')
-          .update({ ep_correct: shouldBeCorrect, baseline_correct: baselineCorrect })
-          .eq('id', r.id);
-        if (!upErr) fixed++;
-      }
-    }
-
-    if (fixed > 0) {
-      log(`🔧 Repaired ep_correct/baseline_correct for ${fixed}/${data.length} resolved predictions`);
-    } else {
-      log(`✅ All ${data.length} resolved predictions have correct ep_correct/baseline_correct values`);
-    }
-  } catch (err) {
-    log(`Repair ep_correct error: ${err.message}`, 'warn');
-  }
-}
+// repairEpCorrect() removed Feb 22 2026 — one-time enum migration completed months ago.
+// All predictions now use bullish/bearish/neutral consistently. Function was
+// re-running on every startup scanning all resolved rows: unnecessary DB load.
 
 // ─── SEED AUDIT COUNTERS FROM DB ─────────────────────────────────────────────
 async function seedAuditCounters() {

@@ -5,7 +5,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
-import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { LocationTracker } from "@/components/shared/LocationTracker";
 import { VisionRestorer } from "@/components/shared/VisionRestorer";
 import { GlobalAlertsBanner } from "@/components/shared/GlobalAlertsBanner";
@@ -72,11 +71,13 @@ const EarlyAccess = lazy(() => import("./pages/EarlyAccess"));
 const StockPredictions = lazy(() => import("./pages/StockPredictions"));
 const StrategicPlan = lazy(() => import("./pages/StrategicPlan"));
 const ScalpingTerminalPage = lazy(() => import("./pages/ScalpingTerminalPage"));
+const EnPensentHeatmap = lazy(() => import("./pages/EnPensentHeatmap"));
 const OptionsScalpingPage = lazy(() => import("./pages/OptionsScalpingPage"));
 const Showcase = lazy(() => import("./pages/Showcase"));
 const AdminSystemVitals = lazy(() => import("./pages/AdminSystemVitals"));
 const Benchmark = lazy(() => import("./pages/Benchmark"));
 const ProofCenter = lazy(() => import("./pages/ProofCenter"));
+const EPSystemDashboard = lazy(() => import("./pages/EPSystemDashboard"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -103,7 +104,6 @@ const App = () => (
           <TooltipProvider>
             <Toaster />
             <Sonner />
-          <InstallPrompt />
           <LocationTracker />
           <GlobalAlertsBanner />
             <BrowserRouter>
@@ -172,9 +172,11 @@ const App = () => (
               <Route path="/stock-predictions" element={<AdminRoute featureName="Stock Predictions"><Suspense fallback={<PageLoadingSkeleton />}><StockPredictions /></Suspense></AdminRoute>} />
               <Route path="/strategic-plan" element={<AdminRoute featureName="Strategic Plan"><Suspense fallback={<PageLoadingSkeleton />}><StrategicPlan /></Suspense></AdminRoute>} />
               <Route path="/trading" element={<AdminRoute featureName="Trading Terminal"><Suspense fallback={<PageLoadingSkeleton />}><ScalpingTerminalPage /></Suspense></AdminRoute>} />
+              <Route path="/heatmap" element={<AdminRoute featureName="Market Heatmap"><Suspense fallback={<PageLoadingSkeleton />}><EnPensentHeatmap /></Suspense></AdminRoute>} />
               <Route path="/options" element={<AdminRoute featureName="Options Scalping"><Suspense fallback={<PageLoadingSkeleton />}><OptionsScalpingPage /></Suspense></AdminRoute>} />
               <Route path="/benchmark" element={<AdminRoute featureName="Benchmark"><Suspense fallback={<PageLoadingSkeleton />}><Benchmark /></Suspense></AdminRoute>} />
               <Route path="/proof" element={<AdminRoute featureName="Proof Center"><Suspense fallback={<PageLoadingSkeleton />}><ProofCenter /></Suspense></AdminRoute>} />
+              <Route path="/ep-dashboard" element={<AdminRoute featureName="EP System Dashboard"><Suspense fallback={<PageLoadingSkeleton />}><EPSystemDashboard /></Suspense></AdminRoute>} />
               
               {/* Admin Control Center */}
               <Route path="/admin/ceo-dashboard" element={<AdminRoute featureName="CEO Dashboard"><Suspense fallback={<PageLoadingSkeleton />}><AdminCEODashboard /></Suspense></AdminRoute>} />

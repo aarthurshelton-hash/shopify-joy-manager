@@ -10,7 +10,7 @@
  * We are NOT comparing different Stockfish versions.
  * We test if ADDING pattern recognition improves predictions.
  * 
- * Engine: TCEC Stockfish 17 NNUE (ELO 3600)
+ * Engine: TCEC Stockfish 18 NNUE (ELO 3600)
  * Used by BOTH sides of benchmark for fair comparison
  */
 
@@ -179,7 +179,7 @@ export class StockfishEngine {
     this.sendCommand('setoption', { name: 'Hash', value: 128 }); // 128MB hash for deeper caching
     this.sendCommand('setoption', { name: 'MultiPV', value: 1 }); // Focus on best line only
     this.sendCommand('setoption', { name: 'Slow Mover', value: 100 }); // Maximum time usage for depth
-    // NNUE is enabled by default in Stockfish 17.1 - provides ~3600 ELO strength
+    // NNUE is enabled by default in Stockfish 18.1 - provides ~3600 ELO strength
     // We do NOT use Skill Level or limit strength - full power on both sides
   }
 
@@ -555,7 +555,7 @@ export class StockfishEngine {
       whiteAccuracy: Math.round(whiteAccuracy * 10) / 10,
       blackAccuracy: Math.round(blackAccuracy * 10) / 10,
       averageDepth: depth,
-      engineVersion: 'Stockfish 17.1 NNUE WASM',
+      engineVersion: 'Stockfish 18.1 NNUE WASM',
     };
   }
 
@@ -666,7 +666,7 @@ export class StockfishEngine {
    */
   get info(): { version: string; available: boolean; crashCount: number } {
     return {
-      version: 'Stockfish 17.1 NNUE WASM',
+      version: 'Stockfish 18.1 NNUE WASM',
       available: this.available,
       crashCount: this.crashCount,
     };

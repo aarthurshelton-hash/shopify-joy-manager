@@ -317,7 +317,7 @@ export function useMarketLearningSystem(autoSync = true) {
       )
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'prediction_outcomes' },
+        { event: 'INSERT', schema: 'public', table: 'market_prediction_attempts' }, // migrated Feb 22 2026
         () => {
           setState(prev => ({
             ...prev,

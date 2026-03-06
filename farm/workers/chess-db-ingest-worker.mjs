@@ -73,11 +73,13 @@ if (fs.existsSync(envPath)) {
 
 const CONFIG = {
   enableLichessDB: true,
+  enableChess960: true,        // v32: Freestyle Chess — separate Lichess DB, growing fast, competitive edge vs SF
   enableFICS: false,          // v29.0: DISABLED — ficsgames.org returns 403 Forbidden on all download URLs
-  enableKingBase: true,
+  enableKingBase: false,        // v32.1: DISABLED temporarily — infinite PGN parse loop on corrupted zip extract
   enableCCRL: false,           // v29.9: DISABLED — EP 11.3% vs SF 75.6% on engine games. Poison for human-game predictor.
   enableChessCom: true,
   enableLichessPuzzles: true,
+  enableChessComPuzzles: true,   // v34: Re-enabled — 0% bug fixed (SF eval fallback instead of hardcoded 'draw')
   enableFishtest: false,        // v29.9: DISABLED — engine-vs-engine games poison EP's human-game patterns (same as CCRL)
 
   lichessStartYear: 2026,
@@ -188,64 +190,158 @@ const CHESSCOM_PLAYERS = [
 ];
 let chesscomPlayerIndex = 0;
 
-// Lichess top players for API game fetching (public API, no auth required)
-// These are active titled players — their recent games won't be in static monthly dumps yet
-// v29.8: MASSIVELY EXPANDED — hundreds of GMs with fresh games
-const LICHESS_API_PLAYERS = [
-  // Super GMs (verified usernames)
-  'DrNykterstein', 'GMHikaru', 'nihalsarin', 'alireza2003',
-  'rpragchess', 'AnishGiri', 'GMWSO', 'DanielNaroditsky',
-  'penguingm1', 'Grischuk', 'DrDrunkenstein',
-  // Strong GMs (2600+)
-  'Zhigalko_Sergei', 'RealDavidNavara', 'Oleksandr_Bortnyk',
-  'opperwezen', 'German11', 'Msb2', 'ChessWeeb',
-  'lance5500', 'Fins', 'chesstoday', 'Konavets',
-  // Active titled players for volume
-  'EricRosen', 'Bombegansen2', 'may6enexttime',
-  'Benefansen', 'rebeccaharris', 'Ssjg_Goku',
-  'Vladimirovich9000', 'Night-King96', 'Ssjg_Goku',
-  // v29.8: TOP 100 GMs by rating + active players
-  'magnuscarlsen', 'Hikaru', 'fabianocaruana', 'firouzja2003',
-  'dingliren', 'nepomniachtchi', 'so_wesley', 'aronian_levon',
-  'anishgiri', 'vidit_gujrathi', 'mamedyarov_shakhriyar', 'rapport_richard',
-  'dudaj01', 'yu_yangyi', 'pentala_harikrishna', 'navara_david',
-  'topalov_veselin', 'radjabov_teimour', 'grischuk_vladimir',
-  'vachierlagrave', 'giri_anish', 'nakamura_hikaru', 'caruana_fabiano',
-  'carlsen_magnus', 'ding_liren', 'firouzja_alireza', 'so_wesley',
-  'aronian_levon', 'giri_anish', 'mamedyarov_shakhriyar',
-  'rapport_richard', 'dudaj01', 'yu_yangyi', 'pentala_harikrishna',
-  'navara_david', 'topalov_veselin', 'radjabov_teimour',
-  'grischuk_vladimir', 'vachierlagrave', 'vidit_gujrathi',
-  'keymer_vincent', 'praggnanandhaa', 'sarin_nihal', 'erigaisi_arjun',
-  'gukesh_d', 'abhimanyu_mishra', 'christopher_yoo', 'awonder_liang',
-  'jacobson_brandon', 'meyer_leonard', 'hong_andrew', 'sevian_sam',
-  'shankland_sam', 'xiong_jeffery', 'burke_john', 'finegold_benjamin',
-  'akobian_varuzhan', 'onischuk_alex', 'lenderman_alex', 'kaidanov_gregory',
-  'antonio_tatiana', 'muzychuk_anna', 'muzychuk_mariya',
-  'kosteniuk_alexandra', 'gunina_valentina', 'girya_olga',
-  'lahno_ekaterina', 'stefanova_antoaneta', 'kosintseva_tatiana',
-  'kosintseva_nadezhda', 'pogonina_natalia',
-  // European GMs
-  'wojtaszek_radoslaw', 'macieja_bartlomiej', 'bartel_mateusz',
-  'mitong_kamil', 'anton_guerrero_david', 'cuenca_jimenez_jose',
-  'vallejo_pons_francisco', 'shirokov_alexei', 'sveshnikov_evgeny',
-  'epishin_vladimir', 'rublevsky_sergey', 'sakaev_konstantin',
-  'motylev_alexander', 'khalifman_alexander',
-  // Asian GMs
-  'quangliem_le', 'nguyentruongson_nguyen', 'yue_wang', 'chao_li',
-  'xiangzhi_bu', 'jianchao_zhou', 'hua_ni', 'zhong_zhang',
-  'xiaomin_peng', 'jiangchuan_ye', 'pengxiang_zhang', 'ao_wu',
-  // Americas GMs
-  'bruzon_lazaro', 'quesada_yuniesky', 'dominguez_leinier',
-  'grande_julio', 'diaz_rafael', 'francisco_pedro',
-  // African GMs
-  'solomon_kenny', 'kobese_watson', 'roberts_henry',
-  // Additional high-volume online players
-  'gothamchess', 'botezlive', 'danielnaroditsky', 'anishgiri',
-  'levonaronian', 'wesleyso', 'fabianocaruana', 'magnuscarlsen',
-  'drnykterstein', 'gmhikaru', 'nihalsarin', 'alireza2003',
-  'rpragchess', 'gmwso', 'danielnaroditsky', 'penguingm1'
+// v33.0: PLAYER_REGISTRY — one canonical entry per real-world player.
+// Each handle is tagged with platform + mode so the same person's bullet
+// account, classical account, and OTB results are distinguished but unified.
+// LICHESS_API_PLAYERS and HANDLE_INFO are auto-derived — never edit those.
+const PLAYER_REGISTRY = [
+  // ── Super GMs ──────────────────────────────────────────────────────────────
+  { name: 'Magnus Carlsen',          country: 'NO', fide: 2830, handles: [
+    { platform: 'lichess',  username: 'magnuscarlsen',    mode: 'rapid/classical' },
+    { platform: 'lichess',  username: 'DrNykterstein',    mode: 'bullet/blitz'    },
+    { platform: 'lichess',  username: 'DrDrunkenstein',   mode: 'ultra-bullet'    },
+    { platform: 'lichess',  username: 'Msb2',             mode: 'anonymous-blitz' },
+  ]},
+  { name: 'Hikaru Nakamura',         country: 'US', fide: 2794, handles: [
+    { platform: 'lichess',  username: 'GMHikaru',         mode: 'rapid/blitz'     },
+  ]},
+  { name: 'Alireza Firouzja',        country: 'FR', fide: 2777, handles: [
+    { platform: 'lichess',  username: 'alireza2003',      mode: 'rapid/blitz'     },
+  ]},
+  { name: 'D Gukesh',                country: 'IN', fide: 2783, handles: [
+    { platform: 'lichess',  username: 'GukeshDommaraju',  mode: 'rapid/blitz'     },
+  ]},
+  { name: 'Arjun Erigaisi',          country: 'IN', fide: 2778, handles: [
+    { platform: 'lichess',  username: 'ArjunErigaisi',    mode: 'rapid/blitz'     },
+  ]},
+  { name: 'Ian Nepomniachtchi',      country: 'RU', fide: 2764, handles: [
+    { platform: 'lichess',  username: 'nepomniachtchi',    mode: 'rapid/blitz'     },
+    { platform: 'lichess',  username: 'Vladimirovich9000', mode: 'anonymous-blitz' },
+    { platform: 'lichess',  username: 'lachesisQ',         mode: 'anonymous-rapid' },
+  ]},
+  { name: 'Nodirbek Abdusattorov',   country: 'UZ', fide: 2762, handles: [
+    { platform: 'lichess',  username: 'Nodirbek',         mode: 'rapid/blitz'     },
+  ]},
+  { name: 'Anish Giri',              country: 'NL', fide: 2760, handles: [
+    { platform: 'lichess',  username: 'AnishGiri',        mode: 'rapid/blitz'     },
+  ]},
+  { name: 'Fabiano Caruana',         country: 'US', fide: 2759, handles: [
+    { platform: 'lichess',  username: 'fabianocaruana',   mode: 'rapid/blitz'     },
+  ]},
+  { name: 'Wesley So',               country: 'US', fide: 2758, handles: [
+    { platform: 'lichess',  username: 'GMWSO',            mode: 'rapid/blitz'     },
+  ]},
+  // ── 2700+ GMs ──────────────────────────────────────────────────────────────
+  { name: 'Maxime Vachier-Lagrave',  country: 'FR', fide: 2727, handles: [
+    { platform: 'lichess',  username: 'vachierlagrave',   mode: 'rapid/blitz'     },
+    { platform: 'lichess',  username: 'LyonBeast',        mode: 'bullet/blitz'    },
+  ]},
+  { name: 'Praggnanandhaa',          country: 'IN', fide: 2747, handles: [
+    { platform: 'lichess',  username: 'rpragchess',       mode: 'rapid/blitz'     },
+  ]},
+  { name: 'Shakhriyar Mamedyarov',   country: 'AZ', fide: 2747, handles: [
+    { platform: 'lichess',  username: 'Mamedyarov',       mode: 'rapid/blitz'     },
+  ]},
+  { name: 'Richard Rapport',         country: 'HU', fide: 2745, handles: [
+    { platform: 'lichess',  username: 'RichardRapport',   mode: 'rapid/blitz'     },
+  ]},
+  { name: 'Levon Aronian',           country: 'US', fide: 2750, handles: [
+    { platform: 'lichess',  username: 'levonaronian',     mode: 'rapid/blitz'     },
+  ]},
+  { name: 'Alexander Grischuk',      country: 'RU', fide: 2764, handles: [
+    { platform: 'lichess',  username: 'Grischuk',         mode: 'blitz/bullet'    },
+  ]},
+  { name: 'Nihal Sarin',             country: 'IN', fide: 2727, handles: [
+    { platform: 'lichess',  username: 'nihalsarin',       mode: 'rapid/blitz'     },
+  ]},
+  { name: 'Vidit Gujrathi',          country: 'IN', fide: 2726, handles: [
+    { platform: 'lichess',  username: 'vidit_gujrathi',   mode: 'rapid/blitz'     },
+  ]},
+  { name: 'Vincent Keymer',          country: 'DE', fide: 2726, handles: [
+    { platform: 'lichess',  username: 'VKeymer',          mode: 'rapid/blitz'     },
+  ]},
+  { name: 'Javokhir Sindarov',       country: 'UZ', fide: 2699, handles: [
+    { platform: 'lichess',  username: 'JavSin',           mode: 'rapid/blitz'     },
+  ]},
+  { name: 'Jan-Krzysztof Duda',      country: 'PL', fide: 2724, handles: [
+    { platform: 'lichess',  username: 'Bombegansen2',      mode: 'rapid/blitz'     },
+  ]},
+  { name: 'Le Quang Liem',           country: 'VN', fide: 2703, handles: [
+    { platform: 'lichess',  username: 'quangliem',         mode: 'rapid/blitz'     },
+  ]},
+  // ── 2600+ GMs ──────────────────────────────────────────────────────────────
+  { name: 'Daniel Naroditsky',       country: 'US', fide: 2640, handles: [
+    { platform: 'lichess',  username: 'DanielNaroditsky', mode: 'rapid/blitz'     },
+    { platform: 'lichess',  username: 'danya_naroditsky', mode: 'bullet/ultra'    },
+  ]},
+  { name: 'David Navara',            country: 'CZ', fide: 2692, handles: [
+    { platform: 'lichess',  username: 'RealDavidNavara',  mode: 'rapid/blitz'     },
+  ]},
+  { name: 'Oleksandr Bortnyk',       country: 'UA', fide: 2635, handles: [
+    { platform: 'lichess',  username: 'Oleksandr_Bortnyk', mode: 'bullet'        },
+  ]},
+  { name: 'Jorden van Foreest',       country: 'NL', fide: 2697, handles: [
+    { platform: 'lichess',  username: 'opperwezen',       mode: 'bullet'          },
+  ]},
+  { name: 'Sergey Zhigalko',         country: 'BY', fide: 2656, handles: [
+    { platform: 'lichess',  username: 'Zhigalko_Sergei',  mode: 'blitz/bullet'    },
+  ]},
+  { name: 'Sam Shankland',           country: 'US', fide: 2691, handles: [
+    { platform: 'lichess',  username: 'SamShankland',     mode: 'rapid/blitz'     },
+  ]},
+  { name: 'Andrew Tang',             country: 'US', fide: 2680, handles: [
+    { platform: 'lichess',  username: 'penguingm1',       mode: 'ultra-bullet'    },
+  ]},
+  { name: 'Alexey Shirov',           country: 'ES', fide: 2691, handles: [
+    { platform: 'lichess',  username: 'Shirov',           mode: 'blitz/bullet'    },
+  ]},
+  // ── Women's World Top (distinct OTB + online styles) ──────────────────────
+  { name: 'Hou Yifan',               country: 'CN', fide: 2620, handles: [
+    { platform: 'lichess',  username: 'HouYifan',         mode: 'rapid/classical' },
+  ]},
+  { name: 'Humpy Koneru',            country: 'IN', fide: 2572, handles: [
+    { platform: 'lichess',  username: 'KoneruHumpy',      mode: 'rapid/blitz'     },
+  ]},
+  { name: 'Alexandra Kosteniuk',     country: 'FR', fide: 2516, handles: [
+    { platform: 'lichess',  username: 'kosteniuk',        mode: 'rapid/blitz'     },
+  ]},
+  { name: 'Anna Muzychuk',           country: 'UA', fide: 2530, handles: [
+    { platform: 'lichess',  username: 'AnnaMuzychuk',     mode: 'rapid/blitz'     },
+  ]},
+  // ── Streamers / Content Creators (diverse game styles, high volume) ────────
+  { name: 'Eric Rosen',              country: 'US', fide: 2476, handles: [
+    { platform: 'lichess',  username: 'EricRosen',        mode: 'rapid/classical' },
+  ]},
+  { name: 'Levy Rozman',             country: 'US', fide: 2397, handles: [
+    { platform: 'lichess',  username: 'gothamchess',      mode: 'rapid/blitz'     },
+  ]},
+  { name: 'Anna Cramling',           country: 'SE', fide: 2375, handles: [
+    { platform: 'lichess',  username: 'AnnaCramling',     mode: 'rapid/blitz'     },
+  ]},
+  // ── High-volume bullet specialists (positional pattern diversity) ──────────
+  { name: 'Bullet Specialist A',     country: '??', fide: 0, handles: [
+    { platform: 'lichess',  username: 'lance5500',        mode: 'bullet'          },
+  ]},
+  { name: 'John Bartholomew',         country: 'US', fide: 2455, handles: [
+    { platform: 'lichess',  username: 'Fins',             mode: 'rapid/blitz'     },
+  ]},
 ];
+
+// Auto-derived — unique Lichess handles only, no duplicates across accounts
+const LICHESS_API_PLAYERS = [...new Set(
+  PLAYER_REGISTRY.flatMap(p => p.handles.filter(h => h.platform === 'lichess').map(h => h.username))
+)];
+
+// Lookup: username.toLowerCase() → { canonical_name, mode, country, fide_rating }
+// Used when tagging ingested games so the same real player is linked across all handles
+const HANDLE_INFO = Object.fromEntries(
+  PLAYER_REGISTRY.flatMap(p =>
+    p.handles.map(h => [h.username.toLowerCase(), {
+      canonical_name: p.name, mode: h.mode, country: p.country, fide_rating: p.fide,
+    }])
+  )
+);
+
 let lichessApiPlayerIndex = 0;
 
 // ════════════════════════════════════════════════════════
@@ -1018,14 +1114,17 @@ let enhFailCount = 0;
 // piece_* names are NOT in ARCHETYPE_DEFINITIONS — they break signal calibration by
 // generating uncalibrated archetype entries that dilute the learned signal weights.
 const PIECE_ARCHETYPE_REMAP = {
-  piece_queen_dominance:  'central_domination',
-  piece_rook_activity:    'open_tactical',
-  piece_bishop_control:   'positional_squeeze',
-  piece_knight_maneuver:  'closed_maneuvering',
-  piece_balanced_activity:'closed_maneuvering',
-  piece_activity:         'open_tactical',
-  piece_endgame:          'endgame_technique',
-  piece_attack:           'sacrificial_attack',
+  piece_queen_dominance:          'central_domination',
+  piece_queen_dominance_early:    'sacrificial_attack',   // v35: premature queen = tactical, inherit sacrificial weights
+  piece_queen_dominance_endgame:  'endgame_technique',    // v35: queen + pawn endgame, inherit endgame weights
+  piece_rook_activity:            'open_tactical',
+  piece_rook_endgame:             'endgame_technique',    // v35: Lucena/Philidor/7th rank, inherit endgame weights
+  piece_bishop_control:           'positional_squeeze',
+  piece_knight_maneuver:          'closed_maneuvering',
+  piece_balanced_activity:        'closed_maneuvering',
+  piece_activity:                 'open_tactical',
+  piece_endgame:                  'endgame_technique',
+  piece_attack:                   'sacrificial_attack',
   piece_defense:          'prophylactic_defense',
   piece_material_advantage:'open_tactical',
   piece_advancement_pressure:'queenside_expansion',
@@ -2280,6 +2379,11 @@ async function batchInsert(attempts) {
       dbDupes++;
       continue;
     }
+    // Guard: skip rows with no prediction (would violate hybrid_prediction NOT NULL)
+    if (!a.hybridPrediction && !a.enhancedPrediction) {
+      dbFenInvalid++;
+      continue;
+    }
     valid.push(a);
   }
   
@@ -2304,12 +2408,12 @@ async function batchInsert(attempts) {
         Math.round(a.moveNumber || 0),
         a.fen,
         a.positionHash,
-        Math.max(-9999, Math.min(9999, Number.isFinite(a.sfEvalCp) ? a.sfEvalCp : 0)),
+        Math.round(Math.max(-9999, Math.min(9999, Number.isFinite(a.sfEvalCp) ? a.sfEvalCp : 0))),
         a.hasRealEval ? 18 : 0,
         a.sf17Prediction || 'unknown',
         a.hasRealEval ? Math.round(Math.min(95, 50 + Math.abs((Number.isFinite(a.sfEvalCp) ? a.sfEvalCp : 0) / 100) * 10)) : 0,
         a.sf17Correct ?? false,
-        a.hybridPrediction || a.enhancedPrediction,
+        a.hybridPrediction || a.enhancedPrediction || 'unknown',
         // v29.6: Pass through EP's already-capped confidence (EP handles all phase/zone caps)
         Math.round(Math.max(15, Math.min(69, (a.hybridConfidence || a.enhancedConfidence || 0.5) * 100))),
         a.enhancedArchetype || 'unknown',
@@ -2391,7 +2495,7 @@ async function batchInsert(attempts) {
                 Math.max(-9999, Math.min(9999, Number.isFinite(a.sfEvalCp) ? a.sfEvalCp : 0)),
                 a.hasRealEval ? 18 : 0, a.sf17Prediction || 'unknown',
                 a.hasRealEval ? Math.round(Math.min(95, 50 + Math.abs((Number.isFinite(a.sfEvalCp) ? a.sfEvalCp : 0) / 100) * 10)) : 0,
-                a.sf17Correct ?? false, a.hybridPrediction || a.enhancedPrediction,
+                a.sf17Correct ?? false, a.hybridPrediction || a.enhancedPrediction || 'unknown',
                 Math.round(Math.max(15, Math.min(69, (a.hybridConfidence || a.enhancedConfidence || 0.5) * 100))),
                 a.enhancedArchetype || 'unknown', a.hybridCorrect ?? a.enhancedCorrect,
                 a.enhancedPrediction, a.enhancedCorrect, a.enhancedArchetype || null,
@@ -2490,10 +2594,17 @@ async function processSourceStream(stream, epEngine, source) {
   const startTime = Date.now();
   let saturated = false;
 
-  // Dupe-spiral detection: rolling window over last DUPE_WINDOW games checked
-  const DUPE_WINDOW = 3000;
-  const DUPE_BAIL_RATIO = 0.85;
+  // v32: Dupe-spiral detection with SKIP instead of BAIL
+  // When we hit dupes, skip deeper into the stream instead of giving up
+  // Each Lichess monthly dump has 80-100M games — we've only scratched the surface
+  const DUPE_WINDOW = 2000;
+  const DUPE_SKIP_RATIO = 0.90; // 90%+ dupes = skip deeper
+  const SKIP_AMOUNT = 50000; // Skip 50K games to find fresh territory
+  const MAX_SKIPS = 5; // After 5 skips (250K games deep), mark month done
   let windowChecked = 0, windowDupes = 0;
+  let skipCount = 0;
+  let totalScanned = 0;
+  let skipRemaining = 0; // v32: when > 0, skip games without processing
 
   // Collect games in small batches for dedup checking
   let gameBuffer = [];
@@ -2501,6 +2612,16 @@ async function processSourceStream(stream, epEngine, source) {
   try {
     for await (const game of parseStreamingPGN(stream)) {
       if (processed >= CONFIG.maxGamesPerSource) break;
+      totalScanned++;
+      
+      // v32: Skip mode — fast-forward through stream without processing
+      if (skipRemaining > 0) {
+        skipRemaining--;
+        if (skipRemaining === 0) {
+          console.log(`[${workerId}] [${source}] ✓ Skip complete, now at depth ~${totalScanned} — resuming processing`);
+        }
+        continue;
+      }
       
       if (!shouldProcessGame(game)) {
         skipped++;
@@ -2527,16 +2648,25 @@ async function processSourceStream(stream, epEngine, source) {
         });
         windowChecked += gameBuffer.length;
 
-        // Self-healing: if this section is a dupe spiral, abort and let the caller advance
+        // v32: Dupe-spiral detection with SKIP — don't bail, skip deeper
         if (windowChecked >= DUPE_WINDOW) {
           const ratio = windowDupes / windowChecked;
-          if (ratio >= DUPE_BAIL_RATIO) {
-            console.log(`[${workerId}] [${source}] ⚠ Dupe spiral detected (${(ratio*100).toFixed(0)}% dupes over ${windowChecked} games) — bailing out, advancing to next month`);
-            saturated = true;
-            try { stream.destroy?.(); } catch {}
-            break;
+          if (ratio >= DUPE_SKIP_RATIO) {
+            skipCount++;
+            if (skipCount >= MAX_SKIPS) {
+              console.log(`[${workerId}] [${source}] ⚠ ${skipCount} dupe spirals after scanning ${totalScanned} games — month truly exhausted`);
+              saturated = true;
+              try { stream.destroy?.(); } catch {}
+              break;
+            }
+            // SKIP deeper into the stream instead of bailing
+            console.log(`[${workerId}] [${source}] ⚠ Dupe spiral #${skipCount} (${(ratio*100).toFixed(0)}% dupes) — skipping ${SKIP_AMOUNT} games deeper...`);
+            skipRemaining = SKIP_AMOUNT;
+            gameBuffer = [];
+            windowChecked = 0; windowDupes = 0;
+            continue;
           }
-          // Slide window
+          // Reset window for next check
           windowChecked = 0; windowDupes = 0;
         }
 
@@ -2646,6 +2776,7 @@ async function processSourceStream(stream, epEngine, source) {
 // ════════════════════════════════════════════════════════
 
 const completedLichessMonths = new Set();
+const monthSkipOffsets = {}; // v32: Track how deep into each month we've gone
 const STATE_FILE = join(DATA_DIR, `ingest-state-${workerId}.json`);
 
 function loadState() {
@@ -2654,6 +2785,7 @@ function loadState() {
       const state = JSON.parse(fs.readFileSync(STATE_FILE, 'utf-8'));
       if (state.completedLichessMonths) state.completedLichessMonths.forEach(m => completedLichessMonths.add(m));
       if (typeof state.lichessMonthIndex === 'number') lichessMonthIndex = state.lichessMonthIndex;
+      if (state.monthSkipOffsets) Object.assign(monthSkipOffsets, state.monthSkipOffsets);
       return state;
     }
   } catch {}
@@ -2665,6 +2797,7 @@ function saveState() {
     fs.writeFileSync(STATE_FILE, JSON.stringify({
       completedLichessMonths: [...completedLichessMonths],
       lichessMonthIndex,
+      monthSkipOffsets,
       lastUpdate: new Date().toISOString(),
     }, null, 2));
   } catch {}
@@ -2686,14 +2819,20 @@ function getAllLichessMonths() {
 let lichessMonthIndex = 0; // persisted to disk — survives restarts
 
 async function ingestLichessDB(epEngine) {
-  console.log('\n[LICHESS-DB] Starting Lichess Open Database ingestion...');
+  // v32: Alternate between standard and Chess960 databases
+  // Chess960/Freestyle is the fastest growing format — EP needs this data
+  const use960 = CONFIG.enableChess960 && (lichessMonthIndex % 3 === 0); // Every 3rd cycle = 960
+  const dbType = use960 ? 'chess960' : 'standard';
+  console.log(`\n[LICHESS-DB] Starting Lichess ${use960 ? '♟️ CHESS960/FREESTYLE' : 'Standard'} Database ingestion...`);
   
   const allMonths = getAllLichessMonths();
   if (allMonths.length === 0) { console.log('[LICHESS-DB] No months configured!'); return 0; }
 
   // Skip months already completed (404d or fully ingested) — find next valid one
+  // Use separate completion tracking for 960 vs standard
+  const completionKey = (m) => use960 ? `960-${m}` : m;
   let skipped = 0;
-  while (completedLichessMonths.has(allMonths[lichessMonthIndex % allMonths.length]) && skipped < allMonths.length) {
+  while (completedLichessMonths.has(completionKey(allMonths[lichessMonthIndex % allMonths.length])) && skipped < allMonths.length) {
     lichessMonthIndex++;
     skipped++;
   }
@@ -2702,8 +2841,12 @@ async function ingestLichessDB(epEngine) {
   const monthStr = allMonths[lichessMonthIndex % allMonths.length];
   lichessMonthIndex++;
   saveState(); // persist index so restart continues from here
-  console.log(`[LICHESS-DB] Cycle ${lichessMonthIndex}: month ${monthStr} (${allMonths.length} total, ${completedLichessMonths.size} completed)`);
-  const url = `https://database.lichess.org/standard/lichess_db_standard_rated_${monthStr}.pgn.zst`;
+  console.log(`[LICHESS-DB] Cycle ${lichessMonthIndex}: month ${monthStr} (${allMonths.length} total, ${completedLichessMonths.size} completed) [${dbType}]`);
+  // Standard: lichess_db_standard_rated_YYYY-MM.pgn.zst
+  // Chess960: lichess_db_chess960_rated_YYYY-MM.pgn.zst
+  const url = use960
+    ? `https://database.lichess.org/chess960/lichess_db_chess960_rated_${monthStr}.pgn.zst`
+    : `https://database.lichess.org/standard/lichess_db_standard_rated_${monthStr}.pgn.zst`;
   
   console.log(`[LICHESS-DB] Streaming month: ${monthStr}`);
   console.log(`[LICHESS-DB] URL: ${url}`);
@@ -2711,8 +2854,8 @@ async function ingestLichessDB(epEngine) {
   try {
     const { stdout } = await execAsync(`curl -sL -o /dev/null -w '%{http_code}' --head '${url}'`, { timeout: 15000 });
     if (stdout.trim() !== '200') {
-      console.log(`[LICHESS-DB] Month ${monthStr} not available (HTTP ${stdout.trim()}) — skipping`);
-      completedLichessMonths.add(monthStr);
+      console.log(`[LICHESS-DB] Month ${monthStr} [${dbType}] not available (HTTP ${stdout.trim()}) — skipping`);
+      completedLichessMonths.add(completionKey(monthStr));
       saveState();
       return 0;
     }
@@ -2736,7 +2879,16 @@ async function ingestLichessDB(epEngine) {
     try { zstd.kill(); } catch {}
   }, streamMinutes * 60 * 1000);
   
-  const { count: games, saturated: isSaturated } = await processSourceStream(zstd.stdout, epEngine, 'lichess_db');
+  let games = 0, isSaturated = false;
+  try {
+    const result = await processSourceStream(zstd.stdout, epEngine, use960 ? 'lichess_960' : 'lichess_db');
+    games = result.count;
+    isSaturated = result.saturated;
+  } catch (streamErr) {
+    // EPIPE from stream.destroy() during dupe spiral — treat as saturated
+    console.log(`[LICHESS-DB] ${monthStr}: stream error (${streamErr.code || streamErr.message}) — treating as saturated`);
+    isSaturated = true;
+  }
   
   clearTimeout(streamTimeout);
   try { curl.kill(); } catch {}
@@ -2744,11 +2896,11 @@ async function ingestLichessDB(epEngine) {
   
   // Self-healing: mark saturated months complete so worker never re-enters a dupe spiral
   if (isSaturated || games === 0) {
-    completedLichessMonths.add(monthStr);
+    completedLichessMonths.add(completionKey(monthStr));
     saveState();
-    console.log(`[LICHESS-DB] ${monthStr}: saturated — marked complete, auto-advancing to next month`);
+    console.log(`[LICHESS-DB] ${monthStr} [${dbType}]: saturated — marked complete, auto-advancing to next month`);
   } else {
-    console.log(`[LICHESS-DB] ${monthStr}: ${games} new games ingested${timedOut ? ' (timed out, millions more available)' : ''}`);
+    console.log(`[LICHESS-DB] ${monthStr} [${dbType}]: ${games} new ${use960 ? 'Chess960/Freestyle' : 'standard'} games ingested${timedOut ? ' (timed out, millions more available)' : ''}`);
   }
   
   return games;
@@ -3116,11 +3268,12 @@ async function ingestChessComPuzzles(epEngine) {
           null
         );
         
-        const epPrediction = prediction?.prediction || 'draw';
-        const epIsCorrect = epPrediction === solverWins;
         const sfPrediction = sfEvalCp > 50 ? 'white_wins' : sfEvalCp < -50 ? 'black_wins' : 'draw';
+        const epPrediction = prediction?.prediction || sfPrediction; // fallback to SF eval, not 'draw'
+        const epIsCorrect = epPrediction === solverWins;
         const sfIsCorrect = sfPrediction === solverWins;
         
+        const ccpuzConf = Math.min(0.69, Math.max(0.15, (prediction?.confidence || 50) / 100));
         const attempt = {
           gameId,
           gameName: `CC-Puzzle ${puzzle.title || i}`,
@@ -3128,23 +3281,29 @@ async function ingestChessComPuzzles(epEngine) {
           fen,
           positionHash: gameId,
           sfEvalCp,
-          sfDepth: 14,
-          sfPrediction,
-          sfConfidence: Math.min(95, 50 + Math.abs(sfEvalCp) / 10),
-          sfCorrect: sfIsCorrect,
-          epPrediction,
-          epConfidence: prediction?.confidence || 50,
-          epArchetype: prediction?.archetype || 'unknown',
-          epCorrect: epIsCorrect,
-          actualResult: solverWins,
+          hasRealEval: false,
+          sf17Prediction: sfPrediction,
+          sf17Correct: sfIsCorrect,
+          hybridPrediction: epPrediction,
+          hybridConfidence: ccpuzConf,
+          hybridCorrect: epIsCorrect,
+          enhancedPrediction: epPrediction,
+          enhancedCorrect: epIsCorrect,
+          enhancedArchetype: prediction?.archetype || 'unknown',
+          enhancedConfidence: ccpuzConf,
+          baselinePrediction: epPrediction,
+          baselineCorrect: epIsCorrect,
+          actualOutcome: solverWins,
           dataSource: 'chesscom_puzzle',
+          dataQualityTier: 'farm_puzzle_8quad',
           whiteElo: null,
           blackElo: null,
-          timeControl: null,
+          timeControl: 'puzzle',
           pgn: puzzle.pgn,
           whitePlayer: null,
           blackPlayer: null,
           gameType: 'puzzle',
+          enhDelta: 0,
         };
         
         pendingBatch.push(attempt);
@@ -3170,7 +3329,9 @@ async function ingestChessComPuzzles(epEngine) {
 // ════════════════════════════════════════════════════════
 
 async function discoverChessComPlayers() {
-  const titles = ['GM', 'IM'];
+  // v31: Expanded from GM+IM (200 each) to GM+IM+FM (500 each) for max volume
+  // FM games are still high quality and provide massive untapped volume
+  const titles = ['GM', 'IM', 'FM'];
   const existing = new Set(CHESSCOM_PLAYERS);
   let added = 0;
   
@@ -3185,8 +3346,8 @@ async function discoverChessComPlayers() {
       const data = await res.json();
       const players = data.players || [];
       
-      // Add up to 200 per title (sorted for determinism)
-      const newPlayers = players.filter(p => !existing.has(p)).sort().slice(0, 200);
+      // v31: Raised from 200→500 per title for max volume
+      const newPlayers = players.filter(p => !existing.has(p)).sort().slice(0, 500);
       for (const p of newPlayers) {
         CHESSCOM_PLAYERS.push(p);
         existing.add(p);
@@ -3336,7 +3497,23 @@ async function ingestLichessAPI(epEngine) {
           // 10. All post-fusion intelligence gates
           const attempt = await processGame(game, moveNumber, epEngine, 'lichess_api');
           if (!attempt) { skipReasons.processFail++; continue; }
-          
+
+          // Tag with canonical player identity + playing mode from PLAYER_REGISTRY
+          const handleMeta = HANDLE_INFO[player.toLowerCase()];
+          if (handleMeta && attempt.metadata) {
+            attempt.metadata.canonical_player = handleMeta.canonical_name;
+            attempt.metadata.playing_mode    = handleMeta.mode;
+            attempt.metadata.fide_rating     = handleMeta.fide_rating;
+            attempt.metadata.country         = handleMeta.country;
+          } else if (handleMeta) {
+            attempt.metadata = {
+              canonical_player: handleMeta.canonical_name,
+              playing_mode:     handleMeta.mode,
+              fide_rating:      handleMeta.fide_rating,
+              country:          handleMeta.country,
+            };
+          }
+
           playerGames++;
           totalGames++;
           pendingBatch.push(attempt);
@@ -3819,8 +3996,9 @@ async function main() {
     if (CONFIG.enableChessCom) {
       try { totalGames += await ingestChessCom(epEngine); }
       catch (err) { console.error(`[CHESS.COM] Fatal: ${err.message}`); }
-      
-      // v29.0: Chess.com puzzles — tactical positions with known outcomes
+    }
+
+    if (CONFIG.enableChessComPuzzles) {
       try { totalGames += await ingestChessComPuzzles(epEngine); }
       catch (err) { console.error(`[CC-PUZZLES] Fatal: ${err.message}`); }
     }

@@ -767,7 +767,7 @@ async function initStockfish() {
 /**
  * Evaluate position using system Stockfish
  */
-async function evaluateWithSF17(fen, depth = 18) {
+async function evaluateWithSF18(fen, depth = 18) {
   try {
     const engine = await initStockfish();
     if (!engineReady) {
@@ -1058,7 +1058,7 @@ function classifyArchetypeFrom32Piece(sig) {
  * Run a single benchmark cycle with A/B testing
  */
 async function runBenchmarkCycle(epEngine) {
-  console.log(`[${workerId}] Starting cycle #${stats.cycles + 1} ${USE_ENHANCED_SIGNATURES ? '(8-Quadrant)' : '(4-Quadrant)'}`);
+  console.log(`[${workerId}] Starting cycle #${stats.cycles + 1} ${USE_ENHANCED_SIGNATURES ? '(32-piece standalone)' : '(Hybrid 4Q+32 fusion)'}`);
   
   // Fetch games from MULTIPLE SOURCES (Lichess + Chess.com rotation)
   const allGames = await fetchGamesMultiSource(Math.max(FARM_CONFIG.cycle.gamesPerFetch, 200), 'blitz');
@@ -1221,8 +1221,8 @@ async function runBenchmarkCycle(epEngine) {
       const fen = chess.fen();
       const partialPgn = chess.pgn();
       
-      // Get SF17 evaluation
-      const sf17Eval = await evaluateWithSF17(fen, 18);
+      // Get SF18 evaluation
+      const sf17Eval = await evaluateWithSF18(fen, 18);
       const sf17Prediction = sf17Eval.evaluation > 0.3 ? 'white_wins' : 
                             sf17Eval.evaluation < -0.3 ? 'black_wins' : 'draw';
       
@@ -1427,7 +1427,7 @@ async function runBenchmarkCycle(epEngine) {
         : '';
       
       const drawInfo = stats.drawsTotal > 0 ? ` | Draws: ${stats.drawsEpCorrect}/${stats.drawsTotal}` : '';
-      console.log(`[${workerId}] ${game.id} m${moveNumber}: B=${baselinePred.predictedWinner}(adv:${baselinePred.whiteAdvantage.toFixed(2)}) E=${enhancedPred.predictedWinner}(adv:${enhancedPred.whiteAdvantage.toFixed(2)}) SF17=${sf17Prediction} A=${actualOutcome} | Baseline: ${baselineAccuracy}%${improvement} | SF17: ${sf17Accuracy}%${drawInfo}`);
+      console.log(`[${workerId}] ${game.id} m${moveNumber}: B=${baselinePred.predictedWinner}(adv:${baselinePred.whiteAdvantage.toFixed(2)}) E=${enhancedPred.predictedWinner}(adv:${enhancedPred.whiteAdvantage.toFixed(2)}) SF18=${sf17Prediction} A=${actualOutcome} | Baseline: ${baselineAccuracy}%${improvement} | SF18: ${sf17Accuracy}%${drawInfo}`);
       console.log(`[${workerId}]   ✦ ${poetry.verse}`);
       console.log(`[${workerId}]   ◆ ${poetry.essence} [${poetry.motif}]`);
       
@@ -1453,7 +1453,7 @@ function printABSummary() {
   const { bothCorrect, bothWrong, baselineOnly, enhancedOnly } = stats.abTestStats;
   
   console.log('\n' + COLORS.bright + '╔══════════════════════════════════════════════════════════════╗' + COLORS.reset);
-  console.log(COLORS.bright + '║              A/B TEST RESULTS (4 vs 8 Quadrant)              ║' + COLORS.reset);
+  console.log(COLORS.bright + '║        A/B TEST: Hybrid 4Q+32-Fusion vs 32-Piece Standalone   ║' + COLORS.reset);
   console.log(COLORS.bright + '╠══════════════════════════════════════════════════════════════╣' + COLORS.reset);
   console.log(`║  Total Games:        ${total.toString().padEnd(44)} ║`);
   console.log(`║  Both Correct:       ${bothCorrect.toString().padEnd(44)} ║`);
@@ -1474,7 +1474,7 @@ async function main() {
   console.log('='.repeat(60));
   console.log(`En Pensent EP Worker - ${workerId}`);
   console.log('='.repeat(60));
-  console.log(`Mode: ${USE_ENHANCED_SIGNATURES ? '8-Quadrant ENHANCED' : '4-Quadrant BASELINE'}`);
+  console.log(`Mode: ${USE_ENHANCED_SIGNATURES ? '32-Piece Standalone (ENHANCED)' : 'Hybrid 4Q+32-Fusion (BASELINE)'}`);
   console.log(`Target: ${THROUGHPUT.gamesPerDay.toLocaleString()} games/day`);
   console.log(`Workers: ${THROUGHPUT.workers} | Games/cycle: ${THROUGHPUT.gamesPerCycle}`);
   console.log('Loading EP engine...');
@@ -1508,9 +1508,9 @@ async function main() {
   
   const epEngine = await loadEPEngine();
   console.log(`✓ EP engine loaded`);
-  console.log(`✓ Baseline 4-quadrant: ACTIVE`);
+  console.log(`✓ Baseline: Hybrid 4Q + 32-piece fusion (Component 15): ACTIVE`);
   if (epEngine.extractEnhancedSignature) {
-    console.log(`✓ Enhanced 8-quadrant: ${USE_ENHANCED_SIGNATURES ? 'ACTIVE' : 'AVAILABLE (set USE_ENHANCED=true)'}`);
+    console.log(`✓ Enhanced: 32-piece standalone predictor: ${USE_ENHANCED_SIGNATURES ? 'ACTIVE' : 'AVAILABLE (set USE_ENHANCED=true)'}`);
   }
   console.log('='.repeat(60));
   
@@ -1840,7 +1840,7 @@ async function savePrediction(attempt) {
   await savePredictionLocal(attempt, workerId);
   
   // 2. Save to Supabase via DIRECT SQL (bypasses RLS)
-  // FIXED: stockfish_prediction = real SF17 eval, hybrid = EP enhanced prediction
+  // FIXED: stockfish_prediction = real SF18 eval, hybrid = EP enhanced prediction
   try {
     // FEN validation: must match DB constraint regex
     // ^[rnbqkpRNBQKP1-8/]+ [wb] [KQkq-]+ [a-h1-8-]+ \d+ \d+$
@@ -1885,9 +1885,9 @@ async function savePrediction(attempt) {
       positionHash,
       Math.max(-9999, Math.min(9999, Math.round((attempt.sf17Eval || 0) * 100))),  // Centipawns (capped)
       18,                                                        // SF depth
-      attempt.sf17Prediction,                                    // Real SF17 prediction
+      attempt.sf17Prediction,                                    // Real SF18 prediction
       Math.round(Math.min(95, 50 + Math.abs(attempt.sf17Eval || 0) * 10)),  // SF confidence (integer)
-      attempt.sf17Correct,                                       // Real SF17 correctness
+      attempt.sf17Correct,                                       // Real SF18 correctness
       attempt.hybridPrediction || attempt.enhancedPrediction || attempt.baselinePrediction,  // v12: real 3-engine fusion
       Math.round(Math.min(69, Math.max(15, (attempt.hybridConfidence || 0.5) * 100))),  // hybrid confidence (capped 15-69)
       attempt.enhancedArchetype || attempt.baselineArchetype || 'unknown',
@@ -1926,7 +1926,7 @@ async function savePrediction(attempt) {
     const result = await resilientQuery(query, values);
     if (result.rowCount > 0) {
       analyzedGameIds.add(attempt.gameId); // Add to dedup set for this session
-      console.log(`[${workerId}] ✓ Saved: ${attempt.gameId} | SF17=${attempt.sf17Prediction}(${attempt.sf17Correct?'✓':'✗'}) EP=${attempt.enhancedPrediction}(${attempt.enhancedCorrect?'✓':'✗'}) Actual=${attempt.actualOutcome}`);
+      console.log(`[${workerId}] ✓ Saved: ${attempt.gameId} | SF18=${attempt.sf17Prediction}(${attempt.sf17Correct?'✓':'✗'}) EP=${attempt.enhancedPrediction}(${attempt.enhancedCorrect?'✓':'✗'}) Actual=${attempt.actualOutcome}`);
     }
   } catch (err) {
     // PostgreSQL 23505 = unique_violation — game already exists, skip silently

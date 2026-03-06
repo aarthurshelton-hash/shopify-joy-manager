@@ -748,7 +748,7 @@ const Index = () => {
                           </h3>
                           
                           <p className="text-base md:text-lg text-muted-foreground font-serif leading-relaxed max-w-2xl">
-                            Join an exclusive circle of chess art collectors. Unlock Stockfish 17 analysis (~3200 ELO), 
+                            Join an exclusive circle of chess art collectors. Unlock Stockfish 18 analysis (~3200 ELO), 
                             pristine HD downloads, curate your personal gallery, and gain first access to limited edition prints.
                           </p>
                           
@@ -756,7 +756,7 @@ const Index = () => {
                           <div className="flex flex-wrap justify-center lg:justify-start gap-4 text-sm">
                             <div className="flex items-center gap-2 text-primary/80">
                               <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                              <span className="font-serif">Stockfish 17 engine</span>
+                              <span className="font-serif">Stockfish 18 engine</span>
                             </div>
                             <div className="flex items-center gap-2 text-primary/80">
                               <div className="w-1.5 h-1.5 rounded-full bg-primary" />

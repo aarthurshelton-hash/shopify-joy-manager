@@ -347,7 +347,7 @@ const TacticalView: React.FC<{ prediction: HybridPrediction }> = ({ prediction }
     {/* Stockfish Analysis Header */}
     <div className="flex items-center gap-2 mb-2">
       <Cpu className="h-5 w-5 text-blue-500" />
-      <h4 className="font-medium">Stockfish 17 Analysis</h4>
+      <h4 className="font-medium">Stockfish 18 Analysis</h4>
       <Badge variant="outline" className="text-[10px]">~3200 ELO</Badge>
     </div>
 

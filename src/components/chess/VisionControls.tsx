@@ -36,15 +36,16 @@ export const VisionControls: React.FC<VisionControlsProps> = ({
       <div className="flex flex-wrap items-center gap-3">
         <TooltipProvider>
           <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="flex items-center gap-2">
-                <Grid3X3 className="h-4 w-4 text-muted-foreground" />
-                <Switch
-                  checked={showCoordinates}
-                  onCheckedChange={onToggleCoordinates}
-                />
-              </div>
-            </TooltipTrigger>
+            <div className="flex items-center gap-2">
+              <TooltipTrigger asChild>
+                <Grid3X3 className="h-4 w-4 text-muted-foreground cursor-default" />
+              </TooltipTrigger>
+              <Switch
+                checked={showCoordinates}
+                onCheckedChange={onToggleCoordinates}
+                className="touch-manipulation"
+              />
+            </div>
             <TooltipContent>Toggle board coordinates (C)</TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -64,15 +65,16 @@ export const VisionControls: React.FC<VisionControlsProps> = ({
             <div className="h-4 w-px bg-border" />
             <TooltipProvider>
               <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="flex items-center gap-2">
-                    <Eye className="h-4 w-4 text-muted-foreground" />
-                    <Switch
-                      checked={showLegend}
-                      onCheckedChange={onToggleLegend}
-                    />
-                  </div>
-                </TooltipTrigger>
+                <div className="flex items-center gap-2">
+                  <TooltipTrigger asChild>
+                    <Eye className="h-4 w-4 text-muted-foreground cursor-default" />
+                  </TooltipTrigger>
+                  <Switch
+                    checked={showLegend}
+                    onCheckedChange={onToggleLegend}
+                    className="touch-manipulation"
+                  />
+                </div>
                 <TooltipContent>Toggle color legend (L)</TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -88,7 +90,7 @@ export const VisionControls: React.FC<VisionControlsProps> = ({
                 variant="ghost"
                 size="sm"
                 onClick={onFullscreen}
-                className="h-8 w-8 p-0"
+                className="h-8 w-8 p-0 touch-manipulation"
               >
                 <Maximize2 className="h-4 w-4 text-muted-foreground" />
               </Button>

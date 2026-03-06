@@ -404,7 +404,7 @@ export function useRealtimeAccuracy(enabled = true) {
       .channel('realtime-predictions')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'prediction_outcomes' },
+        { event: '*', schema: 'public', table: 'market_prediction_attempts' }, // migrated Feb 22 2026
         (payload) => {
           console.log('[RealtimeAccuracy] Prediction update:', payload.eventType);
           syncEvolutionState();

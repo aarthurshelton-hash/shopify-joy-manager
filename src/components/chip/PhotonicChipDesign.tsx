@@ -72,7 +72,7 @@ const PROCESSORS: ProcessorBlueprint[] = [
       principle: 'Constructive interference at occupied squares = "hot"; destructive = "cold"',
     },
     artistNote: 'The hot/cold chess visualization IS the computation. Temperature is photon energy. When I built the 8-quadrant analysis, I realized the board was already a waveguide matrix \u2014 we just hadn\'t wired it yet.',
-    realWorldProof: '17,000+ real Lichess/Chess.com games/day. Every game ID real & deduplicated via SHA-256 position hashes. Stockfish 17 baselines.',
+    realWorldProof: '17,000+ real Lichess/Chess.com games/day. Every game ID real & deduplicated via SHA-256 position hashes. Stockfish 18 baselines.',
   },
   {
     id: 'synthesis', name: 'Synthesis Core', domain: 'universal',

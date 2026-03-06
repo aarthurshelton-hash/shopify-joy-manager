@@ -124,6 +124,13 @@ async function fetchTradeableSignals() {
       const lastTrade = symbolCooldowns.get(row.symbol);
       if (lastTrade && Date.now() - lastTrade < CONFIG.TRADING.SYMBOL_COOLDOWN_MS) continue;
       
+      // v31: Block known losing combos from backtest
+      const comboKey = `${row.archetype}|${row.symbol}|${row.time_horizon}`;
+      if (F.BLOCKED_COMBOS && F.BLOCKED_COMBOS.has(comboKey)) continue;
+      
+      // v31: Extract live accuracy from metadata (set by market-worker v31)
+      const liveAccuracy = meta.liveAccuracy || null;
+      
       signals.push({
         id: row.id,
         symbol: row.symbol,
@@ -138,6 +145,9 @@ async function fetchTradeableSignals() {
         signatureHash: row.signature_hash,
         tacticalOverride: meta.tactical_override || null,
         tradeGrade: qualityGates.trade_grade?.grade || null,
+        liveAccuracy, // v31: live accuracy tier from market-worker
+        comboKey,
+        isEliteCombo: CONFIG.OPTIONS?.ELITE_COMBOS?.includes(comboKey) || false,
       });
     }
     

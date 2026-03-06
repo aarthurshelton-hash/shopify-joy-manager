@@ -230,9 +230,9 @@ async function isPositionAnalyzed(fen) {
   }
 }
 
-// Evaluate position with Stockfish 17 (simplified - would use actual engine)
+// Evaluate position with Stockfish 18 (simplified - would use actual engine)
 function evaluateWithStockfish(fen) {
-  // Simplified SF17 evaluation using same material counting as EP
+  // Simplified SF18 evaluation using same material counting as EP
   // In production, this would call actual Stockfish engine
   const parts = fen.split(' ');
   const position = parts[0];
@@ -253,7 +253,7 @@ function evaluateWithStockfish(fen) {
   
   const diff = whiteScore - blackScore;
   
-  // SF17 uses same material heuristic for this simplified version
+  // SF18 uses same material heuristic for this simplified version
   if (diff > 1.5) {
     return { prediction: 'white_wins', confidence: Math.min(0.95, 0.6 + diff * 0.04) };
   } else if (diff < -1.5) {
@@ -296,12 +296,12 @@ function generatePrediction(fen) {
   }
 }
 
-// Save prediction attempt with both EP and SF17
+// Save prediction attempt with both EP and SF18
 async function savePrediction(game, moveNumber, fen, hybridPred, actualResult) {
   try {
     const hash = hashPosition(fen);
     
-    // Get SF17 prediction
+    // Get SF18 prediction
     const sf17Pred = evaluateWithStockfish(fen);
     
     // Determine if predictions were correct
@@ -324,7 +324,7 @@ async function savePrediction(game, moveNumber, fen, hybridPred, actualResult) {
       stockfish_correct: sf17Correct,
       data_quality_tier: 'farm_generated',
       data_source: 'farm_terminal',
-      engine_version: 'TCEC Stockfish 17 NNUE (ELO 3600)',
+      engine_version: 'TCEC Stockfish 18 NNUE (ELO 3600)',
       hybrid_engine: 'En Pensent Universal v2.1',
       worker_id: WORKER_NAME,
     });

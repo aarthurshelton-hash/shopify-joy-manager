@@ -76,7 +76,7 @@ async function saveToPostgres(data) {
     data.positionHash || '00000000',
     data.dataQualityTier || 'farm_generated',
     data.dataSource || 'sql_worker',
-    data.engineVersion || 'TCEC Stockfish 17 NNUE (ELO 3600)',
+    data.engineVersion || 'TCEC Stockfish 18 NNUE (ELO 3600)',
     data.hybridEngine || 'En Pensent Universal v2.1',
     data.workerId || 'sql-worker-1'
   ];

@@ -22,34 +22,85 @@ export const CONFIG = {
   
   // ─── TRADE FILTERS ─────────────────────────────────────────────────────────
   // Only trade predictions that match ALL of these criteria.
-  // This is the "prove it" gate — only patterns with real edge get through.
+  // Data-driven from 57K+ real predictions (Feb 19, 2026 audit).
   FILTERS: {
-    // Archetypes with proven accuracy (data-driven, not guessed)
+    // Archetypes with proven accuracy on specific combos
+    // v31: Expanded from 3 → 7 based on live combo-level accuracy data
     ALLOWED_ARCHETYPES: [
-      'blunder_free_queen',   // 93% last 6h, 79% on tactical overrides
-      'trap_queen_sac',       // 46% last 6h, 38.8% all-time
-      'false_breakout',       // 54.9% all-time on 1003 predictions
+      'blunder_free_queen',        // 34.7% all-time, but 100% on BTC-USD/8h (n=21)
+      'trap_queen_sac',            // 38.6% all-time, 100% on AMD/1h (n=108), AMZN/1h (n=100)
+      'false_breakout',            // 54.9% all-time on 1003 preds — most consistent
+      'regime_shift_down',         // 96.8% on AMD/1h (n=158), 90.9% on MSFT/2h (n=132)
+      'mean_reversion_down',       // 100% on AMZN/2h (n=75), 88.4% on MSFT/1h (n=146)
+      'bearish_momentum',          // 47.0% all-time (n=1860), 100% on specific combos
+      'mean_reversion_up',         // 100% on MSFT/1h (n=80), 88.9% on AMZN/1h (n=72)
     ],
     
-    // Symbols with proven edge (>35% accuracy on 1000+ predictions)
+    // Symbols with proven edge
+    // v31: Expanded based on fresh 7-day audit data
     ALLOWED_SYMBOLS: [
-      'AMD',    // 45.1% on 1989 preds — best stock
-      'AMZN',   // 41.8% on 1614 preds
-      'SI=F',   // 39.9% on 3663 preds — best commodity
-      'CL=F',   // 26.9% on 3984 preds — decent with blunder_free_queen
+      'AMD',      // 52.2% all-time on 2474 preds — best stock
+      'AMZN',     // 48.6% on 2075 preds
+      'MSFT',     // 40.8% on 2009 preds, 100% on mean_reversion_down/8h
+      'QQQ',      // 61.5% on 234 preds — highest accuracy index
+      'NVDA',     // 35.1% on 951 preds — above random, good combos
+      'SI=F',     // 40.9% on 3779 preds — best commodity
+      'SOL-USD',  // 50.2% on 1853 preds — best crypto
     ],
     
     // Timeframes with proven edge
     ALLOWED_TIMEFRAMES: ['1h', '2h', '4h', '8h'],
     
     // Minimum prediction confidence to trade (0-1)
-    MIN_CONFIDENCE: 0.30,
+    // v31: Lowered from 0.30 to 0.15 because audit showed LOW confidence = HIGH accuracy
+    // (0-20 conf bucket: 42% accuracy vs 70+ conf: 17.4%)
+    MIN_CONFIDENCE: 0.15,
     
     // Minimum age of prediction in seconds (don't trade stale signals)
     MAX_PREDICTION_AGE_SEC: 300, // 5 minutes
     
     // Only trade predictions that have photonic coherence > 1.0
-    REQUIRE_PHOTONIC_COHERENCE: true,
+    REQUIRE_PHOTONIC_COHERENCE: false, // v31: disabled — too many good signals filtered out
+    
+    // v31: BLOCKED COMBOS — these pass individual filters but lose money as combos
+    // Identified from 7-day backtest on 570 real trades
+    BLOCKED_COMBOS: new Set([
+      'blunder_free_queen|MSFT|8h',   // 0% on 13 trades, -$114
+      'trap_queen_sac|AMZN|8h',       // 0% on 12 trades, -$98
+      'trap_queen_sac|SI=F|4h',       // 15% on 66 trades, -$91
+      'mean_reversion_down|SI=F|4h',  // 19% on 21 trades, -$63
+      'mean_reversion_up|MSFT|8h',    // 0% on 11 trades, -$1
+    ]),
+  },
+  
+  // ─── OPTIONS SCALPING ──────────────────────────────────────────────────────
+  // For our highest-confidence combos (90%+ accuracy, n>=50), use options for leverage.
+  // A 2% stock move = 10-30% option move. At 90%+ accuracy, this is where the real money is.
+  OPTIONS: {
+    ENABLED: false,  // Start with stocks only, enable after paper trading proves profitable
+    
+    // Only use options when live accuracy for this combo is >= this threshold
+    MIN_COMBO_ACCURACY: 0.85,
+    MIN_COMBO_SAMPLES: 50,
+    
+    // Options parameters
+    MAX_OPTION_VALUE: 500,         // Max $ per option trade (high risk, small size)
+    PREFER_WEEKLY: true,           // Weekly options for max leverage
+    STRIKE_OFFSET: 0,             // ATM options (0 = at the money)
+    MAX_DAYS_TO_EXPIRY: 7,        // Only weeklies
+    
+    // These combos have earned options-level trust (90%+ accuracy, n>=50)
+    ELITE_COMBOS: [
+      'trap_queen_sac|AMD|1h',        // 100% n=108
+      'trap_queen_sac|AMZN|1h',       // 100% n=100
+      'mean_reversion_down|AMZN|2h',  // 100% n=75
+      'regime_shift_down|AMD|1h',     // 96.8% n=158
+      'mean_reversion_down|MSFT|1h',  // 88.4% n=146
+      'regime_shift_down|MSFT|2h',    // 90.9% n=132
+      'mean_reversion_up|MSFT|1h',    // 100% n=80
+      'mean_reversion_up|AMZN|1h',    // 88.9% n=72
+      'trap_queen_sac|NVDA|4h',       // 91.8% n=61
+    ],
   },
   
   // ─── POSITION SIZING ───────────────────────────────────────────────────────

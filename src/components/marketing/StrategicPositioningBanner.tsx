@@ -104,7 +104,7 @@ export function StrategicPositioningBanner({
         <span className="font-medium text-sm">Protected Technology</span>
       </div>
       <p className="text-xs text-muted-foreground">
-        Patent-pending visual encryption • Stockfish 17 integration • Natural Vision™ recognition
+        Patent-pending visual encryption • Stockfish 18 integration • Natural Vision™ recognition
       </p>
       <div className="flex flex-wrap gap-1 mt-2">
         {IP_CLAIMS.trademarks.slice(0, 3).map((tm) => (

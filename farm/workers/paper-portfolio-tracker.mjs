@@ -10,14 +10,23 @@
  * 
  * STRATEGIES:
  *   main           — Every directional prediction, 5% sizing (baseline)
- *   conservative   — Only AMD & SI=F with conf>70%, 5% sizing (proven edge)
+ *   conservative   — Proven edge symbols (stocks + all live commodities) conf>70%, 5% sizing
  *   aggressive     — Every prediction, 10% sizing (max learning speed)
- *   edge_hunter    — Only false_breakout + bearish_momentum archetypes, 15% sizing
- *   options_scalper — Only AMD/NVDA/MSFT/AMZN, delta-leveraged, 8% sizing (simulate ATM options)
+ *   edge_hunter    — Only false_breakout + trap_queen_sac archetypes, 15% sizing
+ *   options_scalper — AMD/NVDA/GOOGL/CL=F + SI=F (→SLV) + HG=F, delta-leveraged, 8% sizing
+ *   adaptive_exit  — A/B TEST: archetype-aware EARLY close vs fixed-timer exit
+ *                    Uses archetype multiplier to scale actual_move, approximating
+ *                    what P&L would be if we exited at optimal_exit_time instead of
+ *                    waiting full horizon_ms. Tests the hypothesis: do variable
+ *                    exits outperform fixed-timer exits?
+ *                    EXIT TIMER NOTE: current system uses FIXED timer (created_at +
+ *                    horizon_ms × archetype_mul). Truly adaptive exits need intraday
+ *                    price sampling — this strategy approximates via move scaling.
  */
 
 import 'dotenv/config';
 import pg from 'pg';
+import { computeViabilityScore, isKnownBadCombo } from '../scripts/ep-options-logic.mjs';
 const { Pool } = pg;
 
 const pool = new Pool({
@@ -49,8 +58,16 @@ const STRATEGIES = {
     name: 'Conservative Edge',
     positionSizePct: 0.05,
     filter: (pred) => {
-      const edgeSymbols = ['AMD', 'SI=F'];
-      return edgeSymbols.includes(pred.symbol) && parseFloat(pred.confidence) >= 70;
+      // Proven edge: top stocks (AMD, GOOGL) + all live BullionVault metals + energy
+      // SI=F: false_breakout at 82-90% conf — our strongest live signal
+      // GC=F: shouldFlip=true (100% flipped, n=51) — anti-signal gold
+      // HG=F: bearish_momentum 100% n=31 (commodity-specific — overrides global blacklist)
+      // CL=F: 63.6% all-time (→USO options ETF)
+      // PL=F, PA=F: new metals, learning phase — only Grade A (conf>70%)
+      const edgeSymbols = ['AMD', 'GOOGL', 'SI=F', 'GC=F', 'HG=F', 'CL=F', 'PL=F', 'PA=F'];
+      const conf = parseFloat(pred.confidence);
+      const normConf = conf <= 1 ? conf * 100 : conf;
+      return edgeSymbols.includes(pred.symbol) && normConf >= 70;
     },
     leverageMultiplier: 1,
     extraFees: 0,
@@ -66,46 +83,81 @@ const STRATEGIES = {
     name: 'Edge Hunter',
     positionSizePct: 0.15,
     filter: (pred) => {
-      const edgeArchetypes = ['false_breakout', 'bearish_momentum'];
+      // trap_queen_sac: generated ALL 8 top options trades (114%, 133%, 34% moves)
+      // false_breakout: NG=F bread-and-butter (34 trades, 100% win rate)
+      // bearish_momentum removed — also in ARCHETYPE_BLACKLIST (was contradicting itself)
+      const edgeArchetypes = ['false_breakout', 'trap_queen_sac'];
       return edgeArchetypes.includes(pred.archetype);
     },
     leverageMultiplier: 1,
     extraFees: 0,
   },
+  adaptive_exit: {
+    name: 'Adaptive Exit',
+    positionSizePct: 0.05,
+    filter: (pred) => {
+      // Same proven archetypes as edge_hunter — isolate the EXIT TIMING variable.
+      // Comparison: adaptive_exit vs edge_hunter with identical entry filters
+      // = pure A/B test of variable (archetype-timed) vs fixed (horizon_ms) exit.
+      return ['false_breakout', 'trap_queen_sac', 'choppy', 'mean_reversion_up', 'mean_reversion_down'].includes(pred.archetype);
+    },
+    leverageMultiplier: 1,
+    extraFees: 0,
+    adaptiveExit: true, // flag: scale actual_move by ADAPTIVE_EXIT_MUL[archetype]
+  },
   options_scalper: {
     name: 'Options Scalper',
     positionSizePct: 0.08,
     filter: (pred) => {
-      const optionsStocks = ['AMD', 'NVDA', 'MSFT', 'AMZN'];
+      const optionsStocks = ['AMD', 'NVDA', 'GOOGL', 'CL=F', 'SI=F', 'HG=F'];
       return optionsStocks.includes(pred.symbol);
     },
-    // ATM weekly options: delta ~0.50, so underlying move × 2-3x in option premium
-    // But also theta decay: ~0.5-1% per day for weeklies
-    // Net leverage after theta: ~2x on a same-day scalp, less for longer holds
     leverageMultiplier: 2.5,
-    // Options commissions are higher: $0.65/contract IBKR, min 1 contract
-    extraFees: 0.65,  // Extra per-side on top of base commission
+    extraFees: 0.65,
+  },
+  grade_filter: {
+    name: 'Grade A/B Only',
+    positionSizePct: 0.07,
+    // Only trade signals that would score Grade A or B in the viability system.
+    // Uses combo_pct/combo_n from the prediction row (joined in SQL).
+    // This mirrors exactly what the terminal shows and what email alerts fire on.
+    filter: (pred) => {
+      const vs = computeViabilityScore(pred);
+      return vs.tradeable; // A or B
+    },
+    leverageMultiplier: 1,
+    extraFees: 0,
   },
 };
 
+// ─── ADAPTIVE EXIT MULTIPLIERS ───────────────────────────────────────────────
+// Mirrors ARCHETYPE_EXIT in ep-market-terminal.mjs.
+// mul = fraction of actual_move to capture (proxy for exiting at horizon × mul).
+// Approximation: assumes linear price progression through the hold window.
+// TRUE adaptive exit requires intraday price sampling — this is a testable proxy.
+const ADAPTIVE_EXIT_MUL = {
+  false_breakout:             0.70,
+  choppy:                     0.55,
+  regime_shift_down:          1.00,
+  bearish_momentum:           1.00,
+  bullish_momentum:           1.00,
+  mean_reversion_up:          0.65,
+  mean_reversion_down:        0.65,
+  trap_queen_sac:             0.50,
+  institutional_distribution: 0.85,
+  institutional_accumulation: 0.85,
+  oversold_bounce:            0.60,
+  false_breakdown:            0.70,
+};
+
 // ─── GLOBAL SAFETY GATES ─────────────────────────────────────────────────────
-// These apply BEFORE any strategy-specific filter to prevent catastrophic losses.
+// NOTE: Archetype-level blacklist REMOVED — it was blocking symbol-specific edges.
+// e.g. mean_reversion_up|GOOGL|8h = 98% accurate, but was globally blacklisted at 21.5%.
+// Combo-level filtering via isKnownBadCombo() handles this correctly (symbol+archetype pair).
 const GLOBAL_GATES = {
-  MIN_CONFIDENCE: 55,           // Only trade golden zone (55%+) — below this has 52% chess accuracy
-  MIN_POSITION_SIZE_USD: 14.00, // Ensures fees < 5% of position ($0.70 / $14 = 5%)
-  MAX_TRADES_PER_HOUR: 10,      // Per strategy — prevents rapid-fire drain
-  ARCHETYPE_BLACKLIST: new Set([
-    'cultural_harmony',           // 28.1% accuracy — worse than random
-    'bearish_momentum',           // Reports 85% conf but 0% paper wins — overconfidence trap
-    'bullish_momentum',           // 15.8% accuracy
-    'regime_shift_down',          // 16.3% accuracy
-    'mean_reversion_up',          // 21.5% accuracy
-    'mean_reversion_down',        // 28.1% accuracy
-    'blunder_free_queen',         // 23.7% accuracy
-    'castling_reposition',        // 25.8% accuracy
-    'institutional_accumulation', // 29.1% accuracy
-    'oversold_bounce',            // 29.2% accuracy
-  ]),
+  MIN_CONFIDENCE: 65,           // Raised from 55 — below 65 is mostly noise
+  MIN_POSITION_SIZE_USD: 14.00, // Ensures fees < 5% of position
+  MAX_TRADES_PER_HOUR: 10,
 };
 
 // Track trade counts per strategy per hour for rate limiting
@@ -159,13 +211,24 @@ function calculateCADFromUSD(usdAmount) {
 }
 
 async function getUnprocessedPredictions(startedAt, strategyId) {
-  const blacklist = [...GLOBAL_GATES.ARCHETYPE_BLACKLIST];
   const { rows } = await pool.query(`
+    WITH combos AS (
+      SELECT symbol, archetype,
+        ROUND(100.0 * SUM(CASE WHEN ep_correct THEN 1 ELSE 0 END)
+          / NULLIF(COUNT(CASE WHEN ep_correct IS NOT NULL THEN 1 END),0),1) AS combo_pct,
+        COUNT(CASE WHEN ep_correct IS NOT NULL THEN 1 END) AS combo_n
+      FROM market_prediction_attempts
+      WHERE created_at > NOW() - INTERVAL '30d'
+      GROUP BY symbol, archetype
+    )
     SELECT m.id, m.symbol, m.predicted_direction, m.archetype, m.confidence,
            m.time_horizon, m.price_at_prediction, m.price_at_resolution,
            m.actual_move, m.actual_direction, m.ep_correct,
-           m.created_at, m.resolved_at
+           m.created_at, m.resolved_at, m.prediction_metadata,
+           COALESCE(c.combo_pct, 0) AS combo_pct,
+           COALESCE(c.combo_n, 0)   AS combo_n
     FROM market_prediction_attempts m
+    LEFT JOIN combos c ON c.symbol = m.symbol AND c.archetype = m.archetype
     LEFT JOIN paper_trades pt ON pt.prediction_id = m.id AND pt.strategy = $2
     WHERE m.resolved_at IS NOT NULL
       AND m.created_at >= $1
@@ -174,18 +237,21 @@ async function getUnprocessedPredictions(startedAt, strategyId) {
       AND m.price_at_resolution IS NOT NULL AND m.price_at_resolution > 0
       AND m.actual_move IS NOT NULL
       AND pt.id IS NULL
-      AND m.confidence >= $3
-      AND m.archetype NOT IN (${blacklist.map((_, i) => `$${i + 4}`).join(',')})
+      AND CASE WHEN m.confidence <= 1 THEN m.confidence * 100 ELSE m.confidence END >= $3
     ORDER BY m.resolved_at ASC
     LIMIT 100
-  `, [startedAt, strategyId, GLOBAL_GATES.MIN_CONFIDENCE, ...blacklist]);
+  `, [startedAt, strategyId, GLOBAL_GATES.MIN_CONFIDENCE]);
   return rows;
 }
 
 function calculateTrade(pred, balance, strategy) {
   const positionSize = balance * strategy.positionSizePct;
   const dirSign = pred.predicted_direction === 'bullish' ? 1 : -1;
-  const actualMovePct = parseFloat(pred.actual_move) / 100;
+  // Adaptive exit: scale actual_move by archetype multiplier (approximates early close)
+  // e.g. false_breakout × 0.70 = capture 70% of the move by exiting before full window
+  const rawMove = parseFloat(pred.actual_move) / 100;
+  const exitMul = strategy.adaptiveExit ? (ADAPTIVE_EXIT_MUL[pred.archetype] ?? 0.80) : 1.0;
+  const actualMovePct = rawMove * exitMul;
   
   // Apply leverage multiplier (1x for stocks, 2.5x for options)
   const leveragedMove = actualMovePct * strategy.leverageMultiplier;
@@ -209,6 +275,8 @@ function calculateTrade(pred, balance, strategy) {
   const netPnl = grossPnl - fees;
   const newBalance = balance + netPnl;
   
+  const vs = computeViabilityScore(pred);
+
   return {
     prediction_id: pred.id,
     symbol: pred.symbol,
@@ -228,7 +296,40 @@ function calculateTrade(pred, balance, strategy) {
     prediction_correct: pred.ep_correct,
     predicted_at: pred.created_at,
     resolved_at: pred.resolved_at,
+    viability_grade: vs.grade,
+    viability_score: vs.score,
+    combo_pct: pred.combo_pct,
+    combo_n: pred.combo_n,
   };
+}
+
+async function ensureViabilityColumns() {
+  await pool.query(`
+    ALTER TABLE paper_trades
+      ADD COLUMN IF NOT EXISTS viability_grade TEXT,
+      ADD COLUMN IF NOT EXISTS viability_score  INT,
+      ADD COLUMN IF NOT EXISTS combo_pct        NUMERIC,
+      ADD COLUMN IF NOT EXISTS combo_n          INT
+  `).catch(() => {});
+}
+
+async function ensurePortfolios() {
+  const deposit = calculateUSDFromCAD(CONFIG.STARTING_CAD);
+  const startingUSD = deposit.netUSD;
+  for (const stratId of Object.keys(STRATEGIES)) {
+    const existing = (await pool.query('SELECT id FROM paper_portfolio WHERE id=$1', [stratId])).rows[0];
+    if (!existing) {
+      await pool.query(`
+        INSERT INTO paper_portfolio (
+          id, starting_balance, current_balance, high_water_mark,
+          total_trades, winning_trades, losing_trades,
+          total_pnl, total_fees, max_drawdown_pct,
+          started_at, updated_at
+        ) VALUES ($1,$2,$2,$2, 0,0,0, 0,0,0, NOW(), NOW())
+      `, [stratId, startingUSD]);
+      log(`Seeded new portfolio: ${stratId} ($${startingUSD.toFixed(2)} USD)`);
+    }
+  }
 }
 
 async function saveTrade(trade, strategyId) {
@@ -238,8 +339,9 @@ async function saveTrade(trade, strategyId) {
       time_horizon, entry_price, exit_price, actual_move_pct,
       position_size, gross_pnl, fees, net_pnl,
       balance_before, balance_after, prediction_correct,
-      predicted_at, resolved_at, strategy
-    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+      predicted_at, resolved_at, strategy,
+      viability_grade, viability_score, combo_pct, combo_n
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
   `, [
     trade.prediction_id, trade.symbol, trade.predicted_direction,
     trade.archetype, trade.confidence, trade.time_horizon,
@@ -247,6 +349,7 @@ async function saveTrade(trade, strategyId) {
     trade.position_size, trade.gross_pnl, trade.fees, trade.net_pnl,
     trade.balance_before, trade.balance_after, trade.prediction_correct,
     trade.predicted_at, trade.resolved_at, strategyId,
+    trade.viability_grade, trade.viability_score, trade.combo_pct, trade.combo_n,
   ]);
 }
 
@@ -289,8 +392,10 @@ async function processNewTrades() {
         const conf = parseFloat(pred.confidence);
         if (conf < GLOBAL_GATES.MIN_CONFIDENCE) continue;
         
-        // 2. Archetype blacklist (below-random archetypes)
-        if (GLOBAL_GATES.ARCHETYPE_BLACKLIST.has(pred.archetype)) continue;
+        // 2. Known-bad combo gate (replaces global archetype blacklist)
+        // Only suppresses symbol+archetype pairs with <45% combo accuracy AND n>=30
+        // Respects reverse_signal.flipped (corrected signals are never suppressed)
+        if (isKnownBadCombo(pred)) continue;
         
         // 3. Min position size gate (prevents fee-dominated trades)
         const proposedSize = balance * strategy.positionSizePct;
@@ -378,6 +483,8 @@ async function main() {
   log('Starting Multi-Strategy Paper Portfolio Tracker...');
   log(`Strategies: ${Object.keys(STRATEGIES).join(', ')}`);
   
+  await ensureViabilityColumns();
+  await ensurePortfolios();
   await fetchUSDCAD();
   
   const deposit = calculateUSDFromCAD(CONFIG.STARTING_CAD);

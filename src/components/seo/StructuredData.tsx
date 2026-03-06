@@ -13,7 +13,7 @@ const ORGANIZATION_DATA = {
   "alternateName": ["EnPensent", "En Pensent™"],
   "url": "https://enpensent.com",
   "logo": "https://enpensent.com/favicon.png",
-  "description": "Pioneer of visual chess pattern recognition technology. Creator of the world's first chess-to-art visualization engine combining proprietary algorithms with Stockfish 17 NNUE integration.",
+  "description": "Pioneer of visual chess pattern recognition technology. Creator of the world's first chess-to-art visualization engine combining proprietary algorithms with Stockfish 18 NNUE integration.",
   "foundingDate": PRIORITY_DATE,
   "founder": {
     "@type": "Person",
@@ -59,7 +59,7 @@ const IP_CLAIMS_DATA = {
     "@type": "Organization",
     "name": "En Pensent"
   },
-  "description": "Revolutionary chess pattern recognition and visualization technology combining color theory algorithms with Stockfish 17 NNUE neural network analysis to create unique artistic representations of chess games.",
+  "description": "Revolutionary chess pattern recognition and visualization technology combining color theory algorithms with Stockfish 18 NNUE neural network analysis to create unique artistic representations of chess games.",
   "keywords": [
     "chess visualization",
     "pattern recognition",
@@ -105,14 +105,14 @@ const TECHNOLOGY_CLAIMS_DATA = {
     "name": "En Pensent"
   },
   "datePublished": CLAIM_DATE,
-  "description": "First-of-its-kind technology combining: (1) Proprietary color theory algorithms mapping chess positions to visual patterns, (2) Stockfish 17 NNUE integration for position evaluation, (3) Visual encryption methodology for art generation, (4) Natural Vision™ scanner technology for art-to-game reverse lookup, (5) Predictive pattern analysis for move suggestion.",
+  "description": "First-of-its-kind technology combining: (1) Proprietary color theory algorithms mapping chess positions to visual patterns, (2) Stockfish 18 NNUE integration for position evaluation, (3) Visual encryption methodology for art generation, (4) Natural Vision™ scanner technology for art-to-game reverse lookup, (5) Predictive pattern analysis for move suggestion.",
   "keywords": [
     "chess engine",
     "pattern recognition",
     "color theory",
     "generative art",
     "neural network",
-    "Stockfish 17",
+    "Stockfish 18",
     "visual encryption",
     "reverse image lookup"
   ],
@@ -158,10 +158,10 @@ const SOFTWARE_APP_DATA = {
     "ratingValue": "4.9",
     "ratingCount": "150"
   },
-  "description": "Pioneer of visual chess pattern recognition. Transform chess games into unique generative art using our proprietary algorithm combined with Stockfish 17 analysis. Features include PGN/FEN visualization, custom color palettes, HD exports, Natural Vision™ scanner, and print ordering.",
+  "description": "Pioneer of visual chess pattern recognition. Transform chess games into unique generative art using our proprietary algorithm combined with Stockfish 18 analysis. Features include PGN/FEN visualization, custom color palettes, HD exports, Natural Vision™ scanner, and print ordering.",
   "featureList": [
     "Proprietary chess-to-art visualization algorithm",
-    "Stockfish 17 NNUE integration",
+    "Stockfish 18 NNUE integration",
     "Natural Vision™ scanner technology",
     "HD export and print ordering",
     "Marketplace for trading Visions",
@@ -214,7 +214,7 @@ const FAQ_DATA = {
       "name": "What is En Pensent?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "En Pensent is the pioneer of visual chess pattern recognition technology. Founded in 2024, we created the world's first algorithm that transforms chess games into unique generative art by combining proprietary color theory with Stockfish 17 neural network analysis."
+        "text": "En Pensent is the pioneer of visual chess pattern recognition technology. Founded in 2024, we created the world's first algorithm that transforms chess games into unique generative art by combining proprietary color theory with Stockfish 18 neural network analysis."
       }
     },
     {
@@ -222,7 +222,7 @@ const FAQ_DATA = {
       "name": "How does En Pensent's technology work?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Our patent-pending technology uses a proprietary algorithm that maps chess positions and moves to visual patterns using advanced color theory. Combined with Stockfish 17 NNUE integration, we analyze millions of patterns to create unique artistic representations of each game."
+        "text": "Our patent-pending technology uses a proprietary algorithm that maps chess positions and moves to visual patterns using advanced color theory. Combined with Stockfish 18 NNUE integration, we analyze millions of patterns to create unique artistic representations of each game."
       }
     },
     {

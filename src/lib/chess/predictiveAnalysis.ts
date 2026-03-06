@@ -1,7 +1,7 @@
 /**
  * Predictive Chess Analysis Engine
  * 
- * Combines Stockfish 17's deep analysis capabilities with En Pensent's
+ * Combines Stockfish 18's deep analysis capabilities with En Pensent's
  * visualization data and color theory to provide:
  * - 30-move lookahead predictions
  * - Pattern recognition across game positions

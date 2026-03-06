@@ -24,12 +24,12 @@
  * - Graceful degradation on partial failures
  * 
  * 1. HIGH-VOLUME LOCAL POOL (100+ results/hour)
- *    - Uses LOCAL Stockfish 17 NNUE at optimized depth (D18)
+ *    - Uses LOCAL Stockfish 18 NNUE at optimized depth (D18)
  *    - Fast and RELIABLE - no external API dependencies
  *    - Best for: Volume, guaranteed throughput
  * 
  * 2. DEEP LOCAL POOL (5 results/hour)  
- *    - Uses local Stockfish 17 NNUE at maximum depth (D30)
+ *    - Uses local Stockfish 18 NNUE at maximum depth (D30)
  *    - Slow but precise: ~12 minutes/game
  *    - Best for: Edge cases, pattern discovery
  * 

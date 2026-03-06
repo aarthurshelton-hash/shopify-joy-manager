@@ -10,6 +10,11 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, Shield, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import MultiMarketScalpingTerminal from '@/components/scalping/MultiMarketScalpingTerminal';
+import BullionVaultPredictionPanel from '@/components/scalping/BullionVaultPredictionPanel';
+import EPOptionsSignalPanel from '@/components/scalping/EPOptionsSignalPanel';
+import EPBacktestPanel from '@/components/scalping/EPBacktestPanel';
+import CommodityGridVisualizer from '@/components/scalping/CommodityGridVisualizer';
+import MarketFlowVisualizer from '@/components/scalping/MarketFlowVisualizer';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 const ScalpingTerminalPage: React.FC = () => {
@@ -53,9 +58,25 @@ const ScalpingTerminalPage: React.FC = () => {
       </div>
 
       {/* Main Content */}
-      <div className="container mx-auto px-4 py-6">
+      <div className="container mx-auto px-4 py-6 space-y-6">
+        {/* Market Flow Grid — EP Universal Visualization */}
+        <ErrorBoundary componentName="MarketFlowVisualizer">
+          <MarketFlowVisualizer />
+        </ErrorBoundary>
         <ErrorBoundary componentName="ScalpingTerminal">
           <MultiMarketScalpingTerminal />
+        </ErrorBoundary>
+        <ErrorBoundary componentName="BullionVaultPredictionPanel">
+          <BullionVaultPredictionPanel />
+        </ErrorBoundary>
+        <ErrorBoundary componentName="EPOptionsSignalPanel">
+          <EPOptionsSignalPanel />
+        </ErrorBoundary>
+        <ErrorBoundary componentName="EPBacktestPanel">
+          <EPBacktestPanel />
+        </ErrorBoundary>
+        <ErrorBoundary componentName="CommodityGridVisualizer">
+          <CommodityGridVisualizer />
         </ErrorBoundary>
       </div>
 

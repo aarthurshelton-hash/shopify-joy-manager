@@ -37,6 +37,42 @@
       "restart_delay": 30000
     },
     {
+      "name": "chess-db-ingest-2",
+      "script": "./farm/workers/chess-db-ingest-worker.mjs",
+      "args": "--min-elo=1500 --max-per-source=50000 --sf-depth=14",
+      "instances": 1,
+      "exec_mode": "fork",
+      "autorestart": true,
+      "max_restarts": 10,
+      "min_uptime": "30s",
+      "kill_timeout": 5000,
+      "env": {
+        "NODE_ENV": "production",
+        "WORKER_ID": "db-ingest-2"
+      },
+      "merge_logs": true,
+      "max_memory_restart": "500M",
+      "restart_delay": 30000
+    },
+    {
+      "name": "chess-db-ingest-3",
+      "script": "./farm/workers/chess-db-ingest-worker.mjs",
+      "args": "--min-elo=1500 --max-per-source=50000 --sf-depth=14",
+      "instances": 1,
+      "exec_mode": "fork",
+      "autorestart": true,
+      "max_restarts": 10,
+      "min_uptime": "30s",
+      "kill_timeout": 5000,
+      "env": {
+        "NODE_ENV": "production",
+        "WORKER_ID": "db-ingest-3"
+      },
+      "merge_logs": true,
+      "max_memory_restart": "500M",
+      "restart_delay": 30000
+    },
+    {
       "name": "market-worker",
       "script": "./farm/workers/market-prediction-worker.mjs",
       "instances": 1,
@@ -70,20 +106,20 @@
       "restart_delay": 60000
     },
     {
-      "name": "options-scalper",
-      "script": "./farm/workers/options-scalping-engine.mjs",
+      "name": "market-flow",
+      "script": "./farm/workers/market-flow-worker.mjs",
       "instances": 1,
       "exec_mode": "fork",
       "autorestart": true,
-      "max_restarts": 10,
-      "min_uptime": "30s",
+      "max_restarts": 20,
+      "min_uptime": "10s",
       "kill_timeout": 5000,
       "env": {
         "NODE_ENV": "production"
       },
       "merge_logs": true,
-      "max_memory_restart": "300M",
-      "restart_delay": 30000
+      "max_memory_restart": "100M",
+      "restart_delay": 5000
     },
     {
       "name": "paper-tracker",
@@ -176,6 +212,72 @@
       "max_restarts": 3,
       "min_uptime": "10s",
       "kill_timeout": 30000,
+      "env": {
+        "NODE_ENV": "production"
+      },
+      "merge_logs": true,
+      "max_memory_restart": "200M",
+      "restart_delay": 60000
+    },
+    {
+      "name": "email-alerts",
+      "script": "./farm/scripts/market-email-alerts.mjs",
+      "instances": 1,
+      "exec_mode": "fork",
+      "autorestart": true,
+      "max_restarts": 10,
+      "min_uptime": "30s",
+      "kill_timeout": 5000,
+      "env": {
+        "NODE_ENV": "production"
+      },
+      "merge_logs": true,
+      "max_memory_restart": "100M",
+      "restart_delay": 30000
+    },
+    {
+      "name": "ib-gateway-bridge",
+      "script": "/Users/alecshelts/shopify-joy-manager/public/ib-gateway-bridge/server-simple.js",
+      "instances": 1,
+      "exec_mode": "fork",
+      "autorestart": true,
+      "max_restarts": 10,
+      "min_uptime": "5s",
+      "kill_timeout": 3000,
+      "env": {
+        "NODE_ENV": "production",
+        "BRIDGE_PORT": "4000",
+        "IB_HOST": "127.0.0.1",
+        "IB_PORT": "4002"
+      },
+      "merge_logs": true,
+      "max_memory_restart": "100M"
+    },
+    {
+      "name": "morning-report",
+      "script": "./farm/scripts/morning-report.mjs",
+      "instances": 1,
+      "exec_mode": "fork",
+      "autorestart": false,
+      "cron_restart": "0 13 * * 1-5",
+      "max_restarts": 2,
+      "min_uptime": "5s",
+      "kill_timeout": 15000,
+      "env": {
+        "NODE_ENV": "production"
+      },
+      "merge_logs": true,
+      "max_memory_restart": "150M"
+    },
+    {
+      "name": "report-generator",
+      "script": "./farm/workers/report-generator.mjs",
+      "instances": 1,
+      "exec_mode": "fork",
+      "autorestart": true,
+      "max_restarts": 5,
+      "min_uptime": "30s",
+      "kill_timeout": 5000,
       "env": {
         "NODE_ENV": "production"
       },

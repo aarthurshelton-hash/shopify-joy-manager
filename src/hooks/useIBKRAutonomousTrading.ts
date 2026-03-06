@@ -79,9 +79,10 @@ export function useIBKRAutonomousTrading(gatewayConnected: boolean, accountId: s
     try {
       // Fetch recent predictions for this symbol
       const { data: predictions } = await supabase
-        .from('prediction_outcomes')
-        .select('*')
+        .from('market_prediction_attempts') // migrated from prediction_outcomes Feb 22 2026
+        .select('predicted_direction, confidence, prediction_metadata, ep_correct')
         .eq('symbol', symbol)
+        .not('predicted_direction', 'is', null)
         .order('created_at', { ascending: false })
         .limit(5);
 
@@ -101,17 +102,17 @@ export function useIBKRAutonomousTrading(gatewayConnected: boolean, accountId: s
       }
 
       // Aggregate recent predictions for consensus
-      const upVotes = predictions.filter(p => p.predicted_direction === 'up').length;
-      const downVotes = predictions.filter(p => p.predicted_direction === 'down').length;
-      const avgConfidence = predictions.reduce((sum, p) => sum + (p.predicted_confidence || 0), 0) / predictions.length;
+      const upVotes = predictions.filter(p => p.predicted_direction === 'bullish').length;
+      const downVotes = predictions.filter(p => p.predicted_direction === 'bearish').length;
+      const avgConfidence = predictions.reduce((sum, p) => sum + (p.confidence || 0), 0) / predictions.length;
 
       let direction: 'up' | 'down' | 'neutral' = 'neutral';
       if (upVotes > downVotes && upVotes >= 3) direction = 'up';
       else if (downVotes > upVotes && downVotes >= 3) direction = 'down';
 
       // Extract archetype from market_conditions if available
-      const marketConditions = predictions[0]?.market_conditions as Record<string, unknown> | null;
-      const archetype = (marketConditions?.archetype as string) || 'consensus';
+      const meta = predictions[0]?.prediction_metadata as Record<string, unknown> | null;
+      const archetype = (meta?.archetype as string) || 'consensus';
 
       return {
         direction,

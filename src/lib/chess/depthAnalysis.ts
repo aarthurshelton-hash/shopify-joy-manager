@@ -322,7 +322,7 @@ export function generateDepthReport(metrics: DepthMetrics): string {
     '┌─────────────────────────────────────────────────────┐',
     '│                  DEPTH COMPARISON                   │',
     '├─────────────────────────────────────────────────────┤',
-    `│  Stockfish 17 Search Depth:    ${metrics.stockfishDepth.toString().padStart(3)} plies             │`,
+    `│  Stockfish 18 Search Depth:    ${metrics.stockfishDepth.toString().padStart(3)} plies             │`,
     `│  Stockfish Moves Ahead:        ${stockfishDepthToMoves(metrics.stockfishDepth).toString().padStart(3)} moves             │`,
     '├─────────────────────────────────────────────────────┤',
     `│  En Pensent Effective Depth:   ${metrics.enPensentEffectiveDepth.toString().padStart(3)} plies             │`,
@@ -358,12 +358,12 @@ export function generateDepthReport(metrics: DepthMetrics): string {
   
   if (metrics.depthAdvantage > 0) {
     lines.push(`│  En Pensent sees ${metrics.depthAdvantage} plies (~${Math.floor(metrics.depthAdvantage / 2)} moves) DEEPER    │`);
-    lines.push(`│  than Stockfish 17's ${metrics.stockfishDepth}-ply search.                  │`);
+    lines.push(`│  than Stockfish 18's ${metrics.stockfishDepth}-ply search.                  │`);
     lines.push('│                                                     │');
     lines.push('│  This is achieved through PATTERN RECOGNITION       │');
     lines.push('│  rather than brute-force search.                    │');
   } else if (metrics.depthAdvantage < 0) {
-    lines.push(`│  Stockfish 17 searches ${-metrics.depthAdvantage} plies deeper,            │`);
+    lines.push(`│  Stockfish 18 searches ${-metrics.depthAdvantage} plies deeper,            │`);
     lines.push(`│  but En Pensent compensates with pattern insight.   │`);
   } else {
     lines.push('│  Both engines show equivalent effective depth.      │');

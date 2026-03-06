@@ -3,7 +3,7 @@
  * 
  * En Pensent™ Patent-Pending Technology
  * 
- * Fuses Stockfish 17's 30-move tactical depth with
+ * Fuses Stockfish 18's 30-move tactical depth with
  * Color Flow Analysis strategic trajectory prediction.
  * 
  * Innovation:

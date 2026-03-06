@@ -501,7 +501,7 @@ const Investors = () => {
             </p>
             <p className="text-muted-foreground font-serif leading-relaxed">
               En Pensent sits at the intersection of art, AI, and the world's most enduring game. 
-              Our unique combination of <strong>Stockfish 17 NNUE</strong>, <strong>Natural Vision™ pattern recognition</strong>, 
+              Our unique combination of <strong>Stockfish 18 NNUE</strong>, <strong>Natural Vision™ pattern recognition</strong>, 
               and comprehensive visual data creates an analytical foundation that no competitor can match. 
               As our database grows, so does our ability to suggest optimal moves with unprecedented accuracy — 
               potentially surpassing traditional chess engines through visual comprehension at scale.
@@ -522,7 +522,7 @@ const Investors = () => {
             <MetricCard
               icon={Zap}
               title="Next-Gen Chess Intelligence"
-              description="Stockfish 17 NNUE (~3200 ELO) combined with visual pattern recognition — building a system that will suggest moves more accurately than any engine before."
+              description="Stockfish 18 NNUE (~3200 ELO) combined with visual pattern recognition — building a system that will suggest moves more accurately than any engine before."
               cta="Learn More"
               onClick={() => setActiveModal('technology')}
               backgroundImage={backgroundImages[1]}
@@ -758,7 +758,7 @@ const Investors = () => {
                 {/* Stockfish Integration */}
                 <div className="p-4 rounded-lg bg-gradient-to-br from-blue-500/10 to-cyan-500/5 border-2 border-blue-500/30 space-y-3">
                   <div className="flex items-center gap-2">
-                    <h3 className="font-display font-bold uppercase tracking-wide text-blue-500">Stockfish 17 NNUE Engine</h3>
+                    <h3 className="font-display font-bold uppercase tracking-wide text-blue-500">Stockfish 18 NNUE Engine</h3>
                     <span className="px-2 py-0.5 text-xs bg-blue-500/20 text-blue-600 rounded-full font-display">~3200 ELO</span>
                   </div>
                   <p className="text-sm text-muted-foreground font-serif">
@@ -856,7 +856,7 @@ const Investors = () => {
                     </li>
                     <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
                       <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                      Stockfish 17 NNUE engine integration (~3200 ELO)
+                      Stockfish 18 NNUE engine integration (~3200 ELO)
                     </li>
                     <li className="flex items-start gap-2 text-sm text-muted-foreground font-serif">
                       <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
@@ -907,7 +907,7 @@ const Investors = () => {
                     </li>
                     <li className="flex items-start gap-2 text-xs text-muted-foreground font-serif">
                       <ChevronRight className="h-3 w-3 text-primary mt-0.5 shrink-0" />
-                      Stockfish 17 analysis (~3200 ELO engine)
+                      Stockfish 18 analysis (~3200 ELO engine)
                     </li>
                     <li className="flex items-start gap-2 text-xs text-muted-foreground font-serif">
                       <ChevronRight className="h-3 w-3 text-primary mt-0.5 shrink-0" />

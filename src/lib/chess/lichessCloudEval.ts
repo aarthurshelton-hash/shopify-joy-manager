@@ -1,7 +1,7 @@
 /**
  * Lichess Cloud Evaluation API (via Edge Function)
  * 
- * Uses Lichess's cloud evaluation service which runs Stockfish 17 NNUE.
+ * Uses Lichess's cloud evaluation service which runs Stockfish 18 NNUE.
  * Proxied through Edge Function to avoid CORS issues in production.
  * 
  * API: https://lichess.org/api#tag/Analysis/operation/apiCloudEval
@@ -160,7 +160,7 @@ function uciToSan(fen: string, uci: string): string {
 }
 
 /**
- * Evaluate a position using Lichess Cloud Eval (Stockfish 17) via Edge Function
+ * Evaluate a position using Lichess Cloud Eval (Stockfish 18) via Edge Function
  * Includes throttling and caching for rate limit management
  */
 /**

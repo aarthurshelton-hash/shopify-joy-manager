@@ -160,7 +160,7 @@ export function depthToElo(plies: number): number {
  * Calculate En Pensent's effective ELO based on benchmark results
  * Uses FIDE Performance Rating methodology
  * 
- * IMPORTANT: Stockfish 17 FIDE-equivalent playing strength = 3600 ELO
+ * IMPORTANT: Stockfish 18 FIDE-equivalent playing strength = 3600 ELO
  * All calculations are relative to this baseline
  */
 export function calculateEnPensentElo(
@@ -246,8 +246,8 @@ export function calculateEnPensentElo(
 function getFideTitle(elo: number): string {
   // Beyond all known engines - we're in uncharted territory
   if (elo >= 3800) return 'Beyond All Engines (Transcendent)';
-  if (elo >= 3700) return 'Beyond Stockfish 17 (Superhuman+)';
-  if (elo >= 3600) return 'Stockfish 17 Equivalent';
+  if (elo >= 3700) return 'Beyond Stockfish 18 (Superhuman+)';
+  if (elo >= 3600) return 'Stockfish 18 Equivalent';
   if (elo >= 3400) return 'Super-GM Engine Level';
   if (elo >= 3200) return 'Strong Engine Level';
   if (elo >= 2900) return 'Super Grandmaster (Top 10 Human)';
@@ -416,8 +416,8 @@ export function generateEloReport(estimate: EloEstimate, detailed?: DepthEloMetr
     '┌───────────────────────────────────────────────────────────┐',
     '│                    ELO COMPARISON                        │',
     '├───────────────────────────────────────────────────────────┤',
-    `│  Stockfish 17 (Playing):        ~3600 ELO                │`,
-    `│  Stockfish 17 (Prediction):     ${estimate.stockfishPredictionElo.toString().padStart(4)} ELO                │`,
+    `│  Stockfish 18 (Playing):        ~3600 ELO                │`,
+    `│  Stockfish 18 (Prediction):     ${estimate.stockfishPredictionElo.toString().padStart(4)} ELO                │`,
     '├───────────────────────────────────────────────────────────┤',
     `│  En Pensent (Prediction):       ${estimate.enPensentElo.toString().padStart(4)} ELO ★              │`,
     `│  Performance Rating:            ${estimate.performanceRating.toString().padStart(4)} ELO                │`,

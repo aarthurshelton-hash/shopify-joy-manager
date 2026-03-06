@@ -404,7 +404,7 @@ export function ProofDashboard() {
             Over <span className="text-primary font-bold">{cumulative?.totalGamesAnalyzed || 0}</span> real grandmaster games,
             En Pensent's hybrid prediction system achieves{' '}
             <span className="text-primary font-bold">{(cumulative?.overallHybridAccuracy || 0).toFixed(1)}%</span> accuracy
-            vs Stockfish 17 NNUE's{' '}
+            vs Stockfish 18 NNUE's{' '}
             <span className="text-muted-foreground">{(cumulative?.overallStockfishAccuracy || 0).toFixed(1)}%</span>.
             In disagreements, pattern recognition wins{' '}
             <span className="text-green-400 font-bold">{disagreementWinRate.toFixed(0)}%</span> of the time.

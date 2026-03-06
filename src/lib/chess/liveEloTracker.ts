@@ -2,7 +2,7 @@
  * Live ELO Tracker with Platform-Aware Calibration
  * 
  * Continuously calculates and updates FIDE ELO estimates for En Pensent
- * compared against Stockfish 17's baseline of 3600-3700 ELO.
+ * compared against Stockfish 18's baseline of 3600-3700 ELO.
  * 
  * PLATFORM ELO CALIBRATION:
  * Different platforms have different rating pools and inflation levels.
@@ -17,7 +17,7 @@
 
 import { getExpectedScore } from './eloCalculator';
 
-// Stockfish 17 TCEC/CCRL calibrated ratings
+// Stockfish 18 TCEC/CCRL calibrated ratings
 export const STOCKFISH_17_ELO = {
   baseline: 3650,      // Mid-point estimate
   cloud: 3580,         // Lichess Cloud (cached, lower depth)
@@ -191,8 +191,8 @@ export function calculatePerformanceRating(
  */
 export function getEloTitle(elo: number): { title: string; color: string } {
   if (elo >= 3800) return { title: 'Transcendent', color: 'from-purple-400 via-pink-500 to-red-500' };
-  if (elo >= 3700) return { title: 'Beyond Stockfish 17', color: 'from-yellow-400 via-amber-500 to-orange-500' };
-  if (elo >= 3600) return { title: 'Stockfish 17 Equivalent', color: 'from-blue-400 to-cyan-500' };
+  if (elo >= 3700) return { title: 'Beyond Stockfish 18', color: 'from-yellow-400 via-amber-500 to-orange-500' };
+  if (elo >= 3600) return { title: 'Stockfish 18 Equivalent', color: 'from-blue-400 to-cyan-500' };
   if (elo >= 3500) return { title: 'Super-GM Level', color: 'from-purple-500 to-violet-600' };
   if (elo >= 3400) return { title: 'Elite Engine', color: 'from-green-500 to-emerald-500' };
   if (elo >= 3200) return { title: 'Strong Engine', color: 'from-teal-500 to-cyan-500' };
@@ -372,14 +372,14 @@ export function getEloComparisonText(state: LiveEloState): string {
   const diff = Math.abs(state.eloDifference);
   
   if (state.vsStockfish === 'winning') {
-    if (diff > 200) return `Dominating Stockfish 17 by +${diff} ELO`;
-    if (diff > 100) return `Outperforming Stockfish 17 by +${diff} ELO`;
-    return `Slightly ahead of Stockfish 17 (+${diff} ELO)`;
+    if (diff > 200) return `Dominating Stockfish 18 by +${diff} ELO`;
+    if (diff > 100) return `Outperforming Stockfish 18 by +${diff} ELO`;
+    return `Slightly ahead of Stockfish 18 (+${diff} ELO)`;
   } else if (state.vsStockfish === 'losing') {
-    if (diff > 200) return `Behind Stockfish 17 by -${diff} ELO`;
-    if (diff > 100) return `Trailing Stockfish 17 by -${diff} ELO`;
-    return `Slightly behind Stockfish 17 (-${diff} ELO)`;
+    if (diff > 200) return `Behind Stockfish 18 by -${diff} ELO`;
+    if (diff > 100) return `Trailing Stockfish 18 by -${diff} ELO`;
+    return `Slightly behind Stockfish 18 (-${diff} ELO)`;
   }
   
-  return 'Competitive with Stockfish 17';
+  return 'Competitive with Stockfish 18';
 }

@@ -3,7 +3,7 @@
  * 
  * Uses the ACTUAL EP engine compiled from domain TypeScript:
  * - Color Flow Signature extraction (NOT simplified material counting)
- * - Hybrid prediction with Stockfish 17 fusion
+ * - Hybrid prediction with Stockfish 18 fusion
  * - Pattern persistence for learning from outcomes
  * 
  * This worker extracts REAL temporal data through QR color code analysis,
@@ -117,12 +117,12 @@ async function fetchLichessGames(count = 5, perfType = 'blitz') {
 }
 
 /**
- * Run Stockfish 17 evaluation on a position
+ * Run Stockfish 18 evaluation on a position
  * Uses actual Stockfish WASM build for Node.js
  */
-async function evaluateWithSF17(fen, depth = 18) {
-  // For now, use Lichess cloud eval API as SF17 proxy
-  // TODO: Replace with actual local Stockfish 17 WASM build
+async function evaluateWithSF18(fen, depth = 18) {
+  // For now, use Lichess cloud eval API as SF18 proxy
+  // TODO: Replace with actual local Stockfish 18 WASM build
   try {
     const response = await fetch(`https://lichess.org/api/cloud-eval?fen=${encodeURIComponent(fen)}&multiPv=1`);
     if (response.ok) {
@@ -210,8 +210,8 @@ async function runBenchmarkCycle(epEngine) {
       const fen = chess.fen();
       const partialPgn = chess.pgn();
       
-      // Get SF17 evaluation (proxy via Lichess cloud)
-      const sf17Eval = await evaluateWithSF17(fen, 18);
+      // Get SF18 evaluation (proxy via Lichess cloud)
+      const sf17Eval = await evaluateWithSF18(fen, 18);
       const sf17Prediction = sf17Eval.evaluation > 0.3 ? 'white' : 
                             sf17Eval.evaluation < -0.3 ? 'black' : 'draw';
       
@@ -288,7 +288,7 @@ async function runBenchmarkCycle(epEngine) {
       const epAccuracy = ((stats.epCorrect / stats.predictionsMade) * 100).toFixed(1);
       const sf17Accuracy = ((stats.sf17Correct / stats.predictionsMade) * 100).toFixed(1);
       
-      console.log(`[${workerId}] Game ${game.id}: EP=${epPrediction} (${epResult.archetype}) SF17=${sf17Prediction} Actual=${actualOutcome} | EP Accuracy: ${epAccuracy}% | SF17: ${sf17Accuracy}%`);
+      console.log(`[${workerId}] Game ${game.id}: EP=${epPrediction} (${epResult.archetype}) SF18=${sf17Prediction} Actual=${actualOutcome} | EP Accuracy: ${epAccuracy}% | SF18: ${sf17Accuracy}%`);
       
       // Small delay between games (optimized: 0.5s)
       await new Promise(r => setTimeout(r, FARM_CONFIG.cycle.waitBetweenGames));

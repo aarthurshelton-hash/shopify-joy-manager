@@ -2,7 +2,7 @@
  * Benchmark Methodology Documentation
  * 
  * Complete documentation of the fairness, methodology, and scientific
- * rigor used in En Pensent vs Stockfish 17 benchmarks.
+ * rigor used in En Pensent vs Stockfish 18 benchmarks.
  * 
  * This file provides human-readable explanations for UI display
  * and ensures transparency in our testing approach.
@@ -31,15 +31,15 @@ export const LAST_UPDATED = '2026-01-18';
  */
 export const METHODOLOGY_SECTIONS: MethodologySection[] = [
   {
-    title: 'Opponent: TCEC Stockfish 17 Unlimited',
+    title: 'Opponent: TCEC Stockfish 18 Unlimited',
     description: 'We benchmark against the strongest chess engine configuration available.',
     keyPoints: [
-      'TCEC (Top Chess Engine Championship) Stockfish 17 NNUE',
+      'TCEC (Top Chess Engine Championship) Stockfish 18 NNUE',
       'Estimated ELO: 3600 (world\'s strongest)',
       'Unlimited depth via Lichess Cloud API',
       'No handicaps or artificial limitations',
     ],
-    technicalDetails: 'Lichess Cloud stores positions analyzed at depths up to 100+ plies. We query positions that have been deeply analyzed by SF17 in tournament conditions.',
+    technicalDetails: 'Lichess Cloud stores positions analyzed at depths up to 100+ plies. We query positions that have been deeply analyzed by SF18 in tournament conditions.',
   },
   {
     title: 'Data Source: Live Lichess GM Games',
@@ -58,7 +58,7 @@ export const METHODOLOGY_SECTIONS: MethodologySection[] = [
     keyPoints: [
       'Move range: 15-35 (guaranteed meaningful game context)',
       'NEVER past 50% of game length (no information leak about game duration)',
-      'Both SF17 and En Pensent see the SAME position',
+      'Both SF18 and En Pensent see the SAME position',
       'Neither system sees moves beyond prediction point',
     ],
     technicalDetails: 'Randomization per game prevents positional memorization. The 15-35 range ensures we\'re past opening theory but before endgame simplification.',
@@ -83,7 +83,7 @@ export const METHODOLOGY_SECTIONS: MethodologySection[] = [
       'Same time of analysis',
       'Independent predictions (no cross-contamination)',
     ],
-    technicalDetails: 'SF17 evaluation is fetched from Lichess Cloud, then En Pensent generates its prediction using only the truncated PGN. Neither sees the other\'s output.',
+    technicalDetails: 'SF18 evaluation is fetched from Lichess Cloud, then En Pensent generates its prediction using only the truncated PGN. Neither sees the other\'s output.',
   }
 ];
 
@@ -110,7 +110,7 @@ export const FAIRNESS_GUARANTEES: FairnessGuarantee[] = [
     name: 'Identical Position Analysis',
     description: 'Both systems analyze the exact same board state.',
     implementation: 'FEN is generated once and shared to both evaluation functions.',
-    verification: 'Hash the FEN used for SF17 vs En Pensent - they must match.',
+    verification: 'Hash the FEN used for SF18 vs En Pensent - they must match.',
   },
   {
     id: 'no-draw-bias',
@@ -121,10 +121,10 @@ export const FAIRNESS_GUARANTEES: FairnessGuarantee[] = [
   },
   {
     id: 'depth-parity',
-    name: 'Maximum Depth for SF17',
-    description: 'SF17 uses cloud depth (often 40+ ply) - no handicap.',
+    name: 'Maximum Depth for SF18',
+    description: 'SF18 uses cloud depth (often 40+ ply) - no handicap.',
     implementation: 'Lichess Cloud API returns deepest available analysis.',
-    verification: 'Log SF17 depth per position - should average 30+ ply.',
+    verification: 'Log SF18 depth per position - should average 30+ ply.',
   },
   {
     id: 'randomized-move',
@@ -193,7 +193,7 @@ export const STYLE_METHODOLOGY: MethodologySection[] = [
 export function getMethodologySummary(): string {
   return `En Pensent Benchmark Methodology v${METHODOLOGY_VERSION}
 
-Opponent: TCEC Stockfish 17 Unlimited (ELO 3600)
+Opponent: TCEC Stockfish 18 Unlimited (ELO 3600)
 Data: Fresh Lichess GM games (randomized per run)
 Position: Move 15-35, never past 50% of game
 Fairness: Same FEN, same information, independent predictions
@@ -214,7 +214,7 @@ export function getMethodologyPanels(): Array<{
   return [
     {
       icon: '🏆',
-      title: 'TCEC SF17 Unlimited',
+      title: 'TCEC SF18 Unlimited',
       content: 'ELO 3600 • Deepest cloud analysis • No handicaps',
       color: 'blue',
     },
@@ -278,8 +278,8 @@ export const CONTINUOUS_LEARNING_METHODOLOGY = {
     },
   ],
   dataQualityTiers: [
-    { tier: 'tcec_unlimited', description: 'TCEC SF17 depth 40+ ply', weight: 1.0 },
-    { tier: 'tcec_calibrated', description: 'SF17 depth 20-40 ply', weight: 0.8 },
+    { tier: 'tcec_unlimited', description: 'TCEC SF18 depth 40+ ply', weight: 1.0 },
+    { tier: 'tcec_calibrated', description: 'SF18 depth 20-40 ply', weight: 0.8 },
     { tier: 'cloud_standard', description: 'Standard cloud depth 10-20', weight: 0.6 },
     { tier: 'legacy', description: 'Historical data pre-TCEC', weight: 0.4 },
   ],

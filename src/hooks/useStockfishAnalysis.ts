@@ -49,7 +49,7 @@ export function useStockfishAnalysis(): UseStockfishAnalysisReturn {
   const [currentAnalysis, setCurrentAnalysis] = useState<PositionAnalysis | null>(null);
   const [gameAnalysis, setGameAnalysis] = useState<GameAnalysis | null>(null);
   const [progress, setProgress] = useState<{ current: number; total: number } | null>(null);
-  const [engineVersion, setEngineVersion] = useState('Stockfish 17.1 WASM');
+  const [engineVersion, setEngineVersion] = useState('Stockfish 18.1 WASM');
   const [loadingProgress, setLoadingProgress] = useState(0);
   
   const engineRef = useRef<StockfishEngine | null>(null);
@@ -82,7 +82,7 @@ export function useStockfishAnalysis(): UseStockfishAnalysisReturn {
           
           if (ready) {
             console.log('[StockfishHook] Engine ready!');
-            setEngineVersion('Stockfish 17.1 WASM');
+            setEngineVersion('Stockfish 18.1 WASM');
           } else {
             // Retry once after a short delay
             initAttemptRef.current++;

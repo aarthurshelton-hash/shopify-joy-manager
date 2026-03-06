@@ -122,7 +122,7 @@ export async function generateTAMReport(): Promise<Blob> {
   addParagraph('En Pensent transforms chess games into collectible generative art, creating a new category at the intersection of the $12.5B global chess market and the $65B art/collectibles market. Our platform enables chess enthusiasts to visualize, own, and trade unique "Visions" — AI-generated artworks derived from chess game data, each paired with contemplative haiku poetry.');
   
   yPos += 5;
-  addParagraph('Powered by Stockfish 17 NNUE (~3200 ELO) and our proprietary Natural Vision™ pattern recognition technology, we\'re building the world\'s most comprehensive chess intelligence platform — where visual art meets predictive analytics.');
+  addParagraph('Powered by Stockfish 18 NNUE (~3200 ELO) and our proprietary Natural Vision™ pattern recognition technology, we\'re building the world\'s most comprehensive chess intelligence platform — where visual art meets predictive analytics.');
   
   yPos += 10;
   addSubheader('Key Market Insights');
@@ -363,7 +363,7 @@ export async function generateTAMReport(): Promise<Blob> {
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(14);
   doc.setTextColor(gold[0], gold[1], gold[2]);
-  doc.text('Stockfish 17 NNUE Integration', margin + 15, yPos + 25);
+  doc.text('Stockfish 18 NNUE Integration', margin + 15, yPos + 25);
   
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
@@ -433,7 +433,7 @@ export async function generateTAMReport(): Promise<Blob> {
   yPos += 15;
   addSubheader('Competitive Moat');
   addBullet('Proprietary visualization algorithm — server-side, obfuscated, patent-pending');
-  addBullet('Stockfish 17 + color theory fusion — novel combination, not obvious to replicate');
+  addBullet('Stockfish 18 + color theory fusion — novel combination, not obvious to replicate');
   addBullet('Natural Vision™ scanner — technically challenging reverse-lookup technology');
   addBullet('Growing data moat — millions of visual patterns cross-referenced');
   addBullet('Established brand + community — trust and loyalty cannot be copied overnight');

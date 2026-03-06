@@ -2,7 +2,7 @@
  * UnifiedUniversalDashboard - Live Multi-Domain Visualization
  * 
  * Admin-only view showing ALL domains simultaneously:
- * - Chess (Brain) - Color flow patterns, EP vs SF17 predictions
+ * - Chess (Brain) - Color flow patterns, EP vs SF18 predictions
  * - Code (Blood) - Repository analysis, commit signatures
  * - Market (Nerves) - Live trading signals, portfolio flows
  * - Light (Vision) - Photonic chip blueprint, waveguide matrix
@@ -731,7 +731,7 @@ export function UnifiedUniversalDashboard() {
                 Chess Domain - The Brain
               </CardTitle>
               <CardDescription>
-                Live Color Flow Analysis • EP vs Stockfish 17 predictions
+                Live Color Flow Analysis • EP vs Stockfish 18 predictions
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -742,7 +742,7 @@ export function UnifiedUniversalDashboard() {
                     <span className="font-medium">{domainData.chess.predictionsThisHour}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">EP Accuracy vs SF17</span>
+                    <span className="text-sm text-muted-foreground">EP Accuracy vs SF18</span>
                     <span className="font-medium">{Math.round(domainData.chess.accuracy * 100)}% vs 52%</span>
                   </div>
                   <div className="flex items-center justify-between">

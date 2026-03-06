@@ -1143,7 +1143,7 @@ async function processStream(pgnStream, epEngine) {
           const sfAcc = processed > 0 ? ((sfCorrect / processed) * 100).toFixed(1) : 'N/A';
           const drawRecall = drawsTotal > 0 ? ((drawsCaught / drawsTotal) * 100).toFixed(0) : 'N/A';
           
-          console.log(`[${workerId}] ▸ ${processed.toLocaleString()} games | ${gamesPerSec}/s | ${gamesPerDay.toLocaleString()}/day | EP: ${epAcc}% | SF17: ${sfAcc}% | Draws: ${drawsCaught}/${drawsTotal} (${drawRecall}%) | Skipped: ${skipped.toLocaleString()} | Errors: ${errors}`);
+          console.log(`[${workerId}] ▸ ${processed.toLocaleString()} games | ${gamesPerSec}/s | ${gamesPerDay.toLocaleString()}/day | EP: ${epAcc}% | SF18: ${sfAcc}% | Draws: ${drawsCaught}/${drawsTotal} (${drawRecall}%) | Skipped: ${skipped.toLocaleString()} | Errors: ${errors}`);
         }
         
       } catch (err) {
@@ -1194,7 +1194,7 @@ async function processStream(pgnStream, epEngine) {
   console.log(`  Errors:          ${errors}`);
   console.log(`  Throughput:      ${gamesPerSec} games/sec → ${Math.round(gamesPerSec * 86400).toLocaleString()}/day`);
   console.log(`  EP Accuracy:     ${epAcc}%`);
-  console.log(`  SF17 Accuracy:   ${sfAcc}%`);
+  console.log(`  SF18 Accuracy:   ${sfAcc}%`);
   console.log(`  Draw Recall:     ${drawsCaught}/${drawsTotal}`);
   console.log(`  Time:            ${(elapsed / 60).toFixed(1)} minutes`);
   console.log('═'.repeat(60));

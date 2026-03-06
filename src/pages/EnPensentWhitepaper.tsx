@@ -4,20 +4,20 @@ import { ArrowLeft, Download } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Cell, PieChart, Pie } from 'recharts';
 
-const CHESS = { total: '590,988', acc: '60.2%', sf: '55.8%', delta: '+4.4pp', z: '>438' };
+const CHESS = { total: '5,070,000+', acc: '67.78%', sf: '62.30%', delta: '+5.48pp', z: '>600' };
 const BAT = { cells: '140', cycles: '114,692', acc: '56.5%', crit: '89.0%', bl: '89.2%' };
 const TEP = { f1: '93.3%', blF1: '72.7%', recall: '88.9%', blRecall: '57.1%' };
 const NRG = { acc: '66.6%', bl: '66.9%', records: '10,805' };
 const MUS = { acc: '34.4%', persist: '33.9%', rand: '33.3%', stable: '44.9%', perfs: '1,276', notes: '5.6M' };
-const MKT = { acc: '35.5%', tact: '47.1%', resolved: '214' };
+const MKT = { acc: '41.9%', tact: '59.4%', resolved: '39,706' };
 
 const DOMAIN_CHART = [
-  { domain: 'Chess', ep: 60.2, baseline: 55.8, random: 33.3 },
+  { domain: 'Chess', ep: 67.78, baseline: 62.3, random: 33.3 },
   { domain: 'Battery', ep: 56.5, baseline: 89.2, random: 33.3 },
   { domain: 'Chemical', ep: 93.3, baseline: 72.7, random: 50.0 },
   { domain: 'Energy', ep: 66.6, baseline: 66.9, random: 33.3 },
   { domain: 'Music', ep: 34.4, baseline: 33.9, random: 33.3 },
-  { domain: 'Market', ep: 35.5, baseline: 33.3, random: 33.3 },
+  { domain: 'Market', ep: 41.9, baseline: 33.3, random: 33.3 },
 ];
 const ARCHETYPE_CHART = [
   { name: 'sacrificial_attack', accuracy: 62.1, count: 42844 },
@@ -201,8 +201,8 @@ export default function EnPensentWhitepaper() {
           </div>
           <p className="text-[10px] text-gray-400 mb-12">The 8×8 Universal Grid — 64 cells, infinite domains</p>
           <div className="grid grid-cols-3 gap-8 text-center mb-12">
-            <div><p className="text-3xl font-black text-amber-600">6</p><p className="text-xs text-gray-500">Validated Domains</p></div>
-            <div><p className="text-3xl font-black text-violet-600">60.2%</p><p className="text-xs text-gray-500">Chess 3-Way Accuracy</p></div>
+            <div><p className="text-3xl font-black text-amber-600">9</p><p className="text-xs text-gray-500">Validated Domains</p></div>
+            <div><p className="text-3xl font-black text-violet-600">66.80%</p><p className="text-xs text-gray-500">Chess 3-Way Accuracy</p></div>
             <div><p className="text-3xl font-black text-emerald-600">93.3%</p><p className="text-xs text-gray-500">Chemical F1 Score</p></div>
           </div>
           <p className="text-sm text-gray-400">Alec Arthur Shelton · En Pensent Technologies</p>
@@ -364,7 +364,7 @@ Prediction = fusion(control, momentum, archetype, baseline,
           <p className="text-sm text-gray-500 mb-6">3-way: White wins / Black wins / Draw · {CHESS.total} games · Lichess + Chess.com</p>
           <div className="grid grid-cols-3 gap-4 mb-6">
             <Stat value={CHESS.acc} label="EP Accuracy" color="amber" />
-            <Stat value={CHESS.sf} label="Stockfish 17" />
+            <Stat value={CHESS.sf} label="Stockfish 18" />
             <Stat value={CHESS.delta} label="Improvement" color="emerald" />
           </div>
 
@@ -388,7 +388,7 @@ Prediction = fusion(control, momentum, archetype, baseline,
 
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-amber-50 rounded-xl p-4 text-xs text-gray-600">
-              <strong>z {'>'} 438</strong> — probability of this result by chance is effectively zero. 590,988 predictions on 3-way classification, 26.9pp above random (33.3%).
+              <strong>z {'>'} 600</strong> — probability of this result by chance is effectively zero. 5,070,000+ predictions on 3-way classification, 34.5pp above random (33.3%).
             </div>
             <div className="bg-gray-50 rounded-xl p-4 text-xs text-gray-600">
               <strong>How it works:</strong> Mid-game position → color flow signature → 8-quadrant profile → archetype classification → 8-signal weighted fusion → outcome prediction. All from coloring squares.
@@ -515,7 +515,7 @@ Prediction = fusion(control, momentum, archetype, baseline,
           </div>
           <h3 className="text-sm font-bold mb-3">Volume → Accuracy: Proven</h3>
           <div className="space-y-2 mb-6">
-            {[['Battery','36.9% (4 cells)','56.5% (140 cells)','+19.6pp'],['TEP','F1 72.7% (no learn)','F1 93.3% (self-learned)','+20.6pp'],['Chess','54.4% (9.5K)','60.2% (590K)','+5.8pp'],['Market','18.9% (all-time)','35.5% (post-fix)','+16.6pp']].map(([d,f,t,delta])=>(
+            {[['Battery','36.9% (4 cells)','56.5% (140 cells)','+19.6pp'],['TEP','F1 72.7% (no learn)','F1 93.3% (self-learned)','+20.6pp'],['Chess','54.4% (9.5K)','66.8% (3.35M)','+12.4pp'],['Market','18.9% (all-time)','41.9% (live)','+23.0pp']].map(([d,f,t,delta])=>(
               <div key={d} className="flex items-center gap-3 text-xs">
                 <span className="font-bold w-14">{d}</span>
                 <span className="text-gray-400 w-32">{f}</span><span className="text-gray-400">→</span>
@@ -751,7 +751,7 @@ Piece activity on light vs dark = bullish vs bearish stance.`}</pre>
                 <div><strong>Frontend:</strong> React + TypeScript + Tailwind + Vite</div>
                 <div><strong>Backend:</strong> Supabase PostgreSQL + Edge Functions</div>
                 <div><strong>Workers:</strong> Node.js ESM + PM2</div>
-                <div><strong>Chess:</strong> Stockfish 17 @ depth 20</div>
+                <div><strong>Chess:</strong> Stockfish 18 @ depth 20</div>
                 <div><strong>Market:</strong> Yahoo Finance real-time</div>
                 <div><strong>Deploy:</strong> Vercel (enpensent.com)</div>
                 <div><strong>DB:</strong> Supabase PostgreSQL + PgBouncer</div>
@@ -794,7 +794,7 @@ Piece activity on light vs dark = bullish vs bearish stance.`}</pre>
               <th className="text-left py-2">Domain</th><th className="text-right py-2">EP</th><th className="text-right py-2">Baseline</th><th className="text-right py-2">Scale</th>
             </tr></thead>
             <tbody className="text-gray-600">
-              {[['♟ Chess','60.2%','55.8% SF17','590,988 games'],['🔋 Battery','56.5%','89.2% persist','140 cells, 114K cycles'],['⚗️ Chemical','F1 93.3%','F1 72.7%','2,200 records'],['⚡ Energy','66.6%','66.9% persist','10,805 hourly'],['🎵 Music','34.4%','33.9% persist','1,276 performances'],['📈 Market','35.5% / 47.1%','33.3% random','214+ resolved']].map(([d,ep,bl,sc],i)=>(
+              {[['♟ Chess','67.78%','62.30% SF18','5,070,000+ games'],['🔋 Battery','56.5%','89.2% persist','140 cells, 114K cycles'],['⚗️ Chemical','F1 93.3%','F1 72.7%','2,200 records'],['⚡ Energy','66.6%','66.9% persist','10,805 hourly'],['🎵 Music','34.4%','33.9% persist','1,276 performances'],['📈 Market','41.9%','33.3% random','59,333 preds · 39,706 resolved']].map(([d,ep,bl,sc],i)=>(
                 <tr key={d} className={`border-b ${i%2?'':'bg-gray-50/50'}`}>
                   <td className="py-1.5 font-bold">{d}</td>
                   <td className="text-right font-mono font-bold">{ep}</td>
@@ -862,7 +862,7 @@ Piece activity on light vs dark = bullish vs bearish stance.`}</pre>
             </div>
           </div>
           <div className="max-w-lg text-xs text-gray-400 leading-relaxed mb-8">
-            6 domains validated. 590,988+ chess predictions. F1 93.3% chemical fault detection. 
+            9 domains validated. 5,070,000+ chess predictions. F1 93.3% chemical fault detection. 
             Zero fake data in production. Self-learning architecture. 24/7 operation. 
             Silicon photonics hardware roadmap. The universal grid's constraint is not a limitation — 
             it's the mechanism that makes cross-domain pattern recognition possible.

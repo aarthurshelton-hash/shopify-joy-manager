@@ -45,7 +45,7 @@ export function usePlatformStats() {
 // Platform capability constants - single source of truth
 export const PLATFORM_CAPABILITIES = {
   engine: {
-    name: 'Stockfish 17 NNUE',
+    name: 'Stockfish 18 NNUE',
     elo: 3200,
     description: 'Grandmaster-strength analysis with centipawn accuracy',
     depth: 20,
@@ -120,7 +120,7 @@ export const PLATFORM_CAPABILITIES = {
     games: 100,
     features: [
       'AI-generated haiku poetry for each game',
-      'Stockfish 17 annotations',
+      'Stockfish 18 annotations',
       'Limited edition hardcover',
       'Premium paper stock',
       'Collector numbering',
@@ -164,11 +164,11 @@ export const MARKETING_COPY = {
   headline: 'Your Masterpieces, Forever Immortalized',
   description: 'Upload any chess game and transform it into a stunning visualization — where every piece tells its story through color and movement.',
   conceptDescription: '"En Pensent" — a play on the French chess term en passant — means "in thought." Every visualization captures the thinking behind the moves.',
-  naturalVision: 'Every En Pensent visualization is more than art — it\'s a scannable digital fingerprint powering the world\'s most advanced chess pattern recognition system. Our visual encryption combined with Stockfish 17 creates an unmatched analytical foundation.',
+  naturalVision: 'Every En Pensent visualization is more than art — it\'s a scannable digital fingerprint powering the world\'s most advanced chess pattern recognition system. Our visual encryption combined with Stockfish 18 creates an unmatched analytical foundation.',
   creatorEconomics: 'We believe in sustainable creator rewards. Creators earn 17% of PROFIT (not revenue) when others order prints — ensuring platform sustainability while maximizing creator earnings.',
   educationFund: 'A portion of every sale contributes to chess education programs in underserved communities worldwide. The Chess Education Fund has already supported youth programs across three continents.',
   futureVision: 'Through millions of cross-referenced visions and grandmaster-strength analysis, En Pensent is building the most comprehensive chess pattern recognition system ever created — where visual art meets predictive intelligence.',
-  competitiveEdge: 'Our unique combination of Stockfish 17 NNUE (~3200 ELO), Natural Vision™ pattern recognition, and comprehensive vision data creates an analytical foundation that will evolve to suggest optimal moves with unprecedented accuracy.',
+  competitiveEdge: 'Our unique combination of Stockfish 18 NNUE (~3200 ELO), Natural Vision™ pattern recognition, and comprehensive vision data creates an analytical foundation that will evolve to suggest optimal moves with unprecedented accuracy.',
   haikuPoetry: 'Each visualization is paired with a unique haiku — a seventeen-syllable poem capturing the essence of the game. This ancient Japanese art form mirrors the precision and elegance of chess itself.',
   marketplaceValue: 'The Vision Score system tracks real engagement: views, downloads, scans, trades, and print orders. Value appreciates based on genuine community interest, not speculation.',
   hustlenomics: 'Our "Hustlenomics" system calculates market value based on real-time engagement accrual. Every interaction contributes to a vision\'s score and potential value appreciation.',
@@ -181,7 +181,7 @@ export const STRATEGIC_POSITIONING = {
     title: 'Why This Can\'t Be Easily Replicated',
     points: [
       'Proprietary visual encryption algorithm — server-side, obfuscated, patent-pending',
-      'Stockfish 17 + color theory fusion — novel combination, not obvious to replicate',
+      'Stockfish 18 + color theory fusion — novel combination, not obvious to replicate',
       'Hustlenomics™ economic system — complex, battle-tested revenue distribution',
       'Natural Vision™ scanner — technically challenging reverse-lookup technology',
       'Growing data moat — millions of visual patterns cross-referenced',
@@ -225,11 +225,11 @@ export const IP_CLAIMS = {
 export const FEATURE_LIST = [
   {
     title: 'World\'s Most Advanced Pattern Recognition',
-    description: 'Our visual encryption system combined with Stockfish 17 NNUE creates an unprecedented chess intelligence platform — cross-referencing millions of patterns to deliver insights no other engine can match.',
+    description: 'Our visual encryption system combined with Stockfish 18 NNUE creates an unprecedented chess intelligence platform — cross-referencing millions of patterns to deliver insights no other engine can match.',
     category: 'technology',
   },
   {
-    title: 'Stockfish 17 NNUE Integration',
+    title: 'Stockfish 18 NNUE Integration',
     description: `Real grandmaster-strength analysis with ~${PLATFORM_CAPABILITIES.engine.elo} ELO engine. Centipawn accuracy, win probability, depth ${PLATFORM_CAPABILITIES.analysis.depth}+ evaluation — the foundation of our predictive intelligence.`,
     category: 'analysis',
   },
