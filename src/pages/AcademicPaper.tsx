@@ -1362,6 +1362,10 @@ NPPAD result: θ* = 3.0 (separation = 1.993) — same threshold independently di
           {/* 8. Data Availability */}
           <h2>8. Data Availability</h2>
           <p>
+            The Universal Grid Portal concept was first prototyped as a chess game visualization
+            tool in 2023 (the Immortal Game, Anderssen vs. Kieseritzky 1851), predating the
+            current live system by approximately two years. The full production system has been
+            operational since 2025.
             Chess prediction data is continuously accumulated via public Lichess and Chess.com
             APIs with SHA-256 position hashes for deduplication. All game IDs are real and
             verifiable. Battery data uses the publicly available MATR dataset [1] and NASA Ames
