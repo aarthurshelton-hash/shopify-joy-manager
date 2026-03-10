@@ -47,7 +47,9 @@ adapters responsible only for mapping raw data onto color channels. We validate 
 maximally different domains without modifying the grid architecture:
 (1)~\textbf{Chess outcome prediction} (11,088,175 live predictions, 69.24\% 3-way accuracy via
 11-component per-archetype auto-tuned fusion, $+5.41$pp over Stockfish~18 baseline,
-$z{>}1000$, $p{\approx}0$; Golden Zone moves 15--45 at conf$\geq$50: 71.6\% vs.\ 68.1\%;
+$z{>}1000$, $p{\approx}0$; Chess960/Freestyle: 1,769,457 games, EP 52.62\% vs.\ SF18 33.49\%
+($+19.13$pp; SF18 near-random with no opening books, EP retains signal);
+Golden Zone moves 15--45 at conf$\geq$50: 71.6\% vs.\ 68.1\%;
 largest archetype edge \textit{piece\_general\_pressure}: $+16.44$pp ($n{\approx}67$K); EP
 recovers 24.27\% of SF18 errors independently);
 (2)~\textbf{Lithium-ion battery degradation} (140 cells, 114,692 cycles, 56.5\% 3-way accuracy,
@@ -347,6 +349,7 @@ Golden Zone (moves 15--45, conf$\geq$50) & \textbf{71.6\%} & 68.1\% \\
 EP recovery when SF18 is wrong & \textbf{24.27\%} & 0\% \\
 Best archetype edge (piece\_general\_pressure) & \textbf{63.09\% ($+$16.44pp)} & 46.65\% \\
 All-time edge over SF18 & \textbf{$+$5.41pp} & --- \\
+Chess960 (1,769,457 games) & \textbf{52.62\%} ($+$19.13pp) & 33.49\% (near-random) \\
 Fusion components & \textbf{11 (auto-tuned per archetype)} & 1 (eval only) \\
 \bottomrule
 \end{tabular}
