@@ -46,7 +46,7 @@ matrix that serves as the sole feature extractor across all domains, with domain
 adapters responsible only for mapping raw data onto color channels. We validate on nine
 maximally different domains without modifying the grid architecture:
 (1)~\textbf{Chess outcome prediction} (11,088,175 live predictions, 69.24\% 3-way accuracy via
-11-component per-archetype auto-tuned fusion, $+5.41$pp over Stockfish~18 baseline,
+15-component per-archetype auto-tuned fusion, $+5.41$pp over Stockfish~18 baseline,
 $z{>}1000$, $p{\approx}0$; Chess960/Freestyle: 1,769,457 games, EP 52.62\% vs.\ SF18 33.49\%
 ($+19.13$pp; SF18 near-random with no opening books, EP retains signal);
 Golden Zone moves 15--45 at conf$\geq$50: 71.6\% vs.\ 68.1\%;
@@ -204,7 +204,9 @@ architecture, signature extraction, archetype classification, and prediction log
 across all domains.
 
 \begin{itemize}
-  \item \textbf{Chess}: 12 piece-type colors (6 white, 6 black) with rank-graduated pawn hues.
+  \item \textbf{Chess}: 32-piece individual color system---every one of the 32 pieces has a
+  unique hex color identity (cold spectrum for white: WK, WQ, WR\_qs/ks, WB\_ds/ls, WN\_qs/ks,
+  WP\_a--h; hot spectrum mirrors for black). Pawns receive additional rank-graduated hues.
   Every square along a piece's traversal path is colored---sliding pieces paint all intermediate
   squares; knights trace their L-shape path. Overlapping paths create nested color layers.
 
@@ -266,13 +268,19 @@ Results:
 
 \subsection{Prediction and Fusion}
 
-Given an extracted signature and archetype, prediction uses an 11-component weighted fusion:
+Given an extracted signature and archetype, prediction uses a 15-component weighted fusion:
 (1)~board control signal, (2)~temporal momentum, (3)~archetype historical rates,
-(4)~baseline evaluator (e.g.\ Stockfish), (5)~game phase context, (6)~king safety delta,
+(4)~Stockfish evaluation, (5)~game phase context, (6)~king safety delta,
 (7)~pawn structure score, (8)~enhanced 8-quadrant spatial control, (9)~dual-inversion relativity
-convergence, (10)~archetype$\times$eval interaction (learned from 1M+ outcomes), and
-(11)~archetype$\times$phase temporal interaction (v17.8). Fusion weights are auto-tuned per
-archetype. Confidence scores are calibrated per-archetype with volume-weighted trust.
+convergence, (10)~archetype$\times$eval interaction (learned from 1M+ outcomes),
+(11)~archetype$\times$phase temporal interaction (v17.8),
+(12)~EP 3D mirror eval---SF-independent position evaluation from color flow alone (v22.0),
+(13)~deep signals / conversion potential: momentum gradient, piece coordination, trajectory
+convergence (v24.0), (14)~photonic grid fusion: 7D spatial frequency analysis, EP+Photonic
+agreement reaches 73.1\% correct (v29.2), and (15)~32-piece color flow fusion: per-piece
+activity, territory, survival, centrality, and late-game momentum (v29.4).
+Fusion weights are auto-tuned per archetype. Confidence scores are calibrated per-archetype
+with volume-weighted trust.
 
 %% ==========================================================
 \section{Experimental Setup}
@@ -663,8 +671,9 @@ fixed spatial grid representation. Seven key results support the approach:
 
 \begin{enumerate}
   \item \textbf{Chess}: 69.24\% 3-way accuracy on 11,088,175 live predictions ($+5.41$pp over
-  SF18, $z{>}1000$). Largest archetype edge: piece\_general\_pressure $+16.44$pp ($n{\approx}67$K).
-  EP recovers 24.27\% of SF18 errors independently.
+  SF18, $z{>}1000$, 15-component fusion). Chess960: EP 52.62\% vs.\ SF18 33.49\% ($+19.13$pp;
+  SF18 near-random without opening books). Largest archetype edge: piece\_general\_pressure
+  $+16.44$pp ($n{\approx}67$K). EP recovers 24.27\% of SF18 errors independently.
 
   \item \textbf{Battery}: 56.5\% accuracy and 89.0\% critical detection on 140 cells / 114,692
   cycles, self-learned threshold $\theta^*{=}0.7$.
