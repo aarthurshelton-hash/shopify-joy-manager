@@ -116,9 +116,9 @@ export default function AcademicPaper() {
                 across all domains, with domain-specific adapters responsible only for mapping raw
                 data onto color channels. We validate on nine maximally different domains without
                 modifying the grid architecture: (1) <strong>Chess outcome prediction</strong>
-                (3,354,474 games, 66.80% hybrid accuracy on 3-way classification via 11-component
-                fusion with per-archetype calibration and phase-aware weighting,
-                z{'>'}600, p≈0, +3.77pp over Stockfish 18 baseline; Chess960/Freestyle:
+                (11,088,175 live predictions, 69.24% 3-way accuracy via 11-component
+                per-archetype auto-tuned fusion with phase-aware weighting,
+                z{'>'}1000, p≈0, +5.41pp over Stockfish 18 baseline; Chess960/Freestyle:
                 78,911 games, EP +5.74pp over SF18 with no opening books); (2) <strong>Lithium-ion battery degradation</strong> (140
                 cells, 114,692 cycles, 56.5% accuracy, 89.0% critical-state detection, Severson
                 et al. MATR dataset); (3) <strong>Tennessee Eastman Process fault detection</strong>
@@ -573,14 +573,14 @@ NPPAD result: θ* = 3.0 (separation = 1.993) — same threshold independently di
                 </thead>
                 <tbody>
                   <tr className="border-b">
-                    <td className="py-2">3-Way Accuracy (W/B/D) — 10.03M predictions</td>
-                    <td className="text-right font-semibold">68.92%</td>
-                    <td className="text-right">63.59%</td>
+                    <td className="py-2">3-Way Accuracy (W/B/D) — 11.09M predictions</td>
+                    <td className="text-right font-semibold">69.24%</td>
+                    <td className="text-right">63.83%</td>
                   </tr>
                   <tr className="border-b">
                     <td className="py-2">Total Predictions in DB (live)</td>
-                    <td className="text-right">10,031,260</td>
-                    <td className="text-right">10,031,260</td>
+                    <td className="text-right">11,088,175</td>
+                    <td className="text-right">11,088,175</td>
                   </tr>
                   <tr className="border-b">
                     <td className="py-2">Golden Zone (moves 15–45, conf≥50)</td>
@@ -599,7 +599,7 @@ NPPAD result: θ* = 3.0 (separation = 1.993) — same threshold independently di
                   </tr>
                   <tr className="border-b">
                     <td className="py-2">Edge over SF18 (live, all-time)</td>
-                    <td className="text-right font-semibold text-green-600 dark:text-green-400">+5.34pp</td>
+                    <td className="text-right font-semibold text-green-600 dark:text-green-400">+5.41pp</td>
                     <td className="text-right">—</td>
                   </tr>
                   <tr>
@@ -613,7 +613,7 @@ NPPAD result: θ* = 3.0 (separation = 1.993) — same threshold independently di
           </Card>
 
           <p>
-            Top-performing archetypes (live, 10.03M sample): <em>central_knight_outpost</em> (84.14% EP vs 83.24% SF18, +0.90pp, n≈22K),
+            Top-performing archetypes (live, 11.09M sample): <em>central_knight_outpost</em> (84.14% EP vs 83.24% SF18, +0.90pp, n≈22K),
             <em>king_hunt</em> (84.02% vs 82.32%, +1.71pp, n≈22K),
             <em>kingside_knight_charge</em> (83.63% vs 81.04%, +2.59pp, n≈10K),
             <em>piece_rook_activity</em> (72.88% vs 69.30%, +3.58pp, n≈1.19M),
@@ -1303,9 +1303,9 @@ NPPAD result: θ* = 3.0 (separation = 1.993) — same threshold independently di
           </p>
           <ol>
             <li>
-              <strong>Chess</strong>: 68.84% accuracy on 3-way outcome prediction (9,880,160 games,
-              z{'>'}1000), exceeding Stockfish 18 baseline by <strong>5.43pp</strong> with 11-component auto-tuned fusion.
-              Largest archetype edge: piece_balanced_activity +8.95pp (n≈1.8M). EP recovers 24.27% of SF18 errors independently
+              <strong>Chess</strong>: 69.24% accuracy on 3-way outcome prediction (11,088,175 live predictions,
+              z{'>'}1000), exceeding Stockfish 18 baseline by <strong>5.41pp</strong> with 11-component auto-tuned fusion.
+              Largest archetype edge: piece_general_pressure +16.44pp (n≈67K). EP recovers 24.27% of SF18 errors independently
             </li>
             <li>
               <strong>Battery</strong>: 56.5% accuracy and 89.0% critical detection on 140 cells /
