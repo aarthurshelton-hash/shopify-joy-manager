@@ -116,7 +116,7 @@ export default function AcademicPaper() {
                 across all domains, with domain-specific adapters responsible only for mapping raw
                 data onto color channels. We validate on nine maximally different domains without
                 modifying the grid architecture: (1) <strong>Chess outcome prediction</strong>
-                (11,088,175 live predictions, 69.24% 3-way accuracy via 11-component
+                (11,088,175 live predictions, 69.24% 3-way accuracy via 15-component
                 per-archetype auto-tuned fusion with phase-aware weighting,
                 z{'>'}1000, p≈0, +5.41pp over Stockfish 18 baseline; Chess960/Freestyle:
                 1,769,457 games, EP 52.62% vs SF18 33.49% (+19.13pp; SF18 near-random with no opening books, EP retains signal); (2) <strong>Lithium-ion battery degradation</strong> (140
@@ -339,10 +339,11 @@ Signature σ = extractUniversalSignature(G)
           </p>
           <ul>
             <li>
-              <strong>Chess Adapter</strong>: 12 piece-type colors (6 white, 6 black) with
-              gradated pawn advancement — each pawn gets a slightly different hue
-              based on its advancement rank, and pair pieces (both rooks, both bishops,
-              both knights) receive distinct hues from each other. Each move colors every
+              <strong>Chess Adapter</strong>: 32-piece individual color system — every one of the 32 pieces
+              on the board has its own unique hex color identity (WP_a through WP_h, WR_qs/WR_ks,
+              WB_ds/WB_ls, WN_qs/WN_ks, WK, WQ and hot-spectrum mirrors for black).
+              Pawns additionally receive gradated hues based on advancement rank.
+              Each move colors every
               cell along the piece's traversal path (not just the destination). Sliding
               pieces (queen, rook, bishop) paint all intermediate squares; knights trace
               their L-shape path (long leg then short leg), coloring the intermediate
@@ -425,13 +426,17 @@ NPPAD result: θ* = 3.0 (separation = 1.993) — same threshold independently di
 
           <h3>3.5 Prediction</h3>
           <p>
-            Given an extracted signature and classified archetype, prediction uses an
-            11-component weighted fusion: (1) board control signal, (2) temporal momentum,
-            (3) archetype historical rates, (4) Stockfish/baseline evaluation, (5) game phase
-            context, (6) king safety delta, (7) pawn structure score, (8) enhanced 8-quadrant
-            spatial control, (9) dual-inversion relativity convergence, (10) archetype×eval
-            interaction (learned from 1M+ outcomes), and (11) archetype×phase temporal
-            interaction (v17.8—captures how each archetype performs at different game phases).
+            Given an extracted signature and classified archetype, prediction uses a
+            15-component weighted fusion: (1) board control signal, (2) temporal momentum,
+            (3) archetype historical rates, (4) Stockfish evaluation, (5) game phase context,
+            (6) king safety delta, (7) pawn structure score, (8) enhanced 8-quadrant spatial
+            control, (9) dual-inversion relativity convergence, (10) archetype×eval interaction
+            (learned from 1M+ outcomes), (11) archetype×phase temporal interaction (v17.8),
+            (12) EP 3D mirror eval — SF-independent position evaluation (v22.0), (13) deep
+            signals / conversion potential — momentum gradient, piece coordination, trajectory
+            convergence (v24.0), (14) photonic grid fusion — 7D spatial frequency analysis,
+            73.1% when EP+Photonic agree (v29.2), and (15) 32-piece color flow fusion —
+            per-piece activity, territory, survival, centrality, late momentum (v29.4).
             Fusion weights are auto-tuned per archetype: the system learns which signal
             components matter most for each archetype (e.g., king safety for kingside_attack,
             pawn structure for positional_squeeze). Confidence scores are calibrated
@@ -1304,7 +1309,7 @@ NPPAD result: θ* = 3.0 (separation = 1.993) — same threshold independently di
           <ol>
             <li>
               <strong>Chess</strong>: 69.24% accuracy on 3-way outcome prediction (11,088,175 live predictions,
-              z{'>'}1000), exceeding Stockfish 18 baseline by <strong>5.41pp</strong> with 11-component auto-tuned fusion.
+              z{'>'}1000), exceeding Stockfish 18 baseline by <strong>5.41pp</strong> with 15-component auto-tuned fusion.
               Largest archetype edge: piece_general_pressure +16.44pp (n≈67K). EP recovers 24.27% of SF18 errors independently
             </li>
             <li>
