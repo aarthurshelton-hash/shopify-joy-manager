@@ -119,7 +119,7 @@ export default function AcademicPaper() {
                 (11,088,175 live predictions, 69.24% 3-way accuracy via 11-component
                 per-archetype auto-tuned fusion with phase-aware weighting,
                 z{'>'}1000, p≈0, +5.41pp over Stockfish 18 baseline; Chess960/Freestyle:
-                78,911 games, EP +5.74pp over SF18 with no opening books); (2) <strong>Lithium-ion battery degradation</strong> (140
+                1,769,457 games, EP 52.62% vs SF18 33.49% (+19.13pp; SF18 near-random with no opening books, EP retains signal); (2) <strong>Lithium-ion battery degradation</strong> (140
                 cells, 114,692 cycles, 56.5% accuracy, 89.0% critical-state detection, Severson
                 et al. MATR dataset); (3) <strong>Tennessee Eastman Process fault detection</strong>
                 (2,200 records, F1 93.3% vs. 72.7% persistence baseline, +20.6pp);
