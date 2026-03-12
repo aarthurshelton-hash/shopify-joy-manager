@@ -23,25 +23,33 @@ import { StrategicArchetype } from './types';
  * Hardcoded fallback weights — used when live weights are unavailable.
  * These are the initial values from the first database snapshot.
  */
+// Updated from fusion-intelligence.mjs ARCHETYPE_ACCURACY (10M+ games, Mar 2026).
+// These are fallbacks used ONLY when live DB weights are unavailable (cold start / DB outage).
 const HARDCODED_ACCURACY: Record<string, {
   hybridAccuracy: number;
   sfAccuracy: number;
   agreementRate: number;
   sampleSize: number;
 }> = {
-  piece_harmony: { hybridAccuracy: 0.53, sfAccuracy: 0.51, agreementRate: 0.62, sampleSize: 1200 },
-  kingside_attack: { hybridAccuracy: 0.51, sfAccuracy: 0.49, agreementRate: 0.58, sampleSize: 800 },
-  queenside_expansion: { hybridAccuracy: 0.48, sfAccuracy: 0.52, agreementRate: 0.55, sampleSize: 600 },
-  central_domination: { hybridAccuracy: 0.50, sfAccuracy: 0.48, agreementRate: 0.60, sampleSize: 500 },
-  endgame_technique: { hybridAccuracy: 0.49, sfAccuracy: 0.51, agreementRate: 0.65, sampleSize: 450 },
-  open_tactical: { hybridAccuracy: 0.47, sfAccuracy: 0.53, agreementRate: 0.52, sampleSize: 400 },
-  positional_squeeze: { hybridAccuracy: 0.52, sfAccuracy: 0.48, agreementRate: 0.58, sampleSize: 350 },
-  pawn_storm: { hybridAccuracy: 0.46, sfAccuracy: 0.50, agreementRate: 0.54, sampleSize: 300 },
-  sacrificial_attack: { hybridAccuracy: 0.44, sfAccuracy: 0.46, agreementRate: 0.48, sampleSize: 250 },
-  opposite_castling: { hybridAccuracy: 0.45, sfAccuracy: 0.47, agreementRate: 0.50, sampleSize: 200 },
-  closed_maneuvering: { hybridAccuracy: 0.354, sfAccuracy: 0.42, agreementRate: 0.45, sampleSize: 180 },
-  prophylactic_defense: { hybridAccuracy: 0.42, sfAccuracy: 0.48, agreementRate: 0.52, sampleSize: 150 },
-  unknown: { hybridAccuracy: 0.415, sfAccuracy: 0.45, agreementRate: 0.40, sampleSize: 805 },
+  sacrificial_queenside_break: { hybridAccuracy: 0.639, sfAccuracy: 0.58, agreementRate: 0.70, sampleSize: 128000 },
+  sacrificial_kingside_assault: { hybridAccuracy: 0.631, sfAccuracy: 0.57, agreementRate: 0.68, sampleSize: 96000 },
+  king_hunt:                { hybridAccuracy: 0.615, sfAccuracy: 0.56, agreementRate: 0.65, sampleSize: 5000 },
+  queenside_expansion:      { hybridAccuracy: 0.610, sfAccuracy: 0.55, agreementRate: 0.67, sampleSize: 244000 },
+  kingside_attack:          { hybridAccuracy: 0.608, sfAccuracy: 0.55, agreementRate: 0.66, sampleSize: 195000 },
+  sacrificial_attack:       { hybridAccuracy: 0.604, sfAccuracy: 0.54, agreementRate: 0.65, sampleSize: 135000 },
+  positional_squeeze:       { hybridAccuracy: 0.592, sfAccuracy: 0.53, agreementRate: 0.63, sampleSize: 94000 },
+  balanced_flow:            { hybridAccuracy: 0.577, sfAccuracy: 0.52, agreementRate: 0.62, sampleSize: 9000 },
+  central_domination:       { hybridAccuracy: 0.574, sfAccuracy: 0.52, agreementRate: 0.63, sampleSize: 19000 },
+  closed_maneuvering:       { hybridAccuracy: 0.565, sfAccuracy: 0.51, agreementRate: 0.60, sampleSize: 148000 },
+  pawn_storm:               { hybridAccuracy: 0.564, sfAccuracy: 0.51, agreementRate: 0.60, sampleSize: 1000 },
+  piece_harmony:            { hybridAccuracy: 0.487, sfAccuracy: 0.48, agreementRate: 0.58, sampleSize: 3000 },
+  central_knight_outpost:   { hybridAccuracy: 0.486, sfAccuracy: 0.47, agreementRate: 0.56, sampleSize: 4000 },
+  open_tactical:            { hybridAccuracy: 0.530, sfAccuracy: 0.49, agreementRate: 0.58, sampleSize: 5000 },
+  endgame_technique:        { hybridAccuracy: 0.565, sfAccuracy: 0.53, agreementRate: 0.65, sampleSize: 20000 },
+  prophylactic_defense:     { hybridAccuracy: 0.530, sfAccuracy: 0.50, agreementRate: 0.60, sampleSize: 5000 },
+  opposite_castling:        { hybridAccuracy: 0.550, sfAccuracy: 0.50, agreementRate: 0.60, sampleSize: 3000 },
+  development_focus:        { hybridAccuracy: 0.302, sfAccuracy: 0.40, agreementRate: 0.35, sampleSize: 1000 },
+  unknown:                  { hybridAccuracy: 0.604, sfAccuracy: 0.54, agreementRate: 0.62, sampleSize: 10000 },
 };
 
 /**

@@ -122,10 +122,13 @@ export function predictFromColorFlow(
     finalConfidence = Math.min(finalConfidence, 38);
   }
   
-  // v19.0: DEEP ENDGAME DAMPENING — moves 61+ at 42.2% accuracy
-  // Both EP and SF struggle here. Cap to prevent overconfident wrong predictions.
-  if (currentMoveNumber >= 61) {
-    finalConfidence = Math.min(finalConfidence, 45);
+  // v29.6: DEEP ENDGAME DAMPENING — tiered caps matching equilibriumPredictor
+  // m66+: EP 52.8% vs SF 57.0% — SF wins, aggressive cap (was flat 45, too loose)
+  // m61-65: EP ~55% vs SF ~48% — EP slight edge, moderate cap
+  if (currentMoveNumber >= 66) {
+    finalConfidence = Math.min(finalConfidence, 38);
+  } else if (currentMoveNumber >= 61) {
+    finalConfidence = Math.min(finalConfidence, 48);
   }
   
   // Clamp to reasonable range

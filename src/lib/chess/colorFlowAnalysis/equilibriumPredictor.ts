@@ -113,7 +113,12 @@ export function calculateEquilibriumScores(
     piece_activity:         'open_tactical',         // Generic high piece activity = open tactical
     piece_endgame:          'endgame_technique',     // Piece endgame = technique
     piece_attack:           'sacrificial_attack',    // Direct piece attack = sacrificial attack
-    piece_defense:          'prophylactic_defense',  // Defensive piece play = prophylactic
+    piece_defense:              'prophylactic_defense',  // Defensive piece play = prophylactic
+    // v35.1: 4 missing remaps — these fell through to neutral signal (undefined archetype)
+    piece_queen_dominance_early:    'sacrificial_attack',    // Premature queen = tactical aggression
+    piece_rook_endgame:             'endgame_technique',     // Lucena/Philidor/7th-rank patterns
+    piece_material_advantage:       'open_tactical',         // Material lead = open tactical conversion
+    piece_advancement_pressure:     'queenside_expansion',   // Passed/advanced pawns = expansion pattern
   };
   const effectiveArchetypeName = ARCHETYPE_REMAP[signature.archetype] || signature.archetype;
   const archetype = ARCHETYPE_DEFINITIONS[effectiveArchetypeName] || ARCHETYPE_DEFINITIONS[signature.archetype];

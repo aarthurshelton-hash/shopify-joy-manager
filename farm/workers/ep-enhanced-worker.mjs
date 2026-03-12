@@ -31,10 +31,21 @@ import { savePredictionLocal, getLocalStats } from '../lib/simpleStorage.mjs';
 import { getIntelligentFusionWeights, updateLiveArchetypeAccuracy, getPostFusionDrawGate, getArchetypeEdgeDampener, shouldSuppressEnhancedDraw } from './fusion-intelligence.mjs';
 import { refreshPlayerIntelligence, getPlayerIntelSummary } from './player-intelligence.mjs';
 import { computeLiveArchetypeWeights, saveLiveWeights, loadLiveWeights, logWeightComparison, loadPuzzleCalibration, mergePuzzleCalibration } from '../lib/liveArchetypeWeights.mjs';
+import { generateParableAttribution } from '../lib/archetypeParableEngine.mjs';
 import { createHash } from 'crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// ── Phase 3: Piece trajectory confidence weights (loaded from calibrator output) ──
+const TRAJ_WEIGHTS_FILE = join(__dirname, '..', 'data', 'piece-trajectory-weights.json');
+let pieceTrajectoryWeights = null;
+try {
+  if (fs.existsSync(TRAJ_WEIGHTS_FILE)) {
+    pieceTrajectoryWeights = JSON.parse(fs.readFileSync(TRAJ_WEIGHTS_FILE, 'utf8'));
+    console.log('[EP] ✓ Piece trajectory weights loaded — Phase 3 active');
+  }
+} catch (_) {}
 
 // Load environment variables
 const envPath = join(__dirname, '..', '..', '.env');
@@ -130,7 +141,7 @@ const GAME_SOURCES = {
     'chessbrah', 'opperwezen', 'EricRosen', 'ChessNetwork', 'Oleksandr_Bortnyk',
     'duhless', 'howitzer14', 'lance5500', 'Navaraok',
     'VincentKeymer2004', 'WesleyS8', 'NeverEnough',
-    'lovlas', 'nepoking', 'Naroditsky',
+    'lovlas', 'nepoking', 'penguingm1',
     'DrDrunkenstein', 'manwithavan', 'STL_Caruana',
     'gmwso', 'LyonBeast', 'chessbrahs', 'aprilchess',
     'RealDavidNavara', 'German11', 'Zhigalko_Sergei',
@@ -158,7 +169,7 @@ const GAME_SOURCES = {
   CHESSCOM_PLAYERS: [
     // Top GMs — verified active accounts
     'Hikaru', 'MagnusCarlsen', 'nihalsarin', 'FabianoCaruana',
-    'DanielNaroditsky', 'GothamChess', 'AnishGiri',
+    'GothamChess', 'AnishGiri',
     'WesleySo', 'Praggnanandhaa', 'DominguezPerez', 'Grischuk',
     'ArjunErigaisi', 'HansMokeNiemann', 'LevonAronian', 'ViditGujrathi',
     'DingLiren', 'RichardRapport', 'IanNepomniachtchi',
@@ -323,12 +334,11 @@ async function loadEPEngine() {
     }
     
     // Load the TRUE 32-piece color flow system
+    // Direct import from farm/workers — the .mjs source is the authority
     let piece32Module = null;
     try {
-      const { createRequire } = await import('module');
-      const require = createRequire(import.meta.url);
-      piece32Module = require(join(distPath, 'colorFlowAnalysis', 'pieceColorFlow32.js'));
-      console.log('✓ 32-piece color flow system loaded (32 unique hues, squares-within-squares)');
+      piece32Module = await import(join(__dirname, 'pieceColorFlow32.mjs'));
+      console.log('✓ 32-piece color flow system loaded (32 unique hues, mood palette, piece trajectories)');
     } catch (e) {
       console.log('32-piece module not available:', e.message);
     }
@@ -1277,7 +1287,9 @@ async function runBenchmarkCycle(epEngine) {
         blackName: game.blackName || game.players?.black || null,
         platform: game.source || 'lichess',
       };
-      const fw = getIntelligentFusionWeights(fusionArchetype, game.timeControl || null, moveNumber, playerCtx, sfEvalCp);
+      const fw = getIntelligentFusionWeights(fusionArchetype, game.timeControl || null, moveNumber, playerCtx, sfEvalCp,
+        poetry?.confluence || 0  // parable confluence — multi-tradition confirmation feeds fusion weights
+      );
       const fusionScores = { white_wins: 0, black_wins: 0, draw: 0 };
       // v17: Enhanced draw suppression — kill enhanced's 2.7% accuracy draw predictions
       const drawSuppress = shouldSuppressEnhancedDraw(enhancedPred.predictedWinner, fusionArchetype, sfEvalCp, moveNumber);
@@ -1301,6 +1313,26 @@ async function runBenchmarkCycle(epEngine) {
         hybridConfidence = drawGate.adjustedConf;
       }
       hybridConfidence *= getArchetypeEdgeDampener(fusionArchetype);
+
+      // Phase 3: Piece trajectory confidence multiplier
+      // Loaded from piece-trajectory-weights.json (built by piece-trajectory-calibrator)
+      // Multiplier breathes within [0.82, 1.18] — never zero, never negative (EP principle)
+      if (pieceTrajectoryWeights && predictions.enhanced?.signature?.pieceTrajectories) {
+        const traj = predictions.enhanced.signature.pieceTrajectories;
+        const archKey = fusionArchetype || 'unknown';
+        const tw = pieceTrajectoryWeights.archetypeMultipliers?.[archKey];
+        const pm = pieceTrajectoryWeights.paletteMultipliers;
+        if (tw?.multiplier) {
+          hybridConfidence *= Math.max(0.82, Math.min(1.18, tw.multiplier));
+        }
+        // Palette momentum multiplier: warm-dominant games in warm archetypes = slight boost
+        const palMomentum = predictions.enhanced.signature.paletteMomentum || 1;
+        const palKey = palMomentum > 1.2 ? 'warm' : palMomentum < 0.85 ? 'cool' : 'neutral';
+        if (pm?.[palKey]?.multiplier) {
+          hybridConfidence *= Math.max(0.92, Math.min(1.08, pm[palKey].multiplier));
+        }
+      }
+
       hybridConfidence = Math.max(0.15, hybridConfidence);
       
       const hybridCorrect = hybridPrediction === actualOutcome;
@@ -1331,7 +1363,18 @@ async function runBenchmarkCycle(epEngine) {
       // Generate creative language attribution — deterministic from position hash
       const posHash = hashPosition(fen);
       const archetype = predictions.enhanced?.archetype || predictions.baseline.archetype;
-      const poetry = generateGamePoetry(posHash, archetype, specialMoves, gamePhase, sfEvalCp);
+      // Live parabolic attribution — words built from what actually happened, parable predicts the end
+      const poetry = generateParableAttribution(
+        posHash, archetype, specialMoves, gamePhase, sfEvalCp,
+        predictions.enhanced?.signature?.pieceTrajectories || null
+      );
+
+      // Parabolic confidence modifier — stronger cross-tradition resonance = higher confidence
+      // Confluence 5 (all traditions agree) = highest modifier. Breathes within [0.90, 1.12].
+      if (poetry.confidence_modifier && poetry.confidence_modifier !== 1.0) {
+        hybridConfidence *= Math.max(0.90, Math.min(1.12, poetry.confidence_modifier));
+        hybridConfidence = Math.max(0.15, hybridConfidence);
+      }
       
       // Save with A/B data, variable move number, poetry, and full 8-quadrant profile
       await savePrediction({
@@ -1368,6 +1411,14 @@ async function runBenchmarkCycle(epEngine) {
           pawnAdvancement: predictions.enhanced.signature.enhancedProfile.pawn_advancement,
         } : null,
         specialMoves,
+        // Phase 1: Piece trajectory shadow data — actor-level lifecycle
+        pieceTrajectories: predictions.enhanced?.signature?.pieceTrajectories || null,
+        moodPaletteSnapshot: predictions.enhanced?.signature?.paletteMomentum != null ? {
+          momentum: predictions.enhanced.signature.paletteMomentum,
+          warmShare: predictions.enhanced.signature.warmActivity || null,
+          coolShare: predictions.enhanced.signature.coolActivity || null,
+        } : null,
+        paletteMomentum: predictions.enhanced?.signature?.paletteMomentum || null,
       });
       
       // SELF-EVOLVING: Feed prediction into cross-domain correlation engine
@@ -1396,8 +1447,8 @@ async function runBenchmarkCycle(epEngine) {
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())`,
             [
               `farm_${game.id}_${Date.now()}`,
-              allAgree ? 'consensus-correct' : hybridCorrect ? 'ep-correct' : 'ep-incorrect',
-              allAgree ? 'All Engines Agree (Correct)' : hybridCorrect ? 'EP Correct' : 'EP Incorrect',
+              allAgree ? `parable:${poetry?.motif || 'consensus'}-correct` : hybridCorrect ? `parable:${poetry?.motif || 'ep'}-correct` : `parable:${poetry?.motif || 'ep'}-incorrect`,
+              poetry?.parable ? `${poetry.parable} — ${poetry?.market_signal || 'EP Correct'}` : (allAgree ? 'All Engines Agree (Correct)' : hybridCorrect ? 'EP Correct' : 'EP Incorrect'),
               Math.min(9.99, Math.round(realScore * 100) / 100),
               predictions.enhanced?.archetype || predictions.baseline.archetype,
               Math.min(9.99, Math.round(confLevel * 100) / 100),  // numeric(3,2): 0.00-9.99
@@ -1857,6 +1908,14 @@ async function savePrediction(attempt) {
       : `Game ${attempt.gameId}`;
     
     const meta = attempt.gameMetadata || {};
+    const mn = attempt.moveNumber || 20;
+
+    // Phase-specific confidence caps — mirrors chess-db-ingest-worker (v29.6)
+    let hybridConfCapped = Math.min(0.69, Math.max(0.15, attempt.hybridConfidence || 0.5));
+    if (mn <= 10)             hybridConfCapped = Math.min(0.38, hybridConfCapped); // Opening: 47.5% acc
+    if (mn >= 66)             hybridConfCapped = Math.min(0.38, hybridConfCapped); // Deep endgame: SF wins
+    else if (mn >= 61)        hybridConfCapped = Math.min(0.48, hybridConfCapped); // 61-65: slight EP edge
+    if (hybridConfCapped >= 0.45 && hybridConfCapped < 0.50) hybridConfCapped = 0.42; // 45-50 below random
     
     const query = `
       /* v4-enriched */ INSERT INTO chess_prediction_attempts (
@@ -1889,7 +1948,7 @@ async function savePrediction(attempt) {
       Math.round(Math.min(95, 50 + Math.abs(attempt.sf17Eval || 0) * 10)),  // SF confidence (integer)
       attempt.sf17Correct,                                       // Real SF18 correctness
       attempt.hybridPrediction || attempt.enhancedPrediction || attempt.baselinePrediction,  // v12: real 3-engine fusion
-      Math.round(Math.min(69, Math.max(15, (attempt.hybridConfidence || 0.5) * 100))),  // hybrid confidence (capped 15-69)
+      Math.round(hybridConfCapped * 100),  // hybrid confidence (phase-capped 15-69)
       attempt.enhancedArchetype || attempt.baselineArchetype || 'unknown',
       attempt.hybridCorrect ?? attempt.enhancedCorrect ?? attempt.baselineCorrect,  // v12: real hybrid correctness
       attempt.enhancedPrediction || null,                        // enhanced_prediction (8-quad)
@@ -1913,8 +1972,19 @@ async function savePrediction(attempt) {
         move_number: attempt.moveNumber || 20,
         game_phase: attempt.gamePhase || 'unknown',
         special_moves: attempt.specialMoves || {},
-        // v12.1: Player profiling — foundation for per-player archetype learning
         player_profile: meta.playerProfile || null,
+        // Live parabolic attribution
+        parable: attempt.poetry?.parable || null,
+        scripture: attempt.poetry?.scripture || null,
+        parabolic_outcome: attempt.poetry?.parabolicOutcome || null,
+        confluence: attempt.poetry?.confluence || null,
+        traditions: attempt.poetry?.traditions || null,
+        market_signal: attempt.poetry?.market_signal || null,
+        narration: attempt.poetry?.narration || null,
+        // Phase 1: Piece trajectory shadow data
+        piece_trajectories: attempt.pieceTrajectories || null,
+        mood_palette_snapshot: attempt.moodPaletteSnapshot || null,
+        palette_momentum: attempt.paletteMomentum || null,
       }),
       attempt.eightQuadrantProfile ? JSON.stringify(attempt.eightQuadrantProfile) : null,  // eight_quadrant_profile
       attempt.pieceTypeMetrics ? JSON.stringify(attempt.pieceTypeMetrics) : null,           // piece_type_metrics

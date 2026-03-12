@@ -51,6 +51,20 @@ let ARCHETYPE_ACCURACY = {
   central_knight_outpost: 0.486,       // n=4K
   // Tier 4: Anti-predictive (<40%) — defer to SF
   development_focus:      0.302,       // n=1K — BELOW random!
+  // Piece-level archetypes (32-piece system, post-10M corpus)
+  // Note: narrow spread 70.9-73.4% but seeded from 10M+ games
+  piece_balanced_activity:     0.734,
+  piece_general_pressure:      0.731,
+  piece_rook_endgame:          0.729,
+  piece_queen_dominance:       0.724,
+  piece_queen_dominance_endgame: 0.721,
+  piece_rook_activity:         0.718,
+  piece_advancement_pressure:  0.715,
+  piece_material_advantage:    0.712,
+  piece_bishop_control:        0.710,
+  piece_knight_maneuver:       0.709,
+  piece_queen_dominance_early: 0.698,
+  piece_survival_advantage:    0.694,
 };
 
 // Baseline: overall EP hybrid accuracy from 1M+ games
@@ -78,6 +92,20 @@ export function updateLiveArchetypeAccuracy(liveData) {
  * @param {string} archetype - The classified archetype name
  * @returns {number} Multiplier (0.90 - 1.15)
  */
+/**
+ * Parable confluence boost — the more independent traditions confirm the same
+ * structural pattern, the more reliable the archetypal signal.
+ * Confluence 5 (all traditions agree) = +8% enhanced weight.
+ * Confluence 1 (single tradition only) = neutral.
+ * This is the same multiplicative pattern as archetype/time/phase/player boosts.
+ */
+export function getParableConfluenceBoost(confluence) {
+  if (!confluence || confluence < 1) return 1.0;
+  // Each confirming tradition adds a small but real signal
+  // 5 traditions → 1.08, 4 → 1.06, 3 → 1.04, 2 → 1.02, 1 → 1.0
+  return Math.max(1.0, Math.min(1.08, 1.0 + (confluence - 1) * 0.02));
+}
+
 export function getArchetypeBoost(archetype) {
   const acc = ARCHETYPE_ACCURACY[archetype];
   if (!acc) return 1.0; // Unknown archetype → neutral
@@ -408,7 +436,7 @@ export function getSfReliabilityWeight(sfEvalCp, moveNumber) {
  * @param {number|null} [sfEvalCp] - Stockfish eval in centipawns (for SF reliability gate)
  * @returns {{ baselineWeight: number, enhancedWeight: number, sfWeight: number, boostFactor: number, playerBoost: number, playerReason: string, sfReliability: string }}
  */
-export function getIntelligentFusionWeights(archetype, timeControl, moveNumber, playerContext, sfEvalCp) {
+export function getIntelligentFusionWeights(archetype, timeControl, moveNumber, playerContext, sfEvalCp, parableConfluence) {
   const archetypeBoost = getArchetypeBoost(archetype);
   const timeBoost = getTimeControlBoost(timeControl);
   const phaseBoost = getGamePhaseBoost(moveNumber);
@@ -427,9 +455,12 @@ export function getIntelligentFusionWeights(archetype, timeControl, moveNumber, 
     playerReason = pb.reason;
   }
   
+  // Parable confluence boost (optional) — multi-tradition pattern confirmation
+  const confluenceBoost = getParableConfluenceBoost(parableConfluence || 0);
+
   // Combined boost: multiplicative (all independent signals)
-  // Widened to [0.55, 1.45] — archetype + player intelligence drives fusion weights
-  const combinedBoost = Math.max(0.55, Math.min(1.45, archetypeBoost * timeBoost * phaseBoost * playerBoostVal));
+  // Widened to [0.55, 1.45] — archetype + player + parable intelligence drives fusion weights
+  const combinedBoost = Math.max(0.55, Math.min(1.45, archetypeBoost * timeBoost * phaseBoost * playerBoostVal * confluenceBoost));
   
   // v16: In deep endgame (51+), boost SF weight — material is decisive
   // Data: SF at 51.0-52.5% in endgame, hybrid at 51.3-53.0%

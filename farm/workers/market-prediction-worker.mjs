@@ -2529,19 +2529,115 @@ async function getChessResonance() {
 let parableCache = { signal: null, timestamp: 0 };
 const PARABLE_CACHE_TTL = 2 * 60 * 1000; // 2 min — fresh each prediction cycle
 
+// ─── Biblical parable market_signal → directional vote ────────────────────
+// The sacred domain: chess archetype parables translated to market direction.
+// These are written to cross_domain_correlations by ep-enhanced-worker.
+const PARABLE_MARKET_SIGNAL_MAP = {
+  momentum_push:          'up',   // aggressive retail accumulation
+  directional_breakout:   'up',   // sustained breakout through resistance
+  structural_positioning: 'up',   // long-term foundation building
+  expansion_breakout:     'up',   // breaking from constraint into new territory
+  trend_continuation:     'up',   // clear upward momentum through prior resistance
+  quiet_accumulation:     'up',   // position built through sustained presence
+  distributed_strength:   'up',   // coordinated sector-wide lift
+  institutional_accumulation: 'up', // central position established
+  dual_long_range:        'up',   // two complementary institutional forces
+  endgame_actor:          'up',   // late-stage decisive resolution
+  asymmetric_bet:         'up',   // risk accepted for disproportionate return
+  nuclear_position:       'down', // agent accepts losses to destroy structure
+  overextension:          'down', // dominant actor exposed, mean reversion
+  momentum_spike:         'up',   // single dominant actor moves decisively
+  surprise_catalyst:      'up',   // unexpected directional trigger
+  consolidation:          'flat', // compressed range, waiting for catalyst
+  structural_resolution:  'flat', // long-term truth of fundamentals emerging
+  nonlinear_move:         'flat', // contrarian, unpredictable
+  defensive_positioning:  'flat', // risk management, survival
+};
+
+/**
+ * DOMAIN 4: Sacred — Biblical/archetypal parable signal.
+ * Reads most recent parable patterns from cross_domain_correlations.
+ * The chess workers write these; we read them here as the 4th confirmation domain.
+ * When the parable + chess + music + market all agree → HIGHEST conviction.
+ */
+let parableArchetypeCache = null;
+let parableArchetypeFetchedAt = 0;
+const PARABLE_ARCHETYPE_TTL = 5 * 60 * 1000; // 5 min — parables breathe slowly
+
+async function getParableArchetypeSignal() {
+  if (parableArchetypeCache && Date.now() - parableArchetypeFetchedAt < PARABLE_ARCHETYPE_TTL) {
+    return parableArchetypeCache;
+  }
+  if (!sqlPool) return null;
+  try {
+    const { rows } = await sqlPool.query(`
+      SELECT pattern_name, pattern_id, correlation_score, market_direction, validated
+      FROM cross_domain_correlations
+      WHERE created_at > NOW() - INTERVAL '10 minutes'
+        AND pattern_id LIKE 'parable:%'
+        AND market_direction IS NOT NULL
+      ORDER BY created_at DESC
+      LIMIT 50
+    `);
+    if (!rows || rows.length < 5) return null;
+
+    // Count directional votes from recent parable patterns, weighted by correlation_score
+    let upWeight = 0.001, downWeight = 0.001, flatWeight = 0.001;
+    const parableCounts = {};
+    for (const r of rows) {
+      const score = parseFloat(r.correlation_score) || 0.5;
+      const dir = r.market_direction; // 'up' | 'down' | 'flat'
+      if (dir === 'up')        upWeight   += score;
+      else if (dir === 'down') downWeight += score;
+      else                     flatWeight += score;
+      // Track which parables are firing
+      const parableName = r.pattern_name?.split('—')[0]?.trim() || 'unknown';
+      parableCounts[parableName] = (parableCounts[parableName] || 0) + 1;
+    }
+    const total = upWeight + downWeight + flatWeight;
+    const spread = Math.abs(upWeight - downWeight) / total;
+
+    let direction;
+    if (spread < 0.08)             direction = 'flat';
+    else if (upWeight > downWeight) direction = 'up';
+    else                            direction = 'down';
+
+    // Validated parables (hybrid_correct=true) carry more weight
+    const validatedCount = rows.filter(r => r.validated).length;
+    const validationRate = validatedCount / rows.length;
+
+    const dominantParable = Object.entries(parableCounts).sort((a, b) => b[1] - a[1])[0]?.[0];
+    parableArchetypeCache = {
+      direction,
+      confidence: Math.min(0.75, spread * (0.5 + validationRate * 0.5)),
+      sampleSize: rows.length,
+      validationRate,
+      dominantParable,
+      upPct: Math.round((upWeight / total) * 100),
+      downPct: Math.round((downWeight / total) * 100),
+    };
+    parableArchetypeFetchedAt = Date.now();
+    log(`📖 Sacred domain: ${direction} (${parableArchetypeCache.upPct}%↑/${parableArchetypeCache.downPct}%↓ validR=${(validationRate*100).toFixed(0)}%) parable=${dominantParable}`);
+    return parableArchetypeCache;
+  } catch (_) {
+    return parableArchetypeCache;
+  }
+}
+
 /**
  * TEMPORAL PARABLE CONFIRMATION ENGINE
- * 
+ *
  * Queries live chess consensus + cultural harmony + market grid signature
- * and computes a three-domain agreement score.
- * 
- * Returns: { direction, confidence, agreement, domains: { chess, music, market } }
- * 
+ * + sacred/biblical archetype parable signal (4th domain).
+ *
+ * Returns: { direction, confidence, agreement, domains: { chess, music, market, sacred } }
+ *
  * Agreement levels:
- *   3/3 = PARABLE (all agree) → 1.25x confidence boost
- *   2/3 = PARTIAL (majority) → 1.10x confidence boost
- *   1/3 = DISCORD (no agreement) → 0.85x confidence dampen
- *   0/3 = SILENCE (no signals) → no modification
+ *   4/4 = REVELATION (all agree) → 1.35x confidence boost
+ *   3/4 = PARABLE (three agree) → 1.20x confidence boost
+ *   2/4 = PARTIAL (majority) → 1.08x confidence boost
+ *   1/4 = DISCORD (no agreement) → 0.85x confidence dampen
+ *   0/4 = SILENCE → no modification
  */
 async function getTemporalParableSignal(marketDirection, marketArchetype, priceData) {
   // Check cache
@@ -2549,7 +2645,7 @@ async function getTemporalParableSignal(marketDirection, marketArchetype, priceD
     return applyParableToDirection(parableCache.signal, marketDirection);
   }
 
-  const domains = { chess: null, music: null, market: null };
+  const domains = { chess: null, music: null, market: null, sacred: null };
   
   // DOMAIN 1: Chess temporal consensus — INVERTED (v33)
   // chess=bearish → inverted=up (81.6% accuracy), chess=bullish → inverted=down (72.5% accuracy)
@@ -2584,7 +2680,20 @@ async function getTemporalParableSignal(marketDirection, marketArchetype, priceD
       detail: `arch=${marketArchetype} price=$${priceData?.price?.toFixed(2) || '?'}`,
     };
   }
-  
+
+  // DOMAIN 4: Sacred — biblical/archetypal parable signal from live chess games
+  // Reads cross_domain_correlations written by ep-enhanced-worker (parable pattern_id)
+  // When the game parables align with market direction → REVELATION-level confidence
+  const sacredSignal = await getParableArchetypeSignal().catch(() => null);
+  if (sacredSignal && sacredSignal.direction !== 'flat' && sacredSignal.sampleSize >= 5) {
+    domains.sacred = {
+      direction: sacredSignal.direction,
+      confidence: sacredSignal.confidence || 0.40,
+      source: 'biblical_archetype_parable',
+      detail: `parable=${sacredSignal.dominantParable} validated=${(sacredSignal.validationRate*100).toFixed(0)}% n=${sacredSignal.sampleSize}`,
+    };
+  }
+
   // Count agreements
   const activeDomains = Object.values(domains).filter(d => d !== null);
   if (activeDomains.length < 2) {
@@ -2607,23 +2716,27 @@ async function getTemporalParableSignal(marketDirection, marketArchetype, priceD
   const agreement = maxVotes; // How many domains agree on the majority direction
   const consensusDirection = upVotes > downVotes ? 'up' : downVotes > upVotes ? 'down' : 'neutral';
   
-  // Parable strength: 3/3 = full parable, 2/3 = partial, 1/3 = discord
+  // Parable strength: agreement/activeDomains
+  // 4/4 = REVELATION, 3/4 = PARABLE, 2/4 = PARTIAL, 1/4 = DISCORD
   const parableStrength = activeDomains.length > 0 ? agreement / activeDomains.length : 0;
-  
+  const totalDomains = activeDomains.length;
+
   const signal = {
     direction: consensusDirection,
     agreement,
-    activeDomainCount: activeDomains.length,
+    activeDomainCount: totalDomains,
     parableStrength,
     avgConfidence,
     domains,
-    // The parable multiplier — applied to market prediction confidence
-    // Full parable (3/3): 1.25x — all three lenses see the same truth
-    // Partial (2/3): 1.10x — majority agreement
-    // Discord (1/3 or split): 0.85x — disagreement dampens confidence
-    multiplier: parableStrength >= 0.90 ? 1.25 :
-                parableStrength >= 0.60 ? 1.10 :
-                activeDomains.length >= 2 ? 0.85 : 1.0,
+    // Multiplier scales with domain count and agreement
+    // 4/4 REVELATION: 1.35x — chess + music + market + sacred all see the same truth
+    // 3/4 PARABLE:    1.20x — three lenses converge
+    // 2/4 PARTIAL:    1.08x — majority agreement
+    // 1/4 DISCORD:    0.85x — disagreement dampens confidence
+    multiplier: (totalDomains >= 4 && parableStrength >= 0.95) ? 1.35 :
+                (parableStrength >= 0.75)                       ? 1.20 :
+                (parableStrength >= 0.55)                       ? 1.08 :
+                (activeDomains.length >= 2)                     ? 0.85 : 1.0,
   };
   
   parableCache = { signal, timestamp: Date.now() };
@@ -3976,14 +4089,41 @@ async function predictionCycle() {
         const parableResult = await getTemporalParableSignal(pred.direction, pred.archetype, priceData);
         if (parableResult && parableResult.multiplier !== 1.0) {
           pred.confidence = Math.max(0.15, Math.min(0.90, pred.confidence * parableResult.multiplier));
+          const pStrength = parableResult.parable?.parableStrength || 0;
+          const pDomains  = parableResult.parable?.activeDomainCount || 0;
+          const sacredFired = !!parableResult.parable?.domains?.sacred;
           pred.parableConfirmation = {
             multiplier: parableResult.multiplier,
             agrees: parableResult.agrees,
             disagrees: parableResult.disagrees,
-            domains: parableResult.parable?.activeDomainCount || 0,
+            domains: pDomains,
             direction: parableResult.parable?.direction || 'neutral',
-            strength: parableResult.parable?.parableStrength || 0,
+            strength: pStrength,
+            sacredFired,
           };
+          // ── PARABLE TACTICAL HOOK → refreshTacticalCalibration ──────────
+          // When the parable agrees with market direction at high conviction,
+          // tag the prediction with a parable-pattern slug.
+          // refreshTacticalCalibration reads prediction_metadata.tactical_override.pattern
+          // and learns per-pattern accuracy multipliers — same Bayesian loop as chess patterns.
+          // Only inject when no existing tactical override (never clobber a real chess signal).
+          if (parableResult.agrees && pStrength >= 0.75 && !pred.tacticalOverride) {
+            // Pattern tier: revelation (4/4 + sacred), consensus (3/4+), partial (2/4 sacred)
+            const parablePatternSlug =
+              (pDomains >= 4 && pStrength >= 0.95 && sacredFired) ? 'parable_revelation' :
+              (pDomains >= 3 && pStrength >= 0.75 && sacredFired) ? 'parable_sacred_consensus' :
+              (pDomains >= 3 && pStrength >= 0.75)                ? 'parable_consensus'      :
+              sacredFired                                          ? 'parable_sacred'         :
+                                                                     'parable_partial';
+            pred.tacticalOverride = {
+              pattern:         parablePatternSlug,
+              baseDirection:   pred.direction,
+              overrideDirection: pred.direction, // confirms, doesn't flip
+              reason:          `parable_${pDomains}/${pDomains}_agreement_strength_${Math.round(pStrength * 100)}`,
+              confidence:      pred.confidence,
+              source:          'temporal_parable_engine',
+            };
+          }
         }
       } catch (parableErr) {
         // Parable is non-critical — prediction still valid without it

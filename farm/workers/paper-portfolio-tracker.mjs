@@ -99,7 +99,7 @@ const STRATEGIES = {
       // Same proven archetypes as edge_hunter — isolate the EXIT TIMING variable.
       // Comparison: adaptive_exit vs edge_hunter with identical entry filters
       // = pure A/B test of variable (archetype-timed) vs fixed (horizon_ms) exit.
-      return ['false_breakout', 'trap_queen_sac', 'choppy', 'mean_reversion_up', 'mean_reversion_down'].includes(pred.archetype);
+      return ['false_breakout', 'trap_queen_sac', 'choppy', 'mean_reversion_up'].includes(pred.archetype);
     },
     leverageMultiplier: 1,
     extraFees: 0,

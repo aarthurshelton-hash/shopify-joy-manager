@@ -38,6 +38,7 @@ import { spawn, exec } from 'child_process';
 import { promisify } from 'util';
 import crypto from 'crypto';
 import { getIntelligentFusionWeights, getPostFusionDrawGate, getArchetypeEdgeDampener, shouldSuppressEnhancedDraw } from './fusion-intelligence.mjs';
+import { generateParableAttribution } from '../lib/archetypeParableEngine.mjs';
 import { refreshPlayerIntelligence } from './player-intelligence.mjs';
 import fs from 'fs';
 const execAsync = promisify(exec);
@@ -82,9 +83,14 @@ const CONFIG = {
   enableChessComPuzzles: true,   // v34: Re-enabled — 0% bug fixed (SF eval fallback instead of hardcoded 'draw')
   enableFishtest: false,        // v29.9: DISABLED — engine-vs-engine games poison EP's human-game patterns (same as CCRL)
 
-  lichessStartYear: 2026,
-  lichessStartMonth: 2,      // v29.8: Back to Feb 2026 — will cycle through months
-  lichessOldestYear: 2013,   // v29.8: Expand to 2013-2026 (13 years) — billions of GM games available
+  // WORKER_SHARD partitions the 3 ingest workers across different time windows
+  // to prevent duplicate stream downloads and wasted SF eval compute.
+  // Shard 0: 2024-2026 (recent — highest quality, fastest accumulation)
+  // Shard 1: 2020-2023 (mid-range — rich tactical library)
+  // Shard 2: 2013-2019 (historical — deep pattern diversity)
+  lichessStartYear:  process.env.WORKER_SHARD === '1' ? 2023 : process.env.WORKER_SHARD === '2' ? 2019 : 2026,
+  lichessStartMonth: process.env.WORKER_SHARD === '1' ? 12   : process.env.WORKER_SHARD === '2' ? 12   : 2,
+  lichessOldestYear: process.env.WORKER_SHARD === '1' ? 2020 : process.env.WORKER_SHARD === '2' ? 2013 : 2024,
   lichessStreamMinutes: 45,  // v29.9: Increased from 10→45 min — monthly dumps have 80M+ games, need sustained streaming
 
   ficsStartYear: 2025,
@@ -95,13 +101,10 @@ const CONFIG = {
   // v17.3: Scale to 100M games - massive ingestion for universal archetype intelligence
   // v17.4: Rate limiting and database protection
   sourceWeights: {
-    lichess_db: 3.0,      // v29.9: Boosted from 1→3 — primary path to billions, FICS/CCRL disabled
-    fics: 0.5,            // Increased from 0.3 - need historical volume for temporal patterns
-    kingbase: 1.5,        // Master OTB games - high quality temporal data
-    ccrl: 4.0,            // Engine games - critical for tactical pattern library
-    chesscom: 8.0,        // v29.0: Boosted from 3→8 — Chess.com is only 4% of DB, needs massive increase
-    lichess_puzzles: 2.0, // v19.1: Maximized — fast eval, no SF queue bottleneck
-    fishtest: 5.0,        // v28.0: Fishtest engine-vs-engine — highest quality engine games
+    lichess_db: 3.0,      // Primary — billions of games, sharded across 3 workers
+    chesscom: 8.0,        // v29.0: Boosted — Chess.com is only 4% of DB, needs heavy sampling
+    lichess_puzzles: 2.0, // v19.1: Fast eval, no SF queue bottleneck
+    // fics/kingbase/ccrl/fishtest: permanently disabled — entries removed to avoid confusion
   },
   maxGamesPerSource: parseInt(process.argv.find(a => a.startsWith('--max-per-source='))?.split('=')[1] || '1000000'), // Scaled for 5M+ target
   // Rate limiting to prevent database collapse
@@ -2007,41 +2010,12 @@ async function processGame(game, moveNumber, epEngine, source) {
     }
   }
   
-  // v29.7: SOURCE-AWARE CONFIDENCE SPECIALIZATION
-  // Each source has fundamentally different characteristics that affect prediction reliability.
-  // Data from 5K games per source:
-  //   lichess_db: EP 77.5% vs SF 75.9% (+1.6pp) — conf 65-70 at 94.4% actual
-  //   chess.com:  EP 59.7% vs SF 57.1% (+2.5pp) — conf 65-70 at 58.2% actual (!!!)
-  //   lichess:    EP 54.0% vs SF 50.3% (+3.7pp) — lowest absolute accuracy
-  // The 36pp gap in conf 65-70 between chess.com and lichess_db is the #1 calibration failure.
+  // v29.7 chess.com source-aware caps REMOVED (v35.0):
+  // Calibrated on 5K games Feb 2026; now 1.6M chess.com games with live calibration.
+  // Stale caps were suppressing EP's natural edge and altering predictions via draw-override.
+  // Signal-calibration worker handles all source-aware learning organically now.
   const isChessCom = source === 'chess.com' || source === 'chesscom';
   const isLichessApi = source === 'lichess';
-  
-  if (isChessCom) {
-    // Chess.com: median Elo 3035, 11.7% draws (vs 4.2% lichess_db), harder positions
-    // Conf 65-70 at 58.2% actual — cap at 60 to match reality
-    // Conf 60-65 at 80.9% — well calibrated, leave alone
-    if (hybridConf >= 0.65) {
-      hybridConf = Math.min(0.60, hybridConf);
-    }
-    // Chess.com has 2.8x more draws than lichess_db but EP barely predicts draws.
-    // Boost draw detection: when eval is tight and prediction is decisive, nudge toward draw.
-    if (hybridPrediction !== 'draw' && Math.abs(sfEvalCp) < 60) {
-      const drawVote = votes['draw'] || 0;
-      const topVote = sortedVotes[0][1];
-      const drawGapPct = (topVote - drawVote) / (topVote + 0.001);
-      if (drawGapPct < 0.30) {
-        // Tight margin + low eval on chess.com = likely draw (high-Elo players hold)
-        hybridPrediction = 'draw';
-        hybridConf = Math.min(0.52, hybridConf);
-      }
-    }
-    // Chess.com late-game (m31+) at high Elo: EP edge drops to -0.2pp.
-    // SF's depth advantage matters more when strong players simplify.
-    if (moveNumber >= 31 && hybridConf > 0.55) {
-      hybridConf = Math.min(0.55, hybridConf);
-    }
-  }
   
   if (isLichessApi) {
     // Lichess API: live/recent games, 54% EP accuracy — lowest source.
@@ -2054,6 +2028,23 @@ async function processGame(game, moveNumber, epEngine, source) {
   
   // Recompute correctness after potential draw override
   const hybridCorrect = hybridPrediction === actualOutcome;
+
+  // ─── ARCHETYPE PARABLE ENGINE: live temporal words + multi-tradition confirmation ───
+  // Words built from what ACTUALLY happened; parable arc predicts the outcome.
+  // Runs after all confidence signals are applied — parable is the final layer.
+  const parableGamePhase = moveNumber < 15 ? 'opening' : moveNumber < 35 ? 'middlegame' : 'endgame';
+  const liveParable = generateParableAttribution(
+    positionHash,
+    fusionArchetype,
+    null, // specialMoves — not pre-computed in ingest worker; engine handles gracefully
+    parableGamePhase,
+    hasRealEval ? sfEvalCp : 0,
+    enhancedSig?.pieceTrajectories || null
+  );
+  // Parabolic confidence modifier — breathes within [0.90, 1.12], No zeros, no negatives
+  if (liveParable?.confidence_modifier && liveParable.confidence_modifier !== 1.0) {
+    hybridConf = Math.min(0.69, Math.max(0.15, hybridConf * Math.max(0.90, Math.min(1.12, liveParable.confidence_modifier))));
+  }
   
   const enhDelta = (enhancedResult.predictedWinner === actualOutcome && baselineResult.predictedWinner !== actualOutcome) ? 1 :
                    (enhancedResult.predictedWinner !== actualOutcome && baselineResult.predictedWinner === actualOutcome) ? -1 : 0;
@@ -2138,15 +2129,33 @@ async function processGame(game, moveNumber, epEngine, source) {
       } : null,
     },
     // v29.9: PARABLE TEMPORAL BRIDGE — chess archetype → biblical parable → musical structure
-    // The Word connects with the sound archetypically
-    parable: findParableResonance(
-      enhancedSig?.archetype || baselineSig?.archetype,
-      enhancedSig?.enhancedProfile?.temporalFlow || baselineSig?.temporalFlow || { early: 0.33, mid: 0.34, late: 0.33 },
-      baselineSig?.intensity || 0.5,
-      baselineSig?.flowDirection === 'white_advancing' ? 0.3 : baselineSig?.flowDirection === 'black_advancing' ? -0.3 : 0,
-      moveNumber,
-      totalMoves
-    ),
+    // Enriched with live temporal narration + multi-tradition confirmation from Archetype Parable Engine
+    parable: (() => {
+      const base = findParableResonance(
+        enhancedSig?.archetype || baselineSig?.archetype,
+        enhancedSig?.enhancedProfile?.temporalFlow || baselineSig?.temporalFlow || { early: 0.33, mid: 0.34, late: 0.33 },
+        baselineSig?.intensity || 0.5,
+        baselineSig?.flowDirection === 'white_advancing' ? 0.3 : baselineSig?.flowDirection === 'black_advancing' ? -0.3 : 0,
+        moveNumber,
+        totalMoves
+      );
+      if (!liveParable) return base;
+      // Merge: base provides music/photon/resonance; liveParable adds narration/traditions/outcome
+      return {
+        ...(base || {}),
+        parable: liveParable.parable || base?.parable,
+        scripture: liveParable.scripture || base?.scripture,
+        verse: liveParable.verse,
+        essence: liveParable.essence,
+        motif: liveParable.motif,
+        narration: liveParable.narration,
+        parabolicOutcome: liveParable.parabolicOutcome,
+        confluence: liveParable.confluence,
+        traditions: liveParable.traditions,
+        market_signal: liveParable.market_signal,
+        confidence_modifier: liveParable.confidence_modifier,
+      };
+    })(),
   };
   
   return {
@@ -2549,8 +2558,8 @@ async function batchInsert(attempts) {
         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,NOW())`,
         [
           `dbi_${a.gameId}_${Date.now()}`,
-          allAgree ? 'consensus-correct' : a.enhancedCorrect ? 'ep-correct' : 'ep-incorrect',
-          allAgree ? 'All Engines Agree (Correct)' : a.enhancedCorrect ? 'EP Correct' : 'EP Incorrect',
+          a.metadata?.parable?.motif ? `parable:${a.metadata.parable.motif}-${a.enhancedCorrect ? 'correct' : 'incorrect'}` : (allAgree ? 'consensus-correct' : a.enhancedCorrect ? 'ep-correct' : 'ep-incorrect'),
+          a.metadata?.parable?.parable ? `${a.metadata.parable.parable} — ${a.metadata.parable.market_signal || 'chess pattern'}` : (allAgree ? 'All Engines Agree (Correct)' : a.enhancedCorrect ? 'EP Correct' : 'EP Incorrect'),
           Math.min(9.99, Math.round(realScore * 100) / 100),
           a.enhancedArchetype || 'unknown',
           Math.min(9.99, Math.round((a.enhancedConfidence || 0.5) * 100) / 100),
@@ -3329,9 +3338,9 @@ async function ingestChessComPuzzles(epEngine) {
 // ════════════════════════════════════════════════════════
 
 async function discoverChessComPlayers() {
-  // v31: Expanded from GM+IM (200 each) to GM+IM+FM (500 each) for max volume
-  // FM games are still high quality and provide massive untapped volume
-  const titles = ['GM', 'IM', 'FM'];
+  // v35.0: Expanded to GM+IM+FM+NM — NM players have billions of games and are
+  // the largest untapped pool on chess.com. High quality: 2200+ FIDE rated.
+  const titles = ['GM', 'IM', 'FM', 'NM'];
   const existing = new Set(CHESSCOM_PLAYERS);
   let added = 0;
   
@@ -3346,8 +3355,8 @@ async function discoverChessComPlayers() {
       const data = await res.json();
       const players = data.players || [];
       
-      // v31: Raised from 200→500 per title for max volume
-      const newPlayers = players.filter(p => !existing.has(p)).sort().slice(0, 500);
+      // v35.0: Raised from 500→1000 per title — NM pool is massive, need higher cap
+      const newPlayers = players.filter(p => !existing.has(p)).sort().slice(0, 1000);
       for (const p of newPlayers) {
         CHESSCOM_PLAYERS.push(p);
         existing.add(p);

@@ -732,6 +732,21 @@ async function processGame(game, moveNumber, epEngine) {
     blackElo: parseInt(game.headers.BlackElo) || null,
     timeControl: game.headers.TimeControl || null,
     pgn: fullPgn.substring(0, 5000),  // Cap PGN storage size
+    // Schema parity with chess-db-ingest-worker
+    whitePlayer: game.headers.White || null,
+    blackPlayer: game.headers.Black || null,
+    gameType: 'PvP',
+    lessonLearned: {
+      white_player: game.headers.White || null,
+      black_player: game.headers.Black || null,
+      eco: game.headers.ECO || null,
+      opening: game.headers.Opening || null,
+      event: game.headers.Event || null,
+      time_of_day: null,
+      avg_elo: (parseInt(game.headers.WhiteElo) && parseInt(game.headers.BlackElo))
+        ? Math.round((parseInt(game.headers.WhiteElo) + parseInt(game.headers.BlackElo)) / 2)
+        : null,
+    },
   };
 }
 
@@ -768,7 +783,7 @@ async function batchInsert(attempts) {
       const enhDelta = (a.enhancedCorrect === true && a.baselineCorrect === false) ? 1 :
                        (a.enhancedCorrect === false && a.baselineCorrect === true) ? -1 : 0;
       const result = await resilientQuery(
-        `/* bulk-v4-richfeatures */ INSERT INTO chess_prediction_attempts (
+        `/* bulk-v5-fullschema */ INSERT INTO chess_prediction_attempts (
           game_id, game_name, move_number, fen, position_hash,
           stockfish_eval, stockfish_depth,
           stockfish_prediction, stockfish_confidence, stockfish_correct,
@@ -779,8 +794,10 @@ async function batchInsert(attempts) {
           white_elo, black_elo, time_control, pgn,
           baseline_vs_enhanced_delta,
           eight_quadrant_profile, piece_type_metrics, color_richness, complexity_score,
+          lesson_learned, white_player, black_player, game_type,
           created_at
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,NOW())`,
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,NOW())
+        ON CONFLICT (game_id) DO NOTHING`,
         [
           a.gameId,
           a.gameName,
@@ -816,6 +833,10 @@ async function batchInsert(attempts) {
           a.pieceTypeMetrics ? JSON.stringify(a.pieceTypeMetrics) : null,
           Math.min(9.9999, Math.max(0, parseFloat(a.colorRichness) || 0)),
           Math.min(9.9999, Math.max(0, (parseFloat(a.complexity) || 0) / 100)),
+          a.lessonLearned ? JSON.stringify(a.lessonLearned) : null,
+          a.whitePlayer || null,
+          a.blackPlayer || null,
+          a.gameType || 'PvP',
         ]
       );
       
