@@ -40,16 +40,17 @@ function nextReqId() { return ++reqId; }
 // Yahoo Finance → IBKR symbol + secType mapping
 // Futures require localSymbol (e.g., "CLZ26" for Dec 2026 crude oil)
 const SYMBOL_MAP = {
-  // Futures
-  'CL=F': { symbol: 'CL', secType: 'FUT', exchange: 'NYMEX', currency: 'USD', localSymbol: 'CLZ26' },
-  'SI=F': { symbol: 'SI', secType: 'FUT', exchange: 'NYMEX', currency: 'USD', localSymbol: 'SIZ26' },
-  'HG=F': { symbol: 'HG', secType: 'FUT', exchange: 'NYMEX', currency: 'USD', localSymbol: 'HGZ26' },
-  'GC=F': { symbol: 'GC', secType: 'FUT', exchange: 'NYMEX', currency: 'USD', localSymbol: 'GCZ26' },
-  'NG=F': { symbol: 'NG', secType: 'FUT', exchange: 'NYMEX', currency: 'USD', localSymbol: 'NGZ26' },
-  'PA=F': { symbol: 'PA', secType: 'FUT', exchange: 'NYMEX', currency: 'USD', localSymbol: 'PAZ26' },
-  'PL=F': { symbol: 'PL', secType: 'FUT', exchange: 'NYMEX', currency: 'USD', localSymbol: 'PLZ26' },
-  'ES=F': { symbol: 'ES', secType: 'FUT', exchange: 'CME',   currency: 'USD', localSymbol: 'ESZ26' },
-  'NQ=F': { symbol: 'NQ', secType: 'FUT', exchange: 'CME',   currency: 'USD', localSymbol: 'NQZ26' },
+  // Futures — front-month contracts for March 2026
+  // Roll schedule: CL/GC/PL=Apr(J26), SI/HG=May(K26), NG=Apr(J26), PA=Jun(M26), ES/NQ=Mar(H26 until Mar20)
+  'CL=F': { symbol: 'CL', secType: 'FUT', exchange: 'NYMEX', currency: 'USD', localSymbol: 'CLJ26' },
+  'SI=F': { symbol: 'SI', secType: 'FUT', exchange: 'NYMEX', currency: 'USD', localSymbol: 'SIK26' },
+  'HG=F': { symbol: 'HG', secType: 'FUT', exchange: 'NYMEX', currency: 'USD', localSymbol: 'HGK26' },
+  'GC=F': { symbol: 'GC', secType: 'FUT', exchange: 'NYMEX', currency: 'USD', localSymbol: 'GCJ26' },
+  'NG=F': { symbol: 'NG', secType: 'FUT', exchange: 'NYMEX', currency: 'USD', localSymbol: 'NGJ26' },
+  'PA=F': { symbol: 'PA', secType: 'FUT', exchange: 'NYMEX', currency: 'USD', localSymbol: 'PAM26' },
+  'PL=F': { symbol: 'PL', secType: 'FUT', exchange: 'NYMEX', currency: 'USD', localSymbol: 'PLJ26' },
+  'ES=F': { symbol: 'ES', secType: 'FUT', exchange: 'CME',   currency: 'USD', localSymbol: 'ESH26' },
+  'NQ=F': { symbol: 'NQ', secType: 'FUT', exchange: 'CME',   currency: 'USD', localSymbol: 'NQH26' },
   // ETFs — ARCA required for historical data
   'SLV':  { symbol: 'SLV',  secType: 'STK', exchange: 'ARCA',   currency: 'USD' },
   'GLD':  { symbol: 'GLD',  secType: 'STK', exchange: 'ARCA',   currency: 'USD' },
