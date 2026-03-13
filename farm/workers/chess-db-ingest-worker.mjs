@@ -635,18 +635,25 @@ function findParableResonance(archetype, temporalFlow, intensity, momentum, move
 // DATABASE CONNECTION
 // ════════════════════════════════════════════════════════
 
-let pool = null;
-if (process.env.DATABASE_URL) {
-  pool = new Pool({
+function createPool() {
+  const p = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false },
-    max: 10,                         // v19.1: 10 connections for parallel game processing
-    idleTimeoutMillis: 60000,
-    connectionTimeoutMillis: 20000,  // Increased for heavy batch processing
+    max: 10,
+    idleTimeoutMillis: 30000,        // recycle idle connections before Supabase drops them
+    connectionTimeoutMillis: 20000,
+    keepAlive: true,                 // TCP keepalive prevents ECONNRESET on long-idle connections
+    keepAliveInitialDelayMillis: 10000,
   });
-  pool.on('error', (err) => {
+  p.on('error', (err) => {
     console.error('[DB-INGEST] Pool error (non-fatal):', err.message);
   });
+  return p;
+}
+
+let pool = null;
+if (process.env.DATABASE_URL) {
+  pool = createPool();
   console.log('[DB-INGEST] ✓ Direct SQL connection active');
 } else {
   console.log('[DB-INGEST] ⚠ No DATABASE_URL — dry-run mode');
@@ -663,14 +670,22 @@ for (const sig of ['SIGTERM', 'SIGINT']) {
 
 const FAST_FAIL_CODES = new Set(['23505', '23514', '23502', '22003', '42703']);
 
-async function resilientQuery(text, params, retries = 3) {
+const NETWORK_ERRORS = new Set(['ECONNRESET', 'ENOTFOUND', 'ETIMEDOUT', 'ECONNREFUSED', 'EAI_AGAIN']);
+
+async function resilientQuery(text, params, retries = 5) {
   for (let i = 0; i < retries; i++) {
     try {
       return await pool.query(text, params);
     } catch (err) {
       if (FAST_FAIL_CODES.has(err?.code)) throw err;
       if (i === retries - 1) throw err;
-      await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+      // Network-level failure: recreate pool before retrying
+      if (NETWORK_ERRORS.has(err?.code) || err?.message?.includes('timeout')) {
+        try { await pool.end(); } catch {}
+        pool = createPool();
+        console.error(`[DB-INGEST] Pool recreated after ${err.code || 'timeout'} (attempt ${i + 1}/${retries})`);
+      }
+      await new Promise(r => setTimeout(r, 1500 * (i + 1)));
     }
   }
 }

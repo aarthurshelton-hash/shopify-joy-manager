@@ -32,8 +32,9 @@ export async function generateGameGif(
     onProgress
   } = options;
 
-  return new Promise(async (resolve, reject) => {
-    try {
+  return new Promise((resolve, reject) => {
+    const run = async () => {
+      try {
       // Capture the first frame to get dimensions
       const firstCanvas = await html2canvas(captureElement, {
         scale: 2, // Good quality without being too large
@@ -104,8 +105,10 @@ export async function generateGameGif(
       });
 
       gif.render();
-    } catch (error) {
-      reject(error);
-    }
+      } catch (error) {
+        reject(error);
+      }
+    };
+    run();
   });
 }

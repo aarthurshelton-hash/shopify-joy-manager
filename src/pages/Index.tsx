@@ -31,7 +31,7 @@ import { Button } from '@/components/ui/button';
 import { Crown, Sparkles, Award, Palette, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { cleanPgn } from '@/lib/chess/pgnValidator';
-import { PaletteId, getActivePalette } from '@/lib/chess/pieceColors';
+import { PaletteId, getActivePalette, PieceType, PieceColor } from '@/lib/chess/pieceColors';
 import { useScrollAnimation, scrollAnimationClasses } from '@/hooks/useScrollAnimation';
 import { useSessionStore } from '@/stores/sessionStore';
 import { useVisualizationStateStore } from '@/stores/visualizationStateStore';
@@ -837,8 +837,8 @@ const Index = () => {
                 const highlightState = exportState && exportState.lockedPieces.length > 0
                   ? {
                       lockedPieces: exportState.lockedPieces.map(p => ({
-                        pieceType: p.pieceType as any,
-                        pieceColor: p.pieceColor as any,
+                        pieceType: p.pieceType as PieceType,
+                        pieceColor: p.pieceColor as PieceColor,
                       })),
                       compareMode: exportState.compareMode,
                     }
@@ -856,8 +856,8 @@ const Index = () => {
                       totalMoves: simulation.totalMoves,
                       title: visualTitle,
                       lockedPieces: exportState.lockedPieces.map(p => ({
-                        pieceType: p.pieceType as any,
-                        pieceColor: p.pieceColor as any,
+                        pieceType: p.pieceType as PieceType,
+                        pieceColor: p.pieceColor as PieceColor,
                       })),
                       compareMode: exportState.compareMode,
                       darkMode: exportState.darkMode,

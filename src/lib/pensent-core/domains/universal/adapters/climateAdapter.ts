@@ -515,7 +515,7 @@ export function extractClimateSignature(data: ClimateData): DomainSignature & {
   }>;
   weatherGrid: WeatherCell[][];
   stormSeverity: number;
-}> {
+} {
   const weatherGrid = buildWeatherGrid(data);
   const quadrantProfile = calculateClimateQuadrantProfile(data);
   const temporalFlow = calculateClimateTemporalFlow(data);
@@ -567,7 +567,7 @@ export function predictClimateOutcome(
   timeToEvent: number; // hours
   recommendations: string[];
   alertLevel: 'clear' | 'watch' | 'advisory' | 'warning' | 'emergency';
-}> {
+} {
   const archetype = CLIMATE_ARCHETYPES[signature.archetype];
   
   let predictedOutcome: 'calm' | 'unsettled' | 'stormy' | 'severe' | 'extreme';

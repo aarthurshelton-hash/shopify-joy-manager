@@ -38,6 +38,7 @@ export const PENSENT_CODE_VERSION = '1.0.0';
  * Quick analysis function for common use case
  */
 export function analyzeCodeEvolution(commits: import('./types').CodeCommit[]) {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { createCodeAnalysisEngine } = require('./codeAdapter');
   const engine = createCodeAnalysisEngine();
   

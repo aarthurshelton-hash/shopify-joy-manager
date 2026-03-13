@@ -5,7 +5,8 @@
  * Called by pg_cron every 5 seconds to keep the system alive
  */
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import type { Database } from '../../src/integrations/supabase/types.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -163,6 +164,8 @@ async function fetchFinnhubPrices(): Promise<TickData[]> {
 // Removed generateFallbackTick function - no simulated data allowed
 
 // Collect ONLY real market data from OPEN markets
+type ServiceClient = SupabaseClient<Database>;
+
 async function collectMarketData(_lastPrices: Record<string, number>): Promise<TickData[]> {
   const allTicks: TickData[] = [];
   const collectedSymbols = new Set<string>();
@@ -257,10 +260,10 @@ Deno.serve(async (req) => {
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-  const supabase = createClient(supabaseUrl, supabaseKey);
+  const supabase: ServiceClient = createClient(supabaseUrl, supabaseKey);
 
   try {
-    const { action = 'full_cycle' } = await req.json().catch(() => ({}));
+    const { action = 'full_cycle' } = (await req.json().catch(() => ({} as { action?: string }))) as { action?: string };
     const results: Record<string, unknown> = { timestamp: new Date().toISOString() };
 
     // ========================================

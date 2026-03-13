@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { getPieceColorLegend, getActivePalette, PieceType, PieceColor } from '@/lib/chess/pieceColors';
-import { useLegendHighlight } from '@/contexts/LegendHighlightContext';
+import { useOptionalLegendHighlight } from '@/contexts/LegendHighlightContext';
 import { SquareData } from '@/lib/chess/gameSimulator';
 import { GitCompare, X, Swords, Grid3X3, Flame, ChevronLeft, ChevronRight, MapPin, TrendingUp, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -161,13 +161,7 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board, on
   const [showHeatmaps, setShowHeatmaps] = useState(false);
   const [showFullHeatmap, setShowFullHeatmap] = useState(false);
   
-  // Try to use highlight context if available (wrapped in provider)
-  let highlightContext: ReturnType<typeof useLegendHighlight> | null = null;
-  try {
-    highlightContext = useLegendHighlight();
-  } catch {
-    // Context not available, that's okay - just won't be interactive
-  }
+  const highlightContext = useOptionalLegendHighlight();
   
   const { 
     highlightedPiece, 

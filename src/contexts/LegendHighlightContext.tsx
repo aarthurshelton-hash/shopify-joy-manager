@@ -263,6 +263,11 @@ export function useLegendHighlight() {
   return context;
 }
 
+export function useOptionalLegendHighlight(): LegendHighlightContextValue | null {
+  const context = useContext(LegendHighlightContext);
+  return context ?? null;
+}
+
 // Helper function to parse SAN notation and extract piece type and target square
 export function parseSanMove(san: string, isWhiteMove: boolean): { pieceType: PieceType; targetSquare: string; isCapture: boolean } | null {
   if (!san) return null;

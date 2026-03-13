@@ -56,31 +56,46 @@ if (fs.existsSync(envPath)) {
 // Direct SQL pool - bypasses RLS completely
 // v11: Reduced pool size to prevent Supabase pooler exhaustion
 // 3 workers × 2 = 6 connections (was 3×8=24, exhausting 60-conn pooler)
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
-  max: 2,
-  idleTimeoutMillis: 10000,
-  connectionTimeoutMillis: 15000,
-});
+function createPool() {
+  const p = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false },
+    max: 2,
+    idleTimeoutMillis: 25000,        // recycle idle connections before Supabase drops them
+    connectionTimeoutMillis: 15000,
+    keepAlive: true,                 // TCP keepalive prevents ECONNRESET on long-idle connections
+    keepAliveInitialDelayMillis: 10000,
+  });
+  p.on('error', (err) => {
+    console.error(`[POOL] Unexpected error on idle client: ${err.message}`);
+  });
+  return p;
+}
 
-// Prevent pool errors from crashing the process
-pool.on('error', (err) => {
-  console.error(`[POOL] Unexpected error on idle client: ${err.message}`);
-});
+let pool = createPool();
 
-// Resilient query wrapper: retries up to 3 times with backoff
-async function resilientQuery(queryText, values, retries = 3) {
+const FAST_FAIL_CODES = new Set(['23505', '23514', '23502']);
+const NETWORK_ERRORS  = new Set(['ECONNRESET', 'ENOTFOUND', 'ETIMEDOUT', 'ECONNREFUSED', 'EAI_AGAIN']);
+
+// Resilient query wrapper: retries up to 5 times, recreates pool on network errors
+async function resilientQuery(queryText, values, retries = 5) {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       return await pool.query(queryText, values);
     } catch (err) {
       // Don't retry constraint violations — they'll never succeed on retry
-      if (err.code === '23505' || err.code === '23514' || err.code === '23502') throw err;
+      if (FAST_FAIL_CODES.has(err.code)) throw err;
       if (attempt === retries) throw err;
-      const delay = attempt * 2000;
-      console.log(`[POOL] Query failed (attempt ${attempt}/${retries}): ${err.message} [query: ${queryText.replace(/\s+/g,' ').slice(0,60)}...], retrying in ${delay}ms...`);
-      await new Promise(r => setTimeout(r, delay));
+      // Network-level failure: recreate pool before retrying
+      if (NETWORK_ERRORS.has(err?.code) || err?.message?.includes('timeout')) {
+        try { await pool.end(); } catch {}
+        pool = createPool();
+        console.error(`[POOL] Pool recreated after ${err.code || 'timeout'} (attempt ${attempt}/${retries})`);
+      } else {
+        const delay = attempt * 2000;
+        console.log(`[POOL] Query failed (attempt ${attempt}/${retries}): ${err.message.slice(0,80)}, retrying in ${delay}ms...`);
+        await new Promise(r => setTimeout(r, delay));
+      }
     }
   }
 }

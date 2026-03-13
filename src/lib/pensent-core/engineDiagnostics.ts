@@ -239,7 +239,7 @@ export class EngineDiagnostics {
     
     try {
       switch (feedName) {
-        case 'geologicalTectonic':
+        case 'geologicalTectonic': {
           const geoResponse = await fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson');
           if (geoResponse.ok) {
             const data = await geoResponse.json();
@@ -247,8 +247,9 @@ export class EngineDiagnostics {
             return true;
           }
           break;
+        }
           
-        case 'immunological':
+        case 'immunological': {
           const covidResponse = await fetch('https://disease.sh/v3/covid-19/countries/USA');
           if (covidResponse.ok) {
             const data = await covidResponse.json();
@@ -256,8 +257,9 @@ export class EngineDiagnostics {
             return true;
           }
           break;
+        }
           
-        case 'cybersecurity':
+        case 'cybersecurity': {
           const threatResponse = await fetch('https://urlhaus-api.abuse.ch/v1/urls/recent/');
           if (threatResponse.ok) {
             const data = await threatResponse.json();
@@ -265,6 +267,7 @@ export class EngineDiagnostics {
             return true;
           }
           break;
+        }
           
         default:
           console.log(`[Test] • Connection test for ${feedName} requires API key`);

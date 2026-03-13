@@ -6,6 +6,7 @@
  * 2. Custom puzzles from famous historical games
  * 3. Thematic puzzle collections (tactics, endgames, etc.)
  */
+import { Chess } from 'chess.js';
 
 export interface ChessPuzzle {
   id: string;
@@ -519,7 +520,6 @@ export function getPuzzleStats() {
  */
 export function uciToSan(fen: string, uci: string): string {
   try {
-    const { Chess } = require('chess.js');
     const chess = new Chess(fen);
     const move = chess.move({
       from: uci.substring(0, 2),

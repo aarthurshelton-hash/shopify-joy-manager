@@ -79,7 +79,7 @@ export function analyzeLichessGame(game: LichessGame): AnalyzedGame | null {
     if (!moveHistory) return null;
 
     const chess = new Chess();
-    moves.forEach(m => { try { chess.move(m); } catch {} });
+    moves.forEach(m => { try { chess.move(m); } catch { /* skip invalid move */ } });
 
     const signature = extractChessSignature(moveHistory, chess.fen());
     const archetype = classifyUniversalArchetype(signature);
@@ -114,7 +114,7 @@ export function analyzeChessComGame(game: ChessComGame): AnalyzedGame | null {
     if (!moveHistory) return null;
 
     const chess = new Chess();
-    moves.forEach(m => { try { chess.move(m); } catch {} });
+    moves.forEach(m => { try { chess.move(m); } catch { /* skip invalid move */ } });
 
     const signature = extractChessSignature(moveHistory, chess.fen());
     const archetype = classifyUniversalArchetype(signature);

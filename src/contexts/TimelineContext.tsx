@@ -203,6 +203,11 @@ export function useTimeline() {
   return context;
 }
 
+export function useOptionalTimeline(): TimelineContextValue | null {
+  const context = useContext(TimelineContext);
+  return context ?? null;
+}
+
 // Helper hook to get filtered board based on timeline and phase
 export function useTimelineBoard(fullBoard: any[][] | undefined, totalMoves: number) {
   const { currentMove, setMaxMoves, selectedPhase, phaseRanges } = useTimeline();

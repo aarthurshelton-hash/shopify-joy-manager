@@ -5,9 +5,9 @@
  */
 
 // Golden Ratio and Fibonacci Constants
-export const PHI = 1.6180339887498948482; // Golden ratio
-export const PHI_INVERSE = 0.6180339887498948482; // 1/PHI
-export const PHI_SQUARED = 2.6180339887498948482; // PHI^2
+export const PHI = 1.6180339887498949; // Golden ratio
+export const PHI_INVERSE = 0.6180339887498949; // 1/PHI
+export const PHI_SQUARED = 2.6180339887498949; // PHI^2
 
 // Fibonacci Sequence (first 21 numbers)
 export const FIBONACCI = [1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987, 1597, 2584, 4181, 6765, 10946];

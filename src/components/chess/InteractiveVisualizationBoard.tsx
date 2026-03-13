@@ -318,7 +318,7 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
       if (moves.length > 0) {
         return { success: true, moves };
       }
-    } catch {}
+    } catch { /* strategy 1 failed, try next */ }
     
     // Strategy 2: Remove headers and try again
     chess.reset();
@@ -330,7 +330,7 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
         if (moves.length > 0) {
           return { success: true, moves };
         }
-      } catch {}
+      } catch { /* strategy 2 failed, try next */ }
     }
     
     // Strategy 3: Parse moves manually (e.g., "1. e4 e5 2. Nf3 Nc6")
@@ -351,7 +351,7 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
         if (parsedMoves.length > 0) {
           return { success: true, moves: parsedMoves };
         }
-      } catch {}
+      } catch { /* strategy 3 failed */ }
     }
     
     return { success: false, moves: [] };

@@ -360,6 +360,7 @@ export class StockfishEngine {
     const timeoutMs = Math.max(8000, Math.min(requestedDepth * 200, 30000));
     
     return new Promise((resolve, reject) => {
+      // eslint-disable-next-line prefer-const
       let timeoutId: NodeJS.Timeout | undefined;
       let resolved = false;
       
@@ -380,7 +381,7 @@ export class StockfishEngine {
       this.analysisCallbacks.push(onEval);
       
       const cleanup = () => {
-        if (timeoutId) clearTimeout(timeoutId);
+        if (timeoutId != null) clearTimeout(timeoutId);
         this.analysisCallbacks = this.analysisCallbacks.filter(cb => cb !== onEval);
         this.pendingCallbacks.delete('bestmove');
       };

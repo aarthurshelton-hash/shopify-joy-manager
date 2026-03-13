@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { PieceType, PieceColor } from '@/lib/chess/pieceColors';
 import { useHapticFeedback } from '@/hooks/useHapticFeedback';
 import { EnPensentOverlay, MoveHistoryEntry } from './EnPensentOverlay';
-import { useLegendHighlight, HighlightedPiece } from '@/contexts/LegendHighlightContext';
+import { useOptionalLegendHighlight, HighlightedPiece } from '@/contexts/LegendHighlightContext';
 
 interface PlayableChessBoardProps {
   fen: string;
@@ -79,13 +79,7 @@ export const PlayableChessBoard = ({
   const boardRef = useRef<HTMLDivElement>(null);
   const { haptics } = useHapticFeedback();
 
-  // Try to use legend highlight context for reverse highlighting
-  let legendContext: ReturnType<typeof useLegendHighlight> | null = null;
-  try {
-    legendContext = useLegendHighlight();
-  } catch {
-    // Context not available
-  }
+  const legendContext = useOptionalLegendHighlight();
 
   const board = useMemo(() => parseFen(fen), [fen]);
   const flipped = myColor === 'b';

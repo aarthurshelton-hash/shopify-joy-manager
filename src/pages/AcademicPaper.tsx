@@ -633,6 +633,79 @@ NPPAD result: θ* = 3.0 (separation = 1.993) — same threshold independently di
             auto-tuning further improves accuracy by learning which signal components matter most for each archetype.
           </p>
 
+          <h3>5.1.1 Competitive Play Validation: EP+SF Hybrid vs. Stockfish 18</h3>
+          <p>
+            Beyond outcome prediction accuracy, we validate the EP color-flow layer's
+            value in direct competitive play. An EP+SF hybrid engine (SF backbone for
+            legal move generation, EP flow for move selection bias) is matched against
+            a pure Stockfish 18 opponent in a controlled sandbox environment.
+            The hybrid's draw-hunt strategy exploits SF18's known evaluation blind spots
+            (the ±0.5 centipawn zone) to steer toward fortress positions, opposite-color
+            bishop endgames, and simplified drawn structures. All output is logged locally
+            with no production database writes.
+          </p>
+          <p>
+            The test matrix uses four parallel runs to isolate the EP layer's contribution:
+          </p>
+          <Card className="my-6 not-prose">
+            <CardContent className="p-6">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-2">Run</th>
+                    <th className="text-left py-2">Config</th>
+                    <th className="text-left py-2">Purpose</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b">
+                    <td className="py-2 font-mono text-xs">ep14-sf18</td>
+                    <td className="py-2">EP depth 14 vs SF18 depth 18</td>
+                    <td className="py-2 text-muted-foreground">Handicap test — EP at sub-production depth</td>
+                  </tr>
+                  <tr className="border-b">
+                    <td className="py-2 font-mono text-xs">ep18-sf18</td>
+                    <td className="py-2">EP depth 18 vs SF18 depth 18</td>
+                    <td className="py-2 text-muted-foreground">Equal max depth — apples-to-apples</td>
+                  </tr>
+                  <tr className="border-b">
+                    <td className="py-2 font-mono text-xs">ctrl</td>
+                    <td className="py-2">SF18 vs SF18, EP layer disabled</td>
+                    <td className="py-2 text-muted-foreground">Baseline control — expected ≈ 50% score</td>
+                  </tr>
+                  <tr>
+                    <td className="py-2 font-mono text-xs">mt10s</td>
+                    <td className="py-2">Both engines <code>movetime 10s</code></td>
+                    <td className="py-2 text-muted-foreground">True max capacity — SF reaches depth 22–26 naturally</td>
+                  </tr>
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
+          <p>
+            Statistical evaluation uses the Fishtest Sequential Probability Ratio Test (SPRT)
+            with hypotheses H₀: Elo difference = 0 (parity) and H₁: Elo difference = 5
+            (EP is marginally stronger). The LLR bounds are ±2.944 (α = β = 0.05). Pentanomial
+            scoring is used for paired game analysis (each opening is played twice with colors
+            swapped). The control run (SF vs SF, no EP) serves as an integrity check — it should
+            score ≈ 50%, with LLR converging near zero.
+          </p>
+          <p>
+            The EP move selection integrates: (1) draw-confidence multiplier from
+            <code>calculateEquilibriumScores</code>, scaling all draw-hunt bonuses by EP's
+            equilibrium draw confidence; (2) active draw claiming when SF18's WDL output
+            indicates draw probability {'>'} 600/1000 past move 20; (3) opening book of 15 ECO
+            openings for game diversity; (4) per-opening result breakdown to identify which
+            structures are most advantageous for EP's draw-hunt strategy. Results accumulate
+            continuously — this section will be updated with final SPRT-verified figures.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            <em>Note:</em> This experiment is in progress as of publication. Preliminary data
+            (N≈15 per run) shows the control run achieving ≈ 100% draw rate as expected,
+            and EP d14 vs SF d18 achieving ≈ 55% draw rate at -170 Elo (N too small for
+            statistical significance). Final results targeting N = 200 games per run.
+          </p>
+
           <h3>5.2 Battery Degradation</h3>
           <Card className="my-6 not-prose">
             <CardContent className="p-6">

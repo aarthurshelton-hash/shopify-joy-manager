@@ -186,6 +186,7 @@ export function createPensentEngine<TInput, TState>(
       patterns: { id: string; signature: import('./types').TemporalSignature; outcome: string }[],
       options?: { minSimilarity?: number; limit?: number }
     ) {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { findSimilarPatterns } = require('./patternMatcher');
       return findSimilarPatterns(signature, patterns, {
         targetSignature: signature,
@@ -205,6 +206,7 @@ export function createPensentEngine<TInput, TState>(
       const archetypeRegistry = adapter.getArchetypeRegistry();
       const archetypeDef = archetypeRegistry.archetypes[signature.archetype] ?? null;
       
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { generateTrajectoryPrediction } = require('./trajectoryPredictor');
       return generateTrajectoryPrediction(
         signature,
@@ -233,6 +235,7 @@ export function createPensentEngine<TInput, TState>(
      * Create an analysis pipeline with middleware support
      */
     createPipeline() {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { createPipeline } = require('./pipeline');
       return createPipeline(adapter);
     },
@@ -241,6 +244,7 @@ export function createPensentEngine<TInput, TState>(
      * Create a batch processor for bulk analysis
      */
     createBatchProcessor(config?: import('./batch').BatchConfig) {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { createBatchProcessor } = require('./batch');
       return createBatchProcessor(adapter, config);
     },
@@ -253,6 +257,7 @@ export function createPensentEngine<TInput, TState>(
       flushIntervalMs?: number;
       onFlush?: (results: import('./batch').BatchResult<import('./types').TemporalSignature>[]) => void;
     }) {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { createStreamProcessor } = require('./batch');
       return createStreamProcessor(adapter, options);
     }

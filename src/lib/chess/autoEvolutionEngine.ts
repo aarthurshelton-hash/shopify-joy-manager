@@ -423,7 +423,7 @@ async function runCloudBatch(): Promise<void> {
       try {
         terminateStockfish();
         await new Promise(r => setTimeout(r, 2000));
-      } catch {}
+      } catch { /* terminate may throw if already stopped */ }
     }
     
     // Trigger recovery if too many errors
@@ -521,7 +521,7 @@ async function runLocalBatch(): Promise<void> {
       try {
         terminateStockfish();
         await new Promise(r => setTimeout(r, 2000));
-      } catch {}
+      } catch { /* terminate may throw if already stopped */ }
     }
     
     if (engineState.consecutiveErrors >= DEFAULT_CONFIG.maxConsecutiveErrors) {
@@ -631,7 +631,7 @@ export async function startAutoEvolution(): Promise<void> {
   // Persist and emit
   try {
     await withTimeout(persistEvolutionState(), 10000, 'PersistState');
-  } catch {}
+  } catch { /* persist failure is non-critical */ }
   
   emitEvent('engine_started', { 
     version: AUTO_EVOLUTION_VERSION,

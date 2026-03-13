@@ -53,7 +53,7 @@ export function createTacticalInsight(analysis: PositionAnalysis, chess: Chess):
     const testChess = new Chess(chess.fen());
     const move = testChess.move({ from, to, promotion: analysis.bestMove[4] });
     if (move) bestMoveSan = move.san;
-  } catch {}
+  } catch { /* illegal move, keep default */ }
   
   return {
     bestMove: bestMoveSan,

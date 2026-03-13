@@ -1,6 +1,6 @@
 import React, { useMemo, useCallback } from 'react';
 import { GameData, formatMoves } from '@/lib/chess/gameSimulator';
-import { useLegendHighlight, AnnotationType, HighlightedPiece, parseSanMove, HoveredMoveInfo } from '@/contexts/LegendHighlightContext';
+import { useOptionalLegendHighlight, AnnotationType, HighlightedPiece, parseSanMove, HoveredMoveInfo } from '@/contexts/LegendHighlightContext';
 import { PieceType, PieceColor } from '@/lib/chess/pieceColors';
 
 interface InteractiveGameInfoDisplayProps {
@@ -67,13 +67,7 @@ const InteractiveGameInfoDisplay: React.FC<InteractiveGameInfoDisplayProps> = ({
   title, 
   darkMode = false 
 }) => {
-  // Try to use highlight context if available
-  let highlightContext: ReturnType<typeof useLegendHighlight> | null = null;
-  try {
-    highlightContext = useLegendHighlight();
-  } catch {
-    // Context not available
-  }
+  const highlightContext = useOptionalLegendHighlight();
 
   const {
     lockedPieces = [],

@@ -51,6 +51,7 @@ export const displayNameSchema = z.string()
   .trim()
   .min(1, 'Display name is required')
   .max(50, 'Display name must be 50 characters or less')
+  // eslint-disable-next-line no-control-regex
   .regex(/^[^\x00-\x1F\x7F]*$/, 'Display name cannot contain control characters')
   .superRefine(contentSafeCheck('Display name'));
 

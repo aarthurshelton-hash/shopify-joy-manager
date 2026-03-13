@@ -20,9 +20,9 @@ import { PremiumUpgradeModal } from '@/components/premium';
 import AuthModal from '@/components/auth/AuthModal';
 import { saveVisualization, checkDuplicateVisualization, VisualizationState, DuplicateCheckResult } from '@/lib/visualizations/visualizationStorage';
 import { PaletteColors } from '@/lib/visualizations/similarityDetection';
-import { useTimeline } from '@/contexts/TimelineContext';
+import { useOptionalTimeline } from '@/contexts/TimelineContext';
 import { Progress } from '@/components/ui/progress';
-import { useLegendHighlight } from '@/contexts/LegendHighlightContext';
+import { useOptionalLegendHighlight } from '@/contexts/LegendHighlightContext';
 import ColorComparisonPreview from './ColorComparisonPreview';
 import IntrinsicPaletteCard from './IntrinsicPaletteCard';
 import { recordVisionInteraction } from '@/lib/visualizations/visionScoring';
@@ -81,35 +81,20 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
   const { isPremium, user } = useAuth();
 
   // Get locked pieces from legend context if available
-  let lockedPieces: Array<{ pieceType: string; pieceColor: string }> = [];
-  let compareMode = false;
-  try {
-    const legendContext = useLegendHighlight();
-    lockedPieces = legendContext.lockedPieces;
-    compareMode = legendContext.compareMode;
-  } catch {
-    // Legend context not available
-  }
+  const _printLegendCtx = useOptionalLegendHighlight();
+  const lockedPieces: Array<{ pieceType: string; pieceColor: string }> = _printLegendCtx?.lockedPieces ?? [];
+  const compareMode = _printLegendCtx?.compareMode ?? false;
 
-  // Timeline context for filtering board by move
-  let timelineBoard: SquareData[][] = simulation.board;
-  let currentMove = Infinity;
-  try {
-    const timeline = useTimeline();
-    currentMove = timeline.currentMove;
-    
-    // Filter board based on current timeline position
-    if (currentMove !== Infinity && currentMove < simulation.totalMoves) {
-      timelineBoard = simulation.board.map(rank => 
+  const _timelineCtx = useOptionalTimeline();
+  const currentMove = _timelineCtx?.currentMove ?? Infinity;
+  const timelineBoard: SquareData[][] = (_timelineCtx && currentMove !== Infinity && currentMove < simulation.totalMoves)
+    ? simulation.board.map(rank =>
         rank.map(square => ({
           ...square,
           visits: square.visits.filter(visit => visit.moveNumber <= currentMove)
         }))
-      );
-    }
-  } catch {
-    // Timeline context not available
-  }
+      )
+    : simulation.board;
 
   // Capture current state for Order Print button
   const capturedState = useMemo(() => ({

@@ -12,7 +12,7 @@
 
 import { ColorFlowSignature, ColorFlowPrediction, StrategicArchetype } from './types';
 import { ARCHETYPE_DEFINITIONS } from './archetypeDefinitions';
-import { calculateEquilibriumScores, EquilibriumScores } from './equilibriumPredictor';
+import { calculateEquilibriumScores, EquilibriumScores, Piece32Data } from './equilibriumPredictor';
 import { 
   calibrateConfidence, 
   getSfPrediction, 
@@ -47,7 +47,7 @@ export function predictFromColorFlow(
   currentMoveNumber: number,
   stockfishEval: number = 0,
   stockfishDepth: number = 18,
-  piece32Data?: any
+  piece32Data?: Piece32Data | null
 ): ColorFlowPrediction {
   // v8.07: Force-assign archetype if unknown
   const effectiveArchetype = forceArchetypeAssignment(

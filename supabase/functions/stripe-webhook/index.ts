@@ -1,6 +1,9 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import type { Database } from "../../src/integrations/supabase/types.ts";
+
+type ServiceSupabaseClient = SupabaseClient<Database>;
 
 const logStep = (step: string, details?: Record<string, unknown>) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
@@ -142,7 +145,7 @@ serve(async (req) => {
 
  
 async function handleSubscriptionChange(
-  supabase: SupabaseClient<any, any, any>,
+  supabase: ServiceSupabaseClient,
   stripe: Stripe,
   subscription: Stripe.Subscription
 ) {
@@ -236,7 +239,7 @@ async function handleSubscriptionChange(
 // Start grace period for canceled/paused subscriptions
  
 async function startGracePeriod(
-  supabase: SupabaseClient<any, any, any>,
+  supabase: ServiceSupabaseClient,
   stripe: Stripe,
   subscription: Stripe.Subscription
 ) {
@@ -324,7 +327,7 @@ async function startGracePeriod(
 // Clear grace period when subscription becomes active
  
 async function clearGracePeriod(
-  supabase: SupabaseClient<any, any, any>,
+  supabase: ServiceSupabaseClient,
   stripe: Stripe,
   subscription: Stripe.Subscription
 ) {
@@ -383,7 +386,7 @@ async function clearGracePeriod(
 // Record subscription revenue in financial tracking system
  
 async function recordSubscriptionRevenue(
-  supabase: SupabaseClient<any, any, any>,
+  supabase: ServiceSupabaseClient,
   stripe: Stripe,
   invoice: Stripe.Invoice
 ) {

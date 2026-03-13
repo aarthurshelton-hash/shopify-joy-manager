@@ -29,7 +29,7 @@ import {
   Trophy,
   MapPin,
 } from 'lucide-react';
-import { useLegendHighlight, HighlightedPiece, HoveredMoveInfo } from '@/contexts/LegendHighlightContext';
+import { useOptionalLegendHighlight, HighlightedPiece, HoveredMoveInfo } from '@/contexts/LegendHighlightContext';
 import { PieceType, PieceColor } from '@/lib/chess/pieceColors';
 import { MoveQuality, MOVE_QUALITY_INFO, ClassifiedMove } from '@/lib/chess/moveQuality';
 import { TacticalMotif, SpecialMove } from '@/lib/chess/chessAnalysis';
@@ -331,13 +331,7 @@ export const KeyMomentMarker: React.FC<KeyMomentMarkerProps> = ({
   const config = MOMENT_CONFIG[moment.type];
   const Icon = config.icon;
   
-  // Try to use legend highlight context for hover interactions
-  let highlightContext: ReturnType<typeof useLegendHighlight> | null = null;
-  try {
-    highlightContext = useLegendHighlight();
-  } catch {
-    // Context not available
-  }
+  const highlightContext = useOptionalLegendHighlight();
   
   const sizeClasses = {
     sm: 'w-3.5 h-3.5',

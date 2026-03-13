@@ -33,7 +33,7 @@ export const ZERO_PARADOX = {
 // Universal Mathematical Constants with Market Correlations
 export const MATHEMATICAL_CONSTANTS = {
   pi: {
-    value: 3.14159265358979323846,
+    value: 3.141592653589793,
     symbol: 'π',
     meaning: 'The ratio of circumference to diameter - cycles within cycles',
     marketPattern: 'Price oscillations tend toward circular reversion',
@@ -41,7 +41,7 @@ export const MATHEMATICAL_CONSTANTS = {
     occurrence: 'Wheels, orbits, waves, probability distributions'
   },
   e: {
-    value: 2.71828182845904523536,
+    value: 2.718281828459045,
     symbol: 'e',
     meaning: 'The base of natural growth - continuous compounding',
     marketPattern: 'Compound interest, exponential growth, decay curves',
@@ -49,7 +49,7 @@ export const MATHEMATICAL_CONSTANTS = {
     occurrence: 'Population growth, radioactive decay, interest, viral spread'
   },
   phi: {
-    value: 1.61803398874989484820,
+    value: 1.6180339887498949,
     symbol: 'φ',
     meaning: 'The golden ratio - divine proportion',
     marketPattern: 'Fibonacci retracements (23.6%, 38.2%, 61.8%)',
@@ -57,7 +57,7 @@ export const MATHEMATICAL_CONSTANTS = {
     occurrence: 'Sunflowers, shells, galaxies, DNA, human body proportions'
   },
   sqrt2: {
-    value: 1.41421356237309504880,
+    value: 1.4142135623730951,
     symbol: '√2',
     meaning: 'The diagonal of unity - irrational from rational',
     marketPattern: 'Volatility scaling (σ√t)',
@@ -65,7 +65,7 @@ export const MATHEMATICAL_CONSTANTS = {
     occurrence: 'Paper sizes (A4), octave frequency ratio, diagonal distances'
   },
   gamma: {
-    value: 0.57721566490153286060,
+    value: 0.5772156649015329,
     symbol: 'γ',
     meaning: 'Euler-Mascheroni constant - harmonic series growth',
     marketPattern: 'Logarithmic growth saturation points',

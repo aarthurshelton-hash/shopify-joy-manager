@@ -95,17 +95,6 @@ const OrderPrint: React.FC = () => {
     }
   }, [orderData, navigate]);
 
-  if (!orderData) {
-    return null;
-  }
-
-  const hasEnPensentData = orderData.moveHistory && orderData.whitePalette && orderData.blackPalette;
-  const hasSimulation = !!orderData.simulation;
-  const hasImagePath = !!orderData.imagePath;
-
-  // Prepare simulation for ProductSelector - apply captured state filtering
-  const simulationForCart = orderData.simulation;
-  
   // Apply captured state filtering to the display board
   const displayBoard = useMemo(() => {
     if (!orderData.simulation) return null;
@@ -170,6 +159,17 @@ const OrderPrint: React.FC = () => {
       item.customPrintData?.gameHash === orderData.gameHash
     ).reduce((sum, item) => sum + item.quantity, 0);
   }, [cartItems, orderData.gameHash]);
+
+  if (!orderData) {
+    return null;
+  }
+
+  const hasEnPensentData = orderData.moveHistory && orderData.whitePalette && orderData.blackPalette;
+  const hasSimulation = !!orderData.simulation;
+  const hasImagePath = !!orderData.imagePath;
+
+  // Prepare simulation for ProductSelector - apply captured state filtering
+  const simulationForCart = orderData.simulation;
 
   return (
     <div className="min-h-screen bg-background">

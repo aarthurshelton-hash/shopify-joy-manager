@@ -179,7 +179,7 @@ export function parseCanonicalUrl(url: string): {
 } | null {
   try {
     const parsed = new URL(url);
-    const pathMatch = parsed.pathname.match(/\/g\/([^\/]+)/);
+    const pathMatch = parsed.pathname.match(/\/g\/([^/]+)/);
     
     if (!pathMatch) return null;
     

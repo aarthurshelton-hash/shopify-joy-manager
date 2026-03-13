@@ -5,7 +5,7 @@ import {
   PieceColor,
   getActivePalette,
 } from '@/lib/chess/pieceColors';
-import { useLegendHighlight, HighlightedPiece } from '@/contexts/LegendHighlightContext';
+import { useOptionalLegendHighlight, HighlightedPiece } from '@/contexts/LegendHighlightContext';
 import { useVisualizationStateStore } from '@/stores/visualizationStateStore';
 import { MoveHistoryEntry } from './EnPensentOverlay';
 import { 
@@ -123,13 +123,7 @@ export const EnhancedLegend: React.FC<EnhancedLegendProps> = ({
     setShowTerritory(activeMode === 'territory');
   }, [activeMode, setShowTerritory]);
   
-  // Try to use highlight context if available
-  let highlightContext: ReturnType<typeof useLegendHighlight> | null = null;
-  try {
-    highlightContext = useLegendHighlight();
-  } catch {
-    // Context not available
-  }
+  const highlightContext = useOptionalLegendHighlight();
 
   const { 
     hoveredSquare, 

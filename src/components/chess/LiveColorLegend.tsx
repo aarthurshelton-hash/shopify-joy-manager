@@ -4,7 +4,7 @@ import {
   PieceType, 
   PieceColor,
 } from '@/lib/chess/pieceColors';
-import { useLegendHighlight, HighlightedPiece } from '@/contexts/LegendHighlightContext';
+import { useOptionalLegendHighlight } from '@/contexts/LegendHighlightContext';
 import { useVisualizationStateStore } from '@/stores/visualizationStateStore';
 import { MoveHistoryEntry } from './EnPensentOverlay';
 import { Sparkles, Eye, Lock, X, MapPin, Activity, TrendingUp } from 'lucide-react';
@@ -49,13 +49,7 @@ export const LiveColorLegend: React.FC<LiveColorLegendProps> = ({
   useEffect(() => {
     setShowTerritory(showHeatmap);
   }, [showHeatmap, setShowTerritory]);
-  // Try to use highlight context if available
-  let highlightContext: ReturnType<typeof useLegendHighlight> | null = null;
-  try {
-    highlightContext = useLegendHighlight();
-  } catch {
-    // Context not available
-  }
+  const highlightContext = useOptionalLegendHighlight();
 
   const { 
     hoveredSquare, 

@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { SquareData, SquareVisit } from '@/lib/chess/gameSimulator';
 import { boardColors, getPieceColor, PieceType, PieceColor } from '@/lib/chess/pieceColors';
-import { useLegendHighlight, HighlightedPiece, HoveredMoveInfo } from '@/contexts/LegendHighlightContext';
+import { useOptionalLegendHighlight, HighlightedPiece, HoveredMoveInfo } from '@/contexts/LegendHighlightContext';
 import { useEnPensentPatterns } from '@/hooks/useEnPensentPatterns';
 import { TemporalSignature } from '@/lib/pensent-core/types/core';
 
@@ -186,11 +186,7 @@ const ChessBoardVisualization: React.FC<ChessBoardVisualizationProps> = ({
 }) => {
   const pattern = useEnPensentPatterns(signature);
   
-  // Try to get context - this is safe as hooks are always called
-  let contextData: { highlightedPiece: HighlightedPiece | null; lockedPieces: HighlightedPiece[]; compareMode: boolean; hoveredMove: HoveredMoveInfo | null } | null = null;
-  try {
-    contextData = useLegendHighlight();
-  } catch { /* Context not available */ }
+  const contextData = useOptionalLegendHighlight();
   
   const highlightedPieces: HighlightedPiece[] = overrideHighlightedPieces || 
     (contextData?.lockedPieces.length ? contextData.lockedPieces : 

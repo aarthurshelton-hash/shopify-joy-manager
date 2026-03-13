@@ -201,7 +201,7 @@ export function useHeartbeatMusic(config: HeartbeatMusicConfig = {}) {
     
     // Stop any existing drones
     oscillatorsRef.current.forEach(osc => {
-      try { osc.stop(); } catch {}
+      try { osc.stop(); } catch { /* oscillator may already be stopped */ }
     });
     oscillatorsRef.current = [];
     
@@ -232,7 +232,7 @@ export function useHeartbeatMusic(config: HeartbeatMusicConfig = {}) {
   
   const stopAmbientDrone = useCallback(() => {
     oscillatorsRef.current.forEach(osc => {
-      try { osc.stop(); } catch {}
+      try { osc.stop(); } catch { /* oscillator may already be stopped */ }
     });
     oscillatorsRef.current = [];
     setIsPlaying(false);
