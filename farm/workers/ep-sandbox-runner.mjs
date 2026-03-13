@@ -619,8 +619,9 @@ function evaluateFlowForMove(chess, candidateMove, moveHistory, epEngine, moveNu
           extract32PieceSignature, predictFrom32Piece } = epEngine;
 
   const testChess = new Chess(chess.fen());
-  const moveResult = testChess.move(candidateMove, { sloppy: true });
-  if (!moveResult) return null;
+  let moveResult;
+  try { moveResult = testChess.move(candidateMove, { sloppy: true }); } catch {}
+  if (!moveResult) return null; // chess.js v1.x throws on illegal moves (e.g. Chess960 castling)
 
   const fullMoves = [...moveHistory, moveResult.san];
   const pgnBody = fullMoves.map((m, i) =>
