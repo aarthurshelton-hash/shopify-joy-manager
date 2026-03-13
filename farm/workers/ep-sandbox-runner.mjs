@@ -1020,7 +1020,7 @@ async function playSingleGame(epSf, opponentSf, epEngine, gameNum, wePlayWhite) 
   const epWon  = (wePlayWhite && result === 'white_wins') || (!wePlayWhite && result === 'black_wins');
   const epLost = (wePlayWhite && result === 'black_wins') || (!wePlayWhite && result === 'white_wins');
   const score  = epWon ? 1.0 : epLost ? 0.0 : 0.5;
-  const pgn    = buildPGN(moveHistory, resultStr, wePlayWhite, gameNum, opening.name);
+  const pgn    = buildPGN(moveHistory, resultStr, wePlayWhite, gameNum, openingName);
 
   return {
     gameNum, wePlayWhite, result, resultStr, score,
@@ -1028,7 +1028,7 @@ async function playSingleGame(epSf, opponentSf, epEngine, gameNum, wePlayWhite) 
     halfMoves, epOverrides, moveHistory, gameLog, pgn, fen: chess.fen(),
     epColor: wePlayWhite ? 'white' : 'black',
     sfDepth: CFG.sfDepth, epDepth: CFG.epDepth,
-    opening: opening.name,
+    opening: openingName,
     avgWdlDraw: lastWdlDraw, // last known WDL draw signal
   };
 }
