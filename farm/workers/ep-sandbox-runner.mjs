@@ -183,47 +183,51 @@ function applyMoveChess960(chess, uciMove) {
   const from  = uciMove.slice(0, 2);
   const to    = uciMove.slice(2, 4);
   const promo = uciMove[4] || undefined;
-  // Try standard move first (covers all non-castling moves)
-  try { const r = chess.move({ from, to, promotion: promo }); if (r) return r; } catch {}
+
   if (CFG.chess960) {
-    const piece = chess.get(from);
+    // Pre-check castling BEFORE chess.move() — chess.js v1.x throws (not null) on illegal
+    // moves and may corrupt internal state. Detect castling first to skip chess.move() entirely.
+    const piece    = chess.get(from);
+    const rookAtTo = chess.get(to);
     if (piece?.type === 'k') {
       const fromFile = from.charCodeAt(0) - 97;
       const toFile   = to.charCodeAt(0) - 97;
       const rank     = from[1];
       const diff     = toFile - fromFile;
-      const rookAtTo = chess.get(to);
-      // Castling: king moves to own rook square OR king jumps 2+ files
-      if (Math.abs(diff) >= 2 || (rookAtTo?.type === 'r' && rookAtTo.color === piece.color)) {
+      const isCastle = Math.abs(diff) >= 2 || (rookAtTo?.type === 'r' && rookAtTo.color === piece.color);
+      if (isCastle) {
         const isKS    = diff > 0;
         const kingDst = isKS ? `g${rank}` : `c${rank}`;
         const rookDst = isKS ? `f${rank}` : `d${rank}`;
         const rookSrc = rookAtTo ? to : (isKS ? `h${rank}` : `a${rank}`);
         try {
-          // Direct FEN string manipulation — no chess.js validation path
           const fenParts = chess.fen().split(' ');
           const rows     = fenParts[0].split('/');
-          const ri       = 8 - parseInt(rank); // '1'→7, '8'→0
+          const ri       = 8 - parseInt(rank);
           const arr      = rankStrToArr(rows[ri]);
           const kCh      = piece.color === 'w' ? 'K' : 'k';
           const rCh      = piece.color === 'w' ? 'R' : 'r';
-          arr[fromFile]                    = '.'; // clear king source
-          arr[rookSrc.charCodeAt(0) - 97] = '.'; // clear rook source
-          arr[kingDst.charCodeAt(0) - 97]  = kCh; // place king
-          arr[rookDst.charCodeAt(0) - 97]  = rCh; // place rook (overwrites any blocker)
-          rows[ri]     = arrToRankStr(arr);
-          fenParts[0]  = rows.join('/');
-          fenParts[1]  = piece.color === 'w' ? 'b' : 'w';
-          fenParts[2]  = '-';
-          fenParts[3]  = '-';
-          fenParts[4]  = '0';
+          arr[fromFile]                   = '.';
+          arr[rookSrc.charCodeAt(0) - 97] = '.';
+          arr[kingDst.charCodeAt(0) - 97] = kCh;
+          arr[rookDst.charCodeAt(0) - 97] = rCh;
+          rows[ri]    = arrToRankStr(arr);
+          fenParts[0] = rows.join('/');
+          fenParts[1] = piece.color === 'w' ? 'b' : 'w';
+          fenParts[2] = '-';
+          fenParts[3] = '-';
+          fenParts[4] = '0';
           if (piece.color === 'b') fenParts[5] = String(parseInt(fenParts[5] || '1') + 1);
           chess.load(fenParts.join(' '));
+          log(`[960] ${isKS?'O-O':'O-O-O'} applied: ${from}→${kingDst} rook ${rookSrc}→${rookDst}`);
           return { san: isKS ? 'O-O' : 'O-O-O', from, to: kingDst, flags: 'k' };
-        } catch(e) { log(`[960] castling FEN error: ${e.message} move=${uciMove}`); }
+        } catch(e) { log(`[960-CASTLE-ERR] ${e.message} move=${uciMove}`); return null; }
       }
     }
   }
+
+  // Non-castling move — use chess.js normally
+  try { const r = chess.move({ from, to, promotion: promo }); if (r) return r; } catch {}
   return null;
 }
 
