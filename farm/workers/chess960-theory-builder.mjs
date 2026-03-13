@@ -74,11 +74,7 @@ function chess960StartFen(sp) {
 // THEORY ACCUMULATOR
 // ════════════════════════════════════════════════════════
 
-function loadOrCreate(sp) {
-  const file = path.join(THEORY_DIR, `sp-${sp}.json`);
-  if (fs.existsSync(file)) {
-    try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch {}
-  }
+function freshTheory(sp) {
   return {
     sp,
     startFen: chess960StartFen(sp),
@@ -112,11 +108,12 @@ function detectCastleType(ucis, color) {
   return 'none';
 }
 
-function ingestGame(record) {
+function ingestGame(record, theories) {
   const sp = record.sp;
   if (sp == null || !record.moves || !record.ucis) return null;
 
-  const theory = loadOrCreate(sp);
+  if (!theories[sp]) theories[sp] = freshTheory(sp);
+  const theory = theories[sp];
   theory.games++;
 
   const result = record.result;
@@ -174,7 +171,7 @@ function ingestGame(record) {
   }
 
   theory.updatedAt = new Date().toISOString();
-  return theory;
+  return theory; // returns reference to in-memory object (already stored in theories dict)
 }
 
 // ════════════════════════════════════════════════════════
@@ -226,7 +223,7 @@ function build() {
     return;
   }
 
-  const theories = {}; // sp → theory object
+  const theories = {}; // sp → theory object — purely in-memory, rebuilt from scratch each call
   let totalLines = 0, skipped = 0;
 
   for (const file of jsonlFiles) {
@@ -234,10 +231,9 @@ function build() {
     for (const line of raw.split('\n').filter(Boolean)) {
       try {
         const record = JSON.parse(line);
-        if (!record.sp && record.sp !== 0) { skipped++; continue; }
-        const theory = ingestGame(record);
+        if (record.sp == null) { skipped++; continue; }
+        const theory = ingestGame(record, theories);
         if (!theory) { skipped++; continue; }
-        theories[theory.sp] = theory;
         totalLines++;
       } catch { skipped++; }
     }
