@@ -159,9 +159,9 @@ function chess960Fen(sp) {
 }
 
 function pickChess960(gameNum) {
-  // 64-step stride spreads games across all 960 positions (covers all in ~15 pairs)
+  // stride=7 is coprime with 960 → visits all 960 unique SPs in 960 pairs (1920 games)
   const pairIdx = Math.floor((gameNum - 1) / 2);
-  const sp = (pairIdx * 64 + 137) % 960;
+  const sp = (pairIdx * 7) % 960;
   const fens = chess960Fen(sp);
   return { ...fens, name: `Chess960_SP${sp}`, sp };
 }
@@ -1029,6 +1029,8 @@ async function playSingleGame(epSf, opponentSf, epEngine, gameNum, wePlayWhite) 
     epColor: wePlayWhite ? 'white' : 'black',
     sfDepth: CFG.sfDepth, epDepth: CFG.epDepth,
     opening: openingName,
+    sp: CFG.chess960 ? (Math.floor((gameNum-1)/2)*7)%960 : null,
+    startFen: c960StartFen,
     avgWdlDraw: lastWdlDraw, // last known WDL draw signal
   };
 }
@@ -1314,14 +1316,24 @@ async function main() {
 
       // Write PGN + JSONL immediately (crash-safe)
       appendPgn(game.pgn);
-      appendJsonl({
+      const jsonlEntry = {
         gameNum: game.gameNum, date: new Date().toISOString(),
         epColor: game.epColor, result: game.resultStr,
         epWon: game.epWon, epDrew: game.epDrew, epLost: game.epLost,
         score: game.score, halfMoves: game.halfMoves,
         epOverrides: game.epOverrides, epDepth: CFG.epDepth, sfDepth: CFG.sfDepth,
         opening: game.opening, avgWdlDraw: game.avgWdlDraw,
-      });
+      };
+      if (CFG.chess960) {
+        jsonlEntry.sp       = game.sp;
+        jsonlEntry.startFen = game.startFen;
+        jsonlEntry.moves    = game.moveHistory;
+        jsonlEntry.ucis     = game.gameLog.map(e => e.uci).filter(Boolean);
+        jsonlEntry.evals    = game.gameLog.map(e => e.sfEval ?? null);
+        jsonlEntry.sides    = game.gameLog.map(e => e.side);
+        jsonlEntry.overrides = game.gameLog.map(e => e.override ? 1 : 0);
+      }
+      appendJsonl(jsonlEntry);
 
       // Live result line
       const emoji   = game.epWon ? '🏆' : game.epDrew ? '🤝' : '❌';
