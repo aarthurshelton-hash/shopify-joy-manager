@@ -390,7 +390,7 @@ class StockfishEngine {
     this.process.on('close', () => { this.ready = false; this.process = null; });
     this.process.stdout.on('data', (d) => this._handleData(d));
     this.process.stdin.write('uci\n');
-    await this._waitFor('uciok', 12000);
+    await this._waitFor('uciok', 45000);
     this.ready = true;
     if (this.multiPV > 1) this.process.stdin.write(`setoption name MultiPV value ${this.multiPV}\n`);
     // SF18: full NNUE strength + WDL output for draw detection
@@ -398,7 +398,7 @@ class StockfishEngine {
     if (CFG.chess960) this.process.stdin.write('setoption name UCI_Chess960 value true\n');
     this.process.stdin.write('setoption name UCI_AnalyseMode value false\n');
     this.process.stdin.write('isready\n');
-    await this._waitFor('readyok', 5000);
+    await this._waitFor('readyok', 15000);
     const tcLabel = this.moveTimeMs > 0 ? `movetime=${this.moveTimeMs}ms` : `depth=${this.depth}`;
     log(`[${this.name}] ✓ ready  ${tcLabel}  multiPV=${this.multiPV}`);
   }
