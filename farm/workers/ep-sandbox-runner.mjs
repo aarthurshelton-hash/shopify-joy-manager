@@ -218,9 +218,9 @@ function applyMoveChess960(chess, uciMove) {
           fenParts[3] = '-';
           fenParts[4] = '0';
           if (piece.color === 'b') fenParts[5] = String(parseInt(fenParts[5] || '1') + 1);
-          chess.load(fenParts.join(' '));
-          log(`[960] ${isKS?'O-O':'O-O-O'} applied: ${from}→${kingDst} rook ${rookSrc}→${rookDst}`);
-          return { san: isKS ? 'O-O' : 'O-O-O', from, to: kingDst, flags: 'k' };
+          // Return newFen instead of calling chess.load() — chess.load() corrupts
+          // subsequent chess.get() calls in chess.js v1.x. Caller rebuilds with new Chess().
+          return { san: isKS ? 'O-O' : 'O-O-O', from, to: kingDst, flags: 'k', newFen: fenParts.join(' ') };
         } catch(e) { log(`[960-CASTLE-ERR] ${e.message} move=${uciMove}`); return null; }
       }
     }
@@ -999,6 +999,11 @@ async function playSingleGame(epSf, opponentSf, epEngine, gameNum, wePlayWhite) 
       if (!result) { log(`[G${gameNum}] Illegal: ${moveUCI} in ${fen}`); break; }
       moveHistory.push(result.san);
       if (CFG.chess960) uciMoveList.push(moveUCI); // track for Stockfish position cmd
+      // Chess960 castling returns newFen — rebuild with fresh Chess() to avoid load() state corruption
+      if (result.newFen) {
+        chess = new Chess(result.newFen);
+        log(`[960] ${result.san} → ${result.newFen.split(' ').slice(0,2).join(' ')}`);
+      }
     } catch (e) { log(`[G${gameNum}] Move error: ${e.message}`); break; }
 
     halfMoves++;
