@@ -146,36 +146,66 @@ function chess960Fen(sp) {
   const rookFs  = rank.map((v,i) => v==='R' ? i : -1).filter(i => i>=0);
   const qsRook  = rookFs.find(f => f < kingF);
   const ksRook  = rookFs.find(f => f > kingF);
-  // Shredder-FEN castling: uppercase file letters for white, lowercase for black
+  // Shredder-FEN castling for Stockfish (UCI_Chess960 understands this)
   const wCastle = (ksRook !== undefined ? String.fromCharCode(65+ksRook) : '')
                 + (qsRook !== undefined ? String.fromCharCode(65+qsRook) : '');
-  const bCastle = wCastle.toLowerCase();
-  const castling = (wCastle + bCastle) || '-';
-  const whiteRank = rank.join('');
-  return `${whiteRank.toLowerCase()}/pppppppp/8/8/8/8/PPPPPPPP/${whiteRank} w ${castling} - 0 1`;
+  const sfCastling = (wCastle + wCastle.toLowerCase()) || '-';
+  const whiteRank  = rank.join('');
+  const base       = `${whiteRank.toLowerCase()}/pppppppp/8/8/8/8/PPPPPPPP/${whiteRank}`;
+  return {
+    sfFen:  `${base} w ${sfCastling} - 0 1`,  // for Stockfish (Shredder castling)
+    cjsFen: `${base} w - - 0 1`,              // for chess.js (no castling — not supported)
+  };
 }
 
 function pickChess960(gameNum) {
   // 64-step stride spreads games across all 960 positions (covers all in ~15 pairs)
   const pairIdx = Math.floor((gameNum - 1) / 2);
   const sp = (pairIdx * 64 + 137) % 960;
-  return { fen: chess960Fen(sp), name: `Chess960_SP${sp}`, sp };
+  const fens = chess960Fen(sp);
+  return { ...fens, name: `Chess960_SP${sp}`, sp };
 }
 
 // Chess960 castling: SF18 outputs king-to-rook-square UCI (e.g. e1h1).
-// chess.js expects king-to-landing-square (g1/c1). Translate when needed.
+// chess.js has no 960 castling rights, so we manually move king+rook and reload FEN.
 function applyMoveChess960(chess, uciMove) {
   const from  = uciMove.slice(0, 2);
   const to    = uciMove.slice(2, 4);
   const promo = uciMove[4] || undefined;
+  // Try standard move first (covers all non-castling moves)
   try { const r = chess.move({ from, to, promotion: promo }); if (r) return r; } catch {}
   if (CFG.chess960) {
     const piece = chess.get(from);
     if (piece?.type === 'k') {
-      const fromFile = from.charCodeAt(0) - 97;
-      const toFile   = to.charCodeAt(0) - 97;
-      const rank     = from[1];
-      const target   = toFile > fromFile ? `g${rank}` : `c${rank}`;
+      const fromFile  = from.charCodeAt(0) - 97;
+      const toFile    = to.charCodeAt(0) - 97;
+      const rank      = from[1];
+      const diff      = toFile - fromFile;
+      const rookAtTo  = chess.get(to);
+      // Castling: king moves 2+ squares OR moves onto own rook
+      if (Math.abs(diff) >= 2 || (rookAtTo?.type === 'r' && rookAtTo.color === piece.color)) {
+        const isKS    = diff > 0; // kingside if moving right
+        const kingDst = isKS ? `g${rank}` : `c${rank}`;
+        const rookDst = isKS ? `f${rank}` : `d${rank}`;
+        const rookSrc = rookAtTo ? to : (isKS ? `h${rank}` : `a${rank}`);
+        try {
+          chess.remove(from);    // remove king
+          chess.remove(rookSrc); // remove rook
+          chess.put({ type: 'k', color: piece.color }, kingDst);
+          chess.put({ type: 'r', color: piece.color }, rookDst);
+          // Flip turn by reloading FEN with corrected active-color field
+          const parts    = chess.fen().split(' ');
+          parts[1]       = piece.color === 'w' ? 'b' : 'w';
+          parts[2]       = '-';
+          parts[3]       = '-';
+          parts[4]       = '0';
+          if (piece.color === 'b') parts[5] = String(parseInt(parts[5] || '1') + 1);
+          chess.load(parts.join(' '));
+          return { san: isKS ? 'O-O' : 'O-O-O', from, to: kingDst, flags: 'k' };
+        } catch { /* fall through */ }
+      }
+      // Non-castling king move — try landing-square translation as last resort
+      const target = diff > 0 ? `g${rank}` : `c${rank}`;
       try { const r = chess.move({ from, to: target }); if (r) return r; } catch {}
     }
   }
@@ -412,10 +442,16 @@ class StockfishEngine {
     } catch { await this.init(); }
   }
 
-  async getMove(fen) {
+  // startFen + uciMoves: Chess960 mode — always send full position history so SF retains castling rights
+  async getMove(fen, startFen = null, uciMoves = null) {
     if (!this.ready || !this.process) await this.init();
     try {
-      this.process.stdin.write(`position fen ${fen}\n`);
+      if (startFen !== null) {
+        const movePart = uciMoves?.length ? ` moves ${uciMoves.join(' ')}` : '';
+        this.process.stdin.write(`position fen ${startFen}${movePart}\n`);
+      } else {
+        this.process.stdin.write(`position fen ${fen}\n`);
+      }
       const goCmd = this.moveTimeMs > 0
         ? `go movetime ${this.moveTimeMs}\n`
         : `go depth ${this.depth}\n`;
@@ -854,11 +890,14 @@ async function playSingleGame(epSf, opponentSf, epEngine, gameNum, wePlayWhite) 
 
   // Opening setup: Chess960 starting position OR standard opening book
   let openingName;
+  let c960StartFen = null; // Shredder FEN passed to Stockfish in 960 mode
+  let uciMoveList  = [];   // full UCI move history for Chess960 position tracking
   if (CFG.chess960) {
     const c960 = pickChess960(gameNum);
-    chess = new Chess(c960.fen);
+    chess = new Chess(c960.cjsFen); // chess.js uses '-' castling (Shredder not supported)
+    c960StartFen = c960.sfFen;      // Stockfish gets Shredder FEN for correct castling rights
     openingName = c960.name;
-    log(`[G${gameNum}] ${c960.name}  FEN: ${c960.fen}`);
+    log(`[G${gameNum}] ${c960.name}  FEN: ${c960.sfFen}`);
   } else {
     const opening = pickOpening(gameNum);
     openingName = opening.name;
@@ -886,7 +925,7 @@ async function playSingleGame(epSf, opponentSf, epEngine, gameNum, wePlayWhite) 
     }
 
     if (isOurTurn) {
-      const sfResult = await epSf.getMove(fen);
+      const sfResult = await epSf.getMove(fen, c960StartFen, uciMoveList);
       const sfWdl    = sfResult.wdl || null; // { win, draw, loss } / 1000 from SF18
       let selection;
 
@@ -922,7 +961,7 @@ async function playSingleGame(epSf, opponentSf, epEngine, gameNum, wePlayWhite) 
         archetype: selection.archetype,
       });
     } else {
-      const sfResult = await opponentSf.getMove(fen);
+      const sfResult = await opponentSf.getMove(fen, c960StartFen, uciMoveList);
       moveUCI = sfResult.bestMove;
       if (sfResult.wdl) lastWdlDraw = sfResult.wdl.draw;
       gameLog.push({ halfMove: halfMoves, side: 'SF', uci: moveUCI, sfEval: sfResult.eval, wdlDraw: sfResult.wdl?.draw });
@@ -940,6 +979,7 @@ async function playSingleGame(epSf, opponentSf, epEngine, gameNum, wePlayWhite) 
       const result = applyMoveChess960(chess, moveUCI);
       if (!result) { log(`[G${gameNum}] Illegal: ${moveUCI} in ${fen}`); break; }
       moveHistory.push(result.san);
+      if (CFG.chess960) uciMoveList.push(moveUCI); // track for Stockfish position cmd
     } catch (e) { log(`[G${gameNum}] Move error: ${e.message}`); break; }
 
     halfMoves++;
