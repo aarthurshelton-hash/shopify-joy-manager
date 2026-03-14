@@ -84,6 +84,7 @@ function parseArgs() {
     epTimeMs: 0, sfTimeMs: 0, // 0 = use depth; >0 = movetime in ms
     tag: '',  // subdirectory tag — isolates parallel runs from each other
     chess960: false, // Fischer Random Chess / Chess960 mode
+    openingsFilter: null, // comma-separated opening names to restrict pool (null = all)
   };
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--games')     cfg.games     = parseInt(args[++i]);
@@ -95,6 +96,7 @@ function parseArgs() {
     if (args[i] === '--no-ep')     cfg.epEnabled = false;
     if (args[i] === '--tag')       cfg.tag       = args[++i];
     if (args[i] === '--chess960')  cfg.chess960  = true;
+    if (args[i] === '--openings')   cfg.openingsFilter = args[++i].split(',').map(s => s.trim());
     // Time control (overrides depth when set)
     if (args[i] === '--movetime')  { cfg.epTimeMs = parseInt(args[++i]); cfg.sfTimeMs = cfg.epTimeMs; }
     if (args[i] === '--ep-time')   cfg.epTimeMs  = parseInt(args[++i]);
@@ -142,10 +144,15 @@ const OPENINGS = [
 function pickOpening(gameNum, wePlayWhite = true) {
   // Each consecutive pair (odd=W, even=B) plays the same opening.
   const pairIdx = Math.floor((gameNum - 1) / 2);
+  // --openings filter: restrict to named subset (e.g. Berlin_Defense,Slav_Defense)
+  let base = CFG.openingsFilter
+    ? OPENINGS.filter(o => CFG.openingsFilter.includes(o.name))
+    : OPENINGS;
+  if (!base.length) base = OPENINGS; // fallback if filter matches nothing
   // Doubled Berlin/Slav entries (indices 15-16) are kill zones for EP as White only.
   // As Black, EP at d14 loses these with 0 overrides (pure depth disadvantage).
-  // When EP is Black, restrict to base 15-opening pool.
-  const pool = wePlayWhite ? OPENINGS : OPENINGS.slice(0, 15);
+  // When EP is Black, restrict to base 15-opening pool (only applies without filter).
+  const pool = (CFG.openingsFilter || wePlayWhite) ? base : base.slice(0, Math.min(15, base.length));
   return pool[pairIdx % pool.length];
 }
 
