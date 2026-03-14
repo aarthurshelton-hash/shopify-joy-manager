@@ -1071,16 +1071,24 @@ async function playSingleGame(epSf, opponentSf, epEngine, gameNum, wePlayWhite) 
           archetype: 'sf_only', divergeReason: 'no_ep', candidates: [],
         };
       } else {
-        const epEvals = [];
-        for (const line of sfResult.lines) {
-          // Pass sfEval so predictFromColorFlow uses agreement-calibration
-          epEvals.push(evaluateFlowForMove(chess, line.move, moveHistory, epEngine, moveNumber, sfResult.eval));
+        // Ironclad Black: absolute mirror — never evaluate divergence, never risk a loss
+        if (CFG.ironclad && !wePlayWhite) {
+          selection = { move: sfResult.bestMove, sfEval: sfResult.eval,
+            epPrediction: 'ironclad_mirror', epConfidence: 0, combinedScore: 1.0,
+            epOverride: false, sfBestMove: sfResult.bestMove, sfBestEval: sfResult.eval,
+            archetype: 'ironclad_black', divergeReason: 'ironclad_black', budgetCost: 0, candidates: [] };
+        } else {
+          const epEvals = [];
+          for (const line of sfResult.lines) {
+            // Pass sfEval so predictFromColorFlow uses agreement-calibration
+            epEvals.push(evaluateFlowForMove(chess, line.move, moveHistory, epEngine, moveNumber, sfResult.eval));
+          }
+          // Needle mode: EP has sustained positional edge SF doesn't see for 8+ of last 12 moves
+          const needleActive = moveNumber > DRAW.needleHuntMinMove &&
+            evalHistory.slice(-12).filter(e => e > 0.08).length >= DRAW.needleHuntMinDrift;
+          if (needleActive) log(`[G${gameNum}] 🎯 NEEDLE m${moveNumber} drift=${evalHistory.slice(-12).filter(e=>e>0.08).length}/12 budget=${overrideBudget}`);
+          selection = selectBestMove(sfResult.lines, epEvals, wePlayWhite, moveNumber, chess, moveHistory, sfWdl, seenFens, overrideBudget, needleActive);
         }
-        // Needle mode: EP has sustained positional edge SF doesn't see for 8+ of last 12 moves
-        const needleActive = moveNumber > DRAW.needleHuntMinMove &&
-          evalHistory.slice(-12).filter(e => e > 0.08).length >= DRAW.needleHuntMinDrift;
-        if (needleActive) log(`[G${gameNum}] 🎯 NEEDLE m${moveNumber} drift=${evalHistory.slice(-12).filter(e=>e>0.08).length}/12 budget=${overrideBudget}`);
-        selection = selectBestMove(sfResult.lines, epEvals, wePlayWhite, moveNumber, chess, moveHistory, sfWdl, seenFens, overrideBudget, needleActive);
       }
 
       moveUCI = selection.move;
