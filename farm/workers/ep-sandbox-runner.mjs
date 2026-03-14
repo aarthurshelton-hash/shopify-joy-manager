@@ -112,10 +112,14 @@ const OPENINGS = [
   { name: 'Slav_Defense',        moves: ['d2d4','d7d5','c2c4','c7c6','b1c3','g8f6','g1f3','d5c4'] },
 ];
 
-function pickOpening(gameNum) {
+function pickOpening(gameNum, wePlayWhite = true) {
   // Each consecutive pair (odd=W, even=B) plays the same opening.
   const pairIdx = Math.floor((gameNum - 1) / 2);
-  return OPENINGS[pairIdx % OPENINGS.length];
+  // Doubled Berlin/Slav entries (indices 15-16) are kill zones for EP as White only.
+  // As Black, EP at d14 loses these with 0 overrides (pure depth disadvantage).
+  // When EP is Black, restrict to base 15-opening pool.
+  const pool = wePlayWhite ? OPENINGS : OPENINGS.slice(0, 15);
+  return pool[pairIdx % pool.length];
 }
 
 // ════════════════════════════════════════════════════════
@@ -956,7 +960,7 @@ async function playSingleGame(epSf, opponentSf, epEngine, gameNum, wePlayWhite) 
     openingName = c960.name;
     log(`[G${gameNum}] ${c960.name}  FEN: ${c960.sfFen}`);
   } else {
-    const opening = pickOpening(gameNum);
+    const opening = pickOpening(gameNum, wePlayWhite);
     openingName = opening.name;
     for (const bookUCI of opening.moves) {
       if (chess.isGameOver()) break;
