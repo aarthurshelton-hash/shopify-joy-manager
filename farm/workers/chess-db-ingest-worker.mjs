@@ -1177,13 +1177,15 @@ function classifyArchetype32(sig) {
 // v27.0: EVALUATE SINGLE POSITION — building block for multi-position analysis
 // Returns raw prediction data for one position. Reuses same logic as processGame
 // but separated so we can call it at multiple move numbers.
-async function evaluatePosition(game, moveNumber, epEngine, fullPgn, moveTokens) {
+async function evaluatePosition(game, moveNumber, epEngine, fullPgn, moveTokens, startFen = null) {
   const { simulateGame, extractColorFlowSignature, predictFromColorFlow, extract32PieceSignature, predictFrom32Piece } = epEngine;
   
   // Play through moves with chess.js to get real FEN
-  let fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+  // Chess960 games include [FEN "..."] header — use it as starting position
+  const defaultFen = startFen || 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+  let fen = defaultFen;
   try {
-    const chess = new Chess();
+    const chess = startFen ? new Chess(startFen) : new Chess();
     const targetHalfMove = moveNumber * 2;
     for (let i = 0; i < Math.min(targetHalfMove, moveTokens.length); i++) {
       const result = chess.move(moveTokens[i]);
@@ -1431,6 +1433,11 @@ async function processGame(game, moveNumber, epEngine, source) {
     .replace(/\{[^}]*\}/g, '').replace(/\d+\.+/g, '').split(/\s+/)
     .filter(t => t && !t.match(/^(1-0|0-1|1\/2-1\/2|\*)$/));
   
+  // Chess960: extract starting FEN from PGN [FEN "..."] header
+  // Without this, moves replay from standard position → wrong FENs → garbage predictions
+  const startFen = (game.headers.SetUp === '1' && game.headers.FEN) ? game.headers.FEN : null;
+  const isChess960 = startFen !== null || source === 'lichess_960';
+  
   // v27.2: Fetch player profiles (cached, non-blocking on failure)
   const dbSource = source || 'lichess_db';
   const [whiteProfile, blackProfile] = await Promise.all([
@@ -1440,7 +1447,7 @@ async function processGame(game, moveNumber, epEngine, source) {
   
   // v27.1: PRIMARY position evaluation (uses the well-calibrated selectMoveNumber)
   // Prediction comes from THIS position only. Multi-position is confidence-only.
-  const primaryEval = await evaluatePosition(game, moveNumber, epEngine, fullPgn, moveTokens);
+  const primaryEval = await evaluatePosition(game, moveNumber, epEngine, fullPgn, moveTokens, startFen);
   if (!primaryEval) return null;
   
   // v27.1: SECONDARY positions for confidence signal (don't change prediction)
@@ -1457,11 +1464,11 @@ async function processGame(game, moveNumber, epEngine, source) {
     
     const secondaryEvals = [];
     if (earlyPos !== moveNumber && earlyPos >= minMove) {
-      const pe = await evaluatePosition(game, earlyPos, epEngine, fullPgn, moveTokens);
+      const pe = await evaluatePosition(game, earlyPos, epEngine, fullPgn, moveTokens, startFen);
       if (pe) secondaryEvals.push(pe);
     }
     if (latePos !== moveNumber && latePos <= maxMove) {
-      const pe = await evaluatePosition(game, latePos, epEngine, fullPgn, moveTokens);
+      const pe = await evaluatePosition(game, latePos, epEngine, fullPgn, moveTokens, startFen);
       if (pe) secondaryEvals.push(pe);
     }
     
@@ -2109,6 +2116,9 @@ async function processGame(game, moveNumber, epEngine, source) {
     time_of_day: timeOfDay,
     avg_elo: avgElo,
     elo_tier: eloTier,
+    // Chess960/Freestyle: tag for separate benchmarking + theory cross-reference
+    chess960: isChess960,
+    chess960_start_fen: startFen || null,
     // v17.7: Market mapping and temporal dynamics
     // Request: white=sell, black=buy
     color_dynamics: { white: 'sell', black: 'buy' },
