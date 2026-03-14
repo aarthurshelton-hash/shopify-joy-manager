@@ -1,14 +1,32 @@
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { ArrowLeft, Download, FileText, ExternalLink, Copy, Check } from 'lucide-react';
+import { ArrowLeft, Download, FileText, ExternalLink, Copy, Check, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { useLiveChessStats } from '@/hooks/useLiveChessStats';
 
 export default function AcademicPaper() {
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
+  const { data: liveStats, isLoading: statsLoading } = useLiveChessStats();
+
+  // Fallback to reasonable defaults if stats are loading
+  const stats = liveStats || {
+    totalPredictions: 11088175,
+    epAccuracy: 69.24,
+    sfAccuracy: 63.83,
+    epEdge: 5.41,
+    goldenZoneEP: 71.6,
+    goldenZoneSF: 68.1,
+    goldenZoneCount: 0,
+    epRecoveryRate: 24.27,
+    bestArchetype: { name: 'piece_general_pressure', epAccuracy: 63.09, sfAccuracy: 46.65, edge: 16.44, count: 67000 },
+    chess960Total: 1769457,
+    chess960EP: 52.62,
+    chess960SF: 33.49,
+  };
 
   const bibtexCitation = `@article{shelton2026enpensent,
   title={Cross-Domain Temporal Pattern Recognition via Universal Grid Signatures: Validated Across Nine Domains},
@@ -116,10 +134,10 @@ export default function AcademicPaper() {
                 across all domains, with domain-specific adapters responsible only for mapping raw
                 data onto color channels. We validate on nine maximally different domains without
                 modifying the grid architecture: (1) <strong>Chess outcome prediction</strong>
-                (11,088,175 live predictions, 69.24% 3-way accuracy via 15-component
+                ({statsLoading ? '...' : stats.totalPredictions.toLocaleString()} live predictions, {statsLoading ? '...' : stats.epAccuracy.toFixed(2)}% 3-way accuracy via 15-component
                 per-archetype auto-tuned fusion with phase-aware weighting,
-                z{'>'}1000, p≈0, +5.41pp over Stockfish 18 baseline; Chess960/Freestyle:
-                1,769,457 games, EP 52.62% vs SF18 33.49% (+19.13pp; SF18 near-random with no opening books, EP retains signal); (2) <strong>Lithium-ion battery degradation</strong> (140
+                z{'>'}1000, p≈0, +{statsLoading ? '...' : stats.epEdge.toFixed(2)}pp over Stockfish 18 baseline; Chess960/Freestyle:
+                {statsLoading ? '...' : stats.chess960Total.toLocaleString()} games, EP {statsLoading ? '...' : stats.chess960EP.toFixed(2)}% vs SF18 {statsLoading ? '...' : stats.chess960SF.toFixed(2)}% (+{statsLoading ? '...' : (stats.chess960EP - stats.chess960SF).toFixed(2)}pp; SF18 near-random with no opening books, EP retains signal); (2) <strong>Lithium-ion battery degradation</strong> (140
                 cells, 114,692 cycles, 56.5% accuracy, 89.0% critical-state detection, Severson
                 et al. MATR dataset); (3) <strong>Tennessee Eastman Process fault detection</strong>
                 (2,200 records, F1 93.3% vs. 72.7% persistence baseline, +20.6pp);
@@ -578,33 +596,33 @@ NPPAD result: θ* = 3.0 (separation = 1.993) — same threshold independently di
                 </thead>
                 <tbody>
                   <tr className="border-b">
-                    <td className="py-2">3-Way Accuracy (W/B/D) — 11.09M predictions</td>
-                    <td className="text-right font-semibold">69.24%</td>
-                    <td className="text-right">63.83%</td>
+                    <td className="py-2">3-Way Accuracy (W/B/D) — {statsLoading ? <Loader2 className="h-3 w-3 animate-spin inline" /> : `${(stats.totalPredictions / 1000000).toFixed(2)}M`} predictions</td>
+                    <td className="text-right font-semibold">{statsLoading ? <Loader2 className="h-3 w-3 animate-spin inline" /> : `${stats.epAccuracy.toFixed(2)}%`}</td>
+                    <td className="text-right">{statsLoading ? <Loader2 className="h-3 w-3 animate-spin inline" /> : `${stats.sfAccuracy.toFixed(2)}%`}</td>
                   </tr>
                   <tr className="border-b">
                     <td className="py-2">Total Predictions in DB (live)</td>
-                    <td className="text-right">11,088,175</td>
-                    <td className="text-right">11,088,175</td>
+                    <td className="text-right">{statsLoading ? <Loader2 className="h-3 w-3 animate-spin inline" /> : stats.totalPredictions.toLocaleString()}</td>
+                    <td className="text-right">{statsLoading ? <Loader2 className="h-3 w-3 animate-spin inline" /> : stats.totalPredictions.toLocaleString()}</td>
                   </tr>
                   <tr className="border-b">
                     <td className="py-2">Golden Zone (moves 15–45, conf≥50)</td>
-                    <td className="text-right font-semibold">71.6%</td>
-                    <td className="text-right">68.1%</td>
+                    <td className="text-right font-semibold">{statsLoading ? <Loader2 className="h-3 w-3 animate-spin inline" /> : `${stats.goldenZoneEP.toFixed(1)}%`}</td>
+                    <td className="text-right">{statsLoading ? <Loader2 className="h-3 w-3 animate-spin inline" /> : `${stats.goldenZoneSF.toFixed(1)}%`}</td>
                   </tr>
                   <tr className="border-b">
                     <td className="py-2">EP When SF18 Is Wrong</td>
-                    <td className="text-right font-semibold text-green-600 dark:text-green-400">24.27% recovery rate</td>
+                    <td className="text-right font-semibold text-green-600 dark:text-green-400">{statsLoading ? <Loader2 className="h-3 w-3 animate-spin inline" /> : `${stats.epRecoveryRate.toFixed(2)}% recovery rate`}</td>
                     <td className="text-right">0%</td>
                   </tr>
                   <tr className="border-b">
-                    <td className="py-2">Best Archetype Edge (piece_general_pressure)</td>
-                    <td className="text-right font-semibold text-green-600 dark:text-green-400">63.09% (+16.44pp)</td>
-                    <td className="text-right">46.65%</td>
+                    <td className="py-2">Best Archetype Edge ({statsLoading ? '...' : stats.bestArchetype.name})</td>
+                    <td className="text-right font-semibold text-green-600 dark:text-green-400">{statsLoading ? <Loader2 className="h-3 w-3 animate-spin inline" /> : `${stats.bestArchetype.epAccuracy.toFixed(2)}% (+${stats.bestArchetype.edge.toFixed(2)}pp)`}</td>
+                    <td className="text-right">{statsLoading ? <Loader2 className="h-3 w-3 animate-spin inline" /> : `${stats.bestArchetype.sfAccuracy.toFixed(2)}%`}</td>
                   </tr>
                   <tr className="border-b">
                     <td className="py-2">Edge over SF18 (live, all-time)</td>
-                    <td className="text-right font-semibold text-green-600 dark:text-green-400">+5.41pp</td>
+                    <td className="text-right font-semibold text-green-600 dark:text-green-400">{statsLoading ? <Loader2 className="h-3 w-3 animate-spin inline" /> : `+${stats.epEdge.toFixed(2)}pp`}</td>
                     <td className="text-right">—</td>
                   </tr>
                   <tr>
@@ -618,7 +636,7 @@ NPPAD result: θ* = 3.0 (separation = 1.993) — same threshold independently di
           </Card>
 
           <p>
-            Top-performing archetypes (live, 11.09M sample): <em>central_knight_outpost</em> (84.14% EP vs 83.24% SF18, +0.90pp, n≈22K),
+            Top-performing archetypes (live, {statsLoading ? '...' : `${(stats.totalPredictions / 1000000).toFixed(2)}M`} sample): <em>central_knight_outpost</em> (84.14% EP vs 83.24% SF18, +0.90pp, n≈22K),
             <em>king_hunt</em> (84.02% vs 82.32%, +1.71pp, n≈22K),
             <em>kingside_knight_charge</em> (83.63% vs 81.04%, +2.59pp, n≈10K),
             <em>piece_rook_activity</em> (72.88% vs 69.30%, +3.58pp, n≈1.19M),
