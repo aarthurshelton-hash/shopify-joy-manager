@@ -46,6 +46,33 @@ const envPath = join(__dirname, '..', '..', '.env');
 if (fs.existsSync(envPath)) dotenv.config({ path: envPath });
 
 // ════════════════════════════════════════════════════════
+// CHESS960 THEORY — weighted SP selection from fishtest data
+// Rebuilt every 30s by chess960-theory-builder from JSONL results.
+// SPs with high draw rates get more weight → fortress-first selection.
+// ════════════════════════════════════════════════════════
+const THEORY_INDEX_PATH = join(__dirname, '..', 'data', 'chess960-theory', 'index.json');
+let c960WeightedPool = null;
+
+function loadC960TheoryPool() {
+  try {
+    if (!fs.existsSync(THEORY_INDEX_PATH)) return null;
+    const idx = JSON.parse(fs.readFileSync(THEORY_INDEX_PATH, 'utf8'));
+    const spMap = {};
+    for (const entry of (idx.topSPs || [])) {
+      spMap[entry.sp] = parseFloat(entry.drawRate);
+    }
+    const pool = [];
+    for (let sp = 0; sp < 960; sp++) {
+      const dr = spMap.hasOwnProperty(sp) ? spMap[sp] : -1; // -1 = uncovered
+      // Fortress (≥0.75 draw) = 4x, Decent (≥0.5) = 2x, Risky/unknown = 1x
+      const weight = dr >= 0.75 ? 4 : dr >= 0.5 ? 2 : 1;
+      for (let w = 0; w < weight; w++) pool.push(sp);
+    }
+    return pool;
+  } catch { return null; }
+}
+
+// ════════════════════════════════════════════════════════
 // CLI CONFIG
 // ════════════════════════════════════════════════════════
 
@@ -166,9 +193,23 @@ function chess960Fen(sp) {
 }
 
 function pickChess960(gameNum) {
-  // stride=7 is coprime with 960 → visits all 960 unique SPs in 960 pairs (1920 games)
   const pairIdx = Math.floor((gameNum - 1) / 2);
-  const sp = (pairIdx * 7) % 960;
+  // Refresh theory pool at startup and every 50 pairs (100 games)
+  if (!c960WeightedPool || pairIdx % 50 === 0) {
+    const fresh = loadC960TheoryPool();
+    if (fresh) {
+      c960WeightedPool = fresh;
+      log(`[960-theory] Pool refreshed — ${fresh.length} weighted SPs (fortress SPs weighted 4x)`);
+    }
+  }
+  let sp;
+  if (c960WeightedPool) {
+    // Theory-weighted: fortress SPs appear more in pool → selected more often
+    sp = c960WeightedPool[pairIdx % c960WeightedPool.length];
+  } else {
+    // Fallback: stride=7 is coprime with 960 → visits all 960 SPs uniformly
+    sp = (pairIdx * 7) % 960;
+  }
   const fens = chess960Fen(sp);
   return { ...fens, name: `Chess960_SP${sp}`, sp };
 }
