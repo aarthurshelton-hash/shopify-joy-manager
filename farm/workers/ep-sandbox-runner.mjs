@@ -85,6 +85,7 @@ function parseArgs() {
     tag: '',  // subdirectory tag — isolates parallel runs from each other
     chess960: false, // Fischer Random Chess / Chess960 mode
     openingsFilter: null, // comma-separated opening names to restrict pool (null = all)
+    ironclad: false, // ironclad mode: budget=2 as White, budget=0 as Black, needle-only wins
   };
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--games')     cfg.games     = parseInt(args[++i]);
@@ -97,6 +98,7 @@ function parseArgs() {
     if (args[i] === '--tag')       cfg.tag       = args[++i];
     if (args[i] === '--chess960')  cfg.chess960  = true;
     if (args[i] === '--openings')   cfg.openingsFilter = args[++i].split(',').map(s => s.trim());
+    if (args[i] === '--ironclad')   cfg.ironclad = true;
     // Time control (overrides depth when set)
     if (args[i] === '--movetime')  { cfg.epTimeMs = parseInt(args[++i]); cfg.sfTimeMs = cfg.epTimeMs; }
     if (args[i] === '--ep-time')   cfg.epTimeMs  = parseInt(args[++i]);
@@ -111,6 +113,22 @@ function parseArgs() {
   }
   if (cfg.games % 2 !== 0) cfg.games++; // enforce even (color balance)
   return cfg;
+}
+
+function applyIroncladMode() {
+  // Ironclad: fortress-first, needle-only wins, absolute zero Black divergence.
+  // Every parameter tightened — EP only acts when signal is overwhelming.
+  DRAW.overrideBudgetStd    = 2;    // 1 win-hunt max as White (cost=2 each)
+  DRAW.overrideBudget960    = 2;    // same for Chess960
+  DRAW.blackFortressMaxEval = 0.0;  // enforced via budget=0 as Black (see playSingleGame)
+  DRAW.maxEvalToAct         = 0.28; // tighter blind spot — only dead-equal positions
+  DRAW.minEpConf            = 0.25; // higher EP confidence floor
+  DRAW.winHuntMaxEval       = 0.20; // SF must see near-zero eval to allow win-hunt
+  DRAW.winHuntMinConf       = 0.28; // higher win-hunt confidence threshold
+  DRAW.needleHuntMinMove    = 30;   // wait deeper before needle activates
+  DRAW.needleHuntMinDrift   = 10;   // 10/12 moves must show EP edge (was 8)
+  DRAW.needleHuntConfBoost  = 0.12; // bigger reward when needle fires — it's earned
+  log('⚔️  IRONCLAD MODE — budget=2/White, budget=0/Black, needle-only wins');
 }
 
 const CFG = parseArgs();
@@ -345,6 +363,9 @@ const DRAW_ARCHETYPES = new Set([
   'central_knight_outpost',  // EP +0.90pp — stable knight = fortress
   'queenside_expansion',     // slow, closed — SF loses patience
 ]);
+
+// Apply ironclad overrides now that DRAW constants exist
+if (CFG.ironclad) applyIroncladMode();
 
 // ════════════════════════════════════════════════════════
 // FILE OUTPUT — all local, never touches Supabase
@@ -993,7 +1014,10 @@ async function playSingleGame(epSf, opponentSf, epEngine, gameNum, wePlayWhite) 
   let halfMoves    = 0;
   let lastWdlDraw  = 500; // track last WDL draw probability (/ 1000)
   // Override budget: cap divergences per game — data shows 13+ overrides = losses, 0 = wins
-  let overrideBudget = CFG.chess960 ? DRAW.overrideBudget960 : DRAW.overrideBudgetStd;
+  // Ironclad: Black NEVER diverges — absolute mirror, zero exposure to loss
+  let overrideBudget = CFG.ironclad && !wePlayWhite
+    ? 0
+    : CFG.chess960 ? DRAW.overrideBudget960 : DRAW.overrideBudgetStd;
   // Eval drift tracker: rolling ourEval history — needle hunt activates at sustained advantage
   const evalHistory = [];
 
