@@ -1919,6 +1919,37 @@ async function processGame(game, moveNumber, epEngine, source) {
     }
   }
 
+  // v35.2: CHESS.COM MOVE ACCURACY SIGNAL
+  // Chess.com provides move accuracy scores (0-100%) for each player in the game JSON.
+  // Zero extra API calls — already present in the monthly archive response.
+  // High mutual accuracy = clean game, archetype pattern is reliable.
+  // Big accuracy gap confirms or contradicts predicted winner.
+  const wAcc = parseFloat(game.headers.WhiteAcc) || 0;
+  const bAcc = parseFloat(game.headers.BlackAcc) || 0;
+  if (wAcc > 0 && bAcc > 0) {
+    const avgAcc = (wAcc + bAcc) / 2;
+    const accDelta = wAcc - bAcc; // positive = white played better
+    // Noisy game: avg accuracy < 68% means both blundered — archetype less reliable
+    if (avgAcc < 68) {
+      hybridConf *= 0.97;
+    }
+    // Pristine game: both >85% accuracy = clean strategic game, boost EP archetype
+    if (wAcc >= 85 && bAcc >= 85) {
+      hybridConf = Math.min(0.69, hybridConf * 1.02);
+    }
+    // Accuracy gap >12pp confirms predicted direction = small boost
+    // Accuracy gap contradicts predicted direction = gentle dampen
+    const accFavorsWhite = accDelta > 12;
+    const accFavorsBlack = accDelta < -12;
+    if ((hybridPrediction === 'white_wins' && accFavorsWhite) ||
+        (hybridPrediction === 'black_wins' && accFavorsBlack)) {
+      hybridConf = Math.min(0.69, hybridConf * 1.02);
+    } else if ((hybridPrediction === 'white_wins' && accFavorsBlack) ||
+               (hybridPrediction === 'black_wins' && accFavorsWhite)) {
+      hybridConf *= 0.97;
+    }
+  }
+
   // v26.1: REVERSAL CORRECTION (conservative — bullet/blitz only)
   // v26.1 experiment: expanding to all TCs in 50-200cp showed 50% acc on 34 flips (coin flip).
   // Historical data overfitted. Keep only proven bullet/blitz gate.
@@ -3181,7 +3212,7 @@ async function ingestChessCom(epEngine) {
           
           const gamesData = await gamesRes.json();
           const games = (gamesData.games || []).filter(g => {
-            if (!g.pgn || g.rules !== 'chess') return false;
+            if (!g.pgn || (g.rules !== 'chess' && g.rules !== 'chess960')) return false;
             const avgElo = ((g.white?.rating || 0) + (g.black?.rating || 0)) / 2;
             if (avgElo > 0 && avgElo < CONFIG.minElo) return false;
             // Skip bullet (< 60s base time)
@@ -3205,6 +3236,13 @@ async function ingestChessCom(epEngine) {
                           (g.black?.result === 'win' ? '0-1' : '1/2-1/2');
             if (!['1-0', '0-1', '1/2-1/2'].includes(result)) continue;
             
+            // v35.2: Extract Chess960 starting FEN from PGN headers
+            const is960 = g.rules === 'chess960';
+            const fenMatch960 = is960 ? g.pgn.match(/\[FEN "([^"]+)"\]/) : null;
+            const setupMatch960 = is960 ? /\[SetUp "1"\]/.test(g.pgn) : false;
+            // v35.2: Parse Chess.com move accuracies (already in game JSON — zero extra API calls)
+            const wAccuracy = g.accuracies?.white != null ? String(Math.round(g.accuracies.white)) : '';
+            const bAccuracy = g.accuracies?.black != null ? String(Math.round(g.accuracies.black)) : '';
             // Build game object matching processGame expectations
             const game = {
               id: gameId,
@@ -3216,6 +3254,10 @@ async function ingestChessCom(epEngine) {
                 Result: result,
                 TimeControl: g.time_control || '',
                 Event: g.time_class || 'chess.com',
+                WhiteAcc: wAccuracy,
+                BlackAcc: bAccuracy,
+                ...(setupMatch960 && { SetUp: '1' }),
+                ...(fenMatch960 && { FEN: fenMatch960[1] }),
               },
               moves: g.pgn.replace(/\[[^\]]*\]\s*/g, '').replace(/\{[^}]*\}/g, '').trim(),
               evals: [],
@@ -3227,7 +3269,7 @@ async function ingestChessCom(epEngine) {
             const moveNumber = selectMoveNumber(totalMoves);
             
             try {
-              const attempt = await processGame(game, moveNumber, epEngine, 'chess.com');
+              const attempt = await processGame(game, moveNumber, epEngine, is960 ? 'chesscom_960' : 'chess.com');
               if (!attempt) continue;
               
               playerGames++;
@@ -3437,6 +3479,48 @@ async function discoverChessComPlayers() {
   }
   
   console.log(`[CC-DISCOVER] Player pool: ${CHESSCOM_PLAYERS.length} players (+${added} discovered, shuffled for diversity)`);
+}
+
+// ════════════════════════════════════════════════════════
+// CHESS.COM LEADERBOARD DISCOVERY
+// Single API call to /pub/leaderboards returns top 50 players per category.
+// These are the most currently-active, highest-rated players on Chess.com.
+// Complements titled player discovery (static pool) with a dynamic live list.
+// Categories: live_blitz, live_rapid, live_bullet, live_blitz960, tactics
+// ════════════════════════════════════════════════════════
+
+async function discoverChessComLeaderboardPlayers() {
+  const existing = new Set(CHESSCOM_PLAYERS);
+  let added = 0;
+
+  try {
+    const res = await fetch('https://api.chess.com/pub/leaderboards', {
+      headers: { 'User-Agent': 'EnPensent/1.0 Chess Research (a.arthur.shelton@gmail.com)' },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) {
+      console.log(`[CC-LEADERBOARD] Fetch failed: ${res.status}`);
+      return;
+    }
+
+    const data = await res.json();
+    // Collect usernames from all relevant time-control and skill categories
+    const categories = ['live_blitz', 'live_rapid', 'live_bullet', 'live_blitz960', 'tactics'];
+    for (const cat of categories) {
+      const entries = data[cat] || [];
+      for (const entry of entries) {
+        if (entry.username && !existing.has(entry.username)) {
+          CHESSCOM_PLAYERS.push(entry.username);
+          existing.add(entry.username);
+          added++;
+        }
+      }
+    }
+
+    console.log(`[CC-LEADERBOARD] +${added} leaderboard players (pool now ${CHESSCOM_PLAYERS.length})`);
+  } catch (err) {
+    console.log(`[CC-LEADERBOARD] Discovery failed: ${err.message}`);
+  }
 }
 
 // ════════════════════════════════════════════════════════
@@ -4042,6 +4126,8 @@ async function main() {
   
   // v29.0: Discover Chess.com titled players to expand pool from ~60 to 400+
   await discoverChessComPlayers();
+  // v35.2: Fetch leaderboard top-50 per category — currently active high-rated players
+  await discoverChessComLeaderboardPlayers();
   
   console.log('Loading EP engine...');
   const epEngine = await loadEPEngine();
