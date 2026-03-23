@@ -338,7 +338,7 @@ const VisualizationDetail: React.FC = () => {
       } : undefined;
       
       if (captureElement) {
-        downloadGIF(simulation, captureElement, visualization.title, undefined, piecesState);
+        downloadGIF(simulation, captureElement, visualization.title, undefined, piecesState, visualization?.pgn || vizData.gameData.pgn || '');
       } else {
         toast.error('Unable to capture visualization');
       }

@@ -287,7 +287,8 @@ export function useVisualizationExport(options: UseVisualizationExportOptions) {
     captureElement: HTMLElement,
     title: string,
     onProgressUpdate?: (progress: number) => void,
-    piecesState?: { showPieces: boolean; pieceOpacity: number }
+    piecesState?: { showPieces: boolean; pieceOpacity: number },
+    pgn?: string
   ): Promise<boolean> => {
     if (!isPremium) {
       onUpgradeRequired?.();
@@ -345,6 +346,7 @@ export function useVisualizationExport(options: UseVisualizationExportOptions) {
         onProgress: updateProgress,
         showPieces: piecesState?.showPieces || false,
         pieceOpacity: piecesState?.pieceOpacity || 0.7,
+        pgn: pgn || simulation.gameData?.pgn || '',
       });
       
       // Validate blob was created

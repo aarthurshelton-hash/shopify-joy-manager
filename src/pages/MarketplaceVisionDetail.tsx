@@ -382,7 +382,7 @@ const MarketplaceVisionDetail: React.FC = () => {
       } : undefined;
       
       if (captureElement) {
-        downloadGIF(simulation, captureElement, listing.visualization.title, undefined, piecesState);
+        downloadGIF(simulation, captureElement, listing.visualization.title, undefined, piecesState, listing.visualization.pgn || vizData.gameData.pgn || '');
       } else {
         toast.error('Unable to capture visualization');
       }

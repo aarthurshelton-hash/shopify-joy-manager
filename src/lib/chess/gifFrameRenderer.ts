@@ -228,6 +228,7 @@ export interface GenerateGifOptions {
   onProgress?: (progress: number, message: string) => void;
   showPieces?: boolean;
   pieceOpacity?: number;
+  pgn?: string;
 }
 
 /**
@@ -248,6 +249,7 @@ export async function generateAnimatedGif(
     onProgress,
     showPieces = false,
     pieceOpacity = 0.7,
+    pgn: pgnOption,
   } = options;
   
   // Validate simulation data
@@ -282,7 +284,7 @@ export async function generateAnimatedGif(
     
     // Capture first frame to get dimensions
     let firstCanvas: HTMLCanvasElement;
-    const pgn = gameData?.pgn || '';
+    const pgn = pgnOption || gameData?.pgn || '';
     
     try {
       firstCanvas = await renderFrameToCanvas({

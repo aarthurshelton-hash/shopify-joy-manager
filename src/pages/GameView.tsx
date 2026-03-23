@@ -781,7 +781,8 @@ const GameView = () => {
           captureElement,
           visionTitle,
           undefined,
-          exportState ? { showPieces: exportState.showPieces, pieceOpacity: exportState.pieceOpacity } : undefined
+          exportState ? { showPieces: exportState.showPieces, pieceOpacity: exportState.pieceOpacity } : undefined,
+          effectivePgn
         );
       } else {
         toast.error('Unable to capture visualization');
