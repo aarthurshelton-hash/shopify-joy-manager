@@ -6,6 +6,79 @@
 
 import { SquareData, GameData, SimulationResult } from './gameSimulator';
 import { getCurrentPalette } from './pieceColors';
+import { Chess } from 'chess.js';
+
+// Unicode chess piece symbols for direct canvas rendering
+const PIECE_SYMBOLS: Record<string, string> = {
+  'K': '♔', 'Q': '♕', 'R': '♖', 'B': '♗', 'N': '♘', 'P': '♙',
+  'k': '♚', 'q': '♛', 'r': '♜', 'b': '♝', 'n': '♞', 'p': '♟',
+};
+
+/**
+ * Parse PGN and return piece positions at the given move number.
+ * Draws directly onto canvas — avoids html2canvas CSS capture issues.
+ */
+function drawPiecesOntoCanvas(
+  canvas: HTMLCanvasElement,
+  pgn: string,
+  currentMove: number,
+  boardSize: number,
+  boardOffsetX: number,
+  boardOffsetY: number,
+  pieceOpacity: number,
+  scale: number
+): void {
+  if (!pgn || pgn.trim().length < 2) return;
+
+  const pieces: { row: number; col: number; symbol: string; color: 'w' | 'b' }[] = [];
+  try {
+    const fullGame = new Chess();
+    fullGame.loadPgn(pgn);
+    const allMoves = fullGame.history({ verbose: true });
+    const chess = new Chess();
+    const movesToPlay = Math.min(currentMove, allMoves.length);
+    for (let i = 0; i < movesToPlay; i++) chess.move(allMoves[i].san);
+    const boardState = chess.board();
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        const p = boardState[row]?.[col];
+        if (p) {
+          const key = p.color === 'w' ? p.type.toUpperCase() : p.type.toLowerCase();
+          pieces.push({ row, col, symbol: PIECE_SYMBOLS[key] ?? '', color: p.color });
+        }
+      }
+    }
+  } catch { return; }
+
+  const ctx = canvas.getContext('2d');
+  if (!ctx || pieces.length === 0) return;
+
+  const sqSize = (boardSize * scale) / 8;
+  const fontSize = sqSize * 0.72;
+
+  ctx.save();
+  ctx.globalAlpha = pieceOpacity;
+  ctx.font = `${fontSize}px serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  for (const p of pieces) {
+    const cx = boardOffsetX + p.col * sqSize + sqSize / 2;
+    const cy = boardOffsetY + p.row * sqSize + sqSize / 2;
+    // Shadow/stroke for contrast
+    ctx.lineWidth = fontSize * 0.08;
+    if (p.color === 'w') {
+      ctx.strokeStyle = 'rgba(0,0,0,0.75)';
+      ctx.fillStyle = '#ffffff';
+    } else {
+      ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+      ctx.fillStyle = '#1a1a1a';
+    }
+    ctx.strokeText(p.symbol, cx, cy);
+    ctx.fillText(p.symbol, cx, cy);
+  }
+  ctx.restore();
+}
 
 export interface GifFrameOptions {
   board: SquareData[][];
@@ -46,7 +119,6 @@ export async function renderFrameToCanvas(
   const ReactDOM = await import('react-dom/client');
   const { default: ChessBoardVisualization } = await import('@/components/chess/ChessBoardVisualization');
   const { default: BoardCoordinateGuide } = await import('@/components/chess/BoardCoordinateGuide');
-  const { default: StaticPieceOverlay } = await import('@/components/chess/StaticPieceOverlay');
   
   // Filter board to current move
   const filteredBoard = filterBoardToMove(board, currentMove);
@@ -88,24 +160,17 @@ export async function renderFrameToCanvas(
     const root = ReactDOM.createRoot(boardContainer);
     
     await new Promise<void>((resolve) => {
-      // Render board with optional static piece overlay (no context required)
+      // Render board only — pieces are drawn directly onto canvas after capture
       root.render(
         React.createElement('div', { style: { position: 'relative', width: size, height: size } },
           showCoordinates && React.createElement(BoardCoordinateGuide, { size, position: 'inside' }),
           React.createElement(ChessBoardVisualization, {
             board: filteredBoard,
             size: size
-          }),
-          // Add static piece overlay if enabled
-          showPieces && pgn && React.createElement(StaticPieceOverlay, {
-            pgn,
-            currentMoveNumber: currentMove,
-            size,
-            pieceOpacity,
           })
         )
       );
-      setTimeout(resolve, showPieces ? 80 : 50);
+      setTimeout(resolve, 50);
     });
     
     // Add game info section if gameData provided
@@ -202,14 +267,23 @@ export async function renderFrameToCanvas(
     wrapper.appendChild(brandingDiv);
     
     // Capture the frame
+    const captureScale = 2;
     const canvas = await html2canvas(wrapper, {
-      scale: 2,
+      scale: captureScale,
       backgroundColor: bgColor,
       useCORS: true,
       allowTaint: true,
       logging: false,
     });
-    
+
+    // Draw pieces directly onto the captured canvas (avoids html2canvas CSS issues)
+    if (showPieces && pgn) {
+      // Board offset = wrapper padding (20px) * captureScale
+      const boardOffsetX = 20 * captureScale;
+      const boardOffsetY = 20 * captureScale;
+      drawPiecesOntoCanvas(canvas, pgn, currentMove, size, boardOffsetX, boardOffsetY, pieceOpacity, captureScale);
+    }
+
     root.unmount();
     return canvas;
   } finally {
