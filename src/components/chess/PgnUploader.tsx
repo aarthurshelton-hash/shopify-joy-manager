@@ -443,9 +443,12 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit, onFenSubmit }) =
             </div>
           )}
           {/* Favorite button */}
-          <button
+          <div
+            role="button"
+            tabIndex={0}
             onClick={(e) => handleToggleFavorite(e, game.id)}
-            className={`absolute ${isMobile ? 'top-1.5 right-1.5' : 'top-0.5 right-0.5'} p-1 rounded-full transition-all ${
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleToggleFavorite(e as unknown as React.MouseEvent, game.id); }}
+            className={`absolute ${isMobile ? 'top-1.5 right-1.5' : 'top-0.5 right-0.5'} p-1 rounded-full transition-all cursor-pointer ${
               isFavorite(game.id)
                 ? 'bg-red-500/90 text-white'
                 : 'bg-black/40 text-white/70 opacity-0 group-hover:opacity-100'
@@ -453,7 +456,7 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit, onFenSubmit }) =
             aria-label={isFavorite(game.id) ? 'Remove from favorites' : 'Add to favorites'}
           >
             <Heart className={`${isMobile ? 'h-3.5 w-3.5' : 'h-3 w-3'} ${isFavorite(game.id) ? 'fill-current' : ''}`} />
-          </button>
+          </div>
         </div>
         {/* Text info */}
         <div className={`flex flex-col justify-center ${isMobile ? 'p-2 flex-1' : 'flex-1 min-w-0'}`}>
@@ -526,9 +529,12 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit, onFenSubmit }) =
                         </div>
                       )}
                       {/* Favorite button */}
-                      <button
+                      <div
+                        role="button"
+                        tabIndex={0}
                         onClick={(e) => handleToggleFavorite(e, game.id)}
-                        className={`absolute top-1.5 right-1.5 p-1 rounded-full transition-all ${
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleToggleFavorite(e as unknown as React.MouseEvent, game.id); }}
+                        className={`absolute top-1.5 right-1.5 p-1 rounded-full transition-all cursor-pointer ${
                           isFavorite(game.id)
                             ? 'bg-red-500/90 text-white'
                             : 'bg-black/40 text-white/70 opacity-0 group-hover:opacity-100'
@@ -536,7 +542,7 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit, onFenSubmit }) =
                         aria-label={isFavorite(game.id) ? 'Remove from favorites' : 'Add to favorites'}
                       >
                         <Heart className={`h-3.5 w-3.5 ${isFavorite(game.id) ? 'fill-current' : ''}`} />
-                      </button>
+                      </div>
                     </div>
                     {/* Text info */}
                     <div className="p-2.5">

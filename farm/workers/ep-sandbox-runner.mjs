@@ -118,8 +118,8 @@ function parseArgs() {
 function applyIroncladMode() {
   // Ironclad: fortress-first, needle-only wins, absolute zero Black divergence.
   // Every parameter tightened — EP only acts when signal is overwhelming.
-  DRAW.overrideBudgetStd    = 2;    // 1 win-hunt max as White (cost=2 each)
-  DRAW.overrideBudget960    = 2;    // same for Chess960
+  DRAW.overrideBudgetStd    = 4;    // v2: raised 2→4
+  DRAW.overrideBudget960    = 4;    // v2: same for Chess960
   DRAW.blackFortressMaxEval = 0.0;  // enforced via budget=0 as Black (see playSingleGame)
   DRAW.maxEvalToAct         = 0.28; // tighter blind spot — only dead-equal positions
   DRAW.minEpConf            = 0.25; // higher EP confidence floor
@@ -329,7 +329,7 @@ const DRAW = {
   repeatPositionBonus:  0.45, // move leads to already-seen position — MASSIVE
   // Win-hunt gate: SF neutral + EP strong archetype = try to WIN
   winHuntMaxEval:       0.35, // SF eval must be within ±0.35 to win-hunt
-  winHuntMinConf:       0.22, // EP confidence must exceed this
+  winHuntMinConf:       0.18, // v2: lowered 0.22→0.18 — needle earns more aggressive hunt
   // ── NEEDLE HUNT: activate when EP has sustained positional edge SF doesn't see ──
   // Data: EP wins (0 overrides) came after 117+ halfmoves — patience is the weapon
   needleHuntMinMove:    25,   // earliest move needle mode activates
@@ -337,8 +337,10 @@ const DRAW = {
   needleHuntConfBoost:  0.07, // reduce winHuntMinConf by this when needle active
   // ── OVERRIDE BUDGET: cap per-game divergences to prevent spiral losses ──
   // Data proof: games with 13+ overrides = losses; 0 overrides = wins (Berlin, Slav)
-  overrideBudgetStd:    7,    // standard chess max overrides before pure-mirror
-  overrideBudget960:    4,    // tighter for Chess960 — uncharted structure = higher variance
+  // v2: Budget raised 7→10. Data: 13+ overrides = losses, so 10 is safer ceiling.
+  //     Win-hunt costs 2 (or 1 with needle). Draw-hunt costs 1. Governor stays active.
+  overrideBudgetStd:    10,   // v2: raised 7→10 — more room for both draw + win hunts
+  overrideBudget960:    6,    // v2: raised 4→6
   budgetWinHuntCost:    2,    // win-hunt divergences cost 2 from budget (high value play)
   // ── BLACK FORTRESS: tighten diverge threshold ──
   // Data: Black divergence at ±0.40 led to losses; dead-equal only
@@ -347,11 +349,15 @@ const DRAW = {
 
 // Archetypes where live benchmark shows EP massively outperforms SF18
 // Source: 11M+ predictions — piece_general_pressure: +16.44pp (SF near-random)
+// v2: Expanded with live bench data showing high EP accuracy
 const WIN_ARCHETYPES = new Set([
   'piece_general_pressure',  // EP +16.44pp, SF 46.65% (near random)
   'kingside_attack',         // EP strong, SF misses king danger
   'king_hunt',               // EP +1.71pp but high-confidence signal
   'kingside_knight_charge',  // EP +2.59pp in late middlegame
+  'queenside_expansion',     // EP accuracy 64.6% in live data — slow positional squeeze
+  'central_domination',      // EP +82% precision per bench — SF underestimates space
+  'positional_squeeze',      // closed structure, EP reads long-term drift SF can't calculate
 ]);
 
 // Archetypes where EP's draw-hunt is most effective
@@ -764,7 +770,7 @@ function evaluateFlowForMove(chess, candidateMove, moveHistory, epEngine, moveNu
 
 // sfWdl: { win, draw, loss } /1000 from the current position's SF18 WDL
 // seenFens: Set of board-FEN prefixes already seen this game (for repetition detection)
-function selectBestMove(sfLines, epEvals, wePlayWhite, moveNumber, chess, moveHistory, sfWdl = null, seenFens = null, overrideBudget = 8, needleActive = false) {
+function selectBestMove(sfLines, epEvals, wePlayWhite, moveNumber, chess, moveHistory, sfWdl = null, seenFens = null, overrideBudget = 8, needleActive = false, needleDriftCount = 0) {
   if (!sfLines.length) return { move: 'e2e4', reason: 'no_candidates' };
 
   const posAnalysis = analyzePosition(chess.fen());
@@ -779,14 +785,15 @@ function selectBestMove(sfLines, epEvals, wePlayWhite, moveNumber, chess, moveHi
   if (moveNumber < effectiveMirrorUntil) {
     if (sfLines.length <= 1 || moveNumber < 4) {
       return { move: sfLines[0].move, sfEval: sfLines[0].eval, epPrediction: 'mirror', epConfidence: 0,
-               combinedScore: 1.0, epOverride: false, sfBestMove: sfLines[0].move, sfBestEval: sfLines[0].eval,
+               combinedScore: 1.0, epOverride: false, budgetCost: 0,
+               sfBestMove: sfLines[0].move, sfBestEval: sfLines[0].eval,
                archetype: 'sf_mirror', divergeReason: 'mirror', candidates: [] };
     }
     const bestEval = sfLines[0].eval;
     const viable = sfLines.filter(l => Math.abs(l.eval - bestEval) < 0.25).slice(0, 3);
     const picked = viable[Math.floor(Math.random() * viable.length)];
     return { move: picked.move, sfEval: picked.eval, epPrediction: 'mirror_var', epConfidence: 0,
-             combinedScore: 1.0, epOverride: picked.move !== sfLines[0].move,
+             combinedScore: 1.0, epOverride: picked.move !== sfLines[0].move, budgetCost: 0,
              sfBestMove: sfLines[0].move, sfBestEval: sfLines[0].eval,
              archetype: 'sf_mirror', divergeReason: 'mirror_opening', candidates: [] };
   }
@@ -933,9 +940,9 @@ function selectBestMove(sfLines, epEvals, wePlayWhite, moveNumber, chess, moveHi
   // Data: 13+ overrides = losses; 0 overrides = wins. Budget enforces discipline.
   if (overrideBudget <= 0) {
     return { move: sfBest.move, sfEval: sfBest.eval, epPrediction: 'mirror', epConfidence: 0,
-             combinedScore: sfScored.combinedScore, epOverride: false,
+             combinedScore: sfScored.combinedScore, epOverride: false, budgetCost: 0,
              sfBestMove: sfBest.move, sfBestEval: sfBest.eval,
-             archetype: 'budget_exhausted', divergeReason: 'budget_zero', budgetCost: 0, candidates: [] };
+             archetype: 'budget_exhausted', divergeReason: 'budget_zero', candidates: [] };
   }
 
   const ourColor = wePlayWhite ? 'white' : 'black';
@@ -954,27 +961,37 @@ function selectBestMove(sfLines, epEvals, wePlayWhite, moveNumber, chess, moveHi
     const strongDrawSignal = epPick.drawBonus > 0.14;
     if (nearEqual && (inDrawArch || strongDrawSignal) && epScoreGap >= DRAW.minScoreGap && !desperate) {
       shouldDiverge = true;
+      budgetCost = 1; // Black draw-hunt costs 1 (governor kept — 13+ overrides = losses)
       divergeReason = `B_draw_arch: arch=${epPick.archetype} bonus=${epPick.drawBonus?.toFixed(3)} eval=${sfBest.eval.toFixed(2)}`;
     }
   } else if (epPick.move !== sfBest.move) {
     // ── WIN HUNT (NEEDLE): SF neutral + EP in win-strong archetype + sustained edge ──
     // Needle mode: EP has been building positional truth SF can't see — go for the kill
-    if (sfNeutral && inWinArch && !desperate &&
-        epPick.epPrediction === ourColor &&
+    // v2: Needle overdrive (11+/12 drift) removes archetype gate AND epPrediction gate — drift IS the signal
+    // v2: Win-hunt costs 1 (not 2) when needle is active — it's earned
+    const needleOverdrive = needleActive && needleDriftCount >= 11;
+    const effectiveBudgetCost = needleActive ? 1 : DRAW.budgetWinHuntCost;
+    // For needle overdrive: drift proves sustained advantage — allow even if EP predicts draw
+    const epPredOk = (epPick.epPrediction === ourColor) || needleOverdrive;
+    if (sfNeutral && !desperate &&
+        epPredOk &&
         epPick.epConfidence >= effectiveWinConf &&
-        overrideBudget >= DRAW.budgetWinHuntCost) {
+        overrideBudget >= effectiveBudgetCost &&
+        (inWinArch || needleOverdrive)) {
       shouldDiverge = true;
-      budgetCost = DRAW.budgetWinHuntCost;
-      divergeReason = `WIN_HUNT${needleActive ? '_NEEDLE' : ''}: arch=${epPick.archetype} SF=${sfBest.eval.toFixed(2)} ep_conf=${(epPick.epConfidence*100).toFixed(0)}% budget=${overrideBudget}`;
-    // ── DRAW HUNT: normal blind-spot diverge or draw-archetype ──
+      budgetCost = effectiveBudgetCost;
+      divergeReason = `WIN_HUNT${needleOverdrive ? '_OVERDRIVE' : needleActive ? '_NEEDLE' : ''}: arch=${epPick.archetype} SF=${sfBest.eval.toFixed(2)} ep_pred=${epPick.epPrediction} ep_conf=${(epPick.epConfidence*100).toFixed(0)}% cost=${budgetCost} budget=${overrideBudget}`;
+    // ── DRAW HUNT: normal blind-spot diverge or draw-archetype — cost=0 (defensive, free) ──
     } else if ((inBlindSpot || inDrawArch) && !desperate &&
         epPick.epConfidence >= DRAW.minEpConf &&
         epScoreGap >= DRAW.minScoreGap &&
         !survivalMode) {
       shouldDiverge = true;
+      budgetCost = 1; // draw-hunt costs 1 (governor kept — 13+ overrides = losses)
       divergeReason = `W_draw: eval=${sfBest.eval.toFixed(2)} arch=${epPick.archetype} gap=${epScoreGap.toFixed(3)}`;
     } else if (survivalMode && epPick.drawBonus > 0.10) {
       shouldDiverge = true;
+      budgetCost = 1;
       divergeReason = `survival_draw: drawBonus=${epPick.drawBonus?.toFixed(3)}`;
     }
   }
@@ -1087,14 +1104,15 @@ async function playSingleGame(epSf, opponentSf, epEngine, gameNum, wePlayWhite) 
           const needleActive = moveNumber > DRAW.needleHuntMinMove &&
             evalHistory.slice(-12).filter(e => e > 0.08).length >= DRAW.needleHuntMinDrift;
           if (needleActive) log(`[G${gameNum}] 🎯 NEEDLE m${moveNumber} drift=${evalHistory.slice(-12).filter(e=>e>0.08).length}/12 budget=${overrideBudget}`);
-          selection = selectBestMove(sfResult.lines, epEvals, wePlayWhite, moveNumber, chess, moveHistory, sfWdl, seenFens, overrideBudget, needleActive);
+          const needleDriftCount = evalHistory.slice(-12).filter(e => e > 0.08).length;
+          selection = selectBestMove(sfResult.lines, epEvals, wePlayWhite, moveNumber, chess, moveHistory, sfWdl, seenFens, overrideBudget, needleActive, needleDriftCount);
         }
       }
 
       moveUCI = selection.move;
       if (selection.epOverride) {
         epOverrides++;
-        overrideBudget -= (selection.budgetCost || 1);
+        overrideBudget -= (selection.budgetCost ?? 1);
         if (overrideBudget <= 0) log(`[G${gameNum}] 🛡 Budget exhausted at m${moveNumber} — pure mirror mode`);
       }
       // Track eval drift for needle detection — rolling window

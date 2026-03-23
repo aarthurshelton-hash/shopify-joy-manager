@@ -309,154 +309,157 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
 
   // Helper to try multiple PGN parsing strategies
   const parsePgn = useCallback((rawPgn: string): { success: boolean; moves: Move[] } => {
-    const chess = new Chess();
+    // Extract starting FEN if present (Chess960 and non-standard starting positions)
+    const fenMatch = rawPgn.match(/\[FEN\s+"([^"]+)"\]/i);
+    const startFen = fenMatch?.[1];
     
-    // Strategy 1: Try loading full PGN as-is
+    const makeChess = () => startFen ? new Chess(startFen) : new Chess();
+    
+    // Strategy 1: Try loading full PGN as-is (handles comments, annotations, Chess960 FEN)
     try {
+      const chess = makeChess();
       chess.loadPgn(rawPgn);
       const moves = chess.history({ verbose: true }) as Move[];
-      if (moves.length > 0) {
-        return { success: true, moves };
-      }
+      if (moves.length > 0) return { success: true, moves };
     } catch { /* strategy 1 failed, try next */ }
     
-    // Strategy 2: Remove headers and try again
-    chess.reset();
-    const withoutHeaders = rawPgn.replace(/\[.*?\]\s*/g, '').trim();
-    if (withoutHeaders) {
-      try {
+    // Strategy 2: Remove headers and try loadPgn again
+    try {
+      const chess = makeChess();
+      const withoutHeaders = rawPgn.replace(/\[[^\]]*\]\s*/g, '').trim();
+      if (withoutHeaders) {
         chess.loadPgn(withoutHeaders);
         const moves = chess.history({ verbose: true }) as Move[];
-        if (moves.length > 0) {
-          return { success: true, moves };
-        }
-      } catch { /* strategy 2 failed, try next */ }
-    }
+        if (moves.length > 0) return { success: true, moves };
+      }
+    } catch { /* strategy 2 failed, try next */ }
     
-    // Strategy 3: Parse moves manually (e.g., "1. e4 e5 2. Nf3 Nc6")
-    chess.reset();
-    const moveTextMatch = rawPgn.match(/(\d+\.\s*\S+(?:\s+\S+)?)/g);
-    if (moveTextMatch) {
-      try {
-        for (const moveGroup of moveTextMatch) {
-          // Extract just the moves without move numbers
-          const individualMoves = moveGroup.replace(/\d+\.\s*/, '').trim().split(/\s+/);
-          for (const m of individualMoves) {
-            if (m && m !== '*' && !m.match(/^[012/-]+$/)) {
-              chess.move(m);
-            }
-          }
-        }
-        const parsedMoves = chess.history({ verbose: true }) as Move[];
-        if (parsedMoves.length > 0) {
-          return { success: true, moves: parsedMoves };
-        }
-      } catch { /* strategy 3 failed */ }
-    }
+    // Strategy 3: Robust token-by-token parser — strips all annotations, tolerates bad tokens
+    // Mirrors gameSimulator.ts fallback: per-token try-catch so one bad token never kills the loop
+    try {
+      const chess = makeChess();
+      const movesSection = rawPgn.replace(/\[[^\]]*\]/g, '').trim();
+      const tokens = movesSection
+        .replace(/\{[^}]*\}/g, '')    // Remove comments {…}
+        .replace(/\([^)]*\)/g, '')    // Remove variations (…)
+        .replace(/\$\d+/g, '')         // Remove NAG annotations $1 $2
+        .replace(/1-0|0-1|1\/2-1\/2|\*/g, '') // Remove result tokens
+        .split(/\s+/)
+        .filter(t => t && !t.match(/^\d+\.+$/) && t !== '...');
+      for (const token of tokens) {
+        try {
+          chess.move(
+            token.replace(/0-0-0/gi, 'O-O-O').replace(/0-0/gi, 'O-O').replace(/[+#!?]+$/, '')
+          );
+        } catch { /* skip invalid token, keep going */ }
+      }
+      const moves = chess.history({ verbose: true }) as Move[];
+      if (moves.length > 0) return { success: true, moves };
+    } catch { /* strategy 3 failed */ }
     
     return { success: false, moves: [] };
   }, []);
 
   // Calculate tracked pieces with unique IDs for animation
   const trackedPieces = useMemo((): TrackedPiece[] => {
-    // Early return if pieces shouldn't be shown
-    if (!showPieces) {
-      console.log('[InteractiveVisualizationBoard] showPieces is false, skipping piece rendering');
-      return [];
-    }
-    
-    // Validate PGN is a non-empty string
-    if (!pgn || typeof pgn !== 'string') {
-      console.warn('[InteractiveVisualizationBoard] No PGN for pieces - pgn is:', typeof pgn, 'value:', pgn);
-      return [];
-    }
+    if (!showPieces) return [];
+    if (!pgn || typeof pgn !== 'string' || pgn.trim().length < 2) return [];
     
     const trimmedPgn = pgn.trim();
-    if (trimmedPgn === '' || trimmedPgn.length < 2) {
-      console.warn('[InteractiveVisualizationBoard] Empty or too short PGN for pieces, length:', trimmedPgn.length);
-      return [];
-    }
-    
-    console.log('[InteractiveVisualizationBoard] Parsing PGN for pieces, length:', trimmedPgn.length, 'currentMove:', currentMoveNumber);
     
     try {
-      // Use robust PGN parser
       const { success, moves: allMovesVerbose } = parsePgn(trimmedPgn);
-      
       if (!success || allMovesVerbose.length === 0) {
         console.warn('[InteractiveVisualizationBoard] PGN parsing failed or no moves found');
         return [];
       }
       
-      console.log('[InteractiveVisualizationBoard] Parsed', allMovesVerbose.length, 'moves successfully');
+      // Extract starting FEN for Chess960 / non-standard positions
+      const fenMatch = trimmedPgn.match(/\[FEN\s+"([^"]+)"\]/i);
+      const startFen = fenMatch?.[1];
+      const makeChess = () => startFen ? new Chess(startFen) : new Chess();
       
-      // Track piece origins - each piece gets a unique ID based on starting square
-      const pieceOrigins = new Map<string, string>(); // current square -> origin ID
-      
-      // Initialize with starting position
-      const startChess = new Chess();
+      // Initialize piece origin tracking from correct starting position
+      const pieceOrigins = new Map<string, string>();
+      const startChess = makeChess();
       for (let rank = 0; rank < 8; rank++) {
         for (let file = 0; file < 8; file++) {
           const square = `${String.fromCharCode(97 + file)}${rank + 1}` as Square;
           const piece = startChess.get(square);
-          if (piece) {
-            const originId = `${piece.color}-${piece.type.toUpperCase()}-${square}`;
-            pieceOrigins.set(square, originId);
-          }
+          if (piece) pieceOrigins.set(square, `${piece.color}-${piece.type.toUpperCase()}-${square}`);
         }
       }
       
-      // Replay moves to track piece movements
-      const chess = new Chess();
+      // Locate initial rook squares dynamically (Chess960: rooks can start anywhere)
+      const findRookSquares = (color: 'w' | 'b') => {
+        const rankChar = color === 'w' ? '1' : '8';
+        let kingFile = -1;
+        for (let f = 0; f < 8; f++) {
+          const sq = `${String.fromCharCode(97 + f)}${rankChar}` as Square;
+          const p = startChess.get(sq);
+          if (p?.type === 'k' && p?.color === color) { kingFile = f; break; }
+        }
+        let kingSide: string | null = null, queenSide: string | null = null;
+        for (let f = 0; f < 8; f++) {
+          const sq = `${String.fromCharCode(97 + f)}${rankChar}`;
+          const p = startChess.get(sq as Square);
+          if (p?.type === 'r' && p?.color === color) {
+            if (f > kingFile) kingSide = sq;
+            else queenSide = sq;
+          }
+        }
+        return { kingSide, queenSide };
+      };
+      const whiteRooks = findRookSquares('w');
+      const blackRooks = findRookSquares('b');
+      
+      // Replay moves using correct starting position
+      const chess = makeChess();
       const moveCount = currentMoveNumber !== undefined ? currentMoveNumber : allMovesVerbose.length;
       
       for (let i = 0; i < Math.min(moveCount, allMovesVerbose.length); i++) {
         const move = allMovesVerbose[i];
         const originId = pieceOrigins.get(move.from);
         
-        // Handle captures - remove captured piece
-        if (move.captured) {
-          pieceOrigins.delete(move.to);
-        }
-        
-        // Move piece to new square
+        if (move.captured) pieceOrigins.delete(move.to);
         if (originId) {
           pieceOrigins.delete(move.from);
           pieceOrigins.set(move.to, originId);
         }
         
-        // Handle castling - move the rook too
-        if (move.flags.includes('k')) { // Kingside
-          const rookFrom = move.color === 'w' ? 'h1' : 'h8';
-          const rookTo = move.color === 'w' ? 'f1' : 'f8';
-          const rookId = pieceOrigins.get(rookFrom);
-          if (rookId) {
-            pieceOrigins.delete(rookFrom);
-            pieceOrigins.set(rookTo, rookId);
+        // Castling: move the rook too — Chess960 compatible (dynamic rook squares)
+        if (move.flags.includes('k')) {
+          const rookFrom = move.color === 'w' ? whiteRooks.kingSide : blackRooks.kingSide;
+          const rookTo   = move.color === 'w' ? 'f1' : 'f8';
+          if (rookFrom) {
+            const rookId = pieceOrigins.get(rookFrom);
+            if (rookId) { pieceOrigins.delete(rookFrom); pieceOrigins.set(rookTo, rookId); }
           }
-        } else if (move.flags.includes('q')) { // Queenside
-          const rookFrom = move.color === 'w' ? 'a1' : 'a8';
-          const rookTo = move.color === 'w' ? 'd1' : 'd8';
-          const rookId = pieceOrigins.get(rookFrom);
-          if (rookId) {
-            pieceOrigins.delete(rookFrom);
-            pieceOrigins.set(rookTo, rookId);
+        } else if (move.flags.includes('q')) {
+          const rookFrom = move.color === 'w' ? whiteRooks.queenSide : blackRooks.queenSide;
+          const rookTo   = move.color === 'w' ? 'd1' : 'd8';
+          if (rookFrom) {
+            const rookId = pieceOrigins.get(rookFrom);
+            if (rookId) { pieceOrigins.delete(rookFrom); pieceOrigins.set(rookTo, rookId); }
           }
         }
         
-        // Handle promotion - update the piece type in the ID
         if (move.promotion) {
-          const newId = `${move.color}-${move.promotion.toUpperCase()}-${move.from}-promoted`;
-          pieceOrigins.set(move.to, newId);
+          pieceOrigins.set(move.to, `${move.color}-${move.promotion.toUpperCase()}-${move.from}-promoted`);
         }
         
-        chess.move(allMovesVerbose[i].san);
+        // Per-move try-catch: fall back to from/to notation for Chess960 or unusual positions
+        try {
+          chess.move(move.san);
+        } catch {
+          try { chess.move({ from: move.from as Square, to: move.to as Square, promotion: move.promotion }); }
+          catch { break; }
+        }
       }
       
-      // Build tracked pieces array
+      // Build final piece list from board state
       const pieces: TrackedPiece[] = [];
       const boardState = chess.board();
-      
       for (let rowIndex = 0; rowIndex < 8; rowIndex++) {
         const rank = 7 - rowIndex;
         for (let file = 0; file < 8; file++) {
@@ -464,27 +467,20 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
           if (piece) {
             const square = `${String.fromCharCode(97 + file)}${rank + 1}`;
             const originId = pieceOrigins.get(square) || `${piece.color}-${piece.type.toUpperCase()}-${square}`;
-            const x = borderWidth + file * squareSize + squareSize / 2;
-            const y = borderWidth + rowIndex * squareSize + squareSize / 2;
-            
             pieces.push({
-              id: originId,
-              type: piece.type,
-              color: piece.color,
-              square,
-              x,
-              y,
+              id: originId, type: piece.type, color: piece.color, square,
+              x: borderWidth + file * squareSize + squareSize / 2,
+              y: borderWidth + rowIndex * squareSize + squareSize / 2,
             });
           }
         }
       }
-      
       return pieces;
     } catch (e) {
       console.error('Error parsing PGN for pieces:', e);
       return [];
     }
-  }, [showPieces, pgn, currentMoveNumber, borderWidth, squareSize]);
+  }, [showPieces, pgn, currentMoveNumber, borderWidth, squareSize, parsePgn]);
   
   // Calculate piece move arrows from PGN
   const calculatePieceArrows = useCallback((pieceType: string, pieceColor: 'w' | 'b'): PieceMoveArrow[] => {

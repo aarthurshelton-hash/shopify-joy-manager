@@ -21,7 +21,7 @@
     {
       "name": "chess-db-ingest",
       "script": "./farm/workers/chess-db-ingest-worker.mjs",
-      "args": "--min-elo=1500 --max-per-source=50000 --sf-depth=14",
+      "args": "--min-elo=1500 --max-per-source=500000 --sf-depth=14",
       "instances": 1,
       "exec_mode": "fork",
       "autorestart": true,
@@ -40,7 +40,7 @@
     {
       "name": "chess-db-ingest-2",
       "script": "./farm/workers/chess-db-ingest-worker.mjs",
-      "args": "--min-elo=1500 --max-per-source=50000 --sf-depth=14",
+      "args": "--min-elo=1500 --max-per-source=500000 --sf-depth=14",
       "instances": 1,
       "exec_mode": "fork",
       "autorestart": true,
@@ -59,7 +59,7 @@
     {
       "name": "chess-db-ingest-3",
       "script": "./farm/workers/chess-db-ingest-worker.mjs",
-      "args": "--min-elo=1500 --max-per-source=50000 --sf-depth=14",
+      "args": "--min-elo=1500 --max-per-source=500000 --sf-depth=14",
       "instances": 1,
       "exec_mode": "fork",
       "autorestart": true,

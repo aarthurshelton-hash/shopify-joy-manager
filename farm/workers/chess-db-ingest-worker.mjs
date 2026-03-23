@@ -2622,23 +2622,25 @@ async function flushBatch() {
 // SHARED STREAM PROCESSOR — Batch dedup + full pipeline
 // ════════════════════════════════════════════════════════
 
-async function processSourceStream(stream, epEngine, source) {
+async function processSourceStream(stream, epEngine, source, startOffset = 0) {
   let processed = 0, skipped = 0, errors = 0;
   let epCorrect = 0, sfCorrect = 0;
   const startTime = Date.now();
   let saturated = false;
 
-  // v32: Dupe-spiral detection with SKIP instead of BAIL
+  // v33: Dupe-spiral detection with SKIP + DEPTH RESUME
   // When we hit dupes, skip deeper into the stream instead of giving up
   // Each Lichess monthly dump has 80-100M games — we've only scratched the surface
+  // startOffset: resume from a previously saved depth (skips first N games fast)
   const DUPE_WINDOW = 2000;
   const DUPE_SKIP_RATIO = 0.90; // 90%+ dupes = skip deeper
-  const SKIP_AMOUNT = 50000; // Skip 50K games to find fresh territory
-  const MAX_SKIPS = 5; // After 5 skips (250K games deep), mark month done
+  const SKIP_AMOUNT = 500000; // v33: 500K per spiral (10x increase) — jump to truly fresh territory
+  const MAX_SKIPS = 20; // v33: 20 spirals before giving up (was 5) — mine 10M games deep before cycling
   let windowChecked = 0, windowDupes = 0;
   let skipCount = 0;
   let totalScanned = 0;
-  let skipRemaining = 0; // v32: when > 0, skip games without processing
+  let skipRemaining = startOffset > 0 ? startOffset : 0; // v33: resume from saved depth
+  if (startOffset > 0) console.log(`[${workerId}] [${source}] ⏩ Resuming from depth ~${startOffset.toLocaleString()} — skipping to fresh territory...`);
 
   // Collect games in small batches for dedup checking
   let gameBuffer = [];
@@ -2797,12 +2799,13 @@ async function processSourceStream(stream, epEngine, source) {
     `  Skipped:       ${skipped.toLocaleString()} (dedup + filters)\n` +
     `  Errors:        ${errors}\n` +
     `  DB Saved:      ${dbSaved.toLocaleString()} | Dupes: ${dbDupes} | FEN: ${dbFenInvalid}\n` +
+    `  Depth reached: ~${totalScanned.toLocaleString()} games into stream\n` +
     `  Time:          ${(elapsed / 60).toFixed(1)} minutes\n` +
     `  Rate:          ${(processed / elapsed).toFixed(1)} games/sec\n` +
     `══════════════════════════════════════════════════════`
   );
   
-  return processed;
+  return { count: processed, saturated, finalDepth: totalScanned };
 }
 
 // ════════════════════════════════════════════════════════
@@ -2875,7 +2878,9 @@ async function ingestLichessDB(epEngine) {
   const monthStr = allMonths[lichessMonthIndex % allMonths.length];
   lichessMonthIndex++;
   saveState(); // persist index so restart continues from here
-  console.log(`[LICHESS-DB] Cycle ${lichessMonthIndex}: month ${monthStr} (${allMonths.length} total, ${completedLichessMonths.size} completed) [${dbType}]`);
+  // v33: Resume from previously saved depth offset for this month (if we hit spirals before)
+  const startOffset = monthSkipOffsets[completionKey(monthStr)] || 0;
+  console.log(`[LICHESS-DB] Cycle ${lichessMonthIndex}: month ${monthStr} (${allMonths.length} total, ${completedLichessMonths.size} completed) [${dbType}]${startOffset > 0 ? ` — resuming at depth ~${startOffset.toLocaleString()}` : ''}`);
   // Standard: lichess_db_standard_rated_YYYY-MM.pgn.zst
   // Chess960: lichess_db_chess960_rated_YYYY-MM.pgn.zst
   const url = use960
@@ -2913,11 +2918,12 @@ async function ingestLichessDB(epEngine) {
     try { zstd.kill(); } catch {}
   }, streamMinutes * 60 * 1000);
   
-  let games = 0, isSaturated = false;
+  let games = 0, isSaturated = false, finalDepth = 0;
   try {
-    const result = await processSourceStream(zstd.stdout, epEngine, use960 ? 'lichess_960' : 'lichess_db');
+    const result = await processSourceStream(zstd.stdout, epEngine, use960 ? 'lichess_960' : 'lichess_db', startOffset);
     games = result.count;
     isSaturated = result.saturated;
+    finalDepth = result.finalDepth;
   } catch (streamErr) {
     // EPIPE from stream.destroy() during dupe spiral — treat as saturated
     console.log(`[LICHESS-DB] ${monthStr}: stream error (${streamErr.code || streamErr.message}) — treating as saturated`);
@@ -2928,11 +2934,13 @@ async function ingestLichessDB(epEngine) {
   try { curl.kill(); } catch {}
   try { zstd.kill(); } catch {}
   
-  // Self-healing: mark saturated months complete so worker never re-enters a dupe spiral
-  if (isSaturated || games === 0) {
-    completedLichessMonths.add(completionKey(monthStr));
+  // v33: On saturation, save depth offset so next visit jumps past the exhausted zone
+  // Do NOT permanently mark as complete — each month has 80-100M games, only 404s are truly done
+  if (isSaturated) {
+    const newOffset = startOffset + finalDepth + 500000; // jump 500K past the dupe ceiling
+    monthSkipOffsets[completionKey(monthStr)] = newOffset;
     saveState();
-    console.log(`[LICHESS-DB] ${monthStr} [${dbType}]: saturated — marked complete, auto-advancing to next month`);
+    console.log(`[LICHESS-DB] ${monthStr} [${dbType}]: hit dupe ceiling at depth ~${(startOffset + finalDepth).toLocaleString()} — saved offset ${newOffset.toLocaleString()} for next visit`);
   } else {
     console.log(`[LICHESS-DB] ${monthStr} [${dbType}]: ${games} new ${use960 ? 'Chess960/Freestyle' : 'standard'} games ingested${timedOut ? ' (timed out, millions more available)' : ''}`);
   }

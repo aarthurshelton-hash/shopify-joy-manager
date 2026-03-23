@@ -144,7 +144,7 @@ export function simulateGame(pgn: string): SimulationResult {
     history = chess.history({ verbose: true });
   } catch (e) {
     // If direct loading fails, try to parse moves manually
-    console.log('Direct PGN load failed, attempting manual parsing...');
+    // suppressed: Direct PGN load failed, attempting manual parsing;
     
     // Extract just the moves section (after headers)
     const movesSection = pgn.replace(/\[[^\]]*\]/g, '').trim();
