@@ -47,7 +47,8 @@ export function predictFromColorFlow(
   currentMoveNumber: number,
   stockfishEval: number = 0,
   stockfishDepth: number = 18,
-  piece32Data?: Piece32Data | null
+  piece32Data?: Piece32Data | null,
+  avgPlayerRating?: number
 ): ColorFlowPrediction {
   // v8.07: Force-assign archetype if unknown
   const effectiveArchetype = forceArchetypeAssignment(
@@ -65,7 +66,8 @@ export function predictFromColorFlow(
     stockfishEval,
     stockfishDepth,
     currentMoveNumber,
-    piece32Data || null
+    piece32Data || null,
+    avgPlayerRating
   );
   
   // Store for debugging access

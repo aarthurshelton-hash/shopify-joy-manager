@@ -36,7 +36,7 @@ function getLastEquilibriumScores() {
 function getLastCalibrationReason() {
   return lastCalibrationReason;
 }
-function predictFromColorFlow(signature, currentMoveNumber, stockfishEval = 0, stockfishDepth = 18, piece32Data) {
+function predictFromColorFlow(signature, currentMoveNumber, stockfishEval = 0, stockfishDepth = 18, piece32Data, avgPlayerRating) {
   const effectiveArchetype = (0, import_archetypeCalibration.forceArchetypeAssignment)(
     signature.archetype,
     signature.dominantSide,
@@ -49,7 +49,8 @@ function predictFromColorFlow(signature, currentMoveNumber, stockfishEval = 0, s
     stockfishEval,
     stockfishDepth,
     currentMoveNumber,
-    piece32Data || null
+    piece32Data || null,
+    avgPlayerRating
   );
   lastEquilibriumScores = equilibrium;
   const sfPrediction = (0, import_archetypeCalibration.getSfPrediction)(stockfishEval);

@@ -86,7 +86,8 @@ export function calculateEquilibriumScores(
   stockfishEval: number,
   stockfishDepth: number,
   currentMoveNumber: number,
-  piece32Data?: Piece32Data | null
+  piece32Data?: Piece32Data | null,
+  avgPlayerRating?: number
 ): EquilibriumScores {
   // v9.7: ARCHETYPE REMAPPING — garbage archetypes → nearest proven archetype
   // Data: these archetypes are below 40% even in the golden zone (conf 55-64):
@@ -359,11 +360,25 @@ export function calculateEquilibriumScores(
                   absEval < 200 ? 0.95 :     // SF leads — reduce EP slightly
                   1.0;                        // 200+: neutral
   
+  // v35.1: RATING-TIER CALIBRATION — elite games behave differently in key zones.
+  // Data: lichess_gm (avg ~2550) shows EP +1.06pp vs +2.92pp on mixed pool.
+  // At 2500+, in 0-50cp: EP edge shrinks ~15% (fewer equal positions, faster conversion).
+  // At 2500+, in 50-200cp: SF is more reliable (+0.74pp only vs +5.57pp overall).
+  // Applied AFTER zone multipliers — a modest scaling on top of existing calibration.
+  // Conservative: never changes a prediction direction, only adjusts signal balance.
+  const isElite = (avgPlayerRating || 0) >= 2500;
+  const isUpperMid = !isElite && (avgPlayerRating || 0) >= 2200;
+  const ratingEpAdj = isElite ? (absEval < 50 ? 0.90 : absEval < 200 ? 0.95 : 1.0)
+                               : isUpperMid ? (absEval < 50 ? 0.97 : 1.0) : 1.0;
+  const ratingSfAdj = isElite ? (absEval < 50 ? 1.0 : absEval < 200 ? 1.08 : absEval < 500 ? 1.05 : 1.0)
+                               : 1.0;
+  
   // v30.3: 2D calibration — stack eval zone multiplier × phase multiplier
-  // Example: move 8, eval 15cp → epBoost 1.55 × phaseEpMult 1.12 = 1.74x EP weight
-  //          move 42, eval 80cp → epBoost 0.92 × phaseEpMult 0.96 = 0.88x EP weight
-  const combinedEpBoost = epBoost * phaseEpMult;
-  const combinedSfMult = sfZoneMultiplier * phaseSfMult;
+  // v35.1: ×rating-tier multiplier for 3D calibration (zone × phase × rating)
+  // Example: move 8, eval 15cp, elite → epBoost 1.55 × 1.12 × 0.90 = 1.56x EP weight
+  //          move 8, eval 15cp, mixed → epBoost 1.55 × 1.12 × 1.00 = 1.74x EP weight
+  const combinedEpBoost = epBoost * phaseEpMult * ratingEpAdj;
+  const combinedSfMult = sfZoneMultiplier * phaseSfMult * ratingSfAdj;
   
   const weights = hasEnhanced ? {
     control: ((isEndgame ? 0.06 : 0.12) - deepStealControl) * combinedEpBoost,

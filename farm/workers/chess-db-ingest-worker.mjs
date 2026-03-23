@@ -1177,7 +1177,7 @@ function classifyArchetype32(sig) {
 // v27.0: EVALUATE SINGLE POSITION — building block for multi-position analysis
 // Returns raw prediction data for one position. Reuses same logic as processGame
 // but separated so we can call it at multiple move numbers.
-async function evaluatePosition(game, moveNumber, epEngine, fullPgn, moveTokens, startFen = null) {
+async function evaluatePosition(game, moveNumber, epEngine, fullPgn, moveTokens, startFen = null, avgPlayerRating = 0) {
   const { simulateGame, extractColorFlowSignature, predictFromColorFlow, extract32PieceSignature, predictFrom32Piece } = epEngine;
   
   // Play through moves with chess.js to get real FEN
@@ -1239,7 +1239,7 @@ async function evaluatePosition(game, moveNumber, epEngine, fullPgn, moveTokens,
   // Baseline (4-quadrant) — v29.4: now receives 32-piece data as Component 15 in fusion
   const gameData = { white: game.headers.White || 'Unknown', black: game.headers.Black || 'Unknown', pgn: fullPgn };
   const baselineSig = extractColorFlowSignature(board, gameData, totalMoves);
-  const baselinePred = predictFromColorFlow(baselineSig, totalMoves, sfEvalCp, 18, enhancedSig || undefined);
+  const baselinePred = predictFromColorFlow(baselineSig, totalMoves, sfEvalCp, 18, enhancedSig || undefined, avgPlayerRating || undefined);
   const baselineResult = {
     predictedWinner: baselinePred.predictedWinner === 'white' ? 'white_wins' :
                      baselinePred.predictedWinner === 'black' ? 'black_wins' : 'draw',
@@ -1445,9 +1445,16 @@ async function processGame(game, moveNumber, epEngine, source) {
     getPlayerProfile(game.headers.Black, dbSource),
   ]);
   
+  // v35.1: Average player rating — used for 3D calibration in EP engine
+  // Passed to evaluatePosition → predictFromColorFlow → calculateEquilibriumScores
+  // At 2500+ the EP/SF balance shifts (SF more reliable in 50-200cp zone)
+  const wEloGame = parseInt(game.headers.WhiteElo) || 0;
+  const bEloGame = parseInt(game.headers.BlackElo) || 0;
+  const avgPlayerRating = (wEloGame > 0 && bEloGame > 0) ? Math.round((wEloGame + bEloGame) / 2) : 0;
+  
   // v27.1: PRIMARY position evaluation (uses the well-calibrated selectMoveNumber)
   // Prediction comes from THIS position only. Multi-position is confidence-only.
-  const primaryEval = await evaluatePosition(game, moveNumber, epEngine, fullPgn, moveTokens, startFen);
+  const primaryEval = await evaluatePosition(game, moveNumber, epEngine, fullPgn, moveTokens, startFen, avgPlayerRating);
   if (!primaryEval) return null;
   
   // v27.1: SECONDARY positions for confidence signal (don't change prediction)
@@ -1464,11 +1471,11 @@ async function processGame(game, moveNumber, epEngine, source) {
     
     const secondaryEvals = [];
     if (earlyPos !== moveNumber && earlyPos >= minMove) {
-      const pe = await evaluatePosition(game, earlyPos, epEngine, fullPgn, moveTokens, startFen);
+      const pe = await evaluatePosition(game, earlyPos, epEngine, fullPgn, moveTokens, startFen, avgPlayerRating);
       if (pe) secondaryEvals.push(pe);
     }
     if (latePos !== moveNumber && latePos <= maxMove) {
-      const pe = await evaluatePosition(game, latePos, epEngine, fullPgn, moveTokens, startFen);
+      const pe = await evaluatePosition(game, latePos, epEngine, fullPgn, moveTokens, startFen, avgPlayerRating);
       if (pe) secondaryEvals.push(pe);
     }
     
@@ -1895,6 +1902,23 @@ async function processGame(game, moveNumber, epEngine, source) {
     // 1000+cp: no bullet cap — 87-91% accuracy is reliable
   }
   
+  // v35.1: ELITE ELO EDGE DAMPER
+  // Data: lichess_gm profile (avg ~2550) shows EP +1.06pp vs +2.92pp on mixed pool.
+  // At 2500+ avgElo in the 50-500cp zone, SF is more reliable (elite players calculate
+  // deeply, making SF's material/tactical assessment more accurate). Modest cap keeps
+  // confidence honest without killing valid predictions.
+  // Not applied to <50cp zone — EP's +21pp structural edge holds even at elite level.
+  if (wEloRev >= 2400 && bEloRev >= 2400 && hasRealEval) {
+    const absEvalElite = Math.abs(sfEvalCp);
+    if (absEvalElite >= 50 && absEvalElite < 200) {
+      // 50-200cp: nearly-tied zone at elite level (+0.74-0.90pp only). Cap at 55.
+      hybridConf = Math.min(0.55, hybridConf);
+    } else if (absEvalElite >= 200 && absEvalElite < 500) {
+      // 200-500cp: elite players usually convert — SF reliable. Cap at 62.
+      hybridConf = Math.min(0.62, hybridConf);
+    }
+  }
+
   // v26.1: REVERSAL CORRECTION (conservative — bullet/blitz only)
   // v26.1 experiment: expanding to all TCs in 50-200cp showed 50% acc on 34 flips (coin flip).
   // Historical data overfitted. Keep only proven bullet/blitz gate.
@@ -3371,9 +3395,13 @@ async function ingestChessComPuzzles(epEngine) {
 // ════════════════════════════════════════════════════════
 
 async function discoverChessComPlayers() {
-  // v35.0: Expanded to GM+IM+FM+NM — NM players have billions of games and are
-  // the largest untapped pool on chess.com. High quality: 2200+ FIDE rated.
-  const titles = ['GM', 'IM', 'FM', 'NM'];
+  // v35.1: Expanded to all titles including women's (WGM/WIM/WFM/WCM/WNM).
+  // Women's titled players are rated 2000-2400 on Chess.com — EP's sweet spot
+  // where SF eval is less decisive and pattern recognition adds the most edge.
+  // Raised per-title cap to 2000 (NM pool has 50K+ players).
+  // After discovery: shuffle the full pool so diverse rating tiers are sampled
+  // evenly instead of always cycling through hardcoded GMs first.
+  const titles = ['GM', 'IM', 'FM', 'NM', 'WGM', 'WIM', 'WFM', 'WCM', 'WNM'];
   const existing = new Set(CHESSCOM_PLAYERS);
   let added = 0;
   
@@ -3388,8 +3416,8 @@ async function discoverChessComPlayers() {
       const data = await res.json();
       const players = data.players || [];
       
-      // v35.0: Raised from 500→1000 per title — NM pool is massive, need higher cap
-      const newPlayers = players.filter(p => !existing.has(p)).sort().slice(0, 1000);
+      // v35.1: Raised cap to 2000 per title — WFM/WCM/NM pools are huge
+      const newPlayers = players.filter(p => !existing.has(p)).slice(0, 2000);
       for (const p of newPlayers) {
         CHESSCOM_PLAYERS.push(p);
         existing.add(p);
@@ -3401,7 +3429,14 @@ async function discoverChessComPlayers() {
     }
   }
   
-  console.log(`[CC-DISCOVER] Player pool now: ${CHESSCOM_PLAYERS.length} players (+${added} discovered)`);
+  // Shuffle the full pool so the ingest cycle samples all rating tiers evenly
+  // instead of exhausting the 130 hardcoded GMs before reaching discovered players
+  for (let i = CHESSCOM_PLAYERS.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [CHESSCOM_PLAYERS[i], CHESSCOM_PLAYERS[j]] = [CHESSCOM_PLAYERS[j], CHESSCOM_PLAYERS[i]];
+  }
+  
+  console.log(`[CC-DISCOVER] Player pool: ${CHESSCOM_PLAYERS.length} players (+${added} discovered, shuffled for diversity)`);
 }
 
 // ════════════════════════════════════════════════════════
