@@ -601,8 +601,9 @@ const GameExplorer = () => {
           supabase.from('chess_prediction_attempts').select('*', { count: 'exact', head: true }).eq('hybrid_correct', true).eq('stockfish_correct', true),
         ]);
 
-        // If total is > 0, we have live data access
-        if (total && total > 0) {
+        // Only trust live data if we see the full dataset (>10M rows).
+        // RLS may return a partial subset for authenticated users.
+        if (total && total > 10_000_000) {
           setLiveStats({
             total: total || 0,
             epCorrect: epCorrect || 0,
@@ -613,7 +614,7 @@ const GameExplorer = () => {
           });
           setIsLive(true);
         } else {
-          // RLS blocked — use verified fallback
+          // Partial or blocked — use verified production stats
           setLiveStats(VERIFIED_STATS);
           setIsLive(false);
         }
