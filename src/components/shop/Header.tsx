@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { CartDrawer } from './CartDrawer';
 import { CurrencySelector } from './CurrencySelector';
-import { Menu, Gamepad2, Paintbrush, ShoppingBag, BookOpen, TrendingUp } from 'lucide-react';
+import { Menu, Gamepad2, Paintbrush, ShoppingBag, BookOpen, TrendingUp, Brain } from 'lucide-react';
 import UserMenu from '@/components/auth/UserMenu';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,6 +19,7 @@ import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 // Trading, Stock Predictions, Strategic Plan are ADMIN ONLY
 const navLinks = [
   { to: '/play', label: 'Play', icon: Gamepad2, highlight: true },
+  { to: '/explore', label: 'Explore', icon: Brain, highlight: true },
   { to: '/creative-mode', label: 'Create', icon: Paintbrush, highlight: true },
   { to: '/code-analysis', label: 'Code Analysis', icon: TrendingUp, highlight: true },
   { to: '/marketplace', label: 'Marketplace', icon: ShoppingBag, highlight: false },

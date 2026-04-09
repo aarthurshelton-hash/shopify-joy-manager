@@ -75,6 +75,7 @@ const ScalpingTerminalPage = lazy(() => import("./pages/ScalpingTerminalPage"));
 const EnPensentHeatmap = lazy(() => import("./pages/EnPensentHeatmap"));
 const OptionsScalpingPage = lazy(() => import("./pages/OptionsScalpingPage"));
 const Showcase = lazy(() => import("./pages/Showcase"));
+const GameExplorer = lazy(() => import("./pages/GameExplorer"));
 const AdminSystemVitals = lazy(() => import("./pages/AdminSystemVitals"));
 const Benchmark = lazy(() => import("./pages/Benchmark"));
 const ProofCenter = lazy(() => import("./pages/ProofCenter"));
@@ -126,6 +127,7 @@ const App = () => (
               <Route path="/v/:shareId" element={<Suspense fallback={<PageLoadingSkeleton />}><VisualizationRedirect /></Suspense>} />
               <Route path="/g/:gameHash" element={<GameView />} />
               <Route path="/openings" element={<Suspense fallback={<PageLoadingSkeleton />}><OpeningEncyclopedia /></Suspense>} />
+              <Route path="/explore" element={<Suspense fallback={<PageLoadingSkeleton />}><GameExplorer /></Suspense>} />
               <Route path="/code-analysis" element={<Suspense fallback={<PageLoadingSkeleton />}><CodeAnalysis /></Suspense>} />
               <Route path="/analysis/:id" element={<Suspense fallback={<PageLoadingSkeleton />}><SharedAnalysisReport /></Suspense>} />
               <Route path="/account" element={<Suspense fallback={<PageLoadingSkeleton />}><Account /></Suspense>} />
