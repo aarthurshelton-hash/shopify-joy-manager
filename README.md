@@ -1,38 +1,42 @@
-# Welcome to your Lovable project
+# En Pensent
 
-## Project info
+A path-based representation of chess games that **outperforms Stockfish 18 by +5.43 percentage points** on 3-way outcome prediction across a 12.24M-prediction live corpus, and **+19.13pp on 1.77M Chess960 / Freestyle games** where Stockfish lacks an opening book.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+**Public site:** [enpensent.com](https://enpensent.com) · **Live dashboard:** [enpensent.com/explore](https://enpensent.com/explore)
 
-## How can I edit this code?
+---
 
-There are several ways of editing your application.
+## For Reviewers, Auditors, and Researchers
 
-**Use Lovable**
+If you have been invited to evaluate the En Pensent system, **start here:** [`AUDIT.md`](./AUDIT.md).
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+The audit package provides:
 
-Changes made via Lovable will be committed automatically to this repo.
+- **One-command verification** of every published claim using the public anon key (no private credentials required)
+- **Canonical results** in [`RESULTS.md`](./RESULTS.md)
+- **Full methodology** in [`METHODOLOGY.md`](./METHODOLOGY.md)
+- **Public read-only Supabase view** for direct independent querying
 
-**Use your preferred IDE**
+To verify in 5 minutes:
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+```bash
+git clone https://github.com/aarthurshelton-hash/shopify-joy-manager.git
+cd shopify-joy-manager
+npm install
+node audit/verify.mjs
+```
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+---
 
-Follow these steps:
+## For Developers
+
+This is a Vite + React + TypeScript codebase originally bootstrapped on Lovable. Development:
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+git clone https://github.com/aarthurshelton-hash/shopify-joy-manager.git
+cd shopify-joy-manager
+npm install
+cp .env.example .env   # then fill in with your own credentials
 npm run dev
 ```
 

@@ -7,12 +7,16 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# Environment variables
+# Environment variables — bulletproof patterns. NOTHING starting with .env is committed.
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+.env*
+!.env.example
+
+# Defensive: any file containing secrets-shaped JWT-like names
+.envey*
+.env.save
+.envcd
 
 node_modules
 dist
