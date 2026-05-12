@@ -1,8 +1,10 @@
 {
-  "name": "vite_react_shadcn_ts",
+  "name": "en-pensent",
+  "description": "Chess art prints and path-based prediction system",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
+  "homepage": "https://enpensent.com",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

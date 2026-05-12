@@ -12,16 +12,18 @@ export default function AcademicPaper() {
   const { toast } = useToast();
   const { data: liveStats, isLoading: statsLoading } = useLiveChessStats();
 
-  // Fallback to reasonable defaults if stats are loading
+  // Fallback to canonical published values when live query is loading or RLS-blocked.
+  // Live numbers repopulate from useLiveChessStats once anon-key reads succeed.
+  // Canonical source: RESULTS.md / GameExplorer VERIFIED_STATS.
   const stats = liveStats || {
-    totalPredictions: 11088175,
+    totalPredictions: 12240000,
     epAccuracy: 69.24,
-    sfAccuracy: 63.83,
-    epEdge: 5.41,
+    sfAccuracy: 63.81,
+    epEdge: 5.43,
     goldenZoneEP: 71.6,
     goldenZoneSF: 68.1,
     goldenZoneCount: 0,
-    epRecoveryRate: 24.27,
+    epRecoveryRate: 34.37,
     bestArchetype: { name: 'piece_general_pressure', epAccuracy: 63.09, sfAccuracy: 46.65, edge: 16.44, count: 67000 },
     chess960Total: 1769457,
     chess960EP: 52.62,
@@ -1399,9 +1401,9 @@ NPPAD result: θ* = 3.0 (separation = 1.993) — same threshold independently di
           </p>
           <ol>
             <li>
-              <strong>Chess</strong>: 69.24% accuracy on 3-way outcome prediction (11,088,175 live predictions,
-              z{'>'}1000), exceeding Stockfish 18 baseline by <strong>5.41pp</strong> with 15-component auto-tuned fusion.
-              Largest archetype edge: piece_general_pressure +16.44pp (n≈67K). EP recovers 24.27% of SF18 errors independently
+              <strong>Chess</strong>: 69.24% accuracy on 3-way outcome prediction (12,240,000 live predictions,
+              z{'>'}1000), exceeding Stockfish 18 baseline by <strong>5.43pp</strong> with 15-component auto-tuned fusion.
+              Largest archetype edge: piece_general_pressure +16.44pp (n≈67K). EP recovers 34.37% of SF18 errors independently
             </li>
             <li>
               <strong>Battery</strong>: 56.5% accuracy and 89.0% critical detection on 140 cells /
