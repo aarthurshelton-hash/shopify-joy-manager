@@ -25,9 +25,7 @@ jobs:
         CI: true
 
   deploy:
-    # NOTE: 'needs: test' temporarily removed (May 2026) — pre-existing TS errors
-    # in archetypeDefinitions, abTestingFramework, marketplaceResilience, etc.
-    # are blocking the test job. Re-add this gate after fixing those.
+    needs: test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
