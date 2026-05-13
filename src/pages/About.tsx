@@ -390,7 +390,7 @@ const About = () => {
               <div className="p-4 rounded-lg bg-gradient-to-r from-primary/5 to-amber-500/5 border-2 border-primary/30">
                 <div className="flex items-center gap-2">
                   <h3 className="font-display font-bold text-sm uppercase tracking-wide text-primary">Natural Vision™</h3>
-                  <Badge className="bg-amber-500/20 text-amber-600 border-amber-500/30 text-xs">Patented</Badge>
+                  <Badge className="bg-amber-500/20 text-amber-600 border-amber-500/30 text-xs">Patent Pending</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground font-serif mt-1">
                   Every visualization is a scannable fingerprint. Point a camera at any print and instantly access the game's complete history, Stockfish analysis, and Vision Score. Art that remembers its story.

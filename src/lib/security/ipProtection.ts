@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright (c) 2024-2026 En Pensent LLC. All Rights Reserved.
+ * Copyright (c) 2024-2026 Alec Arthur Shelton. All Rights Reserved.
  * Proprietary and Confidential.
  * 
  * INTELLECTUAL PROPERTY NOTICE:
@@ -32,11 +32,11 @@ export function initializeIPProtection(): void {
             'color: #ff4444; font-size: 24px; font-weight: bold;'
           );
           console.log(
-            '%cThis application contains trade secrets and proprietary algorithms owned by En Pensent LLC.\n' +
+            '%cThis application contains trade secrets and proprietary algorithms owned by En Pensent.\n' +
             'Reverse engineering, decompiling, or extracting source code is strictly prohibited\n' +
             'under U.S. Code Title 18 § 1832 (Economic Espionage Act) and international law.\n\n' +
-            '© 2024-2026 En Pensent LLC. All Rights Reserved.\n' +
-            'Natural Vision™ is a registered trademark.',
+            '© 2024-2026 Alec Arthur Shelton (En Pensent). All Rights Reserved.\n' +
+            'Natural Vision™ is a trademark of En Pensent.',
             'color: #888; font-size: 12px;'
           );
         }

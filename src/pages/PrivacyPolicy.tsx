@@ -1,11 +1,11 @@
 /**
  * @license
- * Copyright (c) 2024-2026 En Pensent LLC. All Rights Reserved.
+ * Copyright (c) 2024-2026 Alec Arthur Shelton. All Rights Reserved.
  * 
  * This source code is proprietary and confidential.
  * Unauthorized copying, modification, distribution, or use of this software,
  * via any medium, is strictly prohibited without the express written permission
- * of En Pensent LLC.
+ * of the copyright holder.
  */
 
 import { Link } from 'react-router-dom';

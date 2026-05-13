@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright (c) 2024-2026 En Pensent LLC. All Rights Reserved.
+ * Copyright (c) 2024-2026 Alec Arthur Shelton. All Rights Reserved.
  * Proprietary and Confidential.
  */
 
@@ -510,7 +510,7 @@ const DMCA = () => {
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground space-y-2">
             <p>
-              <strong>En Pensent LLC</strong><br />
+              <strong>Alec Arthur Shelton</strong> (En Pensent)<br />
               DMCA Agent<br />
               Email: <span className="text-primary">a.arthur.shelton@gmail.com</span>
             </p>
@@ -524,7 +524,7 @@ const DMCA = () => {
         {/* Copyright Notice */}
         <div className="mt-12 text-center">
           <p className="text-xs text-muted-foreground">
-            © {currentYear} En Pensent LLC. All rights reserved. Protected by U.S. Copyright Law.
+            © {currentYear} Alec Arthur Shelton (En Pensent). All rights reserved. Protected by U.S. Copyright Law.
           </p>
         </div>
       </main>

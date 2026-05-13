@@ -332,7 +332,7 @@ export const INVESTMENT_HIGHLIGHTS = {
 // Company information
 export const COMPANY_INFO = {
   name: 'En Pensent',
-  legal: 'En Pensent LLC',
+  legal: 'Alec Arthur Shelton (En Pensent)',
   founded: '2024',
   headquarters: 'United States',
   website: 'enpensent.com',

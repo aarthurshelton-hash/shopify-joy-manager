@@ -784,7 +784,7 @@ const Investors = () => {
                 <div className="p-4 rounded-lg bg-gradient-to-br from-primary/10 to-amber-500/5 border-2 border-primary/30 space-y-3">
                   <div className="flex items-center gap-2">
                     <h3 className="font-display font-bold uppercase tracking-wide text-primary">Natural Vision™</h3>
-                    <span className="px-2 py-0.5 text-xs bg-amber-500/20 text-amber-600 rounded-full font-display">Patented</span>
+                    <span className="px-2 py-0.5 text-xs bg-amber-500/20 text-amber-600 rounded-full font-display">Patent Pending</span>
                   </div>
                   <p className="text-sm text-muted-foreground font-serif">
                     <strong className="text-foreground">Every visualization is a scannable digital fingerprint.</strong> The unique color patterns created by each game form a natural visual signature that can be recognized and linked to complete game data—no QR code needed.

@@ -85,34 +85,56 @@ function getDemoPathSquares(from: number[], to: number[], piece: string): number
   return squares;
 }
 
+// Build the fully-colored grid with all moves applied (for initial render / PDF)
+function buildCompletedGrid(): string[][] {
+  const g = Array.from({ length: 8 }, () => Array(8).fill(''));
+  for (const m of DEMO_MOVES) {
+    const path = getDemoPathSquares(m.from, m.to, m.piece);
+    for (const sq of path) {
+      g[sq[0]][sq[1]] = m.piece;
+    }
+  }
+  return g;
+}
+
 function ColorFlowDemo() {
-  const [step, setStep] = useState(0);
-  const [grid, setGrid] = useState<string[][]>(
-    Array.from({ length: 8 }, () => Array(8).fill(''))
-  );
+  // Start with the COMPLETED board so PDF/headless sees the full visualization
+  const [step, setStep] = useState(DEMO_MOVES.length);
+  const [grid, setGrid] = useState<string[][]>(buildCompletedGrid);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setStep(s => {
-        const next = s < DEMO_MOVES.length ? s + 1 : 0;
-        if (next === 0) {
-          setGrid(Array.from({ length: 8 }, () => Array(8).fill('')));
-        } else {
-          setGrid(prev => {
-            const g = prev.map(r => [...r]);
-            const m = DEMO_MOVES[next - 1];
-            // Color EVERY square the piece passes through (not just destination)
-            const path = getDemoPathSquares(m.from, m.to, m.piece);
-            for (const sq of path) {
-              g[sq[0]][sq[1]] = m.piece;
-            }
-            return g;
-          });
+    // After 3s, start replaying the animation from scratch
+    const startDelay = setTimeout(() => {
+      setStep(0);
+      setGrid(Array.from({ length: 8 }, () => Array(8).fill('')));
+
+      let currentStep = 0;
+      const interval = setInterval(() => {
+        currentStep++;
+        if (currentStep > DEMO_MOVES.length) {
+          // Pause on completed board, then restart
+          setTimeout(() => {
+            currentStep = 0;
+            setStep(0);
+            setGrid(Array.from({ length: 8 }, () => Array(8).fill('')));
+          }, 2000);
+          return;
         }
-        return next;
-      });
-    }, 1800);
-    return () => clearInterval(interval);
+        setStep(currentStep);
+        setGrid(prev => {
+          const g = prev.map(r => [...r]);
+          const m = DEMO_MOVES[currentStep - 1];
+          const path = getDemoPathSquares(m.from, m.to, m.piece);
+          for (const sq of path) {
+            g[sq[0]][sq[1]] = m.piece;
+          }
+          return g;
+        });
+      }, 1800);
+
+      return () => clearInterval(interval);
+    }, 3000);
+    return () => clearTimeout(startDelay);
   }, []);
 
   return (
@@ -129,23 +151,23 @@ function ColorFlowDemo() {
                 ? `${color}${piece === piece.toUpperCase() ? '88' : '66'}`
                 : isLight ? '#f5f0e8' : '#b7c0d0',
             }}>
-              {color && <div className="w-3 h-3 rounded-full animate-pulse" style={{ backgroundColor: color, boxShadow: `0 0 8px ${color}` }} />}
+              {color && <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color, boxShadow: `0 0 8px ${color}` }} />}
             </div>
           );
         })}
       </div>
       <div className="flex items-center justify-center gap-4 mt-4">
         <p className="text-sm font-mono font-bold text-amber-600">
-          {step > 0 ? DEMO_MOVES[step - 1].label : 'Starting position...'}
+          {step > 0 ? DEMO_MOVES[Math.min(step, DEMO_MOVES.length) - 1].label : 'Starting position...'}
         </p>
-        <p className="text-xs text-gray-400">Step {step}/{DEMO_MOVES.length}</p>
+        <p className="text-xs text-gray-400">{step >= DEMO_MOVES.length ? 'Complete — 8 moves visualized' : `Step ${step}/${DEMO_MOVES.length}`}</p>
       </div>
     </div>
   );
 }
 
 function Page({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <section className={`wp-page min-h-[11in] px-12 py-12 ${className}`}>{children}</section>;
+  return <section className={`wp-page min-h-[11in] px-10 py-8 ${className}`}>{children}</section>;
 }
 function Label({ children }: { children: React.ReactNode }) {
   return <div className="text-xs text-gray-400 mb-8 tracking-widest uppercase">{children}</div>;
@@ -206,7 +228,7 @@ export default function EnPensentWhitepaper() {
             <div><p className="text-3xl font-black text-blue-600">12.2M+</p><p className="text-xs text-gray-500">Predictions Analyzed</p></div>
             <div><p className="text-3xl font-black text-emerald-600">93.3%</p><p className="text-xs text-gray-500">Chemical F1 Score</p></div>
           </div>
-          <p className="text-sm text-gray-400">Alec Arthur Shelton · En Pensent Technologies</p>
+          <p className="text-sm text-gray-400">Alec Arthur Shelton · En Pensent</p>
         </Page>
 
         {/* PAGE 2: THE ORIGIN — How It Started */}
@@ -862,7 +884,7 @@ Piece activity on light vs dark = bullish vs bearish stance.`}</pre>
             </div>
             <div>
               <p className="text-xs font-bold mb-1">Organization</p>
-              <p className="text-xs text-gray-500">En Pensent Technologies</p>
+              <p className="text-xs text-gray-500">En Pensent</p>
             </div>
             <div>
               <p className="text-xs font-bold mb-1">Website</p>
@@ -879,17 +901,41 @@ Piece activity on light vs dark = bullish vs bearish stance.`}</pre>
             Silicon photonics hardware roadmap. The universal grid's constraint is not a limitation — 
             it's the mechanism that makes cross-domain pattern recognition possible.
           </div>
-          <p className="text-xs text-gray-300">© 2026 En Pensent Technologies. All rights reserved.</p>
+          <p className="text-xs text-gray-300">© 2026 En Pensent. All rights reserved.</p>
         </Page>
       </main>
 
       <style>{`
+        /* Screen layout */
+        .wp-page { border-bottom: 1px solid #e5e7eb; }
+        .wp-page:last-child { border-bottom: none; }
+
         @media print {
           header, .print\\:hidden { display: none !important; }
-          .wp-page { page-break-after: always; padding: 0.75in; min-height: auto; }
+          body { margin: 0; padding: 0; }
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+          }
+          .wp-page {
+            page-break-after: always;
+            page-break-inside: avoid;
+            padding: 0.6in 0.75in;
+            min-height: auto;
+            max-height: 10in;
+            overflow: hidden;
+            border-bottom: none;
+          }
           .wp-page:last-child { page-break-after: avoid; }
-          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          /* Prevent splitting inside key blocks */
+          .rounded-xl, .rounded-lg, .rounded-2xl,
+          table, pre, .grid, .space-y-4 > div, .space-y-2 > div {
+            page-break-inside: avoid;
+          }
+          /* Recharts SVGs need explicit sizing */
+          .recharts-responsive-container { overflow: visible !important; }
+          svg { max-width: 100%; }
         }
         @page { size: letter; margin: 0; }
       `}</style>

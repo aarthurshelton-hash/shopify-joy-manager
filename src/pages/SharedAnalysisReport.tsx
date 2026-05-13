@@ -339,7 +339,7 @@ export default function SharedAnalysisReport() {
               </Link>
             </div>
             <p className="text-xs text-muted-foreground mt-6">
-              © 2024 En Pensent Technologies. Patent Pending. All rights reserved.
+              © 2024 En Pensent. Patent Pending. All rights reserved.
             </p>
           </div>
         </motion.div>

@@ -86,7 +86,7 @@ export function PatentPendingBadge() {
               <p className="text-muted-foreground">
                 <strong>Alec Arthur Shelton</strong> ("The Artist")
                 <br />
-                Founder & CEO, En Pensent Technologies
+                Founder, En Pensent
                 <br />
                 <span className="text-xs">Filing Date: January 16, 2026</span>
               </p>

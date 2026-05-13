@@ -1,11 +1,11 @@
 /**
  * @license
- * Copyright (c) 2024-2026 En Pensent LLC. All Rights Reserved.
+ * Copyright (c) 2024-2026 Alec Arthur Shelton. All Rights Reserved.
  * 
  * This source code is proprietary and confidential.
  * Unauthorized copying, modification, distribution, or use of this software,
  * via any medium, is strictly prohibited without the express written permission
- * of En Pensent LLC.
+ * of the copyright holder.
  */
 
 import { Link, useLocation } from 'react-router-dom';
@@ -71,7 +71,7 @@ export const Footer = forwardRef<HTMLElement, object>(function Footer(_props, re
           {/* Copyright & Protection Notice */}
           <div className="flex flex-col items-center gap-2 pt-4 sm:pt-6">
             <p className="text-xs text-muted-foreground/60">
-              © {new Date().getFullYear()} En Pensent LLC. All rights reserved.
+              © {new Date().getFullYear()} En Pensent. All rights reserved.
             </p>
             <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/40">
               <Lock className="w-3 h-3" />

@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright (c) 2024-2026 En Pensent LLC. All Rights Reserved.
+ * Copyright (c) 2024-2026 Alec Arthur Shelton. All Rights Reserved.
  * Proprietary and Confidential - Natural Vision™ Technology
  */
 

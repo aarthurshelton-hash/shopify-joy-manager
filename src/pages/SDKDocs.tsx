@@ -477,7 +477,7 @@ const signature = musicEngine.extractSignature(symphonyData);`}
                   </Link>
                 </div>
                 <p className="text-center text-sm text-muted-foreground mt-6">
-                  © 2024 En Pensent Technologies. Patent Pending.
+                  © 2024 En Pensent. Patent Pending.
                 </p>
               </div>
             </motion.div>

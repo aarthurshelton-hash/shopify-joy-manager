@@ -1,11 +1,11 @@
 /**
  * @license
- * Copyright (c) 2024-2026 En Pensent LLC. All Rights Reserved.
+ * Copyright (c) 2024-2026 Alec Arthur Shelton. All Rights Reserved.
  * 
  * This source code is proprietary and confidential.
  * Unauthorized copying, modification, distribution, or use of this software,
  * via any medium, is strictly prohibited without the express written permission
- * of En Pensent LLC.
+ * of the copyright holder.
  * 
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
  */
@@ -59,13 +59,13 @@ const TermsOfService = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm">
-              © {currentYear} En Pensent LLC. All rights reserved.
+              © {currentYear} Alec Arthur Shelton (En Pensent). All rights reserved.
             </p>
             <p className="text-sm text-muted-foreground">
               The En Pensent platform, including but not limited to its software, design, visual elements,
               algorithms, user interface, and all associated intellectual property, is protected by copyright,
               trademark, and other intellectual property laws. The unique chess visualization technology,
-              color palette systems, and artistic rendering methods are proprietary trade secrets of En Pensent LLC.
+              color palette systems, and artistic rendering methods are proprietary trade secrets of En Pensent.
             </p>
           </CardContent>
         </Card>
@@ -128,7 +128,7 @@ const TermsOfService = () => {
               <p>
                 All content, features, and functionality of the Service—including but not limited to text,
                 graphics, logos, icons, images, audio clips, digital downloads, data compilations, and software—
-                are the exclusive property of En Pensent LLC and are protected by international copyright,
+                are the exclusive property of En Pensent and are protected by international copyright,
                 trademark, patent, trade secret, and other intellectual property laws.
               </p>
               <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 mt-4">
@@ -159,7 +159,7 @@ const TermsOfService = () => {
                 When you create visualizations ("Visions") using the Service, you retain ownership of your
                 original chess games and uploaded content. However, the artistic rendering, visual
                 representation, and any derivative works created by the Service remain the intellectual
-                property of En Pensent LLC.
+                property of En Pensent.
               </p>
               <p>
                 You are granted a limited, non-exclusive license to use, display, and sell your Visions
@@ -178,7 +178,7 @@ const TermsOfService = () => {
             <CardContent className="text-sm text-muted-foreground space-y-4">
               <p>
                 THE SERVICE IS PROVIDED "AS IS" WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED.
-                EN PENSENT LLC SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL,
+                EN PENSENT SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL,
                 OR PUNITIVE DAMAGES ARISING FROM YOUR USE OF THE SERVICE.
               </p>
             </CardContent>

@@ -35,7 +35,7 @@ export default function AcademicPaper() {
   author={Shelton, Alec Arthur},
   journal={arXiv preprint arXiv:2026.XXXXX},
   year={2026},
-  institution={En Pensent Technologies}
+  institution={En Pensent}
 }`;
 
   const copyBibtex = () => {
@@ -114,7 +114,7 @@ export default function AcademicPaper() {
               Alec Arthur Shelton
             </p>
             <p className="text-sm text-muted-foreground">
-              En Pensent Technologies
+              En Pensent
             </p>
             <div className="flex items-center justify-center gap-4 mt-4 text-xs text-muted-foreground">
               <span>February 2026</span>
