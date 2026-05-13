@@ -52,11 +52,14 @@ export const Footer = forwardRef<HTMLElement, object>(function Footer(_props, re
             The future of chess intelligence
           </p>
           
-          {/* Links - visible on tablet+ */}
-          <nav className="hidden sm:flex items-center gap-6 pt-2">
+          {/* Links - visible on all viewports, wraps on mobile */}
+          <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 sm:gap-6 pt-2 px-4">
             <Link to="/about" className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">About</Link>
-            <Link to="/marketplace" className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">Marketplace</Link>
+            <Link to="/academic-paper" className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">Research</Link>
+            <Link to="/proof" className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">Proof</Link>
+            <Link to="/benchmark" className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">Benchmark</Link>
             <Link to="/investors" className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">Investors</Link>
+            <Link to="/marketplace" className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">Marketplace</Link>
           </nav>
           
           {/* Legal Links */}

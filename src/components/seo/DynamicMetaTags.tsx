@@ -180,7 +180,7 @@ const PAGE_META: Record<string, PageMeta> = {
 const DEFAULT_META: PageMeta = {
   title: "En Pensent - Chess Art Prints",
   description: "Transform any chess game into stunning generative art. Create, scan, and collect unique visualizations.",
-  image: "https://enpensent.com/opengraph-image-p98pqg.png",
+  image: "https://enpensent.com/og-home.png",
   type: "website",
   keywords: "chess art, generative art, chess visualization, chess prints"
 };

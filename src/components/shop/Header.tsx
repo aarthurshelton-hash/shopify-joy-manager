@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { CartDrawer } from './CartDrawer';
 import { CurrencySelector } from './CurrencySelector';
-import { Menu, Gamepad2, Paintbrush, ShoppingBag, BookOpen, TrendingUp, Brain } from 'lucide-react';
+import { Menu, Gamepad2, Paintbrush, ShoppingBag, BookOpen, TrendingUp, Brain, FileText, BarChart3, Briefcase } from 'lucide-react';
 import UserMenu from '@/components/auth/UserMenu';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,6 +24,9 @@ const navLinks = [
   { to: '/code-analysis', label: 'Code Analysis', icon: TrendingUp, highlight: true },
   { to: '/marketplace', label: 'Marketplace', icon: ShoppingBag, highlight: false },
   { to: '/openings', label: 'Openings', icon: BookOpen, highlight: false },
+  { to: '/academic-paper', label: 'Research', icon: FileText, highlight: false },
+  { to: '/proof', label: 'Proof', icon: BarChart3, highlight: false },
+  { to: '/investors', label: 'Investors', icon: Briefcase, highlight: false },
   { to: '/about', label: 'About Us' },
 ];
 

@@ -125,7 +125,7 @@ export default function AcademicPaper() {
 
           {/* Abstract */}
           <Card className="mb-8">
-            <CardContent className="p-6">
+            <CardContent className="p-6 overflow-x-auto">
               <h2 className="text-lg font-bold mb-3 mt-0">Abstract</h2>
               <p className="text-sm leading-relaxed m-0">
                 We present a domain-agnostic temporal pattern recognition architecture that maps
@@ -587,7 +587,7 @@ NPPAD result: θ* = 3.0 (separation = 1.993) — same threshold independently di
 
           <h3>5.1 Chess Outcome Prediction</h3>
           <Card className="my-6 not-prose">
-            <CardContent className="p-6">
+            <CardContent className="p-6 overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b">
@@ -668,7 +668,7 @@ NPPAD result: θ* = 3.0 (separation = 1.993) — same threshold independently di
             The test matrix uses four parallel runs to isolate the EP layer's contribution:
           </p>
           <Card className="my-6 not-prose">
-            <CardContent className="p-6">
+            <CardContent className="p-6 overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b">
@@ -728,7 +728,7 @@ NPPAD result: θ* = 3.0 (separation = 1.993) — same threshold independently di
 
           <h3>5.2 Battery Degradation</h3>
           <Card className="my-6 not-prose">
-            <CardContent className="p-6">
+            <CardContent className="p-6 overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b">
@@ -780,7 +780,7 @@ NPPAD result: θ* = 3.0 (separation = 1.993) — same threshold independently di
 
           <h3>5.3 Tennessee Eastman Process</h3>
           <Card className="my-6 not-prose">
-            <CardContent className="p-6">
+            <CardContent className="p-6 overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b">
@@ -836,7 +836,7 @@ NPPAD result: θ* = 3.0 (separation = 1.993) — same threshold independently di
 
           <h3>5.4 Energy Grid</h3>
           <Card className="my-6 not-prose">
-            <CardContent className="p-6">
+            <CardContent className="p-6 overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b">
@@ -883,7 +883,7 @@ NPPAD result: θ* = 3.0 (separation = 1.993) — same threshold independently di
 
           <h3>5.5 Music Melodic Direction</h3>
           <Card className="my-6 not-prose">
-            <CardContent className="p-6">
+            <CardContent className="p-6 overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b">
@@ -944,7 +944,7 @@ NPPAD result: θ* = 3.0 (separation = 1.993) — same threshold independently di
 
           <h3>5.6 Financial Markets</h3>
           <Card className="my-6 not-prose">
-            <CardContent className="p-6">
+            <CardContent className="p-6 overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b">
@@ -985,7 +985,7 @@ NPPAD result: θ* = 3.0 (separation = 1.993) — same threshold independently di
           </Card>
 
           <Card className="my-6 not-prose">
-            <CardContent className="p-6">
+            <CardContent className="p-6 overflow-x-auto">
               <p className="text-sm font-semibold mb-3">Chess → Market Cross-Domain Resonance (8,634 resolved predictions, Mar 2026)</p>
               <p className="text-xs text-muted-foreground mb-3">
                 When the chess engine classifies an ongoing game into a specific archetype, market predictions
@@ -1077,7 +1077,7 @@ NPPAD result: θ* = 3.0 (separation = 1.993) — same threshold independently di
 
           <h3>5.7 Nuclear Power Plant Safety</h3>
           <Card className="my-6 not-prose">
-            <CardContent className="p-6">
+            <CardContent className="p-6 overflow-x-auto">
               <p className="text-sm font-semibold mb-3">Task A: Binary Fault Detection (NPPAD, 83 test seqs)</p>
               <table className="w-full text-sm mb-6">
                 <thead>
@@ -1520,7 +1520,7 @@ NPPAD result: θ* = 3.0 (separation = 1.993) — same threshold independently di
 
           <h2>Appendix B: Self-Learning Threshold Candidates</h2>
           <Card className="my-6 not-prose">
-            <CardContent className="p-6">
+            <CardContent className="p-6 overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b">

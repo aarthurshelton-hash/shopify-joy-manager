@@ -185,7 +185,7 @@ const PRODUCT_DATA = {
     "name": "En Pensent"
   },
   "description": "Custom generative art prints created using En Pensent's proprietary visualization technology. Each Vision is unique based on your game's moves, chosen color palette, and our patent-pending algorithm.",
-  "image": "https://enpensent.com/opengraph-image-p98pqg.png",
+  "image": "https://enpensent.com/og-home.png",
   "offers": {
     "@type": "AggregateOffer",
     "lowPrice": "29",
