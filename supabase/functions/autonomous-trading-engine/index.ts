@@ -385,8 +385,8 @@ function generateUniversalSignal(
     codeWeight: 0.10,
   };
 
-  // Simulate domain signals (in production, these come from real domain adapters)
-  // For now, we synthesize from market data and correlations
+  // Domain signals are derived ONLY from real data sources. Domains without a real
+  // adapter in this function (light, bio, audio, code) contribute 0 — never fabricated.
   
   // Market domain (primary - from real data)
   const marketSignal = marketData.sentiment?.score || 0;
@@ -394,20 +394,20 @@ function generateUniversalSignal(
     ? (marketData.technicals.rsi > 70 ? -1 : marketData.technicals.rsi < 30 ? 1 : 0) * 0.5
     : 0;
 
-  // Calculate correlation resonance
+  // Calculate correlation resonance (real, from stored correlation matrix)
   const avgCorrelation = correlationMatrix.length > 0
     ? correlationMatrix.reduce((sum, c) => sum + Math.abs(c.correlation_coefficient || 0), 0) / correlationMatrix.length
     : 0.5;
 
-  // Synthesize domain contributions
+  // Real domain contributions only; no synthetic oscillators.
   const domainContributions = {
-    light: (Math.sin(Date.now() / 1000) * 0.5 + marketSignal * 0.5) * genes.lightWeight,
-    network: (avgCorrelation - 0.5) * 2 * genes.networkWeight,
-    bio: (Math.cos(Date.now() / 1500) * 0.3 + marketSignal * 0.7) * genes.bioWeight,
-    audio: (Math.sin(Date.now() / 800) * 0.4 + rsiSignal * 0.6) * genes.audioWeight,
-    chess: (evolutionState?.fitness_score || 0.5 - 0.5) * genes.chessWeight,
-    market: (marketSignal + rsiSignal) * genes.marketWeight,
-    code: (evolutionState?.generation || 0) % 2 === 0 ? 0.1 : -0.1 * genes.codeWeight,
+    light: 0,                                                            // no real adapter → no signal
+    network: (avgCorrelation - 0.5) * 2 * genes.networkWeight,           // real correlation resonance
+    bio: 0,                                                              // no real adapter → no signal
+    audio: 0,                                                            // no real adapter → no signal
+    chess: ((evolutionState?.fitness_score || 0.5) - 0.5) * genes.chessWeight, // real evolution fitness
+    market: (marketSignal + rsiSignal) * genes.marketWeight,            // real market sentiment + RSI
+    code: 0,                                                             // no real adapter → no signal
   };
 
   // Weighted consensus

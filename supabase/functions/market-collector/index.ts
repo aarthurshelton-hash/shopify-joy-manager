@@ -27,47 +27,49 @@ const MARKET_SESSIONS = {
 interface TickData {
   symbol: string;
   price: number;
-  volume?: number;
-  bid?: number;
-  ask?: number;
+  volume?: number | null;
+  bid?: number | null;
+  ask?: number | null;
   timestamp: string;
 }
 
-// Simulate market data (replace with real API integration)
-function generateSimulatedTick(symbol: string, lastPrice?: number): TickData {
-  const basePrice = lastPrice || getBasePrice(symbol);
-  const volatility = getVolatility(symbol);
-  const change = (Math.random() - 0.5) * 2 * volatility * basePrice;
-  const newPrice = Math.max(0.01, basePrice + change);
-  
-  return {
-    symbol,
-    price: Number(newPrice.toFixed(4)),
-    volume: Math.floor(Math.random() * 1000) + 100,
-    bid: Number((newPrice - 0.01).toFixed(4)),
-    ask: Number((newPrice + 0.01).toFixed(4)),
-    timestamp: new Date().toISOString()
-  };
-}
+// Map internal futures codes to Yahoo Finance tickers (real data source)
+const YAHOO_TICKER: Record<string, string> = {
+  'ES': 'ES=F', 'NQ': 'NQ=F', 'ZN': 'ZN=F', 'CL': 'CL=F',
+  'GC': 'GC=F', 'VX': '^VIX', '6E': '6E=F', 'RTY': 'RTY=F',
+  'YM': 'YM=F', 'ZB': 'ZB=F', 'SI': 'SI=F', 'HG': 'HG=F',
+  'NG': 'NG=F', 'ZC': 'ZC=F', 'ZS': 'ZS=F', 'ZW': 'ZW=F'
+};
 
-function getBasePrice(symbol: string): number {
-  const prices: Record<string, number> = {
-    'ES': 5200, 'NQ': 18500, 'ZN': 110, 'CL': 75,
-    'GC': 2350, 'VX': 15, '6E': 1.08, 'RTY': 2050,
-    'YM': 39000, 'ZB': 118, 'SI': 28, 'HG': 4.2,
-    'NG': 2.5, 'ZC': 450, 'ZS': 1200, 'ZW': 600
-  };
-  return prices[symbol] || 100;
-}
-
-function getVolatility(symbol: string): number {
-  const volatilities: Record<string, number> = {
-    'ES': 0.0008, 'NQ': 0.001, 'ZN': 0.0003, 'CL': 0.002,
-    'GC': 0.0006, 'VX': 0.02, '6E': 0.0004, 'RTY': 0.001,
-    'YM': 0.0007, 'ZB': 0.0004, 'SI': 0.001, 'HG': 0.001,
-    'NG': 0.003, 'ZC': 0.001, 'ZS': 0.0008, 'ZW': 0.001
-  };
-  return volatilities[symbol] || 0.001;
+// Fetch a REAL tick from Yahoo Finance. Returns null on failure — NEVER synthetic.
+async function fetchRealTick(symbol: string): Promise<TickData | null> {
+  const yf = YAHOO_TICKER[symbol];
+  if (!yf) return null;
+  try {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${yf}?interval=1m&range=1d`;
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+    });
+    if (!response.ok) {
+      console.log(`[collector] Yahoo ${response.status} for ${symbol} (${yf})`);
+      return null;
+    }
+    const data = await response.json();
+    const meta = data.chart?.result?.[0]?.meta;
+    const price = meta?.regularMarketPrice;
+    if (price == null) return null;
+    return {
+      symbol,
+      price: Number(Number(price).toFixed(4)),
+      volume: meta.regularMarketVolume ?? null,
+      bid: meta.bid ?? null,
+      ask: meta.ask ?? null,
+      timestamp: new Date().toISOString()
+    };
+  } catch (err) {
+    console.error(`[collector] Error fetching ${symbol}:`, err);
+    return null;
+  }
 }
 
 // Calculate correlation between two price series
@@ -124,32 +126,23 @@ Deno.serve(async (req) => {
     const { action = 'collect' } = await req.json().catch(() => ({}));
 
     if (action === 'collect') {
-      // Collect tick data for all symbols
-      const ticks: TickData[] = [];
-      const lastPrices: Record<string, number> = {};
-      
-      // Get last prices from recent ticks
-      for (const symbol of TRACKED_SYMBOLS) {
-        const { data: lastTick } = await supabase
-          .from('market_tick_history')
-          .select('price')
-          .eq('symbol', symbol)
-          .order('timestamp', { ascending: false })
-          .limit(1)
-          .single();
-        
-        if (lastTick) {
-          lastPrices[symbol] = lastTick.price;
-        }
+      // Collect REAL tick data from Yahoo Finance. Symbols that fail are skipped
+      // (no synthetic data is ever inserted).
+      const fetched = await Promise.all(TRACKED_SYMBOLS.map(s => fetchRealTick(s)));
+      const ticks: TickData[] = fetched.filter((t): t is TickData => t !== null);
+      const fetchedSymbols = ticks.map(t => t.symbol);
+
+      if (ticks.length === 0) {
+        return new Response(JSON.stringify({
+          success: false,
+          ticksCollected: 0,
+          reason: 'No real market data available (markets closed or upstream unavailable)'
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
       }
-      
-      // Generate new ticks
-      for (const symbol of TRACKED_SYMBOLS) {
-        const tick = generateSimulatedTick(symbol, lastPrices[symbol]);
-        ticks.push(tick);
-      }
-      
-      // Insert ticks
+
+      // Insert real ticks
       const { error: tickError } = await supabase
         .from('market_tick_history')
         .insert(ticks.map(t => ({
@@ -159,13 +152,13 @@ Deno.serve(async (req) => {
           bid: t.bid,
           ask: t.ask,
           timestamp: t.timestamp,
-          source: 'collector'
+          source: 'yahoo_finance'
         })));
       
       if (tickError) throw tickError;
       
-      // Update collection status
-      for (const symbol of TRACKED_SYMBOLS) {
+      // Update collection status only for symbols with real data
+      for (const symbol of fetchedSymbols) {
         await supabase
           .from('market_collection_status')
           .upsert({
@@ -179,7 +172,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ 
         success: true, 
         ticksCollected: ticks.length,
-        symbols: TRACKED_SYMBOLS
+        symbols: fetchedSymbols
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
@@ -215,7 +208,12 @@ Deno.serve(async (req) => {
               ? Math.max(0, 1 - Math.abs(Math.abs(actualMove) - prediction.predicted_magnitude) / prediction.predicted_magnitude)
               : 0.5;
             
-            const timingAccuracy = 0.7 + Math.random() * 0.3; // Simplified
+            // Real timing/efficiency metric: fraction of the predicted move that was
+            // actually realized (capped at 1). 0 when direction was wrong. No randomness.
+            const predMag = prediction.predicted_magnitude || 0;
+            const timingAccuracy = directionCorrect
+              ? (predMag > 0 ? Math.min(1, Math.abs(actualMove) / predMag) : 1)
+              : 0;
             const calibrationAccuracy = Math.max(0, 1 - Math.abs(prediction.predicted_confidence - (directionCorrect ? 1 : 0)));
             const compositeScore = (
               (directionCorrect ? 1 : 0) * 0.4 +

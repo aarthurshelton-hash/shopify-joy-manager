@@ -303,8 +303,10 @@ serve(async (req) => {
       case 'chain':
         result.chain = await fetchTradierChain(underlying, expiration);
         if (!result.chain) {
-          // Fallback to simulated data
-          result.chain = generateSimulatedChain(underlying);
+          // No real chain available — do NOT fabricate. Return null.
+          result.chain = null;
+          result.success = false;
+          result.reason = 'No real options chain available (set TRADIER_ACCESS_TOKEN)';
         }
         break;
 
@@ -313,13 +315,20 @@ serve(async (req) => {
         result.tick = null;
         break;
 
-      case 'analysis':
-        const [sentiment, technicals] = await Promise.all([
-          fetchFinnhubSentiment(symbol || underlying),
-          fetchTechnicals(symbol || underlying),
+      case 'analysis': {
+        const sym = symbol || underlying;
+        const [sentiment, technicals, quote] = await Promise.all([
+          fetchFinnhubSentiment(sym),
+          fetchTechnicals(sym),
+          fetchRealQuote(sym),
         ]);
-        result.analysis = generateAnalysis(symbol || underlying, sentiment, technicals);
+        result.analysis = buildAnalysis(sym, sentiment, technicals, quote);
+        if (!result.analysis) {
+          result.success = false;
+          result.reason = 'No real market data available for analysis';
+        }
         break;
+      }
 
       case 'flow':
         result.flow = await fetchPolygonFlow(underlying);
@@ -350,118 +359,72 @@ serve(async (req) => {
 });
 
 // ============================================
-// FALLBACK GENERATORS
+// REAL QUOTE (Yahoo Finance) + ANALYSIS BUILDER
+// No synthetic data: unavailable fields are returned as null.
 // ============================================
 
-function generateSimulatedChain(underlying: string) {
-  const basePrices: Record<string, number> = {
-    SPY: 590, QQQ: 520, IWM: 225, AAPL: 235, TSLA: 430,
-    NVDA: 145, AMD: 125, AMZN: 225, META: 610, GOOGL: 195,
-  };
-  const basePrice = basePrices[underlying] || 100;
-  
-  const now = new Date();
-  const expirations = [];
-  for (let i = 0; i < 4; i++) {
-    const exp = new Date(now);
-    exp.setDate(exp.getDate() + (5 - now.getDay()) + i * 7);
-    expirations.push(exp.toISOString().split('T')[0]);
-  }
-
-  const calls = [];
-  const puts = [];
-  const strikeInterval = basePrice > 100 ? 5 : 2.5;
-
-  for (let offset = -5; offset <= 5; offset++) {
-    const strike = Math.round(basePrice / strikeInterval) * strikeInterval + offset * strikeInterval;
-    const iv = 0.25 + Math.random() * 0.15;
-    
-    const callPrice = Math.max(0.05, (basePrice - strike) * 0.5 + iv * basePrice * 0.05);
-    const putPrice = Math.max(0.05, (strike - basePrice) * 0.5 + iv * basePrice * 0.05);
-
-    calls.push({
-      symbol: `${underlying}${expirations[0].replace(/-/g, '')}C${strike * 1000}`,
-      underlying,
-      type: 'call',
-      strike,
-      expiration: expirations[0],
-      bid: callPrice * 0.98,
-      ask: callPrice * 1.02,
-      last: callPrice,
-      volume: Math.floor(Math.random() * 3000) + 100,
-      openInterest: Math.floor(Math.random() * 10000) + 500,
-      impliedVolatility: iv,
-      delta: 0.5 + (basePrice - strike) / (strike * 0.2),
-      gamma: 0.03,
-      theta: -callPrice * 0.02,
-      vega: callPrice * 0.1,
-      timestamp: Date.now(),
+async function fetchRealQuote(symbol: string) {
+  try {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=5m&range=1d`;
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
     });
-
-    puts.push({
-      symbol: `${underlying}${expirations[0].replace(/-/g, '')}P${strike * 1000}`,
-      underlying,
-      type: 'put',
-      strike,
-      expiration: expirations[0],
-      bid: putPrice * 0.98,
-      ask: putPrice * 1.02,
-      last: putPrice,
-      volume: Math.floor(Math.random() * 2500) + 80,
-      openInterest: Math.floor(Math.random() * 8000) + 400,
-      impliedVolatility: iv,
-      delta: -0.5 + (basePrice - strike) / (strike * 0.2),
-      gamma: 0.03,
-      theta: -putPrice * 0.02,
-      vega: putPrice * 0.1,
-      timestamp: Date.now(),
-    });
+    if (!res.ok) {
+      console.log(`[options-data] Yahoo ${res.status} for ${symbol}`);
+      return null;
+    }
+    const data = await res.json();
+    const meta = data.chart?.result?.[0]?.meta;
+    const price = meta?.regularMarketPrice;
+    if (price == null) return null;
+    const prevClose = meta.previousClose ?? meta.chartPreviousClose ?? price;
+    return {
+      price,
+      change: price - prevClose,
+      changePercent: prevClose ? ((price - prevClose) / prevClose) * 100 : 0,
+      volume: meta.regularMarketVolume ?? null,
+      dayHigh: meta.regularMarketDayHigh ?? null,
+      dayLow: meta.regularMarketDayLow ?? null,
+    };
+  } catch (err) {
+    console.error('[options-data] fetchRealQuote error:', err);
+    return null;
   }
-
-  return {
-    underlying,
-    underlyingPrice: basePrice,
-    expirations,
-    calls,
-    puts,
-    timestamp: Date.now(),
-    source: 'simulated',
-  };
 }
 
-function generateAnalysis(symbol: string, sentiment: any, technicals: any) {
-  const basePrices: Record<string, number> = {
-    SPY: 590, QQQ: 520, IWM: 225, AAPL: 235, TSLA: 430,
-    NVDA: 145, AMD: 125, AMZN: 225, META: 610, GOOGL: 195,
-  };
-  const price = basePrices[symbol] || 100;
-  const change = (Math.random() - 0.5) * price * 0.02;
+function buildAnalysis(symbol: string, sentiment: any, technicals: any, quote: any) {
+  if (!quote) return null;
+  const price = quote.price;
+  const num = (v: any) => (v != null && !isNaN(parseFloat(v)) ? parseFloat(v) : null);
+  const rsi = num(technicals?.rsi?.rsi);
+  const sma20 = num(technicals?.sma?.sma);
+  const trend = quote.change > 0 ? 'bullish' : quote.change < 0 ? 'bearish' : 'neutral';
 
   return {
     symbol,
     price,
-    change,
-    changePercent: (change / price) * 100,
-    volume: Math.floor(Math.random() * 30000000) + 5000000,
-    avgVolume: 20000000,
-    volumeRatio: 0.9 + Math.random() * 0.4,
-    rsi: technicals?.rsi?.rsi ? parseFloat(technicals.rsi.rsi) : 45 + Math.random() * 20,
+    change: quote.change,
+    changePercent: quote.changePercent,
+    volume: quote.volume,
+    avgVolume: null,
+    volumeRatio: null,
+    rsi,
     macd: {
-      value: technicals?.macd?.macd ? parseFloat(technicals.macd.macd) : (Math.random() - 0.5) * 2,
-      signal: technicals?.macd?.macd_signal ? parseFloat(technicals.macd.macd_signal) : (Math.random() - 0.5) * 1.5,
-      histogram: technicals?.macd?.macd_hist ? parseFloat(technicals.macd.macd_hist) : (Math.random() - 0.5) * 0.5,
+      value: num(technicals?.macd?.macd),
+      signal: num(technicals?.macd?.macd_signal),
+      histogram: num(technicals?.macd?.macd_hist),
     },
-    sma20: price * (0.99 + Math.random() * 0.02),
-    sma50: price * (0.97 + Math.random() * 0.06),
-    ema9: price * (0.995 + Math.random() * 0.01),
-    vwap: price * (0.998 + Math.random() * 0.004),
-    supports: [price * 0.98, price * 0.95, price * 0.92],
-    resistances: [price * 1.02, price * 1.05, price * 1.08],
-    trend: change > 0 ? 'bullish' : change < 0 ? 'bearish' : 'neutral',
-    trendStrength: Math.random() * 0.5 + 0.3,
-    historicalVolatility: 0.18 + Math.random() * 0.12,
-    ivRank: Math.random() * 100,
-    ivPercentile: Math.random() * 100,
+    sma20,
+    sma50: null,
+    ema9: null,
+    vwap: null,
+    supports: quote.dayLow != null ? [quote.dayLow] : [],
+    resistances: quote.dayHigh != null ? [quote.dayHigh] : [],
+    trend,
+    trendStrength: null,
+    historicalVolatility: null,
+    ivRank: null,
+    ivPercentile: null,
     sentiment,
     timestamp: Date.now(),
   };
