@@ -6,6 +6,8 @@ import ChessLoadingAnimation from '@/components/chess/ChessLoadingAnimation';
 import PaletteSelector from '@/components/chess/PaletteSelector';
 import ChessParticles from '@/components/chess/ChessParticles';
 import LifestyleMockupGallery from '@/components/shop/LifestyleMockupGallery';
+import HeroVisionDemo from '@/components/homepage/HeroVisionDemo';
+import LiveProofRibbon from '@/components/homepage/LiveProofRibbon';
 import { VisionaryMembershipCard } from '@/components/premium';
 import { simulateGame, SimulationResult } from '@/lib/chess/gameSimulator';
 import { Header } from '@/components/shop/Header';
@@ -372,23 +374,33 @@ const Index = () => {
                   
                   {/* Main headline - Royal and powerful */}
                   <h2 className="text-3xl md:text-5xl lg:text-6xl font-royal font-bold leading-tight tracking-wide uppercase">
-                    Your Masterpieces,<br />
+                    Every Game Is<br />
                     <span className="text-gold-gradient">
-                      Forever Immortalized
+                      A Work of Art
                     </span>
                   </h2>
                   
                   {/* Subheadline */}
                   <p className="text-muted-foreground text-base md:text-xl max-w-2xl mx-auto leading-relaxed font-serif px-2">
-                    Upload any chess game and transform it into a stunning visualization — 
-                    where every piece tells its story through color and movement.
+                    Watch any chess game paint itself into a living visualization — powered by the engine
+                    that reads the middlegame more accurately than Stockfish.
                   </p>
+                </div>
+
+                {/* Self-playing hero demo — the wow before any action */}
+                <div className="mt-10 md:mt-14">
+                  <HeroVisionDemo />
+                </div>
+
+                {/* Live, data-safe proof ribbon */}
+                <div className="mt-8 md:mt-10">
+                  <LiveProofRibbon />
                 </div>
               </div>
             </section>
 
             {/* Palette & Upload Section */}
-            <section className="container mx-auto px-4 py-12 space-y-12">
+            <section id="make-your-own" className="container mx-auto px-4 py-12 space-y-12 scroll-mt-24">
               <div 
                 ref={uploadRef}
                 className={`max-w-4xl mx-auto space-y-12 transition-all duration-700 delay-100 ease-out ${
@@ -397,6 +409,16 @@ const Index = () => {
                     : scrollAnimationClasses.fadeUp.hidden
                 }`}
               >
+                {/* Section heading */}
+                <div className="text-center space-y-2">
+                  <h3 className="font-royal text-2xl md:text-3xl font-bold uppercase tracking-wide">
+                    Make Your <span className="text-gold-gradient">Own</span>
+                  </h3>
+                  <p className="text-muted-foreground font-serif max-w-xl mx-auto">
+                    Upload a PGN, paste a game, or pick a legendary match — then choose a palette and watch it come alive.
+                  </p>
+                </div>
+
                 {/* Upload form (contains Upload Your Game + Legendary Games) */}
                 <PgnUploader onPgnSubmit={handlePgnSubmit} onFenSubmit={handleFenSubmit} />
                 

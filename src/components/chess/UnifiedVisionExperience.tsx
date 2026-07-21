@@ -81,6 +81,7 @@ import ClaimVisionButton from '@/components/vision/ClaimVisionButton';
 import { OpeningBadge, OpeningMarketingCard } from './OpeningBadge';
 import { detectOpeningFromPgn, DetectedOpening } from '@/lib/chess/openingDetector';
 import { HybridPredictionPanel } from './HybridPredictionPanel';
+import PredictionEdgeCard from './PredictionEdgeCard';
 import TrajectoryTimelineOverlay from './TrajectoryTimelineOverlay';
 import { useHybridPrediction } from '@/hooks/useHybridPrediction';
 
@@ -2119,6 +2120,11 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                     <TransferLimitBadge visualizationId={localVisualizationId} />
                   </div>
                 )}
+
+                {/* Prediction edge — the "this is actually smart" depth reveal */}
+                <div className="mb-6">
+                  <PredictionEdgeCard totalMoves={localTotalMoves} />
+                </div>
 
                 <AnalyticsPanel
                   visionScore={visionScore}
