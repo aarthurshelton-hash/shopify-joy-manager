@@ -52,14 +52,20 @@ export const Footer = forwardRef<HTMLElement, object>(function Footer(_props, re
             The future of chess intelligence
           </p>
           
-          {/* Links - visible on all viewports, wraps on mobile */}
+          {/* Primary links */}
           <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 sm:gap-6 pt-2 px-4">
             <Link to="/about" className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">About</Link>
             <Link to="/academic-paper" className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">Research</Link>
-            <Link to="/proof" className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">Proof</Link>
-            <Link to="/benchmark" className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">Benchmark</Link>
-            <Link to="/investors" className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">Investors</Link>
             <Link to="/marketplace" className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">Marketplace</Link>
+            <Link to="/explore" className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">Explore</Link>
+            <Link to="/play" className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">Play</Link>
+          </nav>
+
+          {/* Secondary links */}
+          <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 sm:gap-6 pt-1 px-4">
+            <Link to="/proof" className="text-xs uppercase tracking-wider text-muted-foreground/60 hover:text-foreground transition-colors">Proof</Link>
+            <Link to="/benchmark" className="text-xs uppercase tracking-wider text-muted-foreground/60 hover:text-foreground transition-colors">Benchmark</Link>
+            <Link to="/investors" className="text-xs uppercase tracking-wider text-muted-foreground/60 hover:text-foreground transition-colors">Investors</Link>
           </nav>
           
           {/* Legal Links */}
@@ -84,8 +90,6 @@ export const Footer = forwardRef<HTMLElement, object>(function Footer(_props, re
               <span className="text-[9px] text-muted-foreground/30">En Pensent™</span>
               <span className="text-muted-foreground/20">•</span>
               <span className="text-[9px] text-muted-foreground/30">Natural Vision™</span>
-              <span className="text-muted-foreground/20">•</span>
-              <span className="text-[9px] text-muted-foreground/30">Hustlenomics™</span>
             </div>
           </div>
         </div>

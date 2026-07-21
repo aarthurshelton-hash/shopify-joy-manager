@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { CartDrawer } from './CartDrawer';
 import { CurrencySelector } from './CurrencySelector';
-import { Menu, Gamepad2, Paintbrush, ShoppingBag, BookOpen, TrendingUp, Brain, FileText, BarChart3, Briefcase } from 'lucide-react';
+import { Menu, Gamepad2, ShoppingBag, Brain, FileText } from 'lucide-react';
 import UserMenu from '@/components/auth/UserMenu';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,7 +10,6 @@ import {
   SheetContent,
   SheetTrigger,
 } from '@/components/ui/sheet';
-import { VisionScannerButton } from '@/components/scanner/VisionScannerButton';
 import { SubscriptionNotificationBell } from '@/components/notifications/SubscriptionNotificationBell';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 
@@ -18,16 +17,11 @@ import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 // PUBLIC navigation links - only shows public features
 // Trading, Stock Predictions, Strategic Plan are ADMIN ONLY
 const navLinks = [
-  { to: '/play', label: 'Play', icon: Gamepad2, highlight: true },
   { to: '/explore', label: 'Explore', icon: Brain, highlight: true },
-  { to: '/creative-mode', label: 'Create', icon: Paintbrush, highlight: true },
-  { to: '/code-analysis', label: 'Code Analysis', icon: TrendingUp, highlight: true },
+  { to: '/play', label: 'Play', icon: Gamepad2, highlight: true },
   { to: '/marketplace', label: 'Marketplace', icon: ShoppingBag, highlight: false },
-  { to: '/openings', label: 'Openings', icon: BookOpen, highlight: false },
   { to: '/academic-paper', label: 'Research', icon: FileText, highlight: false },
-  { to: '/proof', label: 'Proof', icon: BarChart3, highlight: false },
-  { to: '/investors', label: 'Investors', icon: Briefcase, highlight: false },
-  { to: '/about', label: 'About Us' },
+  { to: '/about', label: 'About' },
 ];
 
 export const Header = () => {
@@ -93,10 +87,6 @@ export const Header = () => {
         
         {/* Right side - Scanner, User menu, cart, and mobile menu */}
         <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3">
-          {/* Vision Scanner Button - hidden on mobile, show in menu */}
-          <div className="hidden md:block">
-            <VisionScannerButton variant="ghost" size="sm" showLabel={false} />
-          </div>
           <div className="hidden md:block">
             <CurrencySelector compact />
           </div>
@@ -153,12 +143,6 @@ export const Header = () => {
                     </Link>
                   ))}
                 </nav>
-                
-                {/* Vision Scanner for Mobile */}
-                <div className="pt-4 border-t border-border/50">
-                  <p className="text-xs text-muted-foreground mb-3 uppercase tracking-wide font-medium">Vision Scanner</p>
-                  <VisionScannerButton variant="outline" className="w-full justify-start h-12" />
-                </div>
                 
                 {/* Mobile currency selector */}
                 <div className="pt-4 border-t border-border/50">
