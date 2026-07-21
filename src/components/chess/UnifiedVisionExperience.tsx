@@ -82,6 +82,7 @@ import { OpeningBadge, OpeningMarketingCard } from './OpeningBadge';
 import { detectOpeningFromPgn, DetectedOpening } from '@/lib/chess/openingDetector';
 import { HybridPredictionPanel } from './HybridPredictionPanel';
 import PredictionEdgeCard from './PredictionEdgeCard';
+import TurningPointCard from './TurningPointCard';
 import TrajectoryTimelineOverlay from './TrajectoryTimelineOverlay';
 import { useHybridPrediction } from '@/hooks/useHybridPrediction';
 
@@ -2125,6 +2126,17 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                 <div className="mb-6">
                   <PredictionEdgeCard totalMoves={localTotalMoves} />
                 </div>
+
+                {/* Turning point — the single most decisive moment, shareable */}
+                {effectivePgn && (
+                  <div className="mb-6">
+                    <TurningPointCard
+                      pgn={effectivePgn}
+                      white={localGameData.white}
+                      black={localGameData.black}
+                    />
+                  </div>
+                )}
 
                 <AnalyticsPanel
                   visionScore={visionScore}

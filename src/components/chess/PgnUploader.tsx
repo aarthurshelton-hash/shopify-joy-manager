@@ -16,6 +16,8 @@ import { useFavoriteGames } from '@/hooks/useFavoriteGames';
 import { useAuth } from '@/hooks/useAuth';
 import { incrementGamecardUsage } from '@/lib/analytics/financialTrends';
 import FenInput from './FenInput';
+import GameImporter from './GameImporter';
+import BatchPgnUploader from './BatchPgnUploader';
 
 const GAMES_PER_MOBILE_PAGE = 4;
 const GAMES_PER_DESKTOP_PAGE = 16;
@@ -475,6 +477,12 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit, onFenSubmit }) =
 
   return (
     <div className="space-y-6">
+      {/* Import from Lichess / Chess.com */}
+      <GameImporter onSelectGame={(importedPgn, title) => onPgnSubmit(cleanPgn(importedPgn), title)} />
+
+      {/* Batch PGN upload — Analyst pro tier */}
+      <BatchPgnUploader onPgnSubmit={onPgnSubmit} />
+
       {/* Magnus Carlsen Dedicated Section */}
       <div className="rounded-lg border border-amber-500/30 bg-gradient-to-br from-amber-500/5 via-card/50 to-card/50 overflow-hidden">
         <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-amber-500/20">

@@ -219,8 +219,26 @@ export const DynamicMetaTags = () => {
   
   useEffect(() => {
     const pathname = location.pathname;
-    const meta = PAGE_META[pathname] || DEFAULT_META;
-    const fullUrl = `${BASE_URL}${pathname === "/" ? "" : pathname}`;
+
+    // #1 — Dynamic OG tags for /g/:hash (shared game links)
+    const gameMatch = pathname.match(/^\/g\/(.+)$/);
+    let meta: PageMeta;
+    let fullUrl: string;
+
+    if (gameMatch) {
+      meta = {
+        title: "Every Game Is A Work Of Art — En Pensent",
+        description: "Watch this chess game paint itself into a living visualization. Powered by the engine that reads the middlegame more accurately than Stockfish.",
+        image: "https://enpensent.com/og-home.png",
+        type: "website",
+        keywords: "chess art, chess visualization, shared game, pgn art",
+      };
+      fullUrl = `${BASE_URL}/g/${gameMatch[1]}`;
+    } else {
+      meta = PAGE_META[pathname] || DEFAULT_META;
+      fullUrl = `${BASE_URL}${pathname === "/" ? "" : pathname}`;
+    }
+
     const imageUrl = meta.image || DEFAULT_META.image;
     
     // Update document title

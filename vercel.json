@@ -6,6 +6,15 @@
   "installCommand": "npm install",
   "rewrites": [
     {
+      "source": "/g/:hash",
+      "has": [{ "type": "query", "key": "from_og", "value": "1" }],
+      "destination": "/index.html"
+    },
+    {
+      "source": "/g/:hash",
+      "destination": "/api/og/:hash"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

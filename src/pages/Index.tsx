@@ -9,6 +9,7 @@ import LifestyleMockupGallery from '@/components/shop/LifestyleMockupGallery';
 import HeroVisionDemo from '@/components/homepage/HeroVisionDemo';
 import LiveProofRibbon from '@/components/homepage/LiveProofRibbon';
 import ChessProsSection from '@/components/homepage/ChessProsSection';
+import OnboardingNudge from '@/components/chess/OnboardingNudge';
 import { VisionaryMembershipCard } from '@/components/premium';
 import { simulateGame, SimulationResult } from '@/lib/chess/gameSimulator';
 import { Header } from '@/components/shop/Header';
@@ -803,6 +804,8 @@ const Index = () => {
           </div>
         )}
       </main>
+
+      {simulation && <OnboardingNudge active={!!simulation} />}
 
       <Footer />
       
