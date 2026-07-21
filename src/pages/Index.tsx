@@ -8,6 +8,7 @@ import ChessParticles from '@/components/chess/ChessParticles';
 import LifestyleMockupGallery from '@/components/shop/LifestyleMockupGallery';
 import HeroVisionDemo from '@/components/homepage/HeroVisionDemo';
 import LiveProofRibbon from '@/components/homepage/LiveProofRibbon';
+import ChessProsSection from '@/components/homepage/ChessProsSection';
 import { VisionaryMembershipCard } from '@/components/premium';
 import { simulateGame, SimulationResult } from '@/lib/chess/gameSimulator';
 import { Header } from '@/components/shop/Header';
@@ -426,6 +427,9 @@ const Index = () => {
                 <PaletteSelector onPaletteChange={handlePaletteChange} />
               </div>
             </section>
+
+            {/* Chess Pros — scientific rigor / prediction edge */}
+            <ChessProsSection />
             
             {/* Marketplace CTA — Lifestyle Mockup Gallery */}
             <section className="py-16">
