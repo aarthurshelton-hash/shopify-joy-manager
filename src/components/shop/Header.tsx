@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { CartDrawer } from './CartDrawer';
 import { CurrencySelector } from './CurrencySelector';
 import { Menu, Gamepad2, ShoppingBag, Brain, FileText } from 'lucide-react';
@@ -26,15 +26,6 @@ const navLinks = [
 
 export const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const location = useLocation();
-  const isMarketplace = location.pathname === '/marketplace';
-
-  // If on marketplace, clicking header links triggers a refresh
-  const handleMarketplaceRefresh = () => {
-    if (isMarketplace) {
-      window.location.reload();
-    }
-  };
   return (
     <header 
       className="sticky top-0 w-full border-b border-border/40 bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/85"

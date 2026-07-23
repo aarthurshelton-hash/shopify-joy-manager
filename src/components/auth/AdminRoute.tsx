@@ -4,7 +4,7 @@
  */
 
 import { ReactNode, useState, useEffect } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Shield, Lock } from 'lucide-react';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -72,12 +72,12 @@ export function AdminRoute({ children, featureName = 'This feature' }: AdminRout
           </div>
           
           <div className="pt-4">
-            <a 
-              href="/"
+            <Link 
+              to="/"
               className="text-primary hover:underline text-sm"
             >
               ← Return to Home
-            </a>
+            </Link>
           </div>
         </div>
       </div>

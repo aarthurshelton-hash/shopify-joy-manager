@@ -224,10 +224,15 @@ export async function updateListingPrice(
     // Validate price before making API call
     const validatedPrice = listingPriceSchema.parse(priceCents);
 
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
     const { error } = await supabase
       .from('visualization_listings')
       .update({ price_cents: validatedPrice })
-      .eq('id', listingId);
+      .eq('id', listingId)
+      .eq('seller_id', user.id)
+      .eq('status', 'active');
 
     if (error) throw error;
     return { error: null };

@@ -64,6 +64,7 @@ export const Footer = forwardRef<HTMLElement, object>(function Footer(_props, re
           {/* Secondary links */}
           <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 sm:gap-6 pt-1 px-4">
             <Link to="/proof" className="text-xs uppercase tracking-wider text-muted-foreground/60 hover:text-foreground transition-colors">Proof</Link>
+            <Link to="/vs-stockfish" className="text-xs uppercase tracking-wider text-muted-foreground/60 hover:text-foreground transition-colors">EP vs SF</Link>
             <Link to="/benchmark" className="text-xs uppercase tracking-wider text-muted-foreground/60 hover:text-foreground transition-colors">Benchmark</Link>
             <Link to="/investors" className="text-xs uppercase tracking-wider text-muted-foreground/60 hover:text-foreground transition-colors">Investors</Link>
           </nav>

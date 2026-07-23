@@ -251,22 +251,25 @@ const UserMenu: React.FC = () => {
             {!isPremium && <Crown className="h-3 w-3 text-primary ml-auto" />}
           </DropdownMenuItem>
           
-          <DropdownMenuItem 
-            onClick={() => navigate('/creator-dashboard')}
-            className="gap-2 cursor-pointer"
-          >
-            <Wallet className="h-4 w-4" />
-            Creator Dashboard
-            {!isPremium && <Crown className="h-3 w-3 text-primary ml-auto" />}
-          </DropdownMenuItem>
-          
-          <DropdownMenuItem 
-            onClick={() => navigate('/analytics')}
-            className="gap-2 cursor-pointer"
-          >
-            <BarChart3 className="h-4 w-4" />
-            Analytics
-          </DropdownMenuItem>
+          {isAdmin && (
+            <>
+              <DropdownMenuItem 
+                onClick={() => navigate('/creator-dashboard')}
+                className="gap-2 cursor-pointer"
+              >
+                <Wallet className="h-4 w-4" />
+                Creator Dashboard
+              </DropdownMenuItem>
+              
+              <DropdownMenuItem 
+                onClick={() => navigate('/analytics')}
+                className="gap-2 cursor-pointer"
+              >
+                <BarChart3 className="h-4 w-4" />
+                Analytics
+              </DropdownMenuItem>
+            </>
+          )}
           
           
           {isAdmin && (
