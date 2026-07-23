@@ -70,12 +70,20 @@ export const LiveProofRibbon: React.FC = () => {
                 <Stat label="Catches SF Misses" value={`${data.epRecoveryRate.toFixed(0)}%`} />
               )}
             </div>
-            <div className="text-center">
+            <div className="text-center flex items-center justify-center gap-4">
+              <Link
+                to="/vs-stockfish"
+                className="group inline-flex items-center gap-1 text-[11px] text-primary hover:text-primary/80 transition-colors font-serif font-medium"
+              >
+                EP vs SF18 — Full Evidence
+                <ChevronRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
+              </Link>
+              <span className="text-border">|</span>
               <Link
                 to="/benchmark"
                 className="group inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary transition-colors font-serif"
               >
-                See the live benchmark &amp; methodology
+                Live benchmark &amp; methodology
                 <ChevronRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
               </Link>
             </div>

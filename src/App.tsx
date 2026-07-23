@@ -79,6 +79,7 @@ const GameExplorer = lazy(() => import("./pages/GameExplorer"));
 const AdminSystemVitals = lazy(() => import("./pages/AdminSystemVitals"));
 const Benchmark = lazy(() => import("./pages/Benchmark"));
 const ProofCenter = lazy(() => import("./pages/ProofCenter"));
+const VsStockfish = lazy(() => import("./pages/VsStockfish"));
 const EPSystemDashboard = lazy(() => import("./pages/EPSystemDashboard"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
@@ -180,6 +181,7 @@ const App = () => (
               <Route path="/options" element={<AdminRoute featureName="Options Scalping"><Suspense fallback={<PageLoadingSkeleton />}><OptionsScalpingPage /></Suspense></AdminRoute>} />
               <Route path="/benchmark" element={<Suspense fallback={<PageLoadingSkeleton />}><Benchmark /></Suspense>} />
               <Route path="/proof" element={<Suspense fallback={<PageLoadingSkeleton />}><ProofCenter /></Suspense>} />
+              <Route path="/vs-stockfish" element={<Suspense fallback={<PageLoadingSkeleton />}><VsStockfish /></Suspense>} />
               <Route path="/ep-dashboard" element={<AdminRoute featureName="EP System Dashboard"><Suspense fallback={<PageLoadingSkeleton />}><EPSystemDashboard /></Suspense></AdminRoute>} />
               
               {/* Admin Control Center */}
