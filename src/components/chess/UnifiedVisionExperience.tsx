@@ -77,6 +77,7 @@ import PaletteOwnershipCard from './PaletteOwnershipCard';
 import { useAuth } from '@/hooks/useAuth';
 import MiniPrintOrderSection from './MiniPrintOrderSection';
 import { generateGameHash } from '@/lib/visualizations/gameCanonical';
+import { famousGames } from '@/lib/chess/famousGames';
 import ClaimVisionButton from '@/components/vision/ClaimVisionButton';
 import { OpeningBadge, OpeningMarketingCard } from './OpeningBadge';
 import { detectOpeningFromPgn, DetectedOpening } from '@/lib/chess/openingDetector';
@@ -90,6 +91,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { PaletteAvailabilityInfo } from '@/lib/visualizations/paletteAvailability';
 import { useVisualizationStateStore } from '@/stores/visualizationStateStore';
+
+// Curated handful of the most iconic famous games for quick-link bar
+const FAMOUS_QUICK_LINKS = famousGames.filter(g =>
+  ['anderssen-kieseritzky-1851', 'byrne-fischer-1956', 'kasparov-topalov-1999', 'morphy-opera-1858', 'deep-blue-kasparov-1997', 'anderssen-dufresne-1852'].includes(g.id)
+);
 
 // Export state for capturing visualization in any configuration
 export interface ExportState {
@@ -1887,6 +1893,23 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                       gameCardSimilarity={gameCardMatch?.similarity}
                     />
                   )}
+
+                  {/* Famous Games Quick Links — above palette selector */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-display shrink-0">Try:</span>
+                    {FAMOUS_QUICK_LINKS.map((fg) => {
+                      const fgHash = generateGameHash(fg.pgn);
+                      return (
+                        <button
+                          key={fg.id}
+                          onClick={() => { window.location.href = `/g/${fgHash}?src=famous`; }}
+                          className="text-xs px-2.5 py-1 rounded-full border border-border/50 bg-background hover:border-primary/40 hover:bg-primary/5 transition-all text-muted-foreground hover:text-foreground"
+                        >
+                          {fg.title}
+                        </button>
+                      );
+                    })}
+                  </div>
 
                   {/* Palette Availability - Seamless switching - Available for ALL contexts */}
                   {effectivePgn && (
