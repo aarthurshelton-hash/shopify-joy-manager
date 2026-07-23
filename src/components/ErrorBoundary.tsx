@@ -58,9 +58,10 @@ export class ErrorBoundary extends Component<Props, State> {
             <p className="text-sm text-muted-foreground">
               We've been notified and are working to fix this issue.
             </p>
-            {import.meta.env.DEV && this.state.error && (
+            {this.state.error && (
               <pre className="p-2 bg-muted rounded text-xs overflow-auto max-h-32">
                 {this.state.error.message}
+                {this.state.error.stack ? `\n\n${this.state.error.stack}` : ''}
               </pre>
             )}
             <Button onClick={this.handleRetry} variant="outline" size="sm">
