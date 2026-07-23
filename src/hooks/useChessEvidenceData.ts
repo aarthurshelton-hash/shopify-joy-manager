@@ -86,14 +86,18 @@ export function useChessEvidenceData() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const tbl = supabase.from('chess_prediction_attempts') as any;
 
-      // 1. Get total count of resolved predictions
-      const { count: totalCount } = await tbl
-        .select('*', { count: 'exact', head: true })
-        .not('hybrid_correct', 'is', null)
-        .not('stockfish_correct', 'is', null);
+      // 1. Fetch headline stats from the server-side audit view (accurate full-dataset numbers)
+      const { data: headline } = await supabase
+        .from('audit_headline_stats')
+        .select('*')
+        .single();
 
-      // 2. Fetch large sample with all fields needed for stratification
-      // Supabase limits to 1000 per request, so we page through 200K
+      const totalCount = headline?.total_predictions || 0;
+      const headlineEPAcc = headline ? parseFloat(headline.ep_accuracy_pct) || 0 : 0;
+      const headlineSFAcc = headline ? parseFloat(headline.sf_accuracy_pct) || 0 : 0;
+      const headlineEdge = headline ? parseFloat(headline.ep_edge_pp) || 0 : 0;
+
+      // 2. Fetch sample with all fields needed for stratification
       const SAMPLE_SIZE = 200000;
       const PAGE_SIZE = 1000;
       const rows: RawPredictionRow[] = [];
@@ -114,12 +118,10 @@ export function useChessEvidenceData() {
 
       const sampleSize = rows.length;
 
-      // 3. Headline accuracy from sample
-      const epCorrect = rows.filter(r => r.hybrid_correct).length;
-      const sfCorrect = rows.filter(r => r.stockfish_correct).length;
-      const epAccuracy = sampleSize > 0 ? (epCorrect / sampleSize) * 100 : 0;
-      const sfAccuracy = sampleSize > 0 ? (sfCorrect / sampleSize) * 100 : 0;
-      const epEdge = epAccuracy - sfAccuracy;
+      // 3. Headline accuracy from audit view (source of truth)
+      const epAccuracy = headlineEPAcc;
+      const sfAccuracy = headlineSFAcc;
+      const epEdge = headlineEdge;
 
       // 4. Disagreement analysis
       const bothCorrect = rows.filter(r => r.hybrid_correct && r.stockfish_correct).length;
@@ -195,33 +197,29 @@ export function useChessEvidenceData() {
         .sort((a, b) => b.edge - a.edge)
         .slice(0, 8);
 
-      // 9. Chess960 stats
-      const chess960CountResult: { count: number | null } = await tbl
-        .select('*', { count: 'exact', head: true })
-        .eq('variant', 'chess960')
-        .not('hybrid_correct', 'is', null);
+      // 9. Chess960 stats from audit view
+      const { data: chess960Audit } = await supabase
+        .from('audit_chess960_stats')
+        .select('*')
+        .order('variant');
 
-      const chess960GamesResult: { data: Array<{ hybrid_correct: boolean; stockfish_correct: boolean }> | null } = await tbl
-        .select('hybrid_correct, stockfish_correct')
-        .eq('variant', 'chess960')
-        .not('hybrid_correct', 'is', null)
-        .not('stockfish_correct', 'is', null)
-        .order('created_at', { ascending: false })
-        .limit(50000);
-
-      const chess960Games = chess960GamesResult.data;
-      const chess960Total = chess960CountResult.count || 0;
-      const chess960EP = chess960Games && chess960Games.length > 0
-        ? parseFloat(((chess960Games.filter(r => r.hybrid_correct).length / chess960Games.length) * 100).toFixed(2))
-        : 0;
-      const chess960SF = chess960Games && chess960Games.length > 0
-        ? parseFloat(((chess960Games.filter(r => r.stockfish_correct).length / chess960Games.length) * 100).toFixed(2))
-        : 0;
+      let chess960Total = 0;
+      let chess960EP = 0;
+      let chess960SF = 0;
+      if (chess960Audit) {
+        for (const row of chess960Audit) {
+          if (row.variant === 'chess960') {
+            chess960Total = row.total_predictions || 0;
+            chess960EP = parseFloat(row.ep_accuracy_pct) || 0;
+            chess960SF = parseFloat(row.sf_accuracy_pct) || 0;
+          }
+        }
+      }
 
       return {
         total: totalCount || 0,
-        epCorrect: Math.round((epCorrect / sampleSize) * (totalCount || 0)),
-        sfCorrect: Math.round((sfCorrect / sampleSize) * (totalCount || 0)),
+        epCorrect: Math.round((headlineEPAcc / 100) * (totalCount || 0)),
+        sfCorrect: Math.round((headlineSFAcc / 100) * (totalCount || 0)),
         epAccuracy: parseFloat(epAccuracy.toFixed(2)),
         sfAccuracy: parseFloat(sfAccuracy.toFixed(2)),
         epEdge: parseFloat(epEdge.toFixed(2)),
