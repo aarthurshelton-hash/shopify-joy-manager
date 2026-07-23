@@ -30,6 +30,7 @@ import { setActivePalette, PaletteId, PieceType } from '@/lib/chess/pieceColors'
 import { recordVisionInteraction, getVisionScore, VisionScore } from '@/lib/visualizations/visionScoring';
 import { generateGameHash, extractMovesFromPgn, buildCanonicalShareUrl } from '@/lib/visualizations/gameCanonical';
 import { detectGameCard } from '@/lib/chess/gameCardDetection';
+import { famousGames } from '@/lib/chess/famousGames';
 import { useRecentlyViewedStore } from '@/stores/recentlyViewedStore';
 import { VisionFloorPrice } from '@/components/nfts/VisionFloorPrice';
 import { VisionValueChart } from '@/components/nfts/VisionValueChart';
@@ -1026,6 +1027,48 @@ const GameView = () => {
             </motion.div>
           )}
         </div>
+
+        {/* Famous Games Quick Links */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="max-w-4xl mx-auto mt-8"
+        >
+          <div className="bg-card/50 rounded-xl border border-border/50 p-4 md:p-6">
+            <h2 className="text-sm font-display uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              Famous Games — Click to Visualize
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 md:gap-3">
+              {famousGames.map((fg) => {
+                const fgHash = generateGameHash(fg.pgn);
+                const isActive = fgHash === gameHash;
+                return (
+                  <button
+                    key={fg.id}
+                    onClick={() => navigate(`/g/${fgHash}?src=famous`)}
+                    className={`text-left p-3 rounded-lg border transition-all hover:scale-[1.02] hover:shadow-md ${
+                      isActive
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border/50 bg-background hover:border-primary/30'
+                    }`}
+                  >
+                    <div className="text-xs font-semibold leading-tight line-clamp-2">
+                      {fg.title}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground mt-1 truncate">
+                      {fg.white} vs {fg.black}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground">
+                      {fg.year}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </motion.div>
       </main>
 
       <Footer />
