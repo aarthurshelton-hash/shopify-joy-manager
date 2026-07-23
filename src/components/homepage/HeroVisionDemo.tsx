@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react';
-import { Link } from 'react-router-dom';
-import { Play, Pause, ChevronRight } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Play, Pause, ChevronRight, MousePointerClick } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { TimelineProvider, useTimeline } from '@/contexts/TimelineContext';
@@ -9,6 +9,8 @@ import { ShowPiecesToggle } from '@/components/chess/ShowPiecesToggle';
 import { simulateGame } from '@/lib/chess/gameSimulator';
 import { famousGames } from '@/lib/chess/famousGames';
 import { setActivePalette, colorPalettes, PaletteId } from '@/lib/chess/pieceColors';
+import { generateGameHash } from '@/lib/visualizations/gameCanonical';
+import { useSessionStore } from '@/stores/sessionStore';
 
 // Curated rotation of the most visually striking games for the hero loop
 const DEMO_GAME_IDS = [
@@ -121,6 +123,8 @@ const HeroPlayerControls: React.FC<HeroPlayerControlsProps> = ({
 };
 
 export const HeroVisionDemo: React.FC = () => {
+  const navigate = useNavigate();
+  const { setCurrentSimulation } = useSessionStore();
   const [gameIndex, setGameIndex] = useState(0);
   const [paletteId, setPaletteId] = useState<PaletteId>(DEMO_PALETTES[0]?.id ?? 'hotCold');
   const [showPieces, setShowPieces] = useState(true);
@@ -141,6 +145,14 @@ export const HeroVisionDemo: React.FC = () => {
     setGameIndex((prev) => (prev + 1) % DEMO_GAMES.length);
   }, []);
 
+  const handleBoardClick = useCallback(() => {
+    const gameHash = generateGameHash(game.pgn);
+    setCurrentSimulation(simulation, game.pgn, game.title);
+    const urlParams = new URLSearchParams();
+    urlParams.set('src', 'hero');
+    navigate(`/g/${gameHash}?${urlParams.toString()}`);
+  }, [game, simulation, navigate, setCurrentSimulation]);
+
   if (!game) return null;
 
   return (
@@ -149,7 +161,26 @@ export const HeroVisionDemo: React.FC = () => {
         {/* The self-painting board */}
         <TimelineProvider key={game.id} initialMove={0}>
           <div className="flex flex-col items-center gap-5 w-full">
-            <div key={renderKey} className="rounded-2xl overflow-hidden shadow-2xl shadow-primary/10 ring-1 ring-primary/15">
+            <div
+              key={renderKey}
+              className="rounded-2xl overflow-hidden shadow-2xl shadow-primary/10 ring-1 ring-primary/15 cursor-pointer group/board relative"
+              onClick={handleBoardClick}
+              role="button"
+              tabIndex={0}
+              aria-label={`Open ${game.title} in full visualization`}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleBoardClick();
+                }
+              }}
+            >
+              <div className="absolute inset-0 bg-primary/0 group-hover/board:bg-primary/5 transition-colors duration-300 z-10 pointer-events-none flex items-center justify-center">
+                <div className="opacity-0 group-hover/board:opacity-100 transition-opacity duration-300 bg-background/80 backdrop-blur-sm rounded-full px-4 py-2 flex items-center gap-2 shadow-lg">
+                  <MousePointerClick className="h-4 w-4 text-primary" />
+                  <span className="text-xs font-medium">Open in Visualizer</span>
+                </div>
+              </div>
               <VisionBoard
                 board={simulation.board}
                 gameData={simulation.gameData}
