@@ -8,59 +8,8 @@ import {
   Database, GitBranch, ExternalLink, CheckCircle2, XCircle,
   ArrowUpRight, ArrowDownRight, Minus
 } from 'lucide-react';
-import { useLiveChessStats } from '@/hooks/useLiveChessStats';
-
-// ─── Canonical Data (from RESULTS.md — single source of truth) ──────────────
-
-const CANONICAL = {
-  totalPredictions: 12_240_000,
-  epCorrect: 8_475_000,
-  sfCorrect: 7_809_000,
-  epAccuracy: 69.24,
-  sfAccuracy: 63.81,
-  epEdge: 5.43,
-  // Disagreement
-  bothCorrect: 6_952_000,
-  epOnlyCorrect: 1_523_000,
-  sfOnlyCorrect: 857_000,
-  bothWrong: 2_908_000,
-  epDisagreeWinRate: 64.0,
-  // Chess960
-  chess960Total: 1_769_457,
-  chess960EP: 52.62,
-  chess960SF: 33.49,
-  chess960Edge: 19.13,
-  // Golden Zone
-  goldenZoneEP: 71.6,
-  goldenZoneSF: 68.1,
-  epRecoveryRate: 34.37,
-};
-
-const EVAL_ZONES = [
-  { zone: '0–10 cp', ep: 43, sf: 14, edge: 29, highlight: true },
-  { zone: '10–25 cp', ep: 41, sf: 16, edge: 25, highlight: true },
-  { zone: '25–50 cp', ep: 58, sf: 52, edge: 6, highlight: false },
-  { zone: '50–100 cp', ep: 71, sf: 70, edge: 1, highlight: false },
-  { zone: '100–200 cp', ep: 78, sf: 78, edge: 0, highlight: false },
-  { zone: '200+ cp', ep: 88, sf: 89, edge: -1, highlight: false },
-];
-
-const PHASE_DATA = [
-  { phase: 'Opening (1–10)', ep: 47.5, sf: 50.5, edge: -3.0, note: 'Intentionally suppressed' },
-  { phase: 'Early Middlegame (11–25)', ep: 65.8, sf: 60.1, edge: 5.7, note: 'EP advantage begins' },
-  { phase: 'Late Middlegame (26–45)', ep: 71.6, sf: 68.1, edge: 3.5, note: 'Golden Zone' },
-  { phase: 'Endgame (46–65)', ep: 73.2, sf: 70.4, edge: 2.8, note: null },
-  { phase: 'Deep Endgame (66+)', ep: 52.8, sf: 57.0, edge: -4.2, note: 'Intentionally suppressed' },
-];
-
-const ARCHETYPES = [
-  { name: 'piece_general_pressure', ep: 80.27, sf: 63.83, edge: 16.44, n: '~430K' },
-  { name: 'kingside_coordinated_siege', ep: 76.10, sf: 64.50, edge: 11.60, n: '~210K' },
-  { name: 'king_hunt', ep: 78.90, sf: 70.10, edge: 8.80, n: '~85K' },
-  { name: 'sacrificial_kingside_assault', ep: 73.80, sf: 65.40, edge: 8.40, n: '~95K' },
-  { name: 'central_space_advantage', ep: 71.20, sf: 67.90, edge: 3.30, n: '~180K' },
-  { name: 'positional_squeeze', ep: 70.40, sf: 67.20, edge: 3.20, n: '~310K' },
-];
+import { useChessEvidenceData } from '@/hooks/useChessEvidenceData';
+import { Loader2 } from 'lucide-react';
 
 const CROSS_DOMAIN = [
   { domain: 'Industrial Fault Detection', dataset: 'Tennessee Eastman Process', ep: '93.3% F1', baseline: '72.7% (persistence)', edge: '+20.6pp' },
@@ -109,25 +58,12 @@ function StatRow({ label, epValue, sfValue, edge, isPercentage }: { label: strin
 // ─── Main Page ──────────────────────────────────────────────────────────────
 
 export default function VsStockfish() {
-  const { data: liveStats, isLoading: statsLoading } = useLiveChessStats();
+  const { data: evidence, isLoading: evidenceLoading } = useChessEvidenceData();
 
-  // Use live stats if available, otherwise canonical fallback
-  const stats = liveStats || {
-    totalPredictions: CANONICAL.totalPredictions,
-    epAccuracy: CANONICAL.epAccuracy,
-    sfAccuracy: CANONICAL.sfAccuracy,
-    epEdge: CANONICAL.epEdge,
-    goldenZoneEP: CANONICAL.goldenZoneEP,
-    goldenZoneSF: CANONICAL.goldenZoneSF,
-    goldenZoneCount: 0,
-    epRecoveryRate: CANONICAL.epRecoveryRate,
-    bestArchetype: { name: 'piece_general_pressure', epAccuracy: 80.27, sfAccuracy: 63.83, edge: 16.44, count: 430000 },
-    chess960Total: CANONICAL.chess960Total,
-    chess960EP: CANONICAL.chess960EP,
-    chess960SF: CANONICAL.chess960SF,
-  };
+  const loading = evidenceLoading;
 
   const fmt = (n: number) => n.toLocaleString();
+  const fmtK = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}K` : `${n}`;
 
   return (
     <div className="min-h-screen bg-background">
@@ -180,13 +116,13 @@ export default function VsStockfish() {
           <Card className="border-primary/30 bg-gradient-to-br from-primary/5 to-transparent">
             <CardContent className="p-8">
               <div className="text-center mb-6">
-                <Badge variant="secondary" className="mb-3">Canonical Results — RESULTS.md</Badge>
+                <Badge variant="secondary" className="mb-3">Live Data — Queried from {evidence ? fmtK(evidence.sampleSize) : '...'} sample of {evidence ? fmt(evidence.total) : '...'} total predictions</Badge>
                 <h2 className="text-3xl md:text-4xl font-bold mb-3">
                   En Pensent vs Stockfish 18
                 </h2>
                 <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
                   A path-based representation of chess games outperforms Stockfish 18
-                  on 3-way outcome prediction across {statsLoading ? '...' : `${(stats.totalPredictions / 1_000_000).toFixed(2)}M`} live predictions.
+                  on 3-way outcome prediction across {loading ? '...' : `${(evidence!.total / 1_000_000).toFixed(2)}M`} live predictions.
                 </p>
               </div>
 
@@ -196,7 +132,7 @@ export default function VsStockfish() {
                   <CardContent className="p-6">
                     <Target className="h-8 w-8 mx-auto mb-2 text-green-600 dark:text-green-400" />
                     <div className="text-3xl font-bold text-green-600 dark:text-green-400">
-                      {statsLoading ? '...' : `${stats.epAccuracy.toFixed(2)}%`}
+                      {loading ? <Loader2 className="h-6 w-6 animate-spin mx-auto" /> : `${evidence!.epAccuracy.toFixed(2)}%`}
                     </div>
                     <div className="text-sm text-muted-foreground mt-1">En Pensent Accuracy</div>
                   </CardContent>
@@ -205,7 +141,7 @@ export default function VsStockfish() {
                   <CardContent className="p-6">
                     <TrendingUp className="h-8 w-8 mx-auto mb-2 text-primary" />
                     <div className="text-3xl font-bold text-primary">
-                      {statsLoading ? '...' : `+${stats.epEdge.toFixed(2)}pp`}
+                      {loading ? <Loader2 className="h-6 w-6 animate-spin mx-auto" /> : `+${evidence!.epEdge.toFixed(2)}pp`}
                     </div>
                     <div className="text-sm text-muted-foreground mt-1">Edge over Stockfish 18</div>
                   </CardContent>
@@ -214,9 +150,9 @@ export default function VsStockfish() {
                   <CardContent className="p-6">
                     <Database className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
                     <div className="text-3xl font-bold">
-                      {statsLoading ? '...' : `${(stats.totalPredictions / 1_000_000).toFixed(2)}M`}
+                      {loading ? <Loader2 className="h-6 w-6 animate-spin mx-auto" /> : `${(evidence!.total / 1_000_000).toFixed(2)}M`}
                     </div>
-                    <div className="text-sm text-muted-foreground mt-1">Predictions Analyzed</div>
+                    <div className="text-sm text-muted-foreground mt-1">Total Predictions in DB</div>
                   </CardContent>
                 </Card>
               </div>
@@ -239,30 +175,30 @@ export default function VsStockfish() {
                 Stockfish 18 baseline runs at depth 14–20 under matched conditions.
               </p>
               <div className="space-y-0">
-                <StatRow
-                  label={`3-Way Accuracy — ${fmt(stats.totalPredictions)} predictions`}
-                  epValue={`${stats.epAccuracy.toFixed(2)}%`}
-                  sfValue={`${stats.sfAccuracy.toFixed(2)}%`}
-                  edge={stats.epEdge}
-                />
-                <StatRow
-                  label="Correct predictions"
-                  epValue={fmt(CANONICAL.epCorrect)}
-                  sfValue={fmt(CANONICAL.sfCorrect)}
-                  edge={stats.epEdge}
-                />
-                <StatRow
-                  label="Golden Zone (moves 15–45, conf≥50)"
-                  epValue={`${stats.goldenZoneEP.toFixed(1)}%`}
-                  sfValue={`${stats.goldenZoneSF.toFixed(1)}%`}
-                  edge={stats.goldenZoneEP - stats.goldenZoneSF}
-                />
-                <StatRow
-                  label="Recovery rate (EP correct when SF18 is wrong)"
-                  epValue={`${stats.epRecoveryRate.toFixed(2)}%`}
-                  sfValue="0%"
-                  edge={stats.epRecoveryRate}
-                />
+                {loading ? (
+                  <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+                ) : (
+                  <>
+                    <StatRow
+                      label={`3-Way Accuracy — ${fmt(evidence!.total)} total (${fmtK(evidence!.sampleSize)} sample)`}
+                      epValue={`${evidence!.epAccuracy.toFixed(2)}%`}
+                      sfValue={`${evidence!.sfAccuracy.toFixed(2)}%`}
+                      edge={evidence!.epEdge}
+                    />
+                    <StatRow
+                      label="Correct predictions (estimated from sample)"
+                      epValue={fmt(evidence!.epCorrect)}
+                      sfValue={fmt(evidence!.sfCorrect)}
+                      edge={evidence!.epEdge}
+                    />
+                    <StatRow
+                      label="Recovery rate (EP correct when SF18 is wrong)"
+                      epValue={`${evidence!.epRecoveryRate.toFixed(2)}%`}
+                      sfValue="0%"
+                      edge={evidence!.epRecoveryRate}
+                    />
+                  </>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -278,36 +214,42 @@ export default function VsStockfish() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <div className="text-center p-4 rounded-lg bg-muted">
-                  <CheckCircle2 className="h-6 w-6 mx-auto mb-1 text-green-600 dark:text-green-400" />
-                  <div className="text-2xl font-bold">{fmt(CANONICAL.bothCorrect)}</div>
-                  <div className="text-xs text-muted-foreground mt-1">Both correct</div>
-                </div>
-                <div className="text-center p-4 rounded-lg bg-green-500/10">
-                  <Trophy className="h-6 w-6 mx-auto mb-1 text-green-600 dark:text-green-400" />
-                  <div className="text-2xl font-bold text-green-600 dark:text-green-400">{fmt(CANONICAL.epOnlyCorrect)}</div>
-                  <div className="text-xs text-muted-foreground mt-1">Only EP correct</div>
-                </div>
-                <div className="text-center p-4 rounded-lg bg-red-500/10">
-                  <XCircle className="h-6 w-6 mx-auto mb-1 text-red-500 dark:text-red-400" />
-                  <div className="text-2xl font-bold text-red-500 dark:text-red-400">{fmt(CANONICAL.sfOnlyCorrect)}</div>
-                  <div className="text-xs text-muted-foreground mt-1">Only SF18 correct</div>
-                </div>
-                <div className="text-center p-4 rounded-lg bg-muted">
-                  <XCircle className="h-6 w-6 mx-auto mb-1 text-muted-foreground" />
-                  <div className="text-2xl font-bold">{fmt(CANONICAL.bothWrong)}</div>
-                  <div className="text-xs text-muted-foreground mt-1">Both wrong</div>
-                </div>
-              </div>
-              <div className="text-center p-6 rounded-lg bg-green-500/5 border border-green-500/20">
-                <p className="text-lg">
-                  When En Pensent disagrees with Stockfish 18, <strong className="text-green-600 dark:text-green-400">En Pensent is correct {CANONICAL.epDisagreeWinRate}%</strong> of the time.
-                </p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  ({fmt(CANONICAL.epOnlyCorrect)} / ({fmt(CANONICAL.epOnlyCorrect)} + {fmt(CANONICAL.sfOnlyCorrect)}))
-                </p>
-              </div>
+              {loading ? (
+                <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div className="text-center p-4 rounded-lg bg-muted">
+                      <CheckCircle2 className="h-6 w-6 mx-auto mb-1 text-green-600 dark:text-green-400" />
+                      <div className="text-2xl font-bold">{fmt(evidence!.disagreement.bothCorrect)}</div>
+                      <div className="text-xs text-muted-foreground mt-1">Both correct</div>
+                    </div>
+                    <div className="text-center p-4 rounded-lg bg-green-500/10">
+                      <Trophy className="h-6 w-6 mx-auto mb-1 text-green-600 dark:text-green-400" />
+                      <div className="text-2xl font-bold text-green-600 dark:text-green-400">{fmt(evidence!.disagreement.epOnlyCorrect)}</div>
+                      <div className="text-xs text-muted-foreground mt-1">Only EP correct</div>
+                    </div>
+                    <div className="text-center p-4 rounded-lg bg-red-500/10">
+                      <XCircle className="h-6 w-6 mx-auto mb-1 text-red-500 dark:text-red-400" />
+                      <div className="text-2xl font-bold text-red-500 dark:text-red-400">{fmt(evidence!.disagreement.sfOnlyCorrect)}</div>
+                      <div className="text-xs text-muted-foreground mt-1">Only SF18 correct</div>
+                    </div>
+                    <div className="text-center p-4 rounded-lg bg-muted">
+                      <XCircle className="h-6 w-6 mx-auto mb-1 text-muted-foreground" />
+                      <div className="text-2xl font-bold">{fmt(evidence!.disagreement.bothWrong)}</div>
+                      <div className="text-xs text-muted-foreground mt-1">Both wrong</div>
+                    </div>
+                  </div>
+                  <div className="text-center p-6 rounded-lg bg-green-500/5 border border-green-500/20">
+                    <p className="text-lg">
+                      When En Pensent disagrees with Stockfish 18, <strong className="text-green-600 dark:text-green-400">En Pensent is correct {evidence!.disagreement.epDisagreeWinRate.toFixed(1)}%</strong> of the time.
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      ({fmt(evidence!.disagreement.epOnlyCorrect)} / ({fmt(evidence!.disagreement.epOnlyCorrect)} + {fmt(evidence!.disagreement.sfOnlyCorrect)}))
+                    </p>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         </motion.div>
@@ -326,26 +268,32 @@ export default function VsStockfish() {
                 Stockfish 18 has no opening book for 960 starting positions and falls to near-random outcome prediction.
                 En Pensent's path-based representation doesn't depend on opening knowledge — and holds up.
               </p>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="text-center p-4 rounded-lg bg-muted">
-                  <div className="text-2xl font-bold">{fmt(CANONICAL.chess960Total)}</div>
-                  <div className="text-xs text-muted-foreground mt-1">Chess960 Games</div>
-                </div>
-                <div className="text-center p-4 rounded-lg bg-green-500/10">
-                  <div className="text-2xl font-bold text-green-600 dark:text-green-400">{CANONICAL.chess960EP}%</div>
-                  <div className="text-xs text-muted-foreground mt-1">EP Accuracy</div>
-                </div>
-                <div className="text-center p-4 rounded-lg bg-muted">
-                  <div className="text-2xl font-bold text-muted-foreground">{CANONICAL.chess960SF}%</div>
-                  <div className="text-xs text-muted-foreground mt-1">SF18 Accuracy (≈ random)</div>
-                </div>
-              </div>
-              <div className="text-center mt-4">
-                <EdgeBadge edge={CANONICAL.chess960Edge} large />
-                <p className="text-sm text-muted-foreground mt-2">
-                  SF18's 33.49% is approximately the random baseline (33.33%) for 3-way classification.
-                </p>
-              </div>
+              {loading ? (
+                <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="text-center p-4 rounded-lg bg-muted">
+                      <div className="text-2xl font-bold">{fmt(evidence!.chess960Total)}</div>
+                      <div className="text-xs text-muted-foreground mt-1">Chess960 Games</div>
+                    </div>
+                    <div className="text-center p-4 rounded-lg bg-green-500/10">
+                      <div className="text-2xl font-bold text-green-600 dark:text-green-400">{evidence!.chess960EP.toFixed(2)}%</div>
+                      <div className="text-xs text-muted-foreground mt-1">EP Accuracy</div>
+                    </div>
+                    <div className="text-center p-4 rounded-lg bg-muted">
+                      <div className="text-2xl font-bold text-muted-foreground">{evidence!.chess960SF.toFixed(2)}%</div>
+                      <div className="text-xs text-muted-foreground mt-1">SF18 Accuracy</div>
+                    </div>
+                  </div>
+                  <div className="text-center mt-4">
+                    <EdgeBadge edge={evidence!.chess960Edge} large />
+                    <p className="text-sm text-muted-foreground mt-2">
+                      SF18 without opening books falls toward the random baseline (33.33%) for 3-way classification.
+                    </p>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         </motion.div>
@@ -364,31 +312,37 @@ export default function VsStockfish() {
                 Stockfish search is strongest at large evaluations and weakest in the 0–25 centipawn range.
                 En Pensent's largest gains are concentrated in this exact zone.
               </p>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-2">Eval Zone</th>
-                      <th className="text-right py-2">EP Accuracy</th>
-                      <th className="text-right py-2">SF18 Accuracy</th>
-                      <th className="text-right py-2">Edge</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {EVAL_ZONES.map(row => (
-                      <tr key={row.zone} className={`border-b ${row.highlight ? 'bg-green-500/5' : ''}`}>
-                        <td className="py-3 font-medium">
-                          {row.zone}
-                          {row.highlight && <Badge variant="secondary" className="ml-2 text-xs">EP dominant</Badge>}
-                        </td>
-                        <td className="text-right py-3 font-semibold text-green-600 dark:text-green-400">{row.ep}%</td>
-                        <td className="text-right py-3 text-muted-foreground">{row.sf}%</td>
-                        <td className="text-right py-3"><EdgeBadge edge={row.edge} /></td>
+              {loading ? (
+                <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-2">Eval Zone</th>
+                        <th className="text-right py-2">EP Accuracy</th>
+                        <th className="text-right py-2">SF18 Accuracy</th>
+                        <th className="text-right py-2">Edge</th>
+                        <th className="text-right py-2">Sample</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {evidence!.evalZones.map(row => (
+                        <tr key={row.zone} className={`border-b ${row.edge > 5 ? 'bg-green-500/5' : ''}`}>
+                          <td className="py-3 font-medium">
+                            {row.zone}
+                            {row.edge > 5 && <Badge variant="secondary" className="ml-2 text-xs">EP dominant</Badge>}
+                          </td>
+                          <td className="text-right py-3 font-semibold text-green-600 dark:text-green-400">{row.epAccuracy.toFixed(2)}%</td>
+                          <td className="text-right py-3 text-muted-foreground">{row.sfAccuracy.toFixed(2)}%</td>
+                          <td className="text-right py-3"><EdgeBadge edge={row.edge} /></td>
+                          <td className="text-right py-3 text-muted-foreground text-xs">{fmtK(row.count)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
               <p className="text-xs text-muted-foreground mt-3">
                 The pattern: EP's edge is largest exactly where Stockfish's search is admittedly weakest,
                 and the two systems converge as evaluations become decisive.
@@ -407,30 +361,34 @@ export default function VsStockfish() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-2">Game Phase</th>
-                      <th className="text-right py-2">EP Accuracy</th>
-                      <th className="text-right py-2">SF18 Accuracy</th>
-                      <th className="text-right py-2">Edge</th>
-                      <th className="text-left py-2 pl-4">Note</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {PHASE_DATA.map(row => (
-                      <tr key={row.phase} className="border-b">
-                        <td className="py-3 font-medium">{row.phase}</td>
-                        <td className="text-right py-3 font-semibold">{row.ep}%</td>
-                        <td className="text-right py-3 text-muted-foreground">{row.sf}%</td>
-                        <td className="text-right py-3"><EdgeBadge edge={row.edge} /></td>
-                        <td className="py-3 pl-4 text-xs text-muted-foreground">{row.note || '—'}</td>
+              {loading ? (
+                <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-2">Game Phase</th>
+                        <th className="text-right py-2">EP Accuracy</th>
+                        <th className="text-right py-2">SF18 Accuracy</th>
+                        <th className="text-right py-2">Edge</th>
+                        <th className="text-right py-2">Sample</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {evidence!.phases.map(row => (
+                        <tr key={row.phase} className="border-b">
+                          <td className="py-3 font-medium">{row.phase}</td>
+                          <td className="text-right py-3 font-semibold">{row.epAccuracy.toFixed(2)}%</td>
+                          <td className="text-right py-3 text-muted-foreground">{row.sfAccuracy.toFixed(2)}%</td>
+                          <td className="text-right py-3"><EdgeBadge edge={row.edge} /></td>
+                          <td className="text-right py-3 text-muted-foreground text-xs">{fmtK(row.count)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
               <p className="text-xs text-muted-foreground mt-3">
                 The system intentionally caps confidence in the opening (archetype patterns not yet established)
                 and in deep endgames (Stockfish converges to perfect play). The "Golden Zone" of moves 15–45
@@ -453,30 +411,34 @@ export default function VsStockfish() {
               <p className="text-sm text-muted-foreground mb-4">
                 A subset of the 50+ classified strategic archetypes. EP leads SF18 on every archetype with n&gt;10K.
               </p>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-2">Archetype</th>
-                      <th className="text-right py-2">EP Accuracy</th>
-                      <th className="text-right py-2">SF18 Accuracy</th>
-                      <th className="text-right py-2">Edge</th>
-                      <th className="text-right py-2">Sample Size</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {ARCHETYPES.map(row => (
-                      <tr key={row.name} className="border-b">
-                        <td className="py-3 font-mono text-xs">{row.name}</td>
-                        <td className="text-right py-3 font-semibold text-green-600 dark:text-green-400">{row.ep}%</td>
-                        <td className="text-right py-3 text-muted-foreground">{row.sf}%</td>
-                        <td className="text-right py-3"><EdgeBadge edge={row.edge} /></td>
-                        <td className="text-right py-3 text-muted-foreground">{row.n}</td>
+              {loading ? (
+                <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-2">Archetype</th>
+                        <th className="text-right py-2">EP Accuracy</th>
+                        <th className="text-right py-2">SF18 Accuracy</th>
+                        <th className="text-right py-2">Edge</th>
+                        <th className="text-right py-2">Sample</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {evidence!.archetypes.map(row => (
+                        <tr key={row.name} className="border-b">
+                          <td className="py-3 font-mono text-xs">{row.name}</td>
+                          <td className="text-right py-3 font-semibold text-green-600 dark:text-green-400">{row.epAccuracy.toFixed(2)}%</td>
+                          <td className="text-right py-3 text-muted-foreground">{row.sfAccuracy.toFixed(2)}%</td>
+                          <td className="text-right py-3"><EdgeBadge edge={row.edge} /></td>
+                          <td className="text-right py-3 text-muted-foreground text-xs">{fmtK(row.count)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>
@@ -569,8 +531,8 @@ export default function VsStockfish() {
 
         {/* ─── Footer ─── */}
         <div className="text-center text-xs text-muted-foreground py-6">
-          <p>En Pensent — Canonical results from RESULTS.md · Last snapshot: February 2026</p>
-          <p className="mt-1">Discrepancies between this page and <code>node audit/verify.mjs</code> should be reported as bugs.</p>
+          <p>En Pensent — Live data from Supabase · Sample of {evidence ? fmtK(evidence.sampleSize) : '...'} predictions · Queried {new Date().toLocaleDateString()}</p>
+          <p className="mt-1">All numbers are computed live from the public <code>chess_prediction_attempts</code> table. Run <code>node audit/verify.mjs</code> to verify independently.</p>
         </div>
       </main>
     </div>
