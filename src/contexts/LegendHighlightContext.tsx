@@ -255,12 +255,38 @@ export function LegendHighlightProvider({
   );
 }
 
+const noop = () => {};
+const noopArr = () => [];
+
+const defaultContextValue: LegendHighlightContextValue = {
+  highlightedPiece: null,
+  lockedPieces: [],
+  lockedSquares: [],
+  compareMode: false,
+  hoveredSquare: null,
+  hoveredAnnotation: null,
+  highlightedAnnotations: [],
+  followPieceData: null,
+  pieceArrows: [],
+  hoveredMove: null,
+  setHighlightedPiece: noop,
+  toggleLockedPiece: noop,
+  toggleLockedSquare: noop,
+  toggleCompareMode: noop,
+  clearLock: noop,
+  setHoveredSquare: noop,
+  setHoveredAnnotation: noop,
+  setHighlightedAnnotations: noopArr,
+  setFollowPieceData: noop,
+  setPieceArrows: noopArr,
+  nextPieceMove: () => null,
+  prevPieceMove: () => null,
+  setHoveredMove: noop,
+};
+
 export function useLegendHighlight() {
   const context = useContext(LegendHighlightContext);
-  if (context === undefined) {
-    throw new Error('useLegendHighlight must be used within a LegendHighlightProvider');
-  }
-  return context;
+  return context ?? defaultContextValue;
 }
 
 export function useOptionalLegendHighlight(): LegendHighlightContextValue | null {
