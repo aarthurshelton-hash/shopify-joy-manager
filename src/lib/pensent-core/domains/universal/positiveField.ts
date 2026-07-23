@@ -211,7 +211,7 @@ export function positiveCorrelation(rawCorrelation: number): number {
 export function assertPositive(value: number, label?: string): number {
   if (value <= 0) {
     const safe = Math.max(EPSILON, Math.abs(value) || EPSILON);
-    if (process.env.NODE_ENV === 'development') {
+    if (import.meta.env.DEV) {
       console.warn(`[PositiveField] ${label || 'value'} was ${value}, floored to ${safe}`);
     }
     return safe;

@@ -1207,7 +1207,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
     }
     
     // Debug: Log when no PGN is found
-    if (process.env.NODE_ENV !== 'production') {
+    if (import.meta.env.DEV) {
       console.warn('[UnifiedVisionExperience] No valid PGN found from sources:', {
         propPgn: typeof pgn === 'string' ? `${pgn?.slice(0, 50)}...` : typeof pgn,
         localPgn: typeof localGameData?.pgn === 'string' ? `${localGameData?.pgn?.slice(0, 50)}...` : typeof localGameData?.pgn,

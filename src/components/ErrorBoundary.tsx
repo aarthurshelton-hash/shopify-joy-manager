@@ -58,7 +58,7 @@ export class ErrorBoundary extends Component<Props, State> {
             <p className="text-sm text-muted-foreground">
               We've been notified and are working to fix this issue.
             </p>
-            {process.env.NODE_ENV === 'development' && this.state.error && (
+            {import.meta.env.DEV && this.state.error && (
               <pre className="p-2 bg-muted rounded text-xs overflow-auto max-h-32">
                 {this.state.error.message}
               </pre>
