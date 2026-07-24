@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { Chess, Square, Move } from 'chess.js';
 import { SquareData, SquareVisit } from '@/lib/chess/gameSimulator';
 import { boardColors, getPieceColor, PieceType, PieceColor } from '@/lib/chess/pieceColors';
+import { PIECE_PATHS, DEFAULT_FILL, DEFAULT_STROKE } from '@/lib/chess/piecePaths';
 import { useLegendHighlight, HighlightedPiece, HoveredSquareInfo, AnnotationType, PieceMoveArrow } from '@/contexts/LegendHighlightContext';
 
 interface InteractiveVisualizationBoardProps {
@@ -24,11 +25,6 @@ interface TrackedPiece {
   y: number;
 }
 
-// Unicode chess piece characters
-const PIECE_SYMBOLS: Record<string, string> = {
-  'K': '♔', 'Q': '♕', 'R': '♖', 'B': '♗', 'N': '♘', 'P': '♙',
-  'k': '♚', 'q': '♛', 'r': '♜', 'b': '♝', 'n': '♞', 'p': '♟',
-};
 
 // Get the current color for a visit using the active palette
 function getVisitColor(visit: SquareVisit): string {
@@ -732,12 +728,9 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
     const fontSize = squareSize * 0.75;
     
     for (const piece of trackedPieces) {
-      const pieceKey = piece.color === 'w' 
-        ? piece.type.toUpperCase() 
-        : piece.type.toLowerCase();
-      const symbol = PIECE_SYMBOLS[pieceKey];
+      const pathData = PIECE_PATHS[piece.type as PieceType];
       
-      if (!symbol) continue;
+      if (!pathData) continue;
       
       // Check if this piece type is currently highlighted
       const isHighlighted = highlightedPieces.some(
@@ -753,15 +746,14 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
             transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
           }}
         >
-          <text
-            x={0}
-            y={0}
-            textAnchor="middle"
-            dominantBaseline="central"
-            fontSize={fontSize}
-            fill={piece.color === 'w' ? '#ffffff' : '#1a1a1a'}
-            stroke={piece.color === 'w' ? '#1a1a1a' : '#ffffff'}
-            strokeWidth={fontSize * 0.03}
+          <path
+            d={pathData}
+            transform={`translate(-${squareSize * 0.375}, -${squareSize * 0.375}) scale(${squareSize * 0.0075})`}
+            fill={piece.color === 'w' ? DEFAULT_FILL.w : DEFAULT_FILL.b}
+            stroke={piece.color === 'w' ? DEFAULT_STROKE.w : DEFAULT_STROKE.b}
+            strokeWidth={2}
+            strokeLinejoin="round"
+            strokeLinecap="round"
             style={{ 
               opacity: pieceOpacity,
               transition: 'opacity 0.2s ease-out, filter 0.2s ease-out',
@@ -771,11 +763,9 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
                 : isHovered
                 ? `drop-shadow(0 0 ${fontSize * 0.1}px rgba(255, 255, 255, 0.6)) drop-shadow(0 ${fontSize * 0.02}px ${fontSize * 0.04}px rgba(0,0,0,0.3))`
                 : `drop-shadow(0 ${fontSize * 0.02}px ${fontSize * 0.04}px rgba(0,0,0,0.3))`,
-              pointerEvents: 'none', // We use invisible rects for interaction
+              pointerEvents: 'none',
             }}
-          >
-            {symbol}
-          </text>
+          />
           {/* Invisible interaction area for piece */}
           <rect
             x={-squareSize * 0.4}

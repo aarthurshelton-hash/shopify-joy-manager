@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { PieceType, PieceColor, getActivePalette } from '@/lib/chess/pieceColors';
+import { ChessPieceIcon } from './ChessPieceIcon';
 import { SquareData } from '@/lib/chess/gameSimulator';
 import { MoveHistoryEntry } from './EnPensentOverlay';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
@@ -46,15 +47,6 @@ interface VisionInfoCardProps {
   onDownload?: () => void;
   onPurchaseAddOn?: () => void;
 }
-
-const PIECE_SYMBOLS: Record<PieceType, { w: string; b: string }> = {
-  k: { w: '♚', b: '♔' },
-  q: { w: '♛', b: '♕' },
-  r: { w: '♜', b: '♖' },
-  b: { w: '♝', b: '♗' },
-  n: { w: '♞', b: '♘' },
-  p: { w: '♟', b: '♙' },
-};
 
 const PIECE_NAMES: Record<PieceType, string> = {
   k: 'King', q: 'Queen', r: 'Rook', b: 'Bishop', n: 'Knight', p: 'Pawn'
@@ -221,7 +213,7 @@ export const VisionInfoCard: React.FC<VisionInfoCardProps> = ({
                       style={{ backgroundColor: hexColor }}
                     />
                     <span className="text-xs" style={{ color: hexColor }}>
-                      {PIECE_SYMBOLS[piece][color]}
+                      <ChessPieceIcon type={piece} color={color} size={14} hexColor={hexColor} />
                     </span>
                     <span className="text-[8px] font-mono text-muted-foreground">
                       {stat?.moves || 0}
@@ -408,7 +400,7 @@ export const VisionInfoCard: React.FC<VisionInfoCardProps> = ({
                   backgroundColor: (mvpPiece.color === 'w' ? whitePalette : blackPalette)[mvpPiece.piece],
                 }}
               >
-                {PIECE_SYMBOLS[mvpPiece.piece][mvpPiece.color]}
+                <ChessPieceIcon type={mvpPiece.piece} color={mvpPiece.color} size={24} hexColor={(mvpPiece.color === 'w' ? whitePalette : blackPalette)[mvpPiece.piece]} />
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-1">
@@ -427,7 +419,7 @@ export const VisionInfoCard: React.FC<VisionInfoCardProps> = ({
         {/* Footer */}
         <div className={`px-4 py-2 text-center ${darkMode ? 'bg-stone-800' : 'bg-stone-100'}`}>
           <span className="text-[8px] tracking-[0.2em] uppercase opacity-50">
-            ♔ en pensent • enpensent.com ♚
+            en pensent • enpensent.com
           </span>
         </div>
       </div>

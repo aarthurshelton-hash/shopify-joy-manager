@@ -14,6 +14,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { PieceType, PieceColor, getActivePalette } from '@/lib/chess/pieceColors';
+import { ChessPieceIcon } from '@/components/chess/ChessPieceIcon';
 import { SquareData } from '@/lib/chess/gameSimulator';
 import { MoveHistoryEntry } from '@/components/chess/EnPensentOverlay';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
@@ -36,15 +37,6 @@ interface VisionInfoCardPreviewProps {
   showSpecs?: boolean;
   gameId?: string;
 }
-
-const PIECE_SYMBOLS: Record<PieceType, { w: string; b: string }> = {
-  k: { w: '♚', b: '♔' },
-  q: { w: '♛', b: '♕' },
-  r: { w: '♜', b: '♖' },
-  b: { w: '♝', b: '♗' },
-  n: { w: '♞', b: '♘' },
-  p: { w: '♟', b: '♙' },
-};
 
 const PIECE_NAMES: Record<PieceType, string> = {
   k: 'King', q: 'Queen', r: 'Rook', b: 'Bishop', n: 'Knight', p: 'Pawn'
@@ -418,7 +410,7 @@ export const VisionInfoCardPreview: React.FC<VisionInfoCardPreviewProps> = ({
                               backgroundColor: (mvpPiece.color === 'w' ? whitePalette : blackPalette)[mvpPiece.piece],
                             }}
                           >
-                            {PIECE_SYMBOLS[mvpPiece.piece][mvpPiece.color]}
+                            <ChessPieceIcon type={mvpPiece.piece} color={mvpPiece.color} size={24} hexColor={(mvpPiece.color === 'w' ? whitePalette : blackPalette)[mvpPiece.piece]} />
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1">
@@ -482,7 +474,7 @@ export const VisionInfoCardPreview: React.FC<VisionInfoCardPreviewProps> = ({
                     </div>
                     <div className="space-y-0.5">
                       <div className="flex items-center gap-1">
-                        <span className="text-[7px] w-3 text-sky-400">♔</span>
+                        <span className="w-3 text-sky-400"><ChessPieceIcon type="k" color="w" size={10} /></span>
                         <div className="flex-1 h-1.5 rounded-full overflow-hidden bg-stone-300/30">
                           <div 
                             className="h-full bg-gradient-to-r from-sky-400 to-sky-500"
@@ -492,7 +484,7 @@ export const VisionInfoCardPreview: React.FC<VisionInfoCardPreviewProps> = ({
                         <span className="text-[6px] font-mono w-5 text-right">{territoryStats.whitePercent}%</span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <span className="text-[7px] w-3 text-rose-400">♚</span>
+                        <span className="w-3 text-rose-400"><ChessPieceIcon type="k" color="b" size={10} /></span>
                         <div className="flex-1 h-1.5 rounded-full overflow-hidden bg-stone-300/30">
                           <div 
                             className="h-full bg-gradient-to-r from-rose-400 to-rose-500"
@@ -560,7 +552,7 @@ export const VisionInfoCardPreview: React.FC<VisionInfoCardPreviewProps> = ({
                     WebkitTextFillColor: 'transparent',
                   }}
                 >
-                  ♔ Certified Vision ♚
+                  Certified Vision
                 </span>
                 <span className="text-[6px] tracking-wider opacity-40">
                   #{String(totalMoves).padStart(3, '0')}

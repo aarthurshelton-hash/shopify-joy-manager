@@ -4,6 +4,7 @@ import {
   PieceType, 
   PieceColor,
 } from '@/lib/chess/pieceColors';
+import { ChessPieceIcon } from './ChessPieceIcon';
 import { useOptionalLegendHighlight } from '@/contexts/LegendHighlightContext';
 import { useVisualizationStateStore } from '@/stores/visualizationStateStore';
 import { MoveHistoryEntry } from './EnPensentOverlay';
@@ -18,15 +19,6 @@ interface LiveColorLegendProps {
   compact?: boolean;
   title?: string;
 }
-
-const PIECE_SYMBOLS: Record<PieceType, { w: string; b: string }> = {
-  k: { w: '♚', b: '♔' },
-  q: { w: '♛', b: '♕' },
-  r: { w: '♜', b: '♖' },
-  b: { w: '♝', b: '♗' },
-  n: { w: '♞', b: '♘' },
-  p: { w: '♟', b: '♙' },
-};
 
 const PIECE_NAMES: Record<PieceType, string> = {
   k: 'King', q: 'Queen', r: 'Rook', b: 'Bishop', n: 'Knight', p: 'Pawn'
@@ -310,12 +302,12 @@ export const LiveColorLegend: React.FC<LiveColorLegendProps> = ({
                   style={{ backgroundColor: hexColor }}
                 />
                 
-                {/* Piece symbol */}
+                {/* Piece icon */}
                 <span 
-                  className="text-base shrink-0"
+                  className="shrink-0"
                   style={{ color: hexColor }}
                 >
-                  {PIECE_SYMBOLS[piece][color]}
+                  <ChessPieceIcon type={piece} color={color} size={16} hexColor={hexColor} />
                 </span>
                 
                 {!compact && (

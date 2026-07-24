@@ -7,15 +7,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock } from 'lucide-react';
 import { PieceType, PieceColor } from '@/lib/chess/pieceColors';
-
-const PIECE_SYMBOLS: Record<PieceType, { w: string; b: string }> = {
-  k: { w: '♚', b: '♔' },
-  q: { w: '♛', b: '♕' },
-  r: { w: '♜', b: '♖' },
-  b: { w: '♝', b: '♗' },
-  n: { w: '♞', b: '♘' },
-  p: { w: '♟', b: '♙' },
-};
+import { ChessPieceIcon } from '../ChessPieceIcon';
 
 const PIECE_NAMES: Record<PieceType, string> = {
   k: 'King', q: 'Queen', r: 'Rook', b: 'Bishop', n: 'Knight', p: 'Pawn'
@@ -102,12 +94,12 @@ export const PieceRow: React.FC<PieceRowProps> = ({
                 style={{ backgroundColor: hexColor }}
               />
               
-              {/* Piece symbol */}
+              {/* Piece icon */}
               <span 
-                className="text-base shrink-0"
+                className="shrink-0"
                 style={{ color: hexColor }}
               >
-                {PIECE_SYMBOLS[piece][color]}
+                <ChessPieceIcon type={piece} color={color} size={16} hexColor={hexColor} />
               </span>
               
               {!compact && (

@@ -2,6 +2,8 @@ import { useState, useCallback, useMemo, useRef } from 'react';
 import { Square } from 'chess.js';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PieceType, PieceColor } from '@/lib/chess/pieceColors';
+import { ChessPieceIcon } from './ChessPieceIcon';
+import { fenCharToType, fenCharToColor } from '@/lib/chess/piecePaths';
 import { useHapticFeedback } from '@/hooks/useHapticFeedback';
 import { EnPensentOverlay, MoveHistoryEntry } from './EnPensentOverlay';
 import { useOptionalLegendHighlight, HighlightedPiece } from '@/contexts/LegendHighlightContext';
@@ -25,11 +27,6 @@ interface PlayableChessBoardProps {
   showPieces?: boolean;
   pieceOpacity?: number;
 }
-
-const PIECE_SYMBOLS: Record<string, string> = {
-  K: '♔', Q: '♕', R: '♖', B: '♗', N: '♘', P: '♙',
-  k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟',
-};
 
 const parseFen = (fen: string): (string | null)[][] => {
   const rows = fen.split(' ')[0].split('/');
@@ -102,13 +99,6 @@ export const PlayableChessBoard = ({
     
     return map;
   }, [moveHistory]);
-
-  // Get piece color - always return full color (pieces should always be visible)
-  const getPieceDisplayColor = (piece: string): string => {
-    const isWhite = piece === piece.toUpperCase();
-    // Use standard black/white piece colors for clear visibility
-    return isWhite ? '#1a1a1a' : '#f5f5f5';
-  };
 
   const handleSquareInteraction = useCallback(async (row: number, col: number) => {
     if (disabled || !isMyTurn) return;
@@ -286,16 +276,15 @@ export const PlayableChessBoard = ({
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: pieceOpacity }}
             className="absolute inset-0 flex items-center justify-center z-10"
-            style={{
-              color: getPieceDisplayColor(piece),
-              textShadow: piece === piece.toUpperCase() 
-                ? '0 1px 2px rgba(0,0,0,0.3), 0 0 1px rgba(255,255,255,0.8)'
-                : '0 1px 2px rgba(0,0,0,0.5), 0 0 1px rgba(0,0,0,0.3)',
-            }}
           >
-            <span className="text-[2.5rem] sm:text-4xl md:text-5xl lg:text-6xl select-none drop-shadow-lg leading-none">
-              {PIECE_SYMBOLS[piece]}
-            </span>
+            <ChessPieceIcon
+              type={fenCharToType(piece)}
+              color={fenCharToColor(piece)}
+              size={48}
+              opacity={pieceOpacity}
+              className="w-[80%] h-[80%]"
+              style={{ width: '80%', height: '80%' }}
+            />
           </motion.div>
         )}
 

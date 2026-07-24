@@ -1,6 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { ChessPieceIcon } from './ChessPieceIcon';
+import { PieceType, PieceColor } from '@/lib/chess/pieceColors';
 
-const chessPieces = ['♔', '♕', '♖', '♗', '♘', '♙', '♚', '♛', '♜', '♝', '♞', '♟'];
+const chessPieces: { type: PieceType; color: PieceColor }[] = [
+  { type: 'k', color: 'w' }, { type: 'q', color: 'w' }, { type: 'r', color: 'w' },
+  { type: 'b', color: 'w' }, { type: 'n', color: 'w' }, { type: 'p', color: 'w' },
+  { type: 'k', color: 'b' }, { type: 'q', color: 'b' }, { type: 'r', color: 'b' },
+  { type: 'b', color: 'b' }, { type: 'n', color: 'b' }, { type: 'p', color: 'b' },
+];
 
 // Trail colors for variety
 const trailColors = {
@@ -27,7 +34,7 @@ interface TrailPoint {
 
 interface AnimatedPiece {
   id: number;
-  piece: string;
+  piece: { type: PieceType; color: PieceColor };
   x: number;
   y: number;
   depth: number; // 0-1, higher = closer/larger/faster
@@ -145,7 +152,7 @@ const FloatingChessPieces: React.FC = () => {
                   zIndex: Math.floor(piece.depth * 10),
                 }}
               >
-                {piece.piece}
+                <ChessPieceIcon type={piece.piece.type} color={piece.piece.color} size={piece.size} hexColor={`${colors[trail.colorIdx]}${trail.opacity * 0.4})`} opacity={trail.opacity * 0.4} />
               </span>
             ))}
             
@@ -165,7 +172,7 @@ const FloatingChessPieces: React.FC = () => {
                 backfaceVisibility: 'hidden',
               }}
             >
-              {piece.piece}
+              <ChessPieceIcon type={piece.piece.type} color={piece.piece.color} size={piece.size} hexColor={`${colors[0]}${baseOpacity})`} opacity={baseOpacity} />
             </span>
           </React.Fragment>
         );

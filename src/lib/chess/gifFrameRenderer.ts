@@ -6,13 +6,9 @@
 
 import { SquareData, GameData, SimulationResult } from './gameSimulator';
 import { getCurrentPalette } from './pieceColors';
+import { PIECE_PATHS, DEFAULT_FILL, DEFAULT_STROKE } from './piecePaths';
+import { PieceType } from './pieceColors';
 import { Chess } from 'chess.js';
-
-// Unicode chess piece symbols for direct canvas rendering
-const PIECE_SYMBOLS: Record<string, string> = {
-  'K': '♔', 'Q': '♕', 'R': '♖', 'B': '♗', 'N': '♘', 'P': '♙',
-  'k': '♚', 'q': '♛', 'r': '♜', 'b': '♝', 'n': '♞', 'p': '♟',
-};
 
 /**
  * Parse PGN and return piece positions at the given move number.
@@ -30,7 +26,7 @@ function drawPiecesOntoCanvas(
 ): void {
   if (!pgn || pgn.trim().length < 2) return;
 
-  const pieces: { row: number; col: number; symbol: string; color: 'w' | 'b' }[] = [];
+  const pieces: { row: number; col: number; type: PieceType; color: 'w' | 'b' }[] = [];
   try {
     const fullGame = new Chess();
     fullGame.loadPgn(pgn);
@@ -43,8 +39,7 @@ function drawPiecesOntoCanvas(
       for (let col = 0; col < 8; col++) {
         const p = boardState[row]?.[col];
         if (p) {
-          const key = p.color === 'w' ? p.type.toUpperCase() : p.type.toLowerCase();
-          pieces.push({ row, col, symbol: PIECE_SYMBOLS[key] ?? '', color: p.color });
+          pieces.push({ row, col, type: p.type as PieceType, color: p.color });
         }
       }
     }
@@ -54,28 +49,36 @@ function drawPiecesOntoCanvas(
   if (!ctx || pieces.length === 0) return;
 
   const sqSize = (boardSize * scale) / 8;
-  const fontSize = sqSize * 0.72;
+  const pieceRenderSize = sqSize * 0.75;
+  const pathScale = pieceRenderSize / 100; // SVG viewBox is 100x100
 
   ctx.save();
   ctx.globalAlpha = pieceOpacity;
-  ctx.font = `${fontSize}px serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
 
   for (const p of pieces) {
     const cx = boardOffsetX + p.col * sqSize + sqSize / 2;
     const cy = boardOffsetY + p.row * sqSize + sqSize / 2;
-    // Shadow/stroke for contrast
-    ctx.lineWidth = fontSize * 0.08;
-    if (p.color === 'w') {
-      ctx.strokeStyle = 'rgba(0,0,0,0.75)';
-      ctx.fillStyle = '#ffffff';
-    } else {
-      ctx.strokeStyle = 'rgba(255,255,255,0.4)';
-      ctx.fillStyle = '#1a1a1a';
-    }
-    ctx.strokeText(p.symbol, cx, cy);
-    ctx.fillText(p.symbol, cx, cy);
+    const pathData = PIECE_PATHS[p.type];
+    if (!pathData) continue;
+
+    const path = new Path2D(pathData);
+    // Center the piece: translate to center, then offset by half piece size
+    const offsetX = cx - pieceRenderSize / 2;
+    const offsetY = cy - pieceRenderSize / 2;
+
+    ctx.save();
+    ctx.translate(offsetX, offsetY);
+    ctx.scale(pathScale, pathScale);
+
+    ctx.fillStyle = p.color === 'w' ? DEFAULT_FILL.w : DEFAULT_FILL.b;
+    ctx.strokeStyle = p.color === 'w' ? DEFAULT_STROKE.w : DEFAULT_STROKE.b;
+    ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.fill(path);
+    ctx.stroke(path);
+
+    ctx.restore();
   }
   ctx.restore();
 }
@@ -263,7 +266,7 @@ export async function renderFrameToCanvas(
       color: mutedColor,
       fontFamily: "'Inter', system-ui, sans-serif",
     });
-    brandingDiv.textContent = '♔ En Pensent ♚';
+    brandingDiv.textContent = 'En Pensent';
     wrapper.appendChild(brandingDiv);
     
     // Capture the frame

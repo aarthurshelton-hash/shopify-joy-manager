@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
+import { ChessPieceIcon } from '@/components/chess/ChessPieceIcon';
+import { fenCharToType, fenCharToColor } from '@/lib/chess/piecePaths';
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -46,11 +48,6 @@ interface MoveRecord {
   fen_after: string;
   move_number: number;
 }
-
-const PIECE_SYMBOLS: Record<string, string> = {
-  K: '♔', Q: '♕', R: '♖', B: '♗', N: '♘', P: '♙',
-  k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟',
-};
 
 const TIME_CONTROL_LABELS: Record<string, string> = {
   bullet_1: '1 min',
@@ -139,9 +136,13 @@ const ReplayBoard = ({
                     filter: hasBeenMoved || movedSquares.size === 0 ? 'none' : 'grayscale(100%)',
                   }}
                 >
-                  <span className="text-3xl md:text-4xl select-none drop-shadow-md">
-                    {PIECE_SYMBOLS[piece]}
-                  </span>
+                  <ChessPieceIcon
+                    type={fenCharToType(piece)}
+                    color={fenCharToColor(piece)}
+                    size={32}
+                    hexColor={getPieceColor(piece, row, col)}
+                    opacity={hasBeenMoved || movedSquares.size === 0 ? 1 : 0.15}
+                  />
                 </motion.div>
               )}
             </div>

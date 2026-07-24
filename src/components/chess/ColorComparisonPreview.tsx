@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { PieceType } from '@/lib/chess/pieceColors';
+import { PieceType, PieceColor } from '@/lib/chess/pieceColors';
+import { ChessPieceIcon } from './ChessPieceIcon';
 import { PaletteColors, colorDistance } from '@/lib/visualizations/similarityDetection';
 import { AlertTriangle, Check, X } from 'lucide-react';
 import { useEnPensentPatterns } from '@/hooks/useEnPensentPatterns';
@@ -9,14 +10,6 @@ import { TemporalSignature } from '@/lib/pensent-core/types/core';
 const PIECE_TYPES: PieceType[] = ['k', 'q', 'r', 'b', 'n', 'p'];
 const PIECE_NAMES: Record<PieceType, string> = {
   k: 'King', q: 'Queen', r: 'Rook', b: 'Bishop', n: 'Knight', p: 'Pawn'
-};
-const PIECE_SYMBOLS: Record<PieceType, { white: string; black: string }> = {
-  k: { white: '♚', black: '♔' },
-  q: { white: '♛', black: '♕' },
-  r: { white: '♜', black: '♖' },
-  b: { white: '♝', black: '♗' },
-  n: { white: '♞', black: '♘' },
-  p: { white: '♟', black: '♙' },
 };
 
 interface ColorComparisonPreviewProps {
@@ -123,7 +116,7 @@ const ColorComparisonPreview: React.FC<ColorComparisonPreviewProps> = ({
                     match.isSimilar ? 'bg-amber-500/10' : 'bg-green-500/10'
                   }`}
                 >
-                  <span className="text-sm w-4">{PIECE_SYMBOLS[piece].white}</span>
+                  <span className="text-sm w-4"><ChessPieceIcon type={piece} color="w" size={14} /></span>
                   <div className="flex items-center gap-1 flex-1">
                     <div 
                       className="w-5 h-5 rounded border"
@@ -161,7 +154,7 @@ const ColorComparisonPreview: React.FC<ColorComparisonPreviewProps> = ({
                     match.isSimilar ? 'bg-amber-500/10' : 'bg-green-500/10'
                   }`}
                 >
-                  <span className="text-sm w-4">{PIECE_SYMBOLS[piece].black}</span>
+                  <span className="text-sm w-4"><ChessPieceIcon type={piece} color="b" size={14} /></span>
                   <div className="flex items-center gap-1 flex-1">
                     <div 
                       className="w-5 h-5 rounded border"

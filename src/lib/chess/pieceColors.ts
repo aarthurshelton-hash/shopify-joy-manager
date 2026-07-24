@@ -563,13 +563,46 @@ export const colorPalettes: ColorPalette[] = [
   customPalette,
 ];
 
-// Current active palette (default to hot/cold)
-let activePalette: ColorPalette = hotColdPalette;
+// Current active palette — restored from localStorage on module load
+const PALETTE_STORAGE_KEY = 'enpensent:activePalette';
+const CUSTOM_PALETTE_STORAGE_KEY = 'enpensent:customPalette';
+
+function restorePaletteFromStorage(): ColorPalette {
+  if (typeof window === 'undefined') return hotColdPalette;
+  try {
+    const savedId = localStorage.getItem(PALETTE_STORAGE_KEY);
+    if (savedId) {
+      // Restore custom palette colors first if applicable
+      if (savedId === 'custom') {
+        const savedCustom = localStorage.getItem(CUSTOM_PALETTE_STORAGE_KEY);
+        if (savedCustom) {
+          const custom = JSON.parse(savedCustom);
+          const customIdx = colorPalettes.findIndex(p => p.id === 'custom');
+          if (customIdx !== -1) {
+            colorPalettes[customIdx] = { ...colorPalettes[customIdx], white: custom.white, black: custom.black };
+            return colorPalettes[customIdx];
+          }
+        }
+      }
+      const palette = colorPalettes.find(p => p.id === savedId);
+      if (palette) return palette;
+    }
+  } catch { /* localStorage unavailable */ }
+  return hotColdPalette;
+}
+
+let activePalette: ColorPalette = restorePaletteFromStorage();
 
 export function setActivePalette(paletteId: PaletteId): void {
   const palette = colorPalettes.find(p => p.id === paletteId);
   if (palette) {
     activePalette = palette;
+    // Persist to localStorage
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(PALETTE_STORAGE_KEY, paletteId);
+      } catch { /* localStorage write failed */ }
+    }
   }
 }
 
@@ -589,6 +622,15 @@ export function setCustomColor(pieceColor: PieceColor, pieceType: PieceType, hex
     // If custom is active, update the active palette reference
     if (activePalette.id === 'custom') {
       activePalette = colorPalettes[customIdx];
+    }
+    // Persist custom palette colors to localStorage
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(CUSTOM_PALETTE_STORAGE_KEY, JSON.stringify({
+          white: colorPalettes[customIdx].white,
+          black: colorPalettes[customIdx].black,
+        }));
+      } catch { /* localStorage write failed */ }
     }
   }
 }

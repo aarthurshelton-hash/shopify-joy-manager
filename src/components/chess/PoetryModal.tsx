@@ -168,7 +168,7 @@ export const PoetryModal: React.FC<PoetryModalProps> = ({
 
           {/* Attribution */}
           <p className="text-center text-xs text-muted-foreground">
-            ♔ En Pensent — Where Every Game Becomes Art ♚
+            En Pensent — Where Every Game Becomes Art
           </p>
         </div>
       </DialogContent>

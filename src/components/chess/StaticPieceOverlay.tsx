@@ -1,11 +1,7 @@
 import React, { useMemo } from 'react';
 import { Chess } from 'chess.js';
-
-// Unicode chess piece characters
-const PIECE_SYMBOLS: Record<string, string> = {
-  'K': '♔', 'Q': '♕', 'R': '♖', 'B': '♗', 'N': '♘', 'P': '♙',
-  'k': '♚', 'q': '♛', 'r': '♜', 'b': '♝', 'n': '♞', 'p': '♟',
-};
+import { ChessPieceIcon } from './ChessPieceIcon';
+import { PieceType, PieceColor } from '@/lib/chess/pieceColors';
 
 interface StaticPieceOverlayProps {
   pgn: string;
@@ -79,9 +75,8 @@ export const StaticPieceOverlay: React.FC<StaticPieceOverlayProps> = ({
   return (
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
       {piecePositions.map((p, idx) => {
-        const symbol = p.color === 'w' 
-          ? PIECE_SYMBOLS[p.piece.toUpperCase()] 
-          : PIECE_SYMBOLS[p.piece.toLowerCase()];
+        const pieceType = p.piece as PieceType;
+        const pieceColor = p.color as PieceColor;
         return (
           <div
             key={idx}
@@ -94,16 +89,15 @@ export const StaticPieceOverlay: React.FC<StaticPieceOverlayProps> = ({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: squareSize * 0.75,
               opacity: pieceOpacity,
-              color: p.color === 'w' ? '#ffffff' : '#1a1a1a',
-              textShadow: p.color === 'w' 
-                ? '0 1px 3px rgba(0,0,0,0.5), 0 0 1px rgba(0,0,0,0.8)' 
-                : '0 1px 2px rgba(255,255,255,0.3)',
-              fontFamily: 'serif',
             }}
           >
-            {symbol}
+            <ChessPieceIcon
+              type={pieceType}
+              color={pieceColor}
+              size={squareSize * 0.75}
+              opacity={pieceOpacity}
+            />
           </div>
         );
       })}

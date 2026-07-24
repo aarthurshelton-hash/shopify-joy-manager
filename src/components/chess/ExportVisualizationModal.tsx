@@ -442,7 +442,7 @@ export const ExportVisualizationModal: React.FC<ExportVisualizationModalProps> =
               }`}
               style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
             >
-              ♔ En Pensent ♚
+              En Pensent
             </p>
           </div>
         </div>

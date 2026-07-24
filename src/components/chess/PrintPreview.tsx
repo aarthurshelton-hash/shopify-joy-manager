@@ -766,7 +766,7 @@ const PrintPreview: React.FC<PrintPreviewProps> = ({ simulation, pgn, title, onS
               }`}
               style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
             >
-              ♔ En Pensent ♚
+              En Pensent
             </p>
           </div>
         </div>

@@ -21,7 +21,7 @@ export const Footer = forwardRef<HTMLElement, object>(function Footer(_props, re
   const handleLogoClick = (e: React.MouseEvent) => {
     if (isHomepage) {
       e.preventDefault();
-      toast('Refreshing...', { icon: '♔', duration: 1000 });
+      toast('Refreshing...', { duration: 1000 });
       setTimeout(() => window.location.reload(), 300);
     }
   };

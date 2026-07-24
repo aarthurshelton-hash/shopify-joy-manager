@@ -10,6 +10,7 @@ import {
   PieceType,
   PieceColor
 } from '@/lib/chess/pieceColors';
+import { ChessPieceIcon } from './ChessPieceIcon';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -90,15 +91,6 @@ const pieceNames: Record<PieceType, string> = {
   b: 'Bishop',
   n: 'Knight',
   p: 'Pawn',
-};
-
-const pieceSymbols: Record<PieceType, { white: string; black: string }> = {
-  k: { white: '♔', black: '♚' },
-  q: { white: '♕', black: '♛' },
-  r: { white: '♖', black: '♜' },
-  b: { white: '♗', black: '♝' },
-  n: { white: '♘', black: '♞' },
-  p: { white: '♙', black: '♟' },
 };
 
 // Generate a random hex color
@@ -504,7 +496,7 @@ const PaletteSelector = forwardRef<HTMLDivElement, PaletteSelectorProps>(functio
                 <div className="space-y-2">
                   {pieces.map((piece) => (
                     <div key={`custom-w-${piece}`} className="flex items-center gap-3">
-                      <span className="text-xl w-6">{pieceSymbols[piece].white}</span>
+                      <span className="text-xl w-6"><ChessPieceIcon type={piece} color="w" size={20} /></span>
                       <span className="text-sm text-muted-foreground w-16">{pieceNames[piece]}</span>
                       <label className="relative cursor-pointer group">
                         <input
@@ -530,7 +522,7 @@ const PaletteSelector = forwardRef<HTMLDivElement, PaletteSelectorProps>(functio
                 <div className="space-y-2">
                   {pieces.map((piece) => (
                     <div key={`custom-b-${piece}`} className="flex items-center gap-3">
-                      <span className="text-xl w-6">{pieceSymbols[piece].black}</span>
+                      <span className="text-xl w-6"><ChessPieceIcon type={piece} color="b" size={20} /></span>
                       <span className="text-sm text-muted-foreground w-16">{pieceNames[piece]}</span>
                       <label className="relative cursor-pointer group">
                         <input

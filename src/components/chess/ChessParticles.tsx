@@ -2,12 +2,19 @@ import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useEnPensentPatterns, generateParticlePattern, getFlowAnimation } from '@/hooks/useEnPensentPatterns';
 import { TemporalSignature } from '@/lib/pensent-core/types/core';
+import { ChessPieceIcon } from './ChessPieceIcon';
+import { PieceType, PieceColor } from '@/lib/chess/pieceColors';
 
-const chessPieces = ['♔', '♕', '♖', '♗', '♘', '♙', '♚', '♛', '♜', '♝', '♞', '♟'];
+const chessPieces: { type: PieceType; color: PieceColor }[] = [
+  { type: 'k', color: 'w' }, { type: 'q', color: 'w' }, { type: 'r', color: 'w' },
+  { type: 'b', color: 'w' }, { type: 'n', color: 'w' }, { type: 'p', color: 'w' },
+  { type: 'k', color: 'b' }, { type: 'q', color: 'b' }, { type: 'r', color: 'b' },
+  { type: 'b', color: 'b' }, { type: 'n', color: 'b' }, { type: 'p', color: 'b' },
+];
 
 interface EnPensentParticle {
   id: number;
-  piece: string;
+  piece: { type: PieceType; color: PieceColor };
   left: number;
   top: number;
   delay: number;
@@ -78,7 +85,7 @@ const ChessParticles: React.FC<ChessParticlesProps> = ({
             ease: 'easeInOut'
           }}
         >
-          {particle.piece}
+          <ChessPieceIcon type={particle.piece.type} color={particle.piece.color} size={particle.size} hexColor={particle.color} opacity={particle.opacity} />
         </motion.div>
       ))}
       

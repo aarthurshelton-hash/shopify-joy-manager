@@ -756,7 +756,7 @@ const ExperienceTab: React.FC<{
                 darkMode ? 'text-stone-500' : 'text-stone-400'
               }`}
             >
-              ♔ En Pensent ♚
+              En Pensent
             </p>
           </div>
         </motion.div>

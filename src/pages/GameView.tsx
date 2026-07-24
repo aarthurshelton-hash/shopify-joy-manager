@@ -26,7 +26,7 @@ import { useVisualizationStateStore } from '@/stores/visualizationStateStore';
 import { usePrintOrderStore, PrintOrderData } from '@/stores/printOrderStore';
 import AuthModal from '@/components/auth/AuthModal';
 import { PremiumUpgradeModal } from '@/components/premium';
-import { setActivePalette, PaletteId, PieceType } from '@/lib/chess/pieceColors';
+import { setActivePalette, getActivePalette, PaletteId, PieceType } from '@/lib/chess/pieceColors';
 import { recordVisionInteraction, getVisionScore, VisionScore } from '@/lib/visualizations/visionScoring';
 import { generateGameHash, extractMovesFromPgn, buildCanonicalShareUrl } from '@/lib/visualizations/gameCanonical';
 import { detectGameCard } from '@/lib/chess/gameCardDetection';
@@ -102,6 +102,11 @@ const GameView = () => {
       // Eagerly set the global palette module variable before first render
       setActivePalette(urlPalette as PaletteId);
       return urlPalette;
+    }
+    // Use the persisted palette from localStorage (restored on module load)
+    const persisted = getActivePalette();
+    if (persisted && persisted.id !== 'hotCold') {
+      return persisted.id;
     }
     // Default to modern and sync the global module variable
     setActivePalette('modern');

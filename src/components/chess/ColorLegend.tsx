@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { getPieceColorLegend, getActivePalette, PieceType, PieceColor } from '@/lib/chess/pieceColors';
+import { ChessPieceIcon } from './ChessPieceIcon';
 import { useOptionalLegendHighlight } from '@/contexts/LegendHighlightContext';
 import { SquareData } from '@/lib/chess/gameSimulator';
 import { GitCompare, X, Swords, Grid3X3, Flame, ChevronLeft, ChevronRight, MapPin, TrendingUp, Activity } from 'lucide-react';
@@ -52,7 +53,6 @@ interface BattleStats {
   pieceBattles: {
     pieceType: PieceType;
     pieceName: string;
-    pieceSymbol: string;
     whiteSquares: number;
     blackSquares: number;
     whiteVisits: number;
@@ -64,7 +64,6 @@ interface BattleStats {
     color: PieceColor;
     type: PieceType;
     name: string;
-    symbol: string;
     hex: string;
     squareCount: number;
   } | null;
@@ -309,10 +308,6 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board, on
     const pieceNames: Record<PieceType, string> = {
       k: 'King', q: 'Queen', r: 'Rook', b: 'Bishop', n: 'Knight', p: 'Pawn'
     };
-    const pieceSymbols: Record<PieceType, { w: string; b: string }> = {
-      k: { w: '♚', b: '♔' }, q: { w: '♛', b: '♕' }, r: { w: '♜', b: '♖' },
-      b: { w: '♝', b: '♗' }, n: { w: '♞', b: '♘' }, p: { w: '♟', b: '♙' }
-    };
     
     let whiteTotalSquares = 0;
     let blackTotalSquares = 0;
@@ -334,7 +329,6 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board, on
       return {
         pieceType: pt,
         pieceName: pieceNames[pt],
-        pieceSymbol: pieceSymbols[pt].w,
         whiteSquares: whiteStats.squareCount,
         blackSquares: blackStats.squareCount,
         whiteVisits: whiteStats.visitCount,
@@ -357,7 +351,6 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board, on
           color,
           type: piece,
           name: pieceNames[piece],
-          symbol: pieceSymbols[piece][color],
           hex: legendItem?.hex || '#888',
           squareCount: stat.squareCount,
         };
@@ -657,7 +650,7 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board, on
           }`}
           style={{ backgroundColor: item.hex }}
         />
-        <span className="text-lg shrink-0">{item.symbol}</span>
+        <span className="text-lg shrink-0"><ChessPieceIcon type={item.piece} color={item.color} size={18} hexColor={item.hex} /></span>
         <span className="text-xs text-muted-foreground font-serif flex-1 truncate">
           {item.name.replace('White ', '').replace('Black ', '')}
         </span>
@@ -749,7 +742,7 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board, on
               return (
                 <div key={`w-${pt}`} className="flex flex-col items-center gap-1">
                   <div className="flex items-center gap-1">
-                    <span className="text-sm">{legendItem.symbol}</span>
+                    <span className="text-sm"><ChessPieceIcon type={pt} color="w" size={14} hexColor={legendItem.hex} /></span>
                     <span className="text-[9px] text-muted-foreground">{pieceNames[pt]}</span>
                   </div>
                   {renderHeatmapSquare(heatmap, legendItem.hex, 56)}
@@ -777,7 +770,7 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board, on
               return (
                 <div key={`b-${pt}`} className="flex flex-col items-center gap-1">
                   <div className="flex items-center gap-1">
-                    <span className="text-sm">{legendItem.symbol}</span>
+                    <span className="text-sm"><ChessPieceIcon type={pt} color="w" size={14} hexColor={legendItem.hex} /></span>
                     <span className="text-[9px] text-muted-foreground">{pieceNames[pt]}</span>
                   </div>
                   {renderHeatmapSquare(heatmap, legendItem.hex, 56)}
@@ -854,7 +847,7 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board, on
                 className="w-6 h-6 rounded shadow-md ring-2 ring-amber-400/50"
                 style={{ backgroundColor: battleStats.mvpPiece.hex }}
               />
-              <span className="text-xl">{battleStats.mvpPiece.symbol}</span>
+              <span className="text-xl"><ChessPieceIcon type={battleStats.mvpPiece.type} color={battleStats.mvpPiece.color} size={20} hexColor={battleStats.mvpPiece.hex} /></span>
               <span className="text-sm font-medium">
                 {battleStats.mvpPiece.color === 'w' ? 'White' : 'Black'} {battleStats.mvpPiece.name}
               </span>
@@ -886,7 +879,7 @@ const ColorLegend: React.FC<ColorLegendProps> = ({ interactive = true, board, on
                       {battle.whiteSquares}
                     </span>
                   </div>
-                  <span className="text-sm font-medium">{battle.pieceSymbol} {battle.pieceName}</span>
+                  <span className="text-sm font-medium flex items-center gap-1"><ChessPieceIcon type={battle.pieceType} color="w" size={14} /> {battle.pieceName}</span>
                   <div className="flex items-center gap-1">
                     <span className={winner === 'black' ? 'font-bold text-rose-400' : 'text-muted-foreground'}>
                       {battle.blackSquares}

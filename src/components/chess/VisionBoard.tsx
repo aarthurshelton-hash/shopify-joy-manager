@@ -120,7 +120,7 @@ export const VisionBoard: React.FC<VisionBoardProps> = ({
           fontFamily: "'Inter', system-ui, sans-serif",
         }}
       >
-        ♔ En Pensent ♚
+        En Pensent
       </p>
     </div>
   );

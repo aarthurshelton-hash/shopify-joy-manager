@@ -340,7 +340,7 @@ export async function generatePrintCanvas(
   ctx.font = "500 11px 'Inter', sans-serif";
   ctx.textAlign = 'center';
   
-  const brandText = '♔ EN PENSENT ♚';
+  const brandText = 'EN PENSENT';
   const brandSpacing = 4;
   const brandChars = brandText.split('');
   const brandCharWidth = brandChars.reduce((sum, c) => sum + ctx.measureText(c).width, 0);

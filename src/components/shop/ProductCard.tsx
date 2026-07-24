@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ShoppingCart } from 'lucide-react';
 import { useCartStore, type ShopifyProduct, type CartItem } from '@/stores/cartStore';
+import { ChessPieceIcon } from '@/components/chess/ChessPieceIcon';
 
 interface ProductCardProps {
   product: ShopifyProduct;
@@ -57,7 +58,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, customPrintDa
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="text-6xl">♔</div>
+          <div className="flex items-center justify-center"><ChessPieceIcon type="k" color="w" size={48} /></div>
         )}
       </div>
       

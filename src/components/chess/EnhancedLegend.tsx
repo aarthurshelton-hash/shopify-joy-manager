@@ -5,6 +5,7 @@ import {
   PieceColor,
   getActivePalette,
 } from '@/lib/chess/pieceColors';
+import { ChessPieceIcon } from './ChessPieceIcon';
 import { useOptionalLegendHighlight, HighlightedPiece } from '@/contexts/LegendHighlightContext';
 import { useVisualizationStateStore } from '@/stores/visualizationStateStore';
 import { MoveHistoryEntry } from './EnPensentOverlay';
@@ -30,15 +31,6 @@ interface EnhancedLegendProps {
   compact?: boolean;
   title?: string;
 }
-
-const PIECE_SYMBOLS: Record<PieceType, { w: string; b: string }> = {
-  k: { w: '♚', b: '♔' },
-  q: { w: '♛', b: '♕' },
-  r: { w: '♜', b: '♖' },
-  b: { w: '♝', b: '♗' },
-  n: { w: '♞', b: '♘' },
-  p: { w: '♟', b: '♙' },
-};
 
 const PIECE_NAMES: Record<PieceType, string> = {
   k: 'King', q: 'Queen', r: 'Rook', b: 'Bishop', n: 'Knight', p: 'Pawn'
@@ -436,12 +428,12 @@ export const EnhancedLegend: React.FC<EnhancedLegendProps> = ({
                       style={{ backgroundColor: hexColor }}
                     />
                     
-                    {/* Piece symbol */}
+                    {/* Piece icon */}
                     <span 
-                      className="text-base shrink-0"
+                      className="shrink-0"
                       style={{ color: hexColor }}
                     >
-                      {PIECE_SYMBOLS[piece][color]}
+                      <ChessPieceIcon type={piece} color={color} size={16} hexColor={hexColor} />
                     </span>
                     
                     {!compact && (
@@ -496,7 +488,7 @@ export const EnhancedLegend: React.FC<EnhancedLegendProps> = ({
                         className="w-5 h-5 rounded shadow-sm"
                         style={{ backgroundColor: hexColor }}
                       />
-                      <span className="text-lg">{PIECE_SYMBOLS[piece][color]}</span>
+                      <ChessPieceIcon type={piece} color={color} size={20} hexColor={hexColor} />
                       <span className="font-semibold">{PIECE_NAMES[piece]}</span>
                     </div>
                     <p className="text-xs text-muted-foreground italic">{pieceDesc.role}</p>
@@ -869,7 +861,7 @@ export const EnhancedLegend: React.FC<EnhancedLegendProps> = ({
                           className="w-4 h-4 rounded shadow-sm"
                           style={{ backgroundColor: (mvpPiece.color === 'w' ? whitePalette : blackPalette)[mvpPiece.piece] }}
                         />
-                        <span className="text-base">{PIECE_SYMBOLS[mvpPiece.piece][mvpPiece.color]}</span>
+                        <ChessPieceIcon type={mvpPiece.piece} color={mvpPiece.color} size={16} hexColor={(mvpPiece.color === 'w' ? whitePalette : blackPalette)[mvpPiece.piece]} />
                         <span className="text-xs">{PIECE_NAMES[mvpPiece.piece]}</span>
                       </div>
                     </div>
@@ -903,7 +895,7 @@ export const EnhancedLegend: React.FC<EnhancedLegendProps> = ({
                         <div className="space-y-0.5 cursor-help">
                           <div className="flex items-center justify-between text-[10px]">
                             <span className="flex items-center gap-1 text-sky-400">
-                              <span style={{ color: whitePalette[piece] }}>{PIECE_SYMBOLS[piece].w}</span>
+                              <span style={{ color: whitePalette[piece] }}><ChessPieceIcon type={piece} color="w" size={12} hexColor={whitePalette[piece]} /></span>
                               {whiteActivity}
                             </span>
                             <span className="text-muted-foreground font-display uppercase tracking-wider">
@@ -911,7 +903,7 @@ export const EnhancedLegend: React.FC<EnhancedLegendProps> = ({
                             </span>
                             <span className="flex items-center gap-1 text-rose-400">
                               {blackActivity}
-                              <span style={{ color: blackPalette[piece] }}>{PIECE_SYMBOLS[piece].b}</span>
+                              <span style={{ color: blackPalette[piece] }}><ChessPieceIcon type={piece} color="b" size={12} hexColor={blackPalette[piece]} /></span>
                             </span>
                           </div>
                           <div className="h-1.5 rounded-full overflow-hidden bg-muted/50 flex">

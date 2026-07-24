@@ -280,7 +280,7 @@ export const PrintReadyVisualization: React.FC<PrintReadyVisualizationProps> = (
           textTransform: 'uppercase',
           margin: 0,
         }}>
-          ♔ En Pensent ♚
+          En Pensent
         </p>
       </div>
     );
