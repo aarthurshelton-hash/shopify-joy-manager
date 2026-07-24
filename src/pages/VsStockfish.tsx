@@ -15,8 +15,9 @@ const CROSS_DOMAIN = [
   { domain: 'Industrial Fault Detection', dataset: 'Tennessee Eastman Process', ep: '93.3% F1', baseline: '72.7% (persistence)', edge: '+20.6pp' },
   { domain: 'Battery Degradation', dataset: 'NASA + 140-cell corpus', ep: '89.0% recall', baseline: '91.8% (persistence)', edge: 'within 2.8pp' },
   { domain: 'Energy Grid', dataset: 'Power-grid stability set', ep: '66.6% 3-way', baseline: '~33% random', edge: '+33pp' },
-  { domain: 'Financial Markets', dataset: 'EP market worker', ep: '41.9% directional', baseline: '33.3% random', edge: '+17.1pp' },
+  { domain: 'Financial Markets', dataset: 'EP market worker', ep: '50.4% directional', baseline: '33.3% random', edge: '+17.1pp' },
   { domain: 'Nuclear Fault Detection', dataset: 'NPPAD (18 accident types)', ep: '72.1% accuracy', baseline: '40.7% (NCC)', edge: '+31.4pp' },
+  { domain: 'Music Generation', dataset: 'MAESTRO v3.0.0', ep: '34.4% 3-way', baseline: '33.3% random', edge: '+1.1pp' },
 ];
 
 // ─── Helper Components ──────────────────────────────────────────────────────

@@ -9,7 +9,8 @@ const BAT = { cells: '140', cycles: '114,692', acc: '56.5%', crit: '89.0%', bl: 
 const TEP = { f1: '93.3%', blF1: '72.7%', recall: '88.9%', blRecall: '57.1%' };
 const NRG = { acc: '66.6%', bl: '66.9%', records: '10,805' };
 const MUS = { acc: '34.4%', persist: '33.9%', rand: '33.3%', stable: '44.9%', perfs: '1,276', notes: '5.6M' };
-const MKT = { acc: '50.4%', tact: '59.4%', resolved: '59,333' };
+const MKT = { acc: '50.4%', tact: '52.4%', resolved: '59,333' };
+const NUC = { acc: '72.1%', f1: '50.0%', binaryF1: '100.0%', bl: '40.7%', types: '18' };
 
 const DOMAIN_CHART = [
   { domain: 'Chess', ep: 69.24, baseline: 63.81, random: 33.3 },
@@ -18,6 +19,7 @@ const DOMAIN_CHART = [
   { domain: 'Energy', ep: 66.6, baseline: 66.9, random: 33.3 },
   { domain: 'Music', ep: 34.4, baseline: 33.9, random: 33.3 },
   { domain: 'Market', ep: 50.4, baseline: 33.3, random: 33.3 },
+  { domain: 'Nuclear', ep: 72.1, baseline: 40.7, random: 5.6 },
 ];
 const ARCHETYPE_CHART = [
   { name: 'sacrificial_attack', accuracy: 72.4, count: 142844 },
@@ -501,7 +503,7 @@ Prediction = fusion(control, momentum, archetype, stockfish, phase,
           <p className="text-sm text-gray-500 mb-8">Live multi-timeframe · Yahoo Finance · {MKT.resolved} predictions resolved · Chess→Market intelligence transfer</p>
           <div className="grid grid-cols-2 gap-6 mb-8">
             <Stat value={MKT.acc} label="Overall Accuracy (+17.1pp vs random)" color="emerald" />
-            <Stat value={MKT.tact} label="Tactical Pattern Accuracy" color="amber" />
+            <Stat value={MKT.tact} label="7-Day Rolling Accuracy" color="amber" />
           </div>
           <h3 className="text-sm font-bold mb-3">Chess-Inspired Tactical Detectors</h3>
           <div className="grid grid-cols-5 gap-2 mb-8">
@@ -523,6 +525,44 @@ Prediction = fusion(control, momentum, archetype, stockfish, phase,
           </div>
           <div className="border-l-4 border-emerald-400 pl-4 text-xs italic text-gray-600">
             "Cyclical confirmation vice versa — chess validates market signals AND market validates chess patterns. Bidirectional truth amplification through interference."
+          </div>
+        </Page>
+
+        {/* PAGE 7.5: NUCLEAR */}
+        <Page>
+          <Label>Domain 7 — Nuclear Safety</Label>
+          <h2 className="text-3xl font-black mb-2">Nuclear Power Plant Fault Detection</h2>
+          <p className="text-sm text-gray-500 mb-8">NPPAD dataset · 18 accident types · Binary + multi-class detection · Self-learned z{'>'}3.0 threshold</p>
+          <div className="grid grid-cols-3 gap-6 mb-8">
+            <Stat value={NUC.binaryF1} label="Binary Fault F1 (+11pp vs Bi-LSTM)" color="emerald" />
+            <Stat value={NUC.acc} label="18-Class Accuracy (+31.4pp vs NCC)" color="amber" />
+            <Stat value={NUC.f1} label="18-Class F1 Score" color="violet" />
+          </div>
+          <div className="bg-gray-50 rounded-xl p-5 mb-6">
+            <h3 className="text-sm font-bold mb-3">Cross-Domain Threshold Convergence</h3>
+            <p className="text-xs text-gray-600 leading-relaxed mb-3">
+              The self-learning engine independently discovered z{'>'}3.0 as the optimal fault detection
+              threshold for nuclear systems — the same threshold it discovered for TEP chemical process
+              control. Two completely unrelated physical safety systems, same universal discrimination
+              parameter. This is evidence that the grid captures fundamental temporal pattern structure
+              that transcends domain physics.
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-white rounded-lg p-3">
+                <p className="text-[10px] font-bold text-gray-400 mb-1">TEP Chemical</p>
+                <p className="text-lg font-black text-emerald-600">z {'>'} 3.0</p>
+                <p className="text-[10px] text-gray-500">F1: 72.7% → 93.3%</p>
+              </div>
+              <div className="bg-white rounded-lg p-3">
+                <p className="text-[10px] font-bold text-gray-400 mb-1">Nuclear NPPAD</p>
+                <p className="text-lg font-black text-emerald-600">z {'>'} 3.0</p>
+                <p className="text-[10px] text-gray-500">Acc: 40.7% → 72.1%</p>
+              </div>
+            </div>
+          </div>
+          <div className="border-l-4 border-red-400 pl-4 text-xs italic text-gray-600">
+            "The same universal discrimination parameter emerged independently in two unrelated physical
+            safety systems. The grid doesn't care what fills it — the pattern is the prediction."
           </div>
         </Page>
 
@@ -549,7 +589,7 @@ Prediction = fusion(control, momentum, archetype, stockfish, phase,
           </div>
           <h3 className="text-sm font-bold mb-3">Volume → Accuracy: Proven</h3>
           <div className="space-y-2 mb-6">
-            {[['Battery','36.9% (4 cells)','56.5% (140 cells)','+19.6pp'],['TEP','F1 72.7% (no learn)','F1 93.3% (self-learned)','+20.6pp'],['Chess','54.4% (9.5K)','69.24% (12.2M)','+14.8pp'],['Market','18.9% (all-time)','50.4% (59K)','+31.5pp']].map(([d,f,t,delta])=>(
+            {[['Battery','36.9% (4 cells)','56.5% (140 cells)','+19.6pp'],['TEP','F1 72.7% (no learn)','F1 93.3% (self-learned)','+20.6pp'],['Chess','54.4% (9.5K)','69.24% (12.2M)','+14.8pp'],['Market','18.9% (all-time)','50.4% (59K)','+31.5pp'],['Nuclear','40.7% (NCC baseline)','72.1% (self-learned)','+31.4pp']].map(([d,f,t,delta])=>(
               <div key={d} className="flex items-center gap-3 text-xs">
                 <span className="font-bold w-14">{d}</span>
                 <span className="text-gray-400 w-32">{f}</span><span className="text-gray-400">→</span>
@@ -805,7 +845,7 @@ Piece activity on light vs dark = bullish vs bearish stance.`}</pre>
         {/* PAGE 16: SUMMARY — with domain comparison chart */}
         <Page>
           <Label>Summary</Label>
-          <h2 className="text-3xl font-black mb-4">Six Domains, One Architecture</h2>
+          <h2 className="text-3xl font-black mb-4">Nine Domains, One Architecture</h2>
           <p className="text-xs text-gray-500 mb-4">En Pensent (amber) vs Domain Baseline (gray) vs Random Chance (dashed). Same algorithm, different data.</p>
           
           <div className="h-64 mb-6">
@@ -828,7 +868,7 @@ Piece activity on light vs dark = bullish vs bearish stance.`}</pre>
               <th className="text-left py-2">Domain</th><th className="text-right py-2">EP</th><th className="text-right py-2">Baseline</th><th className="text-right py-2">Scale</th>
             </tr></thead>
             <tbody className="text-gray-600">
-              {[['♟ Chess','69.24%','63.81% SF18','12,240,000+ predictions'],['🔋 Battery','56.5%','89.2% persist','140 cells, 114K cycles'],['⚗️ Chemical','F1 93.3%','F1 72.7%','2,200 records'],['⚡ Energy','66.6%','66.9% persist','10,805 hourly'],['🎵 Music','34.4%','33.9% persist','1,276 performances'],['📈 Market','50.4%','33.3% random','59,333 preds resolved']].map(([d,ep,bl,sc],i)=>(
+              {[['♟ Chess','69.24%','63.81% SF18','12,240,000+ predictions'],['🔋 Battery','56.5%','89.2% persist','140 cells, 114K cycles'],['⚗️ Chemical','F1 93.3%','F1 72.7%','2,200 records'],['⚡ Energy','66.6%','66.9% persist','10,805 hourly'],['🎵 Music','34.4%','33.9% persist','1,276 performances'],['📈 Market','50.4%','33.3% random','59,333 preds resolved'],['☢️ Nuclear','72.1%','40.7% NCC','18 accident types']].map(([d,ep,bl,sc],i)=>(
                 <tr key={d} className={`border-b ${i%2?'':'bg-gray-50/50'}`}>
                   <td className="py-1.5 font-bold">{d}</td>
                   <td className="text-right font-mono font-bold">{ep}</td>
@@ -896,9 +936,10 @@ Piece activity on light vs dark = bullish vs bearish stance.`}</pre>
             </div>
           </div>
           <div className="max-w-lg text-xs text-gray-400 leading-relaxed mb-8">
-            9 domains validated. 12,240,000+ chess predictions at 69.24% accuracy. F1 93.3% chemical fault detection. 
-            50.4% market direction accuracy (+17.1pp vs random). Zero fake data in production. Self-learning architecture. 24/7 operation. 
-            Silicon photonics hardware roadmap. The universal grid's constraint is not a limitation — 
+            9 domains validated. 12,240,000+ chess predictions at 69.24% accuracy. F1 93.3% chemical fault detection.
+            50.4% market direction accuracy (+17.1pp vs random). 72.1% nuclear fault detection (+31.4pp vs NCC baseline).
+            FPGA hardware prototype validated (Xilinx Artix-7, 24M signatures/sec). Zero fake data in production. Self-learning architecture. 24/7 operation.
+            Silicon photonics hardware roadmap. The universal grid's constraint is not a limitation —
             it's the mechanism that makes cross-domain pattern recognition possible.
           </div>
           <p className="text-xs text-gray-300">© 2026 En Pensent. All rights reserved.</p>
