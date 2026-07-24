@@ -123,6 +123,12 @@ export function useLiveChessStats() {
       }
 
       // Fallback: compute from sample if audit view is not available
+      const { count: fallbackTotal } = await supabase
+        .from('chess_prediction_attempts')
+        .select('*', { count: 'exact', head: true })
+        .not('hybrid_correct', 'is', null)
+        .not('stockfish_correct', 'is', null);
+
       if (!recentGames || recentGames.length === 0) {
         return {
           totalPredictions: 0,
@@ -211,7 +217,7 @@ export function useLiveChessStats() {
         : 0;
 
       return {
-        totalPredictions: totalCount || 0,
+        totalPredictions: fallbackTotal || recentGames.length,
         epAccuracy: parseFloat(epAccuracy.toFixed(2)),
         sfAccuracy: parseFloat(sfAccuracy.toFixed(2)),
         epEdge: parseFloat((epAccuracy - sfAccuracy).toFixed(2)),
