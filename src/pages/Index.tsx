@@ -1,14 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect, lazy, Suspense } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import type { ExportState } from '@/components/chess/UnifiedVisionExperience';
 import LiveProofRibbon from '@/components/homepage/LiveProofRibbon';
-import StepMarker from '@/components/homepage/HowItWorksSection';
-import ChessProsSection from '@/components/homepage/ChessProsSection';
-import ConceptSection from '@/components/homepage/ConceptSection';
-import BeyondChessSection from '@/components/homepage/BeyondChessSection';
-import FAQSection from '@/components/homepage/FAQSection';
-import SocialProofSection from '@/components/homepage/SocialProofSection';
-import EmailCaptureSection from '@/components/homepage/EmailCaptureSection';
 import OnboardingNudge from '@/components/chess/OnboardingNudge';
 import { VisionaryMembershipCard } from '@/components/premium';
 import type { SimulationResult } from '@/lib/chess/gameSimulator';
@@ -24,8 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Button } from '@/components/ui/button';
-import { Crown, Sparkles, ShoppingBag } from 'lucide-react';
+import { Crown, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { PaletteId, getActivePalette, setActivePalette, PieceType, PieceColor } from '@/lib/chess/pieceColors';
 import {
@@ -57,7 +49,6 @@ const HeroVisionDemo = lazy(() => import('@/components/homepage/HeroVisionDemo')
 const PaletteSelector = lazy(() => import('@/components/chess/PaletteSelector'));
 const AuthModal = lazy(() => import('@/components/auth/AuthModal'));
 const ChessParticles = lazy(() => import('@/components/chess/ChessParticles'));
-const LifestyleMockupGallery = lazy(() => import('@/components/shop/LifestyleMockupGallery'));
 
 const Index = () => {
   const navigate = useNavigate();
@@ -479,17 +470,11 @@ const Index = () => {
               </div>
             </section>
 
-            {/* Concept Section — bridge between art and intelligence */}
-            <ConceptSection />
-
-            {/* Proof — scientific rigor / prediction edge, elevated before upload */}
-            <ChessProsSection />
-
             {/* Palette & Upload Section */}
-            <section id="make-your-own" className="container mx-auto px-4 py-12 space-y-12 scroll-mt-24">
+            <section id="make-your-own" className="container mx-auto px-4 py-12 space-y-8 scroll-mt-24">
               <div 
                 ref={uploadRef}
-                className={`max-w-4xl mx-auto space-y-12 transition-all duration-700 delay-100 ease-out ${
+                className={`max-w-4xl mx-auto space-y-8 transition-all duration-700 delay-100 ease-out ${
                   uploadVisible 
                     ? scrollAnimationClasses.fadeUp.visible 
                     : scrollAnimationClasses.fadeUp.hidden
@@ -505,24 +490,10 @@ const Index = () => {
                   </p>
                 </div>
 
-                {/* Step 1 — anchored to the real uploader */}
-                <StepMarker
-                  number="1"
-                  title="Pick a Game"
-                  description="Upload a PGN, import from Chess.com or Lichess, or tap a legendary match — no account needed."
-                />
-
-                {/* Upload form (contains Upload Your Game + Legendary Games) */}
+                {/* Upload form (contains Vision Scanner + Legendary Games) */}
                 <Suspense fallback={<div className="h-64 animate-pulse bg-muted/30 rounded-lg" />}>
                   <PgnUploader onPgnSubmit={handlePgnSubmit} onFenSubmit={handleFenSubmit} />
                 </Suspense>
-
-                {/* Step 2 — anchored to the palette selector */}
-                <StepMarker
-                  number="2"
-                  title="Choose Your Palette"
-                  description="Every piece's journey becomes color — pick the mood, then watch the game paint itself."
-                />
 
                 {/* Palette selector */}
                 <Suspense fallback={<div className="h-48 animate-pulse bg-muted/20 rounded-lg" />}>
@@ -530,56 +501,6 @@ const Index = () => {
                 </Suspense>
               </div>
             </section>
-
-            {/* Marketplace CTA — Lifestyle Mockup Gallery */}
-            <section className="py-16">
-              <div className="container mx-auto px-4">
-                <div className="max-w-6xl mx-auto">
-                  {/* Step 3 — anchored to the prints gallery */}
-                  <StepMarker
-                    number="3"
-                    title="Own the Vision"
-                    description="Download and share your vision, or order it as a museum-quality print — once collected, it's yours alone."
-                    className="mb-8"
-                  />
-                  <div className="text-center mb-8">
-                    <h2 className="font-display text-3xl md:text-4xl font-bold mb-3">
-                      Your Art, <span className="text-gold-gradient">Any Space</span>
-                    </h2>
-                    <p className="text-muted-foreground font-serif max-w-2xl mx-auto">
-                      See how your chess visualizations transform any room with our museum-quality prints and handcrafted frames.
-                    </p>
-                  </div>
-                  <Suspense fallback={<div className="h-64 animate-pulse bg-muted/20 rounded-lg" />}>
-                    <LifestyleMockupGallery 
-                      compact={true}
-                      autoplay={true}
-                      className="max-w-4xl mx-auto"
-                    />
-                  </Suspense>
-                  <div className="text-center mt-8">
-                    <Link to="/marketplace">
-                      <Button size="lg" className="group inline-flex items-center gap-2 px-8 py-4 rounded-xl font-display uppercase tracking-wider text-sm">
-                        <ShoppingBag className="h-5 w-5" />
-                        Browse the Marketplace
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* Social Proof — stats and founder quote */}
-            <SocialProofSection />
-
-            {/* Beyond Chess — universality tease */}
-            <BeyondChessSection />
-
-            {/* FAQ — common questions for first-time visitors */}
-            <FAQSection />
-
-            {/* Email Capture — newsletter signup */}
-            <EmailCaptureSection />
           </>
         ) : (
           <div className="w-full px-4 py-8" ref={visionBoardRef}>
@@ -598,7 +519,7 @@ const Index = () => {
               onUpgradePrompt={() => setShowVisionaryModal(true)}
               onExport={async (type, exportState) => {
                 // Preview download is available for everyone
-                // HD and GIF require premium
+                // HD, GIF, and Gamecard require premium
                 if (type !== 'print' && type !== 'preview') {
                   if (!user) {
                     setShowAuthModal(true);
@@ -633,6 +554,26 @@ const Index = () => {
                     }
                   : undefined;
                 
+                if (type === 'gamecard') {
+                  try {
+                    const { generateGamecardPdf, downloadBlob, sanitizeFilename } = await import('@/lib/chess/gamecardGenerator');
+                    const exportSimulation = {
+                      ...simulation,
+                      board: filteredBoard,
+                    };
+                    const blob = await generateGamecardPdf(exportSimulation, {
+                      darkMode: exportState?.darkMode || false,
+                      pgn: currentPgn || undefined,
+                    });
+                    downloadBlob(blob, `gamecard_${sanitizeFilename(visualTitle)}.pdf`);
+                    toast.success('Game card downloaded!', { description: 'Check your downloads folder' });
+                  } catch (err) {
+                    console.error('Gamecard generation failed:', err);
+                    toast.error('Game card generation failed', { description: 'Please try again.' });
+                  }
+                  return;
+                }
+
                 if (type === 'print') {
                   // Save simulation to session store so we can restore it when returning
                   setCurrentSimulation(simulation, currentPgn, visualTitle);

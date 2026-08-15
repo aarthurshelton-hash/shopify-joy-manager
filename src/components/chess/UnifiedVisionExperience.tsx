@@ -42,6 +42,7 @@ import {
   Swords,
   Info,
   TrendingUp,
+  CreditCard,
 } from 'lucide-react';
 import { SquareData, GameData, SimulationResult, simulateGame } from '@/lib/chess/gameSimulator';
 import { TimelineProvider, useTimeline, GamePhase } from '@/contexts/TimelineContext';
@@ -130,7 +131,7 @@ export interface UnifiedVisionExperienceProps {
   
   // Callbacks - onExport now receives export state for state-aware exports
   onTransferToCreative?: () => void;
-  onExport?: (type: 'hd' | 'gif' | 'print' | 'preview', exportState?: ExportState) => void;
+  onExport?: (type: 'hd' | 'gif' | 'print' | 'preview' | 'gamecard', exportState?: ExportState) => void;
   onShare?: (exportState?: ExportState) => void;
   onClose?: () => void;
   onBack?: () => void;
@@ -848,7 +849,7 @@ const AnalyticsPanel: React.FC<{
 
 // Export action buttons that capture current visualization state
 const ExportActionButtons: React.FC<{
-  onExport?: (type: 'hd' | 'gif' | 'print' | 'preview', exportState?: ExportState) => void;
+  onExport?: (type: 'hd' | 'gif' | 'print' | 'preview' | 'gamecard', exportState?: ExportState) => void;
   isPremium?: boolean;
   darkMode: boolean;
   totalMoves: number;
@@ -858,7 +859,7 @@ const ExportActionButtons: React.FC<{
   const { currentMove } = useTimeline();
   const { lockedPieces, lockedSquares, compareMode } = useLegendHighlight();
   
-  const handleExport = useCallback((type: 'hd' | 'gif' | 'print' | 'preview') => {
+  const handleExport = useCallback((type: 'hd' | 'gif' | 'print' | 'preview' | 'gamecard') => {
     const exportState: ExportState = {
       currentMove: currentMove >= totalMoves ? totalMoves : currentMove,
       lockedPieces: lockedPieces.map(p => ({
@@ -938,6 +939,27 @@ const ExportActionButtons: React.FC<{
           </TooltipTrigger>
           <TooltipContent>
             {isPremium ? 'Download animated GIF' : 'Premium: Download animated GIF'}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      
+      {/* Gamecard PDF — Premium feature */}
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="gap-2"
+              onClick={() => handleExport('gamecard')}
+            >
+              <CreditCard className="h-4 w-4" />
+              Card
+              {!isPremium && <Crown className="h-3 w-3 text-primary" />}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            {isPremium ? 'Download collector game card PDF' : 'Premium: Download game card PDF'}
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>

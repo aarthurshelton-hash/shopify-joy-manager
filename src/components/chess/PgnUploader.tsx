@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Upload, FileText, Crown, Sparkles, CheckCircle, XCircle, Loader2, Wrench, ArrowRight, ChevronLeft, ChevronRight, Search, X, Shuffle, Heart, Award, PenTool, Trophy, Star, Grid3X3 } from 'lucide-react';
+import { Upload, FileText, Crown, Sparkles, CheckCircle, XCircle, Loader2, Wrench, ArrowRight, ChevronLeft, ChevronRight, Search, X, Shuffle, Heart, Award, PenTool, Trophy, Star, Grid3X3, Camera } from 'lucide-react';
 import uploadHeroArt from '@/assets/hero-chess-art.jpg';
 import { famousGames, carlsenLegendaryGames, FamousGame, getRandomFamousGame } from '@/lib/chess/famousGames';
 import { gameImageImports } from '@/lib/chess/gameImages';
@@ -14,6 +14,7 @@ import { detectEmergingGame, formatSignificanceDisplay, EmergingGameSignificance
 import { toast } from 'sonner';
 import { useFavoriteGames } from '@/hooks/useFavoriteGames';
 import { useAuth } from '@/hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 import { incrementGamecardUsage } from '@/lib/analytics/financialTrends';
 import FenInput from './FenInput';
 import GameImporter from './GameImporter';
@@ -75,10 +76,12 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit, onFenSubmit }) =
   const [isMobile, setIsMobile] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [showMagnusOnly, setShowMagnusOnly] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const gamesContainerRef = useRef<HTMLDivElement>(null);
   
   const { isFavorite, toggleFavorite, isAuthenticated } = useFavoriteGames();
+  const navigate = useNavigate();
   
   // Check if mobile on mount and resize
   useEffect(() => {
@@ -99,9 +102,15 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit, onFenSubmit }) =
     });
   }, []);
   
-  // Filter games by search query and favorites
+  // Filter games by search query, favorites, and Magnus filter
   const filteredGames = useMemo(() => {
     let games = sortedGames;
+    
+    // Filter by Magnus only if enabled
+    if (showMagnusOnly) {
+      const magnusIds = new Set(carlsenLegendaryGames.map(g => g.id));
+      games = games.filter(game => magnusIds.has(game.id));
+    }
     
     // Filter by favorites first if enabled
     if (showFavoritesOnly) {
@@ -118,7 +127,7 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit, onFenSubmit }) =
     }
     
     return games;
-  }, [sortedGames, searchQuery, showFavoritesOnly, isFavorite]);
+  }, [sortedGames, searchQuery, showFavoritesOnly, showMagnusOnly, isFavorite]);
   
   const gamesPerPage = isMobile ? GAMES_PER_MOBILE_PAGE : GAMES_PER_DESKTOP_PAGE;
   const totalPages = useMemo(() => Math.ceil(filteredGames.length / gamesPerPage), [filteredGames.length, gamesPerPage]);
@@ -399,14 +408,6 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit, onFenSubmit }) =
     return filteredGames.slice(start, start + gamesPerPage);
   }, [filteredGames, pageIndex, gamesPerPage]);
 
-  // Carlsen-specific games for dedicated section
-  const carlsenGames = useMemo(() => {
-    return carlsenLegendaryGames.sort((a, b) => {
-      if (a.year !== b.year) return a.year - b.year;
-      return a.title.localeCompare(b.title);
-    });
-  }, []);
-
   // Render a game card
   const renderGameCard = (game: FamousGame) => {
     const gameImage = gameImageImports[game.id];
@@ -480,97 +481,29 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit, onFenSubmit }) =
       {/* Import from Lichess / Chess.com */}
       <GameImporter onSelectGame={(importedPgn, title) => onPgnSubmit(cleanPgn(importedPgn), title)} />
 
+      {/* Vision Scanner — camera/upload photo of a game or visualization */}
+      <button
+        onClick={() => navigate('/scanner')}
+        className="w-full group relative overflow-hidden rounded-xl border border-primary/30 bg-gradient-to-br from-primary/10 via-card/80 to-card/80 hover:border-primary/50 transition-all duration-200 p-4 sm:p-5 flex items-center gap-4 text-left"
+      >
+        <div className="flex-shrink-0 p-3 rounded-xl bg-primary/10 border border-primary/20 group-hover:scale-105 transition-transform">
+          <Camera className="h-6 w-6 text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-display text-sm sm:text-base font-semibold text-primary">
+            Vision Scanner
+          </h3>
+          <p className="text-xs sm:text-sm text-muted-foreground font-serif mt-0.5">
+            Snap or upload a photo of any chess game or visualization to instantly identify it
+          </p>
+        </div>
+        <ArrowRight className="h-5 w-5 text-primary/50 group-hover:translate-x-1 transition-transform flex-shrink-0" />
+      </button>
+
       {/* Batch PGN upload — Analyst pro tier */}
       <BatchPgnUploader onPgnSubmit={onPgnSubmit} />
 
-      {/* Magnus Carlsen Dedicated Section */}
-      <div className="rounded-lg border border-amber-500/30 bg-gradient-to-br from-amber-500/5 via-card/50 to-card/50 overflow-hidden">
-        <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-amber-500/20">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
-              <Trophy className="h-5 w-5 text-amber-500" />
-            </div>
-            <div>
-              <h3 className="font-display text-base sm:text-lg font-semibold text-amber-100">
-                Magnus Carlsen Collection
-              </h3>
-              <p className="text-xs sm:text-sm text-muted-foreground font-serif">
-                {carlsenGames.length} masterpieces from the World Champion
-              </p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="p-3 sm:p-4">
-          <div className="overflow-x-auto pb-2 -mx-3 px-3 scrollbar-thin scrollbar-thumb-amber-500/30 scrollbar-track-transparent">
-            <div className="flex gap-3" style={{ minWidth: 'max-content' }}>
-              {carlsenGames.map((game) => {
-                const gameImage = gameImageImports[game.id];
-                const poetryPreview = getPoetryPreview(game.id);
-                return (
-                  <button
-                    key={game.id}
-                    onClick={() => handleLoadGame(game)}
-                    className={`group flex-shrink-0 w-40 sm:w-48 text-left rounded-lg border transition-all duration-200 overflow-hidden hover:scale-[1.02] touch-manipulation ${
-                      selectedGame?.id === game.id 
-                        ? 'border-amber-500 ring-1 ring-amber-500/30 bg-amber-500/10' 
-                        : 'border-amber-500/20 bg-card/50 hover:border-amber-500/50 hover:bg-card active:scale-[0.98]'
-                    }`}
-                  >
-                    {/* Thumbnail */}
-                    <div className="relative w-full aspect-[4/3] overflow-hidden bg-muted">
-                      {gameImage ? (
-                        <img 
-                          src={gameImage} 
-                          alt={game.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-amber-500/20 to-amber-500/5">
-                          <Trophy className="h-8 w-8 text-amber-500/40" />
-                        </div>
-                      )}
-                      {/* Poetry indicator badge */}
-                      {poetryPreview && (
-                        <div className="absolute bottom-1 left-1 px-1.5 py-0.5 bg-amber-500/90 rounded-tr-md rounded-bl-md">
-                          <PenTool className="h-2.5 w-2.5 text-amber-900" />
-                        </div>
-                      )}
-                      {/* Favorite button */}
-                      <div
-                        role="button"
-                        tabIndex={0}
-                        onClick={(e) => handleToggleFavorite(e, game.id)}
-                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleToggleFavorite(e as unknown as React.MouseEvent, game.id); }}
-                        className={`absolute top-1.5 right-1.5 p-1 rounded-full transition-all cursor-pointer ${
-                          isFavorite(game.id)
-                            ? 'bg-red-500/90 text-white'
-                            : 'bg-black/40 text-white/70 opacity-0 group-hover:opacity-100'
-                        }`}
-                        aria-label={isFavorite(game.id) ? 'Remove from favorites' : 'Add to favorites'}
-                      >
-                        <Heart className={`h-3.5 w-3.5 ${isFavorite(game.id) ? 'fill-current' : ''}`} />
-                      </div>
-                    </div>
-                    {/* Text info */}
-                    <div className="p-2.5">
-                      <p className="text-xs font-semibold text-foreground leading-tight line-clamp-1">{game.title}</p>
-                      <p className="text-[10px] text-amber-500/70 mt-0.5">{game.year}</p>
-                      {poetryPreview && (
-                        <p className="italic text-amber-500/60 line-clamp-1 text-[9px] mt-1">
-                          "{poetryPreview}"
-                        </p>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* All Legendary Games Showcase */}
+      {/* All Legendary Games Showcase (includes Magnus Collection via filter) */}
       <div ref={gamesContainerRef} className="rounded-lg border border-border/50 bg-card/50 overflow-hidden">
         <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-border/50">
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
@@ -590,6 +523,20 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit, onFenSubmit }) =
               </p>
             </div>
             
+            {/* Magnus filter button */}
+            <button
+              onClick={() => { setShowMagnusOnly(!showMagnusOnly); setPageIndex(0); }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border rounded-md transition-colors flex-shrink-0 ${
+                showMagnusOnly 
+                  ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border-amber-500/30' 
+                  : 'bg-muted/50 hover:bg-muted text-muted-foreground border-border/50'
+              }`}
+              aria-label={showMagnusOnly ? 'Show all games' : 'Show Magnus games only'}
+            >
+              <Trophy className={`h-3.5 w-3.5 ${showMagnusOnly ? 'fill-current' : ''}`} />
+              <span className="hidden sm:inline">Magnus</span>
+            </button>
+
             {/* Favorites filter button */}
             {isAuthenticated && (
               <button

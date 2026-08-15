@@ -31,7 +31,7 @@ export function usePlatformStats() {
         totalGames: gamesResult.count || 0,
         // Static platform capabilities
         engineElo: 3200,
-        historicGames: 100,
+        historicGames: gamesResult.count || 0, // Live from DB, not hardcoded
         colorPalettes: 16,
         yearsOfHistory: 500,
       };
@@ -293,7 +293,7 @@ export const INVESTMENT_HIGHLIGHTS = {
     growthSince2020: '45%',
   },
   traction: {
-    curatedGames: '100+',
+    curatedGames: '400K+',
     signaturePalettes: '16',
     possibleVisions: '∞',
     marketplaceStatus: 'Live',

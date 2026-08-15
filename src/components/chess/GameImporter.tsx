@@ -1,8 +1,10 @@
 import React, { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Loader2, Download, User, Search } from 'lucide-react';
+import { Loader2, Download, User, Search, CreditCard, Crown } from 'lucide-react';
 import { toast } from 'sonner';
 import { importGames, ImportedGame, ImportSource } from '@/lib/chess/gameImport';
+import { generateGamecardFromPgn, downloadBlob, sanitizeFilename } from '@/lib/chess/gamecardGenerator';
+import { useAuth } from '@/hooks/useAuth';
 
 interface GameImporterProps {
   onSelectGame: (pgn: string, title?: string) => void;
@@ -18,6 +20,8 @@ export const GameImporter: React.FC<GameImporterProps> = ({ onSelectGame }) => {
   const [username, setUsername] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [games, setGames] = useState<ImportedGame[]>([]);
+  const [generatingCards, setGeneratingCards] = useState(false);
+  const { isPremium } = useAuth();
 
   const handleImport = useCallback(async () => {
     if (!username.trim()) {
@@ -38,6 +42,45 @@ export const GameImporter: React.FC<GameImporterProps> = ({ onSelectGame }) => {
       setIsLoading(false);
     }
   }, [source, username]);
+
+  const handleQuickGamecards = useCallback(async () => {
+    if (!isPremium) {
+      toast.error('Premium required', { description: 'Upgrade to generate collector game card PDFs.' });
+      return;
+    }
+    if (games.length === 0) {
+      toast.error('Import games first', { description: 'Enter a username and import to generate game cards.' });
+      return;
+    }
+    setGeneratingCards(true);
+    let success = 0;
+    let failed = 0;
+    try {
+      for (const game of games) {
+        try {
+          const blob = await generateGamecardFromPgn(game.pgn, {
+            source: source === 'lichess' ? 'Lichess' : 'Chess.com',
+          });
+          const filename = `gamecard_${sanitizeFilename(`${game.white}_vs_${game.black}_${game.date}`)}.pdf`;
+          downloadBlob(blob, filename);
+          success++;
+        } catch {
+          failed++;
+        }
+      }
+      if (success > 0) {
+        toast.success(`${success} game card${success !== 1 ? 's' : ''} downloaded`, {
+          description: failed > 0 ? `${failed} failed` : 'Check your downloads folder',
+        });
+      } else {
+        toast.error('Failed to generate game cards');
+      }
+    } catch (err) {
+      toast.error('Game card generation failed', { description: err instanceof Error ? err.message : 'Unknown error' });
+    } finally {
+      setGeneratingCards(false);
+    }
+  }, [games, isPremium, source]);
 
   return (
     <div className="rounded-lg border border-primary/20 bg-card/50 overflow-hidden">
@@ -87,6 +130,27 @@ export const GameImporter: React.FC<GameImporterProps> = ({ onSelectGame }) => {
             Import
           </Button>
         </div>
+
+        {/* Quick Gamecard button — appears after import, premium-gated */}
+        {games.length > 0 && (
+          <Button
+            onClick={handleQuickGamecards}
+            disabled={generatingCards}
+            variant="outline"
+            className="w-full gap-2 border-primary/30 bg-primary/5 hover:bg-primary/10"
+          >
+            {generatingCards ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <CreditCard className="h-4 w-4" />
+            )}
+            Quick Game Cards
+            {!isPremium && <Crown className="h-3 w-3 text-primary" />}
+            <span className="text-xs text-muted-foreground ml-1">
+              ({games.length} PDF{games.length !== 1 ? 's' : ''})
+            </span>
+          </Button>
+        )}
 
         {/* Imported games list */}
         {games.length > 0 && (

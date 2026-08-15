@@ -2,6 +2,14 @@
 farm/
 scripts/
 e2e/
+benchmark/
+maia2_models/
+logs/
+docs/
+audit/
+paper/
+results/
+server/
 
 # Node modules & build artifacts
 node_modules/
@@ -23,6 +31,12 @@ memory/
 *.zst
 *.mid
 *.wasm
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.venv*
+.venv*/
 bun.lockb
 package-lock.json
 

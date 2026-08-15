@@ -75,17 +75,16 @@ interface LiveStats {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// VERIFIED FALLBACK STATS (when RLS blocks anonymous reads)
-// These are periodically updated from the production database
+// FALLBACK STATS (when RLS blocks anonymous reads) — zeros, not fictional
 // ═══════════════════════════════════════════════════════════════
 
 const VERIFIED_STATS: LiveStats = {
-  total: 12_240_000,
-  epCorrect: 8_475_000,
-  sfCorrect: 7_809_000,
-  epOnly: 1_523_000,
-  sfOnly: 857_000,
-  bothCorrect: 6_952_000,
+  total: 0,
+  epCorrect: 0,
+  sfCorrect: 0,
+  epOnly: 0,
+  sfOnly: 0,
+  bothCorrect: 0,
 };
 
 // ═══════════════════════════════════════════════════════════════

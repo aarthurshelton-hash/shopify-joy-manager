@@ -13,22 +13,20 @@ export default function AcademicPaper() {
   const { toast } = useToast();
   const { data: liveStats, isLoading: statsLoading } = useLiveChessStats();
 
-  // Fallback to canonical published values when live query is loading or RLS-blocked.
-  // Live numbers repopulate from useLiveChessStats once anon-key reads succeed.
-  // Canonical source: RESULTS.md / GameExplorer VERIFIED_STATS.
+  // Fallback zeros while loading — live data populates from DB via useLiveChessStats
   const stats = liveStats || {
-    totalPredictions: 12240000,
-    epAccuracy: 69.24,
-    sfAccuracy: 63.81,
-    epEdge: 5.43,
-    goldenZoneEP: 71.6,
-    goldenZoneSF: 68.1,
+    totalPredictions: 0,
+    epAccuracy: 0,
+    sfAccuracy: 0,
+    epEdge: 0,
+    goldenZoneEP: 0,
+    goldenZoneSF: 0,
     goldenZoneCount: 0,
-    epRecoveryRate: 34.37,
-    bestArchetype: { name: 'piece_general_pressure', epAccuracy: 63.09, sfAccuracy: 46.65, edge: 16.44, count: 67000 },
-    chess960Total: 1769457,
-    chess960EP: 52.62,
-    chess960SF: 33.49,
+    epRecoveryRate: 0,
+    bestArchetype: { name: '—', epAccuracy: 0, sfAccuracy: 0, edge: 0, count: 0 },
+    chess960Total: 0,
+    chess960EP: 0,
+    chess960SF: 0,
   };
 
   const bibtexCitation = `@article{shelton2026enpensent,
@@ -1409,9 +1407,9 @@ NPPAD result: θ* = 3.0 (separation = 1.993) — same threshold independently di
           </p>
           <ol>
             <li>
-              <strong>Chess</strong>: 69.24% accuracy on 3-way outcome prediction (12,240,000 live predictions,
-              z{'>'}1000), exceeding Stockfish 18 baseline by <strong>5.43pp</strong> with 15-component auto-tuned fusion.
-              Largest archetype edge: piece_general_pressure +16.44pp (n≈67K). EP recovers 34.37% of SF18 errors independently
+              <strong>Chess</strong>: {statsLoading ? '...' : `${stats.epAccuracy.toFixed(2)}%`} accuracy on 3-way outcome prediction ({statsLoading ? '...' : stats.totalPredictions.toLocaleString()} live predictions),
+              exceeding Stockfish 18 baseline by <strong>{statsLoading ? '...' : `${stats.epEdge.toFixed(2)}pp`}</strong> with 15-component auto-tuned fusion.
+              Largest archetype edge: {statsLoading ? '...' : stats.bestArchetype.name} +{statsLoading ? '...' : stats.bestArchetype.edge.toFixed(2)}pp (n≈{statsLoading ? '...' : stats.bestArchetype.count.toLocaleString()}). EP recovers {statsLoading ? '...' : `${stats.epRecoveryRate.toFixed(2)}%`} of SF18 errors independently
             </li>
             <li>
               <strong>Battery</strong>: 56.5% accuracy and 89.0% critical detection on 140 cells /
@@ -1453,10 +1451,10 @@ NPPAD result: θ* = 3.0 (separation = 1.993) — same threshold independently di
           </p>
           <p>
             Future work includes: (1) grid size ablation studies, (2) <strong>scaling chess
-            to 100M games</strong>—the 10M milestone was exceeded at 12.24M predictions with 69.24%
+            to 100M games</strong>—the current dataset stands at {statsLoading ? '...' : `${(stats.totalPredictions / 1_000_000).toFixed(2)}M`} predictions with {statsLoading ? '...' : `${stats.epAccuracy.toFixed(2)}%`}
             accuracy; the next milestone targets endgame-specific grid weighting, enhanced worker
-            calibration, and expanding the golden gate zone (moves 15-45 at conf≥50 already
-            achieves 71.6% on 593K games; the challenge is widening coverage while maintaining
+            calibration, and expanding the golden gate zone (moves 15-45 at conf≥50 currently
+            achieves {statsLoading ? '...' : `${stats.goldenZoneEP.toFixed(1)}%`} on {statsLoading ? '...' : stats.goldenZoneCount.toLocaleString()} games; the challenge is widening coverage while maintaining
             accuracy), (3) a dedicated market signal calibration worker that learns
             per-sector archetype accuracy (tech, commodities, crypto, forex), (4) investigation
             of formal archetype transfer between domains, (5) expanding market prediction
