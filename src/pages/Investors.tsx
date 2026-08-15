@@ -12,6 +12,7 @@ import { BookShowcase } from '@/components/book/BookShowcase';
 import { generatePitchDeck } from '@/lib/pitchDeck/generatePitchDeck';
 import { generateTAMReport } from '@/lib/pitchDeck/generateTAMReport';
 import { StrategicPositioningBanner } from '@/components/marketing/StrategicPositioningBanner';
+import { ScrollProgress } from '@/components/shared/ScrollProgress';
 import { toast } from 'sonner';
 
 type ModalType = 'market' | 'technology' | 'vision' | 'brand' | 'data' | null;
@@ -473,6 +474,7 @@ const Investors = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <ScrollProgress />
       <Header />
       
       <main className="container mx-auto px-4 py-16">

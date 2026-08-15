@@ -3,6 +3,8 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Download } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Cell, PieChart, Pie } from 'recharts';
+import ChessPieceIcon from '@/components/chess/ChessPieceIcon';
+import { ScrollProgress } from '@/components/shared/ScrollProgress';
 
 const CHESS = { total: '12,240,000+', acc: '69.24%', sf: '63.81%', delta: '+5.43pp', z: '>800' };
 const BAT = { cells: '140', cycles: '114,692', acc: '56.5%', crit: '89.0%', bl: '89.2%' };
@@ -192,6 +194,7 @@ function Stat({ value, label, color = 'gray' }: { value: string; label: string; 
 export default function EnPensentWhitepaper() {
   return (
     <div className="min-h-screen bg-white text-gray-900 font-sans">
+      <ScrollProgress />
       <header className="border-b bg-white sticky top-0 z-50 print:hidden">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -224,7 +227,7 @@ export default function EnPensentWhitepaper() {
             })}
           </div>
           <p className="text-[10px] text-gray-400 mb-12">The 8×8 Universal Grid — 64 cells, infinite domains</p>
-          <div className="grid grid-cols-4 gap-6 text-center mb-12">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 text-center mb-12">
             <div><p className="text-3xl font-black text-amber-600">9</p><p className="text-xs text-gray-500">Validated Domains</p></div>
             <div><p className="text-3xl font-black text-violet-600">69.24%</p><p className="text-xs text-gray-500">Chess 3-Way Accuracy</p></div>
             <div><p className="text-3xl font-black text-blue-600">12.2M+</p><p className="text-xs text-gray-500">Predictions Analyzed</p></div>
@@ -241,7 +244,7 @@ export default function EnPensentWhitepaper() {
             What if you watched a chess game and, instead of tracking who was winning, you just <strong>colored every square a piece passed through</strong> — not just where it landed, but every square along its path?
           </p>
 
-          <div className="grid grid-cols-2 gap-8 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 mb-8">
             <div>
               <h3 className="text-sm font-bold mb-3">Step 1: Assign Colors to Pieces</h3>
               <p className="text-xs text-gray-500 mb-3"><strong>Each side gets its own unique color per piece type</strong> — 12 distinct colors total. White and Black pieces are never the same hue. Pawns also shift shade based on advancement rank.</p>
@@ -249,20 +252,20 @@ export default function EnPensentWhitepaper() {
                 <p className="text-[10px] font-bold text-amber-700 col-span-1">WHITE PIECES</p>
                 <p className="text-[10px] font-bold text-gray-600 col-span-1">BLACK PIECES</p>
                 {[
-                  [['#eab308','King','♔'],['#ca8a04','King','♚']],
-                  [['#ef4444','Queen','♕'],['#dc2626','Queen','♛']],
-                  [['#3b82f6','Rook','♖'],['#2563eb','Rook','♜']],
-                  [['#8b5cf6','Bishop','♗'],['#7c3aed','Bishop','♝']],
-                  [['#22c55e','Knight','♘'],['#16a34a','Knight','♞']],
-                  [['#9ca3af','Pawn','♙'],['#6b7280','Pawn','♟']],
-                ].map(([[wc,wn,wi],[bc,bn,bi]]) => (
+                  [['#eab308','King','k','w'],['#ca8a04','King','k','b']],
+                  [['#ef4444','Queen','q','w'],['#dc2626','Queen','q','b']],
+                  [['#3b82f6','Rook','r','w'],['#2563eb','Rook','r','b']],
+                  [['#8b5cf6','Bishop','b','w'],['#7c3aed','Bishop','b','b']],
+                  [['#22c55e','Knight','n','w'],['#16a34a','Knight','n','b']],
+                  [['#9ca3af','Pawn','p','w'],['#6b7280','Pawn','p','b']],
+                ].map(([[wc,wn,wt,wcol],[bc,bn,bt,bcol]]) => (
                   <React.Fragment key={wn+bn}>
                     <div className="flex items-center gap-2">
-                      <div className="w-5 h-5 rounded flex items-center justify-center text-white text-xs" style={{ backgroundColor: wc }}>{wi}</div>
+                      <div className="w-5 h-5 rounded flex items-center justify-center" style={{ backgroundColor: wc }}><ChessPieceIcon type={wt as 'k'|'q'|'r'|'b'|'n'|'p'} color={wcol as 'w'|'b'} size={12} /></div>
                       <span className="text-[10px] font-bold">{wn}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="w-5 h-5 rounded flex items-center justify-center text-white text-xs" style={{ backgroundColor: bc }}>{bi}</div>
+                      <div className="w-5 h-5 rounded flex items-center justify-center" style={{ backgroundColor: bc }}><ChessPieceIcon type={bt as 'k'|'q'|'r'|'b'|'n'|'p'} color={bcol as 'w'|'b'} size={12} /></div>
                       <span className="text-[10px] font-bold">{bn}</span>
                     </div>
                   </React.Fragment>
@@ -297,9 +300,9 @@ export default function EnPensentWhitepaper() {
           <Label>Color Flow Analysis</Label>
           <h2 className="text-3xl font-black mb-4">From Moves to Signatures</h2>
           
-          <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
             <div className="bg-gray-50 rounded-xl p-4 text-center">
-              <div className="text-3xl mb-2">♟→🎨</div>
+              <div className="text-3xl mb-2 flex items-center justify-center gap-1"><ChessPieceIcon type="p" color="b" size={28} />→🎨</div>
               <p className="text-xs font-bold">1. Piece Moves</p>
               <p className="text-[10px] text-gray-500">Each move colors every square the piece passes through — the full path</p>
             </div>
@@ -318,7 +321,7 @@ export default function EnPensentWhitepaper() {
           <h3 className="text-sm font-bold mb-3">The 8-Quadrant Profile</h3>
           <p className="text-xs text-gray-500 mb-4">The board is divided into 8 zones. Color intensity in each zone creates a unique signature:</p>
           
-          <div className="grid grid-cols-2 gap-6 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
             <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
                 <RadarChart data={QUADRANT_RADAR}>
@@ -376,10 +379,10 @@ Prediction = fusion(control, momentum, archetype, stockfish, phase,
                     piece32Fusion, relativityConvergence, ...)`}</pre>
           </div>
           <h3 className="text-lg font-bold mb-4">One Grid, Six Domains</h3>
-          <div className="grid grid-cols-3 gap-3 mb-8">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-8">
             {[['♟','Chess','12 piece colors','amber'],['🔋','Battery','24 electrochemical','blue'],['⚗️','Chemical','52 process vars','red'],['⚡','Energy','24 grid signals','yellow'],['🎵','Music','24 MIDI features','violet'],['📈','Market','24 price signals','emerald']].map(([icon,name,ch,col])=>(
               <div key={name} className={`p-3 rounded-lg bg-${col}-50 border border-${col}-100`}>
-                <span className="text-xl">{icon}</span>
+                <span className="text-xl inline-flex items-center">{icon === '♟' ? <ChessPieceIcon type="p" color="b" size={20} /> : icon}</span>
                 <p className="font-bold text-sm">{name}</p>
                 <p className="text-[10px] text-gray-500">{ch}</p>
               </div>
@@ -398,7 +401,7 @@ Prediction = fusion(control, momentum, archetype, stockfish, phase,
           <Label>Domain 1 — Chess</Label>
           <h2 className="text-3xl font-black mb-2">Chess Outcome Prediction</h2>
           <p className="text-sm text-gray-500 mb-6">3-way: White wins / Black wins / Draw · {CHESS.total} games · Lichess + Chess.com</p>
-          <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-6">
             <Stat value={CHESS.acc} label="EP Accuracy" color="amber" />
             <Stat value={CHESS.sf} label="Stockfish 18" />
             <Stat value={CHESS.delta} label="Improvement" color="emerald" />
@@ -422,7 +425,7 @@ Prediction = fusion(control, momentum, archetype, stockfish, phase,
             </ResponsiveContainer>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="bg-amber-50 rounded-xl p-4 text-xs text-gray-600">
               <strong>z {'>'} 800</strong> — probability of this result by chance is effectively zero. 12,240,000+ predictions on 3-way classification, 35.9pp above random (33.3%).
             </div>
@@ -437,7 +440,7 @@ Prediction = fusion(control, momentum, archetype, stockfish, phase,
           <Label>Domains 2 & 3</Label>
           <h2 className="text-2xl font-black mb-2">Battery Degradation</h2>
           <p className="text-xs text-gray-500 mb-4">MIT-Stanford MATR + NASA Ames · {BAT.cells} cells · {BAT.cycles} cycles</p>
-          <div className="grid grid-cols-4 gap-3 mb-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
             <Stat value={BAT.acc} label="Overall" color="blue" />
             <Stat value={BAT.crit} label="Critical Det." color="red" />
             <Stat value={BAT.bl} label="Persistence BL" />
@@ -449,7 +452,7 @@ Prediction = fusion(control, momentum, archetype, stockfish, phase,
           <div className="w-full h-px bg-gray-200 my-6" />
           <h2 className="text-2xl font-black mb-2">Tennessee Eastman Process</h2>
           <p className="text-xs text-gray-500 mb-4">Chemical fault detection · 2,200 records · 52 process variables</p>
-          <div className="grid grid-cols-4 gap-3 mb-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
             <Stat value={TEP.f1} label="F1 Score" color="red" />
             <Stat value={TEP.recall} label="Fault Recall" color="orange" />
             <Stat value={TEP.blF1} label="Baseline F1" />
@@ -471,7 +474,7 @@ Prediction = fusion(control, momentum, archetype, stockfish, phase,
           <Label>Domains 4 & 5</Label>
           <h2 className="text-2xl font-black mb-2">Energy Grid Forecasting</h2>
           <p className="text-xs text-gray-500 mb-4">US EIA Hourly Grid Monitor · {NRG.records} records · 5 regions</p>
-          <div className="grid grid-cols-3 gap-3 mb-4">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4">
             <Stat value={NRG.acc} label="EP Accuracy" color="yellow" />
             <Stat value={NRG.bl} label="Persistence" />
             <Stat value="+33.3pp" label="vs Random" color="emerald" />
@@ -482,7 +485,7 @@ Prediction = fusion(control, momentum, archetype, stockfish, phase,
           <div className="w-full h-px bg-gray-200 my-6" />
           <h2 className="text-2xl font-black mb-2">Music Melodic Direction</h2>
           <p className="text-xs text-gray-500 mb-4">MAESTRO v3.0.0 · {MUS.perfs} concert piano performances · {MUS.notes} notes</p>
-          <div className="grid grid-cols-4 gap-3 mb-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
             <Stat value={MUS.acc} label="EP Accuracy" color="violet" />
             <Stat value={MUS.persist} label="Persistence" />
             <Stat value={MUS.rand} label="Random" />
@@ -501,15 +504,15 @@ Prediction = fusion(control, momentum, archetype, stockfish, phase,
           <Label>Domain 6 — Financial Markets</Label>
           <h2 className="text-3xl font-black mb-2">Market Direction Prediction</h2>
           <p className="text-sm text-gray-500 mb-8">Live multi-timeframe · Yahoo Finance · {MKT.resolved} predictions resolved · Chess→Market intelligence transfer</p>
-          <div className="grid grid-cols-2 gap-6 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-8">
             <Stat value={MKT.acc} label="Overall Accuracy (+17.1pp vs random)" color="emerald" />
             <Stat value={MKT.tact} label="7-Day Rolling Accuracy" color="amber" />
           </div>
           <h3 className="text-sm font-bold mb-3">Chess-Inspired Tactical Detectors</h3>
-          <div className="grid grid-cols-5 gap-2 mb-8">
+          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 mb-8">
             {[['♛','Queen Sacrifice','Trap'],['♟','En Passant','Fleeting Window'],['♕','Promotion','Breakout'],['♖','Castling','Repositioning'],['⚠','Blunder','Capitulation']].map(([i,c,m])=>(
               <div key={c} className="bg-gray-50 rounded-lg p-2 text-center">
-                <div className="text-xl mb-1">{i}</div>
+                <div className="text-xl mb-1 flex items-center justify-center">{i === '♛' ? <ChessPieceIcon type="q" color="b" size={20} /> : i === '♟' ? <ChessPieceIcon type="p" color="b" size={20} /> : i === '♕' ? <ChessPieceIcon type="q" color="w" size={20} /> : i === '♖' ? <ChessPieceIcon type="r" color="w" size={20} /> : i}</div>
                 <p className="text-[10px] font-bold">{c}</p>
                 <p className="text-[10px] text-gray-400">→ {m}</p>
               </div>
@@ -517,7 +520,7 @@ Prediction = fusion(control, momentum, archetype, stockfish, phase,
           </div>
           <h3 className="text-sm font-bold mb-3">Cross-Domain Time-Control Mapping</h3>
           <div className="bg-gray-50 rounded-xl p-4 mb-8">
-            <div className="grid grid-cols-5 gap-2 text-center text-xs">
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 text-center text-xs">
               {[['Bullet','Scalp 1h','46.9%'],['Blitz','Short 30m','48.1%'],['Rapid','Medium 2h','47.5%'],['Classical','Swing 8h','49.2%'],['Corresp.','Daily 24h','—']].map(([ch,mk,a])=>(
                 <div key={ch}><p className="font-bold text-amber-600">{ch}</p><p className="text-gray-400">↓</p><p className="font-bold text-emerald-600">{mk}</p><p className="text-gray-400 text-[10px]">{a}</p></div>
               ))}
@@ -533,7 +536,7 @@ Prediction = fusion(control, momentum, archetype, stockfish, phase,
           <Label>Domain 7 — Nuclear Safety</Label>
           <h2 className="text-3xl font-black mb-2">Nuclear Power Plant Fault Detection</h2>
           <p className="text-sm text-gray-500 mb-8">NPPAD dataset · 18 accident types · Binary + multi-class detection · Self-learned z{'>'}3.0 threshold</p>
-          <div className="grid grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-8">
             <Stat value={NUC.binaryF1} label="Binary Fault F1 (+11pp vs Bi-LSTM)" color="emerald" />
             <Stat value={NUC.acc} label="18-Class Accuracy (+31.4pp vs NCC)" color="amber" />
             <Stat value={NUC.f1} label="18-Class F1 Score" color="violet" />
@@ -547,7 +550,7 @@ Prediction = fusion(control, momentum, archetype, stockfish, phase,
               parameter. This is evidence that the grid captures fundamental temporal pattern structure
               that transcends domain physics.
             </p>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="bg-white rounded-lg p-3">
                 <p className="text-[10px] font-bold text-gray-400 mb-1">TEP Chemical</p>
                 <p className="text-lg font-black text-emerald-600">z {'>'} 3.0</p>
@@ -624,7 +627,7 @@ ENVELOPE:
   envelope = min(all_4_stats) / max(all_4_stats)
   → Tight: confident    → Wide: uncertain`}</pre>
           </div>
-          <div className="grid grid-cols-2 gap-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
             <div className="bg-violet-50 rounded-xl p-4">
               <h3 className="text-xs font-bold mb-2">Why All Positive?</h3>
               <p className="text-[10px] text-gray-600 leading-relaxed">
@@ -681,7 +684,7 @@ ENVELOPE:
           <Label>Data Integrity</Label>
           <h2 className="text-3xl font-black mb-6">Zero Fake Data. Anywhere.</h2>
           <p className="text-sm text-gray-600 mb-8">Three audit rounds. <strong>Real data only — "OFFLINE" over fake.</strong></p>
-          <div className="grid grid-cols-3 gap-4 mb-8">
+          <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-8">
             <Stat value="24" label="Violations Fixed" color="red" />
             <Stat value="3" label="Audit Rounds" color="emerald" />
             <Stat value="0" label="Remaining" color="amber" />
@@ -784,10 +787,10 @@ ENVELOPE:
           <p className="text-sm text-gray-600 mb-6">When the same archetype appears simultaneously in chess and market, constructive interference amplifies confidence. Destructive interference provides skepticism.</p>
           <div className="bg-gray-50 rounded-xl p-5 mb-6">
             <h3 className="text-sm font-bold mb-3">Piece → Market Power Hierarchy</h3>
-            <div className="grid grid-cols-2 gap-3 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               {[['♚','King','Central banks / Fed','System stability'],['♛','Queen','Mega-institutions','Dominant force'],['♜','Rook','Major banks','Structural positioning'],['♝','Bishop','Hedge funds','Asymmetric bets'],['♞','Knight','Active managers','Non-linear alpha'],['♟','Pawn','Retail flow','Structure-forming']].map(([i,p,m,d])=>(
                 <div key={p} className="flex items-center gap-2">
-                  <span className="text-xl">{i}</span>
+                  <span className="text-xl inline-flex items-center">{i === '♚' ? <ChessPieceIcon type="k" color="b" size={20} /> : i === '♛' ? <ChessPieceIcon type="q" color="b" size={20} /> : i === '♜' ? <ChessPieceIcon type="r" color="b" size={20} /> : i === '♝' ? <ChessPieceIcon type="b" color="b" size={20} /> : i === '♞' ? <ChessPieceIcon type="n" color="b" size={20} /> : i === '♟' ? <ChessPieceIcon type="p" color="b" size={20} /> : i}</span>
                   <div><strong>{p}</strong> → {m}<br/><span className="text-gray-400">{d}</span></div>
                 </div>
               ))}
@@ -810,7 +813,7 @@ Piece activity on light vs dark = bullish vs bearish stance.`}</pre>
         <Page>
           <Label>Infrastructure</Label>
           <h2 className="text-3xl font-black mb-6">Running 24/7 in Production</h2>
-          <div className="grid grid-cols-2 gap-6 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
             <div>
               <h3 className="text-sm font-bold mb-3">PM2 Worker Fleet</h3>
               <div className="space-y-1.5 text-xs">
@@ -833,7 +836,7 @@ Piece activity on light vs dark = bullish vs bearish stance.`}</pre>
             </div>
           </div>
           <div className="bg-gray-50 rounded-xl p-5">
-            <div className="grid grid-cols-4 gap-4 text-center">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
               <div><p className="text-2xl font-black text-amber-600">300K+</p><p className="text-[10px] text-gray-500">Chess/day</p></div>
               <div><p className="text-2xl font-black text-emerald-600">600+</p><p className="text-[10px] text-gray-500">Market preds/cycle</p></div>
               <div><p className="text-2xl font-black text-violet-600">8</p><p className="text-[10px] text-gray-500">Workers online</p></div>
@@ -917,7 +920,7 @@ Piece activity on light vs dark = bullish vs bearish stance.`}</pre>
           <h1 className="text-5xl font-black tracking-tight mb-4">En Pensent</h1>
           <p className="text-lg text-gray-400 mb-12">Universal Temporal Pattern Recognition</p>
           <div className="w-48 h-px bg-gray-200 mb-12" />
-          <div className="grid grid-cols-2 gap-8 text-left max-w-md mb-12">
+          <div className="grid grid-cols-2 gap-4 sm:gap-8 text-left max-w-md mb-12">
             <div>
               <p className="text-xs font-bold mb-1">Author</p>
               <p className="text-xs text-gray-500">Alec Arthur Shelton</p>

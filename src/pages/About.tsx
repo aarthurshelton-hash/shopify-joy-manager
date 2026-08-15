@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
+import { ScrollProgress } from '@/components/shared/ScrollProgress';
 import { Crown, Heart, Palette, Users, Lightbulb, Sparkles, Eye, ScanLine, QrCode, Camera, Fingerprint, DollarSign, Building2, PenTool, Frame } from 'lucide-react';
 import { useRandomGameArt } from '@/hooks/useRandomGameArt';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +14,7 @@ const About = () => {
   
   return (
     <div className="min-h-screen bg-background">
+      <ScrollProgress />
       <Header />
       
       <main className="container mx-auto px-4 py-16">

@@ -4,6 +4,7 @@ import { X, Download, Share2, Copy, Check } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import ChessPieceIcon from '@/components/chess/ChessPieceIcon';
 
 interface CEOBusinessCardProps {
   isOpen: boolean;
@@ -121,10 +122,10 @@ END:VCARD`;
                 {/* Company with Chess Piece - Top Right */}
                 <div className="flex items-center gap-1.5">
                   <span 
-                    className="text-base sm:text-lg text-stone-800"
+                    className="flex items-center"
                     style={{ fontFamily: 'Georgia, serif' }}
                   >
-                    ♔
+                    <ChessPieceIcon type="k" color="w" size={18} hexColor="#211C16" strokeColor="#C9A552" />
                   </span>
                   <span 
                     className="text-[11px] sm:text-xs tracking-[0.15em] text-stone-800 font-normal italic"

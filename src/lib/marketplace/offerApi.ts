@@ -77,21 +77,38 @@ export async function counterOffer(
 
     if (parentError || !parentOffer) throw new Error('Parent offer not found');
 
-    // Mark parent as countered
-    await supabase
-      .from('marketplace_offers')
-      .update({ status: 'countered' })
-      .eq('id', parentOfferId);
-
-    // Create counter offer (swap buyer/seller based on who is countering)
+    // Verify the countering user is a participant in the offer
     const isBuyer = user.id === parentOffer.buyer_id;
+    const isSeller = user.id === parentOffer.seller_id;
+    if (!isBuyer && !isSeller) throw new Error('Not authorized to counter this offer');
+
+    // Mark parent as countered (only the recipient of the original offer can counter)
+    if (isSeller) {
+      await supabase
+        .from('marketplace_offers')
+        .update({ status: 'countered' })
+        .eq('id', parentOfferId)
+        .eq('seller_id', user.id);
+    } else {
+      await supabase
+        .from('marketplace_offers')
+        .update({ status: 'countered' })
+        .eq('id', parentOfferId)
+        .eq('buyer_id', user.id);
+    }
+
+    // Create counter offer with swapped roles:
+    // If seller counters, seller becomes the new buyer (making an offer to sell at their price)
+    // If buyer counters, buyer is adjusting their original offer upward
+    const newBuyerId = isSeller ? parentOffer.seller_id : parentOffer.buyer_id;
+    const newSellerId = isSeller ? parentOffer.buyer_id : parentOffer.seller_id;
     
     const { data, error } = await supabase
       .from('marketplace_offers')
       .insert({
         listing_id: parentOffer.listing_id,
-        buyer_id: parentOffer.buyer_id,
-        seller_id: parentOffer.seller_id,
+        buyer_id: newBuyerId,
+        seller_id: newSellerId,
         offer_cents: validatedOffer,
         parent_offer_id: parentOfferId,
         message: message || null,
@@ -106,13 +123,18 @@ export async function counterOffer(
   }
 }
 
-// Accept an offer
+// Accept an offer (seller only)
 export async function acceptOffer(offerId: string): Promise<{ error: Error | null }> {
   try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
     const { error } = await supabase
       .from('marketplace_offers')
       .update({ status: 'accepted' })
-      .eq('id', offerId);
+      .eq('id', offerId)
+      .eq('seller_id', user.id)
+      .eq('status', 'pending');
 
     if (error) throw error;
     return { error: null };
@@ -121,13 +143,18 @@ export async function acceptOffer(offerId: string): Promise<{ error: Error | nul
   }
 }
 
-// Decline an offer
+// Decline an offer (seller only)
 export async function declineOffer(offerId: string): Promise<{ error: Error | null }> {
   try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
     const { error } = await supabase
       .from('marketplace_offers')
       .update({ status: 'declined' })
-      .eq('id', offerId);
+      .eq('id', offerId)
+      .eq('seller_id', user.id)
+      .eq('status', 'pending');
 
     if (error) throw error;
     return { error: null };
@@ -139,10 +166,15 @@ export async function declineOffer(offerId: string): Promise<{ error: Error | nu
 // Withdraw a pending offer (buyer only)
 export async function withdrawOffer(offerId: string): Promise<{ error: Error | null }> {
   try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
     const { error } = await supabase
       .from('marketplace_offers')
       .delete()
-      .eq('id', offerId);
+      .eq('id', offerId)
+      .eq('buyer_id', user.id)
+      .eq('status', 'pending');
 
     if (error) throw error;
     return { error: null };
@@ -211,8 +243,5 @@ export async function getPendingOffersCount(): Promise<number> {
   }
 }
 
-// Format offer for display
-export function formatOffer(cents: number): string {
-  if (cents === 0) return 'Free';
-  return `$${(cents / 100).toFixed(2)}`;
-}
+// Format offer for display (delegates to shared utility)
+export { formatCurrency as formatOffer } from './format';

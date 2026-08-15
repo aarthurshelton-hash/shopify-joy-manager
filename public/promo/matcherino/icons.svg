@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 256" width="1280" height="256">
+  <!-- En Pensent Icon Set — 5 crisp 192px icons on obsidian tiles -->
+  <defs>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F2B01E"/>
+      <stop offset="1" stop-color="#D99A12"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 1. FEN → Art (transform) -->
+  <g transform="translate(32,32)">
+    <rect width="192" height="192" rx="36" fill="#0B0D12" stroke="#2A2F3C"/>
+    <text x="34" y="86" font-family="Menlo, monospace" font-size="34" fill="#8B93A7">r1b</text>
+    <path d="M 40 118 H 96 M 84 104 L 100 118 L 84 132" stroke="url(#gold)" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="112" y="96"  width="44" height="44" fill="#1D4ED8"/>
+    <rect x="120" y="104" width="28" height="28" fill="#DC2626"/>
+    <rect x="128" y="112" width="12" height="12" fill="#F2B01E"/>
+  </g>
+
+  <!-- 2. Archetype Wheel (colour wheel sorting) -->
+  <g transform="translate(288,32)">
+    <rect width="192" height="192" rx="36" fill="#0B0D12" stroke="#2A2F3C"/>
+    <g transform="translate(96,96)">
+      <path d="M 0 0 L 0 -62 A 62 62 0 0 1 53.7 -31 Z" fill="#DC2626"/>
+      <path d="M 0 0 L 53.7 -31 A 62 62 0 0 1 53.7 31 Z" fill="#EA580C"/>
+      <path d="M 0 0 L 53.7 31 A 62 62 0 0 1 0 62 Z" fill="#F59E0B"/>
+      <path d="M 0 0 L 0 62 A 62 62 0 0 1 -53.7 31 Z" fill="#10B981"/>
+      <path d="M 0 0 L -53.7 31 A 62 62 0 0 1 -53.7 -31 Z" fill="#06B6D4"/>
+      <path d="M 0 0 L -53.7 -31 A 62 62 0 0 1 0 -62 Z" fill="#5B21B6"/>
+      <circle r="26" fill="#0B0D12" stroke="url(#gold)" stroke-width="4"/>
+      <rect x="-9" y="-9" width="18" height="18" fill="url(#gold)"/>
+    </g>
+  </g>
+
+  <!-- 3. Prediction (beats the engine) -->
+  <g transform="translate(544,32)">
+    <rect width="192" height="192" rx="36" fill="#0B0D12" stroke="#2A2F3C"/>
+    <polyline points="36,140 76,108 104,124 156,56" fill="none" stroke="url(#gold)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 156 56 l -4 26 M 156 56 l -26 4" stroke="url(#gold)" stroke-width="8" stroke-linecap="round"/>
+    <polyline points="36,152 84,136 120,148 156,120" fill="none" stroke="#4A5568" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="2 12"/>
+  </g>
+
+  <!-- 4. Poetry Quill (game poetry) -->
+  <g transform="translate(800,32)">
+    <rect width="192" height="192" rx="36" fill="#0B0D12" stroke="#2A2F3C"/>
+    <path d="M 138 44 C 108 58 84 86 72 122 L 66 140 L 84 134 C 120 122 146 96 156 62 C 158 54 152 48 144 46 Z" fill="none" stroke="url(#gold)" stroke-width="6" stroke-linejoin="round"/>
+    <path d="M 72 122 C 96 96 118 76 138 62" stroke="url(#gold)" stroke-width="3.5" fill="none"/>
+    <line x1="44" y1="152" x2="112" y2="152" stroke="#8B93A7" stroke-width="4" stroke-linecap="round"/>
+    <line x1="44" y1="166" x2="88"  y2="166" stroke="#4A5568" stroke-width="4" stroke-linecap="round"/>
+  </g>
+
+  <!-- 5. Collectible Print (QR gamecard) -->
+  <g transform="translate(1056,32)">
+    <rect width="192" height="192" rx="36" fill="#0B0D12" stroke="#2A2F3C"/>
+    <rect x="42" y="30" width="108" height="132" rx="8" fill="#12151D" stroke="url(#gold)" stroke-width="4"/>
+    <rect x="56" y="44"  width="34" height="34" fill="#DC2626"/>
+    <rect x="62" y="50"  width="22" height="22" fill="#1D4ED8"/>
+    <rect x="68" y="56"  width="10" height="10" fill="#F2B01E"/>
+    <rect x="98" y="44"  width="16" height="16" fill="#06B6D4"/>
+    <rect x="122" y="44" width="16" height="16" fill="#10B981"/>
+    <rect x="98" y="66"  width="16" height="16" fill="#F59E0B"/>
+    <g fill="#EDE6D6">
+      <rect x="56" y="106" width="12" height="12"/><rect x="72" y="106" width="12" height="12"/><rect x="100" y="106" width="12" height="12"/>
+      <rect x="56" y="122" width="12" height="12"/><rect x="86" y="122" width="12" height="12"/><rect x="114" y="122" width="12" height="12"/>
+      <rect x="72" y="138" width="12" height="12"/><rect x="100" y="138" width="12" height="12"/><rect x="128" y="138" width="12" height="12"/>
+    </g>
+  </g>
+</svg>

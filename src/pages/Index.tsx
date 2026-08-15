@@ -1,17 +1,17 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, lazy, Suspense } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import PgnUploader from '@/components/chess/PgnUploader';
-import UnifiedVisionExperience, { ExportState } from '@/components/chess/UnifiedVisionExperience';
-import ChessLoadingAnimation from '@/components/chess/ChessLoadingAnimation';
-import PaletteSelector from '@/components/chess/PaletteSelector';
-import ChessParticles from '@/components/chess/ChessParticles';
-import LifestyleMockupGallery from '@/components/shop/LifestyleMockupGallery';
-import HeroVisionDemo from '@/components/homepage/HeroVisionDemo';
+import type { ExportState } from '@/components/chess/UnifiedVisionExperience';
 import LiveProofRibbon from '@/components/homepage/LiveProofRibbon';
+import StepMarker from '@/components/homepage/HowItWorksSection';
 import ChessProsSection from '@/components/homepage/ChessProsSection';
+import ConceptSection from '@/components/homepage/ConceptSection';
+import BeyondChessSection from '@/components/homepage/BeyondChessSection';
+import FAQSection from '@/components/homepage/FAQSection';
+import SocialProofSection from '@/components/homepage/SocialProofSection';
+import EmailCaptureSection from '@/components/homepage/EmailCaptureSection';
 import OnboardingNudge from '@/components/chess/OnboardingNudge';
 import { VisionaryMembershipCard } from '@/components/premium';
-import { simulateGame, SimulationResult } from '@/lib/chess/gameSimulator';
+import type { SimulationResult } from '@/lib/chess/gameSimulator';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
 import {
@@ -27,14 +27,19 @@ import {
 import { Button } from '@/components/ui/button';
 import { Crown, Sparkles, ShoppingBag } from 'lucide-react';
 import { toast } from 'sonner';
-import { cleanPgn } from '@/lib/chess/pgnValidator';
-import { PaletteId, getActivePalette, PieceType, PieceColor } from '@/lib/chess/pieceColors';
+import { PaletteId, getActivePalette, setActivePalette, PieceType, PieceColor } from '@/lib/chess/pieceColors';
+import {
+  classifyGameArchetype,
+  generateArchetypePoetry,
+  getManualPaletteChoice,
+  markManualPaletteChoice,
+  logArchetypeColorWheelEvent,
+} from '@/lib/chess/archetypeTemplates';
 import { useScrollAnimation, scrollAnimationClasses } from '@/hooks/useScrollAnimation';
 import { useSessionStore } from '@/stores/sessionStore';
 import { useVisualizationStateStore } from '@/stores/visualizationStateStore';
 import { useActiveVisionStore } from '@/stores/activeVisionStore';
 import { usePrintOrderStore } from '@/stores/printOrderStore';
-import AuthModal from '@/components/auth/AuthModal';
 import { useAuth } from '@/hooks/useAuth';
 import { useVisualizationExport } from '@/hooks/useVisualizationExport';
 import { buildCanonicalShareUrl, generateGameHash } from '@/lib/visualizations/gameCanonical';
@@ -42,6 +47,17 @@ import { buildCanonicalShareUrl, generateGameHash } from '@/lib/visualizations/g
 // Import AI-generated art
 import heroChessArt from '@/assets/ai-art/upload-section-hero.jpg';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
+
+// Lazy-load heavy chess components — only needed after user uploads a PGN
+const PgnUploader = lazy(() => import('@/components/chess/PgnUploader'));
+const UnifiedVisionExperience = lazy(() => import('@/components/chess/UnifiedVisionExperience'));
+const GameInsightsPanel = lazy(() => import('@/components/chess/GameInsightsPanel'));
+const ChessLoadingAnimation = lazy(() => import('@/components/chess/ChessLoadingAnimation'));
+const HeroVisionDemo = lazy(() => import('@/components/homepage/HeroVisionDemo'));
+const PaletteSelector = lazy(() => import('@/components/chess/PaletteSelector'));
+const AuthModal = lazy(() => import('@/components/auth/AuthModal'));
+const ChessParticles = lazy(() => import('@/components/chess/ChessParticles'));
+const LifestyleMockupGallery = lazy(() => import('@/components/shop/LifestyleMockupGallery'));
 
 const Index = () => {
   const navigate = useNavigate();
@@ -110,6 +126,25 @@ const Index = () => {
   // Clear active vision when viewing Index (user is on homepage, not in a vision)
   const { clearActiveVision } = useActiveVisionStore();
   
+  // Reset all visualization state when arriving at homepage fresh
+  // This ensures clean state when navigating back to / from another page
+  useEffect(() => {
+    // Clear any stale active vision
+    clearActiveVision();
+    
+    // If there's no stored simulation to restore, ensure local state is clean
+    if (!storedSimulation) {
+      setSimulation(null);
+      setCurrentPgn('');
+      setGameTitle('');
+      setIsLoading(false);
+      setPendingResult(null);
+      setSavedShareId(null);
+      setSavedVisualizationId(null);
+      setHasUnsavedChanges(false);
+    }
+  }, []); // Run once on mount — component remounts when navigating to / from another page
+  
   // Restore visualization from session storage on mount (for returning from order page)
   useEffect(() => {
     if (!simulation && storedSimulation && storedPgn) {
@@ -165,10 +200,10 @@ const Index = () => {
       if (heroImageRef.current) {
         if (mobile) {
           // Static position on mobile - no parallax
-          heroImageRef.current.style.transform = 'translate3d(0, 0, 0) scale(1.05)';
+          heroImageRef.current.style.transform = 'translate3d(0, 0, 0) scale(1.02)';
         } else {
-          const offset = scrollY * 0.12;
-          heroImageRef.current.style.transform = `translate3d(0, ${offset}px, 0) scale(1.1)`;
+          const offset = scrollY * 0.08;
+          heroImageRef.current.style.transform = `translate3d(0, ${offset}px, 0) scale(1.03)`;
         }
       }
       
@@ -210,18 +245,53 @@ const Index = () => {
     // Force re-render of components that use the palette
     setPaletteKey(prev => prev + 1);
     setHasUnsavedChanges(true);
+    // Remember the manual choice — auto template never overrides it
+    markManualPaletteChoice(paletteId);
     toast.success(`Palette changed to ${paletteId.charAt(0).toUpperCase() + paletteId.slice(1)}`);
   }, []);
   
-  const handlePgnSubmit = (pgn: string, famousGameTitle?: string) => {
+  const handlePgnSubmit = async (pgn: string, famousGameTitle?: string) => {
     // Clean the PGN but don't validate - just process what we can
+    const { cleanPgn } = await import('@/lib/chess/pgnValidator');
     const cleanedPgn = cleanPgn(pgn);
 
-    // Simulate the game - the simulator will process whatever it can
+    // Simulate the game - dynamically import to avoid loading chess.js eagerly
+    const { simulateGame } = await import('@/lib/chess/gameSimulator');
     const result = simulateGame(cleanedPgn);
     
     // Use famous game title if provided, otherwise leave empty (just show date)
     const title = famousGameTitle || '';
+
+    // Archetype auto-template: classify the game's strategic feel
+    const classification = classifyGameArchetype(result);
+    if (classification) {
+      const manualPalette = getManualPaletteChoice();
+      let autoApplied = false;
+
+      // Subtle auto template — only applies when the user hasn't chosen a palette
+      if (!manualPalette && classification.template.paletteId !== getActivePalette().id) {
+        setActivePalette(classification.template.paletteId);
+        setPaletteKey(prev => prev + 1);
+        autoApplied = true;
+      }
+
+      const poetry = generateArchetypePoetry(classification, cleanedPgn);
+      toast.info(`${classification.archetypeName} · ${poetry.mood}`, {
+        description: autoApplied
+          ? `Template palette applied to match this game's feel. "${poetry.poem.split('\n')[0]}"`
+          : `"${poetry.poem.split('\n')[0]}"`,
+        duration: 5000,
+      });
+
+      // Persist archetype ↔ colour-wheel pairing — this data is never lost
+      logArchetypeColorWheelEvent({
+        classification,
+        gameHash: generateGameHash(cleanedPgn),
+        autoApplied,
+        manualPaletteId: manualPalette,
+        gameTitle: title || undefined,
+      });
+    }
     
     // Store the result and show loading animation
     setPendingResult({ result, pgn: cleanedPgn, title });
@@ -335,10 +405,12 @@ const Index = () => {
       <main>
         {isLoading ? (
           <div className="container mx-auto px-4 py-12 max-w-4xl">
+            <Suspense fallback={<div className="h-96 animate-pulse bg-muted/30 rounded-lg" />}>
             <ChessLoadingAnimation 
               onComplete={handleLoadingComplete} 
               totalMoves={pendingResult?.result.totalMoves}
             />
+            </Suspense>
           </div>
         ) : !simulation ? (
           <>
@@ -347,17 +419,21 @@ const Index = () => {
               {/* Background Image with Parallax - ref-based transform */}
               <div 
                 ref={heroImageRef}
-                className="absolute inset-0 bg-cover bg-center opacity-35 will-change-transform"
+                className="absolute inset-0 bg-cover bg-center opacity-40 will-change-transform"
                 style={{ 
                   backgroundImage: `url(${heroChessArt})`,
-                  transform: 'translate3d(0, 0, 0) scale(1.1)',
+                  transform: 'translate3d(0, 0, 0) scale(1.03)',
                   backfaceVisibility: 'hidden',
+                  imageRendering: 'auto',
+                  filter: 'saturate(1.1) contrast(1.05)',
                 }}
               />
               <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/60 to-background pointer-events-none" />
               
               {/* Floating Chess Particles */}
-              <ChessParticles />
+              <Suspense fallback={null}>
+                <ChessParticles />
+              </Suspense>
               
               <div 
                 ref={heroContentRef}
@@ -374,24 +450,26 @@ const Index = () => {
                     The Future of Chess Intelligence
                   </div>
                   
-                  {/* Main headline - Royal and powerful */}
+                  {/* Main headline - Intelligence framing */}
                   <h2 className="text-3xl md:text-5xl lg:text-6xl font-royal font-bold leading-tight tracking-wide uppercase">
-                    Every Game Is<br />
+                    Every Game Tells<br />
                     <span className="text-gold-gradient">
-                      A Work of Art
+                      A Story We Can See
                     </span>
                   </h2>
                   
                   {/* Subheadline */}
                   <p className="text-muted-foreground text-base md:text-xl max-w-2xl mx-auto leading-relaxed font-serif px-2">
-                    Watch any chess game paint itself into a living visualization — powered by the engine
-                    that reads the middlegame more accurately than Stockfish.
+                    Watch any chess game paint itself into a living fingerprint — then read the strategic
+                    pattern that predicts the outcome, faster than Stockfish can calculate it.
                   </p>
                 </div>
 
                 {/* Self-playing hero demo — the wow before any action */}
                 <div className="mt-10 md:mt-14">
-                  <HeroVisionDemo />
+                  <Suspense fallback={<div className="h-64 md:h-80 animate-pulse bg-muted/20 rounded-lg" />}>
+                    <HeroVisionDemo />
+                  </Suspense>
                 </div>
 
                 {/* Live, data-safe proof ribbon */}
@@ -400,6 +478,12 @@ const Index = () => {
                 </div>
               </div>
             </section>
+
+            {/* Concept Section — bridge between art and intelligence */}
+            <ConceptSection />
+
+            {/* Proof — scientific rigor / prediction edge, elevated before upload */}
+            <ChessProsSection />
 
             {/* Palette & Upload Section */}
             <section id="make-your-own" className="container mx-auto px-4 py-12 space-y-12 scroll-mt-24">
@@ -414,28 +498,50 @@ const Index = () => {
                 {/* Section heading */}
                 <div className="text-center space-y-2">
                   <h3 className="font-royal text-2xl md:text-3xl font-bold uppercase tracking-wide">
-                    Make Your <span className="text-gold-gradient">Own</span>
+                    Reveal Your <span className="text-gold-gradient">Game</span>
                   </h3>
                   <p className="text-muted-foreground font-serif max-w-xl mx-auto">
-                    Upload a PGN, paste a game, or pick a legendary match — then choose a palette and watch it come alive.
+                    Any chess game — yours, a friend's, or a legend's — reveals its strategic fingerprint in seconds.
                   </p>
                 </div>
 
+                {/* Step 1 — anchored to the real uploader */}
+                <StepMarker
+                  number="1"
+                  title="Pick a Game"
+                  description="Upload a PGN, import from Chess.com or Lichess, or tap a legendary match — no account needed."
+                />
+
                 {/* Upload form (contains Upload Your Game + Legendary Games) */}
-                <PgnUploader onPgnSubmit={handlePgnSubmit} onFenSubmit={handleFenSubmit} />
-                
+                <Suspense fallback={<div className="h-64 animate-pulse bg-muted/30 rounded-lg" />}>
+                  <PgnUploader onPgnSubmit={handlePgnSubmit} onFenSubmit={handleFenSubmit} />
+                </Suspense>
+
+                {/* Step 2 — anchored to the palette selector */}
+                <StepMarker
+                  number="2"
+                  title="Choose Your Palette"
+                  description="Every piece's journey becomes color — pick the mood, then watch the game paint itself."
+                />
+
                 {/* Palette selector */}
-                <PaletteSelector onPaletteChange={handlePaletteChange} />
+                <Suspense fallback={<div className="h-48 animate-pulse bg-muted/20 rounded-lg" />}>
+                  <PaletteSelector onPaletteChange={handlePaletteChange} />
+                </Suspense>
               </div>
             </section>
 
-            {/* Chess Pros — scientific rigor / prediction edge */}
-            <ChessProsSection />
-            
             {/* Marketplace CTA — Lifestyle Mockup Gallery */}
             <section className="py-16">
               <div className="container mx-auto px-4">
                 <div className="max-w-6xl mx-auto">
+                  {/* Step 3 — anchored to the prints gallery */}
+                  <StepMarker
+                    number="3"
+                    title="Own the Vision"
+                    description="Download and share your vision, or order it as a museum-quality print — once collected, it's yours alone."
+                    className="mb-8"
+                  />
                   <div className="text-center mb-8">
                     <h2 className="font-display text-3xl md:text-4xl font-bold mb-3">
                       Your Art, <span className="text-gold-gradient">Any Space</span>
@@ -444,11 +550,13 @@ const Index = () => {
                       See how your chess visualizations transform any room with our museum-quality prints and handcrafted frames.
                     </p>
                   </div>
-                  <LifestyleMockupGallery 
-                    compact={true}
-                    autoplay={true}
-                    className="max-w-4xl mx-auto"
-                  />
+                  <Suspense fallback={<div className="h-64 animate-pulse bg-muted/20 rounded-lg" />}>
+                    <LifestyleMockupGallery 
+                      compact={true}
+                      autoplay={true}
+                      className="max-w-4xl mx-auto"
+                    />
+                  </Suspense>
                   <div className="text-center mt-8">
                     <Link to="/marketplace">
                       <Button size="lg" className="group inline-flex items-center gap-2 px-8 py-4 rounded-xl font-display uppercase tracking-wider text-sm">
@@ -460,9 +568,22 @@ const Index = () => {
                 </div>
               </div>
             </section>
+
+            {/* Social Proof — stats and founder quote */}
+            <SocialProofSection />
+
+            {/* Beyond Chess — universality tease */}
+            <BeyondChessSection />
+
+            {/* FAQ — common questions for first-time visitors */}
+            <FAQSection />
+
+            {/* Email Capture — newsletter signup */}
+            <EmailCaptureSection />
           </>
         ) : (
           <div className="w-full px-4 py-8" ref={visionBoardRef}>
+          <Suspense fallback={<div className="h-96 animate-pulse bg-muted/30 rounded-lg" />}>
             <UnifiedVisionExperience
               board={simulation.board}
               gameData={simulation.gameData}
@@ -801,6 +922,17 @@ const Index = () => {
                 navigate('/creative-mode');
               }}
             />
+          </Suspense>
+          {simulation && currentPgn && (
+            <div className="px-4 pb-8">
+              <Suspense fallback={null}>
+                <GameInsightsPanel
+                  simulation={simulation}
+                  pgn={currentPgn}
+                />
+              </Suspense>
+            </div>
+          )}
           </div>
         )}
       </main>
@@ -821,10 +953,12 @@ const Index = () => {
       />
       
       {/* Auth Modal */}
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-      />
+      <Suspense fallback={null}>
+        <AuthModal
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+        />
+      </Suspense>
     </div>
   );
 };

@@ -23,6 +23,7 @@ import gameOfCentury from '@/assets/games/game-of-century.jpg';
 import fischerSpassky from '@/assets/games/fischer-spassky.jpg';
 import carlsenKarjakin from '@/assets/games/carlsen-karjakin.jpg';
 import kasparovImmortal from '@/assets/games/kasparov-immortal.jpg';
+import ChessPieceIcon from '@/components/chess/ChessPieceIcon';
 
 interface BookShowcaseProps {
   variant?: 'hero' | 'compact' | 'featured';
@@ -284,7 +285,7 @@ export const BookShowcase = forwardRef<HTMLElement, BookShowcaseProps>(function 
                       <div className="flex items-center gap-2">
                         <p className={`font-medium ${selectedEdition === 'standard' ? 'text-amber-100' : 'text-white'}`}>Standard Edition</p>
                         {selectedEdition === 'standard' && (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/30 text-amber-300">♔ Classic</span>
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/30 text-amber-300 inline-flex items-center gap-1"><ChessPieceIcon type="k" color="w" size={11} /> Classic</span>
                         )}
                       </div>
                       <p className={`text-sm ${selectedEdition === 'standard' ? 'text-amber-200/70' : 'text-slate-400'}`}>8.5" × 11" Hardcover</p>
@@ -356,7 +357,7 @@ export const BookShowcase = forwardRef<HTMLElement, BookShowcaseProps>(function 
                     <div>
                       <div className="flex items-center gap-2">
                         <p className="text-amber-100 font-medium">Large Format</p>
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-amber-400/30 text-amber-200 border border-amber-400/30">♔ Premium</span>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-amber-400/30 text-amber-200 border border-amber-400/30 inline-flex items-center gap-1"><ChessPieceIcon type="k" color="w" size={11} /> Premium</span>
                       </div>
                       <p className="text-amber-200/60 text-sm">11" × 14" Premium</p>
                     </div>
@@ -401,7 +402,7 @@ export const BookShowcase = forwardRef<HTMLElement, BookShowcaseProps>(function 
               <div className="absolute inset-0 bg-gradient-to-t from-slate-900/95 to-transparent" />
               <div className="relative text-center">
                 <p className="text-xs text-slate-500">Published by</p>
-                <p className="text-sm text-amber-400 font-serif tracking-wider">♔ EN PENSENT ♕</p>
+                <p className="text-sm text-amber-400 font-serif tracking-wider inline-flex items-center gap-1.5"><ChessPieceIcon type="k" color="w" size={14} /> EN PENSENT <ChessPieceIcon type="q" color="w" size={14} /></p>
               </div>
             </div>
           </div>
@@ -555,7 +556,7 @@ export const BookShowcase = forwardRef<HTMLElement, BookShowcaseProps>(function 
                           ? 'bg-amber-500/30 text-amber-200' 
                           : 'bg-slate-700/50 text-slate-400'
                       }`}>
-                        ♔ Classic
+                        <span className="inline-flex items-center gap-1"><ChessPieceIcon type="k" color="w" size={11} /> Classic</span>
                       </div>
                       <p className={`text-lg font-serif font-semibold transition-colors ${
                         selectedEdition === 'standard' ? 'text-amber-100' : 'text-slate-200'
@@ -645,7 +646,7 @@ export const BookShowcase = forwardRef<HTMLElement, BookShowcaseProps>(function 
                     
                     <CardContent className="relative p-5 text-center space-y-1">
                       <div className="inline-block px-3 py-1 rounded-full text-xs font-medium mb-2 bg-amber-400/30 text-amber-200 border border-amber-400/30">
-                        ♔ Premium
+                        <span className="inline-flex items-center gap-1"><ChessPieceIcon type="k" color="w" size={11} /> Premium</span>
                       </div>
                       <p className="text-lg font-serif font-semibold text-amber-100">Large Format</p>
                       <p className="text-sm text-amber-200/80">11" × 14" Premium</p>

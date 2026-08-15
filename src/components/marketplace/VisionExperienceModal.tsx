@@ -70,6 +70,7 @@ import { TimelineProvider, useTimeline } from '@/contexts/TimelineContext';
 import { LegendHighlightProvider } from '@/contexts/LegendHighlightContext';
 import { setActivePalette, PaletteId, getActivePalette } from '@/lib/chess/pieceColors';
 import { gameImageImports } from '@/lib/chess/gameImages';
+import ChessPieceIcon from '@/components/chess/ChessPieceIcon';
 
 interface VisionExperienceModalProps {
   isOpen: boolean;
@@ -1078,7 +1079,7 @@ const AnalyticsTab: React.FC<{
                         {tactic.type === 'pin' && '📌'}
                         {tactic.type === 'discovery' && '💡'}
                         {tactic.type === 'skewer' && '🗡️'}
-                        {tactic.type === 'back_rank' && '♛'}
+                        {tactic.type === 'back_rank' && <ChessPieceIcon type="q" color="b" size={12} />}
                         {tactic.type === 'smothered_mate' && '🏆'}
                         {tactic.type === 'sacrifice' && '💎'}
                         {tactic.type === 'double_attack' && '⚔️'}

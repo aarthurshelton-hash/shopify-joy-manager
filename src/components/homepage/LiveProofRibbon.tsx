@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Activity, TrendingUp, ChevronRight } from 'lucide-react';
+import { TrendingUp, ChevronRight } from 'lucide-react';
 import { useLiveChessStats } from '@/hooks/useLiveChessStats';
 
 // Formats large counts compactly (e.g. 12,400,000 -> 12.4M)
@@ -15,7 +15,7 @@ const Stat: React.FC<{ label: string; value: string; accent?: boolean }> = ({
   value,
   accent,
 }) => (
-  <div className="flex flex-col items-center px-4 sm:px-6">
+  <div className="flex flex-col items-center px-2 sm:px-6 py-1 sm:py-0">
     <span
       className={`font-display text-lg sm:text-2xl font-bold tabular-nums ${
         accent ? 'text-gold-gradient' : 'text-foreground'
@@ -36,25 +36,14 @@ const Stat: React.FC<{ label: string; value: string; accent?: boolean }> = ({
  * "Calibrating" state rather than any fabricated numbers.
  */
 export const LiveProofRibbon: React.FC = () => {
-  const { data, isLoading } = useLiveChessStats();
+  const { data } = useLiveChessStats();
 
-  const isOffline = !data || data.totalPredictions === 0 || data.epAccuracy === 0;
+  // Canonical stats are always available — no loading/calibrating state needed
+  if (!data || data.totalPredictions === 0) return null;
 
   return (
     <div className="w-full max-w-3xl mx-auto">
       <div className="rounded-2xl border border-primary/20 bg-card/60 backdrop-blur-sm px-4 py-4 sm:px-6 sm:py-5">
-        {isLoading ? (
-          <p className="text-center text-xs text-muted-foreground font-serif">
-            Loading live engine data…
-          </p>
-        ) : isOffline ? (
-          <div className="flex items-center justify-center gap-2 text-muted-foreground">
-            <Activity className="h-4 w-4 animate-pulse" />
-            <p className="text-xs sm:text-sm font-serif">
-              Prediction engine <span className="text-foreground font-medium">calibrating</span> — live accuracy returns shortly.
-            </p>
-          </div>
-        ) : (
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-center gap-2 text-primary">
               <TrendingUp className="h-4 w-4" />
@@ -62,7 +51,7 @@ export const LiveProofRibbon: React.FC = () => {
                 Live prediction edge over Stockfish
               </p>
             </div>
-            <div className="flex items-center justify-center divide-x divide-border/50">
+            <div className="grid grid-cols-2 sm:flex sm:items-center sm:justify-center gap-2 sm:gap-0 sm:divide-x sm:divide-border/50">
               <Stat label="Predictions Resolved" value={formatCount(data.totalPredictions)} />
               <Stat label="EP Accuracy" value={`${data.epAccuracy.toFixed(1)}%`} accent />
               <Stat label="vs Stockfish" value={`${data.epEdge >= 0 ? '+' : ''}${data.epEdge.toFixed(1)}pp`} accent />
@@ -70,7 +59,7 @@ export const LiveProofRibbon: React.FC = () => {
                 <Stat label="Catches SF Misses" value={`${data.epRecoveryRate.toFixed(0)}%`} />
               )}
             </div>
-            <div className="text-center flex items-center justify-center gap-4">
+            <div className="text-center flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4">
               <Link
                 to="/vs-stockfish"
                 className="group inline-flex items-center gap-1 text-[11px] text-primary hover:text-primary/80 transition-colors font-serif font-medium"
@@ -88,7 +77,6 @@ export const LiveProofRibbon: React.FC = () => {
               </Link>
             </div>
           </div>
-        )}
       </div>
     </div>
   );

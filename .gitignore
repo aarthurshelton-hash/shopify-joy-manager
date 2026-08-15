@@ -64,6 +64,9 @@ supabase/
 # Farm directory (large data files)
 farm/
 
+# IB Headless Trader sub-project (not part of web deployment)
+public/ib-headless-trader/
+
 # Scripts (not needed for web deployment)
 scripts/*.cjs
 scripts/*.mjs

@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import carlsenCover from '@/assets/book/carlsen-cover-v2.jpg';
 import carlsenBackCover from '@/assets/book/carlsen-back-cover.jpg';
 import logoImage from '@/assets/en-pensent-logo-new.png';
+import ChessPieceIcon from '@/components/chess/ChessPieceIcon';
 
 export type BookType = 'carlsen' | 'fischer';
 
@@ -22,7 +23,7 @@ const BOOK_COVERS = {
     spineColor: 'linear-gradient(to right, #0f172a 0%, #1e293b 20%, #1e293b 80%, #0f172a 100%)',
     titleColor: 'text-amber-400',
     accentGradient: 'linear-gradient(to bottom, #d4a574, #f5d89a 20%, #c9a45c 50%, #f5d89a 80%, #d4a574)',
-    kingSymbol: '♔',
+    kingSymbol: 'w' as const,
     badgeText: 'Gold Gilded Pages',
     coverAlt: 'Carlsen in Color - Coffee Table Book',
   },
@@ -33,7 +34,7 @@ const BOOK_COVERS = {
     spineColor: 'linear-gradient(to right, #1c1a0e 0%, #3d3820 20%, #3d3820 80%, #1c1a0e 100%)',
     titleColor: 'text-amber-300',
     accentGradient: 'linear-gradient(to bottom, #c9a227, #f0d875 20%, #a68b1f 50%, #f0d875 80%, #c9a227)',
-    kingSymbol: '♚',
+    kingSymbol: 'b' as const,
     badgeText: 'Egyptian Gold Pages',
     coverAlt: 'Fischer in Color - Coffee Table Book',
   },
@@ -228,7 +229,7 @@ export const BookCover3D: React.FC<BookCover3DProps> = ({
               fontSize: size === 'sm' ? '6px' : size === 'md' ? '10px' : '14px',
             }}
           >
-            {config.kingSymbol}
+            <ChessPieceIcon type="k" color={config.kingSymbol} size={size === 'sm' ? 8 : size === 'md' ? 12 : 16} hexColor="#C9A552" strokeColor="#8B6914" />
           </div>
           
           {/* EN PENSENT text */}

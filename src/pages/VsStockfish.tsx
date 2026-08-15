@@ -90,13 +90,13 @@ export default function VsStockfish() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Link to="/academic-paper">
+              <Link to="/whitepaper">
                 <Button variant="outline" size="sm" className="gap-2">
                   <ExternalLink className="h-4 w-4" />
                   Full Paper
                 </Button>
               </Link>
-              <Link to="/explore">
+              <Link to="/marketplace">
                 <Button variant="outline" size="sm" className="gap-2">
                   <Database className="h-4 w-4" />
                   Live Explorer
@@ -501,13 +501,13 @@ export default function VsStockfish() {
                 <div>node audit/verify.mjs</div>
               </div>
               <div className="flex flex-wrap gap-2 mt-4">
-                <Link to="/academic-paper">
+                <Link to="/whitepaper">
                   <Button variant="outline" size="sm" className="gap-2">
                     <ExternalLink className="h-4 w-4" />
                     Full Academic Paper
                   </Button>
                 </Link>
-                <Link to="/explore">
+                <Link to="/marketplace">
                   <Button variant="outline" size="sm" className="gap-2">
                     <Database className="h-4 w-4" />
                     Game Explorer

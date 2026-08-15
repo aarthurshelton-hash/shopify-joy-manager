@@ -3827,6 +3827,60 @@ export type Database = {
         }
         Returns: boolean
       }
+      claim_free_listing: {
+        Args: {
+          p_buyer_id: string
+          p_listing_id: string
+        }
+        Returns: {
+          success: boolean
+          visualization_id: string | null
+          message: string
+        }[]
+      }
+      reserve_listing_for_checkout: {
+        Args: {
+          p_buyer_id: string
+          p_listing_id: string
+        }
+        Returns: {
+          success: boolean
+          stripe_session_id: string | null
+          message: string
+        }[]
+      }
+      complete_reserved_purchase: {
+        Args: {
+          p_buyer_id: string
+          p_listing_id: string
+          p_stripe_payment_intent_id: string
+        }
+        Returns: {
+          success: boolean
+          visualization_id: string | null
+          message: string
+        }[]
+      }
+      release_listing_reservation: {
+        Args: { p_listing_id: string }
+        Returns: boolean
+      }
+      expire_stale_pending_listings: {
+        Args: Record<string, never>
+        Returns: number
+      }
+      is_visionary_member: {
+        Args: { p_email: string }
+        Returns: boolean
+      }
+      get_visionary_members: {
+        Args: Record<string, never>
+        Returns: {
+          email: string
+          display_name: string
+          role: string
+        }[]
+      }
       publish_listing_with_validation: {
         Args: {
           p_max_price_cents?: number
@@ -3992,7 +4046,7 @@ export type Database = {
       app_role: "admin" | "moderator" | "user"
       chess_game_result: "white_wins" | "black_wins" | "draw" | "abandoned"
       chess_game_status: "waiting" | "active" | "completed" | "abandoned"
-      listing_status: "active" | "sold" | "cancelled"
+      listing_status: "active" | "sold" | "cancelled" | "pending_payment"
       testimonial_status: "pending" | "approved" | "rejected"
       time_control: "bullet_1" | "blitz_5" | "rapid_15" | "untimed"
     }
@@ -4125,7 +4179,7 @@ export const Constants = {
       app_role: ["admin", "moderator", "user"],
       chess_game_result: ["white_wins", "black_wins", "draw", "abandoned"],
       chess_game_status: ["waiting", "active", "completed", "abandoned"],
-      listing_status: ["active", "sold", "cancelled"],
+      listing_status: ["active", "sold", "cancelled", "pending_payment"],
       testimonial_status: ["pending", "approved", "rejected"],
       time_control: ["bullet_1", "blitz_5", "rapid_15", "untimed"],
     },

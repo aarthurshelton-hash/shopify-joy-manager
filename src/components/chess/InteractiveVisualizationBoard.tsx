@@ -1,9 +1,10 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { Chess, Square, Move } from 'chess.js';
-import { SquareData, SquareVisit } from '@/lib/chess/gameSimulator';
+import { SquareData } from '@/lib/chess/gameSimulator';
 import { boardColors, getPieceColor, PieceType, PieceColor } from '@/lib/chess/pieceColors';
 import { PIECE_PATHS, DEFAULT_FILL, DEFAULT_STROKE } from '@/lib/chess/piecePaths';
 import { useLegendHighlight, HighlightedPiece, HoveredSquareInfo, AnnotationType, PieceMoveArrow } from '@/contexts/LegendHighlightContext';
+import { renderNestedSquares } from '@/lib/chess/boardRenderer';
 
 interface InteractiveVisualizationBoardProps {
   board: SquareData[][];
@@ -26,227 +27,7 @@ interface TrackedPiece {
 }
 
 
-// Get the current color for a visit using the active palette
-function getVisitColor(visit: SquareVisit): string {
-  return getPieceColor(visit.piece, visit.color);
-}
-
-// Check if a visit matches any of the highlighted pieces
-function visitMatchesAnyHighlight(visit: SquareVisit, highlights: HighlightedPiece[]): boolean {
-  if (highlights.length === 0) return true;
-  return highlights.some(h => visit.piece === h.pieceType && visit.color === h.pieceColor);
-}
-
-// Check which highlight index a visit matches (for compare mode coloring)
-function getMatchingHighlightIndex(visit: SquareVisit, highlights: HighlightedPiece[]): number {
-  return highlights.findIndex(h => visit.piece === h.pieceType && visit.color === h.pieceColor);
-}
-
-// Renders nested squares for a single board square as SVG rects
-const renderNestedSquares = (
-  visits: SquareVisit[],
-  x: number,
-  y: number,
-  squareSize: number,
-  baseColor: string,
-  highlightedPieces: HighlightedPiece[],
-  compareMode: boolean,
-  isHoveredSquare: boolean,
-  isHighlightedFromLegend: boolean
-): React.ReactNode[] => {
-  const elements: React.ReactNode[] = [];
-  const padding = squareSize * 0.08;
-  
-  const hasHighlight = highlightedPieces.length > 0;
-  
-  // Determine if this square has any matching visits
-  const matchingVisits = hasHighlight 
-    ? visits.filter(v => visitMatchesAnyHighlight(v, highlightedPieces))
-    : visits;
-  
-  const hasMatchingVisit = matchingVisits.length > 0;
-  
-  // In compare mode, check which pieces are present
-  const piece1Present = highlightedPieces.length > 0 && visits.some(
-    v => v.piece === highlightedPieces[0].pieceType && v.color === highlightedPieces[0].pieceColor
-  );
-  const piece2Present = highlightedPieces.length > 1 && visits.some(
-    v => v.piece === highlightedPieces[1].pieceType && v.color === highlightedPieces[1].pieceColor
-  );
-  const isOverlap = piece1Present && piece2Present;
-  
-  // Base dimming when highlight is active but this square doesn't match
-  const shouldDim = hasHighlight && !hasMatchingVisit && !isHoveredSquare;
-  
-  // Draw base square
-  elements.push(
-    <rect
-      key={`base-${x}-${y}`}
-      x={x}
-      y={y}
-      width={squareSize}
-      height={squareSize}
-      fill={baseColor}
-      style={{
-        opacity: shouldDim ? 0.3 : 1,
-        transition: 'opacity 0.2s ease-out',
-      }}
-    />
-  );
-  
-  if (visits.length === 0) {
-    return elements;
-  }
-  
-  // Get unique colors in order of first appearance
-  const uniqueColors: { color: string; matches: boolean; highlightIndex: number }[] = [];
-  for (const visit of visits) {
-    const color = getVisitColor(visit);
-    const highlightIndex = getMatchingHighlightIndex(visit, highlightedPieces);
-    const matches = !hasHighlight || highlightIndex !== -1;
-    const existingIndex = uniqueColors.findIndex(uc => uc.color === color);
-    if (existingIndex === -1) {
-      uniqueColors.push({ color, matches, highlightIndex });
-    } else if (matches) {
-      uniqueColors[existingIndex].matches = true;
-      if (highlightIndex !== -1) {
-        uniqueColors[existingIndex].highlightIndex = highlightIndex;
-      }
-    }
-  }
-  
-  // Calculate sizes for nested squares
-  const maxNesting = Math.min(uniqueColors.length, 6);
-  const layers: { color: string; layerSize: number; matches: boolean; highlightIndex: number }[] = [];
-  
-  let currentSize = squareSize - padding * 2;
-  const sizeReduction = (currentSize * 0.7) / maxNesting;
-  
-  for (let i = 0; i < maxNesting; i++) {
-    layers.push({
-      color: uniqueColors[i].color,
-      layerSize: currentSize,
-      matches: uniqueColors[i].matches,
-      highlightIndex: uniqueColors[i].highlightIndex,
-    });
-    currentSize -= sizeReduction;
-    if (currentSize < squareSize * 0.1) break;
-  }
-  
-  // Draw layers from outside in (largest first)
-  for (let i = 0; i < layers.length; i++) {
-    const layer = layers[i];
-    const offset = (squareSize - layer.layerSize) / 2;
-    
-    // Determine opacity based on highlight state
-    let opacity = 1;
-    if (hasHighlight && !isHoveredSquare) {
-      opacity = layer.matches ? 1 : 0.15;
-    }
-    
-    elements.push(
-      <rect
-        key={`layer-${x}-${y}-${i}`}
-        x={x + offset}
-        y={y + offset}
-        width={layer.layerSize}
-        height={layer.layerSize}
-        fill={layer.color}
-        style={{
-          opacity,
-          transition: 'opacity 0.2s ease-out',
-        }}
-      />
-    );
-  }
-  
-  // Add visual effects for highlighted squares
-  if ((hasHighlight && hasMatchingVisit) || isHoveredSquare) {
-    const glowSize = squareSize * 0.02;
-    
-    if (isHoveredSquare) {
-      // Square is being hovered - show amber glow
-      elements.push(
-        <rect
-          key={`glow-hover-${x}-${y}`}
-          x={x + glowSize}
-          y={y + glowSize}
-          width={squareSize - glowSize * 2}
-          height={squareSize - glowSize * 2}
-          fill="none"
-          stroke="rgba(251, 191, 36, 0.8)"
-          strokeWidth={glowSize * 2}
-          style={{ transition: 'all 0.2s ease-out' }}
-        />
-      );
-    } else if (compareMode && highlightedPieces.length === 2) {
-      // In compare mode, show different effects based on overlap
-      if (isOverlap) {
-        // Overlap: purple glow
-        elements.push(
-          <rect
-            key={`glow-overlap-${x}-${y}`}
-            x={x + glowSize}
-            y={y + glowSize}
-            width={squareSize - glowSize * 2}
-            height={squareSize - glowSize * 2}
-            fill="none"
-            stroke="rgba(168, 85, 247, 0.8)"
-            strokeWidth={glowSize * 2}
-            style={{ transition: 'all 0.2s ease-out' }}
-          />
-        );
-      } else if (piece1Present) {
-        // Only piece 1: sky blue glow
-        elements.push(
-          <rect
-            key={`glow-p1-${x}-${y}`}
-            x={x + glowSize}
-            y={y + glowSize}
-            width={squareSize - glowSize * 2}
-            height={squareSize - glowSize * 2}
-            fill="none"
-            stroke="rgba(56, 189, 248, 0.6)"
-            strokeWidth={glowSize * 1.5}
-            style={{ transition: 'all 0.2s ease-out' }}
-          />
-        );
-      } else if (piece2Present) {
-        // Only piece 2: rose glow
-        elements.push(
-          <rect
-            key={`glow-p2-${x}-${y}`}
-            x={x + glowSize}
-            y={y + glowSize}
-            width={squareSize - glowSize * 2}
-            height={squareSize - glowSize * 2}
-            fill="none"
-            stroke="rgba(251, 113, 133, 0.6)"
-            strokeWidth={glowSize * 1.5}
-            style={{ transition: 'all 0.2s ease-out' }}
-          />
-        );
-      }
-    } else if (isHighlightedFromLegend) {
-      // Single selection mode from legend: white glow
-      elements.push(
-        <rect
-          key={`glow-${x}-${y}`}
-          x={x + glowSize}
-          y={y + glowSize}
-          width={squareSize - glowSize * 2}
-          height={squareSize - glowSize * 2}
-          fill="none"
-          stroke="rgba(255,255,255,0.6)"
-          strokeWidth={glowSize}
-          style={{ transition: 'all 0.2s ease-out' }}
-        />
-      );
-    }
-  }
-  
-  return elements;
-};
+// renderNestedSquares and helpers are now imported from @/lib/chess/boardRenderer
 
 const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps> = ({
   board,
@@ -665,17 +446,17 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
           v => effectiveHighlightPieces.some(h => h.pieceType === v.piece && h.pieceColor === v.color)
         );
         
-        return renderNestedSquares(
-          square.visits,
+        return renderNestedSquares({
+          visits: square.visits,
           x,
           y,
           squareSize,
           baseColor,
-          effectiveHighlightPieces,
+          highlightedPieces: effectiveHighlightPieces,
           compareMode,
-          isHovered || isTargetSquareFromHoveredMove || isLockedSquare,
-          isHighlightedFromLegend
-        );
+          isHoveredSquare: isHovered || isTargetSquareFromHoveredMove || isLockedSquare,
+          isHighlightedFromLegend,
+        });
       });
     });
   }, [board, borderWidth, squareSize, effectiveHighlightPieces, compareMode, hoveredSquareLocal, lockedSquares, hoveredAnnotation, hoveredMove]);

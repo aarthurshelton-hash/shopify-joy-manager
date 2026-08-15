@@ -14,20 +14,21 @@ import { StructuredData } from "@/components/seo/StructuredData";
 import { DynamicMetaTags } from "@/components/seo/DynamicMetaTags";
 import { AdminRoute } from "@/components/auth/AdminRoute";
 import { ScrollToTop } from "@/components/shared/ScrollToTop";
+import { MobileBottomNav } from "@/components/shared/MobileBottomNav";
+import { MobileStickyCTA } from "@/components/shared/MobileStickyCTA";
 import { PageLoadingSkeleton } from "@/components/loading/AppLoadingStates";
 
-// Eagerly load critical pages
+// Eagerly load only the homepage (critical for first paint)
 import Index from "./pages/Index";
-import GameView from "./pages/GameView";
 
 // Lazy load all other pages for better initial load performance
+const GameView = lazy(() => import("./pages/GameView"));
 const MyPalettes = lazy(() => import("./pages/MyPalettes"));
 const MyVision = lazy(() => import("./pages/MyVision"));
 const About = lazy(() => import("./pages/About"));
 const Investors = lazy(() => import("./pages/Investors"));
 const Analytics = lazy(() => import("./pages/Analytics"));
 const Leaderboard = lazy(() => import("./pages/Leaderboard"));
-const Play = lazy(() => import("./pages/Play"));
 const CreativeMode = lazy(() => import("./pages/CreativeMode"));
 const GameHistory = lazy(() => import("./pages/GameHistory"));
 const News = lazy(() => import("./pages/News"));
@@ -75,7 +76,6 @@ const ScalpingTerminalPage = lazy(() => import("./pages/ScalpingTerminalPage"));
 const EnPensentHeatmap = lazy(() => import("./pages/EnPensentHeatmap"));
 const OptionsScalpingPage = lazy(() => import("./pages/OptionsScalpingPage"));
 const Showcase = lazy(() => import("./pages/Showcase"));
-const GameExplorer = lazy(() => import("./pages/GameExplorer"));
 const AdminSystemVitals = lazy(() => import("./pages/AdminSystemVitals"));
 const Benchmark = lazy(() => import("./pages/Benchmark"));
 const ProofCenter = lazy(() => import("./pages/ProofCenter"));
@@ -115,6 +115,7 @@ const App = () => (
             <DynamicMetaTags />
             <VisionRestorer />
             <BackToMarketplaceButton />
+            <MobileStickyCTA />
             <Routes>
               {/* ===== PUBLIC ROUTES - Chess Visualization & Code Analyzer ===== */}
               <Route path="/" element={<Index />} />
@@ -122,13 +123,11 @@ const App = () => (
               <Route path="/my-vision" element={<Suspense fallback={<PageLoadingSkeleton />}><MyVision /></Suspense>} />
               <Route path="/my-vision/:id" element={<Suspense fallback={<PageLoadingSkeleton />}><GalleryDetailRedirect /></Suspense>} />
               <Route path="/about" element={<Suspense fallback={<PageLoadingSkeleton />}><About /></Suspense>} />
-              <Route path="/play" element={<Suspense fallback={<PageLoadingSkeleton />}><Play /></Suspense>} />
               <Route path="/creative-mode" element={<Suspense fallback={<PageLoadingSkeleton />}><CreativeMode /></Suspense>} />
               <Route path="/game-history" element={<Suspense fallback={<PageLoadingSkeleton />}><GameHistory /></Suspense>} />
               <Route path="/v/:shareId" element={<Suspense fallback={<PageLoadingSkeleton />}><VisualizationRedirect /></Suspense>} />
-              <Route path="/g/:gameHash" element={<GameView />} />
+              <Route path="/g/:gameHash" element={<Suspense fallback={<PageLoadingSkeleton />}><GameView /></Suspense>} />
               <Route path="/openings" element={<Suspense fallback={<PageLoadingSkeleton />}><OpeningEncyclopedia /></Suspense>} />
-              <Route path="/explore" element={<Suspense fallback={<PageLoadingSkeleton />}><GameExplorer /></Suspense>} />
               <Route path="/code-analysis" element={<Suspense fallback={<PageLoadingSkeleton />}><CodeAnalysis /></Suspense>} />
               <Route path="/analysis/:id" element={<Suspense fallback={<PageLoadingSkeleton />}><SharedAnalysisReport /></Suspense>} />
               <Route path="/account" element={<Suspense fallback={<PageLoadingSkeleton />}><Account /></Suspense>} />
@@ -165,7 +164,6 @@ const App = () => (
               <Route path="/qr-preview" element={<AdminRoute featureName="QR Preview"><Suspense fallback={<PageLoadingSkeleton />}><QRMockup /></Suspense></AdminRoute>} />
               
               {/* Academic & Documentation */}
-              <Route path="/academic-paper" element={<Suspense fallback={<PageLoadingSkeleton />}><AcademicPaper /></Suspense>} />
               <Route path="/rubber-photonics" element={<Suspense fallback={<PageLoadingSkeleton />}><RubberPhotonics /></Suspense>} />
               <Route path="/whitepaper" element={<Suspense fallback={<PageLoadingSkeleton />}><EnPensentWhitepaper /></Suspense>} />
               <Route path="/sdk-docs" element={<Suspense fallback={<PageLoadingSkeleton />}><SDKDocs /></Suspense>} />
@@ -200,6 +198,7 @@ const App = () => (
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<Suspense fallback={<PageLoadingSkeleton />}><NotFound /></Suspense>} />
             </Routes>
+            <MobileBottomNav />
           </BrowserRouter>
         </TooltipProvider>
         </UniversalHeartbeatProvider>

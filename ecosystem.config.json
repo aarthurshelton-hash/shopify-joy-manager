@@ -239,24 +239,8 @@
       "restart_delay": 60000
     },
     {
-      "name": "email-alerts",
-      "script": "./farm/scripts/market-email-alerts.mjs",
-      "instances": 1,
-      "exec_mode": "fork",
-      "autorestart": true,
-      "max_restarts": 10,
-      "min_uptime": "30s",
-      "kill_timeout": 5000,
-      "env": {
-        "NODE_ENV": "production"
-      },
-      "merge_logs": true,
-      "max_memory_restart": "100M",
-      "restart_delay": 30000
-    },
-    {
       "name": "ib-gateway-bridge",
-      "script": "/Users/alecshelts/shopify-joy-manager/public/ib-gateway-bridge/server-simple.js",
+      "script": "./public/ib-gateway-bridge/server-simple.js",
       "instances": 1,
       "exec_mode": "fork",
       "autorestart": true,
@@ -323,6 +307,87 @@
       "merge_logs": true,
       "max_memory_restart": "200M",
       "restart_delay": 30000
+    },
+    {
+      "name": "sector-vol-alerts",
+      "script": "./farm/scripts/sector-volatility-alerts.mjs",
+      "instances": 1,
+      "exec_mode": "fork",
+      "autorestart": true,
+      "max_restarts": 10,
+      "min_uptime": "30s",
+      "kill_timeout": 5000,
+      "env": {
+        "NODE_ENV": "production"
+      },
+      "merge_logs": true,
+      "max_memory_restart": "100M",
+      "restart_delay": 30000
+    },
+    {
+      "name": "stacker-retrain",
+      "script": "./benchmark/.venv-bench/bin/python",
+      "args": "./benchmark/src/retrain_stacker.py",
+      "instances": 1,
+      "exec_mode": "fork",
+      "autorestart": false,
+      "cron_restart": "0 4 * * *",
+      "max_restarts": 2,
+      "min_uptime": "10s",
+      "kill_timeout": 30000,
+      "env": {
+        "NODE_ENV": "production"
+      },
+      "merge_logs": true,
+      "max_memory_restart": "300M"
+    },
+    {
+      "name": "contingency-web",
+      "script": "./farm/scripts/contingency-web-engine.mjs",
+      "instances": 1,
+      "exec_mode": "fork",
+      "autorestart": true,
+      "max_restarts": 10,
+      "min_uptime": "30s",
+      "kill_timeout": 5000,
+      "env": {
+        "NODE_ENV": "production"
+      },
+      "merge_logs": true,
+      "max_memory_restart": "200M",
+      "restart_delay": 30000
+    },
+    {
+      "name": "market-time-machine",
+      "script": "./farm/scripts/market-time-machine.mjs",
+      "instances": 1,
+      "exec_mode": "fork",
+      "autorestart": true,
+      "max_restarts": 10,
+      "min_uptime": "30s",
+      "kill_timeout": 5000,
+      "env": {
+        "NODE_ENV": "production"
+      },
+      "merge_logs": true,
+      "max_memory_restart": "200M",
+      "restart_delay": 30000
+    },
+    {
+      "name": "market-self-evolution",
+      "script": "./farm/scripts/market-self-evolution.mjs",
+      "instances": 1,
+      "exec_mode": "fork",
+      "autorestart": true,
+      "max_restarts": 10,
+      "min_uptime": "10s",
+      "kill_timeout": 5000,
+      "env": {
+        "NODE_ENV": "production"
+      },
+      "merge_logs": true,
+      "max_memory_restart": "100M",
+      "restart_delay": 600000
     }
   ]
 }

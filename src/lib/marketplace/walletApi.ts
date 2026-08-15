@@ -92,7 +92,5 @@ export async function purchaseWithWallet(
   }
 }
 
-// Format balance for display
-export function formatBalance(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`;
-}
+// Format balance for display (delegates to shared utility)
+export { formatCurrency as formatBalance } from './format';

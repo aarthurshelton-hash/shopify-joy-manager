@@ -1,0 +1,216 @@
+{
+  "timestamp": "2026-08-14T00:42:35.216069",
+  "version": "v2-honest",
+  "training_samples": 1166,
+  "holdout_samples": 511,
+  "leakage_verified": true,
+  "results": [
+    {
+      "name": "SF (naive threshold)",
+      "accuracy": 0.6966731898238747,
+      "brier": 0.5026005870841488,
+      "log_loss": 3.1241941270751146,
+      "ece": 0.12771037181996084
+    },
+    {
+      "name": "SF (calibrated LR)",
+      "accuracy": 0.7103718199608611,
+      "brier": 0.4017853834495359,
+      "log_loss": 0.7014689158579659,
+      "ece": 0.04239047982737036
+    },
+    {
+      "name": "EP v8.07 (original)",
+      "accuracy": 0.7279843444227005,
+      "brier": 0.4387383561643835,
+      "log_loss": 0.7822078260647619,
+      "ece": 0.12271037181996095
+    },
+    {
+      "name": "LR (sf_eval)",
+      "accuracy": 0.7064579256360078,
+      "brier": 0.40637332044039903,
+      "log_loss": 0.7076387489522585,
+      "ece": 0.03789989328668309
+    },
+    {
+      "name": "LR (sf_eval + context)",
+      "accuracy": 0.7084148727984344,
+      "brier": 0.40189961476081665,
+      "log_loss": 0.701840213817568,
+      "ece": 0.04895372857277446
+    },
+    {
+      "name": "LR (sf + context + EP)",
+      "accuracy": 0.7084148727984344,
+      "brier": 0.4020281024253428,
+      "log_loss": 0.7014736177262556,
+      "ece": 0.04617667648288891
+    },
+    {
+      "name": "LR (sf + context + EP + archetype)",
+      "accuracy": 0.7103718199608611,
+      "brier": 0.4019759543228943,
+      "log_loss": 0.7020304130832918,
+      "ece": 0.0487288441671175
+    },
+    {
+      "name": "LR (sf + context + EP + trajectory)",
+      "accuracy": 0.7103718199608611,
+      "brier": 0.4018997771787125,
+      "log_loss": 0.6920802373531142,
+      "ece": 0.04217439739199865
+    },
+    {
+      "name": "LR (sf + context + EP + trajectory + archetype)",
+      "accuracy": 0.7064579256360078,
+      "brier": 0.401952050340837,
+      "log_loss": 0.6933281315423018,
+      "ece": 0.06385160151776927
+    },
+    {
+      "name": "LR (sf + context + EP + archetype + fusion)",
+      "accuracy": 0.7084148727984344,
+      "brier": 0.4018067220889386,
+      "log_loss": 0.7009813954564142,
+      "ece": 0.04539758309496769
+    },
+    {
+      "name": "NN (sf_eval + context)",
+      "accuracy": 0.6986301369863014,
+      "brier": 0.42189364093249976,
+      "log_loss": 0.748544454574585,
+      "ece": 0.06975146550721617
+    },
+    {
+      "name": "NN (sf + context + EP)",
+      "accuracy": 0.7045009784735812,
+      "brier": 0.4160662291820315,
+      "log_loss": 0.7250722050666809,
+      "ece": 0.05154008495597691
+    },
+    {
+      "name": "NN (sf + context + EP + archetype)",
+      "accuracy": 0.7181996086105675,
+      "brier": 0.43993453375223956,
+      "log_loss": 0.7767177224159241,
+      "ece": 0.11766347154945779
+    },
+    {
+      "name": "NN (sf + context + EP + trajectory)",
+      "accuracy": 0.7064579256360078,
+      "brier": 0.41417526446999314,
+      "log_loss": 0.7215089201927185,
+      "ece": 0.07404852152570586
+    },
+    {
+      "name": "NN (sf + context + EP + trajectory + archetype)",
+      "accuracy": 0.7279843444227005,
+      "brier": 0.42273714209076757,
+      "log_loss": 0.748347282409668,
+      "ece": 0.13049492169966204
+    },
+    {
+      "name": "NN (sf + context + EP + archetype + fusion)",
+      "accuracy": 0.726027397260274,
+      "brier": 0.4590091614051538,
+      "log_loss": 0.8059998154640198,
+      "ece": 0.16764296833316403
+    }
+  ],
+  "ablation_lr": {
+    "sf_eval": {
+      "name": "LR (sf_eval)",
+      "accuracy": 0.7064579256360078,
+      "brier": 0.40637332044039903,
+      "log_loss": 0.7076387489522585,
+      "ece": 0.03789989328668309
+    },
+    "sf_eval + context": {
+      "name": "LR (sf_eval + context)",
+      "accuracy": 0.7084148727984344,
+      "brier": 0.40189961476081665,
+      "log_loss": 0.701840213817568,
+      "ece": 0.04895372857277446
+    },
+    "sf + context + EP": {
+      "name": "LR (sf + context + EP)",
+      "accuracy": 0.7084148727984344,
+      "brier": 0.4020281024253428,
+      "log_loss": 0.7014736177262556,
+      "ece": 0.04617667648288891
+    },
+    "sf + context + EP + archetype": {
+      "name": "LR (sf + context + EP + archetype)",
+      "accuracy": 0.7103718199608611,
+      "brier": 0.4019759543228943,
+      "log_loss": 0.7020304130832918,
+      "ece": 0.0487288441671175
+    },
+    "sf + context + EP + trajectory": {
+      "name": "LR (sf + context + EP + trajectory)",
+      "accuracy": 0.7103718199608611,
+      "brier": 0.4018997771787125,
+      "log_loss": 0.6920802373531142,
+      "ece": 0.04217439739199865
+    },
+    "sf + context + EP + trajectory + archetype": {
+      "name": "LR (sf + context + EP + trajectory + archetype)",
+      "accuracy": 0.7064579256360078,
+      "brier": 0.401952050340837,
+      "log_loss": 0.6933281315423018,
+      "ece": 0.06385160151776927
+    },
+    "sf + context + EP + archetype + fusion": {
+      "name": "LR (sf + context + EP + archetype + fusion)",
+      "accuracy": 0.7084148727984344,
+      "brier": 0.4018067220889386,
+      "log_loss": 0.7009813954564142,
+      "ece": 0.04539758309496769
+    }
+  },
+  "ablation_nn": {
+    "sf_eval + context": {
+      "name": "NN (sf_eval + context)",
+      "accuracy": 0.6986301369863014,
+      "brier": 0.42189364093249976,
+      "log_loss": 0.748544454574585,
+      "ece": 0.06975146550721617
+    },
+    "sf + context + EP": {
+      "name": "NN (sf + context + EP)",
+      "accuracy": 0.7045009784735812,
+      "brier": 0.4160662291820315,
+      "log_loss": 0.7250722050666809,
+      "ece": 0.05154008495597691
+    },
+    "sf + context + EP + archetype": {
+      "name": "NN (sf + context + EP + archetype)",
+      "accuracy": 0.7181996086105675,
+      "brier": 0.43993453375223956,
+      "log_loss": 0.7767177224159241,
+      "ece": 0.11766347154945779
+    },
+    "sf + context + EP + trajectory": {
+      "name": "NN (sf + context + EP + trajectory)",
+      "accuracy": 0.7064579256360078,
+      "brier": 0.41417526446999314,
+      "log_loss": 0.7215089201927185,
+      "ece": 0.07404852152570586
+    },
+    "sf + context + EP + trajectory + archetype": {
+      "name": "NN (sf + context + EP + trajectory + archetype)",
+      "accuracy": 0.7279843444227005,
+      "brier": 0.42273714209076757,
+      "log_loss": 0.748347282409668,
+      "ece": 0.13049492169966204
+    },
+    "sf + context + EP + archetype + fusion": {
+      "name": "NN (sf + context + EP + archetype + fusion)",
+      "accuracy": 0.726027397260274,
+      "brier": 0.4590091614051538,
+      "log_loss": 0.8059998154640198,
+      "ece": 0.16764296833316403
+    }
+  }
+}

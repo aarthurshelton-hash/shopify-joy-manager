@@ -100,7 +100,7 @@ export const PredictionEdgeCard: React.FC<PredictionEdgeCardProps> = ({ totalMov
           <ChevronRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
         </Link>
         <Link
-          to="/academic-paper"
+          to="/whitepaper"
           className="group inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary transition-colors"
         >
           <FlaskConical className="h-3 w-3" />

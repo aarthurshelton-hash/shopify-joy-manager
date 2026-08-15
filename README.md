@@ -20,7 +20,7 @@ The audit package provides:
 To verify in 5 minutes:
 
 ```bash
-git clone https://github.com/aarthurshelton-hash/shopify-joy-manager.git
+git clone https://github.com/aarthurshelton-hash/en-pensent.git
 cd shopify-joy-manager
 npm install
 node audit/verify.mjs
@@ -30,10 +30,10 @@ node audit/verify.mjs
 
 ## For Developers
 
-This is a Vite + React + TypeScript codebase originally bootstrapped on Lovable. Development:
+This is a Vite + React + TypeScript codebase. Development:
 
 ```sh
-git clone https://github.com/aarthurshelton-hash/shopify-joy-manager.git
+git clone https://github.com/aarthurshelton-hash/en-pensent.git
 cd shopify-joy-manager
 npm install
 cp .env.example .env   # then fill in with your own credentials
@@ -171,12 +171,18 @@ This project is built with:
 
 ## How can I deploy this project?
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+Push to `main`, then deploy via Vercel:
 
-## Can I connect a custom domain to my Lovable project?
+```sh
+npx vercel --prod
+```
 
-Yes, you can!
+Or force-push to the `gh-pages` branch for GitHub Pages:
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+```sh
+git push origin main:gh-pages --force
+```
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+## Can I connect a custom domain?
+
+Yes. The domain `enpensent.com` is configured via the `CNAME` file and Vercel project settings. To use a different domain, update `CNAME` and the Vercel project domain configuration.

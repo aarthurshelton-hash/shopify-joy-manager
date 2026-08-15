@@ -15,13 +15,12 @@ export interface InventoryLock {
   expiresAt: Date;
 }
 
-// Rate Limit Tracking
+// Rate Limit Tracking - delegates to DB-backed check_rate_limit RPC
+// (in-memory Maps don't work in serverless/edge environments)
 interface RateLimitEntry {
   count: number;
   resetAt: number;
 }
-
-const rateLimitStore = new Map<string, RateLimitEntry>();
 
 /**
  * Acquire inventory lock to prevent overselling
@@ -97,46 +96,35 @@ export async function releaseInventoryLock(lockId: string): Promise<void> {
 }
 
 /**
- * Check rate limit for an action
- * Implements sliding window rate limiting
+ * Check rate limit for an action using DB-backed sliding window
+ * Delegates to check_rate_limit RPC for serverless compatibility
  */
-export function checkRateLimit(
+export async function checkRateLimit(
   key: string,
   maxRequests: number,
   windowMs: number
-): { allowed: boolean; remaining: number; resetAt: number } {
-  const now = Date.now();
-  const entry = rateLimitStore.get(key);
-  
-  if (!entry || now > entry.resetAt) {
-    // New window
-    const resetAt = now + windowMs;
-    rateLimitStore.set(key, { count: 1, resetAt });
-    return { allowed: true, remaining: maxRequests - 1, resetAt };
-  }
-  
-  if (entry.count >= maxRequests) {
-    return { allowed: false, remaining: 0, resetAt: entry.resetAt };
-  }
-  
-  entry.count++;
-  return { allowed: true, remaining: maxRequests - entry.count, resetAt: entry.resetAt };
-}
+): Promise<{ allowed: boolean; remaining: number; resetAt: number }> {
+  try {
+    const { data, error } = await supabase.rpc('check_rate_limit', {
+      p_endpoint: key,
+      p_identifier: 'server',
+      p_max_requests: maxRequests,
+      p_window_seconds: Math.ceil(windowMs / 1000),
+    });
 
-/**
- * Clean up expired rate limit entries
- */
-export function cleanupRateLimits(): void {
-  const now = Date.now();
-  for (const [key, entry] of rateLimitStore) {
-    if (now > entry.resetAt) {
-      rateLimitStore.delete(key);
-    }
+    if (error) throw error;
+
+    const result = data as { allowed: boolean; remaining: number; reset_at: number };
+    return {
+      allowed: result.allowed,
+      remaining: result.remaining,
+      resetAt: result.reset_at,
+    };
+  } catch {
+    // Fail open - allow the request if rate limiting is unavailable
+    return { allowed: true, remaining: maxRequests, resetAt: Date.now() + windowMs };
   }
 }
-
-// Clean up every 5 minutes
-setInterval(cleanupRateLimits, 5 * 60 * 1000);
 
 /**
  * Execute with automatic inventory lock

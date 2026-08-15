@@ -113,6 +113,32 @@ function getPathSquares(from: Square, to: Square, pieceType: string): Square[] {
   return squares;
 }
 
+/**
+ * Truncate a board to only include visits up to a given move number.
+ * This is critical for prediction: the color-flow signature should represent
+ * the trajectory UP TO the prediction point, not the full game.
+ * Using the full-game trajectory leaks future information and dilutes the
+ * early-game signal that is the novel contribution of En Pensent.
+ *
+ * Returns a deep copy of the board with filtered visits.
+ */
+export function truncateBoardToMove(board: SquareData[][], maxMove: number): SquareData[][] {
+  const truncated: SquareData[][] = [];
+  for (let rank = 0; rank < 8; rank++) {
+    truncated[rank] = [];
+    for (let file = 0; file < 8; file++) {
+      const src = board[rank][file];
+      truncated[rank][file] = {
+        file: src.file,
+        rank: src.rank,
+        isLight: src.isLight,
+        visits: src.visits.filter(v => v.moveNumber <= maxMove),
+      };
+    }
+  }
+  return truncated;
+}
+
 // Simulate the entire game and track piece visits to each square
 // This function is PERMISSIVE - it processes whatever moves it can without strict validation
 export function simulateGame(pgn: string): SimulationResult {

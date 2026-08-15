@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useLiveChessStats } from '@/hooks/useLiveChessStats';
+import { ScrollProgress } from '@/components/shared/ScrollProgress';
 
 export default function AcademicPaper() {
   const [copied, setCopied] = useState(false);
@@ -47,6 +48,7 @@ export default function AcademicPaper() {
 
   return (
     <div className="min-h-screen bg-background">
+      <ScrollProgress />
       {/* Header */}
       <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">

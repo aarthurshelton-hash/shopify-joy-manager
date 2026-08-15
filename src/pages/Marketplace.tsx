@@ -321,18 +321,41 @@ const Marketplace: React.FC = () => {
     loadInitialListings();
   }, [cache, loadInitialListings]);
 
-  // Handle successful wallet purchase redirect
+  // Handle successful/cancelled purchase redirect
   useEffect(() => {
     const success = searchParams.get('success');
-    if (success === 'true') {
-      toast.success('Purchase complete!', {
-        description: 'Vision added to your gallery.',
-      });
-      refreshListings();
-      navigate('/marketplace', { replace: true });
-    }
     const cancelled = searchParams.get('cancelled');
-    if (cancelled === 'true') {
+    const listingId = searchParams.get('listing');
+
+    if (success === 'true' && listingId) {
+      // Call complete-marketplace-purchase to finalize the transfer
+      supabase.functions.invoke('complete-marketplace-purchase', {
+        body: { listingId },
+      }).then(({ data, error }) => {
+        if (error || data?.error) {
+          toast.error('Purchase verification failed', {
+            description: error?.message || data?.error || 'Please contact support.',
+          });
+        } else {
+          toast.success('Purchase complete!', {
+            description: data?.message || 'Vision added to your gallery.',
+            action: data?.visualizationId ? {
+              label: 'View',
+              onClick: () => navigate(`/my-vision/${data.visualizationId}`),
+            } : undefined,
+          });
+        }
+        refreshListings();
+        navigate('/marketplace', { replace: true });
+      });
+    } else if (cancelled === 'true' && listingId) {
+      // Release the listing reservation so others can buy it
+      supabase.rpc('release_listing_reservation', { p_listing_id: listingId });
+      toast.info('Purchase cancelled', {
+        description: 'The listing is available again.',
+      });
+      navigate('/marketplace', { replace: true });
+    } else if (cancelled === 'true') {
       navigate('/marketplace', { replace: true });
     }
   }, [searchParams, refreshListings, navigate]);
@@ -704,8 +727,8 @@ const Marketplace: React.FC = () => {
                           <h3 className="font-semibold truncate mb-1 text-sm sm:text-base relative z-10">
                             {listing.visualization?.title || 'Untitled'}
                           </h3>
-                          <div className="flex items-center justify-between relative z-10 mb-2">
-                            <p className="text-xs sm:text-sm text-muted-foreground truncate">
+                          <div className="flex items-center justify-between relative z-10 mb-2 gap-2">
+                            <p className="text-xs sm:text-sm text-muted-foreground truncate min-w-0">
                               by {listing.seller?.display_name || 'Anonymous'}
                             </p>
                             {/* Vision tier indicator */}

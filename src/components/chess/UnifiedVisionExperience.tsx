@@ -58,6 +58,7 @@ import { classifyMoves, getMoveQualitySummary, MOVE_QUALITY_INFO, ClassifiedMove
 import { MoveQualityTooltip, BookMovesCard, extractOpeningInfo } from './MoveQualityTooltip';
 import { ShowPiecesToggle } from './ShowPiecesToggle';
 import BoardCoordinateGuide from './BoardCoordinateGuide';
+import ChessPieceIcon from './ChessPieceIcon';
 import IntrinsicPaletteCard from './IntrinsicPaletteCard';
 import ChessBoardVisualization from './ChessBoardVisualization';
 import { VisionScore, getVisionScore, calculateVisionValue, calculateMembershipMultiplier, SCORING_WEIGHTS } from '@/lib/visualizations/visionScoring';
@@ -534,12 +535,12 @@ const AnalyticsPanel: React.FC<{
                     {tactic.type === 'pin' && '📌'}
                     {tactic.type === 'discovery' && '💡'}
                     {tactic.type === 'skewer' && '🗡️'}
-                    {tactic.type === 'back_rank' && '♛'}
+                    {tactic.type === 'back_rank' && <ChessPieceIcon type="q" color="b" size={12} />}
                     {tactic.type === 'smothered_mate' && '🏆'}
                     {tactic.type === 'sacrifice' && '💎'}
                     {tactic.type === 'double_attack' && '⚔️'}
                     {tactic.type === 'check' && '✓'}
-                    {tactic.type === 'checkmate' && '♚#'}
+                    {tactic.type === 'checkmate' && <span className="inline-flex items-center gap-0.5"><ChessPieceIcon type="k" color="b" size={12} />#</span>}
                     {' '}{tactic.type.replace('_', ' ')} (m{tactic.moveNumber})
                   </Badge>
                 ))}
@@ -584,7 +585,7 @@ const AnalyticsPanel: React.FC<{
               {/* Per-player accuracy display - chess.com style */}
               <div className="grid grid-cols-2 gap-3 mb-3">
                 <div className="p-2 rounded bg-background/50 border border-border/30 text-center">
-                  <p className="text-[10px] text-muted-foreground mb-1">♔ {gameData.white || 'White'}</p>
+                  <p className="text-[10px] text-muted-foreground mb-1 flex items-center justify-center gap-1"><ChessPieceIcon type="k" color="w" size={12} /> {gameData.white || 'White'}</p>
                   <p className={`text-lg font-bold ${
                     qualitySummary.whiteAccuracy >= 90 ? 'text-green-400' :
                     qualitySummary.whiteAccuracy >= 70 ? 'text-yellow-400' :
@@ -594,7 +595,7 @@ const AnalyticsPanel: React.FC<{
                   </p>
                 </div>
                 <div className="p-2 rounded bg-background/50 border border-border/30 text-center">
-                  <p className="text-[10px] text-muted-foreground mb-1">♚ {gameData.black || 'Black'}</p>
+                  <p className="text-[10px] text-muted-foreground mb-1 flex items-center justify-center gap-1"><ChessPieceIcon type="k" color="b" size={12} /> {gameData.black || 'Black'}</p>
                   <p className={`text-lg font-bold ${
                     qualitySummary.blackAccuracy >= 90 ? 'text-green-400' :
                     qualitySummary.blackAccuracy >= 70 ? 'text-yellow-400' :
@@ -1659,7 +1660,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
           {/* Header with back button, header actions, and dark mode toggle - Available for ALL contexts */}
           {(onBack || headerActions) && (
             <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4 pb-3 border-b border-border/50">
-              <div className="flex items-center justify-between flex-1">
+              <div className="flex items-center justify-between flex-1 min-w-0">
                 {onBack ? (
                   <Button variant="ghost" size="sm" onClick={onBack} className="gap-2">
                     <RotateCcw className="h-4 w-4" />

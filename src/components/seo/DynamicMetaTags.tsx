@@ -86,13 +86,6 @@ const PAGE_META: Record<string, PageMeta> = {
     type: "website",
     keywords: "custom chess art, design chess visualization, creative mode"
   },
-  "/play": {
-    title: "Play Chess - Create Art While You Play",
-    description: "Play chess against Stockfish AI or friends. Watch your game transform into art in real-time.",
-    image: "https://enpensent.com/og-play.png",
-    type: "website",
-    keywords: "play chess online, chess game art, stockfish chess"
-  },
   "/leaderboard": {
     title: "Leaderboard - Top Creators & Collectors",
     description: "See the top En Pensent creators, collectors, and most valuable Visions on the platform.",

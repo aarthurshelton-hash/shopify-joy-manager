@@ -204,23 +204,6 @@ const UserMenu: React.FC = () => {
             </>
           )}
           
-          <DropdownMenuLabel className="text-xs text-muted-foreground uppercase tracking-wider">
-            Play
-          </DropdownMenuLabel>
-          <DropdownMenuItem 
-            onClick={() => navigate('/play')}
-            className="gap-2 cursor-pointer"
-          >
-            <Gamepad2 className="h-4 w-4" />
-            Play En Pensent
-          </DropdownMenuItem>
-          <DropdownMenuItem 
-            onClick={() => navigate('/game-history')}
-            className="gap-2 cursor-pointer"
-          >
-            <History className="h-4 w-4" />
-            Game History
-          </DropdownMenuItem>
           <DropdownMenuItem 
             onClick={() => navigate('/creative-mode')}
             className="gap-2 cursor-pointer"

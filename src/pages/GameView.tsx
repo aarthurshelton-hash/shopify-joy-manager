@@ -34,6 +34,7 @@ import { useRecentlyViewedStore } from '@/stores/recentlyViewedStore';
 import { VisionFloorPrice } from '@/components/nfts/VisionFloorPrice';
 import { VisionValueChart } from '@/components/nfts/VisionValueChart';
 import { useVisionNFT } from '@/hooks/useVisionNFT';
+import { GameInsightsPanel } from '@/components/chess/GameInsightsPanel';
 
 interface GameVision {
   id: string;
@@ -1009,6 +1010,19 @@ const GameView = () => {
                 pieces: initialState.pieces,
                 opacity: initialState.opacity,
               }}
+            />
+          </motion.div>
+
+          {/* Strategic Insights Panel — surfaces the intelligence behind the art */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="mt-4"
+          >
+            <GameInsightsPanel
+              simulation={{ board, gameData, totalMoves }}
+              pgn={effectivePgn}
             />
           </motion.div>
 

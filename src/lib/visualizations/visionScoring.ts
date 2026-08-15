@@ -351,10 +351,26 @@ export function calculateMembershipMultiplier(subscriberCount: number): number {
 }
 
 /**
+ * Get the current active subscriber count from the database
+ */
+async function getActiveSubscriberCount(): Promise<number> {
+  try {
+    const { count, error } = await supabase
+      .from('user_subscriptions')
+      .select('id', { count: 'exact', head: true })
+      .eq('subscription_status', 'active');
+    if (error) return 100; // Fallback
+    return count || 100;
+  } catch {
+    return 100; // Fallback if query fails
+  }
+}
+
+/**
  * Calculate the total vision market capitalization
  * Includes base value + membership contributions + organic score value
  */
-export async function getVisionMarketCap(estimatedSubscribers: number = 100): Promise<{
+export async function getVisionMarketCap(estimatedSubscribers?: number): Promise<{
   totalMarketCap: number;
   baseMarketCap: number;
   membershipContribution: number;
@@ -366,15 +382,18 @@ export async function getVisionMarketCap(estimatedSubscribers: number = 100): Pr
   try {
     const platformStats = await getPlatformVisionStats();
     
+    // Use provided estimate or query actual subscriber count from DB
+    const subscriberCount = estimatedSubscribers ?? await getActiveSubscriberCount();
+    
     // Calculate membership multiplier
-    const membershipMultiplier = calculateMembershipMultiplier(estimatedSubscribers);
+    const membershipMultiplier = calculateMembershipMultiplier(subscriberCount);
     
     // Base market cap (foundation)
     const baseMarketCap = MEMBERSHIP_ECONOMICS.baseMarketCap;
     
     // Membership contribution pool (monthly injection)
     // Assuming average 6 months of contributions per subscriber
-    const membershipContribution = estimatedSubscribers * MEMBERSHIP_ECONOMICS.monthlyContributionPerMember * 6;
+    const membershipContribution = subscriberCount * MEMBERSHIP_ECONOMICS.monthlyContributionPerMember * 6;
     
     // Organic value from scores (views, downloads, trades, prints)
     const organicValue = platformStats.totalScore * MEMBERSHIP_ECONOMICS.valuePerScorePoint * membershipMultiplier;
@@ -414,7 +433,7 @@ export async function getVisionMarketCap(estimatedSubscribers: number = 100): Pr
  */
 export async function getUserPortfolioValue(
   userId: string,
-  estimatedSubscribers: number = 100
+  estimatedSubscribers?: number
 ): Promise<{
   totalValue: number;
   visionCount: number;
@@ -444,7 +463,8 @@ export async function getUserPortfolioValue(
       .select('*')
       .in('visualization_id', vizIds);
 
-    const membershipMultiplier = calculateMembershipMultiplier(estimatedSubscribers);
+    const subscriberCount = estimatedSubscribers ?? await getActiveSubscriberCount();
+    const membershipMultiplier = calculateMembershipMultiplier(subscriberCount);
     
     let totalValueWithMultiplier = 0;
     let totalValueWithoutMultiplier = 0;

@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1080" width="1080" height="1080">
+  <!-- Square social card: the prediction engine differentiator -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0B0D12"/>
+      <stop offset="1" stop-color="#141822"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="0.4">
+      <stop offset="0" stop-color="#F2B01E"/>
+      <stop offset="0.5" stop-color="#F7C558"/>
+      <stop offset="1" stop-color="#D99A12"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="6" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1080" height="1080" fill="url(#bg)"/>
+  <rect x="24" y="24" width="1032" height="1032" rx="28" fill="none" stroke="#2A2F3C" stroke-width="2"/>
+
+  <!-- Mark -->
+  <g transform="translate(456,80)" filter="url(#glow)">
+    <rect x="0"  y="0"  width="168" height="168" rx="10" fill="none" stroke="url(#gold)" stroke-width="10"/>
+    <rect x="26" y="26" width="116" height="116" rx="7"  fill="none" stroke="#1D4ED8" stroke-width="9"/>
+    <rect x="48" y="48" width="72"  height="72"  rx="5"  fill="none" stroke="#DC2626" stroke-width="8"/>
+    <rect x="68" y="68" width="32"  height="32"  rx="3"  fill="none" stroke="#06B6D4" stroke-width="7"/>
+    <rect x="78" y="78" width="12"  height="12"  rx="2"  fill="#F2B01E"/>
+  </g>
+
+  <g font-family="Cinzel, 'Times New Roman', serif" text-anchor="middle">
+    <text x="540" y="358" font-size="42" letter-spacing="10" fill="#F2B01E">EN PENSENT</text>
+    <text x="540" y="470" font-size="60" font-weight="700" fill="#EDE6D6">The Engine That Sees</text>
+    <text x="540" y="540" font-size="60" font-weight="700" fill="url(#gold)">Games As Color</text>
+  </g>
+
+  <g font-family="Cormorant, Georgia, serif" text-anchor="middle">
+    <text x="540" y="618" font-size="31" font-style="italic" fill="#8B93A7">Pattern recognition — not brute-force search.</text>
+    <text x="540" y="660" font-size="31" font-style="italic" fill="#8B93A7">It reads the middlegame more accurately than Stockfish.</text>
+  </g>
+
+  <!-- Stat pills -->
+  <g font-family="Inter, system-ui, sans-serif" text-anchor="middle">
+    <g>
+      <rect x="112" y="740" width="264" height="150" rx="18" fill="#12151D" stroke="#2A2F3C"/>
+      <text x="244" y="812" font-size="52" font-weight="700" fill="#F2B01E">12M+</text>
+      <text x="244" y="854" font-size="19" fill="#8B93A7" letter-spacing="2">GAMES ANALYZED</text>
+    </g>
+    <g>
+      <rect x="408" y="740" width="264" height="150" rx="18" fill="#12151D" stroke="url(#gold)" stroke-width="2"/>
+      <text x="540" y="812" font-size="52" font-weight="700" fill="#F2B01E">ANY FEN</text>
+      <text x="540" y="854" font-size="19" fill="#8B93A7" letter-spacing="2">INSTANT ART</text>
+    </g>
+    <g>
+      <rect x="704" y="740" width="264" height="150" rx="18" fill="#12151D" stroke="#2A2F3C"/>
+      <text x="836" y="812" font-size="52" font-weight="700" fill="#F2B01E">24/7</text>
+      <text x="836" y="854" font-size="19" fill="#8B93A7" letter-spacing="2">SELF-EVOLVING AI</text>
+    </g>
+  </g>
+
+  <text x="540" y="1000" font-family="Inter, system-ui, sans-serif" font-size="21" fill="#8B93A7" text-anchor="middle" letter-spacing="5">ENPENSENT.COM</text>
+</svg>

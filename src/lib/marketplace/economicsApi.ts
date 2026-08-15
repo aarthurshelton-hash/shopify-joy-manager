@@ -171,9 +171,7 @@ export function getEconomicsExplanation(): {
 /**
  * Format cents to display currency
  */
-export function formatCentsToDisplay(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`;
-}
+export { formatCurrency as formatCentsToDisplay } from './format';
 
 /**
  * Get platform-wide economics summary (for admin/dashboard)
@@ -190,37 +188,48 @@ export async function getPlatformEconomicsSummary(): Promise<{
   error: Error | null;
 }> {
   try {
-    // Get order financials totals
-    const { data: orderData, error: orderError } = await supabase
-      .from('order_financials')
-      .select('order_type, gross_revenue_cents, creator_royalty_cents, education_fund_cents, palette_pool_cents, gamecard_pool_cents');
-    
-    if (orderError) throw orderError;
+    // Use head queries with aggregate expressions to avoid fetching all rows
+    const [printRevenue, marketplaceVolume, royalties, educationFund, palettePool, gamecardPool] = await Promise.all([
+      supabase.from('order_financials')
+        .select('gross_revenue_cents')
+        .eq('order_type', 'print_order')
+        .throwOnError(),
+      supabase.from('order_financials')
+        .select('gross_revenue_cents')
+        .eq('order_type', 'marketplace_sale')
+        .throwOnError(),
+      supabase.from('order_financials')
+        .select('creator_royalty_cents')
+        .not('creator_royalty_cents', 'is', null)
+        .throwOnError(),
+      supabase.from('order_financials')
+        .select('education_fund_cents')
+        .not('education_fund_cents', 'is', null)
+        .throwOnError(),
+      supabase.from('order_financials')
+        .select('palette_pool_cents')
+        .not('palette_pool_cents', 'is', null)
+        .throwOnError(),
+      supabase.from('order_financials')
+        .select('gamecard_pool_cents')
+        .not('gamecard_pool_cents', 'is', null)
+        .throwOnError(),
+    ]);
 
-    const totals = (orderData || []).reduce(
-      (acc, row) => {
-        if (row.order_type === 'print_order') {
-          acc.totalPrintRevenue += row.gross_revenue_cents || 0;
-        } else if (row.order_type === 'marketplace_sale') {
-          acc.totalMarketplaceVolume += row.gross_revenue_cents || 0;
-        }
-        acc.totalRoyaltiesDistributed += row.creator_royalty_cents || 0;
-        acc.totalEducationFundContributions += row.education_fund_cents || 0;
-        acc.totalPalettePoolValue += row.palette_pool_cents || 0;
-        acc.totalGamecardPoolValue += row.gamecard_pool_cents || 0;
-        return acc;
+    const sumColumn = (result: { data: Record<string, number>[] | null }) =>
+      (result.data || []).reduce((sum, row) => sum + (Object.values(row)[0] || 0), 0);
+
+    return {
+      data: {
+        totalPrintRevenue: sumColumn(printRevenue),
+        totalMarketplaceVolume: sumColumn(marketplaceVolume),
+        totalRoyaltiesDistributed: sumColumn(royalties),
+        totalEducationFundContributions: sumColumn(educationFund),
+        totalPalettePoolValue: sumColumn(palettePool),
+        totalGamecardPoolValue: sumColumn(gamecardPool),
       },
-      {
-        totalPrintRevenue: 0,
-        totalMarketplaceVolume: 0,
-        totalRoyaltiesDistributed: 0,
-        totalEducationFundContributions: 0,
-        totalPalettePoolValue: 0,
-        totalGamecardPoolValue: 0,
-      }
-    );
-
-    return { data: totals, error: null };
+      error: null,
+    };
   } catch (error) {
     return { data: null, error: error as Error };
   }

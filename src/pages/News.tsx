@@ -97,7 +97,7 @@ const newsItems = [
     title: "Stockfish 18 NNUE Integration",
     description: "Real grandmaster-strength analysis with ~3200 ELO engine. Centipawn accuracy, win probability, depth 20+ evaluation. Play against or analyze with the world's strongest open-source engine.",
     icon: Zap,
-    link: "/play",
+    link: "/creative-mode",
     image: newsImages[0],
   },
   {
@@ -153,7 +153,7 @@ const newsItems = [
     title: "Live Play Mode Released",
     description: "Play chess directly on En Pensent against opponents or Stockfish AI (5 difficulty levels). Watch your artwork generate in real-time as you make moves.",
     icon: Gamepad2,
-    link: "/play",
+    link: "/creative-mode",
     image: newsImages[7],
   },
   {

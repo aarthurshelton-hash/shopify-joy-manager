@@ -49,6 +49,17 @@ export {
 // EP Mirror Eval — 3D position evaluation (spatial × force × temporal)
 export { computeMirrorEval, mirrorEvalToWinProb, mirrorEvalDirection, type MirrorEvalResult } from './mirrorEval';
 
+// v9.0 FUSION: Maia-2 + SF + EP color-flow fusion with isotonic calibration
+export {
+  fusePredictions,
+  fetchMaiaSignal,
+  isotonicCalibrate,
+  setIsotonicTable,
+  type MaiaSignal,
+  type FusionWeights,
+  type FusedPrediction,
+} from './maiaFusion';
+
 // Default export
 import { extractColorFlowSignature } from './signatureExtractor';
 export default extractColorFlowSignature;

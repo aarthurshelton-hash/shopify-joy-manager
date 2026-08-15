@@ -1,0 +1,433 @@
+% En Pensent — Independent Benchmark & Calibration Analysis
+% arXiv preprint draft, August 2026
+
+\documentclass[11pt,a4paper]{article}
+
+% --- Packages ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage[capitalize]{cleveref}
+\usepackage{algorithm,algpseudocode}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{natbib}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!60!black,
+  citecolor=blue!60!black,
+  urlcolor=blue!60!black,
+  title={En Pensent: A Path-Based Chess Outcome Predictor and Its Calibration Analysis},
+  author={Alec Arthur Shelton},
+}
+
+\title{En Pensent: A Path-Based Chess Outcome Predictor\\
+       Fused with Maia-2 and Isotonic Calibration\\
+       for Calibrated Win-Probability Estimation}
+
+\author{
+  Alec Arthur Shelton\\
+  En Pensent project\\
+  \texttt{a.arthur.shelton@gmail.com}
+}
+
+\date{August 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We present En Pensent v9.0, a chess outcome prediction system that fuses
+three signals---a novel ``color flow signature'' path-based representation,
+Maia-2 (NeurIPS~2024), and Stockfish~18 evaluations---with learned
+isotonic calibration to produce calibrated win probabilities. The color
+flow signature encodes the path history of all pieces on an $8 \times 8$
+spatial grid, capturing trajectory dynamics that static position
+evaluations miss. We benchmark the fused system against all component
+models and baselines on a fresh hold-out set of 500 positions. The
+original EP system achieves 77.0\% 3-way accuracy but poor calibration
+(ECE~0.170) due to artificial confidence clamping. The fused system
+maintains the same accuracy while achieving the \emph{best Brier score}
+(0.1536) and \emph{best log-loss} (0.4708) of all models tested, with ECE
+improved 5.2$\times$ (0.170~$\to$~0.033). The key architectural insight is
+that each signal contributes what it is best at: EP's color-flow decides
+the outcome, Maia-2 calibrates the confidence, and Stockfish provides
+tactical coverage in extreme positions. On Chess960/Freestyle, where
+Stockfish lacks an opening book, the color-flow layer alone achieves
+$+19.13$pp over Stockfish~18, demonstrating that the path-based
+representation is opening-book independent.
+\end{abstract}
+
+% ---------------------------------------------------------------------------
+\section{Introduction}
+\label{sec:intro}
+
+Chess outcome prediction---estimating the probability of white wins, black
+wins, or draw from a given position---is a well-studied problem with direct
+commercial applications. Platforms such as Chess.com surface win
+percentages to millions of users after each move, and the quality of those
+probabilities is measured not by raw accuracy but by \emph{calibration}:
+when the system says 70\%, does the event occur approximately 70\% of the
+time?
+
+En Pensent (EP) is a chess prediction system that represents positions not
+as static board states but as the accumulated \emph{path history} of all
+pieces, encoded as a ``color flow signature'' on an $8 \times 8$ grid with
+8-quadrant decomposition. The system has been reported to achieve $69.24\%$
+3-way accuracy on a 12.24M-prediction corpus, outperforming Stockfish~18
+($63.81\%$) by $+5.43$ percentage points~\cite{enpensent_results}.
+
+However, the published results compare only against Stockfish~18, which is
+a chess \emph{engine} rather than a calibrated probabilistic forecaster.
+The relevant baselines for a platform-integratable win-probability system
+are (a)~trained models that output calibrated probabilities (e.g., Maia-2
+\cite{tang2024maia}), and (b)~simple calibrated baselines (e.g., logistic
+regression on Stockfish evaluations). Furthermore, the published results
+report only accuracy, not calibration metrics.
+
+This paper addresses both gaps:
+\begin{itemize}[nosep]
+  \item We benchmark EP against Maia-2, LightGBM, and a calibrated
+        logistic Stockfish-eval baseline on a fresh hold-out set
+        (\Cref{sec:benchmark}).
+  \item We compute Brier score, log-loss, and Expected Calibration Error
+        for all models (\Cref{sec:calibration}).
+  \item We identify and diagnose a confidence-clamping issue in the EP
+        production pipeline (\Cref{sec:clamping}).
+\end{itemize}
+
+% ---------------------------------------------------------------------------
+\section{The En Pensent Representation}
+\label{sec:method}
+
+\subsection{Color Flow Signature}
+
+The core representation encodes \emph{where pieces have been} rather than
+\emph{where they are}. For each move in a game:
+
+\begin{itemize}[nosep]
+  \item \textbf{Sliding pieces} (bishop, rook, queen): every intermediate
+        square along the trajectory is marked as visited.
+  \item \textbf{Knight moves}: the L-shape path is explicitly traced.
+  \item \textbf{Pawn advances}: encoded with a 6-level intensity gradient.
+  \item Each visit records: piece type, color, move number, and visit count.
+\end{itemize}
+
+This produces a $64$-element spatial fingerprint that captures trajectory
+dynamics---``lines of force'' along which pieces have traveled---that
+static position evaluations miss.
+
+\subsection{8-Quadrant Decomposition}
+
+The board is decomposed into 8 spatial zones (kingside/queenside $\times$
+white/black territory $\times$ center/extended), each annotated with
+piece-type dominance ratios, Shannon entropy of piece distribution,
+interaction complexity, and temporal gradient.
+
+\subsection{Prediction Engine}
+
+The prediction engine (v8.07, ``agreement-calibrated'') fuses 15 signal
+components: equilibrium scores from the 8-quadrant profile, Stockfish
+evaluation, archetype classification (50+ strategic archetypes), historical
+archetype accuracy rates, and agreement/disagreement weighting with
+Stockfish. The output is a 3-way prediction (white\_wins / black\_wins /
+draw) with a confidence score.
+
+\subsection{Chess960 / Freestyle}
+
+A key property of the path-based representation is that it does not depend
+on opening theory. On a 1.77M-game Chess960/Freestyle subset where
+Stockfish~18 lacks an opening book, EP achieves $52.62\%$ accuracy versus
+Stockfish's $33.49\%$ (near-random for 3-way), a $+19.13$pp
+edge~\cite{enpensent_results}.
+
+% ---------------------------------------------------------------------------
+\section{Fusion Architecture (v9.0)}
+\label{sec:fusion}
+
+\subsection{Design Principle: Each Signal for What It's Best At}
+
+The benchmark revealed that no single model dominates on both accuracy
+and calibration. EP has the best raw accuracy but worst calibration.
+Maia-2 has poor outcome accuracy but is a trained probabilistic model.
+A logistic regression on SF eval has excellent calibration but lower
+accuracy. The fusion architecture exploits this complementarity:
+
+\begin{itemize}[nosep]
+  \item \textbf{EP color-flow} decides the \emph{outcome} (W/D/L) ---
+        highest single-model accuracy, especially in the middlegame
+        and in Chess960.
+  \item \textbf{Maia-2} calibrates the \emph{confidence} --- when Maia
+        agrees with EP, confidence is boosted; when it disagrees,
+        confidence is dampened. Maia does not vote on the outcome.
+  \item \textbf{Stockfish eval} provides \emph{tactical coverage} in
+        extreme positions ($|\text{eval}| > 300$cp) where pattern
+        recognition is unnecessary, and acts as a tiebreaker.
+  \item \textbf{Isotonic regression} maps the fused raw confidence to
+        empirical accuracy, learned from a held-out calibration set.
+\end{itemize}
+
+\subsection{Fusion Algorithm}
+
+\begin{algorithm}[h]
+\caption{EP + Maia + SF Fusion with Isotonic Calibration}
+\label{alg:fusion}
+\begin{algorithmic}[1]
+\Require EP prediction $p_{ep}$, EP confidence $c_{ep}$, archetype $a$,
+         Maia expected score $s_m$, SF eval $e_{sf}$, move number $m$
+\State $p_{sf} \gets \textsc{SFOutcome}(e_{sf})$
+\State $p_m \gets \textsc{MaiaOutcome}(s_m)$
+\State \Comment{\textbf{Step 1: Decide outcome (EP primary)}}
+\State $p \gets p_{ep}$
+\If{$|e_{sf}| > 350$ \textbf{and} $\text{acc}(a) < 0.55$}
+  \State $p \gets p_{sf}$ \Comment{SF overrides in extreme positions}
+\EndIf
+\State \Comment{\textbf{Step 2: Base confidence from EP}}
+\State $c \gets c_{ep}$
+\State \Comment{\textbf{Step 3: Agreement adjustments}}
+\If{$p = p_{sf} = p_m$}
+  \State $c \gets \min(0.95, c \times 1.20)$ \Comment{Full agreement}
+\ElsIf{$p = p_{sf}$}
+  \State $c \gets \min(0.92, c \times 1.12)$
+\ElsIf{$p = p_m$}
+  \State $c \gets \min(0.88, c \times 1.06)$
+\ElsIf{$p_{sf} = p_m$}
+  \State $c \gets c \times 0.82$ \Comment{EP isolated}
+\Else
+  \State $c \gets c \times 0.75$ \Comment{All disagree}
+\EndIf
+\State \Comment{\textbf{Step 4: Isotonic calibration}}
+\State $c_{cal} \gets \textsc{Isotonic}(c)$
+\State \Return $p, c_{cal}$
+\end{algorithmic}
+\end{algorithm}
+
+% ---------------------------------------------------------------------------
+\section{Independent Benchmark}
+\label{sec:benchmark}
+
+\subsection{Setup}
+
+We draw a fresh hold-out set of 500 positions from the En Pensent Supabase
+corpus (chess\_prediction\_attempts table, accessible via the public anon
+key). Positions are drawn from the most recent slice of the corpus, which
+the published EP claims exclude (the published numbers use a 7-day temporal
+lag). A separate training set of 3{,}000 positions is used for the learned
+baselines.
+
+All positions include: FEN, PGN, Stockfish eval (centipawns, depth 18),
+EP prediction and confidence, Stockfish prediction and confidence, actual
+result, player Elo ratings, and time control.
+
+\subsection{Baselines}
+
+\begin{enumerate}[nosep]
+  \item \textbf{Stockfish~18 (raw):} The SF prediction and confidence as
+        stored in the corpus. Confidence is a heuristic mapping from eval
+        cp to a percentage, not a calibrated probability.
+  \item \textbf{Calibrated SF-eval logistic:} A multinomial logistic
+        regression on Stockfish eval (centipawns) $\to$ W/D/L, trained on
+        the 3{,}000-position training set. This is the simplest reasonable
+        calibrated probabilistic baseline.
+  \item \textbf{LightGBM:} A gradient-boosted tree classifier on features
+        \{sf\_eval, move\_number, white\_elo, black\_elo, elo\_diff,
+        abs\_eval\}, trained on the 3{,}000-position training set.
+  \item \textbf{Maia-2:} The NeurIPS~2024 unified human-AI alignment chess
+        model \cite{tang2024maia}, loaded from the released Rapid
+        checkpoint. We use the White-perspective expected score
+        (0--1) and threshold to W/D/L at $[0.6, 0.4]$.
+\end{enumerate}
+
+\subsection{Results}
+
+\Cref{tab:benchmark} shows the results on the 500-position hold-out.
+
+\begin{table}[h]
+\centering
+\caption{Independent benchmark on 500 hold-out positions. The fused model
+(EP + Maia-2 + SF + isotonic) achieves the best Brier and log-loss.}
+\label{tab:benchmark}
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Model} & \textbf{N} & \textbf{Accuracy} & \textbf{Brier} & \textbf{Log-loss} & \textbf{ECE} \\
+\midrule
+EP v8.07 (original)     & 500 & 0.7700 & 0.1885 & 0.5657 & 0.1695 \\
+Stockfish 18 (raw)      & 500 & 0.7420 & 0.1599 & 0.5045 & 0.0982 \\
+Calibrated SF-logistic  & 500 & 0.7600 & 0.1542 & 0.4777 & 0.0272 \\
+LightGBM                & 500 & 0.7740 & 0.1622 & 0.5145 & 0.0656 \\
+Maia-2 (standalone)     & 487 & 0.7105 & 0.2347 & 0.8358 & 0.1588 \\
+\midrule
+\textbf{Fusion (raw)}   & 500 & \textbf{0.7700} & 0.1572 & 0.4851 & 0.0302 \\
+\textbf{Fusion (isotonic)} & 500 & \textbf{0.7700} & \textbf{0.1536} & \textbf{0.4708} & 0.0328 \\
+\textbf{Fusion (Platt)} & 500 & \textbf{0.7700} & 0.1592 & 0.4923 & 0.0570 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Key findings:}
+
+\begin{enumerate}[nosep]
+  \item The original EP achieves 77.0\% accuracy but is the
+        \emph{worst-calibrated} model (ECE~0.170) due to confidence
+        clamping at $[15, 69]$.
+  \item The fused system maintains the same 77.0\% accuracy while achieving
+        the \emph{best Brier score} (0.1536) and \emph{best log-loss}
+        (0.4708) of all models, with ECE improved 5.2$\times$ (0.170~$\to$~0.033).
+  \item Maia-2 standalone is surprisingly weak on outcome prediction
+        (71.1\% accuracy) because its expected score is optimized for
+        human-move modeling, not outcome classification. However, it is
+        valuable as a \emph{calibration signal} in the fusion.
+  \item LightGBM is the strongest single baseline on accuracy (77.4\%) but
+        worse than the fusion on Brier, log-loss, and ECE.
+\end{enumerate}
+
+% ---------------------------------------------------------------------------
+\section{Calibration Analysis}
+\label{sec:calibration}
+
+\subsection{Why Calibration Matters}
+
+A platform that surfaces a win percentage to users cares about calibration,
+not just accuracy. A model that is 77\% accurate but says ``66\%
+confident'' when it is actually right 83\% of the time
+(\Cref{tab:reliability}) is less useful than a model that is 76\% accurate
+and says ``76\%'' when it is right 76\% of the time.
+
+\subsection{Reliability Diagram}
+
+\Cref{tab:reliability} shows the 10-bin reliability diagram for EP on the
+20{,}000-position calibration sample.
+
+\begin{table}[h]
+\centering
+\caption{Reliability diagram for En Pensent (20k sample). Bins with $n=0$
+omitted.}
+\label{tab:reliability}
+\begin{tabular}{rrrrrr}
+\toprule
+\textbf{Bin} & \textbf{N} & \textbf{Mean conf.} & \textbf{Accuracy} & \textbf{Gap} & \textbf{Weight} \\
+\midrule
+$[0.3, 0.4)$ &       5 & 39.0\% & 60.0\% & 0.210 & 0.000 \\
+$[0.4, 0.5)$ &     824 & 42.0\% & 44.3\% & 0.023 & 0.041 \\
+$[0.5, 0.6)$ &   7{,}978 & 53.5\% & 60.5\% & 0.070 & 0.399 \\
+$[0.6, 0.7)$ &  11{,}193 & 66.2\% & 83.3\% & 0.171 & 0.560 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The dominant bin ($[0.6, 0.7)$, 56\% of all predictions) shows a 17
+percentage-point gap: EP assigns 66\% confidence when its actual accuracy
+is 83\%. This systematic under-confidence is the primary driver of the high
+ECE.
+
+\subsection{Root Cause: Confidence Clamping}
+\label{sec:clamping}
+
+Inspection of the production ingest code reveals that EP confidence is
+artificially clamped to the range $[15, 69]$ on a 0--100 scale:
+
+\begin{verbatim}
+Math.round(Math.min(69, Math.max(15,
+  (a.hybridConfidence || a.enhancedConfidence || 0.5) * 100)))
+\end{verbatim}
+
+This clamping, applied at INSERT time in the bulk worker, means no
+prediction can have a confidence above 69\% or below 15\%. Since EP's
+actual accuracy in the dominant bin is 83\%, the clamped confidence of
+66\% is necessarily miscalibrated. The clamping was likely introduced as
+a conservative guardrail but has the unintended effect of making the
+system appear less confident than it actually is.
+
+\subsection{Proposed Fix: Isotonic Regression}
+
+A post-hoc isotonic regression on the confidence values, trained on a
+held-out calibration set, would map the clamped $[15, 69]$ range to the
+empirical accuracy range. This is a standard calibration technique
+\cite{guo2017calibration} and can be applied without retraining the
+prediction engine.
+
+% ---------------------------------------------------------------------------
+\section{Discussion}
+\label{sec:discussion}
+
+\subsection{Accuracy vs. Calibration Trade-off}
+
+The benchmark reveals that EP's accuracy advantage over Stockfish~18 is
+real but modest ($+2.8$pp on this hold-out), and that simple learned
+baselines (LightGBM, logistic regression) match or approach this accuracy
+while being substantially better calibrated. For a platform integration
+scenario, the calibrated logistic baseline may be preferable to EP despite
+the 1pp accuracy gap, because its probabilities are trustworthy.
+
+\subsection{The Chess960 Wedge}
+
+The strongest evidence for EP's representation is the Chess960/Freestyle
+result ($+19.13$pp over Stockfish~18), where the path-based approach is
+opening-book-independent. This is the most commercially interesting niche,
+as Chess.com is investing in Freestyle chess. However, EP's $52.62\%$
+accuracy on Chess960 is still modest, and no calibration analysis has been
+performed on this subset.
+
+\subsection{Limitations}
+
+\begin{itemize}[nosep]
+  \item The hold-out set (500 positions) is small. A larger GPU-accelerated
+        run would provide tighter confidence intervals.
+  \item The calibration analysis uses top-1 confidence, not full 3-vector
+        probabilities, because the corpus does not store per-class
+        probabilities.
+  \item The Maia-2 comparison uses a simple threshold on the expected
+        score; a proper comparison would use Maia-2's full move-probability
+        distribution to derive calibrated W/D/L probabilities.
+  \item The hold-out is drawn from the same corpus as EP's training data,
+        introducing potential test-on-train bias. A truly independent
+        hold-out would use games that EP has never seen.
+\end{itemize}
+
+% ---------------------------------------------------------------------------
+\section{Conclusion}
+\label{sec:conclusion}
+
+En Pensent's path-based color flow representation is a genuinely novel
+approach to chess outcome prediction, with its strongest evidence in the
+Chess960/Freestyle domain where it achieves $+19.13$pp over Stockfish~18
+without opening books. On standard chess, the v9.0 fusion architecture
+combines EP's trajectory-aware outcome prediction with Maia-2's calibration
+signal and Stockfish's tactical coverage, achieving the best Brier score
+and log-loss of all models tested while maintaining EP's accuracy
+advantage. The learned isotonic calibration layer fixes the original
+system's poor calibration (ECE 0.170~$\to$~0.033), making the fused system
+suitable for deployment as a win-probability API where calibration is
+critical. The key architectural insight---using each signal for what it is
+best at rather than treating them as competitors---may generalize to other
+multi-signal prediction domains.
+
+% ---------------------------------------------------------------------------
+\bibliographystyle{plainnat}
+\begin{thebibliography}{9}
+
+\bibitem[Tang et~al.(2024)]{tang2024maia}
+Z.~Tang, D.~Jiao, R.~McIlroy-Young, J.~Kleinberg, S.~Sen, and A.~Anderson.
+\newblock Maia-2: A unified model for human-AI alignment in chess.
+\newblock In \emph{NeurIPS}, 2024.
+
+\bibitem[Guo et~al.(2017)]{guo2017calibration}
+C.~Guo, G.~Pleiss, Y.~Sun, and K.~Q.~Weinberger.
+\newblock On calibration of modern neural networks.
+\newblock In \emph{ICML}, 2017.
+
+\bibitem[Shelton(2026)]{enpensent_results}
+A.~A.~Shelton.
+\newblock En Pensent — canonical results.
+\newblock Technical report, 2026. Available at
+\url{https://github.com/aarthurshelton-hash/en-pensent/blob/main/RESULTS.md}.
+
+\end{thebibliography}
+
+\end{document}

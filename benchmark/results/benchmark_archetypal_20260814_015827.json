@@ -1,0 +1,65 @@
+{
+  "residual": {
+    "sf_acc": 0.7247524752475247,
+    "n_wrong": 278,
+    "ep_rescue_rate": 0.11151079136690648
+  },
+  "consistency": {
+    "n_archetypes": 16,
+    "chi2": 43.846380512874106,
+    "chi2_p": 0.04924365153787392
+  },
+  "time_pressure": {
+    "bullet": {
+      "n": 955,
+      "sf_acc": 0.6492146596858639,
+      "ep_acc": 0.6722513089005235,
+      "white_rate": 0.48586387434554973,
+      "draw_rate": 0.041884816753926704
+    },
+    "blitz": {
+      "n": 1360,
+      "sf_acc": 0.7102941176470589,
+      "ep_acc": 0.7323529411764705,
+      "white_rate": 0.4875,
+      "draw_rate": 0.06691176470588235
+    },
+    "rapid": {
+      "n": 846,
+      "sf_acc": 0.7328605200945626,
+      "ep_acc": 0.7659574468085106,
+      "white_rate": 0.5130023640661938,
+      "draw_rate": 0.0591016548463357
+    },
+    "classical": {
+      "n": 75,
+      "sf_acc": 0.7066666666666667,
+      "ep_acc": 0.7066666666666667,
+      "white_rate": 0.38666666666666666,
+      "draw_rate": 0.08
+    },
+    "unknown": {
+      "n": 124,
+      "sf_acc": 0.6774193548387096,
+      "ep_acc": 0.7419354838709677,
+      "white_rate": 0.4838709677419355,
+      "draw_rate": 0.1532258064516129
+    }
+  },
+  "tension_shape": {
+    "sf_only_acc": 0.7350199733688415,
+    "traj_only_acc": 0.6218375499334221,
+    "sf_plus_traj_acc": 0.7416777629826897,
+    "sf_only_logloss": 0.6436290338570595,
+    "sf_plus_traj_logloss": 0.6006518794097861,
+    "n_disagree": 281
+  },
+  "orthogonality": {
+    "both_correct": 681,
+    "sf_only": 22,
+    "ep_only": 48,
+    "neither": 259,
+    "expected_both_if_independent": 507.41287128712867
+  },
+  "tension_dynamics": {}
+}

@@ -245,6 +245,13 @@
   }
 }
 
+/* Mobile bottom nav spacing — prevents content from being hidden behind the fixed bottom bar */
+@media (max-width: 1023px) {
+  body {
+    padding-bottom: 3.5rem;
+  }
+}
+
 /* Premium palette shimmer animation */
 @keyframes shimmer {
   0% {

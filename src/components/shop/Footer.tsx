@@ -10,7 +10,6 @@
 
 import { Link, useLocation } from 'react-router-dom';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
-import { toast } from 'sonner';
 import { Lock } from 'lucide-react';
 import React, { forwardRef } from 'react';
 
@@ -21,8 +20,7 @@ export const Footer = forwardRef<HTMLElement, object>(function Footer(_props, re
   const handleLogoClick = (e: React.MouseEvent) => {
     if (isHomepage) {
       e.preventDefault();
-      toast('Refreshing...', { duration: 1000 });
-      setTimeout(() => window.location.reload(), 300);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
   
@@ -52,22 +50,31 @@ export const Footer = forwardRef<HTMLElement, object>(function Footer(_props, re
             The future of chess intelligence
           </p>
           
-          {/* Primary links */}
-          <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 sm:gap-6 pt-2 px-4">
-            <Link to="/about" className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">About</Link>
-            <Link to="/academic-paper" className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">Research</Link>
-            <Link to="/marketplace" className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">Marketplace</Link>
-            <Link to="/explore" className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">Explore</Link>
-            <Link to="/play" className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">Play</Link>
-          </nav>
-
-          {/* Secondary links */}
-          <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 sm:gap-6 pt-1 px-4">
-            <Link to="/proof" className="text-xs uppercase tracking-wider text-muted-foreground/60 hover:text-foreground transition-colors">Proof</Link>
-            <Link to="/vs-stockfish" className="text-xs uppercase tracking-wider text-muted-foreground/60 hover:text-foreground transition-colors">EP vs SF</Link>
-            <Link to="/benchmark" className="text-xs uppercase tracking-wider text-muted-foreground/60 hover:text-foreground transition-colors">Benchmark</Link>
-            <Link to="/investors" className="text-xs uppercase tracking-wider text-muted-foreground/60 hover:text-foreground transition-colors">Investors</Link>
-          </nav>
+          {/* Grouped link columns */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 sm:gap-8 max-w-2xl w-full pt-2">
+            <div className="flex flex-col gap-2 items-center sm:items-start">
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground/50 font-display font-bold mb-1">Explore</p>
+              <Link to="/marketplace" className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">Marketplace</Link>
+              <Link to="/showcase" className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">Showcase</Link>
+              <Link to="/book" className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">Books</Link>
+            </div>
+            <div className="flex flex-col gap-2 items-center sm:items-start">
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground/50 font-display font-bold mb-1">Science</p>
+              <Link to="/whitepaper" className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">Whitepaper</Link>
+              <Link to="/benchmark" className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">Benchmark</Link>
+              <Link to="/vs-stockfish" className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">EP vs SF</Link>
+              <Link to="/proof" className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">Proof</Link>
+            </div>
+            <div className="flex flex-col gap-2 items-center sm:items-start">
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground/50 font-display font-bold mb-1">Develop</p>
+              <Link to="/sdk-docs" className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">SDK Docs</Link>
+            </div>
+            <div className="flex flex-col gap-2 items-center sm:items-start">
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground/50 font-display font-bold mb-1">Company</p>
+              <Link to="/about" className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">About</Link>
+              <Link to="/investors" className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">Investors</Link>
+            </div>
+          </div>
           
           {/* Legal Links */}
           <nav className="flex items-center gap-4 pt-3 flex-wrap justify-center">

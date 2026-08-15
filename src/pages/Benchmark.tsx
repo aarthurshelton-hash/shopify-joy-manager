@@ -13,7 +13,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useBenchmarkRateLimit } from '@/hooks/useRateLimitV2';
 import { acquireBenchmarkLock, releaseBenchmarkLock } from '@/lib/chess/benchmarkCoordinator';
 import { getCorrelationEngine, normalizeChessSignal } from '@/lib/pensent-core/crossDomainCorrelation';
+import { ScrollProgress } from '@/components/shared/ScrollProgress';
 import './Benchmark.css';
+import ChessPieceIcon from '@/components/chess/ChessPieceIcon';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -225,7 +227,7 @@ function useSystemBreakdown() {
 // ─── Per-Source Breakdown Hook ───────────────────────────────────────────────
 // Lichess vs Chess.com accuracy from data_source column
 
-interface SourceStat { label: string; icon: string; count: number; sfAcc: number; epAcc: number; avgElo: number }
+interface SourceStat { label: string; icon: 'p' | 'k'; count: number; sfAcc: number; epAcc: number; avgElo: number }
 
 function useSourceBreakdown() {
   const [sources, setSources] = useState<SourceStat[]>([]);
@@ -258,8 +260,8 @@ function useSourceBreakdown() {
       };
 
       const results: SourceStat[] = [];
-      if ((liTotal || 0) > 0) results.push({ label: 'Lichess', icon: '♟', count: liTotal || 0, sfAcc: (liTotal || 0) > 0 ? ((liSf || 0) / (liTotal || 1)) * 100 : 0, epAcc: (liTotal || 0) > 0 ? ((liEp || 0) / (liTotal || 1)) * 100 : 0, avgElo: avgElo(liEloData) });
-      if ((ccTotal || 0) > 0) results.push({ label: 'Chess.com', icon: '♚', count: ccTotal || 0, sfAcc: (ccTotal || 0) > 0 ? ((ccSf || 0) / (ccTotal || 1)) * 100 : 0, epAcc: (ccTotal || 0) > 0 ? ((ccEp || 0) / (ccTotal || 1)) * 100 : 0, avgElo: avgElo(ccEloData) });
+      if ((liTotal || 0) > 0) results.push({ label: 'Lichess', icon: 'p', count: liTotal || 0, sfAcc: (liTotal || 0) > 0 ? ((liSf || 0) / (liTotal || 1)) * 100 : 0, epAcc: (liTotal || 0) > 0 ? ((liEp || 0) / (liTotal || 1)) * 100 : 0, avgElo: avgElo(liEloData) });
+      if ((ccTotal || 0) > 0) results.push({ label: 'Chess.com', icon: 'k', count: ccTotal || 0, sfAcc: (ccTotal || 0) > 0 ? ((ccSf || 0) / (ccTotal || 1)) * 100 : 0, epAcc: (ccTotal || 0) > 0 ? ((ccEp || 0) / (ccTotal || 1)) * 100 : 0, avgElo: avgElo(ccEloData) });
       setSources(results);
     };
     load();
@@ -465,7 +467,7 @@ function GameDetailModal({ game }: { game: GameDetail }) {
 
           {/* Predictions */}
           <Section title="Predictions vs Actual">
-            <div className="grid grid-cols-3 gap-3 text-center">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">
               <PredCard
                 title="Stockfish 18"
                 prediction={game.stockfish_prediction}
@@ -665,6 +667,7 @@ export default function Benchmark() {
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
+      <ScrollProgress />
       <div className="max-w-4xl mx-auto space-y-6">
 
         {/* Header */}
@@ -696,7 +699,7 @@ export default function Benchmark() {
 
         {/* ─── Accuracy Comparison ─────────────────────────────────── */}
         {stats && stats.total > 0 && (
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Card className={`border-2 ${stats.sfCorrect > stats.epCorrect ? 'border-blue-500/50' : 'border-muted'}`}>
               <CardContent className="py-6 text-center">
                 <p className="text-4xl font-bold text-blue-500">{sfAcc}%</p>
@@ -773,7 +776,7 @@ export default function Benchmark() {
                 {sources.map(s => (
                   <div key={s.label} className="p-4 rounded-lg border border-border bg-muted/10">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-lg font-semibold">{s.icon} {s.label}</span>
+                      <span className="text-lg font-semibold inline-flex items-center gap-1.5"><ChessPieceIcon type={s.icon} color="b" size={16} /> {s.label}</span>
                       <Badge variant="outline">{s.count.toLocaleString()} games</Badge>
                     </div>
                     <div className="grid grid-cols-3 gap-2 text-center text-sm">

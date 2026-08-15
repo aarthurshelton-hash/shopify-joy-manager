@@ -150,8 +150,11 @@ export const HeroVisionDemo: React.FC = () => {
     setCurrentSimulation(simulation, game.pgn, game.title);
     const urlParams = new URLSearchParams();
     urlParams.set('src', 'hero');
+    // Pass the selected palette so GameView uses the correct colors
+    // Always include it — GameView defaults hotCold to 'modern' if not in URL
+    urlParams.set('p', paletteId);
     navigate(`/g/${gameHash}?${urlParams.toString()}`);
-  }, [game, simulation, navigate, setCurrentSimulation]);
+  }, [game, simulation, navigate, setCurrentSimulation, paletteId]);
 
   if (!game) return null;
 
@@ -214,7 +217,7 @@ export const HeroVisionDemo: React.FC = () => {
                   key={p.id}
                   onClick={() => setPaletteId(p.id)}
                   aria-label={`Use ${p.name} palette`}
-                  className={`h-8 w-8 rounded-full overflow-hidden border-2 transition-all ${
+                  className={`h-10 w-10 sm:h-8 sm:w-8 rounded-full overflow-hidden border-2 transition-all touch-manipulation ${
                     paletteId === p.id
                       ? 'border-primary scale-110'
                       : 'border-border/50 hover:border-border'

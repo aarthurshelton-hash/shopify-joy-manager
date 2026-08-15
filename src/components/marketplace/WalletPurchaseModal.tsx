@@ -55,7 +55,7 @@ export const WalletPurchaseModal: React.FC<WalletPurchaseModalProps> = ({
   const retryAfter = resetInMs ? Math.ceil(resetInMs / 1000) : null;
 
   // Calculate fees
-  const platformFeeCents = Math.floor(priceCents * 0.05);
+  const platformFeeCents = Math.round(priceCents * 0.05);
   const sellerReceivesCents = priceCents - platformFeeCents;
   const hasEnoughBalance = walletBalance >= priceCents;
 

@@ -189,7 +189,7 @@ export default function InvestorPortal() {
 
         {/* Links to other materials */}
         <section className="grid md:grid-cols-3 gap-4 max-w-4xl mx-auto">
-          <Link to="/academic-paper">
+          <Link to="/whitepaper">
             <Card className="hover:border-primary/50 transition-colors cursor-pointer h-full">
               <CardContent className="p-6 text-center">
                 <div className="text-3xl mb-2">📄</div>

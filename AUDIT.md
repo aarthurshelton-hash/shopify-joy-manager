@@ -26,7 +26,7 @@ Every published claim is verifiable from this repository using only the **public
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/aarthurshelton-hash/shopify-joy-manager.git
+git clone https://github.com/aarthurshelton-hash/en-pensent.git
 cd shopify-joy-manager
 
 # 2. Install dependencies
@@ -113,7 +113,7 @@ If you are doing a security or compliance review:
 - **Maintainer:** Alec Arthur Shelton (`a.arthur.shelton@gmail.com`)
 - **Public site:** [enpensent.com](https://enpensent.com)
 - **Live stats dashboard:** [enpensent.com/explore](https://enpensent.com/explore)
-- **Repository:** [github.com/aarthurshelton-hash/shopify-joy-manager](https://github.com/aarthurshelton-hash/shopify-joy-manager)
+- **Repository:** [github.com/aarthurshelton-hash/en-pensent](https://github.com/aarthurshelton-hash/en-pensent)
 
 ---
 

@@ -11,17 +11,8 @@ import obfuscator from "rollup-plugin-obfuscator";
 
 // https://vitejs.dev/config/
 export default defineConfig(async ({ mode }): Promise<UserConfig> => {
-  // Lazily load the dev-only component tagger so production builds never
-  // require it (it lives in devDependencies and may be absent on CI installs).
+  // Dev-only plugins. Production builds never require devDependencies.
   const plugins: PluginOption[] = [react()];
-  if (mode === "development") {
-    try {
-      const { componentTagger } = await import("lovable-tagger");
-      plugins.push(componentTagger());
-    } catch {
-      // lovable-tagger not installed — safe to skip in dev
-    }
-  }
 
   return {
     server: {
@@ -44,7 +35,16 @@ export default defineConfig(async ({ mode }): Promise<UserConfig> => {
           comments: false,
         },
       },
-      rollupOptions: {},
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+            'chess-engine': ['chess.js'],
+            'pdf-libs': ['jspdf', 'html2canvas'],
+            'query-client': ['@tanstack/react-query'],
+          },
+        },
+      },
     },
     resolve: {
       alias: {

@@ -1,6 +1,6 @@
 {
   "name": "en-pensent",
-  "description": "Chess art prints and path-based prediction system",
+  "description": "Path-based chess outcome prediction system",
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -112,7 +112,6 @@
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^15.15.0",
     "happy-dom": "^20.5.0",
-    "lovable-tagger": "^1.1.13",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.38.0",
     "vitest": "^4.0.17"

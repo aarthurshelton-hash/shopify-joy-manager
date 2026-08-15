@@ -6,17 +6,26 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Crown, Users, Star, Sparkles, Shield, TrendingUp, Building, Palette, Gamepad2, BookOpen, DollarSign, Wallet, Wifi, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
-// Visionary emails with permanent premium - synced with edge functions
-const VISIONARY_EMAILS = [
-  { email: 'a.arthur.shelton@gmail.com', name: 'Alec Arthur Shelton', role: 'CEO & Founder' },
-  { email: 'info@mawuli.xyz', name: 'Mawuli', role: 'Marketplace Tester' },
-  { email: 'opecoreug@gmail.com', name: 'Product Specialist', role: 'Overseas Analyst' },
-];
-
 const formatCents = (cents: number) => `$${(cents / 100).toFixed(2)}`;
+
+interface VisionaryMember {
+  email: string;
+  display_name: string;
+  role: string;
+}
 
 export const AdminEconomicsPanel: React.FC = () => {
   const queryClient = useQueryClient();
+  // Fetch visionary members from DB
+  const { data: visionaryMembers = [] } = useQuery({
+    queryKey: ['visionary-members'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_visionary_members');
+      if (error) throw error;
+      return (data || []) as VisionaryMember[];
+    },
+  });
+
   // Fetch user breakdown
   const { data: userStats } = useQuery({
     queryKey: ['admin-economics-users'],
@@ -29,7 +38,7 @@ export const AdminEconomicsPanel: React.FC = () => {
 
       const total = totalResult.count || 0;
       const paidPremium = premiumResult.count || 0;
-      const visionaryCount = VISIONARY_EMAILS.length;
+      const visionaryCount = visionaryMembers.length;
       const totalPremium = paidPremium + visionaryCount;
       const freeUsers = Math.max(0, total - paidPremium);
 
@@ -281,11 +290,11 @@ export const AdminEconomicsPanel: React.FC = () => {
         <CardContent>
           <ScrollArea className="h-[150px]">
             <div className="space-y-2">
-              {VISIONARY_EMAILS.map((visionary, index) => (
+              {visionaryMembers.map((visionary, index) => (
                 <div key={index} className="flex items-center justify-between p-2 rounded-lg bg-amber-500/5 border border-amber-500/20">
                   <div className="flex items-center gap-2">
                     {visionary.role === 'CEO & Founder' ? <Crown className="h-4 w-4 text-amber-500" /> : <Shield className="h-4 w-4 text-amber-500" />}
-                    <span className="text-sm font-medium">{visionary.name}</span>
+                    <span className="text-sm font-medium">{visionary.display_name}</span>
                   </div>
                   <Badge variant="outline" className="text-[10px]">{visionary.role}</Badge>
                 </div>

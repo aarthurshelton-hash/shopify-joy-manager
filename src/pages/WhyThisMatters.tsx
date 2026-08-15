@@ -204,7 +204,7 @@ const WhyThisMatters = () => {
           <Button size="lg" onClick={() => navigate("/code-analysis")}>
             Try It Yourself
           </Button>
-          <Button size="lg" variant="outline" onClick={() => navigate("/academic-paper")}>
+          <Button size="lg" variant="outline" onClick={() => navigate("/whitepaper")}>
             Read the Technical Paper
           </Button>
         </div>

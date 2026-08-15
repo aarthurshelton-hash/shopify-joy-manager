@@ -10,6 +10,7 @@ import spread3 from '@/assets/book/spread-preview-3.png';
 import frontCover from '@/assets/book/carlsen-cover-v2.jpg';
 import backCover from '@/assets/book/carlsen-back-cover.jpg';
 import logoImage from '@/assets/en-pensent-logo-new.png';
+import ChessPieceIcon from '@/components/chess/ChessPieceIcon';
 
 type PageType = 'spine' | 'cover' | 'spread' | 'back';
 
@@ -222,7 +223,7 @@ export const BookFlipPreview: React.FC<BookFlipPreviewProps> = ({ className = ''
                       </div>
                       
                       {/* King Chess Piece */}
-                      <div className="text-amber-400 text-2xl my-4">♔</div>
+                      <div className="text-amber-400 text-2xl my-4 flex justify-center"><ChessPieceIcon type="k" color="w" size={28} hexColor="#C9A552" strokeColor="#8B6914" /></div>
                       
                       {/* EN PENSENT text */}
                       <div 

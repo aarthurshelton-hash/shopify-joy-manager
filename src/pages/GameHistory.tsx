@@ -286,7 +286,7 @@ export default function GameHistory() {
               Return to Games
             </Button>
           ) : (
-            <Button variant="ghost" onClick={() => navigate('/play')}>
+            <Button variant="ghost" onClick={() => navigate('/creative-mode')}>
               <ArrowLeft className="w-4 h-4 mr-2" />
               Return to Play
             </Button>
@@ -473,7 +473,7 @@ export default function GameHistory() {
                     <p className="text-muted-foreground mb-4">
                       Play your first game to see it here!
                     </p>
-                    <Button onClick={() => navigate('/play')}>
+                    <Button onClick={() => navigate('/creative-mode')}>
                       Play Now
                     </Button>
                   </CardContent>

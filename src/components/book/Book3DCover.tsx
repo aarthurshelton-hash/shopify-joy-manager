@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import carlsenCover from '@/assets/book/carlsen-cover-v2.jpg';
 import carlsenBackCover from '@/assets/book/carlsen-back-cover.jpg';
 import logoImage from '@/assets/en-pensent-logo-new.png';
+import ChessPieceIcon from '@/components/chess/ChessPieceIcon';
 
 interface Book3DCoverProps {
   onClick?: () => void;
@@ -193,7 +194,7 @@ export const Book3DCover: React.FC<Book3DCoverProps> = ({
               fontSize: size === 'sm' ? '6px' : size === 'md' ? '10px' : '14px',
             }}
           >
-            ♔
+            <ChessPieceIcon type="k" color="w" size={size === 'sm' ? 8 : size === 'md' ? 12 : 16} hexColor="#C9A552" strokeColor="#8B6914" />
           </div>
           
           {/* EN PENSENT text */}

@@ -756,6 +756,11 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit, onFenSubmit }) =
                   Position (FEN)
                 </TabsTrigger>
               </TabsList>
+              <p className="text-[11px] text-muted-foreground font-serif mt-2 text-center">
+                {inputMode === 'pgn'
+                  ? 'A PGN is your game\u2019s move list \u2014 every game on Chess.com or Lichess can be exported as one, or use the importer above.'
+                  : 'A FEN describes a single board position \u2014 paste one to turn any position into art.'}
+              </p>
             </div>
 
             {/* PGN Tab Content */}
@@ -790,7 +795,7 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit, onFenSubmit }) =
           {/* Text area for manual input */}
           <div className="relative">
             <Textarea
-              placeholder="Or paste PGN notation here..."
+              placeholder="Or paste your game's moves here — e.g. 1. e4 e5 2. Nf3 Nc6 3. Bb5 a6..."
               value={pgn}
               onChange={(e) => {
                 const newPgn = e.target.value;

@@ -46,6 +46,7 @@ import { useHybridPrediction } from '@/hooks/useHybridPrediction';
 import { HybridPrediction, TrajectoryMilestone } from '@/lib/chess/hybridPrediction';
 import { PatternPrediction, PatternMatch } from '@/lib/chess/patternLearning';
 import { ColorFlowSignature, StrategicArchetype, ARCHETYPE_DEFINITIONS } from '@/lib/chess/colorFlowAnalysis';
+import ChessPieceIcon from './ChessPieceIcon';
 
 interface HybridPredictionPanelProps {
   pgn: string;
@@ -485,10 +486,10 @@ const StrategicView: React.FC<{
         <div className="p-3 rounded-lg border border-border/50">
           <div className="text-xs text-muted-foreground mb-3">Territory Control by Quadrant:</div>
           <div className="grid grid-cols-2 gap-2">
-            <QuadrantBar label="Kingside ♔" value={colorSignature.quadrantProfile.kingsideWhite} />
-            <QuadrantBar label="Kingside ♚" value={colorSignature.quadrantProfile.kingsideBlack} />
-            <QuadrantBar label="Queenside ♔" value={colorSignature.quadrantProfile.queensideWhite} />
-            <QuadrantBar label="Queenside ♚" value={colorSignature.quadrantProfile.queensideBlack} />
+            <QuadrantBar label={<span className="inline-flex items-center gap-1"><ChessPieceIcon type="k" color="w" size={11} /> Kingside</span>} value={colorSignature.quadrantProfile.kingsideWhite} />
+            <QuadrantBar label={<span className="inline-flex items-center gap-1"><ChessPieceIcon type="k" color="b" size={11} /> Kingside</span>} value={colorSignature.quadrantProfile.kingsideBlack} />
+            <QuadrantBar label={<span className="inline-flex items-center gap-1"><ChessPieceIcon type="k" color="w" size={11} /> Queenside</span>} value={colorSignature.quadrantProfile.queensideWhite} />
+            <QuadrantBar label={<span className="inline-flex items-center gap-1"><ChessPieceIcon type="k" color="b" size={11} /> Queenside</span>} value={colorSignature.quadrantProfile.queensideBlack} />
           </div>
           <div className="mt-2 pt-2 border-t border-border/30">
             <QuadrantBar label="Center Control" value={colorSignature.quadrantProfile.center} />
@@ -581,7 +582,7 @@ const PatternView: React.FC<{ patternPrediction: PatternPrediction | null }> = (
         {/* Probability Bars */}
         <div className="space-y-2">
           <ProbabilityBar 
-            label="♔ White" 
+            label={<span className="inline-flex items-center gap-1"><ChessPieceIcon type="k" color="w" size={11} /> White</span>} 
             value={patternPrediction.aggregatePrediction.whiteWinProbability} 
             color="text-white bg-slate-200"
           />
@@ -591,7 +592,7 @@ const PatternView: React.FC<{ patternPrediction: PatternPrediction | null }> = (
             color="text-gray-600 bg-gray-400"
           />
           <ProbabilityBar 
-            label="♚ Black" 
+            label={<span className="inline-flex items-center gap-1"><ChessPieceIcon type="k" color="b" size={11} /> Black</span>} 
             value={patternPrediction.aggregatePrediction.blackWinProbability} 
             color="text-black bg-slate-800"
           />
@@ -675,7 +676,7 @@ const TrajectorySection: React.FC<{
     {/* Outcome Probabilities */}
     <div className="grid grid-cols-3 gap-2 mb-4">
       <div className="p-2 rounded bg-green-500/10 text-center">
-        <div className="text-xs text-muted-foreground">♔ White</div>
+        <div className="text-xs text-muted-foreground flex items-center justify-center gap-1"><ChessPieceIcon type="k" color="w" size={11} /> White</div>
         <div className="font-bold text-green-600">
           {(trajectory.outcomeProbabilities.whiteWin * 100).toFixed(0)}%
         </div>
@@ -687,7 +688,7 @@ const TrajectorySection: React.FC<{
         </div>
       </div>
       <div className="p-2 rounded bg-slate-500/10 text-center">
-        <div className="text-xs text-muted-foreground">♚ Black</div>
+        <div className="text-xs text-muted-foreground flex items-center justify-center gap-1"><ChessPieceIcon type="k" color="b" size={11} /> Black</div>
         <div className="font-bold text-slate-600">
           {(trajectory.outcomeProbabilities.blackWin * 100).toFixed(0)}%
         </div>
@@ -734,7 +735,7 @@ const MilestoneItem: React.FC<{ milestone: TrajectoryMilestone }> = ({ milestone
   </div>
 );
 
-const QuadrantBar: React.FC<{ label: string; value: number }> = ({ label, value }) => (
+const QuadrantBar: React.FC<{ label: React.ReactNode; value: number }> = ({ label, value }) => (
   <div>
     <div className="flex items-center justify-between text-xs mb-1">
       <span>{label}</span>
@@ -773,7 +774,7 @@ const OutcomeIndicator: React.FC<{
 );
 
 const ProbabilityBar: React.FC<{
-  label: string;
+  label: React.ReactNode;
   value: number;
   color: string;
 }> = ({ label, value, color }) => (

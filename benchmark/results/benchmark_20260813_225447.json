@@ -1,0 +1,197 @@
+{
+  "timestamp": "2026-08-13T22:54:47.726533",
+  "training_samples": 15000,
+  "holdout_samples": 5000,
+  "feature_count": 81,
+  "device": "mps",
+  "results": [
+    {
+      "name": "EP v8.07 (original)",
+      "accuracy": 0.69,
+      "brier": 0.47162069,
+      "log_loss": 0.827711354451638,
+      "ece": 0.0939850000000001,
+      "per_class": {
+        "white_wins": {
+          "n": 2442,
+          "accuracy": 0.7915642915642915
+        },
+        "black_wins": {
+          "n": 2278,
+          "accuracy": 0.6633011413520632
+        },
+        "draw": {
+          "n": 280,
+          "accuracy": 0.02142857142857143
+        }
+      }
+    },
+    {
+      "name": "Stockfish 18",
+      "accuracy": 0.6366,
+      "brier": 0.51510113,
+      "log_loss": 2.2572455667175695,
+      "ece": 0.13001799999999994,
+      "per_class": {
+        "white_wins": {
+          "n": 2442,
+          "accuracy": 0.7313677313677314
+        },
+        "black_wins": {
+          "n": 2278,
+          "accuracy": 0.5790166812993854
+        },
+        "draw": {
+          "n": 280,
+          "accuracy": 0.2785714285714286
+        }
+      }
+    },
+    {
+      "name": "EP v9.0 Fusion",
+      "accuracy": 0.69,
+      "brier": 0.48978662000000006,
+      "log_loss": 0.9107668259917578,
+      "ece": 0.17816399999999982,
+      "per_class": {
+        "white_wins": {
+          "n": 2442,
+          "accuracy": 0.7915642915642915
+        },
+        "black_wins": {
+          "n": 2278,
+          "accuracy": 0.6633011413520632
+        },
+        "draw": {
+          "n": 280,
+          "accuracy": 0.02142857142857143
+        }
+      }
+    },
+    {
+      "name": "Logistic Regression (stacking)",
+      "accuracy": 0.647,
+      "brier": 0.4694560144148676,
+      "log_loss": 0.8139141578136798,
+      "ece": 0.019286936414257643,
+      "per_class": {
+        "white_wins": {
+          "n": 2442,
+          "accuracy": 0.6773136773136773
+        },
+        "black_wins": {
+          "n": 2278,
+          "accuracy": 0.6308165057067603
+        },
+        "draw": {
+          "n": 280,
+          "accuracy": 0.5142857142857142
+        }
+      }
+    },
+    {
+      "name": "Neural Network v10.0 (stacking)",
+      "accuracy": 0.711,
+      "brier": 0.38806492426847083,
+      "log_loss": 0.6734432578086853,
+      "ece": 0.01720959740877152,
+      "per_class": {
+        "white_wins": {
+          "n": 2442,
+          "accuracy": 0.7698607698607699
+        },
+        "black_wins": {
+          "n": 2278,
+          "accuracy": 0.699297629499561
+        },
+        "draw": {
+          "n": 280,
+          "accuracy": 0.29285714285714287
+        }
+      }
+    }
+  ],
+  "feature_names": [
+    "agree_disagreement",
+    "agree_ep_maia",
+    "agree_ep_sf",
+    "agree_full",
+    "agree_maia_sf",
+    "arch_0",
+    "arch_1",
+    "arch_10",
+    "arch_11",
+    "arch_12",
+    "arch_13",
+    "arch_14",
+    "arch_15",
+    "arch_16",
+    "arch_17",
+    "arch_18",
+    "arch_19",
+    "arch_2",
+    "arch_20",
+    "arch_21",
+    "arch_22",
+    "arch_23",
+    "arch_24",
+    "arch_25",
+    "arch_26",
+    "arch_27",
+    "arch_28",
+    "arch_29",
+    "arch_3",
+    "arch_30",
+    "arch_31",
+    "arch_32",
+    "arch_33",
+    "arch_34",
+    "arch_4",
+    "arch_5",
+    "arch_6",
+    "arch_7",
+    "arch_8",
+    "arch_9",
+    "avg_elo",
+    "elo_diff",
+    "ep_conf",
+    "ep_conf_in_balanced",
+    "ep_conf_in_mild",
+    "ep_conf_sq",
+    "ep_conf_x_agree",
+    "ep_conf_x_move",
+    "ep_fusion_agree",
+    "ep_pred_0",
+    "ep_pred_1",
+    "ep_pred_2",
+    "ep_sf_agree",
+    "fusion_conf",
+    "fusion_pred_0",
+    "fusion_pred_1",
+    "fusion_pred_2",
+    "move_num",
+    "move_num_sq",
+    "sf_conf",
+    "sf_eval",
+    "sf_eval_abs",
+    "sf_eval_sq",
+    "sf_eval_x_move",
+    "sf_fusion_agree",
+    "sf_pred_0",
+    "sf_pred_1",
+    "sf_pred_2",
+    "src_0",
+    "src_1",
+    "src_2",
+    "src_3",
+    "src_4",
+    "src_5",
+    "src_6",
+    "src_7",
+    "tc_base",
+    "zone_balanced",
+    "zone_decisive",
+    "zone_mild",
+    "zone_mod"
+  ]
+}

@@ -463,7 +463,7 @@ const signature = musicEngine.extractSignature(symphonyData);`}
               {/* Footer */}
               <div className="border-t pt-8 mt-12">
                 <div className="flex flex-wrap gap-4 justify-center">
-                  <Link to="/academic-paper">
+                  <Link to="/whitepaper">
                     <Button variant="outline" className="gap-2">
                       <ExternalLink className="h-4 w-4" />
                       Read Academic Paper

@@ -287,10 +287,6 @@ const BREADCRUMB_MAP: Record<string, BreadcrumbConfig> = {
   "/studio": { name: "Studio", parent: "/creative-mode" },
   "/book": { name: "Book Generator", parent: "/creative-mode" },
   
-  // Gaming & Competition
-  "/play": { name: "Play Chess" },
-  "/leaderboard": { name: "Leaderboard", parent: "/play" },
-  
   // Discovery & Scanning
   "/vision-scanner": { name: "Vision Scanner" },
   

@@ -9,6 +9,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { AdminRoute } from '@/components/auth/AdminRoute';
 import { RefreshCw, TrendingUp, TrendingDown, Activity, Clock } from 'lucide-react';
+import ChessPieceIcon from '@/components/chess/ChessPieceIcon';
 
 // ── SECTOR CONFIG — matches market-prediction-worker.mjs ──────────────────────
 const SECTOR_MAP: Record<string, string> = {
@@ -339,11 +340,11 @@ function Legend() {
     <div className="flex items-center gap-6 text-[11px] text-gray-500 mb-4 px-1">
       <div className="flex items-center gap-1.5">
         <div className="w-3 h-3 rounded" style={{ background: 'rgba(30, 185, 90, 0.8)', border: '1px solid #4ade80' }} />
-        <span>Bullish ♟ (black = BUY)</span>
+        <span className="inline-flex items-center gap-1">Bullish <ChessPieceIcon type="p" color="b" size={11} /> (black = BUY)</span>
       </div>
       <div className="flex items-center gap-1.5">
         <div className="w-3 h-3 rounded" style={{ background: 'rgba(220, 40, 40, 0.8)', border: '1px solid #f87171' }} />
-        <span>Bearish ♙ (white = SELL)</span>
+        <span className="inline-flex items-center gap-1">Bearish <ChessPieceIcon type="p" color="w" size={11} /> (white = SELL)</span>
       </div>
       <div className="flex items-center gap-1.5">
         <div className="w-12 h-1.5 rounded" style={{ background: 'linear-gradient(to right, rgba(30,185,90,0.3), rgba(30,185,90,0.9))' }} />

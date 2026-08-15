@@ -116,16 +116,21 @@ export async function getWithdrawalRequests(): Promise<{
   }
 }
 
-// Cancel pending withdrawal
+// Cancel pending withdrawal (owner only)
 export async function cancelWithdrawalRequest(requestId: string): Promise<{
   success: boolean;
   error: Error | null;
 }> {
   try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
     const { error } = await supabase
       .from('withdrawal_requests')
       .update({ status: 'cancelled' })
-      .eq('id', requestId);
+      .eq('id', requestId)
+      .eq('user_id', user.id)
+      .eq('status', 'pending');
 
     if (error) throw error;
     return { success: true, error: null };

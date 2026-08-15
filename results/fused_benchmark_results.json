@@ -1,0 +1,71 @@
+{
+  "ep_v807": {
+    "name": "ep_v807",
+    "n": 500,
+    "accuracy": 0.77,
+    "brier": 0.1884858,
+    "log_loss": 0.5656857029362939,
+    "ece": 0.16950000000000004
+  },
+  "sf_raw": {
+    "name": "sf_raw",
+    "n": 500,
+    "accuracy": 0.742,
+    "brier": 0.1599348,
+    "log_loss": 0.5045120991320403,
+    "ece": 0.09824000000000005
+  },
+  "calibrated_sf": {
+    "name": "calibrated_sf",
+    "n": 500,
+    "accuracy": 0.76,
+    "brier": 0.1541835791599445,
+    "log_loss": 0.47765746020491473,
+    "ece": 0.027236250796328583
+  },
+  "lightgbm": {
+    "name": "lightgbm",
+    "n": 500,
+    "accuracy": 0.774,
+    "brier": 0.16215525592455216,
+    "log_loss": 0.5144585911460787,
+    "ece": 0.06562329467759707
+  },
+  "maia2": {
+    "name": "maia2",
+    "n": 487,
+    "accuracy": 0.7104722792607803,
+    "brier": 0.2346723401232033,
+    "log_loss": 0.8357943077946541,
+    "ece": 0.15882381930184802
+  },
+  "fusion_v900_raw": {
+    "name": "fusion_v900_raw",
+    "n": 500,
+    "accuracy": 0.752,
+    "brier": 0.1543087742585757,
+    "log_loss": 0.5044380372118935,
+    "ece": 0.09432079242206157
+  },
+  "fusion_v900_calibrated": {
+    "name": "fusion_v900_calibrated",
+    "n": 500,
+    "accuracy": 0.752,
+    "brier": 0.16606,
+    "log_loss": 0.5522948820926212,
+    "ece": 0.12363999999999994,
+    "brier_calibrated": 0.16606,
+    "log_loss_calibrated": 0.5522948820926212,
+    "ece_calibrated": 0.12363999999999994
+  },
+  "fusion_v900": {
+    "name": "fusion_v900 (EP+Maia+SF+isotonic)",
+    "n": 500,
+    "accuracy": 0.752,
+    "brier": 0.16606,
+    "log_loss": 0.5522948820926212,
+    "ece": 0.12363999999999994,
+    "raw_confidence_brier": 0.1543087742585757,
+    "raw_confidence_ece": 0.09432079242206157
+  }
+}

@@ -19,6 +19,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import ChessPieceIcon from '@/components/chess/ChessPieceIcon';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -41,7 +42,7 @@ interface SymbolRow {
   archetype: string;
   archetypeStory?: string;
   archetypeMoral?: string;
-  chessPiece: string;
+  chessPiece: 'k' | 'q' | 'r' | 'b' | 'n' | 'p';
   chessColor: string;
   lastUpdated: string;
   age: number; // minutes since last prediction
@@ -90,8 +91,8 @@ const SYMBOLS = [
   { symbol: 'CL=F', name: 'Crude Oil',     sector: 'energy',     emoji: '🛢' },
 ];
 
-const PIECE_ICONS: Record<string, string> = {
-  king: '♚', queen: '♛', rook: '♜', bishop: '♝', knight: '♞', pawn: '♟',
+const PIECE_TYPES: Record<string, 'k' | 'q' | 'r' | 'b' | 'n' | 'p'> = {
+  king: 'k', queen: 'q', rook: 'r', bishop: 'b', knight: 'n', pawn: 'p',
 };
 
 // ── Cell Computation ──────────────────────────────────────────────────────────
@@ -243,7 +244,7 @@ const MarketFlowVisualizer: React.FC = () => {
             archetype,
             archetypeStory: meta.archetype_story?.story,
             archetypeMoral: meta.archetype_story?.moral,
-            chessPiece: PIECE_ICONS[pieceTier] ?? '♟',
+            chessPiece: PIECE_TYPES[pieceTier] ?? 'p',
             chessColor: meta.chess_consensus
               ? ((meta.chess_consensus.blackPct ?? 50) > 50 ? 'black' : 'white')
               : (direction === 'bullish' ? 'black' : 'white'),
@@ -278,8 +279,8 @@ const MarketFlowVisualizer: React.FC = () => {
     ? (() => {
         const bulls = rows.filter(r => r.direction === 'bullish').length;
         const bears = rows.filter(r => r.direction === 'bearish').length;
-        if (bulls > bears + 2) return { label: 'BLACK DOMINATES', color: 'text-emerald-400', icon: '♚' };
-        if (bears > bulls + 2) return { label: 'WHITE DOMINATES', color: 'text-slate-300', icon: '♔' };
+        if (bulls > bears + 2) return { label: 'BLACK DOMINATES', color: 'text-emerald-400', icon: <ChessPieceIcon type="k" color="b" size={14} /> };
+        if (bears > bulls + 2) return { label: 'WHITE DOMINATES', color: 'text-slate-300', icon: <ChessPieceIcon type="k" color="w" size={14} /> };
         return { label: 'CONTESTED', color: 'text-amber-400', icon: '⚖' };
       })()
     : null;
@@ -291,7 +292,7 @@ const MarketFlowVisualizer: React.FC = () => {
         <div className="flex items-center justify-between px-4 py-3 border-b border-border/30 bg-background/40">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
-              <span className="text-lg">♟</span>
+              <span className="flex items-center"><ChessPieceIcon type="p" color="b" size={18} /></span>
               <div>
                 <h3 className="font-display font-bold text-sm uppercase tracking-widest">
                   Market Flow Grid
@@ -395,7 +396,7 @@ const MarketFlowVisualizer: React.FC = () => {
                       <div className="min-w-0">
                         <div className="flex items-center gap-1">
                           <span className="font-mono text-xs font-bold truncate">{row.symbol}</span>
-                          <span className="text-[11px] opacity-70">{row.chessPiece}</span>
+                          <span className="text-[11px] opacity-70 flex items-center"><ChessPieceIcon type={row.chessPiece} color="b" size={12} /></span>
                         </div>
                         <div className="flex items-center gap-1">
                           <span className={`text-[9px] font-mono ${
@@ -466,9 +467,9 @@ const MarketFlowVisualizer: React.FC = () => {
                       <span className={`text-xs font-mono ${
                         row.direction === 'bullish' ? 'text-emerald-400' : row.direction === 'bearish' ? 'text-red-400' : 'text-muted-foreground'
                       }`}>
-                        {row.chessColor === 'black' ? '♚ BLACK (BUY)' : '♔ WHITE (SELL)'}
+                        <span className="inline-flex items-center gap-1">{row.chessColor === 'black' ? <><ChessPieceIcon type="k" color="b" size={12} /> BLACK (BUY)</> : <><ChessPieceIcon type="k" color="w" size={12} /> WHITE (SELL)</>}</span>
                       </span>
-                      <span className="text-[10px] text-muted-foreground">{row.chessPiece} {row.archetype}</span>
+                      <span className="text-[10px] text-muted-foreground inline-flex items-center gap-1"><ChessPieceIcon type={row.chessPiece} color="b" size={11} /> {row.archetype}</span>
                     </div>
                     {row.archetypeStory && (
                       <p className="text-[10px] text-muted-foreground italic border-l-2 border-border pl-2">
@@ -495,11 +496,11 @@ const MarketFlowVisualizer: React.FC = () => {
           <div className="flex items-center gap-4 text-[10px] text-muted-foreground font-mono">
             <div className="flex items-center gap-1.5">
               <div className="w-3 h-3 rounded-sm bg-emerald-900 border border-emerald-700/50" />
-              <span>♚ BLACK = BUY</span>
+              <span className="inline-flex items-center gap-1"><ChessPieceIcon type="k" color="b" size={11} /> BLACK = BUY</span>
             </div>
             <div className="flex items-center gap-1.5">
               <div className="w-3 h-3 rounded-sm bg-slate-100 border border-slate-300/50" />
-              <span>♔ WHITE = SELL</span>
+              <span className="inline-flex items-center gap-1"><ChessPieceIcon type="k" color="w" size={11} /> WHITE = SELL</span>
             </div>
             <div className="flex items-center gap-1.5">
               <div className="w-3 h-3 rounded-sm bg-muted" />
@@ -511,7 +512,7 @@ const MarketFlowVisualizer: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
-            <span>♟ Retail → ♜ Bank → ♛ Institution → ♚ Central Bank</span>
+            <span className="inline-flex items-center gap-1"><ChessPieceIcon type="p" color="b" size={11} /> Retail → <ChessPieceIcon type="r" color="b" size={11} /> Bank → <ChessPieceIcon type="q" color="b" size={11} /> Institution → <ChessPieceIcon type="k" color="b" size={11} /> Central Bank</span>
           </div>
         </div>
       </div>

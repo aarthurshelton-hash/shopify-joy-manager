@@ -9,6 +9,7 @@ import {
 import { colorPalettes, PaletteId } from '@/lib/chess/pieceColors';
 import { validateVisualizationTitle, validatePgnData } from '@/lib/validations/visualizationSchemas';
 import { moderateText } from '@/lib/moderation/contentModeration';
+import { classifyGameArchetype, buildColorWheelSnapshot, generateArchetypePoetry } from '@/lib/chess/archetypeTemplates';
 
 export interface VisualizationState {
   paletteId?: string;
@@ -311,6 +312,28 @@ export async function saveVisualization(
       .from('visualizations')
       .getPublicUrl(filename);
     
+    // Archetypal sorting: classify + capture the colour-wheel pairing so it's never lost
+    let archetypeJson: Json = null;
+    try {
+      const classification = classifyGameArchetype(simulation);
+      if (classification) {
+        const poetry = generateArchetypePoetry(classification, pgn || simulation.gameData.pgn || '');
+        archetypeJson = {
+          archetype: classification.archetype,
+          archetypeName: classification.archetypeName,
+          family: classification.template.family,
+          mood: classification.template.mood,
+          intensity: classification.intensity,
+          fingerprint: classification.fingerprint,
+          quadrantProfile: classification.quadrantProfile as unknown as Json,
+          colorWheel: buildColorWheelSnapshot(classification) as unknown as Json,
+          poetry: { poem: poetry.poem, style: poetry.style } as unknown as Json,
+        };
+      }
+    } catch (e) {
+      console.warn('[VisualizationStorage] Archetype capture skipped:', e);
+    }
+
     // Prepare game_data as Json type - INCLUDE FULL BOARD DATA for reconstruction
     const gameDataJson: Json = {
       white: simulation.gameData.white,
@@ -325,6 +348,8 @@ export async function saveVisualization(
       totalMoves: simulation.totalMoves,
       // Include visualization state with palette linking for duplicate detection and inheritance
       visualizationState: stateWithLink as unknown as Json,
+      // Archetypal sorting + colour-wheel data (accumulating dataset)
+      archetypeTemplate: archetypeJson,
     };
     
     // Save visualization record to database

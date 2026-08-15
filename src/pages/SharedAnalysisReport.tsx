@@ -319,7 +319,7 @@ export default function SharedAnalysisReport() {
               Analyzed with En Pensent™ Universal Pattern Recognition Engine
             </p>
             <div className="flex flex-wrap gap-4 justify-center">
-              <Link to="/academic-paper">
+              <Link to="/whitepaper">
                 <Button variant="outline" size="sm" className="gap-2">
                   <ExternalLink className="h-4 w-4" />
                   Read the Paper
