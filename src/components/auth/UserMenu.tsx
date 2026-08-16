@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
-import { User, LogOut, Palette, Settings, Crown, CreditCard, Image, Gamepad2, BarChart3, History, Paintbrush, Shield, ShieldCheck, Wrench, Database, Wallet, Banknote, Scale, Gift, LayoutDashboard, BookOpen, ImageIcon, IdCard, LineChart, Zap, FileText, Code, Presentation, Sparkles } from 'lucide-react';
+import { User, LogOut, Settings, Crown, CreditCard, Image, BarChart3, Wrench, Database, Wallet, Banknote, Scale, Gift, LayoutDashboard, BookOpen, ImageIcon, IdCard, LineChart, Zap, FileText, Code, Presentation, Sparkles, Shield } from 'lucide-react';
 import AuthModal from './AuthModal';
 import MFASetup from './MFASetup';
 import PremiumBadge from '@/components/premium/PremiumBadge';
@@ -204,36 +204,6 @@ const UserMenu: React.FC = () => {
             </>
           )}
           
-          <DropdownMenuItem 
-            onClick={() => navigate('/creative-mode')}
-            className="gap-2 cursor-pointer"
-          >
-            <Paintbrush className="h-4 w-4" />
-            Creative Mode
-            {!isPremium && <Crown className="h-3 w-3 text-primary ml-auto" />}
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          
-          <DropdownMenuLabel className="text-xs text-muted-foreground uppercase tracking-wider">
-            Studio
-          </DropdownMenuLabel>
-          <DropdownMenuItem 
-            onClick={() => navigate('/my-palettes')}
-            className="gap-2 cursor-pointer"
-          >
-            <Palette className="h-4 w-4" />
-            My Palettes
-          </DropdownMenuItem>
-          
-          <DropdownMenuItem 
-            onClick={() => navigate('/my-vision')}
-            className="gap-2 cursor-pointer"
-          >
-            <Image className="h-4 w-4" />
-            My Vision Gallery
-            {!isPremium && <Crown className="h-3 w-3 text-primary ml-auto" />}
-          </DropdownMenuItem>
-          
           {isAdmin && (
             <>
               <DropdownMenuItem 
@@ -253,6 +223,15 @@ const UserMenu: React.FC = () => {
               </DropdownMenuItem>
             </>
           )}
+          
+          <DropdownMenuItem 
+            onClick={() => navigate('/my-vision')}
+            className="gap-2 cursor-pointer"
+          >
+            <Image className="h-4 w-4" />
+            My Vision Gallery
+            {!isPremium && <Crown className="h-3 w-3 text-primary ml-auto" />}
+          </DropdownMenuItem>
           
           
           {isAdmin && (
@@ -441,19 +420,6 @@ const UserMenu: React.FC = () => {
               Manage Subscription
             </DropdownMenuItem>
           )}
-          
-          <DropdownMenuItem 
-            onClick={() => setShowMFASetup(true)}
-            className="gap-2 cursor-pointer"
-          >
-            {mfaStatus.enabled ? (
-              <ShieldCheck className="h-4 w-4 text-green-500" />
-            ) : (
-              <Shield className="h-4 w-4" />
-            )}
-            Security Settings
-            {!isPremium && <Crown className="h-3 w-3 text-primary ml-auto" />}
-          </DropdownMenuItem>
           
           <DropdownMenuItem 
             onClick={() => navigate('/account')}

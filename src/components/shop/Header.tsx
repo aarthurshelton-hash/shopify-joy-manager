@@ -9,6 +9,7 @@ import {
   SheetContent,
   SheetTrigger,
 } from '@/components/ui/sheet';
+import { VisionScanner } from '@/components/scanner/VisionScanner';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 
 const mobileLinks = [
@@ -22,6 +23,7 @@ const mobileLinks = [
 
 export const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -29,8 +31,12 @@ export const Header = () => {
     if (location.pathname === '/') {
       e.preventDefault();
       window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      e.preventDefault();
+      navigate('/');
+      window.scrollTo({ top: 0 });
     }
-  }, [location.pathname]);
+  }, [location.pathname, navigate]);
 
   const handleHashNav = (to: string) => {
     if (to.includes('#')) {
@@ -83,15 +89,16 @@ export const Header = () => {
             <Sparkles className="h-3.5 w-3.5" />
             Discover
           </Link>
-          <Link
-            to="/vision-scanner"
+          <button
+            onClick={() => setScannerOpen(true)}
             className="hidden sm:inline-flex text-xs font-medium text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wider items-center gap-1.5"
           >
             <Camera className="h-3.5 w-3.5" />
             Scanner
-          </Link>
+          </button>
           <UserMenu />
           <CartDrawer />
+          <VisionScanner isOpen={scannerOpen} onClose={() => setScannerOpen(false)} />
           
           {/* Mobile menu */}
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
@@ -103,13 +110,18 @@ export const Header = () => {
             </SheetTrigger>
             <SheetContent side="right" className="w-72 bg-background border-border">
               <div className="flex flex-col gap-2 mt-6">
-                {mobileLinks.map((link) => (
+                {mobileLinks.map((link) => {
+                  const isScanner = link.to === '/vision-scanner';
+                  return (
                   <Link
                     key={link.to}
                     to={link.to}
                     onClick={(e) => {
                       setMobileMenuOpen(false);
-                      if (link.to.includes('#')) {
+                      if (isScanner) {
+                        e.preventDefault();
+                        setScannerOpen(true);
+                      } else if (link.to.includes('#')) {
                         e.preventDefault();
                         handleHashNav(link.to);
                       }
@@ -119,7 +131,8 @@ export const Header = () => {
                     {link.icon && <link.icon className="h-4 w-4" />}
                     {link.label}
                   </Link>
-                ))}
+                  );
+                })}
               </div>
             </SheetContent>
           </Sheet>

@@ -48,6 +48,7 @@ const ChessLoadingAnimation = lazy(() => import('@/components/chess/ChessLoading
 const HeroVisionDemo = lazy(() => import('@/components/homepage/HeroVisionDemo'));
 const PaletteSelector = lazy(() => import('@/components/chess/PaletteSelector'));
 const AuthModal = lazy(() => import('@/components/auth/AuthModal'));
+const PrintGallery = lazy(() => import('@/components/homepage/PrintGallery'));
 const ChessParticles = lazy(() => import('@/components/chess/ChessParticles'));
 
 const Index = () => {
@@ -123,8 +124,9 @@ const Index = () => {
     // Clear any stale active vision
     clearActiveVision();
     
-    // If there's no stored simulation to restore, ensure local state is clean
-    if (!storedSimulation) {
+    // If there's no stored simulation to restore, or it's not from an order return,
+    // ensure local state is clean so the homepage renders fresh
+    if (!storedSimulation || !returningFromOrder) {
       setSimulation(null);
       setCurrentPgn('');
       setGameTitle('');
@@ -136,9 +138,9 @@ const Index = () => {
     }
   }, []); // Run once on mount — component remounts when navigating to / from another page
   
-  // Restore visualization from session storage on mount (for returning from order page)
+  // Restore visualization from session storage on mount (for returning from order page ONLY)
   useEffect(() => {
-    if (!simulation && storedSimulation && storedPgn) {
+    if (!simulation && storedSimulation && storedPgn && returningFromOrder) {
       setSimulation(storedSimulation);
       setCurrentPgn(storedPgn);
       setGameTitle(storedTitle);
@@ -152,81 +154,28 @@ const Index = () => {
         setDarkMode(storedTimelineState.darkMode);
       }
       
-      // Show toast if returning from order page with move info
-      if (returningFromOrder) {
-        const titleText = storedTimelineState?.title || storedTitle || 'Visualization';
-        const moveInfo = storedTimelineState 
-          ? `Move ${storedTimelineState.currentMove} of ${storedTimelineState.totalMoves || storedSimulation.totalMoves || 0}`
-          : 'Your exact board state has been preserved';
-        toast.success(`${titleText} restored!`, {
-          description: moveInfo,
-          icon: <Sparkles className="w-4 h-4" />,
-        });
-        setReturningFromOrder(false);
-      }
+      // Show toast for returning from order page
+      const titleText = storedTimelineState?.title || storedTitle || 'Visualization';
+      const moveInfo = storedTimelineState 
+        ? `Move ${storedTimelineState.currentMove} of ${storedTimelineState.totalMoves || storedSimulation.totalMoves || 0}`
+        : 'Your exact board state has been preserved';
+      toast.success(`${titleText} restored!`, {
+        description: moveInfo,
+        icon: <Sparkles className="w-4 h-4" />,
+      });
+      setReturningFromOrder(false);
       
       // Clear the stored simulation after restoring to prevent stale data
+      clearSimulation();
+    } else if (storedSimulation && !returningFromOrder) {
+      // Stale simulation from navigating to /g/{hash} — clear it so homepage renders fresh
       clearSimulation();
     }
   }, []);
   
-  // Refs for parallax sections (used for scroll-based CSS transforms)
+  // Refs for parallax sections (kept for compatibility)
   const heroRef = useRef<HTMLDivElement>(null);
   const heroImageRef = useRef<HTMLDivElement>(null);
-  
-  // Use refs for parallax to avoid state updates (prevents jitter)
-  // Disable parallax on mobile for better performance
-  React.useEffect(() => {
-    let rafId: number;
-    let ticking = false;
-    
-    // Check if mobile (< 768px) - disable parallax for performance
-    const isMobile = () => window.innerWidth < 768;
-    
-    const updateParallax = () => {
-      const scrollY = window.scrollY;
-      const mobile = isMobile();
-      
-      // Hero image parallax - reduced on mobile, off completely for very small screens
-      if (heroImageRef.current) {
-        if (mobile) {
-          // Static position on mobile - no parallax
-          heroImageRef.current.style.transform = 'translate3d(0, 0, 0) scale(1.02)';
-        } else {
-          const offset = scrollY * 0.08;
-          heroImageRef.current.style.transform = `translate3d(0, ${offset}px, 0) scale(1.03)`;
-        }
-      }
-      
-      ticking = false;
-    };
-    
-    const onScroll = () => {
-      // Skip scroll handler entirely on mobile for best performance
-      if (isMobile()) {
-        return;
-      }
-      if (!ticking) {
-        rafId = requestAnimationFrame(updateParallax);
-        ticking = true;
-      }
-    };
-    
-    // Handle resize to update mobile state
-    const onResize = () => {
-      updateParallax();
-    };
-    
-    window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onResize, { passive: true });
-    updateParallax(); // Initial position
-    
-    return () => {
-      window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onResize);
-      cancelAnimationFrame(rafId);
-    };
-  }, []);
   
   // Scroll animations
   const [heroContentRef, heroContentVisible] = useScrollAnimation<HTMLDivElement>();
@@ -359,6 +308,7 @@ const Index = () => {
     setSavedShareId(null);
     setHasUnsavedChanges(false);
     setShowReturnDialog(false);
+    clearSimulation();
   };
   
   const handleShareIdCreated = (shareId: string) => {
@@ -407,16 +357,15 @@ const Index = () => {
           <>
             {/* Hero Section with Background Art */}
             <section ref={heroRef} className="relative overflow-hidden">
-              {/* Background Image with Parallax - ref-based transform */}
+              {/* Background Image */}
               <div 
                 ref={heroImageRef}
-                className="absolute inset-0 bg-cover bg-center opacity-40 will-change-transform"
+                className="absolute inset-0 bg-cover bg-center"
                 style={{ 
                   backgroundImage: `url(${heroChessArt})`,
-                  transform: 'translate3d(0, 0, 0) scale(1.03)',
-                  backfaceVisibility: 'hidden',
                   imageRendering: 'auto',
-                  filter: 'saturate(1.1) contrast(1.05)',
+                  filter: 'blur(0.5px) saturate(1.1) contrast(1.05)',
+                  opacity: 0.3,
                 }}
               />
               <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/60 to-background pointer-events-none" />
@@ -445,14 +394,13 @@ const Index = () => {
                   <h2 className="text-3xl md:text-5xl lg:text-6xl font-royal font-bold leading-tight tracking-wide uppercase">
                     Every Game Tells<br />
                     <span className="text-gold-gradient">
-                      A Story We Can See
+                      A Story
                     </span>
                   </h2>
                   
                   {/* Subheadline */}
                   <p className="text-muted-foreground text-base md:text-xl max-w-2xl mx-auto leading-relaxed font-serif px-2">
-                    Watch any chess game paint itself into a living fingerprint — then read the strategic
-                    pattern that predicts the outcome, faster than Stockfish can calculate it.
+                    Watch any chess game paint itself into a living fingerprint.
                   </p>
                 </div>
 
@@ -879,6 +827,12 @@ const Index = () => {
       </main>
 
       {simulation && <OnboardingNudge active={!!simulation} />}
+
+      {!simulation && !isLoading && (
+        <Suspense fallback={null}>
+          <PrintGallery />
+        </Suspense>
+      )}
 
       <Footer />
       

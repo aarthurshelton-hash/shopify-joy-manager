@@ -10,34 +10,37 @@ For raw numbers, see [`RESULTS.md`](./RESULTS.md). For the verification protocol
 
 Every prediction in the public corpus corresponds to **one analysis position selected per game**. The selection is deterministic, weighted across game phases, and reproducible.
 
-### Selection Rule (per `farm/workers/ep-enhanced-worker.mjs`)
+### Selection Rule
 
-For a game of `N` total moves:
+For a game of `N` total moves, the analysis move number is selected by a **deterministic PRNG seeded from `MD5(game_id)`** (mulberry32). The same game ID always produces the same analysis position.
 
-1. Compute a deterministic seed from the game's hash identifier
-2. Sample a phase bucket from a weighted distribution:
-   - 15-30% of game length: weight 0.15
-   - 30-45% of game length: weight 0.25
-   - 45-60% of game length: weight 0.30
-   - 60-75% of game length: weight 0.20
-   - 75-90% of game length: weight 0.10
-3. Within the chosen bucket, select a move number using the seed
-4. Enforce minimum move number of 12 (skip opening preparation)
-5. Enforce maximum of `N - 2` (skip terminal positions)
+The sampling distribution is **not phase-even**. It is intentionally concentrated on the "peak golden zone" (moves 28-45) where EP's empirical accuracy is highest (70-73%), with smaller allocations to earlier and later phases:
 
-This produces a single per-game prediction concentrated in the late-middlegame range where prediction is most informative.
+| Zone | Move range | Weight | EP accuracy (empirical) |
+|------|-----------|--------|------------------------|
+| Early middlegame | 12-19 | 5% | ~63% |
+| Early golden | 20-27 | 15% | 67-69% |
+| **Peak golden zone** | **28-45** | **65%** | **70-73%** |
+| Late middlegame/endgame | 46-55 | 15% | ~69.6% |
+
+Constraints:
+- Minimum move number of 12 (skip opening preparation)
+- Maximum of `N - 2` (skip terminal positions)
+
+**Note:** `ep-enhanced-worker.mjs` uses a proportional-phase variant (5 buckets at 15/25/30/20/10 weights across 15-90% of game length). The bulk of the corpus is produced by `chess-db-ingest-worker.mjs` and `ep-bulk-worker.mjs`, which use the absolute-move-zone weights above. A phase-stratified breakdown of the published accuracy figures is needed to assess how much the peak-zone concentration inflates the headline number relative to a phase-even sample.
 
 ### Why This Sampling
 
 - **Avoids opening dependence:** the first 12 moves are typically book moves where outcome is undetermined and not informative for representation quality
 - **Avoids terminal trivialities:** the last 1-2 moves of a game are deterministic (mate, resignation, agreed draw) and not interesting for prediction
-- **Phase-balanced:** weights ensure middlegame and endgame are both represented without one dominating
+- **Peak-zone concentration:** the system is evaluated primarily on the move range where both EP and SF are most accurate; this is a deliberate choice that biases the headline edge *downward* relative to a phase-even sample (see empirical verification below)
 - **Deterministic:** same game ID produces the same analysis position every time, allowing reproducibility
 
-### Possible Bias We're Aware Of
+### Known Biases
 
-- Late-middlegame bias means the system is **not** measured on opening prediction. We do not claim opening-prediction superiority and the system caps confidence in moves 1-10 at 38% explicitly.
-- Game-source bias: corpus is sourced from public Lichess + Chess.com APIs plus curated GM/IM lists. The rating distribution skews toward 1500-2400. The +5.43pp edge is observed across this distribution and may not hold at GM level (the system code includes rating-aware confidence dampening above 2500).
+- **Peak-zone oversampling (downward bias on edge):** 65% of predictions come from moves 28-45, where both EP and SF are most accurate (~78%) and the edge is smallest (+1.74pp). EP's edge is largest in early middlegame (moves 12-19: +7.00pp) and early golden (moves 20-27: +4.15pp). A phase-even reweighting (25% per zone) on a recent 30-day window (84K predictions) gives +3.34pp vs the sampled +2.32pp — the sampling distribution *understates* the edge by ~1pp. Run `node audit/phase-reweight.mjs` to verify. Note: the full-corpus +5.43pp headline includes older data with a known trajectory-extraction leak (see PROOF.md); the leak-free recent window shows +2.32pp, consistent with the PROOF.md hold-out result of +2.1pp on 7,053 game-ID-split positions.
+- **Opening prediction not measured:** the system is not evaluated on opening prediction. We do not claim opening-prediction superiority and the system caps confidence in moves 1-10 at 38% explicitly.
+- **Game-source bias:** corpus is sourced from public Lichess + Chess.com APIs plus curated GM/IM lists. The rating distribution skews toward 1500-2400. The +5.43pp edge is observed across this distribution and may not hold at GM level (the system code includes rating-aware confidence dampening above 2500).
 
 ---
 

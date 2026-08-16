@@ -88,12 +88,19 @@ const OrderPrint: React.FC = () => {
     return null;
   }, [storeOrderData, navState]);
 
-  // Redirect if no order data
+  // Redirect if no order data or stale data (simulation lost on refresh)
   useEffect(() => {
-    if (!orderData) {
+    // orderData may exist from sessionStorage but simulation is stripped on persist
+    // If there's no simulation and no imagePath, the preview can't render — redirect
+    const hasSimulation = !!(storeOrderData?.simulation);
+    const hasImagePath = !!(storeOrderData?.imagePath);
+    const hasNavImage = !!(navState?.imageUrl);
+    
+    if (!orderData || (!hasSimulation && !hasImagePath && !hasNavImage)) {
+      clearOrderData();
       navigate('/', { replace: true });
     }
-  }, [orderData, navigate]);
+  }, [orderData, navigate, storeOrderData, clearOrderData]);
 
   // Apply captured state filtering to the display board
   const displayBoard = useMemo(() => {
@@ -259,6 +266,7 @@ const OrderPrint: React.FC = () => {
           <Button 
             variant="ghost" 
             onClick={() => {
+              clearOrderData();
               if (orderData.returnPath) {
                 navigate(orderData.returnPath);
               } else {

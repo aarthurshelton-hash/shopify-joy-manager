@@ -77,6 +77,21 @@ async function fetchChess960Stats() {
   return data;
 }
 
+async function fetchPhaseStats() {
+  const { data, error } = await supabase
+    .from('audit_phase_stats')
+    .select('*')
+    .order('phase_zone');
+
+  if (error) {
+    if (error.code === 'PGRST205' || error.message?.includes('does not exist')) {
+      return null;
+    }
+    throw error;
+  }
+  return data;
+}
+
 async function fetchSampleRow() {
   const { data, error } = await supabase
     .from('predictions_public')
@@ -129,6 +144,18 @@ async function main() {
     console.log('------------------------------------------------------------------------');
     for (const v of variantStats) {
       console.log(`  ${v.variant.padEnd(12)} N=${fmt(v.total_predictions).padStart(10)}  EP ${pct(parseFloat(v.ep_accuracy_pct)).padStart(7)}  SF18 ${pct(parseFloat(v.sf_accuracy_pct)).padStart(7)}  Edge +${parseFloat(v.ep_edge_pp).toFixed(2)}pp`);
+    }
+    console.log('');
+  }
+
+  const phaseStats = await fetchPhaseStats();
+  if (phaseStats && phaseStats.length > 0) {
+    console.log('------------------------------------------------------------------------');
+    console.log('  STRATIFIED — By Move-Number Phase Zone');
+    console.log('  (shows how peak-zone sampling affects the headline edge)');
+    console.log('------------------------------------------------------------------------');
+    for (const p of phaseStats) {
+      console.log(`  ${p.phase_zone.padEnd(28)} N=${fmt(p.total_predictions).padStart(10)}  EP ${pct(parseFloat(p.ep_accuracy_pct)).padStart(7)}  SF18 ${pct(parseFloat(p.sf_accuracy_pct)).padStart(7)}  Edge +${parseFloat(p.ep_edge_pp).toFixed(2)}pp`);
     }
     console.log('');
   }

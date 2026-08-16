@@ -481,25 +481,6 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit, onFenSubmit }) =
       {/* Import from Lichess / Chess.com */}
       <GameImporter onSelectGame={(importedPgn, title) => onPgnSubmit(cleanPgn(importedPgn), title)} />
 
-      {/* Vision Scanner — camera/upload photo of a game or visualization */}
-      <button
-        onClick={() => navigate('/scanner')}
-        className="w-full group relative overflow-hidden rounded-xl border border-primary/30 bg-gradient-to-br from-primary/10 via-card/80 to-card/80 hover:border-primary/50 transition-all duration-200 p-4 sm:p-5 flex items-center gap-4 text-left"
-      >
-        <div className="flex-shrink-0 p-3 rounded-xl bg-primary/10 border border-primary/20 group-hover:scale-105 transition-transform">
-          <Camera className="h-6 w-6 text-primary" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <h3 className="font-display text-sm sm:text-base font-semibold text-primary">
-            Vision Scanner
-          </h3>
-          <p className="text-xs sm:text-sm text-muted-foreground font-serif mt-0.5">
-            Snap or upload a photo of any chess game or visualization to instantly identify it
-          </p>
-        </div>
-        <ArrowRight className="h-5 w-5 text-primary/50 group-hover:translate-x-1 transition-transform flex-shrink-0" />
-      </button>
-
       {/* Batch PGN upload — Analyst pro tier */}
       <BatchPgnUploader onPgnSubmit={onPgnSubmit} />
 

@@ -5,7 +5,6 @@ import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { TimelineProvider, useTimeline } from '@/contexts/TimelineContext';
 import { VisionBoard } from '@/components/chess/VisionBoard';
-import { ShowPiecesToggle } from '@/components/chess/ShowPiecesToggle';
 import { simulateGame } from '@/lib/chess/gameSimulator';
 import { famousGames } from '@/lib/chess/famousGames';
 import { setActivePalette, colorPalettes, PaletteId } from '@/lib/chess/pieceColors';
@@ -127,8 +126,6 @@ export const HeroVisionDemo: React.FC = () => {
   const { setCurrentSimulation } = useSessionStore();
   const [gameIndex, setGameIndex] = useState(0);
   const [paletteId, setPaletteId] = useState<PaletteId>(DEMO_PALETTES[0]?.id ?? 'hotCold');
-  const [showPieces, setShowPieces] = useState(true);
-  const [pieceOpacity, setPieceOpacity] = useState(0.55);
   const [renderKey, setRenderKey] = useState(0);
   const boardSize = useBoardSize();
 
@@ -189,8 +186,8 @@ export const HeroVisionDemo: React.FC = () => {
                 gameData={simulation.gameData}
                 totalMoves={simulation.totalMoves}
                 size={boardSize}
-                showPieces={showPieces}
-                pieceOpacity={pieceOpacity}
+                showPieces={true}
+                pieceOpacity={1}
                 pgn={game.pgn}
                 title={game.title}
               />
@@ -205,7 +202,7 @@ export const HeroVisionDemo: React.FC = () => {
           </div>
         </TimelineProvider>
 
-        {/* Live controls: palette swap + show pieces */}
+        {/* Live controls: palette swap */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full">
           <div className="flex items-center gap-2">
             <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-display">
@@ -232,14 +229,6 @@ export const HeroVisionDemo: React.FC = () => {
               ))}
             </div>
           </div>
-
-          <ShowPiecesToggle
-            showPieces={showPieces}
-            pieceOpacity={pieceOpacity}
-            onToggle={setShowPieces}
-            onOpacityChange={setPieceOpacity}
-            compact
-          />
         </div>
 
         {/* Make your own CTA */}

@@ -684,7 +684,7 @@ const GameView = () => {
   }, [effectivePgn, activePaletteId, primaryVision?.title]);
 
   // Handle exports
-  const handleExport = useCallback(async (type: 'hd' | 'gif' | 'print' | 'preview', exportState?: ExportState) => {
+  const handleExport = useCallback(async (type: 'hd' | 'gif' | 'print' | 'preview' | 'gamecard', exportState?: ExportState) => {
     // Support both saved visions and session-based games
     const hasVision = primaryVision || isFromSession;
     if (!hasVision) return;
@@ -792,6 +792,27 @@ const GameView = () => {
         );
       } else {
         toast.error('Unable to capture visualization');
+      }
+      return;
+    }
+
+    if (type === 'gamecard') {
+      try {
+        const { generateGamecardPdf, downloadBlob, sanitizeFilename } = await import('@/lib/chess/gamecardGenerator');
+        const exportSimulation = {
+          board: filteredBoard,
+          gameData,
+          totalMoves,
+        };
+        const blob = await generateGamecardPdf(exportSimulation, {
+          darkMode: exportState?.darkMode || false,
+          pgn: effectivePgn || undefined,
+        });
+        downloadBlob(blob, `gamecard_${sanitizeFilename(visionTitle)}.pdf`);
+        toast.success('Game card downloaded!', { description: 'Check your downloads folder' });
+      } catch (err) {
+        console.error('Gamecard generation failed:', err);
+        toast.error('Game card generation failed', { description: 'Please try again.' });
       }
       return;
     }
