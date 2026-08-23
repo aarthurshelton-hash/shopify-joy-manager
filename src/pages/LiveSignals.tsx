@@ -41,6 +41,7 @@ const SYMBOLS = [
   { sym: 'GC=F', name: 'Gold',          sector: 'Commodities',   emoji: '🥇', group: 'commodities' },
   { sym: 'SI=F', name: 'Silver',        sector: 'Commodities',   emoji: '🥈', group: 'commodities' },
   { sym: 'CL=F', name: 'Crude Oil',     sector: 'Energy',        emoji: '🛢', group: 'commodities' },
+  { sym: 'HG=F', name: 'Copper',        sector: 'Commodities',   emoji: '🟤', group: 'commodities' },
   { sym: 'GLD',  name: 'Gold ETF',      sector: 'Commodities',   emoji: '💰', group: 'commodities' },
   { sym: 'USO',  name: 'Oil ETF',       sector: 'Energy',        emoji: '⛽', group: 'commodities' },
   // Sector ETFs
@@ -48,6 +49,13 @@ const SYMBOLS = [
   { sym: 'XLF',  name: 'Financials',    sector: 'Sector ETF',    emoji: '🏦', group: 'sectors' },
   { sym: 'XLE',  name: 'Energy Sector', sector: 'Sector ETF',    emoji: '⚡', group: 'sectors' },
   { sym: 'XLV',  name: 'Healthcare',    sector: 'Sector ETF',    emoji: '⚕️', group: 'sectors' },
+  // Asian Indices (24/7 — open Sunday evening UTC)
+  { sym: '^N225', name: 'Nikkei 225',    sector: 'Asian Index',   emoji: '🇯🇵', group: 'asia' },
+  { sym: '^KS11', name: 'KOSPI',         sector: 'Asian Index',   emoji: '🇰🇷', group: 'asia' },
+  { sym: '^HSI',  name: 'Hang Seng',     sector: 'Asian Index',   emoji: '🇭🇰', group: 'asia' },
+  { sym: '^TWII', name: 'TAIEX',         sector: 'Asian Index',   emoji: '🇹🇼', group: 'asia' },
+  { sym: '^BSESN',name: 'Sensex',        sector: 'Asian Index',   emoji: '🇮🇳', group: 'asia' },
+  { sym: '^AXJO', name: 'ASX 200',       sector: 'Asian Index',   emoji: '🇦🇺', group: 'asia' },
   // International ADRs
   { sym: 'TSM',  name: 'TSMC ADR',      sector: 'International', emoji: '🇹🇼', group: 'intl' },
   { sym: 'ASML', name: 'ASML ADR',      sector: 'International', emoji: '🇳🇱', group: 'intl' },
@@ -55,14 +63,15 @@ const SYMBOLS = [
 ];
 
 const GROUP_LABELS: Record<string, string> = {
-  indices: 'Indices',
+  asia: 'Asian Markets (24/7)',
+  indices: 'US Indices',
   tech: 'Technology',
   commodities: 'Commodities & Energy',
   sectors: 'Sector ETFs',
   intl: 'International (ADRs)',
 };
 
-const GROUP_ORDER = ['indices', 'tech', 'commodities', 'sectors', 'intl'];
+const GROUP_ORDER = ['asia', 'indices', 'tech', 'commodities', 'sectors', 'intl'];
 
 // ── Market Regime Banner ──────────────────────────────────────────────────────
 

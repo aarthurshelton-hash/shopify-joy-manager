@@ -13,7 +13,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp, TrendingDown, Minus, Clock, Activity } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Clock, Activity, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -151,10 +151,31 @@ const ARCHETYPE_NAMES: Record<string, string> = {
   positional_squeeze: 'Positional Squeeze',
 };
 
+// ── Fetch live price from Yahoo Finance (CORS-friendly proxy) ─────────────────
+async function fetchLivePrice(symbol: string): Promise<{ price: number; change: number } | null> {
+  try {
+    const yahooSymbol = symbol.replace('=', '=F');
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1d&range=2d`;
+    const r = await fetch(url);
+    const d = await r.json();
+    const result = d?.chart?.result?.[0];
+    if (!result) return null;
+    const quotes = result.indicators?.quote?.[0];
+    const closes = quotes?.close?.filter((c: number) => c != null) || [];
+    if (closes.length < 2) return { price: closes[0] || 0, change: 0 };
+    const price = closes[closes.length - 1];
+    const prev = closes[closes.length - 2];
+    return { price, change: ((price - prev) / prev) * 100 };
+  } catch {
+    return null;
+  }
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export const SignalCard: React.FC<SignalCardProps> = ({ symbol, name, sector, emoji }) => {
   const [pred, setPred] = useState<PredictionData | null>(null);
+  const [livePrice, setLivePrice] = useState<{ price: number; change: number } | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
@@ -165,6 +186,9 @@ export const SignalCard: React.FC<SignalCardProps> = ({ symbol, name, sector, em
         .eq('symbol', symbol)
         .order('created_at', { ascending: false })
         .limit(1);
+
+      // Also fetch live price in parallel (always — even if no prediction)
+      fetchLivePrice(symbol).then(p => { if (p) setLivePrice(p); });
 
       if (error || !data || data.length === 0) {
         setLoading(false);
@@ -212,19 +236,41 @@ export const SignalCard: React.FC<SignalCardProps> = ({ symbol, name, sector, em
     );
   }
 
+  // Compute staleness
+  const ageHours = pred ? (Date.now() - new Date(pred.createdAt).getTime()) / 3600000 : Infinity;
+  const isStale = ageHours > 4;
+  const ageLabel = ageHours < 1 ? 'just now' : ageHours < 24 ? `${Math.floor(ageHours)}h ago` : `${Math.floor(ageHours / 24)}d ago`;
+
   if (!pred) {
+    // No prediction in DB — show live price + "awaiting signal" state
     return (
-      <div className="rounded-xl border border-border/40 bg-card/50 p-6">
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-2xl">{emoji}</span>
-          <div>
-            <div className="font-bold text-lg">{symbol}</div>
-            <div className="text-xs text-muted-foreground">{name}</div>
+      <div className="rounded-xl border border-border/40 bg-gradient-to-b from-card/80 to-card/40 backdrop-blur-sm overflow-hidden">
+        <div className="flex items-center justify-between p-4 border-b border-border/20">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">{emoji}</span>
+            <div>
+              <div className="font-bold text-lg leading-tight">{symbol}</div>
+              <div className="text-xs text-muted-foreground">{name}</div>
+            </div>
+          </div>
+          {livePrice && (
+            <div className="text-right">
+              <div className="font-semibold text-sm">${livePrice.price.toFixed(2)}</div>
+              <div className={`text-xs ${livePrice.change >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {livePrice.change >= 0 ? '+' : ''}{livePrice.change.toFixed(2)}%
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="p-4">
+          <div className="text-sm text-muted-foreground py-6 text-center">
+            <Clock className="w-5 h-5 mx-auto mb-2 opacity-40" />
+            Awaiting next prediction cycle
           </div>
         </div>
-        <div className="text-sm text-muted-foreground py-8 text-center">
-          <Clock className="w-5 h-5 mx-auto mb-2 opacity-50" />
-          Markets closed — no live signal
+        <div className="flex items-center justify-between px-4 py-2 border-t border-border/20 text-[10px] text-muted-foreground">
+          <span>{sector}</span>
+          <span>{livePrice ? 'live price' : 'offline'}</span>
         </div>
       </div>
     );
@@ -341,9 +387,11 @@ export const SignalCard: React.FC<SignalCardProps> = ({ symbol, name, sector, em
       {/* Footer */}
       <div className="flex items-center justify-between px-4 py-2 border-t border-border/20 text-[10px] text-muted-foreground">
         <span>{sector}</span>
-        <span className="flex items-center gap-1">
+        <span className={`flex items-center gap-1 ${isStale ? 'text-amber-500/70' : ''}`}>
+          {isStale && <AlertCircle className="w-3 h-3" />}
           <Clock className="w-3 h-3" />
-          {ageMin < 1 ? 'just now' : ageMin < 60 ? `${ageMin}m ago` : `${Math.floor(ageMin / 60)}h ago`}
+          {ageLabel}
+          {isStale && ' · stale'}
         </span>
       </div>
     </motion.div>

@@ -49,8 +49,9 @@ FROM public.market_prediction_attempts
 WHERE
   prediction_metadata IS NOT NULL
   AND predicted_direction IS NOT NULL
-  -- Only predictions from the last 24 hours (keeps the view fast + relevant)
-  AND created_at >= (NOW() - INTERVAL '24 hours')
+  -- v38: 7-day window for 24/7 coverage (weekends + Asian market off-hours)
+  -- Ensures cards always have a signal to show, with staleness indicator on the frontend
+  AND created_at >= (NOW() - INTERVAL '7 days')
 ORDER BY symbol, created_at DESC;
 
 GRANT SELECT ON public.market_signals_public TO anon;
