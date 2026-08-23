@@ -192,6 +192,7 @@ export default {
         "shimmer": "shimmer 2s linear infinite",
         "pulse-gold": "pulse-gold 2s ease-in-out infinite",
         "fade-in": "fade-in 0.3s ease-out",
+        "spin-slow": "spin 3s linear infinite",
       },
       spacing: {
         "safe-bottom": "env(safe-area-inset-bottom)",

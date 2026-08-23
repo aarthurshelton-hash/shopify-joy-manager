@@ -78,6 +78,7 @@ const OptionsScalpingPage = lazy(() => import("./pages/OptionsScalpingPage"));
 const Showcase = lazy(() => import("./pages/Showcase"));
 const AdminSystemVitals = lazy(() => import("./pages/AdminSystemVitals"));
 const Benchmark = lazy(() => import("./pages/Benchmark"));
+const LiveSignals = lazy(() => import("./pages/LiveSignals"));
 const ProofCenter = lazy(() => import("./pages/ProofCenter"));
 const VsStockfish = lazy(() => import("./pages/VsStockfish"));
 const EPSystemDashboard = lazy(() => import("./pages/EPSystemDashboard"));
@@ -178,6 +179,7 @@ const App = () => (
               <Route path="/heatmap" element={<AdminRoute featureName="Market Heatmap"><Suspense fallback={<PageLoadingSkeleton />}><EnPensentHeatmap /></Suspense></AdminRoute>} />
               <Route path="/options" element={<AdminRoute featureName="Options Scalping"><Suspense fallback={<PageLoadingSkeleton />}><OptionsScalpingPage /></Suspense></AdminRoute>} />
               <Route path="/benchmark" element={<Suspense fallback={<PageLoadingSkeleton />}><Benchmark /></Suspense>} />
+              <Route path="/live-signals" element={<Suspense fallback={<PageLoadingSkeleton />}><LiveSignals /></Suspense>} />
               <Route path="/proof" element={<Suspense fallback={<PageLoadingSkeleton />}><ProofCenter /></Suspense>} />
               <Route path="/vs-stockfish" element={<Suspense fallback={<PageLoadingSkeleton />}><VsStockfish /></Suspense>} />
               <Route path="/ep-dashboard" element={<AdminRoute featureName="EP System Dashboard"><Suspense fallback={<PageLoadingSkeleton />}><EPSystemDashboard /></Suspense></AdminRoute>} />

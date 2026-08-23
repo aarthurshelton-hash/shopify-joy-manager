@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { CartDrawer } from './CartDrawer';
-import { Menu, Sparkles, Camera } from 'lucide-react';
+import { Menu, Sparkles, Camera, TrendingUp } from 'lucide-react';
 import UserMenu from '@/components/auth/UserMenu';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,6 +14,7 @@ import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 
 const mobileLinks = [
   { to: '/#make-your-own', label: 'Discover', icon: Sparkles },
+  { to: '/live-signals', label: 'Live Signals', icon: TrendingUp },
   { to: '/vision-scanner', label: 'Vision Scanner', icon: Camera },
   { to: '/marketplace', label: 'Marketplace', icon: Sparkles },
   { to: '/showcase', label: 'Showcase', icon: Sparkles },
