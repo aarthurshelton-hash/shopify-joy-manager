@@ -1,19 +1,21 @@
 /**
  * SignalCard — Live En Pensent market signal card
  *
- * Renders a victory-card-style signal for a single symbol with:
- * - Direction (CALL/PUT) with calibrated conviction
- * - 8×8 Universal Grid (market flow visualized as chess board)
- * - Archetype story + parable
- * - Key signal drivers (VIX, chess consensus, short volume, overnight sentiment)
- * - Auto-refreshes from Supabase
+ * ALWAYS shows a full gamecard — never an empty/awaiting state.
+ *
+ * Two data sources, priority order:
+ *   1. DB prediction (full v38 pipeline: chess consensus, VIX, short volume, etc.)
+ *   2. Real-time TA from Yahoo Finance candles (computed in-browser)
+ *
+ * Both paths produce the same full card: direction, conviction, 8×8 grid,
+ * archetype, drivers, and footer with staleness indicator.
  *
  * BLACK = BUY (bullish) | WHITE = SELL (bearish) — universal chess-market invariant.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp, TrendingDown, Minus, Clock, Activity, AlertCircle } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Clock, Activity, AlertCircle, Zap } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -41,6 +43,7 @@ interface PredictionData {
   price: number;
   createdAt: string;
   metadata: any;
+  source: 'db' | 'ta';
 }
 
 // ── Signal Columns (8 dimensions = the grid columns) ──────────────────────────
@@ -149,60 +152,285 @@ const ARCHETYPE_NAMES: Record<string, string> = {
   kingside_attack: 'Kingside Attack',
   central_domination: 'Central Domination',
   positional_squeeze: 'Positional Squeeze',
+  ta_momentum_bull: 'TA: Momentum Bull',
+  ta_momentum_bear: 'TA: Momentum Bear',
+  ta_mean_revert_bull: 'TA: Mean Revert Bull',
+  ta_mean_revert_bear: 'TA: Mean Revert Bear',
+  ta_compression_bull: 'TA: Compression Breakout ↑',
+  ta_compression_bear: 'TA: Compression Breakdown ↓',
+  ta_choppy: 'TA: Choppy / Range-Bound',
 };
 
-// ── Fetch live price from Yahoo Finance (CORS-friendly proxy) ─────────────────
-async function fetchLivePrice(symbol: string): Promise<{ price: number; change: number } | null> {
+// ── Yahoo Finance candle fetcher ──────────────────────────────────────────────
+
+interface CandleData {
+  closes: number[];
+  volumes: number[];
+  highs: number[];
+  lows: number[];
+  timestamps: number[];
+}
+
+async function fetchCandles(symbol: string): Promise<CandleData | null> {
   try {
     const yahooSymbol = symbol.replace('=', '=F');
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1d&range=2d`;
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1d&range=3mo`;
     const r = await fetch(url);
+    if (!r.ok) return null;
     const d = await r.json();
     const result = d?.chart?.result?.[0];
     if (!result) return null;
+    const timestamps = result.timestamp || [];
     const quotes = result.indicators?.quote?.[0];
-    const closes = quotes?.close?.filter((c: number) => c != null) || [];
-    if (closes.length < 2) return { price: closes[0] || 0, change: 0 };
-    const price = closes[closes.length - 1];
-    const prev = closes[closes.length - 2];
-    return { price, change: ((price - prev) / prev) * 100 };
+    if (!quotes) return null;
+    const closes: number[] = [];
+    const volumes: number[] = [];
+    const highs: number[] = [];
+    const lows: number[] = [];
+    for (let i = 0; i < timestamps.length; i++) {
+      const c = quotes.close?.[i];
+      if (c != null && c > 0) {
+        closes.push(c);
+        volumes.push(quotes.volume?.[i] || 0);
+        highs.push(quotes.high?.[i] || c);
+        lows.push(quotes.low?.[i] || c);
+      }
+    }
+    if (closes.length < 10) return null;
+    return { closes, volumes, highs, lows, timestamps };
   } catch {
     return null;
   }
+}
+
+// ── TA-based signal computation ───────────────────────────────────────────────
+// Computes direction, conviction, archetype, and synthetic metadata from candles.
+// This is the fallback when no DB prediction exists — ensures every card always
+// shows a full gamecard.
+
+interface TASignal {
+  direction: 'bullish' | 'bearish' | 'neutral';
+  confidence: number;
+  archetype: string;
+  price: number;
+  changePct: number;
+  metadata: any;
+}
+
+function computeTASignal(candles: CandleData): TASignal {
+  const { closes, volumes, highs, lows } = candles;
+  const n = closes.length;
+  const price = closes[n - 1];
+
+  // 1-day change
+  const prevClose = closes[n - 2] || closes[n - 3] || price;
+  const changePct = ((price - prevClose) / prevClose) * 100;
+
+  // SMA20 and SMA50
+  const sma = (arr: number[], period: number) => {
+    if (arr.length < period) return arr[arr.length - 1];
+    let sum = 0;
+    for (let i = arr.length - period; i < arr.length; i++) sum += arr[i];
+    return sum / period;
+  };
+  const sma20 = sma(closes, Math.min(20, n));
+  const sma50 = sma(closes, Math.min(50, n));
+
+  // RSI(14)
+  let gains = 0, losses = 0;
+  const rsiPeriod = Math.min(14, n - 1);
+  for (let i = n - rsiPeriod; i < n; i++) {
+    const diff = closes[i] - closes[i - 1];
+    if (diff > 0) gains += diff; else losses -= diff;
+  }
+  const avgGain = gains / rsiPeriod;
+  const avgLoss = losses / rsiPeriod;
+  const rs = avgLoss > 0 ? avgGain / avgLoss : 100;
+  const rsi = 100 - 100 / (1 + rs);
+
+  // Bollinger Band width (20-period)
+  const bbPeriod = Math.min(20, n);
+  const bbSlice = closes.slice(n - bbPeriod);
+  const bbMean = bbSlice.reduce((a, b) => a + b, 0) / bbPeriod;
+  const bbStd = Math.sqrt(bbSlice.reduce((a, b) => a + (b - bbMean) ** 2, 0) / bbPeriod);
+  const bbWidth = bbStd / bbMean;
+
+  // Volume flow (last 5 days: up days vs down days)
+  const volPeriod = Math.min(5, n - 1);
+  let upVol = 0, downVol = 0;
+  for (let i = n - volPeriod; i < n; i++) {
+    const diff = closes[i] - closes[i - 1];
+    if (diff > 0) upVol += volumes[i] || 0;
+    else downVol += volumes[i] || 0;
+  }
+  const totalVol = upVol + downVol;
+  const buyPct = totalVol > 0 ? upVol / totalVol : 0.5;
+
+  // 5-day momentum
+  const mom5 = n > 5 ? ((price - closes[n - 6]) / closes[n - 6]) * 100 : 0;
+
+  // 20-day volatility
+  const returns20: number[] = [];
+  for (let i = Math.max(1, n - 20); i < n; i++) {
+    returns20.push((closes[i] - closes[i - 1]) / closes[i - 1]);
+  }
+  const vol20 = returns20.length > 0
+    ? Math.sqrt(returns20.reduce((a, b) => a + b * b, 0) / returns20.length) * Math.sqrt(252)
+    : 0.2;
+
+  // ── Direction logic ──────────────────────────────────────────────────────────
+  let direction: 'bullish' | 'bearish' | 'neutral' = 'neutral';
+  let conviction = 0.3;
+  let archetype = 'ta_choppy';
+
+  const aboveSMA20 = price > sma20;
+  const aboveSMA50 = price > sma50;
+  const smaBullCross = sma20 > sma50;
+  const rsiOversold = rsi < 30;
+  const rsiOverbought = rsi > 70;
+
+  // Compression (low BB width) → breakout pending
+  const isCompressed = bbWidth < 0.03;
+
+  // Strong momentum: price above both SMAs, SMA cross bullish, positive 5d momentum
+  if (aboveSMA20 && aboveSMA50 && smaBullCross && mom5 > 0.5) {
+    direction = 'bullish';
+    archetype = 'ta_momentum_bull';
+    conviction = Math.min(0.85, 0.45 + Math.abs(mom5) / 20 + (rsi < 65 ? 0.1 : 0));
+  } else if (!aboveSMA20 && !aboveSMA50 && !smaBullCross && mom5 < -0.5) {
+    direction = 'bearish';
+    archetype = 'ta_momentum_bear';
+    conviction = Math.min(0.85, 0.45 + Math.abs(mom5) / 20 + (rsi > 35 ? 0.1 : 0));
+  } else if (rsiOversold && aboveSMA50) {
+    // Oversold in uptrend → mean reversion bounce
+    direction = 'bullish';
+    archetype = 'ta_mean_revert_bull';
+    conviction = Math.min(0.75, 0.4 + (30 - rsi) / 60);
+  } else if (rsiOverbought && !aboveSMA50) {
+    // Overbought in downtrend → mean reversion fade
+    direction = 'bearish';
+    archetype = 'ta_mean_revert_bear';
+    conviction = Math.min(0.75, 0.4 + (rsi - 70) / 60);
+  } else if (isCompressed && aboveSMA20) {
+    direction = 'bullish';
+    archetype = 'ta_compression_bull';
+    conviction = 0.4;
+  } else if (isCompressed && !aboveSMA20) {
+    direction = 'bearish';
+    archetype = 'ta_compression_bear';
+    conviction = 0.4;
+  } else if (Math.abs(changePct) > 1.5) {
+    // Strong daily move
+    direction = changePct > 0 ? 'bullish' : 'bearish';
+    archetype = changePct > 0 ? 'ta_momentum_bull' : 'ta_momentum_bear';
+    conviction = Math.min(0.7, 0.35 + Math.abs(changePct) / 10);
+  } else {
+    // Range-bound / choppy
+    direction = buyPct > 0.55 ? 'bullish' : buyPct < 0.45 ? 'bearish' : 'neutral';
+    archetype = 'ta_choppy';
+    conviction = Math.max(0.2, Math.abs(buyPct - 0.5) * 1.2);
+  }
+
+  // ── Synthetic metadata for computeCells() ────────────────────────────────────
+  // Build a metadata object that looks like the DB prediction metadata so the
+  // 8×8 grid renders with real TA-derived values.
+  const metadata = {
+    volume_flow: {
+      buy_pct: buyPct,
+      stale: false,
+    },
+    vera_rubin: {
+      // Dark force: high volatility + declining price = bearish dark force
+      score: vol20 > 0.3 && mom5 < 0 ? 0.7 : vol20 > 0.3 && mom5 > 0 ? 0.3 : 0.5,
+    },
+    chess_consensus: {
+      // No chess data in TA mode — use price momentum as proxy
+      blackPct: direction === 'bullish' ? 60 : direction === 'bearish' ? 40 : 50,
+      direction,
+    },
+    vix: {
+      // Approximate VIX level from instrument volatility
+      level: vol20 > 0.35 ? 'high' : vol20 < 0.15 ? 'low' : 'neutral',
+    },
+    short_volume: {
+      // No short volume data in TA mode — neutral
+      shortPct: 0.4,
+    },
+    confidence_calibration: null,
+    archetype_story: {
+      story: getTAStory(archetype, changePct, mom5, rsi),
+      moral: getTAMoral(archetype),
+    },
+    parable: {
+      strength: conviction,
+      direction,
+      agrees: conviction > 0.5,
+    },
+  };
+
+  return { direction, confidence: conviction, archetype, price, changePct, metadata };
+}
+
+function getTAStory(archetype: string, changePct: number, mom5: number, rsi: number): string {
+  if (archetype.includes('momentum_bull')) {
+    return `Price holds above key moving averages with ${mom5.toFixed(1)}% 5-day momentum. The trend is your friend — until it isn't.`;
+  }
+  if (archetype.includes('momentum_bear')) {
+    return `Price below both SMAs with ${mom5.toFixed(1)}% 5-day decline. The bears are in control of the board.`;
+  }
+  if (archetype.includes('mean_revert_bull')) {
+    return `RSI at ${rsi.toFixed(0)} signals oversold in an uptrend. The position springs back like a compressed coil.`;
+  }
+  if (archetype.includes('mean_revert_bear')) {
+    return `RSI at ${rsi.toFixed(0)} signals overbought in a downtrend. The rally fades as the bigger trend reasserts.`;
+  }
+  if (archetype.includes('compression')) {
+    return `Bollinger Bands are tight — energy is building for a directional breakout. The queen is poised to strike.`;
+  }
+  return `Price is range-bound with no clear edge. Sometimes the best move is to wait for a better position.`;
+}
+
+function getTAMoral(archetype: string): string {
+  if (archetype.includes('momentum')) return 'Momentum is a fickle ally — ride it, but watch for the turn.';
+  if (archetype.includes('mean_revert')) return 'Rubber bands snap back — but only if the anchor holds.';
+  if (archetype.includes('compression')) return 'Stillness precedes the storm.';
+  return 'Patience is a position too.';
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export const SignalCard: React.FC<SignalCardProps> = ({ symbol, name, sector, emoji }) => {
   const [pred, setPred] = useState<PredictionData | null>(null);
-  const [livePrice, setLivePrice] = useState<{ price: number; change: number } | null>(null);
   const [loading, setLoading] = useState(true);
+  const mountedRef = useRef(true);
 
   const fetchData = useCallback(async () => {
-    try {
-      const { data, error } = await supabase
-        .from('market_signals_public')
-        .select('symbol, predicted_direction, confidence, archetype, price_at_prediction, created_at, prediction_metadata')
-        .eq('symbol', symbol)
-        .order('created_at', { ascending: false })
-        .limit(1);
+    // Fetch DB prediction and live candles in parallel
+    const dbPromise = supabase
+      .from('market_signals_public')
+      .select('symbol, predicted_direction, confidence, archetype, price_at_prediction, created_at, prediction_metadata')
+      .eq('symbol', symbol)
+      .order('created_at', { ascending: false })
+      .limit(1);
 
-      // Also fetch live price in parallel (always — even if no prediction)
-      fetchLivePrice(symbol).then(p => { if (p) setLivePrice(p); });
+    const candlePromise = fetchCandles(symbol);
 
-      if (error || !data || data.length === 0) {
-        setLoading(false);
-        return;
-      }
+    const [dbResult, candles] = await Promise.all([dbPromise, candlePromise]);
 
-      const row = data[0];
-      const meta = row.prediction_metadata || {};
-      const direction = (row.predicted_direction as 'bullish' | 'bearish' | 'neutral') || 'neutral';
-      const confidence = typeof row.confidence === 'number'
-        ? (row.confidence > 1 ? row.confidence / 100 : row.confidence)
+    if (!mountedRef.current) return;
+
+    const dbData = dbResult.data?.[0];
+    const dbAgeHours = dbData ? (Date.now() - new Date(dbData.created_at).getTime()) / 3600000 : Infinity;
+
+    // Decision: use DB prediction if it exists and is < 24h old.
+    // Otherwise, compute TA signal from live candles.
+    // If neither is available, show a minimal card (should be extremely rare).
+    if (dbData && dbAgeHours < 24) {
+      const meta = dbData.prediction_metadata || {};
+      const direction = (dbData.predicted_direction as 'bullish' | 'bearish' | 'neutral') || 'neutral';
+      const confidence = typeof dbData.confidence === 'number'
+        ? (dbData.confidence > 1 ? dbData.confidence / 100 : dbData.confidence)
         : 0;
-
-      // Extract calibrated vs raw confidence
       const calib = meta.confidence_calibration;
       const rawConf = calib?.raw_confidence ? calib.raw_confidence / 100 : undefined;
 
@@ -210,22 +438,74 @@ export const SignalCard: React.FC<SignalCardProps> = ({ symbol, name, sector, em
         direction,
         confidence,
         rawConfidence: rawConf,
-        archetype: row.archetype || 'choppy',
-        price: row.price_at_prediction || 0,
-        createdAt: row.created_at,
+        archetype: dbData.archetype || 'choppy',
+        price: dbData.price_at_prediction || 0,
+        createdAt: dbData.created_at,
         metadata: meta,
+        source: 'db',
       });
-    } catch {
-      // silent
-    } finally {
-      setLoading(false);
+    } else if (candles) {
+      // No fresh DB prediction — compute TA signal from live Yahoo Finance candles
+      const ta = computeTASignal(candles);
+      setPred({
+        direction: ta.direction,
+        confidence: ta.confidence,
+        archetype: ta.archetype,
+        price: ta.price,
+        createdAt: new Date().toISOString(),
+        metadata: ta.metadata,
+        source: 'ta',
+      });
+    } else if (dbData) {
+      // DB prediction is stale but it's all we have — use it with staleness badge
+      const meta = dbData.prediction_metadata || {};
+      const direction = (dbData.predicted_direction as 'bullish' | 'bearish' | 'neutral') || 'neutral';
+      const confidence = typeof dbData.confidence === 'number'
+        ? (dbData.confidence > 1 ? dbData.confidence / 100 : dbData.confidence)
+        : 0;
+
+      setPred({
+        direction,
+        confidence,
+        archetype: dbData.archetype || 'choppy',
+        price: dbData.price_at_prediction || 0,
+        createdAt: dbData.created_at,
+        metadata: meta,
+        source: 'db',
+      });
+    } else {
+      // Neither DB nor candles — this should be extremely rare
+      // Show a neutral card with the symbol info
+      setPred({
+        direction: 'neutral',
+        confidence: 0.2,
+        archetype: 'ta_choppy',
+        price: 0,
+        createdAt: new Date().toISOString(),
+        metadata: {
+          volume_flow: { buy_pct: 0.5, stale: true },
+          vera_rubin: { score: 0.5 },
+          chess_consensus: { blackPct: 50, direction: 'neutral' },
+          vix: { level: 'neutral' },
+          short_volume: { shortPct: 0.4 },
+          archetype_story: {
+            story: 'Live data temporarily unavailable. The board is in flux.',
+            moral: 'When the fog lifts, the path will appear.',
+          },
+          parable: { strength: 0.3, direction: 'neutral', agrees: false },
+        },
+        source: 'ta',
+      });
     }
+
+    setLoading(false);
   }, [symbol]);
 
   useEffect(() => {
+    mountedRef.current = true;
     fetchData();
-    const interval = setInterval(fetchData, 30000); // Refresh every 30s
-    return () => clearInterval(interval);
+    const interval = setInterval(fetchData, 30000);
+    return () => { mountedRef.current = false; clearInterval(interval); };
   }, [fetchData]);
 
   if (loading) {
@@ -236,45 +516,14 @@ export const SignalCard: React.FC<SignalCardProps> = ({ symbol, name, sector, em
     );
   }
 
-  // Compute staleness
-  const ageHours = pred ? (Date.now() - new Date(pred.createdAt).getTime()) / 3600000 : Infinity;
-  const isStale = ageHours > 4;
-  const ageLabel = ageHours < 1 ? 'just now' : ageHours < 24 ? `${Math.floor(ageHours)}h ago` : `${Math.floor(ageHours / 24)}d ago`;
+  if (!pred) return null;
 
-  if (!pred) {
-    // No prediction in DB — show live price + "awaiting signal" state
-    return (
-      <div className="rounded-xl border border-border/40 bg-gradient-to-b from-card/80 to-card/40 backdrop-blur-sm overflow-hidden">
-        <div className="flex items-center justify-between p-4 border-b border-border/20">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">{emoji}</span>
-            <div>
-              <div className="font-bold text-lg leading-tight">{symbol}</div>
-              <div className="text-xs text-muted-foreground">{name}</div>
-            </div>
-          </div>
-          {livePrice && (
-            <div className="text-right">
-              <div className="font-semibold text-sm">${livePrice.price.toFixed(2)}</div>
-              <div className={`text-xs ${livePrice.change >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                {livePrice.change >= 0 ? '+' : ''}{livePrice.change.toFixed(2)}%
-              </div>
-            </div>
-          )}
-        </div>
-        <div className="p-4">
-          <div className="text-sm text-muted-foreground py-6 text-center">
-            <Clock className="w-5 h-5 mx-auto mb-2 opacity-40" />
-            Awaiting next prediction cycle
-          </div>
-        </div>
-        <div className="flex items-center justify-between px-4 py-2 border-t border-border/20 text-[10px] text-muted-foreground">
-          <span>{sector}</span>
-          <span>{livePrice ? 'live price' : 'offline'}</span>
-        </div>
-      </div>
-    );
-  }
+  // Compute staleness
+  const ageHours = (Date.now() - new Date(pred.createdAt).getTime()) / 3600000;
+  const isStale = pred.source === 'db' && ageHours > 4;
+  const ageLabel = pred.source === 'ta'
+    ? 'live TA'
+    : ageHours < 1 ? 'just now' : ageHours < 24 ? `${Math.floor(ageHours)}h ago` : `${Math.floor(ageHours / 24)}d ago`;
 
   const isBullish = pred.direction === 'bullish';
   const isBearish = pred.direction === 'bearish';
@@ -287,19 +536,26 @@ export const SignalCard: React.FC<SignalCardProps> = ({ symbol, name, sector, em
   const archetypeMoral = pred.metadata.archetype_story?.moral;
 
   // Signal drivers
-  const vixData = pred.metadata.vix;
   const vixTermStructure = pred.metadata.vix_term_structure;
   const chessConsensus = pred.metadata.chess_consensus;
   const shortVol = pred.metadata.short_volume;
   const overnightSentiment = pred.metadata.overnight_sentiment;
   const drivers: string[] = [];
   if (vixTermStructure?.regime) drivers.push(`VIX: ${vixTermStructure.regime.replace('_', ' ')}`);
-  if (chessConsensus?.direction) drivers.push(`Chess: ${chessConsensus.direction}`);
+  if (chessConsensus?.direction && chessConsensus.direction !== 'neutral')
+    drivers.push(`Chess: ${chessConsensus.direction}`);
   if (shortVol?.shortPct > 0.5) drivers.push(`Short: ${(shortVol.shortPct * 100).toFixed(0)}%`);
   if (overnightSentiment?.us_direction && overnightSentiment.us_direction !== 'neutral')
     drivers.push(`Overnight: ${overnightSentiment.us_direction}`);
-
-  const ageMin = Math.round((Date.now() - new Date(pred.createdAt).getTime()) / 60000);
+  // For TA mode, show the TA-derived drivers
+  if (pred.source === 'ta') {
+    const volLevel = pred.metadata.vix?.level;
+    if (volLevel && volLevel !== 'neutral') drivers.push(`Vol: ${volLevel}`);
+    const buyPct = pred.metadata.volume_flow?.buy_pct;
+    if (buyPct != null && Math.abs(buyPct - 0.5) > 0.1) {
+      drivers.push(`Flow: ${buyPct > 0.5 ? 'buy' : 'sell'} ${Math.abs((buyPct - 0.5) * 100).toFixed(0)}%`);
+    }
+  }
 
   return (
     <motion.div
@@ -328,6 +584,21 @@ export const SignalCard: React.FC<SignalCardProps> = ({ symbol, name, sector, em
           </div>
         </div>
       </div>
+
+      {/* Price + Source badge */}
+      {pred.price > 0 && (
+        <div className="flex items-center justify-between px-4 pt-2">
+          <span className="text-sm font-semibold">${pred.price.toFixed(2)}</span>
+          <span className={`flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-full ${
+            pred.source === 'db'
+              ? 'bg-primary/10 text-primary/70 border border-primary/20'
+              : 'bg-amber-500/10 text-amber-500/70 border border-amber-500/20'
+          }`}>
+            {pred.source === 'db' ? <Activity className="w-2.5 h-2.5" /> : <Zap className="w-2.5 h-2.5" />}
+            {pred.source === 'db' ? 'v38 pipeline' : 'live TA'}
+          </span>
+        </div>
+      )}
 
       {/* 8×8 Universal Grid */}
       <div className="p-4">
