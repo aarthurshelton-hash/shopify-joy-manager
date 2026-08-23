@@ -27,7 +27,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     // Yahoo Finance uses = in futures symbols (GC=F, CL=F).
     // Build URL carefully — don't double-encode the = sign.
-    const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=${interval}&range=${range}`;
+    const yahooUrl = `https://query2.finance.yahoo.com/v8/finance/chart/${symbol}?interval=${interval}&range=${range}`;
 
     const r = await fetch(yahooUrl, {
       headers: {
