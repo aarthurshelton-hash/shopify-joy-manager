@@ -6,17 +6,20 @@
  * Returns: { closes, volumes, highs, lows, timestamps, price, change }
  */
 
-export default async function handler(req: Request): Promise<Response> {
-  const url = new URL(req.url);
-  const symbol = url.searchParams.get('symbol');
-  const range = url.searchParams.get('range') || '3mo';
-  const interval = url.searchParams.get('interval') || '1d';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const symbol = req.query.symbol as string;
+  const range = (req.query.range as string) || '3mo';
+  const interval = (req.query.interval as string) || '1d';
+
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Cache-Control', 's-maxage=30, stale-while-revalidate=60');
 
   if (!symbol) {
-    return new Response(JSON.stringify({ error: 'Missing symbol parameter' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-    });
+    res.status(400).json({ error: 'Missing symbol parameter' });
+    return;
   }
 
   try {
@@ -30,28 +33,22 @@ export default async function handler(req: Request): Promise<Response> {
     });
 
     if (!r.ok) {
-      return new Response(JSON.stringify({ error: `Yahoo Finance returned ${r.status}` }), {
-        status: r.status,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-      });
+      res.status(r.status).json({ error: `Yahoo Finance returned ${r.status}` });
+      return;
     }
 
     const d = await r.json();
     const result = d?.chart?.result?.[0];
     if (!result) {
-      return new Response(JSON.stringify({ error: 'No chart data' }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-      });
+      res.status(404).json({ error: 'No chart data' });
+      return;
     }
 
     const timestamps = result.timestamp || [];
     const quotes = result.indicators?.quote?.[0];
     if (!quotes) {
-      return new Response(JSON.stringify({ error: 'No quote data' }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-      });
+      res.status(404).json({ error: 'No quote data' });
+      return;
     }
 
     const closes: number[] = [];
@@ -70,17 +67,15 @@ export default async function handler(req: Request): Promise<Response> {
     }
 
     if (closes.length < 2) {
-      return new Response(JSON.stringify({ error: 'Insufficient data' }), {
-        status: 422,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-      });
+      res.status(422).json({ error: 'Insufficient data' });
+      return;
     }
 
     const price = closes[closes.length - 1];
     const prev = closes[closes.length - 2] || price;
     const change = ((price - prev) / prev) * 100;
 
-    return new Response(JSON.stringify({
+    res.status(200).json({
       symbol,
       closes,
       volumes,
@@ -90,18 +85,9 @@ export default async function handler(req: Request): Promise<Response> {
       price,
       change,
       count: closes.length,
-    }), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Cache-Control': 's-maxage=30, stale-while-revalidate=60',
-      },
     });
-  } catch (e: any) {
-    return new Response(JSON.stringify({ error: e?.message || 'Internal error' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Internal error';
+    res.status(500).json({ error: msg });
   }
 }
