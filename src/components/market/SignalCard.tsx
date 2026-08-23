@@ -161,7 +161,9 @@ const ARCHETYPE_NAMES: Record<string, string> = {
   ta_choppy: 'TA: Choppy / Range-Bound',
 };
 
-// ── Yahoo Finance candle fetcher ──────────────────────────────────────────────
+// ── Yahoo Finance candle fetcher (via Vercel serverless proxy) ────────────────
+// Direct browser fetch to Yahoo Finance is blocked by CORS.
+// We use /api/market-candles which proxies server-side.
 
 interface CandleData {
   closes: number[];
@@ -173,31 +175,18 @@ interface CandleData {
 
 async function fetchCandles(symbol: string): Promise<CandleData | null> {
   try {
-    const yahooSymbol = symbol.replace('=', '=F');
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1d&range=3mo`;
+    const url = `/api/market-candles?symbol=${encodeURIComponent(symbol)}&range=3mo&interval=1d`;
     const r = await fetch(url);
     if (!r.ok) return null;
     const d = await r.json();
-    const result = d?.chart?.result?.[0];
-    if (!result) return null;
-    const timestamps = result.timestamp || [];
-    const quotes = result.indicators?.quote?.[0];
-    if (!quotes) return null;
-    const closes: number[] = [];
-    const volumes: number[] = [];
-    const highs: number[] = [];
-    const lows: number[] = [];
-    for (let i = 0; i < timestamps.length; i++) {
-      const c = quotes.close?.[i];
-      if (c != null && c > 0) {
-        closes.push(c);
-        volumes.push(quotes.volume?.[i] || 0);
-        highs.push(quotes.high?.[i] || c);
-        lows.push(quotes.low?.[i] || c);
-      }
-    }
-    if (closes.length < 10) return null;
-    return { closes, volumes, highs, lows, timestamps };
+    if (d.error || !d.closes || d.closes.length < 10) return null;
+    return {
+      closes: d.closes,
+      volumes: d.volumes || [],
+      highs: d.highs || [],
+      lows: d.lows || [],
+      timestamps: d.timestamps || [],
+    };
   } catch {
     return null;
   }
@@ -420,12 +409,12 @@ export const SignalCard: React.FC<SignalCardProps> = ({ symbol, name, sector, em
     if (!mountedRef.current) return;
 
     const dbData = dbResult.data?.[0];
-    const dbAgeHours = dbData ? (Date.now() - new Date(dbData.created_at).getTime()) / 3600000 : Infinity;
 
-    // Decision: use DB prediction if it exists and is < 24h old.
-    // Otherwise, compute TA signal from live candles.
-    // If neither is available, show a minimal card (should be extremely rare).
-    if (dbData && dbAgeHours < 24) {
+    // Decision priority:
+    //   1. DB prediction (any age — staleness badge shows how old it is)
+    //   2. Real-time TA from Yahoo Finance candles (via serverless proxy)
+    //   3. Neutral fallback (only if both fail — extremely rare)
+    if (dbData) {
       const meta = dbData.prediction_metadata || {};
       const direction = (dbData.predicted_direction as 'bullish' | 'bearish' | 'neutral') || 'neutral';
       const confidence = typeof dbData.confidence === 'number'
@@ -434,18 +423,25 @@ export const SignalCard: React.FC<SignalCardProps> = ({ symbol, name, sector, em
       const calib = meta.confidence_calibration;
       const rawConf = calib?.raw_confidence ? calib.raw_confidence / 100 : undefined;
 
+      // If we also have live candles, update the price to current
+      const livePrice = candles?.closes?.[candles.closes.length - 1];
+      const liveChange = candles && candles.closes.length >= 2
+        ? ((candles.closes[candles.closes.length - 1] - candles.closes[candles.closes.length - 2]) /
+           candles.closes[candles.closes.length - 2]) * 100
+        : null;
+
       setPred({
         direction,
         confidence,
         rawConfidence: rawConf,
         archetype: dbData.archetype || 'choppy',
-        price: dbData.price_at_prediction || 0,
+        price: livePrice || dbData.price_at_prediction || 0,
         createdAt: dbData.created_at,
         metadata: meta,
         source: 'db',
       });
     } else if (candles) {
-      // No fresh DB prediction — compute TA signal from live Yahoo Finance candles
+      // No DB prediction — compute TA signal from live Yahoo Finance candles
       const ta = computeTASignal(candles);
       setPred({
         direction: ta.direction,
@@ -456,26 +452,8 @@ export const SignalCard: React.FC<SignalCardProps> = ({ symbol, name, sector, em
         metadata: ta.metadata,
         source: 'ta',
       });
-    } else if (dbData) {
-      // DB prediction is stale but it's all we have — use it with staleness badge
-      const meta = dbData.prediction_metadata || {};
-      const direction = (dbData.predicted_direction as 'bullish' | 'bearish' | 'neutral') || 'neutral';
-      const confidence = typeof dbData.confidence === 'number'
-        ? (dbData.confidence > 1 ? dbData.confidence / 100 : dbData.confidence)
-        : 0;
-
-      setPred({
-        direction,
-        confidence,
-        archetype: dbData.archetype || 'choppy',
-        price: dbData.price_at_prediction || 0,
-        createdAt: dbData.created_at,
-        metadata: meta,
-        source: 'db',
-      });
     } else {
-      // Neither DB nor candles — this should be extremely rare
-      // Show a neutral card with the symbol info
+      // Both failed — neutral fallback (extremely rare, only if Yahoo is down)
       setPred({
         direction: 'neutral',
         confidence: 0.2,
