@@ -161,9 +161,10 @@ const ARCHETYPE_NAMES: Record<string, string> = {
   ta_choppy: 'TA: Choppy / Range-Bound',
 };
 
-// ── Yahoo Finance candle fetcher (via Vercel serverless proxy) ────────────────
-// Direct browser fetch to Yahoo Finance is blocked by CORS.
-// We use /api/market-candles which proxies server-side.
+// ── Candle data fetcher (from Supabase cache, updated by worker) ──────────────
+// Yahoo Finance blocks Vercel/cloud IPs with 429. The worker runs locally and
+// caches candle data to market_candle_cache in Supabase. The frontend reads
+// from there — no direct Yahoo calls from the browser.
 
 interface CandleData {
   closes: number[];
@@ -175,17 +176,22 @@ interface CandleData {
 
 async function fetchCandles(symbol: string): Promise<CandleData | null> {
   try {
-    const url = `/api/market-candles?symbol=${encodeURIComponent(symbol)}&range=3mo&interval=1d`;
-    const r = await fetch(url);
-    if (!r.ok) return null;
-    const d = await r.json();
-    if (d.error || !d.closes || d.closes.length < 10) return null;
+    const { data, error } = await supabase
+      .from('market_candle_cache')
+      .select('closes, volumes, highs, lows, timestamps, price, change_pct, updated_at')
+      .eq('symbol', symbol)
+      .limit(1);
+
+    if (error || !data || data.length === 0) return null;
+    const row = data[0];
+    const closes = row.closes as number[];
+    if (!closes || closes.length < 10) return null;
     return {
-      closes: d.closes,
-      volumes: d.volumes || [],
-      highs: d.highs || [],
-      lows: d.lows || [],
-      timestamps: d.timestamps || [],
+      closes,
+      volumes: row.volumes as number[] || [],
+      highs: row.highs as number[] || [],
+      lows: row.lows as number[] || [],
+      timestamps: row.timestamps as number[] || [],
     };
   } catch {
     return null;
