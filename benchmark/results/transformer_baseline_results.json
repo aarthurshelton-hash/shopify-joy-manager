@@ -1,0 +1,39 @@
+{
+  "experiment": "transformer_baseline",
+  "date": "2026-08-16T17:42:45",
+  "seed": 42,
+  "device": "mps",
+  "data": {
+    "train_size": 81397,
+    "val_size": 8469,
+    "test_size": 8606,
+    "train_pgn_coverage": 0.6172709067901765,
+    "test_pgn_coverage": 0.618638159423658
+  },
+  "model_a": {
+    "name": "PGN Transformer",
+    "params": 1041795,
+    "vocab_size": 1858,
+    "embed_dim": 128,
+    "n_layers": 4,
+    "n_heads": 4,
+    "accuracy": 0.45909830350917963,
+    "log_loss": 1.053041934967041,
+    "brier": 0.6366947980348034
+  },
+  "model_c": {
+    "name": "SF-eval Logistic Regression",
+    "accuracy": 0.727748082732977,
+    "log_loss": 0.6655347281751814,
+    "brier": 0.3784650488401658
+  },
+  "model_d": {
+    "name": "EP color-flow fusion",
+    "accuracy": 0.7298396467580759,
+    "log_loss": null,
+    "brier": null
+  },
+  "stockfish_18": {
+    "accuracy": 0.7069486404833838
+  }
+}

@@ -12,9 +12,11 @@ A path-based representation of chess games — encoding *where pieces have been*
 
 Headline numbers we publish:
 
-- **+5.43 percentage points** edge over Stockfish 18 on overall 3-way prediction accuracy across our full corpus
-- **+19.13 percentage points** edge over Stockfish 18 on a 1.77M-game Chess960 / Freestyle subset (where Stockfish lacks an opening book)
-- **+25-29 percentage points** edge in the 0-25cp eval zone (where Stockfish search is weakest)
+- **+2.31 percentage points** edge over Stockfish 18 on 3-way prediction accuracy (leak-free 30-day window, 84K predictions, verifiable via `node audit/verify.mjs`)
+- **+21.07 percentage points** edge over Stockfish 18 on a 3K-position Chess960 / Freestyle subset (where Stockfish lacks an opening book)
+- **+20-25 percentage points** edge in the 0-25cp eval zone (where Stockfish search is weakest)
+
+> **Historical context:** A previous headline of +5.43pp was computed on the full 12M+ corpus, which included a trajectory-extraction leak (the color-flow signature was extracted from the full-game board instead of the board truncated at the prediction move). A backfill is in progress to recompute all predictions with the corrected trajectory. The leak-free 30-day window shows +2.31pp, consistent with the game-ID-split hold-out of +2.1pp in [PROOF.md](./PROOF.md). See [RESULTS.md](./RESULTS.md) for the full revision history.
 
 The full breakdown is in [`RESULTS.md`](./RESULTS.md). The methodology is in [`METHODOLOGY.md`](./METHODOLOGY.md).
 
@@ -41,23 +43,30 @@ You will see output like:
 ```
   HEADLINE RESULT — En Pensent vs Stockfish 18
   ----------------------------------------------------------------
-  Total predictions:          12,240,000
-  En Pensent correct:          8,475,000
-  Stockfish 18 correct:        7,809,000
+  Total predictions:          84,307
+  En Pensent correct:         64,619
+  Stockfish 18 correct:       62,668
 
-  En Pensent accuracy:        69.24%
-  Stockfish 18 accuracy:      63.81%
-  En Pensent edge over SF18:  +5.43 percentage points
+  En Pensent accuracy:        76.65%
+  Stockfish 18 accuracy:      74.33%
+  En Pensent edge over SF18:  +2.31 percentage points
+
+  STRATIFIED — By Move-Number Phase Zone
+  12-19 early_middlegame       N=      4,721  EP  65.54%  SF18  58.55%  Edge +6.99pp
+  20-27 early_golden           N=     15,092  EP  74.09%  SF18  69.93%  Edge +4.15pp
+  28-45 peak_golden            N=     54,376  EP  78.00%  SF18  76.26%  Edge +1.74pp
+  46+ late_endgame             N=     10,118  EP  78.37%  SF18  77.89%  Edge +0.47pp
 ```
 
-The numbers come from a public read-only Supabase view (`predictions_public`) that:
+The numbers come from public read-only Supabase views that:
 
-- Excludes the most recent 7 days of data (cannot be retroactively manipulated against the script)
-- Contains no PII (no usernames, emails, IPs, or game URLs)
-- Is exposed only via a `SELECT`-only `GRANT`
+- Exclude the most recent 7 days of data (cannot be retroactively manipulated against the script)
+- Use a 30-day rolling window (keeps queries fast under Supabase's 3-second statement timeout)
+- Contain no PII (no usernames, emails, IPs, or game URLs)
+- Are exposed only via a `SELECT`-only `GRANT`
 - Cannot be modified by any party
 
-The view definition is in [`audit/setup-public-view.sql`](./audit/setup-public-view.sql) — fully visible to any reviewer.
+The view definitions are in [`audit/setup-public-view.sql`](./audit/setup-public-view.sql) — fully visible to any reviewer.
 
 ---
 
@@ -71,8 +80,10 @@ The view definition is in [`audit/setup-public-view.sql`](./audit/setup-public-v
 | `src/pages/AcademicPaper.tsx` | The full academic write-up of the En Pensent system across multiple domains |
 | `src/pages/EnPensentWhitepaper.tsx` | Public whitepaper |
 | `audit/` | This audit package — verification SQL and script |
+| `benchmark/` | Transformer baseline experiment — spec, data export, training scripts |
 | `RESULTS.md` | Canonical numbers (single source of truth) |
 | `METHODOLOGY.md` | Sampling design, calibration loop, validation approach |
+| `PROOF.md` | Game-ID-split hold-out validation (+2.1pp on 7K positions) |
 
 The `farm/` directory contains production-ingest workers and is intentionally not tracked in this repository (per `.gitignore`). Reviewers who need worker-level visibility should request a separate read-only audit window.
 
@@ -98,7 +109,8 @@ If you are doing a substantive technical review:
 2. **Read the methodology** — [`METHODOLOGY.md`](./METHODOLOGY.md) describes sampling, calibration, and the self-learning loop. Push back hard on anything that looks like selection bias or test-on-train.
 3. **Inspect the algorithm** — start in `src/lib/chess/colorFlowAnalysis/predictionEngine.ts` and trace into `equilibriumPredictor.ts`. The 15-component fusion is documented inline.
 4. **Stratify the data** — query `predictions_public` directly to slice by ELO band, time control, eval zone, archetype. Tell us where the edge breaks down.
-5. **Propose ablations** — if you believe a 5-layer transformer trained on PGN sequences would close most of the +5.43pp, we are genuinely interested in running that comparison and would welcome collaboration.
+5. **Check the phase stratification** — the `audit_phase_stats` view shows how the move-number sampling distribution affects the headline. EP's edge is largest in early middlegame (+7pp) and smallest in the peak zone (+1.7pp) where 65% of predictions concentrate.
+6. **Run the transformer baseline** — `benchmark/` contains the data export and spec for training a transformer on the same task. If a transformer closes the gap, we want to know.
 
 If you are doing a security or compliance review:
 

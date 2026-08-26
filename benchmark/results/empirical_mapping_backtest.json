@@ -1,0 +1,20 @@
+{
+  "experiment": "empirical_mapping_backtest",
+  "mapping_cells": 46,
+  "test_size": 9180,
+  "empirical_accuracy": 0.47886710239651414,
+  "ep_accuracy": 0.427124183006536,
+  "naive_accuracy": 0.3498910675381264,
+  "source_breakdown": {
+    "full_match": {
+      "n": 9157,
+      "empirical_acc": 0.4789778311674129,
+      "ep_acc": 0.42699574096319753
+    },
+    "fallback": {
+      "n": 23,
+      "empirical_acc": 0.43478260869565216,
+      "ep_acc": 0.4782608695652174
+    }
+  }
+}

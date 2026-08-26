@@ -177,8 +177,56 @@ GRANT SELECT ON public.audit_phase_stats TO anon;
 GRANT SELECT ON public.audit_phase_stats TO authenticated;
 
 -- ----------------------------------------------------------------------------
+-- 6. MATERIALIZED VIEWS for stable, fast audit stats
+-- ----------------------------------------------------------------------------
+-- The regular views above use a 30-day rolling window that changes daily as
+-- old predictions age out and new ones come in. A reviewer who runs verify.mjs
+-- on Monday sees different numbers than on Friday. The materialized views
+-- below snapshot the stats so the verifiable number is stable day-to-day.
+-- They are refreshed by a cron job (see audit/refresh-materialized-views.sql).
+-- The regular views remain as the live source; the materialized views are the
+-- stable published number.
+
+CREATE MATERIALIZED VIEW IF NOT EXISTS public.audit_headline_snapshot AS
+SELECT
+  COUNT(*)                                                  AS total_predictions,
+  SUM((hybrid_correct)::int)                                AS ep_correct,
+  SUM((stockfish_correct)::int)                             AS sf_correct,
+  ROUND(100.0 * SUM((hybrid_correct)::int) / COUNT(*), 2)   AS ep_accuracy_pct,
+  ROUND(100.0 * SUM((stockfish_correct)::int) / COUNT(*), 2) AS sf_accuracy_pct,
+  ROUND(100.0 * (SUM((hybrid_correct)::int) - SUM((stockfish_correct)::int))::numeric / COUNT(*), 2) AS ep_edge_pp,
+  MIN(created_at)                                           AS earliest_prediction,
+  MAX(created_at)                                           AS latest_prediction,
+  NOW()                                                     AS snapshot_at
+FROM public.chess_prediction_attempts
+WHERE created_at < (NOW() - INTERVAL '7 days')
+  AND created_at >= (NOW() - INTERVAL '30 days')
+  AND hybrid_correct IS NOT NULL
+  AND stockfish_correct IS NOT NULL
+  AND actual_result IS NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_audit_headline_snapshot ON public.audit_headline_snapshot (snapshot_at);
+
+GRANT SELECT ON public.audit_headline_snapshot TO anon;
+GRANT SELECT ON public.audit_headline_snapshot TO authenticated;
+
+-- Refresh function — call via pg_cron or manually:
+--   SELECT refresh_audit_snapshots();
+-- pg_cron setup (run in Supabase SQL editor):
+--   SELECT cron.schedule('refresh-audit-snapshots', '0 */6 * * *', 'SELECT refresh_audit_snapshots()');
+
+CREATE OR REPLACE FUNCTION public.refresh_audit_snapshots()
+RETURNS void AS $$
+BEGIN
+  REFRESH MATERIALIZED VIEW CONCURRENTLY public.audit_headline_snapshot;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ----------------------------------------------------------------------------
 -- DONE. Verify with:
---   SELECT * FROM public.audit_headline_stats;
+--   SELECT * FROM public.audit_headline_stats;       -- live rolling window
+--   SELECT * FROM public.audit_headline_snapshot;    -- stable snapshot
 --   SELECT * FROM public.audit_chess960_stats;
 --   SELECT * FROM public.audit_phase_stats;
 -- ----------------------------------------------------------------------------
+

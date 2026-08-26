@@ -165,6 +165,10 @@ const ARCHETYPE_NAMES: Record<string, string> = {
 // Yahoo Finance blocks Vercel/cloud IPs with 429. The worker runs locally and
 // caches candle data to market_candle_cache in Supabase. The frontend reads
 // from there — no direct Yahoo calls from the browser.
+//
+// v38 24/7: The worker now stores BOTH intraday (5m) and daily (1d) candles.
+// We fetch intraday first for real-time TA (includes pre/post/overnight),
+// then fall back to daily if intraday is unavailable.
 
 interface CandleData {
   closes: number[];
@@ -172,14 +176,42 @@ interface CandleData {
   highs: number[];
   lows: number[];
   timestamps: number[];
+  interval?: string;
+  sessionFlags?: string[];
 }
 
 async function fetchCandles(symbol: string): Promise<CandleData | null> {
   try {
+    // v38 24/7: Try intraday (5m) first — includes pre-market, after-hours, overnight
+    const { data: intradayData, error: intradayError } = await supabase
+      .from('market_candle_cache')
+      .select('closes, volumes, highs, lows, timestamps, price, change_pct, updated_at, interval, session_flags')
+      .eq('symbol', symbol)
+      .eq('interval', '5m')
+      .limit(1);
+
+    if (!intradayError && intradayData && intradayData.length > 0) {
+      const row = intradayData[0];
+      const closes = row.closes as number[];
+      if (closes && closes.length >= 10) {
+        return {
+          closes,
+          volumes: row.volumes as number[] || [],
+          highs: row.highs as number[] || [],
+          lows: row.lows as number[] || [],
+          timestamps: row.timestamps as number[] || [],
+          interval: '5m',
+          sessionFlags: row.session_flags as string[] || [],
+        };
+      }
+    }
+
+    // Fall back to daily (1d) candles
     const { data, error } = await supabase
       .from('market_candle_cache')
-      .select('closes, volumes, highs, lows, timestamps, price, change_pct, updated_at')
+      .select('closes, volumes, highs, lows, timestamps, price, change_pct, updated_at, interval, session_flags')
       .eq('symbol', symbol)
+      .eq('interval', '1d')
       .limit(1);
 
     if (error || !data || data.length === 0) return null;
@@ -192,6 +224,8 @@ async function fetchCandles(symbol: string): Promise<CandleData | null> {
       highs: row.highs as number[] || [],
       lows: row.lows as number[] || [],
       timestamps: row.timestamps as number[] || [],
+      interval: '1d',
+      sessionFlags: row.session_flags as string[] || [],
     };
   } catch {
     return null;

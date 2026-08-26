@@ -40,7 +40,7 @@ Constraints:
 
 - **Peak-zone oversampling (downward bias on edge):** 65% of predictions come from moves 28-45, where both EP and SF are most accurate (~78%) and the edge is smallest (+1.74pp). EP's edge is largest in early middlegame (moves 12-19: +7.00pp) and early golden (moves 20-27: +4.15pp). A phase-even reweighting (25% per zone) on a recent 30-day window (84K predictions) gives +3.34pp vs the sampled +2.32pp — the sampling distribution *understates* the edge by ~1pp. Run `node audit/phase-reweight.mjs` to verify. Note: the full-corpus +5.43pp headline includes older data with a known trajectory-extraction leak (see PROOF.md); the leak-free recent window shows +2.32pp, consistent with the PROOF.md hold-out result of +2.1pp on 7,053 game-ID-split positions.
 - **Opening prediction not measured:** the system is not evaluated on opening prediction. We do not claim opening-prediction superiority and the system caps confidence in moves 1-10 at 38% explicitly.
-- **Game-source bias:** corpus is sourced from public Lichess + Chess.com APIs plus curated GM/IM lists. The rating distribution skews toward 1500-2400. The +5.43pp edge is observed across this distribution and may not hold at GM level (the system code includes rating-aware confidence dampening above 2500).
+- **Game-source bias:** corpus is sourced from public Lichess + Chess.com APIs plus curated GM/IM lists. The rating distribution skews toward 1500-2400. The +2.31pp edge (leak-free 30-day window) is observed across this distribution and may not hold at GM level (the system code includes rating-aware confidence dampening above 2500).
 
 ---
 
@@ -148,7 +148,7 @@ The calibration loop uses a temporally-separated holdout: predictions from days 
 
 ### What This Doesn't Solve
 
-- The calibration cannot rescue a fundamentally bad signal. If the color flow representation were not predictive, no amount of calibration would produce a +5.43pp edge over a strong baseline.
+- The calibration cannot rescue a fundamentally bad signal. If the color flow representation were not predictive, no amount of calibration would produce a +2.31pp edge over a strong baseline on a leak-free window.
 - The calibration can drift if the underlying game distribution shifts (e.g. a sudden influx of bullet games changes the corpus). The system monitors this and alerts when calibration confidence drops below threshold.
 
 ---
@@ -187,9 +187,9 @@ Stockfish is not run to its maximum reasonable strength (depth 30+) for this com
 
 For full transparency, comparisons we have not yet completed:
 
-- **Transformer baseline:** A 50M-parameter transformer trained on PGN sequences predicting outcome at each position. This is the comparison most ML reviewers want to see, and we believe a strong transformer would close some (probably not all) of the +5.43pp gap. We have not run this.
+- **Transformer baseline:** A 50M-parameter transformer trained on PGN sequences predicting outcome at each position. This is the comparison most ML reviewers want to see, and we believe a strong transformer would close some (probably not all) of the +2.31pp gap. The data export and spec are in `benchmark/` — experiment in progress.
 - **Maia / learned-eval comparison:** Maia (CMU) is the standard learned-policy chess model. We have not benchmarked against it on outcome prediction.
-- **Rating-stratified breakdown for the +5.43pp:** the code applies rating-aware dampening but the public stats do not yet split by rating tier. We will publish this breakdown.
+- **Rating-stratified breakdown:** the code applies rating-aware dampening but the public stats do not yet split by rating tier. We will publish this breakdown.
 - **Cross-platform reproducibility check:** all current numbers come from one production run. Independent re-runs on a fresh ingest would strengthen the evidence.
 
 A reviewer who wants to run any of these comparisons is encouraged to do so — the corpus is publicly available via `predictions_public`.

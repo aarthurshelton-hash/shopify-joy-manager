@@ -92,6 +92,24 @@ async function fetchPhaseStats() {
   return data;
 }
 
+async function fetchHeadlineSnapshot() {
+  const { data, error } = await supabase
+    .from('audit_headline_snapshot')
+    .select('*')
+    .order('snapshot_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST205' || error.message?.includes('does not exist')) {
+      return null;
+    }
+    // snapshot may be empty if never refreshed — non-fatal
+    return null;
+  }
+  return data;
+}
+
 async function fetchSampleRow() {
   const { data, error } = await supabase
     .from('predictions_public')
@@ -114,12 +132,23 @@ async function main() {
   console.log('');
 
   let stats;
+  let usedSnapshot = false;
   try {
     stats = await fetchHeadlineStats();
   } catch (e) {
-    console.error('ERROR fetching headline stats:');
-    console.error('  ' + e.message);
-    process.exit(1);
+    // Live view may time out under Supabase's 3s statement timeout for anon.
+    // Fall back to the materialized snapshot (refreshed every 6h).
+    console.log('  (live view timed out — falling back to materialized snapshot)');
+    const snapshot = await fetchHeadlineSnapshot();
+    if (snapshot) {
+      stats = snapshot;
+      usedSnapshot = true;
+    } else {
+      console.error('ERROR fetching headline stats:');
+      console.error('  ' + e.message);
+      console.error('  (snapshot fallback also unavailable)');
+      process.exit(1);
+    }
   }
 
   console.log('------------------------------------------------------------------------');
@@ -137,7 +166,25 @@ async function main() {
   console.log(`  Latest prediction:          ${stats.latest_prediction}`);
   console.log('');
 
-  const variantStats = await fetchChess960Stats();
+  // Also show the stable materialized snapshot (refreshed every 6h)
+  // Skip if we already used it as fallback above
+  if (!usedSnapshot) {
+    const snapshot = await fetchHeadlineSnapshot();
+    if (snapshot) {
+      console.log('------------------------------------------------------------------------');
+      console.log('  STABLE SNAPSHOT — Materialized View (refreshed every 6h)');
+      console.log('  (this is the stable published number; the live view above may differ)');
+      console.log('------------------------------------------------------------------------');
+      console.log(`  Total predictions:          ${fmt(snapshot.total_predictions)}`);
+      console.log(`  En Pensent accuracy:        ${pct(parseFloat(snapshot.ep_accuracy_pct))}`);
+      console.log(`  Stockfish 18 accuracy:      ${pct(parseFloat(snapshot.sf_accuracy_pct))}`);
+      console.log(`  En Pensent edge:            +${parseFloat(snapshot.ep_edge_pp).toFixed(2)} percentage points`);
+      console.log(`  Snapshot taken:             ${snapshot.snapshot_at}`);
+      console.log('');
+    }
+  }
+
+  const variantStats = await fetchChess960Stats().catch(() => null);
   if (variantStats && variantStats.length > 0) {
     console.log('------------------------------------------------------------------------');
     console.log('  STRATIFIED — Standard Chess vs Chess960 / Freestyle');
@@ -146,9 +193,12 @@ async function main() {
       console.log(`  ${v.variant.padEnd(12)} N=${fmt(v.total_predictions).padStart(10)}  EP ${pct(parseFloat(v.ep_accuracy_pct)).padStart(7)}  SF18 ${pct(parseFloat(v.sf_accuracy_pct)).padStart(7)}  Edge +${parseFloat(v.ep_edge_pp).toFixed(2)}pp`);
     }
     console.log('');
+  } else {
+    console.log('  (Chess960 stratification view timed out — run directly via psql for full stats)');
+    console.log('');
   }
 
-  const phaseStats = await fetchPhaseStats();
+  const phaseStats = await fetchPhaseStats().catch(() => null);
   if (phaseStats && phaseStats.length > 0) {
     console.log('------------------------------------------------------------------------');
     console.log('  STRATIFIED — By Move-Number Phase Zone');
@@ -157,6 +207,9 @@ async function main() {
     for (const p of phaseStats) {
       console.log(`  ${p.phase_zone.padEnd(28)} N=${fmt(p.total_predictions).padStart(10)}  EP ${pct(parseFloat(p.ep_accuracy_pct)).padStart(7)}  SF18 ${pct(parseFloat(p.sf_accuracy_pct)).padStart(7)}  Edge +${parseFloat(p.ep_edge_pp).toFixed(2)}pp`);
     }
+    console.log('');
+  } else {
+    console.log('  (Phase stratification view timed out — run directly via psql for full stats)');
     console.log('');
   }
 

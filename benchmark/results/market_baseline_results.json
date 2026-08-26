@@ -1,0 +1,74 @@
+{
+  "experiment": "market_baseline",
+  "date": "2026-08-16T17:12:49",
+  "seed": 42,
+  "data": {
+    "total_predictions": 91624,
+    "train_size": 73299,
+    "val_size": 9162,
+    "test_size": 9163,
+    "features": [
+      "price",
+      "volume",
+      "target_move",
+      "confidence",
+      "baseline_confidence",
+      "candle_count",
+      "hours_to_resolve",
+      "mc_momentum",
+      "mc_deviation",
+      "mc_volatility",
+      "mc_daily_change",
+      "mc_total_visits",
+      "mc_grid_intensity",
+      "mc_historical_trend",
+      "mc_market_correlation",
+      "vix_current",
+      "vix_change",
+      "vr_score",
+      "vr_short_pressure",
+      "cb_accuracy",
+      "day_of_week",
+      "month_num",
+      "week_of_year",
+      "symbol_id",
+      "horizon_id",
+      "vix_level_id",
+      "vr_direction_id",
+      "grid_direction_id"
+    ],
+    "split": "time-based (80/10/10)"
+  },
+  "model_a": {
+    "name": "LightGBM",
+    "accuracy": 0.42682527556477134,
+    "log_loss": 1.0165736961997371,
+    "brier": 0.6195152958040206,
+    "top_features": {
+      "price": 71,
+      "hours_to_resolve": 18,
+      "symbol_id": 16,
+      "mc_daily_change": 14,
+      "confidence": 11,
+      "vix_change": 8,
+      "mc_volatility": 5,
+      "vr_score": 5,
+      "month_num": 5,
+      "week_of_year": 5
+    }
+  },
+  "model_b": {
+    "name": "Logistic Regression",
+    "accuracy": 0.3904834661137182,
+    "log_loss": 1.5596556207822925,
+    "brier": 0.9230330825377269
+  },
+  "model_c": {
+    "name": "EP market predictions",
+    "accuracy": 0.42769835206810003
+  },
+  "model_d": {
+    "name": "Naive momentum baseline",
+    "accuracy": 0.34912146676852557
+  }
+}
