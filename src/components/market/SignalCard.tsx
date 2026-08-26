@@ -178,6 +178,8 @@ interface CandleData {
   timestamps: number[];
   interval?: string;
   sessionFlags?: string[];
+  changePct?: number; // From DB — vs previous day close (correct for all intervals)
+  price?: number;     // From DB — live price (may include after-hours)
 }
 
 async function fetchCandles(symbol: string): Promise<CandleData | null> {
@@ -202,6 +204,8 @@ async function fetchCandles(symbol: string): Promise<CandleData | null> {
           timestamps: row.timestamps as number[] || [],
           interval: '5m',
           sessionFlags: row.session_flags as string[] || [],
+          changePct: row.change_pct as number | undefined,
+          price: row.price as number | undefined,
         };
       }
     }
@@ -226,6 +230,8 @@ async function fetchCandles(symbol: string): Promise<CandleData | null> {
       timestamps: row.timestamps as number[] || [],
       interval: '1d',
       sessionFlags: row.session_flags as string[] || [],
+      changePct: row.change_pct as number | undefined,
+      price: row.price as number | undefined,
     };
   } catch {
     return null;
@@ -247,13 +253,15 @@ interface TASignal {
 }
 
 function computeTASignal(candles: CandleData): TASignal {
-  const { closes, volumes, highs, lows } = candles;
+  const { closes, volumes, highs, lows, changePct: dbChangePct, price: dbPrice } = candles;
   const n = closes.length;
-  const price = closes[n - 1];
-
-  // 1-day change
-  const prevClose = closes[n - 2] || closes[n - 3] || price;
-  const changePct = ((price - prevClose) / prevClose) * 100;
+  // v38 FIX: Use DB price (includes after-hours/live) and DB changePct (vs prev day close)
+  // instead of computing from consecutive bars which is wrong for 5m intraday data
+  const price = dbPrice || closes[n - 1];
+  const changePct = dbChangePct != null ? dbChangePct : (() => {
+    const prevClose = closes[n - 2] || closes[n - 3] || price;
+    return ((price - prevClose) / prevClose) * 100;
+  })();
 
   // SMA20 and SMA50
   const sma = (arr: number[], period: number) => {
