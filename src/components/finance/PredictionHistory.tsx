@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { MARKET_ARCHETYPES } from '@/lib/pensent-core/domains/finance/types';
+import { formatConfidencePct, normalizeDirection } from '@/lib/trading/signalNormalization';
 
 interface Prediction {
   id: string;
@@ -51,8 +52,10 @@ export const PredictionHistory: React.FC<PredictionHistoryProps> = ({
   onRefresh
 }) => {
   const DirectionIcon = ({ direction }: { direction: string }) => {
-    if (direction === 'bullish') return <TrendingUp className="w-4 h-4 text-green-500" />;
-    if (direction === 'bearish') return <TrendingDown className="w-4 h-4 text-red-500" />;
+    // Accepts both the live ('bullish'/'bearish') and replay ('up'/'down') encodings
+    const dir = normalizeDirection(direction);
+    if (dir === 'bullish') return <TrendingUp className="w-4 h-4 text-green-500" />;
+    if (dir === 'bearish') return <TrendingDown className="w-4 h-4 text-red-500" />;
     return <Minus className="w-4 h-4 text-muted-foreground" />;
   };
 
@@ -139,7 +142,7 @@ export const PredictionHistory: React.FC<PredictionHistoryProps> = ({
                         <div className="flex items-center gap-1">
                           <DirectionIcon direction={pred.predicted_direction} />
                           <span className="capitalize font-medium">{pred.predicted_direction}</span>
-                          <span className="text-muted-foreground">({pred.predicted_confidence}%)</span>
+                          <span className="text-muted-foreground">({formatConfidencePct(pred.predicted_confidence)})</span>
                         </div>
                       </div>
 

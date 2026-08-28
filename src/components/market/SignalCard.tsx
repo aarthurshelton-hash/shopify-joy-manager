@@ -17,6 +17,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp, TrendingDown, Minus, Clock, Activity, AlertCircle, Zap } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { normalizeConfidence, normalizeDirection } from '@/lib/trading/signalNormalization';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -464,10 +465,10 @@ export const SignalCard: React.FC<SignalCardProps> = ({ symbol, name, sector, em
     //   3. Neutral fallback (only if both fail — extremely rare)
     if (dbData) {
       const meta = dbData.prediction_metadata || {};
-      const direction = (dbData.predicted_direction as 'bullish' | 'bearish' | 'neutral') || 'neutral';
-      const confidence = typeof dbData.confidence === 'number'
-        ? (dbData.confidence > 1 ? dbData.confidence / 100 : dbData.confidence)
-        : 0;
+      // normalizeDirection also maps the legacy replay encoding ('up'/'down'),
+      // which previously rendered as FLAT on the public signals page.
+      const direction = normalizeDirection(dbData.predicted_direction);
+      const confidence = normalizeConfidence(dbData.confidence);
       const calib = meta.confidence_calibration;
       const rawConf = calib?.raw_confidence ? calib.raw_confidence / 100 : undefined;
 

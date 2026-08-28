@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { AdminRoute } from '@/components/auth/AdminRoute';
 import { RefreshCw, TrendingUp, TrendingDown, Activity, Clock } from 'lucide-react';
 import ChessPieceIcon from '@/components/chess/ChessPieceIcon';
+import { normalizeConfidence, normalizeDirection } from '@/lib/trading/signalNormalization';
 
 // ── SECTOR CONFIG — matches market-prediction-worker.mjs ──────────────────────
 const SECTOR_MAP: Record<string, string> = {
@@ -100,9 +101,20 @@ async function fetchLatestSignals(): Promise<CellData[]> {
 
   if (error || !data) return [];
 
+  // Normalize the mixed DB encodings ONCE, at the fetch boundary.
+  // The DB holds confidence as either a legacy 0-100 integer or a 0.0-1.0
+  // decimal, and direction as either 'bullish'/'bearish' or 'up'/'down'.
+  // Everything below this line — and every threshold in this file — works in
+  // whole percent (0-100), so we convert to that unit here and only here.
+  const rows = (data as Signal[]).map(row => ({
+    ...row,
+    predicted_direction: normalizeDirection(row.predicted_direction),
+    confidence: Math.round(normalizeConfidence(row.confidence) * 100),
+  }));
+
   // Keep highest-confidence unresolved signal per symbol, fallback to any latest
   const bySymbol = new Map<string, Signal>();
-  for (const row of data as Signal[]) {
+  for (const row of rows) {
     const existing = bySymbol.get(row.symbol);
     if (!existing) {
       bySymbol.set(row.symbol, row);
@@ -119,17 +131,21 @@ async function fetchLatestSignals(): Promise<CellData[]> {
   }
 
   const now = Date.now();
-  return Array.from(bySymbol.values()).map(s => ({
-    symbol: s.symbol,
-    sector: SECTOR_MAP[s.symbol] || 'Other',
-    direction: s.predicted_direction,
-    confidence: s.confidence,
-    archetype: s.archetype || '—',
-    timeHorizon: s.time_horizon,
-    ageMinutes: Math.round((now - new Date(s.created_at).getTime()) / 60000),
-    resolved: !!s.resolved_at,
-    correct: s.ep_correct,
-  }));
+  return Array.from(bySymbol.values())
+    // 'flat'/'neutral' rows carry no direction to render (the DB-level filter
+    // only excludes the literal string 'neutral', not the legacy 'flat').
+    .filter(s => s.predicted_direction !== 'neutral')
+    .map(s => ({
+      symbol: s.symbol,
+      sector: SECTOR_MAP[s.symbol] || 'Other',
+      direction: s.predicted_direction,
+      confidence: s.confidence,
+      archetype: s.archetype || '—',
+      timeHorizon: s.time_horizon,
+      ageMinutes: Math.round((now - new Date(s.created_at).getTime()) / 60000),
+      resolved: !!s.resolved_at,
+      correct: s.ep_correct,
+    }));
 }
 
 // ── CELL COMPONENT ────────────────────────────────────────────────────────────

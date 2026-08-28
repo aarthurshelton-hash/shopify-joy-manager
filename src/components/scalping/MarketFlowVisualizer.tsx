@@ -17,6 +17,7 @@ import {
   Activity, Eye, Info
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { normalizeConfidence, normalizeDirection } from '@/lib/trading/signalNormalization';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import ChessPieceIcon from '@/components/chess/ChessPieceIcon';
@@ -218,10 +219,9 @@ const MarketFlowVisualizer: React.FC = () => {
         .map(sym => {
           const row = bySymbol.get(sym.symbol);
           const meta = (row?.prediction_metadata as PredictionMetadata) ?? {};
-          const direction = (row?.predicted_direction as 'bullish' | 'bearish' | 'neutral') ?? 'neutral';
-          const confidence = typeof row?.confidence === 'number'
-            ? (row.confidence > 1 ? row.confidence / 100 : row.confidence)
-            : 0;
+          // normalizeDirection also maps the legacy replay encoding ('up'/'down')
+          const direction = normalizeDirection(row?.predicted_direction);
+          const confidence = normalizeConfidence(row?.confidence);
           const archetype = row?.archetype ?? 'choppy';
           const ageMs = row ? now - new Date(row.created_at).getTime() : Infinity;
           const ageMin = Math.round(ageMs / 60000);

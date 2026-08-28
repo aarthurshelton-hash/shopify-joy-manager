@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { TrendingUp, TrendingDown, Minus, Download, Eye, EyeOff, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { formatConfidencePct, normalizeConfidence, normalizeDirection } from '@/lib/trading/signalNormalization';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface GridCell {
@@ -94,7 +95,8 @@ function computeGrid(
         (TF_TO_HORIZON[tf.label] ?? []).includes(p.timeHorizon)
       );
       const epDir = matchPred?.direction === 'bullish' ? 1 : matchPred?.direction === 'bearish' ? -1 : 0;
-      const epConf = matchPred ? matchPred.confidence / 100 : 0;
+      // confidence is already normalized to 0.0-1.0 at the fetch boundary
+      const epConf = matchPred ? matchPred.confidence : 0;
       const epAgrees = epDir !== 0 && epDir === direction && epConf > 0.48;
 
       const layers = [base, metal];
@@ -107,7 +109,8 @@ function computeGrid(
   const epRow: GridCell[] = TIMEFRAME_COLS.map((tf) => {
     const match = preds.find(p => (TF_TO_HORIZON[tf.label] ?? []).includes(p.timeHorizon));
     const dir = match?.direction === 'bullish' ? 1 : match?.direction === 'bearish' ? -1 : 0;
-    const conf = match ? match.confidence / 100 : 0;
+    // confidence is already normalized to 0.0-1.0 at the fetch boundary
+    const conf = match ? match.confidence : 0;
     const hs = dir * 22;
     const color = match
       ? `hsl(${metalHue + hs},${55 + conf * 40}%,${18 + conf * 42}%)`
@@ -252,14 +255,16 @@ GridSVG.displayName = 'GridSVG';
 
 // ── Direction badge ───────────────────────────────────────────────────────────
 function DirBadge({ dir, conf }: { dir: string; conf: number }) {
+  // `conf` is a normalized 0.0-1.0 decimal — render as whole percent.
+  const pct = formatConfidencePct(conf);
   if (dir === 'bullish') return (
     <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 text-xs font-semibold">
-      <TrendingUp className="w-3 h-3" /> {conf}%
+      <TrendingUp className="w-3 h-3" /> {pct}
     </span>
   );
   if (dir === 'bearish') return (
     <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 text-xs font-semibold">
-      <TrendingDown className="w-3 h-3" /> {conf}%
+      <TrendingDown className="w-3 h-3" /> {pct}
     </span>
   );
   return (
@@ -297,8 +302,11 @@ const CommodityGridVisualizer: React.FC = () => {
           const conditions = (meta.market_conditions as Record<string, number>) ?? {};
           return {
             symbol: m.epSymbol,
-            direction: r.predicted_direction,
-            confidence: r.confidence ?? 0,
+            // Normalize at the fetch boundary — downstream code treats
+            // `direction` as 'bullish'/'bearish' and `confidence` as a
+            // 0.0-1.0 decimal.
+            direction: normalizeDirection(r.predicted_direction),
+            confidence: normalizeConfidence(r.confidence),
             archetype: r.archetype ?? 'unknown',
             timeHorizon: r.time_horizon ?? '',
             conditions,

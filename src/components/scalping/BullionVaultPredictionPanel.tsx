@@ -9,6 +9,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { TrendingUp, TrendingDown, Minus, RefreshCw, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { formatConfidencePct, normalizeDirection } from '@/lib/trading/signalNormalization';
 
 // ── Metal config ────────────────────────────────────────────────────────────
 const METALS = [
@@ -48,9 +49,12 @@ function loadBVScript(): Promise<void> {
 
 // ── Direction badge ──────────────────────────────────────────────────────────
 function DirectionBadge({ direction, confidence }: { direction: string; confidence: number }) {
-  const isUp   = direction === 'bullish';
-  const isDown = direction === 'bearish';
-  const pct    = `${confidence}%`;
+  // Normalize both encodings: confidence may be a 0.0-1.0 decimal or a legacy
+  // 0-100 integer, and direction may be 'bullish'/'bearish' or 'up'/'down'.
+  const dir    = normalizeDirection(direction);
+  const isUp   = dir === 'bullish';
+  const isDown = dir === 'bearish';
+  const pct    = formatConfidencePct(confidence);
 
   if (isUp) return (
     <div className="flex items-center gap-1.5 bg-emerald-500/15 border border-emerald-500/30 rounded-lg px-3 py-1.5">
@@ -183,8 +187,9 @@ const BullionVaultPredictionPanel: React.FC = () => {
       <div className="flex border-b border-border/40">
         {METALS.map((m) => {
           const p = preds[m.id];
-          const isUp   = p?.predicted_direction === 'bullish';
-          const isDown = p?.predicted_direction === 'bearish';
+          const pDir   = normalizeDirection(p?.predicted_direction);
+          const isUp   = pDir === 'bullish';
+          const isDown = pDir === 'bearish';
           const dotColor = isUp ? 'bg-emerald-400' : isDown ? 'bg-red-400' : 'bg-gray-400';
           return (
             <button

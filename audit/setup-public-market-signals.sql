@@ -49,9 +49,17 @@ FROM public.market_prediction_attempts
 WHERE
   prediction_metadata IS NOT NULL
   AND predicted_direction IS NOT NULL
-  -- v38: 7-day window for 24/7 coverage (weekends + Asian market off-hours)
-  -- Ensures cards always have a signal to show, with staleness indicator on the frontend
-  AND created_at >= (NOW() - INTERVAL '7 days')
+  -- v38 AUDIT FIX: Exclude backtest/replay rows from the LIVE signals feed.
+  -- historical_replay rows are written with HISTORICAL created_at timestamps,
+  -- so a walk-forward backtest row could fall inside the window and win the
+  -- DISTINCT ON — publishing a backtest result as a live signal.
+  AND prediction_source NOT IN ('historical_replay', 'backtest')
+  -- v38 AUDIT FIX: Tightened 7d -> 48h. 48h keeps cards populated across a
+  -- weekend gap (Fri close -> Mon pre-open) without presenting multi-day-old
+  -- predictions as current signals.
+  AND created_at >= (NOW() - INTERVAL '48 hours')
+  -- Directional only — 'neutral' carries no tradeable information
+  AND predicted_direction IN ('bullish', 'bearish')
 ORDER BY symbol, created_at DESC;
 
 GRANT SELECT ON public.market_signals_public TO anon;
@@ -68,11 +76,16 @@ SELECT
   COUNT(*) AS total_predictions,
   SUM((ep_correct = true)::int) AS correct_predictions,
   ROUND(100.0 * SUM((ep_correct = true)::int) / NULLIF(COUNT(*), 0), 1) AS accuracy_pct,
-  ROUND(AVG(confidence)::numeric, 1) AS avg_confidence,
+  -- v38 AUDIT FIX: confidence is a 0.0-1.0 decimal, so round to 3dp not 1dp
+  -- (1dp collapsed 0.284 -> 0.3 and destroyed the published precision).
+  ROUND(AVG(confidence)::numeric, 3) AS avg_confidence,
   MAX(created_at) AS latest_prediction
 FROM public.market_prediction_attempts
 WHERE
   ep_correct IS NOT NULL
+  -- v38 AUDIT FIX: LIVE accuracy only. Publishing backtest accuracy as the
+  -- live signal track record would misrepresent real-time performance.
+  AND prediction_source NOT IN ('historical_replay', 'backtest')
   AND created_at >= (NOW() - INTERVAL '30 days')
 GROUP BY symbol
 ORDER BY total_predictions DESC;
@@ -91,11 +104,14 @@ SELECT
   COUNT(*) AS total_predictions,
   SUM((ep_correct = true)::int) AS correct_predictions,
   ROUND(100.0 * SUM((ep_correct = true)::int) / NULLIF(COUNT(*), 0), 1) AS accuracy_pct,
-  ROUND(AVG(confidence)::numeric, 1) AS avg_confidence
+  -- v38 AUDIT FIX: 0.0-1.0 decimal scale — round to 3dp
+  ROUND(AVG(confidence)::numeric, 3) AS avg_confidence
 FROM public.market_prediction_attempts
 WHERE
   ep_correct IS NOT NULL
   AND archetype IS NOT NULL
+  -- v38 AUDIT FIX: LIVE archetype performance only (exclude backtest)
+  AND prediction_source NOT IN ('historical_replay', 'backtest')
   AND created_at >= (NOW() - INTERVAL '30 days')
 GROUP BY archetype
 ORDER BY accuracy_pct DESC;
