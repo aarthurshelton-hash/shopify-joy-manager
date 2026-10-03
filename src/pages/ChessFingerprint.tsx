@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
 import { Button } from '@/components/ui/button';
@@ -14,14 +14,23 @@ import {
   TrendingDown,
   Sparkles,
   Share2,
+  Crosshair,
+  Flame,
+  Snowflake,
+  Minus,
+  Download,
+  Crown,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   generatePlayerFingerprint,
+  fetchExtendedHistory,
   PlayerFingerprint as FingerprintData,
   ArchetypeProfile,
+  FormEntry,
 } from '@/lib/chess/fingerprint/generateFingerprint';
 import { ImportSource } from '@/lib/chess/gameImport';
+import { useAuth } from '@/hooks/useAuth';
 
 const ArchetypeRow = ({ p }: { p: ArchetypeProfile }) => (
   <div className="space-y-1">
@@ -43,7 +52,47 @@ const ArchetypeRow = ({ p }: { p: ArchetypeProfile }) => (
   </div>
 );
 
-const FingerprintCard = ({ fp }: { fp: FingerprintData }) => {
+const BIAS_STYLES: Record<string, string> = {
+  attacking: 'border-red-500/40 bg-red-500/10 text-red-500',
+  positional: 'border-blue-500/40 bg-blue-500/10 text-blue-500',
+  technical: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-500',
+  volatile: 'border-orange-500/40 bg-orange-500/10 text-orange-500',
+  balanced: 'border-border/60 bg-muted/30 text-muted-foreground',
+};
+
+const OUTCOME_DOT: Record<FormEntry['outcome'], string> = {
+  win: 'bg-green-500',
+  draw: 'bg-zinc-400',
+  loss: 'bg-red-500',
+  unknown: 'bg-muted',
+};
+
+const FormStrip = ({ timeline }: { timeline: FormEntry[] }) => (
+  <div className="flex items-end gap-1 flex-wrap">
+    {timeline.map((e, i) => (
+      <div
+        key={i}
+        title={`${e.opponent} (${e.userColor}) — ${e.archetype.replace(/_/g, ' ')} — ${e.outcome}`}
+        className={`h-6 w-2.5 rounded-sm ${OUTCOME_DOT[e.outcome]} ${
+          i === timeline.length - 1 ? 'ring-1 ring-foreground/50' : 'opacity-80'
+        }`}
+      />
+    ))}
+    <span className="ml-2 text-[10px] text-muted-foreground">oldest → latest</span>
+  </div>
+);
+
+const FingerprintCard = ({
+  fp,
+  onExportHistory,
+  exporting,
+  isPremium,
+}: {
+  fp: FingerprintData;
+  onExportHistory: () => void;
+  exporting: boolean;
+  isPremium: boolean;
+}) => {
   const shareText = () => {
     const lines = [
       `My Chess Fingerprint — ${fp.style.label}`,
@@ -86,6 +135,42 @@ const FingerprintCard = ({ fp }: { fp: FingerprintData }) => {
             </div>
           </div>
           <p className="text-sm max-w-lg mx-auto">{fp.style.description}</p>
+
+          {/* Current bias + trend — the scouting verdict */}
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <span
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium ${
+                BIAS_STYLES[fp.bias.kind]
+              }`}
+            >
+              <Crosshair className="h-3.5 w-3.5" />
+              {fp.bias.label} · {fp.bias.conviction}%
+            </span>
+            {fp.trend === 'heating_up' && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-orange-500/40 bg-orange-500/10 text-orange-500 text-xs font-medium">
+                <Flame className="h-3.5 w-3.5" /> Heating up
+              </span>
+            )}
+            {fp.trend === 'cooling' && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-blue-400/40 bg-blue-400/10 text-blue-400 text-xs font-medium">
+                <Snowflake className="h-3.5 w-3.5" /> Cooling
+              </span>
+            )}
+            {fp.trend === 'steady' && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border/60 bg-muted/30 text-muted-foreground text-xs font-medium">
+                <Minus className="h-3.5 w-3.5" /> Steady
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground max-w-md mx-auto">
+            {fp.bias.description}
+          </p>
+
+          {/* Recent form strip */}
+          <div className="max-w-md mx-auto">
+            <FormStrip timeline={fp.formTimeline} />
+          </div>
+
           <Button variant="outline" size="sm" onClick={shareText}>
             <Share2 className="h-4 w-4 mr-2" />
             Copy Share Text
@@ -151,6 +236,28 @@ const FingerprintCard = ({ fp }: { fp: FingerprintData }) => {
         </div>
       )}
 
+      {/* Scout report — actionable prep */}
+      {fp.prepNotes.length > 0 && (
+        <Card className="border-primary/30">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Crosshair className="h-4 w-4 text-primary" />
+              Scout Report
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2">
+              {fp.prepNotes.map((note, i) => (
+                <li key={i} className="flex gap-2 text-sm leading-relaxed">
+                  <span className="text-primary mt-0.5">•</span>
+                  <span>{note}</span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Narrative */}
       <Card>
         <CardHeader>
@@ -163,6 +270,31 @@ const FingerprintCard = ({ fp }: { fp: FingerprintData }) => {
           {fp.narrative.map((p, i) => (
             <p key={i} className="text-sm leading-relaxed text-foreground/90">{p}</p>
           ))}
+        </CardContent>
+      </Card>
+
+      {/* Premium history export */}
+      <Card>
+        <CardContent className="pt-6 flex flex-wrap items-center justify-between gap-4">
+          <div className="text-sm">
+            <div className="font-medium flex items-center gap-1.5">
+              {!isPremium && <Crown className="h-4 w-4 text-primary" />}
+              Full History Export
+            </div>
+            <div className="text-muted-foreground">
+              {isPremium
+                ? 'Download every analyzed game — archetype, outcome, opponent — as CSV.'
+                : 'Premium members can download the complete archetype timeline (up to 250 games).'}
+            </div>
+          </div>
+          <Button onClick={onExportHistory} disabled={exporting} variant={isPremium ? 'default' : 'outline'}>
+            {exporting ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : (
+              <Download className="h-4 w-4 mr-2" />
+            )}
+            {exporting ? 'Analyzing history…' : isPremium ? 'Download CSV' : 'Unlock with Premium'}
+          </Button>
         </CardContent>
       </Card>
 
@@ -194,7 +326,10 @@ const ChessFingerprint = () => {
   const [source, setSource] = useState<ImportSource>('chesscom');
   const [fingerprint, setFingerprint] = useState<FingerprintData | null>(null);
   const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { isPremium } = useAuth();
+  const navigate = useNavigate();
 
   const run = async () => {
     setLoading(true);
@@ -210,6 +345,57 @@ const ChessFingerprint = () => {
     }
   };
 
+  const exportFullHistory = async () => {
+    if (!fingerprint) return;
+    if (!isPremium) {
+      toast.info('Full history export is a Premium feature', {
+        description: 'Unlock 250-game archetype timelines for any opponent.',
+        action: { label: 'Upgrade', onClick: () => navigate('/premium') },
+      });
+      return;
+    }
+    setExporting(true);
+    try {
+      const games = await fetchExtendedHistory(fingerprint.username, fingerprint.source, 250);
+      const full = await generatePlayerFingerprint(
+        fingerprint.username,
+        fingerprint.source,
+        250,
+        games
+      );
+
+      const header = 'date,opponent,color,archetype,outcome';
+      const rows = full.fullTimeline.map((e) =>
+        [
+          e.date ?? '',
+          `"${e.opponent.replace(/"/g, '""')}"`,
+          e.userColor,
+          e.archetype,
+          e.outcome,
+        ].join(',')
+      );
+      const csv = [header, ...rows].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `ep-fingerprint-${fingerprint.username}-${full.fullTimeline.length}games.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success(`Exported ${full.fullTimeline.length} games`, {
+        description: 'Full archetype timeline saved as CSV.',
+      });
+    } catch (e) {
+      toast.error('Export failed', {
+        description: e instanceof Error ? e.message : 'Could not fetch full history.',
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Header />
@@ -220,8 +406,9 @@ const ChessFingerprint = () => {
             Chess Fingerprint
           </h1>
           <p className="text-muted-foreground text-sm max-w-xl mx-auto">
-            Your last 30 games distilled into a strategic identity — which patterns
-            you play, where you're dangerous, and where you bleed points.
+            Scout any opponent — or yourself. Their last 30 games distilled into a
+            strategic identity: current bias, form, where they're dangerous,
+            and where they bleed points.
           </p>
         </div>
 
@@ -245,7 +432,7 @@ const ChessFingerprint = () => {
                 </button>
               </div>
               <Input
-                placeholder="Username"
+                placeholder="Username (yours or an opponent's)"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && username.trim() && !loading && run()}
@@ -267,7 +454,14 @@ const ChessFingerprint = () => {
           </div>
         )}
 
-        {fingerprint && !loading && <FingerprintCard fp={fingerprint} />}
+        {fingerprint && !loading && (
+          <FingerprintCard
+            fp={fingerprint}
+            onExportHistory={exportFullHistory}
+            exporting={exporting}
+            isPremium={isPremium}
+          />
+        )}
       </main>
       <Footer />
     </div>

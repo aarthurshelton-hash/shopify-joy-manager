@@ -17,6 +17,8 @@ import {
 } from '../colorFlowAnalysis';
 import type { StrategicArchetype } from '../colorFlowAnalysis';
 import { importGames, ImportedGame, ImportSource } from '../gameImport';
+import { getChessComArchives, fetchChessComArchive } from '../gameImport/chesscomApi';
+import { fetchLichessGames, lichessGameToPgn } from '../gameImport/lichessApi';
 
 // ===================== TYPES =====================
 
@@ -42,6 +44,33 @@ export interface StyleIdentity {
   description: string;
 }
 
+/** One game in the player's form timeline (oldest -> newest). */
+export interface FormEntry {
+  archetype: StrategicArchetype;
+  outcome: PlayerOutcome;
+  opponent: string;
+  userColor: 'white' | 'black';
+  /** ISO date if derivable from PGN headers. */
+  date: string | null;
+}
+
+export type BiasKind =
+  | 'attacking'     // recent games skew sharp
+  | 'positional'    // recent games skew squeeze/maneuver
+  | 'technical'     // recent games skew clean/endgame
+  | 'volatile'      // high intensity, no stable register
+  | 'balanced';     // no dominant register
+
+export interface PlayerBias {
+  kind: BiasKind;
+  label: string;
+  /** Share of the dominant register inside the recent window (0-100). */
+  conviction: number;
+  description: string;
+}
+
+export type FormTrend = 'heating_up' | 'cooling' | 'steady';
+
 export interface PlayerFingerprint {
   username: string;
   source: ImportSource;
@@ -56,6 +85,14 @@ export interface PlayerFingerprint {
   strengths: ArchetypeProfile[];
   weaknesses: ArchetypeProfile[];
   style: StyleIdentity;
+  /** Oldest -> newest. Last ~15 analyzed games (display). */
+  formTimeline: FormEntry[];
+  /** Oldest -> newest. Every analyzed game (premium export). */
+  fullTimeline: FormEntry[];
+  bias: PlayerBias;
+  trend: FormTrend;
+  /** Actionable opponent-prep takeaways. */
+  prepNotes: string[];
   narrative: string[];
 }
 
@@ -167,6 +204,143 @@ function deriveStyle(profile: ArchetypeProfile[], avgIntensity: number): StyleId
   };
 }
 
+// ===================== BIAS / TREND / PREP =====================
+
+interface BiasRecord {
+  archetype: StrategicArchetype;
+  outcome: PlayerOutcome;
+  intensity: number;
+}
+
+const RECENT_WINDOW = 10;
+const BIAS_THRESHOLD = 0.45;
+
+function registerShare(list: BiasRecord[], ids: StrategicArchetype[]): number {
+  if (list.length === 0) return 0;
+  return list.filter((r) => ids.includes(r.archetype)).length / list.length;
+}
+
+/** Market-style bias for the player's most recent games. */
+function deriveBias(records: BiasRecord[], avgIntensity: number): PlayerBias {
+  const recent = records.slice(0, RECENT_WINDOW); // newest first
+  const a = registerShare(recent, ATTACKING);
+  const p = registerShare(recent, POSITIONAL);
+  const t = registerShare(recent, TECHNICAL);
+  const max = Math.max(a, p, t);
+  const recentIntensity =
+    recent.reduce((s, r) => s + r.intensity, 0) / Math.max(1, recent.length);
+
+  if (max < BIAS_THRESHOLD && recentIntensity >= 55) {
+    return {
+      kind: 'volatile',
+      label: 'Volatile',
+      conviction: Math.round(max * 100),
+      description:
+        'No stable register — recent games swing between registers at high intensity. ' +
+        'Expect chaos and calculate carefully.',
+    };
+  }
+  if (max < BIAS_THRESHOLD) {
+    return {
+      kind: 'balanced',
+      label: 'Balanced',
+      conviction: Math.round(max * 100),
+      description:
+        'No dominant register right now — they adapt to whatever the position gives them.',
+    };
+  }
+  if (a === max) {
+    return {
+      kind: 'attacking',
+      label: 'Attacking Bias',
+      conviction: Math.round(a * 100),
+      description:
+        'Recent games skew sharp — attacks, storms, and sacrificial breaks. ' +
+        'Keep things slow and closed if you want to take them off their game.',
+    };
+  }
+  if (p === max) {
+    return {
+      kind: 'positional',
+      label: 'Positional Bias',
+      conviction: Math.round(p * 100),
+      description:
+        'Recent games skew slow — squeezes, space, and maneuvering. ' +
+        'They are patient right now; early imbalance may unsettle them.',
+    };
+  }
+  return {
+    kind: 'technical',
+    label: 'Technical Bias',
+    conviction: Math.round(t * 100),
+    description:
+      'Recent games resolve clean — endgames and precise conversion. ' +
+      'Do not hand them a small edge; they know how to hold and grow it.',
+  };
+}
+
+/** Win-rate movement: recent 8 games vs the 8 before. */
+function deriveTrend(records: BiasRecord[]): FormTrend {
+  if (records.length < 10) return 'steady';
+  const recent = records.slice(0, 8);
+  const prior = records.slice(8, 16);
+  if (prior.length === 0) return 'steady';
+  const rate = (list: BiasRecord[]) =>
+    list.filter((r) => r.outcome === 'win').length / list.length;
+  const delta = rate(recent) - rate(prior);
+  if (delta >= 0.15) return 'heating_up';
+  if (delta <= -0.15) return 'cooling';
+  return 'steady';
+}
+
+function buildPrepNotes(
+  profile: ArchetypeProfile[],
+  records: BiasRecord[],
+  username: string
+): string[] {
+  const notes: string[] = [];
+  const significant = profile.filter((p) => p.games >= 3);
+
+  const weakest = [...significant].sort(
+    (a, b) => a.deltaVsBaseline - b.deltaVsBaseline
+  )[0];
+  if (weakest && weakest.deltaVsBaseline <= -10) {
+    notes.push(
+      `Steer into ${weakest.name} — ${username} converts only ${weakest.winRate.toFixed(0)}% ` +
+        `of decisive games there (${Math.abs(weakest.deltaVsBaseline).toFixed(0)}pp below their norm).`
+    );
+  }
+
+  const strongest = [...significant].sort(
+    (a, b) => b.deltaVsBaseline - a.deltaVsBaseline
+  )[0];
+  if (strongest && strongest.deltaVsBaseline >= 10) {
+    notes.push(
+      `Avoid ${strongest.name} structures — ${username} wins ${strongest.winRate.toFixed(0)}% ` +
+        `of decisive games there (+${strongest.deltaVsBaseline.toFixed(0)}pp above their norm).`
+    );
+  }
+
+  const drawish = profile.find((p) => p.games >= 3 && p.draws / p.games > 0.35);
+  if (drawish) {
+    notes.push(
+      `If it reaches ${drawish.name} territory, expect a grind — ` +
+        `${((drawish.draws / drawish.games) * 100).toFixed(0)}% of those games are drawn.`
+    );
+  }
+
+  const recentAttacking = registerShare(records.slice(0, RECENT_WINDOW), ATTACKING);
+  if (recentAttacking >= 0.5) {
+    notes.push(
+      `Currently on a sharp streak — ${(recentAttacking * 100).toFixed(0)}% of their last ` +
+        `${Math.min(RECENT_WINDOW, records.length)} games opened into attacking patterns. ` +
+        `Preparing a solid, low-theory line will pay off.`
+    );
+  }
+
+  return notes;
+}
+
 // ===================== NARRATIVE =====================
 
 function buildNarrative(fp: Omit<PlayerFingerprint, 'narrative'>): string[] {
@@ -218,9 +392,10 @@ function buildNarrative(fp: Omit<PlayerFingerprint, 'narrative'>): string[] {
 export async function generatePlayerFingerprint(
   username: string,
   source: ImportSource,
-  maxGames = 30
+  maxGames = 30,
+  prefetchedGames?: ImportedGame[]
 ): Promise<PlayerFingerprint> {
-  const games = await importGames(source, username, maxGames);
+  const games = prefetchedGames ?? (await importGames(source, username, maxGames));
   if (games.length === 0) {
     throw new Error('No games found for this username.');
   }
@@ -232,6 +407,9 @@ export async function generatePlayerFingerprint(
     outcome: PlayerOutcome;
     intensity: number;
     dominantSide: 'white' | 'black' | 'contested';
+    opponent: string;
+    userColor: 'white' | 'black';
+    date: string | null;
   }
 
   const records: GameRecord[] = [];
@@ -253,11 +431,18 @@ export async function generatePlayerFingerprint(
         skipped++;
         continue;
       }
+      const opponent = userIsWhite
+        ? (game.black || sim.gameData.black || 'unknown')
+        : (game.white || sim.gameData.white || 'unknown');
+      const pgnDate = /\[Date\s+"([^"]+)"\]/.exec(game.pgn)?.[1] ?? null;
       records.push({
         archetype: sig.archetype,
         outcome,
         intensity: sig.intensity,
         dominantSide: sig.dominantSide,
+        opponent,
+        userColor: userIsWhite ? 'white' : 'black',
+        date: pgnDate,
       });
     } catch {
       skipped++;
@@ -329,6 +514,20 @@ export async function generatePlayerFingerprint(
 
   const style = deriveStyle(profile, avgIntensity);
 
+  const toEntry = (r: GameRecord): FormEntry => ({
+    archetype: r.archetype,
+    outcome: r.outcome,
+    opponent: r.opponent,
+    userColor: r.userColor,
+    date: r.date,
+  });
+  const fullTimeline = [...records].reverse().map(toEntry);
+  const formTimeline = fullTimeline.slice(-15);
+
+  const bias = deriveBias(records, avgIntensity);
+  const trend = deriveTrend(records);
+  const prepNotes = buildPrepNotes(profile, records, username);
+
   const partial: Omit<PlayerFingerprint, 'narrative'> = {
     username,
     source,
@@ -343,7 +542,84 @@ export async function generatePlayerFingerprint(
     strengths,
     weaknesses,
     style,
+    formTimeline,
+    fullTimeline,
+    bias,
+    trend,
+    prepNotes,
   };
 
   return { ...partial, narrative: buildNarrative(partial) };
+}
+
+// ===================== EXTENDED HISTORY (PREMIUM) =====================
+
+const DEFAULT_HISTORY_LIMIT = 250;
+const CHESSCOM_MONTH_CAP = 24; // newest N archive months
+
+function parsePgnHeaders(pgn: string): Record<string, string> {
+  const headers: Record<string, string> = {};
+  const regex = /\[(\w+)\s+"([^"]*)"\]/g;
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(pgn)) !== null) {
+    headers[match[1]] = match[2];
+  }
+  return headers;
+}
+
+function pgnToImportedGame(pgn: string, id: string, source: string): ImportedGame {
+  const h = parsePgnHeaders(pgn);
+  return {
+    id,
+    white: h.White || 'White',
+    black: h.Black || 'Black',
+    result: h.Result || '',
+    date: h.UTCDate || h.Date || '',
+    event: h.Event || source,
+    pgn,
+  };
+}
+
+/**
+ * Fetch an extended game history for a player — for premium full-history
+ * fingerprints and CSV export. Chess.com: newest N archive months.
+ * Lichess: single paginated request via the proxy (higher max).
+ */
+export async function fetchExtendedHistory(
+  username: string,
+  source: ImportSource,
+  maxGames = DEFAULT_HISTORY_LIMIT
+): Promise<ImportedGame[]> {
+  const clean = username.trim().replace(/^@/, '');
+  if (!clean) throw new Error('Please enter a username.');
+
+  if (source === 'lichess') {
+    const res = await fetchLichessGames(clean, { max: maxGames });
+    return res.games.map((g, i) =>
+      pgnToImportedGame(lichessGameToPgn(g), `lichess-ext-${i}`, 'lichess')
+    );
+  }
+
+  // Chess.com — walk archives newest -> oldest until the cap
+  const archives = await getChessComArchives(clean);
+  const months = archives.slice(-CHESSCOM_MONTH_CAP).reverse();
+  const out: ImportedGame[] = [];
+
+  for (const monthUrl of months) {
+    if (out.length >= maxGames) break;
+    try {
+      const games = await fetchChessComArchive(monthUrl);
+      // Newest games last within each month — take most recent first
+      for (const g of [...games].reverse()) {
+        if (out.length >= maxGames) break;
+        if (g.pgn) {
+          out.push(pgnToImportedGame(g.pgn, `chesscom-${out.length}`, 'chess.com'));
+        }
+      }
+    } catch {
+      // A flaky archive month shouldn't kill the whole export
+    }
+  }
+
+  return out;
 }

@@ -505,9 +505,9 @@ const Index = () => {
               onBack={handleReturnClick}
               onUpgradePrompt={() => setShowVisionaryModal(true)}
               onExport={async (type, exportState) => {
-                // Preview download is available for everyone
-                // HD, GIF, and Gamecard require premium
-                if (type !== 'print' && type !== 'preview') {
+                // Preview and game card downloads are available for everyone
+                // HD and GIF require premium
+                if (type !== 'print' && type !== 'preview' && type !== 'gamecard') {
                   if (!user) {
                     setShowAuthModal(true);
                     return;
