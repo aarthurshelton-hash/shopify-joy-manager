@@ -39,7 +39,8 @@
  * ============================================================================
  */
 
-import { simulateGame } from '../src/lib/chess/gameSimulator';
+import { Chess } from 'chess.js';
+import { simulateGame, type GameData } from '../src/lib/chess/gameSimulator';
 import { extractColorFlowSignature } from '../src/lib/chess/colorFlowAnalysis/signatureExtractor';
 import { predictFromColorFlow } from '../src/lib/chess/colorFlowAnalysis/predictionEngine';
 import { fusePredictions, fetchMaiaSignal, isotonicCalibrate, type MaiaSignal } from '../src/lib/chess/colorFlowAnalysis/maiaFusion';
@@ -116,7 +117,7 @@ export default async function handler(req: Request): Promise<Response> {
     }
 
     // 2. Extract the color flow signature
-    const totalMoves = simulation.moves?.length || 0;
+    const totalMoves = simulation.totalMoves || 0;
     if (totalMoves < 12) {
       return json({
         prediction: null,
@@ -137,7 +138,7 @@ export default async function handler(req: Request): Promise<Response> {
 
     const signature = extractColorFlowSignature(
       simulation.board,
-      gameData as any,
+      gameData as unknown as GameData,
       totalMoves
     );
 
@@ -169,7 +170,9 @@ export default async function handler(req: Request): Promise<Response> {
         };
       } else {
         // Try to fetch from local Maia service (graceful degradation)
-        const fen = simulation.fen || '';
+        const chess = new Chess();
+        try { chess.loadPgn(pgn); } catch { /* keep starting position */ }
+        const fen = chess.fen();
         if (fen) {
           maiaSignal = await fetchMaiaSignal(fen, white_elo || 1500, black_elo || 1500);
         }
@@ -179,8 +182,8 @@ export default async function handler(req: Request): Promise<Response> {
     // 6. Format response
     if (useFusion && maiaSignal) {
       // v9.0 fusion path
-      const epPredStr = prediction.prediction === 'white' ? 'white_wins'
-        : prediction.prediction === 'black' ? 'black_wins' : 'draw';
+      const epPredStr = prediction.predictedWinner === 'white' ? 'white_wins'
+        : prediction.predictedWinner === 'black' ? 'black_wins' : 'draw';
       const epConf = (prediction.confidence || 50) / 100;
       const archetypeAcc = 0.604; // default; could be looked up from ARCHETYPE_HISTORICAL_ACCURACY
       const is960 = false; // could be determined from game metadata
@@ -208,8 +211,8 @@ export default async function handler(req: Request): Promise<Response> {
     }
 
     // v8.07 fallback (no Maia available)
-    const pred = prediction.prediction === 'white' ? 'white_wins'
-      : prediction.prediction === 'black' ? 'black_wins' : 'draw';
+    const pred = prediction.predictedWinner === 'white' ? 'white_wins'
+      : prediction.predictedWinner === 'black' ? 'black_wins' : 'draw';
     const conf = (prediction.confidence || 50) / 100;
     const calibratedConf = isotonicCalibrate(conf);
 
@@ -233,16 +236,16 @@ export default async function handler(req: Request): Promise<Response> {
       model_version: 'ep-v9.0-fusion (fallback: isotonic only)',
       calibrated: true,
     });
-  } catch (err: any) {
+  } catch (err) {
     return json({
       error: 'Prediction failed.',
-      detail: err?.message || String(err),
+      detail: err instanceof Error ? err.message : String(err),
       latency_ms: Date.now() - t0,
     }, 500);
   }
 }
 
-function json(data: any, status = 200): Response {
+function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
