@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Sparkles, X, Crown, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
@@ -12,8 +12,17 @@ const NUDGE_DELAY_MS = 4000;
  * After a user's first visualization, gently prompts them to save it or create an account.
  * Uses localStorage so it only appears once per browser. Non-intrusive — dismissible.
  */
-export const OnboardingNudge: React.FC<{ active: boolean }> = ({ active }) => {
+interface OnboardingNudgeProps {
+  active: boolean;
+  /** Opens the auth modal (signup). Replaces the dead /auth route. */
+  onAuthRequest: () => void;
+  /** Opens the premium upgrade modal. */
+  onUpgradeRequest: () => void;
+}
+
+export const OnboardingNudge: React.FC<OnboardingNudgeProps> = ({ active, onAuthRequest, onUpgradeRequest }) => {
   const { user, isPremium } = useAuth();
+  const navigate = useNavigate();
   const [visible, setVisible] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
@@ -72,25 +81,19 @@ export const OnboardingNudge: React.FC<{ active: boolean }> = ({ active }) => {
 
         <div className="flex items-center gap-2 pl-12">
           {isPaid ? (
-            <Button size="sm" className="gap-2 text-xs" asChild>
-              <Link to="/my-vision">
-                <Save className="h-3.5 w-3.5" />
-                Go to Gallery
-              </Link>
+            <Button size="sm" className="gap-2 text-xs" onClick={() => navigate('/my-vision')}>
+              <Save className="h-3.5 w-3.5" />
+              Go to Gallery
             </Button>
           ) : isLoggedIn ? (
-            <Button size="sm" className="gap-2 text-xs" asChild>
-              <Link to="/my-vision">
-                <Crown className="h-3.5 w-3.5" />
-                Become a Visionary
-              </Link>
+            <Button size="sm" className="gap-2 text-xs" onClick={() => { handleDismiss(); onUpgradeRequest(); }}>
+              <Crown className="h-3.5 w-3.5" />
+              Become a Visionary
             </Button>
           ) : (
-            <Button size="sm" className="gap-2 text-xs" asChild>
-              <Link to="/auth">
-                <Crown className="h-3.5 w-3.5" />
-                Create Account
-              </Link>
+            <Button size="sm" className="gap-2 text-xs" onClick={() => { handleDismiss(); onAuthRequest(); }}>
+              <Crown className="h-3.5 w-3.5" />
+              Create Account
             </Button>
           )}
           <Button variant="ghost" size="sm" onClick={handleDismiss} className="text-xs text-muted-foreground">

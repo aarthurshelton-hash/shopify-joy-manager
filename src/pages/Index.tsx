@@ -506,12 +506,9 @@ const Index = () => {
               onUpgradePrompt={() => setShowVisionaryModal(true)}
               onExport={async (type, exportState) => {
                 // Preview and game card downloads are available for everyone
-                // HD and GIF require premium
+                // HD and GIF require premium — the Visionary modal handles the
+                // logged-out path too (stores checkout intent, then opens auth)
                 if (type !== 'print' && type !== 'preview' && type !== 'gamecard') {
-                  if (!user) {
-                    setShowAuthModal(true);
-                    return;
-                  }
                   if (!isPremium) {
                     setShowVisionaryModal(true);
                     return;
@@ -633,8 +630,9 @@ const Index = () => {
                       board: filteredBoard,
                     };
                     
-                    // Always apply watermark if not premium or still checking subscription status
-                    const shouldWatermark = !isPremium || isCheckingSubscription;
+                    // Watermark only when confirmed non-premium (matches GameView) —
+                    // avoids branding a paying Visionary's preview during the check
+                    const shouldWatermark = !isPremium && !isCheckingSubscription;
                     
                     const base64Image = await generateCleanPrintImage(exportSimulation, {
                       darkMode: exportState?.darkMode || false,
@@ -709,10 +707,8 @@ const Index = () => {
                 }
               }}
               onSaveToGallery={async () => {
-                if (!user) {
-                  setShowAuthModal(true);
-                  return null;
-                }
+                // Gallery is premium — Visionary modal covers the logged-out
+                // path too (stores checkout intent, then opens auth)
                 if (!isPremium) {
                   setShowVisionaryModal(true);
                   return null;
@@ -817,11 +813,7 @@ const Index = () => {
                 }
               }}
               onTransferToCreative={() => {
-                // Premium gate for Creative Mode
-                if (!user) {
-                  setShowAuthModal(true);
-                  return;
-                }
+                // Premium gate — Visionary modal covers the logged-out path too
                 if (!isPremium) {
                   setShowVisionaryModal(true);
                   return;
@@ -865,7 +857,13 @@ const Index = () => {
         )}
       </main>
 
-      {simulation && <OnboardingNudge active={!!simulation} />}
+      {simulation && (
+        <OnboardingNudge
+          active={!!simulation}
+          onAuthRequest={() => setShowAuthModal(true)}
+          onUpgradeRequest={() => setShowVisionaryModal(true)}
+        />
+      )}
 
       {!simulation && !isLoading && (
         <Suspense fallback={null}>
@@ -886,11 +884,12 @@ const Index = () => {
         trigger="general"
       />
       
-      {/* Auth Modal */}
+      {/* Auth Modal — gate-driven opens default to signup (new users) */}
       <Suspense fallback={null}>
         <AuthModal
           isOpen={showAuthModal}
           onClose={() => setShowAuthModal(false)}
+          defaultMode="signup"
         />
       </Suspense>
     </div>

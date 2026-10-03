@@ -42,7 +42,7 @@ export interface AuthContextType {
   subscriptionStatus: SubscriptionStatus | null;
   isCheckingSubscription: boolean;
   mfaStatus: MFAStatus;
-  signUp: (email: string, password: string, displayName?: string, phone?: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, displayName?: string, phone?: string) => Promise<{ error: Error | null; needsEmailConfirm?: boolean }>;
   signIn: (email: string, password: string) => Promise<SignInResult>;
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Pick<Profile, 'display_name' | 'avatar_url'>>) => Promise<{ error: Error | null }>;
@@ -299,13 +299,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [checkSubscription]);
 
-  // Resume a pending checkout after signup/sign-in completes
+  // Resume a pending checkout after signup/sign-in completes.
+  // Intent is stored as {plan, ts} and expires after 1 hour so a stale
+  // flag can't surprise a user with a checkout redirect days later.
   useEffect(() => {
     if (!user || !session?.access_token) return;
-    const pending = localStorage.getItem('ep_pending_checkout');
-    if (!pending) return;
+    const raw = localStorage.getItem('ep_pending_checkout');
+    if (!raw) return;
+
+    let plan: 'monthly' | 'annual' = 'monthly';
+    let stale = false;
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object' && 'ts' in parsed) {
+        plan = parsed.plan === 'annual' ? 'annual' : 'monthly';
+        stale = Date.now() - Number(parsed.ts) > 60 * 60 * 1000;
+      } else {
+        plan = raw === 'annual' ? 'annual' : 'monthly';
+      }
+    } catch {
+      plan = raw === 'annual' ? 'annual' : 'monthly';
+    }
+
     localStorage.removeItem('ep_pending_checkout');
-    openCheckout(pending === 'annual' ? 'annual' : 'monthly').catch((err) => {
+    if (stale) return;
+
+    openCheckout(plan).catch((err) => {
       console.error('Pending checkout failed:', err);
       toast.error('Could not open checkout — try Upgrade again.');
     });
@@ -342,8 +361,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Track geolocation in background
       trackUserLocation(data.user.id);
     }
-    
-    return { error };
+
+    // Email confirmation ON → user exists but has no session yet
+    const needsEmailConfirm = !error && !!data.user && !data.session;
+    return { error, needsEmailConfirm };
   };
 
   const signIn = async (email: string, password: string): Promise<SignInResult> => {

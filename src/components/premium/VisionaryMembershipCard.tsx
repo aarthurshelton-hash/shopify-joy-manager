@@ -269,7 +269,7 @@ export const VisionaryMembershipCard = forwardRef<HTMLDivElement, VisionaryMembe
     if (!user) {
       // No account - remember checkout intent so useAuth can resume it
       // automatically once the user finishes signing up/in.
-      localStorage.setItem('ep_pending_checkout', plan);
+      localStorage.setItem('ep_pending_checkout', JSON.stringify({ plan, ts: Date.now() }));
       recordFunnelEvent('signup_started', { 
         trigger_source: trigger,
         time_on_modal_ms: timeOnModal,

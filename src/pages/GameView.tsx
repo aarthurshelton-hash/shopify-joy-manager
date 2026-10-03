@@ -1075,7 +1075,7 @@ const GameView = () => {
         <AuthModal
           isOpen={showAuthModal}
           onClose={() => setShowAuthModal(false)}
-          defaultMode="signin"
+          defaultMode="signup"
         />
       )}
 
@@ -1083,6 +1083,10 @@ const GameView = () => {
         <PremiumUpgradeModal
           isOpen={showVisionaryModal}
           onClose={() => setShowVisionaryModal(false)}
+          onAuthRequired={() => {
+            setShowVisionaryModal(false);
+            setShowAuthModal(true);
+          }}
           trigger="download"
         />
       )}
