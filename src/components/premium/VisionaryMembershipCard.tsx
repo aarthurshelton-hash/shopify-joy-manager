@@ -2,8 +2,7 @@ import React, { useState, useEffect, useRef, forwardRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { recordFunnelEvent, MEMBERSHIP_METRICS } from '@/lib/analytics/membershipFunnel';
+import { recordFunnelEvent } from '@/lib/analytics/membershipFunnel';
 import { useABTest } from '@/hooks/useABTest';
 import {
   Dialog,
@@ -28,7 +27,6 @@ import {
   Crown,
   Check,
   Loader2,
-  Sparkles,
   Download,
   Image,
   Star,
@@ -36,16 +34,9 @@ import {
   Zap,
   Shield,
   TrendingUp,
-  Palette,
-  Users,
-  ArrowRight,
-  Gift,
   BarChart3,
   DollarSign,
-  Printer,
   Heart,
-  Eye,
-  Gem,
   X,
   ChevronRight,
   User,
@@ -72,79 +63,64 @@ interface VisionaryMembershipCardProps {
   trigger?: 'download' | 'save' | 'general' | 'gif' | 'analytics' | 'marketplace' | 'infocard';
 }
 
-// Premium feature data with rich analytics
+// Premium feature data — honest descriptions only, no invented stats
 const PREMIUM_FEATURES = [
   {
     id: 'downloads',
     icon: Download,
     title: 'HD Downloads',
     description: 'Crystal-clear 4K resolution exports',
-    stats: { label: 'Avg downloads/user', value: '47/mo', growth: '+156%' },
-    tooltip: 'Export your visualizations in stunning 4096×4096 resolution, perfect for printing up to 24×24" without quality loss. Premium members download an average of 47 images per month.',
+    tooltip: 'Export your visualizations in stunning 4096×4096 resolution — sharp enough for large-format printing.',
   },
   {
     id: 'watermark',
     icon: Image,
     title: 'No Watermarks',
     description: 'Clean, professional artwork',
-    stats: { label: 'Print orders', value: '12K+', growth: '+89%' },
-    tooltip: 'Your art, your brand. Watermark-free exports enable professional presentation and resale. Over 12,000 prints ordered by our community.',
+    tooltip: 'Your art, your brand. Watermark-free exports for professional presentation and resale.',
   },
   {
     id: 'gifs',
     icon: Film,
     title: 'Animated GIFs',
     description: 'Share the game journey',
-    stats: { label: 'Social shares', value: '340K', growth: '+234%' },
-    tooltip: 'Export mesmerizing animated GIFs that tell the complete story of any chess game. Perfect for social media - our GIFs have been shared over 340,000 times.',
+    tooltip: 'Export animated GIFs that tell the complete story of any chess game — perfect for social media.',
   },
   {
     id: 'gallery',
     icon: Star,
     title: 'Personal Gallery',
     description: '7-day grace period protection',
-    stats: { label: 'Visions saved', value: '890K', growth: '+67%' },
-    tooltip: 'Build your personal museum of chess visualizations. If your subscription lapses, you get a 7-day grace period with reminders before visions become claimable.',
+    tooltip: 'Build your personal museum of chess visualizations. If your subscription lapses, you get a 7-day grace period before visions become claimable.',
   },
   {
     id: 'marketplace',
     icon: DollarSign,
     title: 'Marketplace Access',
     description: '0% commission, 3/day transfer limit',
-    stats: { label: 'Trading volume', value: '$47K', growth: '+312%' },
-    tooltip: 'Buy, sell, or gift your claimed visualizations. 100% holder value retention - we take 0% commission. Each vision has a 3 transfer/24h limit to prevent manipulation.',
+    tooltip: 'Buy, sell, or gift your claimed visualizations. 100% holder value retention — we take 0% commission.',
   },
   {
     id: 'royalties',
     icon: Heart,
     title: '20% Print Royalties',
     description: 'Earn from your collection',
-    stats: { label: 'Royalties paid', value: '$8.2K', growth: '+425%' },
-    tooltip: 'When anyone orders a print of your vision, you earn 20% of the order value as royalties. Passive income from your art collection.',
+    tooltip: 'When anyone orders a print of your vision, you earn 20% of the order value as royalties.',
   },
   {
     id: 'analytics',
     icon: BarChart3,
     title: 'Premium Analytics',
     description: 'Deep platform insights',
-    stats: { label: 'Data points/vision', value: '24', growth: 'NEW' },
-    tooltip: 'Access 24 unique data points per vision including territory heatmaps, piece activity scores, and market valuation metrics.',
+    tooltip: 'Access extended data per vision including territory heatmaps, piece activity scores, and valuation metrics.',
   },
   {
-    id: 'infocards',
-    icon: Gem,
-    title: 'Info Card Add-Ons',
-    description: 'Physical data cards',
-    stats: { label: 'Card orders', value: '2.8K', growth: '+178%' },
-    tooltip: 'Order beautifully printed info cards with your visualization\'s complete analytics - piece statistics, territory control, and game phases.',
+    id: 'history-export',
+    icon: TrendingUp,
+    title: 'Full History Export',
+    description: '250-game archetype timelines',
+    tooltip: 'Scout any opponent — download their complete archetype/outcome history as CSV. Up to 250 games per player.',
   },
-];
-
-// Testimonial data
-const TESTIMONIALS = [
-  { quote: "Changed how I see chess", author: "GM Magnus C.", role: "World Champion" },
-  { quote: "Art meets strategy", author: "Anna R.", role: "Content Creator" },
-  { quote: "Worth every penny", author: "Daniel N.", role: "Chess Streamer" },
 ];
 
 // Background images for visual appeal - expanded collection
@@ -208,15 +184,9 @@ const FeatureCard: React.FC<{
               exit={{ opacity: 0, y: 5 }}
               className="relative z-10 mt-3 pt-3 border-t border-border/50"
             >
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] text-muted-foreground">{feature.stats.label}</span>
-                <div className="flex items-center gap-1">
-                  <span className="text-xs font-bold text-primary">{feature.stats.value}</span>
-                  <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4 bg-green-500/10 text-green-600">
-                    {feature.stats.growth}
-                  </Badge>
-                </div>
-              </div>
+              <p className="text-[11px] text-muted-foreground leading-snug">
+                {feature.tooltip}
+              </p>
             </motion.div>
           )}
         </AnimatePresence>
@@ -235,12 +205,6 @@ const FeatureCard: React.FC<{
           <span className="font-medium">{feature.title}</span>
         </div>
         <p className="text-sm text-muted-foreground">{feature.tooltip}</p>
-        <div className="flex items-center gap-2 pt-2 border-t">
-          <TrendingUp className="h-3 w-3 text-green-500" />
-          <span className="text-xs text-green-600">
-            {feature.stats.value} • {feature.stats.growth}
-          </span>
-        </div>
       </div>
     </TooltipContent>
   </Tooltip>
@@ -255,6 +219,7 @@ export const VisionaryMembershipCard = forwardRef<HTMLDivElement, VisionaryMembe
   const { user, isPremium, isFreeAccount, openCheckout } = useAuth();
   const { variants, recordImpressions, recordConversions } = useABTest();
   const [isLoading, setIsLoading] = useState(false);
+  const [plan, setPlan] = useState<'monthly' | 'annual'>('monthly');
   const [hoveredFeature, setHoveredFeature] = useState<string | null>(null);
   const [bgIndex] = useState(() => Math.floor(Math.random() * BACKGROUND_IMAGES.length));
   const modalOpenTime = useRef<number>(0);
@@ -302,7 +267,9 @@ export const VisionaryMembershipCard = forwardRef<HTMLDivElement, VisionaryMembe
     const timeOnModal = Date.now() - modalOpenTime.current;
     
     if (!user) {
-      // No account - redirect to signup
+      // No account - remember checkout intent so useAuth can resume it
+      // automatically once the user finishes signing up/in.
+      localStorage.setItem('ep_pending_checkout', plan);
       recordFunnelEvent('signup_started', { 
         trigger_source: trigger,
         time_on_modal_ms: timeOnModal,
@@ -325,7 +292,7 @@ export const VisionaryMembershipCard = forwardRef<HTMLDivElement, VisionaryMembe
 
     setIsLoading(true);
     try {
-      await openCheckout();
+      await openCheckout(plan);
       onClose();
     } catch (error) {
       console.error('Checkout error:', error);
@@ -406,24 +373,50 @@ export const VisionaryMembershipCard = forwardRef<HTMLDivElement, VisionaryMembe
                 )}
               </DialogTitle>
               <p className="text-muted-foreground mt-2 max-w-md mx-auto">
-                Join {' '}
-                <span className="text-foreground font-medium">{MEMBERSHIP_METRICS.activeVisionaries.toLocaleString()} chess artists</span>
-                {' '} transforming games into masterpieces
+                Every game deserves to be seen at full resolution —
+                and every opponent deserves to be scouted.
               </p>
 
-              {/* Price highlight - A/B tested */}
+              {/* Plan toggle — monthly / annual */}
+              <div className="mt-4 inline-flex rounded-full border border-border/60 overflow-hidden text-sm">
+                <button
+                  type="button"
+                  onClick={() => setPlan('monthly')}
+                  className={`px-4 py-2 transition-colors ${
+                    plan === 'monthly' ? 'bg-primary text-primary-foreground' : 'bg-card text-muted-foreground'
+                  }`}
+                >
+                  Monthly
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPlan('annual')}
+                  className={`px-4 py-2 transition-colors flex items-center gap-1.5 ${
+                    plan === 'annual' ? 'bg-primary text-primary-foreground' : 'bg-card text-muted-foreground'
+                  }`}
+                >
+                  Annual
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                    plan === 'annual' ? 'bg-primary-foreground/20' : 'bg-green-500/20 text-green-600'
+                  }`}>
+                    2 mo free
+                  </span>
+                </button>
+              </div>
+
               <motion.div 
-                className="mt-4 inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary/10 border border-primary/30"
+                className="mt-3 inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary/10 border border-primary/30"
                 whileHover={{ scale: 1.02 }}
               >
-                <span className="text-4xl font-bold text-primary">{variants.priceDisplay}</span>
+                <span className="text-4xl font-bold text-primary">
+                  {plan === 'annual' ? '$59.99' : '$6.99'}
+                </span>
                 <div className="text-left">
-                  <p className="text-sm font-medium">{variants.priceSubtext}</p>
+                  <p className="text-sm font-medium">
+                    {plan === 'annual' ? 'per year' : 'per month'}
+                  </p>
                   <p className="text-xs text-muted-foreground">Cancel anytime</p>
                 </div>
-                <Badge className="ml-2 bg-green-500/20 text-green-600 border-green-500/30">
-                  95% margin
-                </Badge>
               </motion.div>
 
               <Button
@@ -488,9 +481,7 @@ export const VisionaryMembershipCard = forwardRef<HTMLDivElement, VisionaryMembe
                             <h4 className="font-medium text-sm">{feature.title}</h4>
                             <p className="text-xs text-muted-foreground truncate">{feature.description}</p>
                           </div>
-                          <Badge variant="secondary" className="text-xs bg-green-500/10 text-green-600">
-                            {feature.stats.growth}
-                          </Badge>
+                          <Check className="h-4 w-4 text-primary shrink-0" />
                         </motion.div>
                       );
                     })}
@@ -515,65 +506,18 @@ export const VisionaryMembershipCard = forwardRef<HTMLDivElement, VisionaryMembe
                 )}
               </TooltipProvider>
 
-              {/* Social proof */}
+              {/* Honest value line — no fabricated counts */}
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.5 }}
                 className="mt-6 p-4 rounded-xl bg-gradient-to-r from-muted/50 via-muted/30 to-muted/50 border border-border/50"
               >
-                <div className="flex items-center justify-between flex-wrap gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex -space-x-2">
-                      {[1, 2, 3, 4, 5].map((i) => (
-                        <div key={i} className="h-8 w-8 rounded-full bg-gradient-to-br from-primary/60 to-primary/40 border-2 border-background flex items-center justify-center">
-                          <Users className="h-3 w-3 text-primary-foreground" />
-                        </div>
-                      ))}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">{MEMBERSHIP_METRICS.activeVisionaries.toLocaleString()} active Visionaries</p>
-                      <p className="text-xs text-muted-foreground">+{MEMBERSHIP_METRICS.weeklyGrowth} this week</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex gap-4 text-center">
-                    <div>
-                      <p className="text-lg font-bold text-primary">{MEMBERSHIP_METRICS.averageRating}★</p>
-                      <p className="text-[10px] text-muted-foreground">Rating</p>
-                    </div>
-                    <div className="w-px bg-border" />
-                    <div>
-                      <p className="text-lg font-bold">${(MEMBERSHIP_METRICS.currentARR / 1000).toFixed(1)}K</p>
-                      <p className="text-[10px] text-muted-foreground">ARR</p>
-                    </div>
-                    <div className="w-px bg-border" />
-                    <div>
-                      <p className="text-lg font-bold text-green-600">{MEMBERSHIP_METRICS.grossMargin}%</p>
-                      <p className="text-[10px] text-muted-foreground">Margin</p>
-                    </div>
-                  </div>
+                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                  <Check className="h-4 w-4 text-primary shrink-0" />
+                  <span>Everything unlocked. Cancel anytime from your account — no lock-in.</span>
                 </div>
               </motion.div>
-
-              {/* Testimonial carousel */}
-              <div className="mt-4 flex gap-3 overflow-x-auto pb-2">
-                {TESTIMONIALS.map((testimonial, idx) => (
-                  <motion.div
-                    key={idx}
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.6 + idx * 0.1 }}
-                    className="flex-shrink-0 p-3 rounded-lg bg-muted/30 border border-border/50 min-w-[180px]"
-                  >
-                    <p className="text-xs italic mb-2">"{testimonial.quote}"</p>
-                    <p className="text-[10px] text-muted-foreground">
-                      <span className="font-medium text-foreground">{testimonial.author}</span>
-                      {' '}• {testimonial.role}
-                    </p>
-                  </motion.div>
-                ))}
-              </div>
             </div>
 
             {/* CTA Footer */}
@@ -602,7 +546,7 @@ export const VisionaryMembershipCard = forwardRef<HTMLDivElement, VisionaryMembe
                   ) : isFreeAccount ? (
                     <>
                       <Crown className="h-4 w-4" />
-                      Upgrade Now — $6.99/mo
+                      Upgrade — {plan === 'annual' ? '$59.99/yr' : '$6.99/mo'}
                       <ChevronRight className="h-4 w-4" />
                     </>
                   ) : user ? (
@@ -638,10 +582,6 @@ export const VisionaryMembershipCard = forwardRef<HTMLDivElement, VisionaryMembe
                 <div className="flex items-center gap-1">
                   <Heart className="h-3 w-3" />
                   <span>Cancel anytime</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Gift className="h-3 w-3" />
-                  <span>30-day guarantee</span>
                 </div>
               </div>
             </div>

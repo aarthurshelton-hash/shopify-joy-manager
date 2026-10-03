@@ -1,6 +1,7 @@
 import { useState, useEffect, createContext, useContext, ReactNode, useCallback } from 'react';
 import { User, Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import { recordFunnelEvent } from '@/lib/analytics/membershipFunnel';
 import { SecurityEvents } from '@/lib/security/auditLog';
 import { trackUserLocation } from '@/lib/security/trackLocation';
@@ -46,7 +47,7 @@ export interface AuthContextType {
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Pick<Profile, 'display_name' | 'avatar_url'>>) => Promise<{ error: Error | null }>;
   checkSubscription: () => Promise<void>;
-  openCheckout: () => Promise<void>;
+  openCheckout: (plan?: 'monthly' | 'annual') => Promise<void>;
   openCustomerPortal: () => Promise<void>;
   checkMFAStatus: () => Promise<MFAStatus>;
 }
@@ -174,13 +175,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [session?.access_token]);
 
-  // Open Stripe checkout
-  const openCheckout = async () => {
+  // Open Stripe checkout — full-page redirect (pop-up blockers kill window.open)
+  const openCheckout = async (plan: 'monthly' | 'annual' = 'monthly') => {
     if (!session?.access_token) {
       throw new Error('Not authenticated');
     }
 
     const { data, error } = await supabase.functions.invoke('create-checkout', {
+      body: { plan },
       headers: {
         Authorization: `Bearer ${session.access_token}`,
       },
@@ -191,7 +193,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     if (data?.url) {
-      window.open(data.url, '_blank');
+      window.location.href = data.url;
     }
   };
 
@@ -276,16 +278,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(interval);
   }, [session?.access_token, checkSubscription]);
 
-  // Check for subscription success in URL
+  // Check for subscription success in URL — greet the new Visionary
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('subscription') === 'success') {
-      // Clear the URL parameter
       window.history.replaceState({}, '', window.location.pathname);
-      // Refresh subscription status
+      toast.success('Welcome, Visionary.', {
+        description: 'HD exports, animated GIFs, marketplace access, and full opponent history are now yours.',
+        duration: 8000,
+      });
       checkSubscription();
     }
   }, [checkSubscription]);
+
+  // Resume a pending checkout after signup/sign-in completes
+  useEffect(() => {
+    if (!user || !session?.access_token) return;
+    const pending = localStorage.getItem('ep_pending_checkout');
+    if (!pending) return;
+    localStorage.removeItem('ep_pending_checkout');
+    openCheckout(pending === 'annual' ? 'annual' : 'monthly').catch((err) => {
+      console.error('Pending checkout failed:', err);
+      toast.error('Could not open checkout — try Upgrade again.');
+    });
+  }, [user, session?.access_token]);
 
   const signUp = async (email: string, password: string, displayName?: string, phone?: string) => {
     const { error, data } = await supabase.auth.signUp({
