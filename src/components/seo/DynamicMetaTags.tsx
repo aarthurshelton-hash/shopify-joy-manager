@@ -167,6 +167,65 @@ const PAGE_META: Record<string, PageMeta> = {
     title: "Game History - Your Chess Games",
     description: "View and manage your chess game history. Revisit and visualize past games.",
     type: "website"
+  },
+  "/report": {
+    title: "Game Report - Explainable Chess Analysis | En Pensent",
+    description: "Get a narrative report on any chess game — its strategic identity, how the pattern evolved, and how games like it usually end.",
+    image: "https://enpensent.com/og-home.png",
+    type: "website",
+    keywords: "chess analysis, game report, chess narrative, strategic archetypes"
+  },
+  "/fingerprint": {
+    title: "Chess Fingerprint - Your Strategic Identity | En Pensent",
+    description: "Analyze your last 30 games to reveal your strategic fingerprint — which patterns you play, where you win, and where you bleed points.",
+    image: "https://enpensent.com/og-home.png",
+    type: "website",
+    keywords: "chess fingerprint, player analysis, chess style, strategic identity"
+  },
+  "/draw-forecast": {
+    title: "Draw Forecast - Will This Position Resolve? | En Pensent",
+    description: "The eval bar says equal — see how positions that look like yours actually end. Corpus-backed decisive probability.",
+    image: "https://enpensent.com/og-home.png",
+    type: "website",
+    keywords: "chess draw rate, decisive positions, chess prediction"
+  },
+  "/live-signals": {
+    title: "Live Signals - Chess Predictions in Real Time | En Pensent",
+    description: "Follow En Pensent's live outcome predictions on tournament games — calibrated probabilities updated in real time.",
+    image: "https://enpensent.com/og-home.png",
+    type: "website",
+    keywords: "live chess predictions, chess signals, tournament analysis"
+  },
+  "/proof": {
+    title: "Proof Center - En Pensent Benchmarks & Evidence",
+    description: "The evidence behind En Pensent's predictions: benchmark results, calibration data, and where the trajectory signal beats engine evals.",
+    image: "https://enpensent.com/og-home.png",
+    type: "website"
+  },
+  "/vs-stockfish": {
+    title: "En Pensent vs Stockfish 18 - Where Trajectory Beats Evaluation",
+    description: "In the 0-50cp zone where evals go quiet, En Pensent's trajectory signal keeps predicting. See the head-to-head data.",
+    image: "https://enpensent.com/og-home.png",
+    type: "website"
+  },
+  "/benchmark": {
+    title: "Benchmark Results - En Pensent vs Engine Baselines",
+    description: "Independent benchmark comparing En Pensent, Stockfish evals, Maia-2, and LightGBM on chess outcome prediction.",
+    image: "https://enpensent.com/og-home.png",
+    type: "website"
+  },
+  "/openings": {
+    title: "Opening Encyclopedia - Color Flow Analysis by Opening | En Pensent",
+    description: "Explore chess openings through color-flow signatures — typical archetypes, outcome distributions, and strategic fingerprints.",
+    image: "https://enpensent.com/og-home.png",
+    type: "website",
+    keywords: "chess openings, opening analysis, opening encyclopedia"
+  },
+  "/academic-paper": {
+    title: "Academic Paper - Path-Based Chess Representation | En Pensent",
+    description: "The formal write-up of En Pensent's color-flow signature and trajectory-based prediction methodology.",
+    image: "https://enpensent.com/og-home.png",
+    type: "website"
   }
 };
 

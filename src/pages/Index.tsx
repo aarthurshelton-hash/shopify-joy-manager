@@ -17,7 +17,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Crown, Sparkles } from 'lucide-react';
+import { Crown, Sparkles, FileText, Fingerprint, Scale, TrendingUp } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { PaletteId, getActivePalette, setActivePalette, PieceType, PieceColor } from '@/lib/chess/pieceColors';
 import {
@@ -49,6 +50,7 @@ const HeroVisionDemo = lazy(() => import('@/components/homepage/HeroVisionDemo')
 const PaletteSelector = lazy(() => import('@/components/chess/PaletteSelector'));
 const AuthModal = lazy(() => import('@/components/auth/AuthModal'));
 const PrintGallery = lazy(() => import('@/components/homepage/PrintGallery'));
+const FAQSection = lazy(() => import('@/components/homepage/FAQSection'));
 const ChessParticles = lazy(() => import('@/components/chess/ChessParticles'));
 
 const Index = () => {
@@ -400,7 +402,7 @@ const Index = () => {
                   
                   {/* Subheadline */}
                   <p className="text-muted-foreground text-base md:text-xl max-w-2xl mx-auto leading-relaxed font-serif px-2">
-                    Watch any chess game paint itself into a living fingerprint.
+                    We read the trajectory of a game the way engines read the position — then turn it into art you can hang.
                   </p>
                 </div>
 
@@ -449,6 +451,43 @@ const Index = () => {
                 </Suspense>
               </div>
             </section>
+
+            {/* Intelligence tools — surface the analysis features */}
+            <section className="container mx-auto px-4 py-12">
+              <div className="max-w-4xl mx-auto space-y-6">
+                <div className="text-center space-y-2">
+                  <h3 className="font-royal text-2xl md:text-3xl font-bold uppercase tracking-wide">
+                    Beyond the <span className="text-gold-gradient">Board</span>
+                  </h3>
+                  <p className="text-muted-foreground font-serif max-w-xl mx-auto">
+                    The same signature that paints your game also reads it.
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  {[
+                    { to: '/report', icon: FileText, title: 'Game Report', desc: 'Narrative analysis of any game' },
+                    { to: '/fingerprint', icon: Fingerprint, title: 'Fingerprint', desc: 'Your strategic identity from 30 games' },
+                    { to: '/draw-forecast', icon: Scale, title: 'Draw Forecast', desc: 'Will this equal position resolve?' },
+                    { to: '/live-signals', icon: TrendingUp, title: 'Live Signals', desc: 'Predictions as they happen' },
+                  ].map((tool) => (
+                    <Link
+                      key={tool.to}
+                      to={tool.to}
+                      className="group rounded-lg border border-border/50 bg-card/30 p-4 hover:border-primary/40 hover:bg-card/60 transition-colors"
+                    >
+                      <tool.icon className="h-5 w-5 text-primary mb-2" />
+                      <p className="font-display text-sm uppercase tracking-wider leading-tight">{tool.title}</p>
+                      <p className="text-xs text-muted-foreground mt-1 leading-snug">{tool.desc}</p>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            {/* FAQ */}
+            <Suspense fallback={null}>
+              <FAQSection />
+            </Suspense>
           </>
         ) : (
           <div className="w-full px-4 py-8" ref={visionBoardRef}>

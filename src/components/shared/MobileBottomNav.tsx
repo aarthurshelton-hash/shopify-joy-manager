@@ -1,17 +1,16 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Sparkles, ShoppingBag, User, TrendingUp } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
+import { Home, ShoppingBag, User, TrendingUp } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 const TABS = [
   { to: '/', label: 'Home', icon: Home },
-  { to: '/live-signals', label: 'Signals', icon: TrendingUp },
+  { to: '/live-signals', label: 'Live', icon: TrendingUp },
   { to: '/marketplace', label: 'Market', icon: ShoppingBag },
   { to: '/account', label: 'Account', icon: User },
 ];
 
 export const MobileBottomNav = () => {
   const location = useLocation();
-  const navigate = useNavigate();
   const { user } = useAuth();
 
   const isActive = (to: string) => {
@@ -20,20 +19,6 @@ export const MobileBottomNav = () => {
     if (to === '/marketplace') return location.pathname.startsWith('/marketplace');
     if (to === '/account') return location.pathname === '/account';
     return false;
-  };
-
-  const handleTabClick = (e: React.MouseEvent, tab: typeof TABS[number]) => {
-    if (tab.isHash) {
-      e.preventDefault();
-      if (location.pathname !== '/') {
-        navigate('/');
-        setTimeout(() => {
-          document.querySelector('#make-your-own')?.scrollIntoView({ behavior: 'smooth' });
-        }, 300);
-      } else {
-        document.querySelector('#make-your-own')?.scrollIntoView({ behavior: 'smooth' });
-      }
-    }
   };
 
   return (
@@ -49,7 +34,6 @@ export const MobileBottomNav = () => {
             <Link
               key={tab.to}
               to={tab.to}
-              onClick={(e) => handleTabClick(e, tab)}
               className={`flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-colors ${
                 active
                   ? 'text-primary'

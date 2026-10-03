@@ -136,6 +136,7 @@ const App = () => (
               <Route path="/g/:gameHash" element={<Suspense fallback={<PageLoadingSkeleton />}><GameView /></Suspense>} />
               <Route path="/openings" element={<Suspense fallback={<PageLoadingSkeleton />}><OpeningEncyclopedia /></Suspense>} />
               <Route path="/code-analysis" element={<Suspense fallback={<PageLoadingSkeleton />}><CodeAnalysis /></Suspense>} />
+              <Route path="/academic-paper" element={<Suspense fallback={<PageLoadingSkeleton />}><AcademicPaper /></Suspense>} />
               <Route path="/analysis/:id" element={<Suspense fallback={<PageLoadingSkeleton />}><SharedAnalysisReport /></Suspense>} />
               <Route path="/account" element={<Suspense fallback={<PageLoadingSkeleton />}><Account /></Suspense>} />
               <Route path="/terms" element={<Suspense fallback={<PageLoadingSkeleton />}><TermsOfService /></Suspense>} />

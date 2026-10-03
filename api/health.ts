@@ -9,7 +9,7 @@ export default async function handler(req: Request): Promise<Response> {
     service: 'en-pensent-prediction-api',
     version: 'ep-v8.07',
     timestamp: new Date().toISOString(),
-    endpoints: ['/api/predict', '/api/health'],
+    endpoints: ['/api/predict', '/api/archetype', '/api/health'],
   }), {
     status: 200,
     headers: { 'Content-Type': 'application/json' },

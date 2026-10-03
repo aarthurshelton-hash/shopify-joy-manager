@@ -36,11 +36,35 @@
     <priority>0.9</priority>
   </url>
   
-  <!-- Play Chess -->
+  <!-- Game Report -->
   <url>
-    <loc>https://enpensent.com/play</loc>
-    <lastmod>2026-07-28</lastmod>
-    <changefreq>weekly</changefreq>
+    <loc>https://enpensent.com/report</loc>
+    <lastmod>2026-10-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Chess Fingerprint -->
+  <url>
+    <loc>https://enpensent.com/fingerprint</loc>
+    <lastmod>2026-10-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Draw Forecast -->
+  <url>
+    <loc>https://enpensent.com/draw-forecast</loc>
+    <lastmod>2026-10-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Live Signals -->
+  <url>
+    <loc>https://enpensent.com/live-signals</loc>
+    <lastmod>2026-10-03</lastmod>
+    <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   
@@ -63,14 +87,6 @@
   <!-- Creative Mode -->
   <url>
     <loc>https://enpensent.com/creative-mode</loc>
-    <lastmod>2026-07-28</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  
-  <!-- Explore Games -->
-  <url>
-    <loc>https://enpensent.com/explore</loc>
     <lastmod>2026-07-28</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
