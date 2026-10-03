@@ -75,6 +75,7 @@ function checkAuth(req: Request): boolean {
 }
 
 export const config = {
+  runtime: 'edge',
   maxDuration: 30,
 };
 

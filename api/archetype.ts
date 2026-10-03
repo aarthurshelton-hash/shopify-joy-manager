@@ -78,6 +78,7 @@ function archetypeName(id: StrategicArchetype): string {
 }
 
 export const config = {
+  runtime: 'edge',
   maxDuration: 30,
 };
 
