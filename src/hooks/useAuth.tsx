@@ -58,7 +58,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // products; any of them unlocks premium. Env override for config swaps.
 const PREMIUM_PRODUCT_IDS: string[] = [
   import.meta.env.VITE_STRIPE_PREMIUM_PRODUCT_ID || 'prod_VNLrMo6iGfvfK8',
-  import.meta.env.VITE_STRIPE_ANNUAL_PRODUCT_ID || 'prod_VNLrMo6iGfvfK8',
+  import.meta.env.VITE_STRIPE_ANNUAL_PRODUCT_ID || 'prod_VNLvKH3PeTXvrS',
 ];
 
 export function AuthProvider({ children }: { children: ReactNode }) {
