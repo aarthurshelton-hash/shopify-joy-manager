@@ -54,8 +54,9 @@ export interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Premium product ID from Stripe
-const PREMIUM_PRODUCT_ID = "prod_TldXgoRfEQn0lX";
+// Premium product ID from Stripe — set via env for config-only swaps
+const PREMIUM_PRODUCT_ID =
+  import.meta.env.VITE_STRIPE_PREMIUM_PRODUCT_ID || 'prod_TldXgoRfEQn0lX';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
