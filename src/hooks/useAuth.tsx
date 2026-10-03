@@ -54,9 +54,12 @@ export interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Premium product ID from Stripe — set via env for config-only swaps
-const PREMIUM_PRODUCT_ID =
-  import.meta.env.VITE_STRIPE_PREMIUM_PRODUCT_ID || 'prod_TldXgoRfEQn0lX';
+// Premium product IDs from Stripe — monthly + annual may be separate
+// products; any of them unlocks premium. Env override for config swaps.
+const PREMIUM_PRODUCT_IDS: string[] = [
+  import.meta.env.VITE_STRIPE_PREMIUM_PRODUCT_ID || 'prod_VNLrMo6iGfvfK8',
+  import.meta.env.VITE_STRIPE_ANNUAL_PRODUCT_ID || 'prod_VNLrMo6iGfvfK8',
+];
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -71,7 +74,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
 
-  const isPremium = isAdmin || (subscriptionStatus?.subscribed && subscriptionStatus?.productId === PREMIUM_PRODUCT_ID);
+  const isPremium =
+    isAdmin ||
+    (!!subscriptionStatus?.subscribed &&
+      !!subscriptionStatus?.productId &&
+      PREMIUM_PRODUCT_IDS.includes(subscriptionStatus.productId));
   // User has an account but no active premium subscription
   const isFreeAccount = !!user && !isPremium;
 
