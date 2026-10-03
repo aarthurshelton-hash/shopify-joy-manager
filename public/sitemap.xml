@@ -36,6 +36,14 @@
     <priority>0.9</priority>
   </url>
   
+  <!-- Tournament -->
+  <url>
+    <loc>https://enpensent.com/tournament</loc>
+    <lastmod>2026-10-03</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  
   <!-- Game Report -->
   <url>
     <loc>https://enpensent.com/report</loc>

@@ -85,6 +85,7 @@ const EPSystemDashboard = lazy(() => import("./pages/EPSystemDashboard"));
 const GameReport = lazy(() => import("./pages/GameReport"));
 const ChessFingerprint = lazy(() => import("./pages/ChessFingerprint"));
 const DrawForecast = lazy(() => import("./pages/DrawForecast"));
+const Tournament = lazy(() => import("./pages/Tournament"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -132,6 +133,7 @@ const App = () => (
               <Route path="/report" element={<Suspense fallback={<PageLoadingSkeleton />}><GameReport /></Suspense>} />
               <Route path="/fingerprint" element={<Suspense fallback={<PageLoadingSkeleton />}><ChessFingerprint /></Suspense>} />
               <Route path="/draw-forecast" element={<Suspense fallback={<PageLoadingSkeleton />}><DrawForecast /></Suspense>} />
+              <Route path="/tournament" element={<Suspense fallback={<PageLoadingSkeleton />}><Tournament /></Suspense>} />
               <Route path="/v/:shareId" element={<Suspense fallback={<PageLoadingSkeleton />}><VisualizationRedirect /></Suspense>} />
               <Route path="/g/:gameHash" element={<Suspense fallback={<PageLoadingSkeleton />}><GameView /></Suspense>} />
               <Route path="/openings" element={<Suspense fallback={<PageLoadingSkeleton />}><OpeningEncyclopedia /></Suspense>} />

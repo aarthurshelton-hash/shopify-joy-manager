@@ -24,6 +24,7 @@ const PRODUCT_LINKS = [
 const EXPLORE_LINKS = [
   { to: '/marketplace', label: 'Marketplace' },
   { to: '/showcase', label: 'Showcase' },
+  { to: '/tournament', label: 'Tournament' },
   { to: '/openings', label: 'Openings' },
   { to: '/proof', label: 'Proof Center' },
   { to: '/vs-stockfish', label: 'vs Stockfish' },
