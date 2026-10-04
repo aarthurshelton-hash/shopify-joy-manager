@@ -1,4 +1,5 @@
 import { useState, useEffect, createContext, useContext, ReactNode, useCallback } from 'react';
+import { captureMatcherinoKey } from '@/lib/matcherino/sponsorQuest';
 import { User, Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -225,7 +226,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       window.open(data.url, '_blank');
     }
   };
+// SponsorQuest: capture + strip matcherino_key from the URL on load
+  useEffect(() => {
+    captureMatcherinoKey();
+  }, []);
 
+  
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(

@@ -36,6 +36,7 @@ import { usePrintOrderStore } from '@/stores/printOrderStore';
 import { useAuth } from '@/hooks/useAuth';
 import { useVisualizationExport } from '@/hooks/useVisualizationExport';
 import { buildCanonicalShareUrl, generateGameHash } from '@/lib/visualizations/gameCanonical';
+import { completeMatcherinoQuest } from '@/lib/matcherino/sponsorQuest';
 
 // Import AI-generated art
 import heroChessArt from '@/assets/ai-art/upload-section-hero.jpg';
@@ -286,7 +287,11 @@ const Index = () => {
       const targetUrl = `/g/${gameHash}${urlParams.toString() ? `?${urlParams.toString()}` : ''}`;
       
       setIsLoading(false);
-      setPendingResult(null);
+
+      // SponsorQuest: "generate your first vision" — postback only fires
+      // if the user arrived carrying a matcherino_key
+      completeMatcherinoQuest('first_vision');
+setPendingResult(null);
       
       // Navigate immediately - sessionStorage is now synchronously written
       navigate(targetUrl);
