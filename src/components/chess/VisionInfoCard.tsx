@@ -1,6 +1,6 @@
 import React, { useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import html2canvas from 'html2canvas';
+import { html2canvas } from '@/lib/lazyHtml2canvas';
 import { 
   Download, 
   Crown, 

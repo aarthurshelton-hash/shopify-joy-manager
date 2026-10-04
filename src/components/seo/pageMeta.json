@@ -1,0 +1,218 @@
+{
+  "/": {
+    "title": "En Pensent - Transform Chess Games Into Art",
+    "description": "Create stunning generative art from any chess game. Upload PGN, choose a palette, and transform your games into museum-quality prints.",
+    "image": "https://enpensent.com/og-home.png",
+    "type": "website",
+    "keywords": "chess art, generative art, chess visualization, PGN art, chess prints, chess gifts"
+  },
+  "/about": {
+    "title": "About En Pensent - Our Story & Mission",
+    "description": "Learn about En Pensent's mission to transform chess games into unique generative art. Founded by chess enthusiasts and artists.",
+    "image": "https://enpensent.com/og-about.png",
+    "type": "website",
+    "keywords": "about en pensent, chess art company, generative art startup"
+  },
+  "/investors": {
+    "title": "Invest in En Pensent - Investor Relations",
+    "description": "Join us in revolutionizing chess art. View our pitch deck, TAM analysis, and investment opportunities.",
+    "image": "https://enpensent.com/og-investors.png",
+    "type": "website",
+    "keywords": "invest chess art, en pensent investment, chess startup funding"
+  },
+  "/marketplace": {
+    "title": "Vision Marketplace - Buy & Sell Chess Art",
+    "description": "Discover, collect, and trade unique chess visualizations. Browse thousands of Visions created by our community.",
+    "image": "https://enpensent.com/og-marketplace.png",
+    "type": "website",
+    "keywords": "chess art marketplace, buy chess art, sell chess visualizations, vision trading"
+  },
+  "/my-vision": {
+    "title": "My Gallery - Your Chess Art Collection",
+    "description": "View and manage your personal collection of chess visualizations. Export, print, or list your Visions for sale.",
+    "image": "https://enpensent.com/og-gallery.png",
+    "type": "website"
+  },
+  "/my-palettes": {
+    "title": "My Palettes - Custom Color Schemes",
+    "description": "Create and manage custom color palettes for your chess visualizations. Make your art truly unique.",
+    "image": "https://enpensent.com/og-palettes.png",
+    "type": "website",
+    "keywords": "custom color palettes, chess art colors, visualization themes"
+  },
+  "/premium": {
+    "title": "Visionary Premium - Unlimited Chess Art",
+    "description": "Unlock unlimited downloads, advanced analytics, and exclusive features with Visionary Premium membership.",
+    "image": "https://enpensent.com/og-premium.png",
+    "type": "website",
+    "keywords": "premium membership, visionary subscription, chess art premium"
+  },
+  "/shop": {
+    "title": "Shop - Chess Art Prints & Merchandise",
+    "description": "Browse our collection of premium chess art prints, framed artwork, and exclusive merchandise.",
+    "image": "https://enpensent.com/og-shop.png",
+    "type": "website",
+    "keywords": "chess art shop, buy chess prints, chess merchandise"
+  },
+  "/studio": {
+    "title": "Creative Studio - Design Your Chess Art",
+    "description": "Full creative control over your chess visualizations. Design, customize, and create unique artwork.",
+    "image": "https://enpensent.com/og-studio.png",
+    "type": "website",
+    "keywords": "chess art studio, create chess visualization, custom chess art"
+  },
+  "/profile": {
+    "title": "My Profile - En Pensent",
+    "description": "View and manage your En Pensent profile, collection, and achievements.",
+    "image": "https://enpensent.com/og-profile.png",
+    "type": "website"
+  },
+  "/creative-mode": {
+    "title": "Creative Mode - Design Custom Chess Art",
+    "description": "Full creative control over your chess visualizations. Customize every aspect of your artwork.",
+    "image": "https://enpensent.com/og-creative.png",
+    "type": "website",
+    "keywords": "custom chess art, design chess visualization, creative mode"
+  },
+  "/leaderboard": {
+    "title": "Leaderboard - Top Creators & Collectors",
+    "description": "See the top En Pensent creators, collectors, and most valuable Visions on the platform.",
+    "image": "https://enpensent.com/og-leaderboard.png",
+    "type": "website"
+  },
+  "/vision-scanner": {
+    "title": "Natural Vision™ Scanner - Identify Chess Art",
+    "description": "Scan any En Pensent print to instantly view the game, analysis, and ownership history.",
+    "image": "https://enpensent.com/og-scanner.png",
+    "type": "website",
+    "keywords": "vision scanner, chess art recognition, natural vision technology"
+  },
+  "/book": {
+    "title": "Chess Art Books - Carlsen in Color",
+    "description": "Create custom chess art books featuring your favorite games with AI-generated poetry and analysis.",
+    "image": "https://enpensent.com/og-book.png",
+    "type": "product",
+    "keywords": "chess art book, carlsen in color, chess visualization book"
+  },
+  "/order-print": {
+    "title": "Order Prints - Museum-Quality Chess Art",
+    "description": "Order museum-quality prints of your chess visualizations. Premium framing options available.",
+    "image": "https://enpensent.com/og-print.png",
+    "type": "product",
+    "keywords": "chess art prints, order chess art, museum quality prints"
+  },
+  "/education-fund": {
+    "title": "Chess Education Fund - Supporting Youth Chess",
+    "description": "2% of all En Pensent revenue supports chess education in underserved communities worldwide.",
+    "image": "https://enpensent.com/og-education.png",
+    "type": "website",
+    "keywords": "chess education, youth chess programs, chess charity"
+  },
+  "/creator-dashboard": {
+    "title": "Creator Dashboard - Track Your Earnings",
+    "description": "Monitor your Vision sales, royalties, and performance analytics as an En Pensent creator.",
+    "image": "https://enpensent.com/og-creator.png",
+    "type": "website"
+  },
+  "/news": {
+    "title": "News & Updates - En Pensent Blog",
+    "description": "Latest features, updates, and stories from the En Pensent community. Stay informed about new releases.",
+    "image": "https://enpensent.com/og-news.png",
+    "type": "website",
+    "keywords": "en pensent news, chess art updates, new features"
+  },
+  "/terms": {
+    "title": "Terms of Service - En Pensent",
+    "description": "Read the terms and conditions for using the En Pensent platform.",
+    "type": "website"
+  },
+  "/privacy": {
+    "title": "Privacy Policy - En Pensent",
+    "description": "Learn how En Pensent protects your privacy and handles your data.",
+    "type": "website"
+  },
+  "/dmca": {
+    "title": "DMCA Policy - En Pensent",
+    "description": "Digital Millennium Copyright Act policy and procedures for En Pensent.",
+    "type": "website"
+  },
+  "/account": {
+    "title": "My Account - En Pensent",
+    "description": "Manage your En Pensent account, subscription, and preferences.",
+    "type": "website"
+  },
+  "/analytics": {
+    "title": "Analytics - Vision Performance",
+    "description": "Track the performance and engagement of your chess visualizations.",
+    "type": "website"
+  },
+  "/premium-analytics": {
+    "title": "Premium Analytics - Advanced Insights",
+    "description": "Deep analytics and insights for Visionary members. Track trends, earnings, and more.",
+    "type": "website"
+  },
+  "/game-history": {
+    "title": "Game History - Your Chess Games",
+    "description": "View and manage your chess game history. Revisit and visualize past games.",
+    "type": "website"
+  },
+  "/report": {
+    "title": "Game Report - Explainable Chess Analysis | En Pensent",
+    "description": "Get a narrative report on any chess game — its strategic identity, how the pattern evolved, and how games like it usually end.",
+    "image": "https://enpensent.com/og-home.png",
+    "type": "website",
+    "keywords": "chess analysis, game report, chess narrative, strategic archetypes"
+  },
+  "/fingerprint": {
+    "title": "Chess Fingerprint - Your Strategic Identity | En Pensent",
+    "description": "Analyze your last 30 games to reveal your strategic fingerprint — which patterns you play, where you win, and where you bleed points.",
+    "image": "https://enpensent.com/og-home.png",
+    "type": "website",
+    "keywords": "chess fingerprint, player analysis, chess style, strategic identity"
+  },
+  "/draw-forecast": {
+    "title": "Draw Forecast - Will This Position Resolve? | En Pensent",
+    "description": "The eval bar says equal — see how positions that look like yours actually end. Corpus-backed decisive probability.",
+    "image": "https://enpensent.com/og-home.png",
+    "type": "website",
+    "keywords": "chess draw rate, decisive positions, chess prediction"
+  },
+  "/live-signals": {
+    "title": "Live Signals - Chess Predictions in Real Time | En Pensent",
+    "description": "Follow En Pensent's live outcome predictions on tournament games — calibrated probabilities updated in real time.",
+    "image": "https://enpensent.com/og-home.png",
+    "type": "website",
+    "keywords": "live chess predictions, chess signals, tournament analysis"
+  },
+  "/proof": {
+    "title": "Proof Center - En Pensent Benchmarks & Evidence",
+    "description": "The evidence behind En Pensent's predictions: benchmark results, calibration data, and where the trajectory signal beats engine evals.",
+    "image": "https://enpensent.com/og-home.png",
+    "type": "website"
+  },
+  "/vs-stockfish": {
+    "title": "En Pensent vs Stockfish 18 - Where Trajectory Beats Evaluation",
+    "description": "In the 0-50cp zone where evals go quiet, En Pensent's trajectory signal keeps predicting. See the head-to-head data.",
+    "image": "https://enpensent.com/og-home.png",
+    "type": "website"
+  },
+  "/benchmark": {
+    "title": "Benchmark Results - En Pensent vs Engine Baselines",
+    "description": "Independent benchmark comparing En Pensent, Stockfish evals, Maia-2, and LightGBM on chess outcome prediction.",
+    "image": "https://enpensent.com/og-home.png",
+    "type": "website"
+  },
+  "/openings": {
+    "title": "Opening Encyclopedia - Color Flow Analysis by Opening | En Pensent",
+    "description": "Explore chess openings through color-flow signatures — typical archetypes, outcome distributions, and strategic fingerprints.",
+    "image": "https://enpensent.com/og-home.png",
+    "type": "website",
+    "keywords": "chess openings, opening analysis, opening encyclopedia"
+  },
+  "/academic-paper": {
+    "title": "Academic Paper - Path-Based Chess Representation | En Pensent",
+    "description": "The formal write-up of En Pensent's color-flow signature and trajectory-based prediction methodology.",
+    "image": "https://enpensent.com/og-home.png",
+    "type": "website"
+  }
+}

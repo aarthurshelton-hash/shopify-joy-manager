@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import html2canvas from 'html2canvas';
+import { html2canvas } from '@/lib/lazyHtml2canvas';
 import { 
   Dialog, 
   DialogContent, 

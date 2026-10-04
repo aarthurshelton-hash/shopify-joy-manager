@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useMemo } from 'react';
-import html2canvas from 'html2canvas';
+import { html2canvas } from '@/lib/lazyHtml2canvas';
 import GIF from 'gif.js';
 import ChessBoardVisualization from './ChessBoardVisualization';
 import InteractiveVisualizationBoard from './InteractiveVisualizationBoard';

@@ -1,5 +1,5 @@
 import GIF from 'gif.js';
-import html2canvas from 'html2canvas';
+import { html2canvas } from '@/lib/lazyHtml2canvas';
 import { SimulationResult, SquareData } from './gameSimulator';
 
 interface GifGeneratorOptions {
