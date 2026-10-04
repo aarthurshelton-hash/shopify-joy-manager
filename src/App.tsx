@@ -86,6 +86,7 @@ const GameReport = lazy(() => import("./pages/GameReport"));
 const ChessFingerprint = lazy(() => import("./pages/ChessFingerprint"));
 const DrawForecast = lazy(() => import("./pages/DrawForecast"));
 const Tournament = lazy(() => import("./pages/Tournament"));
+const Verify = lazy(() => import("./pages/Verify"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -134,6 +135,8 @@ const App = () => (
               <Route path="/fingerprint" element={<Suspense fallback={<PageLoadingSkeleton />}><ChessFingerprint /></Suspense>} />
               <Route path="/draw-forecast" element={<Suspense fallback={<PageLoadingSkeleton />}><DrawForecast /></Suspense>} />
               <Route path="/tournament" element={<Suspense fallback={<PageLoadingSkeleton />}><Tournament /></Suspense>} />
+              <Route path="/verify" element={<Suspense fallback={<PageLoadingSkeleton />}><Verify /></Suspense>} />
+              <Route path="/verify/:id" element={<Suspense fallback={<PageLoadingSkeleton />}><Verify /></Suspense>} />
               <Route path="/v/:shareId" element={<Suspense fallback={<PageLoadingSkeleton />}><VisualizationRedirect /></Suspense>} />
               <Route path="/g/:gameHash" element={<Suspense fallback={<PageLoadingSkeleton />}><GameView /></Suspense>} />
               <Route path="/openings" element={<Suspense fallback={<PageLoadingSkeleton />}><OpeningEncyclopedia /></Suspense>} />
