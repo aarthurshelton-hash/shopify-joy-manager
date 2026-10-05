@@ -194,13 +194,14 @@ const Index = () => {
   }, []);
   
   const handlePgnSubmit = async (pgn: string, famousGameTitle?: string) => {
-    // Clean the PGN but don't validate - just process what we can
-    const { cleanPgn } = await import('@/lib/chess/pgnValidator');
-    const cleanedPgn = cleanPgn(pgn);
+    try {
+      // Clean the PGN but don't validate - just process what we can
+      const { cleanPgn } = await import('@/lib/chess/pgnValidator');
+      const cleanedPgn = cleanPgn(pgn);
 
-    // Simulate the game - dynamically import to avoid loading chess.js eagerly
-    const { simulateGame } = await import('@/lib/chess/gameSimulator');
-    const result = simulateGame(cleanedPgn);
+      // Simulate the game - dynamically import to avoid loading chess.js eagerly
+      const { simulateGame } = await import('@/lib/chess/gameSimulator');
+      const result = simulateGame(cleanedPgn);
     
     // Use famous game title if provided, otherwise leave empty (just show date)
     const title = famousGameTitle || '';
@@ -239,6 +240,14 @@ const Index = () => {
     // Store the result and show loading animation
     setPendingResult({ result, pgn: cleanedPgn, title });
     setIsLoading(true);
+    } catch (err) {
+      console.error('Visualization generation failed:', err);
+      toast.error('Could not generate visualization', {
+        description: err instanceof Error ? err.message : 'Please check your PGN and try again.',
+      });
+      setIsLoading(false);
+      setPendingResult(null);
+    }
   };
 
   // Handle FEN position submission - converts FEN to a visualization
@@ -269,9 +278,20 @@ const Index = () => {
   
   const handleLoadingComplete = useCallback(() => {
     if (pendingResult) {
-      // Store simulation in session for GameView to pick up
-      // setCurrentSimulation now synchronously writes to sessionStorage
-      setCurrentSimulation(pendingResult.result, pendingResult.pgn, pendingResult.title);
+      try {
+        // Store simulation in session for GameView to pick up
+        // setCurrentSimulation now synchronously writes to sessionStorage
+        setCurrentSimulation(pendingResult.result, pendingResult.pgn, pendingResult.title);
+      } catch (err) {
+        // e.g. sessionStorage quota exceeded on very large games
+        console.error('Failed to persist simulation:', err);
+        toast.error('Could not store the visualization', {
+          description: 'Try a shorter game or clear your browser session data.',
+        });
+        setIsLoading(false);
+        setPendingResult(null);
+        return;
+      }
       
       // Generate the canonical URL and redirect to unified GameView
       const gameHash = generateGameHash(pendingResult.pgn);
