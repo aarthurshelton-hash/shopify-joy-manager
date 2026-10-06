@@ -42,11 +42,13 @@ export function useLiveChessStats() {
   return useQuery<LiveChessStats>({
     queryKey: ['live-chess-stats'],
     queryFn: async () => {
-      // 1. Headline stats from audit view
-      const { data: headline } = await supabase
-        .from('audit_headline_stats')
+      // 1. Headline stats from materialized snapshot (live view times out on 15M rows)
+      // Cast: snapshot matviews aren't in generated types
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const untyped = supabase.from as unknown as (t: string) => any;
+      const { data: headline } = await untyped('audit_headline_snapshot')
         .select('*')
-        .single();
+        .maybeSingle();
 
       const totalPredictions = headline?.total_predictions || 0;
       const epAccuracy = headline ? parseFloat(headline.ep_accuracy_pct) || 0 : 0;
@@ -112,9 +114,8 @@ export function useLiveChessStats() {
         }
       }
 
-      // 4. Chess960 stats
-      const { data: chess960Audit } = await supabase
-        .from('audit_chess960_stats')
+      // 4. Chess960 stats (materialized snapshot — live view times out)
+      const { data: chess960Audit } = await untyped('audit_chess960_snapshot')
         .select('*')
         .order('variant');
 

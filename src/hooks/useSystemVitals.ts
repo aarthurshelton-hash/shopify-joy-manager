@@ -56,8 +56,8 @@ export function useSystemVitals() {
         .from('evolution_state')
         .select('*')
         .eq('state_type', 'global')
-        .single();
-      if (error && error.code !== 'PGRST116') throw error;
+        .maybeSingle();
+      if (error) throw error;
       return data as EvolutionState | null;
     },
     refetchInterval: 10000,

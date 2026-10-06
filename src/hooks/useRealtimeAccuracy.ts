@@ -102,42 +102,43 @@ export async function fetchChessCumulativeStats(): Promise<ChessCumulativeStats>
     { count: volumeCount },
     { count: deepCount },
   ] = await Promise.all([
-    // Total valid predictions
+    // Total valid predictions — 'estimated' uses the planner estimate;
+    // 'exact' triggers a COUNT(*) scan on ~15M rows and hits the statement timeout (500s)
     supabase
       .from('chess_prediction_attempts')
-      .select('*', { count: 'exact', head: true }),
+      .select('*', { count: 'estimated', head: true }),
     // Hybrid correct (includes both_correct)
     supabase
       .from('chess_prediction_attempts')
-      .select('*', { count: 'exact', head: true })
+      .select('*', { count: 'estimated', head: true })
       .eq('hybrid_correct', true),
     // Stockfish correct (includes both_correct)
     supabase
       .from('chess_prediction_attempts')
-      .select('*', { count: 'exact', head: true })
+      .select('*', { count: 'estimated', head: true })
       .eq('stockfish_correct', true),
     // Both correct
     supabase
       .from('chess_prediction_attempts')
-      .select('*', { count: 'exact', head: true })
+      .select('*', { count: 'estimated', head: true })
       .eq('hybrid_correct', true)
       .eq('stockfish_correct', true),
     // Both wrong
     supabase
       .from('chess_prediction_attempts')
-      .select('*', { count: 'exact', head: true })
+      .select('*', { count: 'estimated', head: true })
       .eq('hybrid_correct', false)
       .eq('stockfish_correct', false),
     // Hybrid exclusive wins (hybrid correct, SF wrong)
     supabase
       .from('chess_prediction_attempts')
-      .select('*', { count: 'exact', head: true })
+      .select('*', { count: 'estimated', head: true })
       .eq('hybrid_correct', true)
       .eq('stockfish_correct', false),
     // SF exclusive wins (SF correct, hybrid wrong)
     supabase
       .from('chess_prediction_attempts')
-      .select('*', { count: 'exact', head: true })
+      .select('*', { count: 'estimated', head: true })
       .eq('hybrid_correct', false)
       .eq('stockfish_correct', true),
     // Total benchmark runs
@@ -147,13 +148,13 @@ export async function fetchChessCumulativeStats(): Promise<ChessCumulativeStats>
     // Volume pool = D15-22
     supabase
       .from('chess_prediction_attempts')
-      .select('*', { count: 'exact', head: true })
+      .select('*', { count: 'estimated', head: true })
       .gte('stockfish_depth', 15)
       .lte('stockfish_depth', 22),
     // Deep pool = D25+
     supabase
       .from('chess_prediction_attempts')
-      .select('*', { count: 'exact', head: true })
+      .select('*', { count: 'estimated', head: true })
       .gte('stockfish_depth', 25),
   ]);
 
@@ -268,12 +269,12 @@ export function useRealtimeAccuracy(enabled = true) {
         });
       }
 
-      // Fetch latest evolution state
+      // Fetch latest evolution state (maybeSingle: 406 when the 'global' row is absent)
       const { data: evolutionData } = await supabase
         .from('evolution_state')
         .select('*')
         .eq('state_type', 'global')
-        .single();
+        .maybeSingle();
 
       if (evolutionData) {
         broadcastAccuracyUpdate({

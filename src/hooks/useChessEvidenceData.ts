@@ -86,11 +86,10 @@ export function useChessEvidenceData() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const tbl = supabase.from('chess_prediction_attempts') as any;
 
-      // 1. Fetch headline stats from the server-side audit view (accurate full-dataset numbers)
-      const { data: headline } = await supabase
-        .from('audit_headline_stats')
+      // 1. Fetch headline stats from the materialized snapshot (live view times out on 15M rows)
+      const { data: headline } = await (supabase.from as unknown as (t: string) => typeof tbl)('audit_headline_snapshot')
         .select('*')
-        .single();
+        .maybeSingle();
 
       const totalCount = headline?.total_predictions || 0;
       const headlineEPAcc = headline ? parseFloat(headline.ep_accuracy_pct) || 0 : 0;
@@ -197,9 +196,8 @@ export function useChessEvidenceData() {
         .sort((a, b) => b.edge - a.edge)
         .slice(0, 8);
 
-      // 9. Chess960 stats from audit view
-      const { data: chess960Audit } = await supabase
-        .from('audit_chess960_stats')
+      // 9. Chess960 stats from materialized snapshot (live view times out)
+      const { data: chess960Audit } = await (supabase.from as unknown as (t: string) => typeof tbl)('audit_chess960_snapshot')
         .select('*')
         .order('variant');
 

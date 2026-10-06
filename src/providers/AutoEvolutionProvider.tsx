@@ -141,7 +141,7 @@ async function logEvolutionEvent(event: string, data?: Record<string, unknown>) 
     // v7.0: Timeout on log operation to prevent hanging
     const insertPromise = supabase
       .from('evolution_state')
-      .insert({
+      .upsert({
         state_type: `v7.0_${event}`,
         genes: {
           version: AUTO_EVOLUTION_VERSION,

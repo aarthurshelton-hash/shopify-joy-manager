@@ -193,7 +193,7 @@ async function loadPreviousStats(): Promise<void> {
     // v7.22: Load REAL total prediction count from database
     const { count: totalCount } = await supabase
       .from('chess_prediction_attempts')
-      .select('*', { count: 'exact', head: true });
+      .select('*', { count: 'estimated', head: true });
     
     if (totalCount) {
       engineState.totalPredictions = totalCount;
@@ -203,7 +203,7 @@ async function loadPreviousStats(): Promise<void> {
     // Volume pool = D18 depth (VOLUME-LOCAL, cloud batches)
     const { count: volumeCount } = await supabase
       .from('chess_prediction_attempts')
-      .select('*', { count: 'exact', head: true })
+      .select('*', { count: 'estimated', head: true })
       .gte('stockfish_depth', 15)
       .lte('stockfish_depth', 22);
     
@@ -214,7 +214,7 @@ async function loadPreviousStats(): Promise<void> {
     // Deep pool = D30+ depth (LOCAL-DEEP, local batches)
     const { count: deepCount } = await supabase
       .from('chess_prediction_attempts')
-      .select('*', { count: 'exact', head: true })
+      .select('*', { count: 'estimated', head: true })
       .gte('stockfish_depth', 25);
     
     if (deepCount) {
@@ -258,7 +258,7 @@ async function performHealthCheck(): Promise<boolean> {
     // Check database connectivity
     const { error } = await supabase
       .from('chess_prediction_attempts')
-      .select('id', { head: true, count: 'exact' })
+      .select('id', { head: true, count: 'estimated' })
       .limit(1);
     
     if (error) {

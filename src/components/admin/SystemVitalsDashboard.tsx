@@ -83,7 +83,7 @@ export function SystemVitalsDashboard() {
         .from('evolution_state')
         .select('*')
         .eq('state_type', 'global')
-        .single();
+        .maybeSingle();
       if (error) throw error;
       return data as EvolutionState;
     },

@@ -128,7 +128,7 @@ export function useMarketLearningSystem(autoSync = true) {
       .from('evolution_state')
       .select('*')
       .eq('state_type', 'global')
-      .single();
+      .maybeSingle();
 
     if (!error && data) {
       setState(prev => ({

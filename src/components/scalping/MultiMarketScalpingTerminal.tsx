@@ -265,7 +265,7 @@ const MultiMarketScalpingTerminal: React.FC = () => {
           .eq('state_type', 'global')
           .order('updated_at', { ascending: false })
           .limit(1)
-          .single();
+          .maybeSingle();
         
         if (evolutionError && evolutionError.code !== 'PGRST116') {
           console.error('Failed to load evolution state:', evolutionError);

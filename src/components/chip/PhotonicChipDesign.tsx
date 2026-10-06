@@ -502,7 +502,7 @@ export default function PhotonicChipDesign() {
     const loadStats = async () => {
       try {
         const [predRes, corrRes] = await Promise.all([
-          supabase.from('chess_prediction_attempts').select('hybrid_correct, stockfish_correct', { count: 'exact' }),
+          supabase.from('chess_prediction_attempts').select('hybrid_correct, stockfish_correct', { count: 'estimated' }),
           (supabase.from as unknown as (t: string) => ReturnType<typeof supabase.from>)('cross_domain_correlations').select('*', { count: 'exact', head: true }),
         ]);
         const preds = predRes.data || [];
