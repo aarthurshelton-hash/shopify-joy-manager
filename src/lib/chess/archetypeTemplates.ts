@@ -306,11 +306,11 @@ export async function logArchetypeColorWheelEvent(params: {
       recorded_at: new Date().toISOString(),
     } as unknown as Json;
 
-    const { error } = await supabase.from('evolution_state').insert({
+    const { error } = await supabase.from('evolution_state').upsert({
       state_type: 'archetype_color_wheel',
       genes,
       fitness_score: classification.intensity > 0 ? classification.intensity / 100 : 0.01,
-    });
+    }, { onConflict: 'state_type' });
     if (error) console.warn('[ArchetypeTemplate] Log insert warning:', error.message);
   } catch (e) {
     console.warn('[ArchetypeTemplate] Failed to log color wheel event:', e);

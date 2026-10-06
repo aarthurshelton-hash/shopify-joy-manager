@@ -192,7 +192,7 @@ export function useCodebaseSync() {
     }
   ) => {
     try {
-      await supabase.from('evolution_state').insert({
+      await supabase.from('evolution_state').upsert({
         state_type: 'codebase_sync',
         genes: {
           archetype: analysisResult.archetype,

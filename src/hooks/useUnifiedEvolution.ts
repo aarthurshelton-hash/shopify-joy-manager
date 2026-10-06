@@ -70,7 +70,7 @@ export function useUnifiedEvolution() {
       
       const { error } = await supabase
         .from('evolution_state')
-        .insert(evolutionData as any);
+        .upsert(evolutionData as any, { onConflict: 'state_type' });
       
       if (error) {
         console.warn('[UnifiedEvolution] Insert warning:', error.message);

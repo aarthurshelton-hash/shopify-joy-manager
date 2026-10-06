@@ -127,7 +127,7 @@ export class TrajectoryChessEngine {
       .eq('state_type', 'chess_learning')
       .order('updated_at', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
     
     if (evolutionData) {
       this.state.evolutionGeneration = evolutionData.generation || 0;
@@ -503,7 +503,7 @@ export class TrajectoryChessEngine {
       .from('evolution_state')
       .select('*')
       .eq('state_type', 'chess_learning')
-      .single();
+      .maybeSingle();
     
     const currentFitness = current?.fitness_score || 0.5;
     const currentGen = current?.generation || 0;
@@ -516,9 +516,8 @@ export class TrajectoryChessEngine {
     // Increment generation every 100 games
     const newGen = Math.floor((currentPredictions + 1) / 100);
     
-    // Upsert evolution state
+    // Upsert evolution state (conflict on state_type, not PK — avoids 409)
     await supabase.from('evolution_state').upsert({
-      id: current?.id || crypto.randomUUID(),
       state_type: 'chess_learning',
       genes: {
         trajectoryWeight: 0.35,
@@ -532,7 +531,7 @@ export class TrajectoryChessEngine {
       total_predictions: currentPredictions + 1,
       learned_patterns: this.state.learnedPatterns.slice(0, 100).map(p => p.fingerprint),
       updated_at: new Date().toISOString()
-    });
+    }, { onConflict: 'state_type' });
     
     this.state.fitnessScore = newFitness;
     this.state.evolutionGeneration = newGen;
