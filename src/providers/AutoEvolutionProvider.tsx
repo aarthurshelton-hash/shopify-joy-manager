@@ -151,7 +151,7 @@ async function logEvolutionEvent(event: string, data?: Record<string, unknown>) 
         },
         fitness_score: 100,
         generation: 0,
-      });
+      }, { onConflict: 'state_type' });
     
     const timeoutPromise = new Promise((_, reject) => 
       setTimeout(() => reject(new Error('Log timeout')), 5000)
