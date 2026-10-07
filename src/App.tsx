@@ -9,6 +9,7 @@ import { LocationTracker } from "@/components/shared/LocationTracker";
 import { VisionRestorer } from "@/components/shared/VisionRestorer";
 import { GlobalAlertsBanner } from "@/components/shared/GlobalAlertsBanner";
 import { BackToMarketplaceButton } from "@/components/marketplace/BackToMarketplaceButton";
+import { MARKETPLACE_ENABLED } from "@/lib/featureFlags";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { StructuredData } from "@/components/seo/StructuredData";
 import { DynamicMetaTags } from "@/components/seo/DynamicMetaTags";
@@ -131,7 +132,7 @@ const App = () => (
             <StructuredData />
             <DynamicMetaTags />
             <VisionRestorer />
-            <BackToMarketplaceButton />
+            {MARKETPLACE_ENABLED && <BackToMarketplaceButton />}
             <MobileStickyCTA />
             <Routes>
               {/* ===== PUBLIC ROUTES - Chess Visualization & Code Analyzer ===== */}
@@ -163,9 +164,11 @@ const App = () => (
               <Route path="/dmca/status" element={<Suspense fallback={<PageLoadingSkeleton />}><DMCAStatusTracking /></Suspense>} />
               
               {/* ===== MARKETPLACE & COMMERCE - Public Access ===== */}
-              <Route path="/marketplace" element={<Suspense fallback={<PageLoadingSkeleton />}><Marketplace /></Suspense>} />
-              <Route path="/marketplace/:id" element={<Suspense fallback={<PageLoadingSkeleton />}><MarketplaceDetailRedirect /></Suspense>} />
-              <Route path="/marketplace/vision/:id" element={<Suspense fallback={<PageLoadingSkeleton />}><MarketplaceVisionDetail /></Suspense>} />
+              {MARKETPLACE_ENABLED && <>
+                <Route path="/marketplace" element={<Suspense fallback={<PageLoadingSkeleton />}><Marketplace /></Suspense>} />
+                <Route path="/marketplace/:id" element={<Suspense fallback={<PageLoadingSkeleton />}><MarketplaceDetailRedirect /></Suspense>} />
+                <Route path="/marketplace/vision/:id" element={<Suspense fallback={<PageLoadingSkeleton />}><MarketplaceVisionDetail /></Suspense>} />
+              </>}
               <Route path="/order-print" element={<Suspense fallback={<PageLoadingSkeleton />}><OrderPrint /></Suspense>} />
               <Route path="/book" element={<Suspense fallback={<PageLoadingSkeleton />}><BookGenerator /></Suspense>} />
 
@@ -211,7 +214,9 @@ const App = () => (
               {/* Admin Control Center */}
               <Route path="/admin/ceo-dashboard" element={<AdminRoute featureName="CEO Dashboard"><Suspense fallback={<PageLoadingSkeleton />}><AdminCEODashboard /></Suspense></AdminRoute>} />
               <Route path="/admin/system-vitals" element={<AdminRoute featureName="System Vitals"><Suspense fallback={<PageLoadingSkeleton />}><AdminSystemVitals /></Suspense></AdminRoute>} />
-              <Route path="/admin/seed-marketplace" element={<AdminRoute featureName="Seed Marketplace"><Suspense fallback={<PageLoadingSkeleton />}><AdminSeedMarketplace /></Suspense></AdminRoute>} />
+              {MARKETPLACE_ENABLED && (
+                <Route path="/admin/seed-marketplace" element={<AdminRoute featureName="Seed Marketplace"><Suspense fallback={<PageLoadingSkeleton />}><AdminSeedMarketplace /></Suspense></AdminRoute>} />
+              )}
               <Route path="/admin/palettes" element={<AdminRoute featureName="Palette Admin"><Suspense fallback={<PageLoadingSkeleton />}><PaletteAdminPage /></Suspense></AdminRoute>} />
               <Route path="/admin/moderation" element={<AdminRoute featureName="Moderation"><Suspense fallback={<PageLoadingSkeleton />}><AdminModeration /></Suspense></AdminRoute>} />
               <Route path="/admin/economics" element={<AdminRoute featureName="Economics"><Suspense fallback={<PageLoadingSkeleton />}><AdminEconomics /></Suspense></AdminRoute>} />

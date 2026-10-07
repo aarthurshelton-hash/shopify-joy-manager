@@ -19,6 +19,7 @@ import MFASetup from './MFASetup';
 import PremiumBadge from '@/components/premium/PremiumBadge';
 import { VisionaryMembershipCard } from '@/components/premium';
 import { supabase } from '@/integrations/supabase/client';
+import { MARKETPLACE_ENABLED } from '@/lib/featureFlags';
 import CEOBusinessCard from '@/components/admin/CEOBusinessCard';
 
 const UserMenu: React.FC = () => {
@@ -248,13 +249,15 @@ const UserMenu: React.FC = () => {
                 <Shield className="h-4 w-4" />
                 Content Moderation
               </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={() => navigate('/admin/seed-marketplace')}
-                className="gap-2 cursor-pointer text-primary"
-              >
-                <Database className="h-4 w-4" />
-                Seed Marketplace
-              </DropdownMenuItem>
+              {MARKETPLACE_ENABLED && (
+                <DropdownMenuItem 
+                  onClick={() => navigate('/admin/seed-marketplace')}
+                  className="gap-2 cursor-pointer text-primary"
+                >
+                  <Database className="h-4 w-4" />
+                  Seed Marketplace
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem 
                 onClick={() => navigate('/admin/palettes')}
                 className="gap-2 cursor-pointer text-primary"

@@ -27,6 +27,7 @@ import { OrderPrintButton } from '@/components/shop/OrderPrintButton';
 import { VisionaryMembershipCard, SubscriptionManagement } from '@/components/premium';
 import AuthModal from '@/components/auth/AuthModal';
 import ListForSaleModal from '@/components/marketplace/ListForSaleModal';
+import { MARKETPLACE_ENABLED } from '@/lib/featureFlags';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
 import { usePrintOrderStore } from '@/stores/printOrderStore';
@@ -142,7 +143,7 @@ const VisionCard: React.FC<VisionCardProps> = ({
               <Printer className="h-3 w-3 sm:h-4 sm:w-4" />
               <span>Print</span>
             </Button>
-            {!listedIds.has(viz.id) && !isPrivate && (
+            {MARKETPLACE_ENABLED && !listedIds.has(viz.id) && !isPrivate && (
               <Button
                 size="sm"
                 variant="secondary"
@@ -186,7 +187,7 @@ const VisionCard: React.FC<VisionCardProps> = ({
           Tap for actions
         </div>
 
-        {listedIds.has(viz.id) && (
+        {MARKETPLACE_ENABLED && listedIds.has(viz.id) && (
           <Badge className="absolute top-2 left-2 bg-green-500/90 text-[10px] sm:text-xs">
             <ShoppingBag className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1" />
             Listed
@@ -205,7 +206,7 @@ const VisionCard: React.FC<VisionCardProps> = ({
           {viz.game_data.white} vs {viz.game_data.black}
         </p>
         {/* NFT Floor Price Display */}
-        {visionNFT && (
+        {MARKETPLACE_ENABLED && visionNFT && (
           <div className="pt-1 border-t border-border/50">
             <VisionFloorPrice visionNFT={visionNFT} showDetails={false} />
           </div>
@@ -308,7 +309,7 @@ const MyVision: React.FC = () => {
       setVisualizations(data);
       
       // Batch check which visualizations are listed (single query instead of N queries)
-      if (data.length > 0) {
+      if (MARKETPLACE_ENABLED && data.length > 0) {
         const vizIds = data.map(v => v.id);
         const listedMap = await batchCheckVisualizationsListed(vizIds);
         setListedIds(new Set(Object.entries(listedMap).filter(([_, isListed]) => isListed).map(([id]) => id)));
@@ -673,9 +674,11 @@ const MyVision: React.FC = () => {
         )}
 
         {/* Holdings Value Dashboard */}
-        <div className="mb-6 sm:mb-8">
-          <HoldingsValueDashboard />
-        </div>
+        {MARKETPLACE_ENABLED && (
+          <div className="mb-6 sm:mb-8">
+            <HoldingsValueDashboard />
+          </div>
+        )}
         
         {isLoading ? (
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
@@ -795,7 +798,7 @@ const MyVision: React.FC = () => {
       </AlertDialog>
 
       {/* List for Sale Modal */}
-      {listingTarget && (
+      {MARKETPLACE_ENABLED && listingTarget && (
         <ListForSaleModal
           isOpen={!!listingTarget}
           onClose={() => setListingTarget(null)}

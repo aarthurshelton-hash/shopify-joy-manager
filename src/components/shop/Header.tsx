@@ -10,6 +10,7 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { VisionScanner } from '@/components/scanner/VisionScanner';
+import { MARKETPLACE_ENABLED } from '@/lib/featureFlags';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 
 const mobileLinks = [
@@ -23,7 +24,7 @@ const mobileLinks = [
   { to: '/showcase', label: 'Showcase', icon: Sparkles },
   { to: '/benchmark', label: 'Benchmark', icon: Sparkles },
   { to: '/about', label: 'About', icon: Sparkles },
-];
+].filter((l) => MARKETPLACE_ENABLED || l.to !== '/marketplace');
 
 export const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);

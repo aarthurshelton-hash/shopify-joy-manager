@@ -9,6 +9,7 @@
  */
 
 import { Link, useLocation } from 'react-router-dom';
+import { MARKETPLACE_ENABLED } from '@/lib/featureFlags';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 import React, { forwardRef } from 'react';
 
@@ -22,7 +23,7 @@ const PRODUCT_LINKS = [
 ];
 
 const EXPLORE_LINKS = [
-  { to: '/marketplace', label: 'Marketplace' },
+  ...(MARKETPLACE_ENABLED ? [{ to: '/marketplace', label: 'Marketplace' }] : []),
   { to: '/showcase', label: 'Showcase' },
   { to: '/tournament', label: 'Tournament' },
   { to: '/openings', label: 'Openings' },
