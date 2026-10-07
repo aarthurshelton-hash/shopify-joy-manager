@@ -53,7 +53,7 @@ const STEPS = [
     icon: Palette,
     title: 'Your games become art',
     description:
-      'Every tournament game can be rendered as an En Pensent vision — the champion’s winning game becomes a one-of-a-kind piece.',
+      'Paste your lichess game or tournament link on the home page and it renders as an En Pensent vision — the champion’s winning game becomes a one-of-a-kind piece. Chess.com games can be turned into art too, but only lichess games count toward prizes.',
   },
 ];
 
@@ -236,7 +236,8 @@ const Tournament: React.FC = () => {
             ))}
           </ul>
           <p className="text-xs text-muted-foreground mt-6 pt-4 border-t border-border/30">
-            En Pensent × Matcherino — prize pools are community-funded, held in escrow, and
+            Chess.com games can be visualized on En Pensent but are not eligible for tournament
+            prizes. En Pensent × Matcherino — prize pools are community-funded, held in escrow, and
             paid out by Matcherino with full tax compliance. Official rules are published on
             the Matcherino event page when registration opens.
           </p>

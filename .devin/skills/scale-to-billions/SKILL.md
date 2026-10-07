@@ -1,4 +1,5 @@
 ---
+name: scale-to-billions
 description: Architecture for scaling chess data ingestion from 400K to billions of games
 ---
 

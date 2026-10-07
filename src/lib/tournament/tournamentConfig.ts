@@ -50,7 +50,7 @@ export const TOURNAMENT: TournamentConfig = {
   registrationOpens: null,
   format: {
     mode: 'arena',
-    timeControl: '5+3 blitz',
+    timeControl: '5+0 blitz',
     platform: 'lichess',
     durationMinutes: 90,
     rounds: null,

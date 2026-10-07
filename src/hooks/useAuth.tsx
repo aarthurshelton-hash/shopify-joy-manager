@@ -19,6 +19,8 @@ interface SubscriptionStatus {
   subscribed: boolean;
   productId: string | null;
   subscriptionEnd: string | null;
+  /** Where premium comes from: 'stripe' | 'grant' | 'visionary' | 'none'. */
+  source?: string;
 }
 
 interface MFAStatus {
@@ -173,6 +175,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           subscribed: data.subscribed,
           productId: data.product_id,
           subscriptionEnd: data.subscription_end,
+          source: data.source,
         });
       }
     } catch (err) {
@@ -244,6 +247,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setTimeout(() => {
             fetchProfile(currentSession.user.id);
             checkAdminRole(currentSession.user.id, currentSession.user.email);
+
+            // First-time OAuth sign-in: email signups are tracked in signUp(),
+            // OAuth ones would otherwise be invisible in the funnel.
+            const u = currentSession.user;
+            const provider = u.app_metadata?.provider;
+            const isFresh = Date.now() - new Date(u.created_at).getTime() < 5 * 60 * 1000;
+            const flag = `ep_oauth_signup_tracked_${u.id}`;
+            if (event === 'SIGNED_IN' && provider && provider !== 'email' && isFresh && !localStorage.getItem(flag)) {
+              localStorage.setItem(flag, '1');
+              recordFunnelEvent('signup_completed', {
+                trigger_source: 'oauth',
+                account_type: 'free',
+                provider,
+              });
+              trackUserLocation(u.id);
+            }
           }, 0);
         } else {
           setProfile(null);

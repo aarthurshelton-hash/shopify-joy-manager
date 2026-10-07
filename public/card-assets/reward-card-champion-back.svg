@@ -1,0 +1,320 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 2100" width="1500" height="2100" role="img" aria-label="En Pensent Victory Card — The Immortal Game (back)">
+  <title>En Pensent Victory Card — The Immortal Game (back)</title>
+  <desc>Adolf Anderssen vs Lionel Kieseritzky, London, Casual 1851, 1-0. Archetype Sacrificial Kingside Assault, fingerprint ep8-u15cj9. Edition 1 of 100.</desc>
+<defs>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="0.45">
+      <stop offset="0" stop-color="#F2B01E"/>
+      <stop offset="0.5" stop-color="#F7C558"/>
+      <stop offset="1" stop-color="#D99A12"/>
+    </linearGradient>
+    <linearGradient id="goldSoft" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#A87F2C"/>
+      <stop offset="1" stop-color="#6E521C"/>
+    </linearGradient>
+    <linearGradient id="surface" x1="0" y1="0" x2="0.6" y2="1">
+      <stop offset="0" stop-color="#0B0D12"/>
+      <stop offset="0.55" stop-color="#10131B"/>
+      <stop offset="1" stop-color="#0B0D12"/>
+    </linearGradient>
+    <linearGradient id="pawnGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#10B981"/>
+      <stop offset="0.5" stop-color="#3B82F6"/>
+      <stop offset="1" stop-color="#8B5CF6"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="2.5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect x="0" y="0" width="1500" height="2100" fill="#0B0D12"/>
+  <g transform="translate(0,0)">
+<rect x="0" y="0" width="1500" height="2100" fill="url(#surface)"/>
+<rect x="26" y="26" width="1448" height="2048" rx="34" fill="none" stroke="url(#gold)" stroke-width="7"/>
+<rect x="44" y="44" width="1412" height="2012" rx="24" fill="none" stroke="#D99A12" stroke-width="1.5" opacity="0.55"/>
+<rect x="62" y="62" width="28" height="28" fill="none" stroke="url(#gold)" stroke-width="3"/><rect x="71" y="71" width="10" height="10" fill="url(#gold)"/>
+<rect x="1410" y="62" width="28" height="28" fill="none" stroke="url(#gold)" stroke-width="3"/><rect x="1419" y="71" width="10" height="10" fill="url(#gold)"/>
+<rect x="62" y="2010" width="28" height="28" fill="none" stroke="url(#gold)" stroke-width="3"/><rect x="71" y="2019" width="10" height="10" fill="url(#gold)"/>
+<rect x="1410" y="2010" width="28" height="28" fill="none" stroke="url(#gold)" stroke-width="3"/><rect x="1419" y="2019" width="10" height="10" fill="url(#gold)"/>
+<text x="750" y="133" font-family="'Cinzel', 'Trajan Pro', 'Times New Roman', serif" font-size="30" fill="#F2B01E" font-weight="600" letter-spacing="14" text-anchor="middle">EN PENSENT</text>
+<text x="750" y="205" font-family="'Cinzel', 'Trajan Pro', 'Times New Roman', serif" font-size="44" fill="#EDE6D6" font-weight="700" text-anchor="middle">Verification &amp; Provenance</text>
+<line x1="75" y1="238" x2="1425" y2="238" stroke="url(#goldSoft)" stroke-width="1.5" opacity="0.6"/>
+<rect x="582" y="260" width="336" height="336" rx="12" fill="#12151D" stroke="#2A2F3C" stroke-width="1.5"/>
+<rect x="632.432" y="310.432" width="56.757" height="8.108" fill="#EDE6D6"/>
+<rect x="705.405" y="310.432" width="24.324" height="8.108" fill="#EDE6D6"/>
+<rect x="737.838" y="310.432" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="762.162" y="310.432" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="786.486" y="310.432" width="16.216" height="8.108" fill="#EDE6D6"/>
+<rect x="810.811" y="310.432" width="56.757" height="8.108" fill="#EDE6D6"/>
+<rect x="632.432" y="318.541" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="681.081" y="318.541" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="721.622" y="318.541" width="16.216" height="8.108" fill="#EDE6D6"/>
+<rect x="745.946" y="318.541" width="32.432" height="8.108" fill="#EDE6D6"/>
+<rect x="794.595" y="318.541" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="810.811" y="318.541" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="859.459" y="318.541" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="632.432" y="326.649" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="648.649" y="326.649" width="24.324" height="8.108" fill="#EDE6D6"/>
+<rect x="681.081" y="326.649" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="697.297" y="326.649" width="40.541" height="8.108" fill="#EDE6D6"/>
+<rect x="754.054" y="326.649" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="778.378" y="326.649" width="24.324" height="8.108" fill="#EDE6D6"/>
+<rect x="810.811" y="326.649" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="827.027" y="326.649" width="24.324" height="8.108" fill="#EDE6D6"/>
+<rect x="859.459" y="326.649" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="632.432" y="334.757" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="648.649" y="334.757" width="24.324" height="8.108" fill="#EDE6D6"/>
+<rect x="681.081" y="334.757" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="697.297" y="334.757" width="16.216" height="8.108" fill="#EDE6D6"/>
+<rect x="729.73" y="334.757" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="754.054" y="334.757" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="770.27" y="334.757" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="786.486" y="334.757" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="810.811" y="334.757" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="827.027" y="334.757" width="24.324" height="8.108" fill="#EDE6D6"/>
+<rect x="859.459" y="334.757" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="632.432" y="342.865" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="648.649" y="342.865" width="24.324" height="8.108" fill="#EDE6D6"/>
+<rect x="681.081" y="342.865" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="697.297" y="342.865" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="745.946" y="342.865" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="762.162" y="342.865" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="778.378" y="342.865" width="16.216" height="8.108" fill="#EDE6D6"/>
+<rect x="810.811" y="342.865" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="827.027" y="342.865" width="24.324" height="8.108" fill="#EDE6D6"/>
+<rect x="859.459" y="342.865" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="632.432" y="350.973" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="681.081" y="350.973" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="697.297" y="350.973" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="713.514" y="350.973" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="754.054" y="350.973" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="794.595" y="350.973" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="810.811" y="350.973" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="859.459" y="350.973" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="632.432" y="359.081" width="56.757" height="8.108" fill="#EDE6D6"/>
+<rect x="697.297" y="359.081" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="713.514" y="359.081" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="729.73" y="359.081" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="745.946" y="359.081" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="762.162" y="359.081" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="778.378" y="359.081" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="794.595" y="359.081" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="810.811" y="359.081" width="56.757" height="8.108" fill="#EDE6D6"/>
+<rect x="697.297" y="367.189" width="16.216" height="8.108" fill="#EDE6D6"/>
+<rect x="721.622" y="367.189" width="16.216" height="8.108" fill="#EDE6D6"/>
+<rect x="754.054" y="367.189" width="16.216" height="8.108" fill="#EDE6D6"/>
+<rect x="794.595" y="367.189" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="632.432" y="375.297" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="648.649" y="375.297" width="40.541" height="8.108" fill="#EDE6D6"/>
+<rect x="705.405" y="375.297" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="721.622" y="375.297" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="754.054" y="375.297" width="24.324" height="8.108" fill="#EDE6D6"/>
+<rect x="786.486" y="375.297" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="810.811" y="375.297" width="40.541" height="8.108" fill="#EDE6D6"/>
+<rect x="640.541" y="383.405" width="16.216" height="8.108" fill="#EDE6D6"/>
+<rect x="664.865" y="383.405" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="689.189" y="383.405" width="16.216" height="8.108" fill="#EDE6D6"/>
+<rect x="729.73" y="383.405" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="745.946" y="383.405" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="762.162" y="383.405" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="786.486" y="383.405" width="48.649" height="8.108" fill="#EDE6D6"/>
+<rect x="859.459" y="383.405" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="632.432" y="391.514" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="656.757" y="391.514" width="16.216" height="8.108" fill="#EDE6D6"/>
+<rect x="681.081" y="391.514" width="48.649" height="8.108" fill="#EDE6D6"/>
+<rect x="754.054" y="391.514" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="770.27" y="391.514" width="16.216" height="8.108" fill="#EDE6D6"/>
+<rect x="794.595" y="391.514" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="810.811" y="391.514" width="24.324" height="8.108" fill="#EDE6D6"/>
+<rect x="632.432" y="399.622" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="664.865" y="399.622" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="713.514" y="399.622" width="32.432" height="8.108" fill="#EDE6D6"/>
+<rect x="778.378" y="399.622" width="64.865" height="8.108" fill="#EDE6D6"/>
+<rect x="851.351" y="399.622" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="632.432" y="407.73" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="656.757" y="407.73" width="48.649" height="8.108" fill="#EDE6D6"/>
+<rect x="721.622" y="407.73" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="737.838" y="407.73" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="754.054" y="407.73" width="24.324" height="8.108" fill="#EDE6D6"/>
+<rect x="786.486" y="407.73" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="835.135" y="407.73" width="16.216" height="8.108" fill="#EDE6D6"/>
+<rect x="632.432" y="415.838" width="24.324" height="8.108" fill="#EDE6D6"/>
+<rect x="664.865" y="415.838" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="697.297" y="415.838" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="713.514" y="415.838" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="729.73" y="415.838" width="24.324" height="8.108" fill="#EDE6D6"/>
+<rect x="762.162" y="415.838" width="40.541" height="8.108" fill="#EDE6D6"/>
+<rect x="810.811" y="415.838" width="24.324" height="8.108" fill="#EDE6D6"/>
+<rect x="859.459" y="415.838" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="632.432" y="423.946" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="648.649" y="423.946" width="24.324" height="8.108" fill="#EDE6D6"/>
+<rect x="681.081" y="423.946" width="16.216" height="8.108" fill="#EDE6D6"/>
+<rect x="713.514" y="423.946" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="754.054" y="423.946" width="16.216" height="8.108" fill="#EDE6D6"/>
+<rect x="778.378" y="423.946" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="794.595" y="423.946" width="16.216" height="8.108" fill="#EDE6D6"/>
+<rect x="827.027" y="423.946" width="24.324" height="8.108" fill="#EDE6D6"/>
+<rect x="632.432" y="432.054" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="689.189" y="432.054" width="16.216" height="8.108" fill="#EDE6D6"/>
+<rect x="713.514" y="432.054" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="745.946" y="432.054" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="762.162" y="432.054" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="786.486" y="432.054" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="810.811" y="432.054" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="827.027" y="432.054" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="851.351" y="432.054" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="640.541" y="440.162" width="16.216" height="8.108" fill="#EDE6D6"/>
+<rect x="664.865" y="440.162" width="24.324" height="8.108" fill="#EDE6D6"/>
+<rect x="729.73" y="440.162" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="770.27" y="440.162" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="818.919" y="440.162" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="835.135" y="440.162" width="16.216" height="8.108" fill="#EDE6D6"/>
+<rect x="632.432" y="448.27" width="32.432" height="8.108" fill="#EDE6D6"/>
+<rect x="697.297" y="448.27" width="32.432" height="8.108" fill="#EDE6D6"/>
+<rect x="745.946" y="448.27" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="762.162" y="448.27" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="778.378" y="448.27" width="56.757" height="8.108" fill="#EDE6D6"/>
+<rect x="843.243" y="448.27" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="859.459" y="448.27" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="632.432" y="456.378" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="648.649" y="456.378" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="681.081" y="456.378" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="697.297" y="456.378" width="16.216" height="8.108" fill="#EDE6D6"/>
+<rect x="721.622" y="456.378" width="16.216" height="8.108" fill="#EDE6D6"/>
+<rect x="754.054" y="456.378" width="24.324" height="8.108" fill="#EDE6D6"/>
+<rect x="843.243" y="456.378" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="632.432" y="464.486" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="648.649" y="464.486" width="16.216" height="8.108" fill="#EDE6D6"/>
+<rect x="672.973" y="464.486" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="689.189" y="464.486" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="754.054" y="464.486" width="16.216" height="8.108" fill="#EDE6D6"/>
+<rect x="778.378" y="464.486" width="24.324" height="8.108" fill="#EDE6D6"/>
+<rect x="818.919" y="464.486" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="851.351" y="464.486" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="632.432" y="472.595" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="656.757" y="472.595" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="672.973" y="472.595" width="24.324" height="8.108" fill="#EDE6D6"/>
+<rect x="713.514" y="472.595" width="24.324" height="8.108" fill="#EDE6D6"/>
+<rect x="770.27" y="472.595" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="786.486" y="472.595" width="48.649" height="8.108" fill="#EDE6D6"/>
+<rect x="843.243" y="472.595" width="24.324" height="8.108" fill="#EDE6D6"/>
+<rect x="697.297" y="480.703" width="16.216" height="8.108" fill="#EDE6D6"/>
+<rect x="721.622" y="480.703" width="24.324" height="8.108" fill="#EDE6D6"/>
+<rect x="762.162" y="480.703" width="16.216" height="8.108" fill="#EDE6D6"/>
+<rect x="794.595" y="480.703" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="827.027" y="480.703" width="40.541" height="8.108" fill="#EDE6D6"/>
+<rect x="632.432" y="488.811" width="56.757" height="8.108" fill="#EDE6D6"/>
+<rect x="721.622" y="488.811" width="48.649" height="8.108" fill="#EDE6D6"/>
+<rect x="778.378" y="488.811" width="24.324" height="8.108" fill="#EDE6D6"/>
+<rect x="810.811" y="488.811" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="827.027" y="488.811" width="24.324" height="8.108" fill="#EDE6D6"/>
+<rect x="632.432" y="496.919" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="681.081" y="496.919" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="697.297" y="496.919" width="24.324" height="8.108" fill="#EDE6D6"/>
+<rect x="737.838" y="496.919" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="754.054" y="496.919" width="16.216" height="8.108" fill="#EDE6D6"/>
+<rect x="794.595" y="496.919" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="827.027" y="496.919" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="632.432" y="505.027" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="648.649" y="505.027" width="24.324" height="8.108" fill="#EDE6D6"/>
+<rect x="681.081" y="505.027" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="697.297" y="505.027" width="24.324" height="8.108" fill="#EDE6D6"/>
+<rect x="745.946" y="505.027" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="770.27" y="505.027" width="16.216" height="8.108" fill="#EDE6D6"/>
+<rect x="794.595" y="505.027" width="40.541" height="8.108" fill="#EDE6D6"/>
+<rect x="843.243" y="505.027" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="632.432" y="513.135" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="648.649" y="513.135" width="24.324" height="8.108" fill="#EDE6D6"/>
+<rect x="681.081" y="513.135" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="697.297" y="513.135" width="24.324" height="8.108" fill="#EDE6D6"/>
+<rect x="729.73" y="513.135" width="16.216" height="8.108" fill="#EDE6D6"/>
+<rect x="762.162" y="513.135" width="24.324" height="8.108" fill="#EDE6D6"/>
+<rect x="835.135" y="513.135" width="32.432" height="8.108" fill="#EDE6D6"/>
+<rect x="632.432" y="521.243" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="648.649" y="521.243" width="24.324" height="8.108" fill="#EDE6D6"/>
+<rect x="681.081" y="521.243" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="697.297" y="521.243" width="32.432" height="8.108" fill="#EDE6D6"/>
+<rect x="754.054" y="521.243" width="24.324" height="8.108" fill="#EDE6D6"/>
+<rect x="786.486" y="521.243" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="802.703" y="521.243" width="56.757" height="8.108" fill="#EDE6D6"/>
+<rect x="632.432" y="529.351" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="681.081" y="529.351" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="705.405" y="529.351" width="24.324" height="8.108" fill="#EDE6D6"/>
+<rect x="737.838" y="529.351" width="24.324" height="8.108" fill="#EDE6D6"/>
+<rect x="786.486" y="529.351" width="16.216" height="8.108" fill="#EDE6D6"/>
+<rect x="810.811" y="529.351" width="32.432" height="8.108" fill="#EDE6D6"/>
+<rect x="851.351" y="529.351" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="632.432" y="537.459" width="56.757" height="8.108" fill="#EDE6D6"/>
+<rect x="697.297" y="537.459" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="713.514" y="537.459" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="737.838" y="537.459" width="16.216" height="8.108" fill="#EDE6D6"/>
+<rect x="770.27" y="537.459" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="786.486" y="537.459" width="8.108" height="8.108" fill="#EDE6D6"/>
+<rect x="802.703" y="537.459" width="32.432" height="8.108" fill="#EDE6D6"/>
+<rect x="843.243" y="537.459" width="8.108" height="8.108" fill="#EDE6D6"/>
+<text x="750" y="636" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="26" fill="#8B93A7" font-weight="600" letter-spacing="4" text-anchor="middle">SCAN TO VERIFY THIS CARD</text>
+<text x="750" y="666" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="25" fill="#4A5568" text-anchor="middle">https://enpensent.com/verify/immortal1851</text>
+<text x="75" y="726" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#8B93A7" font-weight="600" letter-spacing="3.4">ENGINE SIGNATURE</text>
+<line x1="417" y1="721" x2="1425" y2="721" stroke="#2A2F3C" stroke-width="1"/>
+<text x="75" y="760" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="28" fill="#F2B01E" font-weight="500">ep8-u15cj9</text>
+<text x="1425" y="760" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="26" fill="#B9AF98" font-weight="500" text-anchor="end">Sacrificial Kingside Assault</text>
+<text x="75" y="788" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="25" fill="#4A5568">complexity 1.484  ·  color richness 0.50  ·  45 plies  ·  Stockfish depth 14</text>
+<text x="75" y="844" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#8B93A7" font-weight="600" letter-spacing="3.4">GAME RECORD</text>
+<line x1="314.5" y1="839" x2="1425" y2="839" stroke="#2A2F3C" stroke-width="1"/>
+<text x="75" y="876" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="26" fill="#B9AF98">Adolf Anderssen vs Lionel Kieseritzky · London, Casual, 1851 · 1-0</text>
+<text x="75" y="912" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="25" fill="#8B93A7">1.e4 e5 2.f4 exf4 3.Bc4 Qh4+ 4.Kf1 b5 5.Bxb5 Nf6 6.Nf3 Qh6 7.d3 Nh5 8.Nh4 Qg5 9.Nf5 c6</text>
+<text x="75" y="943" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="25" fill="#8B93A7">10.g4 Nf6 11.Rg1 cxb5 12.h4 Qg6 13.h5 Qg5 14.Qf3 Ng8 15.Bxf4 Qf6 16.Nc3 Bc5 17.Nd5 Qxb2</text>
+<text x="75" y="974" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="25" fill="#8B93A7">18.Bd6 Bxg1 19.e5 Qxa1+ 20.Ke2 Na6 21.Nxg7+ Kd8 22.Qf6+ Nxf6 23.Be7#</text>
+<text x="75" y="1039" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#8B93A7" font-weight="600" letter-spacing="3.4">QUADRANT DEFINITIONS</text>
+<line x1="499" y1="1034" x2="1425" y2="1034" stroke="#2A2F3C" stroke-width="1"/>
+<text x="75" y="1069" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="25" fill="#F2B01E" font-weight="500">Q1</text>
+<text x="131" y="1069" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#B9AF98" font-weight="500">KINGSIDE · WHITE</text>
+<text x="131" y="1097" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#4A5568">files e–h · ranks 1–4</text>
+<text x="720" y="1069" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="25" fill="#7FB0F5" text-anchor="end">+41.0</text>
+<text x="750" y="1069" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="25" fill="#F2B01E" font-weight="500">Q2</text>
+<text x="806" y="1069" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#B9AF98" font-weight="500">QUEENSIDE · WHITE</text>
+<text x="806" y="1097" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#4A5568">files a–d · ranks 1–4</text>
+<text x="1395" y="1069" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="25" fill="#F5908C" text-anchor="end">-4.0</text>
+<text x="75" y="1111" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="25" fill="#F2B01E" font-weight="500">Q3</text>
+<text x="131" y="1111" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#B9AF98" font-weight="500">KINGSIDE · BLACK</text>
+<text x="131" y="1139" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#4A5568">files e–h · ranks 5–8</text>
+<text x="720" y="1111" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="25" fill="#F5908C" text-anchor="end">-65.0</text>
+<text x="750" y="1111" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="25" fill="#F2B01E" font-weight="500">Q4</text>
+<text x="806" y="1111" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#B9AF98" font-weight="500">QUEENSIDE · BLACK</text>
+<text x="806" y="1139" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#4A5568">files a–d · ranks 5–8</text>
+<text x="1395" y="1111" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="25" fill="#F5908C" text-anchor="end">-7.0</text>
+<text x="75" y="1153" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="25" fill="#F2B01E" font-weight="500">Q5</text>
+<text x="131" y="1153" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#B9AF98" font-weight="500">CENTER · WHITE</text>
+<text x="131" y="1181" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#4A5568">files c–f · ranks 1–4</text>
+<text x="720" y="1153" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="25" fill="#7FB0F5" text-anchor="end">+27.5</text>
+<text x="750" y="1153" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="25" fill="#F2B01E" font-weight="500">Q6</text>
+<text x="806" y="1153" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#B9AF98" font-weight="500">CENTER · BLACK</text>
+<text x="806" y="1181" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#4A5568">files c–f · ranks 5–8</text>
+<text x="1395" y="1153" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="25" fill="#F5908C" text-anchor="end">-15.0</text>
+<text x="75" y="1195" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="25" fill="#F2B01E" font-weight="500">Q7</text>
+<text x="131" y="1195" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#B9AF98" font-weight="500">EXT. KINGSIDE</text>
+<text x="131" y="1223" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#4A5568">files g–h</text>
+<text x="720" y="1195" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="25" fill="#F5908C" text-anchor="end">-34.5</text>
+<text x="750" y="1195" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="25" fill="#F2B01E" font-weight="500">Q8</text>
+<text x="806" y="1195" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#B9AF98" font-weight="500">EXT. QUEENSIDE</text>
+<text x="806" y="1223" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#4A5568">files a–b</text>
+<text x="1395" y="1195" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="25" fill="#F5908C" text-anchor="end">-13.0</text>
+<text x="75" y="1267" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#8B93A7" font-weight="600" letter-spacing="3.4">METHOD &amp; PROVENANCE</text>
+<line x1="478.5" y1="1262" x2="1425" y2="1262" stroke="#2A2F3C" stroke-width="1"/>
+<text x="75" y="1299" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#8B93A7">Every value on this card is computed by the En Pensent engine directly from the</text>
+<text x="75" y="1330" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#8B93A7">game record above — no estimates and no synthetic data. The 8-quadrant signature</text>
+<text x="75" y="1361" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#8B93A7">is piece-weighted cumulative square occupancy; positive readings favour White.</text>
+<text x="75" y="1392" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#8B93A7">Prediction benchmark: 13.06M scored positions, En Pensent 69.59% vs</text>
+<text x="75" y="1423" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#8B93A7">Stockfish depth 14 64.24% (+5.35pp). Full-database audit 2026-08-09.</text>
+<line x1="75" y1="1945" x2="1425" y2="1945" stroke="#2A2F3C" stroke-width="1"/>
+<rect x="75" y="1957" width="250" height="56" rx="28" fill="none" stroke="url(#gold)" stroke-width="2"/>
+<text x="200" y="1993" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="26" fill="#F2B01E" font-weight="500" text-anchor="middle">001 / 100</text>
+<text x="750" y="1993" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="26" fill="#8B93A7" letter-spacing="4" text-anchor="middle">LIMITED PRE-BETA RUN</text>
+<rect x="1175" y="1957" width="250" height="56" rx="28" fill="none" stroke="#F2B01E" stroke-width="2.5"/>
+<text x="1300" y="1993.96" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="26" fill="#F2B01E" font-weight="600" letter-spacing="4" text-anchor="middle">CHAMPION</text>
+  </g>
+
+</svg>

@@ -138,6 +138,7 @@ export const pxToPt = (px) => (px / PRINT.dpi) * 72;
 /** Rarity tiers for the limited run. */
 export const TIERS = {
   champion: { label: 'CHAMPION', stroke: C.gold, fill: C.gold },
+  supporter: { label: 'SUPPORTER', stroke: '#7FB0F5', fill: '#7FB0F5' },
   master: { label: 'MASTER', stroke: '#C0C6D4', fill: '#C0C6D4' },
   artisan: { label: 'ARTISAN', stroke: '#C77B3E', fill: '#C77B3E' },
 };

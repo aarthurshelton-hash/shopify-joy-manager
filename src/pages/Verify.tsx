@@ -22,6 +22,11 @@ const KNOWN_CARDS: Record<string, { title: string; subtitle: string; edition: st
     subtitle: 'Paul Morphy vs Duke Karl & Count Isouard · Paris 1858 · 1-0',
     edition: 'Edition of 250',
   },
+  evergreen1852: {
+    title: 'The Evergreen Game',
+    subtitle: 'Adolf Anderssen vs Jean Dufresne · Berlin, Casual 1852 · 1-0',
+    edition: 'Edition of 1000',
+  },
 };
 
 const Verify: React.FC = () => {
@@ -45,6 +50,16 @@ const Verify: React.FC = () => {
               <h1 className="font-display text-4xl mb-3">{card.title}</h1>
               <p className="text-muted-foreground mb-2">{card.subtitle}</p>
               <p className="text-sm text-primary font-mono mb-10">{card.edition}</p>
+              <div className="rounded-xl border border-primary/25 bg-primary/5 p-5 mb-10">
+                <p className="text-sm text-muted-foreground mb-3">
+                  This card may carry a reward code — check for a printed code or sticker.
+                </p>
+                <Button asChild variant="outline" size="sm">
+                  <Link to="/redeem">
+                    Redeem a code <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
+              </div>
             </>
           ) : (
             <>

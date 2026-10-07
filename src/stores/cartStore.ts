@@ -111,6 +111,10 @@ export interface CartItem {
   };
 }
 
+// localStorage key for a reward code redeemed on /redeem — attached as a
+// Shopify discount on the next cartCreate.
+export const DISCOUNT_CODE_STORAGE = 'ep_discount_code';
+
 // Shopify config
 const SHOPIFY_API_VERSION = '2025-07';
 const SHOPIFY_STORE_PERMANENT_DOMAIN = 'printify-shop-manager-fs4kw.myshopify.com';
@@ -287,6 +291,13 @@ async function createStorefrontCheckout(items: CartItem[]): Promise<string> {
   const selectedCurrency = useCurrencyStore.getState().selectedCurrency;
   const countryCode = CURRENCY_TO_COUNTRY[selectedCurrency.code] || 'US';
 
+  // Reward code redeemed on /redeem applies as a Shopify discount.
+  let discountCodes: string[] | undefined;
+  try {
+    const stored = localStorage.getItem(DISCOUNT_CODE_STORAGE);
+    if (stored) discountCodes = [stored];
+  } catch { /* storage unavailable — proceed without discount */ }
+
   const response = await fetch(SHOPIFY_STOREFRONT_URL, {
     method: 'POST',
     headers: {
@@ -296,7 +307,7 @@ async function createStorefrontCheckout(items: CartItem[]): Promise<string> {
     body: JSON.stringify({
       query: CART_CREATE_MUTATION,
       variables: { 
-        input: { lines },
+        input: { lines, ...(discountCodes ? { discountCodes } : {}) },
         country: countryCode
       },
     }),
@@ -404,8 +415,9 @@ export const useCartStore = create<CartStore>()(
           const checkoutUrl = await createStorefrontCheckoutWithRetry(items);
           set({ checkoutUrl });
           
-          // Clear cart after successful checkout creation
+          // Clear cart + one-shot reward discount after successful checkout
           set({ items: [] });
+          try { localStorage.removeItem(DISCOUNT_CODE_STORAGE); } catch { /* non-fatal */ }
           
           toast.success('Checkout ready!', {
             description: 'Redirecting to secure checkout...'

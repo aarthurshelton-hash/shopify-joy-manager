@@ -186,7 +186,26 @@ def normalize_result(r):
 
 def run_maia2(holdout, device="auto", batch_size=256):
     """Run Maia-2 on hold-out positions, returning predicted W/D/L + confidence."""
-    print("Loading Maia-2 model...")
+    # v2: Use the running Maia-2 service (localhost:3002) if available — 100x faster
+    # than loading the model locally (15ms/position vs 5.5s/position on CPU).
+    import urllib.request
+    import json as _json
+
+    MAIA_SERVICE_URL = os.environ.get("MAIA_SERVICE_URL", "http://127.0.0.1:3002")
+
+    # Check if the service is running
+    try:
+        req = urllib.request.Request(f"{MAIA_SERVICE_URL}/health")
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            health = _json.loads(resp.read())
+        if health.get("model_loaded"):
+            print(f"  Maia-2 service available at {MAIA_SERVICE_URL} (model loaded)")
+            return _run_maia2_via_service(holdout, MAIA_SERVICE_URL)
+    except Exception:
+        pass
+
+    # Fall back to local model loading
+    print("  Maia-2 service not available — loading model locally...")
     try:
         from maia2 import model, inference, dataset
     except ImportError:
@@ -248,6 +267,64 @@ def run_maia2(holdout, device="auto", batch_size=256):
             remaining = (len(holdout) - i - 1) / rate
             print(f"  Maia-2: {i+1}/{len(holdout)} ({rate:.1f}/s, ETA {remaining:.0f}s)")
 
+    elapsed = time.time() - t0
+    print(f"  Maia-2 done: {len(predictions)} positions in {elapsed:.1f}s "
+          f"({len(predictions)/elapsed:.1f}/s)")
+
+    preds = np.array([p["pred"] if p["pred"] is not None else -1 for p in predictions])
+    confs = np.array([p["conf"] for p in predictions])
+    return {"preds": preds, "confs": confs, "name": "maia2"}
+
+
+def _run_maia2_via_service(holdout, service_url):
+    """Run Maia-2 inference via the running HTTP service (100x faster than local)."""
+    import urllib.request
+    import json as _json
+    import concurrent.futures
+
+    predictions = []
+    t0 = time.time()
+
+    def infer_one(row):
+        fen = row.fen
+        w_elo = int(getattr(row, 'white_elo', 1500) or 1500)
+        b_elo = int(getattr(row, 'black_elo', 1500) or 1500)
+        body = _json.dumps({"fen": fen, "white_elo": w_elo, "black_elo": b_elo}).encode()
+        try:
+            req = urllib.request.Request(
+                f"{service_url}/infer",
+                data=body,
+                headers={"Content-Type": "application/json"},
+            )
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                result = _json.loads(resp.read())
+            white_score = result["white_expected_score"]
+            if white_score > 0.6:
+                pred = 0; conf = white_score
+            elif white_score < 0.4:
+                pred = 1; conf = 1.0 - white_score
+            else:
+                pred = 2; conf = 1.0 - abs(white_score - 0.5) * 2.0
+            return {"pred": pred, "conf": conf, "white_score": white_score}
+        except Exception as e:
+            return {"pred": None, "conf": 0.33, "white_score": 0.5}
+
+    # Use thread pool for parallel requests (service handles concurrency)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=16) as executor:
+        futures = {executor.submit(infer_one, row): i
+                   for i, row in enumerate(holdout.itertuples())}
+        results = [None] * len(holdout)
+        for future in concurrent.futures.as_completed(futures):
+            idx = futures[future]
+            results[idx] = future.result()
+            if (idx + 1) % 200 == 0:
+                elapsed = time.time() - t0
+                done = sum(1 for r in results if r is not None)
+                rate = done / elapsed
+                remaining = (len(holdout) - done) / rate
+                print(f"  Maia-2: {done}/{len(holdout)} ({rate:.1f}/s, ETA {remaining:.0f}s)")
+
+    predictions = results
     elapsed = time.time() - t0
     print(f"  Maia-2 done: {len(predictions)} positions in {elapsed:.1f}s "
           f"({len(predictions)/elapsed:.1f}/s)")

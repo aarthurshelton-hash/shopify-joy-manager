@@ -1,10 +1,10 @@
-import { Suspense, lazy } from 'react';
+import React, { Suspense, lazy } from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "@/hooks/useAuth";
+import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { LocationTracker } from "@/components/shared/LocationTracker";
 import { VisionRestorer } from "@/components/shared/VisionRestorer";
 import { GlobalAlertsBanner } from "@/components/shared/GlobalAlertsBanner";
@@ -87,6 +87,7 @@ const ChessFingerprint = lazy(() => import("./pages/ChessFingerprint"));
 const DrawForecast = lazy(() => import("./pages/DrawForecast"));
 const Tournament = lazy(() => import("./pages/Tournament"));
 const Verify = lazy(() => import("./pages/Verify"));
+const Redeem = lazy(() => import("./pages/Redeem"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -103,13 +104,23 @@ import { UniversalHeartbeatProvider } from "@/providers/UniversalHeartbeatProvid
 import { RealtimeAccuracyProvider } from "@/providers/RealtimeAccuracyProvider";
 import { AutoEvolutionProvider } from "@/providers/AutoEvolutionProvider";
 
+const SystemProviders = ({ children }: { children: React.ReactNode }) => {
+  const { isAdmin } = useAuth();
+  return (
+    <AutoEvolutionProvider autoStart={isAdmin}>
+      <UniversalHeartbeatProvider autoStart={isAdmin} interval={30000}>
+        {children}
+      </UniversalHeartbeatProvider>
+    </AutoEvolutionProvider>
+  );
+};
+
 const App = () => (
   <ErrorBoundary componentName="App">
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <RealtimeAccuracyProvider enabled={true}>
-          <AutoEvolutionProvider autoStart={true}>
-          <UniversalHeartbeatProvider autoStart={true} interval={30000}>
+          <SystemProviders>
           <TooltipProvider>
             <Toaster />
             <Sonner />
@@ -137,6 +148,7 @@ const App = () => (
               <Route path="/tournament" element={<Suspense fallback={<PageLoadingSkeleton />}><Tournament /></Suspense>} />
               <Route path="/verify" element={<Suspense fallback={<PageLoadingSkeleton />}><Verify /></Suspense>} />
               <Route path="/verify/:id" element={<Suspense fallback={<PageLoadingSkeleton />}><Verify /></Suspense>} />
+              <Route path="/redeem" element={<Suspense fallback={<PageLoadingSkeleton />}><Redeem /></Suspense>} />
               <Route path="/v/:shareId" element={<Suspense fallback={<PageLoadingSkeleton />}><VisualizationRedirect /></Suspense>} />
               <Route path="/g/:gameHash" element={<Suspense fallback={<PageLoadingSkeleton />}><GameView /></Suspense>} />
               <Route path="/openings" element={<Suspense fallback={<PageLoadingSkeleton />}><OpeningEncyclopedia /></Suspense>} />
@@ -215,8 +227,7 @@ const App = () => (
             <MobileBottomNav />
           </BrowserRouter>
         </TooltipProvider>
-        </UniversalHeartbeatProvider>
-        </AutoEvolutionProvider>
+        </SystemProviders>
         </RealtimeAccuracyProvider>
       </AuthProvider>
     </QueryClientProvider>

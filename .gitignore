@@ -90,3 +90,4 @@ coverage/
 *.tmp
 *.temp
 .cache/
+maia2_models/

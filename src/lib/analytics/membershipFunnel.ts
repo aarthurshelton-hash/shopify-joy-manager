@@ -10,7 +10,8 @@ export type FunnelEventType =
   | 'checkout_started'     // User initiated Stripe checkout
   | 'subscription_active'  // User completed subscription
   | 'free_to_premium'      // Free user upgraded to premium
-  | 'feature_hover';       // User hovered on a feature card
+  | 'feature_hover'       // User hovered on a feature card
+  | 'reward_redeemed';    // User redeemed a reward code (Matcherino, etc.)
 
 export interface FunnelEventMetadata {
   trigger_source?: string;

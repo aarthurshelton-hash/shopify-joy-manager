@@ -27,6 +27,7 @@ import {
   Copy,
   Check,
   Crown,
+  Gift,
   AlertCircle,
   CheckCircle,
   XCircle,
@@ -660,11 +661,19 @@ const Account: React.FC = () => {
 
                   {isPremium ? (
                     <>
+                      {/* Premium source (reward grant vs Stripe) */}
+                      {subscriptionStatus?.source === 'grant' && (
+                        <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20">
+                          <Gift className="h-4 w-4 text-primary" />
+                          <span className="text-sm">Premium via reward code</span>
+                        </div>
+                      )}
+
                       {/* Renewal Date */}
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Calendar className="h-4 w-4" />
-                          <span>Renewal Date</span>
+                          <span>{subscriptionStatus?.source === 'grant' ? 'Expires' : 'Renewal Date'}</span>
                         </div>
                         <span className="text-sm font-medium">
                           {subscriptionEnd ? format(subscriptionEnd, 'MMMM d, yyyy') : 'N/A'}

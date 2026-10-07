@@ -1,0 +1,303 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 2100" width="1500" height="2100" role="img" aria-label="En Pensent Victory Card — The Evergreen Game (front)">
+  <title>En Pensent Victory Card — The Evergreen Game (front)</title>
+  <desc>Adolf Anderssen vs Jean Dufresne, Berlin, Casual 1852, 1-0. Archetype Sacrificial Queenside Break, fingerprint ep8-liqggx. Edition 1 of 1000.</desc>
+<defs>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="0.45">
+      <stop offset="0" stop-color="#F2B01E"/>
+      <stop offset="0.5" stop-color="#F7C558"/>
+      <stop offset="1" stop-color="#D99A12"/>
+    </linearGradient>
+    <linearGradient id="goldSoft" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#A87F2C"/>
+      <stop offset="1" stop-color="#6E521C"/>
+    </linearGradient>
+    <linearGradient id="surface" x1="0" y1="0" x2="0.6" y2="1">
+      <stop offset="0" stop-color="#0B0D12"/>
+      <stop offset="0.55" stop-color="#10131B"/>
+      <stop offset="1" stop-color="#0B0D12"/>
+    </linearGradient>
+    <linearGradient id="pawnGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#10B981"/>
+      <stop offset="0.5" stop-color="#3B82F6"/>
+      <stop offset="1" stop-color="#8B5CF6"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="2.5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect x="0" y="0" width="1500" height="2100" fill="#0B0D12"/>
+  <g transform="translate(0,0)">
+<rect x="0" y="0" width="1500" height="2100" fill="url(#surface)"/>
+<rect x="26" y="26" width="1448" height="2048" rx="34" fill="none" stroke="url(#gold)" stroke-width="7"/>
+<rect x="44" y="44" width="1412" height="2012" rx="24" fill="none" stroke="#D99A12" stroke-width="1.5" opacity="0.55"/>
+<rect x="62" y="62" width="28" height="28" fill="none" stroke="url(#gold)" stroke-width="3"/><rect x="71" y="71" width="10" height="10" fill="url(#gold)"/>
+<rect x="1410" y="62" width="28" height="28" fill="none" stroke="url(#gold)" stroke-width="3"/><rect x="1419" y="71" width="10" height="10" fill="url(#gold)"/>
+<rect x="62" y="2010" width="28" height="28" fill="none" stroke="url(#gold)" stroke-width="3"/><rect x="71" y="2019" width="10" height="10" fill="url(#gold)"/>
+<rect x="1410" y="2010" width="28" height="28" fill="none" stroke="url(#gold)" stroke-width="3"/><rect x="1419" y="2019" width="10" height="10" fill="url(#gold)"/>
+<text x="750" y="133" font-family="'Cinzel', 'Trajan Pro', 'Times New Roman', serif" font-size="30" fill="#F2B01E" font-weight="600" letter-spacing="14" text-anchor="middle">EN PENSENT</text>
+<text x="750" y="217" font-family="'Cinzel', 'Trajan Pro', 'Times New Roman', serif" font-size="62" fill="#EDE6D6" font-weight="700" text-anchor="middle">The Evergreen Game</text>
+<text x="750" y="273" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="26" fill="#8B93A7" font-weight="500" letter-spacing="5" text-anchor="middle">BERLIN, CASUAL · 1852</text>
+<line x1="75" y1="297" x2="1425" y2="297" stroke="url(#goldSoft)" stroke-width="1.5" opacity="0.6"/>
+<g transform="translate(750,297) rotate(45)"><rect x="-6" y="-6" width="12" height="12" fill="#D99A12"/></g>
+<rect x="292.4" y="317.4" width="915.2" height="915.2" rx="13.2" fill="#0F1218" stroke="url(#gold)" stroke-width="4.4"/>
+<rect x="310" y="1105" width="110" height="110" fill="#121620"/>
+<rect x="420" y="1105" width="110" height="110" fill="#191D26"/>
+<rect x="530" y="1105" width="110" height="110" fill="#121620"/>
+<rect x="640" y="1105" width="110" height="110" fill="#191D26"/>
+<rect x="750" y="1105" width="110" height="110" fill="#121620"/>
+<rect x="860" y="1105" width="110" height="110" fill="#191D26"/>
+<rect x="970" y="1105" width="110" height="110" fill="#121620"/>
+<rect x="1080" y="1105" width="110" height="110" fill="#191D26"/>
+<rect x="310" y="995" width="110" height="110" fill="#191D26"/>
+<rect x="420" y="995" width="110" height="110" fill="#121620"/>
+<rect x="530" y="995" width="110" height="110" fill="#191D26"/>
+<rect x="640" y="995" width="110" height="110" fill="#121620"/>
+<rect x="750" y="995" width="110" height="110" fill="#191D26"/>
+<rect x="860" y="995" width="110" height="110" fill="#121620"/>
+<rect x="970" y="995" width="110" height="110" fill="#191D26"/>
+<rect x="1080" y="995" width="110" height="110" fill="#121620"/>
+<rect x="310" y="885" width="110" height="110" fill="#121620"/>
+<rect x="420" y="885" width="110" height="110" fill="#191D26"/>
+<rect x="530" y="885" width="110" height="110" fill="#121620"/>
+<rect x="640" y="885" width="110" height="110" fill="#191D26"/>
+<rect x="750" y="885" width="110" height="110" fill="#121620"/>
+<rect x="860" y="885" width="110" height="110" fill="#191D26"/>
+<rect x="970" y="885" width="110" height="110" fill="#121620"/>
+<rect x="1080" y="885" width="110" height="110" fill="#191D26"/>
+<rect x="310" y="775" width="110" height="110" fill="#191D26"/>
+<rect x="420" y="775" width="110" height="110" fill="#121620"/>
+<rect x="530" y="775" width="110" height="110" fill="#191D26"/>
+<rect x="640" y="775" width="110" height="110" fill="#121620"/>
+<rect x="750" y="775" width="110" height="110" fill="#191D26"/>
+<rect x="860" y="775" width="110" height="110" fill="#121620"/>
+<rect x="970" y="775" width="110" height="110" fill="#191D26"/>
+<rect x="1080" y="775" width="110" height="110" fill="#121620"/>
+<rect x="310" y="665" width="110" height="110" fill="#121620"/>
+<rect x="420" y="665" width="110" height="110" fill="#191D26"/>
+<rect x="530" y="665" width="110" height="110" fill="#121620"/>
+<rect x="640" y="665" width="110" height="110" fill="#191D26"/>
+<rect x="750" y="665" width="110" height="110" fill="#121620"/>
+<rect x="860" y="665" width="110" height="110" fill="#191D26"/>
+<rect x="970" y="665" width="110" height="110" fill="#121620"/>
+<rect x="1080" y="665" width="110" height="110" fill="#191D26"/>
+<rect x="310" y="555" width="110" height="110" fill="#191D26"/>
+<rect x="420" y="555" width="110" height="110" fill="#121620"/>
+<rect x="530" y="555" width="110" height="110" fill="#191D26"/>
+<rect x="640" y="555" width="110" height="110" fill="#121620"/>
+<rect x="750" y="555" width="110" height="110" fill="#191D26"/>
+<rect x="860" y="555" width="110" height="110" fill="#121620"/>
+<rect x="970" y="555" width="110" height="110" fill="#191D26"/>
+<rect x="1080" y="555" width="110" height="110" fill="#121620"/>
+<rect x="310" y="445" width="110" height="110" fill="#121620"/>
+<rect x="420" y="445" width="110" height="110" fill="#191D26"/>
+<rect x="530" y="445" width="110" height="110" fill="#121620"/>
+<rect x="640" y="445" width="110" height="110" fill="#191D26"/>
+<rect x="750" y="445" width="110" height="110" fill="#121620"/>
+<rect x="860" y="445" width="110" height="110" fill="#191D26"/>
+<rect x="970" y="445" width="110" height="110" fill="#121620"/>
+<rect x="1080" y="445" width="110" height="110" fill="#191D26"/>
+<rect x="310" y="335" width="110" height="110" fill="#191D26"/>
+<rect x="420" y="335" width="110" height="110" fill="#121620"/>
+<rect x="530" y="335" width="110" height="110" fill="#191D26"/>
+<rect x="640" y="335" width="110" height="110" fill="#121620"/>
+<rect x="750" y="335" width="110" height="110" fill="#191D26"/>
+<rect x="860" y="335" width="110" height="110" fill="#121620"/>
+<rect x="970" y="335" width="110" height="110" fill="#191D26"/>
+<rect x="1080" y="335" width="110" height="110" fill="#121620"/>
+<rect x="427.7" y="1112.7" width="94.6" height="94.6" fill="#1D4ED8" opacity="0.95"/>
+<rect x="537.7" y="1112.7" width="94.6" height="94.6" fill="#EC4899" opacity="0.95"/>
+<rect x="553.309" y="1128.309" width="63.382" height="63.382" fill="#1D4ED8" opacity="1"/>
+<rect x="647.7" y="1112.7" width="94.6" height="94.6" fill="#EC4899" opacity="0.95"/>
+<rect x="663.309" y="1128.309" width="63.382" height="63.382" fill="#1D4ED8" opacity="1"/>
+<rect x="757.7" y="1112.7" width="94.6" height="94.6" fill="#1D4ED8" opacity="0.95"/>
+<rect x="867.7" y="1112.7" width="94.6" height="94.6" fill="#1E3A5F" opacity="0.95"/>
+<rect x="977.7" y="1112.7" width="94.6" height="94.6" fill="#1E3A5F" opacity="0.95"/>
+<rect x="427.7" y="1002.7" width="94.6" height="94.6" fill="#06B6D4" opacity="0.95"/>
+<rect x="537.7" y="1002.7" width="94.6" height="94.6" fill="#10B981" opacity="0.95"/>
+<rect x="647.7" y="1002.7" width="94.6" height="94.6" fill="#EC4899" opacity="0.95"/>
+<rect x="757.7" y="1002.7" width="94.6" height="94.6" fill="#06B6D4" opacity="0.95"/>
+<rect x="773.309" y="1018.309" width="63.382" height="63.382" fill="#1D4ED8" opacity="1"/>
+<rect x="977.7" y="1002.7" width="94.6" height="94.6" fill="#EC4899" opacity="0.95"/>
+<rect x="317.7" y="892.7" width="94.6" height="94.6" fill="#06B6D4" opacity="0.95"/>
+<rect x="427.7" y="892.7" width="94.6" height="94.6" fill="#94A3B8" opacity="0.95"/>
+<rect x="443.309" y="908.309" width="63.382" height="63.382" fill="#10B981" opacity="1"/>
+<rect x="537.7" y="892.7" width="94.6" height="94.6" fill="#94A3B8" opacity="0.95"/>
+<rect x="647.7" y="892.7" width="94.6" height="94.6" fill="#06B6D4" opacity="0.95"/>
+<rect x="653.944" y="898.944" width="82.113" height="82.113" fill="#94A3B8" opacity="1"/>
+<rect x="660.187" y="905.187" width="69.626" height="69.626" fill="#57534E" opacity="1"/>
+<rect x="666.431" y="911.431" width="57.138" height="57.138" fill="#EC4899" opacity="1"/>
+<rect x="672.674" y="917.674" width="44.651" height="44.651" fill="#06B6D4" opacity="1"/>
+<rect x="757.7" y="892.7" width="94.6" height="94.6" fill="#94A3B8" opacity="0.95"/>
+<rect x="773.309" y="908.309" width="63.382" height="63.382" fill="#1D4ED8" opacity="1"/>
+<rect x="867.7" y="892.7" width="94.6" height="94.6" fill="#EC4899" opacity="0.95"/>
+<rect x="883.309" y="908.309" width="63.382" height="63.382" fill="#5B21B6" opacity="1"/>
+<rect x="977.7" y="892.7" width="94.6" height="94.6" fill="#EC4899" opacity="0.95"/>
+<rect x="317.7" y="782.7" width="94.6" height="94.6" fill="#10B981" opacity="0.95"/>
+<rect x="427.7" y="782.7" width="94.6" height="94.6" fill="#94A3B8" opacity="0.95"/>
+<rect x="435.505" y="790.505" width="78.991" height="78.991" fill="#F59E0B" opacity="1"/>
+<rect x="443.309" y="798.309" width="63.382" height="63.382" fill="#10B981" opacity="1"/>
+<rect x="451.114" y="806.114" width="47.773" height="47.773" fill="#06B6D4" opacity="1"/>
+<rect x="537.7" y="782.7" width="94.6" height="94.6" fill="#06B6D4" opacity="0.95"/>
+<rect x="647.7" y="782.7" width="94.6" height="94.6" fill="#94A3B8" opacity="0.95"/>
+<rect x="658.106" y="793.106" width="73.788" height="73.788" fill="#57534E" opacity="1"/>
+<rect x="668.512" y="803.512" width="52.976" height="52.976" fill="#EC4899" opacity="1"/>
+<rect x="757.7" y="782.7" width="94.6" height="94.6" fill="#94A3B8" opacity="0.95"/>
+<rect x="765.505" y="790.505" width="78.991" height="78.991" fill="#EC4899" opacity="1"/>
+<rect x="773.309" y="798.309" width="63.382" height="63.382" fill="#1D4ED8" opacity="1"/>
+<rect x="781.114" y="806.114" width="47.773" height="47.773" fill="#06B6D4" opacity="1"/>
+<rect x="977.7" y="782.7" width="94.6" height="94.6" fill="#5B21B6" opacity="0.95"/>
+<rect x="317.7" y="672.7" width="94.6" height="94.6" fill="#F59E0B" opacity="0.95"/>
+<rect x="427.7" y="672.7" width="94.6" height="94.6" fill="#57534E" opacity="0.95"/>
+<rect x="438.106" y="683.106" width="73.788" height="73.788" fill="#10B981" opacity="1"/>
+<rect x="448.512" y="693.512" width="52.976" height="52.976" fill="#10B981" opacity="1"/>
+<rect x="537.7" y="672.7" width="94.6" height="94.6" fill="#F59E0B" opacity="0.95"/>
+<rect x="553.309" y="688.309" width="63.382" height="63.382" fill="#06B6D4" opacity="1"/>
+<rect x="757.7" y="672.7" width="94.6" height="94.6" fill="#57534E" opacity="0.95"/>
+<rect x="765.505" y="680.505" width="78.991" height="78.991" fill="#94A3B8" opacity="1"/>
+<rect x="773.309" y="688.309" width="63.382" height="63.382" fill="#EC4899" opacity="1"/>
+<rect x="781.114" y="696.114" width="47.773" height="47.773" fill="#1D4ED8" opacity="1"/>
+<rect x="867.7" y="672.7" width="94.6" height="94.6" fill="#5B21B6" opacity="0.95"/>
+<rect x="883.309" y="688.309" width="63.382" height="63.382" fill="#06B6D4" opacity="1"/>
+<rect x="977.7" y="672.7" width="94.6" height="94.6" fill="#5B21B6" opacity="0.95"/>
+<rect x="1087.7" y="672.7" width="94.6" height="94.6" fill="#5B21B6" opacity="0.95"/>
+<rect x="427.7" y="562.7" width="94.6" height="94.6" fill="#7F1D1D" opacity="0.95"/>
+<rect x="438.106" y="573.106" width="73.788" height="73.788" fill="#57534E" opacity="1"/>
+<rect x="448.512" y="583.512" width="52.976" height="52.976" fill="#F59E0B" opacity="1"/>
+<rect x="537.7" y="562.7" width="94.6" height="94.6" fill="#7F1D1D" opacity="0.95"/>
+<rect x="553.309" y="578.309" width="63.382" height="63.382" fill="#10B981" opacity="1"/>
+<rect x="647.7" y="562.7" width="94.6" height="94.6" fill="#F59E0B" opacity="0.95"/>
+<rect x="658.106" y="573.106" width="73.788" height="73.788" fill="#7F1D1D" opacity="1"/>
+<rect x="668.512" y="583.512" width="52.976" height="52.976" fill="#06B6D4" opacity="1"/>
+<rect x="757.7" y="562.7" width="94.6" height="94.6" fill="#57534E" opacity="0.95"/>
+<rect x="763.944" y="568.944" width="82.113" height="82.113" fill="#EC4899" opacity="1"/>
+<rect x="770.187" y="575.187" width="69.626" height="69.626" fill="#1D4ED8" opacity="1"/>
+<rect x="776.431" y="581.431" width="57.138" height="57.138" fill="#7F1D1D" opacity="1"/>
+<rect x="782.674" y="587.674" width="44.651" height="44.651" fill="#06B6D4" opacity="1"/>
+<rect x="867.7" y="562.7" width="94.6" height="94.6" fill="#5B21B6" opacity="0.95"/>
+<rect x="875.505" y="570.505" width="78.991" height="78.991" fill="#EC4899" opacity="1"/>
+<rect x="883.309" y="578.309" width="63.382" height="63.382" fill="#57534E" opacity="1"/>
+<rect x="891.114" y="586.114" width="47.773" height="47.773" fill="#94A3B8" opacity="1"/>
+<rect x="977.7" y="562.7" width="94.6" height="94.6" fill="#5B21B6" opacity="0.95"/>
+<rect x="427.7" y="452.7" width="94.6" height="94.6" fill="#7F1D1D" opacity="0.95"/>
+<rect x="443.309" y="468.309" width="63.382" height="63.382" fill="#F59E0B" opacity="1"/>
+<rect x="647.7" y="452.7" width="94.6" height="94.6" fill="#10B981" opacity="0.95"/>
+<rect x="658.106" y="463.106" width="73.788" height="73.788" fill="#DC2626" opacity="1"/>
+<rect x="668.512" y="473.512" width="52.976" height="52.976" fill="#06B6D4" opacity="1"/>
+<rect x="757.7" y="452.7" width="94.6" height="94.6" fill="#F59E0B" opacity="0.95"/>
+<rect x="762.903" y="457.903" width="84.194" height="84.194" fill="#5B21B6" opacity="1"/>
+<rect x="768.106" y="463.106" width="73.788" height="73.788" fill="#7F1D1D" opacity="1"/>
+<rect x="773.309" y="468.309" width="63.382" height="63.382" fill="#1D4ED8" opacity="1"/>
+<rect x="778.512" y="473.512" width="52.976" height="52.976" fill="#7F1D1D" opacity="1"/>
+<rect x="783.715" y="478.715" width="42.57" height="42.57" fill="#06B6D4" opacity="1"/>
+<rect x="427.7" y="342.7" width="94.6" height="94.6" fill="#EA580C" opacity="0.95"/>
+<rect x="757.7" y="342.7" width="94.6" height="94.6" fill="#7F1D1D" opacity="0.95"/>
+<rect x="773.309" y="358.309" width="63.382" height="63.382" fill="#DC2626" opacity="1"/>
+<rect x="867.7" y="342.7" width="94.6" height="94.6" fill="#7F1D1D" opacity="0.95"/>
+<rect x="883.309" y="358.309" width="63.382" height="63.382" fill="#DC2626" opacity="1"/>
+<rect x="977.7" y="342.7" width="94.6" height="94.6" fill="#EA580C" opacity="0.95"/>
+<text x="365" y="1266.15" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="33" fill="#4A5568" text-anchor="middle">a</text>
+<text x="281.95" y="1171.88" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="33" fill="#4A5568" text-anchor="middle">1</text>
+<text x="475" y="1266.15" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="33" fill="#4A5568" text-anchor="middle">b</text>
+<text x="281.95" y="1061.88" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="33" fill="#4A5568" text-anchor="middle">2</text>
+<text x="585" y="1266.15" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="33" fill="#4A5568" text-anchor="middle">c</text>
+<text x="281.95" y="951.88" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="33" fill="#4A5568" text-anchor="middle">3</text>
+<text x="695" y="1266.15" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="33" fill="#4A5568" text-anchor="middle">d</text>
+<text x="281.95" y="841.88" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="33" fill="#4A5568" text-anchor="middle">4</text>
+<text x="805" y="1266.15" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="33" fill="#4A5568" text-anchor="middle">e</text>
+<text x="281.95" y="731.88" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="33" fill="#4A5568" text-anchor="middle">5</text>
+<text x="915" y="1266.15" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="33" fill="#4A5568" text-anchor="middle">f</text>
+<text x="281.95" y="621.88" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="33" fill="#4A5568" text-anchor="middle">6</text>
+<text x="1025" y="1266.15" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="33" fill="#4A5568" text-anchor="middle">g</text>
+<text x="281.95" y="511.88" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="33" fill="#4A5568" text-anchor="middle">7</text>
+<text x="1135" y="1266.15" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="33" fill="#4A5568" text-anchor="middle">h</text>
+<text x="281.95" y="401.88" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="33" fill="#4A5568" text-anchor="middle">8</text>
+<text x="75" y="1320" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#8B93A7" font-weight="600" letter-spacing="3.4">8-QUADRANT SIGNATURE</text>
+<line x1="499" y1="1315" x2="715" y2="1315" stroke="#2A2F3C" stroke-width="1"/>
+<line x1="523" y1="1340.4" x2="523" y2="1668" stroke="#2A2F3C" stroke-width="1.5"/>
+<text x="75" y="1362" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#8B93A7" font-weight="500" letter-spacing="2">KINGSIDE · WHITE</text>
+<rect x="523" y="1345.238" width="40.533" height="18.48" rx="2" fill="#3B82F6" opacity="0.9"/>
+<text x="576.033" y="1362" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="25" fill="#7FB0F5" text-anchor="start">+20.0</text>
+<text x="75" y="1404" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#8B93A7" font-weight="500" letter-spacing="2">QUEENSIDE · WHITE</text>
+<rect x="523" y="1387.238" width="115.52" height="18.48" rx="2" fill="#3B82F6" opacity="0.9"/>
+<text x="651.02" y="1404" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="25" fill="#7FB0F5" text-anchor="start">+57.0</text>
+<text x="75" y="1446" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#8B93A7" font-weight="500" letter-spacing="2">KINGSIDE · BLACK</text>
+<rect x="470.307" y="1429.238" width="52.693" height="18.48" rx="2" fill="#EF4444" opacity="0.9"/>
+<text x="457.807" y="1446" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="25" fill="#F5908C" text-anchor="end">-26.0</text>
+<text x="75" y="1488" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#8B93A7" font-weight="500" letter-spacing="2">QUEENSIDE · BLACK</text>
+<rect x="521.987" y="1471.238" width="1.013" height="18.48" rx="2" fill="#EF4444" opacity="0.9"/>
+<text x="509.487" y="1488" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="25" fill="#F5908C" text-anchor="end">-0.5</text>
+<text x="75" y="1530" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#8B93A7" font-weight="500" letter-spacing="2">CENTER · WHITE</text>
+<rect x="523" y="1513.238" width="104.373" height="18.48" rx="2" fill="#3B82F6" opacity="0.9"/>
+<text x="639.873" y="1530" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="25" fill="#7FB0F5" text-anchor="start">+51.5</text>
+<text x="75" y="1572" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#8B93A7" font-weight="500" letter-spacing="2">CENTER · BLACK</text>
+<rect x="520.973" y="1555.238" width="2.027" height="18.48" rx="2" fill="#EF4444" opacity="0.9"/>
+<text x="508.473" y="1572" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="25" fill="#F5908C" text-anchor="end">-1.0</text>
+<text x="75" y="1614" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#8B93A7" font-weight="500" letter-spacing="2">EXT. KINGSIDE</text>
+<rect x="487.533" y="1597.238" width="35.467" height="18.48" rx="2" fill="#EF4444" opacity="0.9"/>
+<text x="475.033" y="1614" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="25" fill="#F5908C" text-anchor="end">-17.5</text>
+<text x="75" y="1656" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#8B93A7" font-weight="500" letter-spacing="2">EXT. QUEENSIDE</text>
+<rect x="523" y="1639.238" width="35.467" height="18.48" rx="2" fill="#3B82F6" opacity="0.9"/>
+<text x="570.967" y="1656" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="25" fill="#7FB0F5" text-anchor="start">+17.5</text>
+<text x="523" y="1694" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="25" fill="#4A5568" text-anchor="middle">± 60 piece-weighted units</text>
+<text x="785" y="1320" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#8B93A7" font-weight="600" letter-spacing="3.4">TEMPORAL FLOW</text>
+<line x1="1065.5" y1="1315" x2="1425" y2="1315" stroke="#2A2F3C" stroke-width="1"/>
+<rect x="785" y="1337" width="203.956" height="50" fill="#10B981" opacity="0.88"/>
+<text x="886.978" y="1371" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#0B0D12" font-weight="700" text-anchor="middle">32%</text>
+<rect x="988.956" y="1337" width="337.582" height="50" fill="#F59E0B" opacity="0.88"/>
+<text x="1157.747" y="1371" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#0B0D12" font-weight="700" text-anchor="middle">53%</text>
+<rect x="1326.538" y="1337" width="98.462" height="50" fill="#EF4444" opacity="0.88"/>
+<text x="1375.769" y="1371" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#0B0D12" font-weight="700" text-anchor="middle">15%</text>
+<rect x="785" y="1337" width="640" height="50" rx="9" fill="none" stroke="#1E2330" stroke-width="1"/>
+<rect x="785" y="1405" width="19.5" height="19.5" rx="1.5" fill="#10B981"/>
+<text x="815" y="1424.5" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#8B93A7" font-weight="500" letter-spacing="1.75">OPENING</text>
+<rect x="960.5" y="1405" width="19.5" height="19.5" rx="1.5" fill="#F59E0B"/>
+<text x="990.5" y="1424.5" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#8B93A7" font-weight="500" letter-spacing="1.75">MIDDLEGAME</text>
+<rect x="1185.5" y="1405" width="19.5" height="19.5" rx="1.5" fill="#EF4444"/>
+<text x="1215.5" y="1424.5" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#8B93A7" font-weight="500" letter-spacing="1.75">ENDGAME</text>
+<text x="785" y="1450" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#8B93A7" font-weight="600" letter-spacing="3.4">PIECE DOMINANCE</text>
+<line x1="1106.5" y1="1445" x2="1425" y2="1445" stroke="#2A2F3C" stroke-width="1"/>
+<text x="785" y="1489" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#8B93A7" font-weight="500" letter-spacing="2">BISHOP</text>
+<rect x="977" y="1474.24" width="358.4" height="14.4" rx="7.2" fill="#171B25"/>
+<rect x="977" y="1474.24" width="358.4" height="14.4" rx="7.2" fill="#3B82F6" opacity="0.92"/>
+<text x="1425" y="1489" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="25" fill="#B9AF98" text-anchor="end">30%</text>
+<text x="785" y="1525" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#8B93A7" font-weight="500" letter-spacing="2">KNIGHT</text>
+<rect x="977" y="1510.24" width="358.4" height="14.4" rx="7.2" fill="#171B25"/>
+<rect x="977" y="1510.24" width="358.4" height="14.4" rx="7.2" fill="#F59E0B" opacity="0.92"/>
+<text x="1425" y="1525" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="25" fill="#B9AF98" text-anchor="end">30%</text>
+<text x="785" y="1561" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#8B93A7" font-weight="500" letter-spacing="2">ROOK</text>
+<rect x="977" y="1546.24" width="358.4" height="14.4" rx="7.2" fill="#171B25"/>
+<rect x="977" y="1546.24" width="204.8" height="14.4" rx="7.2" fill="#EF4444" opacity="0.92"/>
+<text x="1425" y="1561" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="25" fill="#B9AF98" text-anchor="end">17%</text>
+<text x="785" y="1597" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#8B93A7" font-weight="500" letter-spacing="2">QUEEN</text>
+<rect x="977" y="1582.24" width="358.4" height="14.4" rx="7.2" fill="#171B25"/>
+<rect x="977" y="1582.24" width="273.067" height="14.4" rx="7.2" fill="#8B5CF6" opacity="0.92"/>
+<text x="1425" y="1597" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="25" fill="#B9AF98" text-anchor="end">23%</text>
+<text x="785" y="1640" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#8B93A7" font-weight="600" letter-spacing="3.4">PAWN ADVANCEMENT</text>
+<line x1="1127" y1="1635" x2="1425" y2="1635" stroke="#2A2F3C" stroke-width="1"/>
+<rect x="785" y="1655" width="640" height="20" rx="10" fill="url(#pawnGrad)" opacity="0.55"/>
+<rect x="785" y="1655" width="640" height="20" rx="10" fill="none" stroke="#1E2330" stroke-width="1"/>
+<circle cx="991.667" cy="1665" r="12.4" fill="#EDE6D6" stroke="#0B0D12" stroke-width="3.2"/>
+<text x="785" y="1712.5" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#4A5568">BACK RANK</text>
+<text x="1105" y="1712.5" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="26.5" fill="#B9AF98" font-weight="600" text-anchor="middle">32% ADVANCED</text>
+<text x="1425" y="1712.5" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="25" fill="#4A5568" text-anchor="end">PROMOTION</text>
+<text x="750" y="1733" font-family="'Cinzel', 'Trajan Pro', 'Times New Roman', serif" font-size="42" fill="url(#gold)" font-weight="700" letter-spacing="5" text-anchor="middle">ADOLF ANDERSSEN</text>
+<text x="750" y="1773" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="26" fill="#8B93A7" text-anchor="middle">Adolf Anderssen  1–0  Jean Dufresne</text>
+<rect x="460.1" y="1797" width="579.8" height="52" rx="26" fill="#12151D" stroke="#D99A12" stroke-width="1.5"/>
+<text x="750" y="1831" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="26" fill="#F2B01E" font-weight="600" letter-spacing="4" text-anchor="middle">SACRIFICIAL QUEENSIDE BREAK</text>
+<text x="750" y="1883" font-family="'Cormorant Garamond', Cormorant, Georgia, serif" font-size="27" fill="#B9AF98" text-anchor="middle" font-style="italic">The evergreen that never fades —</text>
+<text x="750" y="1919" font-family="'Cormorant Garamond', Cormorant, Georgia, serif" font-size="27" fill="#B9AF98" text-anchor="middle" font-style="italic">a queen laid down for eternal spring.</text>
+<line x1="75" y1="1945" x2="1425" y2="1945" stroke="#2A2F3C" stroke-width="1"/>
+<rect x="75" y="1957" width="250" height="56" rx="28" fill="none" stroke="url(#gold)" stroke-width="2"/>
+<text x="200" y="1993" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="26" fill="#F2B01E" font-weight="500" text-anchor="middle">001 / 1000</text>
+<text x="750" y="1980" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="26" fill="#8B93A7" letter-spacing="4" text-anchor="middle">ENPENSENT.COM</text>
+<text x="750" y="2010" font-family="'JetBrains Mono', Menlo, 'SF Mono', monospace" font-size="25" fill="#4A5568" text-anchor="middle">ep8-liqggx</text>
+<rect x="1175" y="1957" width="250" height="56" rx="28" fill="none" stroke="#7FB0F5" stroke-width="2.5"/>
+<text x="1300" y="1993.96" font-family="'Inter', 'Helvetica Neue', system-ui, sans-serif" font-size="26" fill="#7FB0F5" font-weight="600" letter-spacing="4" text-anchor="middle">SUPPORTER</text>
+  </g>
+
+</svg>

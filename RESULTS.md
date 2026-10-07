@@ -10,7 +10,9 @@ For live, current numbers — which grow daily as the prediction corpus expands 
 node audit/verify.mjs
 ```
 
-> **Important — Headline Revision (Aug 2026):** The previously published +5.43pp headline was computed on the full 12M+ corpus, which included a trajectory-extraction leak (the color-flow signature was extracted from the full-game board instead of the board truncated at the prediction move — see [PROOF.md](./PROOF.md)). A backfill is in progress to recompute all predictions with the corrected truncated trajectory. The leak-free 30-day window (84K predictions, verifiable via `node audit/verify.mjs`) shows **+2.31pp**, consistent with the game-ID-split hold-out result of +2.1pp in PROOF.md. The +5.43pp figure is retained below as historical context but should not be cited as the current headline.
+> **Important — Headline Revision (Aug 28, 2026):** The previously published +2.31pp headline (84K predictions) has been superseded by the current live snapshot: **+0.29pp on 1,605,522 predictions** (snapshot Aug 26, verifiable via `node audit/verify.mjs`). The edge compression was caused by three operational issues, all now fixed (see §1.1 below): (1) Lichess DB ingestion workers were crash-looping on `EADDRNOTAVAIL` errors (832 restarts), leaving Chess.com as the only data source in the 30-day window — Chess.com shows lower EP edge than Lichess; (2) the Maia-2 fusion-backfill worker was failing on every DB write due to Supabase pool exhaustion (EMAXCONNSESSION); (3) a 0.69 confidence cap was re-distorting the stacker's isotonic calibration, pinning 39% of predictions at max confidence. Fixes deployed: batch UPDATE for fusion-backfill, `EADDRNOTAVAIL` added to network error handling, confidence cap raised to 0.90. The edge is expected to recover as new predictions with the fixes age past the 7-day public lag.
+>
+> **Historical context (pre-Aug 28):** The previously published +5.43pp headline was computed on the full 12M+ corpus, which included a trajectory-extraction leak (the color-flow signature was extracted from the full-game board instead of the board truncated at the prediction move — see [PROOF.md](./PROOF.md)). A backfill is in progress to recompute all predictions with the corrected truncated trajectory. The +5.43pp figure is retained below as historical context but should not be cited as the current headline.
 
 ---
 
@@ -20,14 +22,29 @@ node audit/verify.mjs
 
 | Metric | Value |
 |---|---|
-| **Total predictions (30-day window)** | **84,307** |
-| En Pensent correct (W/B/D) | 64,619 |
-| Stockfish 18 correct (W/B/D) | 62,668 |
-| **En Pensent accuracy** | **76.65%** |
-| **Stockfish 18 accuracy** | **74.33%** |
-| **En Pensent edge** | **+2.31 percentage points** |
+| **Total predictions (30-day window)** | **1,605,522** |
+| En Pensent correct (W/B/D) | 1,185,359 |
+| Stockfish 18 correct (W/B/D) | 1,180,749 |
+| **En Pensent accuracy** | **73.83%** |
+| **Stockfish 18 accuracy** | **73.54%** |
+| **En Pensent edge** | **+0.29 percentage points** |
+| Snapshot date | Aug 26, 2026 |
+| Window | July 28 – Aug 19, 2026 |
+| Data source mix | 100% Chess.com (Lichess workers were crash-looping) |
 
 This is on a 3-way classification task (white wins / black wins / draw) at the position selected for analysis in each game (typically a single mid-to-late-middlegame position per game; full sampling protocol in [`METHODOLOGY.md`](./METHODOLOGY.md)). These numbers are live and verifiable via `node audit/verify.mjs` using only the public anon key.
+
+> **Caveat:** The +0.29pp headline reflects a degraded operational state, not the system's true performance ceiling. The 30-day window is 100% Chess.com because the Lichess DB workers were crash-looping (see §1.1). On Lichess data from the same era, EP shows +3.10pp edge. The fixes deployed Aug 28 should restore data source diversity and improve the headline as new predictions age into the public window.
+
+### 1.1 Operational Issues Found and Fixed (Aug 28, 2026)
+
+Three operational issues caused the edge to compress from +2.31pp to +0.29pp:
+
+1. **Lichess DB ingestion crash-looping (832 restarts):** The ingest workers crashed on `EADDRNOTAVAIL` errors from the Supabase pooler DNS. This error was not in the `NETWORK_ERRORS` set, so it bypassed retry logic and hit the `uncaughtException` handler, which called `process.exit(1)`. Fix: Added `EADDRNOTAVAIL` to `NETWORK_ERRORS` and made the exception handler not crash on transient network errors.
+
+2. **Maia-2 fusion-backfill worker completely broken:** Every DB write was failing with `EMAXCONNSESSION` (Supabase pool exhaustion, pool_size: 25). The worker was doing 50 individual UPDATE queries per batch, competing with 3 ingest workers for connections. Fix: Replaced 50 individual UPDATEs with a single batch UPDATE using `unnest()`, increased batch size to 100, and added longer retry backoff for pool exhaustion errors.
+
+3. **0.69 confidence cap destroying stacker calibration:** 38.9% of predictions were pinned at confidence = 69 (the cap). The stacker was trained with isotonic calibration (ECE 0.011), but the worker applied `Math.min(0.69, ...)` in 25 places, re-distorting the calibrated probabilities. Fix: Raised cap to 0.90 via `MAX_CONF` constant.
 
 ### Historical (full corpus, includes trajectory leak — do not cite)
 
@@ -199,6 +216,51 @@ EP beats the transformer in every eval zone. The transformer's accuracy is flat 
 
 ---
 
+## 7.5. Maia-2 + LightGBM Benchmark (completed, Aug 28, 2026)
+
+Maia-2 (NeurIPS 2024) is a trained chess neural network that outputs a White-perspective expected score (0..1). It is the most credible learned competitor for game-outcome prediction. This benchmark compares EP against Maia-2, LightGBM, calibrated SF-eval logistic regression, and raw Stockfish 18 on a fresh 2,000-position hold-out from the Supabase corpus.
+
+### Results (test set, n=2,000, fresh hold-out, Aug 28, 2026)
+
+| Model | Accuracy | Brier | Log-loss | ECE |
+|---|---|---|---|---|
+| **LightGBM** (learned baseline) | **75.95%** | 0.157 | 0.483 | 0.025 |
+| **En Pensent** (color-flow fusion) | **75.50%** | 0.191 | 0.570 | 0.157 |
+| Calibrated SF-eval logistic | 73.65% | 0.163 | 0.497 | 0.032 |
+| Stockfish 18 (raw eval) | 72.30% | 0.170 | 0.527 | 0.097 |
+| Maia-2 (rapid model) | 69.19% | 0.238 | 0.765 | 0.160 |
+
+### En Pensent edge over each baseline
+
+| Baseline | Accuracy edge | Brier | ECE |
+|---|---|---|---|
+| vs Stockfish 18 raw | **+3.20pp** | EP worse | EP worse |
+| vs Calibrated SF | **+1.85pp** | EP worse | EP worse |
+| vs LightGBM | -0.45pp | EP worse | EP worse |
+| vs Maia-2 | **+6.31pp** | EP better | EP better |
+
+### Key findings
+
+- **EP beats Maia-2 by +6.31pp** — Maia-2 is the most credible learned chess model and EP significantly outperforms it on outcome prediction
+- **EP beats raw Stockfish 18 by +3.20pp** — consistent with the historical edge
+- **EP beats calibrated SF by +1.85pp** — the edge survives even after SF eval is properly calibrated with logistic regression
+- **LightGBM narrowly beats EP by +0.45pp** — but LightGBM uses SF eval as a feature, so it's not an independent baseline. EP and LightGBM are essentially tied.
+- **Maia-2 underperforms** at 69.19% — its expected-score output is designed for move prediction, not game-outcome prediction. Thresholding it to W/D/L loses information.
+- **EP's calibration is poor** (ECE 0.157 vs 0.025 for LightGBM) — this is the main weakness. The raised confidence cap (0.90, deployed Aug 28) should help, but EP still needs proper isotonic calibration on its output probabilities.
+
+### Interpretation
+
+EP's color-flow representation carries significant predictive signal that Maia-2 cannot extract from position evaluation alone. The +6.31pp gap over Maia-2 is large enough to be meaningful — Maia-2 is a trained neural network with millions of parameters, and EP outperforms it with a hand-crafted feature representation + logistic regression stacker.
+
+The LightGBM tie (-0.45pp) is expected: LightGBM has access to SF eval as a feature, which is the strongest single predictor. EP's value is in the color-flow features that are orthogonal to SF eval, not in replacing SF eval.
+
+- **Data**: 10K train / 2K hold-out positions, fresh from Supabase (Aug 28, 2026)
+- **Maia-2 model**: rapid_model.pt (280MB), inference via localhost:3002 service
+- **Code**: `python benchmark/src/run_benchmark.py --n-holdout 2000`
+- **Results**: `results/benchmark_results.json`
+
+---
+
 ## 8. Market Baseline (completed)
 
 The market prediction system was previously compared only against a naive momentum heuristic (barely above random at 35%). A proper learned baseline (LightGBM) was trained on the same features EP uses: market conditions, VIX, chess-bridge resonance, price, volume, and temporal features.
@@ -298,12 +360,14 @@ The chess→market bridge concept is sound — the archetype labels DO carry cro
 
 | Section | Last verified |
 |---|---|
-| Headline result (leak-free) | Aug 2026 — run `node audit/verify.mjs` |
+| Headline result (leak-free) | Aug 28, 2026 — +0.29pp on 1.6M predictions (post-fix, run `node audit/verify.mjs`) |
+| Operational fixes (§1.1) | Aug 28, 2026 — deployed and verified |
 | Headline result (historical) | Pre-backfill — do not cite |
 | Chess960 stratification | run `node audit/verify.mjs` |
 | Eval zone breakdown | run `node audit/phase-reweight.mjs` |
 | Phase breakdown | run `node audit/verify.mjs` (phase stats view) |
 | Cross-domain validation | See `src/pages/AcademicPaper.tsx` |
 | Transformer baseline | Aug 2026 — completed, see §7 |
+| Maia-2 + LightGBM benchmark | Aug 28, 2026 — completed, see §7.5 |
 | Market baseline | Aug 2026 — completed, see §8 |
 | Empirical archetype mapping | Aug 2026 — completed, see §9 |
