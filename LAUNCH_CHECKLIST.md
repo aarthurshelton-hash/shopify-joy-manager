@@ -36,6 +36,8 @@ npx vercel --prod
 ## 5. End-to-end smoke test
 
 - Fresh Gmail signup → redeem `EP-CHAMP-…` on `/redeem` → premium shows on `/account` ("Premium via reward code") → checkout shows 40% discount.
+- After redeem, copy your `EP-REF-…` link → redeem from a **second account** → referrer gains +14 days (check `premium_grants` where `source='referral_bonus'`).
+- Share a `/g/:hash` link in Discord/Twitter DMs → embed shows the actual vision art (not the generic banner).
 - Scan a champion card front in the vision scanner → "Claim reward" toast → routes to `/redeem`.
 - `/verify/:id` on a card back → links to `/redeem`.
 
