@@ -23,7 +23,9 @@ npx vercel --prod
 
 ## 3. Matcherino
 
+- **Card art**: `scripts/promo/reward-cards.mjs` renders SVG+PNG from `farm/dist` — rebuild `farm/dist` first if `src/lib/chess` changed since last build, then run it and confirm the champion/supporter fronts are the vision patterns (scannable) and backs carry `/verify/:id` QR.
 - Upload `~/Downloads/matcherino-reward-codes/champions.csv` (100 codes) + `supporters.csv` (1,000).
+- SponsorQuest: tell Matcherino your Visit URL is `https://enpensent.com/?matcherino_key=` (they append the token) and action name is `first_vision`.
 - Shopify sync when ready (~9 min, resumable):
   `SHOPIFY_ADMIN_TOKEN=<token> node scripts/promo/matcherino-codes.mjs --shopify`
 
@@ -40,6 +42,7 @@ npx vercel --prod
 - Share a `/g/:hash` link in Discord/Twitter DMs → embed shows the actual vision art (not the generic banner).
 - Scan a champion card front in the vision scanner → "Claim reward" toast → routes to `/redeem`.
 - `/verify/:id` on a card back → links to `/redeem`.
+- Load `/?matcherino_key=test-<40hex>` → generate a vision → Network tab should show `POST /api/matcherino-quest` fire-and-forget (per-user once; `ep_matcherino_done_first_vision` in localStorage).
 
 ## 6. Post-launch (defer)
 
