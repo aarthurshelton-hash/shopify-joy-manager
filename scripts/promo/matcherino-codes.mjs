@@ -138,11 +138,16 @@ async function ensurePriceRule(tier) {
   const { price_rules } = await shopify('GET', '/price_rules.json?limit=250');
   const existing = (price_rules || []).find((r) => r.title === title);
   if (existing) return existing.id;
+  // Optional: SHOPIFY_ENTITLED_PRODUCT_IDS="123,456" scopes the discount to
+  // those products instead of the whole cart (prevents discounting merch).
+  const entitledIds = (process.env.SHOPIFY_ENTITLED_PRODUCT_IDS || '')
+    .split(',').map((s) => s.trim()).filter(Boolean);
   const { price_rule } = await shopify('POST', '/price_rules.json', {
     price_rule: {
       title,
       target_type: 'line_item',
-      target_selection: 'all',
+      target_selection: entitledIds.length ? 'entitled' : 'all',
+      ...(entitledIds.length ? { entitled_product_ids: entitledIds } : {}),
       allocation_method: 'across',
       value_type: 'percentage',
       value: `-${t.discount}`,

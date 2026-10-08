@@ -3998,6 +3998,7 @@ export type Database = {
         Returns: boolean
       }
       redeem_reward_code: { Args: { p_code: string }; Returns: Json }
+      get_or_create_referral_code: { Args: Record<PropertyKey, never>; Returns: Json }
       release_user_visions: { Args: { p_user_id: string }; Returns: number }
       release_user_visions_with_value: {
         Args: { p_user_id: string }

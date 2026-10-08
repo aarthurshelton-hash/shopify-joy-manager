@@ -6,6 +6,17 @@
   "installCommand": "npm install --include=dev",
   "rewrites": [
     {
+      "source": "/g/:hash",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(facebookexternalhit|Twitterbot|Slackbot|Discordbot|WhatsApp|LinkedInBot|TelegramBot|Pinterest|redditbot|Embedly|vkShare|Discord).*"
+        }
+      ],
+      "destination": "/api/og-game?hash=:hash"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }

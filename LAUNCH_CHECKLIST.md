@@ -27,13 +27,19 @@ npx vercel --prod
 - Shopify sync when ready (~9 min, resumable):
   `SHOPIFY_ADMIN_TOKEN=<token> node scripts/promo/matcherino-codes.mjs --shopify`
 
-## 4. End-to-end smoke test
+## 4. Vercel env vars (dashboard → Settings → Environment Variables)
+
+- `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` — required by `api/og-game.ts` for per-vision OG images (service role bypasses `saved_visualizations` RLS; anon key works if visions are public-readable).
+- `VITE_AUTH_PROVIDERS="google,github"`
+- Optional: `SHOPIFY_ENTITLED_PRODUCT_IDS="id1,id2"` — scopes the 40%/20% discounts to specific products instead of cart-wide.
+
+## 5. End-to-end smoke test
 
 - Fresh Gmail signup → redeem `EP-CHAMP-…` on `/redeem` → premium shows on `/account` ("Premium via reward code") → checkout shows 40% discount.
 - Scan a champion card front in the vision scanner → "Claim reward" toast → routes to `/redeem`.
 - `/verify/:id` on a card back → links to `/redeem`.
 
-## 5. Post-launch (defer)
+## 6. Post-launch (defer)
 
 - `VITE_MARKETPLACE_ENABLED=true` only after the claims/editions remodel.
 - `npx supabase gen types` to refresh generated types.

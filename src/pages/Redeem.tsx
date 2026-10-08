@@ -19,7 +19,7 @@ import AuthModal from '@/components/auth/AuthModal';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Gift, Crown, BadgePercent, Loader2, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Gift, Crown, BadgePercent, Loader2, ArrowRight, ShieldCheck, Share2, Copy, Sparkles } from 'lucide-react';
 import { DISCOUNT_CODE_STORAGE } from '@/stores/cartStore';
 import { recordFunnelEvent } from '@/lib/analytics/membershipFunnel';
 
@@ -27,7 +27,7 @@ interface RedeemResult {
   ok: boolean;
   error?: string;
   already_redeemed?: boolean;
-  tier?: 'champion' | 'supporter';
+  tier?: 'champion' | 'supporter' | 'referral';
   discount_percent?: number;
   premium_days?: number;
   expires_at?: string;
@@ -37,6 +37,7 @@ const ERROR_COPY: Record<string, string> = {
   not_authenticated: 'Sign in to redeem this code.',
   invalid_code: "That code isn't valid — check the card and try again.",
   code_used: 'This code has already been redeemed by another account.',
+  rate_limited: 'Too many attempts — wait an hour and try again.',
 };
 
 const Redeem: React.FC = () => {
@@ -51,6 +52,8 @@ const Redeem: React.FC = () => {
   const [authOpen, setAuthOpen] = useState(false);
   // Code waiting on sign-in — auto-redeemed once a session exists.
   const pendingRef = useRef<string | null>(null);
+  // The user's own shareable referral code (minted lazily post-redemption).
+  const [refCode, setRefCode] = useState<string | null>(null);
 
   const redeem = useCallback(async (raw: string) => {
     const normalized = raw.trim().toUpperCase();
@@ -84,9 +87,18 @@ const Redeem: React.FC = () => {
       setResult(res);
       recordFunnelEvent('reward_redeemed', { trigger_source: `reward_${res.tier}` }).catch(() => {});
       toast.success(
-        res.tier === 'champion' ? 'Champion reward claimed.' : 'Supporter reward claimed.',
+        res.tier === 'champion'
+          ? 'Champion reward claimed.'
+          : res.tier === 'referral'
+            ? 'Referral reward claimed.'
+            : 'Supporter reward claimed.',
         { description: `${res.discount_percent}% off + ${res.premium_days} days of premium.` },
       );
+      // Mint/grab the user's referral code for the share block below.
+      supabase.rpc('get_or_create_referral_code').then(({ data }) => {
+        const ref = data as unknown as { ok?: boolean; code?: string } | null;
+        if (ref?.ok && ref.code) setRefCode(ref.code);
+      }).catch(() => {});
       // Refresh premium state so gated features unlock immediately.
       checkSubscription().catch(() => {});
     } catch (e) {
@@ -157,14 +169,41 @@ const Redeem: React.FC = () => {
             )}
             <div className="flex items-center justify-center gap-3">
               <Button asChild>
+                <Link to="/">
+                  Create your first vision <Sparkles className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+              <Button asChild variant="outline">
                 <Link to="/order-print">
                   Browse the shop <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
-              <Button asChild variant="outline">
-                <Link to="/">Turn a game into art</Link>
-              </Button>
             </div>
+            {refCode && (
+              <div className="mt-6 rounded-xl border border-primary/20 bg-primary/5 p-4 text-left">
+                <p className="text-sm font-medium flex items-center gap-2">
+                  <Share2 className="h-4 w-4 text-primary" />
+                  Give a friend 20% off + a month of premium — you earn +14 days
+                </p>
+                <div className="mt-2 flex items-center gap-2">
+                  <code className="flex-1 truncate rounded bg-background/60 px-3 py-2 font-mono text-xs">
+                    enpensent.com/redeem?code={refCode}
+                  </code>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      navigator.clipboard
+                        .writeText(`https://enpensent.com/redeem?code=${refCode}`)
+                        .then(() => toast.success('Referral link copied'))
+                        .catch(() => {});
+                    }}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
             <p className="text-xs text-muted-foreground mt-4">
               Tip: your card's artwork is scannable — try the{' '}
               <Link to="/vision-scanner" className="text-primary underline underline-offset-2">
