@@ -192,14 +192,21 @@ function backContent({ game, sim, sig }) {
   out.push(line({ x1: T.x, y1: 238, x2: T.x + T.w, y2: 238, stroke: 'url(#goldSoft)', sw: 1.5, opacity: 0.6 }));
 
   // Real, scannable QR — 300px at 600 DPI = 12.7mm, comfortably above the
-  // practical print minimum.
+  // practical print minimum. Reward tokens override this with the winner's
+  // claim URL (game.claimUrl) so a scan redeems their code directly.
   const qrSize = 300;
-  const url = VERIFY_BASE + game.id;
+  const url = game.claimUrl || VERIFY_BASE + game.id;
   const qr = qrCode({ x: CX - qrSize / 2, y: 278, size: qrSize, data: url, level: 'M', dark: C.cream });
   out.push(rect({ x: CX - qrSize / 2 - 18, y: 260, w: qrSize + 36, h: qrSize + 36, r: 12, fill: C.panel, stroke: C.line, sw: 1.5 }));
   out.push(qr.svg);
-  out.push(text('SCAN TO VERIFY THIS CARD', { x: CX, y: 636, size: 26, fill: C.muted, family: F.sans, weight: 600, spacing: 4, anchor: 'middle' }));
-  out.push(text(url, { x: CX, y: 666, size: 25, fill: C.mutedDeep, family: F.mono, anchor: 'middle' }));
+  out.push(text(game.claimUrl ? 'SCAN TO CLAIM YOUR REWARD' : 'SCAN TO VERIFY THIS CARD',
+    { x: CX, y: 636, size: 26, fill: C.muted, family: F.sans, weight: 600, spacing: 4, anchor: 'middle' }));
+  if (game.claimCode) {
+    out.push(text(game.claimCode, { x: CX, y: 666, size: 27, fill: C.gold, family: F.mono, weight: 500, anchor: 'middle' }));
+    out.push(text(url, { x: CX, y: 694, size: 21, fill: C.mutedDeep, family: F.mono, anchor: 'middle' }));
+  } else {
+    out.push(text(url, { x: CX, y: 666, size: 25, fill: C.mutedDeep, family: F.mono, anchor: 'middle' }));
+  }
 
   let cy = 726;
 

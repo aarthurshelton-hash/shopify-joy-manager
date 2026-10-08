@@ -86,6 +86,31 @@ export const GAMES = [
   },
 ];
 
+/**
+ * The Evergreen Game — Anderssen vs Dufresne, Berlin 1852.
+ * Canonical supporter-tier reward game (kept out of the victory GAMES
+ * array since it's not part of the curated four).
+ */
+export const EVERGREEN = {
+  id: 'evergreen1852',
+  title: 'The Evergreen Game',
+  event: 'Berlin, Casual',
+  year: '1852',
+  white: 'Adolf Anderssen',
+  black: 'Jean Dufresne',
+  result: '1-0',
+  winner: 'Adolf Anderssen',
+  winnerColor: 'white',
+  tier: 'supporter',
+  edition: { number: 1, of: 1000 },
+  note: 'The Evans Gambit at full flower — a queen sacrifice into mate.',
+  poem: [
+    'The evergreen that never fades —',
+    'a queen laid down for eternal spring.',
+  ],
+  pgn: '1.e4 e5 2.Nf3 Nc6 3.Bc4 Bc5 4.b4 Bxb4 5.c3 Ba5 6.d4 exd4 7.O-O d3 8.Qb3 Qf6 9.e5 Qg6 10.Re1 Nge7 11.Ba3 b5 12.Qxb5 Rb8 13.Qa4 Bb6 14.Nbd2 Bb7 15.Ne4 Qf5 16.Bxd3 Qh5 17.Nf6+ gxf6 18.exf6 Rg8 19.Rad1 Qxf3 20.Rxe7+ Nxe7 21.Qxd7+ Kxd7 22.Bf5+ Ke8 23.Bd7+ Kf8 24.Bxe7#',
+};
+
 /** Engine archetype id → human display label. */
 export const ARCHETYPE_LABELS = {
   sacrificial_kingside_assault: 'Sacrificial Kingside Assault',

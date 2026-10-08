@@ -23,8 +23,8 @@ npx vercel --prod
 
 ## 3. Matcherino
 
-- **Card art**: `scripts/promo/reward-cards.mjs` renders SVG+PNG from `farm/dist` — rebuild `farm/dist` first if `src/lib/chess` changed since last build, then run it and confirm the champion/supporter fronts are the vision patterns (scannable) and backs carry `/verify/:id` QR.
-- Upload `~/Downloads/matcherino-reward-codes/champions.csv` (100 codes) + `supporters.csv` (1,000).
+- **Reward tokens**: `node scripts/promo/reward-card-tokens.mjs` renders one numbered game card (front+back, SVG+PNG) per code into `~/Downloads/matcherino-reward-cards/` — back QR encodes that code's redeem URL, edition is N-of-total. Enriched CSVs land next to the originals as `*-with-cards.csv`.
+- Upload `~/Downloads/matcherino-reward-codes/champions-with-cards.csv` + `supporters-with-cards.csv` (NOT the plain CSVs) + zip `~/Downloads/matcherino-reward-cards/` as the token bundle.
 - SponsorQuest: tell Matcherino your Visit URL is `https://enpensent.com/?matcherino_key=` (they append the token) and action name is `first_vision`.
 - Shopify sync when ready (~9 min, resumable):
   `SHOPIFY_ADMIN_TOKEN=<token> node scripts/promo/matcherino-codes.mjs --shopify`

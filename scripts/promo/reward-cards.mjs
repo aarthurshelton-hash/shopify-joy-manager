@@ -23,7 +23,7 @@ import { simulateGame } from '../../farm/dist/lib/chess/gameSimulator.js';
 import { extractEnhancedColorFlowSignature } from '../../farm/dist/lib/chess/colorFlowAnalysis/enhancedSignatureExtractor.js';
 import { renderCard, CARD_SPEC } from './victory-card.mjs';
 import { GOOGLE_FONTS } from './tokens.mjs';
-import { GAMES } from './games.mjs';
+import { GAMES, EVERGREEN } from './games.mjs';
 
 // CJS module — named import via createRequire for reliability.
 const { setActivePalette } = require('../../farm/dist/pieceColors.js');
@@ -32,27 +32,6 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUT = path.join(__dirname, '..', '..', 'public', 'card-assets');
 const SKIP_PNG = process.argv.includes('--no-png');
-
-// The Evergreen Game — Anderssen vs Dufresne, Berlin 1852.
-const EVERGREEN = {
-  id: 'evergreen1852',
-  title: 'The Evergreen Game',
-  event: 'Berlin, Casual',
-  year: '1852',
-  white: 'Adolf Anderssen',
-  black: 'Jean Dufresne',
-  result: '1-0',
-  winner: 'Adolf Anderssen',
-  winnerColor: 'white',
-  tier: 'supporter',
-  edition: { number: 1, of: 1000 },
-  note: 'The Evans Gambit at full flower — a queen sacrifice into mate.',
-  poem: [
-    'The evergreen that never fades —',
-    'a queen laid down for eternal spring.',
-  ],
-  pgn: '1.e4 e5 2.Nf3 Nc6 3.Bc4 Bc5 4.b4 Bxb4 5.c3 Ba5 6.d4 exd4 7.O-O d3 8.Qb3 Qf6 9.e5 Qg6 10.Re1 Nge7 11.Ba3 b5 12.Qxb5 Rb8 13.Qa4 Bb6 14.Nbd2 Bb7 15.Ne4 Qf5 16.Bxd3 Qh5 17.Nf6+ gxf6 18.exf6 Rg8 19.Rad1 Qxf3 20.Rxe7+ Nxe7 21.Qxd7+ Kxd7 22.Bf5+ Ke8 23.Bd7+ Kf8 24.Bxe7#',
-};
 
 const CARDS = [
   { key: 'champion', palette: 'roman', game: { ...GAMES.find(g => g.id === 'immortal1851'), tier: 'champion', edition: { number: 1, of: 100 } } },
