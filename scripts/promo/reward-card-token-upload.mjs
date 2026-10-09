@@ -21,6 +21,7 @@ const CARDS = path.join(DL, 'matcherino-reward-cards');
 const CSV_DIR = path.join(DL, 'matcherino-reward-codes');
 const BUCKET = 'card-tokens';
 const NO_UPLOAD = process.argv.includes('--no-upload');
+const SKIP_RENDER = process.argv.includes('--skip-render');
 const CONCURRENCY = 6;
 
 function loadEnv() {
@@ -74,15 +75,23 @@ async function buildSheets(jobs) {
 }
 
 async function ensureBucket() {
-  const res = await fetch(`${SUPA_URL}/storage/v1/bucket`, {
-    method: 'POST',
-    headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id: BUCKET, name: BUCKET, public: true }),
-  });
-  if (!res.ok) {
-    const body = await res.text();
-    if (!/already exists|Duplicate/i.test(body)) throw new Error(`bucket: ${res.status} ${body}`);
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const res = await fetch(`${SUPA_URL}/storage/v1/bucket`, {
+        method: 'POST',
+        headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: BUCKET, name: BUCKET, public: true }),
+      });
+      if (res.ok) return;
+      const body = await res.text();
+      if (/already exists|Duplicate/i.test(body)) return;
+      console.warn(`  bucket create ${res.status} (attempt ${attempt}/3): ${body.slice(0, 120)}`);
+    } catch (e) {
+      console.warn(`  bucket create threw (attempt ${attempt}/3): ${e.message}`);
+    }
+    await sleep(2000 * attempt);
   }
+  console.warn('  bucket create gave up — proceeding to upload anyway (it may already exist).');
 }
 
 async function upload(pngPath, key) {
@@ -110,10 +119,13 @@ for (const tier of ['champion', 'supporter']) {
     });
   }
 }
-console.log(`${jobs.length} token sheets to build`);
+console.log(`${jobs.length} token sheets${SKIP_RENDER ? ' (skipping render)' : ' to build'}`);
 
 // ── render sheets (resilient: per-job catch + browser relaunch) ───────
-{
+if (SKIP_RENDER) {
+  const missing = jobs.filter((j) => !fs.existsSync(j.out));
+  console.log(`  ${jobs.length - missing.length} exist, ${missing.length} missing`);
+} else {
   const puppeteer = (await import('puppeteer')).default;
   let browser = await puppeteer.launch({ args: ['--no-sandbox', '--font-render-hinting=none'] });
   let done = 0, failed = 0;
@@ -159,16 +171,21 @@ if (!NO_UPLOAD) {
   await ensureBucket();
   let up = 0, upFail = 0;
   const q = jobs.filter((j) => fs.existsSync(j.out));
-  await Promise.all(Array.from({ length: CONCURRENCY }, async () => {
+  await Promise.all(Array.from({ length: 2 }, async () => {
     while (q.length) {
       const j = q.shift();
       if (!j) break;
-      try {
-        j.url = await upload(j.out, `${j.tier}/${j.code}-token.png`);
-      } catch (e) {
-        upFail++;
-        console.warn(`  upload fail ${j.code}: ${e.message}`);
+      let ok = false;
+      for (let attempt = 1; attempt <= 4 && !ok; attempt++) {
+        try {
+          j.url = await upload(j.out, `${j.tier}/${j.code}-token.png`);
+          ok = true;
+        } catch (e) {
+          if (attempt === 4) console.warn(`  upload fail ${j.code}: ${e.message}`);
+          else await sleep(2000 * attempt);
+        }
       }
+      if (!ok) upFail++;
       if (++up % 100 === 0) console.log(`  uploaded ${up}`);
     }
   }));
