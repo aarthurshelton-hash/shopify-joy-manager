@@ -198,14 +198,18 @@ for (const tier of ['champion', 'supporter']) {
   const file = path.join(CSV_DIR, `${tier}s-with-cards.csv`);
   if (!fs.existsSync(file)) { console.warn(`no ${file}`); continue; }
   const lines = fs.readFileSync(file, 'utf8').trim().split('\n');
-  const header = lines.shift();
+  const headerCols = lines.shift().split(',');
+  const urlColIdx = headerCols.indexOf('token_url');
+  const baseHeader = urlColIdx === -1 ? headerCols.join(',') : headerCols.slice(0, urlColIdx).join(',');
   const rows = lines.map((l) => {
-    const code = l.split(',')[0];
+    const cols = l.split(',');
+    const code = cols[0];
     const j = byCode.get(code);
-    const tokenUrl = j?.url || `${tier}/${code}-token.png`;
-    return `${l},${tokenUrl}`;
+    const tokenUrl = j?.url || `${PUBLIC_BASE}/${tier}/${code}-token.png`;
+    const base = urlColIdx === -1 ? l : cols.slice(0, urlColIdx).join(',');
+    return `${base},${tokenUrl}`;
   });
-  fs.writeFileSync(file, `${header},token_url\n${rows.join('\n')}\n`);
+  fs.writeFileSync(file, `${baseHeader},token_url\n${rows.join('\n')}\n`);
   console.log(`${file.split('/').pop()}: stamped ${rows.length} token_urls`);
 }
 console.log('done.');
