@@ -2,7 +2,7 @@
 farm/
 scripts/
 e2e/
-benchmark/
+/benchmark/
 maia2_models/
 logs/
 docs/
