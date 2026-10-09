@@ -33,7 +33,7 @@ import { renderCard, CARD_SPEC } from './victory-card.mjs';
 import { GOOGLE_FONTS } from './tokens.mjs';
 import { GAMES, EVERGREEN } from './games.mjs';
 
-const { setActivePalette } = require('../../farm/dist/pieceColors.js');
+const { setActivePalette } = require('../../farm/dist/lib/chess/pieceColors.js');
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const args = process.argv.slice(2);

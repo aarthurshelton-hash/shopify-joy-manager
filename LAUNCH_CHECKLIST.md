@@ -23,8 +23,9 @@ npx vercel --prod
 
 ## 3. Matcherino
 
-- **Reward tokens**: `node scripts/promo/reward-card-tokens.mjs` renders one numbered game card (front+back, SVG+PNG) per code into `~/Downloads/matcherino-reward-cards/` — back QR encodes that code's redeem URL, edition is N-of-total. Enriched CSVs land next to the originals as `*-with-cards.csv`.
-- Upload `~/Downloads/matcherino-reward-codes/champions-with-cards.csv` + `supporters-with-cards.csv` (NOT the plain CSVs) + zip `~/Downloads/matcherino-reward-cards/` as the token bundle.
+- **Reward tokens**: `node scripts/promo/reward-card-tokens.mjs` renders one numbered game card (front+back) per code into `~/Downloads/matcherino-reward-cards/` — back QR encodes that code's redeem URL, edition is N-of-total.
+- **Token handout**: `node scripts/promo/reward-card-token-upload.mjs` builds a combined front+back sheet PNG per code, uploads to the `card-tokens` Supabase bucket, and stamps `token_url` into `*-with-cards.csv` — each CSV row then carries the hosted artifact the winner receives.
+- Upload `~/Downloads/matcherino-reward-codes/champions-with-cards.csv` + `supporters-with-cards.csv` (NOT the plain CSVs). The `token_url` column is each winner's card — verify a few URLs resolve publicly before sending.
 - SponsorQuest: tell Matcherino your Visit URL is `https://enpensent.com/?matcherino_key=` (they append the token) and action name is `first_vision`.
 - Shopify sync when ready (~9 min, resumable):
   `SHOPIFY_ADMIN_TOKEN=<token> node scripts/promo/matcherino-codes.mjs --shopify`

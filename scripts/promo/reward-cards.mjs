@@ -26,7 +26,7 @@ import { GOOGLE_FONTS } from './tokens.mjs';
 import { GAMES, EVERGREEN } from './games.mjs';
 
 // CJS module — named import via createRequire for reliability.
-const { setActivePalette } = require('../../farm/dist/pieceColors.js');
+const { setActivePalette } = require('../../farm/dist/lib/chess/pieceColors.js');
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
