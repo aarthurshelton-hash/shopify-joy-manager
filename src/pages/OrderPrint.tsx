@@ -182,7 +182,7 @@ const OrderPrint: React.FC = () => {
     <div className="min-h-screen bg-background">
       <Header />
       
-      <main className="container mx-auto px-4 py-8 max-w-6xl">
+      <main className="container mx-auto px-4 pt-8 pb-24 lg:pb-8 max-w-6xl">
         {/* Game Card / Palette Hero Banner */}
         <AnimatePresence>
           {(gameCardArt || paletteArt) && (

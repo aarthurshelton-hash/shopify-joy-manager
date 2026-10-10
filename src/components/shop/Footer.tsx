@@ -19,6 +19,7 @@ const PRODUCT_LINKS = [
   { to: '/fingerprint', label: 'Chess Fingerprint' },
   { to: '/draw-forecast', label: 'Draw Forecast' },
   { to: '/live-signals', label: 'Live Signals' },
+  { to: '/shop', label: 'Shop Prints' },
   { to: '/order-print', label: 'Order a Print' },
 ];
 

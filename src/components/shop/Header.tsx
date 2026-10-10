@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { CartDrawer } from './CartDrawer';
-import { Menu, Sparkles, Camera, TrendingUp, FileText, Fingerprint, Scale } from 'lucide-react';
+import { Menu, Sparkles, Camera, TrendingUp, FileText, Fingerprint, Scale, ShoppingBag } from 'lucide-react';
 import UserMenu from '@/components/auth/UserMenu';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,6 +14,7 @@ import { MARKETPLACE_ENABLED } from '@/lib/featureFlags';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 
 const mobileLinks = [
+  { to: '/shop', label: 'Shop Prints', icon: ShoppingBag },
   { to: '/#make-your-own', label: 'Discover', icon: Sparkles },
   { to: '/report', label: 'Game Report', icon: FileText },
   { to: '/fingerprint', label: 'Chess Fingerprint', icon: Fingerprint },
@@ -86,6 +87,13 @@ export const Header = () => {
 
         {/* Right side — minimal */}
         <div className="flex items-center gap-1.5 sm:gap-2">
+          <Link
+            to="/shop"
+            className="hidden sm:inline-flex text-xs font-medium text-amber-600 dark:text-amber-400 hover:text-amber-500 transition-colors uppercase tracking-wider items-center gap-1.5"
+          >
+            <ShoppingBag className="h-3.5 w-3.5" />
+            Shop
+          </Link>
           <Link
             to="/#make-your-own"
             onClick={(e) => { e.preventDefault(); handleHashNav('/#make-your-own'); }}

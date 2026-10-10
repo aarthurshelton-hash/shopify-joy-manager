@@ -35,6 +35,7 @@ const GameHistory = lazy(() => import("./pages/GameHistory"));
 const News = lazy(() => import("./pages/News"));
 const QRMockup = lazy(() => import("./pages/QRMockup"));
 const OrderPrint = lazy(() => import("./pages/OrderPrint"));
+const Shop = lazy(() => import("./pages/Shop"));
 const Marketplace = lazy(() => import("./pages/Marketplace"));
 const AdminSeedMarketplace = lazy(() => import("./pages/AdminSeedMarketplace"));
 const VisualizationRedirect = lazy(() => import("./pages/VisualizationRedirect"));
@@ -170,6 +171,7 @@ const App = () => (
                 <Route path="/marketplace/vision/:id" element={<Suspense fallback={<PageLoadingSkeleton />}><MarketplaceVisionDetail /></Suspense>} />
               </>}
               <Route path="/order-print" element={<Suspense fallback={<PageLoadingSkeleton />}><OrderPrint /></Suspense>} />
+              <Route path="/shop" element={<Suspense fallback={<PageLoadingSkeleton />}><Shop /></Suspense>} />
               <Route path="/book" element={<Suspense fallback={<PageLoadingSkeleton />}><BookGenerator /></Suspense>} />
 
               {/* ===== CEO ONLY - All Business & Proprietary Features ===== */}

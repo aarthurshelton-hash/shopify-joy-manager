@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,7 +27,7 @@ import {
   Palette,
   Swords,
 } from "lucide-react";
-import { useCartStore } from "@/stores/cartStore";
+import { useCartStore, DISCOUNT_CODE_STORAGE } from "@/stores/cartStore";
 import { useCurrencyStore } from "@/stores/currencyStore";
 import { usePrintOrderStore } from "@/stores/printOrderStore";
 import { useActiveVisionStore } from "@/stores/activeVisionStore";
@@ -55,8 +55,30 @@ export const CartDrawer = () => {
     isLoading, 
     updateQuantity, 
     removeItem, 
-    createCheckout 
+    createCheckout,
+    lastAddedAt,
   } = useCartStore();
+
+  // Auto-open the drawer when an item is added (skip initial mount)
+  const lastAddedRef = useRef(0);
+  useEffect(() => {
+    if (lastAddedAt > 0 && lastAddedAt !== lastAddedRef.current) {
+      lastAddedRef.current = lastAddedAt;
+      setIsOpen(true);
+    }
+  }, [lastAddedAt]);
+
+  // Reward code redeemed on /redeem — shown so buyers know it will apply
+  const [rewardCode, setRewardCode] = useState<string | null>(null);
+  useEffect(() => {
+    if (isOpen) {
+      try { setRewardCode(localStorage.getItem(DISCOUNT_CODE_STORAGE)); }
+      catch { setRewardCode(null); }
+    }
+  }, [isOpen]);
+
+  const rewardPercent = rewardCode?.includes('CHAMP') ? 40
+    : rewardCode?.includes('SUP') ? 20 : null;
   
   const { formatPrice, selectedCurrency } = useCurrencyStore();
   
@@ -373,6 +395,27 @@ export const CartDrawer = () => {
                 </div>
                 
                 <div className="flex-shrink-0 space-y-3 pt-4 border-t bg-background">
+                  {/* Reward code chip — applies at Shopify checkout */}
+                  {rewardCode && (
+                    <div className="flex items-center justify-between gap-2 py-2 px-3 bg-green-500/10 rounded-lg border border-green-500/30">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Gift className="h-4 w-4 text-green-500 flex-shrink-0" />
+                        <span className="text-xs font-medium text-green-600 dark:text-green-400 truncate">
+                          {rewardCode}{rewardPercent ? ` — ${rewardPercent}% off` : ''} applied at checkout
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          try { localStorage.removeItem(DISCOUNT_CODE_STORAGE); } catch { /* storage unavailable */ }
+                          setRewardCode(null);
+                        }}
+                        className="text-[10px] text-muted-foreground hover:text-foreground flex-shrink-0"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )}
+
                   {/* Free shipping badge for US/Canada */}
                   <div className="flex items-center justify-center gap-2 py-2 bg-blue-500/10 rounded-lg border border-blue-500/20">
                     <Truck className="h-4 w-4 text-blue-500" />
@@ -451,7 +494,7 @@ export const CartDrawer = () => {
                     
                     {discountInfo.discountPercent > 0 && (
                       <div className="flex justify-between items-center text-green-600 dark:text-green-400">
-                        <span>Bulk discount ({discountInfo.discountPercent}%)</span>
+                        <span>Bulk discount ({discountInfo.discountPercent}%) — at checkout</span>
                         <span>-{formatPrice(discountInfo.discountAmount)}</span>
                       </div>
                     )}

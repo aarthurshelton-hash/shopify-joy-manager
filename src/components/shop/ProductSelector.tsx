@@ -612,6 +612,35 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
         </div>
       </CardContent>
 
+      {/* Sticky mobile CTA — keeps price + buy action visible while scrolling options */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-border/60 bg-background/95 backdrop-blur-md px-4 py-3 flex items-center justify-between gap-3"
+        style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
+      >
+        <div className="min-w-0">
+          <div className="text-lg font-bold leading-tight">
+            {formatWithCurrency(calculateTotalPrice())}
+          </div>
+          <div className="text-[10px] text-muted-foreground truncate">
+            {selectedVariant?.title || 'Select a size'}
+            {selectedFrame ? ` + ${selectedFrame.name} frame` : ''}
+            {includeInfoCard ? ' + info card' : ''}
+          </div>
+        </div>
+        <Button
+          onClick={handleAddToCart}
+          disabled={!selectedVariant || added || isGeneratingImage}
+          className="gap-2 flex-shrink-0"
+        >
+          {isGeneratingImage ? (
+            <><Loader2 className="h-4 w-4 animate-spin" /> Preparing…</>
+          ) : added ? (
+            <><Check className="h-4 w-4" /> Added!</>
+          ) : (
+            <><ShoppingCart className="h-4 w-4" /> Add to Cart</>
+          )}
+        </Button>
+      </div>
+
       {/* Visionary Membership Modal */}
       <VisionaryMembershipCard
         isOpen={showVisionaryModal}

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { toast } from 'sonner';
 import { useCurrencyStore } from './currencyStore';
+import { getAddonLines } from '@/lib/shop/addonVariants';
 
 // Map currency codes to Shopify country codes for checkout localization
 const CURRENCY_TO_COUNTRY: Record<string, string> = {
@@ -229,7 +230,7 @@ async function createStorefrontCheckoutWithRetry(items: CartItem[], attempt = 1)
 }
 
 async function createStorefrontCheckout(items: CartItem[]): Promise<string> {
-  const lines = items.map(item => {
+  const lines = items.flatMap(item => {
     // Build line item with attributes for custom print data
     const lineItem: {
       quantity: number;
@@ -283,8 +284,14 @@ async function createStorefrontCheckout(items: CartItem[]): Promise<string> {
         lineItem.attributes = attributes;
       }
     }
-    
-    return lineItem;
+
+    // Add-on products (frame, info card) are real Shopify variants — they must
+    // be separate line items or their price is never charged at checkout.
+    const addonLines = getAddonLines(item);
+    if (addonLines.length === 0) {
+      return [lineItem];
+    }
+    return [lineItem, ...addonLines];
   });
 
   // Get user's selected currency and map to country code
@@ -341,6 +348,8 @@ interface CartStore {
   items: CartItem[];
   checkoutUrl: string | null;
   isLoading: boolean;
+  /** Bumped on every addItem — CartDrawer opens when this changes. */
+  lastAddedAt: number;
   
   addItem: (item: CartItem) => void;
   updateQuantity: (variantId: string, quantity: number) => void;
@@ -356,6 +365,7 @@ export const useCartStore = create<CartStore>()(
       items: [],
       checkoutUrl: null,
       isLoading: false,
+      lastAddedAt: 0,
 
       addItem: (item) => {
         const { items } = get();
@@ -373,7 +383,9 @@ export const useCartStore = create<CartStore>()(
           set({ items: [...items, item] });
         }
         
-        toast.success('Added to cart!', { 
+        set({ lastAddedAt: Date.now() });
+
+        toast.success('Added to cart!', {
           duration: 2000,
           position: 'top-center'
         });
