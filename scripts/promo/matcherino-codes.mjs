@@ -56,6 +56,7 @@ const COUNTS = { champion: num('champions', 100), supporter: num('supporters', 1
 const BATCH = args[args.indexOf('--batch') + 1] || `matcherino-${new Date().toISOString().slice(0, 10)}`;
 const DRY_RUN = flag('dry-run');
 const DO_SHOPIFY = flag('shopify') && !DRY_RUN;
+const SYNC_EXISTING = flag('sync-existing');
 
 // ── code generation ───────────────────────────────────────────────────
 
@@ -112,6 +113,25 @@ async function insertCodes(rows) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Dev Dashboard apps don't show an shpat_ token — exchange client creds.
+async function ensureShopifyToken() {
+  if (process.env.SHOPIFY_ADMIN_TOKEN) return;
+  const id = process.env.SHOPIFY_CLIENT_ID;
+  const secret = process.env.SHOPIFY_CLIENT_SECRET;
+  if (!id || !secret) return;
+  const res = await fetch(`https://${SHOPIFY_DOMAIN}/admin/oauth/access_token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `client_id=${encodeURIComponent(id)}&client_secret=${encodeURIComponent(secret)}&grant_type=client_credentials`,
+  });
+  const json = await res.json();
+  if (!res.ok || !json.access_token) {
+    throw new Error(`Shopify token exchange failed (${res.status}): ${JSON.stringify(json)}`);
+  }
+  process.env.SHOPIFY_ADMIN_TOKEN = json.access_token;
+  console.log('  obtained admin token via client credentials');
+}
+
 async function shopify(method, ep, body) {
   const res = await fetch(`${SHOPIFY_API}${ep}`, {
     method,
@@ -132,57 +152,119 @@ async function shopify(method, ep, body) {
   return json;
 }
 
-async function ensurePriceRule(tier) {
+// GraphQL discount nodes — works under write_discounts (REST price_rules
+// requires protected scopes needing merchant re-approval).
+async function shopifyGql(query, variables = {}) {
+  const res = await fetch(`${SHOPIFY_API}/graphql.json`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Shopify-Access-Token': process.env.SHOPIFY_ADMIN_TOKEN,
+    },
+    body: JSON.stringify({ query, variables }),
+  });
+  const json = await res.json();
+  if (json.errors) throw new Error(json.errors.map((e) => e.message).join(', '));
+  return json.data;
+}
+
+/**
+ * Find or create the tier's DiscountCodeNode. The first CSV code becomes the
+ * discount's primary code; the rest are bulk-added as redeem codes.
+ */
+async function ensureDiscountNode(tier, firstCode) {
   const t = TIERS[tier];
   const title = `Matcherino ${tier} — ${t.discount}%`;
-  const { price_rules } = await shopify('GET', '/price_rules.json?limit=250');
-  const existing = (price_rules || []).find((r) => r.title === title);
-  if (existing) return existing.id;
-  // Optional: SHOPIFY_ENTITLED_PRODUCT_IDS="123,456" scopes the discount to
-  // those products instead of the whole cart (prevents discounting merch).
-  const entitledIds = (process.env.SHOPIFY_ENTITLED_PRODUCT_IDS || '')
-    .split(',').map((s) => s.trim()).filter(Boolean);
-  const { price_rule } = await shopify('POST', '/price_rules.json', {
-    price_rule: {
-      title,
-      target_type: 'line_item',
-      target_selection: entitledIds.length ? 'entitled' : 'all',
-      ...(entitledIds.length ? { entitled_product_ids: entitledIds } : {}),
-      allocation_method: 'across',
-      value_type: 'percentage',
-      value: `-${t.discount}`,
-      customer_selection: 'all',
-      once_per_customer: true,
-      starts_at: new Date().toISOString(),
+  try {
+    const data = await shopifyGql(
+      `{ codeDiscountNodes(first: 100) { nodes { id codeDiscount { ... on DiscountCodeBasic { title } } } } }`,
+    );
+    const hit = (data.codeDiscountNodes?.nodes || []).find(
+      (n) => n.codeDiscount?.title === title,
+    );
+    if (hit) return hit.id;
+  } catch (e) {
+    console.log(`  discount lookup failed (${e.message}) — creating fresh`);
+  }
+  const created = await shopifyGql(
+    `mutation D($input: DiscountCodeBasicInput!) {
+       discountCodeBasicCreate(basicCodeDiscount: $input) {
+         codeDiscountNode { id }
+         userErrors { field message }
+       }
+     }`,
+    {
+      input: {
+        title,
+        code: firstCode,
+        startsAt: new Date().toISOString(),
+        appliesOncePerCustomer: true,
+        context: { all: 'ALL' },
+        customerGets: { value: { percentage: t.discount / 100 }, items: { all: true } },
+      },
     },
-  });
-  return price_rule.id;
+  );
+  const errs = created.discountCodeBasicCreate.userErrors;
+  if (errs.length) throw new Error(`discountCreate ${tier}: ${JSON.stringify(errs)}`);
+  return created.discountCodeBasicCreate.codeDiscountNode.id;
 }
 
 async function syncShopify(codesByTier) {
+  await ensureShopifyToken();
   if (!process.env.SHOPIFY_ADMIN_TOKEN) {
-    console.log('  SHOPIFY_ADMIN_TOKEN not set — skipping Shopify sync.');
+    console.log('  SHOPIFY_ADMIN_TOKEN/CLIENT creds not set — skipping Shopify sync.');
     return;
   }
   const done = new Set(
     fs.existsSync(SYNC_LOG) ? fs.readFileSync(SYNC_LOG, 'utf8').split('\n').filter(Boolean) : []
   );
   for (const [tier, codes] of Object.entries(codesByTier)) {
-    const ruleId = await ensurePriceRule(tier);
-    console.log(`  price_rule "${tier}" → ${ruleId} (${codes.length} codes, resuming after ${done.size} synced)`);
-    for (const code of codes) {
-      if (done.has(code)) continue;
-      await shopify('POST', `/price_rules/${ruleId}/discount_codes.json`, {
-        discount_code: { code },
-      });
-      fs.appendFileSync(SYNC_LOG, code + '\n');
-      await sleep(450); // stay under the 2 req/s admin bucket
+    if (!codes.length) continue;
+    const discountId = await ensureDiscountNode(tier, codes[0]);
+    fs.appendFileSync(SYNC_LOG, codes[0] + '\n'); // primary code lives on the node itself
+    done.add(codes[0]);
+    const pending = codes.filter((c) => !done.has(c));
+    console.log(`  discount "${tier}" → ${discountId} (${pending.length}/${codes.length} codes to sync)`);
+    const CHUNK = 100;
+    for (let i = 0; i < pending.length; i += CHUNK) {
+      const slice = pending.slice(i, i + CHUNK);
+      const d = await shopifyGql(
+        `mutation B($discountId: ID!, $codes: [DiscountRedeemCodeInput!]!) {
+           discountRedeemCodeBulkAdd(discountId: $discountId, codes: $codes) {
+             bulkCreation { codesCount }
+             userErrors { field message }
+           }
+         }`,
+        { discountId, codes: slice.map((code) => ({ code })) },
+      );
+      const errs = d.discountRedeemCodeBulkAdd.userErrors;
+      if (errs.length) throw new Error(`bulkAdd ${tier}: ${JSON.stringify(errs)}`);
+      for (const code of slice) fs.appendFileSync(SYNC_LOG, code + '\n');
+      console.log(`    ${tier}: ${Math.min(i + CHUNK, pending.length)}/${pending.length}`);
+      await sleep(300); // GraphQL cost limit breathing room
     }
     console.log(`  ${tier}: ${codes.length} discount codes synced`);
   }
 }
 
 // ── main ──────────────────────────────────────────────────────────────
+
+// --sync-existing: push the already-minted CSV batch to Shopify without
+// minting new codes or touching the DB.
+if (SYNC_EXISTING) {
+  const readCodes = (file) =>
+    fs.readFileSync(path.join(OUT_DIR, file), 'utf8')
+      .split('\n')
+      .map((l) => l.split(',')[0].trim())
+      .filter((c) => c.startsWith('EP-'));
+  const existing = {
+    champion: readCodes('champions.csv'),
+    supporter: readCodes('supporters.csv'),
+  };
+  console.log(`sync-existing: ${existing.champion.length} champions + ${existing.supporter.length} supporters`);
+  await syncShopify(existing);
+  process.exit(0);
+}
 
 const seen = new Set();
 const byTier = {};
