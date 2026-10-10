@@ -18,8 +18,37 @@ import path from 'node:path';
 
 const SHOPIFY_DOMAIN = 'printify-shop-manager-fs4kw.myshopify.com';
 const ADMIN_API = `https://${SHOPIFY_DOMAIN}/admin/api/2025-07/graphql.json`;
-const TOKEN = process.env.SHOPIFY_ADMIN_TOKEN;
 const DRY_RUN = process.argv.includes('--dry-run');
+
+let TOKEN = process.env.SHOPIFY_ADMIN_TOKEN;
+
+/**
+ * Dev Dashboard apps don't show an shpat_ token — obtain one via the
+ * client-credentials grant (app must be installed on the store and the
+ * scopes must be in a released version).
+ */
+async function ensureToken() {
+  if (TOKEN) return;
+  const id = process.env.SHOPIFY_CLIENT_ID;
+  const secret = process.env.SHOPIFY_CLIENT_SECRET;
+  if (!id || !secret) {
+    throw new Error(
+      'Set SHOPIFY_ADMIN_TOKEN, or SHOPIFY_CLIENT_ID + SHOPIFY_CLIENT_SECRET ' +
+      '(Dev Dashboard → app → Settings → Credentials).',
+    );
+  }
+  const res = await fetch(`https://${SHOPIFY_DOMAIN}/admin/oauth/access_token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `client_id=${encodeURIComponent(id)}&client_secret=${encodeURIComponent(secret)}&grant_type=client_credentials`,
+  });
+  const json = await res.json();
+  if (!res.ok || !json.access_token) {
+    throw new Error(`Token exchange failed (${res.status}): ${JSON.stringify(json)}`);
+  }
+  TOKEN = json.access_token;
+  console.log('Obtained admin token via client-credentials grant');
+}
 
 // ── frame pricing mirror (kept in sync with src/lib/shop/framePricing.ts) ──
 const SIZES = ['8×10"', '11×14"', '12×16"', '16×20"', '18×24"', '24×36"'];
@@ -63,19 +92,33 @@ async function existingProductId(title) {
   return data.products.edges.find((e) => e.node.title === title)?.node.id || null;
 }
 
-async function createProductWithVariants(title, options, variantSpecs) {
-  // 1. create product skeleton with options
+const specSig = (v) =>
+  v.optionValues.map((o) => `${o.optionName}=${o.name}`).sort().join('|');
+const variantSig = (selOpts) =>
+  selOpts.map((o) => `${o.name}=${o.value}`).sort().join('|');
+
+/** Create the product shell with declared option values; returns product id. */
+async function createProduct(title, options, variantSpecs) {
+  const optionValues = {};
+  for (const v of variantSpecs) {
+    for (const ov of v.optionValues) {
+      (optionValues[ov.optionName] ??= new Set()).add(ov.name);
+    }
+  }
   const created = await admin(
-    `mutation P($input: ProductInput!) {
+    `mutation P($input: ProductCreateInput!) {
        productCreate(product: $input) {
-         product { id options { id name values { name } } }
+         product { id }
          userErrors { field message }
        }
      }`,
     {
       input: {
         title,
-        productOptions: options.map((name) => ({ name, values: [] })),
+        productOptions: options.map((name) => ({
+          name,
+          values: [...(optionValues[name] ?? ['Default'])].map((n) => ({ name: n })),
+        })),
         status: 'ACTIVE',
         tags: ['ep-addon'],
       },
@@ -83,9 +126,20 @@ async function createProductWithVariants(title, options, variantSpecs) {
   );
   const err = created.productCreate.userErrors;
   if (err.length) throw new Error(`productCreate ${title}: ${JSON.stringify(err)}`);
-  const product = created.productCreate.product;
+  return created.productCreate.product.id;
+}
 
-  // 2. bulk-create variants
+/** Diff spec vs existing variants; bulk-create missing; return all variants. */
+async function ensureProductVariants(productId, variantSpecs) {
+  const existing = await admin(
+    `{ product(id: "${productId}") { variants(first: 250) { edges { node { id selectedOptions { name value } } } } } }`,
+  );
+  const existingVariants = existing.product.variants.edges.map((e) => e.node);
+  const existingSigs = new Set(existingVariants.map((v) => variantSig(v.selectedOptions)));
+
+  const missing = variantSpecs.filter((v) => !existingSigs.has(specSig(v)));
+  if (missing.length === 0) return existingVariants;
+
   const vc = await admin(
     `mutation V($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
        productVariantsBulkCreate(productId: $productId, variants: $variants) {
@@ -94,8 +148,8 @@ async function createProductWithVariants(title, options, variantSpecs) {
        }
      }`,
     {
-      productId: product.id,
-      variants: variantSpecs.map((v) => ({
+      productId,
+      variants: missing.map((v) => ({
         price: v.price.toFixed(2),
         optionValues: v.optionValues,
         inventoryPolicy: 'CONTINUE', // digital fulfillment — never out of stock
@@ -104,15 +158,16 @@ async function createProductWithVariants(title, options, variantSpecs) {
     },
   );
   const verr = vc.productVariantsBulkCreate.userErrors;
-  if (verr.length) throw new Error(`variants ${title}: ${JSON.stringify(verr)}`);
-  return vc.productVariantsBulkCreate.productVariants;
+  if (verr.length) throw new Error(`variants for ${productId}: ${JSON.stringify(verr)}`);
+  return [...existingVariants, ...vc.productVariantsBulkCreate.productVariants];
 }
 
 async function main() {
-  if (!TOKEN && !DRY_RUN) {
-    console.error('SHOPIFY_ADMIN_TOKEN required (Admin API). --dry-run to preview.');
+  if (!TOKEN && !process.env.SHOPIFY_CLIENT_ID && !DRY_RUN) {
+    console.error('Set SHOPIFY_ADMIN_TOKEN or SHOPIFY_CLIENT_ID+SHOPIFY_CLIENT_SECRET. --dry-run to preview.');
     process.exit(1);
   }
+  if (!DRY_RUN) await ensureToken();
 
   const frameVariants = SIZES.flatMap((size) =>
     FRAME_STYLES.map((style) => ({
@@ -133,46 +188,28 @@ async function main() {
 
   // ── 1. Frame product ──────────────────────────────────────────────
   let frameMap = {};
-  const existingFrame = await existingProductId('Print Frame Add-On');
-  if (existingFrame) {
-    console.log('Frame product exists — fetching variants');
-    const d = await admin(
-      `{ product(id: "${existingFrame}") { variants(first: 100) { edges { node { id selectedOptions { name value } } } } } }`,
-    );
-    for (const e of d.product.variants.edges) {
-      const size = e.node.selectedOptions.find((o) => o.name === 'Size')?.value;
-      const styleName = e.node.selectedOptions.find((o) => o.name === 'Style')?.value;
-      const style = FRAME_STYLES.find((s) => s.name === styleName);
-      if (size && style) frameMap[`frame|${normSize(size)}|${style.id}`] = e.node.id;
-    }
-  } else {
-    const created = await createProductWithVariants(
-      'Print Frame Add-On',
-      ['Size', 'Style'],
-      frameVariants,
-    );
-    created.forEach((v, i) => { frameMap[frameVariants[i].key] = v.id; });
-    console.log(`Frame product created: ${created.length} variants`);
+  const frameProductId =
+    (await existingProductId('Print Frame Add-On')) ||
+    (await createProduct('Print Frame Add-On', ['Size', 'Style'], frameVariants));
+  const frameVariantNodes = await ensureProductVariants(frameProductId, frameVariants);
+  for (const v of frameVariantNodes) {
+    const size = v.selectedOptions.find((o) => o.name === 'Size')?.value;
+    const styleName = v.selectedOptions.find((o) => o.name === 'Style')?.value;
+    const style = FRAME_STYLES.find((s) => s.name === styleName);
+    if (size && style) frameMap[`frame|${normSize(size)}|${style.id}`] = v.id;
   }
+  console.log(`Frame product: ${Object.keys(frameMap).length}/${frameVariants.length} variants mapped`);
 
   // ── 2. Info card product ──────────────────────────────────────────
-  let infoCardVariantId = '';
-  const existingCard = await existingProductId('Vision Info Card Add-On');
-  if (existingCard) {
-    const d = await admin(
-      `{ product(id: "${existingCard}") { variants(first: 1) { edges { node { id } } } } }`,
-    );
-    infoCardVariantId = d.product.variants.edges[0]?.node.id || '';
-    console.log('Info card exists:', infoCardVariantId);
-  } else {
-    const created = await createProductWithVariants(
-      'Vision Info Card Add-On',
-      ['Format'],
-      [{ optionValues: [{ optionName: 'Format', name: 'Standard' }], price: INFO_CARD_PRICE }],
-    );
-    infoCardVariantId = created[0]?.id || '';
-    console.log('Info card created:', infoCardVariantId);
-  }
+  const infoCardSpecs = [
+    { optionValues: [{ optionName: 'Format', name: 'Standard' }], price: INFO_CARD_PRICE },
+  ];
+  const infoCardProductId =
+    (await existingProductId('Vision Info Card Add-On')) ||
+    (await createProduct('Vision Info Card Add-On', ['Format'], infoCardSpecs));
+  const infoCardNodes = await ensureProductVariants(infoCardProductId, infoCardSpecs);
+  const infoCardVariantId = infoCardNodes[0]?.id || '';
+  console.log('Info card variant:', infoCardVariantId);
 
   // ── 3. Automatic bulk discounts ───────────────────────────────────
   for (const t of BULK_TIERS) {
