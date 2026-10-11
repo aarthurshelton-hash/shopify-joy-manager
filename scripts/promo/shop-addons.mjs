@@ -129,6 +129,22 @@ async function createProduct(title, options, variantSpecs) {
   return created.productCreate.product.id;
 }
 
+/** Publish a product to every sales channel so Storefront API can see it. */
+async function publishProduct(productId) {
+  const { publications } = await admin(`{ publications(first: 25) { nodes { id name } } }`);
+  for (const pub of publications.nodes) {
+    await admin(
+      `mutation Pub($id: ID!, $pub: [PublicationInput!]!) {
+         publishablePublish(id: $id, input: $pub) {
+           userErrors { field message }
+         }
+       }`,
+      { id: productId, pub: [{ publicationId: pub.id }] },
+    );
+  }
+  console.log(`  published ${productId} to ${publications.nodes.length} channel(s)`);
+}
+
 /** Diff spec vs existing variants; bulk-create missing; return all variants. */
 async function ensureProductVariants(productId, variantSpecs) {
   const existing = await admin(
@@ -191,6 +207,7 @@ async function main() {
   const frameProductId =
     (await existingProductId('Print Frame Add-On')) ||
     (await createProduct('Print Frame Add-On', ['Size', 'Style'], frameVariants));
+  await publishProduct(frameProductId);
   const frameVariantNodes = await ensureProductVariants(frameProductId, frameVariants);
   for (const v of frameVariantNodes) {
     const size = v.selectedOptions.find((o) => o.name === 'Size')?.value;
@@ -207,6 +224,7 @@ async function main() {
   const infoCardProductId =
     (await existingProductId('Vision Info Card Add-On')) ||
     (await createProduct('Vision Info Card Add-On', ['Format'], infoCardSpecs));
+  await publishProduct(infoCardProductId);
   const infoCardNodes = await ensureProductVariants(infoCardProductId, infoCardSpecs);
   const infoCardVariantId = infoCardNodes[0]?.id || '';
   console.log('Info card variant:', infoCardVariantId);
@@ -243,11 +261,9 @@ async function main() {
     `export const FRAME_VARIANTS: Record<string, string> = ${JSON.stringify(frameMap, null, 2)};\n\n` +
     `/** Shopify variant GID for the $${INFO_CARD_PRICE} Vision Info Card add-on */\n` +
     `export const INFO_CARD_VARIANT_ID = '${infoCardVariantId}';`;
-  const next = src.replace(
-    /\/\/ <generated>[\s\S]*?\/\/ <\/generated>/,
-    `// <generated>\n${generated}\n// </generated>`,
-  );
-  if (next === src) throw new Error('addonVariants.ts missing // <generated> markers');
+  const markerRe = /\/\/ <generated>[\s\S]*?\/\/ <\/generated>/;
+  if (!markerRe.test(src)) throw new Error('addonVariants.ts missing // <generated> markers');
+  const next = src.replace(markerRe, `// <generated>\n${generated}\n// </generated>`);
   fs.writeFileSync(target, next);
   console.log(`\nPatched addonVariants.ts: ${Object.keys(frameMap).length} frame variants + info card.`);
 }

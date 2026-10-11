@@ -8,6 +8,8 @@
  *   node scripts/promo/matcherino-codes.mjs                    # CSVs + DB insert
  *   node scripts/promo/matcherino-codes.mjs --dry-run          # CSVs only
  *   node scripts/promo/matcherino-codes.mjs --shopify          # + Shopify sync
+ *   node scripts/promo/matcherino-codes.mjs --sync-existing    # push minted CSV batch
+ *   node scripts/promo/matcherino-codes.mjs --sync-referrals   # push EP-REF-* DB codes
  *   node scripts/promo/matcherino-codes.mjs --champions 100 --supporters 1000
  *
  * Tiers:
@@ -38,6 +40,9 @@ const TIERS = {
   champion: { prefix: 'EP-CHAMP', discount: 40, premiumDays: 365 },
   supporter: { prefix: 'EP-SUPP', discount: 20, premiumDays: 31 },
 };
+// Referral codes (EP-REF-*) are minted lazily in the DB by
+// get_or_create_referral_code — never minted here, only synced to Shopify.
+const REFERRAL = { discount: 20, title: 'En Pensent referral — 20%' };
 
 const SHOPIFY_DOMAIN = 'printify-shop-manager-fs4kw.myshopify.com';
 const SHOPIFY_API = `https://${SHOPIFY_DOMAIN}/admin/api/2025-07`;
@@ -57,6 +62,7 @@ const BATCH = args[args.indexOf('--batch') + 1] || `matcherino-${new Date().toIS
 const DRY_RUN = flag('dry-run');
 const DO_SHOPIFY = flag('shopify') && !DRY_RUN;
 const SYNC_EXISTING = flag('sync-existing');
+const SYNC_REFERRALS = flag('sync-referrals');
 
 // ── code generation ───────────────────────────────────────────────────
 
@@ -173,8 +179,8 @@ async function shopifyGql(query, variables = {}) {
  * discount's primary code; the rest are bulk-added as redeem codes.
  */
 async function ensureDiscountNode(tier, firstCode) {
-  const t = TIERS[tier];
-  const title = `Matcherino ${tier} — ${t.discount}%`;
+  const t = tier === 'referral' ? REFERRAL : TIERS[tier];
+  const title = t.title || `Matcherino ${tier} — ${t.discount}%`;
   try {
     const data = await shopifyGql(
       `{ codeDiscountNodes(first: 100) { nodes { id codeDiscount { ... on DiscountCodeBasic { title } } } } }`,
@@ -248,6 +254,31 @@ async function syncShopify(codesByTier) {
 }
 
 // ── main ──────────────────────────────────────────────────────────────
+
+// --sync-referrals: push DB-minted EP-REF-* codes to a Shopify discount
+// node so the friend's 20% off works at checkout. Rerun-safe — SYNC_LOG
+// dedupes codes already pushed. Referral codes are minted continuously,
+// so run this periodically (or whenever a referral redemption starts).
+if (SYNC_REFERRALS) {
+  const url = process.env.VITE_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) {
+    console.error('Need VITE_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY in .env');
+    process.exit(1);
+  }
+  const sb = createClient(url, key, { auth: { persistSession: false } });
+  const { data, error } = await sb
+    .from('reward_codes')
+    .select('code')
+    .eq('tier', 'referral')
+    .limit(10000);
+  if (error) { console.error('reward_codes query failed:', error.message); process.exit(1); }
+  const codes = (data || []).map((r) => r.code);
+  console.log(`sync-referrals: ${codes.length} referral codes in DB`);
+  if (codes.length) await syncShopify({ referral: codes });
+  else console.log('  none minted yet — nothing to do');
+  process.exit(0);
+}
 
 // --sync-existing: push the already-minted CSV batch to Shopify without
 // minting new codes or touching the DB.

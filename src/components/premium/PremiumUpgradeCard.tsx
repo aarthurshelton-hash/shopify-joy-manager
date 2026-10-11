@@ -78,7 +78,7 @@ const PremiumUpgradeCard: React.FC<PremiumUpgradeCardProps> = ({
                 <Crown className="h-5 w-5 text-primary" />
                 <div>
                   <p className="font-medium text-sm">Go Premium</p>
-                  <p className="text-xs text-muted-foreground">$7/month • No watermarks</p>
+                  <p className="text-xs text-muted-foreground">$6.99/month • No watermarks</p>
                 </div>
               </div>
               <Button
@@ -111,7 +111,7 @@ const PremiumUpgradeCard: React.FC<PremiumUpgradeCardProps> = ({
             <CardTitle className="text-xl">Visionary Premium</CardTitle>
           </div>
           <CardDescription className="text-base">
-            Unlock the full experience for just $7/month
+            Unlock the full experience for just $6.99/month
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">

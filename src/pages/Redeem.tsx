@@ -145,7 +145,7 @@ const Redeem: React.FC = () => {
           <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-8 text-center">
             <ShieldCheck className="h-10 w-10 text-emerald-400 mx-auto mb-4" />
             <h2 className="font-display text-2xl mb-2">
-              {result.tier === 'champion' ? 'Champion Tier' : 'Supporter Tier'}
+              {result.tier === 'champion' ? 'Champion Tier' : result.tier === 'referral' ? 'Referral Reward' : 'Supporter Tier'}
               {result.already_redeemed ? ' — already yours' : ' unlocked'}
             </h2>
             <div className="flex items-center justify-center gap-6 mt-5 mb-6 text-sm">

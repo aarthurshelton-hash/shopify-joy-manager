@@ -19,6 +19,7 @@ import {
   Loader2, 
   Sparkles,
   Gift, 
+  BadgePercent,
   Truck, 
   Frame, 
   Crown,
@@ -496,6 +497,26 @@ export const CartDrawer = () => {
                       <div className="flex justify-between items-center text-green-600 dark:text-green-400">
                         <span>Bulk discount ({discountInfo.discountPercent}%) — at checkout</span>
                         <span>-{formatPrice(discountInfo.discountAmount)}</span>
+                      </div>
+                    )}
+
+                    {rewardCode && (
+                      <div className="flex justify-between items-center text-green-600 dark:text-green-400">
+                        <span className="flex items-center gap-1">
+                          <BadgePercent className="h-3 w-3" />
+                          Reward code {rewardCode}
+                          {rewardPercent ? ` (${rewardPercent}%)` : ''} — at checkout
+                        </span>
+                        <button
+                          type="button"
+                          className="text-muted-foreground hover:text-foreground text-[10px] underline underline-offset-2"
+                          onClick={() => {
+                            try { localStorage.removeItem(DISCOUNT_CODE_STORAGE); } catch { /* noop */ }
+                            setRewardCode(null);
+                          }}
+                        >
+                          remove
+                        </button>
                       </div>
                     )}
                     
