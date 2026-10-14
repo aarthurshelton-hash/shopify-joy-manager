@@ -47,11 +47,11 @@ export const PredictionEdgeCard: React.FC<PredictionEdgeCardProps> = ({ totalMov
         <p className="text-xs text-muted-foreground leading-relaxed">
           In this game's early middlegame <span className="text-foreground font-medium">(moves {EDGE_ZONE_START}–{zoneEnd})</span>,
           positions are balanced and an evaluation alone says least about the result — the window where
-          En Pensent's prediction has measured ahead of Stockfish.
+          En Pensent's prediction shows a modest measured gain over an evaluation-only predictor.
         </p>
       ) : (
         <p className="text-xs text-muted-foreground leading-relaxed">
-          En Pensent's edge is concentrated in balanced positions, where an evaluation alone says least about the result.
+          En Pensent's gains are modest and concentrated in balanced positions, where an evaluation alone says least about the result.
         </p>
       )}
 

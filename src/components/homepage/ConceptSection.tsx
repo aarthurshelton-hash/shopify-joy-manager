@@ -16,7 +16,7 @@ const CONCEPT_STEPS = [
   {
     icon: TrendingUp,
     title: 'That fingerprint predicts the outcome',
-    description: 'Before the game ends, the colors carry a signal about who is winning. On balanced positions, that signal has measured ahead of Stockfish 18.',
+    description: 'Before the game ends, the colors carry a signal about who is winning. On balanced positions, that signal adds modest predictive value beyond the engine evaluation.',
   },
 ];
 

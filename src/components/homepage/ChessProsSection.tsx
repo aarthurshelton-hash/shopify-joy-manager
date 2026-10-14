@@ -43,7 +43,7 @@ export const ChessProsSection: React.FC = () => {
               Every visualization is powered by En Pensent — a path-based prediction engine that matches
               Stockfish 18 on outcome prediction{hasLiveEdge ? (
                 <> (<span className="text-foreground font-medium">{data.epEdge >= 0 ? '+' : ''}{data.epEdge.toFixed(2)}pp</span> across {data.totalPredictions.toLocaleString()} resolved predictions)</>
-              ) : null} and does its best work in balanced, hard-to-evaluate positions.
+              ) : null}, with its modest gains in balanced, hard-to-evaluate positions.
             </p>
           </div>
 

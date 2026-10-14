@@ -29,7 +29,7 @@ Rationale: 5+2 and 10+5 give enough moves for the fair-play review to have signa
 5. Only lichess games count toward prizes. Chess.com games can be visualized but are not eligible.
 
 ## What we will and will not say about the technology
-- Say: "A path-based game representation that is used for art and for outcome prediction. Audited against Stockfish 18 on resolved predictions: parity on standard chess, and a clear edge on Chess960 (+15.9pp on 5.7K games)."
+- Say: "A path-based game representation that is used for art and for outcome prediction. Audited against Stockfish 18 on resolved predictions: parity on standard chess overall." Do not cite Chess960 or balanced-position gains until the calibrated-baseline comparison is published on /vs-stockfish.
 - Do not say: any lifetime-total figure, any "beats Stockfish overall" claim, or anything about market prediction.
 - Source of truth: `/vs-stockfish` (refreshed every 6 hours). Quote numbers from that page only.
 

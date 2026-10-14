@@ -89,7 +89,7 @@ export default function Investors() {
                       <p className="text-3xl font-bold">{signed(ev.chess960Edge)}</p>
                       <p className="text-sm text-muted-foreground">
                         EP {ev.chess960EP.toFixed(2)}% vs SF {ev.chess960SF.toFixed(2)}% on {fmt(ev.chess960Total)} games.
-                        The clearest signal so far, and the claim we intend to harden first.
+                        Measured against the stored Stockfish prediction, which is a weak baseline in near-equal positions. A comparison against a calibrated evaluation-only predictor is in progress; treat this figure as provisional.
                       </p>
                     </div>
                   </div>

@@ -30,7 +30,7 @@ const FAQ_ITEMS: FAQItem[] = [
   },
   {
     question: 'What makes this different from other chess visualizers?',
-    answer: 'Most chess visualizers show heatmaps or evaluation bars. En Pensent traces the full path of every piece, creating unique color-flow art that doubles as a predictive signature. The same engine that makes your game beautiful also predicts outcomes about as well as Stockfish 18 overall, and ahead of it in balanced positions. The audited results are published at /vs-stockfish.',
+    answer: 'Most chess visualizers show heatmaps or evaluation bars. En Pensent traces the full path of every piece, creating unique color-flow art that doubles as a predictive signature. The same engine that makes your game beautiful also predicts outcomes about as well as Stockfish 18 overall, with modest gains in balanced positions and on Chess960. The audited results are published at /vs-stockfish.',
   },
 ];
 

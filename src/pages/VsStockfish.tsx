@@ -320,8 +320,14 @@ export default function VsStockfish() {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground mb-4">
-                Stockfish search is strongest at large evaluations and weakest in the 0–25 centipawn range.
-                En Pensent's largest gains are concentrated in this exact zone.
+                En Pensent's gains are concentrated in near-equal positions (under 50 centipawns), and it trails slightly
+                in clearly decided ones (200+ cp), which make up most of the sample.
+              </p>
+              <p className="text-xs text-muted-foreground mb-4 border-l-2 border-amber-500/50 pl-3">
+                <strong>Read the large near-equal gaps with care.</strong> The stored Stockfish prediction maps near-equal
+                evaluations to "draw" about 75% of the time, while only about 25% of those games end in a draw, so it is a weak
+                baseline in this zone. A simple rule (side with the better evaluation wins) scores about 40.5% there against
+                En Pensent's 43.3%, an edge of about +3pp. A calibrated evaluation-only baseline is being added to this page.
               </p>
               {loading ? (
                 <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
@@ -402,8 +408,8 @@ export default function VsStockfish() {
               )}
               <p className="text-xs text-muted-foreground mt-3">
                 The system intentionally caps confidence in the opening (archetype patterns not yet established)
-                and in deep endgames (Stockfish converges to perfect play). The "Golden Zone" of moves 15–45
-                is where the edge is most reliable.
+                and in deep endgames (Stockfish converges to perfect play). By move range, the early middlegame (moves 11–25)
+                is the only phase with a clear edge; the late middlegame and endgame are slightly negative.
               </p>
             </CardContent>
           </Card>
