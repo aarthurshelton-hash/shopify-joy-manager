@@ -48,14 +48,14 @@ const About = () => {
                 Our Mission
               </h2>
               <p className="text-muted-foreground font-serif leading-relaxed mt-3">
-                At En Pensent, we're building the world's most advanced chess pattern recognition system — 
+                At En Pensent, we're building a chess pattern recognition system — 
                 where visual art meets predictive intelligence. By combining Stockfish 18 NNUE with our 
-                proprietary visual encryption technology, we're creating a platform that will revolutionize 
-                how the world understands and plays chess.
+                path-based representation, we're creating a platform that changes 
+                how people see, share and study chess games.
               </p>
               <p className="text-muted-foreground font-serif leading-relaxed mt-3">
                 Every visualization contributes to our growing database — millions of patterns that, when 
-                cross-referenced, will enable move suggestions more accurate than any system before. 
+                cross-referenced, are the raw material for a new kind of game analysis. 
                 We immortalize the journey of every piece across the board while building the future of chess analytics.
               </p>
             </div>

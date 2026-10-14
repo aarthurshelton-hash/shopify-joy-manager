@@ -64,7 +64,7 @@ export const DynamicMetaTags = () => {
     if (gameMatch) {
       meta = {
         title: "Every Game Is A Work Of Art — En Pensent",
-        description: "Watch this chess game paint itself into a living visualization. Powered by the engine that reads the middlegame more accurately than Stockfish.",
+        description: "Watch this chess game paint itself into a living visualization. Powered by a path-based engine benchmarked against Stockfish 18.",
         image: "https://enpensent.com/og-home.png",
         type: "website",
         keywords: "chess art, chess visualization, shared game, pgn art",

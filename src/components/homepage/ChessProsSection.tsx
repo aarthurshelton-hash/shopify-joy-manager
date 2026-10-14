@@ -40,21 +40,19 @@ export const ChessProsSection: React.FC = () => {
               Analysis Meets <span className="text-gold-gradient">Art</span>
             </h2>
             <p className="text-muted-foreground font-serif max-w-2xl mx-auto">
-              Every visualization is powered by En Pensent — a prediction engine that reads the quiet
-              middlegame{hasLiveEdge ? (
-                <> more accurately than Stockfish (<span className="text-foreground font-medium">{data.epEdge >= 0 ? '+' : ''}{data.epEdge.toFixed(1)}pp edge</span> across {(data.totalPredictions / 1_000_000).toFixed(1)}M resolved predictions)</>
-              ) : (
-                <> more accurately than Stockfish</>
-              )}.
+              Every visualization is powered by En Pensent — a path-based prediction engine that matches
+              Stockfish 18 on outcome prediction{hasLiveEdge ? (
+                <> (<span className="text-foreground font-medium">{data.epEdge >= 0 ? '+' : ''}{data.epEdge.toFixed(2)}pp</span> across {data.totalPredictions.toLocaleString()} resolved predictions)</>
+              ) : null} and does its best work in balanced, hard-to-evaluate positions.
             </p>
           </div>
 
           <div className="grid sm:grid-cols-3 gap-4 mb-10">
             <Feature icon={<Brain className="h-5 w-5" />} title="Read the Middlegame">
-              See where a game truly turned — the quiet, hard-to-evaluate positions engines misjudge.
+              See where a game truly turned — the balanced, hard-to-evaluate positions where the outcome is least certain.
             </Feature>
-            <Feature icon={<TrendingUp className="h-5 w-5" />} title="Proven Edge">
-              A prediction advantage over Stockfish, benchmarked continuously and published in full.
+            <Feature icon={<TrendingUp className="h-5 w-5" />} title="Measured, Not Claimed">
+              Benchmarked continuously against Stockfish 18 and published in full, including where we trail.
             </Feature>
             <Feature icon={<Frame className="h-5 w-5" />} title="Own Your Games">
               Turn your best games into museum-quality art you can hang, share, and collect.

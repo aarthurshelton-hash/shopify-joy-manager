@@ -8,9 +8,9 @@ interface PredictionEdgeCardProps {
   totalMoves: number;
 }
 
-// The middlegame "golden zone" where EP's edge over Stockfish is strongest
-const GOLDEN_ZONE_START = 15;
-const GOLDEN_ZONE_END = 45;
+// Early middlegame: the move window where the audited EP edge over Stockfish is positive
+const EDGE_ZONE_START = 11;
+const EDGE_ZONE_END = 25;
 
 /**
  * Stage 3 — the "depth reveal".
@@ -27,8 +27,8 @@ export const PredictionEdgeCard: React.FC<PredictionEdgeCardProps> = ({ totalMov
   const isOffline = !data || data.totalPredictions === 0 || data.epAccuracy === 0;
 
   // Describe this game's overlap with the golden zone
-  const zoneEnd = Math.min(GOLDEN_ZONE_END, totalMoves);
-  const hasGoldenZone = totalMoves >= GOLDEN_ZONE_START;
+  const zoneEnd = Math.min(EDGE_ZONE_END, totalMoves);
+  const hasGoldenZone = totalMoves >= EDGE_ZONE_START;
 
   return (
     <div className="p-4 rounded-lg border border-primary/30 bg-gradient-to-br from-primary/10 via-transparent to-purple-500/10 space-y-3">
@@ -45,13 +45,13 @@ export const PredictionEdgeCard: React.FC<PredictionEdgeCardProps> = ({ totalMov
       {/* Tie the science to THIS game */}
       {hasGoldenZone ? (
         <p className="text-xs text-muted-foreground leading-relaxed">
-          In this game's middlegame <span className="text-foreground font-medium">(moves {GOLDEN_ZONE_START}–{zoneEnd})</span>,
-          positions are quiet and hardest to evaluate — the exact zone where En Pensent reads the board
-          more accurately than Stockfish.
+          In this game's early middlegame <span className="text-foreground font-medium">(moves {EDGE_ZONE_START}–{zoneEnd})</span>,
+          positions are balanced and an evaluation alone says least about the result — the window where
+          En Pensent's prediction has measured ahead of Stockfish.
         </p>
       ) : (
         <p className="text-xs text-muted-foreground leading-relaxed">
-          En Pensent's edge is strongest in quiet middlegame positions — the moments engines find hardest to judge.
+          En Pensent's edge is concentrated in balanced positions, where an evaluation alone says least about the result.
         </p>
       )}
 
@@ -68,23 +68,21 @@ export const PredictionEdgeCard: React.FC<PredictionEdgeCardProps> = ({ totalMov
         <div className="grid grid-cols-3 gap-2 text-center">
           <div className="p-2 rounded bg-background/50 border border-border/30">
             <p className="text-lg font-display font-bold text-gold-gradient tabular-nums">
-              {data.goldenZoneEP > 0 ? `${data.goldenZoneEP.toFixed(1)}%` : `${data.epAccuracy.toFixed(1)}%`}
+              {data.epAccuracy.toFixed(1)}%
             </p>
-            <p className="text-[9px] text-muted-foreground uppercase tracking-wide">
-              {data.goldenZoneEP > 0 ? 'Golden-Zone EP' : 'EP Accuracy'}
-            </p>
+            <p className="text-[9px] text-muted-foreground uppercase tracking-wide">EP Accuracy</p>
           </div>
           <div className="p-2 rounded bg-background/50 border border-border/30">
             <p className="text-lg font-display font-bold text-primary tabular-nums">
-              {data.epEdge >= 0 ? '+' : ''}{data.epEdge.toFixed(1)}pp
+              {data.epEdge >= 0 ? '+' : ''}{data.epEdge.toFixed(2)}pp
             </p>
-            <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Edge vs SF</p>
+            <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Overall vs SF</p>
           </div>
           <div className="p-2 rounded bg-background/50 border border-border/30">
             <p className="text-lg font-display font-bold text-foreground tabular-nums">
-              {data.epRecoveryRate > 0 ? `${data.epRecoveryRate.toFixed(0)}%` : '—'}
+              {data.chess960Total > 0 ? `${data.chess960EP - data.chess960SF >= 0 ? '+' : ''}${(data.chess960EP - data.chess960SF).toFixed(1)}pp` : '—'}
             </p>
-            <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Catches SF Misses</p>
+            <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Chess960 vs SF</p>
           </div>
         </div>
       )}

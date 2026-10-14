@@ -228,9 +228,9 @@ export default function EnPensentWhitepaper() {
           </div>
           <p className="text-[10px] text-gray-400 mb-12">The 8×8 Universal Grid — 64 cells, infinite domains</p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 text-center mb-12">
-            <div><p className="text-3xl font-black text-amber-600">9</p><p className="text-xs text-gray-500">Validated Domains</p></div>
-            <div><p className="text-3xl font-black text-violet-600">69.24%</p><p className="text-xs text-gray-500">Chess 3-Way Accuracy</p></div>
-            <div><p className="text-3xl font-black text-blue-600">12.2M+</p><p className="text-xs text-gray-500">Predictions Analyzed</p></div>
+            <div><p className="text-3xl font-black text-amber-600">9</p><p className="text-xs text-gray-500">Domains Explored</p></div>
+            <div><p className="text-3xl font-black text-violet-600">69.24%</p><p className="text-xs text-gray-500">Chess 3-Way Accuracy (Feb–Mar 2026 run)</p></div>
+            <div><p className="text-3xl font-black text-blue-600">12.2M+</p><p className="text-xs text-gray-500">Predictions Analyzed (to date)</p></div>
             <div><p className="text-3xl font-black text-emerald-600">93.3%</p><p className="text-xs text-gray-500">Chemical F1 Score</p></div>
           </div>
           <p className="text-sm text-gray-400">Alec Arthur Shelton · En Pensent</p>
@@ -400,11 +400,17 @@ Prediction = fusion(control, momentum, archetype, stockfish, phase,
         <Page>
           <Label>Domain 1 — Chess</Label>
           <h2 className="text-3xl font-black mb-2">Chess Outcome Prediction</h2>
-          <p className="text-sm text-gray-500 mb-6">3-way: White wins / Black wins / Draw · {CHESS.total} games · Lichess + Chess.com</p>
+          <p className="text-sm text-gray-500 mb-4">3-way: White wins / Black wins / Draw · {CHESS.total} games · Lichess + Chess.com · results of the Feb–Mar 2026 run</p>
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-xs text-gray-700 leading-relaxed">
+            <strong>Update.</strong> The figures below are from the Feb–Mar 2026 run. On audited, resolved predictions aged 7–30 days
+            the edge over Stockfish 18 is currently about +0.2pp (statistical parity on standard chess), with the clearest advantage on
+            Chess960. The edge was larger earlier and has not held at that size. Current figures, refreshed every 6 hours:{' '}
+            <Link to="/vs-stockfish" className="underline font-semibold">/vs-stockfish</Link>.
+          </div>
           <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-6">
-            <Stat value={CHESS.acc} label="EP Accuracy" color="amber" />
-            <Stat value={CHESS.sf} label="Stockfish 18" />
-            <Stat value={CHESS.delta} label="Improvement" color="emerald" />
+            <Stat value={CHESS.acc} label="EP Accuracy (Feb–Mar)" color="amber" />
+            <Stat value={CHESS.sf} label="Stockfish 18 (Feb–Mar)" />
+            <Stat value={CHESS.delta} label="Edge (Feb–Mar)" color="emerald" />
           </div>
 
           <h3 className="text-sm font-bold mb-2">Archetype Performance</h3>
@@ -427,7 +433,7 @@ Prediction = fusion(control, momentum, archetype, stockfish, phase,
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="bg-amber-50 rounded-xl p-4 text-xs text-gray-600">
-              <strong>z {'>'} 800</strong> — probability of this result by chance is effectively zero. 12,240,000+ predictions on 3-way classification, 35.9pp above random (33.3%).
+              <strong>Large sample, unstable edge.</strong> 12,240,000+ predictions on 3-way classification, well above random (33.3%). The size of the edge over Stockfish varied by period, so a single lifetime figure is not a reliable summary.
             </div>
             <div className="bg-gray-50 rounded-xl p-4 text-xs text-gray-600">
               <strong>How it works:</strong> Mid-game position → color flow signature → 8-quadrant profile → archetype classification → 15-component weighted fusion → outcome prediction. All from coloring squares.
@@ -590,7 +596,7 @@ Prediction = fusion(control, momentum, archetype, stockfish, phase,
 4. CONFIDENCE RECALIBRATION
    cap = min(reported_conf, actual_accuracy)`}</pre>
           </div>
-          <h3 className="text-sm font-bold mb-3">Volume → Accuracy: Proven</h3>
+          <h3 className="text-sm font-bold mb-3">Volume → Accuracy: Early Results</h3>
           <div className="space-y-2 mb-6">
             {[['Battery','36.9% (4 cells)','56.5% (140 cells)','+19.6pp'],['TEP','F1 72.7% (no learn)','F1 93.3% (self-learned)','+20.6pp'],['Chess','54.4% (9.5K)','69.24% (12.2M)','+14.8pp'],['Market','18.9% (all-time)','50.4% (59K)','+31.5pp'],['Nuclear','40.7% (NCC baseline)','72.1% (self-learned)','+31.4pp']].map(([d,f,t,delta])=>(
               <div key={d} className="flex items-center gap-3 text-xs">
@@ -939,7 +945,7 @@ Piece activity on light vs dark = bullish vs bearish stance.`}</pre>
             </div>
           </div>
           <div className="max-w-lg text-xs text-gray-400 leading-relaxed mb-8">
-            9 domains validated. 12,240,000+ chess predictions at 69.24% accuracy. F1 93.3% chemical fault detection.
+            9 domains explored. 12,240,000+ chess predictions analysed (Feb–Mar 2026 run: 69.24% accuracy; current audited edge over Stockfish 18 is parity, see /vs-stockfish). F1 93.3% chemical fault detection.
             50.4% market direction accuracy (+17.1pp vs random). 72.1% nuclear fault detection (+31.4pp vs NCC baseline).
             FPGA hardware prototype validated (Xilinx Artix-7, 24M signatures/sec). Zero fake data in production. Self-learning architecture. 24/7 operation.
             Silicon photonics hardware roadmap. The universal grid's constraint is not a limitation —
