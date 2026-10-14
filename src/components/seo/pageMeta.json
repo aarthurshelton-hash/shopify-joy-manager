@@ -14,11 +14,11 @@
     "keywords": "about en pensent, chess art company, generative art startup"
   },
   "/investors": {
-    "title": "Invest in En Pensent - Investor Relations",
-    "description": "Join us in revolutionizing chess art. View our pitch deck, TAM analysis, and investment opportunities.",
+    "title": "En Pensent - Overview for Partners and Investors",
+    "description": "What En Pensent is, what it has measured against Stockfish 18 on audited predictions, and where the company stands today.",
     "image": "https://enpensent.com/og-investors.png",
     "type": "website",
-    "keywords": "invest chess art, en pensent investment, chess startup funding"
+    "keywords": "en pensent, chess art, chess prediction, chess tournaments"
   },
   "/marketplace": {
     "title": "Vision Marketplace - Buy & Sell Chess Art",
@@ -156,34 +156,6 @@
     "description": "View and manage your chess game history. Revisit and visualize past games.",
     "type": "website"
   },
-  "/report": {
-    "title": "Game Report - Explainable Chess Analysis | En Pensent",
-    "description": "Get a narrative report on any chess game — its strategic identity, how the pattern evolved, and how games like it usually end.",
-    "image": "https://enpensent.com/og-home.png",
-    "type": "website",
-    "keywords": "chess analysis, game report, chess narrative, strategic archetypes"
-  },
-  "/fingerprint": {
-    "title": "Chess Fingerprint - Your Strategic Identity | En Pensent",
-    "description": "Analyze your last 30 games to reveal your strategic fingerprint — which patterns you play, where you win, and where you bleed points.",
-    "image": "https://enpensent.com/og-home.png",
-    "type": "website",
-    "keywords": "chess fingerprint, player analysis, chess style, strategic identity"
-  },
-  "/draw-forecast": {
-    "title": "Draw Forecast - Will This Position Resolve? | En Pensent",
-    "description": "The eval bar says equal — see how positions that look like yours actually end. Corpus-backed decisive probability.",
-    "image": "https://enpensent.com/og-home.png",
-    "type": "website",
-    "keywords": "chess draw rate, decisive positions, chess prediction"
-  },
-  "/live-signals": {
-    "title": "Live Signals - Chess Predictions in Real Time | En Pensent",
-    "description": "Follow En Pensent's live outcome predictions on tournament games — calibrated probabilities updated in real time.",
-    "image": "https://enpensent.com/og-home.png",
-    "type": "website",
-    "keywords": "live chess predictions, chess signals, tournament analysis"
-  },
   "/proof": {
     "title": "Proof Center - En Pensent Benchmarks & Evidence",
     "description": "The evidence behind En Pensent's predictions: benchmark results, calibration data, and where the trajectory signal beats engine evals.",
@@ -209,10 +181,16 @@
     "type": "website",
     "keywords": "chess openings, opening analysis, opening encyclopedia"
   },
-  "/academic-paper": {
-    "title": "Academic Paper - Path-Based Chess Representation | En Pensent",
-    "description": "The formal write-up of En Pensent's color-flow signature and trajectory-based prediction methodology.",
-    "image": "https://enpensent.com/og-home.png",
-    "type": "website"
+  "/tournament": {
+    "title": "En Pensent x Matcherino Chess Tournament",
+    "description": "Play a fair-play-gated lichess tournament with a Matcherino-held prize pool. Your game becomes art.",
+    "type": "website",
+    "keywords": "chess tournament, matcherino, lichess, en pensent"
+  },
+  "/redeem": {
+    "title": "Redeem your En Pensent reward code",
+    "description": "Redeem a Matcherino or referral reward code for premium days and a shop discount.",
+    "type": "website",
+    "keywords": "en pensent reward code, matcherino reward"
   }
 }
