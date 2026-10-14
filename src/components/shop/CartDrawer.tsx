@@ -28,7 +28,7 @@ import {
   Palette,
   Swords,
 } from "lucide-react";
-import { useCartStore, DISCOUNT_CODE_STORAGE } from "@/stores/cartStore";
+import { useCartStore, DISCOUNT_CODE_STORAGE, DISCOUNT_PCT_STORAGE } from "@/stores/cartStore";
 import { useCurrencyStore } from "@/stores/currencyStore";
 import { usePrintOrderStore } from "@/stores/printOrderStore";
 import { useActiveVisionStore } from "@/stores/activeVisionStore";
@@ -71,15 +71,22 @@ export const CartDrawer = () => {
 
   // Reward code redeemed on /redeem — shown so buyers know it will apply
   const [rewardCode, setRewardCode] = useState<string | null>(null);
+  const [storedPct, setStoredPct] = useState<number | null>(null);
   useEffect(() => {
     if (isOpen) {
-      try { setRewardCode(localStorage.getItem(DISCOUNT_CODE_STORAGE)); }
-      catch { setRewardCode(null); }
+      try {
+        setRewardCode(localStorage.getItem(DISCOUNT_CODE_STORAGE));
+        const pct = Number(localStorage.getItem(DISCOUNT_PCT_STORAGE));
+        setStoredPct(Number.isFinite(pct) && pct > 0 ? pct : null);
+      } catch { setRewardCode(null); setStoredPct(null); }
     }
   }, [isOpen]);
 
-  const rewardPercent = rewardCode?.includes('CHAMP') ? 40
-    : rewardCode?.includes('SUP') ? 20 : null;
+  // Prefer stored percent (covers referral/EP-REF); fall back to legacy prefix parse.
+  const rewardPercent = storedPct
+    ?? (rewardCode?.includes('CHAMP') ? 40
+      : rewardCode?.includes('SUP') ? 20
+      : rewardCode?.includes('REF') ? 20 : null);
   
   const { formatPrice, selectedCurrency } = useCurrencyStore();
   
@@ -407,7 +414,7 @@ export const CartDrawer = () => {
                       </div>
                       <button
                         onClick={() => {
-                          try { localStorage.removeItem(DISCOUNT_CODE_STORAGE); } catch { /* storage unavailable */ }
+                          try { localStorage.removeItem(DISCOUNT_CODE_STORAGE); localStorage.removeItem(DISCOUNT_PCT_STORAGE); } catch { /* storage unavailable */ }
                           setRewardCode(null);
                         }}
                         className="text-[10px] text-muted-foreground hover:text-foreground flex-shrink-0"
@@ -511,7 +518,7 @@ export const CartDrawer = () => {
                           type="button"
                           className="text-muted-foreground hover:text-foreground text-[10px] underline underline-offset-2"
                           onClick={() => {
-                            try { localStorage.removeItem(DISCOUNT_CODE_STORAGE); } catch { /* noop */ }
+                            try { localStorage.removeItem(DISCOUNT_CODE_STORAGE); localStorage.removeItem(DISCOUNT_PCT_STORAGE); } catch { /* noop */ }
                             setRewardCode(null);
                           }}
                         >

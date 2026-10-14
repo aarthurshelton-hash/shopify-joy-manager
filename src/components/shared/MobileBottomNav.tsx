@@ -1,11 +1,11 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, ShoppingBag, User, TrendingUp } from 'lucide-react';
+import { Home, ShoppingBag, User, Trophy } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 const TABS = [
   { to: '/', label: 'Home', icon: Home },
-  { to: '/live-signals', label: 'Live', icon: TrendingUp },
-  { to: '/marketplace', label: 'Market', icon: ShoppingBag },
+  { to: '/shop', label: 'Shop', icon: ShoppingBag },
+  { to: '/tournament', label: 'Play', icon: Trophy },
   { to: '/account', label: 'Account', icon: User },
 ];
 
@@ -15,8 +15,8 @@ export const MobileBottomNav = () => {
 
   const isActive = (to: string) => {
     if (to === '/') return location.pathname === '/';
-    if (to === '/live-signals') return location.pathname === '/live-signals';
-    if (to === '/marketplace') return location.pathname.startsWith('/marketplace');
+    if (to === '/shop') return location.pathname === '/shop' || location.pathname === '/order-print';
+    if (to === '/tournament') return location.pathname === '/tournament';
     if (to === '/account') return location.pathname === '/account';
     return false;
   };

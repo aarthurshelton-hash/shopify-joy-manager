@@ -20,7 +20,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Gift, Crown, BadgePercent, Loader2, ArrowRight, ShieldCheck, Share2, Copy, Sparkles } from 'lucide-react';
-import { DISCOUNT_CODE_STORAGE } from '@/stores/cartStore';
+import { DISCOUNT_CODE_STORAGE, DISCOUNT_PCT_STORAGE } from '@/stores/cartStore';
 import { recordFunnelEvent } from '@/lib/analytics/membershipFunnel';
 
 interface RedeemResult {
@@ -82,6 +82,7 @@ const Redeem: React.FC = () => {
       // Attach the Shopify discount to the next checkout.
       try {
         localStorage.setItem(DISCOUNT_CODE_STORAGE, normalized);
+        localStorage.setItem(DISCOUNT_PCT_STORAGE, String(res.discount_percent ?? ''));
       } catch { /* non-fatal */ }
 
       setResult(res);

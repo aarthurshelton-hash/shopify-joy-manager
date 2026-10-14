@@ -15,27 +15,21 @@ import React, { forwardRef } from 'react';
 
 const PRODUCT_LINKS = [
   { to: '/', label: 'Visualize a Game' },
-  { to: '/report', label: 'Game Report' },
-  { to: '/fingerprint', label: 'Chess Fingerprint' },
-  { to: '/draw-forecast', label: 'Draw Forecast' },
-  { to: '/live-signals', label: 'Live Signals' },
   { to: '/shop', label: 'Shop Prints' },
   { to: '/order-print', label: 'Order a Print' },
 ];
 
 const EXPLORE_LINKS = [
   ...(MARKETPLACE_ENABLED ? [{ to: '/marketplace', label: 'Marketplace' }] : []),
-  { to: '/showcase', label: 'Showcase' },
   { to: '/tournament', label: 'Tournament' },
   { to: '/openings', label: 'Openings' },
   { to: '/proof', label: 'Proof Center' },
   { to: '/vs-stockfish', label: 'vs Stockfish' },
-  { to: '/academic-paper', label: 'Academic Paper' },
+  { to: '/whitepaper', label: 'Whitepaper' },
 ];
 
 const COMPANY_LINKS = [
   { to: '/about', label: 'About' },
-  { to: '/sdk-docs', label: 'SDK Docs' },
   { to: '/terms', label: 'Terms' },
   { to: '/privacy', label: 'Privacy' },
   { to: '/dmca', label: 'DMCA' },

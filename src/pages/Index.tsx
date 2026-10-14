@@ -17,7 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Crown, Sparkles, FileText, Fingerprint, Scale, TrendingUp } from 'lucide-react';
+import { Crown, Sparkles, Trophy, Scale, Camera, ShoppingBag } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { PaletteId, getActivePalette, setActivePalette, PieceType, PieceColor } from '@/lib/chess/pieceColors';
@@ -490,10 +490,10 @@ setPendingResult(null);
                 </div>
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                   {[
-                    { to: '/report', icon: FileText, title: 'Game Report', desc: 'Narrative analysis of any game' },
-                    { to: '/fingerprint', icon: Fingerprint, title: 'Fingerprint', desc: 'Your strategic identity from 30 games' },
-                    { to: '/draw-forecast', icon: Scale, title: 'Draw Forecast', desc: 'Will this equal position resolve?' },
-                    { to: '/live-signals', icon: TrendingUp, title: 'Live Signals', desc: 'Predictions as they happen' },
+                    { to: '/tournament', icon: Trophy, title: 'Tournament', desc: 'Play for prizes — your game becomes art' },
+                    { to: '/vs-stockfish', icon: Scale, title: 'vs Stockfish', desc: 'Audited results, updated every 6 hours' },
+                    { to: '/vision-scanner', icon: Camera, title: 'Scan a Card', desc: 'Scan a printed vision to reveal its game' },
+                    { to: '/shop', icon: ShoppingBag, title: 'Shop Prints', desc: 'Turn your game into a framed print' },
                   ].map((tool) => (
                     <Link
                       key={tool.to}

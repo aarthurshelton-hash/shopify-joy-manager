@@ -15,9 +15,7 @@ const CROSS_DOMAIN = [
   { domain: 'Industrial Fault Detection', dataset: 'Tennessee Eastman Process', ep: '93.3% F1', baseline: '72.7% (persistence)', edge: '+20.6pp' },
   { domain: 'Battery Degradation', dataset: 'NASA + 140-cell corpus', ep: '89.0% recall', baseline: '91.8% (persistence)', edge: 'within 2.8pp' },
   { domain: 'Energy Grid', dataset: 'Power-grid stability set', ep: '66.6% 3-way', baseline: '~33% random', edge: '+33pp' },
-  { domain: 'Financial Markets', dataset: 'EP market worker', ep: '50.4% directional', baseline: '33.3% random', edge: '+17.1pp' },
   { domain: 'Nuclear Fault Detection', dataset: 'NPPAD (18 accident types)', ep: '72.1% accuracy', baseline: '40.7% (NCC)', edge: '+31.4pp' },
-  { domain: 'Music Generation', dataset: 'MAESTRO v3.0.0', ep: '34.4% 3-way', baseline: '33.3% random', edge: '+1.1pp' },
 ];
 
 // ─── Helper Components ──────────────────────────────────────────────────────
@@ -117,13 +115,25 @@ export default function VsStockfish() {
           <Card className="border-primary/30 bg-gradient-to-br from-primary/5 to-transparent">
             <CardContent className="p-8">
               <div className="text-center mb-6">
-                <Badge variant="secondary" className="mb-3">Live Data — Queried from {evidence ? fmtK(evidence.sampleSize) : '...'} sample of {evidence ? fmt(evidence.total) : '...'} total predictions</Badge>
+                <Badge variant="secondary" className="mb-3">Audited snapshot — {evidence ? fmt(evidence.total) : '...'} resolved predictions, 7–30 days old (refreshed every 6h)</Badge>
                 <h2 className="text-3xl md:text-4xl font-bold mb-3">
                   En Pensent vs Stockfish 18
                 </h2>
                 <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                  A path-based representation of chess games outperforms Stockfish 18
-                  on 3-way outcome prediction across {loading ? '...' : `${(evidence!.total / 1_000_000).toFixed(2)}M`} live predictions.
+                  {loading
+                    ? 'Loading live results…'
+                    : (() => {
+                        const n = fmt(evidence!.total);
+                        const overall = evidence!.epEdge;
+                        const c960 = evidence!.chess960Edge;
+                        const overallText = overall > 0.5
+                          ? `A path-based representation of chess games outperforms Stockfish 18 on 3-way outcome prediction (+${overall.toFixed(2)}pp across ${n} resolved predictions).`
+                          : `A path-based representation of chess games matches Stockfish 18 on 3-way outcome prediction (${overall >= 0 ? '+' : ''}${overall.toFixed(2)}pp across ${n} resolved predictions) while using no engine search.`;
+                        const c960Text = c960 > 0.5
+                          ? ` Where Stockfish has no opening book (Chess960, ${fmt(evidence!.chess960Total)} games), it wins by +${c960.toFixed(2)}pp.`
+                          : '';
+                        return overallText + c960Text;
+                      })()}
                 </p>
               </div>
 
@@ -455,7 +465,10 @@ export default function VsStockfish() {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground mb-4">
-                The path-based representation has been benchmarked on non-chess domains to verify the architecture is not chess-specific.
+                The path-based representation has been benchmarked on non-chess domains to test whether the architecture is chess-specific.
+                Baselines differ by domain: some rows compare against a persistence or classifier baseline, others against random guessing,
+                which is a weaker bar. One row (battery degradation) is below its baseline and is shown as-is. Market prediction is excluded
+                until it has its own audited, out-of-sample benchmark.
               </p>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -465,7 +478,7 @@ export default function VsStockfish() {
                       <th className="text-left py-2">Dataset</th>
                       <th className="text-right py-2">EP Result</th>
                       <th className="text-right py-2">Baseline</th>
-                      <th className="text-right py-2">Improvement</th>
+                      <th className="text-right py-2">Delta vs baseline</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -532,7 +545,7 @@ export default function VsStockfish() {
 
         {/* ─── Footer ─── */}
         <div className="text-center text-xs text-muted-foreground py-6">
-          <p>En Pensent — Live data from Supabase · Sample of {evidence ? fmtK(evidence.sampleSize) : '...'} predictions · Queried {new Date().toLocaleDateString()}</p>
+          <p>En Pensent — Audited snapshot from Supabase · {evidence ? fmt(evidence.total) : '...'} resolved predictions (aged 7–30 days) · Viewed {new Date().toLocaleDateString()}</p>
           <p className="mt-1">All numbers are computed live from the public <code>chess_prediction_attempts</code> table. Run <code>node audit/verify.mjs</code> to verify independently.</p>
         </div>
       </main>

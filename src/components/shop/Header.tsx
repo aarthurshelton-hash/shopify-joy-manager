@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { CartDrawer } from './CartDrawer';
-import { Menu, Sparkles, Camera, TrendingUp, FileText, Fingerprint, Scale, ShoppingBag } from 'lucide-react';
+import { Menu, Sparkles, Camera, TrendingUp, Trophy, ShoppingBag } from 'lucide-react';
 import UserMenu from '@/components/auth/UserMenu';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,13 +16,10 @@ import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 const mobileLinks = [
   { to: '/shop', label: 'Shop Prints', icon: ShoppingBag },
   { to: '/#make-your-own', label: 'Discover', icon: Sparkles },
-  { to: '/report', label: 'Game Report', icon: FileText },
-  { to: '/fingerprint', label: 'Chess Fingerprint', icon: Fingerprint },
-  { to: '/draw-forecast', label: 'Draw Forecast', icon: Scale },
-  { to: '/live-signals', label: 'Live Signals', icon: TrendingUp },
+  { to: '/tournament', label: 'Tournament', icon: Trophy },
   { to: '/vision-scanner', label: 'Vision Scanner', icon: Camera },
   { to: '/marketplace', label: 'Marketplace', icon: Sparkles },
-  { to: '/showcase', label: 'Showcase', icon: Sparkles },
+  { to: '/vs-stockfish', label: 'vs Stockfish', icon: TrendingUp },
   { to: '/benchmark', label: 'Benchmark', icon: Sparkles },
   { to: '/about', label: 'About', icon: Sparkles },
 ].filter((l) => MARKETPLACE_ENABLED || l.to !== '/marketplace');

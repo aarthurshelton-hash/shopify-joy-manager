@@ -144,9 +144,9 @@ const App = () => (
               <Route path="/about" element={<Suspense fallback={<PageLoadingSkeleton />}><About /></Suspense>} />
               <Route path="/creative-mode" element={<Suspense fallback={<PageLoadingSkeleton />}><CreativeMode /></Suspense>} />
               <Route path="/game-history" element={<Suspense fallback={<PageLoadingSkeleton />}><GameHistory /></Suspense>} />
-              <Route path="/report" element={<Suspense fallback={<PageLoadingSkeleton />}><GameReport /></Suspense>} />
-              <Route path="/fingerprint" element={<Suspense fallback={<PageLoadingSkeleton />}><ChessFingerprint /></Suspense>} />
-              <Route path="/draw-forecast" element={<Suspense fallback={<PageLoadingSkeleton />}><DrawForecast /></Suspense>} />
+              <Route path="/report" element={<AdminRoute featureName="Report"><Suspense fallback={<PageLoadingSkeleton />}><GameReport /></Suspense></AdminRoute>} />
+              <Route path="/fingerprint" element={<AdminRoute featureName="Fingerprint"><Suspense fallback={<PageLoadingSkeleton />}><ChessFingerprint /></Suspense></AdminRoute>} />
+              <Route path="/draw-forecast" element={<AdminRoute featureName="Draw Forecast"><Suspense fallback={<PageLoadingSkeleton />}><DrawForecast /></Suspense></AdminRoute>} />
               <Route path="/tournament" element={<Suspense fallback={<PageLoadingSkeleton />}><Tournament /></Suspense>} />
               <Route path="/verify" element={<Suspense fallback={<PageLoadingSkeleton />}><Verify /></Suspense>} />
               <Route path="/verify/:id" element={<Suspense fallback={<PageLoadingSkeleton />}><Verify /></Suspense>} />
@@ -154,8 +154,8 @@ const App = () => (
               <Route path="/v/:shareId" element={<Suspense fallback={<PageLoadingSkeleton />}><VisualizationRedirect /></Suspense>} />
               <Route path="/g/:gameHash" element={<Suspense fallback={<PageLoadingSkeleton />}><GameView /></Suspense>} />
               <Route path="/openings" element={<Suspense fallback={<PageLoadingSkeleton />}><OpeningEncyclopedia /></Suspense>} />
-              <Route path="/code-analysis" element={<Suspense fallback={<PageLoadingSkeleton />}><CodeAnalysis /></Suspense>} />
-              <Route path="/academic-paper" element={<Suspense fallback={<PageLoadingSkeleton />}><AcademicPaper /></Suspense>} />
+              <Route path="/code-analysis" element={<AdminRoute featureName="Code Analysis"><Suspense fallback={<PageLoadingSkeleton />}><CodeAnalysis /></Suspense></AdminRoute>} />
+              <Route path="/academic-paper" element={<AdminRoute featureName="Academic Paper"><Suspense fallback={<PageLoadingSkeleton />}><AcademicPaper /></Suspense></AdminRoute>} />
               <Route path="/analysis/:id" element={<Suspense fallback={<PageLoadingSkeleton />}><SharedAnalysisReport /></Suspense>} />
               <Route path="/account" element={<Suspense fallback={<PageLoadingSkeleton />}><Account /></Suspense>} />
               <Route path="/terms" element={<Suspense fallback={<PageLoadingSkeleton />}><TermsOfService /></Suspense>} />
@@ -188,15 +188,15 @@ const App = () => (
               <Route path="/investor-portal" element={<AdminRoute featureName="Investor Portal"><Suspense fallback={<PageLoadingSkeleton />}><InvestorPortal /></Suspense></AdminRoute>} />
               <Route path="/education-fund" element={<AdminRoute featureName="Education Fund"><Suspense fallback={<PageLoadingSkeleton />}><EducationFund /></Suspense></AdminRoute>} />
               <Route path="/news" element={<AdminRoute featureName="News"><Suspense fallback={<PageLoadingSkeleton />}><News /></Suspense></AdminRoute>} />
-              <Route path="/why-this-matters" element={<Suspense fallback={<PageLoadingSkeleton />}><WhyThisMatters /></Suspense>} />
+              <Route path="/why-this-matters" element={<AdminRoute featureName="Why This Matters"><Suspense fallback={<PageLoadingSkeleton />}><WhyThisMatters /></Suspense></AdminRoute>} />
               <Route path="/early-access" element={<AdminRoute featureName="Early Access"><Suspense fallback={<PageLoadingSkeleton />}><EarlyAccess /></Suspense></AdminRoute>} />
-              <Route path="/showcase" element={<Suspense fallback={<PageLoadingSkeleton />}><Showcase /></Suspense>} />
+              <Route path="/showcase" element={<AdminRoute featureName="Showcase"><Suspense fallback={<PageLoadingSkeleton />}><Showcase /></Suspense></AdminRoute>} />
               <Route path="/qr-preview" element={<AdminRoute featureName="QR Preview"><Suspense fallback={<PageLoadingSkeleton />}><QRMockup /></Suspense></AdminRoute>} />
               
               {/* Academic & Documentation */}
-              <Route path="/rubber-photonics" element={<Suspense fallback={<PageLoadingSkeleton />}><RubberPhotonics /></Suspense>} />
+              <Route path="/rubber-photonics" element={<AdminRoute featureName="Rubber Photonics"><Suspense fallback={<PageLoadingSkeleton />}><RubberPhotonics /></Suspense></AdminRoute>} />
               <Route path="/whitepaper" element={<Suspense fallback={<PageLoadingSkeleton />}><EnPensentWhitepaper /></Suspense>} />
-              <Route path="/sdk-docs" element={<Suspense fallback={<PageLoadingSkeleton />}><SDKDocs /></Suspense>} />
+              <Route path="/sdk-docs" element={<AdminRoute featureName="Sdk Docs"><Suspense fallback={<PageLoadingSkeleton />}><SDKDocs /></Suspense></AdminRoute>} />
               
               {/* Vision Scanner */}
               <Route path="/vision-scanner" element={<Suspense fallback={<PageLoadingSkeleton />}><VisionScannerPage /></Suspense>} />
@@ -208,7 +208,7 @@ const App = () => (
               <Route path="/heatmap" element={<AdminRoute featureName="Market Heatmap"><Suspense fallback={<PageLoadingSkeleton />}><EnPensentHeatmap /></Suspense></AdminRoute>} />
               <Route path="/options" element={<AdminRoute featureName="Options Scalping"><Suspense fallback={<PageLoadingSkeleton />}><OptionsScalpingPage /></Suspense></AdminRoute>} />
               <Route path="/benchmark" element={<Suspense fallback={<PageLoadingSkeleton />}><Benchmark /></Suspense>} />
-              <Route path="/live-signals" element={<Suspense fallback={<PageLoadingSkeleton />}><LiveSignals /></Suspense>} />
+              <Route path="/live-signals" element={<AdminRoute featureName="Live Signals"><Suspense fallback={<PageLoadingSkeleton />}><LiveSignals /></Suspense></AdminRoute>} />
               <Route path="/proof" element={<Suspense fallback={<PageLoadingSkeleton />}><ProofCenter /></Suspense>} />
               <Route path="/vs-stockfish" element={<Suspense fallback={<PageLoadingSkeleton />}><VsStockfish /></Suspense>} />
               <Route path="/ep-dashboard" element={<AdminRoute featureName="EP System Dashboard"><Suspense fallback={<PageLoadingSkeleton />}><EPSystemDashboard /></Suspense></AdminRoute>} />

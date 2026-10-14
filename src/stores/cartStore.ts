@@ -113,8 +113,10 @@ export interface CartItem {
 }
 
 // localStorage key for a reward code redeemed on /redeem — attached as a
-// Shopify discount on the next cartCreate.
+// Shopify discount on every cartCreate while present.
 export const DISCOUNT_CODE_STORAGE = 'ep_discount_code';
+// Companion key holding the code's percent (from the redeem RPC) for display.
+export const DISCOUNT_PCT_STORAGE = 'ep_discount_pct';
 
 // Shopify config
 const SHOPIFY_API_VERSION = '2025-07';
@@ -427,9 +429,11 @@ export const useCartStore = create<CartStore>()(
           const checkoutUrl = await createStorefrontCheckoutWithRetry(items);
           set({ checkoutUrl });
           
-          // Clear cart + one-shot reward discount after successful checkout
+          // Clear cart after checkout creation. The reward code intentionally
+          // stays in localStorage — clearing here would strip it from users who
+          // abandon checkout. Shopify enforces once_per_customer server-side,
+          // so a spent code fails gracefully on reuse.
           set({ items: [] });
-          try { localStorage.removeItem(DISCOUNT_CODE_STORAGE); } catch { /* non-fatal */ }
           
           toast.success('Checkout ready!', {
             description: 'Redirecting to secure checkout...'
