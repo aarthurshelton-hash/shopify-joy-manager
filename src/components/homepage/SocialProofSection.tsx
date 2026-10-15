@@ -9,9 +9,9 @@ interface Stat {
 }
 
 const STATS: Stat[] = [
-  { icon: Eye, value: '12.24M+', label: 'Games Analyzed' },
-  { icon: TrendingUp, value: '69.24%', label: 'Prediction Accuracy' },
-  { icon: Users, value: '9', label: 'Domains Validated' },
+  { icon: Eye, value: '15M+', label: 'Games Analyzed' },
+  { icon: TrendingUp, value: '73%', label: 'Audited Outcome Accuracy' },
+  { icon: Users, value: '9', label: 'Domains Explored' },
 ];
 
 export const SocialProofSection: React.FC = () => {
@@ -42,9 +42,9 @@ export const SocialProofSection: React.FC = () => {
           <div className="text-center max-w-2xl mx-auto space-y-4">
             <Quote className="h-8 w-8 text-primary/30 mx-auto" />
             <blockquote className="font-serif text-lg sm:text-xl text-foreground/90 italic leading-relaxed">
-              "All domains are wavelengths of the same universal temporal signal.
-              When chess patterns match market patterns match biological patterns,
-              that's constructive interference. The math is identical."
+              "Every game leaves a signature in colour and flow.
+              We turn that signature into art — and we hold every reading
+              of it to an audited standard."
             </blockquote>
             <div className="space-y-1">
               <p className="font-display text-sm uppercase tracking-wider text-foreground">

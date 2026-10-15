@@ -92,7 +92,7 @@ const Tournament: React.FC = () => {
             )}
           </div>
 
-          <h1 className="font-display text-4xl md:text-6xl mb-4 leading-tight">
+          <h1 className="font-editorial text-4xl md:text-6xl mb-4 leading-tight">
             {TOURNAMENT.name}
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-3">

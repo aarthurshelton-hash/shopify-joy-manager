@@ -110,8 +110,8 @@ const Shop: React.FC = () => {
               <Crown className="h-3 w-3 mr-1" />
               Limited-run wall art
             </Badge>
-            <h1 className="text-3xl sm:text-5xl font-display font-bold tracking-tight">
-              Your games, <span className="text-gold-gradient">as museum prints</span>
+            <h1 className="text-3xl sm:text-5xl font-editorial tracking-tight">
+              Your games, <span className="italic text-gold-gradient">as museum prints</span>
             </h1>
             <p className="text-muted-foreground max-w-xl mx-auto text-sm sm:text-base">
               Every chess game produces a one-of-one color-flow artwork — mathematically

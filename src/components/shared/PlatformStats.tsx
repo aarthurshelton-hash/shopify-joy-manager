@@ -164,23 +164,23 @@ export const MARKETING_COPY = {
   headline: 'Your Masterpieces, Forever Immortalized',
   description: 'Upload any chess game and transform it into a stunning visualization — where every piece tells its story through color and movement.',
   conceptDescription: '"En Pensent" — a play on the French chess term en passant — means "in thought." Every visualization captures the thinking behind the moves.',
-  naturalVision: 'Every En Pensent visualization is more than art — it\'s a scannable digital fingerprint powering the world\'s most advanced chess pattern recognition system. Our visual encryption combined with Stockfish 18 creates an unmatched analytical foundation.',
+  naturalVision: 'Every En Pensent visualization is more than art — it\'s a scannable digital fingerprint of a real chess game. Each one encodes the game\'s trajectory alongside Stockfish 18 evaluation, and we publish our audited accuracy openly.',
   creatorEconomics: 'We believe in sustainable creator rewards. Creators earn 17% of PROFIT (not revenue) when others order prints — ensuring platform sustainability while maximizing creator earnings.',
   educationFund: 'A portion of every sale contributes to chess education programs in underserved communities worldwide. The Chess Education Fund has already supported youth programs across three continents.',
-  futureVision: 'Through millions of cross-referenced visions and grandmaster-strength analysis, En Pensent is building the most comprehensive chess pattern recognition system ever created — where visual art meets predictive intelligence.',
-  competitiveEdge: 'Our unique combination of Stockfish 18 NNUE (~3200 ELO), Natural Vision™ pattern recognition, and comprehensive vision data creates an analytical foundation that will evolve to suggest optimal moves with unprecedented accuracy.',
+  futureVision: 'Through millions of cross-referenced visions and continuous audited evaluation, En Pensent is building a pattern-recognition system grounded in real games — where visual art meets measured predictive analysis.',
+  competitiveEdge: 'Our combination of Stockfish 18 NNUE evaluation, Natural Vision™ pattern recognition, and comprehensive vision data creates an analytical foundation we benchmark openly on /vs-stockfish.',
   haikuPoetry: 'Each visualization is paired with a unique haiku — a seventeen-syllable poem capturing the essence of the game. This ancient Japanese art form mirrors the precision and elegance of chess itself.',
-  marketplaceValue: 'The Vision Score system tracks real engagement: views, downloads, scans, trades, and print orders. Value appreciates based on genuine community interest, not speculation.',
+  marketplaceValue: 'The Vision Score system tracks real engagement: views, downloads, scans, trades, and print orders. Transparent metrics that determine marketplace value based on genuine interest.',
   hustlenomics: 'Our "Hustlenomics" system calculates market value based on real-time engagement accrual. Every interaction contributes to a vision\'s score and potential value appreciation.',
 } as const;
 
 // Strategic positioning - competitive moat messaging
 export const STRATEGIC_POSITIONING = {
-  acquisitionReady: 'En Pensent represents a category-defining opportunity. To reach its full potential — processing millions of daily visualizations and serving 800M+ chess players globally — this technology requires enterprise-scale infrastructure.',
+  acquisitionReady: 'En Pensent is built on a novel representation of chess games. To reach its full potential — processing millions of visualizations and serving a global chess audience — the platform benefits from enterprise-scale infrastructure.',
   competitiveMoat: {
     title: 'Why This Can\'t Be Easily Replicated',
     points: [
-      'Proprietary visual encryption algorithm — server-side, obfuscated, patent-pending',
+      'Proprietary visual encoding algorithm — server-side, obfuscated',
       'Stockfish 18 + color theory fusion — novel combination, not obvious to replicate',
       'Hustlenomics™ economic system — complex, battle-tested revenue distribution',
       'Natural Vision™ scanner — technically challenging reverse-lookup technology',
@@ -190,12 +190,12 @@ export const STRATEGIC_POSITIONING = {
   },
   enterpriseScale: {
     headline: 'Built for Global Scale',
-    subheadline: 'Our technology is acquisition-ready, designed to integrate with enterprise infrastructure.',
-    description: 'En Pensent\'s architecture is built to serve hundreds of millions of users. The platform\'s real potential — processing every chess game played worldwide in real-time — requires the server capacity and distribution networks of established chess platforms.',
+    subheadline: 'Our architecture is designed to integrate with enterprise infrastructure.',
+    description: 'En Pensent\'s architecture is built to serve a large global audience. The platform\'s full potential — processing every chess game played worldwide in real-time — requires the server capacity and distribution networks of established chess platforms.',
   },
   partnershipValue: {
-    forChessPlatforms: 'Instant differentiation through premium art and collectibles vertical. Monetize your 150M+ user base with museum-quality prints, digital ownership, and creator royalties.',
-    forInvestors: 'First-mover advantage in a $12.5B market with proven technology, sustainable economics, and a clear path to enterprise integration.',
+    forChessPlatforms: 'Instant differentiation through premium art and collectibles vertical. Monetize a large player base with museum-quality prints, digital ownership, and creator royalties.',
+    forInvestors: 'First-mover position in personalized chess art with working technology, sustainable economics, and a clear path to enterprise integration.',
     forCreators: 'Own your chess legacy. Earn perpetual royalties on your visualizations while contributing to chess education worldwide.',
   },
   industryAwareness: 'We are aware of the acquisition histories of major chess platforms. En Pensent is designed to complement and enhance existing ecosystems, not compete with them. Our technology creates new revenue streams without cannibalizing core chess products.',
@@ -224,8 +224,8 @@ export const IP_CLAIMS = {
 // Feature list for marketing pages
 export const FEATURE_LIST = [
   {
-    title: 'World\'s Most Advanced Pattern Recognition',
-    description: 'Our visual encryption system combined with Stockfish 18 NNUE creates an unprecedented chess intelligence platform — cross-referencing millions of patterns to deliver insights no other engine can match.',
+    title: 'Pattern Recognition and Stockfish 18 NNUE Integration',
+    description: 'Our visual encryption system combined with Stockfish 18 NNUE creates a powerful chess intelligence platform — cross-referencing millions of patterns to deliver insights.',
     category: 'technology',
   },
   {
@@ -347,7 +347,7 @@ export const COMPANY_INFO = {
     instagram: '@enpensent',
     discord: 'discord.gg/enpensent',
   },
-  mission: 'To build the world\'s most advanced chess pattern recognition system while making chess history accessible, beautiful, and collectible.',
+  mission: 'To turn every chess game into art worth keeping — while building a pattern-recognition system measured against an open, audited standard.',
   vision: 'Where visual art meets predictive intelligence — transforming how the world understands and plays chess.',
   values: [
     { name: 'Passion', description: 'Chess lovers first, technologists second. Every feature is crafted with deep respect for the game.' },

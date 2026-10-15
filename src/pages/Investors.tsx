@@ -43,7 +43,7 @@ export default function Investors() {
       <main className="container mx-auto px-4 py-12 max-w-4xl space-y-12">
         <section className="text-center space-y-4">
           <p className="text-xs uppercase tracking-widest text-muted-foreground">En Pensent — overview</p>
-          <h1 className="font-display text-4xl md:text-5xl leading-tight">
+          <h1 className="font-editorial text-4xl md:text-5xl leading-tight">
             Chess, seen as colour and flow.
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">

@@ -17,7 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Crown, Sparkles, Trophy, Scale, Camera, ShoppingBag } from 'lucide-react';
+import { Sparkles, Trophy, Scale, Camera, ShoppingBag } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { PaletteId, getActivePalette, setActivePalette, PieceType, PieceColor } from '@/lib/chess/pieceColors';
@@ -410,23 +410,22 @@ setPendingResult(null);
                     : scrollAnimationClasses.fadeUp.hidden
                 }`}
               >
-                <div className="max-w-4xl mx-auto text-center space-y-5 md:space-y-8">
-                  {/* Premium badge */}
-                  <div className="inline-flex items-center gap-1.5 md:gap-2 px-4 md:px-5 py-2 md:py-2.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs md:text-sm font-display uppercase tracking-widest backdrop-blur-sm">
-                    <Crown className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                    The Future of Chess Intelligence
-                  </div>
+                <div className="max-w-4xl mx-auto text-center space-y-5 md:space-y-7">
+                  {/* Quiet label */}
+                  <p className="text-primary/80 text-[11px] md:text-xs font-sans uppercase tracking-[0.3em]">
+                    Chess, rendered as art
+                  </p>
                   
-                  {/* Main headline - Intelligence framing */}
-                  <h2 className="text-3xl md:text-5xl lg:text-6xl font-royal font-bold leading-tight tracking-wide uppercase">
-                    Every Game Tells<br />
-                    <span className="text-gold-gradient">
-                      A Story
+                  {/* Main headline - editorial serif */}
+                  <h2 className="font-editorial text-4xl md:text-6xl lg:text-7xl leading-[1.05] text-foreground">
+                    Every game tells<br />
+                    <span className="italic text-gold-gradient">
+                      a story
                     </span>
                   </h2>
                   
                   {/* Subheadline */}
-                  <p className="text-muted-foreground text-base md:text-xl max-w-2xl mx-auto leading-relaxed font-serif px-2">
+                  <p className="text-muted-foreground text-base md:text-lg max-w-xl mx-auto leading-relaxed font-serif px-2">
                     We read the trajectory of a game the way engines read the position — then turn it into art you can hang.
                   </p>
                 </div>
@@ -457,8 +456,8 @@ setPendingResult(null);
               >
                 {/* Section heading */}
                 <div className="text-center space-y-2">
-                  <h3 className="font-royal text-2xl md:text-3xl font-bold uppercase tracking-wide">
-                    Reveal Your <span className="text-gold-gradient">Game</span>
+                  <h3 className="font-editorial text-3xl md:text-4xl">
+                    Reveal your <span className="italic text-gold-gradient">game</span>
                   </h3>
                   <p className="text-muted-foreground font-serif max-w-xl mx-auto">
                     Any chess game — yours, a friend's, or a legend's — reveals its strategic fingerprint in seconds.
@@ -481,8 +480,8 @@ setPendingResult(null);
             <section className="container mx-auto px-4 py-12">
               <div className="max-w-4xl mx-auto space-y-6">
                 <div className="text-center space-y-2">
-                  <h3 className="font-royal text-2xl md:text-3xl font-bold uppercase tracking-wide">
-                    Beyond the <span className="text-gold-gradient">Board</span>
+                  <h3 className="font-editorial text-3xl md:text-4xl">
+                    Beyond the <span className="italic text-gold-gradient">board</span>
                   </h3>
                   <p className="text-muted-foreground font-serif max-w-xl mx-auto">
                     The same signature that paints your game also reads it.

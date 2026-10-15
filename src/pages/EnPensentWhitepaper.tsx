@@ -511,7 +511,7 @@ Prediction = fusion(control, momentum, archetype, stockfish, phase,
           <h2 className="text-3xl font-black mb-2">Market Direction Prediction</h2>
           <p className="text-sm text-gray-500 mb-8">Live multi-timeframe · Yahoo Finance · {MKT.resolved} predictions resolved · Chess→Market intelligence transfer</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-8">
-            <Stat value={MKT.acc} label="Overall Accuracy (+17.1pp vs random)" color="emerald" />
+            <Stat value={MKT.acc} label="Direction Accuracy (vs ~33% random, exploratory)" color="emerald" />
             <Stat value={MKT.tact} label="7-Day Rolling Accuracy" color="amber" />
           </div>
           <h3 className="text-sm font-bold mb-3">Chess-Inspired Tactical Detectors</h3>
@@ -532,8 +532,8 @@ Prediction = fusion(control, momentum, archetype, stockfish, phase,
               ))}
             </div>
           </div>
-          <div className="border-l-4 border-emerald-400 pl-4 text-xs italic text-gray-600">
-            "Cyclical confirmation vice versa — chess validates market signals AND market validates chess patterns. Bidirectional truth amplification through interference."
+          <div className="border-l-4 border-gray-300 pl-4 text-xs italic text-gray-500">
+            Early hypothesis under study: whether archetype patterns co-occurring across chess and markets carry shared information. Not yet validated out-of-time.
           </div>
         </Page>
 
@@ -596,7 +596,7 @@ Prediction = fusion(control, momentum, archetype, stockfish, phase,
 4. CONFIDENCE RECALIBRATION
    cap = min(reported_conf, actual_accuracy)`}</pre>
           </div>
-          <h3 className="text-sm font-bold mb-3">Volume → Accuracy: Early Results</h3>
+          <h3 className="text-sm font-bold mb-3">Volume → Accuracy: Early In-Sample Results</h3>
           <div className="space-y-2 mb-6">
             {[['Battery','36.9% (4 cells)','56.5% (140 cells)','+19.6pp'],['TEP','F1 72.7% (no learn)','F1 93.3% (self-learned)','+20.6pp'],['Chess','54.4% (9.5K)','69.24% (12.2M)','+14.8pp'],['Market','18.9% (all-time)','50.4% (59K)','+31.5pp'],['Nuclear','40.7% (NCC baseline)','72.1% (self-learned)','+31.4pp']].map(([d,f,t,delta])=>(
               <div key={d} className="flex items-center gap-3 text-xs">
@@ -856,6 +856,9 @@ Piece activity on light vs dark = bullish vs bearish stance.`}</pre>
           <Label>Summary</Label>
           <h2 className="text-3xl font-black mb-4">Nine Domains, One Architecture</h2>
           <p className="text-xs text-gray-500 mb-4">En Pensent (amber) vs Domain Baseline (gray) vs Random Chance (dashed). Same algorithm, different data.</p>
+          <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2 mb-4">
+            <strong>Read with care:</strong> non-chess figures are exploratory, in-sample results without audited out-of-time baselines. The chess row is a historical Feb–Mar 2026 figure; see /vs-stockfish for the current audited snapshot.
+          </p>
           
           <div className="h-64 mb-6">
             <ResponsiveContainer width="100%" height="100%">
