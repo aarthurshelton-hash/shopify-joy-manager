@@ -187,6 +187,12 @@
     "type": "website",
     "keywords": "chess tournament, matcherino, lichess, en pensent"
   },
+  "/gift": {
+    "title": "Personalized chess gift — a game they played, as art | En Pensent",
+    "description": "Turn any real chess game into a one-of-a-kind museum print, framed to order, with an optional gift message.",
+    "type": "website",
+    "keywords": "personalized chess gift, chess art print, chess gift for him, custom chess print"
+  },
   "/redeem": {
     "title": "Redeem your En Pensent reward code",
     "description": "Redeem a Matcherino or referral reward code for premium days and a shop discount.",
