@@ -85,6 +85,7 @@ export interface CartItem {
     printImageUrl?: string; // Public URL for Printify fulfillment
     frameStyle?: string;
     includeInfoCard?: boolean;
+    giftMessage?: string; // Optional note printed/handled at fulfillment
     visualizationId?: string; // For tracking and royalties
     gameId?: string; // For game pool attribution
     paletteId?: string; // For palette pool attribution
@@ -280,6 +281,11 @@ async function createStorefrontCheckout(items: CartItem[]): Promise<string> {
       // Add info card flag if present
       if (item.customPrintData.includeInfoCard) {
         attributes.push({ key: '_include_info_card', value: 'true' });
+      }
+
+      // Gift message: no underscore prefix so it stays visible on the order for manual fulfillment
+      if (item.customPrintData.giftMessage) {
+        attributes.push({ key: 'Gift message', value: item.customPrintData.giftMessage.slice(0, 250) });
       }
       
       if (attributes.length > 0) {

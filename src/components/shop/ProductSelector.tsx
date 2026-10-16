@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ShoppingCart, Loader2, Check, Frame, Sofa, Briefcase, Image } from 'lucide-react';
+import { ShoppingCart, Loader2, Check, Frame, Sofa, Briefcase, Image, Gift } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
 import { fetchProducts, type ShopifyProduct } from '@/lib/shopify/api';
 import { useCartStore, type CartItem } from '@/stores/cartStore';
 import { useCurrencyStore } from '@/stores/currencyStore';
@@ -104,6 +105,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
   // Add-on states
   const [selectedFrame, setSelectedFrame] = useState<FrameOption | null>(null);
   const [includeInfoCard, setIncludeInfoCard] = useState(false);
+  const [giftMessage, setGiftMessage] = useState('');
   const [showVisionaryModal, setShowVisionaryModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   
@@ -327,6 +329,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
           printImageUrl, // For Printify fulfillment
           frameStyle: selectedFrame?.id,
           includeInfoCard,
+          giftMessage: giftMessage.trim() || undefined,
           // Game metadata for cart display and navigation
           gameHash: customPrintData.gameHash,
           gameId: customPrintData.gameId,
@@ -351,6 +354,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
       // Reset add-ons after adding to cart
       setSelectedFrame(null);
       setIncludeInfoCard(false);
+      setGiftMessage('');
       
       setTimeout(() => setAdded(false), 3000);
     } finally {
@@ -547,6 +551,23 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
           blackPalette={infoCardPalettes.black}
           darkMode={capturedState?.darkMode}
         />
+
+        {/* Gift message */}
+        <div className="space-y-2">
+          <label htmlFor="gift-message" className="flex items-center gap-2 text-sm font-medium">
+            <Gift className="h-4 w-4 text-primary" />
+            Gift message <span className="text-xs text-muted-foreground font-normal">(optional)</span>
+          </label>
+          <Textarea
+            id="gift-message"
+            value={giftMessage}
+            onChange={(e) => setGiftMessage(e.target.value.slice(0, 250))}
+            placeholder="For Dad — the game that changed everything."
+            rows={2}
+            className="resize-none text-sm"
+          />
+          <p className="text-[11px] text-muted-foreground text-right">{giftMessage.length}/250</p>
+        </div>
 
         {/* Price and Add to Cart */}
         <div className="flex items-center justify-between pt-4 border-t border-border/50">
