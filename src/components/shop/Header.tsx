@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { CartDrawer } from './CartDrawer';
-import { Menu, Sparkles, Camera, TrendingUp, Trophy, ShoppingBag } from 'lucide-react';
+import { Menu, Sparkles, Camera, TrendingUp, Trophy, ShoppingBag, Gift } from 'lucide-react';
 import UserMenu from '@/components/auth/UserMenu';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,6 +15,7 @@ import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 
 const mobileLinks = [
   { to: '/shop', label: 'Shop Prints', icon: ShoppingBag },
+  { to: '/gift', label: 'Gifts', icon: Gift },
   { to: '/#make-your-own', label: 'Discover', icon: Sparkles },
   { to: '/tournament', label: 'Tournament', icon: Trophy },
   { to: '/vision-scanner', label: 'Vision Scanner', icon: Camera },

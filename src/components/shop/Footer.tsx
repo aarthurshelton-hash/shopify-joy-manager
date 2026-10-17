@@ -16,6 +16,7 @@ import React, { forwardRef } from 'react';
 const PRODUCT_LINKS = [
   { to: '/', label: 'Visualize a Game' },
   { to: '/shop', label: 'Shop Prints' },
+  { to: '/gift', label: 'Gift a Game' },
   { to: '/order-print', label: 'Order a Print' },
 ];
 
