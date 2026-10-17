@@ -27,6 +27,7 @@ import {
   TournamentStatus,
   tournamentHasRegistrationLink,
 } from '@/lib/tournament/tournamentConfig';
+import { LADDER, upcomingLadderEvents, bandRatingText } from '@/lib/tournament/ladder';
 
 const STATUS_LABELS: Record<TournamentStatus, string> = {
   planning: 'In Planning',
@@ -60,6 +61,7 @@ const STEPS = [
 const Tournament: React.FC = () => {
   const statusLabel = STATUS_LABELS[TOURNAMENT.status];
   const canRegister = tournamentHasRegistrationLink();
+  const schedule = React.useMemo(() => upcomingLadderEvents(new Date(), 8), []);
 
   const formatLine = [
     TOURNAMENT.format.mode === 'arena'
@@ -164,6 +166,30 @@ const Tournament: React.FC = () => {
             </div>
           </div>
         </motion.div>
+
+        {/* Schedule */}
+        <div className="mb-14">
+          <h2 className="font-display text-2xl mb-2 text-center">Every Other Day, Your Level</h2>
+          <p className="text-sm text-muted-foreground text-center max-w-xl mx-auto mb-6">
+            A new rated arena every {LADDER.cadenceDays} days, rotating rating bands and time controls so you
+            play people near your strength. Times shown in your local time zone.
+          </p>
+          <div className="rounded-xl border border-border/50 bg-card/40 divide-y divide-border/40">
+            {schedule.map((ev) => (
+              <div key={ev.index} className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-sm">
+                <div>
+                  <div className="font-medium">{ev.band.label} · {ev.timeControl.label}</div>
+                  <div className="text-xs text-muted-foreground">
+                    Rating {bandRatingText(ev.band)} · {ev.timeControl.minRatedGames}+ rated {ev.timeControl.perf} games
+                  </div>
+                </div>
+                <div className="text-muted-foreground tabular-nums">
+                  {ev.startsAt.toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
 
         {/* Prizes */}
         <motion.div

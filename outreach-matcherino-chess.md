@@ -24,8 +24,8 @@ Rationale: 5+2 and 10+5 give enough moves for the fair-play review to have signa
 ## Fair-play policy (publish this on the event page)
 1. Entry gate: account age, rated-game minimum, rating cap, team membership, all enforced by lichess at join time.
 2. Platform detection: lichess's own fair-play system applies to every game.
-3. Post-event review: En Pensent pulls winners' games with move clocks and checks accuracy and move-time patterns with Stockfish. Outliers are escalated, not auto-banned.
-4. Payout window: prizes are released 24 to 48 hours after the event ends, pending review. This is stated in the rules up front.
+3. Post-event review: En Pensent pulls winners' games with move clocks and checks accuracy and move-time patterns with Stockfish (`fair-play-review.mjs`). This is triage: outliers are escalated to Lichess, never auto-banned or publicly accused.
+4. Payout window: prizes are released 72 hours after the event ends (Lichess's recommended hold), and winners must keep their Lichess accounts open until payout. This is stated in the event description and rules up front.
 5. Only lichess games count toward prizes. Chess.com games can be visualized but are not eligible.
 
 ## What we will and will not say about the technology
@@ -36,9 +36,9 @@ Rationale: 5+2 and 10+5 give enough moves for the fair-play review to have signa
 ## Run of show (per event)
 1. T-7d: create the event (`scripts/tournaments/lichess-tournament.mjs create-arena ...`), post the link on the Matcherino page.
 2. T-0: event runs on lichess.
-3. T+0: `... results <id> --games` pulls standings and clocked games.
-4. T+24h to 48h: fair-play review complete, winners confirmed.
-5. T+48h: mint and send reward codes (champion 40% + 365 days premium; supporter 20% + 31 days). Winner's game rendered as the featured vision.
+3. T+0: `... results <id> --games --out results.json` pulls standings and clocked games, then `fair-play-review.mjs results.json --top 5` triages the top finishers.
+4. T+72h: Lichess fair-play actions have had time to land; flagged accounts are held, winners confirmed.
+5. T+72h: mint and send reward codes (champion 40% + 365 days premium; supporter 20% + 31 days). Winner's game rendered as the featured vision.
 6. T+7d: report to Matcherino: registrations, signups, redemptions.
 
 ## Prerequisites (one-time)

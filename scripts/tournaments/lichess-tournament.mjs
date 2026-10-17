@@ -46,6 +46,17 @@ const flag = (name, fallback) => {
   return fallback;
 };
 
+// Lichess only allows voucher/credit prizes if the description says so explicitly,
+// and recommends a 72h payout hold plus open accounts for fair-play review.
+const PRIZE_TERMS =
+  'Prizes: Matcherino cash prize pool (paid by Matcherino) plus En Pensent reward codes, which are '
+  + 'discount codes redeemable only at https://enpensent.com/redeem. '
+  + 'Fair play: rated games only; no prizes are paid until 72 hours after the event, and winners must keep '
+  + 'their Lichess accounts open. Accounts flagged by Lichess are ineligible. '
+  + 'Not affiliated with or sponsored by Lichess.';
+
+const DEFAULT_MIN_RATED_GAMES = '30';
+
 function parseClock(spec) {
   const [limit, inc = '0'] = String(spec).split('+');
   return { limitMinutes: Number(limit), increment: Number(inc) };
@@ -53,6 +64,7 @@ function parseClock(spec) {
 
 async function api(pathname, { method = 'GET', body, ndjson = false } = {}) {
   const headers = {};
+  if (ndjson) headers.Accept = 'application/x-ndjson';
   if (TOKEN) headers.Authorization = `Bearer ${TOKEN}`;
   if (body) headers['Content-Type'] = 'application/x-www-form-urlencoded';
   const r = await fetch(`${API}${pathname}`, { method, headers, body });
@@ -80,17 +92,24 @@ async function createArena() {
     berserkable: 'true',
     streakable: 'true',
     hasChat: 'true',
-    description: flag('description',
-      'En Pensent open arena. Winners receive EP reward codes — redeem at https://enpensent.com/redeem. '
-      + 'Prizes reviewed for fair play before payout (24–48h window).'),
+    description: flag('description', `En Pensent open arena. ${PRIZE_TERMS}`),
   });
+
+  const startDate = flag('start-date');
+  if (startDate) {
+    const ms = Date.parse(startDate);
+    if (Number.isNaN(ms) || ms < Date.now()) { console.error(`--start-date must be a future ISO date, got ${startDate}`); process.exit(1); }
+    p.set('startDate', String(ms));
+  }
 
   // ── Anti-cheat entry conditions (server-enforced by Lichess) ──
   const team = flag('team');
   if (team) p.set('conditions.teamMember.teamId', team);
+  const perf = flag('perf');
+  if (perf) p.set('conditions.nbRatedGame.perf', String(perf));
   if (flag('max-rating')) p.set('conditions.maxRating.rating', String(flag('max-rating')));
   if (flag('min-rating')) p.set('conditions.minRating.rating', String(flag('min-rating')));
-  if (flag('min-rated-games')) p.set('conditions.nbRatedGame.nb', String(flag('min-rated-games')));
+  p.set('conditions.nbRatedGame.nb', String(flag('min-rated-games', DEFAULT_MIN_RATED_GAMES)));
   if (flag('min-account-days')) p.set('conditions.accountAge', String(flag('min-account-days')));
 
   const t = await api('/api/tournament', { method: 'POST', body: p });
@@ -117,13 +136,11 @@ async function createSwiss() {
     nbRounds: String(flag('rounds', 7)),
     variant: 'standard',
     rated: 'true',
-    description: flag('description',
-      'En Pensent championship Swiss. Winners receive EP reward codes — redeem at https://enpensent.com/redeem. '
-      + 'Prizes reviewed for fair play before payout (24–48h window).'),
+    description: flag('description', `En Pensent championship Swiss. ${PRIZE_TERMS}`),
   });
   if (flag('max-rating')) p.set('conditions.maxRating', String(flag('max-rating')));
   if (flag('min-rating')) p.set('conditions.minRating', String(flag('min-rating')));
-  if (flag('min-rated-games')) p.set('conditions.nbRatedGame', String(flag('min-rated-games')));
+  p.set('conditions.nbRatedGame', String(flag('min-rated-games', DEFAULT_MIN_RATED_GAMES)));
   if (flag('min-account-days')) p.set('conditions.accountAge', String(flag('min-account-days')));
 
   const t = await api(`/api/swiss/new/${team}`, { method: 'POST', body: p });
@@ -150,7 +167,7 @@ async function results() {
     // (uniform move times on critical decisions is a classic engine tell).
     console.error('  fetching games with clocks (this can take a moment)…');
     const games = await api(
-      `/api/games/tournament/${id}?clocks=true&evals=true&opening=true&tags=true`,
+      `/api/tournament/${id}/games?moves=true&clocks=true&evals=true&opening=true`,
       { ndjson: true },
     );
     report.games = games;

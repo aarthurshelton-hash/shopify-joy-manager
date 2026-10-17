@@ -1,0 +1,32 @@
+{
+  "epoch": "2026-10-19",
+  "cadenceDays": 2,
+  "durationMinutes": 90,
+  "slotsUtc": ["18:00", "01:00"],
+  "bands": [
+    { "id": "u1200", "label": "Under 1200", "maxRating": 1199 },
+    { "id": "1200-1599", "label": "1200–1599", "minRating": 1200, "maxRating": 1599 },
+    { "id": "1600-1999", "label": "1600–1999", "minRating": 1600, "maxRating": 1999 },
+    { "id": "open", "label": "Open 2000+", "minRating": 2000 }
+  ],
+  "timeControls": [
+    {
+      "id": "blitz",
+      "label": "Blitz 5+3",
+      "clock": "5+3",
+      "perf": "blitz",
+      "minRatedGames": 30,
+      "minAccountDays": 14,
+      "reviewTop": 3
+    },
+    {
+      "id": "rapid",
+      "label": "Rapid 10+5",
+      "clock": "10+5",
+      "perf": "rapid",
+      "minRatedGames": 30,
+      "minAccountDays": 30,
+      "reviewTop": 5
+    }
+  ]
+}

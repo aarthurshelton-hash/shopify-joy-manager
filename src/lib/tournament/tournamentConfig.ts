@@ -72,7 +72,10 @@ export const TOURNAMENT: TournamentConfig = {
   rules: [
     'Games are played on lichess.org — a free lichess account is required.',
     'Free entry. The prize pool grows via crowdfunding on Matcherino.',
+    'Games are rated, and entry requires a minimum number of rated lichess games so accounts play at their true rating.',
     'Lichess fair-play detection applies; flagged accounts are ineligible for prizes.',
+    'Prizes are held for 72 hours after the event for fair-play review, and winners must keep their lichess accounts open until payout.',
+    'En Pensent reward codes are shop discount codes, redeemable only at enpensent.com/redeem; the cash prize pool is paid by Matcherino.',
     'Prize pool recipients must register on Matcherino to receive payouts.',
     'Payouts are designated within 30 days of the event ending.',
   ],
