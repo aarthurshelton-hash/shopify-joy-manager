@@ -14,7 +14,7 @@
 
 import React from 'react';
 import { PieceType, PieceColor } from '@/lib/chess/pieceColors';
-import { PIECE_PATHS, DEFAULT_FILL, DEFAULT_STROKE } from '@/lib/chess/piecePaths';
+import { PremiumPieceDefs, PremiumPieceBody } from './PremiumPiece';
 
 export interface ChessPieceIconProps {
   type: PieceType;
@@ -40,9 +40,8 @@ export const ChessPieceIcon: React.FC<ChessPieceIconProps> = ({
   className,
   style,
 }) => {
-  const fill = hexColor || DEFAULT_FILL[color];
-  const stroke = strokeColor || DEFAULT_STROKE[color];
-  const path = PIECE_PATHS[type];
+  const uid = `ep${React.useId().replace(/[^a-zA-Z0-9]/g, '')}`;
+  const detail = size >= 20;
 
   return (
     <svg
@@ -54,14 +53,8 @@ export const ChessPieceIcon: React.FC<ChessPieceIconProps> = ({
       style={{ opacity, ...style }}
       aria-label={`${color === 'w' ? 'White' : 'Black'} ${type}`}
     >
-      <path
-        d={path}
-        fill={fill}
-        stroke={stroke}
-        strokeWidth={2}
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      />
+      <PremiumPieceDefs id={uid} color={color} hexColor={hexColor} strokeColor={strokeColor} detail={detail} />
+      <PremiumPieceBody type={type} id={uid} color={color} hexColor={hexColor} strokeColor={strokeColor} detail={detail} />
     </svg>
   );
 };

@@ -2,7 +2,8 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { Chess, Square, Move } from 'chess.js';
 import { SquareData } from '@/lib/chess/gameSimulator';
 import { boardColors, getPieceColor, PieceType, PieceColor } from '@/lib/chess/pieceColors';
-import { PIECE_PATHS, DEFAULT_FILL, DEFAULT_STROKE } from '@/lib/chess/piecePaths';
+import { PIECE_PATHS } from '@/lib/chess/piecePaths';
+import { PremiumPieceDefs, PremiumPieceBody } from './PremiumPiece';
 import { useLegendHighlight, HighlightedPiece, HoveredSquareInfo, AnnotationType, PieceMoveArrow } from '@/contexts/LegendHighlightContext';
 import { renderNestedSquares } from '@/lib/chess/boardRenderer';
 
@@ -505,7 +506,10 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
   const pieceElements = useMemo(() => {
     if (!showPieces || trackedPieces.length === 0) return null;
     
-    const elements: React.ReactNode[] = [];
+    const elements: React.ReactNode[] = [
+      <PremiumPieceDefs key="ep-defs-w" id="ep-board-w" color="w" />,
+      <PremiumPieceDefs key="ep-defs-b" id="ep-board-b" color="b" />,
+    ];
     const fontSize = squareSize * 0.75;
     
     for (const piece of trackedPieces) {
@@ -527,14 +531,8 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
             transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
           }}
         >
-          <path
-            d={pathData}
+          <g
             transform={`translate(-${squareSize * 0.375}, -${squareSize * 0.375}) scale(${squareSize * 0.0075})`}
-            fill={piece.color === 'w' ? DEFAULT_FILL.w : DEFAULT_FILL.b}
-            stroke={piece.color === 'w' ? DEFAULT_STROKE.w : DEFAULT_STROKE.b}
-            strokeWidth={2}
-            strokeLinejoin="round"
-            strokeLinecap="round"
             style={{ 
               opacity: pieceOpacity,
               transition: 'opacity 0.2s ease-out, filter 0.2s ease-out',
@@ -546,7 +544,9 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
                 : `drop-shadow(0 ${fontSize * 0.02}px ${fontSize * 0.04}px rgba(0,0,0,0.3))`,
               pointerEvents: 'none',
             }}
-          />
+          >
+            <PremiumPieceBody type={piece.type as PieceType} id={`ep-board-${piece.color}`} color={piece.color} />
+          </g>
           {/* Invisible interaction area for piece */}
           <rect
             x={-squareSize * 0.4}

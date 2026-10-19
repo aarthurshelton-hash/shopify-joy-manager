@@ -6,7 +6,7 @@
 
 import { SquareData, GameData, SimulationResult } from './gameSimulator';
 import { getCurrentPalette } from './pieceColors';
-import { PIECE_PATHS, DEFAULT_FILL, DEFAULT_STROKE } from './piecePaths';
+import { drawPremiumPiece } from './pieceCanvas';
 import { PieceType } from './pieceColors';
 import { Chess } from 'chess.js';
 
@@ -50,7 +50,6 @@ function drawPiecesOntoCanvas(
 
   const sqSize = (boardSize * scale) / 8;
   const pieceRenderSize = sqSize * 0.75;
-  const pathScale = pieceRenderSize / 100; // SVG viewBox is 100x100
 
   ctx.save();
   ctx.globalAlpha = pieceOpacity;
@@ -58,27 +57,7 @@ function drawPiecesOntoCanvas(
   for (const p of pieces) {
     const cx = boardOffsetX + p.col * sqSize + sqSize / 2;
     const cy = boardOffsetY + p.row * sqSize + sqSize / 2;
-    const pathData = PIECE_PATHS[p.type];
-    if (!pathData) continue;
-
-    const path = new Path2D(pathData);
-    // Center the piece: translate to center, then offset by half piece size
-    const offsetX = cx - pieceRenderSize / 2;
-    const offsetY = cy - pieceRenderSize / 2;
-
-    ctx.save();
-    ctx.translate(offsetX, offsetY);
-    ctx.scale(pathScale, pathScale);
-
-    ctx.fillStyle = p.color === 'w' ? DEFAULT_FILL.w : DEFAULT_FILL.b;
-    ctx.strokeStyle = p.color === 'w' ? DEFAULT_STROKE.w : DEFAULT_STROKE.b;
-    ctx.lineWidth = 2;
-    ctx.lineJoin = 'round';
-    ctx.lineCap = 'round';
-    ctx.fill(path);
-    ctx.stroke(path);
-
-    ctx.restore();
+    drawPremiumPiece(ctx, p.type, p.color, cx, cy, pieceRenderSize);
   }
   ctx.restore();
 }
