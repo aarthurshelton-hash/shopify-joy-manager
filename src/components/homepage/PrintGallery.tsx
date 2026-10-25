@@ -55,7 +55,7 @@ const PrintGallery: React.FC = () => {
 
         {/* Carousel */}
         <div className="relative max-w-5xl mx-auto">
-          <div className="relative h-[280px] sm:h-[400px] md:h-[480px] rounded-2xl overflow-hidden border border-border/50 shadow-2xl">
+          <div className="relative h-[380px] sm:h-[520px] md:h-[640px] rounded-2xl overflow-hidden border border-border/50 shadow-2xl bg-black">
             <AnimatePresence mode="wait">
               <motion.div
                 key={index}
@@ -67,8 +67,14 @@ const PrintGallery: React.FC = () => {
               >
                 <img
                   src={slides[index].src}
+                  alt=""
+                  aria-hidden="true"
+                  className="absolute inset-0 w-full h-full object-cover blur-2xl scale-110 opacity-50"
+                />
+                <img
+                  src={slides[index].src}
                   alt={slides[index].caption}
-                  className="w-full h-full object-cover"
+                  className="relative w-full h-full object-contain"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                 <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6">
