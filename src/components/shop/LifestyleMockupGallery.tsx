@@ -225,7 +225,7 @@ const LifestyleMockupGallery: React.FC<LifestyleMockupGalleryProps> = ({
     // Compact carousel mode for homepage/banners
     return (
       <div className={cn("relative overflow-hidden rounded-xl", className)}>
-        <div className="relative aspect-[16/9] md:aspect-[21/9]">
+        <div className="relative aspect-[4/3] md:aspect-[16/10]">
           <AnimatePresence mode="wait">
             <motion.img
               key={displayMockups[activeIndex].id}
