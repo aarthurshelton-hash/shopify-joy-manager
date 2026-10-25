@@ -145,6 +145,10 @@
     line-height: 1.6;
   }
 
+  html.ep-palette-bg .bg-background.min-h-screen {
+    background-color: transparent;
+  }
+
   /* Royal display font - Cinzel for headlines */
   .font-display {
     font-family: 'Cinzel', 'Times New Roman', serif;

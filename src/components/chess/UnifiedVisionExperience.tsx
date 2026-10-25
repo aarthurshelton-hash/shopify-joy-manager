@@ -61,6 +61,7 @@ import { ShowPiecesToggle } from './ShowPiecesToggle';
 import BoardCoordinateGuide from './BoardCoordinateGuide';
 import ChessPieceIcon from './ChessPieceIcon';
 import IntrinsicPaletteCard from './IntrinsicPaletteCard';
+import PaletteBackdrop from './PaletteBackdrop';
 import ChessBoardVisualization from './ChessBoardVisualization';
 import { VisionScore, getVisionScore, calculateVisionValue, calculateMembershipMultiplier, SCORING_WEIGHTS } from '@/lib/visualizations/visionScoring';
 import { analyzeGame, GameAnalysis } from '@/lib/chess/chessAnalysis';
@@ -1678,6 +1679,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
           )}
         </AnimatePresence>
 
+        <PaletteBackdrop paletteId={currentPaletteInfo?.id} />
         <div className="flex flex-col w-full max-w-full" ref={containerRef}>
           {/* Header with back button, header actions, and dark mode toggle - Available for ALL contexts */}
           {(onBack || headerActions) && (
@@ -1906,10 +1908,8 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                   {/* Game Info is now integrated into TimelineBoard for trademark look */}
 
                   {/* Intrinsic Palette/Game Card - Show when matched */}
-                  {(currentPaletteInfo || (gameCardMatch?.isMatch)) && (
+                  {gameCardMatch?.isMatch && (
                     <IntrinsicPaletteCard
-                      paletteId={currentPaletteInfo?.id}
-                      similarity={currentPaletteInfo ? 100 : undefined}
                       gameCardId={gameCardMatch?.matchedGame?.id}
                       gameCardTitle={gameCardMatch?.matchedGame?.title}
                       gameCardMatchType={gameCardMatch?.matchType}
