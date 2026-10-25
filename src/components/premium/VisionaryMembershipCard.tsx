@@ -96,16 +96,16 @@ const PREMIUM_FEATURES = [
   {
     id: 'marketplace',
     icon: DollarSign,
-    title: 'Marketplace Access',
-    description: '0% commission, 3/day transfer limit',
-    tooltip: 'Buy, sell, or gift your claimed visualizations. 100% holder value retention — we take 0% commission.',
+    title: 'Digital Asset Marketplace — Coming Soon',
+    description: 'Founding members get first access',
+    tooltip: 'A marketplace for chess digital assets is on its way. Premium members will be first in, so your membership today earns early access.',
   },
   {
     id: 'royalties',
     icon: Heart,
-    title: '20% Print Royalties',
-    description: 'Earn from your collection',
-    tooltip: 'When anyone orders a print of your vision, you earn 20% of the order value as royalties.',
+    title: 'Creator Royalties — Coming Soon',
+    description: 'Planned with the marketplace launch',
+    tooltip: 'Royalties for creators are planned alongside the marketplace. Details will be announced to Premium members first.',
   },
   {
     id: 'analytics',
