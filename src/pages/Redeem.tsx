@@ -99,7 +99,7 @@ const Redeem: React.FC = () => {
       supabase.rpc('get_or_create_referral_code').then(({ data }) => {
         const ref = data as unknown as { ok?: boolean; code?: string } | null;
         if (ref?.ok && ref.code) setRefCode(ref.code);
-      }).catch(() => {});
+      }, () => {});
       // Refresh premium state so gated features unlock immediately.
       checkSubscription().catch(() => {});
     } catch (e) {
@@ -232,7 +232,7 @@ const Redeem: React.FC = () => {
             {error && <p className="text-sm text-destructive mt-3 text-center">{error}</p>}
             {!user && !isLoading && (
               <p className="text-xs text-muted-foreground mt-4 text-center">
-                You'll be asked to sign in or create a free account to claim it.
+                You'll be asked to sign in or sign up so the reward lands on your account.
               </p>
             )}
           </form>

@@ -74,7 +74,7 @@ export const OnboardingNudge: React.FC<OnboardingNudgeProps> = ({ active, onAuth
                 ? 'Keep your visualizations in a personal gallery — download, share, or order prints anytime.'
                 : isLoggedIn
                 ? 'Upgrade to Visionary to save visualizations, download in HD, and build your collection.'
-                : 'Create a free account to save your visualizations and build a personal chess art collection.'}
+                : 'Go Premium to save your visualizations and build a personal chess art collection — and support a solo founder.'}
             </p>
           </div>
         </div>

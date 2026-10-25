@@ -23,7 +23,7 @@ import { MARKETPLACE_ENABLED } from '@/lib/featureFlags';
 import CEOBusinessCard from '@/components/admin/CEOBusinessCard';
 
 const UserMenu: React.FC = () => {
-  const { user, profile, isLoading, isPremium, isFreeAccount, mfaStatus, signOut, openCheckout, openCustomerPortal } = useAuth();
+  const { user, profile, isLoading, isPremium, mfaStatus, signOut, openCheckout, openCustomerPortal } = useAuth();
   const navigate = useNavigate();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showVisionaryModal, setShowVisionaryModal] = useState(false);
@@ -94,24 +94,14 @@ const UserMenu: React.FC = () => {
     return (
       <>
         <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setShowAuthModal(true)}
-          className="gap-2"
-        >
-          <User className="h-4 w-4" />
-          <span className="hidden sm:inline">Sign In</span>
-        </Button>
-        <Button
           variant="default"
           size="sm"
-          onClick={() => {
-            setShowAuthModal(true);
-          }}
-          className="gap-1.5 btn-luxury hidden sm:flex"
+          onClick={() => setShowAuthModal(true)}
+          className="gap-2 btn-luxury"
         >
-          <Gift className="h-4 w-4" />
-          Free Sign Up
+          <User className="h-4 w-4" />
+          <span className="hidden sm:inline">Sign in / Sign up</span>
+          <span className="sm:hidden">Sign in</span>
         </Button>
         <VisionaryMembershipCard
           isOpen={showVisionaryModal}
@@ -177,8 +167,6 @@ const UserMenu: React.FC = () => {
                   <p className="text-sm font-medium truncate">{displayName}</p>
                   {isPremium ? (
                     <PremiumBadge />
-                  ) : isFreeAccount ? (
-                    <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 bg-muted">FREE</Badge>
                   ) : null}
                 </div>
                 <p className="text-xs text-muted-foreground truncate">{user.email}</p>
@@ -194,12 +182,10 @@ const UserMenu: React.FC = () => {
                 className="gap-2 cursor-pointer bg-primary/5 text-primary focus:bg-primary/10 focus:text-primary"
               >
                 <Crown className="h-4 w-4" />
-                {isFreeAccount ? 'Upgrade to Premium' : 'Get Premium'}
-                {isFreeAccount && (
-                  <Badge variant="secondary" className="ml-auto text-[9px] px-1.5 bg-green-500/10 text-green-600">
-                    Unlock All
-                  </Badge>
-                )}
+                Go Premium
+                <Badge variant="secondary" className="ml-auto text-[9px] px-1.5 bg-green-500/10 text-green-600">
+                  Unlock All
+                </Badge>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
             </>

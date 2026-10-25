@@ -93,8 +93,8 @@ const PRINTIFY_BASE_COSTS: Record<string, number> = {
   '24x36': 85,
 };
 
-// 20% markup factor
-const MARGIN_MULTIPLIER = 1.20;
+// 60% markup factor (~37% gross margin) so discounts, fees and shipping stay profitable
+const MARGIN_MULTIPLIER = 1.60;
 
 /**
  * Normalize size string for consistent lookup
@@ -167,4 +167,4 @@ export function getBaseFramePrice(size: string): number {
  * Frame shipping configuration
  */
 export const FRAME_SHIPPING_COST = 12.99;
-export const FREE_SHIPPING_THRESHOLD = 3;
+export const FREE_SHIPPING_THRESHOLD = 5;

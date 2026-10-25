@@ -52,11 +52,10 @@ const ProviderIcon: React.FC<{ provider: OAuthProvider }> = ({ provider }) => {
   );
 };
 
-const FREE_ACCOUNT_BENEFITS = [
-  'Save email for personalized experience',
-  'Track your visualization views',
-  'Get notified about new features',
-  'One-click upgrade to Premium anytime',
+const ACCOUNT_NOTES = [
+  'Holds your Premium membership and reward codes',
+  'Lets you manage or cancel billing anytime',
+  'Everything non-premium stays open to everyone, no account needed',
 ];
 
 const AuthModal = forwardRef<HTMLDivElement, AuthModalProps>(({ isOpen, onClose, defaultMode = 'signin' }, ref) => {
@@ -106,8 +105,8 @@ const AuthModal = forwardRef<HTMLDivElement, AuthModalProps>(({ isOpen, onClose,
           // pending checkout resumes automatically after they confirm & sign in.
           setMode('confirm-email');
         } else {
-          toast.success('Free account created!', {
-            description: 'Upgrade to Premium anytime to unlock all features.',
+          toast.success('Account created', {
+            description: 'Welcome to En Pensent.',
             icon: <Gift className="h-4 w-4" />,
           });
           onClose();
@@ -173,13 +172,13 @@ const AuthModal = forwardRef<HTMLDivElement, AuthModalProps>(({ isOpen, onClose,
           <DialogHeader>
             <DialogTitle className="font-display text-xl text-center">
               {mode === 'signin' && 'Welcome Back'}
-              {mode === 'signup' && 'Create Free Account'}
+              {mode === 'signup' && 'Create Your Account'}
               {mode === 'forgot' && 'Reset Password'}
               {mode === 'confirm-email' && 'Check Your Inbox'}
             </DialogTitle>
             {mode === 'signup' && (
               <DialogDescription className="text-center">
-                Start with a free account • Upgrade anytime
+                Your account holds your Premium membership and rewards
               </DialogDescription>
             )}
           </DialogHeader>
@@ -207,10 +206,10 @@ const AuthModal = forwardRef<HTMLDivElement, AuthModalProps>(({ isOpen, onClose,
             <div className="bg-muted/30 rounded-lg p-4 border border-border/50">
               <div className="flex items-center gap-2 mb-3">
                 <Gift className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium">Free Account Includes:</span>
+                <span className="text-sm font-medium">Why an account:</span>
               </div>
               <ul className="space-y-2">
-                {FREE_ACCOUNT_BENEFITS.map((benefit, idx) => (
+                {ACCOUNT_NOTES.map((benefit, idx) => (
                   <li key={idx} className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Check className="h-3 w-3 text-green-500 flex-shrink-0" />
                     {benefit}
@@ -220,7 +219,7 @@ const AuthModal = forwardRef<HTMLDivElement, AuthModalProps>(({ isOpen, onClose,
               <div className="mt-3 pt-3 border-t border-border/50 flex items-center gap-2">
                 <Crown className="h-4 w-4 text-primary" />
                 <span className="text-xs text-primary">
-                  <span className="font-medium">Premium features</span> unlock after payment
+                  <span className="font-medium">Premium</span> supports a solo founder
                 </span>
               </div>
             </div>
@@ -299,7 +298,7 @@ const AuthModal = forwardRef<HTMLDivElement, AuthModalProps>(({ isOpen, onClose,
               ) : (
                 <>
                   <Sparkles className="h-4 w-4 mr-2" />
-                  Create Free Account
+                  Create Account
                 </>
               )}
             </Button>
@@ -351,7 +350,7 @@ const AuthModal = forwardRef<HTMLDivElement, AuthModalProps>(({ isOpen, onClose,
               className="text-sm text-muted-foreground hover:text-primary transition-colors"
             >
               {mode === 'signin' || mode === 'forgot' ? (
-                <>Don't have an account? <span className="font-medium text-primary">Sign up free</span></>
+                <>New here? <span className="font-medium text-primary">Create an account</span></>
               ) : (
                 <>Already have an account? <span className="font-medium text-primary">Sign in</span></>
               )}

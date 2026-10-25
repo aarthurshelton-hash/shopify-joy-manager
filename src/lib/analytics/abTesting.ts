@@ -192,16 +192,16 @@ export function getMembershipCardVariants(): MembershipCardVariants {
 
   const headlines: Record<VariantId, string> = {
     A: 'Become a Visionary',
-    B: 'Join 2,847 Chess Artists Today',
+    B: 'Support a Solo Founder. Go Premium',
     C: 'Unlock Your Chess Art Potential',
-    D: 'The #1 Chess Visualization Platform',
+    D: 'Premium Chess Art, Built by One Person',
   };
 
   const ctas: Record<VariantId, { main: string; signIn: string }> = {
-    A: { main: 'Become a Visionary', signIn: 'Sign In / Sign Up' },
-    B: { main: 'Start Creating Now', signIn: 'Get Started Free' },
-    C: { main: 'Try Free for 7 Days', signIn: 'Start Free Trial' },
-    D: { main: 'Get Premium for $7/mo', signIn: 'Sign Up for $7/mo' },
+    A: { main: 'Become a Visionary', signIn: 'Sign in / Sign up to continue' },
+    B: { main: 'Go Premium', signIn: 'Sign in / Sign up to go Premium' },
+    C: { main: 'Unlock Premium', signIn: 'Sign in / Sign up to unlock' },
+    D: { main: 'Get Premium for $6.99/mo', signIn: 'Sign in / Sign up for $6.99/mo' },
   };
 
   const layouts: Record<VariantId, 'grid' | 'list' | 'carousel'> = {

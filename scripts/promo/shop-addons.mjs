@@ -60,13 +60,12 @@ const FRAME_STYLES = [
   { id: 'walnut', name: 'Rich Walnut', premiumMultiplier: 1.15 },
   { id: 'gold', name: 'Champagne Gold', premiumMultiplier: 1.25 },
 ];
-const MARGIN = 1.20;
+const MARGIN = 1.60;
 const INFO_CARD_PRICE = 9.99;
 
 // Bulk discount tiers (mirror of src/lib/discounts.ts)
 const BULK_TIERS = [
-  { qty: 2, pct: 10 }, { qty: 3, pct: 15 }, { qty: 4, pct: 20 },
-  { qty: 5, pct: 25 }, { qty: 8, pct: 30 }, { qty: 10, pct: 35 },
+  { qty: 2, pct: 5 }, { qty: 3, pct: 10 }, { qty: 5, pct: 15 }, { qty: 10, pct: 20 },
 ];
 
 const normSize = (s) => s.toLowerCase().replace(/\s+/g, '').replace(/×/g, 'x').replace(/["']/g, '');

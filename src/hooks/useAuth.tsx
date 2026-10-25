@@ -258,7 +258,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               localStorage.setItem(flag, '1');
               recordFunnelEvent('signup_completed', {
                 trigger_source: 'oauth',
-                account_type: 'free',
+                account_type: 'member',
                 provider,
               });
               trackUserLocation(u.id);
@@ -368,11 +368,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
     });
     
-    // Track successful signup - now tracking as free_account_created
     if (!error && data.user) {
       recordFunnelEvent('signup_completed', {
         trigger_source: 'auth_modal',
-        account_type: 'free',
+        account_type: 'member',
         has_phone: !!phone,
       });
       

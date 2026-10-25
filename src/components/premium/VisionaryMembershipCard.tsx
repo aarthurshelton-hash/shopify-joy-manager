@@ -216,7 +216,7 @@ export const VisionaryMembershipCard = forwardRef<HTMLDivElement, VisionaryMembe
   onAuthRequired,
   trigger = 'general',
 }, ref) => {
-  const { user, isPremium, isFreeAccount, openCheckout } = useAuth();
+  const { user, openCheckout } = useAuth();
   const { variants, recordImpressions, recordConversions } = useABTest();
   const [isLoading, setIsLoading] = useState(false);
   const [plan, setPlan] = useState<'monthly' | 'annual'>('monthly');
@@ -280,13 +280,11 @@ export const VisionaryMembershipCard = forwardRef<HTMLDivElement, VisionaryMembe
       return;
     }
 
-    // User has account (free or upgrading) - go to checkout
-    const eventType = isFreeAccount ? 'free_to_premium' : 'checkout_started';
-    recordFunnelEvent(eventType, { 
+    recordFunnelEvent('checkout_started', { 
       trigger_source: trigger,
       time_on_modal_ms: timeOnModal,
       features_viewed: Array.from(featuresViewed.current),
-      account_type: isFreeAccount ? 'free' : 'existing',
+      account_type: 'signed_in',
     });
     recordConversions(); // Record A/B test conversions
 
@@ -513,27 +511,21 @@ export const VisionaryMembershipCard = forwardRef<HTMLDivElement, VisionaryMembe
                 transition={{ delay: 0.5 }}
                 className="mt-6 p-4 rounded-xl bg-gradient-to-r from-muted/50 via-muted/30 to-muted/50 border border-border/50"
               >
-                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                  <Check className="h-4 w-4 text-primary shrink-0" />
-                  <span>Everything unlocked. Cancel anytime from your account — no lock-in.</span>
+                <div className="flex items-start gap-3 text-sm text-muted-foreground">
+                  <Heart className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <span>
+                    <span className="text-foreground font-medium">Premium is how you support a solo founder.</span>{' '}
+                    En Pensent is built and run by one person. Your membership pays for the servers,
+                    the engine and every new feature — and it unlocks everything above.
+                    Everything else on the site stays free to use, no account needed.
+                    Cancel anytime from your account.
+                  </span>
                 </div>
               </motion.div>
             </div>
 
             {/* CTA Footer */}
             <div className="p-6 pt-4 border-t border-border/50 bg-gradient-to-t from-muted/50 to-transparent">
-              {/* Free account callout */}
-              {isFreeAccount && (
-                <div className="mb-4 p-3 rounded-lg bg-primary/5 border border-primary/20 text-center">
-                  <p className="text-sm text-primary font-medium">
-                    Ready to unlock your full potential?
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Your free account is set up • One click to Premium
-                  </p>
-                </div>
-              )}
-              
               <div className="flex flex-col sm:flex-row gap-3 items-center justify-center">
                 <Button
                   size="lg"
@@ -543,19 +535,14 @@ export const VisionaryMembershipCard = forwardRef<HTMLDivElement, VisionaryMembe
                 >
                   {isLoading ? (
                     <><Loader2 className="h-4 w-4 animate-spin" /> Processing...</>
-                  ) : isFreeAccount ? (
-                    <>
-                      <Crown className="h-4 w-4" />
-                      Upgrade — {plan === 'annual' ? '$59.99/yr' : '$6.99/mo'}
-                      <ChevronRight className="h-4 w-4" />
-                    </>
                   ) : user ? (
                     <>
                       <Crown className="h-4 w-4" />
-                      {variants.ctaText}
+                      Go Premium — {plan === 'annual' ? '$59.99/yr' : '$6.99/mo'}
                       <ChevronRight className="h-4 w-4" />
                     </>
                   ) : (
+
                     <>
                       <User className="h-4 w-4" />
                       {variants.ctaSignInText}
