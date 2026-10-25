@@ -64,13 +64,14 @@ function filterBoardToMove(board: SquareData[][], currentMove: number): SquareDa
  */
 interface PrintOptionsExtended extends PrintOptions {
   pgn?: string; // Explicit PGN override for piece rendering
+  scale?: number; // html2canvas render scale (default 3)
 }
 
 export async function generateCleanPrintImage(
   simulation: SimulationResult,
   options: PrintOptionsExtended = {}
 ): Promise<string> {
-  const { darkMode = false, includeQR = false, shareId, capturedState, withWatermark = false, highlightState: providedHighlightState, pgn: explicitPgn } = options;
+  const { darkMode = false, includeQR = false, shareId, capturedState, withWatermark = false, highlightState: providedHighlightState, pgn: explicitPgn, scale: renderScale = 3 } = options;
   
   // Validate simulation data before attempting generation
   if (!simulation) {
@@ -193,7 +194,7 @@ export async function generateCleanPrintImage(
     while (retries < maxRetries) {
       try {
         canvas = await html2canvas(printContent, {
-          scale: 3, // High resolution for print quality
+          scale: renderScale, // High resolution for print quality
           backgroundColor: effectiveDarkMode ? '#0A0A0A' : '#FDFCFB',
           useCORS: true,
           allowTaint: true,
