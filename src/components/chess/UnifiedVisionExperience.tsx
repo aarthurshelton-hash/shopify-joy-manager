@@ -235,7 +235,7 @@ const TimelineControls: React.FC<{
   };
 
   return (
-    <div className="space-y-3 p-3 rounded-lg bg-muted/30 border border-border/50">
+    <div className="space-y-3 p-3 rounded-lg bg-muted/80 border border-border/50">
       <div className="flex items-center justify-between text-xs text-muted-foreground">
         <span className="font-mono">{getMoveLabel()}</span>
         <span>{currentMove} / {totalMoves}</span>
@@ -437,7 +437,7 @@ const AnalyticsPanel: React.FC<{
   return (
     <div className="space-y-6">
       {/* Game Summary */}
-      <div className="p-4 rounded-lg border border-border/50 bg-card/50 space-y-3">
+      <div className="p-4 rounded-lg border border-border/50 bg-card space-y-3">
         <h3 className="font-display text-sm uppercase tracking-wider text-muted-foreground">Game Summary</h3>
         <div className="grid grid-cols-2 gap-4">
           <div>
@@ -587,7 +587,7 @@ const AnalyticsPanel: React.FC<{
               
               {/* Per-player accuracy display - chess.com style */}
               <div className="grid grid-cols-2 gap-3 mb-3">
-                <div className="p-2 rounded bg-background/50 border border-border/30 text-center">
+                <div className="p-2 rounded bg-background/90 border border-border/30 text-center">
                   <p className="text-[10px] text-muted-foreground mb-1 flex items-center justify-center gap-1"><ChessPieceIcon type="k" color="w" size={12} /> {gameData.white || 'White'}</p>
                   <p className={`text-lg font-bold ${
                     qualitySummary.whiteAccuracy >= 90 ? 'text-green-400' :
@@ -597,7 +597,7 @@ const AnalyticsPanel: React.FC<{
                     {qualitySummary.whiteAccuracy}%
                   </p>
                 </div>
-                <div className="p-2 rounded bg-background/50 border border-border/30 text-center">
+                <div className="p-2 rounded bg-background/90 border border-border/30 text-center">
                   <p className="text-[10px] text-muted-foreground mb-1 flex items-center justify-center gap-1"><ChessPieceIcon type="k" color="b" size={12} /> {gameData.black || 'Black'}</p>
                   <p className={`text-lg font-bold ${
                     qualitySummary.blackAccuracy >= 90 ? 'text-green-400' :
@@ -767,15 +767,15 @@ const AnalyticsPanel: React.FC<{
           
           {visionScore ? (
             <div className="grid grid-cols-3 gap-3 text-center">
-              <div className="p-2 rounded bg-background/50">
+              <div className="p-2 rounded bg-background/90">
                 <div className="text-lg font-display">{visionScore.viewCount}</div>
                 <div className="text-xs text-muted-foreground">Views</div>
               </div>
-              <div className="p-2 rounded bg-background/50">
+              <div className="p-2 rounded bg-background/90">
                 <div className="text-lg font-display">{visionScore.downloadHdCount + visionScore.downloadGifCount}</div>
                 <div className="text-xs text-muted-foreground">Downloads</div>
               </div>
-              <div className="p-2 rounded bg-background/50">
+              <div className="p-2 rounded bg-background/90">
                 <div className="text-lg font-display">{visionScore.printOrderCount}</div>
                 <div className="text-xs text-muted-foreground">Prints</div>
               </div>
@@ -808,7 +808,7 @@ const AnalyticsPanel: React.FC<{
 
       {/* Score Breakdown */}
       {visionScore && visionScore.totalScore > 0 && (
-        <div className="p-4 rounded-lg border border-border/50 bg-card/30 space-y-3">
+        <div className="p-4 rounded-lg border border-border/50 bg-card space-y-3">
           <h3 className="font-display text-sm uppercase tracking-wider text-muted-foreground">Score Breakdown</h3>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
@@ -1673,7 +1673,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
               </div>
 
               {/* Fullscreen keyboard hint */}
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-xs text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-full">
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-xs text-muted-foreground bg-muted px-3 py-1.5 rounded-full">
                 Press <kbd className="px-1.5 py-0.5 bg-background rounded border text-foreground">Esc</kbd> or <kbd className="px-1.5 py-0.5 bg-background rounded border text-foreground">F</kbd> to exit
               </div>
             </motion.div>
@@ -1681,7 +1681,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
         </AnimatePresence>
 
         <PaletteBackdrop paletteId={currentPaletteInfo?.id} />
-        <div className="flex flex-col w-full max-w-full" ref={containerRef}>
+        <div className="flex flex-col w-full max-w-full rounded-xl border border-border/40 bg-background/95 p-3 sm:p-4 shadow-xl" ref={containerRef}>
           {/* Header with back button, header actions, and dark mode toggle - Available for ALL contexts */}
           {(onBack || headerActions) && (
             <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4 pb-3 border-b border-border/50">
@@ -1726,7 +1726,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
 
           {/* Tab Navigation */}
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'experience' | 'analytics')}>
-            <TabsList className="w-full grid grid-cols-2 bg-muted/50 p-1 mb-4">
+            <TabsList className="w-full grid grid-cols-2 bg-muted p-1 mb-4">
               <TabsTrigger 
                 value="experience" 
                 className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-lg transition-all duration-300"
@@ -1813,7 +1813,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                     {/* Center: Board */}
                     <div className="flex-shrink-0 relative" data-vision-board="true">
                       {isSwitchingPalette && (
-                        <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10 rounded-lg">
+                        <div className="absolute inset-0 bg-background/90 flex items-center justify-center z-10 rounded-lg">
                           <Loader2 className="h-8 w-8 animate-spin text-primary" />
                         </div>
                       )}
@@ -1864,12 +1864,12 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                   {showLegend && (
                     <div className="xl:hidden">
                       <motion.div
-                        className="rounded-lg border border-border/50 bg-card/50 overflow-hidden"
+                        className="rounded-lg border border-border/50 bg-card overflow-hidden"
                         initial={false}
                       >
                         <button
                           onClick={() => setMobileLegendExpanded(!mobileLegendExpanded)}
-                          className="w-full flex items-center justify-between p-3 hover:bg-muted/30 transition-colors"
+                          className="w-full flex items-center justify-between p-3 hover:bg-muted/80 transition-colors"
                         >
                           <span className="font-display text-sm uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                             <Eye className="h-4 w-4" />
@@ -2170,7 +2170,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
 
                 {/* Transfer Limit Badge - Show for all contexts when visualization exists */}
                 {localVisualizationId && (
-                  <div className="mb-4 flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border/50">
+                  <div className="mb-4 flex items-center gap-3 p-3 rounded-lg bg-muted/80 border border-border/50">
                     <span className="text-sm text-muted-foreground">Transfer availability:</span>
                     <TransferLimitBadge visualizationId={localVisualizationId} />
                   </div>
