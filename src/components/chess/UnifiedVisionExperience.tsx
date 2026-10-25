@@ -62,6 +62,7 @@ import BoardCoordinateGuide from './BoardCoordinateGuide';
 import ChessPieceIcon from './ChessPieceIcon';
 import IntrinsicPaletteCard from './IntrinsicPaletteCard';
 import PaletteBackdrop from './PaletteBackdrop';
+import LifestyleStrip from '@/components/shop/LifestyleStrip';
 import ChessBoardVisualization from './ChessBoardVisualization';
 import { VisionScore, getVisionScore, calculateVisionValue, calculateMembershipMultiplier, SCORING_WEIGHTS } from '@/lib/visualizations/visionScoring';
 import { analyzeGame, GameAnalysis } from '@/lib/chess/chessAnalysis';
@@ -2081,6 +2082,13 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                       className="mt-6"
                     />
                   )}
+
+                  <LifestyleStrip
+                    paletteId={currentPaletteInfo?.id}
+                    heading="See it on your wall"
+                    subheading="Museum-quality prints, shipped ready to hang"
+                    className="mt-6"
+                  />
 
                   {/* Print Value Proposition */}
                   <div className="mt-6 p-4 rounded-xl bg-gradient-to-br from-primary/5 via-transparent to-primary/10 border border-primary/20">

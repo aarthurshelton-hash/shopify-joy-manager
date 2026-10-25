@@ -1,6 +1,7 @@
 import React, { useState, useEffect, forwardRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import LifestyleStrip from '@/components/shop/LifestyleStrip';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
@@ -169,6 +170,9 @@ const AuthModal = forwardRef<HTMLDivElement, AuthModalProps>(({ isOpen, onClose,
     <div ref={ref}>
       <Dialog open={isOpen && !showMFAVerification} onOpenChange={(open) => !open && onClose()}>
         <DialogContent className="sm:max-w-md bg-card border-border">
+          {mode === 'signup' && (
+            <LifestyleStrip count={2} heading="Your games, on your walls" />
+          )}
           <DialogHeader>
             <DialogTitle className="font-display text-xl text-center">
               {mode === 'signin' && 'Welcome Back'}

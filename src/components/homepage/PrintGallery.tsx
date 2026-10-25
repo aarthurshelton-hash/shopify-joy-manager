@@ -2,32 +2,16 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Frame } from 'lucide-react';
 
-import bedroomNaturalFrame from '@/assets/mockups/bedroom-natural-frame.jpg';
-import blackFrameProduct from '@/assets/mockups/black-frame-product.jpg';
-import canvasMacroCloseup from '@/assets/mockups/canvas-macro-closeup.jpg';
+import { lifestyleImages } from '@/lib/lifestyleImages';
 import galleryWallCollection from '@/assets/mockups/gallery-wall-collection.jpg';
-import goldFrameOffice from '@/assets/mockups/gold-frame-office.jpg';
 import hotelLobbyGold from '@/assets/mockups/hotel-lobby-gold.jpg';
 import libraryWalnutFrame from '@/assets/mockups/library-walnut-frame.jpg';
-import naturalFrameCanvas from '@/assets/mockups/natural-frame-canvas.jpg';
-import restaurantBlackFrame from '@/assets/mockups/restaurant-black-frame.jpg';
-import studioLoftCanvas from '@/assets/mockups/studio-loft-canvas.jpg';
-import unframedCanvasLean from '@/assets/mockups/unframed-canvas-lean.jpg';
-import whiteFrameLifestyle from '@/assets/mockups/white-frame-lifestyle.jpg';
 
 const slides = [
+  ...lifestyleImages.map((i) => ({ src: i.src, caption: i.title })),
   { src: galleryWallCollection, caption: 'Gallery Wall Collection' },
-  { src: bedroomNaturalFrame, caption: 'Natural Frame — Bedroom' },
-  { src: blackFrameProduct, caption: 'Black Frame' },
-  { src: canvasMacroCloseup, caption: 'Canvas Macro Detail' },
-  { src: goldFrameOffice, caption: 'Gold Frame — Office' },
   { src: hotelLobbyGold, caption: 'Gold Frame — Hotel Lobby' },
   { src: libraryWalnutFrame, caption: 'Walnut Frame — Library' },
-  { src: naturalFrameCanvas, caption: 'Natural Frame Canvas' },
-  { src: restaurantBlackFrame, caption: 'Black Frame — Restaurant' },
-  { src: studioLoftCanvas, caption: 'Studio Loft Canvas' },
-  { src: unframedCanvasLean, caption: 'Unframed Canvas' },
-  { src: whiteFrameLifestyle, caption: 'White Frame Lifestyle' },
 ];
 
 const PrintGallery: React.FC = () => {

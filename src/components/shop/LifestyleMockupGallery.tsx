@@ -4,6 +4,7 @@ import { X, ChevronLeft, ChevronRight, Sparkles, Frame } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { lifestyleImages } from '@/lib/lifestyleImages';
 
 // Import product mockups using actual PrintReadyVisualization
 import naturalFrameCanvas from '@/assets/mockups/natural-frame-canvas.jpg';
@@ -33,7 +34,7 @@ export interface MockupImage {
   description: string;
 }
 
-export const lifestyleMockups: MockupImage[] = [
+const baseMockups: MockupImage[] = [
   // Product-focused mockups
   {
     id: 'natural-frame-canvas',
@@ -159,6 +160,17 @@ export const lifestyleMockups: MockupImage[] = [
     description: 'Classic study with dark wood bookshelves and the walnut-framed print as focal art',
   },
 ];
+
+const newMockups: MockupImage[] = lifestyleImages.filter((i) => !baseMockups.some((b) => b.id === i.id)).map((i) => ({
+  id: i.id,
+  src: i.src,
+  title: i.title,
+  setting: 'In Your Space',
+  mood: 'Lived-In',
+  description: `${i.title} — an En Pensent print in a real setting`,
+}));
+
+export const lifestyleMockups: MockupImage[] = [...newMockups, ...baseMockups];
 
 interface LifestyleMockupGalleryProps {
   className?: string;
