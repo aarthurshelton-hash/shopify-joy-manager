@@ -1,15 +1,18 @@
-import React, { useState, useEffect, forwardRef } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import React, { useState, useEffect, useRef, forwardRef } from 'react';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import LifestyleStrip from '@/components/shop/LifestyleStrip';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Loader2, Mail, Lock, User, Crown, Sparkles, Gift, Check, MailCheck, Github } from 'lucide-react';
+import { Loader2, Mail, Lock, User, Eye, EyeOff, MailCheck, ArrowLeft, Gift, AlertCircle, Info } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import MFAVerification from './MFAVerification';
+import AuthShowcase from './AuthShowcase';
+import AuthProviderIcon, { OAUTH_LABELS } from './AuthProviderIcon';
 import { useAuthRateLimit } from '@/hooks/useRateLimitV2';
+import { useEnabledAuthProviders, type OAuthProvider } from '@/hooks/useEnabledAuthProviders';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -19,77 +22,82 @@ interface AuthModalProps {
 
 type AuthMode = 'signin' | 'signup' | 'forgot' | 'confirm-email';
 
-type OAuthProvider = 'google' | 'github' | 'discord';
+const RESEND_SECONDS = 30;
 
-const OAUTH_LABELS: Record<OAuthProvider, string> = {
-  google: 'Google',
-  github: 'GitHub',
-  discord: 'Discord',
+const friendlyError = (message: string) => {
+  const m = message.toLowerCase();
+  if (m.includes('invalid login')) return 'That email and password do not match. Check them or reset your password.';
+  if (m.includes('email not confirmed')) return 'Please confirm your email first. Check your inbox for the link.';
+  if (m.includes('already') && m.includes('exist')) return 'An account with this email already exists.';
+  if (m.includes('password') && m.includes('characters')) return 'Choose a password with at least 6 characters.';
+  if (m.includes('rate') || m.includes('too many')) return 'Too many attempts. Please wait a minute and try again.';
+  return message;
 };
-
-// Enable extra providers only after they are configured in Supabase Auth.
-// e.g. VITE_AUTH_PROVIDERS="google,github,discord"
-const ENABLED_PROVIDERS: OAuthProvider[] = (import.meta.env.VITE_AUTH_PROVIDERS || 'google')
-  .split(',')
-  .map((p: string) => p.trim().toLowerCase())
-  .filter((p: string): p is OAuthProvider => p in OAUTH_LABELS);
-
-const ProviderIcon: React.FC<{ provider: OAuthProvider }> = ({ provider }) => {
-  if (provider === 'github') return <Github className="h-4 w-4" />;
-  if (provider === 'discord') {
-    return (
-      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="#5865F2">
-        <path d="M20.32 4.37A19.8 19.8 0 0 0 15.43 2.9l-.23.46a18.3 18.3 0 0 0-4.4 0l-.23-.46a19.7 19.7 0 0 0-4.9 1.48C2.55 9.05 1.7 13.6 2.12 18.1a19.9 19.9 0 0 0 6.07 3l.5-.8a12.9 12.9 0 0 1-1.99-.95l.49-.38a14.2 14.2 0 0 0 12.02 0l.49.38c-.64.38-1.3.7-1.99.95l.5.8a19.8 19.8 0 0 0 6.07-3c.5-5.2-.84-9.7-3.96-13.73ZM8.68 15.3c-1.17 0-2.13-1.08-2.13-2.4s.94-2.4 2.13-2.4c1.2 0 2.15 1.09 2.13 2.4 0 1.32-.94 2.4-2.13 2.4Zm6.64 0c-1.17 0-2.13-1.08-2.13-2.4s.94-2.4 2.13-2.4c1.2 0 2.15 1.09 2.13 2.4 0 1.32-.93 2.4-2.13 2.4Z" />
-      </svg>
-    );
-  }
-  return (
-    <svg className="h-4 w-4" viewBox="0 0 24 24">
-      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-    </svg>
-  );
-};
-
-const ACCOUNT_NOTES = [
-  'Holds your Premium membership and reward codes',
-  'Lets you manage or cancel billing anytime',
-  'Everything non-premium stays open to everyone, no account needed',
-];
 
 const AuthModal = forwardRef<HTMLDivElement, AuthModalProps>(({ isOpen, onClose, defaultMode = 'signin' }, ref) => {
   const [mode, setMode] = useState<AuthMode>(defaultMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [showMFAVerification, setShowMFAVerification] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<OAuthProvider | null>(null);
+  const [resendIn, setResendIn] = useState(0);
+  const emailRef = useRef<HTMLInputElement>(null);
   const { signIn, signUp } = useAuth();
-  const { check: checkLimit, isLimited, resetInMs } = useAuthRateLimit();
-  const retryAfter = resetInMs ? Math.ceil(resetInMs / 1000) : null;
+  const { check: checkLimit } = useAuthRateLimit();
+  const providers = useEnabledAuthProviders(isOpen);
 
-  // The modal can stay mounted (isOpen toggles) — reset the mode each open
   useEffect(() => {
-    if (isOpen) setMode(defaultMode);
+    if (isOpen) {
+      setMode(defaultMode);
+      setFormError(null);
+      setNotice(null);
+    }
   }, [isOpen, defaultMode]);
+
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const t = setTimeout(() => setResendIn((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendIn]);
+
+  const resetForm = () => {
+    setEmail('');
+    setPassword('');
+    setDisplayName('');
+    setShowPassword(false);
+    setFormError(null);
+    setNotice(null);
+  };
+
+  const switchMode = (next: AuthMode) => {
+    setMode(next);
+    setFormError(null);
+    setNotice(null);
+    setTimeout(() => emailRef.current?.focus(), 50);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Check rate limit before proceeding (V2 is synchronous)
-    const result = checkLimit();
-    if (!result.allowed) return;
-    
-    setIsLoading(true);
+    setFormError(null);
+    setNotice(null);
 
+    const result = checkLimit();
+    if (!result.allowed) {
+      setFormError('Too many attempts. Please wait a moment and try again.');
+      return;
+    }
+
+    setIsLoading(true);
     try {
       if (mode === 'signin') {
-        const { error, requiresMFA } = await signIn(email, password);
+        const { error, requiresMFA } = await signIn(email.trim(), password);
         if (error) {
-          toast.error('Sign in failed', { description: error.message });
+          setFormError(friendlyError(error.message));
         } else if (requiresMFA) {
           setShowMFAVerification(true);
         } else {
@@ -98,33 +106,32 @@ const AuthModal = forwardRef<HTMLDivElement, AuthModalProps>(({ isOpen, onClose,
           resetForm();
         }
       } else if (mode === 'signup') {
-        const { error, needsEmailConfirm } = await signUp(email, password, displayName);
+        const { error, needsEmailConfirm } = await signUp(email.trim(), password, displayName.trim() || undefined);
         if (error) {
-          toast.error('Sign up failed', { description: error.message });
+          if (friendlyError(error.message).startsWith('An account with this email already exists')) {
+            setMode('signin');
+            setPassword('');
+            setNotice('You already have an account with this email. Sign in below, or reset your password.');
+          } else {
+            setFormError(friendlyError(error.message));
+          }
         } else if (needsEmailConfirm) {
-          // No session until the confirmation link is clicked —
-          // pending checkout resumes automatically after they confirm & sign in.
+          setResendIn(RESEND_SECONDS);
           setMode('confirm-email');
         } else {
-          toast.success('Account created', {
-            description: 'Welcome to En Pensent.',
-            icon: <Gift className="h-4 w-4" />,
-          });
+          toast.success('Account created', { description: 'Welcome to En Pensent.', icon: <Gift className="h-4 w-4" /> });
           onClose();
           resetForm();
         }
       } else if (mode === 'forgot') {
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
           redirectTo: `${window.location.origin}/account`,
         });
         if (error) {
-          toast.error('Reset failed', { description: error.message });
+          setFormError(friendlyError(error.message));
         } else {
-          toast.success('Reset email sent', {
-            description: 'Check your inbox for a password reset link.',
-            icon: <MailCheck className="h-4 w-4" />,
-          });
           setMode('signin');
+          setNotice('Reset link sent. Check your inbox, then sign in with your new password.');
         }
       }
     } finally {
@@ -132,19 +139,32 @@ const AuthModal = forwardRef<HTMLDivElement, AuthModalProps>(({ isOpen, onClose,
     }
   };
 
+  const handleResend = async () => {
+    if (resendIn > 0) return;
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: email.trim(),
+      options: { emailRedirectTo: window.location.origin },
+    });
+    if (error) {
+      setFormError(friendlyError(error.message));
+    } else {
+      setFormError(null);
+      setResendIn(RESEND_SECONDS);
+      toast.success('Confirmation email sent again');
+    }
+  };
+
   const handleOAuthSignIn = async (provider: OAuthProvider) => {
     setOauthLoading(provider);
-    // Return to the page the user was on (Supabase falls back to the Site URL
-    // if this path is not in the allowed redirect list).
+    setFormError(null);
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: { redirectTo: `${window.location.origin}${window.location.pathname}` },
     });
     if (error) {
       setOauthLoading(null);
-      toast.error(`${OAUTH_LABELS[provider]} sign-in unavailable`, {
-        description: 'Use email instead, or try again later.',
-      });
+      setFormError(`${OAUTH_LABELS[provider]} sign-in is unavailable right now. Please use email instead.`);
     }
   };
 
@@ -155,213 +175,203 @@ const AuthModal = forwardRef<HTMLDivElement, AuthModalProps>(({ isOpen, onClose,
     setShowMFAVerification(false);
   };
 
-  const resetForm = () => {
-    setEmail('');
-    setPassword('');
-    setDisplayName('');
-  };
-
-  const toggleMode = () => {
-    setMode(mode === 'signin' ? 'signup' : 'signin');
-    resetForm();
-  };
+  const isSignup = mode === 'signup';
+  const title =
+    mode === 'signin' ? 'Welcome back' : mode === 'signup' ? 'Create your free account' : mode === 'forgot' ? 'Reset your password' : 'Check your inbox';
+  const subtitle =
+    mode === 'signin'
+      ? 'Sign in to pick up where you left off.'
+      : mode === 'signup'
+        ? 'Save your visions, order prints and unlock Premium in seconds.'
+        : mode === 'forgot'
+          ? 'Enter your email and we will send you a reset link.'
+          : `We sent a confirmation link to ${email}.`;
 
   return (
     <div ref={ref}>
       <Dialog open={isOpen && !showMFAVerification} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="sm:max-w-md bg-card border-border">
-          {mode === 'signup' && (
-            <LifestyleStrip count={2} heading="Your games, on your walls" />
-          )}
-          <DialogHeader>
-            <DialogTitle className="font-display text-xl text-center">
-              {mode === 'signin' && 'Welcome Back'}
-              {mode === 'signup' && 'Create Your Account'}
-              {mode === 'forgot' && 'Reset Password'}
-              {mode === 'confirm-email' && 'Check Your Inbox'}
-            </DialogTitle>
-            {mode === 'signup' && (
-              <DialogDescription className="text-center">
-                Your account holds your Premium membership and rewards
-              </DialogDescription>
-            )}
-          </DialogHeader>
+        <DialogContent className="w-[calc(100vw-1.5rem)] max-w-4xl gap-0 overflow-hidden border-border bg-card p-0 md:grid md:grid-cols-2">
+          <AuthShowcase headline={isSignup ? 'Every game is a work of art.' : 'Your games are waiting.'} />
 
-          {mode === 'confirm-email' ? (
-            <div className="py-6 text-center space-y-4">
-              <div className="mx-auto h-12 w-12 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
-                <MailCheck className="h-6 w-6 text-primary" />
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm font-medium">Confirmation email sent</p>
-                <p className="text-xs text-muted-foreground max-w-xs mx-auto">
-                  We sent a confirmation link to <span className="font-medium text-foreground">{email}</span>.
-                  Click it to activate your account — then sign in to continue to checkout.
-                </p>
-              </div>
-              <Button variant="outline" className="w-full" onClick={() => setMode('signin')}>
-                Back to Sign In
-              </Button>
-            </div>
-          ) : (
-          <>
-
-          {mode === 'signup' && (
-            <div className="bg-muted/30 rounded-lg p-4 border border-border/50">
-              <div className="flex items-center gap-2 mb-3">
-                <Gift className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium">Why an account:</span>
-              </div>
-              <ul className="space-y-2">
-                {ACCOUNT_NOTES.map((benefit, idx) => (
-                  <li key={idx} className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Check className="h-3 w-3 text-green-500 flex-shrink-0" />
-                    {benefit}
-                  </li>
+          <div className="max-h-[92vh] overflow-y-auto p-6 sm:p-8">
+            {(mode === 'signin' || mode === 'signup') && (
+              <div className="mb-6 grid grid-cols-2 rounded-lg bg-muted p-1 text-sm font-medium" role="tablist">
+                {(['signup', 'signin'] as const).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    role="tab"
+                    aria-selected={mode === m}
+                    onClick={() => switchMode(m)}
+                    className={cn(
+                      'rounded-md py-2 transition-all',
+                      mode === m ? 'bg-background text-foreground shadow' : 'text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    {m === 'signup' ? 'Create account' : 'Sign in'}
+                  </button>
                 ))}
-              </ul>
-              <div className="mt-3 pt-3 border-t border-border/50 flex items-center gap-2">
-                <Crown className="h-4 w-4 text-primary" />
-                <span className="text-xs text-primary">
-                  <span className="font-medium">Premium</span> supports a solo founder
-                </span>
-              </div>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-            {mode === 'signup' && (
-              <div className="space-y-2">
-                <Label htmlFor="displayName" className="text-sm font-medium">
-                  Display Name
-                </Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="displayName"
-                    type="text"
-                    placeholder="Your name"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
               </div>
             )}
 
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium">
-                Email
-              </Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="pl-10"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-sm font-medium">
-                Password
-              </Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={6}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-
-            <Button
-              type="submit"
-              disabled={isLoading || isLimited}
-              className="w-full btn-luxury"
-            >
-              {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : isLimited ? (
-                `Try again in ${retryAfter}s`
-              ) : mode === 'signin' ? (
-                'Sign In'
-              ) : mode === 'forgot' ? (
-                'Send Reset Link'
-              ) : (
-                <>
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  Create Account
-                </>
-              )}
-            </Button>
-
-            {mode === 'signin' && (
+            {(mode === 'forgot' || mode === 'confirm-email') && (
               <button
                 type="button"
-                onClick={() => setMode('forgot')}
-                className="w-full text-center text-xs text-muted-foreground hover:text-primary transition-colors"
+                onClick={() => switchMode('signin')}
+                className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
               >
-                Forgot password?
+                <ArrowLeft className="h-4 w-4" /> Back to sign in
               </button>
             )}
-          </form>
 
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-border/50" />
-            </div>
-            <div className="relative flex justify-center text-xs">
-              <span className="bg-card px-2 text-muted-foreground">or</span>
-            </div>
-          </div>
+            <DialogTitle className="font-royal text-2xl">{title}</DialogTitle>
+            <DialogDescription className="mt-1 text-sm">{subtitle}</DialogDescription>
 
-          <div className="space-y-2">
-            {ENABLED_PROVIDERS.map((provider) => (
-              <Button
-                key={provider}
-                type="button"
-                variant="outline"
-                className="w-full gap-2"
-                disabled={oauthLoading !== null}
-                onClick={() => handleOAuthSignIn(provider)}
-              >
-                {oauthLoading === provider ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <ProviderIcon provider={provider} />
+            {notice && (
+              <div role="status" className="mt-4 flex items-start gap-2 rounded-lg border border-primary/30 bg-primary/10 p-3 text-sm">
+                <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
+                {notice}
+              </div>
+            )}
+            {formError && (
+              <div role="alert" className="mt-4 flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                {formError}
+              </div>
+            )}
+
+            {mode === 'confirm-email' ? (
+              <div className="mt-6 space-y-4">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/15 text-primary">
+                  <MailCheck className="h-7 w-7" />
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Click the link in that email to activate your account. It can take a minute, and it may land in spam.
+                </p>
+                <Button type="button" variant="outline" className="w-full" onClick={handleResend} disabled={resendIn > 0}>
+                  {resendIn > 0 ? `Resend email in ${resendIn}s` : 'Resend confirmation email'}
+                </Button>
+                <button type="button" onClick={() => switchMode('signup')} className="w-full text-center text-sm text-muted-foreground hover:text-foreground">
+                  Wrong email? Start over
+                </button>
+              </div>
+            ) : (
+              <>
+                {providers.length > 0 && mode !== 'forgot' && (
+                  <div className="mt-6 space-y-3">
+                    <div className={cn('grid gap-2', providers.length > 1 && 'sm:grid-cols-2')}>
+                      {providers.map((p) => (
+                        <Button
+                          key={p}
+                          type="button"
+                          variant="outline"
+                          className="h-11 gap-2"
+                          disabled={!!oauthLoading || isLoading}
+                          onClick={() => handleOAuthSignIn(p)}
+                        >
+                          {oauthLoading === p ? <Loader2 className="h-4 w-4 animate-spin" /> : <AuthProviderIcon provider={p} />}
+                          Continue with {OAUTH_LABELS[p]}
+                        </Button>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-3 text-xs uppercase tracking-wider text-muted-foreground">
+                      <span className="h-px flex-1 bg-border" /> or use email <span className="h-px flex-1 bg-border" />
+                    </div>
+                  </div>
                 )}
-                Continue with {OAUTH_LABELS[provider]}
-              </Button>
-            ))}
-          </div>
 
-          <div className="mt-2 text-center">
-            <button
-              type="button"
-              onClick={toggleMode}
-              className="text-sm text-muted-foreground hover:text-primary transition-colors"
-            >
-              {mode === 'signin' || mode === 'forgot' ? (
-                <>New here? <span className="font-medium text-primary">Create an account</span></>
-              ) : (
-                <>Already have an account? <span className="font-medium text-primary">Sign in</span></>
-              )}
-            </button>
+                <form onSubmit={handleSubmit} className="mt-6 space-y-4" noValidate={false}>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="auth-email">Email</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        id="auth-email"
+                        ref={emailRef}
+                        type="email"
+                        autoComplete="email"
+                        inputMode="email"
+                        placeholder="you@example.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="h-11 pl-10"
+                        required
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+
+                  {mode !== 'forgot' && (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="auth-password">Password</Label>
+                        {mode === 'signin' && (
+                          <button type="button" onClick={() => switchMode('forgot')} className="text-xs text-primary hover:underline">
+                            Forgot password?
+                          </button>
+                        )}
+                      </div>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          id="auth-password"
+                          type={showPassword ? 'text' : 'password'}
+                          autoComplete={isSignup ? 'new-password' : 'current-password'}
+                          placeholder={isSignup ? 'At least 6 characters' : 'Your password'}
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          className="h-11 pl-10 pr-11"
+                          minLength={6}
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword((s) => !s)}
+                          aria-label={showPassword ? 'Hide password' : 'Show password'}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {isSignup && (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="auth-name">
+                        Display name <span className="font-normal text-muted-foreground">(optional)</span>
+                      </Label>
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          id="auth-name"
+                          type="text"
+                          autoComplete="nickname"
+                          placeholder="What should we call you?"
+                          value={displayName}
+                          onChange={(e) => setDisplayName(e.target.value)}
+                          className="h-11 pl-10"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <Button type="submit" size="lg" className="h-11 w-full text-base" disabled={isLoading || !!oauthLoading}>
+                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {mode === 'signin' ? 'Sign in' : mode === 'signup' ? 'Create free account' : 'Send reset link'}
+                  </Button>
+                </form>
+
+                {isSignup && (
+                  <p className="mt-4 text-center text-xs text-muted-foreground">
+                    By creating an account you agree to our{' '}
+                    <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">Terms</a> and{' '}
+                    <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">Privacy Policy</a>.
+                  </p>
+                )}
+              </>
+            )}
           </div>
-          </>
-          )}
         </DialogContent>
       </Dialog>
 

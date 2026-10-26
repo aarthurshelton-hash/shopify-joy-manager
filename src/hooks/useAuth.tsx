@@ -368,6 +368,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
     });
     
+    if (!error && data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      return { error: new Error('An account with this email already exists.'), needsEmailConfirm: false };
+    }
+
     if (!error && data.user) {
       recordFunnelEvent('signup_completed', {
         trigger_source: 'auth_modal',
