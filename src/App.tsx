@@ -27,6 +27,7 @@ const GameView = lazy(() => import("./pages/GameView"));
 const MyPalettes = lazy(() => import("./pages/MyPalettes"));
 const MyVision = lazy(() => import("./pages/MyVision"));
 const About = lazy(() => import("./pages/About"));
+const Join = lazy(() => import("./pages/Join"));
 const Investors = lazy(() => import("./pages/Investors"));
 const Analytics = lazy(() => import("./pages/Analytics"));
 const Leaderboard = lazy(() => import("./pages/Leaderboard"));
@@ -143,6 +144,7 @@ const App = () => (
               <Route path="/my-vision" element={<Suspense fallback={<PageLoadingSkeleton />}><MyVision /></Suspense>} />
               <Route path="/my-vision/:id" element={<Suspense fallback={<PageLoadingSkeleton />}><GalleryDetailRedirect /></Suspense>} />
               <Route path="/about" element={<Suspense fallback={<PageLoadingSkeleton />}><About /></Suspense>} />
+              <Route path="/join" element={<Suspense fallback={<PageLoadingSkeleton />}><Join /></Suspense>} />
               <Route path="/creative-mode" element={<Suspense fallback={<PageLoadingSkeleton />}><CreativeMode /></Suspense>} />
               <Route path="/game-history" element={<Suspense fallback={<PageLoadingSkeleton />}><GameHistory /></Suspense>} />
               <Route path="/report" element={<AdminRoute featureName="Report"><Suspense fallback={<PageLoadingSkeleton />}><GameReport /></Suspense></AdminRoute>} />
