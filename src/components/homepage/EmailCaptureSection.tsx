@@ -12,7 +12,8 @@ export const EmailCaptureSection: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !email.includes('@')) {
+    const normalized = email.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(normalized)) {
       toast.error('Please enter a valid email address');
       return;
     }
@@ -20,21 +21,15 @@ export const EmailCaptureSection: React.FC = () => {
     setLoading(true);
 
     try {
-      // Try to save to Supabase first
-      // Table may not exist in generated types yet — cast to bypass
       const { error } = await (supabase as unknown as {
-        from: (table: string) => { insert: (row: Record<string, unknown>) => Promise<{ error: { message: string } | null }> }
-      }).from('newsletter_subscribers').insert({ email });
+        from: (table: string) => { insert: (row: Record<string, unknown>) => Promise<{ error: { message: string; code?: string } | null }> }
+      }).from('newsletter_subscribers').insert({ email: normalized, source: 'homepage' });
 
-      if (error) {
-        // If table doesn't exist or RLS blocks, fall back to localStorage
-        // but still show success to the user
-        const subscribers = JSON.parse(localStorage.getItem('ep_newsletter') || '[]');
-        if (!subscribers.includes(email)) {
-          subscribers.push(email);
-          localStorage.setItem('ep_newsletter', JSON.stringify(subscribers));
-        }
-        console.warn('Newsletter signup saved locally (Supabase table may not exist yet):', error.message);
+      // 23505 = already subscribed; treat as success
+      if (error && error.code !== '23505') {
+        console.error('Newsletter signup failed:', error.message);
+        toast.error('We could not save your subscription. Please try again.');
+        return;
       }
 
       setSubmitted(true);
