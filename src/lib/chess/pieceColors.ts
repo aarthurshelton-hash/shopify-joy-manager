@@ -6,7 +6,8 @@ export type PieceColor = 'w' | 'b';
 export type PaletteId = 
   | 'hotCold' | 'medieval' | 'egyptian' | 'roman' | 'modern' | 'greyscale'
   | 'japanese' | 'nordic' | 'artdeco' | 'tropical' | 'cyberpunk' 
-  | 'autumn' | 'ocean' | 'desert' | 'cosmic' | 'vintage' | 'custom';
+  | 'autumn' | 'ocean' | 'desert' | 'cosmic' | 'vintage' | 'custom'
+  | 'clear' | 'contrast' | 'stainedglass' | 'aurora' | 'volcanic' | 'woodland' | 'spectral' | 'inkgold';
 
 export interface PieceColorMapping {
   piece: PieceType;
@@ -40,20 +41,20 @@ const hotColdPalette: ColorPalette = {
   description: 'Warm reds vs cool blues for maximum contrast',
   backgroundImage: 'hotcold',
   white: {
-    k: '#1E3A5F', // Navy Deep Blue - King
-    q: '#10B981', // Emerald Green
-    r: '#1D4ED8', // Royal Blue
-    b: '#06B6D4', // Cyan
-    n: '#EC4899', // Hot Pink - Knight
-    p: '#94A3B8', // Cool Gray
+    k: '#4E4F65',
+    q: '#9CC295',
+    r: '#6A6CFB',
+    b: '#65C7E8',
+    n: '#A56796',
+    p: '#9F9F9F',
   },
   black: {
-    k: '#DC2626', // Crimson Red
-    q: '#5B21B6', // Deep Royal Purple
-    r: '#EA580C', // Burnt Orange
-    b: '#F59E0B', // Amber Gold
-    n: '#7F1D1D', // Dark Maroon
-    p: '#57534E', // Warm Gray
+    k: '#B62204',
+    q: '#7824BA',
+    r: '#D46B1D',
+    b: '#EFAF37',
+    n: '#6D3B3F',
+    p: '#7A7057',
   },
   legendTheme: {
     whiteName: 'Cold',
@@ -70,20 +71,20 @@ const medievalPalette: ColorPalette = {
   description: 'Rich jewel tones of castle halls and royal courts',
   backgroundImage: 'medieval',
   white: {
-    k: '#C9A227', // Gold Crown
-    q: '#1E3A5F', // Noble Navy
-    r: '#4A5568', // Castle Stone
-    b: '#2D5016', // Forest Green
-    n: '#6B4423', // Saddle Brown
-    p: '#A8A29E', // Chain Mail Silver
+    k: '#FEAC43',
+    q: '#0F1059',
+    r: '#6E767C',
+    b: '#042901',
+    n: '#8F6A50',
+    p: '#C8BBAE',
   },
   black: {
-    k: '#7C2D12', // Oxblood
-    q: '#4C1D95', // Royal Velvet
-    r: '#1C1917', // Iron Black
-    b: '#831843', // Burgundy
-    n: '#3F3F46', // Dark Steel
-    p: '#44403C', // Charcoal
+    k: '#A42A07',
+    q: '#222EEF',
+    r: '#070504',
+    b: '#8D307D',
+    n: '#3E404D',
+    p: '#534C36',
   },
   legendTheme: {
     whiteName: 'Kings',
@@ -100,20 +101,20 @@ const egyptianPalette: ColorPalette = {
   description: 'Golden sands and lapis lazuli of ancient temples',
   backgroundImage: 'egyptian',
   white: {
-    k: '#FFD700', // Pharaoh Gold
-    q: '#1E40AF', // Lapis Lazuli
-    r: '#D4A574', // Sandstone
-    b: '#06B6D4', // Turquoise
-    n: '#854D0E', // Papyrus Brown
-    p: '#FEF3C7', // Desert Sand
+    k: '#E3CC1C',
+    q: '#45558C',
+    r: '#CC944D',
+    b: '#1CBADB',
+    n: '#795304',
+    p: '#BEBEA4',
   },
   black: {
-    k: '#1F2937', // Obsidian
-    q: '#7C3AED', // Amethyst
-    r: '#92400E', // Nile Mud
-    b: '#059669', // Malachite
-    n: '#78350F', // Copper
-    p: '#451A03', // Dark Earth
+    k: '#4A4A4A',
+    q: '#914EFF',
+    r: '#AF644A',
+    b: '#648F82',
+    n: '#6C1B1C',
+    p: '#1F0100',
   },
   legendTheme: {
     whiteName: 'Pharaohs',
@@ -130,20 +131,20 @@ const romanPalette: ColorPalette = {
   description: 'Imperial marble and terracotta of the Empire',
   backgroundImage: 'roman',
   white: {
-    k: '#7C3AED', // Imperial Purple
-    q: '#DC2626', // Roman Red
-    r: '#F5F5F4', // Marble White
-    b: '#0369A1', // Mediterranean Blue
-    n: '#B45309', // Bronze
-    p: '#D6D3D1', // Travertine
+    k: '#926EFE',
+    q: '#F16860',
+    r: '#DFD9B8',
+    b: '#3A6FA6',
+    n: '#9A6810',
+    p: '#A0A0A0',
   },
   black: {
-    k: '#1E1B4B', // Senate Indigo
-    q: '#991B1B', // Deep Crimson
-    r: '#292524', // Volcanic Black
-    b: '#0C4A6E', // Deep Sea
-    n: '#713F12', // Dark Bronze
-    p: '#44403C', // Ash Grey
+    k: '#00033C',
+    q: '#9D2439',
+    r: '#0F0200',
+    b: '#10505B',
+    n: '#4C2B01',
+    p: '#6A6865',
   },
   legendTheme: {
     whiteName: 'Emperors',
@@ -160,20 +161,20 @@ const modernPalette: ColorPalette = {
   description: 'Clean, vibrant colors for contemporary aesthetics',
   backgroundImage: 'modern',
   white: {
-    k: '#3B82F6', // Electric Blue
-    q: '#EC4899', // Hot Pink
-    r: '#14B8A6', // Teal
-    b: '#A855F7', // Purple
-    n: '#F97316', // Orange
-    p: '#64748B', // Slate
+    k: '#90A7FD',
+    q: '#FC2A79',
+    r: '#12D3AE',
+    b: '#9C72B1',
+    n: '#FB9360',
+    p: '#888888',
   },
   black: {
-    k: '#1D4ED8', // Deep Blue
-    q: '#BE185D', // Magenta
-    r: '#0F766E', // Dark Teal
-    b: '#7C3AED', // Violet
-    n: '#C2410C', // Burnt Orange
-    p: '#334155', // Dark Slate
+    k: '#2C5289',
+    q: '#823251',
+    r: '#2F8151',
+    b: '#4301FE',
+    n: '#B01208',
+    p: '#242424',
   },
   legendTheme: {
     whiteName: 'Digital',
@@ -190,20 +191,20 @@ const greyscalePalette: ColorPalette = {
   description: 'Warm vs cold greys for elegant monochrome prints',
   backgroundImage: 'greyscale',
   white: {
-    k: '#94A3B8', // Cool Grey 400
-    q: '#CBD5E1', // Cool Grey 300
-    r: '#64748B', // Cool Grey 500
-    b: '#E2E8F0', // Cool Grey 200
-    n: '#475569', // Cool Grey 600
-    p: '#F1F5F9', // Cool Grey 100
+    k: '#6987FA',
+    q: '#93B5BA',
+    r: '#685D80',
+    b: '#CDD0FE',
+    n: '#0354CE',
+    p: '#FFF1EC',
   },
   black: {
-    k: '#78716C', // Warm Grey 500
-    q: '#A8A29E', // Warm Grey 400
-    r: '#57534E', // Warm Grey 600
-    b: '#D6D3D1', // Warm Grey 300
-    n: '#44403C', // Warm Grey 700
-    p: '#292524', // Warm Grey 800
+    k: '#818181',
+    q: '#B78E76',
+    r: '#765F3C',
+    b: '#C6C5A2',
+    n: '#414141',
+    p: '#1C0200',
   },
   legendTheme: {
     whiteName: 'Cool',
@@ -220,20 +221,20 @@ const japanesePalette: ColorPalette = {
   description: 'Sakura blossoms and zen garden tranquility',
   backgroundImage: 'japanese',
   white: {
-    k: '#F472B6', // Sakura Pink
-    q: '#22C55E', // Bamboo Green
-    r: '#FECDD3', // Soft Blossom
-    b: '#A3E635', // Spring Leaf
-    n: '#FB923C', // Koi Orange
-    p: '#F5F5F4', // Rice Paper
+    k: '#B55F92',
+    q: '#4FD67E',
+    r: '#D8ADD1',
+    b: '#CBF02A',
+    n: '#EC8C05',
+    p: '#CCCAC0',
   },
   black: {
-    k: '#BE123C', // Deep Rose
-    q: '#166534', // Forest Moss
-    r: '#991B1B', // Torii Red
-    b: '#15803D', // Jade
-    n: '#78350F', // Autumn Maple
-    p: '#44403C', // Ink Stone
+    k: '#E6444B',
+    q: '#1F6058',
+    r: '#6B2B27',
+    b: '#599477',
+    n: '#A74000',
+    p: '#161616',
   },
   legendTheme: {
     whiteName: 'Sakura',
@@ -250,20 +251,20 @@ const nordicPalette: ColorPalette = {
   description: 'Aurora borealis over frozen Scandinavian nights',
   backgroundImage: 'nordic',
   white: {
-    k: '#22D3EE', // Aurora Cyan
-    q: '#A78BFA', // Northern Violet
-    r: '#2DD4BF', // Glacial Teal
-    b: '#67E8F9', // Ice Blue
-    n: '#86EFAC', // Aurora Green
-    p: '#E0F2FE', // Snow White
+    k: '#59BAF6',
+    q: '#9A68FD',
+    r: '#87B19F',
+    b: '#44F5FF',
+    n: '#B8D67D',
+    p: '#E4E0D7',
   },
   black: {
-    k: '#0E7490', // Deep Fjord
-    q: '#5B21B6', // Twilight Purple
-    r: '#0F766E', // Pine Dark
-    b: '#0369A1', // Nordic Sea
-    n: '#14532D', // Forest Night
-    p: '#1E293B', // Polar Night
+    k: '#11879A',
+    q: '#56316B',
+    r: '#607261',
+    b: '#1F51CB',
+    n: '#0A6005',
+    p: '#060606',
   },
   legendTheme: {
     whiteName: 'Aurora',
@@ -280,20 +281,20 @@ const artdecoPalette: ColorPalette = {
   description: '1920s glamour with gold and geometric elegance',
   backgroundImage: 'artdeco',
   white: {
-    k: '#FFD700', // Gold
-    q: '#F5F5F4', // Ivory
-    r: '#FCD34D', // Champagne
-    b: '#FBBF24', // Amber
-    n: '#FDE68A', // Pale Gold
-    p: '#FFFBEB', // Cream
+    k: '#EFF80E',
+    q: '#BFBFBF',
+    r: '#FFD6A2',
+    b: '#CA8F01',
+    n: '#BAB46F',
+    p: '#DEFFE9',
   },
   black: {
-    k: '#0C0A09', // Jet Black
-    q: '#1C1917', // Ebony
-    r: '#292524', // Onyx
-    b: '#44403C', // Charcoal
-    n: '#57534E', // Graphite
-    p: '#1E1B4B', // Midnight
+    k: '#060606',
+    q: '#36190A',
+    r: '#444444',
+    b: '#685134',
+    n: '#787876',
+    p: '#414485',
   },
   legendTheme: {
     whiteName: 'Gold',
@@ -310,20 +311,20 @@ const tropicalPalette: ColorPalette = {
   description: 'Vibrant jungle paradise with exotic colors',
   backgroundImage: 'tropical',
   white: {
-    k: '#22C55E', // Jungle Green
-    q: '#F97316', // Toucan Orange
-    r: '#84CC16', // Palm Leaf
-    b: '#FACC15', // Tropical Sun
-    n: '#FB923C', // Mango
-    p: '#4ADE80', // Parrot Green
+    k: '#7AB18C',
+    q: '#F46C55',
+    r: '#C5FF1E',
+    b: '#E3D58F',
+    n: '#F0A306',
+    p: '#56FED4',
   },
   black: {
-    k: '#166534', // Deep Rainforest
-    q: '#C2410C', // Hibiscus Red
-    r: '#3F6212', // Canopy Dark
-    b: '#B45309', // Tiger Orange
-    n: '#7C2D12', // Volcanic Soil
-    p: '#14532D', // Shadow Green
+    k: '#247E6B',
+    q: '#A01B06',
+    r: '#56583E',
+    b: '#A66904',
+    n: '#3E1800',
+    p: '#024541',
   },
   legendTheme: {
     whiteName: 'Paradise',
@@ -340,20 +341,20 @@ const cyberpunkPalette: ColorPalette = {
   description: 'Neon-lit dystopian future cityscapes',
   backgroundImage: 'cyberpunk',
   white: {
-    k: '#F472B6', // Neon Pink
-    q: '#22D3EE', // Cyber Cyan
-    r: '#E879F9', // Electric Magenta
-    b: '#818CF8', // Hologram Purple
-    n: '#67E8F9', // Laser Blue
-    p: '#A78BFA', // Soft Neon
+    k: '#FC6E80',
+    q: '#7FAEB2',
+    r: '#CC6EFD',
+    b: '#7C7FA7',
+    n: '#69F1DB',
+    p: '#C5BDFB',
   },
   black: {
-    k: '#BE185D', // Deep Magenta
-    q: '#0E7490', // Dark Cyan
-    r: '#7C3AED', // Violet Dark
-    b: '#4338CA', // Indigo
-    n: '#1D4ED8', // Electric Blue
-    p: '#1E1B4B', // Cyber Dark
+    k: '#BF313A',
+    q: '#3B595B',
+    r: '#844195',
+    b: '#120D85',
+    n: '#0644FE',
+    p: '#0B0016',
   },
   legendTheme: {
     whiteName: 'Neon',
@@ -370,20 +371,20 @@ const autumnPalette: ColorPalette = {
   description: 'Golden harvest and falling maple leaves',
   backgroundImage: 'autumn',
   white: {
-    k: '#F59E0B', // Golden Amber
-    q: '#DC2626', // Maple Red
-    r: '#FBBF24', // Harvest Yellow
-    b: '#EA580C', // Pumpkin Orange
-    n: '#F97316', // Autumn Orange
-    p: '#FEF3C7', // Wheat
+    k: '#FDB213',
+    q: '#D13A5D',
+    r: '#F6E38E',
+    b: '#D57F6A',
+    n: '#F76D02',
+    p: '#C8CEC1',
   },
   black: {
-    k: '#92400E', // Deep Amber
-    q: '#991B1B', // Burgundy
-    r: '#78350F', // Chestnut
-    b: '#7C2D12', // Rust
-    n: '#713F12', // Walnut
-    p: '#451A03', // Dark Earth
+    k: '#A16104',
+    q: '#6D2A35',
+    r: '#412600',
+    b: '#9A2604',
+    n: '#745E4B',
+    p: '#1E0402',
   },
   legendTheme: {
     whiteName: 'Harvest',
@@ -400,20 +401,20 @@ const oceanPalette: ColorPalette = {
   description: 'Deep sea mysteries and coral reef wonders',
   backgroundImage: 'ocean',
   white: {
-    k: '#0EA5E9', // Ocean Blue
-    q: '#06B6D4', // Coral Cyan
-    r: '#22D3EE', // Shallow Water
-    b: '#2DD4BF', // Sea Foam
-    n: '#38BDF8', // Wave Blue
-    p: '#E0F2FE', // Sea Spray
+    k: '#1481F4',
+    q: '#8BA7AB',
+    r: '#04F4FF',
+    b: '#A1DAAE',
+    n: '#24B8FC',
+    p: '#F6F5F0',
   },
   black: {
-    k: '#0C4A6E', // Abyss Blue
-    q: '#0E7490', // Deep Teal
-    r: '#164E63', // Ocean Deep
-    b: '#115E59', // Sea Dark
-    n: '#1E3A5F', // Navy Depths
-    p: '#0F172A', // Midnight Sea
+    k: '#2246DA',
+    q: '#147B82',
+    r: '#4C4F52',
+    b: '#2E5B36',
+    n: '#000F3D',
+    p: '#130000',
   },
   legendTheme: {
     whiteName: 'Surface',
@@ -430,20 +431,20 @@ const desertPalette: ColorPalette = {
   description: 'Sunset canyons and red rock formations',
   backgroundImage: 'desert',
   white: {
-    k: '#DC2626', // Canyon Red
-    q: '#F97316', // Sunset Orange
-    r: '#D4A574', // Sandstone
-    b: '#FBBF24', // Desert Sun
-    n: '#EA580C', // Mesa Orange
-    p: '#FEF3C7', // Sand
+    k: '#ED0D59',
+    q: '#FC9872',
+    r: '#AD988E',
+    b: '#FCD712',
+    n: '#C56F04',
+    p: '#CCD2C6',
   },
   black: {
-    k: '#7C2D12', // Rust Rock
-    q: '#9A3412', // Terracotta
-    r: '#78350F', // Adobe
-    b: '#92400E', // Burnt Sienna
-    n: '#451A03', // Shadow Canyon
-    p: '#1C1917', // Desert Night
+    k: '#5E0000',
+    q: '#B02A00',
+    r: '#5D482E',
+    b: '#936252',
+    n: '#220103',
+    p: '#363636',
   },
   legendTheme: {
     whiteName: 'Dawn',
@@ -460,20 +461,20 @@ const cosmicPalette: ColorPalette = {
   description: 'Nebulae and stardust across the galaxy',
   backgroundImage: 'cosmic',
   white: {
-    k: '#E879F9', // Nebula Pink
-    q: '#A78BFA', // Stardust Purple
-    r: '#F0ABFC', // Cosmic Rose
-    b: '#C4B5FD', // Galaxy Lavender
-    n: '#818CF8', // Star Blue
-    p: '#F5D0FE', // Plasma Pink
+    k: '#FF7BFF',
+    q: '#9F63FF',
+    r: '#CAA3BC',
+    b: '#C5DEFD',
+    n: '#7C83A3',
+    p: '#FAE5EA',
   },
   black: {
-    k: '#7C3AED', // Deep Violet
-    q: '#6D28D9', // Dark Nebula
-    r: '#5B21B6', // Space Purple
-    b: '#4C1D95', // Void Purple
-    n: '#3730A3', // Dark Cosmos
-    p: '#1E1B4B', // Black Hole
+    k: '#481BFF',
+    q: '#96389A',
+    r: '#060391',
+    b: '#460D4B',
+    n: '#435162',
+    p: '#000418',
   },
   legendTheme: {
     whiteName: 'Stars',
@@ -490,20 +491,20 @@ const vintagePalette: ColorPalette = {
   description: 'Sepia-toned nostalgia and timeless elegance',
   backgroundImage: 'vintage',
   white: {
-    k: '#A8A29E', // Antique Silver
-    q: '#D6D3D1', // Old Lace
-    r: '#D4A574', // Aged Paper
-    b: '#C9A227', // Brass
-    n: '#A16207', // Aged Gold
-    p: '#FEFCE8', // Ivory
+    k: '#A7A7A7',
+    q: '#F5F5F5',
+    r: '#DDA186',
+    b: '#B0A801',
+    n: '#A47305',
+    p: '#F6E59F',
   },
   black: {
-    k: '#57534E', // Patina
-    q: '#78716C', // Tarnished Silver
-    r: '#6B4423', // Leather Brown
-    b: '#713F12', // Antique Bronze
-    n: '#44403C', // Faded Ink
-    p: '#292524', // Old Photo
+    k: '#5B5B5B',
+    q: '#828262',
+    r: '#523502',
+    b: '#8F493B',
+    n: '#1C2012',
+    p: '#180217',
   },
   legendTheme: {
     whiteName: 'Light',
@@ -542,6 +543,238 @@ const customPalette: ColorPalette = {
   },
 };
 
+// === CLEAR ===
+const clearPalette: ColorPalette = {
+  id: 'clear',
+  name: 'Clear',
+  description: 'Colour-blind friendly: distinct hues with lightness separating the sides',
+  white: {
+    k: '#D3CA03', // King
+    q: '#497DFC', // Queen
+    r: '#BE891B', // Rook
+    b: '#9CC48E', // Bishop
+    n: '#B9B6BB', // Knight
+    p: '#33C4FE', // Pawn
+  },
+  black: {
+    k: '#7B8360', // King
+    q: '#554D9D', // Queen
+    r: '#8D4700', // Rook
+    b: '#2F7571', // Bishop
+    n: '#9978A6', // Knight
+    p: '#5A5242', // Pawn
+  },
+  legendTheme: {
+    whiteName: 'Bright',
+    whiteEmoji: '☀️',
+    blackName: 'Deep',
+    blackEmoji: '🌑',
+  },
+};
+
+// === HIGH CONTRAST ===
+const contrastPalette: ColorPalette = {
+  id: 'contrast',
+  name: 'High Contrast',
+  description: 'Maximum separation for low vision and small screens',
+  white: {
+    k: '#D0C503', // King
+    q: '#42CCDF', // Queen
+    r: '#BD8D47', // Rook
+    b: '#A1C797', // Bishop
+    n: '#AE66EC', // Knight
+    p: '#A4A4A4', // Pawn
+  },
+  black: {
+    k: '#980751', // King
+    q: '#2E34E5', // Queen
+    r: '#895D3D', // Rook
+    b: '#3A8D70', // Bishop
+    n: '#6D5F80', // Knight
+    p: '#000000', // Pawn
+  },
+  legendTheme: {
+    whiteName: 'Light',
+    whiteEmoji: '⬜',
+    blackName: 'Dark',
+    blackEmoji: '⬛',
+  },
+};
+
+// === STAINED GLASS ===
+const stainedglassPalette: ColorPalette = {
+  id: 'stainedglass',
+  name: 'Stained Glass',
+  description: 'Backlit cathedral jewel tones: ruby, sapphire, emerald, amber',
+  white: {
+    k: '#FCBA01', // King
+    q: '#8A90FA', // Queen
+    r: '#8AC58A', // Rook
+    b: '#E07936', // Bishop
+    n: '#AE7897', // Knight
+    p: '#B6B6B6', // Pawn
+  },
+  black: {
+    k: '#792B2A', // King
+    q: '#403BFA', // Queen
+    r: '#558669', // Rook
+    b: '#8C6029', // Bishop
+    n: '#6A467D', // Knight
+    p: '#5A5A5A', // Pawn
+  },
+  legendTheme: {
+    whiteName: 'Glass',
+    whiteEmoji: '🔷',
+    blackName: 'Lead',
+    blackEmoji: '⚜️',
+  },
+};
+
+// === AURORA ===
+const auroraPalette: ColorPalette = {
+  id: 'aurora',
+  name: 'Aurora',
+  description: 'Northern-lights greens, teals and violets against polar blues',
+  white: {
+    k: '#57A67A', // King
+    q: '#24CEE3', // Queen
+    r: '#8A87F2', // Rook
+    b: '#F5AB20', // Bishop
+    n: '#AC859D', // Knight
+    p: '#BDBDBA', // Pawn
+  },
+  black: {
+    k: '#0B642A', // King
+    q: '#606689', // Queen
+    r: '#8239EC', // Rook
+    b: '#788016', // Bishop
+    n: '#8A2C56', // Knight
+    p: '#0D0300', // Pawn
+  },
+  legendTheme: {
+    whiteName: 'Aurora',
+    whiteEmoji: '🌌',
+    blackName: 'Polar',
+    blackEmoji: '🧊',
+  },
+};
+
+// === VOLCANIC ===
+const volcanicPalette: ColorPalette = {
+  id: 'volcanic',
+  name: 'Volcanic',
+  description: 'Molten lava and ember against basalt and ash',
+  white: {
+    k: '#D2CE0E', // King
+    q: '#DF7414', // Queen
+    r: '#CD1701', // Rook
+    b: '#EDAE98', // Bishop
+    n: '#A06D62', // Knight
+    p: '#D4D4D4', // Pawn
+  },
+  black: {
+    k: '#8E8E8E', // King
+    q: '#424E5E', // Queen
+    r: '#8F4BEC', // Rook
+    b: '#5E4A39', // Bishop
+    n: '#307D91', // Knight
+    p: '#130001', // Pawn
+  },
+  legendTheme: {
+    whiteName: 'Ember',
+    whiteEmoji: '🔥',
+    blackName: 'Basalt',
+    blackEmoji: '🪨',
+  },
+};
+
+// === WOODLAND ===
+const woodlandPalette: ColorPalette = {
+  id: 'woodland',
+  name: 'Woodland',
+  description: 'Moss, fern, bark and berry for calm, low-glare study',
+  white: {
+    k: '#AAE195', // King
+    q: '#2BA5A2', // Queen
+    r: '#93760E', // Rook
+    b: '#E6B30B', // Bishop
+    n: '#EF6C68', // Knight
+    p: '#CAC7BE', // Pawn
+  },
+  black: {
+    k: '#445701', // King
+    q: '#135F84', // Queen
+    r: '#401901', // Rook
+    b: '#737373', // Bishop
+    n: '#7D3C47', // Knight
+    p: '#060606', // Pawn
+  },
+  legendTheme: {
+    whiteName: 'Canopy',
+    whiteEmoji: '🌿',
+    blackName: 'Roots',
+    blackEmoji: '🍂',
+  },
+};
+
+// === SPECTRAL RANK ===
+const spectralPalette: ColorPalette = {
+  id: 'spectral',
+  name: 'Spectral Rank',
+  description: 'Hue follows piece value, pawn to king, so the board teaches the hierarchy',
+  white: {
+    k: '#FE8CFE', // King
+    q: '#28A3B5', // Queen
+    r: '#ABC3B8', // Rook
+    b: '#D5DD15', // Bishop
+    n: '#C7AC7F', // Knight
+    p: '#D75D83', // Pawn
+  },
+  black: {
+    k: '#9839B8', // King
+    q: '#50516A', // Queen
+    r: '#0A7F69', // Rook
+    b: '#7B9F10', // Bishop
+    n: '#A74A00', // Knight
+    p: '#6F413C', // Pawn
+  },
+  legendTheme: {
+    whiteName: 'Bright',
+    whiteEmoji: '🌈',
+    blackName: 'Deep',
+    blackEmoji: '🌑',
+  },
+};
+
+// === INK & GOLD ===
+const inkgoldPalette: ColorPalette = {
+  id: 'inkgold',
+  name: 'Ink & Gold',
+  description: 'Champagne and gold against ink, wine and midnight',
+  white: {
+    k: '#D2CE10', // King
+    q: '#CF810E', // Queen
+    r: '#B1B1B1', // Rook
+    b: '#868764', // Bishop
+    n: '#F7B092', // Knight
+    p: '#CCF0D9', // Pawn
+  },
+  black: {
+    k: '#772F24', // King
+    q: '#03004A', // Queen
+    r: '#545C56', // Rook
+    b: '#7252A0', // Bishop
+    n: '#836105', // Knight
+    p: '#0A0500', // Pawn
+  },
+  legendTheme: {
+    whiteName: 'Gold',
+    whiteEmoji: '✨',
+    blackName: 'Ink',
+    blackEmoji: '🖋️',
+  },
+};
+
 // All available palettes
 export const colorPalettes: ColorPalette[] = [
   hotColdPalette,
@@ -560,6 +793,14 @@ export const colorPalettes: ColorPalette[] = [
   desertPalette,
   cosmicPalette,
   vintagePalette,
+  clearPalette,
+  contrastPalette,
+  stainedglassPalette,
+  auroraPalette,
+  volcanicPalette,
+  woodlandPalette,
+  spectralPalette,
+  inkgoldPalette,
   customPalette,
 ];
 
