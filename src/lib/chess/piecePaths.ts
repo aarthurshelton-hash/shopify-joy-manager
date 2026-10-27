@@ -59,7 +59,7 @@ export const DEFAULT_FILL: Record<PieceColor, string> = {
 };
 
 export const DEFAULT_STROKE: Record<PieceColor, string> = {
-  w: '#403422', // deep bronze outline for cream pieces
+  w: '#9A7428', // gold-bronze outline for cream pieces
   b: '#C9A552', // muted gold outline for dark pieces
 };
 

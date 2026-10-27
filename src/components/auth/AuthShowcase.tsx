@@ -1,6 +1,5 @@
 import React from 'react';
 import { Frame, Sparkles, ShieldCheck } from 'lucide-react';
-import { lifestyleImages } from '@/lib/lifestyleImages';
 
 const POINTS = [
   { icon: Sparkles, text: 'Save and revisit every game you visualize' },
@@ -9,11 +8,9 @@ const POINTS = [
 ];
 
 const AuthShowcase: React.FC<{ headline?: string }> = ({ headline = 'Every game is a work of art.' }) => {
-  const hero = lifestyleImages.find((i) => i.id.includes('gift-unboxing')) ?? lifestyleImages[0];
-
   return (
     <div className="relative hidden md:block min-h-[560px] overflow-hidden bg-black">
-      {hero && <img src={hero.src} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover" />}
+      <img src="/brand/hero.jpg" alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover" />
       <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-black/20" />
       <div className="relative flex h-full flex-col justify-end gap-5 p-8 text-white">
         <p className="font-display text-[11px] uppercase tracking-[0.3em] text-primary">En Pensent</p>

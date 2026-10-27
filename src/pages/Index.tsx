@@ -53,6 +53,7 @@ const AuthModal = lazy(() => import('@/components/auth/AuthModal'));
 const PrintGallery = lazy(() => import('@/components/homepage/PrintGallery'));
 const FAQSection = lazy(() => import('@/components/homepage/FAQSection'));
 const ChessParticles = lazy(() => import('@/components/chess/ChessParticles'));
+const ScrollBackdrop = lazy(() => import('@/components/homepage/ScrollBackdrop'));
 
 const Index = () => {
   const navigate = useNavigate();
@@ -382,20 +383,12 @@ setPendingResult(null);
           </div>
         ) : !simulation ? (
           <>
-            {/* Hero Section with Background Art */}
+            <Suspense fallback={null}>
+              <ScrollBackdrop />
+            </Suspense>
+            {/* Hero Section (artwork comes from the fixed scroll backdrop) */}
             <section ref={heroRef} className="relative overflow-hidden">
-              {/* Background Image */}
-              <div 
-                ref={heroImageRef}
-                className="absolute inset-0 bg-cover bg-center"
-                style={{ 
-                  backgroundImage: `url(${heroChessArt})`,
-                  imageRendering: 'auto',
-                  filter: 'blur(0.5px) saturate(1.1) contrast(1.05)',
-                  opacity: 0.3,
-                }}
-              />
-              <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/60 to-background pointer-events-none" />
+              <div ref={heroImageRef} className="hidden" />
               
               {/* Floating Chess Particles */}
               <Suspense fallback={null}>
@@ -473,6 +466,24 @@ setPendingResult(null);
                 <Suspense fallback={<div className="h-48 animate-pulse bg-muted/20 rounded-lg" />}>
                   <PaletteSelector onPaletteChange={handlePaletteChange} />
                 </Suspense>
+              </div>
+            </section>
+
+            {/* The official En Pensent set */}
+            <section className="container mx-auto px-4 py-12">
+              <div className="max-w-4xl mx-auto space-y-6 text-center">
+                <h3 className="font-editorial text-3xl md:text-4xl">
+                  The En Pensent <span className="italic text-gold-gradient">set</span>
+                </h3>
+                <p className="text-muted-foreground font-serif max-w-xl mx-auto">
+                  Gold-edged pieces, drawn for every game we paint.
+                </p>
+                <img
+                  src="/brand/pieces-lineup.png"
+                  alt="The official En Pensent chess pieces in ivory and obsidian"
+                  loading="lazy"
+                  className="w-full rounded-lg border border-primary/20 shadow-2xl"
+                />
               </div>
             </section>
 
