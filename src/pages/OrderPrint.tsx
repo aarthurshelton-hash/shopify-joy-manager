@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import ScrollBackdrop from '@/components/homepage/ScrollBackdrop';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowLeft, 
@@ -180,6 +181,7 @@ const OrderPrint: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <ScrollBackdrop />
       <Header />
       
       <main className="container mx-auto px-4 pt-8 pb-24 lg:pb-8 max-w-6xl">

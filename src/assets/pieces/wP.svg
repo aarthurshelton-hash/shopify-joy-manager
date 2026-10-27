@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+<title>En Pensent white pawn</title>
+<defs>
+<linearGradient id="fwp" x1="0" y1="0" x2="1" y2="0.35"><stop offset="0" stop-color="#FBF5E8"/><stop offset="0.55" stop-color="#E6D6B4"/><stop offset="1" stop-color="#C9B183"/></linearGradient>
+<linearGradient id="gwp" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FCE7A6"/><stop offset="0.45" stop-color="#E0B353"/><stop offset="1" stop-color="#9C6E22"/></linearGradient>
+<linearGradient id="mwp" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F3E3BC"/><stop offset="1" stop-color="#D8BE85"/></linearGradient>
+</defs>
+<g fill="url(#fwp)" stroke="#7A5A22" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round">
+<rect x="21" y="85" width="58" height="8" rx="2.6"/><rect x="26" y="80.5" width="48" height="6.0" rx="2"/><path d="M42,50 C42,67.05 32,77 31,81 L69,81 C68,77 58,67.05 58,50 Z"/><path class="sh" d="M45.2,53 C45,67.05 36,75 37.5,78.5"/><rect class="c" x="36" y="45.5" width="28" height="6.5" rx="2.4"/><path class="gm" d="M50,45.25 L53.5,48.75 L50,52.25 L46.5,48.75 Z"/><circle cx="50" cy="32" r="12.5"/><path class="sh" d="M41.5,30 C42,25 45,22 49,21.2"/>
+</g>
+<style>
+.g{fill:url(#gwp);stroke:#7A5A22;stroke-width:0.9}
+.m{fill:url(#gwp);stroke:#7A5A22;stroke-width:0.8}
+.c{fill:url(#gwp);stroke:#7A5A22;stroke-width:1.6}
+.gm{fill:url(#fwp);stroke:#7A5A22;stroke-width:0.9}
+.sh{fill:none;stroke:rgba(255,255,255,0.85);stroke-width:1.7}
+.d{fill:none;stroke:#B08A45;stroke-width:1.4}
+.slit{fill:none;stroke:url(#gwp);stroke-width:2.4}
+.eye{fill:url(#gwp);stroke:none}
+</style>
+</svg>

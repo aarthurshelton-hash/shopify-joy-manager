@@ -4,6 +4,9 @@
  */
 import { PieceType, PieceColor } from './pieceColors';
 import { PIECE_PATHS, PIECE_DETAILS, PIECE_OUTLINE_WIDTH, getPieceTones } from './piecePaths';
+import { getOfficialPieceImage, preloadOfficialPieces } from './officialPieces';
+
+preloadOfficialPieces();
 
 const grainTiles = new Map<string, HTMLCanvasElement>();
 
@@ -66,6 +69,14 @@ export function drawPremiumPiece(
     if (tctx) {
       drawPremiumPiece(tctx, type, color, dim / 2, dim / 2, size, hexColor, strokeColor);
       ctx.drawImage(tmp, cx - dim / 2, cy - dim / 2);
+      return;
+    }
+  }
+
+  if (!hexColor && !strokeColor) {
+    const img = getOfficialPieceImage(type, color);
+    if (img) {
+      ctx.drawImage(img, cx - size / 2, cy - size / 2, size, size);
       return;
     }
   }

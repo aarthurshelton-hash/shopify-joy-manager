@@ -8,6 +8,7 @@
 import React from 'react';
 import { PieceType, PieceColor } from '@/lib/chess/pieceColors';
 import { PIECE_PATHS, PIECE_DETAILS, PIECE_OUTLINE_WIDTH, getPieceTones } from '@/lib/chess/piecePaths';
+import { getOfficialPieceInner } from '@/lib/chess/officialPieces';
 
 interface ToneProps {
   color: PieceColor;
@@ -79,6 +80,15 @@ export const PremiumPieceBody: React.FC<ToneProps & { type: PieceType; id: strin
   strokeColor,
   detail = true,
 }) => {
+  const official = !hexColor && !strokeColor ? getOfficialPieceInner(type, color) : null;
+  if (official) {
+    return (
+      <g>
+        <ellipse cx="50" cy="92" rx="31" ry="3" fill="#000" opacity="0.28" />
+        <g dangerouslySetInnerHTML={{ __html: official }} />
+      </g>
+    );
+  }
   const t = getPieceTones(color, hexColor, strokeColor);
   const d = PIECE_PATHS[type];
   const det = PIECE_DETAILS[type];

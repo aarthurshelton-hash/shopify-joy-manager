@@ -6,6 +6,7 @@ import { Crown, Heart, Palette, Users, Lightbulb, Sparkles, Eye, ScanLine, QrCod
 import { useRandomGameArt } from '@/hooks/useRandomGameArt';
 import { Badge } from '@/components/ui/badge';
 import { RoyaltyCalculator } from '@/components/calculator/RoyaltyCalculator';
+import ScrollBackdrop from '@/components/homepage/ScrollBackdrop';
 import LifestyleMockupGallery from '@/components/shop/LifestyleMockupGallery';
 import { StrategicPositioningBanner } from '@/components/marketing/StrategicPositioningBanner';
 
@@ -14,6 +15,7 @@ const About = () => {
   
   return (
     <div className="min-h-screen bg-background">
+      <ScrollBackdrop />
       <ScrollProgress />
       <Header />
       

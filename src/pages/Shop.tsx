@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import ScrollBackdrop from '@/components/homepage/ScrollBackdrop';
 import { motion } from 'framer-motion';
 import {
   ArrowRight,
@@ -95,6 +96,7 @@ const Shop: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <ScrollBackdrop />
       <Header />
 
       {/* ═══ HERO ═══ */}
