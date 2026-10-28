@@ -57,7 +57,7 @@ import GameInfoDisplay from './GameInfoDisplay';
 import InteractiveGameInfoDisplay from './InteractiveGameInfoDisplay';
 import VerticalTimelineSlider from './VerticalTimelineSlider';
 import ColorLegend from './ColorLegend';
-import { classifyMoves, getMoveQualitySummary, MOVE_QUALITY_INFO, ClassifiedMove } from '@/lib/chess/moveQuality';
+import { classifyMoves, getMoveQualitySummary, applyEngineQuality, MOVE_QUALITY_INFO, ClassifiedMove } from '@/lib/chess/moveQuality';
 import { MoveQualityTooltip, BookMovesCard, extractOpeningInfo } from './MoveQualityTooltip';
 import { ShowPiecesToggle } from './ShowPiecesToggle';
 import BoardCoordinateGuide from './BoardCoordinateGuide';
@@ -360,7 +360,7 @@ const AnalyticsPanel: React.FC<{
   }, [pgn, gameData.pgn]);
   
   // Calculate move quality summary and classified moves - ensure we have valid PGN
-  const { qualitySummary, classifiedMoves } = React.useMemo(() => {
+  const { qualitySummary: heuristicSummary, classifiedMoves: heuristicMoves } = React.useMemo(() => {
     if (!effectivePgn) {
       return { qualitySummary: null, classifiedMoves: [] as ClassifiedMove[] };
     }
@@ -381,6 +381,13 @@ const AnalyticsPanel: React.FC<{
   
   const engineQuality = useEngineMoveQuality(effectivePgn, true);
   const engineReady = engineQuality.status === 'ready';
+  const { qualitySummary, classifiedMoves } = React.useMemo(() => {
+    if (!engineReady || heuristicMoves.length === 0) {
+      return { qualitySummary: heuristicSummary, classifiedMoves: heuristicMoves };
+    }
+    const graded = applyEngineQuality(heuristicMoves, engineQuality.moves);
+    return { qualitySummary: getMoveQualitySummary(graded), classifiedMoves: graded };
+  }, [engineReady, engineQuality.moves, heuristicMoves, heuristicSummary]);
   const whiteAcc = engineReady && engineQuality.whiteAccuracy !== null ? engineQuality.whiteAccuracy : qualitySummary?.whiteAccuracy ?? 0;
   const blackAcc = engineReady && engineQuality.blackAccuracy !== null ? engineQuality.blackAccuracy : qualitySummary?.blackAccuracy ?? 0;
 
@@ -584,7 +591,7 @@ const AnalyticsPanel: React.FC<{
                 </Badge>
                 <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
                   {engineReady
-                    ? `Accuracy: Stockfish depth ${engineQuality.depth}`
+                    ? `Verified by Stockfish \u00b7 depth ${engineQuality.depth}`
                     : engineQuality.status === 'unavailable'
                       ? 'Heuristic estimate'
                       : 'Heuristic estimate · Stockfish running'}

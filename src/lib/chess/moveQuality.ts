@@ -14,6 +14,7 @@
  */
 
 import { Chess, Move, Square, PieceSymbol } from 'chess.js';
+import type { EngineMove } from '@/hooks/useEngineMoveQuality';
 
 // ===================== PIECE VALUES (STOCKFISH-INSPIRED) =====================
 
@@ -572,6 +573,34 @@ function calculateAccuracyFromMoves(moves: ClassifiedMove[]): number {
   }
   
   return Math.round((score / (moves.length * 100)) * 100);
+}
+
+/**
+ * Re-grades heuristic classifications using Stockfish centipawn loss.
+ * Errors come only from the engine; "brilliant" and "great" survive only if the
+ * engine agrees; book moves are kept. Moves that don't line up are left as-is.
+ */
+export function applyEngineQuality(
+  moves: ClassifiedMove[],
+  engine: EngineMove[] | null,
+): ClassifiedMove[] {
+  if (!engine) return moves;
+  return moves.map((m, i) => {
+    const e = engine[i];
+    if (!e || e.san !== m.san) return m;
+
+    let quality: MoveQuality;
+    if (e.cpLoss >= 200) quality = 'blunder';
+    else if (e.cpLoss >= 100) quality = 'mistake';
+    else if (e.cpLoss >= 50) quality = 'inaccuracy';
+    else if (m.quality === 'book') quality = 'book';
+    else if (m.quality === 'brilliant' && e.cpLoss <= 10) quality = 'brilliant';
+    else if ((m.quality === 'great' || m.quality === 'brilliant') && e.cpLoss <= 30) quality = 'great';
+    else if (e.wasBestMove || e.cpLoss <= 10) quality = 'best';
+    else quality = 'good';
+
+    return quality === m.quality ? m : { ...m, quality, info: MOVE_QUALITY_INFO[quality] };
+  });
 }
 
 export function getMoveQualitySummary(classifiedMoves: ClassifiedMove[]): MoveQualitySummary {
