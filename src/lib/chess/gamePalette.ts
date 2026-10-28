@@ -17,7 +17,7 @@ export interface GameTraits {
   texture: number;
 }
 
-const MOODS: Record<Exclude<PaletteId, 'custom' | 'clear'>, GameTraits> = {
+export const PALETTE_MOODS: Record<Exclude<PaletteId, 'custom' | 'clear'>, GameTraits> = {
   volcanic: { energy: 1.0, length: 0.5, texture: 0.2 },
   contrast: { energy: 1.0, length: 0.0, texture: 0.5 },
   cyberpunk: { energy: 0.9, length: 0.9, texture: 0.2 },
@@ -46,7 +46,7 @@ const MOODS: Record<Exclude<PaletteId, 'custom' | 'clear'>, GameTraits> = {
 const clamp = (x: number) => Math.min(1, Math.max(0, x));
 const scale = (x: number, p10: number, p90: number) => clamp((x - p10) / (p90 - p10));
 
-function pgnMoves(pgn: string): string[] {
+export function pgnMoves(pgn: string): string[] {
   const c = new Chess();
   try {
     c.loadPgn(pgn);
@@ -56,35 +56,48 @@ function pgnMoves(pgn: string): string[] {
   }
 }
 
-export function measureGame(pgn: string): GameTraits {
-  const moves = pgnMoves(pgn);
-  const plies = Math.max(1, moves.length);
-  const captures = moves.filter((m) => m.includes('x')).length / plies;
-  const checks = moves.filter((m) => /[+#]$/.test(m)).length / plies;
-  const pawns = moves.filter((m) => /^[a-h]/.test(m)).length / plies;
-  const mate = moves.length > 0 && moves[moves.length - 1].endsWith('#');
-  const result = /\[Result "([^"]+)"\]/.exec(pgn)?.[1];
-  const gambit = detectOpeningFromMoves(moves)?.category === 'gambit';
+export interface MoveCounts {
+  moves: string[];
+  totalPlies: number;
+  mate: boolean;
+  gambit: boolean;
+  draw: boolean;
+}
 
+/** Scores a set of moves (a whole game, or one side's moves) on the three traits. */
+export function traitsFromMoves({ moves, totalPlies, mate, gambit, draw }: MoveCounts): GameTraits {
+  const n = Math.max(1, moves.length);
+  const captures = moves.filter((m) => m.includes('x')).length / n;
+  const checks = moves.filter((m) => /[+#]$/.test(m)).length / n;
+  const pawns = moves.filter((m) => /^[a-h]/.test(m)).length / n;
   const energy = clamp(
     (scale(captures, 0.159, 0.267) + scale(checks, 0.009, 0.113)) / 2 +
       (mate ? 0.15 : 0) +
       (gambit ? 0.1 : 0) -
-      (result === '1/2-1/2' ? 0.15 : 0),
+      (draw ? 0.15 : 0),
   );
-  return { energy, length: scale(plies, 50, 123), texture: scale(pawns, 0.208, 0.35) };
+  return { energy, length: scale(Math.max(1, totalPlies), 50, 123), texture: scale(pawns, 0.208, 0.35) };
+}
+
+export function measureGame(pgn: string): GameTraits {
+  const moves = pgnMoves(pgn);
+  return traitsFromMoves({
+    moves,
+    totalPlies: moves.length,
+    mate: moves.length > 0 && moves[moves.length - 1].endsWith('#'),
+    gambit: detectOpeningFromMoves(moves)?.category === 'gambit',
+    draw: /\[Result "1\/2-1\/2"\]/.test(pgn),
+  });
+}
+
+/** All palettes ordered from closest to furthest mood. */
+export function rankPalettes(t: GameTraits): PaletteId[] {
+  return (Object.entries(PALETTE_MOODS) as [PaletteId, GameTraits][])
+    .map(([id, m]) => [id, (t.energy - m.energy) ** 2 + (t.length - m.length) ** 2 + (t.texture - m.texture) ** 2] as const)
+    .sort((a, b) => a[1] - b[1])
+    .map(([id]) => id);
 }
 
 export function choosePaletteForGame(pgn: string): PaletteId {
-  const t = measureGame(pgn);
-  let best: PaletteId = 'hotCold';
-  let bestD = Infinity;
-  for (const [id, m] of Object.entries(MOODS) as [PaletteId, GameTraits][]) {
-    const d = (t.energy - m.energy) ** 2 + (t.length - m.length) ** 2 + (t.texture - m.texture) ** 2;
-    if (d < bestD) {
-      bestD = d;
-      best = id;
-    }
-  }
-  return best;
+  return rankPalettes(measureGame(pgn))[0];
 }

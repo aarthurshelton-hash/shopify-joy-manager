@@ -39,7 +39,9 @@ import { BookConfig, BookType, BOOK_CONFIGS, getBookConfig, GameType } from '@/l
 import { BookSpread } from '@/components/book/BookSpread';
 import { simulateGame } from '@/lib/chess/gameSimulator';
 import { choosePaletteForGame } from '@/lib/chess/gamePalette';
-import { getActivePalette, setActivePalette } from '@/lib/chess/pieceColors';
+import { colorPalettes, getActivePalette, setTemporaryPalette } from '@/lib/chess/pieceColors';
+import { savedMatchPalette } from '@/lib/chess/matchPalette';
+import { composeMatchPalette } from '@/lib/chess/playerStyle';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { jsPDF } from 'jspdf';
@@ -271,11 +273,17 @@ const BookGenerator: React.FC = () => {
 
   const generateVisualization = async (game: GameType): Promise<string> => {
     console.log(`[BookGenerator] Starting visualization generation for: ${game.title}`);
-    const previousPalette = getActivePalette().id;
+    const previousPalette = getActivePalette();
     try {
-      setActivePalette(choosePaletteForGame(game.pgn));
+      const match = savedMatchPalette(`${selectedBook}:${game.id}`);
+      const gamePaletteId = choosePaletteForGame(game.pgn);
+      setTemporaryPalette(
+        match
+          ? composeMatchPalette(match.white.paletteId, match.black.paletteId)
+          : colorPalettes.find((p) => p.id === gamePaletteId) ?? previousPalette,
+      );
       const simulation = simulateGame(game.pgn);
-      setActivePalette(previousPalette);
+      setTemporaryPalette(previousPalette);
       
       if (!simulation || !simulation.board || simulation.board.length === 0) {
         console.error('[BookGenerator] Simulation failed - empty board returned');
@@ -301,7 +309,7 @@ const BookGenerator: React.FC = () => {
       console.log(`[BookGenerator] Visualization generated successfully for: ${game.title}`);
       return imageDataUrl;
     } catch (error) {
-      setActivePalette(previousPalette);
+      setTemporaryPalette(previousPalette);
       console.error('[BookGenerator] Visualization generation failed:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       toast.error('Failed to generate visualization', { 
@@ -799,9 +807,9 @@ printed copies of "${bookConfig.title}."
       const legendDescription = [
         'Each visualization maps the journey of every piece across the 64 squares.',
         '',
-        'Every game chooses its own palette from how it was played:',
-        'its energy (captures, checks, sacrifices), its length,',
-        'and its texture (pawn structure versus piece play).',
+        'Each side is drawn in its player\'s own palette, as their style stood',
+        'at that game. A style is read from the player\'s own moves (energy,',
+        'pawn structure versus piece play, game length) and evolves game by game.',
         '',
         'When multiple pieces visit the same square, their colors layer',
         'creating a unique visual fingerprint of the game.',

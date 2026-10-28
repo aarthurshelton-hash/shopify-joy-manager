@@ -851,6 +851,11 @@ export function getActivePalette(): ColorPalette {
   return activePalette;
 }
 
+/** Render with a palette object (e.g. a composed match palette) without saving it as the user's choice. */
+export function setTemporaryPalette(palette: ColorPalette): void {
+  activePalette = palette;
+}
+
 // Update custom palette colors
 export function setCustomColor(pieceColor: PieceColor, pieceType: PieceType, hexColor: string): void {
   const customIdx = colorPalettes.findIndex(p => p.id === 'custom');

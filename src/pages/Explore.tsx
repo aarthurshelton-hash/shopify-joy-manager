@@ -7,6 +7,7 @@ import { famousGames, carlsenLegendaryGames, type FamousGame } from '@/lib/chess
 import { FAMOUS_GAME_OPENINGS, FAMOUS_GAME_PALETTES } from '@/lib/chess/famousGameOpenings';
 import { generateGameHash } from '@/lib/visualizations/gameCanonical';
 import { paletteThumbs, ALL_PALETTES_PREVIEW_URL } from '@/lib/palettes/paletteBackgrounds';
+import { savedMatchPalette, type SavedSide } from '@/lib/chess/matchPalette';
 
 type ResultFilter = 'all' | 'white' | 'black' | 'draw';
 type SortKey = 'newest' | 'oldest' | 'longest' | 'shortest';
@@ -18,7 +19,11 @@ interface GameEntry {
   mate: boolean;
   paletteId: string;
   opening: string;
+  match: { white: SavedSide; black: SavedSide } | null;
 }
+
+type PaletteMode = 'players' | 'game';
+const surname = (name: string) => name.split(/\s+/).slice(-1)[0];
 
 const UNKNOWN_OPENING = 'Other / unclassified';
 
@@ -54,7 +59,7 @@ function buildEntries(): GameEntry[] {
     const result: GameEntry['result'] = res === '1-0' ? 'white' : res === '0-1' ? 'black' : 'draw';
     const nums = game.pgn.match(/\b(\d+)\.(?=\s)/g);
     const moves = nums ? parseInt(nums[nums.length - 1], 10) : 0;
-    entries.push({ game, result, moves, mate: /#\s*(?:1-0|0-1)?\s*$/.test(game.pgn.trim()), paletteId: paletteFor(game), opening: FAMOUS_GAME_OPENINGS[game.id]?.name ?? UNKNOWN_OPENING });
+    entries.push({ game, result, moves, mate: /#\s*(?:1-0|0-1)?\s*$/.test(game.pgn.trim()), paletteId: paletteFor(game), opening: FAMOUS_GAME_OPENINGS[game.id]?.name ?? UNKNOWN_OPENING, match: savedMatchPalette(game.id) });
   }
   return entries;
 }
@@ -79,6 +84,7 @@ const Explore = () => {
   }, [entries]);
   const [sort, setSort] = useState<SortKey>('newest');
   const [shown, setShown] = useState(PAGE);
+  const [paletteMode, setPaletteMode] = useState<PaletteMode>('players');
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -184,6 +190,14 @@ const Explore = () => {
                   <option key={name} value={name}>{name} ({n})</option>
                 ))}
               </select>
+              <span className="ml-auto flex gap-2">
+                <button onClick={() => setPaletteMode('players')} className={chip(paletteMode === 'players')} title="Each side drawn in its player's palette, as their style stood at that game">
+                  Player palettes
+                </button>
+                <button onClick={() => setPaletteMode('game')} className={chip(paletteMode === 'game')} title="One palette chosen by how the whole game was played">
+                  Game palette
+                </button>
+              </span>
             </div>
 
             <p className="text-xs text-muted-foreground">{visible.length} games</p>
@@ -205,14 +219,33 @@ const Explore = () => {
                       className="relative block aspect-[16/9] w-full overflow-hidden text-left"
                       aria-label={`Open ${e.game.title}`}
                     >
-                      <img
-                        src={paletteThumbs[e.paletteId]}
-                        alt=""
-                        loading="lazy"
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
+                      {paletteMode === 'players' && e.match && paletteThumbs[e.match.white.paletteId] && paletteThumbs[e.match.black.paletteId] ? (
+                        <div className="flex h-full w-full transition-transform duration-500 group-hover:scale-105">
+                          <img src={paletteThumbs[e.match.white.paletteId]} alt="" loading="lazy" className="h-full w-1/2 object-cover" />
+                          <img src={paletteThumbs[e.match.black.paletteId]} alt="" loading="lazy" className="h-full w-1/2 border-l border-black/40 object-cover" />
+                        </div>
+                      ) : (
+                        <img
+                          src={paletteThumbs[e.paletteId]}
+                          alt=""
+                          loading="lazy"
+                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                      )}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                      <span className="absolute bottom-3 left-4 font-mono text-xs text-white/80">{e.game.year}</span>
+                      {paletteMode === 'players' && e.match ? (
+                        <>
+                          <span className="absolute bottom-3 left-4 font-mono text-[10px] text-white/80" title={e.match.white.why}>
+                            {surname(e.match.white.player)} · {e.match.white.paletteId}
+                          </span>
+                          <span className="absolute bottom-3 right-4 font-mono text-[10px] text-white/80" title={e.match.black.why}>
+                            {surname(e.match.black.player)} · {e.match.black.paletteId}
+                          </span>
+                          <span className="absolute left-4 top-3 font-mono text-xs text-white/80">{e.game.year}</span>
+                        </>
+                      ) : (
+                        <span className="absolute bottom-3 left-4 font-mono text-xs text-white/80">{e.game.year}</span>
+                      )}
                       {e.mate && (
                         <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-1 text-[10px] font-display uppercase tracking-wider text-[#d4af37] backdrop-blur">
                           <Crown className="h-3 w-3" /> Mate
