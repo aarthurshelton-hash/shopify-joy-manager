@@ -1,6 +1,7 @@
 import { Chess, type Square } from 'chess.js';
 import { analyzeTimeline } from './timelineAnalysis';
 import type { MomentType } from '@/components/chess/EnhancedTimelineMarker';
+import type { EngineMove } from '@/hooks/useEngineMoveQuality';
 
 export type EventTone = 'gold' | 'crimson' | 'azure' | 'neutral';
 
@@ -16,6 +17,36 @@ export interface MoveEvent {
   tone: EventTone;
   focusSquare: Square;
   notable: boolean;
+  engine: boolean;
+}
+
+const HEURISTIC_QUALITY: ReadonlySet<MomentType> = new Set<MomentType>([
+  'brilliant', 'great', 'blunder', 'mistake', 'inaccuracy',
+]);
+
+const BLUNDER_CP = 200;
+const MISTAKE_CP = 100;
+const SOUND_CP = 30;
+
+function engineQuality(ev: EngineMove): MomentType | null {
+  if (ev.cpLoss >= BLUNDER_CP) return 'blunder';
+  if (ev.cpLoss >= MISTAKE_CP) return 'mistake';
+  return null;
+}
+
+function bestMoveSan(fenBefore: string, uci: string): string | null {
+  if (!uci || uci.length < 4) return null;
+  try {
+    const c = new Chess(fenBefore);
+    const m = c.move({
+      from: uci.slice(0, 2) as Square,
+      to: uci.slice(2, 4) as Square,
+      promotion: uci.length > 4 ? uci[4] : undefined,
+    });
+    return m.san;
+  } catch {
+    return null;
+  }
 }
 
 const PIECE_NAME: Record<string, string> = {
@@ -63,7 +94,7 @@ function findKing(chess: Chess, color: 'w' | 'b'): Square | null {
  * can pop details up next to the action as the game plays. One event per ply,
  * the most significant. Index = ply (1-based).
  */
-export function buildMoveEvents(pgn: string): Map<number, MoveEvent> {
+export function buildMoveEvents(pgn: string, engine?: EngineMove[] | null): Map<number, MoveEvent> {
   const out = new Map<number, MoveEvent>();
   if (!pgn || !pgn.trim()) return out;
 
@@ -93,19 +124,48 @@ export function buildMoveEvents(pgn: string): Map<number, MoveEvent> {
   const replay = new Chess();
   history.forEach((mv, i) => {
     const ply = i + 1;
+    const fenBefore = replay.fen();
     replay.move(mv.san);
 
-    const moments = (momentsByPly.get(ply) || []).slice().sort(
-      (a, b) => (PRIORITY[b.type] || 0) - (PRIORITY[a.type] || 0),
-    );
-    const top = moments[0];
+    const eng = engine && engine[i] && engine[i].san === mv.san ? engine[i] : null;
+    const all = momentsByPly.get(ply) || [];
+    const heuristicBrilliant = all.some((m) => m.type === 'brilliant' || m.type === 'sacrifice');
+
+    // Heuristic quality labels are guesses; only engine-verified ones are shown.
+    const moments = all
+      .filter((m) => !HEURISTIC_QUALITY.has(m.type))
+      .filter((m) => m.type !== 'sacrifice' || !eng || eng.cpLoss <= SOUND_CP)
+      .sort((a, b) => (PRIORITY[b.type] || 0) - (PRIORITY[a.type] || 0));
+
+    let top = moments[0];
+    let fromEngine = false;
+    let engineDetail = '';
+    if (eng) {
+      const q = engineQuality(eng);
+      if (q) {
+        const best = bestMoveSan(fenBefore, eng.bestMove);
+        const cost = (eng.cpLoss / 100).toFixed(1);
+        engineDetail =
+          `Costs about ${cost} pawns of evaluation.` + (best ? ` Engine preferred ${best}.` : '');
+        if (!top || (PRIORITY[q] || 0) > (PRIORITY[top.type] || 0)) {
+          top = { moveNumber: ply, type: q, move: mv.san, player: mv.color === 'w' ? 'white' : 'black' };
+          fromEngine = true;
+        }
+      } else if (heuristicBrilliant && eng.cpLoss <= 10 && (!top || top.type !== 'checkmate')) {
+        top = {
+          moveNumber: ply, type: 'brilliant', move: mv.san, player: mv.color === 'w' ? 'white' : 'black',
+        };
+        fromEngine = true;
+        engineDetail = 'A sacrifice that the engine confirms holds up.';
+      }
+    }
     if (!top) return;
 
     const enemy: 'w' | 'b' = mv.color === 'w' ? 'b' : 'w';
     const mover = PIECE_NAME[mv.piece] || 'piece';
     const captured = mv.captured ? PIECE_NAME[mv.captured] : null;
 
-    let detail = top.description || '';
+    let detail = fromEngine ? engineDetail : top.description || '';
     let focus: Square = mv.to;
     switch (top.type) {
       case 'checkmate':
@@ -151,6 +211,7 @@ export function buildMoveEvents(pgn: string): Map<number, MoveEvent> {
       tone: TONES[top.type],
       focusSquare: focus,
       notable,
+      engine: fromEngine,
     });
   });
 

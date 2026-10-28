@@ -515,7 +515,7 @@ export class StockfishEngine {
       const evalAfter = previousEval * (isWhiteMove ? -1 : 1);
       
       // Calculate centipawn loss (from the perspective of the player who moved)
-      const cpLoss = Math.max(0, evalBefore - evalAfter);
+      const cpLoss = Math.max(0, isWhiteMove ? evalBefore - evalAfter : evalAfter - evalBefore);
       
       // Calculate accuracy
       const accuracy = this.calculateAccuracy(cpLoss);

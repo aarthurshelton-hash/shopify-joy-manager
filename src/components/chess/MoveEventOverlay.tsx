@@ -3,6 +3,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Sparkles } from 'lucide-react';
 import { useTimeline } from '@/contexts/TimelineContext';
 import { buildMoveEvents, formatPly, type EventTone, type MoveEvent } from '@/lib/chess/moveEvents';
+import { useEngineMoveQuality } from '@/hooks/useEngineMoveQuality';
 
 interface MoveEventOverlayProps {
   pgn: string;
@@ -30,7 +31,8 @@ function squareToXY(sq: string, size: number) {
 export const MoveEventOverlay: React.FC<MoveEventOverlayProps> = ({ pgn, size, totalMoves }) => {
   const { currentMove, isPlaying } = useTimeline();
   const reduceMotion = useReducedMotion();
-  const events = useMemo(() => buildMoveEvents(pgn), [pgn]);
+  const engine = useEngineMoveQuality(pgn, true);
+  const events = useMemo(() => buildMoveEvents(pgn, engine.moves), [pgn, engine.moves]);
   const [enabled, setEnabled] = useState(() => {
     try {
       return localStorage.getItem(STORAGE_KEY) !== 'off';
@@ -127,6 +129,11 @@ export const MoveEventOverlay: React.FC<MoveEventOverlayProps> = ({ pgn, size, t
                 <span className="font-mono text-[10px] text-white/50">{formatPly(active.ply, active.san)}</span>
               </div>
               <p className="mt-1 text-[11px] leading-snug text-white/80">{active.detail}</p>
+              {active.engine && (
+                <p className="mt-1 text-[9px] uppercase tracking-[0.18em] text-white/40">
+                  Stockfish{engine.depth ? ` · depth ${engine.depth}` : ''}
+                </p>
+              )}
             </motion.div>
           </>
         )}

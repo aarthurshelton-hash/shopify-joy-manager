@@ -3,6 +3,7 @@ import { ChevronDown, BookOpen } from 'lucide-react';
 import { useTimeline } from '@/contexts/TimelineContext';
 import { buildMoveEvents, formatPly, type EventTone } from '@/lib/chess/moveEvents';
 import type { GameAnalysis } from '@/lib/chess/chessAnalysis';
+import { useEngineMoveQuality } from '@/hooks/useEngineMoveQuality';
 
 interface GameStoryPanelProps {
   pgn: string;
@@ -24,9 +25,10 @@ export const GameStoryPanel: React.FC<GameStoryPanelProps> = ({
 }) => {
   const { currentMove, setCurrentMove } = useTimeline();
   const [open, setOpen] = useState(true);
+  const engine = useEngineMoveQuality(pgn, true);
   const events = useMemo(
-    () => Array.from(buildMoveEvents(pgn).values()).filter((e) => e.notable),
-    [pgn],
+    () => Array.from(buildMoveEvents(pgn, engine.moves).values()).filter((e) => e.notable),
+    [pgn, engine.moves],
   );
   const activeRef = useRef<HTMLButtonElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -45,13 +47,16 @@ export const GameStoryPanel: React.FC<GameStoryPanelProps> = ({
 
   if (events.length === 0 && !gameAnalysis) return null;
 
-  const mq = gameAnalysis?.moveQuality;
   const stats: { label: string; value: string }[] = [];
   if (gameAnalysis?.opening) stats.push({ label: 'Opening', value: gameAnalysis.opening.name });
-  if (mq) {
-    stats.push({ label: white || 'White', value: `${mq.whiteAccuracy}%` });
-    stats.push({ label: black || 'Black', value: `${mq.blackAccuracy}%` });
+  if (engine.status === 'ready' && engine.whiteAccuracy !== null && engine.blackAccuracy !== null) {
+    stats.push({ label: `${white || 'White'} accuracy`, value: `${engine.whiteAccuracy}%` });
+    stats.push({ label: `${black || 'Black'} accuracy`, value: `${engine.blackAccuracy}%` });
   }
+  const pct =
+    engine.progress && engine.progress.total > 0
+      ? Math.round((engine.progress.current / engine.progress.total) * 100)
+      : 0;
   if (gameAnalysis) {
     stats.push({ label: 'Checks', value: String(gameAnalysis.summary.checkCount) });
     stats.push({ label: 'Captures', value: String(gameAnalysis.summary.captureCount) });
@@ -84,6 +89,28 @@ export const GameStoryPanel: React.FC<GameStoryPanelProps> = ({
                 </div>
               ))}
             </dl>
+          )}
+
+          {(engine.status === 'queued' || engine.status === 'running') && (
+            <div className="px-4 py-2 border-b border-border/30">
+              <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-muted-foreground">
+                <span>Stockfish is checking every move</span>
+                <span className="tabular-nums">{pct}%</span>
+              </div>
+              <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-muted/40">
+                <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+              </div>
+            </div>
+          )}
+          {engine.status === 'ready' && (
+            <p className="px-4 py-2 text-[10px] uppercase tracking-widest text-muted-foreground/70 border-b border-border/30">
+              Mistakes and blunders verified by Stockfish · depth {engine.depth}
+            </p>
+          )}
+          {engine.status === 'unavailable' && (
+            <p className="px-4 py-2 text-[11px] text-muted-foreground/70 border-b border-border/30">
+              Engine unavailable on this device, so move-quality labels are hidden.
+            </p>
           )}
 
           <div ref={listRef} className="max-h-72 overflow-y-auto p-2">
