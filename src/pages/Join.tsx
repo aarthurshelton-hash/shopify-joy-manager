@@ -7,22 +7,16 @@ import { Footer } from '@/components/shop/Footer';
 import ScrollBackdrop from '@/components/homepage/ScrollBackdrop';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
+import { PREMIUM_PERKS, PREMIUM_PRICE_ANNUAL, PREMIUM_PRICE_MONTHLY } from '@/lib/premiumFeatures';
 
 const AuthModal = lazy(() => import('@/components/auth/AuthModal'));
 
 type Plan = 'monthly' | 'annual';
 
 const PLANS: Record<Plan, { price: string; per: string; note: string }> = {
-  monthly: { price: '$6.99', per: '/month', note: 'Cancel anytime' },
-  annual: { price: '$59.99', per: '/year', note: 'Best value: about $5 a month' },
+  monthly: { price: PREMIUM_PRICE_MONTHLY, per: '/month', note: 'Cancel anytime' },
+  annual: { price: PREMIUM_PRICE_ANNUAL, per: '/year', note: 'Best value: about $5 a month' },
 };
-
-const PERKS = [
-  'The full palette collection, including every new theme',
-  'HD downloads of every visualization',
-  'The complete visualization toolkit',
-  'Cancel or change plan anytime from your account',
-];
 
 const Join: React.FC = () => {
   const [params] = useSearchParams();
@@ -70,7 +64,7 @@ const Join: React.FC = () => {
     <div className="min-h-screen bg-background">
       <ScrollBackdrop />
       <Header />
-      <main className="container mx-auto px-4 py-16 max-w-xl">
+      <main className="container mx-auto px-4 pt-12 pb-32 max-w-xl">
         <div className="rounded-2xl border border-primary/30 bg-black/60 backdrop-blur-sm p-8 text-center space-y-6">
           <Crown className="h-8 w-8 text-primary mx-auto" />
           <p className="font-display text-xs uppercase tracking-[0.3em] text-primary">En Pensent Premium</p>
@@ -103,12 +97,17 @@ const Join: React.FC = () => {
                 <span className="text-muted-foreground">{p.per}</span>
                 <p className="text-xs text-muted-foreground mt-1">{p.note}</p>
               </div>
-              <ul className="text-left space-y-2 text-sm">
-                {PERKS.map((t) => (
-                  <li key={t} className="flex gap-2"><Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />{t}</li>
+              <p className="text-xs uppercase tracking-[0.2em] text-primary">What Premium adds</p>
+              <ul className="text-left space-y-3 text-sm">
+                {PREMIUM_PERKS.map((perk) => (
+                  <li key={perk.title} className="flex gap-3">
+                    <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                    <span><span className="font-semibold">{perk.title}</span><span className="block text-muted-foreground">{perk.text}</span></span>
+                  </li>
                 ))}
               </ul>
-              <Button className="w-full h-12 text-base" onClick={start} disabled={busy || isCheckingSubscription}>
+              <p className="text-xs text-muted-foreground">Free account first, no card needed to join. Premium is billed only when you confirm at checkout.</p>
+              <Button className="w-full h-12 text-base" onClick={start} disabled={busy || (!!user && isCheckingSubscription)}>
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : user ? `Continue to secure checkout` : 'Create account and continue'}
               </Button>
               <p className="text-xs text-muted-foreground">
@@ -121,7 +120,7 @@ const Join: React.FC = () => {
       <Footer />
       {showAuth && (
         <Suspense fallback={null}>
-          <AuthModal isOpen={showAuth} onClose={() => setShowAuth(false)} defaultMode="signup" />
+          <AuthModal isOpen={showAuth} onClose={() => setShowAuth(false)} defaultMode="signup" context="premium" />
         </Suspense>
       )}
     </div>

@@ -6,18 +6,20 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Loader2, Mail, Lock, User, Eye, EyeOff, MailCheck, ArrowLeft, Gift, AlertCircle, Info } from 'lucide-react';
+import { Loader2, Mail, Lock, User, Eye, EyeOff, MailCheck, ArrowLeft, Gift, AlertCircle, Info, Crown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import MFAVerification from './MFAVerification';
 import AuthShowcase from './AuthShowcase';
 import AuthProviderIcon, { OAUTH_LABELS } from './AuthProviderIcon';
 import { useAuthRateLimit } from '@/hooks/useRateLimitV2';
+import { PREMIUM_PERKS } from '@/lib/premiumFeatures';
 import { useEnabledAuthProviders, type OAuthProvider } from '@/hooks/useEnabledAuthProviders';
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   defaultMode?: 'signin' | 'signup';
+  context?: 'premium';
 }
 
 type AuthMode = 'signin' | 'signup' | 'forgot' | 'confirm-email';
@@ -34,7 +36,7 @@ const friendlyError = (message: string) => {
   return message;
 };
 
-const AuthModal = forwardRef<HTMLDivElement, AuthModalProps>(({ isOpen, onClose, defaultMode = 'signin' }, ref) => {
+const AuthModal = forwardRef<HTMLDivElement, AuthModalProps>(({ isOpen, onClose, defaultMode = 'signin', context }, ref) => {
   const [mode, setMode] = useState<AuthMode>(defaultMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -191,9 +193,22 @@ const AuthModal = forwardRef<HTMLDivElement, AuthModalProps>(({ isOpen, onClose,
     <div ref={ref}>
       <Dialog open={isOpen && !showMFAVerification} onOpenChange={(open) => !open && onClose()}>
         <DialogContent className="w-[calc(100vw-1.5rem)] max-w-4xl gap-0 overflow-hidden border-border bg-card p-0 md:grid md:grid-cols-2">
-          <AuthShowcase headline={isSignup ? 'Every game is a work of art.' : 'Your games are waiting.'} />
+          <AuthShowcase
+            premium={context === 'premium'}
+            headline={context === 'premium' ? 'Go further with every game.' : isSignup ? 'Every game is a work of art.' : 'Your games are waiting.'}
+          />
 
           <div className="max-h-[92vh] overflow-y-auto p-6 sm:p-8">
+            {context === 'premium' && (
+              <div className="mb-5 rounded-lg border border-primary/30 bg-primary/5 p-4 md:hidden">
+                <p className="mb-2 text-xs uppercase tracking-[0.2em] text-primary">What Premium adds</p>
+                <ul className="space-y-1.5 text-sm">
+                  {PREMIUM_PERKS.map((perk) => (
+                    <li key={perk.title} className="flex gap-2"><Crown className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-primary" /><span><b>{perk.title}</b> <span className="text-muted-foreground">· {perk.text}</span></span></li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {(mode === 'signin' || mode === 'signup') && (
               <div className="mb-6 grid grid-cols-2 rounded-lg bg-muted p-1 text-sm font-medium" role="tablist">
                 {(['signup', 'signin'] as const).map((m) => (

@@ -469,24 +469,6 @@ setPendingResult(null);
               </div>
             </section>
 
-            {/* The official En Pensent set */}
-            <section className="container mx-auto px-4 py-12">
-              <div className="max-w-4xl mx-auto space-y-6 text-center">
-                <h3 className="font-editorial text-3xl md:text-4xl">
-                  The En Pensent <span className="italic text-gold-gradient">set</span>
-                </h3>
-                <p className="text-muted-foreground font-serif max-w-xl mx-auto">
-                  Gold-edged pieces, drawn for every game we paint.
-                </p>
-                <img
-                  src="/brand/pieces-lineup.png"
-                  alt="The official En Pensent chess pieces in ivory and obsidian"
-                  loading="lazy"
-                  className="w-full rounded-lg border border-primary/20 shadow-2xl"
-                />
-              </div>
-            </section>
-
             {/* Intelligence tools — surface the analysis features */}
             <section className="container mx-auto px-4 py-12">
               <div className="max-w-4xl mx-auto space-y-6">
