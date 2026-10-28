@@ -654,7 +654,6 @@ const MarketplaceVisionDetail: React.FC = () => {
           totalMoves={vizData.totalMoves}
           pgn={vizData.gameData.pgn || listing?.visualization?.pgn || ''}
           context="marketplace"
-          defaultTab="analytics"
           visualizationId={listing?.visualization?.id}
           paletteId={vizData.paletteId}
           createdAt={listing?.created_at}

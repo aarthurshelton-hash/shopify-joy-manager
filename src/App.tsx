@@ -64,7 +64,7 @@ const PremiumAnalytics = lazy(() => import("./pages/PremiumAnalytics"));
 const AdminCEODashboard = lazy(() => import("./pages/AdminCEODashboard"));
 const AdminAIArtBank = lazy(() => import("./pages/AdminAIArtBank"));
 const OpeningEncyclopedia = lazy(() => import("./pages/OpeningEncyclopedia"));
-const Explore = lazy(() => import("./pages/Explore"));
+const ExploreRedirect = lazy(() => import("./pages/ExploreRedirect"));
 const PaletteMatch = lazy(() => import("./pages/PaletteMatch"));
 const CodeAnalysis = lazy(() => import("./pages/CodeAnalysis"));
 const AcademicPaper = lazy(() => import("./pages/AcademicPaper"));
@@ -159,7 +159,7 @@ const App = () => (
               <Route path="/redeem" element={<Suspense fallback={<PageLoadingSkeleton />}><Redeem /></Suspense>} />
               <Route path="/v/:shareId" element={<Suspense fallback={<PageLoadingSkeleton />}><VisualizationRedirect /></Suspense>} />
               <Route path="/g/:gameHash" element={<Suspense fallback={<PageLoadingSkeleton />}><GameView /></Suspense>} />
-              <Route path="/explore" element={<Suspense fallback={<PageLoadingSkeleton />}><Explore /></Suspense>} />
+              <Route path="/explore" element={<Suspense fallback={<PageLoadingSkeleton />}><ExploreRedirect /></Suspense>} />
               <Route path="/palette-match" element={<Suspense fallback={<PageLoadingSkeleton />}><PaletteMatch /></Suspense>} />
               <Route path="/openings" element={<Suspense fallback={<PageLoadingSkeleton />}><OpeningEncyclopedia /></Suspense>} />
               <Route path="/code-analysis" element={<AdminRoute featureName="Code Analysis"><Suspense fallback={<PageLoadingSkeleton />}><CodeAnalysis /></Suspense></AdminRoute>} />

@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { Chess } from 'chess.js';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
@@ -43,6 +42,8 @@ import {
   Info,
   TrendingUp,
   CreditCard,
+  Users,
+  Palette,
 } from 'lucide-react';
 import { SquareData, GameData, SimulationResult, simulateGame } from '@/lib/chess/gameSimulator';
 import { TimelineProvider, useTimeline, GamePhase } from '@/contexts/TimelineContext';
@@ -83,7 +84,6 @@ import PaletteOwnershipCard from './PaletteOwnershipCard';
 import { useAuth } from '@/hooks/useAuth';
 import MiniPrintOrderSection from './MiniPrintOrderSection';
 import { generateGameHash } from '@/lib/visualizations/gameCanonical';
-import { famousGames } from '@/lib/chess/famousGames';
 import ClaimVisionButton from '@/components/vision/ClaimVisionButton';
 import { OpeningBadge, OpeningMarketingCard } from './OpeningBadge';
 import { detectOpeningFromPgn, DetectedOpening } from '@/lib/chess/openingDetector';
@@ -92,16 +92,13 @@ import PredictionEdgeCard from './PredictionEdgeCard';
 import TurningPointCard from './TurningPointCard';
 import TrajectoryTimelineOverlay from './TrajectoryTimelineOverlay';
 import { useHybridPrediction } from '@/hooks/useHybridPrediction';
+import { GamePlayersPanel } from './GamePlayersPanel';
+import { MoreGamesBrowser } from './MoreGamesBrowser';
 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { PaletteAvailabilityInfo } from '@/lib/visualizations/paletteAvailability';
 import { useVisualizationStateStore } from '@/stores/visualizationStateStore';
-
-// Curated handful of the most iconic famous games for quick-link bar
-const FAMOUS_QUICK_LINKS = famousGames.filter(g =>
-  ['anderssen-kieseritzky-1851', 'byrne-fischer-1956', 'kasparov-topalov-1999', 'morphy-opera-1858', 'deep-blue-kasparov-1997', 'anderssen-dufresne-1852'].includes(g.id)
-);
 
 // Export state for capturing visualization in any configuration
 export interface ExportState {
@@ -123,7 +120,6 @@ export interface UnifiedVisionExperienceProps {
   
   // Context-specific settings
   context: 'marketplace' | 'gallery' | 'shared' | 'postgame' | 'scanner' | 'generator';
-  defaultTab?: 'experience' | 'analytics';
   
   // Optional data
   visualizationId?: string;
@@ -344,7 +340,10 @@ const AnalyticsPanel: React.FC<{
   createdAt?: string;
   gameAnalysis: GameAnalysis | null;
   pgn?: string;
-}> = ({ visionScore, isLoading, gameData, totalMoves, createdAt, gameAnalysis, pgn }) => {
+  section?: 'all' | 'review' | 'value';
+}> = ({ visionScore, isLoading, gameData, totalMoves, createdAt, gameAnalysis, pgn, section = 'all' }) => {
+  const showReview = section !== 'value';
+  const showValue = section !== 'review';
   const membershipMultiplier = calculateMembershipMultiplier(100);
   
   // Extract clean PGN from multiple possible sources
@@ -451,6 +450,7 @@ const AnalyticsPanel: React.FC<{
   return (
     <div className="space-y-6">
       {/* Game Summary */}
+      {section === 'all' && (
       <div className="p-4 rounded-lg border border-border/50 bg-card space-y-3">
         <h3 className="font-display text-sm uppercase tracking-wider text-muted-foreground">Game Summary</h3>
         <div className="grid grid-cols-2 gap-4">
@@ -478,9 +478,10 @@ const AnalyticsPanel: React.FC<{
           </div>
         </div>
       </div>
+      )}
 
       {/* Deep Chess Analysis */}
-      {gameAnalysis && (
+      {showReview && gameAnalysis && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="font-display text-sm uppercase tracking-wider text-muted-foreground flex items-center gap-2">
@@ -761,7 +762,7 @@ const AnalyticsPanel: React.FC<{
       )}
 
       {/* Vision Score - show for saved visions OR potential value for new ones */}
-      {(visionScore || potentialValue) && (
+      {showValue && (visionScore || potentialValue) && (
         <div className="p-4 rounded-lg border border-primary/30 bg-primary/5 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-display text-sm uppercase tracking-wider text-primary">
@@ -820,7 +821,7 @@ const AnalyticsPanel: React.FC<{
       )}
 
       {/* Score Breakdown */}
-      {visionScore && visionScore.totalScore > 0 && (
+      {showValue && visionScore && visionScore.totalScore > 0 && (
         <div className="p-4 rounded-lg border border-border/50 bg-card space-y-3">
           <h3 className="font-display text-sm uppercase tracking-wider text-muted-foreground">Score Breakdown</h3>
           <div className="space-y-2 text-sm">
@@ -853,7 +854,7 @@ const AnalyticsPanel: React.FC<{
       )}
 
       {/* Created date */}
-      {createdAt && (
+      {showValue && createdAt && (
         <div className="text-center text-xs text-muted-foreground">
           Created {format(new Date(createdAt), 'MMMM d, yyyy')}
         </div>
@@ -1038,6 +1039,43 @@ const ShareButtonWithState: React.FC<{
   );
 };
 
+const ReviewSection: React.FC<{
+  id: string;
+  title: string;
+  icon: React.ElementType;
+  subtitle?: string;
+  children: React.ReactNode;
+}> = ({ id, title, icon: Icon, subtitle, children }) => (
+  <section id={id} className="scroll-mt-24 space-y-4 border-t border-border/40 pt-6">
+    <div className="flex items-baseline gap-3">
+      <Icon className="h-4 w-4 shrink-0 translate-y-0.5 text-primary" />
+      <div>
+        <h3 className="font-display text-sm uppercase tracking-[0.2em] text-foreground">{title}</h3>
+        {subtitle && <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>}
+      </div>
+    </div>
+    {children}
+  </section>
+);
+
+const ReviewNav: React.FC<{ sections: { id: string; label: string }[] }> = ({ sections }) => (
+  <nav aria-label="Game review sections" className="sticky top-14 sm:top-16 z-20 -mx-1 flex gap-1.5 overflow-x-auto rounded-full border border-border/50 bg-background/90 p-1 backdrop-blur">
+    {sections.map((s) => (
+      <a
+        key={s.id}
+        href={`#${s.id}`}
+        onClick={(e) => {
+          e.preventDefault();
+          document.getElementById(s.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }}
+        className="shrink-0 rounded-full px-3 py-1 text-[11px] font-display uppercase tracking-wider text-muted-foreground transition-colors hover:bg-primary/10 hover:text-foreground"
+      >
+        {s.label}
+      </a>
+    ))}
+  </nav>
+);
+
 /**
  * UnifiedVisionExperience - The single source of truth for all vision displays
  * 
@@ -1047,7 +1085,6 @@ const ShareButtonWithState: React.FC<{
  * - Show pieces toggle with opacity
  * - Heatmap/territory mode
  * - Transfer to Creative Mode
- * - Context-aware default tabs
  */
 const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
   board,
@@ -1055,7 +1092,6 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
   totalMoves,
   pgn,
   context,
-  defaultTab,
   visualizationId,
   paletteId,
   createdAt,
@@ -1087,10 +1123,13 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
 }) => {
   const { user } = useAuth();
   
-  // Determine default tab based on context
-  const computedDefaultTab = defaultTab || (context === 'marketplace' ? 'analytics' : 'experience');
-  
-  const [activeTab, setActiveTab] = useState<'experience' | 'analytics'>(computedDefaultTab);
+  const reviewSections = useMemo(() => [
+    { id: 'review', label: 'Review' },
+    ...(pgn || gameData.pgn ? [{ id: 'players', label: 'Players' }] : []),
+    { id: 'palette', label: 'Palette' },
+    { id: 'keep', label: 'Keep' },
+    { id: 'more-games', label: 'More games' },
+  ], [pgn, gameData.pgn]);
   const [visionScore, setVisionScore] = useState<VisionScore | null>(
     visionScoreData ? {
       visualizationId: visualizationId || '',
@@ -1737,37 +1776,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
             </div>
           )}
 
-          {/* Tab Navigation */}
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'experience' | 'analytics')}>
-            <TabsList className="w-full grid grid-cols-2 bg-muted p-1 mb-4">
-              <TabsTrigger 
-                value="experience" 
-                className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-lg transition-all duration-300"
-              >
-                <motion.div
-                  animate={{ rotate: activeTab === 'experience' ? 0 : -10 }}
-                  transition={{ type: 'spring', stiffness: 300 }}
-                >
-                  <Sparkles className="h-4 w-4" />
-                </motion.div>
-                Experience
-              </TabsTrigger>
-              <TabsTrigger 
-                value="analytics" 
-                className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-lg transition-all duration-300"
-              >
-                <motion.div
-                  animate={{ rotate: activeTab === 'analytics' ? 0 : 10 }}
-                  transition={{ type: 'spring', stiffness: 300 }}
-                >
-                  <BarChart3 className="h-4 w-4" />
-                </motion.div>
-                Analytics
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="experience" className="mt-0 w-full">
-              <div className="w-full">
+          <div className="w-full">
                 <div className="space-y-4 w-full pb-4">
                   {/* Board Controls + Quick Actions Bar */}
                   <VisionControls
@@ -1784,31 +1793,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                     {/* Export buttons moved to unified action buttons section below */}
                   </VisionControls>
                   
-                  {/* Deep Analysis Teaser - Link to Analytics Tab */}
-                  {gameAnalysis && (
-                    <button
-                      onClick={() => setActiveTab('analytics')}
-                      className="w-full p-3 rounded-lg bg-gradient-to-r from-purple-500/10 via-blue-500/5 to-cyan-500/10 border border-purple-500/20 hover:border-purple-500/40 transition-all group flex items-center justify-between"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-purple-500/20 group-hover:bg-purple-500/30 transition-colors">
-                          <BookOpen className="h-4 w-4 text-purple-400" />
-                        </div>
-                        <div className="text-left">
-                          <p className="font-medium text-sm text-foreground">Deep Analysis Available</p>
-                          <p className="text-xs text-muted-foreground">
-                            {gameAnalysis.opening ? `${gameAnalysis.opening.name}` : 'Opening detection'} 
-                            {gameAnalysis.tactics.length > 0 && ` • ${gameAnalysis.tactics.length} tactics`}
-                            {gameAnalysis.gambit && ` • Gambit detected`}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1 text-xs text-purple-400 group-hover:text-purple-300">
-                        <span>View in Analytics</span>
-                        <BarChart3 className="h-4 w-4" />
-                      </div>
-                    </button>
-                  )}
+                  <ReviewNav sections={reviewSections} />
 
                   {/* Main Layout: Timeline Left | Board Center | Legend Right */}
                   <div className="flex gap-2 xl:gap-3 items-start justify-center w-full">
@@ -1862,16 +1847,6 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                       </div>
                     )}
                   </div>
-
-                  {effectivePgn && (
-                    <GameStoryPanel
-                      pgn={effectivePgn}
-                      totalMoves={localTotalMoves}
-                      gameAnalysis={gameAnalysis}
-                      white={localGameData.white}
-                      black={localGameData.black}
-                    />
-                  )}
 
                   {/* Mobile/Tablet Timeline Controls (shown on smaller screens) */}
                   <div className="xl:hidden">
@@ -1929,58 +1904,8 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                     </div>
                   )}
 
-                  {/* Game Info is now integrated into TimelineBoard for trademark look */}
-
-                  {/* Intrinsic Palette/Game Card - Show when matched */}
-                  {gameCardMatch?.isMatch && (
-                    <IntrinsicPaletteCard
-                      gameCardId={gameCardMatch?.matchedGame?.id}
-                      gameCardTitle={gameCardMatch?.matchedGame?.title}
-                      gameCardMatchType={gameCardMatch?.matchType}
-                      gameCardSimilarity={gameCardMatch?.similarity}
-                    />
-                  )}
-
-                  {/* Famous Games Quick Links — above palette selector */}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-display shrink-0">Try:</span>
-                    {FAMOUS_QUICK_LINKS.map((fg) => {
-                      const fgHash = generateGameHash(fg.pgn);
-                      return (
-                        <button
-                          key={fg.id}
-                          onClick={() => { window.location.href = `/g/${fgHash}?src=famous`; }}
-                          className="text-xs px-2.5 py-1 rounded-full border border-border/50 bg-background hover:border-primary/40 hover:bg-primary/5 transition-all text-muted-foreground hover:text-foreground"
-                        >
-                          {fg.title}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Palette Availability - Seamless switching - Available for ALL contexts */}
-                  {effectivePgn && (
-                    <PaletteAvailabilityIndicator
-                      pgn={effectivePgn}
-                      currentUserId={user?.id}
-                      currentPaletteId={currentPaletteInfo?.id}
-                      context={context}
-                      compact={false}
-                      onSeamlessSwitch={handleSeamlessPaletteSwitch}
-                    />
-                  )}
-
-                  {/* Poetry Preview - Show when famous game has poetry */}
-                  {gameCardMatch?.isMatch && gameCardMatch?.matchedGame?.id && getGamePoetry(gameCardMatch.matchedGame.id) && (
-                    <PoetryPreviewCard
-                      gameId={gameCardMatch.matchedGame.id}
-                      gameTitle={gameCardMatch.matchedGame.title}
-                      onOpenModal={() => setShowPoetryModal(true)}
-                    />
-                  )}
-
                   {/* Action Buttons - Unified for all contexts */}
-                  <div className="flex flex-wrap gap-2 pt-4 border-t border-border/30">
+                  <div className="flex flex-wrap gap-2 pt-2">
                     {/* Export Buttons - Single unified rendering for all contexts */}
                     {onExport && (
                       <ExportActionButtons
@@ -2092,78 +2017,141 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                     )}
                   </div>
 
-                  {/* Mini Print Order Section - Use local state for consistency */}
-                  {onExport && (
-                    <MiniPrintOrderSection
-                      board={localBoard}
-                      gameData={localGameData}
-                      totalMoves={localTotalMoves}
-                      darkMode={darkMode}
-                      showPieces={showPieces}
-                      pieceOpacity={pieceOpacity}
-                      onOrderPrint={(exportState) => onExport('print', exportState)}
-                      className="mt-6"
-                    />
+                  {showPurchaseButton && onPurchase && (
+                    <Button
+                      className="w-full gap-2"
+                      size="lg"
+                      onClick={onPurchase}
+                      disabled={isPurchasing}
+                    >
+                      {isPurchasing ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : localPurchasePrice === 0 ? (
+                        <>Claim for Free</>
+                      ) : (
+                        <>Purchase for ${((localPurchasePrice || 0) / 100).toFixed(2)}</>
+                      )}
+                    </Button>
                   )}
 
-                  <LifestyleStrip
-                    paletteId={currentPaletteInfo?.id}
-                    heading="See it on your wall"
-                    subheading="Museum-quality prints, shipped ready to hang"
-                    className="mt-6"
-                  />
-
-                  {/* Print Value Proposition */}
-                  <div className="mt-6 p-4 rounded-xl bg-gradient-to-br from-primary/5 via-transparent to-primary/10 border border-primary/20">
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 rounded-lg bg-primary/10">
-                        <Sparkles className="h-5 w-5 text-primary" />
-                      </div>
-                      <div className="flex-1 space-y-2">
-                        <h4 className="font-medium text-foreground">Museum-Quality Chess Art</h4>
-                        <ul className="text-sm text-muted-foreground space-y-1.5">
-                          <li className="flex items-center gap-2">
-                            <div className="w-1 h-1 rounded-full bg-primary" />
-                            Archival canvas prints that last 100+ years
-                          </li>
-                          <li className="flex items-center gap-2">
-                            <div className="w-1 h-1 rounded-full bg-primary" />
-                            Free US shipping on every order
-                          </li>
-                          <li className="flex items-center gap-2">
-                            <div className="w-1 h-1 rounded-full bg-primary" />
-                            Handcrafted frames in 5 premium finishes
-                          </li>
-                          <li className="flex items-center gap-2">
-                            <div className="w-1 h-1 rounded-full bg-primary" />
-                            30-day satisfaction guarantee
-                          </li>
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </TabsContent>
-
-            {/* Analytics Tab */}
-            <TabsContent value="analytics" className="mt-0">
-              <div className="pb-4">
-                {/* Palette Ownership Card - Shows who owns which colorways */}
-                {effectivePgn && (
-                  <div className="mb-6">
-                    <PaletteOwnershipCard
+                  <ReviewSection
+                    id="review"
+                    title="Game review"
+                    icon={BookOpen}
+                    subtitle="The story, the turning point, and every move graded by Stockfish"
+                  >
+                    {effectivePgn && (
+                      <GameStoryPanel
+                        pgn={effectivePgn}
+                        totalMoves={localTotalMoves}
+                        gameAnalysis={gameAnalysis}
+                        white={localGameData.white}
+                        black={localGameData.black}
+                      />
+                    )}
+                    {effectivePgn && (
+                      <TurningPointCard
+                        pgn={effectivePgn}
+                        white={localGameData.white}
+                        black={localGameData.black}
+                      />
+                    )}
+                    <AnalyticsPanel
+                      visionScore={visionScore}
+                      isLoading={false}
+                      gameData={localGameData}
+                      totalMoves={localTotalMoves}
+                      createdAt={createdAt}
+                      gameAnalysis={gameAnalysis}
                       pgn={effectivePgn}
-                      currentPaletteId={localPaletteId}
-                      onPaletteSelect={handleSeamlessPaletteSwitch}
-                      compact={false}
+                      section="review"
                     />
-                  </div>
-                )}
-                {/* Royalty Earnings/Potential Card - Show for all contexts when vision score exists */}
-                {visionScore && (
-                  <div className="mb-6">
-                    {localIsOwner ? (
+                    {effectivePgn && <HybridPredictionPanel pgn={effectivePgn} />}
+                    <PredictionEdgeCard totalMoves={localTotalMoves} />
+                  </ReviewSection>
+
+                  {effectivePgn && (
+                    <ReviewSection
+                      id="players"
+                      title="The players"
+                      icon={Users}
+                      subtitle="Each player's palette comes from how they play"
+                    >
+                      <GamePlayersPanel pgn={effectivePgn} white={localGameData.white} black={localGameData.black} />
+                    </ReviewSection>
+                  )}
+
+                  <ReviewSection
+                    id="palette"
+                    title="Palette"
+                    icon={Palette}
+                    subtitle="Switch colourways and see who owns each one"
+                  >
+                    {gameCardMatch?.isMatch && (
+                      <IntrinsicPaletteCard
+                        gameCardId={gameCardMatch?.matchedGame?.id}
+                        gameCardTitle={gameCardMatch?.matchedGame?.title}
+                        gameCardMatchType={gameCardMatch?.matchType}
+                        gameCardSimilarity={gameCardMatch?.similarity}
+                      />
+                    )}
+                    {effectivePgn && (
+                      <PaletteAvailabilityIndicator
+                        pgn={effectivePgn}
+                        currentUserId={user?.id}
+                        currentPaletteId={currentPaletteInfo?.id}
+                        context={context}
+                        compact={false}
+                        onSeamlessSwitch={handleSeamlessPaletteSwitch}
+                      />
+                    )}
+                    {effectivePgn && (
+                      <PaletteOwnershipCard
+                        pgn={effectivePgn}
+                        currentPaletteId={localPaletteId}
+                        onPaletteSelect={handleSeamlessPaletteSwitch}
+                        compact={false}
+                      />
+                    )}
+                    {gameCardMatch?.isMatch && gameCardMatch?.matchedGame?.id && getGamePoetry(gameCardMatch.matchedGame.id) && (
+                      <PoetryPreviewCard
+                        gameId={gameCardMatch.matchedGame.id}
+                        gameTitle={gameCardMatch.matchedGame.title}
+                        onOpenModal={() => setShowPoetryModal(true)}
+                      />
+                    )}
+                  </ReviewSection>
+
+                  <ReviewSection
+                    id="keep"
+                    title="Keep this game"
+                    icon={Printer}
+                    subtitle="Prints, ownership and how this vision is valued"
+                  >
+                    {onExport && (
+                      <MiniPrintOrderSection
+                        board={localBoard}
+                        gameData={localGameData}
+                        totalMoves={localTotalMoves}
+                        darkMode={darkMode}
+                        showPieces={showPieces}
+                        pieceOpacity={pieceOpacity}
+                        onOrderPrint={(exportState) => onExport('print', exportState)}
+                      />
+                    )}
+
+                    <AnalyticsPanel
+                      visionScore={visionScore}
+                      isLoading={isLoadingScore}
+                      gameData={localGameData}
+                      totalMoves={localTotalMoves}
+                      createdAt={createdAt}
+                      gameAnalysis={gameAnalysis}
+                      pgn={effectivePgn}
+                      section="value"
+                    />
+
+                    {visionScore && (localIsOwner ? (
                       <RoyaltyEarningsCard
                         royaltyCentsEarned={visionScore.royaltyCentsEarned}
                         royaltyOrdersCount={visionScore.royaltyOrdersCount}
@@ -2180,108 +2168,62 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                         viewCount={visionScore.viewCount}
                         uniqueViewers={visionScore.uniqueViewers}
                       />
+                    ))}
+
+                    {localVisualizationId && <TransferHistoryCard visualizationId={localVisualizationId} />}
+                    {localVisualizationId && (
+                      <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/80 border border-border/50">
+                        <span className="text-sm text-muted-foreground">Transfer availability:</span>
+                        <TransferLimitBadge visualizationId={localVisualizationId} />
+                      </div>
                     )}
-                  </div>
-                )}
 
-                {/* Transfer History - Show for all contexts when visualization exists */}
-                {localVisualizationId && (
-                  <div className="mb-6">
-                    <TransferHistoryCard visualizationId={localVisualizationId} />
-                  </div>
-                )}
-
-                {/* Transfer Limit Badge - Show for all contexts when visualization exists */}
-                {localVisualizationId && (
-                  <div className="mb-4 flex items-center gap-3 p-3 rounded-lg bg-muted/80 border border-border/50">
-                    <span className="text-sm text-muted-foreground">Transfer availability:</span>
-                    <TransferLimitBadge visualizationId={localVisualizationId} />
-                  </div>
-                )}
-
-                {/* Prediction edge — the "this is actually smart" depth reveal */}
-                <div className="mb-6">
-                  <PredictionEdgeCard totalMoves={localTotalMoves} />
-                </div>
-
-                {/* Turning point — the single most decisive moment, shareable */}
-                {effectivePgn && (
-                  <div className="mb-6">
-                    <TurningPointCard
-                      pgn={effectivePgn}
-                      white={localGameData.white}
-                      black={localGameData.black}
+                    <LifestyleStrip
+                      paletteId={currentPaletteInfo?.id}
+                      heading="See it on your wall"
+                      subheading="Museum-quality prints, shipped ready to hang"
                     />
-                  </div>
-                )}
 
-                <AnalyticsPanel
-                  visionScore={visionScore}
-                  isLoading={isLoadingScore}
-                  gameData={localGameData}
-                  totalMoves={localTotalMoves}
-                  createdAt={createdAt}
-                  gameAnalysis={gameAnalysis}
-                  pgn={effectivePgn}
-                />
+                    <div className="p-4 rounded-xl bg-gradient-to-br from-primary/5 via-transparent to-primary/10 border border-primary/20">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 rounded-lg bg-primary/10">
+                          <Sparkles className="h-5 w-5 text-primary" />
+                        </div>
+                        <div className="flex-1 space-y-2">
+                          <h4 className="font-medium text-foreground">Museum-Quality Chess Art</h4>
+                          <ul className="text-sm text-muted-foreground space-y-1.5">
+                            <li className="flex items-center gap-2">
+                              <div className="w-1 h-1 rounded-full bg-primary" />
+                              Archival canvas prints that last 100+ years
+                            </li>
+                            <li className="flex items-center gap-2">
+                              <div className="w-1 h-1 rounded-full bg-primary" />
+                              Free US shipping on every order
+                            </li>
+                            <li className="flex items-center gap-2">
+                              <div className="w-1 h-1 rounded-full bg-primary" />
+                              Handcrafted frames in 5 premium finishes
+                            </li>
+                            <li className="flex items-center gap-2">
+                              <div className="w-1 h-1 rounded-full bg-primary" />
+                              30-day satisfaction guarantee
+                            </li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </ReviewSection>
 
-                {/* Hybrid Prediction Panel - Stockfish + Color Flow Analysis */}
-                {effectivePgn && (
-                  <div className="mt-6">
-                    <HybridPredictionPanel pgn={effectivePgn} />
-                  </div>
-                )}
-
-                {/* Marketplace Info - Show for all contexts when listed */}
-                {localIsListed && (
-                  <div className="mt-4 p-3 rounded-lg bg-green-500/10 border border-green-500/30">
-                    <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30 mb-2">
-                      <TrendingUp className="h-3 w-3 mr-1" />
-                      Listed on Marketplace
-                    </Badge>
-                    <p className="text-sm text-muted-foreground">
-                      This vision is available for collectors to purchase.
-                    </p>
-                  </div>
-                )}
-
-                {/* Purchase Button - Show for all contexts when purchase is available */}
-                {showPurchaseButton && onPurchase && (
-                  <div className="mt-6 pt-4 border-t border-border/30">
-                    <Button 
-                      className="w-full gap-2"
-                      size="lg"
-                      onClick={onPurchase}
-                      disabled={isPurchasing}
-                    >
-                      {isPurchasing ? (
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                      ) : localPurchasePrice === 0 ? (
-                        <>Claim for Free</>
-                      ) : (
-                        <>Purchase for ${((localPurchasePrice || 0) / 100).toFixed(2)}</>
-                      )}
-                    </Button>
-                  </div>
-                )}
-
-                {/* List for Sale button - Show for all contexts when owner and not listed */}
-                {localIsOwner && !localIsListed && onListForSale && (
-                  <div className="mt-6 pt-4 border-t border-border/30">
-                    <Button 
-                      variant="outline"
-                      className="w-full gap-2"
-                      size="lg"
-                      onClick={onListForSale}
-                    >
-                      <TrendingUp className="h-5 w-5" />
-                      List for Sale on Marketplace
-                    </Button>
-                  </div>
-                )}
+                  <ReviewSection
+                    id="more-games"
+                    title="More games"
+                    icon={Swords}
+                    subtitle="The great games, in colour. Open any one to review it here."
+                  >
+                    <MoreGamesBrowser currentHash={effectivePgn ? generateGameHash(effectivePgn) : undefined} />
+                  </ReviewSection>
+                </div>
               </div>
-            </TabsContent>
-          </Tabs>
 
           {/* Poetry Modal */}
           <PoetryModal
