@@ -3,7 +3,9 @@ import { motion } from "framer-motion";
 import { Scan, Sparkles, ArrowRight, TrendingUp, Crown, Users, Unlock, Eye, Zap, ScanLine } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { PREMIUM_PRICE_MONTHLY } from "@/lib/premiumFeatures";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/shop/Header";
 import { Footer } from "@/components/shop/Footer";
@@ -44,7 +46,8 @@ const demoSteps = [
 
 export default function VisionScannerPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isPremium, isCheckingSubscription } = useAuth();
+  const checkingAccess = !!user && isCheckingSubscription;
   const randomArts = useRandomGameArt(6);
   const setCurrentSimulation = useSessionStore((s) => s.setCurrentSimulation);
 
@@ -137,8 +140,8 @@ export default function VisionScannerPage() {
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-display uppercase tracking-widest mb-6"
             >
               <Sparkles className="h-4 w-4" />
-              Free for everyone
-              <Badge variant="secondary" className="ml-2 text-xs">No account needed</Badge>
+              Premium feature
+              <Badge variant="secondary" className="ml-2 text-xs">Explore the demo free</Badge>
             </motion.div>
 
             <motion.h1
@@ -176,9 +179,25 @@ export default function VisionScannerPage() {
                   Vision Scanner
                 </h2>
 
-                <LiveVisionScanner onOpen={handleOpen} onMatched={handleMatched} />
+                {checkingAccess ? (
+                  <div className="h-48 animate-pulse rounded-lg bg-muted/20" />
+                ) : isPremium ? (
+                  <LiveVisionScanner onOpen={handleOpen} onMatched={handleMatched} />
+                ) : (
+                  <div className="rounded-xl border border-primary/30 bg-primary/5 p-6 text-center space-y-4">
+                    <Crown className="mx-auto h-8 w-8 text-primary" />
+                    <h3 className="font-display text-lg font-bold">The scanner is a Premium feature</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Point your camera at any printed vision and the game behind it opens instantly, with scan history, streaks and achievements.
+                    </p>
+                    <Button asChild className="w-full">
+                      <Link to="/join">Unlock with Premium, {PREMIUM_PRICE_MONTHLY}/month</Link>
+                    </Button>
+                    <p className="text-xs text-muted-foreground">Cancel anytime. Free accounts can still download, order prints and explore.</p>
+                  </div>
+                )}
 
-                {user && (
+                {user && isPremium && (
                   <>
                     <div className="mt-4">
                       <ScanStreak key={streakKey} />

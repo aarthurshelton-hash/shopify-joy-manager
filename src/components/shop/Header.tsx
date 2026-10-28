@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 import { CartDrawer } from './CartDrawer';
 import { Menu, Sparkles, Camera, TrendingUp, Trophy, ShoppingBag, Gift } from 'lucide-react';
 import UserMenu from '@/components/auth/UserMenu';
@@ -30,6 +31,7 @@ export const Header = () => {
   const [scannerOpen, setScannerOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { isPremium } = useAuth();
 
   const handleLogoClick = useCallback((e: React.MouseEvent) => {
     if (location.pathname === '/') {
@@ -101,7 +103,7 @@ export const Header = () => {
             Discover
           </Link>
           <button
-            onClick={() => setScannerOpen(true)}
+            onClick={() => (isPremium ? setScannerOpen(true) : navigate('/vision-scanner'))}
             className="hidden sm:inline-flex text-xs font-medium text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wider items-center gap-1.5"
           >
             <Camera className="h-3.5 w-3.5" />
@@ -109,7 +111,7 @@ export const Header = () => {
           </button>
           <UserMenu />
           <CartDrawer />
-          <VisionScanner isOpen={scannerOpen} onClose={() => setScannerOpen(false)} />
+          {isPremium && <VisionScanner isOpen={scannerOpen} onClose={() => setScannerOpen(false)} />}
           
           {/* Mobile menu */}
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>

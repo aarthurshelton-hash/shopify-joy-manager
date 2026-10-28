@@ -40,6 +40,8 @@ import {
   X,
   ChevronRight,
   User,
+  ScanLine,
+  Paintbrush,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -108,18 +110,18 @@ const PREMIUM_FEATURES = [
     tooltip: 'Royalties for creators are planned alongside the marketplace. Details will be announced to Premium members first.',
   },
   {
-    id: 'analytics',
-    icon: BarChart3,
-    title: 'Premium Analytics',
-    description: 'Deep platform insights',
-    tooltip: 'Access extended data per vision including territory heatmaps, piece activity scores, and valuation metrics.',
+    id: 'scanner',
+    icon: ScanLine,
+    title: 'Vision Scanner',
+    description: 'Point your camera at any vision',
+    tooltip: 'Scan any printed En Pensent vision and the game behind it opens instantly, with scan history, streaks and achievements.',
   },
   {
-    id: 'history-export',
-    icon: TrendingUp,
-    title: 'Full History Export',
-    description: '250-game archetype timelines',
-    tooltip: 'Scout any opponent — download their complete archetype/outcome history as CSV. Up to 250 games per player.',
+    id: 'creative',
+    icon: Paintbrush,
+    title: 'Creative Mode',
+    description: 'Paint, save and export your own',
+    tooltip: 'Paint your own visions square by square, save them to your gallery and export them.',
   },
 ];
 
