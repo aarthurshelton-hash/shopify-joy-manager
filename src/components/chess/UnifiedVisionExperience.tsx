@@ -47,6 +47,7 @@ import {
 import { SquareData, GameData, SimulationResult, simulateGame } from '@/lib/chess/gameSimulator';
 import { TimelineProvider, useTimeline, GamePhase } from '@/contexts/TimelineContext';
 import { GameStoryPanel } from './GameStoryPanel';
+import { useEngineMoveQuality } from '@/hooks/useEngineMoveQuality';
 import { LegendHighlightProvider, useLegendHighlight, HighlightedPiece } from '@/contexts/LegendHighlightContext';
 import InteractiveVisualizationBoard from './InteractiveVisualizationBoard';
 import { EnhancedLegend } from './EnhancedLegend';
@@ -378,6 +379,11 @@ const AnalyticsPanel: React.FC<{
     }
   }, [effectivePgn]);
   
+  const engineQuality = useEngineMoveQuality(effectivePgn, true);
+  const engineReady = engineQuality.status === 'ready';
+  const whiteAcc = engineReady && engineQuality.whiteAccuracy !== null ? engineQuality.whiteAccuracy : qualitySummary?.whiteAccuracy ?? 0;
+  const blackAcc = engineReady && engineQuality.blackAccuracy !== null ? engineQuality.blackAccuracy : qualitySummary?.blackAccuracy ?? 0;
+
   // Extract opening information for book move tooltips
   const openingInfo = React.useMemo(() => {
     if (!effectivePgn || classifiedMoves.length === 0) {
@@ -576,6 +582,13 @@ const AnalyticsPanel: React.FC<{
                   <Sparkles className="h-3 w-3 mr-1" />
                   Move Quality
                 </Badge>
+                <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                  {engineReady
+                    ? `Accuracy: Stockfish depth ${engineQuality.depth}`
+                    : engineQuality.status === 'unavailable'
+                      ? 'Heuristic estimate'
+                      : 'Heuristic estimate · Stockfish running'}
+                </span>
               </div>
               
               {/* Per-player accuracy display - chess.com style */}
@@ -583,21 +596,21 @@ const AnalyticsPanel: React.FC<{
                 <div className="p-2 rounded bg-background/90 border border-border/30 text-center">
                   <p className="text-[10px] text-muted-foreground mb-1 flex items-center justify-center gap-1"><ChessPieceIcon type="k" color="w" size={12} /> {gameData.white || 'White'}</p>
                   <p className={`text-lg font-bold ${
-                    qualitySummary.whiteAccuracy >= 90 ? 'text-green-400' :
-                    qualitySummary.whiteAccuracy >= 70 ? 'text-yellow-400' :
+                    whiteAcc >= 90 ? 'text-green-400' :
+                    whiteAcc >= 70 ? 'text-yellow-400' :
                     'text-red-400'
                   }`}>
-                    {qualitySummary.whiteAccuracy}%
+                    {whiteAcc}%
                   </p>
                 </div>
                 <div className="p-2 rounded bg-background/90 border border-border/30 text-center">
                   <p className="text-[10px] text-muted-foreground mb-1 flex items-center justify-center gap-1"><ChessPieceIcon type="k" color="b" size={12} /> {gameData.black || 'Black'}</p>
                   <p className={`text-lg font-bold ${
-                    qualitySummary.blackAccuracy >= 90 ? 'text-green-400' :
-                    qualitySummary.blackAccuracy >= 70 ? 'text-yellow-400' :
+                    blackAcc >= 90 ? 'text-green-400' :
+                    blackAcc >= 70 ? 'text-yellow-400' :
                     'text-red-400'
                   }`}>
-                    {qualitySummary.blackAccuracy}%
+                    {blackAcc}%
                   </p>
                 </div>
               </div>
