@@ -46,6 +46,7 @@ import {
 } from 'lucide-react';
 import { SquareData, GameData, SimulationResult, simulateGame } from '@/lib/chess/gameSimulator';
 import { TimelineProvider, useTimeline, GamePhase } from '@/contexts/TimelineContext';
+import { GameStoryPanel } from './GameStoryPanel';
 import { LegendHighlightProvider, useLegendHighlight, HighlightedPiece } from '@/contexts/LegendHighlightContext';
 import InteractiveVisualizationBoard from './InteractiveVisualizationBoard';
 import { EnhancedLegend } from './EnhancedLegend';
@@ -534,17 +535,9 @@ const AnalyticsPanel: React.FC<{
               <div className="flex flex-wrap gap-1">
                 {gameAnalysis.tactics.slice(0, 8).map((tactic, i) => (
                   <Badge key={i} variant="secondary" className="text-xs">
-                    {tactic.type === 'fork' && '⑂'}
-                    {tactic.type === 'pin' && '📌'}
-                    {tactic.type === 'discovery' && '💡'}
-                    {tactic.type === 'skewer' && '🗡️'}
                     {tactic.type === 'back_rank' && <ChessPieceIcon type="q" color="b" size={12} />}
-                    {tactic.type === 'smothered_mate' && '🏆'}
-                    {tactic.type === 'sacrifice' && '💎'}
-                    {tactic.type === 'double_attack' && '⚔️'}
-                    {tactic.type === 'check' && '✓'}
                     {tactic.type === 'checkmate' && <span className="inline-flex items-center gap-0.5"><ChessPieceIcon type="k" color="b" size={12} />#</span>}
-                    {' '}{tactic.type.replace('_', ' ')} (m{tactic.moveNumber})
+                    {' '}<span className="capitalize">{tactic.type.replace(/_/g, ' ')}</span> (m{tactic.moveNumber})
                   </Badge>
                 ))}
               </div>
@@ -1849,6 +1842,16 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                       </div>
                     )}
                   </div>
+
+                  {effectivePgn && (
+                    <GameStoryPanel
+                      pgn={effectivePgn}
+                      totalMoves={localTotalMoves}
+                      gameAnalysis={gameAnalysis}
+                      white={localGameData.white}
+                      black={localGameData.black}
+                    />
+                  )}
 
                   {/* Mobile/Tablet Timeline Controls (shown on smaller screens) */}
                   <div className="xl:hidden">

@@ -4,6 +4,7 @@ import { SquareData, GameData } from '@/lib/chess/gameSimulator';
 import InteractiveVisualizationBoard from './InteractiveVisualizationBoard';
 import InteractiveGameInfoDisplay from './InteractiveGameInfoDisplay';
 import BoardCoordinateGuide from './BoardCoordinateGuide';
+import { MoveEventOverlay } from './MoveEventOverlay';
 
 interface VisionBoardProps {
   board: SquareData[][];
@@ -91,6 +92,9 @@ export const VisionBoard: React.FC<VisionBoardProps> = ({
           currentMoveNumber={currentMove}
           onFollowPieceActivated={handleFollowPieceActivated}
         />
+        {effectivePgnForBoard && (
+          <MoveEventOverlay pgn={effectivePgnForBoard} size={size} totalMoves={totalMoves} />
+        )}
       </div>
 
       {/* Game Info Section - Now Interactive */}

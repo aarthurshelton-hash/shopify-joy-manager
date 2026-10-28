@@ -182,7 +182,7 @@ const App = () => (
               {/* Alec Arthur Shelton (a.arthur.shelton@gmail.com) exclusive access */}
               
               {/* Analytics & Dashboards */}
-              <Route path="/analytics" element={<AdminRoute featureName="Analytics"><Suspense fallback={<PageLoadingSkeleton />}><Analytics /></Suspense></AdminRoute>} />
+              <Route path="/analytics" element={<Suspense fallback={<PageLoadingSkeleton />}><Analytics /></Suspense>} />
               <Route path="/leaderboard" element={<AdminRoute featureName="Leaderboard"><Suspense fallback={<PageLoadingSkeleton />}><Leaderboard /></Suspense></AdminRoute>} />
               <Route path="/premium-analytics" element={<AdminRoute featureName="Premium Analytics"><Suspense fallback={<PageLoadingSkeleton />}><PremiumAnalytics /></Suspense></AdminRoute>} />
               <Route path="/creator-dashboard" element={<AdminRoute featureName="Creator Dashboard"><Suspense fallback={<PageLoadingSkeleton />}><CreatorDashboard /></Suspense></AdminRoute>} />
