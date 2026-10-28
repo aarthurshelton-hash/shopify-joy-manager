@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronDown, BookOpen } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ChevronDown, BookOpen, Play, Square, Link2, Check } from 'lucide-react';
 import { useTimeline } from '@/contexts/TimelineContext';
-import { buildMoveEvents, formatPly, type EventTone } from '@/lib/chess/moveEvents';
+import { buildMoveEvents, pickHighlights, formatPly, type EventTone } from '@/lib/chess/moveEvents';
 import type { GameAnalysis } from '@/lib/chess/chessAnalysis';
 import { useEngineMoveQuality } from '@/hooks/useEngineMoveQuality';
 
@@ -20,23 +20,71 @@ const DOT: Record<EventTone, string> = {
   neutral: 'bg-zinc-400',
 };
 
+const STEP_MS = 3400;
+
 export const GameStoryPanel: React.FC<GameStoryPanelProps> = ({
   pgn, totalMoves, gameAnalysis, white, black,
 }) => {
   const { currentMove, setCurrentMove } = useTimeline();
   const [open, setOpen] = useState(true);
+  const [tourIndex, setTourIndex] = useState<number | null>(null);
+  const [copiedPly, setCopiedPly] = useState<number | null>(null);
   const engine = useEngineMoveQuality(pgn, true);
-  const events = useMemo(
-    () => Array.from(buildMoveEvents(pgn, engine.moves).values()).filter((e) => e.notable),
-    [pgn, engine.moves],
-  );
+  const allEvents = useMemo(() => buildMoveEvents(pgn, engine.moves), [pgn, engine.moves]);
+  const events = useMemo(() => Array.from(allEvents.values()).filter((e) => e.notable), [allEvents]);
+  const highlights = useMemo(() => pickHighlights(allEvents, 8), [allEvents]);
   const activeRef = useRef<HTMLButtonElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
+  const autoStarted = useRef(false);
+  const deepLinked = useRef(false);
 
   const activePly = useMemo(() => {
     if (currentMove <= 0 || currentMove >= totalMoves) return currentMove >= totalMoves ? -1 : 0;
     return currentMove;
   }, [currentMove, totalMoves]);
+
+  const touring = tourIndex !== null;
+
+  const stopTour = useCallback(() => {
+    setTourIndex(null);
+    setCurrentMove(Infinity);
+  }, [setCurrentMove]);
+
+  useEffect(() => {
+    if (tourIndex === null) return;
+    const h = highlights[tourIndex];
+    if (!h) {
+      setTourIndex(null);
+      setCurrentMove(Infinity);
+      return;
+    }
+    setCurrentMove(h.ply);
+    const timer = window.setTimeout(() => setTourIndex((i) => (i === null ? null : i + 1)), STEP_MS);
+    return () => window.clearTimeout(timer);
+  }, [tourIndex, highlights, setCurrentMove]);
+
+  useEffect(() => () => setTourIndex(null), []);
+
+  // ?highlights=1 starts the tour once the engine has either finished or given up.
+  useEffect(() => {
+    if (autoStarted.current || highlights.length === 0) return;
+    if (engine.status !== 'ready' && engine.status !== 'unavailable') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('highlights') !== '1') return;
+    autoStarted.current = true;
+    setTourIndex(0);
+  }, [engine.status, highlights.length]);
+
+  // ?move=N jumps straight to a shared moment.
+  useEffect(() => {
+    if (deepLinked.current || totalMoves <= 0) return;
+    const raw = new URLSearchParams(window.location.search).get('move');
+    const ply = raw ? parseInt(raw, 10) : NaN;
+    if (!Number.isFinite(ply) || ply < 1 || ply > totalMoves) return;
+    deepLinked.current = true;
+    const t = window.setTimeout(() => setCurrentMove(ply), 600);
+    return () => window.clearTimeout(t);
+  }, [totalMoves, setCurrentMove]);
 
   useEffect(() => {
     const el = activeRef.current;
@@ -44,6 +92,19 @@ export const GameStoryPanel: React.FC<GameStoryPanelProps> = ({
     if (!el || !list) return;
     list.scrollTo({ top: el.offsetTop - list.clientHeight / 2 + el.clientHeight / 2, behavior: 'smooth' });
   }, [activePly]);
+
+  const shareMoment = async (ply: number) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('move', String(ply));
+    url.searchParams.delete('highlights');
+    try {
+      await navigator.clipboard.writeText(url.toString());
+      setCopiedPly(ply);
+      window.setTimeout(() => setCopiedPly((p) => (p === ply ? null : p)), 1800);
+    } catch {
+      window.prompt('Copy this link', url.toString());
+    }
+  };
 
   if (events.length === 0 && !gameAnalysis) return null;
 
@@ -64,19 +125,29 @@ export const GameStoryPanel: React.FC<GameStoryPanelProps> = ({
 
   return (
     <section className="rounded-xl border border-border/50 bg-card/60 backdrop-blur-sm overflow-hidden">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between px-4 py-3 text-left"
-        aria-expanded={open}
-      >
-        <span className="flex items-center gap-2 font-display text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          <BookOpen className="h-4 w-4 text-primary" />
-          Game story
-          <span className="text-muted-foreground/60 normal-case tracking-normal">{events.length} key moments</span>
-        </span>
-        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
+      <div className="flex items-center justify-between gap-3 px-4 py-3">
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          className="flex min-w-0 flex-1 items-center gap-2 text-left"
+          aria-expanded={open}
+        >
+          <BookOpen className="h-4 w-4 shrink-0 text-primary" />
+          <span className="font-display text-xs uppercase tracking-[0.2em] text-muted-foreground">Game story</span>
+          <span className="truncate text-xs text-muted-foreground/60">{events.length} key moments</span>
+          <ChevronDown className={`ml-auto h-4 w-4 shrink-0 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
+        </button>
+        {highlights.length > 0 && (
+          <button
+            type="button"
+            onClick={() => (touring ? stopTour() : setTourIndex(0))}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 px-3 py-1.5 text-[11px] font-display uppercase tracking-wider text-primary transition-colors hover:bg-primary/20"
+          >
+            {touring ? <Square className="h-3 w-3" /> : <Play className="h-3 w-3" />}
+            {touring ? `Stop ${Math.min((tourIndex ?? 0) + 1, highlights.length)}/${highlights.length}` : 'Play highlights'}
+          </button>
+        )}
+      </div>
 
       {open && (
         <div className="border-t border-border/40">
@@ -117,24 +188,40 @@ export const GameStoryPanel: React.FC<GameStoryPanelProps> = ({
             {events.map((e) => {
               const isActive = e.ply === activePly;
               return (
-                <button
+                <div
                   key={e.ply}
-                  ref={isActive ? activeRef : undefined}
-                  type="button"
-                  onClick={() => setCurrentMove(e.ply)}
-                  className={`flex w-full items-start gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-muted/50 ${
+                  className={`flex items-start gap-1 rounded-lg transition-colors hover:bg-muted/50 ${
                     isActive ? 'bg-primary/10 ring-1 ring-primary/30' : ''
                   }`}
                 >
-                  <span className={`mt-1.5 h-2 w-2 flex-shrink-0 rounded-full ${DOT[e.tone]}`} />
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-baseline justify-between gap-2">
-                      <span className="text-sm font-medium text-foreground">{e.title}</span>
-                      <span className="font-mono text-[11px] text-muted-foreground">{formatPly(e.ply, e.san)}</span>
+                  <button
+                    ref={isActive ? activeRef : undefined}
+                    type="button"
+                    onClick={() => {
+                      if (touring) setTourIndex(null);
+                      setCurrentMove(e.ply);
+                    }}
+                    className="flex min-w-0 flex-1 items-start gap-3 px-3 py-2 text-left"
+                  >
+                    <span className={`mt-1.5 h-2 w-2 flex-shrink-0 rounded-full ${DOT[e.tone]}`} />
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-baseline justify-between gap-2">
+                        <span className="text-sm font-medium text-foreground">{e.title}</span>
+                        <span className="font-mono text-[11px] text-muted-foreground">{formatPly(e.ply, e.san)}</span>
+                      </span>
+                      <span className="block text-xs text-muted-foreground">{e.detail}</span>
                     </span>
-                    <span className="block text-xs text-muted-foreground">{e.detail}</span>
-                  </span>
-                </button>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => shareMoment(e.ply)}
+                    title="Copy a link to this moment"
+                    aria-label={`Copy link to move ${formatPly(e.ply, e.san)}`}
+                    className="mr-2 mt-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  >
+                    {copiedPly === e.ply ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Link2 className="h-3.5 w-3.5" />}
+                  </button>
+                </div>
               );
             })}
           </div>

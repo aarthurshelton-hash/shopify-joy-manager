@@ -25,6 +25,57 @@ const IDLE: EngineQualityState = {
 const ANALYSIS_DEPTH = 12;
 const MAX_CACHED = 12;
 
+const STORE_PREFIX = 'ep_eng_v1_';
+const STORE_INDEX = 'ep_eng_idx_v1';
+const STORE_MAX = 40;
+
+function pgnKey(pgn: string): string {
+  let h = 5381;
+  for (let i = 0; i < pgn.length; i++) h = ((h << 5) + h + pgn.charCodeAt(i)) | 0;
+  return `${(h >>> 0).toString(36)}_${pgn.length}`;
+}
+
+function loadStored(pgn: string): EngineQualityState | null {
+  try {
+    const raw = localStorage.getItem(STORE_PREFIX + pgnKey(pgn));
+    if (!raw) return null;
+    const d = JSON.parse(raw) as { m: [string, number, number, string, number][]; w: number; b: number; d: number };
+    return {
+      status: 'ready',
+      progress: null,
+      moves: d.m.map(([san, cpLoss, accuracy, bestMove, best]) => ({
+        san, cpLoss, accuracy, bestMove, wasBestMove: best === 1,
+      })),
+      whiteAccuracy: d.w,
+      blackAccuracy: d.b,
+      depth: d.d,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function saveStored(pgn: string, s: EngineQualityState) {
+  if (!s.moves) return;
+  try {
+    const key = pgnKey(pgn);
+    const payload = {
+      m: s.moves.map((m) => [m.san, Math.round(m.cpLoss), Math.round(m.accuracy * 10) / 10, m.bestMove, m.wasBestMove ? 1 : 0]),
+      w: s.whiteAccuracy, b: s.blackAccuracy, d: s.depth,
+    };
+    localStorage.setItem(STORE_PREFIX + key, JSON.stringify(payload));
+    const idx: string[] = JSON.parse(localStorage.getItem(STORE_INDEX) || '[]').filter((k: string) => k !== key);
+    idx.push(key);
+    while (idx.length > STORE_MAX) {
+      const old = idx.shift();
+      if (old) localStorage.removeItem(STORE_PREFIX + old);
+    }
+    localStorage.setItem(STORE_INDEX, JSON.stringify(idx));
+  } catch {
+    /* storage full or unavailable */
+  }
+}
+
 const states = new Map<string, EngineQualityState>();
 const listeners = new Set<(pgn: string) => void>();
 let queue: Promise<void> = Promise.resolve();
@@ -40,6 +91,11 @@ function setState(pgn: string, next: EngineQualityState) {
 
 function start(pgn: string) {
   if (states.has(pgn)) return;
+  const stored = loadStored(pgn);
+  if (stored) {
+    setState(pgn, stored);
+    return;
+  }
   setState(pgn, { ...IDLE, status: 'queued' });
 
   // The local engine is a singleton, so games are analysed one at a time.
@@ -55,7 +111,7 @@ function start(pgn: string) {
         setState(pgn, { ...IDLE, status: 'unavailable' });
         return;
       }
-      setState(pgn, {
+      const ready: EngineQualityState = {
         status: 'ready',
         progress: null,
         moves: result.moves.map((m) => ({
@@ -68,7 +124,9 @@ function start(pgn: string) {
         whiteAccuracy: result.whiteAccuracy,
         blackAccuracy: result.blackAccuracy,
         depth: result.analysisDepth,
-      });
+      };
+      setState(pgn, ready);
+      saveStored(pgn, ready);
     } catch (e) {
       console.warn('[EngineMoveQuality] analysis failed:', e);
       setState(pgn, { ...IDLE, status: 'unavailable' });

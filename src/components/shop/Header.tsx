@@ -18,6 +18,7 @@ const mobileLinks = [
   { to: '/shop', label: 'Shop Prints', icon: ShoppingBag },
   { to: '/gift', label: 'Gifts', icon: Gift },
   { to: '/#make-your-own', label: 'Discover', icon: Sparkles },
+  { to: '/explore', label: 'Explore', icon: Sparkles },
   { to: '/tournament', label: 'Tournament', icon: Trophy },
   { to: '/vision-scanner', label: 'Vision Scanner', icon: Camera },
   { to: '/marketplace', label: 'Marketplace', icon: Sparkles },
@@ -101,6 +102,12 @@ export const Header = () => {
           >
             <Sparkles className="h-3.5 w-3.5" />
             Discover
+          </Link>
+          <Link
+            to="/explore"
+            className="hidden sm:inline-flex text-xs font-medium text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wider items-center gap-1.5"
+          >
+            Explore
           </Link>
           <button
             onClick={() => (isPremium ? setScannerOpen(true) : navigate('/vision-scanner'))}

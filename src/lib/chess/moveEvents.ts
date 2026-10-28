@@ -24,6 +24,12 @@ const HEURISTIC_QUALITY: ReadonlySet<MomentType> = new Set<MomentType>([
   'brilliant', 'great', 'blunder', 'mistake', 'inaccuracy',
 ]);
 
+const TACTIC_TYPES: ReadonlySet<MomentType> = new Set<MomentType>([
+  'fork', 'pin', 'skewer', 'discovery',
+]);
+// A tactic is only called out if the engine does not say the move was an error.
+const TACTIC_MAX_LOSS_CP = 50;
+
 const BLUNDER_CP = 200;
 const MISTAKE_CP = 100;
 const SOUND_CP = 30;
@@ -135,6 +141,7 @@ export function buildMoveEvents(pgn: string, engine?: EngineMove[] | null): Map<
     const moments = all
       .filter((m) => !HEURISTIC_QUALITY.has(m.type))
       .filter((m) => m.type !== 'sacrifice' || !eng || eng.cpLoss <= SOUND_CP)
+      .filter((m) => !TACTIC_TYPES.has(m.type) || !eng || eng.cpLoss <= TACTIC_MAX_LOSS_CP)
       .sort((a, b) => (PRIORITY[b.type] || 0) - (PRIORITY[a.type] || 0));
 
     let top = moments[0];
@@ -216,6 +223,26 @@ export function buildMoveEvents(pgn: string, engine?: EngineMove[] | null): Map<
   });
 
   return out;
+}
+
+/**
+ * Picks the key moments worth replaying: the most significant events by
+ * priority, spread so no two are on adjacent plies, returned in game order.
+ */
+export function pickHighlights(events: Map<number, MoveEvent>, max = 8): MoveEvent[] {
+  const notable = Array.from(events.values()).filter((e) => e.notable);
+  if (notable.length <= max) return notable.sort((a, b) => a.ply - b.ply);
+
+  const ranked = notable.slice().sort(
+    (a, b) => (PRIORITY[b.type] || 0) - (PRIORITY[a.type] || 0) || a.ply - b.ply,
+  );
+  const chosen: MoveEvent[] = [];
+  for (const e of ranked) {
+    if (chosen.length >= max) break;
+    if (chosen.some((c) => Math.abs(c.ply - e.ply) < 2)) continue;
+    chosen.push(e);
+  }
+  return chosen.sort((a, b) => a.ply - b.ply);
 }
 
 export function formatPly(ply: number, san: string): string {

@@ -64,6 +64,7 @@ const PremiumAnalytics = lazy(() => import("./pages/PremiumAnalytics"));
 const AdminCEODashboard = lazy(() => import("./pages/AdminCEODashboard"));
 const AdminAIArtBank = lazy(() => import("./pages/AdminAIArtBank"));
 const OpeningEncyclopedia = lazy(() => import("./pages/OpeningEncyclopedia"));
+const Explore = lazy(() => import("./pages/Explore"));
 const CodeAnalysis = lazy(() => import("./pages/CodeAnalysis"));
 const AcademicPaper = lazy(() => import("./pages/AcademicPaper"));
 const RubberPhotonics = lazy(() => import("./pages/RubberPhotonics"));
@@ -157,6 +158,7 @@ const App = () => (
               <Route path="/redeem" element={<Suspense fallback={<PageLoadingSkeleton />}><Redeem /></Suspense>} />
               <Route path="/v/:shareId" element={<Suspense fallback={<PageLoadingSkeleton />}><VisualizationRedirect /></Suspense>} />
               <Route path="/g/:gameHash" element={<Suspense fallback={<PageLoadingSkeleton />}><GameView /></Suspense>} />
+              <Route path="/explore" element={<Suspense fallback={<PageLoadingSkeleton />}><Explore /></Suspense>} />
               <Route path="/openings" element={<Suspense fallback={<PageLoadingSkeleton />}><OpeningEncyclopedia /></Suspense>} />
               <Route path="/code-analysis" element={<AdminRoute featureName="Code Analysis"><Suspense fallback={<PageLoadingSkeleton />}><CodeAnalysis /></Suspense></AdminRoute>} />
               <Route path="/academic-paper" element={<AdminRoute featureName="Academic Paper"><Suspense fallback={<PageLoadingSkeleton />}><AcademicPaper /></Suspense></AdminRoute>} />
