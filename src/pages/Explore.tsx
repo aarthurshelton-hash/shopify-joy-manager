@@ -301,7 +301,11 @@ const Explore = () => {
                                 <Info className="h-3.5 w-3.5" />
                               </button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-[22rem] max-w-[92vw] space-y-2 p-2" align="end">
+                            <PopoverContent
+                              className="max-h-[var(--radix-popover-content-available-height)] w-[22rem] max-w-[92vw] space-y-2 overflow-y-auto p-2"
+                              align="end"
+                              collisionPadding={{ top: 72, bottom: 12 }}
+                            >
                               {([['White', e.match.white], ['Black', e.match.black]] as const).map(([side, s]) => (
                                 <PlayerPaletteCard
                                   key={side}

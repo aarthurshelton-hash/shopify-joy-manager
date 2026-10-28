@@ -104,7 +104,7 @@ export async function importFromChessCom(username: string, max = 12): Promise<Im
 }
 
 interface ChessComMonth {
-  games: Array<{ url?: string; pgn?: string }>;
+  games: Array<{ url?: string; pgn?: string; white?: { username?: string }; black?: { username?: string } }>;
 }
 
 /**
@@ -184,6 +184,67 @@ export async function importFromChessComGameUrl(input: string, username: string)
 
 export type ImportSource = 'lichess' | 'chesscom';
 export type ImportMode = 'username' | 'link' | 'tournament';
+
+export interface HeadToHeadResult {
+  games: ImportedGame[];
+  /** How far back the search reached, e.g. "36 months" or "all games". */
+  searched: string;
+}
+
+/**
+ * Games between two players, newest first.
+ * Lichess filters server-side (vs=); Chess.com has no such filter, so we scan the first
+ * player's monthly archives (newest first, a few months at a time) for games against the second.
+ */
+export async function importHeadToHead(
+  source: ImportSource,
+  playerA: string,
+  playerB: string,
+  max = 30,
+  maxMonths = 36,
+  onProgress?: (partial: HeadToHeadResult) => void,
+): Promise<HeadToHeadResult> {
+  const a = playerA.trim().replace(/^@/, '');
+  const b = playerB.trim().replace(/^@/, '');
+  if (!a || !b) throw new Error('Enter both usernames.');
+  if (source === 'lichess') {
+    const res = await fetch(
+      `https://lichess.org/api/games/user/${encodeURIComponent(a)}?vs=${encodeURIComponent(b)}&max=${max}&clocks=false&evals=false&opening=true`,
+      { headers: { Accept: 'application/x-chess-pgn' } },
+    );
+    if (!res.ok) throw new Error(`Lichess request failed (${res.status}).`);
+    const blob = await res.text();
+    return { games: splitPgnGames(blob).map((pgn, i) => toImportedGame(pgn, i, 'Lichess-h2h')), searched: 'all games' };
+  }
+  const archivesRes = await fetch(`https://api.chess.com/pub/player/${encodeURIComponent(a.toLowerCase())}/games/archives`);
+  if (archivesRes.status === 404) throw new Error(`Chess.com user "${a}" not found.`);
+  if (!archivesRes.ok) throw new Error(`Chess.com request failed (${archivesRes.status}).`);
+  const { archives } = (await archivesRes.json()) as { archives: string[] };
+  const months = (archives || []).slice(-maxMonths).reverse();
+  const target = b.toLowerCase();
+  const found: string[] = [];
+  let scanned = 0;
+  const toGames = () => found.map((pgn, i) => toImportedGame(pgn, i, 'Chess.com-h2h'));
+  for (let i = 0; i < months.length && found.length < max; i += 6) {
+    const batch = await Promise.all(
+      months.slice(i, i + 6).map(async (url) => {
+        const r = await fetch(url);
+        return r.ok ? ((await r.json()) as ChessComMonth).games || [] : [];
+      }),
+    );
+    scanned += batch.length;
+    for (const games of batch) {
+      for (const g of [...games].reverse()) {
+        const opp = g.white?.username?.toLowerCase() === target || g.black?.username?.toLowerCase() === target;
+        if (opp && g.pgn) found.push(g.pgn);
+        if (found.length >= max) break;
+      }
+      if (found.length >= max) break;
+    }
+    onProgress?.({ games: toGames(), searched: `${scanned} of ${months.length} months` });
+  }
+  return { games: toGames(), searched: `${scanned} month${scanned === 1 ? '' : 's'}` };
+}
 
 export async function importGames(source: ImportSource, username: string, max = 12): Promise<ImportedGame[]> {
   return source === 'lichess' ? importFromLichess(username, max) : importFromChessCom(username, max);

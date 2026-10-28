@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, Swords, Play, BookmarkPlus } from 'lucide-react';
 import { toast } from 'sonner';
@@ -9,7 +9,7 @@ import { PremiumUpgradeModal } from '@/components/premium';
 import { PlayerPaletteCard, type JourneyStep } from '@/components/chess/PlayerPaletteCard';
 import { useAuth } from '@/hooks/useAuth';
 import { useSessionStore } from '@/stores/sessionStore';
-import { importGames, type ImportedGame, type ImportSource } from '@/lib/chess/gameImport';
+import { importGames, importHeadToHead, type ImportedGame, type ImportSource } from '@/lib/chess/gameImport';
 import { listStoredProfiles, profileFromGames, updateStoredProfile, type StoredStyleProfile } from '@/lib/chess/onlineStyle';
 import { matchPaletteForProfiles, composeMatchPalette, styleFromScores, type MatchPalette, type PlayerProfile } from '@/lib/chess/playerStyle';
 import { signaturePalette } from '@/lib/chess/signaturePalette';
@@ -53,6 +53,8 @@ const PaletteMatch = () => {
   const [saving, setSaving] = useState<string | null>(null);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [tracked, setTracked] = useState<StoredStyleProfile[]>([]);
+  const [h2h, setH2h] = useState<{ loading: boolean; games: ImportedGame[]; searched: string; error?: string }>({ loading: false, games: [], searched: '' });
+  const matchRun = useRef(0);
 
   useEffect(() => {
     if (!user) return;
@@ -66,6 +68,8 @@ const PaletteMatch = () => {
     }
     setLoading(true);
     setLoaded(null);
+    setH2h({ loading: false, games: [], searched: '' });
+    const run = ++matchRun.current;
     try {
       const results = await Promise.all(
         slots.map(async (slot) => {
@@ -76,6 +80,16 @@ const PaletteMatch = () => {
         }),
       );
       setLoaded(results as [Loaded, Loaded]);
+      if (slots[0].platform === slots[1].platform) {
+        setH2h({ loading: true, games: [], searched: '' });
+        importHeadToHead(slots[0].platform, slots[0].username, slots[1].username, 30, 36, (partial) => {
+          if (run === matchRun.current) setH2h({ loading: true, games: partial.games, searched: partial.searched });
+        })
+          .then((r) => run === matchRun.current && setH2h({ loading: false, games: r.games, searched: r.searched }))
+          .catch((e) => run === matchRun.current && setH2h({ loading: false, games: [], searched: '', error: e instanceof Error ? e.message : String(e) }));
+      } else {
+        setH2h({ loading: false, games: [], searched: '', error: 'Players are on different sites, so they have no games together.' });
+      }
     } catch (err) {
       toast.error('Could not build palettes', { description: err instanceof Error ? err.message : String(err) });
     } finally {
@@ -90,7 +104,7 @@ const PaletteMatch = () => {
     const [a, b] = loaded;
     const seen = new Set<string>();
     const out: ImportedGame[] = [];
-    for (const g of [...a.games, ...b.games]) {
+    for (const g of [...h2h.games, ...a.games, ...b.games]) {
       const between = (same(g.white, a.slot.username) && same(g.black, b.slot.username)) || (same(g.white, b.slot.username) && same(g.black, a.slot.username));
       if (!between) continue;
       const hash = generateGameHash(g.pgn);
@@ -99,7 +113,7 @@ const PaletteMatch = () => {
       out.push(g);
     }
     return out.sort((x, y) => y.date.localeCompare(x.date));
-  }, [loaded]);
+  }, [loaded, h2h.games]);
 
   const visualize = useCallback(
     (g: ImportedGame) => {
@@ -209,8 +223,17 @@ const PaletteMatch = () => {
 
             <div>
               <h2 className="font-display text-sm uppercase tracking-wider">Their games together</h2>
-              {headToHead.length === 0 ? (
-                <p className="mt-2 text-sm text-muted-foreground">No games between them in their last {GAMES_PER_PLAYER} games each.</p>
+              <p className="mt-1 text-xs text-muted-foreground" aria-live="polite">
+                {h2h.loading
+                  ? `Searching ${loaded[0].slot.username}'s game history for games against ${loaded[1].slot.username}${h2h.searched ? ` (${h2h.searched})` : ''}…`
+                  : h2h.error
+                    ? h2h.error
+                    : `${headToHead.length} game${headToHead.length === 1 ? '' : 's'} found${h2h.searched ? ` (searched ${h2h.searched})` : ''}. Each side is drawn in its player's palette.`}
+              </p>
+              {h2h.loading && headToHead.length === 0 ? (
+                <Loader2 className="mt-3 h-5 w-5 animate-spin text-muted-foreground" />
+              ) : headToHead.length === 0 ? (
+                <p className="mt-2 text-sm text-muted-foreground">No games between them found.</p>
               ) : (
                 <ul className="mt-3 divide-y divide-border/40 rounded-xl border border-border/50">
                   {headToHead.slice(0, 20).map((g) => (
