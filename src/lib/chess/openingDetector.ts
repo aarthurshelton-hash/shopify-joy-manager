@@ -588,6 +588,7 @@ function pgnToMoves(pgn: string): string[] {
     .replace(/\([^)]*\)/g, '')
     .replace(/\$\d+/g, '')
     .replace(/1-0|0-1|1\/2-1\/2|\*/g, '')
+    .replace(/\d+\.+/g, ' ')
     .split(/\s+/)
     .filter(token => token && !token.match(/^\d+\.+$/) && token !== '...')
     .map(m => m.replace(/[+#!?]+$/, ''));

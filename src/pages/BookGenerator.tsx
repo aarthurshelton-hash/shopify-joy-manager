@@ -38,6 +38,8 @@ import { FischerGame } from '@/lib/book/fischerGames';
 import { BookConfig, BookType, BOOK_CONFIGS, getBookConfig, GameType } from '@/lib/book/bookConfig';
 import { BookSpread } from '@/components/book/BookSpread';
 import { simulateGame } from '@/lib/chess/gameSimulator';
+import { choosePaletteForGame } from '@/lib/chess/gamePalette';
+import { getActivePalette, setActivePalette } from '@/lib/chess/pieceColors';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { jsPDF } from 'jspdf';
@@ -269,8 +271,11 @@ const BookGenerator: React.FC = () => {
 
   const generateVisualization = async (game: GameType): Promise<string> => {
     console.log(`[BookGenerator] Starting visualization generation for: ${game.title}`);
+    const previousPalette = getActivePalette().id;
     try {
+      setActivePalette(choosePaletteForGame(game.pgn));
       const simulation = simulateGame(game.pgn);
+      setActivePalette(previousPalette);
       
       if (!simulation || !simulation.board || simulation.board.length === 0) {
         console.error('[BookGenerator] Simulation failed - empty board returned');
@@ -296,6 +301,7 @@ const BookGenerator: React.FC = () => {
       console.log(`[BookGenerator] Visualization generated successfully for: ${game.title}`);
       return imageDataUrl;
     } catch (error) {
+      setActivePalette(previousPalette);
       console.error('[BookGenerator] Visualization generation failed:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       toast.error('Failed to generate visualization', { 
@@ -790,31 +796,19 @@ printed copies of "${bookConfig.title}."
       pdf.setFont('times', 'normal');
       pdf.setFontSize(12);
       
-      const legendDescription = selectedBook === 'fischer' 
-        ? [
-            'Each visualization maps the journey of every piece across the 64 squares.',
-            '',
-            'White pieces are shown in Egyptian gold tones (golds, ambers, bronzes).',
-            'Black pieces are shown in mystical tones (deep blues, purples, teals).',
-            '',
-            'When multiple pieces visit the same square, their colors layer',
-            'creating a unique visual fingerprint of the game.',
-            '',
-            'The resulting abstract artwork captures the essence of each',
-            "masterpiece from Bobby Fischer's legendary career.",
-          ]
-        : [
-            'Each visualization maps the journey of every piece across the 64 squares.',
-            '',
-            'White pieces are shown in cool tones (blues, teals, purples).',
-            'Black pieces are shown in warm tones (reds, oranges, magentas).',
-            '',
-            'When multiple pieces visit the same square, their colors layer',
-            'creating a unique visual fingerprint of the game.',
-            '',
-            'The resulting abstract artwork captures the essence of each',
-            "masterpiece from Magnus Carlsen's legendary career.",
-          ];
+      const legendDescription = [
+        'Each visualization maps the journey of every piece across the 64 squares.',
+        '',
+        'Every game chooses its own palette from how it was played:',
+        'its energy (captures, checks, sacrifices), its length,',
+        'and its texture (pawn structure versus piece play).',
+        '',
+        'When multiple pieces visit the same square, their colors layer',
+        'creating a unique visual fingerprint of the game.',
+        '',
+        'The resulting abstract artwork captures the essence of each',
+        `game from ${selectedBook === 'fischer' ? "Bobby Fischer's" : "Magnus Carlsen's"} career.`,
+      ];
       
       legendDescription.forEach((line, i) => {
         pdf.text(line, pageWidth / 2, 60 + (i * 12), { align: 'center' });

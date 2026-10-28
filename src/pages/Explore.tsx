@@ -4,6 +4,7 @@ import { Play, Search, Crown } from 'lucide-react';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
 import { famousGames, carlsenLegendaryGames, type FamousGame } from '@/lib/chess/famousGames';
+import { FAMOUS_GAME_OPENINGS, FAMOUS_GAME_PALETTES } from '@/lib/chess/famousGameOpenings';
 import { generateGameHash } from '@/lib/visualizations/gameCanonical';
 import { paletteThumbs, ALL_PALETTES_PREVIEW_URL } from '@/lib/palettes/paletteBackgrounds';
 
@@ -16,7 +17,10 @@ interface GameEntry {
   moves: number;
   mate: boolean;
   paletteId: string;
+  opening: string;
 }
+
+const UNKNOWN_OPENING = 'Other / unclassified';
 
 const ERA_PALETTES: [number, string[]][] = [
   [1700, ['medieval', 'egyptian', 'roman']],
@@ -33,6 +37,8 @@ function stableIndex(s: string, mod: number): number {
 }
 
 function paletteFor(game: FamousGame): string {
+  const chosen = FAMOUS_GAME_PALETTES[game.id];
+  if (chosen && paletteThumbs[chosen]) return chosen;
   const era = ERA_PALETTES.find(([limit]) => game.year < limit)![1];
   const id = era[stableIndex(game.id, era.length)];
   return paletteThumbs[id] ? id : Object.keys(paletteThumbs)[0];
@@ -48,7 +54,7 @@ function buildEntries(): GameEntry[] {
     const result: GameEntry['result'] = res === '1-0' ? 'white' : res === '0-1' ? 'black' : 'draw';
     const nums = game.pgn.match(/\b(\d+)\.(?=\s)/g);
     const moves = nums ? parseInt(nums[nums.length - 1], 10) : 0;
-    entries.push({ game, result, moves, mate: /#\s*(?:1-0|0-1)?\s*$/.test(game.pgn.trim()), paletteId: paletteFor(game) });
+    entries.push({ game, result, moves, mate: /#\s*(?:1-0|0-1)?\s*$/.test(game.pgn.trim()), paletteId: paletteFor(game), opening: FAMOUS_GAME_OPENINGS[game.id]?.name ?? UNKNOWN_OPENING });
   }
   return entries;
 }
@@ -65,6 +71,12 @@ const Explore = () => {
   const [query, setQuery] = useState('');
   const [result, setResult] = useState<ResultFilter>('all');
   const [matesOnly, setMatesOnly] = useState(false);
+  const [opening, setOpening] = useState('all');
+  const openingOptions = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const e of entries) counts.set(e.opening, (counts.get(e.opening) ?? 0) + 1);
+    return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  }, [entries]);
   const [sort, setSort] = useState<SortKey>('newest');
   const [shown, setShown] = useState(PAGE);
 
@@ -73,6 +85,7 @@ const Explore = () => {
     const list = entries.filter((e) => {
       if (result !== 'all' && e.result !== result) return false;
       if (matesOnly && !e.mate) return false;
+      if (opening !== 'all' && e.opening !== opening) return false;
       if (!q) return true;
       const g = e.game;
       return `${g.title} ${g.white} ${g.black} ${g.event} ${g.year}`.toLowerCase().includes(q);
@@ -86,7 +99,7 @@ const Explore = () => {
       }
     });
     return list;
-  }, [entries, query, result, matesOnly, sort]);
+  }, [entries, query, result, matesOnly, opening, sort]);
 
   const open = (g: FamousGame, highlights: boolean) => {
     navigate(`/g/${generateGameHash(g.pgn)}?src=famous${highlights ? '&highlights=1' : ''}`);
@@ -160,6 +173,17 @@ const Explore = () => {
               <button onClick={() => { setMatesOnly((m) => !m); setShown(PAGE); }} className={chip(matesOnly)}>
                 Ends in checkmate
               </button>
+              <select
+                value={opening}
+                onChange={(e) => { setOpening(e.target.value); setShown(PAGE); }}
+                aria-label="Filter by opening"
+                className="rounded-full border border-border/50 bg-card/60 px-3 py-1.5 text-xs font-display uppercase tracking-wider text-muted-foreground outline-none focus:border-primary/50"
+              >
+                <option value="all">All openings</option>
+                {openingOptions.map(([name, n]) => (
+                  <option key={name} value={name}>{name} ({n})</option>
+                ))}
+              </select>
             </div>
 
             <p className="text-xs text-muted-foreground">{visible.length} games</p>
@@ -204,6 +228,9 @@ const Explore = () => {
                         <p className="mt-0.5 text-[11px] text-muted-foreground/70">
                           {e.game.event} · {e.moves} moves · {RESULT_LABEL[e.result]}
                         </p>
+                        {e.opening !== UNKNOWN_OPENING && (
+                          <p className="mt-0.5 text-[11px] text-primary/80">{FAMOUS_GAME_OPENINGS[e.game.id]?.fullName}</p>
+                        )}
                       </div>
                       <div className="mt-auto flex gap-2">
                         <button
