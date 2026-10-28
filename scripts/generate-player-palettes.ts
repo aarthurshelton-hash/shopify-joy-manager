@@ -2,7 +2,7 @@ import { writeFileSync } from 'node:fs';
 import { famousGames, carlsenLegendaryGames } from '../src/lib/chess/famousGames';
 import { fischerTop100 } from '../src/lib/book/fischerGames';
 import { carlsenTop100 } from '../src/lib/book/carlsenGames';
-import { pgnMoves } from '../src/lib/chess/gamePalette';
+import { sanTokens as pgnMoves } from '../src/lib/chess/gamePalette';
 import { buildPlayerProfiles, matchPaletteForGame, type SidePalette, type StyleGame } from '../src/lib/chess/playerStyle';
 
 // Every game in every collection, keyed the way the UI looks it up.

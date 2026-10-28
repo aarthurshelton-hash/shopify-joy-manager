@@ -26,7 +26,9 @@ import { useVisualizationStateStore } from '@/stores/visualizationStateStore';
 import { usePrintOrderStore, PrintOrderData } from '@/stores/printOrderStore';
 import AuthModal from '@/components/auth/AuthModal';
 import { PremiumUpgradeModal } from '@/components/premium';
-import { setActivePalette, getActivePalette, PaletteId, PieceType } from '@/lib/chess/pieceColors';
+import { setActivePalette, getActivePalette, setTemporaryPalette, colorPalettes, PaletteId, PieceType } from '@/lib/chess/pieceColors';
+import { composeMatchPalette } from '@/lib/chess/playerStyle';
+import { findCatalogGameByHash, type CatalogGame } from '@/lib/chess/gameCatalog';
 import { recordVisionInteraction, getVisionScore, VisionScore } from '@/lib/visualizations/visionScoring';
 import { generateGameHash, extractMovesFromPgn, buildCanonicalShareUrl } from '@/lib/visualizations/gameCanonical';
 import { detectGameCard } from '@/lib/chess/gameCardDetection';
@@ -96,8 +98,22 @@ const GameView = () => {
   const [error, setError] = useState<string | null>(null);
   const [primaryVision, setPrimaryVision] = useState<GameVision | null>(null);
   const [paletteVariations, setPaletteVariations] = useState<PaletteVariation[]>([]);
+  // Player match palette: White in ?pw, Black in ?pb (applied for this page only, never saved)
+  const userPaletteRef = useRef(getActivePalette());
+  const matchPalette = useMemo(() => {
+    const pw = searchParams.get('pw');
+    const pb = searchParams.get('pb');
+    const valid = (id: string | null) => !!id && id !== 'custom' && colorPalettes.some((p) => p.id === id);
+    return valid(pw) && valid(pb) ? composeMatchPalette(pw as PaletteId, pb as PaletteId) : null;
+  }, [searchParams]);
+  if (matchPalette && getActivePalette().name !== matchPalette.name) setTemporaryPalette(matchPalette);
+  useEffect(() => () => {
+    if (matchPalette) setTemporaryPalette(userPaletteRef.current);
+  }, [matchPalette]);
+  const [catalogGame, setCatalogGame] = useState<(CatalogGame & { board: SquareData[][]; gameData: GameData; totalMoves: number }) | null>(null);
   // Initialize palette from URL param immediately to avoid flash of wrong colors
   const [activePaletteId, setActivePaletteId] = useState<string>(() => {
+    if (matchPalette) return 'custom';
     const urlPalette = searchParams.get('p');
     if (urlPalette && urlPalette !== 'custom') {
       // Eagerly set the global palette module variable before first render
@@ -340,8 +356,14 @@ const GameView = () => {
         }
 
         if (matchingVisions.length === 0) {
-          // No saved vision found - this might be a fresh game that needs to be simulated
-          // For now, show error since we don't have the PGN to regenerate
+          // Not saved yet: fall back to the famous-game and book catalog
+          const catalog = gameHash ? await findCatalogGameByHash(gameHash) : null;
+          if (catalog) {
+            const sim = simulateGame(catalog.pgn);
+            setCatalogGame({ ...catalog, board: sim.board, gameData: sim.gameData, totalMoves: sim.totalMoves });
+            setLoading(false);
+            return;
+          }
           setError('Game not found');
           setLoading(false);
           return;
@@ -440,6 +462,9 @@ const GameView = () => {
 
   // Reconstruct board and game data - supports both saved and session-based games
   const { board, gameData, totalMoves, effectivePgn } = useMemo(() => {
+    if (catalogGame) {
+      return { board: catalogGame.board, gameData: catalogGame.gameData, totalMoves: catalogGame.totalMoves, effectivePgn: catalogGame.pgn };
+    }
     // If from session (freshly generated), use session data
     if (isFromSession && sessionBoard && sessionGameData) {
       return {
@@ -464,7 +489,8 @@ const GameView = () => {
     const pgn = primaryVision.pgn || data.pgn || '';
     
     // Try to use stored board, or simulate from PGN
-    let reconstructedBoard: SquareData[][] = data.board || [];
+    // Stored boards carry their saved palette's colours, so a match palette needs a fresh simulation
+    let reconstructedBoard: SquareData[][] = matchPalette ? [] : data.board || [];
     
     if (reconstructedBoard.length === 0 && pgn) {
       // Simulate game to get board
@@ -503,13 +529,13 @@ const GameView = () => {
       totalMoves: data.totalMoves || data.moves?.length || 0,
       effectivePgn: pgn,
     };
-  }, [primaryVision, isFromSession, sessionBoard, sessionGameData, sessionTotalMoves, sessionPgn]);
+  }, [catalogGame, matchPalette, primaryVision, isFromSession, sessionBoard, sessionGameData, sessionTotalMoves, sessionPgn]);
 
   // Save active vision state for refresh persistence
   useEffect(() => {
     if (!gameHash || loading) return;
     // Support both DB-loaded and session-based games
-    if (!primaryVision && !isFromSession) return;
+    if (!primaryVision && !isFromSession && !catalogGame) return;
     
     // Build the full route with current palette
     const currentRoute = `/g/${gameHash}${activePaletteId && activePaletteId !== 'modern' ? `?p=${activePaletteId}` : ''}`;
@@ -530,6 +556,7 @@ const GameView = () => {
       pieceOpacity: visualizationState.pieceOpacity,
     });
   }, [
+    catalogGame,
     gameHash, 
     activePaletteId, 
     loading,
@@ -686,11 +713,11 @@ const GameView = () => {
   // Handle exports
   const handleExport = useCallback(async (type: 'hd' | 'gif' | 'print' | 'preview' | 'gamecard', exportState?: ExportState) => {
     // Support both saved visions and session-based games
-    const hasVision = primaryVision || isFromSession;
+    const hasVision = primaryVision || isFromSession || catalogGame;
     if (!hasVision) return;
     
     // Use primaryVision data if available, otherwise use session/game data
-    const visionTitle = primaryVision?.title || (isFromSession && sessionTitle) || (isFromSession && sessionGameData ? `${sessionGameData.white || 'White'} vs ${sessionGameData.black || 'Black'}` : 'Visualization');
+    const visionTitle = primaryVision?.title || catalogGame?.title || (isFromSession && sessionTitle) || (isFromSession && sessionGameData ? `${sessionGameData.white || 'White'} vs ${sessionGameData.black || 'Black'}` : 'Visualization');
     const visionId = primaryVision?.id;
     const visionImagePath = primaryVision?.image_path;
     const publicShareId = primaryVision?.public_share_id;
@@ -880,7 +907,7 @@ const GameView = () => {
       setOrderData(orderData);
       navigate('/order-print');
     }
-  }, [primaryVision, board, gameData, totalMoves, effectivePgn, gameHash, isPremium, downloadTrademarkHD, downloadGIF, navigate, setOrderData, setCapturedTimelineState, setCurrentSimulation, setSavedShareId, setReturningFromOrder, isFromSession, isCheckingSubscription, isCheckingAdmin, activePaletteId, sessionGameData, sessionTitle]);
+  }, [primaryVision, board, gameData, totalMoves, effectivePgn, gameHash, isPremium, downloadTrademarkHD, downloadGIF, navigate, setOrderData, setCapturedTimelineState, setCurrentSimulation, setSavedShareId, setReturningFromOrder, isFromSession, isCheckingSubscription, isCheckingAdmin, activePaletteId, sessionGameData, sessionTitle, catalogGame]);
 
   if (loading) {
     return (
@@ -895,7 +922,7 @@ const GameView = () => {
   }
 
   // Check if we have valid data (either from DB or session)
-  const hasValidData = primaryVision || (isFromSession && sessionBoard);
+  const hasValidData = primaryVision || catalogGame || (isFromSession && sessionBoard);
 
   if (error || !hasValidData) {
     return (
@@ -926,7 +953,9 @@ const GameView = () => {
   }
 
   // Determine display title
-  const displayTitle = isFromSession 
+  const displayTitle = catalogGame
+    ? catalogGame.title
+    : isFromSession 
     ? (sessionTitle || `${sessionGameData?.white || 'White'} vs ${sessionGameData?.black || 'Black'}`)
     : primaryVision?.title || 'Visualization';
   

@@ -2407,6 +2407,51 @@ export type Database = {
         }
         Relationships: []
       }
+      player_style_profiles: {
+        Row: {
+          created_at: string
+          games: number
+          id: string
+          journey: Json
+          last_game_at: string | null
+          palette_id: string
+          platform: string
+          scores: Json
+          signature_palette_id: string | null
+          updated_at: string
+          user_id: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          games?: number
+          id?: string
+          journey?: Json
+          last_game_at?: string | null
+          palette_id: string
+          platform: string
+          scores: Json
+          signature_palette_id?: string | null
+          updated_at?: string
+          user_id: string
+          username: string
+        }
+        Update: {
+          created_at?: string
+          games?: number
+          id?: string
+          journey?: Json
+          last_game_at?: string | null
+          palette_id?: string
+          platform?: string
+          scores?: Json
+          signature_palette_id?: string | null
+          updated_at?: string
+          user_id?: string
+          username?: string
+        }
+        Relationships: []
+      }
       saved_palettes: {
         Row: {
           black_colors: Json

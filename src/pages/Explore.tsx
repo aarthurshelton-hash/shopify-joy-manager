@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Play, Search, Crown } from 'lucide-react';
+import { Play, Search, Crown, Info } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { PlayerPaletteCard } from '@/components/chess/PlayerPaletteCard';
 import { Header } from '@/components/shop/Header';
 import { Footer } from '@/components/shop/Footer';
 import { famousGames, carlsenLegendaryGames, type FamousGame } from '@/lib/chess/famousGames';
@@ -107,8 +109,9 @@ const Explore = () => {
     return list;
   }, [entries, query, result, matesOnly, opening, sort]);
 
-  const open = (g: FamousGame, highlights: boolean) => {
-    navigate(`/g/${generateGameHash(g.pgn)}?src=famous${highlights ? '&highlights=1' : ''}`);
+  const open = (e: GameEntry, highlights: boolean) => {
+    const pair = paletteMode === 'players' && e.match ? `&pw=${e.match.white.paletteId}&pb=${e.match.black.paletteId}` : '';
+    navigate(`/g/${generateGameHash(e.game.pgn)}?src=famous${pair}${highlights ? '&highlights=1' : ''}`);
   };
 
   const chip = (active: boolean) =>
@@ -139,6 +142,13 @@ const Explore = () => {
             <p className="mx-auto mt-4 max-w-xl font-serif text-muted-foreground">
               {entries.length} historic games. Open any one and press Play highlights to watch its key moments, with Stockfish checking every call.
             </p>
+            <button
+              type="button"
+              onClick={() => navigate('/palette-match')}
+              className="mt-5 rounded-full border border-primary/50 px-4 py-2 text-xs font-display uppercase tracking-wider text-primary transition-colors hover:bg-primary/10"
+            >
+              Find any player's colour →
+            </button>
           </div>
         </section>
 
@@ -215,7 +225,7 @@ const Explore = () => {
                   >
                     <button
                       type="button"
-                      onClick={() => open(e.game, false)}
+                      onClick={() => open(e, false)}
                       className="relative block aspect-[16/9] w-full overflow-hidden text-left"
                       aria-label={`Open ${e.game.title}`}
                     >
@@ -268,18 +278,45 @@ const Explore = () => {
                       <div className="mt-auto flex gap-2">
                         <button
                           type="button"
-                          onClick={() => open(e.game, true)}
+                          onClick={() => open(e, true)}
                           className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-display uppercase tracking-wider text-primary-foreground transition-opacity hover:opacity-90"
                         >
                           <Play className="h-3.5 w-3.5" /> Highlights
                         </button>
                         <button
                           type="button"
-                          onClick={() => open(e.game, false)}
+                          onClick={() => open(e, false)}
                           className="rounded-lg border border-border/60 px-3 py-2 text-xs font-display uppercase tracking-wider text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
                         >
                           Open
                         </button>
+                        {e.match && (
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <button
+                                type="button"
+                                aria-label="Why these palettes"
+                                className="rounded-lg border border-border/60 px-2.5 py-2 text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+                              >
+                                <Info className="h-3.5 w-3.5" />
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[22rem] max-w-[92vw] space-y-2 p-2" align="end">
+                              {([['White', e.match.white], ['Black', e.match.black]] as const).map(([side, s]) => (
+                                <PlayerPaletteCard
+                                  key={side}
+                                  side={side}
+                                  name={s.player}
+                                  paletteId={s.paletteId}
+                                  style={s.style}
+                                  games={s.games}
+                                  why={s.why}
+                                  journey={s.journey.map(([year, paletteId]) => ({ label: String(year), paletteId }))}
+                                />
+                              ))}
+                            </PopoverContent>
+                          </Popover>
+                        )}
                       </div>
                     </div>
                   </article>

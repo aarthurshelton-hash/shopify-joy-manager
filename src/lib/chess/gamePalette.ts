@@ -56,6 +56,20 @@ export function pgnMoves(pgn: string): string[] {
   }
 }
 
+/**
+ * SAN tokens straight from PGN movetext, without replaying the board (~100x faster than chess.js).
+ * Only for scoring already-legal games; use pgnMoves when legality matters.
+ */
+export function sanTokens(pgn: string): string[] {
+  let text = pgn.replace(/^\s*\[[^\]]*\]\s*$/gm, ' ').replace(/\{[^}]*\}/g, ' ').replace(/;[^\n]*/g, ' ').replace(/\$\d+/g, ' ');
+  while (/\([^()]*\)/.test(text)) text = text.replace(/\([^()]*\)/g, ' ');
+  return text
+    .replace(/\d+\.(\.\.)?/g, ' ')
+    .split(/\s+/)
+    .map((t) => t.replace(/[!?]+$/, '').replace(/^0-0-0/, 'O-O-O').replace(/^0-0/, 'O-O'))
+    .filter((t) => t && !/^(1-0|0-1|1\/2-1\/2|\*)$/.test(t));
+}
+
 export interface MoveCounts {
   moves: string[];
   totalPlies: number;
@@ -96,6 +110,18 @@ export function rankPalettes(t: GameTraits): PaletteId[] {
     .map(([id, m]) => [id, (t.energy - m.energy) ** 2 + (t.length - m.length) ** 2 + (t.texture - m.texture) ** 2] as const)
     .sort((a, b) => a[1] - b[1])
     .map(([id]) => id);
+}
+
+const moodDistance = (t: GameTraits, id: PaletteId) => {
+  const m = PALETTE_MOODS[id as keyof typeof PALETTE_MOODS];
+  return m ? (t.energy - m.energy) ** 2 + (t.length - m.length) ** 2 + (t.texture - m.texture) ** 2 : Infinity;
+};
+
+/** Keeps the current palette unless another mood is clearly closer (squared distance at least 40% smaller). */
+export function stickyPalette(t: GameTraits, current?: PaletteId): PaletteId {
+  const best = rankPalettes(t)[0];
+  if (!current || current === best) return best;
+  return moodDistance(t, best) < 0.6 * moodDistance(t, current) ? best : current;
 }
 
 export function choosePaletteForGame(pgn: string): PaletteId {

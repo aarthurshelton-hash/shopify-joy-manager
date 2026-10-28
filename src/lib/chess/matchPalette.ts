@@ -1,4 +1,5 @@
 import type { PaletteId } from './pieceColors';
+import type { GameTraits } from './gamePalette';
 import { MATCH_PALETTES, PLAYER_PALETTES, type SavedMatchPalette } from './playerPalettes';
 import { explainSide } from './playerStyle';
 
@@ -6,13 +7,26 @@ export interface SavedSide {
   player: string;
   key: string;
   paletteId: PaletteId;
+  style: GameTraits;
+  games: number;
   why: string;
+  /** [year, palette] each time this player's palette changed, across the collections. */
+  journey: [number, PaletteId][];
 }
 
 function unpack(row: SavedMatchPalette, offset: 0 | 7, opponent: string): SavedSide {
   const [paletteId, key, games, energy, texture, length, yielded] = row.slice(offset, offset + 7) as [PaletteId, string, number, number, number, number, 0 | 1];
   const player = PLAYER_PALETTES[key]?.name ?? key;
-  return { player, key, paletteId, why: explainSide(player, { energy, texture, length }, games, paletteId, yielded ? opponent : undefined) };
+  const style = { energy, texture, length };
+  return {
+    player,
+    key,
+    paletteId,
+    style,
+    games,
+    why: explainSide(player, style, games, paletteId, yielded ? opponent : undefined),
+    journey: PLAYER_PALETTES[key]?.journey ?? [],
+  };
 }
 
 /**
