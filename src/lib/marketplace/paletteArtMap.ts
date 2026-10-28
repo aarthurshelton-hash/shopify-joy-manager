@@ -1,42 +1,10 @@
 // Map palette IDs to their corresponding AI-generated art images
 // and provide vision classification utilities
-import artdecoArt from '@/assets/palettes/artdeco.jpg';
-import autumnArt from '@/assets/palettes/autumn.jpg';
-import cosmicArt from '@/assets/palettes/cosmic.jpg';
-import cyberpunkArt from '@/assets/palettes/cyberpunk.jpg';
-import desertArt from '@/assets/palettes/desert.jpg';
-import egyptianArt from '@/assets/palettes/egyptian.jpg';
-import greyscaleArt from '@/assets/palettes/greyscale.jpg';
-import hotcoldArt from '@/assets/palettes/hotcold.jpg';
-import japaneseArt from '@/assets/palettes/japanese.jpg';
-import medievalArt from '@/assets/palettes/medieval.jpg';
-import modernArt from '@/assets/palettes/modern.jpg';
-import nordicArt from '@/assets/palettes/nordic.jpg';
-import oceanArt from '@/assets/palettes/ocean.jpg';
-import romanArt from '@/assets/palettes/roman.jpg';
-import tropicalArt from '@/assets/palettes/tropical.jpg';
-import vintageArt from '@/assets/palettes/vintage.jpg';
+import { paletteBackgrounds } from '@/lib/palettes/paletteBackgrounds';
 import { colorPalettes, PaletteId, PieceType } from '@/lib/chess/pieceColors';
 import { detectGameCard } from '@/lib/chess/gameCardDetection';
 
-export const paletteArtMap: Record<string, string> = {
-  hotCold: hotcoldArt,
-  medieval: medievalArt,
-  egyptian: egyptianArt,
-  roman: romanArt,
-  modern: modernArt,
-  greyscale: greyscaleArt,
-  japanese: japaneseArt,
-  nordic: nordicArt,
-  artdeco: artdecoArt,
-  tropical: tropicalArt,
-  cyberpunk: cyberpunkArt,
-  autumn: autumnArt,
-  ocean: oceanArt,
-  desert: desertArt,
-  cosmic: cosmicArt,
-  vintage: vintageArt,
-};
+export const paletteArtMap: Record<string, string> = paletteBackgrounds;
 
 // Human-readable palette names
 export const paletteDisplayNames: Record<string, string> = {
@@ -56,6 +24,14 @@ export const paletteDisplayNames: Record<string, string> = {
   desert: 'Desert',
   cosmic: 'Cosmic',
   vintage: 'Vintage',
+  clear: 'Clear',
+  contrast: 'High Contrast',
+  stainedglass: 'Stained Glass',
+  aurora: 'Aurora',
+  volcanic: 'Volcanic',
+  woodland: 'Woodland',
+  spectral: 'Spectral Rank',
+  inkgold: 'Ink & Gold',
   custom: 'Custom',
 };
 
@@ -63,7 +39,8 @@ export const paletteDisplayNames: Record<string, string> = {
 export const officialPaletteIds = [
   'hotCold', 'medieval', 'egyptian', 'roman', 'modern', 'greyscale',
   'japanese', 'nordic', 'artdeco', 'tropical', 'cyberpunk',
-  'autumn', 'ocean', 'desert', 'cosmic', 'vintage'
+  'autumn', 'ocean', 'desert', 'cosmic', 'vintage',
+  'clear', 'contrast', 'stainedglass', 'aurora', 'volcanic', 'woodland', 'spectral', 'inkgold'
 ];
 
 // Premium palettes that get special visual treatment (legacy - now all official palettes are equal)

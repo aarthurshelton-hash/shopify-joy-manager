@@ -33,43 +33,7 @@ import {
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 
-// Import palette background images
-import hotcoldBg from '@/assets/palettes/hotcold.jpg';
-import medievalBg from '@/assets/palettes/medieval.jpg';
-import egyptianBg from '@/assets/palettes/egyptian.jpg';
-import romanBg from '@/assets/palettes/roman.jpg';
-import modernBg from '@/assets/palettes/modern.jpg';
-import greyscaleBg from '@/assets/palettes/greyscale.jpg';
-import japaneseBg from '@/assets/palettes/japanese.jpg';
-import nordicBg from '@/assets/palettes/nordic.jpg';
-import artdecoBg from '@/assets/palettes/artdeco.jpg';
-import tropicalBg from '@/assets/palettes/tropical.jpg';
-import cyberpunkBg from '@/assets/palettes/cyberpunk.jpg';
-import autumnBg from '@/assets/palettes/autumn.jpg';
-import oceanBg from '@/assets/palettes/ocean.jpg';
-import desertBg from '@/assets/palettes/desert.jpg';
-import cosmicBg from '@/assets/palettes/cosmic.jpg';
-import vintageBg from '@/assets/palettes/vintage.jpg';
-
-// Map palette IDs to background images
-const paletteBackgrounds: Record<string, string> = {
-  hotCold: hotcoldBg,
-  medieval: medievalBg,
-  egyptian: egyptianBg,
-  roman: romanBg,
-  modern: modernBg,
-  greyscale: greyscaleBg,
-  japanese: japaneseBg,
-  nordic: nordicBg,
-  artdeco: artdecoBg,
-  tropical: tropicalBg,
-  cyberpunk: cyberpunkBg,
-  autumn: autumnBg,
-  ocean: oceanBg,
-  desert: desertBg,
-  cosmic: cosmicBg,
-  vintage: vintageBg,
-};
+import { paletteThumbs as paletteBackgrounds } from '@/lib/palettes/paletteBackgrounds';
 
 interface SavedPaletteItem {
   id: string;
