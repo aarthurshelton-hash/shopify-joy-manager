@@ -17,6 +17,8 @@ The back end is a set of Node/TS farm workers managed by PM2, writing to Supabas
 
 ## Coding Conventions
 
+- Legendary-game card art is a file named after the preset id in `src/assets/games/cards/<game-id>.jpg`, picked up automatically by `gameImages.ts`; cards without one fall back to an era scene, so adding art never needs code changes.
+
 - Use TypeScript for `src/lib/chess` and front-end code; farm workers are `.mjs` ESM.
 - Always compile chess library changes to `farm/dist/lib/chess` before restarting workers.
 - Never hardcode credentials or API keys; source them from `.env`.
