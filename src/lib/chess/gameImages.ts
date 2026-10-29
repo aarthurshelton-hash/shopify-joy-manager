@@ -1,4 +1,5 @@
 // Game images mapping - maps game IDs to their artwork
+import { paletteThumbs } from '@/lib/palettes/paletteBackgrounds';
 // Import images for ES6 module usage
 import kasparovImmortal from '@/assets/games/kasparov-immortal.jpg';
 import gameOfCentury from '@/assets/games/game-of-century.jpg';
@@ -119,6 +120,14 @@ import carlsenZugzwang from '@/assets/games/carlsen/carlsen-zugzwang.jpg';
 import carlsenKramnikBattle from '@/assets/games/carlsen/carlsen-kramnik-battle.jpg';
 import carlsenGrunfeldCounter from '@/assets/games/carlsen/carlsen-grunfeld-counter.jpg';
 import carlsenTechnique from '@/assets/games/carlsen/carlsen-technique.jpg';
+
+const cardArtFiles = import.meta.glob('/src/assets/games/cards/*.jpg', {
+  eager: true,
+  import: 'default',
+}) as Record<string, string>;
+const cardArt: Record<string, string> = Object.fromEntries(
+  Object.entries(cardArtFiles).map(([path, url]) => [(path.split('/').pop() || '').replace(/\.jpg$/, ''), url]),
+);
 
 export const gameImageImports: Record<string, string> = {
   // Original games
@@ -252,6 +261,20 @@ export const gameImageImports: Record<string, string> = {
   'carlsen-vachier-lagrave-2020': carlsenTechnique,
   'carlsen-anand-zugzwang-2014': carlsenZugzwang,
   'carlsen-endgame-2015': carlsenEndgameMaster,
+
+  // Same games listed under the current preset ids (players swapped or renamed)
+  'amant-staunton-1843': saintAmantStaunton,
+  'kasparov-kramnik-2000': kramnikKasparov,
+  'anand-topalov-2005': topalovAnand,
+  'karpov-kasparov-1990': kasparovKarpov1990,
+  'nepomniachtchi-ding-2023': dingNepo,
+  'short-kasparov-1993': kasparovShort1993,
+  'fischer-petrosian-1971': petrosianFischer,
+  'capablanca-lilienthal-1936': lilienthalCapablanca,
+  'botvinnik-flohr-1933': flohrBotvinnik,
+
+  // Per-game card art, one file per preset id: src/assets/games/cards/<game-id>.jpg
+  ...cardArt,
 };
 
 // Helper function to get game image by ID
@@ -262,3 +285,21 @@ export function getGameImage(gameId: string | undefined): string | null {
 
 // Re-export Carlsen game images from dedicated file
 export { carlsenGameImages, getCarlsenGameImage, allCarlsenArtwork } from './carlsenGameImages';
+
+const ERA_SCENES: [number, string[]][] = [
+  [1700, ['medieval', 'egyptian', 'roman']],
+  [1900, ['vintage', 'roman', 'inkgold']],
+  [1950, ['artdeco', 'inkgold', 'vintage']],
+  [2000, ['modern', 'greyscale', 'contrast']],
+  [Infinity, ['cyberpunk', 'cosmic', 'modern']],
+];
+
+/** Card art for a preset: its own painting, else a scene matching its era. Never empty. */
+export function getGameCardArt(gameId: string, year: number): string {
+  const own = gameImageImports[gameId];
+  if (own) return own;
+  const era = ERA_SCENES.find(([limit]) => year < limit)![1];
+  let h = 0;
+  for (let i = 0; i < gameId.length; i++) h = (h * 31 + gameId.charCodeAt(i)) >>> 0;
+  return paletteThumbs[era[h % era.length]] ?? Object.values(paletteThumbs)[0];
+}
