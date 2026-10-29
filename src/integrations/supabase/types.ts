@@ -185,6 +185,69 @@ export type Database = {
         }
         Relationships: []
       }
+      book_edition_copies: {
+        Row: {
+          book_type: string
+          coa_code: string | null
+          coa_issued_at: string | null
+          coa_pdf_url: string | null
+          copy_number: number
+          created_at: string
+          edition_id: string
+          edition_name: string
+          id: string
+          max_copies: number
+          order_id: string | null
+          owner_name: string | null
+          owner_user_id: string | null
+          reserved_at: string | null
+          shipped_at: string | null
+          sold_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          book_type: string
+          coa_code?: string | null
+          coa_issued_at?: string | null
+          coa_pdf_url?: string | null
+          copy_number: number
+          created_at?: string
+          edition_id: string
+          edition_name: string
+          id?: string
+          max_copies: number
+          order_id?: string | null
+          owner_name?: string | null
+          owner_user_id?: string | null
+          reserved_at?: string | null
+          shipped_at?: string | null
+          sold_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          book_type?: string
+          coa_code?: string | null
+          coa_issued_at?: string | null
+          coa_pdf_url?: string | null
+          copy_number?: number
+          created_at?: string
+          edition_id?: string
+          edition_name?: string
+          id?: string
+          max_copies?: number
+          order_id?: string | null
+          owner_name?: string | null
+          owner_user_id?: string | null
+          reserved_at?: string | null
+          shipped_at?: string | null
+          sold_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       book_generation_progress: {
         Row: {
           created_at: string
@@ -218,6 +281,111 @@ export type Database = {
           updated_at?: string
           user_id?: string
           visualization_data?: string | null
+        }
+        Relationships: []
+      }
+      book_production_jobs: {
+        Row: {
+          assigned_to: string | null
+          book_type: string
+          completed_at: string | null
+          created_at: string
+          current_step: string | null
+          edition_name: string | null
+          edition_type: string
+          error_message: string | null
+          estimated_completion: string | null
+          has_coa: boolean | null
+          has_foil_stamping: boolean | null
+          has_numbering: boolean | null
+          has_ribbon_marker: boolean | null
+          has_signatures: boolean | null
+          has_slipcase: boolean | null
+          has_special_printing: boolean | null
+          id: string
+          order_id: string | null
+          pdf_url: string | null
+          priority: number
+          progress: number
+          proof_approved: boolean | null
+          proof_approved_at: string | null
+          proof_approved_by: string | null
+          proof_notes: string | null
+          proof_pages: Json | null
+          quality: string
+          quantity: number
+          started_at: string | null
+          status: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          book_type: string
+          completed_at?: string | null
+          created_at?: string
+          current_step?: string | null
+          edition_name?: string | null
+          edition_type?: string
+          error_message?: string | null
+          estimated_completion?: string | null
+          has_coa?: boolean | null
+          has_foil_stamping?: boolean | null
+          has_numbering?: boolean | null
+          has_ribbon_marker?: boolean | null
+          has_signatures?: boolean | null
+          has_slipcase?: boolean | null
+          has_special_printing?: boolean | null
+          id?: string
+          order_id?: string | null
+          pdf_url?: string | null
+          priority?: number
+          progress?: number
+          proof_approved?: boolean | null
+          proof_approved_at?: string | null
+          proof_approved_by?: string | null
+          proof_notes?: string | null
+          proof_pages?: Json | null
+          quality?: string
+          quantity?: number
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          book_type?: string
+          completed_at?: string | null
+          created_at?: string
+          current_step?: string | null
+          edition_name?: string | null
+          edition_type?: string
+          error_message?: string | null
+          estimated_completion?: string | null
+          has_coa?: boolean | null
+          has_foil_stamping?: boolean | null
+          has_numbering?: boolean | null
+          has_ribbon_marker?: boolean | null
+          has_signatures?: boolean | null
+          has_slipcase?: boolean | null
+          has_special_printing?: boolean | null
+          id?: string
+          order_id?: string | null
+          pdf_url?: string | null
+          priority?: number
+          progress?: number
+          proof_approved?: boolean | null
+          proof_approved_at?: string | null
+          proof_approved_by?: string | null
+          proof_notes?: string | null
+          proof_pages?: Json | null
+          quality?: string
+          quantity?: number
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -506,90 +674,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      market_prediction_attempts: {
-        Row: {
-          id: string
-          created_at: string
-          symbol: string
-          time_horizon: string
-          prediction_source: string
-          predicted_direction: string
-          confidence: number
-          archetype: string | null
-          signature_hash: string | null
-          target_move: number | null
-          price_at_prediction: number
-          volume_at_prediction: number | null
-          baseline_direction: string | null
-          baseline_confidence: number | null
-          chess_archetype_resonance: string | null
-          cross_domain_confidence: number | null
-          resolved_at: string | null
-          price_at_resolution: number | null
-          actual_direction: string | null
-          actual_move: number | null
-          ep_correct: boolean | null
-          baseline_correct: boolean | null
-          data_source: string | null
-          candle_count: number | null
-          prediction_metadata: Json | null
-        }
-        Insert: {
-          id?: string
-          created_at?: string
-          symbol: string
-          time_horizon: string
-          prediction_source?: string
-          predicted_direction: string
-          confidence: number
-          archetype?: string | null
-          signature_hash?: string | null
-          target_move?: number | null
-          price_at_prediction: number
-          volume_at_prediction?: number | null
-          baseline_direction?: string | null
-          baseline_confidence?: number | null
-          chess_archetype_resonance?: string | null
-          cross_domain_confidence?: number | null
-          resolved_at?: string | null
-          price_at_resolution?: number | null
-          actual_direction?: string | null
-          actual_move?: number | null
-          ep_correct?: boolean | null
-          baseline_correct?: boolean | null
-          data_source?: string | null
-          candle_count?: number | null
-          prediction_metadata?: Json | null
-        }
-        Update: {
-          id?: string
-          created_at?: string
-          symbol?: string
-          time_horizon?: string
-          prediction_source?: string
-          predicted_direction?: string
-          confidence?: number
-          archetype?: string | null
-          signature_hash?: string | null
-          target_move?: number | null
-          price_at_prediction?: number
-          volume_at_prediction?: number | null
-          baseline_direction?: string | null
-          baseline_confidence?: number | null
-          chess_archetype_resonance?: string | null
-          cross_domain_confidence?: number | null
-          resolved_at?: string | null
-          price_at_resolution?: number | null
-          actual_direction?: string | null
-          actual_move?: number | null
-          ep_correct?: boolean | null
-          baseline_correct?: boolean | null
-          data_source?: string | null
-          candle_count?: number | null
-          prediction_metadata?: Json | null
-        }
-        Relationships: []
       }
       client_errors: {
         Row: {
@@ -1000,6 +1084,65 @@ export type Database = {
         }
         Relationships: []
       }
+      digital_assets: {
+        Row: {
+          created_at: string | null
+          creator_id: string
+          current_owner_id: string
+          edition_number: number
+          freeze_reason: string | null
+          id: string
+          is_frozen: boolean | null
+          max_editions: number
+          metadata: Json | null
+          minted_at: string | null
+          ownership_proof: string
+          transfer_count: number | null
+          updated_at: string | null
+          visualization_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          creator_id: string
+          current_owner_id: string
+          edition_number?: number
+          freeze_reason?: string | null
+          id?: string
+          is_frozen?: boolean | null
+          max_editions?: number
+          metadata?: Json | null
+          minted_at?: string | null
+          ownership_proof: string
+          transfer_count?: number | null
+          updated_at?: string | null
+          visualization_id: string
+        }
+        Update: {
+          created_at?: string | null
+          creator_id?: string
+          current_owner_id?: string
+          edition_number?: number
+          freeze_reason?: string | null
+          id?: string
+          is_frozen?: boolean | null
+          max_editions?: number
+          metadata?: Json | null
+          minted_at?: string | null
+          ownership_proof?: string
+          transfer_count?: number | null
+          updated_at?: string | null
+          visualization_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "digital_assets_visualization_id_fkey"
+            columns: ["visualization_id"]
+            isOneToOne: false
+            referencedRelation: "saved_visualizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dmca_counter_notifications: {
         Row: {
           admin_notes: string | null
@@ -1253,63 +1396,6 @@ export type Database = {
           learned_patterns?: Json | null
           state_type?: string
           total_predictions?: number | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      farm_status: {
-        Row: {
-          benchmark_errors: number
-          benchmark_runs_completed: number
-          chess_errors: number
-          chess_games_generated: number
-          created_at: string
-          farm_id: string
-          farm_name: string | null
-          host_name: string | null
-          id: string
-          last_heartbeat_at: string
-          market_cycles_completed: number
-          market_errors: number
-          message: string | null
-          metadata: Json | null
-          status: string
-          updated_at: string
-        }
-        Insert: {
-          benchmark_errors?: number
-          benchmark_runs_completed?: number
-          chess_errors?: number
-          chess_games_generated?: number
-          created_at?: string
-          farm_id: string
-          farm_name?: string | null
-          host_name?: string | null
-          id?: string
-          last_heartbeat_at?: string
-          market_cycles_completed?: number
-          market_errors?: number
-          message?: string | null
-          metadata?: Json | null
-          status?: string
-          updated_at?: string
-        }
-        Update: {
-          benchmark_errors?: number
-          benchmark_runs_completed?: number
-          chess_errors?: number
-          chess_games_generated?: number
-          created_at?: string
-          farm_id?: string
-          farm_name?: string | null
-          host_name?: string | null
-          id?: string
-          last_heartbeat_at?: string
-          market_cycles_completed?: number
-          market_errors?: number
-          message?: string | null
-          metadata?: Json | null
-          status?: string
           updated_at?: string
         }
         Relationships: []
@@ -1677,6 +1763,45 @@ export type Database = {
         }
         Relationships: []
       }
+      marketplace_audit_events: {
+        Row: {
+          action: string
+          created_at: string | null
+          id: string
+          ip_address: string | null
+          metadata: Json | null
+          resource_id: string | null
+          resource_type: string
+          severity: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          resource_id?: string | null
+          resource_type: string
+          severity?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          resource_id?: string | null
+          resource_type?: string
+          severity?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       marketplace_offers: {
         Row: {
           buyer_id: string
@@ -2036,6 +2161,56 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_states: {
+        Row: {
+          amount_cents: number
+          buyer_id: string
+          completed_at: string | null
+          created_at: string | null
+          error_message: string | null
+          expires_at: string
+          id: string
+          listing_id: string
+          metadata: Json | null
+          payment_intent_id: string | null
+          state: string
+        }
+        Insert: {
+          amount_cents: number
+          buyer_id: string
+          completed_at?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          expires_at: string
+          id?: string
+          listing_id: string
+          metadata?: Json | null
+          payment_intent_id?: string | null
+          state?: string
+        }
+        Update: {
+          amount_cents?: number
+          buyer_id?: string
+          completed_at?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          expires_at?: string
+          id?: string
+          listing_id?: string
+          metadata?: Json | null
+          payment_intent_id?: string | null
+          state?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_states_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "visualization_listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pending_fixes: {
         Row: {
           ai_model: string | null
@@ -2365,6 +2540,33 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limits: {
+        Row: {
+          action: string
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          resource_id: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          resource_id?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          resource_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       revenue_stream_summary: {
         Row: {
           created_at: string
@@ -2407,50 +2609,71 @@ export type Database = {
         }
         Relationships: []
       }
-      player_style_profiles: {
+      royalty_distributions: {
         Row: {
-          created_at: string
-          games: number
+          buyer_id: string
+          created_at: string | null
+          creator_id: string
+          creator_royalty_cents: number
+          distribution_metadata: Json | null
           id: string
-          journey: Json
-          last_game_at: string | null
-          palette_id: string
-          platform: string
-          scores: Json
-          signature_palette_id: string | null
-          updated_at: string
-          user_id: string
-          username: string
+          listing_id: string | null
+          marketplace_fee_cents: number
+          payment_intent_id: string | null
+          platform_share_cents: number
+          sale_amount_cents: number
+          seller_id: string
+          seller_proceeds_cents: number
+          visualization_id: string
         }
         Insert: {
-          created_at?: string
-          games?: number
+          buyer_id: string
+          created_at?: string | null
+          creator_id: string
+          creator_royalty_cents?: number
+          distribution_metadata?: Json | null
           id?: string
-          journey?: Json
-          last_game_at?: string | null
-          palette_id: string
-          platform: string
-          scores: Json
-          signature_palette_id?: string | null
-          updated_at?: string
-          user_id: string
-          username: string
+          listing_id?: string | null
+          marketplace_fee_cents?: number
+          payment_intent_id?: string | null
+          platform_share_cents?: number
+          sale_amount_cents: number
+          seller_id: string
+          seller_proceeds_cents: number
+          visualization_id: string
         }
         Update: {
-          created_at?: string
-          games?: number
+          buyer_id?: string
+          created_at?: string | null
+          creator_id?: string
+          creator_royalty_cents?: number
+          distribution_metadata?: Json | null
           id?: string
-          journey?: Json
-          last_game_at?: string | null
-          palette_id?: string
-          platform?: string
-          scores?: Json
-          signature_palette_id?: string | null
-          updated_at?: string
-          user_id?: string
-          username?: string
+          listing_id?: string | null
+          marketplace_fee_cents?: number
+          payment_intent_id?: string | null
+          platform_share_cents?: number
+          sale_amount_cents?: number
+          seller_id?: string
+          seller_proceeds_cents?: number
+          visualization_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "royalty_distributions_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "visualization_listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "royalty_distributions_visualization_id_fkey"
+            columns: ["visualization_id"]
+            isOneToOne: false
+            referencedRelation: "saved_visualizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       saved_palettes: {
         Row: {
@@ -3677,6 +3900,23 @@ export type Database = {
     }
     Functions: {
       acknowledge_alert: { Args: { p_alert_id: string }; Returns: boolean }
+      acquire_listing_lock: {
+        Args: {
+          p_buyer_id: string
+          p_listing_id: string
+          p_lock_duration_minutes?: number
+        }
+        Returns: Json
+      }
+      atomic_transfer_visualization: {
+        Args: {
+          p_from_user_id: string
+          p_to_user_id: string
+          p_transfer_type?: string
+          p_visualization_id: string
+        }
+        Returns: Json
+      }
       calculate_portfolio_value: {
         Args: { p_user_id: string }
         Returns: number
@@ -3713,21 +3953,36 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: boolean
       }
-      check_rate_limit: {
-        Args: {
-          p_endpoint: string
-          p_identifier: string
-          p_max_requests?: number
-          p_window_seconds?: number
-        }
-        Returns: Json
-      }
+      check_rate_limit:
+        | {
+            Args: {
+              p_endpoint: string
+              p_identifier: string
+              p_max_requests?: number
+              p_window_seconds?: number
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_action: string
+              p_max_requests?: number
+              p_resource_id?: string
+              p_user_id: string
+              p_window_minutes?: number
+            }
+            Returns: Json
+          }
       check_scan_achievements: {
         Args: { p_user_id: string }
         Returns: {
           achievement_type: string
           just_earned: boolean
         }[]
+      }
+      cleanup_old_rate_limits: {
+        Args: { p_older_than_hours?: number }
+        Returns: number
       }
       cleanup_rate_limits: { Args: never; Returns: number }
       create_system_alert: {
@@ -3748,6 +4003,7 @@ export type Database = {
         }
         Returns: string
       }
+      expire_stale_payment_locks: { Args: never; Returns: number }
       generate_challenge_code: { Args: never; Returns: string }
       generate_premium_analytics: {
         Args: { p_analytics_type: string; p_user_id: string }
@@ -3841,6 +4097,19 @@ export type Database = {
       }
       is_premium_user: { Args: { p_user_id: string }; Returns: boolean }
       is_user_banned: { Args: { p_user_id: string }; Returns: boolean }
+      log_marketplace_audit: {
+        Args: {
+          p_action: string
+          p_ip_address?: string
+          p_metadata?: Json
+          p_resource_id?: string
+          p_resource_type: string
+          p_severity?: string
+          p_user_agent?: string
+          p_user_id: string
+        }
+        Returns: string
+      }
       log_security_event: {
         Args: {
           p_action_category?: string
@@ -3871,60 +4140,6 @@ export type Database = {
           p_sale_price_cents: number
         }
         Returns: boolean
-      }
-      claim_free_listing: {
-        Args: {
-          p_buyer_id: string
-          p_listing_id: string
-        }
-        Returns: {
-          success: boolean
-          visualization_id: string | null
-          message: string
-        }[]
-      }
-      reserve_listing_for_checkout: {
-        Args: {
-          p_buyer_id: string
-          p_listing_id: string
-        }
-        Returns: {
-          success: boolean
-          stripe_session_id: string | null
-          message: string
-        }[]
-      }
-      complete_reserved_purchase: {
-        Args: {
-          p_buyer_id: string
-          p_listing_id: string
-          p_stripe_payment_intent_id: string
-        }
-        Returns: {
-          success: boolean
-          visualization_id: string | null
-          message: string
-        }[]
-      }
-      release_listing_reservation: {
-        Args: { p_listing_id: string }
-        Returns: boolean
-      }
-      expire_stale_pending_listings: {
-        Args: Record<string, never>
-        Returns: number
-      }
-      is_visionary_member: {
-        Args: { p_email: string }
-        Returns: boolean
-      }
-      get_visionary_members: {
-        Args: Record<string, never>
-        Returns: {
-          email: string
-          display_name: string
-          role: string
-        }[]
       }
       publish_listing_with_validation: {
         Args: {
@@ -4042,8 +4257,6 @@ export type Database = {
         }
         Returns: boolean
       }
-      redeem_reward_code: { Args: { p_code: string }; Returns: Json }
-      get_or_create_referral_code: { Args: Record<PropertyKey, never>; Returns: Json }
       release_user_visions: { Args: { p_user_id: string }; Returns: number }
       release_user_visions_with_value: {
         Args: { p_user_id: string }
@@ -4093,7 +4306,7 @@ export type Database = {
       app_role: "admin" | "moderator" | "user"
       chess_game_result: "white_wins" | "black_wins" | "draw" | "abandoned"
       chess_game_status: "waiting" | "active" | "completed" | "abandoned"
-      listing_status: "active" | "sold" | "cancelled" | "pending_payment"
+      listing_status: "active" | "sold" | "cancelled"
       testimonial_status: "pending" | "approved" | "rejected"
       time_control: "bullet_1" | "blitz_5" | "rapid_15" | "untimed"
     }
@@ -4111,12 +4324,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4140,11 +4353,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4165,11 +4378,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4190,11 +4403,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4207,11 +4420,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4226,7 +4439,7 @@ export const Constants = {
       app_role: ["admin", "moderator", "user"],
       chess_game_result: ["white_wins", "black_wins", "draw", "abandoned"],
       chess_game_status: ["waiting", "active", "completed", "abandoned"],
-      listing_status: ["active", "sold", "cancelled", "pending_payment"],
+      listing_status: ["active", "sold", "cancelled"],
       testimonial_status: ["pending", "approved", "rejected"],
       time_control: ["bullet_1", "blitz_5", "rapid_15", "untimed"],
     },
