@@ -1,4 +1,6 @@
 // Game images mapping - maps game IDs to their artwork
+import { paletteThumbs } from '@/lib/palettes/paletteBackgrounds';
+import { FAMOUS_GAME_PALETTES } from '@/lib/chess/famousGameOpenings';
 // Import images for ES6 module usage
 import kasparovImmortal from '@/assets/games/kasparov-immortal.jpg';
 import gameOfCentury from '@/assets/games/game-of-century.jpg';
@@ -284,3 +286,23 @@ export function getGameImage(gameId: string | undefined): string | null {
 
 // Re-export Carlsen game images from dedicated file
 export { carlsenGameImages, getCarlsenGameImage, allCarlsenArtwork } from './carlsenGameImages';
+
+const ERA_SCENES: [number, string[]][] = [
+  [1700, ['medieval', 'egyptian', 'roman']],
+  [1900, ['vintage', 'roman', 'inkgold']],
+  [1950, ['artdeco', 'inkgold', 'vintage']],
+  [2000, ['modern', 'greyscale', 'contrast']],
+  [Infinity, ['cyberpunk', 'cosmic', 'modern']],
+];
+
+/** Card art for a preset: its own painting, else its palette's scene, else an era scene. Never empty. */
+export function getGameCardArt(gameId: string, year: number): string {
+  const own = gameImageImports[gameId];
+  if (own) return own;
+  const chosen = FAMOUS_GAME_PALETTES[gameId];
+  if (chosen && paletteThumbs[chosen]) return paletteThumbs[chosen];
+  const era = ERA_SCENES.find(([limit]) => year < limit)![1];
+  let h = 0;
+  for (let i = 0; i < gameId.length; i++) h = (h * 31 + gameId.charCodeAt(i)) >>> 0;
+  return paletteThumbs[era[h % era.length]] ?? Object.values(paletteThumbs)[0];
+}

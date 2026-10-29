@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Upload, FileText, Crown, Sparkles, CheckCircle, XCircle, Loader2, Wrench, ArrowRight, ChevronLeft, ChevronRight, Search, X, Shuffle, Heart, Award, PenTool, Trophy, Star, Grid3X3, Camera } from 'lucide-react';
 import uploadHeroArt from '@/assets/hero-chess-art.jpg';
 import { famousGames, carlsenLegendaryGames, FamousGame, getRandomFamousGame } from '@/lib/chess/famousGames';
-import { gameImageImports } from '@/lib/chess/gameImages';
+import { getGameCardArt } from '@/lib/chess/gameImages';
 import { getPoetryPreview, getPoetryStyleLabel } from '@/lib/chess/gamePoetry';
 import { validatePgn, cleanPgn, PgnValidationResult } from '@/lib/chess/pgnValidator';
 import { fixPgn, PgnFixResult } from '@/lib/chess/pgnFixer';
@@ -410,7 +410,7 @@ const PgnUploader: React.FC<PgnUploaderProps> = ({ onPgnSubmit, onFenSubmit }) =
 
   // Render a game card
   const renderGameCard = (game: FamousGame) => {
-    const gameImage = gameImageImports[game.id];
+    const gameImage = getGameCardArt(game.id, game.year);
     const poetryPreview = getPoetryPreview(game.id);
     return (
       <button
