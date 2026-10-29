@@ -120,6 +120,14 @@ import carlsenKramnikBattle from '@/assets/games/carlsen/carlsen-kramnik-battle.
 import carlsenGrunfeldCounter from '@/assets/games/carlsen/carlsen-grunfeld-counter.jpg';
 import carlsenTechnique from '@/assets/games/carlsen/carlsen-technique.jpg';
 
+const cardArtFiles = import.meta.glob('/src/assets/games/cards/*.jpg', {
+  eager: true,
+  import: 'default',
+}) as Record<string, string>;
+const cardArt: Record<string, string> = Object.fromEntries(
+  Object.entries(cardArtFiles).map(([path, url]) => [(path.split('/').pop() || '').replace(/\.jpg$/, ''), url]),
+);
+
 export const gameImageImports: Record<string, string> = {
   // Original games
   'kasparov-topalov-1999': kasparovImmortal,
@@ -252,6 +260,20 @@ export const gameImageImports: Record<string, string> = {
   'carlsen-vachier-lagrave-2020': carlsenTechnique,
   'carlsen-anand-zugzwang-2014': carlsenZugzwang,
   'carlsen-endgame-2015': carlsenEndgameMaster,
+
+  // Same games listed under the current preset ids (players swapped or renamed)
+  'amant-staunton-1843': saintAmantStaunton,
+  'kasparov-kramnik-2000': kramnikKasparov,
+  'anand-topalov-2005': topalovAnand,
+  'karpov-kasparov-1990': kasparovKarpov1990,
+  'nepomniachtchi-ding-2023': dingNepo,
+  'short-kasparov-1993': kasparovShort1993,
+  'fischer-petrosian-1971': petrosianFischer,
+  'capablanca-lilienthal-1936': lilienthalCapablanca,
+  'botvinnik-flohr-1933': flohrBotvinnik,
+
+  // Per-game card art, one file per preset id: src/assets/games/cards/<game-id>.jpg
+  ...cardArt,
 };
 
 // Helper function to get game image by ID
