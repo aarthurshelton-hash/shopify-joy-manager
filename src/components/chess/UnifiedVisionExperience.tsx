@@ -389,6 +389,14 @@ const AnalyticsPanel: React.FC<{
   }, [engineReady, engineQuality.moves, heuristicMoves, heuristicSummary]);
   const whiteAcc = engineReady && engineQuality.whiteAccuracy !== null ? engineQuality.whiteAccuracy : qualitySummary?.whiteAccuracy ?? 0;
   const blackAcc = engineReady && engineQuality.blackAccuracy !== null ? engineQuality.blackAccuracy : qualitySummary?.blackAccuracy ?? 0;
+  const [hoveredSide, setHoveredSide] = useState<'w' | 'b' | null>(null);
+  const [pinnedSide, setPinnedSide] = useState<'w' | 'b' | null>(null);
+  const focusedSide = hoveredSide ?? pinnedSide;
+  const { shownSummary, shownMoves } = React.useMemo(() => {
+    if (!focusedSide || !qualitySummary) return { shownSummary: qualitySummary, shownMoves: classifiedMoves };
+    const sideMoves = classifiedMoves.filter(m => m.color === focusedSide);
+    return { shownSummary: getMoveQualitySummary(sideMoves), shownMoves: sideMoves };
+  }, [focusedSide, qualitySummary, classifiedMoves]);
 
   // Extract opening information for book move tooltips
   const openingInfo = React.useMemo(() => {
@@ -583,7 +591,7 @@ const AnalyticsPanel: React.FC<{
           )}
 
           {/* Move Quality Metrics - encompasses all statistics */}
-          {qualitySummary && (
+          {shownSummary && (
             <div className="p-3 rounded-lg bg-gradient-to-br from-cyan-500/10 via-transparent to-purple-500/10 border border-cyan-500/20">
               <div className="flex items-center justify-between mb-3">
                 <Badge variant="outline" className="bg-cyan-500/10 text-cyan-600 border-cyan-500/30">
@@ -601,7 +609,16 @@ const AnalyticsPanel: React.FC<{
               
               {/* Per-player accuracy display - chess.com style */}
               <div className="grid grid-cols-2 gap-3 mb-3">
-                <div className="p-2 rounded bg-background/90 border border-border/30 text-center">
+                <div
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={pinnedSide === 'w'}
+                  onMouseEnter={() => setHoveredSide('w')}
+                  onMouseLeave={() => setHoveredSide(null)}
+                  onClick={() => setPinnedSide(s => (s === 'w' ? null : 'w'))}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setPinnedSide(s => (s === 'w' ? null : 'w')); } }}
+                  className={`p-2 rounded bg-background/90 border text-center cursor-pointer transition-all ${focusedSide === 'w' ? 'border-cyan-400/60 ring-1 ring-cyan-400/40' : focusedSide === 'b' ? 'border-border/30 opacity-50' : 'border-border/30 hover:border-cyan-400/40'}`}
+                >
                   <p className="text-[10px] text-muted-foreground mb-1 flex items-center justify-center gap-1"><ChessPieceIcon type="k" color="w" size={12} /> {gameData.white || 'White'}</p>
                   <p className={`text-lg font-bold ${
                     whiteAcc >= 90 ? 'text-green-400' :
@@ -611,7 +628,16 @@ const AnalyticsPanel: React.FC<{
                     {whiteAcc}%
                   </p>
                 </div>
-                <div className="p-2 rounded bg-background/90 border border-border/30 text-center">
+                <div
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={pinnedSide === 'b'}
+                  onMouseEnter={() => setHoveredSide('b')}
+                  onMouseLeave={() => setHoveredSide(null)}
+                  onClick={() => setPinnedSide(s => (s === 'b' ? null : 'b'))}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setPinnedSide(s => (s === 'b' ? null : 'b')); } }}
+                  className={`p-2 rounded bg-background/90 border text-center cursor-pointer transition-all ${focusedSide === 'b' ? 'border-cyan-400/60 ring-1 ring-cyan-400/40' : focusedSide === 'w' ? 'border-border/30 opacity-50' : 'border-border/30 hover:border-cyan-400/40'}`}
+                >
                   <p className="text-[10px] text-muted-foreground mb-1 flex items-center justify-center gap-1"><ChessPieceIcon type="k" color="b" size={12} /> {gameData.black || 'Black'}</p>
                   <p className={`text-lg font-bold ${
                     blackAcc >= 90 ? 'text-green-400' :
@@ -622,57 +648,62 @@ const AnalyticsPanel: React.FC<{
                   </p>
                 </div>
               </div>
+              <p className="text-[10px] text-muted-foreground text-center -mt-1 mb-3">
+                {focusedSide
+                  ? `Showing ${focusedSide === 'w' ? (gameData.white || 'White') : (gameData.black || 'Black')}'s moves only${pinnedSide && !hoveredSide ? ' · tap again to show both' : ''}`
+                  : 'Hover or tap a player to see only their moves'}
+              </p>
               
               {/* Quality breakdown - show all categories with hover tooltips */}
               <div className="grid grid-cols-4 gap-2 text-center text-xs mb-3">
                 {/* Brilliant moves - always show if > 0 */}
-                {qualitySummary.brilliantCount > 0 && (
+                {shownSummary.brilliantCount > 0 && (
                   <MoveQualityTooltip 
                     quality="brilliant" 
-                    count={qualitySummary.brilliantCount}
-                    classifiedMoves={classifiedMoves}
+                    count={shownSummary.brilliantCount}
+                    classifiedMoves={shownMoves}
                   >
                     <div className="p-2 rounded bg-cyan-500/10 border border-cyan-500/20 cursor-help transition-all hover:bg-cyan-500/15 hover:border-cyan-500/30">
-                      <p className="font-bold text-cyan-400">{qualitySummary.brilliantCount}</p>
+                      <p className="font-bold text-cyan-400">{shownSummary.brilliantCount}</p>
                       <p className="text-muted-foreground text-[10px]">Brilliant !!</p>
                     </div>
                   </MoveQualityTooltip>
                 )}
                 {/* Great moves */}
-                {qualitySummary.greatCount > 0 && (
+                {shownSummary.greatCount > 0 && (
                   <MoveQualityTooltip 
                     quality="great" 
-                    count={qualitySummary.greatCount}
-                    classifiedMoves={classifiedMoves}
+                    count={shownSummary.greatCount}
+                    classifiedMoves={shownMoves}
                   >
                     <div className="p-2 rounded bg-green-500/10 border border-green-500/20 cursor-help transition-all hover:bg-green-500/15 hover:border-green-500/30">
-                      <p className="font-bold text-green-400">{qualitySummary.greatCount}</p>
+                      <p className="font-bold text-green-400">{shownSummary.greatCount}</p>
                       <p className="text-muted-foreground text-[10px]">Great !</p>
                     </div>
                   </MoveQualityTooltip>
                 )}
                 {/* Best moves */}
-                {qualitySummary.bestCount > 0 && (
+                {shownSummary.bestCount > 0 && (
                   <MoveQualityTooltip 
                     quality="best" 
-                    count={qualitySummary.bestCount}
-                    classifiedMoves={classifiedMoves}
+                    count={shownSummary.bestCount}
+                    classifiedMoves={shownMoves}
                   >
                     <div className="p-2 rounded bg-lime-500/10 border border-lime-500/20 cursor-help transition-all hover:bg-lime-500/15 hover:border-lime-500/30">
-                      <p className="font-bold text-lime-400">{qualitySummary.bestCount}</p>
+                      <p className="font-bold text-lime-400">{shownSummary.bestCount}</p>
                       <p className="text-muted-foreground text-[10px]">Best ✓</p>
                     </div>
                   </MoveQualityTooltip>
                 )}
                 {/* Good moves */}
-                {qualitySummary.goodCount > 0 && (
+                {shownSummary.goodCount > 0 && (
                   <MoveQualityTooltip 
                     quality="good" 
-                    count={qualitySummary.goodCount}
-                    classifiedMoves={classifiedMoves}
+                    count={shownSummary.goodCount}
+                    classifiedMoves={shownMoves}
                   >
                     <div className="p-2 rounded bg-gray-500/10 border border-gray-500/20 cursor-help transition-all hover:bg-gray-500/15 hover:border-gray-500/30">
-                      <p className="font-bold text-gray-400">{qualitySummary.goodCount}</p>
+                      <p className="font-bold text-gray-400">{shownSummary.goodCount}</p>
                       <p className="text-muted-foreground text-[10px]">Good ○</p>
                     </div>
                   </MoveQualityTooltip>
@@ -680,40 +711,40 @@ const AnalyticsPanel: React.FC<{
               </div>
               
               {/* Errors breakdown - only show if there are any */}
-              {(qualitySummary.inaccuracyCount > 0 || qualitySummary.mistakeCount > 0 || qualitySummary.blunderCount > 0) && (
+              {(shownSummary.inaccuracyCount > 0 || shownSummary.mistakeCount > 0 || shownSummary.blunderCount > 0) && (
                 <div className="grid grid-cols-3 gap-2 text-center text-xs mb-3">
-                  {qualitySummary.inaccuracyCount > 0 && (
+                  {shownSummary.inaccuracyCount > 0 && (
                     <MoveQualityTooltip 
                       quality="inaccuracy" 
-                      count={qualitySummary.inaccuracyCount}
-                      classifiedMoves={classifiedMoves}
+                      count={shownSummary.inaccuracyCount}
+                      classifiedMoves={shownMoves}
                     >
                       <div className="p-2 rounded bg-yellow-500/10 border border-yellow-500/20 cursor-help transition-all hover:bg-yellow-500/15 hover:border-yellow-500/30">
-                        <p className="font-bold text-yellow-400">{qualitySummary.inaccuracyCount}</p>
+                        <p className="font-bold text-yellow-400">{shownSummary.inaccuracyCount}</p>
                         <p className="text-muted-foreground text-[10px]">Inaccuracy ?!</p>
                       </div>
                     </MoveQualityTooltip>
                   )}
-                  {qualitySummary.mistakeCount > 0 && (
+                  {shownSummary.mistakeCount > 0 && (
                     <MoveQualityTooltip 
                       quality="mistake" 
-                      count={qualitySummary.mistakeCount}
-                      classifiedMoves={classifiedMoves}
+                      count={shownSummary.mistakeCount}
+                      classifiedMoves={shownMoves}
                     >
                       <div className="p-2 rounded bg-orange-500/10 border border-orange-500/20 cursor-help transition-all hover:bg-orange-500/15 hover:border-orange-500/30">
-                        <p className="font-bold text-orange-400">{qualitySummary.mistakeCount}</p>
+                        <p className="font-bold text-orange-400">{shownSummary.mistakeCount}</p>
                         <p className="text-muted-foreground text-[10px]">Mistake ?</p>
                       </div>
                     </MoveQualityTooltip>
                   )}
-                  {qualitySummary.blunderCount > 0 && (
+                  {shownSummary.blunderCount > 0 && (
                     <MoveQualityTooltip 
                       quality="blunder" 
-                      count={qualitySummary.blunderCount}
-                      classifiedMoves={classifiedMoves}
+                      count={shownSummary.blunderCount}
+                      classifiedMoves={shownMoves}
                     >
                       <div className="p-2 rounded bg-red-500/10 border border-red-500/20 cursor-help transition-all hover:bg-red-500/15 hover:border-red-500/30">
-                        <p className="font-bold text-red-400">{qualitySummary.blunderCount}</p>
+                        <p className="font-bold text-red-400">{shownSummary.blunderCount}</p>
                         <p className="text-muted-foreground text-[10px]">Blunder ??</p>
                       </div>
                     </MoveQualityTooltip>
@@ -722,36 +753,39 @@ const AnalyticsPanel: React.FC<{
               )}
               
               {/* Book moves - show if game has opening theory */}
-              {qualitySummary.bookCount > 0 && openingInfo && (
-                <BookMovesCard count={qualitySummary.bookCount} openingInfo={openingInfo} />
+              {shownSummary.bookCount > 0 && openingInfo && (
+                <BookMovesCard count={shownSummary.bookCount} openingInfo={openingInfo} />
               )}
               
               {/* Tactical event counts */}
               <div className="pt-2 border-t border-border/30">
-                <p className="text-[10px] text-muted-foreground mb-2">Tactical Events</p>
+                <p className="text-[10px] text-muted-foreground mb-2">
+                  Tactical Events
+                  {focusedSide && ` · ${focusedSide === 'w' ? (gameData.white || 'White') : (gameData.black || 'Black')} only`}
+                </p>
                 <div className="grid grid-cols-6 gap-1 text-center text-xs">
                   <div className="p-1 rounded bg-yellow-500/10">
-                    <p className="font-bold text-yellow-400">{qualitySummary.checkCount}</p>
+                    <p className="font-bold text-yellow-400">{shownSummary.checkCount}</p>
                     <p className="text-muted-foreground text-[9px]">Checks</p>
                   </div>
                   <div className="p-1 rounded bg-red-500/10">
-                    <p className="font-bold text-red-400">{qualitySummary.checkmateCount}</p>
+                    <p className="font-bold text-red-400">{shownSummary.checkmateCount}</p>
                     <p className="text-muted-foreground text-[9px]">Mate</p>
                   </div>
                   <div className="p-1 rounded bg-orange-500/10">
-                    <p className="font-bold text-orange-400">{qualitySummary.captureCount}</p>
+                    <p className="font-bold text-orange-400">{shownSummary.captureCount}</p>
                     <p className="text-muted-foreground text-[9px]">Captures</p>
                   </div>
                   <div className="p-1 rounded bg-blue-500/10">
-                    <p className="font-bold text-blue-400">{qualitySummary.castleCount}</p>
+                    <p className="font-bold text-blue-400">{shownSummary.castleCount}</p>
                     <p className="text-muted-foreground text-[9px]">Castles</p>
                   </div>
                   <div className="p-1 rounded bg-purple-500/10">
-                    <p className="font-bold text-purple-400">{qualitySummary.sacrificeCount}</p>
+                    <p className="font-bold text-purple-400">{shownSummary.sacrificeCount}</p>
                     <p className="text-muted-foreground text-[9px]">Sacrifices</p>
                   </div>
                   <div className="p-1 rounded bg-pink-500/10">
-                    <p className="font-bold text-pink-400">{qualitySummary.promotionCount}</p>
+                    <p className="font-bold text-pink-400">{shownSummary.promotionCount}</p>
                     <p className="text-muted-foreground text-[9px]">Promos</p>
                   </div>
                 </div>
