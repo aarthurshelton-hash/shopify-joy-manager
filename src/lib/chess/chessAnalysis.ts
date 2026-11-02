@@ -189,7 +189,7 @@ const GAMBITS_DB: ChessGambit[] = [
 /**
  * Convert PGN moves to array of SAN notation
  */
-function pgnToMoves(pgn: string): string[] {
+function pgnToMoves(pgn: string, keepCheckMarks = false): string[] {
   const movesSection = pgn.replace(/\[[^\]]*\]/g, '').trim();
   return movesSection
     .replace(/\{[^}]*\}/g, '')
@@ -198,7 +198,7 @@ function pgnToMoves(pgn: string): string[] {
     .replace(/1-0|0-1|1\/2-1\/2|\*/g, '')
     .split(/\s+/)
     .filter(token => token && !token.match(/^\d+\.+$/) && token !== '...')
-    .map(m => m.replace(/[+#!?]+$/, ''));
+    .map(m => m.replace(keepCheckMarks ? /[!?]+$/ : /[+#!?]+$/, ''));
 }
 
 /**
@@ -645,6 +645,7 @@ function extractPhaseEvents(moves: string[], start: number, end: number): string
 export function analyzeGame(pgn: string): GameAnalysis | null {
   try {
     const moves = pgnToMoves(pgn);
+    const markedMoves = pgnToMoves(pgn, true);
     const totalMoves = moves.length;
     
     // Return null for empty games
@@ -656,7 +657,7 @@ export function analyzeGame(pgn: string): GameAnalysis | null {
     let captureCount = 0;
     let checkCount = 0;
     
-    for (const move of moves) {
+    for (const move of markedMoves) {
       if (move.includes('x')) captureCount++;
       if (move.includes('+') || move.includes('#')) checkCount++;
     }
@@ -705,7 +706,7 @@ export function analyzeGame(pgn: string): GameAnalysis | null {
       gambit: detectGambit(moves),
       tactics: detectTactics(pgn),
       specialMoves: detectSpecialMoves(pgn),
-      phases: detectGamePhases(totalMoves, moves),
+      phases: detectGamePhases(totalMoves, markedMoves),
       moveQuality,
       summary: {
         totalMoves,
