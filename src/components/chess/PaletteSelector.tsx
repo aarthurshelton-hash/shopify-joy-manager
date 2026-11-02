@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, forwardRef } from 'react';
-import { Palette, Check, Pencil, Save, Loader2, ChevronDown, Globe, User } from 'lucide-react';
+import { Palette, Check, Pencil, Save, Loader2, ChevronDown, ChevronUp, Globe, User, Shuffle, Dices } from 'lucide-react';
 import { 
   colorPalettes, 
   getActivePalette, 
@@ -57,11 +57,17 @@ const pieceNames: Record<PieceType, string> = {
   p: 'Pawn',
 };
 
+const randomInt = (max: number): number => {
+  const buf = new Uint32Array(1);
+  crypto.getRandomValues(buf);
+  return buf[0] % max;
+};
+
 // Generate a random hex color
 const generateRandomColor = (): string => {
-  const hue = Math.floor(Math.random() * 360);
-  const saturation = 50 + Math.floor(Math.random() * 40); // 50-90%
-  const lightness = 35 + Math.floor(Math.random() * 30); // 35-65%
+  const hue = randomInt(360);
+  const saturation = 50 + randomInt(40); // 50-90%
+  const lightness = 35 + randomInt(30); // 35-65%
   
   // Convert HSL to Hex
   const h = hue / 360;
@@ -112,6 +118,7 @@ const PaletteSelector = forwardRef<HTMLDivElement, PaletteSelectorProps>(functio
   const [savedPalettes, setSavedPalettes] = useState<SavedPaletteItem[]>([]);
   const [publicPalettes, setPublicPalettes] = useState<SavedPaletteItem[]>([]);
   const [isLoadingPalettes, setIsLoadingPalettes] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   
   const pieces: PieceType[] = ['k', 'q', 'r', 'b', 'n', 'p'];
 
@@ -202,6 +209,27 @@ const PaletteSelector = forwardRef<HTMLDivElement, PaletteSelectorProps>(functio
     }
   }, [onPaletteChange, activePaletteId]);
   
+  const handleRandomPreset = useCallback(() => {
+    const options = colorPalettes.filter(p => p.id !== 'custom' && p.id !== activePaletteId);
+    if (options.length === 0) return;
+    const pick = options[randomInt(options.length)];
+    handleSelect(pick.id);
+    toast.success(`Random palette: ${pick.name}`);
+  }, [activePaletteId, handleSelect]);
+
+  const handleRandomMix = useCallback(() => {
+    const randomPalette = generateRandomPalette();
+    pieces.forEach(piece => {
+      setCustomColor('w', piece, randomPalette.white[piece]);
+      setCustomColor('b', piece, randomPalette.black[piece]);
+    });
+    setCustomColors(randomPalette);
+    setActivePalette('custom');
+    setActivePaletteId('custom');
+    onPaletteChange?.('custom');
+    toast.success('Random colour mix applied');
+  }, [onPaletteChange]);
+
   const handleCustomColorChange = useCallback((pieceColor: PieceColor, pieceType: PieceType, hexColor: string) => {
     setCustomColor(pieceColor, pieceType, hexColor);
     setCustomColors(prev => ({
@@ -348,7 +376,60 @@ const PaletteSelector = forwardRef<HTMLDivElement, PaletteSelectorProps>(functio
       </div>
       
       <div className="p-5 space-y-5">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" className="gap-2" onClick={handleRandomPreset}>
+            <Shuffle className="h-4 w-4" />
+            Random Palette
+          </Button>
+          <Button variant="outline" size="sm" className="gap-2" onClick={handleRandomMix}>
+            <Dices className="h-4 w-4" />
+            Random Colour Mix
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-1 ml-auto text-muted-foreground"
+            onClick={() => setIsExpanded(e => !e)}
+            aria-expanded={isExpanded}
+          >
+            {isExpanded ? 'Collapse' : `Show all ${colorPalettes.length} palettes`}
+            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </Button>
+        </div>
+
+        {!isExpanded && (
+          <div className="flex flex-wrap gap-2">
+            {colorPalettes.map((palette) => {
+              const isActive = palette.id === activePaletteId;
+              const colors = palette.id === 'custom' ? customColors : { white: palette.white, black: palette.black };
+              return (
+                <button
+                  key={palette.id}
+                  type="button"
+                  onClick={() => handleSelect(palette.id)}
+                  aria-pressed={isActive}
+                  className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition-all ${
+                    isActive ? 'border-primary bg-primary/10 text-foreground' : 'border-border/50 bg-card/60 text-muted-foreground hover:border-primary/30 hover:text-foreground'
+                  }`}
+                >
+                  <span className="flex overflow-hidden rounded-sm ring-1 ring-black/10">
+                    {(['k', 'q', 'r'] as PieceType[]).map(piece => (
+                      <span key={`w-${piece}`} className="h-3 w-2" style={{ backgroundColor: colors.white[piece] }} />
+                    ))}
+                    {(['k', 'q', 'r'] as PieceType[]).map(piece => (
+                      <span key={`b-${piece}`} className="h-3 w-2" style={{ backgroundColor: colors.black[piece] }} />
+                    ))}
+                  </span>
+                  <span className="font-display font-medium">{palette.name}</span>
+                  {isActive && <Check className="h-3 w-3 text-primary" />}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {/* Preset palettes - horizontally scrollable on mobile */}
+        {isExpanded && (
         <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:overflow-visible sm:pb-0">
           {colorPalettes.map((palette) => {
             const isActive = palette.id === activePaletteId;
@@ -444,6 +525,7 @@ const PaletteSelector = forwardRef<HTMLDivElement, PaletteSelectorProps>(functio
             );
           })}
         </div>
+        )}
         
         {/* Custom color picker panel - only show when custom is selected */}
         {isCustomActive && (
