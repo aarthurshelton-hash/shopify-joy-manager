@@ -21,8 +21,8 @@ const FAQ_ITEMS: FAQItem[] = [
     answer: 'En Pensent colors every square a piece passes through — not just where it lands, but the full path. Over 30-40 moves, these overlapping paths create a spatial fingerprint. That fingerprint is classified into archetypes with historical win rates. It\'s pattern recognition, not calculation.',
   },
   {
-    question: 'What\'s the difference between free and premium?',
-    answer: 'Free users can visualize any game, share it, and download a preview image. Premium members get HD exports, GIF animations, save-to-gallery, marketplace listing rights, and access to the full palette library.',
+    question: 'What\'s the difference between a guest and a member?',
+    answer: 'Guests can visualize any game, share it, and download a preview image without an account. Every En Pensent account is a Premium membership, which adds HD exports, GIF animations, save-to-gallery, marketplace listing rights, and access to the full palette library.',
   },
   {
     question: 'Can I order a physical print?',

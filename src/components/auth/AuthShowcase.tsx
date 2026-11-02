@@ -1,6 +1,6 @@
 import React from 'react';
 import { Crown, Frame, Sparkles } from 'lucide-react';
-import { PREMIUM_PERKS, PREMIUM_PRICE_MONTHLY } from '@/lib/premiumFeatures';
+import { PREMIUM_PERKS, PREMIUM_PRICE_ANNUAL, PREMIUM_PRICE_MONTHLY } from '@/lib/premiumFeatures';
 
 const POINTS = [
   { icon: Sparkles, text: 'Save and revisit every game you visualize' },
@@ -43,13 +43,13 @@ const AuthShowcase: React.FC<{ headline?: string; premium?: boolean }> = ({ head
         )}
         <div className="rounded-lg border border-primary/30 bg-black/50 p-4 backdrop-blur-sm">
           <p className="mb-3 flex items-center justify-between text-xs uppercase tracking-[0.2em] text-primary">
-            <span>What Premium adds</span>
+            <span>Your membership includes</span>
             <span>{PREMIUM_PRICE_MONTHLY}/mo</span>
           </p>
           <PremiumPerksList />
         </div>
         <p className="border-t border-white/15 pt-4 text-xs text-white/60">
-          {premium ? 'Create your free account first, then go straight to secure checkout.' : 'Free to join. No card required. Upgrade any time.'}
+          {`Membership is ${PREMIUM_PRICE_MONTHLY}/month or ${PREMIUM_PRICE_ANNUAL}/year. Secure checkout by Stripe. Cancel anytime.`}
         </p>
       </div>
     </div>

@@ -193,7 +193,7 @@ export default function VisionScannerPage() {
                     <Button asChild className="w-full">
                       <Link to="/join">Unlock with Premium, {PREMIUM_PRICE_MONTHLY}/month</Link>
                     </Button>
-                    <p className="text-xs text-muted-foreground">Cancel anytime. Free accounts can still download, order prints and explore.</p>
+                    <p className="text-xs text-muted-foreground">Cancel anytime.</p>
                   </div>
                 )}
 

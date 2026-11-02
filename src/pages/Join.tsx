@@ -97,7 +97,7 @@ const Join: React.FC = () => {
                 <span className="text-muted-foreground">{p.per}</span>
                 <p className="text-xs text-muted-foreground mt-1">{p.note}</p>
               </div>
-              <p className="text-xs uppercase tracking-[0.2em] text-primary">What Premium adds</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-primary">Your membership includes</p>
               <ul className="text-left space-y-3 text-sm">
                 {PREMIUM_PERKS.map((perk) => (
                   <li key={perk.title} className="flex gap-3">
@@ -106,12 +106,11 @@ const Join: React.FC = () => {
                   </li>
                 ))}
               </ul>
-              <p className="text-xs text-muted-foreground">Free account first, no card needed to join. Premium is billed only when you confirm at checkout.</p>
               <Button className="w-full h-12 text-base" onClick={start} disabled={busy || (!!user && isCheckingSubscription)}>
-                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : user ? `Continue to secure checkout` : 'Create account and continue'}
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : user ? `Continue to secure checkout` : 'Become a member'}
               </Button>
               <p className="text-xs text-muted-foreground">
-                Secure payment by Stripe. {user ? '' : 'You will create your free account first, then go straight to checkout.'}
+                Secure payment by Stripe. Cancel anytime.
               </p>
             </>
           )}

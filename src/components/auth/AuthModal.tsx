@@ -12,7 +12,7 @@ import MFAVerification from './MFAVerification';
 import AuthShowcase from './AuthShowcase';
 import AuthProviderIcon, { OAUTH_LABELS } from './AuthProviderIcon';
 import { useAuthRateLimit } from '@/hooks/useRateLimitV2';
-import { PREMIUM_PERKS } from '@/lib/premiumFeatures';
+import { PREMIUM_PERKS, PREMIUM_PRICE_MONTHLY } from '@/lib/premiumFeatures';
 import { useEnabledAuthProviders, type OAuthProvider } from '@/hooks/useEnabledAuthProviders';
 
 interface AuthModalProps {
@@ -25,6 +25,12 @@ interface AuthModalProps {
 type AuthMode = 'signin' | 'signup' | 'forgot' | 'confirm-email';
 
 const RESEND_SECONDS = 30;
+
+const queueMembershipCheckout = () => {
+  if (!localStorage.getItem('ep_pending_checkout')) {
+    localStorage.setItem('ep_pending_checkout', JSON.stringify({ plan: 'monthly', ts: Date.now() }));
+  }
+};
 
 const friendlyError = (message: string) => {
   const m = message.toLowerCase();
@@ -108,6 +114,7 @@ const AuthModal = forwardRef<HTMLDivElement, AuthModalProps>(({ isOpen, onClose,
           resetForm();
         }
       } else if (mode === 'signup') {
+        queueMembershipCheckout();
         const { error, needsEmailConfirm } = await signUp(email.trim(), password, displayName.trim() || undefined);
         if (error) {
           if (friendlyError(error.message).startsWith('An account with this email already exists')) {
@@ -121,7 +128,7 @@ const AuthModal = forwardRef<HTMLDivElement, AuthModalProps>(({ isOpen, onClose,
           setResendIn(RESEND_SECONDS);
           setMode('confirm-email');
         } else {
-          toast.success('Account created', { description: 'Welcome to En Pensent.', icon: <Gift className="h-4 w-4" /> });
+          toast.success('Welcome to En Pensent', { description: 'Taking you to secure checkout to start your membership.', icon: <Gift className="h-4 w-4" /> });
           onClose();
           resetForm();
         }
@@ -160,6 +167,7 @@ const AuthModal = forwardRef<HTMLDivElement, AuthModalProps>(({ isOpen, onClose,
   const handleOAuthSignIn = async (provider: OAuthProvider) => {
     setOauthLoading(provider);
     setFormError(null);
+    if (mode === 'signup') queueMembershipCheckout();
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: { redirectTo: `${window.location.origin}${window.location.pathname}` },
@@ -179,12 +187,12 @@ const AuthModal = forwardRef<HTMLDivElement, AuthModalProps>(({ isOpen, onClose,
 
   const isSignup = mode === 'signup';
   const title =
-    mode === 'signin' ? 'Welcome back' : mode === 'signup' ? 'Create your free account' : mode === 'forgot' ? 'Reset your password' : 'Check your inbox';
+    mode === 'signin' ? 'Welcome back' : mode === 'signup' ? 'Become a member' : mode === 'forgot' ? 'Reset your password' : 'Check your inbox';
   const subtitle =
     mode === 'signin'
       ? 'Sign in to pick up where you left off.'
       : mode === 'signup'
-        ? 'Save your visions, order prints and unlock Premium in seconds.'
+        ? `Every En Pensent account is a Premium membership, ${PREMIUM_PRICE_MONTHLY}/mo. Create your login, then finish at secure checkout.`
         : mode === 'forgot'
           ? 'Enter your email and we will send you a reset link.'
           : `We sent a confirmation link to ${email}.`;
@@ -223,7 +231,7 @@ const AuthModal = forwardRef<HTMLDivElement, AuthModalProps>(({ isOpen, onClose,
                       mode === m ? 'bg-background text-foreground shadow' : 'text-muted-foreground hover:text-foreground'
                     )}
                   >
-                    {m === 'signup' ? 'Create account' : 'Sign in'}
+                    {m === 'signup' ? 'Join' : 'Sign in'}
                   </button>
                 ))}
               </div>
@@ -373,13 +381,13 @@ const AuthModal = forwardRef<HTMLDivElement, AuthModalProps>(({ isOpen, onClose,
 
                   <Button type="submit" size="lg" className="h-11 w-full text-base" disabled={isLoading || !!oauthLoading}>
                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {mode === 'signin' ? 'Sign in' : mode === 'signup' ? 'Create free account' : 'Send reset link'}
+                    {mode === 'signin' ? 'Sign in' : mode === 'signup' ? 'Continue to checkout' : 'Send reset link'}
                   </Button>
                 </form>
 
                 {isSignup && (
                   <p className="mt-4 text-center text-xs text-muted-foreground">
-                    By creating an account you agree to our{' '}
+                    By joining you agree to our{' '}
                     <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">Terms</a> and{' '}
                     <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">Privacy Policy</a>.
                   </p>
