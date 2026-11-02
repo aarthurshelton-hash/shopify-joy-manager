@@ -62,7 +62,7 @@ export const CartDrawer = () => {
   } = useCartStore();
 
   // Auto-open the drawer when an item is added (skip initial mount)
-  const lastAddedRef = useRef(0);
+  const lastAddedRef = useRef(lastAddedAt);
   useEffect(() => {
     if (lastAddedAt > 0 && lastAddedAt !== lastAddedRef.current) {
       lastAddedRef.current = lastAddedAt;

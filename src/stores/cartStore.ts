@@ -460,6 +460,7 @@ export const useCartStore = create<CartStore>()(
     {
       name: 'en-pensent-cart',
       storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({ items: state.items, checkoutUrl: state.checkoutUrl }),
     }
   )
 );
