@@ -52,6 +52,7 @@ const PaletteSelector = lazy(() => import('@/components/chess/PaletteSelector'))
 const AuthModal = lazy(() => import('@/components/auth/AuthModal'));
 const PrintGallery = lazy(() => import('@/components/homepage/PrintGallery'));
 const FAQSection = lazy(() => import('@/components/homepage/FAQSection'));
+const EverywhereSection = lazy(() => import('@/components/homepage/EverywhereSection'));
 const ChessParticles = lazy(() => import('@/components/chess/ChessParticles'));
 const ScrollBackdrop = lazy(() => import('@/components/homepage/ScrollBackdrop'));
 
@@ -500,6 +501,10 @@ setPendingResult(null);
                 </div>
               </div>
             </section>
+
+            <Suspense fallback={null}>
+              <EverywhereSection />
+            </Suspense>
 
             {/* FAQ */}
             <Suspense fallback={null}>

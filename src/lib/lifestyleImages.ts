@@ -7,7 +7,12 @@ export interface LifestyleImage {
   palette?: string;
 }
 
-const KEYS = ['japanese', 'art-deco', 'cyberpunk', 'medieval', 'greyscale', 'cosmic', 'autumn', 'tropical', 'vintage', 'ocean', 'nordic', 'egyptian', 'roman', 'desert', 'modern'];
+const KEYS: Record<string, string> = {
+  japanese: 'japanese', 'art-deco': 'artdeco', cyberpunk: 'cyberpunk', medieval: 'medieval', greyscale: 'greyscale',
+  cosmic: 'cosmic', autumn: 'autumn', tropical: 'tropical', vintage: 'vintage', ocean: 'ocean', nordic: 'nordic',
+  egyptian: 'egyptian', roman: 'roman', desert: 'desert', modern: 'modern',
+  'stained-glass': 'stainedglass', woodland: 'woodland', 'ink-and-gold': 'inkgold', 'hot-cold': 'hotCold',
+};
 
 const files = import.meta.glob('@/assets/lifestyle/*.{jpg,jpeg,png,webp}', {
   eager: true,
@@ -19,8 +24,8 @@ const title = (s: string) => s.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUp
 export const lifestyleImages: LifestyleImage[] = [
   ...Object.entries(files).map(([p, src]) => {
     const id = p.split('/').pop()!.replace(/\.\w+$/, '');
-    const k = KEYS.find((x) => id.includes(x));
-    return { id, src, title: title(id), palette: k?.replace('-', '') };
+    const k = Object.keys(KEYS).find((x) => id.includes(x));
+    return { id, src, title: title(id), palette: k ? KEYS[k] : undefined };
   }),
   { id: 'canvas-macro-closeup', src: macro, title: 'Museum-Grade Canvas Detail' },
 ];
