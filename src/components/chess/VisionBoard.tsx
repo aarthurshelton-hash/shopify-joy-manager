@@ -5,10 +5,11 @@ import InteractiveVisualizationBoard from './InteractiveVisualizationBoard';
 import InteractiveGameInfoDisplay from './InteractiveGameInfoDisplay';
 import BoardCoordinateGuide from './BoardCoordinateGuide';
 import { MoveEventOverlay } from './MoveEventOverlay';
-import { EventBoard, EventMarks } from './EventLayerSvg';
-import { buildGameEvents, eventsUpTo, type GameEventType } from '@/lib/chess/eventLayer';
+import { EventTextureMarks } from './EventTextureMarks';
+import { EventMomentPopup } from './EventMomentPopup';
+import { buildGameEvents, eventsUpTo, type GameEvent, type GameEventType } from '@/lib/chess/eventLayer';
 
-export type VisionViewMode = 'classic' | 'events' | 'overlay';
+export type VisionViewMode = 'classic' | 'overlay';
 
 interface VisionBoardProps {
   board: SquareData[][];
@@ -23,6 +24,8 @@ interface VisionBoardProps {
   pgn?: string;
   viewMode?: VisionViewMode;
   hiddenEventTypes?: Set<GameEventType>;
+  /** Moment hovered in the Key Moments rail; its details pop up beside the tile */
+  previewEvent?: GameEvent | null;
 }
 
 export const VisionBoard: React.FC<VisionBoardProps> = ({
@@ -38,6 +41,7 @@ export const VisionBoard: React.FC<VisionBoardProps> = ({
   pgn,
   viewMode = 'classic',
   hiddenEventTypes,
+  previewEvent,
 }) => {
   const { currentMove, setCurrentMove } = useTimeline();
   
@@ -68,6 +72,12 @@ export const VisionBoard: React.FC<VisionBoardProps> = ({
     [gameEvents, currentMove, totalMoves],
   );
 
+  const momentEvents = useMemo(() => {
+    if (previewEvent) return [previewEvent];
+    if (!Number.isFinite(currentMove) || currentMove <= 0 || currentMove > totalMoves) return [];
+    return gameEvents.filter((e) => e.moveNumber === currentMove && !hiddenEventTypes?.has(e.type));
+  }, [previewEvent, gameEvents, currentMove, totalMoves, hiddenEventTypes]);
+
   // Handle follow piece activation - jump to the move
   const handleFollowPieceActivated = useCallback((moveNumber: number) => {
     setCurrentMove(moveNumber);
@@ -97,9 +107,6 @@ export const VisionBoard: React.FC<VisionBoardProps> = ({
         {showCoordinates && (
           <BoardCoordinateGuide size={size} position="inside" />
         )}
-        {viewMode === 'events' ? (
-          <EventBoard events={visibleEvents} size={size} hidden={hiddenEventTypes} darkMode={darkMode} />
-        ) : (
         <InteractiveVisualizationBoard 
           board={filteredBoard} 
           size={size}
@@ -109,18 +116,18 @@ export const VisionBoard: React.FC<VisionBoardProps> = ({
           currentMoveNumber={currentMove}
           onFollowPieceActivated={handleFollowPieceActivated}
         />
-        )}
         {viewMode === 'overlay' && (
           <svg
             width={size} height={size} viewBox="0 0 800 800"
-            style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
+            style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 10 }}
           >
-            <EventMarks events={visibleEvents} variant="overlay" hidden={hiddenEventTypes} />
+            <EventTextureMarks events={visibleEvents} hidden={hiddenEventTypes} />
           </svg>
         )}
         {viewMode === 'classic' && effectivePgnForBoard && (
           <MoveEventOverlay pgn={effectivePgnForBoard} size={size} totalMoves={totalMoves} />
         )}
+        <EventMomentPopup events={momentEvents} size={size} />
       </div>
 
       {/* Game Info Section - Now Interactive */}

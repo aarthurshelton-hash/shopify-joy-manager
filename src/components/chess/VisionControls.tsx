@@ -2,13 +2,12 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Grid3X3, Eye, Maximize2, Layers, Zap } from 'lucide-react';
+import { Grid3X3, Eye, Maximize2, Layers } from 'lucide-react';
 import { ShowPiecesToggle } from './ShowPiecesToggle';
 import type { VisionViewMode } from './VisionBoard';
 
 const VIEW_MODES: { id: VisionViewMode; label: string }[] = [
   { id: 'classic', label: 'Classic' },
-  { id: 'events', label: 'Events' },
   { id: 'overlay', label: 'Overlay' },
 ];
 
@@ -57,7 +56,7 @@ export const VisionControls: React.FC<VisionControlsProps> = ({
                   className="h-7 gap-1 px-2 text-xs"
                   aria-pressed={viewMode === mode.id}
                 >
-                  {mode.id === 'overlay' ? <Layers className="h-3 w-3" /> : mode.id === 'events' ? <Zap className="h-3 w-3" /> : <Grid3X3 className="h-3 w-3" />}
+                  {mode.id === 'overlay' ? <Layers className="h-3 w-3" /> : <Grid3X3 className="h-3 w-3" />}
                   {mode.label}
                 </Button>
               ))}

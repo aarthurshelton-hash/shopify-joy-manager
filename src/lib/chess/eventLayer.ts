@@ -23,6 +23,8 @@ export interface GameEvent {
   /** Half-move index, 1-based: matches visit.moveNumber */
   moveNumber: number;
   color: 'w' | 'b';
+  /** Piece that moved, e.g. "q" — used to colour the mark like the piece */
+  piece: string;
   san: string;
   label: string;
 }
@@ -52,7 +54,7 @@ const TYPE_NAME: Record<GameEventType, string> = {
 
 function eventsForMove(move: Move, index: number, quality?: string): GameEvent[] {
   const moveNumber = index + 1;
-  const base = { moveNumber, color: move.color, san: move.san };
+  const base = { moveNumber, color: move.color, san: move.san, piece: move.piece };
   const make = (type: GameEventType, square: string, linkedSquare?: string): GameEvent => ({
     id: `${moveNumber}-${type}-${square}`,
     type,
@@ -109,6 +111,7 @@ export function buildGameEvents(pgn: string | null | undefined): GameEvent[] {
           square: move.to,
           moveNumber: index + 1,
           color: move.color,
+          piece: move.piece,
           san: move.san,
           label: `${Math.ceil((index + 1) / 2)}${move.color === 'w' ? '.' : '...'} ${move.san} — Sacrifice`,
         });
@@ -144,6 +147,32 @@ export function groupEventsBySquare(events: GameEvent[], hidden: Set<GameEventTy
     square,
     events: list.sort((a, b) => EVENT_PRIORITY.indexOf(a.type) - EVENT_PRIORITY.indexOf(b.type)),
   }));
+}
+
+const PIECE_NAMES: Record<string, string> = {
+  p: 'Pawn', n: 'Knight', b: 'Bishop', r: 'Rook', q: 'Queen', k: 'King',
+};
+
+const EXPLANATIONS: Record<GameEventType, string> = {
+  capture: 'A piece is taken off the board here. Capture clusters show where the game was fought.',
+  enPassant: 'A rare en passant capture: the pawn takes a pawn that just advanced two squares.',
+  check: 'The king is attacked and must respond. Checks often mark a shift in momentum.',
+  checkmate: 'The king has no escape. This is the final move of the game.',
+  castle: 'The king tucks away to safety while the rook joins the game in one move.',
+  promotion: 'A pawn reaches the last rank and becomes a new piece, usually a queen.',
+  sacrifice: 'Material is deliberately given up for an attack or a lasting advantage.',
+  brilliant: 'An exceptional move: the best or only move, and difficult to find.',
+  blunder: 'A serious mistake that changes the evaluation of the position.',
+};
+
+export function describeEvent(event: GameEvent): { title: string; when: string; detail: string } {
+  const moveLabel = `Move ${Math.ceil(event.moveNumber / 2)}${event.color === 'w' ? '' : '…'}`;
+  const side = event.color === 'w' ? 'White' : 'Black';
+  return {
+    title: `${EVENT_STYLE[event.type].name} · ${event.san}`,
+    when: `${moveLabel} · ${side}'s ${PIECE_NAMES[event.piece] || 'piece'} on ${event.square}`,
+    detail: EXPLANATIONS[event.type],
+  };
 }
 
 /** Convert "e4" to 0-based file/rank-from-top coordinates. */

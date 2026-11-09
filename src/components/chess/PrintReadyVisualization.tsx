@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { EventBoard, EventMarks } from './EventLayerSvg';
+import { EventTextureMarks } from './EventTextureMarks';
 import { buildGameEvents } from '@/lib/chess/eventLayer';
 import ChessBoardVisualization from './ChessBoardVisualization';
 import GameInfoDisplay from './GameInfoDisplay';
@@ -67,15 +67,15 @@ interface PrintReadyVisualizationProps {
   withWatermark?: boolean;
 
   // Event visualization mode; falls back to the mode last chosen on the board
-  viewMode?: 'classic' | 'events' | 'overlay';
+  viewMode?: 'classic' | 'overlay';
 }
 
 export const VIEW_MODE_STORAGE_KEY = 'en-pensent-view-mode';
 
-function storedViewMode(): 'classic' | 'events' | 'overlay' {
+function storedViewMode(): 'classic' | 'overlay' {
   try {
     const value = localStorage.getItem(VIEW_MODE_STORAGE_KEY);
-    return value === 'events' || value === 'overlay' ? value : 'classic';
+    return value === 'overlay' ? 'overlay' : 'classic';
   } catch {
     return 'classic';
   }
@@ -171,22 +171,18 @@ export const PrintReadyVisualization: React.FC<PrintReadyVisualizationProps> = (
       
       return (
         <div style={{ position: 'relative', width: boardSize, height: boardSize }}>
-          {resolvedViewMode === 'events' ? (
-            <EventBoard events={exportEvents} size={boardSize} darkMode={darkMode} />
-          ) : (
           <ChessBoardVisualization 
             board={board} 
             size={boardSize}
             overrideHighlightedPieces={overrideHighlightedPieces}
             overrideCompareMode={highlightState?.compareMode}
           />
-          )}
           {resolvedViewMode === 'overlay' && (
             <svg
               width={boardSize} height={boardSize} viewBox="0 0 800 800"
-              style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
+              style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 10 }}
             >
-              <EventMarks events={exportEvents} variant="overlay" />
+              <EventTextureMarks events={exportEvents} />
             </svg>
           )}
           {/* Pieces overlay using StaticPieceOverlay component */}

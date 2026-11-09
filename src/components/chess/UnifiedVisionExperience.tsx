@@ -55,7 +55,7 @@ import { EnhancedLegend } from './EnhancedLegend';
 import { VisionControls } from './VisionControls';
 import { VisionBoard, type VisionViewMode } from './VisionBoard';
 import { EventLegend } from './EventLegend';
-import { buildGameEvents, type GameEventType } from '@/lib/chess/eventLayer';
+import { buildGameEvents, type GameEvent, type GameEventType } from '@/lib/chess/eventLayer';
 import { VIEW_MODE_STORAGE_KEY } from './PrintReadyVisualization';
 import GameInfoDisplay from './GameInfoDisplay';
 import InteractiveGameInfoDisplay from './InteractiveGameInfoDisplay';
@@ -1259,7 +1259,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
   const [viewMode, setViewModeState] = useState<VisionViewMode>(() => {
     try {
       const stored = localStorage.getItem(VIEW_MODE_STORAGE_KEY);
-      return stored === 'events' || stored === 'overlay' ? stored : 'classic';
+      return stored === 'overlay' ? 'overlay' : 'classic';
     } catch {
       return 'classic';
     }
@@ -1276,6 +1276,9 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
       return next;
     });
   }, []);
+  const [hoveredEvent, setHoveredEvent] = useState<GameEvent | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<GameEvent | null>(null);
+  const previewEvent = hoveredEvent || selectedEvent;
   const [mobileLegendExpanded, setMobileLegendExpanded] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   
@@ -1285,7 +1288,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
     if (initialState?.move !== undefined && initialState.move > 0) {
       return Math.min(initialState.move, totalMoves);
     }
-    return totalMoves; // Default to showing all moves
+    return Infinity; // Default to showing all moves
   }, [initialState?.move, totalMoves]);
   
   const containerRef = useRef<HTMLDivElement>(null);
@@ -1359,6 +1362,11 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
   }, [pgn, localGameData?.pgn, gameData?.pgn]);
 
   const gameEvents = useMemo(() => buildGameEvents(effectivePgn), [effectivePgn]);
+
+  useEffect(() => {
+    setHoveredEvent(null);
+    setSelectedEvent(null);
+  }, [effectivePgn]);
 
   // Extract moves from PGN when gameData.moves is empty - ensures timeline analysis works
   const effectiveMoves = useMemo((): string[] => {
@@ -1782,6 +1790,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                   pgn={effectivePgn}
                   viewMode={viewMode}
                   hiddenEventTypes={hiddenEventTypes}
+                  previewEvent={previewEvent}
                 />
               </div>
 
@@ -1868,6 +1877,8 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                         pgn={effectivePgn}
                         hybridPrediction={hybridResult.hybridPrediction}
                         patternPrediction={hybridResult.patternPrediction}
+                        onPreviewEvent={setHoveredEvent}
+                        onSelectEvent={setSelectedEvent}
                       />
                     </div>
 
@@ -1891,6 +1902,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                         pgn={effectivePgn}
                         viewMode={viewMode}
                         hiddenEventTypes={hiddenEventTypes}
+                        previewEvent={previewEvent}
                       />
                     </div>
 
@@ -1898,9 +1910,8 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                     {showLegend && (
                       <div className="hidden xl:flex flex-col flex-shrink-0 gap-3" style={{ minWidth: '240px', width: '240px', maxHeight: 'calc(100vh - 240px)', overflowY: 'auto' }}>
                         {viewMode !== 'classic' && (
-                          <EventLegend events={gameEvents} hidden={hiddenEventTypes} onToggle={toggleEventType} />
+                          <EventLegend events={gameEvents} hidden={hiddenEventTypes} onToggle={toggleEventType} onPreviewEvent={setHoveredEvent} />
                         )}
-                        {viewMode !== 'events' && (
                         <ColorLegend 
                           interactive={true}
                           board={localBoard}
@@ -1913,7 +1924,6 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                             totalMoves: totalMoves,
                           }}
                         />
-                        )}
                       </div>
                     )}
                   </div>
@@ -1941,7 +1951,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                         >
                           <span className="font-display text-sm uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                             <Eye className="h-4 w-4" />
-                            Color Legend
+                            {viewMode === 'overlay' ? 'Board & Event Legend' : 'Color Legend'}
                           </span>
                           <motion.div
                             animate={{ rotate: mobileLegendExpanded ? 180 : 0 }}
@@ -1959,7 +1969,10 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                               transition={{ duration: 0.2 }}
                               className="overflow-hidden"
                             >
-                              <div className="p-3 pt-0">
+                              <div className="p-3 pt-0 space-y-3">
+                                {viewMode === 'overlay' && (
+                                  <EventLegend events={gameEvents} hidden={hiddenEventTypes} onToggle={toggleEventType} onPreviewEvent={setHoveredEvent} />
+                                )}
                                 <EnhancedLegend 
                                   whitePalette={getCurrentPalette().white}
                                   blackPalette={getCurrentPalette().black}

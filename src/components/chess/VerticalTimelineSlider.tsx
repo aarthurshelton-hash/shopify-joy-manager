@@ -15,8 +15,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { analyzeTimeline, getMomentCounts, TimelineAnalysisResult } from '@/lib/chess/timelineAnalysis';
-import { TimelineMarker, PhaseButton, momentConfig, phaseConfig } from './EnhancedTimelineMarker';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
+import { analyzeTimeline, TimelineAnalysisResult } from '@/lib/chess/timelineAnalysis';
+import { buildGameEvents, describeEvent, type GameEvent, type GameEventType } from '@/lib/chess/eventLayer';
+import { getPieceColor, type PieceColor, type PieceType } from '@/lib/chess/pieceColors';
+import { EventSwatch } from './EventTextureMarks';
+import { TimelineMarker, PhaseButton, momentConfig, phaseConfig, type MomentType, type TimelineMoment } from './EnhancedTimelineMarker';
 import TrajectoryTimelineOverlay from './TrajectoryTimelineOverlay';
 import { HybridPrediction } from '@/lib/chess/hybridPrediction';
 import { PatternPrediction } from '@/lib/chess/patternLearning';
@@ -27,6 +31,8 @@ interface VerticalTimelineSliderProps {
   pgn?: string;
   hybridPrediction?: HybridPrediction | null;
   patternPrediction?: PatternPrediction | null;
+  onPreviewEvent?: (event: GameEvent | null) => void;
+  onSelectEvent?: (event: GameEvent | null) => void;
 }
 
 const VerticalTimelineSlider: React.FC<VerticalTimelineSliderProps> = ({ 
@@ -35,6 +41,8 @@ const VerticalTimelineSlider: React.FC<VerticalTimelineSliderProps> = ({
   pgn,
   hybridPrediction,
   patternPrediction,
+  onPreviewEvent,
+  onSelectEvent,
 }) => {
   const {
     currentMove,
@@ -84,8 +92,38 @@ const VerticalTimelineSlider: React.FC<VerticalTimelineSliderProps> = ({
     return analysis.phases.find(p => p.name === phase);
   };
 
-  // Moment counts for summary
-  const momentCounts = useMemo(() => getMomentCounts(visibleMoments), [visibleMoments]);
+  const visibleGameEvents = useMemo(
+    () => buildGameEvents(pgn).filter(event => event.moveNumber >= range.start && event.moveNumber <= range.end),
+    [pgn, range.start, range.end]
+  );
+
+  const keyMomentGroups = useMemo(() => {
+    const types: MomentType[] = [
+      'brilliant', 'great', 'blunder', 'fork', 'sacrifice', 'checkmate',
+      'check', 'castling', 'promotion', 'capture', 'en_passant',
+    ];
+    const eventTypes: Partial<Record<MomentType, GameEventType>> = {
+      capture: 'capture', check: 'check', checkmate: 'checkmate', castling: 'castle',
+      en_passant: 'enPassant', promotion: 'promotion', sacrifice: 'sacrifice',
+      brilliant: 'brilliant', blunder: 'blunder',
+    };
+
+    return types.map(type => {
+      const entries = new Map<number, { moveNumber: number; moment?: TimelineMoment; event?: GameEvent }>();
+      for (const moment of visibleMoments) {
+        if (moment.type === type) entries.set(moment.moveNumber, { moveNumber: moment.moveNumber, moment });
+      }
+      const eventType = eventTypes[type];
+      if (eventType) {
+        for (const event of visibleGameEvents) {
+          if (event.type !== eventType) continue;
+          const entry = entries.get(event.moveNumber) || { moveNumber: event.moveNumber };
+          entries.set(event.moveNumber, { ...entry, event });
+        }
+      }
+      return { type, entries: [...entries.values()].sort((a, b) => a.moveNumber - b.moveNumber) };
+    }).filter(group => group.entries.length > 0);
+  }, [visibleMoments, visibleGameEvents]);
 
   // Format move display
   const getMoveLabel = () => {
@@ -111,7 +149,13 @@ const VerticalTimelineSlider: React.FC<VerticalTimelineSliderProps> = ({
     return (currentMove % 2 === 1) ? 'white' : 'black';
   };
 
+  const clearSelectedMoment = () => {
+    onSelectEvent?.(null);
+    onPreviewEvent?.(null);
+  };
+
   const handleSliderChange = (value: number[]) => {
+    clearSelectedMoment();
     const newValue = value[0];
     if (newValue >= range.end) {
       setCurrentMove(Infinity);
@@ -120,7 +164,9 @@ const VerticalTimelineSlider: React.FC<VerticalTimelineSliderProps> = ({
     }
   };
 
-  const handleMomentClick = (moveNumber: number) => {
+  const handleMomentClick = (moveNumber: number, event?: GameEvent | null) => {
+    onSelectEvent?.(event || null);
+    onPreviewEvent?.(null);
     setCurrentMove(moveNumber);
   };
 
@@ -181,6 +227,7 @@ const VerticalTimelineSlider: React.FC<VerticalTimelineSliderProps> = ({
             
             // Handle phase click: select the phase AND jump to its start
             const handlePhaseClick = () => {
+              clearSelectedMoment();
               setSelectedPhase(phase);
               // Jump to the appropriate position
               if (phase === 'all') {
@@ -206,185 +253,79 @@ const VerticalTimelineSlider: React.FC<VerticalTimelineSliderProps> = ({
           })}
         </div>
 
-        {/* Key moments summary with rich tooltips - clickable to jump to first occurrence */}
-        {visibleMoments.length > 0 && (
+        {keyMomentGroups.length > 0 && (
           <div className="py-2 border-b border-border/30">
             <div className="text-[9px] text-muted-foreground mb-1.5 text-center">Key Moments</div>
             <div className="flex flex-wrap items-center justify-center gap-1.5">
-              {/* Quality moves */}
-              {momentCounts.brilliant > 0 && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button 
-                      onClick={() => {
-                        const first = visibleMoments.find(m => m.type === 'brilliant');
-                        if (first) setCurrentMove(first.moveNumber);
-                      }}
-                      className={`flex items-center gap-0.5 ${momentConfig.brilliant.color} hover:scale-110 transition-transform cursor-pointer`}
-                    >
-                      <momentConfig.brilliant.icon className="w-2.5 h-2.5" />
-                      <span className="text-[9px]">{momentCounts.brilliant}</span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" className="text-xs">
-                    Click to jump to first brilliant move
-                  </TooltipContent>
-                </Tooltip>
-              )}
-              {momentCounts.great > 0 && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button 
-                      onClick={() => {
-                        const first = visibleMoments.find(m => m.type === 'great');
-                        if (first) setCurrentMove(first.moveNumber);
-                      }}
-                      className={`flex items-center gap-0.5 ${momentConfig.great.color} hover:scale-110 transition-transform cursor-pointer`}
-                    >
-                      <momentConfig.great.icon className="w-2.5 h-2.5" />
-                      <span className="text-[9px]">{momentCounts.great}</span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" className="text-xs">
-                    Click to jump to first great move
-                  </TooltipContent>
-                </Tooltip>
-              )}
-              {momentCounts.blunder > 0 && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button 
-                      onClick={() => {
-                        const first = visibleMoments.find(m => m.type === 'blunder');
-                        if (first) setCurrentMove(first.moveNumber);
-                      }}
-                      className={`flex items-center gap-0.5 ${momentConfig.blunder.color} hover:scale-110 transition-transform cursor-pointer`}
-                    >
-                      <momentConfig.blunder.icon className="w-2.5 h-2.5" />
-                      <span className="text-[9px]">{momentCounts.blunder}</span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" className="text-xs">
-                    Click to jump to first blunder
-                  </TooltipContent>
-                </Tooltip>
-              )}
-              {/* Tactical */}
-              {momentCounts.fork > 0 && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button 
-                      onClick={() => {
-                        const first = visibleMoments.find(m => m.type === 'fork');
-                        if (first) setCurrentMove(first.moveNumber);
-                      }}
-                      className={`flex items-center gap-0.5 ${momentConfig.fork.color} hover:scale-110 transition-transform cursor-pointer`}
-                    >
-                      <momentConfig.fork.icon className="w-2.5 h-2.5" />
-                      <span className="text-[9px]">{momentCounts.fork}</span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" className="text-xs">
-                    Click to jump to first fork
-                  </TooltipContent>
-                </Tooltip>
-              )}
-              {momentCounts.sacrifice > 0 && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button 
-                      onClick={() => {
-                        const first = visibleMoments.find(m => m.type === 'sacrifice');
-                        if (first) setCurrentMove(first.moveNumber);
-                      }}
-                      className={`flex items-center gap-0.5 ${momentConfig.sacrifice.color} hover:scale-110 transition-transform cursor-pointer`}
-                    >
-                      <momentConfig.sacrifice.icon className="w-2.5 h-2.5" />
-                      <span className="text-[9px]">{momentCounts.sacrifice}</span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" className="text-xs">
-                    Click to jump to first sacrifice
-                  </TooltipContent>
-                </Tooltip>
-              )}
-              {/* Events */}
-              {momentCounts.checkmate > 0 && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button 
-                      onClick={() => {
-                        const first = visibleMoments.find(m => m.type === 'checkmate');
-                        if (first) setCurrentMove(first.moveNumber);
-                      }}
-                      className={`flex items-center gap-0.5 ${momentConfig.checkmate.color} hover:scale-110 transition-transform cursor-pointer`}
-                    >
-                      <momentConfig.checkmate.icon className="w-2.5 h-2.5" />
-                      <span className="text-[9px]">{momentCounts.checkmate}</span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" className="text-xs">
-                    Click to jump to checkmate
-                  </TooltipContent>
-                </Tooltip>
-              )}
-              {momentCounts.check > 0 && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button 
-                      onClick={() => {
-                        const first = visibleMoments.find(m => m.type === 'check');
-                        if (first) setCurrentMove(first.moveNumber);
-                      }}
-                      className={`flex items-center gap-0.5 ${momentConfig.check.color} hover:scale-110 transition-transform cursor-pointer`}
-                    >
-                      <momentConfig.check.icon className="w-2.5 h-2.5" />
-                      <span className="text-[9px]">{momentCounts.check}</span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" className="text-xs">
-                    Click to jump to first check
-                  </TooltipContent>
-                </Tooltip>
-              )}
-              {momentCounts.castling > 0 && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button 
-                      onClick={() => {
-                        const first = visibleMoments.find(m => m.type === 'castling');
-                        if (first) setCurrentMove(first.moveNumber);
-                      }}
-                      className={`flex items-center gap-0.5 ${momentConfig.castling.color} hover:scale-110 transition-transform cursor-pointer`}
-                    >
-                      <momentConfig.castling.icon className="w-2.5 h-2.5" />
-                      <span className="text-[9px]">{momentCounts.castling}</span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" className="text-xs">
-                    Click to jump to first castle
-                  </TooltipContent>
-                </Tooltip>
-              )}
-              {momentCounts.promotion > 0 && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button 
-                      onClick={() => {
-                        const first = visibleMoments.find(m => m.type === 'promotion');
-                        if (first) setCurrentMove(first.moveNumber);
-                      }}
-                      className={`flex items-center gap-0.5 ${momentConfig.promotion.color} hover:scale-110 transition-transform cursor-pointer`}
-                    >
-                      <momentConfig.promotion.icon className="w-2.5 h-2.5" />
-                      <span className="text-[9px]">{momentCounts.promotion}</span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" className="text-xs">
-                    Click to jump to first promotion
-                  </TooltipContent>
-                </Tooltip>
-              )}
+              {keyMomentGroups.map(group => {
+                const config = momentConfig[group.type];
+                const Icon = config.icon;
+                const first = group.entries[0];
+                return (
+                  <HoverCard key={group.type} openDelay={120} closeDelay={120}>
+                    <HoverCardTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => handleMomentClick(first.moveNumber, first.event)}
+                        onMouseEnter={() => onPreviewEvent?.(first.event || null)}
+                        onMouseLeave={() => onPreviewEvent?.(null)}
+                        onFocus={() => onPreviewEvent?.(first.event || null)}
+                        onBlur={() => onPreviewEvent?.(null)}
+                        className={`flex items-center gap-0.5 ${config.color} hover:scale-110 transition-transform cursor-pointer`}
+                        aria-label={`${config.label}: ${group.entries.length} key ${group.entries.length === 1 ? 'moment' : 'moments'}`}
+                      >
+                        <Icon className="w-2.5 h-2.5" />
+                        <span className="text-[9px]">{group.entries.length}</span>
+                      </button>
+                    </HoverCardTrigger>
+                    <HoverCardContent side="right" align="start" className="w-80 p-3" onMouseLeave={() => onPreviewEvent?.(null)}>
+                      <div className="mb-2">
+                        <p className="text-xs font-semibold">{config.label} · {group.entries.length}</p>
+                        <p className="text-[10px] text-muted-foreground">Hover to locate it on the board. Click to review the move.</p>
+                      </div>
+                      <div className="max-h-72 space-y-1 overflow-y-auto pr-1">
+                        {group.entries.slice(0, 12).map(entry => {
+                          const eventDescription = entry.event ? describeEvent(entry.event) : null;
+                          const moveName = entry.moment?.move || entry.event?.san || '';
+                          const player = entry.moment?.player || (entry.event?.color === 'w' ? 'white' : 'black');
+                          const title = eventDescription?.title || `${config.label} · ${moveName}`;
+                          const when = eventDescription?.when || `Move ${Math.ceil(entry.moveNumber / 2)} · ${player === 'white' ? 'White' : 'Black'}`;
+                          const detail = eventDescription?.detail || entry.moment?.description || config.description;
+                          return (
+                            <button
+                              key={`${group.type}-${entry.moveNumber}`}
+                              type="button"
+                              className="flex w-full items-start gap-2 rounded-md p-2 text-left transition-colors hover:bg-muted/70 focus:bg-muted/70 focus:outline-none"
+                              onMouseEnter={() => onPreviewEvent?.(entry.event || null)}
+                              onFocus={() => onPreviewEvent?.(entry.event || null)}
+                              onBlur={() => onPreviewEvent?.(null)}
+                              onClick={() => handleMomentClick(entry.moveNumber, entry.event)}
+                            >
+                              {entry.event ? (
+                                <EventSwatch
+                                  type={entry.event.type}
+                                  pieceColor={getPieceColor(entry.event.piece as PieceType, entry.event.color as PieceColor)}
+                                  size={24}
+                                />
+                              ) : (
+                                <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${config.color}`} />
+                              )}
+                              <span className="min-w-0">
+                                <span className="block text-xs font-medium">{title}</span>
+                                <span className="block text-[10px] text-muted-foreground">{when}</span>
+                                <span className="mt-1 block text-[11px] leading-snug text-muted-foreground">{detail}</span>
+                              </span>
+                            </button>
+                          );
+                        })}
+                        {group.entries.length > 12 && (
+                          <p className="px-2 py-1 text-[10px] text-muted-foreground">+ {group.entries.length - 12} more on the timeline</p>
+                        )}
+                      </div>
+                    </HoverCardContent>
+                  </HoverCard>
+                );
+              })}
             </div>
           </div>
         )}
@@ -443,7 +384,7 @@ const VerticalTimelineSlider: React.FC<VerticalTimelineSliderProps> = ({
             <Button
               variant="ghost"
               size="sm"
-              onClick={stepBackward}
+              onClick={() => { clearSelectedMoment(); stepBackward(); }}
               disabled={isAtStart}
               className="h-7 w-7 p-0"
               title="Previous move"
@@ -454,7 +395,7 @@ const VerticalTimelineSlider: React.FC<VerticalTimelineSliderProps> = ({
             <Button
               variant={isPlaying ? "secondary" : "default"}
               size="sm"
-              onClick={togglePlayback}
+              onClick={() => { clearSelectedMoment(); togglePlayback(); }}
               className="h-8 w-8 p-0 rounded-full"
               title={isPlaying ? "Pause" : "Play"}
             >
@@ -468,7 +409,7 @@ const VerticalTimelineSlider: React.FC<VerticalTimelineSliderProps> = ({
             <Button
               variant="ghost"
               size="sm"
-              onClick={stepForward}
+              onClick={() => { clearSelectedMoment(); stepForward(); }}
               disabled={isAtEnd}
               className="h-7 w-7 p-0"
               title="Next move"
@@ -482,7 +423,7 @@ const VerticalTimelineSlider: React.FC<VerticalTimelineSliderProps> = ({
             <Button
               variant="ghost"
               size="sm"
-              onClick={reset}
+              onClick={() => { clearSelectedMoment(); reset(); }}
               className="h-6 w-6 p-0"
               title="Reset"
             >
