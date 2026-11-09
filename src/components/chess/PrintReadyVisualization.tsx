@@ -1,5 +1,4 @@
 import React, { useMemo } from 'react';
-import { EventTextureMarks } from './EventTextureMarks';
 import { buildGameEvents } from '@/lib/chess/eventLayer';
 import ChessBoardVisualization from './ChessBoardVisualization';
 import GameInfoDisplay from './GameInfoDisplay';
@@ -176,15 +175,8 @@ export const PrintReadyVisualization: React.FC<PrintReadyVisualizationProps> = (
             size={boardSize}
             overrideHighlightedPieces={overrideHighlightedPieces}
             overrideCompareMode={highlightState?.compareMode}
+            events={resolvedViewMode === 'overlay' ? exportEvents : undefined}
           />
-          {resolvedViewMode === 'overlay' && (
-            <svg
-              width={boardSize} height={boardSize} viewBox="0 0 800 800"
-              style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 10 }}
-            >
-              <EventTextureMarks events={exportEvents} />
-            </svg>
-          )}
           {/* Pieces overlay using StaticPieceOverlay component */}
           {piecesState?.showPieces && effectivePgn && (
             <StaticPieceOverlay

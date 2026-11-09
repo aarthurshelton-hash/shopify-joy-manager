@@ -1,10 +1,12 @@
-import React, { useMemo } from 'react';
+import React, { useId, useMemo } from 'react';
 import { SquareData } from '@/lib/chess/gameSimulator';
 import { boardColors } from '@/lib/chess/pieceColors';
 import { useOptionalLegendHighlight, HighlightedPiece } from '@/contexts/LegendHighlightContext';
 import { useEnPensentPatterns } from '@/hooks/useEnPensentPatterns';
 import { TemporalSignature } from '@/lib/pensent-core/types/core';
 import { renderNestedSquares } from '@/lib/chess/boardRenderer';
+import type { GameEvent, GameEventType } from '@/lib/chess/eventLayer';
+import { EventTextureDefs } from './EventTextureMarks';
 
 interface ChessBoardVisualizationProps {
   board: SquareData[][];
@@ -12,6 +14,8 @@ interface ChessBoardVisualizationProps {
   overrideHighlightedPieces?: HighlightedPiece[];
   overrideCompareMode?: boolean;
   signature?: TemporalSignature | null;
+  events?: GameEvent[];
+  hiddenEventTypes?: Set<GameEventType>;
 }
 
 function getQuadrantForSquare(file: number, rank: number): 'q1' | 'q2' | 'q3' | 'q4' {
@@ -24,8 +28,11 @@ const ChessBoardVisualization: React.FC<ChessBoardVisualizationProps> = ({
   size = 500,
   overrideHighlightedPieces,
   overrideCompareMode,
-  signature
+  signature,
+  events,
+  hiddenEventTypes,
 }) => {
+  const eventTextureIdPrefix = `ep-print-${useId().replace(/:/g, '')}`;
   const pattern = useEnPensentPatterns(signature);
   
   const contextData = useOptionalLegendHighlight();
@@ -72,10 +79,13 @@ const ChessBoardVisualization: React.FC<ChessBoardVisualizationProps> = ({
           hoveredMove,
           squareName,
           enPensentGlow,
+          events,
+          hiddenEventTypes,
+          eventTextureIdPrefix: events ? eventTextureIdPrefix : undefined,
         });
       });
     });
-  }, [board, borderWidth, squareSize, highlightedPieces, compareMode, hoveredMove, signature, pattern]);
+  }, [board, borderWidth, squareSize, highlightedPieces, compareMode, hoveredMove, signature, pattern, events, hiddenEventTypes, eventTextureIdPrefix]);
   
   return (
     <svg
@@ -85,6 +95,7 @@ const ChessBoardVisualization: React.FC<ChessBoardVisualizationProps> = ({
       xmlns="http://www.w3.org/2000/svg"
       style={{ display: 'block' }}
     >
+      {events && <EventTextureDefs idPrefix={eventTextureIdPrefix} />}
       {/* Border with En Pensent accent */}
       <rect
         x={0}

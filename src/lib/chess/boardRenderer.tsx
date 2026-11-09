@@ -2,6 +2,7 @@ import React from 'react';
 import { SquareVisit } from '@/lib/chess/gameSimulator';
 import { getPieceColor } from '@/lib/chess/pieceColors';
 import { HighlightedPiece, HoveredMoveInfo } from '@/contexts/LegendHighlightContext';
+import { EVENT_PRIORITY, type GameEvent, type GameEventType } from '@/lib/chess/eventLayer';
 
 export function getVisitColor(visit: SquareVisit): string {
   return getPieceColor(visit.piece, visit.color);
@@ -29,6 +30,9 @@ interface RenderNestedSquaresOptions {
   enPensentGlow?: { color: string; intensity: number };
   isHoveredSquare?: boolean;
   isHighlightedFromLegend?: boolean;
+  events?: GameEvent[];
+  hiddenEventTypes?: Set<GameEventType>;
+  eventTextureIdPrefix?: string;
 }
 
 export function renderNestedSquares({
@@ -44,6 +48,9 @@ export function renderNestedSquares({
   enPensentGlow,
   isHoveredSquare = false,
   isHighlightedFromLegend = false,
+  events = [],
+  hiddenEventTypes,
+  eventTextureIdPrefix,
 }: RenderNestedSquaresOptions): React.ReactNode[] {
   const elements: React.ReactNode[] = [];
   const padding = squareSize * 0.08;
@@ -151,6 +158,37 @@ export function renderNestedSquares({
         style={{ opacity, transition: 'opacity 0.2s ease-out' }}
       />
     );
+
+    const textureEvent = eventTextureIdPrefix
+      ? events
+        .filter(event =>
+          event.square === squareName &&
+          !hiddenEventTypes?.has(event.type) &&
+          visits.some(visit =>
+            getVisitColor(visit) === layer.color &&
+            visit.piece === event.piece &&
+            visit.color === event.color
+          )
+        )
+        .sort((a, b) => EVENT_PRIORITY.indexOf(a.type) - EVENT_PRIORITY.indexOf(b.type))[0]
+      : undefined;
+
+    if (textureEvent) {
+      elements.push(
+        <rect
+          key={`texture-${x}-${y}-${i}`}
+          x={x + offset}
+          y={y + offset}
+          width={layer.layerSize}
+          height={layer.layerSize}
+          fill={`url(#${eventTextureIdPrefix}-${textureEvent.type})`}
+          data-event-texture={textureEvent.type}
+          data-event-square={squareName}
+          pointerEvents="none"
+          style={{ opacity, transition: 'opacity 0.2s ease-out' }}
+        />
+      );
+    }
   }
 
   if ((hasHighlight && hasMatchingVisit) || isHoveredSquare) {

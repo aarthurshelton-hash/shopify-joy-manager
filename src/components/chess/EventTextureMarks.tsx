@@ -1,13 +1,5 @@
-import React, { useId, useMemo } from 'react';
-import {
-  groupEventsBySquare, squareToCoords,
-  type GameEvent, type GameEventType,
-} from '@/lib/chess/eventLayer';
-import { getPieceColor, type PieceType, type PieceColor } from '@/lib/chess/pieceColors';
-
-const CELL = 100;
-const TILE = 34;
-const BIG_EVENTS: GameEventType[] = ['checkmate', 'promotion', 'sacrifice'];
+import React, { useId } from 'react';
+import type { GameEventType } from '@/lib/chess/eventLayer';
 
 /**
  * Texture per event type. The fill is always the moving piece's own palette
@@ -88,56 +80,5 @@ export const EventSwatch: React.FC<{ type: GameEventType; pieceColor?: string; s
       <rect width="34" height="34" fill={pieceColor} />
       <rect width="34" height="34" fill={`url(#${idPrefix}-${type})`} />
     </svg>
-  );
-};
-
-interface MarksProps {
-  events: GameEvent[];
-  hidden?: Set<GameEventType>;
-}
-
-/** Textured event marks in an 800x800 board space, layered over the classic board. */
-export const EventTextureMarks: React.FC<MarksProps> = ({ events, hidden }) => {
-  const groups = useMemo(() => groupEventsBySquare(events, hidden), [events, hidden]);
-  const idPrefix = `ep-board-${useId().replace(/:/g, '')}`;
-
-  return (
-    <g>
-      <EventTextureDefs idPrefix={idPrefix} />
-      {groups.map(({ square, events: squareEvents }) => {
-        const coords = squareToCoords(square);
-        if (!coords) return null;
-        const x = coords.file * CELL;
-        const y = coords.rank * CELL;
-        const top = squareEvents[0];
-
-        return (
-          <g key={square}>
-            <title>{squareEvents.map((e) => e.label).join('\n')}</title>
-            {BIG_EVENTS.includes(top.type) && (
-              <rect
-                x={x + 4} y={y + 4} width={CELL - 8} height={CELL - 8} rx={8}
-                fill="none" stroke={getPieceColor(top.piece as PieceType, top.color as PieceColor)} strokeWidth={3} opacity={0.7}
-              />
-            )}
-            {squareEvents.slice(0, 3).map((event, i) => {
-              const base = getPieceColor(event.piece as PieceType, event.color as PieceColor);
-              const tx = x + CELL - TILE - 6 - i * (TILE + 6);
-              const ty = y + 6;
-              return (
-                <g key={event.id}>
-                  <rect x={tx} y={ty} width={TILE} height={TILE} rx={6} fill={base} />
-                  <rect x={tx} y={ty} width={TILE} height={TILE} rx={6} fill={`url(#${idPrefix}-${event.type})`} />
-                  <rect
-                    x={tx} y={ty} width={TILE} height={TILE} rx={6}
-                    fill="none" stroke="rgba(0,0,0,0.4)" strokeWidth={1.5}
-                  />
-                </g>
-              );
-            })}
-          </g>
-        );
-      })}
-    </g>
   );
 };

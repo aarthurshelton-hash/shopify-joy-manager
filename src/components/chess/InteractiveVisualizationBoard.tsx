@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useId, useMemo, useState } from 'react';
 import { Chess, Square, Move } from 'chess.js';
 import { SquareData } from '@/lib/chess/gameSimulator';
 import { boardColors, getPieceColor, PieceType, PieceColor } from '@/lib/chess/pieceColors';
@@ -6,6 +6,8 @@ import { PIECE_PATHS } from '@/lib/chess/piecePaths';
 import { PremiumPieceDefs, PremiumPieceBody } from './PremiumPiece';
 import { useLegendHighlight, HighlightedPiece, HoveredSquareInfo, AnnotationType, PieceMoveArrow } from '@/contexts/LegendHighlightContext';
 import { renderNestedSquares } from '@/lib/chess/boardRenderer';
+import type { GameEvent, GameEventType } from '@/lib/chess/eventLayer';
+import { EventTextureDefs } from './EventTextureMarks';
 
 interface InteractiveVisualizationBoardProps {
   board: SquareData[][];
@@ -15,6 +17,8 @@ interface InteractiveVisualizationBoardProps {
   pgn?: string;
   currentMoveNumber?: number;
   onFollowPieceActivated?: (moveNumber: number) => void;
+  events?: GameEvent[];
+  hiddenEventTypes?: Set<GameEventType>;
 }
 
 // Track individual pieces with unique IDs for animation
@@ -38,7 +42,10 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
   pgn,
   currentMoveNumber,
   onFollowPieceActivated,
+  events,
+  hiddenEventTypes,
 }) => {
+  const eventTextureIdPrefix = `ep-board-${useId().replace(/:/g, '')}`;
   const [hoveredSquareLocal, setHoveredSquareLocal] = useState<string | null>(null);
   const [hoveredPieceSquare, setHoveredPieceSquare] = useState<string | null>(null);
   
@@ -457,10 +464,14 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
           compareMode,
           isHoveredSquare: isHovered || isTargetSquareFromHoveredMove || isLockedSquare,
           isHighlightedFromLegend,
+          squareName,
+          events,
+          hiddenEventTypes,
+          eventTextureIdPrefix: events ? eventTextureIdPrefix : undefined,
         });
       });
     });
-  }, [board, borderWidth, squareSize, effectiveHighlightPieces, compareMode, hoveredSquareLocal, lockedSquares, hoveredAnnotation, hoveredMove]);
+  }, [board, borderWidth, squareSize, effectiveHighlightPieces, compareMode, hoveredSquareLocal, lockedSquares, hoveredAnnotation, hoveredMove, events, hiddenEventTypes, eventTextureIdPrefix]);
 
   // Create invisible interaction layer for hover detection and click locking
   const interactionSquares = useMemo(() => {
@@ -678,6 +689,7 @@ const InteractiveVisualizationBoard: React.FC<InteractiveVisualizationBoardProps
       xmlns="http://www.w3.org/2000/svg"
       style={{ display: 'block' }}
     >
+      {events && <EventTextureDefs idPrefix={eventTextureIdPrefix} />}
       {/* Border */}
       <rect
         x={0}

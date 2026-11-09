@@ -5,7 +5,6 @@ import InteractiveVisualizationBoard from './InteractiveVisualizationBoard';
 import InteractiveGameInfoDisplay from './InteractiveGameInfoDisplay';
 import BoardCoordinateGuide from './BoardCoordinateGuide';
 import { MoveEventOverlay } from './MoveEventOverlay';
-import { EventTextureMarks } from './EventTextureMarks';
 import { EventMomentPopup } from './EventMomentPopup';
 import { buildGameEvents, eventsUpTo, type GameEvent, type GameEventType } from '@/lib/chess/eventLayer';
 
@@ -115,15 +114,9 @@ export const VisionBoard: React.FC<VisionBoardProps> = ({
           pgn={effectivePgnForBoard}
           currentMoveNumber={currentMove}
           onFollowPieceActivated={handleFollowPieceActivated}
+          events={viewMode === 'overlay' ? visibleEvents : undefined}
+          hiddenEventTypes={hiddenEventTypes}
         />
-        {viewMode === 'overlay' && (
-          <svg
-            width={size} height={size} viewBox="0 0 800 800"
-            style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 10 }}
-          >
-            <EventTextureMarks events={visibleEvents} hidden={hiddenEventTypes} />
-          </svg>
-        )}
         {viewMode === 'classic' && effectivePgnForBoard && (
           <MoveEventOverlay pgn={effectivePgnForBoard} size={size} totalMoves={totalMoves} />
         )}
