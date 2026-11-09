@@ -1,4 +1,10 @@
 import React, { useState, useMemo } from 'react';
+import naturalFrameImg from '@/assets/frames/natural.jpg';
+import blackFrameImg from '@/assets/frames/black.jpg';
+import whiteFrameImg from '@/assets/frames/white.jpg';
+import walnutFrameImg from '@/assets/frames/walnut.jpg';
+import goldFrameImg from '@/assets/frames/gold.jpg';
+
 import { motion, AnimatePresence } from 'framer-motion';
 import { Frame, Check, Truck, Info, Gift } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -17,6 +23,14 @@ import {
   FREE_SHIPPING_THRESHOLD,
   type FrameStyle,
 } from '@/lib/shop/framePricing';
+
+const FRAME_IMAGES: Record<string, string> = {
+  natural: naturalFrameImg,
+  black: blackFrameImg,
+  white: whiteFrameImg,
+  walnut: walnutFrameImg,
+  gold: goldFrameImg,
+};
 
 export interface FrameOption {
   id: string;
@@ -142,6 +156,14 @@ export const FrameAddOn: React.FC<FrameAddOnProps> = ({
                               `}
                             >
                               {/* Frame preview */}
+                              {FRAME_IMAGES[frame.id] ? (
+                                <img
+                                  src={FRAME_IMAGES[frame.id]}
+                                  alt={frame.name}
+                                  loading="lazy"
+                                  className="w-10 h-10 rounded object-cover shadow-inner ring-1 ring-black/20"
+                                />
+                              ) : (
                               <div 
                                 className="w-8 h-8 rounded border-2 shadow-inner"
                                 style={{ 
@@ -151,6 +173,7 @@ export const FrameAddOn: React.FC<FrameAddOnProps> = ({
                               >
                                 <div className="w-full h-full rounded-sm bg-gradient-to-br from-muted/50 to-muted" />
                               </div>
+                              )}
                               
                               <span className="text-[10px] font-medium text-center leading-tight">
                                 {frame.color}

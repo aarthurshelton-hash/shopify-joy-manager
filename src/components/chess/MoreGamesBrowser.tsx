@@ -3,7 +3,7 @@ import { Play, Search, Crown } from 'lucide-react';
 import { famousGames, carlsenLegendaryGames, type FamousGame } from '@/lib/chess/famousGames';
 import { FAMOUS_GAME_OPENINGS, FAMOUS_GAME_PALETTES } from '@/lib/chess/famousGameOpenings';
 import { generateGameHash } from '@/lib/visualizations/gameCanonical';
-import { paletteThumbs } from '@/lib/palettes/paletteBackgrounds';
+import { paletteThumbs, getPaletteScene } from '@/lib/palettes/paletteBackgrounds';
 import { savedMatchPalette, type SavedSide } from '@/lib/chess/matchPalette';
 
 type ResultFilter = 'all' | 'white' | 'black' | 'draw';
@@ -203,11 +203,11 @@ export function MoreGamesBrowser({ currentHash }: { currentHash?: string }) {
                 <button type="button" onClick={() => open(e, false)} className="relative block aspect-[16/9] w-full overflow-hidden text-left" aria-label={`Open ${e.game.title}`}>
                   {split ? (
                     <div className="flex h-full w-full transition-transform duration-500 group-hover:scale-105">
-                      <img src={paletteThumbs[e.match!.white.paletteId]} alt="" loading="lazy" className="h-full w-1/2 object-cover" />
-                      <img src={paletteThumbs[e.match!.black.paletteId]} alt="" loading="lazy" className="h-full w-1/2 border-l border-black/40 object-cover" />
+                      <img src={getPaletteScene(e.match!.white.paletteId, e.game.id + ':w')} alt="" loading="lazy" className="h-full w-1/2 object-cover" />
+                      <img src={getPaletteScene(e.match!.black.paletteId, e.game.id + ':b')} alt="" loading="lazy" className="h-full w-1/2 border-l border-black/40 object-cover" />
                     </div>
                   ) : (
-                    <img src={paletteThumbs[e.paletteId]} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                    <img src={getPaletteScene(e.paletteId, e.game.id)} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                   <span className="absolute left-3 top-2 font-mono text-[11px] text-white/80">{e.game.year}</span>

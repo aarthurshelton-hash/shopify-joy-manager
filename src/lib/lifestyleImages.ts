@@ -12,6 +12,7 @@ const KEYS: Record<string, string> = {
   cosmic: 'cosmic', autumn: 'autumn', tropical: 'tropical', vintage: 'vintage', ocean: 'ocean', nordic: 'nordic',
   egyptian: 'egyptian', roman: 'roman', desert: 'desert', modern: 'modern',
   'stained-glass': 'stainedglass', woodland: 'woodland', 'ink-and-gold': 'inkgold', 'hot-cold': 'hotCold',
+  'high-contrast': 'contrast', 'spectral-rank': 'spectral', volcanic: 'volcanic', aurora: 'aurora', clear: 'clear',
 };
 
 const files = import.meta.glob('@/assets/lifestyle/*.{jpg,jpeg,png,webp}', {
