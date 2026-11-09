@@ -16,6 +16,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { PieceType, PieceColor, getActivePalette } from '@/lib/chess/pieceColors';
 import { ChessPieceIcon } from '@/components/chess/ChessPieceIcon';
 import { SquareData } from '@/lib/chess/gameSimulator';
+import { formatGameDate } from '@/lib/chess/formatGameDate';
 import { MoveHistoryEntry } from '@/components/chess/EnPensentOverlay';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 import { getGamePoetry, GamePoetry } from '@/lib/chess/gamePoetry';
@@ -377,7 +378,7 @@ export const VisionInfoCardPreview: React.FC<VisionInfoCardPreviewProps> = ({
                   {/* Event & Date */}
                   <div className="flex items-center justify-between text-[7px] opacity-60">
                     <span className="truncate max-w-[120px]">{gameData.event || 'Chess Match'}</span>
-                    <span>{gameData.date || ''}</span>
+                    <span>{formatGameDate(gameData.date)}</span>
                   </div>
                   
                   {/* Poetry Section */}

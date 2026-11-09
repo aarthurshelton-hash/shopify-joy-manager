@@ -26,6 +26,7 @@ import { toast } from 'sonner';
 import { PieceType, PieceColor, getActivePalette } from '@/lib/chess/pieceColors';
 import { ChessPieceIcon } from './ChessPieceIcon';
 import { SquareData } from '@/lib/chess/gameSimulator';
+import { formatGameDate } from '@/lib/chess/formatGameDate';
 import { MoveHistoryEntry } from './EnPensentOverlay';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 
@@ -269,7 +270,7 @@ export const VisionInfoCard: React.FC<VisionInfoCardProps> = ({
             </h3>
             <div className="flex items-center justify-center gap-2 text-[10px] opacity-70">
               {gameData.event && <span>{gameData.event}</span>}
-              {gameData.date && <span>• {gameData.date}</span>}
+              {formatGameDate(gameData.date) && <span>• {formatGameDate(gameData.date)}</span>}
             </div>
             {gameData.result && (
               <span className={`inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold ${

@@ -1,17 +1,10 @@
 import { SquareData, SquareVisit } from './gameSimulator';
+import { formatGameDate as formatDate } from './formatGameDate';
 import { boardColors, getPieceColor } from './pieceColors';
 import enPensentLogo from '@/assets/en-pensent-logo-new.png';
 
 // High DPI scaling for maximum quality downloads - 5x
 const DPI_SCALE = 5;
-
-// Format date from PGN format (YYYY.MM.DD) to display format
-function formatDate(dateStr: string): string {
-  if (!dateStr || dateStr === 'Unknown' || dateStr === '????.??.??') {
-    return dateStr; // Keep as-is for display
-  }
-  return dateStr;
-}
 
 // Wait for fonts to be loaded
 async function ensureFontsLoaded(): Promise<void> {
@@ -271,7 +264,7 @@ export async function generatePrintCanvas(
   
   // Title and Date - Inter font with letter-spacing
   const displayTitle = title;
-  const dateStr = gameData.date || '';
+  const dateStr = formatDate(gameData.date || '');
   if (displayTitle || dateStr) {
     ctx.fillStyle = mutedText;
     ctx.font = "500 12px 'Inter', sans-serif";

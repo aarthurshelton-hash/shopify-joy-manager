@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { formatGameDate } from '@/lib/chess/formatGameDate';
 import {
   Tooltip,
   TooltipContent,
@@ -335,7 +336,7 @@ const VisionDetailModal: React.FC<VisionDetailModalProps> = ({
                 {gameData?.date && (
                   <div className="p-2 rounded bg-muted/50">
                     <p className="text-muted-foreground text-xs">Date</p>
-                    <p className="font-medium">{gameData.date}</p>
+                    <p className="font-medium">{formatGameDate(gameData.date)}</p>
                   </div>
                 )}
                 {gameData?.result && (

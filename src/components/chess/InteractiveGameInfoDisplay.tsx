@@ -2,44 +2,12 @@ import React, { useMemo, useCallback } from 'react';
 import { GameData, formatMoves } from '@/lib/chess/gameSimulator';
 import { useOptionalLegendHighlight, AnnotationType, HighlightedPiece, parseSanMove, HoveredMoveInfo } from '@/contexts/LegendHighlightContext';
 import { PieceType, PieceColor } from '@/lib/chess/pieceColors';
+import { formatGameDate as formatDate } from '@/lib/chess/formatGameDate';
 
 interface InteractiveGameInfoDisplayProps {
   gameData: GameData;
   title?: string;
   darkMode?: boolean;
-}
-
-// Format date from PGN format (YYYY.MM.DD) to display format
-function formatDate(dateStr: string): string {
-  if (!dateStr || dateStr === 'Unknown' || dateStr === '????.??.??') {
-    return 'Date Unknown';
-  }
-  
-  const parts = dateStr.split('.');
-  if (parts.length !== 3) return dateStr;
-  
-  const months = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ];
-  
-  const year = parts[0];
-  const monthIndex = parseInt(parts[1]) - 1;
-  const day = parseInt(parts[2]);
-  
-  if (isNaN(monthIndex) || monthIndex < 0 || monthIndex > 11) return dateStr;
-  
-  const getDaySuffix = (d: number) => {
-    if (d > 3 && d < 21) return 'th';
-    switch (d % 10) {
-      case 1: return 'st';
-      case 2: return 'nd';
-      case 3: return 'rd';
-      default: return 'th';
-    }
-  };
-  
-  return `${months[monthIndex]} ${day}${getDaySuffix(day)}, ${year}`;
 }
 
 // All white pieces

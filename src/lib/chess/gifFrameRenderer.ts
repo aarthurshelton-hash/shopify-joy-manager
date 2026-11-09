@@ -5,6 +5,7 @@
  */
 
 import { SquareData, GameData, SimulationResult } from './gameSimulator';
+import { formatGameDate } from './formatGameDate';
 import { getCurrentPalette } from './pieceColors';
 import { drawPremiumPiece } from './pieceCanvas';
 import { PieceType } from './pieceColors';
@@ -211,14 +212,14 @@ export async function renderFrameToCanvas(
       infoSection.appendChild(playersDiv);
       
       // Event and date
-      if (gameData.event || gameData.date) {
+      if (gameData.event || formatGameDate(gameData.date)) {
         const eventDiv = document.createElement('div');
         Object.assign(eventDiv.style, {
           fontSize: '10px',
           color: mutedColor,
           marginBottom: '4px',
         });
-        eventDiv.textContent = [gameData.event, gameData.date].filter(Boolean).join(' • ');
+        eventDiv.textContent = [gameData.event, formatGameDate(gameData.date)].filter(Boolean).join(' • ');
         infoSection.appendChild(eventDiv);
       }
       
