@@ -10,17 +10,16 @@ import orderingOnline from '@/assets/in-use/ordering-online-shop-page.jpg';
 interface Shot {
   src: string;
   alt: string;
-  caption: string;
   portrait?: boolean;
 }
 
 const SHOTS: Shot[] = [
-  { src: parkPhone, alt: 'Two friends in a park comparing an En Pensent visualization of the oldest recorded game on a phone', caption: 'Mid-game in the park', portrait: true },
-  { src: cafeLaptop, alt: 'Woman at a cafe viewing the Opera Game in the Art Deco palette on a laptop', caption: 'The Opera Game over coffee' },
-  { src: kitchenLaptop, alt: 'Father and son pointing at Rubinstein’s Immortal in the Woodland palette on a laptop', caption: 'Family game night' },
-  { src: sofaPhone, alt: 'Man on a sofa with his dog viewing the Evergreen Game in the Nordic palette on his phone', caption: 'The Evergreen Game on the sofa', portrait: true },
-  { src: streamerDesk, alt: 'Chess streamer presenting Pillsbury vs Tarrasch in the Stained Glass palette', caption: 'Live on stream' },
-  { src: orderingOnline, alt: 'Woman ordering a museum print from the En Pensent shop on her laptop', caption: 'Ordering a print' },
+  { src: parkPhone, alt: 'Two friends in a park comparing an En Pensent visualization of the oldest recorded game on a phone', portrait: true },
+  { src: cafeLaptop, alt: 'Woman at a cafe viewing the Opera Game in the Art Deco palette on a laptop' },
+  { src: kitchenLaptop, alt: 'Father and son pointing at Rubinstein’s Immortal in the Woodland palette on a laptop' },
+  { src: sofaPhone, alt: 'Man on a sofa with his dog viewing the Evergreen Game in the Nordic palette on his phone', portrait: true },
+  { src: streamerDesk, alt: 'Chess streamer presenting Pillsbury vs Tarrasch in the Stained Glass palette' },
+  { src: orderingOnline, alt: 'Woman ordering a museum print from the En Pensent shop on her laptop' },
 ];
 
 const EverywhereSection: React.FC = () => (
@@ -50,9 +49,6 @@ const EverywhereSection: React.FC = () => (
               decoding="async"
               className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
             />
-            <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-3 pb-2 pt-8 text-xs font-display uppercase tracking-wider text-white/90">
-              {shot.caption}
-            </figcaption>
           </figure>
         ))}
       </div>

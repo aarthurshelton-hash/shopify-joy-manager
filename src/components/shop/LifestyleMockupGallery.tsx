@@ -245,9 +245,6 @@ const LifestyleMockupGallery: React.FC<LifestyleMockupGalleryProps> = ({
           {/* Content overlay */}
           <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between">
             <div className="space-y-1">
-              <h3 className="text-white font-display text-lg md:text-xl font-bold">
-                {displayMockups[activeIndex].title}
-              </h3>
               <div className="flex items-center gap-2">
                 {displayMockups[activeIndex].frame && (
                   <Badge className="bg-white/20 text-white border-white/30 text-xs">
@@ -336,7 +333,6 @@ const LifestyleMockupGallery: React.FC<LifestyleMockupGalleryProps> = ({
             
             {/* Info on hover */}
             <div className="absolute bottom-0 left-0 right-0 p-3 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-              <div className="text-white text-sm font-medium">{mockup.title}</div>
               {mockup.frame && (
                 <div className="text-white/70 text-xs mt-0.5">{mockup.frame} Frame</div>
               )}

@@ -77,11 +77,6 @@ const PrintGallery: React.FC = () => {
                   className="relative w-full h-full object-contain"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6">
-                  <p className="text-white text-sm md:text-lg font-display tracking-wide drop-shadow-lg">
-                    {slides[index].caption}
-                  </p>
-                </div>
               </motion.div>
             </AnimatePresence>
           </div>

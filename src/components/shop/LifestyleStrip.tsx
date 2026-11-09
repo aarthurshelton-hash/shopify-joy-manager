@@ -32,9 +32,6 @@ const LifestyleStrip: React.FC<LifestyleStripProps> = ({ paletteId, count = 3, h
             )}
           >
             <img src={img.src} alt={img.title} loading="lazy" className="block h-auto w-full" />
-            <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2 pb-1.5 pt-6 text-[10px] text-white font-display tracking-wide truncate">
-              {img.title}
-            </figcaption>
           </figure>
         ))}
       </div>
