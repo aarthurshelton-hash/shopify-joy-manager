@@ -5,6 +5,10 @@ import InteractiveVisualizationBoard from './InteractiveVisualizationBoard';
 import InteractiveGameInfoDisplay from './InteractiveGameInfoDisplay';
 import BoardCoordinateGuide from './BoardCoordinateGuide';
 import { MoveEventOverlay } from './MoveEventOverlay';
+import { EventBoard, EventMarks } from './EventLayerSvg';
+import { buildGameEvents, eventsUpTo, type GameEventType } from '@/lib/chess/eventLayer';
+
+export type VisionViewMode = 'classic' | 'events' | 'overlay';
 
 interface VisionBoardProps {
   board: SquareData[][];
@@ -17,6 +21,8 @@ interface VisionBoardProps {
   showPieces?: boolean;
   pieceOpacity?: number;
   pgn?: string;
+  viewMode?: VisionViewMode;
+  hiddenEventTypes?: Set<GameEventType>;
 }
 
 export const VisionBoard: React.FC<VisionBoardProps> = ({
@@ -30,6 +36,8 @@ export const VisionBoard: React.FC<VisionBoardProps> = ({
   showPieces = false,
   pieceOpacity = 0.7,
   pgn,
+  viewMode = 'classic',
+  hiddenEventTypes,
 }) => {
   const { currentMove, setCurrentMove } = useTimeline();
   
@@ -53,6 +61,12 @@ export const VisionBoard: React.FC<VisionBoardProps> = ({
       }))
     );
   }, [board, currentMove, totalMoves]);
+
+  const gameEvents = useMemo(() => buildGameEvents(effectivePgnForBoard), [effectivePgnForBoard]);
+  const visibleEvents = useMemo(
+    () => eventsUpTo(gameEvents, currentMove, totalMoves),
+    [gameEvents, currentMove, totalMoves],
+  );
 
   // Handle follow piece activation - jump to the move
   const handleFollowPieceActivated = useCallback((moveNumber: number) => {
@@ -83,6 +97,9 @@ export const VisionBoard: React.FC<VisionBoardProps> = ({
         {showCoordinates && (
           <BoardCoordinateGuide size={size} position="inside" />
         )}
+        {viewMode === 'events' ? (
+          <EventBoard events={visibleEvents} size={size} hidden={hiddenEventTypes} darkMode={darkMode} />
+        ) : (
         <InteractiveVisualizationBoard 
           board={filteredBoard} 
           size={size}
@@ -92,7 +109,16 @@ export const VisionBoard: React.FC<VisionBoardProps> = ({
           currentMoveNumber={currentMove}
           onFollowPieceActivated={handleFollowPieceActivated}
         />
-        {effectivePgnForBoard && (
+        )}
+        {viewMode === 'overlay' && (
+          <svg
+            width={size} height={size} viewBox="0 0 800 800"
+            style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
+          >
+            <EventMarks events={visibleEvents} variant="overlay" hidden={hiddenEventTypes} />
+          </svg>
+        )}
+        {viewMode === 'classic' && effectivePgnForBoard && (
           <MoveEventOverlay pgn={effectivePgnForBoard} size={size} totalMoves={totalMoves} />
         )}
       </div>

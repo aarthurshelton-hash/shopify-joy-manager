@@ -2,8 +2,15 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Grid3X3, Eye, Maximize2 } from 'lucide-react';
+import { Grid3X3, Eye, Maximize2, Layers, Zap } from 'lucide-react';
 import { ShowPiecesToggle } from './ShowPiecesToggle';
+import type { VisionViewMode } from './VisionBoard';
+
+const VIEW_MODES: { id: VisionViewMode; label: string }[] = [
+  { id: 'classic', label: 'Classic' },
+  { id: 'events', label: 'Events' },
+  { id: 'overlay', label: 'Overlay' },
+];
 
 interface VisionControlsProps {
   showCoordinates: boolean;
@@ -15,6 +22,8 @@ interface VisionControlsProps {
   showLegend?: boolean;
   onToggleLegend?: (value: boolean) => void;
   onFullscreen: () => void;
+  viewMode?: VisionViewMode;
+  onViewModeChange?: (mode: VisionViewMode) => void;
   children?: React.ReactNode;
 }
 
@@ -28,12 +37,34 @@ export const VisionControls: React.FC<VisionControlsProps> = ({
   showLegend,
   onToggleLegend,
   onFullscreen,
+  viewMode,
+  onViewModeChange,
   children,
 }) => {
   return (
     <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border/50">
       {/* Left: View controls */}
       <div className="flex flex-wrap items-center gap-3">
+        {viewMode && onViewModeChange && (
+          <>
+            <div className="flex items-center gap-1 rounded-md border border-border/50 p-0.5" role="group" aria-label="Visualization mode">
+              {VIEW_MODES.map((mode) => (
+                <Button
+                  key={mode.id}
+                  variant={viewMode === mode.id ? 'secondary' : 'ghost'}
+                  size="sm"
+                  onClick={() => onViewModeChange(mode.id)}
+                  className="h-7 gap-1 px-2 text-xs"
+                  aria-pressed={viewMode === mode.id}
+                >
+                  {mode.id === 'overlay' ? <Layers className="h-3 w-3" /> : mode.id === 'events' ? <Zap className="h-3 w-3" /> : <Grid3X3 className="h-3 w-3" />}
+                  {mode.label}
+                </Button>
+              ))}
+            </div>
+            <div className="h-4 w-px bg-border" />
+          </>
+        )}
         <TooltipProvider>
           <Tooltip>
             <div className="flex items-center gap-2">

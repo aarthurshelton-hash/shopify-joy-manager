@@ -53,7 +53,10 @@ import { LegendHighlightProvider, useLegendHighlight, HighlightedPiece } from '@
 import InteractiveVisualizationBoard from './InteractiveVisualizationBoard';
 import { EnhancedLegend } from './EnhancedLegend';
 import { VisionControls } from './VisionControls';
-import { VisionBoard } from './VisionBoard';
+import { VisionBoard, type VisionViewMode } from './VisionBoard';
+import { EventLegend } from './EventLegend';
+import { buildGameEvents, type GameEventType } from '@/lib/chess/eventLayer';
+import { VIEW_MODE_STORAGE_KEY } from './PrintReadyVisualization';
 import GameInfoDisplay from './GameInfoDisplay';
 import InteractiveGameInfoDisplay from './InteractiveGameInfoDisplay';
 import VerticalTimelineSlider from './VerticalTimelineSlider';
@@ -1253,6 +1256,26 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
     setStoreDarkMode(value);
   }, [setStoreDarkMode]);
   const [showLegend, setShowLegend] = useState(true);
+  const [viewMode, setViewModeState] = useState<VisionViewMode>(() => {
+    try {
+      const stored = localStorage.getItem(VIEW_MODE_STORAGE_KEY);
+      return stored === 'events' || stored === 'overlay' ? stored : 'classic';
+    } catch {
+      return 'classic';
+    }
+  });
+  const setViewMode = useCallback((mode: VisionViewMode) => {
+    setViewModeState(mode);
+    try { localStorage.setItem(VIEW_MODE_STORAGE_KEY, mode); } catch { /* private mode */ }
+  }, []);
+  const [hiddenEventTypes, setHiddenEventTypes] = useState<Set<GameEventType>>(new Set());
+  const toggleEventType = useCallback((type: GameEventType) => {
+    setHiddenEventTypes((prev) => {
+      const next = new Set(prev);
+      if (next.has(type)) next.delete(type); else next.add(type);
+      return next;
+    });
+  }, []);
   const [mobileLegendExpanded, setMobileLegendExpanded] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   
@@ -1334,7 +1357,9 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
     
     return '';
   }, [pgn, localGameData?.pgn, gameData?.pgn]);
-  
+
+  const gameEvents = useMemo(() => buildGameEvents(effectivePgn), [effectivePgn]);
+
   // Extract moves from PGN when gameData.moves is empty - ensures timeline analysis works
   const effectiveMoves = useMemo((): string[] => {
     // First try existing moves array
@@ -1755,6 +1780,8 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                   showPieces={showPieces}
                   pieceOpacity={pieceOpacity}
                   pgn={effectivePgn}
+                  viewMode={viewMode}
+                  hiddenEventTypes={hiddenEventTypes}
                 />
               </div>
 
@@ -1823,6 +1850,8 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                     showLegend={showLegend}
                     onToggleLegend={setShowLegend}
                     onFullscreen={() => setIsFullscreen(true)}
+                    viewMode={viewMode}
+                    onViewModeChange={setViewMode}
                   >
                     {/* Export buttons moved to unified action buttons section below */}
                   </VisionControls>
@@ -1860,12 +1889,18 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                         showPieces={showPieces}
                         pieceOpacity={pieceOpacity}
                         pgn={effectivePgn}
+                        viewMode={viewMode}
+                        hiddenEventTypes={hiddenEventTypes}
                       />
                     </div>
 
                     {/* Right: Color Legend - full width */}
                     {showLegend && (
-                      <div className="hidden xl:flex flex-col flex-shrink-0" style={{ minWidth: '240px', width: '240px', maxHeight: 'calc(100vh - 240px)', overflowY: 'auto' }}>
+                      <div className="hidden xl:flex flex-col flex-shrink-0 gap-3" style={{ minWidth: '240px', width: '240px', maxHeight: 'calc(100vh - 240px)', overflowY: 'auto' }}>
+                        {viewMode !== 'classic' && (
+                          <EventLegend events={gameEvents} hidden={hiddenEventTypes} onToggle={toggleEventType} />
+                        )}
+                        {viewMode !== 'events' && (
                         <ColorLegend 
                           interactive={true}
                           board={localBoard}
@@ -1878,6 +1913,7 @@ const UnifiedVisionExperience: React.FC<UnifiedVisionExperienceProps> = ({
                             totalMoves: totalMoves,
                           }}
                         />
+                        )}
                       </div>
                     )}
                   </div>

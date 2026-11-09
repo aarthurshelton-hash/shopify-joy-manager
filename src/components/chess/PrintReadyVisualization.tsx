@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import { EventBoard, EventMarks } from './EventLayerSvg';
+import { buildGameEvents } from '@/lib/chess/eventLayer';
 import ChessBoardVisualization from './ChessBoardVisualization';
 import GameInfoDisplay from './GameInfoDisplay';
 import { EnPensentOverlay, MoveHistoryEntry } from './EnPensentOverlay';
@@ -63,6 +65,20 @@ interface PrintReadyVisualizationProps {
   
   // Watermark for free downloads
   withWatermark?: boolean;
+
+  // Event visualization mode; falls back to the mode last chosen on the board
+  viewMode?: 'classic' | 'events' | 'overlay';
+}
+
+export const VIEW_MODE_STORAGE_KEY = 'en-pensent-view-mode';
+
+function storedViewMode(): 'classic' | 'events' | 'overlay' {
+  try {
+    const value = localStorage.getItem(VIEW_MODE_STORAGE_KEY);
+    return value === 'events' || value === 'overlay' ? value : 'classic';
+  } catch {
+    return 'classic';
+  }
 }
 
 /**
@@ -91,7 +107,10 @@ export const PrintReadyVisualization: React.FC<PrintReadyVisualizationProps> = (
   piecesState,
   pgn,
   withWatermark = false,
+  viewMode,
 }) => {
+  const resolvedViewMode = viewMode ?? storedViewMode();
+  const exportEvents = useMemo(() => buildGameEvents(pgn || gameData.pgn || ''), [pgn, gameData.pgn]);
   const bgColor = darkMode ? '#0A0A0A' : '#FDFCFB';
   const borderColor = darkMode ? '#292524' : '#e7e5e4';
   const mutedColor = darkMode ? '#78716c' : '#a8a29e';
@@ -152,12 +171,24 @@ export const PrintReadyVisualization: React.FC<PrintReadyVisualizationProps> = (
       
       return (
         <div style={{ position: 'relative', width: boardSize, height: boardSize }}>
+          {resolvedViewMode === 'events' ? (
+            <EventBoard events={exportEvents} size={boardSize} darkMode={darkMode} />
+          ) : (
           <ChessBoardVisualization 
             board={board} 
             size={boardSize}
             overrideHighlightedPieces={overrideHighlightedPieces}
             overrideCompareMode={highlightState?.compareMode}
           />
+          )}
+          {resolvedViewMode === 'overlay' && (
+            <svg
+              width={boardSize} height={boardSize} viewBox="0 0 800 800"
+              style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
+            >
+              <EventMarks events={exportEvents} variant="overlay" />
+            </svg>
+          )}
           {/* Pieces overlay using StaticPieceOverlay component */}
           {piecesState?.showPieces && effectivePgn && (
             <StaticPieceOverlay
