@@ -61,6 +61,9 @@ export const CartDrawer = () => {
     lastAddedAt,
   } = useCartStore();
 
+  const activePaletteId = useActiveVisionStore((s) => s.activeVision?.paletteId);
+  const cartPaletteId = [...items].reverse().find((item) => item.customPrintData?.paletteId)?.customPrintData?.paletteId;
+
   // Auto-open the drawer when an item is added (skip initial mount)
   const lastAddedRef = useRef(lastAddedAt);
   useEffect(() => {
@@ -186,7 +189,7 @@ export const CartDrawer = () => {
           <div className="flex flex-col flex-1 pt-6 min-h-0">
             {items.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center gap-6">
-                <LifestyleStrip count={1} heading="Your walls are waiting" className="w-full" />
+                <LifestyleStrip paletteId={activePaletteId} count={1} heading="Your walls are waiting" className="w-full" />
                 <div className="text-center">
                   <ShoppingCart className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                   <p className="text-muted-foreground">Your cart is empty</p>
@@ -402,7 +405,7 @@ export const CartDrawer = () => {
                       </button>
                     </div>
                   )}
-                  <LifestyleStrip count={2} heading="Ready to hang" subheading="Every print ships framed or canvas-wrapped" className="mt-4 pb-2" />
+                  <LifestyleStrip paletteId={cartPaletteId} count={2} heading="Ready to hang" subheading="Every print ships framed or canvas-wrapped" className="mt-4 pb-2" />
                 </div>
                 
                 <div className="flex-shrink-0 space-y-3 pt-4 border-t bg-background">

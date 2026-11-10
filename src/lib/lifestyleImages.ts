@@ -34,5 +34,7 @@ export const lifestyleImages: LifestyleImage[] = [
 export function getLifestyleForPalette(paletteId: string | undefined, count: number): LifestyleImage[] {
   const hit = lifestyleImages.filter((i) => i.palette && i.palette === paletteId);
   const rest = lifestyleImages.filter((i) => !hit.includes(i));
-  return [...hit, ...rest].slice(0, count);
+  const rooms = rest.filter((i) => !i.id.includes('characters'));
+  const scenes = rest.filter((i) => i.id.includes('characters'));
+  return [...hit, ...rooms, ...scenes].slice(0, count);
 }
