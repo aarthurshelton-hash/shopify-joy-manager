@@ -31,7 +31,12 @@ const LifestyleStrip: React.FC<LifestyleStripProps> = ({ paletteId, count = 3, h
               count === 3 && i === 0 && 'col-span-2 sm:col-span-1'
             )}
           >
-            <img src={img.src} alt={img.title} loading="lazy" className="block h-auto w-full" />
+            <img
+              src={img.src}
+              alt={img.title}
+              loading="lazy"
+              className={cn('block w-full', count === 2 ? 'aspect-square object-cover' : 'h-auto')}
+            />
           </figure>
         ))}
       </div>
