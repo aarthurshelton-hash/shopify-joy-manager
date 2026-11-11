@@ -38,14 +38,12 @@ import { CartItemThumbnail } from "./CartItemThumbnail";
 import { calculateDiscount, DISCOUNT_TIERS, ShippingRegion } from "@/lib/discounts";
 import { FRAME_SHIPPING_COST_EXPORT, FREE_SHIPPING_THRESHOLD_EXPORT } from "./FrameAddOn";
 import { useAuth } from "@/hooks/useAuth";
-import { VisionaryMembershipCard } from "@/components/premium/VisionaryMembershipCard";
 import AuthModal from "@/components/auth/AuthModal";
 import { getPaletteArt, getPaletteDisplayName, isPremiumPalette } from "@/lib/marketplace/paletteArtMap";
 import { getGameImage } from "@/lib/chess/gameImages";
 
 export const CartDrawer = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const [showVisionaryModal, setShowVisionaryModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -196,7 +194,7 @@ export const CartDrawer = () => {
                 {!isPremium && (
                   <div className="w-full max-w-xs">
                     <button
-                      onClick={() => setShowVisionaryModal(true)}
+                      onClick={() => setShowAuthModal(true)}
                       className="w-full group relative overflow-hidden rounded-xl border border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10 p-4 transition-all hover:border-primary/40 hover:shadow-lg hover:shadow-primary/10"
                     >
                       <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/5 to-primary/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
@@ -389,7 +387,7 @@ export const CartDrawer = () => {
                   {!isPremium && items.length > 0 && (
                     <div className="mt-4 pt-4 border-t border-dashed">
                       <button
-                        onClick={() => setShowVisionaryModal(true)}
+                        onClick={() => setShowAuthModal(true)}
                         className="w-full group flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-amber-500/10 to-primary/10 border border-amber-500/20 hover:border-amber-500/40 transition-all"
                       >
                         <Crown className="h-5 w-5 text-amber-500" />
@@ -582,17 +580,6 @@ export const CartDrawer = () => {
           </div>
         </SheetContent>
       </Sheet>
-
-      {/* Visionary Membership Modal */}
-      <VisionaryMembershipCard
-        isOpen={showVisionaryModal}
-        onClose={() => setShowVisionaryModal(false)}
-        onAuthRequired={() => {
-          setShowVisionaryModal(false);
-          setShowAuthModal(true);
-        }}
-        trigger="general"
-      />
 
       {/* Auth Modal */}
       <AuthModal 
