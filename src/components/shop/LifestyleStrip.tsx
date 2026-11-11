@@ -35,7 +35,14 @@ const LifestyleStrip: React.FC<LifestyleStripProps> = ({ paletteId, count = 3, h
               src={img.src}
               alt={img.title}
               loading="lazy"
-              className={cn('block w-full', count === 2 ? 'aspect-square object-cover' : 'h-auto')}
+              className={cn(
+                'block w-full',
+                count === 2
+                  ? 'aspect-square object-cover'
+                  : count === 1
+                    ? 'aspect-[3/2] object-cover'
+                    : 'h-auto'
+              )}
             />
           </figure>
         ))}

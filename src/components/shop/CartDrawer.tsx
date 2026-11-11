@@ -190,11 +190,7 @@ export const CartDrawer = () => {
             {items.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center gap-6">
                 <LifestyleStrip paletteId={activePaletteId} count={1} heading="Your walls are waiting" className="w-full" />
-                <div className="text-center">
-                  <ShoppingCart className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">Your cart is empty</p>
-                  <p className="text-sm text-muted-foreground mt-2">Create a visualization and order your print!</p>
-                </div>
+                <p className="text-sm text-muted-foreground text-center">Create a visualization and order your print!</p>
                 
                 {/* Subtle Visionary Upsell for Empty Cart */}
                 {!isPremium && (
@@ -210,7 +206,7 @@ export const CartDrawer = () => {
                         </div>
                         <div className="flex-1 text-left">
                           <p className="font-medium text-sm">Become a Visionary</p>
-                          <p className="text-xs text-muted-foreground">Unlock HD downloads, trading & more</p>
+                          <p className="text-xs text-muted-foreground">HD downloads, trading & more</p>
                         </div>
                         <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
                       </div>
